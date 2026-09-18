@@ -1,22 +1,73 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, closeSync, existsSync, linkSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, statfsSync, symlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
+import {
+	chmodSync,
+	closeSync,
+	existsSync,
+	linkSync,
+	mkdirSync,
+	mkdtempSync,
+	openSync,
+	readFileSync,
+	readdirSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	statSync,
+	statfsSync,
+	symlinkSync,
+	utimesSync,
+	writeFileSync,
+	writeSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
-import { artifactArch, mountedDevice, privatePythonSeedCheck, finalContainerChecks, finalMetadataChecks } from "./python-artifact-layout.mjs";
+import {
+	artifactArch,
+	finalContainerChecks,
+	finalMetadataChecks,
+	mountedDevice,
+	privatePythonSeedCheck,
+} from "./python-artifact-layout.mjs";
 import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
-const result = await build({ stdin: { contents: 'export * from "./src/main/backend/managed-python";', resolveDir: process.cwd() }, bundle: true, platform: "node", format: "esm", write: false });
-const runtime = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
-const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, runtimesRoot, isLegacyManagedCommand, PYTHON_SEED_NAMESPACE } = runtime;
+const result = await build({
+	stdin: {
+		contents: 'export * from "./src/main/backend/managed-python";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	platform: "node",
+	format: "esm",
+	write: false,
+});
+const runtime = await import(
+	`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`
+);
+const {
+	runtimeManifest,
+	runtimeId,
+	runtimeIdentity,
+	readManagedSelection,
+	inspectManagedSelection,
+	managedSelectionReady,
+	prepareManagedPython,
+	reapSupersededGenerations,
+	managedPythonRoot,
+	runtimesRoot,
+	isLegacyManagedCommand,
+	PYTHON_SEED_NAMESPACE,
+} = runtime;
 function fixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	return root;
 }
-function options(support, packaged = true) { return { support, resources: "", packaged, arch: "arm64" }; }
+function options(support, packaged = true) {
+	return { support, resources: "", packaged, arch: "arm64" };
+}
 
 /**
  * The macOS toolchain these tests drive, and why skipping one is not a pass.
@@ -61,7 +112,10 @@ test("runtime identity binds final file bytes, names, modes and internal link ta
 	chmodSync(join(root, "bin", "python3.12"), 0o755);
 	assert.notEqual(runtimeId(runtimeManifest(root, "arm64")), id);
 	const executable = runtimeId(runtimeManifest(root, "arm64"));
-	writeFileSync(join(root, "bin", "python3.12"), "changed signed fixture bytes");
+	writeFileSync(
+		join(root, "bin", "python3.12"),
+		"changed signed fixture bytes",
+	);
 	assert.notEqual(runtimeId(runtimeManifest(root, "arm64")), executable);
 });
 
@@ -70,7 +124,10 @@ test("new external caches are harmless but signed source modifications still fai
 	writeFileSync(join(root, "stdlib.py"), "pass\n");
 	const expected = runtimeId(runtimeManifest(root, "arm64"));
 	mkdirSync(join(root, "__pycache__"));
-	writeFileSync(join(root, "__pycache__", "stdlib.cpython-312.pyc"), "new cache");
+	writeFileSync(
+		join(root, "__pycache__", "stdlib.cpython-312.pyc"),
+		"new cache",
+	);
 	assert.equal(runtimeId(runtimeManifest(root, "arm64", true)), expected);
 	writeFileSync(join(root, "stdlib.py"), "modified\n");
 	assert.notEqual(runtimeId(runtimeManifest(root, "arm64", true)), expected);
@@ -78,8 +135,10 @@ test("new external caches are harmless but signed source modifications still fai
 
 test("external branding aliases preserve readiness but modified immutable bytes do not", (t) => {
 	const root = fixture(t);
-	const tree = join(root, "runtime"); mkdirSync(tree);
-	const binary = join(tree, "python"); writeFileSync(binary, "signed binary bytes");
+	const tree = join(root, "runtime");
+	mkdirSync(tree);
+	const binary = join(tree, "python");
+	writeFileSync(binary, "signed binary bytes");
 	const expected = runtimeId(runtimeManifest(tree, "arm64"));
 	linkSync(binary, join(root, "Local Operator"));
 	linkSync(binary, join(root, ".Local Operator.123.tmp"));
@@ -91,7 +150,8 @@ test("external branding aliases preserve readiness but modified immutable bytes 
 
 test("seed traversal rejects escaping links, hardlinks, special roots and invalid architecture", (t) => {
 	const root = fixture(t);
-	const tree = join(root, "tree"); mkdirSync(tree);
+	const tree = join(root, "tree");
+	mkdirSync(tree);
 	writeFileSync(join(root, "outside"), "user data");
 	symlinkSync("../outside", join(tree, "escape"));
 	assert.throws(() => runtimeManifest(tree, "arm64"), /escapes/);
@@ -104,28 +164,56 @@ test("seed traversal rejects escaping links, hardlinks, special roots and invali
 
 test("packaged/dev selections are disjoint, and a pointer nobody can trust is 'unprepared' rather than an error", (t) => {
 	const support = fixture(t);
-	assert.notEqual(managedPythonRoot(options(support)), managedPythonRoot(options(support, false)));
+	assert.notEqual(
+		managedPythonRoot(options(support)),
+		managedPythonRoot(options(support, false)),
+	);
 	assert.equal(readManagedSelection(options(support)), null);
-	const root = managedPythonRoot(options(support)); mkdirSync(root, { recursive: true });
-	writeFileSync(join(root, "selected-environment.json"), JSON.stringify({ format: 1, runtimeId: "a".repeat(64), runtime: "/tmp/not-owned", venv: "/tmp/not-owned", backendVersion: "0" }));
+	const root = managedPythonRoot(options(support));
+	mkdirSync(root, { recursive: true });
+	writeFileSync(
+		join(root, "selected-environment.json"),
+		JSON.stringify({
+			format: 1,
+			runtimeId: "a".repeat(64),
+			runtime: "/tmp/not-owned",
+			venv: "/tmp/not-owned",
+			backendVersion: "0",
+		}),
+	);
 	// A pointer naming paths outside this root is not usable, and it is not a
 	// refusal either: the preparation path republishes over it (review R8). The
 	// old contract threw here, which is what made every retry re-throw.
 	assert.equal(readManagedSelection(options(support)), null);
 	assert.equal(inspectManagedSelection(options(support)).kind, "unprepared");
-	assert.match(inspectManagedSelection(options(support)).detail, /does not describe a managed environment/);
+	assert.match(
+		inspectManagedSelection(options(support)).detail,
+		/does not describe a managed environment/,
+	);
 	assert.equal(readManagedSelection(options(support, false)), null);
-	assert.throws(() => managedPythonRoot(options(join(support, "Unsafe.app", "state"))), /outside every/);
+	assert.throws(
+		() => managedPythonRoot(options(join(support, "Unsafe.app", "state"))),
+		/outside every/,
+	);
 });
 
 test("legacy PATH launchers and shebang aliases cannot bypass migration", (t) => {
 	const support = fixture(t);
 	const command = join(support, "alias");
-	writeFileSync(command, `#!${support}/local-operator-venv/bin/python\nprint('legacy')\n`);
+	writeFileSync(
+		command,
+		`#!${support}/local-operator-venv/bin/python\nprint('legacy')\n`,
+	);
 	assert.equal(isLegacyManagedCommand(command, support), true);
 	writeFileSync(command, "#!/usr/bin/python3\nprint('independent')\n");
 	assert.equal(isLegacyManagedCommand(command, support), false);
-	assert.equal(isLegacyManagedCommand(join(support, "local-operator-venv", "bin", "local-operator"), support), true);
+	assert.equal(
+		isLegacyManagedCommand(
+			join(support, "local-operator-venv", "bin", "local-operator"),
+			support,
+		),
+		true,
+	);
 });
 
 test("final app gate rejects legacy aliases even if they are dangling", (t) => {
@@ -136,7 +224,10 @@ test("final app gate rejects legacy aliases even if they are dangling", (t) => {
 	mkdirSync(join(seed, "bin"), { recursive: true });
 	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
 	writeFileSync(join(seed, "bin", "python3"), "fixture");
-	writeFileSync(join(seed, "lib", "python3.12", "encodings", "__init__.py"), "pass");
+	writeFileSync(
+		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
+		"pass",
+	);
 	assert.equal(privatePythonSeedCheck(app).passed, true);
 	symlinkSync("/missing-legacy-python", join(resources, "python_aarch64"));
 	const rejected = privatePythonSeedCheck(app);
@@ -147,7 +238,10 @@ test("final app gate rejects legacy aliases even if they are dangling", (t) => {
 test("metadata validation refuses bytes changed after release metadata was generated", (t) => {
 	const root = fixture(t);
 	writeFileSync(join(root, "candidate.zip"), "final delivered bytes");
-	writeFileSync(join(root, "latest-mac.yml"), "version: 1.0.0\nfiles:\n  - url: candidate.zip\n    sha512: invalid\n    size: 21\n");
+	writeFileSync(
+		join(root, "latest-mac.yml"),
+		"version: 1.0.0\nfiles:\n  - url: candidate.zip\n    sha512: invalid\n    size: 21\n",
+	);
 	const results = finalMetadataChecks(root, [join(root, "candidate.zip")]);
 	assert.equal(results[0].passed, false);
 	assert.match(results[0].output, /Metadata bytes differ/);
@@ -175,17 +269,34 @@ test("metadata validation refuses bytes changed after release metadata was gener
  * can actually thin to, keeping every architecture question a question about a
  * real Mach-O rather than about a stub.
  */
-const SOURCE_ARCHS = spawnRunner("/usr/bin/lipo", ["-archs", "/usr/bin/true"]).stdout.trim().split(/\s+/);
-const MACHINE_LIPO_ARCH = ["arm64", "x86_64"].find((arch) => SOURCE_ARCHS.includes(arch)) ?? SOURCE_ARCHS[0];
+const SOURCE_ARCHS = spawnRunner("/usr/bin/lipo", ["-archs", "/usr/bin/true"])
+	.stdout.trim()
+	.split(/\s+/);
+const MACHINE_LIPO_ARCH =
+	["arm64", "x86_64"].find((arch) => SOURCE_ARCHS.includes(arch)) ??
+	SOURCE_ARCHS[0];
 /** The artifact filename spelling (`mac.artifactName`) of that architecture. */
 const MACHINE_ARTIFACT_ARCH = MACHINE_LIPO_ARCH === "arm64" ? "arm64" : "x64";
 const OTHER_ARTIFACT_ARCH = MACHINE_ARTIFACT_ARCH === "arm64" ? "x64" : "arm64";
 
 /** One architecture of `/usr/bin/true`, written where the framework binary goes. */
 function thinFrameworkBinary(destination) {
-	const result = spawnRunner("/usr/bin/lipo", ["-thin", MACHINE_LIPO_ARCH, "-output", destination, "/usr/bin/true"]);
-	assert.equal(result.status, 0, `lipo could not thin the fixture binary: ${result.stdout}${result.stderr}`);
-	assert.equal(spawnRunner("/usr/bin/lipo", ["-archs", destination]).stdout.trim(), MACHINE_LIPO_ARCH);
+	const result = spawnRunner("/usr/bin/lipo", [
+		"-thin",
+		MACHINE_LIPO_ARCH,
+		"-output",
+		destination,
+		"/usr/bin/true",
+	]);
+	assert.equal(
+		result.status,
+		0,
+		`lipo could not thin the fixture binary: ${result.stdout}${result.stderr}`,
+	);
+	assert.equal(
+		spawnRunner("/usr/bin/lipo", ["-archs", destination]).stdout.trim(),
+		MACHINE_LIPO_ARCH,
+	);
 }
 
 /**
@@ -195,40 +306,77 @@ function thinFrameworkBinary(destination) {
  * carries, which is how a bundle that ships the OTHER architecture's complete,
  * correct seed becomes expressible.
  */
-function appBundle(root, { name = "Local Operator.app", seedArch = MACHINE_ARTIFACT_ARCH, legacyAlias = null } = {}) {
+function appBundle(
+	root,
+	{
+		name = "Local Operator.app",
+		seedArch = MACHINE_ARTIFACT_ARCH,
+		legacyAlias = null,
+	} = {},
+) {
 	const app = join(root, name);
 	const resources = join(app, "Contents", "Resources");
-	const framework = join(app, "Contents", "Frameworks", "Electron Framework.framework", "Versions", "A");
+	const framework = join(
+		app,
+		"Contents",
+		"Frameworks",
+		"Electron Framework.framework",
+		"Versions",
+		"A",
+	);
 	mkdirSync(framework, { recursive: true });
 	thinFrameworkBinary(join(framework, "Electron Framework"));
 	const seed = join(resources, "python-runtime-seed", seedArch);
 	mkdirSync(join(seed, "bin"), { recursive: true });
 	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
 	writeFileSync(join(seed, "bin", "python3"), "fixture");
-	writeFileSync(join(seed, "lib", "python3.12", "encodings", "__init__.py"), "pass");
-	if (legacyAlias) symlinkSync("/missing-legacy-python", join(resources, legacyAlias));
+	writeFileSync(
+		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
+		"pass",
+	);
+	if (legacyAlias)
+		symlinkSync("/missing-legacy-python", join(resources, legacyAlias));
 	return app;
 }
 
 /** The app checks a container's extracted bundle is held to, as the gate wires them. */
 function containerAppChecks(app, arch) {
-	return [bundledPythonCheck(app, { expectArch: arch }), privatePythonSeedCheck(app, { expectArch: arch })];
+	return [
+		bundledPythonCheck(app, { expectArch: arch }),
+		privatePythonSeedCheck(app, { expectArch: arch }),
+	];
 }
 
 /** Zip an app the way electron-builder does, with the bundle at the archive root. */
 function zipApp(app, destination) {
-	const result = spawnRunner("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, destination]);
-	assert.equal(result.status, 0, `ditto could not build the fixture zip: ${result.stdout}${result.stderr}`);
+	const result = spawnRunner("/usr/bin/ditto", [
+		"-c",
+		"-k",
+		"--sequesterRsrc",
+		"--keepParent",
+		app,
+		destination,
+	]);
+	assert.equal(
+		result.status,
+		0,
+		`ditto could not build the fixture zip: ${result.stdout}${result.stderr}`,
+	);
 	return destination;
 }
 
 /** Run the container checks over one real archive, as `verify-macos-artifacts` does. */
 function containerResults(archive) {
-	return finalContainerChecks(archive, { run: spawnRunner, checkApp: containerAppChecks });
+	return finalContainerChecks(archive, {
+		run: spawnRunner,
+		checkApp: containerAppChecks,
+	});
 }
 
 function failures(results) {
-	return results.filter((result) => !result.passed).map((result) => `${result.id}: ${result.output}`);
+	return results
+		.filter((result) => !result.passed)
+		.map((result) => `${result.id}: ${result.output}`);
 }
 
 /*
@@ -250,37 +398,90 @@ test("a container's filename architecture is cross-checked against the app insid
 	if (skipUnlessDarwin(t, MACOS_CONTAINER_TOOLCHAIN)) return;
 	const scratch = fixture(t);
 	const app = appBundle(scratch);
-	const matched = containerResults(zipApp(app, join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`)));
-	assert.deepEqual(failures(matched), [], "a correctly named archive must pass; the checks below would mean nothing otherwise");
+	const matched = containerResults(
+		zipApp(
+			app,
+			join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`),
+		),
+	);
+	assert.deepEqual(
+		failures(matched),
+		[],
+		"a correctly named archive must pass; the checks below would mean nothing otherwise",
+	);
 	// The same bytes under the other architecture's name: the failure is invisible
 	// inside the app, because an arm64 bundle named `-x64` extracts and launches on
 	// the machine that built it - only the container's name knows it is wrong.
-	const swapped = containerResults(zipApp(app, join(scratch, `local-operator-ui-0.0.0-${OTHER_ARTIFACT_ARCH}.zip`)));
-	assert.match(failures(swapped).join("\n"), /names x64 but the app inside it is arm64|names arm64 but the app inside it is x86_64/);
-	assert.match(failures(swapped).join("\n"), /names (x64|arm64) but ships the (arm64|x64) seed/);
+	const swapped = containerResults(
+		zipApp(
+			app,
+			join(scratch, `local-operator-ui-0.0.0-${OTHER_ARTIFACT_ARCH}.zip`),
+		),
+	);
+	assert.match(
+		failures(swapped).join("\n"),
+		/names x64 but the app inside it is arm64|names arm64 but the app inside it is x86_64/,
+	);
+	assert.match(
+		failures(swapped).join("\n"),
+		/names (x64|arm64) but ships the (arm64|x64) seed/,
+	);
 });
 
 test("the container gate refuses a legacy interpreter alias and a seed for the wrong architecture", (t) => {
 	if (skipUnlessDarwin(t, MACOS_CONTAINER_TOOLCHAIN)) return;
 	const scratch = fixture(t);
-	const legacy = appBundle(join(scratch, "legacy"), { legacyAlias: "python_aarch64" });
-	const refused = containerResults(zipApp(legacy, join(scratch, "local-operator-ui-0.0.0-arm64.zip")));
-	assert.ok(failures(refused).some((line) => /Legacy Python resource or alias exists: python_aarch64/.test(line)), failures(refused).join("\n"));
+	const legacy = appBundle(join(scratch, "legacy"), {
+		legacyAlias: "python_aarch64",
+	});
+	const refused = containerResults(
+		zipApp(legacy, join(scratch, "local-operator-ui-0.0.0-arm64.zip")),
+	);
+	assert.ok(
+		failures(refused).some((line) =>
+			/Legacy Python resource or alias exists: python_aarch64/.test(line),
+		),
+		failures(refused).join("\n"),
+	);
 	// A complete, valid seed for the OTHER architecture passes every check that
 	// only reads the seed, which is why the filename has to travel this far.
-	const wrongSeed = appBundle(join(scratch, "wrong-seed"), { seedArch: OTHER_ARTIFACT_ARCH });
-	const wrongSeedResults = containerResults(zipApp(wrongSeed, join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`)));
-	assert.ok(failures(wrongSeedResults).some((line) => /ships the (arm64|x64) seed/.test(line)), failures(wrongSeedResults).join("\n"));
+	const wrongSeed = appBundle(join(scratch, "wrong-seed"), {
+		seedArch: OTHER_ARTIFACT_ARCH,
+	});
+	const wrongSeedResults = containerResults(
+		zipApp(
+			wrongSeed,
+			join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`),
+		),
+	);
+	assert.ok(
+		failures(wrongSeedResults).some((line) =>
+			/ships the (arm64|x64) seed/.test(line),
+		),
+		failures(wrongSeedResults).join("\n"),
+	);
 });
 
 test("the container gate names an archive with no application rather than passing", (t) => {
-	if (skipUnlessDarwin(t, "the archive is built with ditto, which this platform does not have")) return;
+	if (
+		skipUnlessDarwin(
+			t,
+			"the archive is built with ditto, which this platform does not have",
+		)
+	)
+		return;
 	const scratch = fixture(t);
 	const empty = join(scratch, "empty");
 	mkdirSync(empty, { recursive: true });
 	writeFileSync(join(empty, "not-an-app.txt"), "nothing to check\n");
-	const archive = join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`);
-	assert.equal(spawnRunner("/usr/bin/ditto", ["-c", "-k", empty, archive]).status, 0);
+	const archive = join(
+		scratch,
+		`local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`,
+	);
+	assert.equal(
+		spawnRunner("/usr/bin/ditto", ["-c", "-k", empty, archive]).status,
+		0,
+	);
 	const results = containerResults(archive);
 	assert.equal(results.length, 1);
 	assert.equal(results[0].passed, false);
@@ -288,7 +489,13 @@ test("the container gate names an archive with no application rather than passin
 });
 
 test("the disk image path is exercised by mounting the real image, not by assertion", (t) => {
-	if (skipUnlessDarwin(t, "the image is built and mounted with hdiutil, which this platform does not have")) return;
+	if (
+		skipUnlessDarwin(
+			t,
+			"the image is built and mounted with hdiutil, which this platform does not have",
+		)
+	)
+		return;
 	// Its own root rather than `fixture`'s, because the teardown has to DETACH
 	// before it removes the tree and two owners' `t.after` hooks would race for
 	// that order. The order is load-bearing: the .dmg in this tree is the backing
@@ -298,13 +505,36 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	const scratch = mkdtempSync(join(tmpdir(), "lo-managed-python-image-"));
 	let imageMount = null;
 	t.after(() => {
-		if (imageMount !== null) spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", imageMount]);
+		if (imageMount !== null)
+			spawnRunner("/usr/bin/hdiutil", [
+				"detach",
+				"-force",
+				"-quiet",
+				imageMount,
+			]);
 		rmSync(scratch, { recursive: true, force: true });
 	});
 	const app = appBundle(scratch);
-	const image = join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.dmg`);
-	const created = spawnRunner("/usr/bin/hdiutil", ["create", "-quiet", "-volname", "Local Operator", "-srcfolder", app, "-format", "UDZO", image]);
-	assert.equal(created.status, 0, `hdiutil could not build the fixture image: ${created.stdout}${created.stderr}`);
+	const image = join(
+		scratch,
+		`local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.dmg`,
+	);
+	const created = spawnRunner("/usr/bin/hdiutil", [
+		"create",
+		"-quiet",
+		"-volname",
+		"Local Operator",
+		"-srcfolder",
+		app,
+		"-format",
+		"UDZO",
+		image,
+	]);
+	assert.equal(
+		created.status,
+		0,
+		`hdiutil could not build the fixture image: ${created.stdout}${created.stderr}`,
+	);
 	/*
 	 * The runner is recorded because the mount has one requirement a fixture
 	 * cannot reproduce: a SHIPPED image carries an end-user license agreement
@@ -319,23 +549,54 @@ test("the disk image path is exercised by mounting the real image, not by assert
 		calls.push({ command, args, input });
 		// Remembered for the teardown: the mount point lives in `finalContainerChecks`'
 		// own scratch, which this test never sees from the outside.
-		if (command === "/usr/bin/hdiutil" && args[0] === "attach") imageMount = args.includes("-mountpoint") ? args[args.indexOf("-mountpoint") + 1] : null;
+		if (command === "/usr/bin/hdiutil" && args[0] === "attach")
+			imageMount = args.includes("-mountpoint")
+				? args[args.indexOf("-mountpoint") + 1]
+				: null;
 		return spawnRunner(command, args, input);
 	};
-	const results = finalContainerChecks(image, { run, checkApp: containerAppChecks });
-	assert.deepEqual(failures(results), [], "the mounted image's app must pass the same checks the archive's app does");
-	assert.ok(results.some((result) => result.target.includes(":: Local Operator.app")), "the checks must name the app copied out of the image");
-	const attach = calls.find((call) => call.command === "/usr/bin/hdiutil" && call.args[0] === "attach");
+	const results = finalContainerChecks(image, {
+		run,
+		checkApp: containerAppChecks,
+	});
+	assert.deepEqual(
+		failures(results),
+		[],
+		"the mounted image's app must pass the same checks the archive's app does",
+	);
+	assert.ok(
+		results.some((result) => result.target.includes(":: Local Operator.app")),
+		"the checks must name the app copied out of the image",
+	);
+	const attach = calls.find(
+		(call) => call.command === "/usr/bin/hdiutil" && call.args[0] === "attach",
+	);
 	assert.ok(attach, "the image must be mounted, not read in place");
-	assert.ok(attach.args.includes("-readonly") && attach.args.includes("-nobrowse"), "the mount is read-only and must not appear in anyone's Finder");
-	assert.equal(attach.input, "Y\n", "the attach must answer the shipped image's license agreement, or the app inside it is never verified");
+	assert.ok(
+		attach.args.includes("-readonly") && attach.args.includes("-nobrowse"),
+		"the mount is read-only and must not appear in anyone's Finder",
+	);
+	assert.equal(
+		attach.input,
+		"Y\n",
+		"the attach must answer the shipped image's license agreement, or the app inside it is never verified",
+	);
 	// A real mount is the only place the device-name handshake can be exercised:
 	// the detach has to name the loopback device attach reported, not the mount
 	// path, or it is a second, independent name for the volume that can resolve
 	// to a different one.
-	const detach = calls.find((call) => call.command === "/usr/bin/hdiutil" && call.args[0] === "detach");
-	assert.ok(detach, "the volume this test mounted must be detached by this test");
-	assert.match(detach.args[1], /^\/dev\/disk\d+(s\d+)?$/, `the detach must name the device attach reported: ${detach.args.join(" ")}`);
+	const detach = calls.find(
+		(call) => call.command === "/usr/bin/hdiutil" && call.args[0] === "detach",
+	);
+	assert.ok(
+		detach,
+		"the volume this test mounted must be detached by this test",
+	);
+	assert.match(
+		detach.args[1],
+		/^\/dev\/disk\d+(s\d+)?$/,
+		`the detach must name the device attach reported: ${detach.args.join(" ")}`,
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -360,7 +621,8 @@ function fakeImageRun(t, detach) {
 		// `finalContainerChecks` keeps its scratch when it cannot detach, and that
 		// tree holds the (fake) mount point: remove it here so a failing contract
 		// does not leak a temp tree into the run.
-		if (mount !== null) rmSync(dirname(mount), { recursive: true, force: true });
+		if (mount !== null)
+			rmSync(dirname(mount), { recursive: true, force: true });
 		rmSync(root, { recursive: true, force: true });
 	});
 	const calls = [];
@@ -371,9 +633,14 @@ function fakeImageRun(t, detach) {
 			mkdirSync(join(mount, "Local Operator.app"), { recursive: true });
 			// As hdiutil prints it: one line per entity, the volume last, the mount
 			// path RESOLVED rather than the path the caller passed.
-			return { status: 0, stdout: `/dev/disk9          \tApple_partition_scheme         \t\n/dev/disk9s2        \tApple_HFS                      \t${realpathSync(mount)}\n`, stderr: "" };
+			return {
+				status: 0,
+				stdout: `/dev/disk9          \tApple_partition_scheme         \t\n/dev/disk9s2        \tApple_HFS                      \t${realpathSync(mount)}\n`,
+				stderr: "",
+			};
 		}
-		if (command === "/usr/bin/hdiutil" && args[0] === "detach") return detach(args);
+		if (command === "/usr/bin/hdiutil" && args[0] === "detach")
+			return detach(args);
 		if (command === "/usr/bin/ditto" && args[0] !== "-x") {
 			const [from, to] = args;
 			if (existsSync(from)) mkdirSync(to, { recursive: true });
@@ -381,7 +648,14 @@ function fakeImageRun(t, detach) {
 		}
 		return { status: 0, stdout: "", stderr: "" };
 	};
-	return { image, calls, run, get mount() { return mount; } };
+	return {
+		image,
+		calls,
+		run,
+		get mount() {
+			return mount;
+		},
+	};
 }
 
 test("a busy mount is detached by device, then repaired with one forced retry", (t) => {
@@ -390,27 +664,72 @@ test("a busy mount is detached by device, then repaired with one forced retry", 
 		attempted.push(args);
 		// The graceful detach of a volume something still holds open fails the way
 		// a real one does; `-force` is what wins.
-		return args.includes("-force") ? { status: 0, stdout: "", stderr: "" } : { status: 1, stdout: "", stderr: "Resource busy" };
+		return args.includes("-force")
+			? { status: 0, stdout: "", stderr: "" }
+			: { status: 1, stdout: "", stderr: "Resource busy" };
 	});
-	const results = finalContainerChecks(fixtureRun.image, { run: fixtureRun.run, checkApp: () => [] });
-	assert.deepEqual(failures(results), [], "a detach that succeeds on the forced retry is not a failure");
-	assert.deepEqual(attempted, [["detach", "/dev/disk9s2"], ["detach", "-force", "/dev/disk9s2"]], "the device attach reported must be detached, gracefully and then once with -force");
+	const results = finalContainerChecks(fixtureRun.image, {
+		run: fixtureRun.run,
+		checkApp: () => [],
+	});
+	assert.deepEqual(
+		failures(results),
+		[],
+		"a detach that succeeds on the forced retry is not a failure",
+	);
+	assert.deepEqual(
+		attempted,
+		[
+			["detach", "/dev/disk9s2"],
+			["detach", "-force", "/dev/disk9s2"],
+		],
+		"the device attach reported must be detached, gracefully and then once with -force",
+	);
 	const mount = fixtureRun.mount;
 	assert.ok(mount !== null, "the fake attach must have been driven");
-	assert.equal(existsSync(mount), false, "a mount that came away takes its scratch tree with it");
+	assert.equal(
+		existsSync(mount),
+		false,
+		"a mount that came away takes its scratch tree with it",
+	);
 });
 
 test("a mount that will not detach is reported and its tree is left standing", (t) => {
-	const fixtureRun = fakeImageRun(t, () => ({ status: 1, stdout: "", stderr: "Resource busy" }));
-	const results = finalContainerChecks(fixtureRun.image, { run: fixtureRun.run, checkApp: () => [] });
+	const fixtureRun = fakeImageRun(t, () => ({
+		status: 1,
+		stdout: "",
+		stderr: "Resource busy",
+	}));
+	const results = finalContainerChecks(fixtureRun.image, {
+		run: fixtureRun.run,
+		checkApp: () => [],
+	});
 	const refused = failures(results);
-	assert.equal(refused.length, 1, `a volume left attached is the only row a caller may see, so it cannot pass for a clean run: ${refused.join("\n")}`);
+	assert.equal(
+		refused.length,
+		1,
+		`a volume left attached is the only row a caller may see, so it cannot pass for a clean run: ${refused.join("\n")}`,
+	);
 	assert.match(refused[0], /^artifact-unmount: /);
 	const mount = fixtureRun.mount;
-	assert.ok(refused[0].includes(mount), `the failure must name the mount still attached: ${refused[0]}`);
-	assert.ok(refused[0].includes("/dev/disk9s2"), `and the device it could not detach: ${refused[0]}`);
-	assert.equal(existsSync(mount), true, "the scratch tree holds the live mount point and must NOT be deleted");
-	assert.equal(existsSync(fixtureRun.image), true, "nor may anything delete the backing image of a volume that is still attached");
+	assert.ok(
+		refused[0].includes(mount),
+		`the failure must name the mount still attached: ${refused[0]}`,
+	);
+	assert.ok(
+		refused[0].includes("/dev/disk9s2"),
+		`and the device it could not detach: ${refused[0]}`,
+	);
+	assert.equal(
+		existsSync(mount),
+		true,
+		"the scratch tree holds the live mount point and must NOT be deleted",
+	);
+	assert.equal(
+		existsSync(fixtureRun.image),
+		true,
+		"nor may anything delete the backing image of a volume that is still attached",
+	);
 });
 
 /*
@@ -429,12 +748,27 @@ test("the device is read from hdiutil's own output rather than assumed", (t) => 
 	// because the scratch mount lives under a symlinked `tmpdir` and the path the
 	// caller passed is not the path hdiutil echoes back.
 	const printed = `/dev/disk11         \tApple_partition_scheme         \t\n/dev/disk11s1        \tApple_partition_map            \t\n/dev/disk11s2        \tApple_HFS                      \t${real}\n`;
-	assert.equal(mountedDevice(printed, linked), "/dev/disk11s2", "the resolved mount must be matched against the path that was passed");
-	assert.equal(mountedDevice(printed, real), "/dev/disk11s2", "and the same path matched literally");
+	assert.equal(
+		mountedDevice(printed, linked),
+		"/dev/disk11s2",
+		"the resolved mount must be matched against the path that was passed",
+	);
+	assert.equal(
+		mountedDevice(printed, real),
+		"/dev/disk11s2",
+		"and the same path matched literally",
+	);
 	// No line names this mount: the volume is still the last entity hdiutil
 	// reported, which is the fallback the caller then detaches.
-	assert.equal(mountedDevice("/dev/disk2\tApple_HFS\t/Volumes/Other\n", "/Volumes/Mine"), "/dev/disk2");
-	assert.equal(mountedDevice("", "/Volumes/Mine"), null, "no attachment means no device, and the caller must fall back rather than invent one");
+	assert.equal(
+		mountedDevice("/dev/disk2\tApple_HFS\t/Volumes/Other\n", "/Volumes/Mine"),
+		"/dev/disk2",
+	);
+	assert.equal(
+		mountedDevice("", "/Volumes/Mine"),
+		null,
+		"no attachment means no device, and the caller must fall back rather than invent one",
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -472,11 +806,21 @@ test("a published selection answers ready, missing or unprepared, and never thro
 	const placed = join(root, "runtimes", `${id}-${generation}`);
 	renameSync(runtime, placed);
 
-	const venv = join(root, "environments", `${id}-22222222-2222-4222-8222-222222222222`);
+	const venv = join(
+		root,
+		"environments",
+		`${id}-22222222-2222-4222-8222-222222222222`,
+	);
 	mkdirSync(join(venv, "bin"), { recursive: true });
 	writeFileSync(join(venv, "bin", "local-operator"), "#!/bin/sh\n");
 	writeFileSync(join(venv, "pyvenv.cfg"), `home = ${join(placed, "bin")}\n`);
-	const selection = { format: 1, runtimeId: id, runtime: placed, venv, backendVersion: "0.0.0-fixture" };
+	const selection = {
+		format: 1,
+		runtimeId: id,
+		runtime: placed,
+		venv,
+		backendVersion: "0.0.0-fixture",
+	};
 	const record = `${JSON.stringify(selection)}\n`;
 	// The filename the module writes and reads; not exported, and the point here is
 	// that the record and the pointer hold the SAME bytes.
@@ -513,9 +857,17 @@ test("a published selection answers ready, missing or unprepared, and never thro
 
 /** A real, ad-hoc-signed Mach-O for this machine's architecture. */
 function signedMachO(destination) {
-	execFileSync("/usr/bin/lipo", ["-thin", MACHINE_LIPO_ARCH, "-output", destination, "/usr/bin/true"]);
+	execFileSync("/usr/bin/lipo", [
+		"-thin",
+		MACHINE_LIPO_ARCH,
+		"-output",
+		destination,
+		"/usr/bin/true",
+	]);
 	chmodSync(destination, 0o755);
-	execFileSync("/usr/bin/codesign", ["-s", "-", "-f", destination], { stdio: "ignore" });
+	execFileSync("/usr/bin/codesign", ["-s", "-", "-f", destination], {
+		stdio: "ignore",
+	});
 	execFileSync("/usr/bin/codesign", ["--verify", "--strict", destination]);
 }
 
@@ -533,10 +885,23 @@ function seedFixture(resources, arch, { cache = false, ballast = 0 } = {}) {
 	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
 	signedMachO(join(seed, "bin", "python3.12"));
 	writeFileSync(join(seed, "bin", "python3"), "fixture launcher\n");
-	writeFileSync(join(seed, "lib", "python3.12", "encodings", "__init__.py"), "pass\n");
+	writeFileSync(
+		join(seed, "lib", "python3.12", "encodings", "__init__.py"),
+		"pass\n",
+	);
 	if (cache) {
 		mkdirSync(join(seed, "lib", "python3.12", "encodings", "__pycache__"));
-		writeFileSync(join(seed, "lib", "python3.12", "encodings", "__pycache__", "__init__.cpython-312.pyc"), "stray bytecode\n");
+		writeFileSync(
+			join(
+				seed,
+				"lib",
+				"python3.12",
+				"encodings",
+				"__pycache__",
+				"__init__.cpython-312.pyc",
+			),
+			"stray bytecode\n",
+		);
 	}
 	if (ballast > 0)
 		// Makes the copy the repair has to make a size a full volume can refuse,
@@ -594,17 +959,27 @@ async function provisioned(t) {
 test("a selected runtime that changed out of band is rebuilt beside the old one", async (t) => {
 	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
-	writeFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "changed out of band\n");
+	writeFileSync(
+		join(first.runtime, "lib", "python3.12", "stray.py"),
+		"changed out of band\n",
+	);
 	const verdict = inspectManagedSelection(opts);
 	assert.equal(verdict.kind, "missing");
 	// The message names the file rather than the verdict (QA Q1).
 	assert.match(verdict.detail, /stray\.py was added/);
 	const rebuilt = await prepareManagedPython(opts, install);
-	assert.equal(state.installs, 2, "the retry arm must run rather than refuse forever");
+	assert.equal(
+		state.installs,
+		2,
+		"the retry arm must run rather than refuse forever",
+	);
 	assert.notEqual(rebuilt.runtime, first.runtime);
 	assert.notEqual(rebuilt.venv, first.venv);
 	// Nothing was overwritten: the changed generation is still exactly there.
-	assert.equal(readFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "utf8"), "changed out of band\n");
+	assert.equal(
+		readFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "utf8"),
+		"changed out of band\n",
+	);
 	assert.equal(inspectManagedSelection(opts).kind, "ready");
 });
 
@@ -615,7 +990,11 @@ test("a selected environment that was removed is rebuilt, and the runtime is reu
 	assert.equal(inspectManagedSelection(opts).kind, "missing");
 	const rebuilt = await prepareManagedPython(opts, install);
 	assert.equal(state.installs, 2);
-	assert.equal(rebuilt.runtime, first.runtime, "an intact runtime of the same identity is a candidate, so the 47 MB copy is not repeated");
+	assert.equal(
+		rebuilt.runtime,
+		first.runtime,
+		"an intact runtime of the same identity is a candidate, so the 47 MB copy is not repeated",
+	);
 	assert.notEqual(rebuilt.venv, first.venv);
 });
 
@@ -709,7 +1088,11 @@ function mountedVolume(t, megabytes = 16) {
 		"-quiet",
 		image,
 	]);
-	assert.equal(created.status, 0, `hdiutil could not create the volume: ${created.stdout}${created.stderr}`);
+	assert.equal(
+		created.status,
+		0,
+		`hdiutil could not create the volume: ${created.stdout}${created.stderr}`,
+	);
 	const attached = spawnRunner("/usr/bin/hdiutil", [
 		"attach",
 		"-quiet",
@@ -718,7 +1101,11 @@ function mountedVolume(t, megabytes = 16) {
 		mount,
 		image,
 	]);
-	assert.equal(attached.status, 0, `hdiutil could not attach the volume: ${attached.stdout}${attached.stderr}`);
+	assert.equal(
+		attached.status,
+		0,
+		`hdiutil could not attach the volume: ${attached.stdout}${attached.stderr}`,
+	);
 	t.after(() => {
 		spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", mount]);
 		rmSync(root, { recursive: true, force: true });
@@ -736,7 +1123,10 @@ function freeBytes(path) {
  * which is the whole point of the fixture's ballast. */
 function fillVolume(mount, reserve = 256 * 1024) {
 	const target = freeBytes(mount) - reserve;
-	assert.ok(target > 0, `the volume has no space to take: ${freeBytes(mount)} bytes free`);
+	assert.ok(
+		target > 0,
+		`the volume has no space to take: ${freeBytes(mount)} bytes free`,
+	);
 	const filler = openSync(join(mount, "filler.bin"), "w");
 	try {
 		const chunk = Buffer.alloc(256 * 1024, 0x61);
@@ -792,21 +1182,41 @@ function provisioningHarness(t, support, { ballast = 0 } = {}) {
  * while a repair can reuse it.
  */
 test("a full disk with an identity-broken published runtime is repaired by reclaiming it", async (t) => {
-	if (skipUnlessDarwin(t, `${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`)) return;
+	if (
+		skipUnlessDarwin(
+			t,
+			`${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`,
+		)
+	)
+		return;
 	const mount = mountedVolume(t);
-	const { opts, state, install } = provisioningHarness(t, join(mount, "support"), { ballast: COPY_BYTES });
+	const { opts, state, install } = provisioningHarness(
+		t,
+		join(mount, "support"),
+		{ ballast: COPY_BYTES },
+	);
 	const first = await prepareManagedPython(opts, install);
 	plantNewerGeneration(opts, first);
 
 	// Broken out of band, and given ballast so the space it holds is larger than
 	// the copy that replaces it - the volume is sized so the copy cannot fit
 	// without it.
-	writeFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "changed out of band\n");
-	writeFileSync(join(first.runtime, "ballast.bin"), Buffer.alloc(COPY_BYTES, 0x63));
+	writeFileSync(
+		join(first.runtime, "lib", "python3.12", "stray.py"),
+		"changed out of band\n",
+	);
+	writeFileSync(
+		join(first.runtime, "ballast.bin"),
+		Buffer.alloc(COPY_BYTES, 0x63),
+	);
 	const broken = first.runtime;
 	const verdict = inspectManagedSelection(opts);
 	assert.equal(verdict.kind, "missing");
-	assert.equal(verdict.published.runtime, broken, "the verdict names the tree the reap has to judge");
+	assert.equal(
+		verdict.published.runtime,
+		broken,
+		"the verdict names the tree the reap has to judge",
+	);
 	assert.match(verdict.detail, /no longer the runtime that was published/);
 
 	fillVolume(mount);
@@ -817,8 +1227,16 @@ test("a full disk with an identity-broken published runtime is repaired by recla
 
 	const repaired = await prepareManagedPython(opts, install);
 	assert.equal(state.installs, 2);
-	assert.notEqual(repaired.runtime, broken, "an identity-broken runtime is not reusable, so the seed is copied");
-	assert.equal(existsSync(broken), false, "and reclaiming it is what made room - protecting it is the Q1 failure");
+	assert.notEqual(
+		repaired.runtime,
+		broken,
+		"an identity-broken runtime is not reusable, so the seed is copied",
+	);
+	assert.equal(
+		existsSync(broken),
+		false,
+		"and reclaiming it is what made room - protecting it is the Q1 failure",
+	);
 	assert.equal(inspectManagedSelection(opts).kind, "ready");
 });
 
@@ -829,9 +1247,19 @@ test("a full disk with an identity-broken published runtime is repaired by recla
  * from a re-copy by measurement rather than by intent.
  */
 test("a full disk with a reusable published runtime repairs by reuse, with no copy at all", async (t) => {
-	if (skipUnlessDarwin(t, `${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`)) return;
+	if (
+		skipUnlessDarwin(
+			t,
+			`${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`,
+		)
+	)
+		return;
 	const mount = mountedVolume(t);
-	const { opts, state, install } = provisioningHarness(t, join(mount, "support"), { ballast: COPY_BYTES });
+	const { opts, state, install } = provisioningHarness(
+		t,
+		join(mount, "support"),
+		{ ballast: COPY_BYTES },
+	);
 	const first = await prepareManagedPython(opts, install);
 
 	// The ordinary repair: the environment is gone, the runtime is intact.
@@ -845,9 +1273,15 @@ test("a full disk with a reusable published runtime repairs by reuse, with no co
 
 	const repaired = await prepareManagedPython(opts, install);
 	assert.equal(state.installs, 2);
-	assert.equal(repaired.runtime, first.runtime, "the published runtime is reusable, so the reap protects it");
 	assert.equal(
-		readdirSync(runtimesRoot(opts)).filter((name) => /^[a-f0-9]{64}-/.test(name)).length,
+		repaired.runtime,
+		first.runtime,
+		"the published runtime is reusable, so the reap protects it",
+	);
+	assert.equal(
+		readdirSync(runtimesRoot(opts)).filter((name) =>
+			/^[a-f0-9]{64}-/.test(name),
+		).length,
 		1,
 		"one generation, so no copy was made at all",
 	);
@@ -889,7 +1323,10 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	const arch = MACHINE_ARTIFACT_ARCH;
 	seedFixture(resources, arch, { cache: true });
 	const opts = { support, resources, packaged: true, arch };
-	assert.equal(runtimeIdentity(join(resources, "python-runtime-seed", arch), arch), runtimeIdentity(join(resources, "python-runtime-seed", arch), arch));
+	assert.equal(
+		runtimeIdentity(join(resources, "python-runtime-seed", arch), arch),
+		runtimeIdentity(join(resources, "python-runtime-seed", arch), arch),
+	);
 	let installs = 0;
 	const install = async (venv, python) => {
 		installs++;
@@ -898,7 +1335,11 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	};
 	const first = await prepareManagedPython(opts, install);
 	assert.equal(installs, 1);
-	assert.equal(await managedSelectionReady(opts), true, "the second start must reuse it, not refuse it");
+	assert.equal(
+		await managedSelectionReady(opts),
+		true,
+		"the second start must reuse it, not refuse it",
+	);
 	assert.equal(inspectManagedSelection(opts).kind, "ready");
 	// And the same seed still reuses rather than re-provisioning.
 	const second = await prepareManagedPython(opts, () => {
@@ -906,8 +1347,22 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	});
 	assert.deepEqual(second, first);
 	// A byte the seed really does sign still changes the identity.
-	writeFileSync(join(resources, "python-runtime-seed", arch, "lib", "python3.12", "encodings", "__init__.py"), "changed\n");
-	assert.notEqual(runtimeIdentity(join(resources, "python-runtime-seed", arch), arch), first.runtimeId);
+	writeFileSync(
+		join(
+			resources,
+			"python-runtime-seed",
+			arch,
+			"lib",
+			"python3.12",
+			"encodings",
+			"__init__.py",
+		),
+		"changed\n",
+	);
+	assert.notEqual(
+		runtimeIdentity(join(resources, "python-runtime-seed", arch), arch),
+		first.runtimeId,
+	);
 });
 
 test("the reaper removes abandoned staging and superseded generations, and nothing else", (t) => {
@@ -931,9 +1386,17 @@ test("the reaper removes abandoned staging and superseded generations, and nothi
 	// Order by mtime explicitly: the retention rule is "the selected one plus the
 	// most recent other one", never "whatever the directory order happened to be".
 	const now = Date.now();
-	const at = (path, secondsAgo) => utimesSync(path, new Date(now - secondsAgo * 1000), new Date(now - secondsAgo * 1000));
-	at(selectedRuntime, 10); at(previousRuntime, 20); at(olderRuntime, 30);
-	at(selectedVenv, 10); at(previousVenv, 20);
+	const at = (path, secondsAgo) =>
+		utimesSync(
+			path,
+			new Date(now - secondsAgo * 1000),
+			new Date(now - secondsAgo * 1000),
+		);
+	at(selectedRuntime, 10);
+	at(previousRuntime, 20);
+	at(olderRuntime, 30);
+	at(selectedVenv, 10);
+	at(previousVenv, 20);
 	// Not ours: an operator's or a future version's directory must survive.
 	const foreignRuntime = join(runtimes, "keep-me");
 	mkdirSync(foreignRuntime, { recursive: true });
@@ -945,11 +1408,30 @@ test("the reaper removes abandoned staging and superseded generations, and nothi
 	const live = join(runtimes, ".preparing-live");
 	mkdirSync(live, { recursive: true });
 
-	const removed = reapSupersededGenerations(opts, { runtime: selectedRuntime, venv: selectedVenv }, now);
+	const removed = reapSupersededGenerations(
+		opts,
+		{ runtime: selectedRuntime, venv: selectedVenv },
+		now,
+	);
 	assert.deepEqual(removed.sort(), [abandoned, olderRuntime].sort());
-	assert.ok(existsSync(selectedRuntime) && existsSync(selectedVenv), "the selected generation is never reaped");
-	assert.ok(existsSync(previousRuntime) && existsSync(previousVenv), "one previous generation survives the switch");
-	assert.ok(existsSync(live), "a staging tree young enough to belong to a live preparation is left alone");
-	assert.ok(existsSync(foreignRuntime), "a name this module did not write is never removed");
-	assert.deepEqual(readdirSync(runtimes).sort(), [`.preparing-live`, `${id}-11111111`, `${id}-22222222`, "keep-me"].sort());
+	assert.ok(
+		existsSync(selectedRuntime) && existsSync(selectedVenv),
+		"the selected generation is never reaped",
+	);
+	assert.ok(
+		existsSync(previousRuntime) && existsSync(previousVenv),
+		"one previous generation survives the switch",
+	);
+	assert.ok(
+		existsSync(live),
+		"a staging tree young enough to belong to a live preparation is left alone",
+	);
+	assert.ok(
+		existsSync(foreignRuntime),
+		"a name this module did not write is never removed",
+	);
+	assert.deepEqual(
+		readdirSync(runtimes).sort(),
+		[".preparing-live", `${id}-11111111`, `${id}-22222222`, "keep-me"].sort(),
+	);
 });
