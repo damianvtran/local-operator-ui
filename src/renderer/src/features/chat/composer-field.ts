@@ -49,18 +49,45 @@ export const COMPOSER_TEXTAREA_SELECTOR = 'textarea[aria-label="Message"]';
  * no-op when nothing is registered - the composer unmounted while a
  * transcript was still on screen - which is the honest outcome rather than
  * throwing into an event handler.
+ *
+ * THE SLOT CARRIES THE NODE AS WELL AS THE HAND-OFF, because a caller that
+ * wants to report WHERE the caret landed has to be able to name the same
+ * element it just focused (review round 1, NIT 1). A caller that queries the
+ * document for a composer instead can name a DIFFERENT one - a second
+ * `MessageInput` mounted by a story or a rig is enough - and then answer
+ * `false` about a focus that worked. `composerField` is that name, and it is
+ * deliberately a read, not a query: the registry is the only thing that knows
+ * which composer this app has.
  */
-let giveComposerFocus: (() => void) | null = null;
+let composer: {
+	give: () => void;
+	field: () => HTMLTextAreaElement | null;
+} | null = null;
 
-/** Register the composer's focus hand-off; returns the unregister. */
-export function registerComposerFocus(give: () => void): () => void {
-	giveComposerFocus = give;
+/**
+ * Register the composer's focus hand-off and the node it focuses; returns the
+ * unregister.
+ *
+ * `field` is a getter rather than an element because the textarea's identity
+ * changes with the pane (`SessionPanel` is keyed on the conversation) while the
+ * registration is an effect keyed on the callback.
+ */
+export function registerComposerFocus(
+	give: () => void,
+	field: () => HTMLTextAreaElement | null,
+): () => void {
+	composer = { give, field };
 	return () => {
-		if (giveComposerFocus === give) giveComposerFocus = null;
+		if (composer?.give === give) composer = null;
 	};
+}
+
+/** The node the registered hand-off focuses, or `null` when none is registered. */
+export function composerField(): HTMLTextAreaElement | null {
+	return composer?.field() ?? null;
 }
 
 /** Ask the mounted composer to take focus, if there is one. */
 export function focusComposer(): void {
-	giveComposerFocus?.();
+	composer?.give();
 }

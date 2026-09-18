@@ -104,6 +104,7 @@ const {
 	admitChatDraft,
 	draftIdentityFor,
 	panelIdentityFor,
+	panelIdentityOfView,
 	buildSendPayload,
 	desktopRequestSchema,
 	DesktopControlError,
@@ -3765,11 +3766,12 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 	 * to `undefined` while the admission was in flight, fails here.
 	 */
 	const identityFromStore = (state) =>
-		panelIdentityFor(
+		panelIdentityOfView(
 			state.activeDraftKey,
 			state.activeDraftKey
 				? state.drafts[state.activeDraftKey]?.sessionId
-				: (state.activeSessionId ?? undefined),
+				: undefined,
+			state.activeSessionId,
 		);
 	// The store states an existing-session send moves through: no draft key at
 	// any point, the session already active, and a `send:<id>` draft row
@@ -3865,6 +3867,75 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		panelIdentityFor(null, undefined),
 		undefined,
 		"no session and no draft is no panel",
+	);
+});
+
+test("the palette's close-time comparison reads the pane's own identity, on every door", () => {
+	/*
+	 * WHY THIS IS ASSERTED HERE. The command palette's close-time restore yields
+	 * when the flow it just ran moved the view, and "the view moved" is exactly
+	 * `panelIdentityOfView` at open versus now - so the identity's semantics are
+	 * the fix's premise, and they are this file's subject. The DRAFT term is the
+	 * one worth pinning: `stageDraft` leaves `activeSessionId` at the
+	 * conversation the user is leaving, so a comparison that read
+	 * `panelIdentityFor(activeDraftKey, activeSessionId)` answers "nothing moved"
+	 * on the New-chat row - the one door where the view moves furthest - and the
+	 * close would then put the caret back on a node in the pane the user just
+	 * left, or on the rail's Search row when that node is gone.
+	 */
+	const ACTIVE = "111111111111";
+	const OTHER = "333333333333";
+	const ADMITTED = "444444444444";
+	const FRESH = "draft:9c0f";
+	/** The identity a pane is keyed on, from the fields a view derives it from. */
+	const idOf = ([activeDraftKey, draftSessionId, activeSessionId]) =>
+		panelIdentityOfView(activeDraftKey, draftSessionId, activeSessionId);
+	const moved = (before, after) => idOf(before) !== idOf(after);
+
+	assert.equal(
+		moved([null, undefined, ACTIVE], [null, undefined, OTHER]),
+		true,
+		"the session row switches the active session",
+	);
+	assert.equal(
+		moved([null, undefined, ACTIVE], [FRESH, undefined, ACTIVE]),
+		true,
+		"the New-chat row stages a fresh draft and does NOT clear activeSessionId - the draft key is the new view",
+	);
+	assert.equal(
+		moved([FRESH, undefined, ACTIVE], [FRESH, ADMITTED, ACTIVE]),
+		true,
+		"a staged draft admitted mid-flight learns its session id, which is the flip the panel is keyed across",
+	);
+	assert.equal(
+		moved([FRESH, ADMITTED, ACTIVE], [null, undefined, ADMITTED]),
+		false,
+		"NOT a move: finishDraft drops the draft key and hands the pane the very session the draft was admitted as, so the key is the same - and one remount per draft send is the count pinned above",
+	);
+	assert.equal(
+		moved([null, undefined, ACTIVE], [FRESH, ADMITTED, ACTIVE]),
+		true,
+		"the whole New-chat flow from the conversation the palette was opened on: staged fresh, then admitted to a session of its own - a different conversation, so the close must not put the caret back into the pane it left",
+	);
+	assert.equal(
+		moved([null, undefined, ACTIVE], [null, undefined, ACTIVE]),
+		false,
+		"and the Escape/no-move close is not a move, which is what keeps the contract in docs/command-palette.md verbatim for it",
+	);
+	/*
+	 * THE SINGLE-TERM READING, pinned as the wrong answer rather than left as a
+	 * comment: this is the shape the design's first draft had, and the assertion
+	 * fails the moment somebody simplifies the rule to it.
+	 */
+	assert.equal(
+		panelIdentityFor(null, ACTIVE) === panelIdentityFor(FRESH, ACTIVE),
+		true,
+		"reading activeSessionId alone says the New-chat pick moved nothing",
+	);
+	assert.notEqual(
+		idOf([null, undefined, ACTIVE]),
+		idOf([FRESH, undefined, ACTIVE]),
+		"...which is why the draft term is read",
 	);
 });
 

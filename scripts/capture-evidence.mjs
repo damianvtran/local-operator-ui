@@ -526,13 +526,42 @@ export const STORIES = [
 	   the committed empty-rows frame cannot cover (design review round 1, D2). */
 	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
 
-	/* The composer's two refusals and the state a vanished conversation leaves
-	   it in (design review round 1, D3): the transcript stories above render the
-	   transcript alone, so the false "Agent is busy" placeholder and the missing
-	   colour step were never in a frame. Sized to the band, not to a window. */
-	["chat-composer-states--idle", 900, 160],
-	["chat-composer-states--busy", 900, 160],
-	["chat-composer-states--conversation-gone", 900, 160],
+	/* The composer's missing colour step, and the state a vanished conversation
+	   leaves it in (design review round 1, D3): the transcript stories above
+	   render the transcript alone, so a composer that refuses input over a
+	   conversation this machine no longer has was never in a frame.
+
+	   ONE ROW, NOT THE BAND'S THREE. The two other states this region used to
+	   name, `idle` and `awaiting-reply`, are already swept by the composer's own
+	   set at its 1024x300 measure, and that is the only measure that fits them:
+	   the story's `Frame` is a FIXED 1024px column, so a second capture at the
+	   band's old 900 would be the same state twice AND clipped - 124px of the
+	   column, the box's right border and the send control, off the edge, with the
+	   frame itself coming out 900x213 rather than the tuple's 160 because the
+	   story's own height governs. The gone state is what the band uniquely
+	   carried, so it is swept at the same 1024x300 as its siblings, and the three
+	   read together.
+
+	   THESE IDS FOLLOW THE STORY, NOT THE OTHER WAY ROUND. The rows were written
+	   against `Chat/Composer states`, a title that never existed on `main`:
+	   `7550bf1ae` ADDED `message-input.stories.tsx` already titled `Chat/Message
+	   input`, and the ids were born dangling 316 commits LATER in `cb0d55dc6`'s
+	   rebase resolution - the commit whose own note says the `Busy` and second
+	   `Idle` stories were deliberately NOT re-added. So the old ids named stories
+	   that no longer existed, and a full sweep aborted at the unknown-id check
+	   until now. Not "every sweep": that check validates only the ids a run will
+	   VISIT, so a narrowed `--only=` run naming other stories was never blocked.
+
+	   The band's middle frame has NO successor here, and that is worth saying
+	   rather than pointing at the nearest story. `Busy` passed `isLoading` with a
+	   non-null `currentJobId`, so it photographed `Agent is busy` with the field
+	   DISABLED; `chat-message-input--awaiting-reply` photographs a different state
+	   (`awaitingReply`, no load: `Waiting for the agent`, box live). Dropping it
+	   loses no reachable state: `isBusy` needs a non-null `currentJobId` and every
+	   call site passes null (`chat-page.tsx:1931`, `chat-content.tsx:1128`), which
+	   is exactly why `cb0d55dc6` refused to re-add the story - a frame of it would
+	   photograph a state no user can be in. */
+	["chat-message-input--conversation-gone", 1024, 300],
 
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
