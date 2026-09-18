@@ -507,10 +507,28 @@ test("a window created for a request is presented under THAT request's plan", ()
 	assert.match(flat, /const evicted = parkedLaunches\.shift\(\);/);
 	assert.match(flat, /\? parkedLaunches\[0\]/);
 	assert.match(flat, /painted\?: ParkedLaunch,/);
-	assert.match(flat, /if \(queued === painted\) continue;/);
+	/*
+	 * AND THE DELIVERED LINE FOLLOWS THE DELIVERY (QA round 1, Q-1 / review round 1,
+	 * MAJOR-2). It used to be reported BEFORE `deliver` ran, which was sound only while
+	 * `deliver` could not refuse: it can — the drain hands entries back to the gated
+	 * `openSessionInWindow` — and the log then asserted `applied=delivered` for the same
+	 * id it re-parked one line later, with zero sends. The `continue` this replaces is
+	 * what let the painted entry's report jump ahead of the sends; there is now one
+	 * report statement, after the send, for every entry.
+	 */
 	assert.match(
 		flat,
-		/claimParkedFor\(\s*mainWindow,\s*\(session, request\) => openSessionInWindow\(session, request\),\s*parked,\s*\)/,
+		/if \(queued !== painted\) deliver\(queued\.session, queued\.request\);/,
+	);
+	assert.ok(
+		flat.search(/deliver\(queued\.session, queued\.request\)/) <
+			flat.search(/reportParkedDelivered\( ?queued\.session,/),
+		"the `delivered` line is written after the send it names",
+	);
+	assert.match(
+		flat,
+		/claimParkedFor\(\s*mainWindow,\s*\(session, request\) => openSessionInWindow\(session, request, \{ fromPark: true \}\),\s*parked,\s*\)/,
+		"the drained delivery is exempt from the gate it already answered once (QA round 1, Q-1)",
 	);
 	assert.match(flat, /claimParkedFor\(\s*mainWindow,/);
 	assert.match(flat, /window\.once\( ?"closed", \(\) => \{/);
@@ -525,7 +543,7 @@ test("a window created for a request is presented under THAT request's plan", ()
 	assert.doesNotMatch(flat, /left\[0\]\.request\.trigger/);
 	assert.match(
 		flat,
-		/reportParkedLeftWaiting\(\[queued\.session\], \{\s*trigger: queued\.request\.trigger,/,
+		/reportParkedLeftWaiting\( ?\[queued\.session\], ?\{\s*trigger: queued\.request\.trigger,/,
 	);
 	/*
 	 * AND THE QUEUE IS BOUNDED, AND ITS BOUND IS AUDIBLE (review round 3, NIT-3).
@@ -538,7 +556,7 @@ test("a window created for a request is presented under THAT request's plan", ()
 		flat,
 		/if \(parkedLaunches\.length <= PARKED_LAUNCH_LIMIT\) return;/,
 	);
-	assert.match(flat, /reportParkedEvicted\(evicted\.session, \{/);
+	assert.match(flat, /reportParkedEvicted\( ?evicted\.session, ?\{/);
 	assert.match(
 		flat,
 		/reportParksAtQuit\(\s*parkedLaunches\.map\(\(parked\) => parked\.session\),\s*reportRaise,?\s*\)/,

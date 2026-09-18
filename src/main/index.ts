@@ -106,6 +106,7 @@ import {
 	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
+	reportViewerDelivery,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -904,7 +905,13 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
  * my focus whenever a chat completes" — was unanswerable in production because
  * nothing recorded who had just raised the window; this is what makes the next
  * one attributable. `never` raises nothing and logs nothing, so a headless run
- * still leaves no trace.
+ * still leaves no trace by raising.
+ *
+ * THE ONE LINE THIS LOG CARRIES THAT IS NOT A RAISE is `reportViewerDelivery`'s
+ * (`window-raise.ts`): under `never` a delivery reaches the renderer and reports
+ * nothing at all while the panel still re-keys on the session, so that line is the
+ * only account of a viewer delivery having happened — which is why it exists (UX
+ * round 1, U1/U2).
  */
 const reportRaise: RaiseReport = (line) => {
 	logger.info(`[window-raise] ${line}`, LogFileType.BACKEND);
@@ -1172,6 +1179,12 @@ const PARKED_LAUNCH_LIMIT = 16;
  * would have taken the conversation the operator is working in. Both words go into
  * the queue identically — the reason only decides the line, so a park cannot be
  * half-applied. `reportParkedInUse` carries what the second one costs a caller.
+ *
+ * EVERY LINE ABOUT THIS ENTRY CARRIES THE ENTRY'S OWN PLAN (`request.show`), not
+ * the `never` an ordinary park usually is: a second launch parked before the app
+ * could answer it declared a mode for itself, and a log that prints `never` for a
+ * `focus`-class request is the same inaccuracy the in-use path was given its own
+ * plan argument to avoid (review round 1, MINOR-2).
  */
 function parkLaunch(
 	session: string,
@@ -1185,15 +1198,19 @@ function parkLaunch(
 		report: reportRaise,
 	};
 	if (why === "in-use") reportParkedInUse(session, request.show, parkLine);
-	else reportParked(session, parkLine);
+	else reportParked(session, parkLine, request.show);
 	if (parkedLaunches.length <= PARKED_LAUNCH_LIMIT) return;
 	const evicted = parkedLaunches.shift();
 	if (evicted) {
-		reportParkedEvicted(evicted.session, {
-			trigger: evicted.request.trigger,
-			requester: evicted.request.requester,
-			report: reportRaise,
-		});
+		reportParkedEvicted(
+			evicted.session,
+			{
+				trigger: evicted.request.trigger,
+				requester: evicted.request.requester,
+				report: reportRaise,
+			},
+			evicted.request.show,
+		);
 	}
 }
 
@@ -1229,19 +1246,36 @@ function claimParkedFor(
 			const at = parkedLaunches.indexOf(queued);
 			if (at === -1) continue;
 			parkedLaunches.splice(at, 1);
-			reportParkedDelivered(queued.session, {
-				trigger: queued.request.trigger,
-				requester: queued.request.requester,
-				report: reportRaise,
-			});
 			/*
 			 * `painted` is the entry this window was CREATED for, and it is delivered
 			 * like every other one — but not by `send`: the renderer was launched with
 			 * it as its initial session, so this window's first frame IS the delivery,
 			 * and sending it as well would open the conversation twice.
 			 */
-			if (queued === painted) continue;
-			deliver(queued.session, queued.request);
+			if (queued !== painted) deliver(queued.session, queued.request);
+			/*
+			 * THE DELIVERED LINE FOLLOWS THE DELIVERY (QA round 1, Q-1 / review round 1,
+			 * MAJOR-2). It used to be reported BEFORE `deliver` ran, which was sound only
+			 * while `deliver` could not refuse: it can — the drain hands entries back to
+			 * the gated `openSessionInWindow` — and the log then asserted
+			 * `applied=delivered` for the same id it re-parked one line later with zero
+			 * sends, so a conversation could be reported as arrived while it waited for
+			 * yet another window. Reported after the send, the line is a statement about
+			 * something that happened.
+			 *
+			 * `queued.request.show` rather than the `never` default, for the reason
+			 * `parkLaunch` gives: one entry must not be described under two modes in one
+			 * log.
+			 */
+			reportParkedDelivered(
+				queued.session,
+				{
+					trigger: queued.request.trigger,
+					requester: queued.request.requester,
+					report: reportRaise,
+				},
+				queued.request.show,
+			);
 		}
 	});
 	window.once("closed", () => {
@@ -1252,11 +1286,17 @@ function claimParkedFor(
 		 */
 		for (const queued of claimed) {
 			if (!parkedLaunches.includes(queued)) continue;
-			reportParkedLeftWaiting([queued.session], {
-				trigger: queued.request.trigger,
-				requester: queued.request.requester,
-				report: reportRaise,
-			});
+			// `queued.request.show` for the reason `parkLaunch` gives: this entry's own
+			// plan, not the `never` an ordinary park usually is (review round 1, MINOR-2).
+			reportParkedLeftWaiting(
+				[queued.session],
+				{
+					trigger: queued.request.trigger,
+					requester: queued.request.requester,
+					report: reportRaise,
+				},
+				queued.request.show,
+			);
 		}
 	});
 	return claimed.length;
@@ -2573,12 +2613,25 @@ app
 			 * is lost" true for the second and later requests as well (review round 2,
 			 * MAJOR-1).
 			 */
-			// The delivery is `openSessionInWindow`, which lives inside `whenReady`:
-			// handed in rather than reached for, so the claim's rules stay testable and
-			// the queue stays where the window lifecycle can see it.
+			/*
+			 * The delivery is `openSessionInWindow`, which lives inside `whenReady`:
+			 * handed in rather than reached for, so the claim's rules stay testable and
+			 * the queue stays where the window lifecycle can see it.
+			 *
+			 * AND IT IS NOT RE-GATED (`fromPark`). The entry being delivered is one this
+			 * app already refused — or could not show — and this window exists to honour
+			 * that promise, so asking the gate again lets the app refuse its own
+			 * delivery: measured (QA round 1, Q-1 / review round 1, MAJOR-2), a drained
+			 * entry against a window that was focused by the time it loaded produced
+			 * `applied=delivered` and then `applied=parked+in-use` for the same id, with
+			 * zero `desktop-open-conversation` sends and the entry back on the queue's
+			 * tail — so a parked conversation could need more than one window, which is
+			 * exactly what parking promises it will not.
+			 */
 			claimParkedFor(
 				mainWindow,
-				(session, request) => openSessionInWindow(session, request),
+				(session, request) =>
+					openSessionInWindow(session, request, { fromPark: true }),
 				parked,
 			);
 
@@ -2779,15 +2832,24 @@ app
 		 * THE TWO BRANCHES DO NOT ASK THE SAME QUESTION about a request that must not
 		 * be applied. With no window, the question is whether one may be CREATED
 		 * (`canCreateWindowFor`); with one, it is whether that window's conversation
-		 * may be REPLACED (`canRetargetWindow`) — a window the operator is typing in
-		 * is the one thing a delivery from someone else must not touch, and a refused
-		 * delivery parks on the same queue as the other. Both rules live in
-		 * `window-raise.ts` with the policy they belong to; the gate itself is the
-		 * existing-window branch below.
+		 * may be REPLACED (`canRetargetWindow`) — which is refused for exactly one
+		 * delivery, the one that would leave no trace: a `second-instance` launch under
+		 * a `never` plan. A refused delivery parks on the same queue as the other. Both
+		 * rules live in `window-raise.ts` with the policy they belong to; the gate
+		 * itself is the existing-window branch below.
+		 *
+		 * `fromPark` IS THE ONE EXEMPTION, and it is not a bypass: it marks a delivery
+		 * the app is making because a request was ALREADY parked — the drain below,
+		 * honouring a promise this process made to the launch that asked. Asking the
+		 * gate a second time lets the app refuse its own delivery, which is what was
+		 * measured (QA round 1, Q-1 / review round 1, MAJOR-2): `applied=delivered`
+		 * then `applied=parked+in-use` for one id, zero sends, the entry back on the
+		 * queue's tail.
 		 */
 		function openSessionInWindow(
 			sessionId: string | null,
 			request: RaiseRequest,
+			{ fromPark = false }: { fromPark?: boolean } = {},
 		): void {
 			const window = mainWindow;
 			if (window && !window.isDestroyed()) {
@@ -2815,14 +2877,21 @@ app
 				 * symptom is a keystroke landing nowhere, in a window that never visibly
 				 * changed, with no line in the log to explain it.
 				 *
-				 * SO THE RULE: applied if the request is the operator's own or if he is not
-				 * using this window, and PARKED otherwise — the same `parkLaunch` the
-				 * create branch uses, so a refused delivery is not applied, not raised and
-				 * not dropped, and arrives in his next window exactly like any other request
-				 * that must not appear. `canRetargetWindow` carries the declaration half — a
-				 * table over the TRIGGER, because a banner click and a `viewer-resume` arrive
-				 * carrying this process's own show plan and cannot be told apart by it — and
-				 * `reportParkedInUse` carries what the refusal costs the caller.
+				 * SO THE RULE IS NARROW, and deliberately so (UX round 1, U1-U3): only a
+				 * delivery that would LEAVE NO TRACE and is not the operator's own is PARKED
+				 * — `second-instance` under a `show === "never"` plan, against a window he is
+				 * using. `canRetargetWindow` carries the table and the residual (that one cell
+				 * rests on the losing launch's own `--window-mode`). A `viewer-resume` and a
+				 * `banner-click` are applied as they were before this gate existed, because
+				 * refusing either costs more than the caret it saves: the viewer verb is what
+				 * the operator's own notification click routes through, and the ladder reads
+				 * any ack as "displayed", so a refusal that still answers `showing <id>` turns
+				 * his own click into a silent no-op. A refused delivery still parks on the same
+				 * queue the create branch uses, so nothing is applied, nothing is raised and
+				 * nothing is dropped, and it opens in his next window (`reportParkedInUse`
+				 * says so); what is delivered rather than refused is LOGGED below
+				 * (`reportViewerDelivery`), so a caret lost to one is attributable rather than
+				 * invisible.
 				 *
 				 * ONLY A NAMED conversation reaches the gate. `null` is the CATALOGUE, and
 				 * it is not someone's conversation being installed over the operator's: its
@@ -2832,6 +2901,7 @@ app
 				 * conversation, and "the list" is not one.
 				 */
 				if (
+					!fromPark &&
 					sessionId !== null &&
 					!canRetargetWindow(request, window.isFocused())
 				) {
@@ -2842,6 +2912,23 @@ app
 				// comes forward is already correct, rather than showing the old one
 				// for as long as the switch takes (B3).
 				window.webContents.send("desktop-open-conversation", { sessionId });
+				/*
+				 * THE VIEWER DELIVERY IS LOGGED, which is the other half of no longer
+				 * refusing it (UX round 1, U1/U2). Under a `never` plan a delivery reaches
+				 * the renderer and writes nothing at all — that mode is silent by design —
+				 * while the panel still re-keys on the session, so a caret lost to a viewer
+				 * delivery had nothing to find it by. `trigger=` and the session are what
+				 * make the next one attributable; the line is written AFTER the send, so it
+				 * is a statement about something that happened, and the raise line that
+				 * follows covers the plans allowed to move the window.
+				 */
+				if (sessionId !== null && request.trigger === "viewer-resume") {
+					reportViewerDelivery(sessionId, request.show, {
+						trigger: request.trigger,
+						requester: request.requester,
+						report: reportRaise,
+					});
+				}
 				raiseWindow(window, request.show, {
 					trigger: request.trigger,
 					requester: request.requester,

@@ -209,96 +209,133 @@ export function canCreateWindowFor(show: WindowShow): boolean {
 export const OPERATOR_SHOW: WindowShow = "focus";
 
 /*
- * THE MARKER THIS PREDICATE TURNS ON, pinned where it is read.
+ * THE TWO FACTS THIS RULE TURNS ON, and why neither answers it alone.
  *
- * `show === OPERATOR_SHOW` is how "the operator's own launch" is DECLARED for a
- * second launch: only a person's own launch resolves to `focus`, because the mode a
- * second launch carries is the one IT resolved (`resolveSecondLaunchShow`), and
- * `WINDOW_BEHAVIOUR.normal.show` is the only entry in `window-mode.ts`'s table that
- * resolves there. `headless` resolves `never` and `inactive` resolves `inactive`,
- * and neither is a person at this screen.
+ * `show === "never"` IS WHAT MAKES A DELIVERY LEAVE NO TRACE. Under that plan both
+ * `presentWindow` and `raiseWindow` return before they report, so the delivery
+ * moves nothing, comes forward nowhere and writes no line: the silence that mode
+ * promises a headless run is exactly the silence that made the original defect
+ * unfindable ("a keystroke landed nowhere, and nothing in the log says why"). It is
+ * also why a refusal is CHEAP here and expensive everywhere else — the requester of
+ * a silent delivery observes the same ack either way, so pulling it back costs it
+ * nothing it can see, while refusing a delivery whose plan WOULD have raised
+ * something withdraws an act the requester was promised.
  *
- * IT IS NOT THE MARKER FOR EVERY TRIGGER, which is why the declaration below is a
- * table over the TRIGGER and not a test of `show` alone: a `banner-click` and a
- * `viewer-resume` both arrive carrying THIS process's launch plan rather than a
- * requester's (`index.ts` passes `windowLaunch.show` at both call sites), so on a
- * `normal` launch they are indistinguishable BY SHOW — one is a person clicking a
- * real banner, the other is a verb on a control endpoint that any script can dial.
- * Reading `show` alone would therefore admit exactly the request this rule exists to
- * refuse, on the operator's own profile, which is the shape the defect was reported
- * from.
+ * THE TRIGGER IS WHAT SAYS WHOSE SILENCE IT IS, and it is not a detail: two of
+ * these arrive carrying THIS process's launch plan rather than a requester's
+ * (`index.ts` passes `windowLaunch.show` at both call sites), so `show` alone
+ * cannot tell them apart — and refusing the wrong one costs MORE than the defect
+ * this rule was written for:
  *
- * THE DEPENDENCY IS ON A TABLE IN ANOTHER MODULE, which is the risk this note
- * exists for: a future rename or re-mapping in `WINDOW_BEHAVIOUR` could invert the
- * marker silently, leaving a rule that reads as "the operator's own launch" while
- * admitting exactly the launches it was written to refuse. `delivery-gate.test.mjs`
- * pins the link from the public API — a plain launch and `--window-mode=normal`
- * must both resolve to this exact plan, and `headless`/`inactive` must not — so the
- * table cannot move under this predicate without that test going red.
+ *  - `viewer-resume` is the verb the operator's OWN notification click routes
+ *    through. `resume_click` rung 1 decides from the endpoint's ack ALONE and
+ *    `deliver_click` sets `switched` on ANY ack, so a refusal that still answers
+ *    `showing <id>` makes his own click report success while switching nothing —
+ *    and the conversation it parked then dies at quit. A caret he can type again is
+ *    the cheaper loss; UX round 1 (U1) measured this against the real client, so
+ *    this verb is DELIVERED and LOGGED instead (`reportViewerDelivery`), which is
+ *    what makes the next caret loss attributable without breaking the click ladder.
+ *  - `banner-click` is a person clicking a real notification. With a window up the
+ *    app's own banner sends the conversation straight to it
+ *    (`desktop-notifier.ts`), so this trigger reaches the gate only from the
+ *    no-window recreate path — and refusing it there would give one act two
+ *    opposite outcomes depending on which process raised the toast (UX round 1,
+ *    U3).
+ *
+ * SO EXACTLY ONE CELL IS REFUSABLE: `second-instance` under a plan that declared
+ * it must not be shown. That is the tool-spawned launch on the operator's own
+ * profile — the shape the whole investigation could not exclude, because it names
+ * a conversation, finds the window already up, is applied silently and re-keys the
+ * panel under the operator's hands without moving anything they can see or leaving
+ * a line to grep (`applySecondLaunch` delivers a named conversation "whatever the
+ * mode says").
+ *
+ * THE RESIDUAL, stated rather than implied: that cell is decided by THE
+ * REQUESTER'S OWN DECLARATION. A second launch's plan is the one IT resolved, read
+ * from its `--window-mode` argv or its payload (`resolveSecondLaunchShow`), so
+ * nothing here verifies that a `headless` launch was a script or that a `normal`
+ * one was a person. The app has no identity signal that could: a driven launch that
+ * declares `normal` is admitted to retarget the focused window — visibly, because
+ * it also raises. Every in-tree driven launcher declares `headless`, so the
+ * documented shapes are covered, and this is inherent to a single-instance app
+ * that takes a loser's word for its own mode (review round 1, MINOR-1).
+ *
+ * THE DEPENDENCY IS ON A TABLE IN ANOTHER MODULE, the other risk this note exists
+ * for: `never` has to keep meaning "a run that must leave no trace" in
+ * `window-mode.ts`'s `WINDOW_BEHAVIOUR`. `delivery-gate.test.mjs` pins the link
+ * from the public API — a plain launch and `--window-mode=normal` must both resolve
+ * to `focus`, and `headless` must resolve to `never` — so a re-mapping that made
+ * `headless` come forward cannot move under this rule without that test going red.
  */
 
 /**
- * Whether a request is the OPERATOR'S OWN, per trigger.
+ * Whether a delivery that declared it must not be shown may be PARKED, per trigger.
  *
  * A TABLE RATHER THAN A TEST, and the point of the table is the `Record`: a verb
  * added to `RaiseTrigger` later cannot compile until someone answers this question
  * for it, and the answer cannot then be "whatever `show` happened to be". That is
- * the guarantee `canCreateWindowFor` gives for show plans, for the same reason —
- * a new way through must answer the question rather than inherit a default.
+ * the guarantee `canCreateWindowFor` gives for show plans, for the same reason — a
+ * new way through must answer the question rather than inherit a default.
+ *
+ * `when-its-plan-is-silent` is the ONLY refusable answer. Everything else is
+ * `never`, and the note above says why that is the fix rather than caution:
+ * refusing a `viewer-resume` breaks the operator's own notification click, and
+ * refusing a `banner-click` makes one act mean two things.
  */
-const OWNERSHIP_BY_TRIGGER: Record<
+const REFUSABLE_DELIVERY: Record<
 	RaiseTrigger,
-	"his" | "theirs" | "his-if-a-person-launched-it"
+	"when-its-plan-is-silent" | "never"
 > = {
-	// This process's own launch presenting its own window: nobody else is involved.
-	"initial-present": "his",
-	/*
-	 * A person clicked a banner in Notification Center. A real notification click is
-	 * the operator's own act, and it is spelled here rather than left to `show` for
-	 * the reason above. It reaches `openSessionInWindow` only from the no-window
-	 * recreate path; with a window up, the notifier sends the conversation to that
-	 * window itself (`desktop-notifier.ts`), which is the same outcome one hop
-	 * earlier.
-	 */
-	"banner-click": "his",
-	// Declared by the launch: only a person's own launch resolves `focus`.
-	"second-instance": "his-if-a-person-launched-it",
-	/*
-	 * The viewer's control endpoint. `viewer-resume` installs a conversation, so it
-	 * is the one that reaches the gate; `viewer-focus` only raises and never calls
-	 * this. Both are scriptable verbs, and the client's `want_focus` defaults true,
-	 * so nothing in the request is evidence that a person is at the screen.
-	 */
-	"viewer-focus": "theirs",
-	"viewer-resume": "theirs",
+	// This process's own launch presenting its own window: nobody else asked, and
+	// the plan it presents under is this process's own.
+	"initial-present": "never",
+	// THE ONE REFUSAL. The residual above says what it rests on and what it cannot
+	// see.
+	"second-instance": "when-its-plan-is-silent",
+	// A person clicked a real banner, so refusing it and applying it must not
+	// differ — and with a window up it does not even reach this gate.
+	"banner-click": "never",
+	// Raises only, so it never calls the gate; declared anyway, because a verb
+	// cannot be added here without answering this question.
+	"viewer-focus": "never",
+	// HIS OWN CLICK ROUTES THROUGH THIS, and the ladder reads any ack as
+	// "displayed", so refusing it is a silent no-op on his own notification (U1).
+	"viewer-resume": "never",
 };
 
 /**
  * Whether a request that NAMES a conversation may replace the active conversation
  * of a window that already exists.
  *
- * THE RULE, and the reason it is a rule rather than a preference. This app is
- * driven by agents on the operator's own desktop, and the driven shape — a
- * tool-spawned launch with no terminal, which resolves `headless` — is the
- * operative one. Such a launch can name a conversation, reach an app that already
- * has a window, and be handed straight to the planner: `openSessionInWindow` sends
- * the conversation and raises as far as the request allows, which for `never` is
- * nowhere at all. The window does not move, the app does not come forward, and the
- * operator's screen still shows what they were looking at — except that the panel
- * RE-KEYS on the session (`panelIdentityFor`), so the composer subtree unmounts and
- * the caret dies with it. The only symptom is a keystroke landing nowhere, in a
- * window that never visibly changed, and because a `never`-mode raise reports
- * nothing by design the retarget leaves no line to find. That is the whole defect:
- * an invisible, silent edit of the screen somebody is typing on.
+ * THE DEFECT THIS COMES FROM. This app is driven by agents on the operator's own
+ * desktop, and the driven shape — a tool-spawned launch with no terminal, which
+ * resolves `headless` — is the operative one. Such a launch can name a
+ * conversation, reach an app that already has a window, and be handed straight to
+ * the planner: `openSessionInWindow` sends the conversation and raises as far as
+ * the request allows, which for `never` is nowhere at all. The window does not
+ * move, the app does not come forward, and the operator's screen still shows what
+ * they were looking at — except that the panel RE-KEYS on the session
+ * (`panelIdentityFor`), so the composer subtree unmounts and the caret dies with
+ * it. The only symptom is a keystroke landing nowhere, in a window that never
+ * visibly changed, and because a `never`-mode raise reports nothing by design the
+ * retarget leaves no line to find. That is the whole defect: an invisible, silent
+ * edit of the screen somebody is typing on.
  *
- * So a delivery is applied to the window the operator is using only when it is HIS
- * OWN or when he is not using that window. Everything else PARKS — the same queue
- * every other request that must not appear goes to, so nothing is applied, nothing
- * is raised and nothing is dropped; the conversation opens in his next window and
- * the park line says so. `windowInUse` is `window.isFocused()`, read by the caller,
- * because that is the only honest question: a window that is up but behind another
- * app is not being typed into, and a window that IS being typed into is the one
- * case where a re-key costs the operator the caret.
+ * THE RULE, NARROWED TO EXACTLY THAT CASE (UX round 1, U1-U3). A delivery is
+ * parked only when it would LEAVE NO TRACE and it is not the operator's own —
+ * `second-instance` under a `show === "never"` plan, against a window he is using.
+ * Everything else is applied, as it was before this rule existed: a
+ * `viewer-resume` and a `banner-click` arrive as his own acts (the table's note is
+ * where that argument lives), and any request against a window nobody is using has
+ * no caret to cost. A refused delivery parks on the same queue every other request
+ * that must not appear goes to, so nothing is applied, nothing is raised and
+ * nothing is dropped, and the conversation opens in his next window — the park
+ * line says so.
+ *
+ * `windowInUse` is `window.isFocused()`, read by the caller, because that is the
+ * only honest question: a window that is up but behind another app is not being
+ * typed into, and a window that IS being typed into is the one case where a re-key
+ * costs the operator the caret.
  *
  * WHAT THIS DELIBERATELY DOES NOT DO: it does not re-deliver on blur→focus. A
  * renderer trigger that drained the queue when the window came back would apply the
@@ -306,38 +343,29 @@ const OWNERSHIP_BY_TRIGGER: Record<
  * one keystroke later, with a longer fuse. The delivery waits for a window, not for
  * attention.
  *
- * THE KNOWN FOLLOW-UP, out of scope here and NOT a reason to refuse the gate: the
- * `viewer-resume` client counts a parked delivery as a success
- * (`~/local-operator/local_operator/session/runtime/viewer_client.py` sets
- * `switched` on the ack and skips its second rung), so a click routed to a
- * frontmost viewer now switches nothing while reporting success. Fixing that means
- * teaching the ack's caller about a third outcome, which is a change on the Python
- * side of a protocol this gate is the first reason to need. Disclosed rather than
- * papered over; see `reportParkedInUse`.
+ * WHAT IS DELIVERED RATHER THAN REFUSED IS LOGGED (UX round 1, U1/U2). The viewer
+ * delivery this rule must not refuse reports a line of its own
+ * (`reportViewerDelivery`), so the next caret that dies with a viewer delivery in
+ * the log is attributable rather than invisible. That is the point of the narrowing:
+ * make the invisible case visible rather than refuse a path the operator's own
+ * click ladder depends on.
  */
 export function canRetargetWindow(
 	request: { trigger: RaiseTrigger; show: WindowShow },
 	windowInUse: boolean,
 ): boolean {
-	return isTheOperatorsOwn(request) || !windowInUse;
-}
-
-/**
- * The declaration half of `canRetargetWindow`, split out so the table above is the
- * only thing a reader has to follow.
- */
-function isTheOperatorsOwn(request: {
-	trigger: RaiseTrigger;
-	show: WindowShow;
-}): boolean {
-	switch (OWNERSHIP_BY_TRIGGER[request.trigger]) {
-		case "his":
-			return true;
-		case "his-if-a-person-launched-it":
-			return request.show === OPERATOR_SHOW;
-		default:
-			return false;
-	}
+	// A window nobody is using is never a reason to refuse: there is no caret to
+	// lose, and a conversation that never opens is the worse failure.
+	if (!windowInUse) return true;
+	/*
+	 * THE REFUSAL, and the only one: a delivery whose own plan declared it must not
+	 * be shown, from the one trigger whose silence belongs to a requester rather
+	 * than to this process or to the operator's own click.
+	 */
+	return !(
+		request.show === "never" &&
+		REFUSABLE_DELIVERY[request.trigger] === "when-its-plan-is-silent"
+	);
 }
 
 /**
@@ -348,9 +376,19 @@ function isTheOperatorsOwn(request: {
  * answer to "what happened to what I asked for" is nothing at all — the winner
  * creates no window and raises nothing, so there is no other line to find (UX
  * review round 2, U5). `parked=<session>` is the conversation that is waiting.
+ *
+ * `requested` is the park's OWN show plan rather than the fixed `never` default,
+ * because a park can be a request that asked for more: a second launch parked
+ * before the app could answer it carries the mode it declared, and printing `never`
+ * for a `focus`-class request puts a plan in the log that nothing ever asked for
+ * (review round 1, MINOR-2).
  */
-export function reportParked(session: string, context: RaiseContext): void {
-	reportParkState([session], "parked", context);
+export function reportParked(
+	session: string,
+	context: RaiseContext,
+	requested: WindowShow = "never",
+): void {
+	reportParkState([session], "parked", context, requested);
 }
 
 /**
@@ -364,21 +402,23 @@ export function reportParked(session: string, context: RaiseContext): void {
  * operator's next window opens it" — the operator did nothing and is waiting on
  * nothing. This one is "something tried to take the screen the operator is
  * WORKING ON, and the request was set aside rather than applied", which is the
- * ONLY evidence of that attempt: what a refusal costs the requester is the same
- * ack it would have got either way, and the absence of a `desktop-open-
- * conversation` send is indistinguishable from `never`'s documented silence (that
- * mode is deliberately quiet, on the grounds that a headless run leaves no trace —
- * so a retarget it drove would otherwise be invisible in the log even though the
- * operator felt it). The applied token is what makes those two answerable apart.
+ * ONLY evidence of that attempt: the delivery it names leaves no other trace,
+ * because the one plan a refusal applies to is `never` — silent by design, on the
+ * grounds that a headless run leaves none. The applied token is what makes those
+ * two answerable apart.
  *
- * THE KNOWN COST, stated here because this is where a reader will look for it. A
- * `viewer-resume` parked this way is consumed as SUCCESS by the client that asked:
- * `deliver_click` marks `switched` on the ack and skips its second rung, so a click
- * that routes to a frontmost viewer now switches nothing while reporting success —
- * the conversation is queued and will open on the operator's next window, so it is
- * not lost, but the click looks like it worked. The client's `want_focus` defaults
- * true and is not evidence of a person, which is why it cannot be used to tell that
- * click from a driven one; see the follow-up noted in `canRetargetWindow`.
+ * THE REQUESTER IS TOLD BY ITS OWN SENTENCE, not by this line: the loser of a
+ * second instance is the only requester this refusal applies to, and its terminal
+ * already says the conversation will be opened once a window is open and that no
+ * window will be raised in the meantime. This line is for the operator reading the
+ * app's log afterwards.
+ *
+ * NOT A REFUSAL OF THE OPERATOR'S CLICK. `viewer-resume` used to be parked here,
+ * and UX round 1 (U1) measured what that cost: the client's ladder decides from
+ * the ack, so his own notification click reported success while switching nothing,
+ * and the conversation it parked could die at quit. The gate no longer refuses that
+ * verb — it delivers it and logs it (`reportViewerDelivery`) — so a
+ * `parked+in-use` line now means a RUN was turned away, never a click.
  */
 export function reportParkedInUse(
 	session: string,
@@ -408,6 +448,13 @@ export function reportParkedInUse(
  * which mode the request came in under. Printing `requested=never` for a
  * `focus`-class request would put a plan in the log that nothing ever asked for,
  * which is the failure mode this line exists to avoid.
+ *
+ * EVERY LINE ABOUT A PARKED ENTRY CARRIES THAT ENTRY'S OWN PLAN — the park, its
+ * delivery, its `left+waiting` and its eviction (review round 1, MINOR-2, which
+ * found the park line reporting `never` for a request that declared `focus`) — so
+ * one session cannot be described under two different modes in the same log. The
+ * one exception is `reportParksAtQuit`, and it is named there: it reports a LIST,
+ * where a single `requested` field belongs to no entry in it.
  */
 function reportParkState(
 	sessions: readonly string[],
@@ -427,12 +474,61 @@ function reportParkState(
 	);
 }
 
-/** A parked conversation actually reached a renderer: the loop closes (UX U2). */
+/**
+ * A parked conversation actually reached a renderer: the loop closes (UX U2).
+ *
+ * REPORTED AFTER THE DELIVERY, not before (QA round 1, Q-1 / review round 1,
+ * MAJOR-2). The line used to be written before `deliver` ran, which was sound only
+ * while `deliver` could not refuse. It can refuse — the drain delivers through the
+ * gated `openSessionInWindow` — and the log then asserted `applied=delivered` for
+ * the same id it re-parked one line later, with zero sends. A `delivered` line is a
+ * statement about something that happened, so it follows the send.
+ *
+ * `requested` is the entry's own plan, on the same terms as `reportParked`: an
+ * entry can be parked under a plan other than `never`, and one session must not be
+ * described under two different modes in one log.
+ */
 export function reportParkedDelivered(
 	session: string,
 	context: RaiseContext,
+	requested: WindowShow = "never",
 ): void {
-	reportParkState([session], "delivered", context);
+	reportParkState([session], "delivered", context, requested);
+}
+
+/**
+ * A request from the viewer's control endpoint was APPLIED to a window.
+ *
+ * WHY THIS LINE EXISTS (UX round 1, U1/U2, and the narrowing it produced). The gate
+ * above used to refuse a `viewer-resume` against a focused window, which cost the
+ * operator his own notification click: the ladder decides from the ack alone and any
+ * ack reads as "displayed". So that verb is delivered instead, and the delivery is
+ * LOGGED here — which is the change's point, because under a `never` plan the
+ * delivery itself reports nothing at all (`never` is silent by design) while the
+ * panel still re-keys on the session. Without this line the next caret that dies
+ * with a viewer delivery arriving is indistinguishable from one that died for no
+ * reason; `trigger=` and the session are what make it attributable.
+ *
+ * `applied=conversation+replaced` is read off what actually happened — the
+ * `desktop-open-conversation` send — and the raise line that follows covers the
+ * plans that were allowed to move the window. `parked=` is deliberately absent: this
+ * is not a queue state, it is the delivery the queue exists to avoid needing.
+ */
+export function reportViewerDelivery(
+	session: string,
+	requested: WindowShow,
+	context: RaiseContext,
+): void {
+	context.report?.(
+		[
+			`trigger=${context.trigger}`,
+			`mode=${MODE_OF_SHOW[requested]}`,
+			`requested=${requested}`,
+			`delivered=${session}`,
+			...requesterFields(context),
+			"applied=conversation+replaced",
+		].join(" "),
+	);
 }
 
 /**
@@ -440,21 +536,29 @@ export function reportParkedDelivered(
  *
  * This is a state, not a loss: the entries never left the queue, so the operator's
  * next window opens them — the line says which ones are still waiting (review round
- * 3, MINOR-1 / QA round 3, Q-1).
+ * 3, MINOR-1 / QA round 3, Q-1). `requested` is the claimed entry's own plan, for
+ * the reason `reportParkedDelivered` gives.
  */
 export function reportParkedLeftWaiting(
 	sessions: readonly string[],
 	context: RaiseContext,
+	requested: WindowShow = "never",
 ): void {
-	reportParkState(sessions, "left+waiting", context);
+	reportParkState(sessions, "left+waiting", context, requested);
 }
 
-/** The oldest waiting conversation was dropped to hold the queue's bound. */
+/**
+ * The oldest waiting conversation was dropped to hold the queue's bound.
+ *
+ * `requested` is the evicted entry's own plan, for the reason
+ * `reportParkedDelivered` gives.
+ */
 export function reportParkedEvicted(
 	session: string,
 	context: RaiseContext,
+	requested: WindowShow = "never",
 ): void {
-	reportParkState([session], "evicted", context);
+	reportParkState([session], "evicted", context, requested);
 }
 
 /**

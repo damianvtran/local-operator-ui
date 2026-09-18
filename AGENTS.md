@@ -458,7 +458,11 @@ into one. `mode` is the mode token a reader greps for; `requested` is the show
 policy it produced; `pid`/`cwd` are printed only when the requester declared them
 across the single-instance boundary, and their absence means this process asked
 itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
-its log included.
+its log included. The one line near this that is not a raise is
+`reportViewerDelivery`'s (`trigger=viewer-resume ... delivered=<id>
+applied=conversation+replaced`), which records a delivery that installed a
+conversation at a viewer's request: under `never` such a delivery moves the window
+nowhere and reports nothing, so that line is the only account of it.
 
 ### An agent-driven run does not banner either
 
