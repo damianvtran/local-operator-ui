@@ -83,6 +83,35 @@ export type CompletionAttention = {
 };
 
 /**
+ * The verdict of a BULK acknowledgement (`attention.seen`), one bucket per
+ * outcome.
+ *
+ * Three buckets rather than a count, because a bulk ack is not a promise that
+ * everything asked for was read: the backend decides per item inside one
+ * transaction, and a caller that only knew "cleared N" would have to claim the
+ * rest cleared too (DESIGN.md § 2's no-silent-partial-success contract). So:
+ *
+ * - `read` — the receipt moved, carrying the conversation's own post-write state
+ *   (the same shape the catalogue publishes as a row's `attention`);
+ * - `superseded` — a real completion of that conversation, no longer the current
+ *   one while the conversation is still unseen. Nothing was written, and the
+ *   caller must NOT clear that row: the token it holds is stale and the state
+ *   that supersedes it arrives by the feed;
+ * - `unknown` — no such completion for that conversation (or no store row at
+ *   all). Nothing was written.
+ *
+ * `superseded` and `unknown` carry BARE session ids rather than states, because
+ * neither produced one: a refusal has no state to return, and inventing a
+ * `CompletionAttention` for a row that was not written would be a second source
+ * of truth about a mark that is still unread.
+ */
+export type CompletionAttentionAckReceipt = {
+	read: CompletionAttention[];
+	superseded: string[];
+	unknown: string[];
+};
+
+/**
  * The backend's machine code for "your token is no longer the current one".
  *
  * The string is the BACKEND's, and the backend is its source of truth:
