@@ -99,9 +99,19 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 				 *
 				 * The marks are the predicate's three: `complete`, and the `error` and
 				 * `interrupted` codes the runtime labels "Unseen error" / "Unseen
-				 * interruption" and ranks as outstanding completions. Those the name
-				 * now carries while unseen, where it used to carry nothing the row's
-				 * own label had not already said.
+				 * interruption" and ranks as outstanding completions.
+				 *
+				 * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE — "Unseen error,
+				 * unread" — and that redundancy is ACCEPTED rather than trimmed (design
+				 * D4 and QA Q-2 both raised it). Gating the suffix on `unreadMark ===
+				 * "complete"` would be a SECOND rule about which codes carry the
+				 * suffix, which is the two-derivations class this whole change removes:
+				 * the suffix would become the check's property rather than the mark's,
+				 * and a counted row's name would say nothing about the mark it draws.
+				 * It is also the CLIENT's own statement of the level, where the
+				 * "Unseen" in the label is the backend's word for it — which is what
+				 * keeps the name true if that label is ever reworded for a code whose
+				 * ink does not step between read and unseen.
 				 */}
 				{unreadMark !== null ? ", unread" : ""}
 			</span>

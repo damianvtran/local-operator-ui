@@ -1579,6 +1579,12 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--mark-all-read-pile", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-unseen-without-mark", 780, 600],
+	/*
+	 * The other half of the count: the marks it KEEPS. Sized with its siblings so the
+	 * two are readable side by side, and registered here because a story with no entry
+	 * is a story no sweep visits (design D3).
+	 */
+	["chat-sidebar-status-feed--mark-all-read-mixed-marks", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-partly-read", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-cleared", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-unsupported", 780, 600],

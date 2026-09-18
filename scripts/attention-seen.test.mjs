@@ -16,11 +16,15 @@ import { build } from "esbuild";
  *      snake_case items in the order they were enumerated, and a body the
  *      backend's own schema accepts — 1..500 items, real uuids, no extra key.
  *      A batch that is refused at the schema is a click that did nothing.
- *   2. THE SET. `markAllRead` sends exactly the store's rows that carry
- *      `unseen` AND a `completion_token`. A row without a token names no
- *      completion, and a row already read has nothing to acknowledge; sending
- *      either inflates the batch and puts a number in the receipt that no row's
- *      story explains. Zero such rows sends NO REQUEST — not an empty one.
+ *   2. THE SET. `markAllRead` sends exactly the store's rows that DRAW an
+ *      outstanding completion mark (`unreadMarkKind`: `unseen` plus a
+ *      `complete`/`error`/`interrupted` status code) AND carry a
+ *      `completion_token`. A row without a token names no completion, a row
+ *      already read has nothing to acknowledge, and a row whose live state has
+ *      taken it over (busy, wedged, a parked gate) draws its own glyph rather
+ *      than the mark — sending any of the three inflates the batch and puts a
+ *      number in the receipt that no row's story explains. Zero such rows sends
+ *      NO REQUEST — not an empty one.
  *   3. THE ANSWER IS THE ONLY WRITE. `superseded` and `unknown` rows keep their
  *      marks, nothing is cleared optimistically while the request is in flight,
  *      and a refusal leaves the store byte-identical. This is the property that
@@ -491,10 +495,9 @@ test("the tokenless clause names the drawn marks it cannot send, and only those"
 	const copy = markAllReadCopy(rows);
 	assert.equal(copy.count, 1);
 	/*
-	 * Every row is `active`, so the `elsewhere` clause is absent and this asserts
-	 * the tokenless clause alone (the two clauses together have no separator
-	 * between them — a pre-existing copy defect on this line, left alone here and
-	 * reported rather than folded into this change).
+	 * Every row is `active`, so the `elsewhere` clause is absent and this asserts the
+	 * tokenless clause alone; the both-clauses sentence is asserted in the copy case
+	 * above, where the separator defect (design D5 / QA Q-1) lived.
 	 */
 	assert.equal(
 		copy.scope,
@@ -519,7 +522,7 @@ test("the control's copy names the extent before the click", () => {
 	assert.equal(local.label, "Mark all 2 read");
 	assert.equal(
 		local.scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats",
+		"Mark 2 unread chats as read, including 1 in Previous chats.",
 	);
 	assert.equal(
 		local.nameSuffix,
@@ -556,6 +559,27 @@ test("the control's copy names the extent before the click", () => {
 	assert.equal(
 		tokenless.scope,
 		"Mark 1 unread chat as read. 1 unread mark with no completion token cannot be cleared.",
+	);
+	/*
+	 * BOTH CLAUSES AT ONCE, which is the case neither arm's own assertion above could
+	 * see: the old join dropped the separator between them and produced "…in Previous
+	 * chats 1 unread mark with no completion token cannot be cleared." (design D5 / QA
+	 * Q-1, measured on this head and on the base). The tooltip is the one place a
+	 * pointer user reads the extent, so both sentences have to survive being read
+	 * together.
+	 */
+	const both = markAllReadCopy([
+		...elsewhere,
+		completeRow("555555555555", {
+			title: "Unseen, no token",
+			active: true,
+			attention: unread("555555555555", { completion_token: null }),
+		}),
+	]);
+	assert.equal(both.count, 2, "the tokenless mark is not in the set sent");
+	assert.equal(
+		both.scope,
+		"Mark 2 unread chats as read, including 1 in Previous chats. 1 unread mark with no completion token cannot be cleared.",
 	);
 });
 
