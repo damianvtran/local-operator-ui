@@ -2702,6 +2702,30 @@ function finishedDictationFrame(event: LiveEvent): boolean {
 }
 
 /**
+ * Whether a frame SETTLES a call, which is the one tool frame with no clock.
+ *
+ * `tool_execution_start` states `started_at_epoch` and a compose frame's two
+ * terminal endings are `finishedDictationFrame`'s business; a settled end states
+ * neither a time nor `args`, so it can only be placed by something else — the
+ * seed entry the runtime stamps with the call's start (new runtimes) or the
+ * durable row that named the call (`argsByCall.anchoredAt`). Both are checked
+ * before this predicate, which is only reached when the frame would CREATE a row
+ * and `seededClock` has already said it states no time: refusing it costs a row
+ * until the read-back names it, and painting it costs a row in the wrong place
+ * that says nothing ran.
+ *
+ * A SEPARATE PREDICATE FROM `finishedDictationFrame`, and the placement rule
+ * below refuses both for ONE reason: neither class states a time, so the row
+ * must wait for a source that does. Two different frame kinds reach it — a
+ * settled call and a call whose dictation ended — and a single predicate covering
+ * both would have to say what they have in common, which is exactly this
+ * sentence rather than a type test.
+ */
+function settlesACall(event: LiveEvent): boolean {
+	return event.type === "tool_execution_end";
+}
+
+/**
  * Seed the in-flight turn from a snapshot's `live_events`. Called after the
  * snapshot's history page has been applied so durable rows win.
  *
@@ -2727,13 +2751,26 @@ function finishedDictationFrame(event: LiveEvent): boolean {
  * frame that would CREATE a row and states no time is refused outright when no
  * turn is in flight: its only remaining time is the viewer's arrival, and
  * appending it paints `wait`/`hub`/`task` rows from hours earlier under a
- * conversation whose last message is the one the reader expects to be last. A
- * frame whose record is ALREADY painted is folded onto it whatever the clock,
- * because that settles a card the reader can see without moving any row — so a
- * viewer that PAINTED the seed live (the mid-turn join this seed exists for)
- * and then lost the transport keeps those rows where they were painted; the
- * guarantee here is about a frame that would create a row, not about one that
- * finds its row on screen.
+ * conversation whose last message is the one the reader expects to be last. AND
+ * A FRAME THAT SETTLES A CALL IS REFUSED EVEN WITH A TURN IN FLIGHT, for the
+ * same reason the dictation rule below gives: the in-flight exemption is a claim
+ * about WORK, not about time, and a call that has ENDED is not work waiting for
+ * the reader. Its position belongs to the durable record — the assistant row that
+ * named it dates it (`argsByCall.anchoredAt`), or the runtime states when it
+ * began on the retained end — and `tool_execution_end` carries neither a clock
+ * nor `args`, so with neither in hand there is nothing left but the arrival,
+ * which is the fabricated position this rule exists to refuse. Appending it is
+ * exactly the report this closes: opening a session while its turn runs painted
+ * the OPENING turn's eight `bash` calls, an hour and several completed turns
+ * earlier, under the running call, each row showing its output's first line where
+ * the command belongs — the seed reaches that far back for the reason above, so
+ * the injected set is a rolling window over every turn the run has taken, not
+ * over this one. A frame whose record is ALREADY painted is folded onto it
+ * whatever the clock, because that settles a card the reader can see without
+ * moving any row — so a viewer that PAINTED the seed live (the mid-turn join this
+ * seed exists for) and then lost the transport keeps those rows where they were
+ * painted; the guarantee here is about a frame that would create a row, not about
+ * one that finds its row on screen.
  *
  * Refusing loses nothing, but it does not return everything at once: every row
  * such a seed names is durable on the backend and the client fires a read sized
@@ -2764,7 +2801,9 @@ function finishedDictationFrame(event: LiveEvent): boolean {
  * reach it. The read is a bounded tail read, so a call older than its bound
  * returns through the reader's own `load older` rather than at once. Refusing
  * here and refusing when no turn is in flight are one rule with one reason — the
- * frame states no time, so the row must wait for a source that does. A frame
+ * frame states no time, so the row must wait for a source that does — and the
+ * settled call above is the third case of that same rule, which is why both
+ * predicates sit in one `else if` clause. A frame
  * whose record is ALREADY painted is still folded, whatever the clock and
  * whatever it says: that settles a row the reader can see without moving any row,
  * and it is the path that paints a verdict on the row its own announcement left
@@ -2811,7 +2850,11 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
-			} else if (finishedDictationFrame(event) || !inFlight) {
+			} else if (
+				settlesACall(event) ||
+				finishedDictationFrame(event) ||
+				!inFlight
+			) {
 				// No time on the frame, so the only instant left is this viewer's
 				// arrival: refuse it rather than paint a row at a moment that belongs to
 				// the reader. The doctrine above has every reason — the turn is over, or
@@ -2873,8 +2916,7 @@ export function seedCallsMissingLabels(
 	for (const event of liveEvents ?? []) {
 		if (!event) continue;
 		const frame = event as LiveEvent;
-		if (frame.type !== "tool_execution_end" && !finishedDictationFrame(frame))
-			continue;
+		if (!settlesACall(frame) && !finishedDictationFrame(frame)) continue;
 		const callId = String(frame.tool_call_id ?? "");
 		if (!callId || missing.includes(callId) || labelled.has(callId)) continue;
 		missing.push(callId);
