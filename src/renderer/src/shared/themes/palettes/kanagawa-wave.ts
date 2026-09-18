@@ -67,17 +67,26 @@ export const kanagawaWave: ThemeDefinition = {
 		sunken: "#16161D",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.6 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.49x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
-		 * the row's ground. ΔE00 4.4 from `surface`, 2.37 from `elevated`, 11.08 from
-		 * `sunken`, 4.52 from `accentWash`; the inks on the ground are 8.61:1,
-		 * 6.79:1, 5.21:1. Continuity with the panel: hue 0.69 degrees off the
-		 * panel's (the assertion allows 12) and chroma 13.49 where the panel carries
-		 * 9.05.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #242E40  accent hue, C* 12.78, +1.69 L*, ΔE00 4.91 off `surface`,
+		 *                       `inkDim` 5.68:1 on the fill, hue 0.91° off `accent`.
+		 * rowSelected #2F3540  accent hue, C* 7.72, +4.92 L*, ΔE00 5.37 off
+		 *                       `surface` and 4.18 off `rowHover`, `inkDim` 5.14:1, and the
+		 *                       2px `accent` bar at 5.46:1 against it.
+		 *
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 21.41, just past the
+		 * min(0.75 x C*(accent), 24) ceiling, and was one of the named exceptions -
+		 * the value only reached that chroma because the old 6.0 separation made the
+		 * fill chase it. The separation rides the `accent` bar and `font-medium`
+		 * now, so the ceiling holds with room to spare and the exception is gone.
 		 */
-		highlight: "#323246",
+		rowHover: "#242E40",
+		rowSelected: "#2F3540",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",

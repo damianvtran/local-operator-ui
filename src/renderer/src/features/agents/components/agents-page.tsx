@@ -1,3 +1,4 @@
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -597,8 +598,12 @@ export function AgentsPage() {
 							key={row.name}
 							type="button"
 							className={cn(
-								"flex h-8 w-full items-center rounded-md px-2 text-left text-body-sm hover:bg-elevated",
-								row.name === name && "bg-accent-wash",
+								"flex h-8 w-full items-center rounded-md px-2 text-left text-body-sm hover:bg-row-hover",
+								// The same selected-row role as the sidebar roster and the
+								// chat list: this list is the page's copy of the roster, and
+								// two marks for "the agent you have open" would be two
+								// answers to one question.
+								row.name === name && rowCurrent,
 							)}
 							onClick={() =>
 								setParams({ kind: teamMode ? "team" : "agent", name: row.name })

@@ -57,7 +57,7 @@ test("read complete rests, unread complete keeps the attention check", () => {
 for (const [code, icon, ink] of [
 	["error", "circle-alert", "danger"],
 	["wedged", "circle-alert", "danger"],
-	["busy", "loader-circle", "info"],
+	["busy", "loader-circle", "accent"],
 	["answer", "circle-alert", "warning"],
 	["approval", "circle-alert", "warning"],
 	["interrupted", "pause", "warning"],

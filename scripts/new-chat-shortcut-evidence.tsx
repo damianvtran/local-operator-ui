@@ -165,7 +165,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 			{/*
 			 * `ThemeProvider` is the app's own; it publishes the theme id to the
 			 * document element, which is what the Tailwind half of the app resolves
-			 * `--lo-*` variables from — `--lo-highlight`, the current row's ground,
+			 * `--lo-*` variables from — `--lo-row-selected`, the current row's ground,
 			 * among them.
 			 *
 			 * `MemoryRouter` rather than the app's `HashRouter`: `ChatPage` reads

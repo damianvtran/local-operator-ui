@@ -47,17 +47,20 @@ export const kanagawaLotus: ThemeDefinition = {
 		sunken: "#D3CB9C",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5.5 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.19x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.11-to-4 band
-		 * on `surface`. ΔE00 4.11 from `surface`, 5.75 from `elevated`, 2.18 from
-		 * `sunken`, 4.41 from `accentWash`; the inks on the ground are 7.69:1,
-		 * 5.96:1, 5.44:1. Continuity with the panel: hue 0.44 degrees off the
-		 * panel's (the assertion allows 12) and chroma 27.28 where the panel carries
-		 * 22.88.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #DADCE4  accent hue, C* 4.22, +1.62 L*, ΔE00 20.42 off `surface`,
+		 *                       `inkDim` 6.04:1 on the fill, hue 3.14° off `accent`.
+		 * rowSelected #CBD3E9  accent hue, C* 11.84, +4.87 L*, ΔE00 27.51 off
+		 *                       `surface` and 6.02 off `rowHover`, `inkDim` 5.53:1, and the
+		 *                       2px `accent` bar at 5.76:1 against it.
 		 */
-		highlight: "#DAD39F",
+		rowHover: "#DADCE4",
+		rowSelected: "#CBD3E9",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

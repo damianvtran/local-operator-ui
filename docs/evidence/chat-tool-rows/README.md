@@ -562,3 +562,27 @@ honest, but because nothing else would notice they had gone.
 | `spacing-uniformity` | the runs that preceded this change were driven by hand against the live app; there is no story for them |
 | `real-conversation-tool-rows` | a bespoke harness over a real `/history` page from a real `serve` backend, never committed — the one surface whose durations still predate the `<0.1s` spelling |
 | [`../tool-rows-baseline/`](../tool-rows-baseline/) | the before/after pair needs an older SOURCE TREE (unmodified `origin/main`), which a sweep of this tree cannot be |
+
+## The colour-application pass (18 September 2026), at head `4755b126c`
+
+`states/` IS RE-SHOT at this head across twenty-eight themes, and the change it
+photographs is the one the row's own docstring states: **identity is hueless and
+only the state carries colour**. The tool GLYPH and the tool NAME used to be two
+expressions — the glyph read `running ? accent : failed ? danger : ink-dim` while
+the name read a five-entry category map — which is what shipped `task`/`hub`/`todo`
+with an accent name beside a grey glyph, and grey glyphs on every settled row
+(the operator's own report: "the icon is not colored but the tool name is
+colored"). Both now read ONE expression, so this board's settled rows are all
+`ink-muted` whatever their category, `running` is `accent`, and `error`/`not-run`
+are `danger`. Category is carried by the glyph's SHAPE, which already differed per
+category; the category-to-hue table is deleted rather than extended.
+
+- **The before column is `origin/main`'s own committed frames** for the same
+  story and theme, not a re-shoot of this pass, and it exists at the sweep's
+  twelve-theme spine only — that is the set `main` committed for this directory.
+- **`contact-sheet/tool-row-states.png`** puts those two side by side over the
+  twelve, and **`tool-row-states-colour-themes.png`** carries the head alone over
+  the eighteen themes the brief's spread and `4755b126c`'s eleven re-solved
+  palettes share. Both are composed with `magick` from these frames (the rig has
+  no montage facility) with a fixed crop of the row band, so a column is a
+  like-for-like.

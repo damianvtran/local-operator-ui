@@ -156,7 +156,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									onClick={() => setSelectedId(provider.id)}
 									className={cn(
 										"flex w-full flex-col gap-2 rounded-md border border-control bg-surface p-4 text-left",
-										"transition-colors duration-base ease-out-quart hover:bg-elevated",
+										"transition-colors duration-base ease-out-quart hover:bg-row-hover",
 									)}
 								>
 									{/*

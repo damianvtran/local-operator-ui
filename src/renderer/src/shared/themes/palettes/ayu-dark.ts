@@ -71,16 +71,20 @@ export const ayuDark: ThemeDefinition = {
 		sunken: "#18191C",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.85 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.48x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.25 from `surface`, 2.55 from `elevated`, 10.97
-		 * from `sunken`, 7.14 from `accentWash`; the inks on the ground are 7.23:1,
-		 * 7.19:1, 5.17:1. Continuity with the panel: hue 2.5 degrees off the panel's
-		 * (the assertion allows 12) and chroma 11.7 where the panel carries 7.9.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #272D32  accent hue, C* 4.29, +1.54 L*, ΔE00 4.35 off `surface`,
+		 *                       `inkDim` 5.71:1 on the fill, hue 0.04° off `accent`.
+		 * rowSelected #213644  accent hue, C* 11.92, +4.95 L*, ΔE00 7.20 off
+		 *                       `surface` and 6.32 off `rowHover`, `inkDim` 5.13:1, and the
+		 *                       2px `accent` bar at 6.32:1 against it.
 		 */
-		highlight: "#2C3344",
+		rowHover: "#272D32",
+		rowSelected: "#213644",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

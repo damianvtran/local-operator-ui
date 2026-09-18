@@ -146,8 +146,15 @@ const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => (
 		className={cn("whitespace-pre-wrap break-words")}
 		style={{ paddingInlineStart: (line.depth - 1) * NEST_STEP_PX }}
 	>
-		{line.key ? <span className={cn("text-ink-dim")}>{line.key}: </span> : null}
-		<span className={cn("text-ink-muted")}>{line.value}</span>
+		{/* The LABEL is the identity and the value is the detail, which is the slot
+		 * rule the tool row above follows: `ink-muted` is a row's label, `ink-dim`
+		 * its detail. These two were the reverse — the key dimmer than its own
+		 * value — which is the only place in the tree the two inks were in that
+		 * order (the colour pass's ledger, F12). */}
+		{line.key ? (
+			<span className={cn("text-ink-muted")}>{line.key}: </span>
+		) : null}
+		<span className={cn("text-ink-dim")}>{line.value}</span>
 	</div>
 );
 

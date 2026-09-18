@@ -71,18 +71,20 @@ export const catppuccinFrappe: ThemeDefinition = {
 		elevated: "#3C4153",
 		sunken: "#2A2D3E",
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 2.4 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.49x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.16:1 on the row's ground. ΔE00 5.2
-		 * from `surface`, 5.02 from `elevated`, 8.66 from `sunken`, 6.43 from
-		 * `accentWash`; the inks on the ground are 7.45:1, 7.18:1, 5.16:1.
-		 * Continuity with the panel: hue 8.45 degrees off the panel's (the assertion
-		 * allows 12) and chroma 18.8 where the panel carries 12.6.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #413E43  accent hue, C* 3.54, +1.52 L*, ΔE00 7.52 off `surface`,
+		 *                       `inkDim` 5.36:1 on the fill, hue 1.48° off `accent`.
+		 * rowSelected #4A404F  accent hue, C* 10.62, +3.47 L*, ΔE00 7.74 off
+		 *                       `surface` and 6.65 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 4.47:1 against it.
 		 */
-		highlight: "#31425E",
+		rowHover: "#413E43",
+		rowSelected: "#4A404F",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.

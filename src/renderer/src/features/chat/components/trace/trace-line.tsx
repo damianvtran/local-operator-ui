@@ -164,8 +164,20 @@ const TraceRow = ({
 				{...TEXT_SURFACE_PROPS}
 				className={cn(
 					"select-text font-mono text-mono-sm",
-					running ? "text-ink-muted" : "text-ink-dim",
-					failed && "text-danger",
+					// The verb is the row's LABEL: `ink-muted` is the ink a row's label
+					// takes, `ink-dim` is its detail. It sat one weight quieter than the
+					// tool rows it interleaves with, so a `bash` action read `ink-dim`
+					// through this primitive and `ink-muted` through `ToolRow` — the
+					// literal "the names are coloured inconsistently" complaint, one
+					// row family apart.
+					//
+					// It is also why a NOTICE no longer changes colour mid-sentence:
+					// the headline is this span and the continuation is the `rest`
+					// paragraph in `canonical-transcript.tsx`, which is `ink-muted`.
+					// Split at a line break, the same sentence used to change ink.
+					// `running` keeps its own step so a live row still reads live;
+					// `failed` outranks both: state over identity, as in `ToolRow`.
+					failed ? "text-danger" : "text-ink-muted",
 				)}
 			>
 				{verb}

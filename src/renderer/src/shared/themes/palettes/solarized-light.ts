@@ -79,17 +79,20 @@ export const solarizedLight: ThemeDefinition = {
 		sunken: "#E5DFCC",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 6.55 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.02x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.05 from `surface`, 6.72 from `elevated`, 2.82
-		 * from `sunken`, 8.13 from `accentWash`; the inks on the ground are 10.04:1,
-		 * 7.44:1, 5.18:1. Continuity with the panel: hue 0.06 degrees off the
-		 * panel's (the assertion allows 12) and chroma 6.38 where the panel carries
-		 * 6.28.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #ECF1F8  accent hue, C* 3.96, +1.59 L*, ΔE00 9.47 off `surface`,
+		 *                       `inkDim` 5.91:1 on the fill, hue 0.26° off `accent`.
+		 * rowSelected #D7E9FF  accent hue, C* 12.73, +4.89 L*, ΔE00 16.48 off
+		 *                       `surface` and 6.75 off `rowHover`, `inkDim` 5.42:1, and the
+		 *                       2px `accent` bar at 4.85:1 against it.
 		 */
-		highlight: "#E6E2D6",
+		rowHover: "#ECF1F8",
+		rowSelected: "#D7E9FF",
 
 		ink: "#073642",
 		// Canonical base01 586E75 is 4.39:1 on `sunken` — under the 4.5 floor, and only

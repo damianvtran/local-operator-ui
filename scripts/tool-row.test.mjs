@@ -55,7 +55,6 @@ const {
 	requestDesktopMedia,
 	stripDiffHeader,
 	summaryFromArgs,
-	toolCategory,
 	toolNameColumn,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -184,17 +183,6 @@ test("the name column grows to the longest visible name, within its bounds", () 
 	assert.equal(toolNameColumn(["list_variables"]), 14);
 	// And a pathological name cannot push the summary off the row.
 	assert.equal(toolNameColumn(["a".repeat(60)]), 24);
-});
-
-test("tool categories are case-insensitive and default to plain", () => {
-	// The name is MODEL-controlled: a provider echoing `Bash` must land in the
-	// same category as `bash`.
-	assert.equal(toolCategory("Bash"), "exec");
-	assert.equal(toolCategory("read"), "read");
-	assert.equal(toolCategory("edit"), "mutate");
-	assert.equal(toolCategory("task"), "meta");
-	assert.equal(toolCategory("mcp__linear_create_issue"), "plain");
-	assert.equal(toolCategory("something_new"), "plain");
 });
 
 /* ------------------------------------------------------- the media relay */

@@ -5,6 +5,12 @@
  * upload-to-hub dialogs.
  */
 
+// The selected row takes the app's one selected-row role rather than a wash of
+// its own: on 6 of the 41 dark themes the wash is a weaker mark than the hover
+// beside it, which is the state this roster was left in while the chat panel and
+// the settings rail moved on. Imported, not restated — a copy of a role is what
+// drifted twice (design rounds 3 and 4, D17/D19).
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
@@ -127,7 +133,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				className={cn(
 					"flex w-full items-center gap-2 rounded-sm py-1.5 pr-9 pl-2 text-left",
 					"transition-colors duration-fast ease-out-quart",
-					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
+					isSelected ? rowCurrent : "hover:bg-row-hover",
 				)}
 			>
 				<Avatar className="size-8 shrink-0">
