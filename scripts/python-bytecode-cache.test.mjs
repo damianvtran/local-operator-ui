@@ -2194,6 +2194,13 @@ const SPAWN_SITES = [
 		"src/main/update-service.ts",
 		"spawnSync",
 		2,
+		/\/usr\/bin\/osascript/,
+		"raises the launch hold's notice through the channel the install's own messages use (`display notification`), synchronously so its exit status is the delivery record the log line carries; it starts no interpreter",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawnSync",
+		3,
 		/"\/bin\/launchctl"/,
 		"removes ShipIt's launchd job",
 	),
