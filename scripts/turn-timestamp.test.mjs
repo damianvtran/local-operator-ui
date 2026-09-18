@@ -995,6 +995,132 @@ test("a turn still working carries no caption, on any of its settled rows", asyn
 	}
 });
 
+test("a statement after the answer does not take the answer's caption away", async () => {
+	/*
+	 * DESIGN ROUND 2's D2-1, and the four control cases it turned on. The first
+	 * gate keyed on the turn's last PAINTING row, so any row after the answer
+	 * stripped the caption — and for the three STATEMENT kinds that is not a
+	 * rendering preference but a lost fact: a notice, a peer receipt and a wake
+	 * receipt paint no `<time>` of their own and have no disclosure to open, so the
+	 * turn's only time was gone from the screen with nothing to click.
+	 *
+	 * The two rows that DO end a turn's work keep their old behaviour, and they are
+	 * asserted here beside the new ones rather than left to the tests above, because
+	 * the fix is one predicate and the way to break it is to widen it:
+	 *
+	 * - a ledger row still strips the caption (the agent is working; the answer it
+	 *   will end on has not been written);
+	 * - a streaming answer still carries none (the answer has not settled, and the
+	 *   settled prose above it is narration rather than the row being handed over).
+	 */
+	const STATEMENT_ROWS = [
+		[
+			"notice",
+			{
+				kind: "notice",
+				id: "notice:1",
+				ts: TS + 90_000,
+				text: "The run was stopped by the reader.",
+				level: "info",
+			},
+		],
+		[
+			"custom",
+			{
+				kind: "custom",
+				id: "custom:1",
+				ts: TS + 90_000,
+				customType: "job_result",
+				level: "info",
+				category: null,
+				provider: null,
+				headline: "The session incident was recorded.",
+				detail: null,
+				text: "The session incident was recorded.",
+			},
+		],
+		[
+			"peer",
+			{
+				kind: "peer",
+				id: "peer:1",
+				ts: TS + 90_000,
+				body: "Which invoices were paid late?",
+				// Every identity field is present: the row derives its own headline from
+				// them, and a fixture that skipped them would fail in the row rather
+				// than in the rule this test is about.
+				sender: {
+					pid: "92064",
+					conversationName: "review-agent",
+					cwd: "/Users/damian/local-operator-ui",
+					sessionId: "01J8ZQ4K7XABCDEF",
+					modelLabel: "deepseek/deepseek-flash",
+				},
+			},
+		],
+		[
+			"wake",
+			{
+				kind: "wake",
+				id: "wake:1",
+				ts: TS + 90_000,
+				text: "<envelope>\n\nCheck the deploy.",
+			},
+		],
+	];
+
+	for (const [name, statement] of STATEMENT_ROWS) {
+		const { container, unmount } = mount([
+			userRecord("user:1"),
+			answerRecord("answer:1"),
+			statement,
+		]);
+		const captions = stamps(container, "answer");
+		assert.equal(
+			captions.length,
+			1,
+			`a ${name} row after the answer leaves its caption alone: the turn handed its answer over before the statement arrived`,
+		);
+		assert.equal(
+			captions[0].closest("[data-record-id]")?.getAttribute("data-record-id"),
+			"answer:1",
+			"and the caption is on the answer rather than on the statement row",
+		);
+		assert.equal(
+			allStamps(container).length,
+			2,
+			"the user turn's caption and the answer's, and no third one for the statement",
+		);
+		unmount();
+	}
+
+	// The control the fix must NOT have widened: a ledger row still ends the work.
+	const endsOnCall = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", { text: "Checking the ledger first." }),
+		toolRecord("tool:1"),
+	]);
+	assert.equal(
+		stamps(endsOnCall.container, "answer").length,
+		0,
+		"a turn ending on a ledger row still carries no caption",
+	);
+	endsOnCall.unmount();
+
+	// And the same for an answer that has not settled.
+	const endsStreaming = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", { text: "Checking the ledger first." }),
+		answerRecord("answer:2", { text: "Four were late", streaming: true }),
+	]);
+	assert.equal(
+		stamps(endsStreaming.container, "answer").length,
+		0,
+		"a turn whose answer is still arriving still carries no caption",
+	);
+	endsStreaming.unmount();
+});
+
 test("a multi-paragraph answer in one record still carries exactly one stamp", async () => {
 	/*
 	 * The other side of the same rule, and the reason it is not "one caption per

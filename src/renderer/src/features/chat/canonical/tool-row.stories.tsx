@@ -1243,6 +1243,85 @@ export const ProseBetweenCalls: Story = {
 };
 
 /**
+ * A statement row between the answer and the next turn, which is the shape that
+ * lost the time entirely (design round 2, D2-1).
+ *
+ * The gate keyed on the turn's last PAINTING row, so anything after the answer
+ * stripped its caption — and for a statement that is not a rendering preference
+ * but a lost fact. A notice, a peer receipt and a wake receipt paint no `<time>`
+ * of their own and have no disclosure to open, so the turn's only time went off
+ * the screen with nothing left to click: measured on this shape, the first gate
+ * painted NOTHING at all for the turn.
+ *
+ * The fix is one predicate, `isStatementRow` in `canonical/transcript-rows.ts`:
+ * the closing answer is found PAST a statement rather than through it, so the
+ * answer that ended the turn keeps its caption and the statement row below it
+ * stays a statement. Both rows of this frame are here for that reason — a notice
+ * and a peer receipt, the two statement kinds whose text a reader meets between
+ * turns — and the two controls the fix must not widen (a turn ending on a ledger
+ * row, and one whose answer is still streaming) are asserted in
+ * `scripts/turn-timestamp.test.mjs` instead of pictured, because they are the
+ * shapes `answer-in-progress` and `prose-between-calls` already show.
+ */
+export const AnswerThenStatement: Story = {
+	render: () => (
+		<Frame
+			height={470}
+			records={[
+				{
+					kind: "user",
+					id: "s1",
+					ts: TS,
+					text: "Reconcile August against the bank feed.",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "s2",
+					ts: TS + 4_000,
+					text: "Four invoices were paid late, and the oldest is 41 days behind.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				// The statement: a notice the harness wrote after the answer.
+				{
+					kind: "notice",
+					id: "s3",
+					ts: TS + 6_000,
+					text: "The reader stopped the run after the answer was written.",
+					level: "info",
+				},
+				{
+					kind: "user",
+					id: "s4",
+					ts: TS + 40_000,
+					text: "And the run that resumed afterwards?",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "s5",
+					ts: TS + 44_000,
+					text: "It finished with the same four invoices outstanding.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				// And the other statement kind a reader meets between turns: a peer
+				// message's receipt, which is a ledger row with no stamp of its own.
+				peer({
+					id: "s6",
+					body: "The nightly reconciliation finished clean.",
+				}),
+			]}
+		/>
+	),
+};
+
+/**
  * The operator's alignment report, as one frame: prose between tool rows, and
  * a final answer, against the ledger they are supposed to line up with.
  *
