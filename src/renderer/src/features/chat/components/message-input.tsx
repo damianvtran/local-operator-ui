@@ -1777,6 +1777,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const pendingCaret = useRef<number | null>(null);
 		/*
+		 * THE RESTORED DRAFT'S CARET IS SEEDED THROUGH THE MACHINERY ABOVE, not
+		 * beside it: one write of the pair every other caret move in this file uses
+		 * (`pendingCaret` plus `setCaret`), so the DOM selection and the state agree
+		 * in this paint rather than on the user's next gesture - the effect above
+		 * does the DOM half as soon as the ref is set.
+		 *
+		 * WHY THE PAINT NEEDS IT (design round 1, D1): the tint is withheld where
+		 * Enter would not run the draft, and that question is asked at the caret
+		 * (`planForDraft(newMessage, caret)`). A draft the app restored from the
+		 * store arrives with no keystroke, so without this the composer sits at
+		 * position 0 and reads a leading line as prose - the tint never paints - while
+		 * the identical draft typed a character earlier runs as a command. It reuses
+		 * the rule this file already has for restored text: the caret goes to the END
+		 * of what was restored.
+		 *
+		 * ONCE per mount, which is the whole reason for the ref: the first non-empty
+		 * value is the trigger rather than the mount, because `useMessageInput` seeds
+		 * its own value from the store in an effect - so the first render here is
+		 * empty even when the store already holds a draft - and every later edit would
+		 * otherwise drag a caret the user had moved to the end of the box.
+		 */
+		const caretSeeded = useRef(false);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the first value is the trigger; the ref makes it once
+		useLayoutEffect(() => {
+			if (caretSeeded.current) return;
+			if (!newMessage) return;
+			caretSeeded.current = true;
+			pendingCaret.current = newMessage.length;
+			setCaret(newMessage.length);
+		}, [newMessage]);
+		/*
 		 * The last buffer React committed, so `applyCapture` can tell a write that
 		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
 		 * below, which is the whole of the empty-span Escape fix.
