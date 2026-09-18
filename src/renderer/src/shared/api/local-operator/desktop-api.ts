@@ -6,6 +6,8 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_FOREGROUND_REQUIRED_CODE,
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	desktopRequestDeadlineMs,
 } from "../../../../../shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
@@ -69,6 +71,21 @@ export async function desktopRequest(
 			);
 		} catch (cause) {
 			if (cause instanceof DesktopControlError) throw cause;
+			/*
+			 * Main's own refusal, before the transport is blamed for it.
+			 * `desktop-ipc.ts` refuses a read receipt from a window the user cannot
+			 * see, and that rejection is not a transport failure: the backend was
+			 * never asked, so reporting it as "could not reach the backend process"
+			 * tells the reader something false about a perfectly reachable backend
+			 * and leaves them nothing to do (QA round 1, Q2). It is re-thrown as
+			 * authored copy carrying its own code, which is what makes it
+			 * distinguishable from a real transport failure at every caller.
+			 */
+			if (isForegroundRefusal(cause))
+				throw new UserFacingError(
+					DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+					DESKTOP_FOREGROUND_REQUIRED_CODE,
+				);
 			throw new DesktopControlError(
 				null,
 				"Desktop controls could not reach the backend process.",
@@ -291,6 +308,46 @@ export function isAgentNotFound(error: unknown): boolean {
 export function isServerUnreachable(error: unknown): boolean {
 	if (!(error instanceof DesktopControlError)) return false;
 	return error.status === null || error.status === 503;
+}
+
+/**
+ * Whether a caught failure is main's refusal to send a read receipt from a
+ * window the user cannot see.
+ *
+ * Reads the CLASS and the CODE, never the message: `UserFacingError` is copy by
+ * construction and the code is the vetted category the transport attached when
+ * it classified the refusal, so a reworded sentence cannot be mistaken for a
+ * refusal by any caller. The point of asking is that a refusal and a transport
+ * failure want different sentences and different next moves — a refusal means
+ * the backend was never asked and the reader's move is to bring the window
+ * forward, while "could not reach the backend process" is true only of the
+ * other one (QA round 1, Q2).
+ */
+export function isForegroundRequired(error: unknown): boolean {
+	return (
+		error instanceof UserFacingError &&
+		error.code === DESKTOP_FOREGROUND_REQUIRED_CODE
+	);
+}
+
+/**
+ * Whether a rejection from main is that refusal, read off its message.
+ *
+ * A message match, in the ONE place it is unavoidable, and the reason is the
+ * boundary rather than convenience: `ipcRenderer.invoke` rebuilds main's
+ * rejection as a plain `Error` — it prefixes the method name and drops every
+ * other field, `code` included — so a refusal arrives as text and nothing else.
+ * The text it is matched against is the shared constant the producer refuses
+ * with, so this compares against the one authority for that sentence rather
+ * than guessing what main might say. It is contained HERE so that no caller has
+ * to match strings: every caller of `desktopRequest` receives the classified
+ * error instead, which is what "fix it at the source" means for this defect.
+ */
+function isForegroundRefusal(cause: unknown): boolean {
+	return (
+		cause instanceof Error &&
+		cause.message.includes(DESKTOP_FOREGROUND_REQUIRED_MESSAGE)
+	);
 }
 
 export async function desktopControlResponse(
