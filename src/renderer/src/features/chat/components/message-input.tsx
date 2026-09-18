@@ -35,6 +35,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
+	dismissToast,
 	showErrorToast,
 	showSuccessToast,
 	showWarningToast,
@@ -105,7 +106,7 @@ import { ComposerStatusRow } from "./composer-status-row";
  * for why that split is the point rather than tidiness.
  */
 import {
-	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_CLEAR_UNDO_LABEL,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
@@ -125,12 +126,16 @@ import {
 	capturePasted,
 	charsOf,
 	citedPayloads,
+	clearCitedCredential,
+	clearedToastLine,
 	credentialNamesFrom,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
 	mintTypedCredential,
+	noticeLineFor,
 	pastedCredentialRun,
+	restoreClearedCredential,
 	standsAsToken,
 	storedNotice,
 	substituteCredentials,
@@ -187,6 +192,7 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
+import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { useAtResolution } from "../hooks/use-at-resolution";
@@ -229,6 +235,7 @@ import { completionFor } from "./slash-completion";
 import {
 	extensionFor,
 	lockedCommandNote,
+	lockedRunUndoCap,
 	pickArmsCommand,
 	pointerPickRuns,
 	reassembledNote,
@@ -1232,6 +1239,40 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			setDisclosureState(next);
 		}, []);
 		/*
+		 * THE CLEAR'S OWN SENTENCE, ON THE NOTICE LINE (UX round 1, U2).
+		 *
+		 * State rather than a derivation because there is nothing left in the buffer to
+		 * derive it from: the reference is gone, and only the toast used to say so. The
+		 * pair is the disclosure's — a value, a ref that always matches it, and a setter
+		 * that writes both — for the same reason: the retirement effect below compares
+		 * against the BUFFER the sentence describes, and a closure reading render state
+		 * would compare against an older one and retire a sentence that is still true.
+		 */
+		const [clearedReference, setClearedReferenceState] = useState<{
+			key: string;
+			/** The composer-local ordinal the chip's face carries: what correlates the two channels (UX round 3, U16). */
+			index: number;
+			over: string;
+		} | null>(null);
+		const clearedReferenceRef = useRef<{
+			key: string;
+			index: number;
+			over: string;
+		} | null>(null);
+		const setClearedReference = useCallback(
+			(
+				next: {
+					key: string;
+					index: number;
+					over: string;
+				} | null,
+			) => {
+				clearedReferenceRef.current = next;
+				setClearedReferenceState(next);
+			},
+			[],
+		);
+		/*
 		 * The disclosure AS IT APPLIES TO ONE BUFFER: 0 unless this is the text the
 		 * count describes. Every writer of the draft asks THIS — including the
 		 * keystroke path inside `useMessageInput`, which asks it about the value it is
@@ -1776,6 +1817,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keystroke would land in the middle of the completed word.
 		 */
 		const pendingCaret = useRef<number | null>(null);
+
+		/*
+		 * THE MIRROR'S ELEMENT, held here because TWO components need it: the overlay
+		 * paints the chip's ground through it, and the chip layer measures the marker
+		 * runs' boxes off it (a textarea exposes no per-run geometry). One element, one
+		 * ref, so the two layers cannot end up describing two different layouts.
+		 */
+		const mirrorRef = useRef<HTMLDivElement | null>(null);
 		/*
 		 * The last buffer React committed, so `applyCapture` can tell a write that
 		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
@@ -2147,13 +2196,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [newMessage, setDisclosure]);
 
 		/*
+		 * AND THE CLEAR'S SENTENCE RETIRES THE SAME WAY (UX round 1, U2): the words
+		 * describe ONE buffer — the one the `x` produced — and the first edit makes them
+		 * stale, so they go by the same rule the disclosure uses rather than on a timer.
+		 * Declared here, beside its sibling, because the two are one mechanism applied to
+		 * two facts.
+		 */
+		useLayoutEffect(() => {
+			const held = clearedReferenceRef.current;
+			if (held && held.over !== newMessage) setClearedReference(null);
+		}, [newMessage, setClearedReference]);
+
+		/*
 		 * The map is retired with the BUFFER, never ahead of it (code review round
 		 * 1, MINOR-5). `retirePayloads` is the submit's request; this is the commit
 		 * that honours it, once nothing in the box still cites a payload — so the box
 		 * can never paint a raw marker no map entry backs, and an Enter in that
 		 * window can never send a dangling citation.
 		 */
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the buffer is the event
 		useEffect(() => {
 			if (!retirePayloads.current) return;
 			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
@@ -3558,6 +3618,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
+				 * THEN THE CLEAR'S UNDO (`handleClearedUndo`), which shares the key with the
+				 * locked run's below it and is asked first: see its own comment for why the
+				 * newer edit goes first and why the two are not an exclusion. It ignores the
+				 * keystroke when no clear is pending, which is what hands it on.
+				 */
+				if (handleClearedUndo(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
 				 * Then the locked run's undo, which is this composer's own key: the box the
 				 * user is looking at was written by a component, so the native undo has no
 				 * entry that restores it (UX round 1, U3 — measured: `Command+Z` left the box
@@ -3740,6 +3810,382 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		useEffect(
 			() => registerComposerFocus(focusInput, composerNode),
 			[focusInput, composerNode],
+		);
+
+		/*
+		 * ---------------------------------------------------------------------
+		 * The chip's `x`: throwing a credential away, in one edit
+		 * ---------------------------------------------------------------------
+		 *
+		 * The chip's control is the ONLY way to clear a reference, and it is the
+		 * composer's alone: the transcript's chip has none, because a sent message
+		 * cannot be un-sent (`credential-citation.tsx` states what one would take).
+		 *
+		 * WHAT IT DESTROYS, said plainly because the operator is told it too: the
+		 * payload is dropped from the map, and the value lived only there — the store on
+		 * the runtime is written at SUBMIT, so a reference dropped here was never
+		 * anywhere else, and only the operator can supply it again. That is why this
+		 * raises the durable sentence that names the key and offers the way back (the
+		 * copy that speaks a refusal left this module with the state that could show it -
+		 * R5-2), and why it is not offered on a marker nothing backs: there is nothing
+		 * behind that chip to clear.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * IT ANSWERS TO THE REFUSAL, and the rebase onto #308's base is what made that a
+		 * requirement rather than a courtesy: the refused composer is `readOnly` now,
+		 * not `disabled`, so the box stays focusable and a control painted over it can
+		 * still be pressed - where a `disabled` textarea made the whole region inert.
+		 * This path WRITES into the buffer and discards a payload, so it carries the
+		 * same `isInputDisabled` predicate every other writer on the rebased base
+		 * carries (`handleSubmit`, `handleComposerKeyDown`, `handlePaste`,
+		 * `handleStartRecording`), asked FIRST for the same reason they ask it first.
+		 * The layer stops RENDERING the control while the composer refuses rather than
+		 * leaving a pressable `x` that does nothing: a control that cannot act is not
+		 * shown, which is the rule the transcript's chipless turn already follows.
+		 *
+		 * THE SENTENCE GOES TO TWO CHANNELS, AND THE UNDO KEEPS IT OFFERABLE (UX round
+		 * 1, U2). It used to live only in a sonner toast, which retires in 3.5-6.5s while
+		 * the notice line — the channel carrying every other credential-fate sentence in
+		 * this flow, at the operator's own focus — stayed blank, and `Cmd+Z` restored
+		 * nothing (all three measured: `C2`-`C5`, `E1`-`E3`). So the words go on the
+		 * notice line, where they stay until the next edit, AND the toast carries an
+		 * `Undo` — the shape `composer-status-row.tsx` already gives a cheap destructive
+		 * step. That is why the payload is HELD rather than dropped here: it is what the
+		 * undo restores, and it was already held for the duration anyway.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * FOCUS GOES BACK THROUGH `focusInput`, the composer's single door — the control
+		 * that had focus unmounts with the chip, and the browser otherwise drops focus to
+		 * `document.body`: no ring anywhere, and the operator's next keystroke going
+		 * nowhere — and `composer-field.ts`'s rule for why the door rather than the node.
+		 * A direct `.focus()` here would leave `composerPointerTouched` set, which
+		 * SUPPRESSES the ask gate's next automatic hand-off, and a second implementation
+		 * of the hand-off is exactly what that registry exists to make impossible.
+		 * Applied HERE rather than through the reply chip's pending-ref effect because
+		 * the node it focuses does not unmount: the textarea outlives the chip that sat
+		 * over it, which is the one thing the quote's control cannot say.
+		 */
+		/** One clear, held open while its toast offers the undo. */
+		type PendingClear = {
+			index: number;
+			payload: CredentialPayload;
+			cleared: { buffer: string; caret: number; removed: string };
+			/** The toast offering this undo, so it can be withdrawn with the offer. */
+			toastId: string | number | null;
+		};
+		/*
+		 * DECLARED HERE, ABOVE THE KEY CHAIN, AND THAT IS LOAD-BEARING RATHER THAN
+		 * TIDY (UX round 2, U8). The composer's own `Cmd+Z` is where a credential
+		 * edit's undo belongs — `#302`'s locked-run handler beside this one states the
+		 * rule: the box was written by a component, so the platform's undo has no
+		 * entry that restores it — and the key chain is declared ABOVE this block, so
+		 * a callback it names has to exist here. A `const` declared below a
+		 * `useCallback` whose dependency array names it is in the temporal dead zone
+		 * during that render and the component throws, which is the trap
+		 * `isInputDisabled`'s own comment records.
+		 */
+		const pendingClearRef = useRef<PendingClear | null>(null);
+		/*
+		 * THE BUFFER AS THE UNDO MUST SEE IT, which is the LIVE one rather than this
+		 * render's. The toast's action closure is built in the render that performed
+		 * the clear, so a `newMessage` read from that closure is the buffer BEFORE the
+		 * splice — and the undo's own guard compares against the buffer the clear
+		 * PRODUCED, so it would refuse every time and restore nothing (caught by the
+		 * `credential-pill-cleared-undone` story, which is why that story exists). A
+		 * ref written after each commit is what makes the handler independent of which
+		 * render it was created in.
+		 */
+		const bufferRef = useRef(newMessage);
+		useLayoutEffect(() => {
+			bufferRef.current = newMessage;
+		}, [newMessage]);
+
+		/**
+		 * Close a clear off for good: the undo is over, so the value goes.
+		 *
+		 * THE SLOT IS PASSED BY IDENTITY, and that is the whole of the correctness here
+		 * rather than a convenience: sonner dismisses a toast when its action button is
+		 * clicked, so this runs on the SAME click that runs the undo — and a version
+		 * that deleted `slot.index`'s payload unconditionally would drop the value the
+		 * undo had just restored, or race the undo to the payload and leave the restored
+		 * marker UNBACKED. A slot that is no longer the current one (the undo ran, or a
+		 * newer clear replaced it) is a no-op here.
+		 */
+		const retireClear = useCallback((slot: PendingClear) => {
+			if (pendingClearRef.current !== slot) return;
+			pendingClearRef.current = null;
+			payloadsRef.current.delete(slot.index);
+		}, []);
+
+		/**
+		 * The clear's own undo, run from either route: the marker and the payload
+		 * back, in one edit, or the reason it cannot be.
+		 *
+		 * ONE MECHANISM, TWO ROUTES (UX round 2, U8). The toast's action and the
+		 * composer's `Cmd+Z` are the same edit asked for twice — a gesture that
+		 * disappears with its toast, and the reflex key that already exists in this
+		 * composer for the credential command-lock — so the mechanics live here once,
+		 * and each caller does its own follow-up (the toast returns focus to the box,
+		 * the key press does not need to: the box already has it).
+		 *
+		 * IT REFUSES WHEN THE BUFFER HAS MOVED ON, which is the guard that makes the
+		 * recorded offset safe to use: the operator may have typed since the clear, and
+		 * an insert at a stale offset would corrupt their prose.
+		 * `restoreClearedCredential` answers `null` for exactly that case (and for a
+		 * clear that spliced nothing).
+		 *
+		 * NO REFUSAL SENTENCE EXISTS ANY MORE (code review round 5, R5-2). `restoreClear`'s
+		 * `stale` register was the only reachable state of that copy, and R4-6's guard made
+		 * it unreachable: the withdrawal effect retires a slot on exactly the predicate the
+		 * splice refuses on (`slot.cleared.buffer !== newMessage` against
+		 * `buffer !== cleared.buffer`), both are layout effects on `[newMessage]`, so a
+		 * gesture either finds the slot current - and the buffer the clear produced, which
+		 * restores - or finds it already withdrawn. The string and its register are gone
+		 * from `credential-capture.ts` rather than left as a rule nothing can reach.
+		 */
+		const restoreClear = useCallback(
+			(slot: PendingClear): boolean => {
+				/*
+				 * A SLOT THAT IS NO LONGER CURRENT CANNOT BE RESTORED, BY EITHER ROUTE (code
+				 * review round 4, R4-6). The toast's own action closure survives its dismissal
+				 * for the exit animation and stayed pressable for ~50ms, answering with U12's
+				 * false sentence while the chip was visibly back; the same guard covers a
+				 * superseded slot whose offer has not been withdrawn yet.
+				 */
+				if (pendingClearRef.current !== slot) return false;
+				const restored = restoreClearedCredential({
+					buffer: bufferRef.current,
+					cleared: slot.cleared,
+				});
+				// Silent by design (see the note above the callback): a buffer the clear no
+				// longer describes is a slot the withdrawal has already retired, so there is
+				// no offer left to answer.
+				if (!restored) return false;
+				/*
+				 * THE PAYLOAD COMES BACK FROM THE SLOT, not from the map, and that is what
+				 * makes the undo independent of the toast's own dismissal order: sonner
+				 * retires the toast on the same click, so `retireClear` may already have
+				 * deleted the map entry by the time this runs. Re-setting it means the
+				 * restored marker is a BACKED chip in either order, which is the state the
+				 * reviewer's requirement names ("restore the marker AND the payload").
+				 */
+				payloadsRef.current.set(slot.index, slot.payload);
+				if (pendingClearRef.current === slot) pendingClearRef.current = null;
+				/*
+				 * AND THE OFFER GOES WITH THE EDIT IT WAS HONOURED BY (UX round 3, U12). The
+				 * withdrawal effect only inspects the CURRENT slot and returns early on
+				 * `null`, so a restore that arrives on the composer's own `Cmd+Z` left the
+				 * toast standing - measured: the chip visibly back in the message while the
+				 * toast still offered `Undo` and, pressed, answered "cannot be put back".
+				 * The app's most trust-sensitive sentence was false in the state its own key
+				 * produces. Sonner only dismisses on its own action's click, so the success
+				 * path dismisses it here, by the id the raiser returned.
+				 */
+				if (slot.toastId !== null) dismissToast(slot.toastId);
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						restored.buffer,
+						restored.caret,
+						"arrival",
+					),
+					buffer: restored.buffer,
+					caret: restored.caret,
+				});
+				// The sentence described the buffer the clear produced; the reference is
+				// back, so it is stale by the rule the retirement effect for the notice uses.
+				setClearedReference(null);
+				return true;
+			},
+			[applyCapture, setClearedReference],
+		);
+
+		/**
+		 * The offer never outlives what it can do (UX round 2, U7 / R2-2 / Q-R2-1).
+		 *
+		 * `restoreClearedCredential` refuses once the buffer has moved, so the toast
+		 * that offers the undo can only act while the buffer is still the one the clear
+		 * produced — and the notice line already compares exactly that (`held.over !==
+		 * newMessage`). This is the same comparison applied to the toast: the first
+		 * edit withdraws it, with its payload, rather than leaving a live-looking
+		 * button whose click silently does nothing. Withdrawing it is honest because the
+		 * durable line already carries the fact and the way back; the refusal itself is
+		 * silent by design (R5-2), since the only state that could speak it is the one this
+		 * effect retires.
+		 *
+		 * The toast is dismissed by its own id, the id `showWarningToast` returned; a
+		 * slot that is no longer current (a newer clear replaced it, or the undo ran)
+		 * is a no-op, the same identity rule `retireClear` states.
+		 */
+		useLayoutEffect(() => {
+			const slot = pendingClearRef.current;
+			if (slot === null) return;
+			if (slot.cleared.buffer === newMessage) return;
+			if (slot.toastId !== null) dismissToast(slot.toastId);
+			retireClear(slot);
+		}, [newMessage, retireClear]);
+
+		/**
+		 * The clear on the composer's own undo key (UX round 2, U8), beside `#302`'s
+		 * locked-run undo and ahead of it in the chain.
+		 *
+		 * WHY IT IS AHEAD, stated as what is true rather than as an exclusion (code
+		 * review round 3, R3-3): the two CAN both be live - a locked run's record is
+		 * retired on a textarea `onChange`, and a clear is a PROGRAMMATIC write, which
+		 * that rule explicitly does not fire on - so this sits first because the clear is
+		 * the more recent destructive edit and the key should undo the newer one first.
+		 * A second press then reaches `#302`'s handler and undoes the older edit, which
+		 * is the LIFO the composer's other undos use. A `false` here hands the keystroke
+		 * on, exactly as `handleLockedRunUndo` does.
+		 */
+		const handleClearedUndo = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const slot = pendingClearRef.current;
+				if (slot === null) return false;
+				if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+					return false;
+				if (event.key.toLowerCase() !== "z") return false;
+				restoreClear(slot);
+				return true;
+			},
+			[restoreClear],
+		);
+
+		const undoClear = useCallback(
+			(slot: PendingClear) => {
+				if (restoreClear(slot)) focusInput();
+			},
+			[focusInput, restoreClear],
+		);
+		const clearCredential = useCallback(
+			(index: number) => {
+				if (isInputDisabled) return;
+				const payload = payloadsRef.current.get(index);
+				if (!payload) return;
+				const cleared = clearCitedCredential({
+					buffer: newMessage,
+					payload,
+				});
+				// Nothing spliced: the marker's tail was edited by hand, or the text is gone
+				// already. The buffer, the map and the notice are all left alone rather than
+				// reporting a removal that did not happen.
+				if (!cleared.cleared) return;
+				/*
+				 * THE PAYLOAD IS HELD, NOT DROPPED (U2). It is what the undo restores, so it
+				 * lives until the toast offering the undo retires; a clear that arrives while
+				 * a previous undo is still open closes THAT one off first, so two undos can
+				 * never both hold a payload.
+				 */
+				const previous = pendingClearRef.current;
+				if (previous) {
+					pendingClearRef.current = null;
+					payloadsRef.current.delete(previous.index);
+					/*
+					 * AND ITS TOAST (UX round 3, U13; code review round 3, R3-4). The
+					 * withdrawal effect only ever inspects the CURRENT slot, so retiring the
+					 * previous one here left a live-looking `Undo` on a removal the app can no
+					 * longer reverse - measured: two clears, one edit, and the older offer
+					 * still stood while pressing it refused. The offer must not outlive its
+					 * ability by either route, and this is the one site that knows the older
+					 * slot is going.
+					 */
+					if (previous.toastId !== null) dismissToast(previous.toastId);
+				}
+				const slot: PendingClear = {
+					index,
+					payload,
+					cleared,
+					toastId: null,
+				};
+				pendingClearRef.current = slot;
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						cleared.buffer,
+						cleared.caret,
+						"arrival",
+					),
+					buffer: cleared.buffer,
+					caret: cleared.caret,
+				});
+				setClearedReference({
+					key: payload.key,
+					index,
+					over: cleared.buffer,
+				});
+				/*
+				 * THE TOAST'S WORDS ARE ITS OWN (UX round 2, U9). It used to print the
+				 * notice line's whole sentence — 110 characters twice at once, with the
+				 * `Undo` immediately beside "its value is gone", a claim the button
+				 * contradicts for as long as the button exists. The durable channel keeps
+				 * the fact and the manual path; this one says what it alone can do, which
+				 * is name the reference that went and offer to put it back.
+				 *
+				 * ITS ID IS KEPT, because the offer must not outlive its ability: the
+				 * effect above withdraws the toast on the first edit that would make the
+				 * undo refuse, and a toast can only be withdrawn by the id it was raised
+				 * with.
+				 */
+				/*
+				 * THE SLOT'S LIFE IS THE SENTENCE'S LIFE (code review round 4, R4-2). It used
+				 * to end with the toast - sonner's four-second default, and a manual dismissal
+				 * sooner - while the sentence on the notice line lives until the next edit, so
+				 * at +10s the line still promised `⌘Z` and one real press restored nothing,
+				 * silently. The undo now holds until the buffer it describes changes (the same
+				 * comparison the sentence retires on, in the effect above), which keeps U8's
+				 * cheap path real for as long as the app says it is; the toast is one route to
+				 * it, not the lifetime. `onAutoClose`/`onDismiss` no longer retire anything,
+				 * and they must not: a dismissal would put the line back in exactly the state
+				 * this fix removes.
+				 */
+				slot.toastId = showWarningToast(clearedToastLine(index), {
+					action: {
+						label: CREDENTIAL_CLEAR_UNDO_LABEL,
+						onClick: () => undoClear(slot),
+					},
+				});
+				focusInput();
+			},
+			/*
+			 * `retireClear` is NOT a dependency any more, and that is R4-2's change showing in the
+			 * list: this callback no longer retires anything on the toast's own retirement -
+			 * the slot now lives exactly as long as the sentence that names the undo, and the
+			 * effect above is the one place that ends both.
+			 */
+			[
+				applyCapture,
+				focusInput,
+				isInputDisabled,
+				newMessage,
+				setClearedReference,
+				undoClear,
+			],
 		);
 
 		/*
@@ -4274,33 +4720,57 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				: credentialSessionId
 					? CREDENTIAL_EMPTY_SPAN_NOTICE
 					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
-			: unredactedChars !== null
-				? unredactedNotice(
-						unredactedChars,
-						/*
-						 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
-						 * command-locked run the press takes the restored characters as the
-						 * command's argument and sends nothing, so "Enter will expose them" is
-						 * false in the safe direction — the app's most trust-sensitive sentence
-						 * telling the user that the harmless press is the dangerous one (UX round
-						 * 2, U7). The word comes from the SAME planner call the press will use
-						 * (`lockedRunOf`), so the promise and the press cannot disagree.
-						 */
-						lockedRunOf(newMessage, caret)?.command.name,
-					)
-				: capture.arm !== null &&
-						// Measured at the END OF THE BUFFER rather than at the `caret` state,
-						// and the difference is a race rather than a nicety: `caret` lags one
-						// commit behind the keystroke that moved it, so a derivation that read it
-						// here would flicker the armed notice on and off between renders — and in
-						// the evidence play functions it did, producing a frame with the notice in
-						// one theme and not in the next. The line's tail is the true subject of the
-						// predicate (`CREDENTIAL_ARM` is anchored to the caret's own line end), and
-						// the end of the buffer is that same tail in every state the operator can
-						// be typing in.
-						armSpan(newMessage, newMessage.length) !== null
-					? CREDENTIAL_ARMED_NOTICE
-					: null;
+			: noticeLineFor({
+					unredacted:
+						unredactedChars !== null
+							? unredactedNotice(
+									unredactedChars,
+									/*
+									 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
+									 * command-locked run the press takes the restored characters as the
+									 * command's argument and sends nothing, so "Enter will expose them" is
+									 * false in the safe direction — the app's most trust-sensitive sentence
+									 * telling the user that the harmless press is the dangerous one (UX round
+									 * 2, U7). The word comes from the SAME planner call the press will use
+									 * (`lockedRunOf`), so the promise and the press cannot disagree.
+									 */
+									lockedRunOf(newMessage, caret)?.command.name,
+								)
+							: null,
+					/*
+					 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
+					 * the disclosure first: the sentence that knows what the NEXT keystroke will do
+					 * beats the one reporting the last edit. Measured on round 1's order: arm the
+					 * capture at the end of the buffer, clear a chip, and the line stopped saying
+					 * the capture was armed while it still was.
+					 *
+					 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
+					 * difference is a race rather than a nicety: `caret` lags one commit behind the
+					 * keystroke that moved it, so a derivation that read it here would flicker the
+					 * armed notice on and off between renders — and in the evidence play functions
+					 * it did, producing a frame with the notice in one theme and not in the next.
+					 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
+					 * anchored to the caret's own line end), and the end of the buffer is that same
+					 * tail in every state the operator can be typing in.
+					 */
+					armed:
+						capture.arm !== null &&
+						armSpan(newMessage, newMessage.length) !== null,
+					cleared:
+						clearedReference === null
+							? null
+							: {
+									key: clearedReference.key,
+									index: clearedReference.index,
+								},
+					/*
+					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
+					 * (UX round 3, U15): the durable sentence has to name the key this
+					 * platform actually listens for, and the platform is the composer's to
+					 * know, not the copy module's.
+					 */
+					undoCap: lockedRunUndoCap(platform === "darwin"),
+				});
 
 		const shortcutText = useMemo(() => {
 			if (platform === "darwin") {
@@ -5260,6 +5730,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									payloads={payloadsRef.current}
 									capture={capture}
 									fieldRef={textareaRef}
+									mirrorRef={mirrorRef}
 									isSmallView={isSmallView}
 								/>
 								{/*
@@ -5606,6 +6077,48 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 									/>
 								</ComposerHighlight>
+								{/*
+								 * THE CHIPS, painted OVER the field's own glyphs.
+								 *
+								 * A sibling of `ComposerHighlight` inside the `relative isolate` wrapper, and
+								 * therefore AFTER the textarea in the DOM once `#303` moved the field behind
+								 * that wrapper's two layers. The order matters for two reasons and neither is
+								 * cosmetic: a positioned element paints above an in-flow one whatever the tree
+								 * order is (CSS 2.1 appendix E), so the chip is above the text either way -
+								 * but the DOM order is what decides where a keyboard user meets its `x`, and a
+								 * control that clears the reference the field holds belongs AFTER the field
+								 * rather than as a stop on the way in. It also keeps the chip above the
+								 * textarea's glyphs and below the popups that follow in this wrapper.
+								 *
+								 * It is a sibling rather than a child of `CredentialOverlay` so that the wash
+								 * (which must stay UNDER the glyphs) and the chip (which must sit OVER them)
+								 * can each take their own layer while measuring ONE mirror - this branch's
+								 * own, which is what the run's rects come from; `#303`'s `ComposerHighlight`
+								 * mirror carries the slash painting and is a different element.
+								 *
+								 * `onClear` is NULLED while the composer refuses input: the refusal on this
+								 * base is `readOnly` rather than `disabled`, so a control painted over the box
+								 * IS pressable in a state where every writer is refused, and the chip must not
+								 * offer a verb the composer will not run. The gate is passed in from the same
+								 * `isInputDisabled` the textarea and the other writers read, so there is one
+								 * predicate rather than two.
+								 */}
+								<CredentialChipLayer
+									small={isSmallView}
+									text={newMessage}
+									payloads={payloadsRef.current}
+									capture={capture}
+									mirrorRef={mirrorRef}
+									fieldRef={textareaRef}
+									onClear={isInputDisabled ? null : clearCredential}
+									/*
+									 * R4-5: when the clip rule drops the chip whose control held
+									 * focus, the keyboard needs a home - and this composer has
+									 * exactly one place that gives it back (`focusInput`, the
+									 * pointer gate's reset included).
+									 */
+									onControlUnmounted={focusInput}
+								/>
 							</div>
 						)}
 

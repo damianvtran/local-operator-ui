@@ -43,6 +43,8 @@ const MISSING_NOTICE =
 const TRANSCRIPT =
 	"src/renderer/src/features/chat/canonical/canonical-transcript.tsx";
 const CARET = "src/renderer/src/features/chat/composer-caret.ts";
+const CHIP_LAYER =
+	"src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 
 /* ------------------------------------------------------------------ */
 /* The refusal contract                                                 */
@@ -114,6 +116,14 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 	 *
 	 * Each is pinned where it lives, so a later edit that adds a path or drops a
 	 * term has to come here and say so.
+	 *
+	 * ONE PATH JOINED THAT LIST AFTER THIS FILE WAS WRITTEN, and it is the reason
+	 * the chip's clear has a test of its own below: the credential chip's `x`
+	 * (`clearCredential`) is a control painted OVER the textarea, so `disabled`
+	 * used to make its region inert by accident and `readOnly` makes it pressable
+	 * in a refused composer. It writes into the buffer through `applyCapture` and
+	 * discards the payload the marker cites, i.e. it is a path a press reaches and
+	 * `readOnly` cannot suppress, so it carries the predicate like the rest.
 	 */
 	const source = code(COMPOSER);
 
@@ -268,6 +278,47 @@ test("every control the refusal disables keeps the caret on a press, and only wh
 		(handler.match(/preventDefault/g) ?? []).length,
 		1,
 		"one `preventDefault`, and it is the gated one: a second, ungated call is the blanket trap",
+	);
+});
+
+test("the chip's clear control refuses with the composer it sits on", () => {
+	/*
+	 * A PATH THE REFUSAL'S OWN BASE NEWLY MADE REACHABLE (this branch's reconciling
+	 * commit, on #308's `readOnly`): the chip is painted OVER the textarea, so while
+	 * the refusal was `disabled` the whole region was inert and no control inside it
+	 * could be pressed. `readOnly` keeps the box focusable, which makes the chip's
+	 * `x` pressable in a state where every writer is refused - and it is a writer:
+	 * it splices the marker out of the buffer through `applyCapture` and drops the
+	 * payload the marker cites, which is a value only the operator can supply again.
+	 *
+	 * THREE PINS, because the halves fail differently. The CALL SITE is what any
+	 * state can reach (a chip over a restored draft), so the gate has to be there;
+	 * the layer must DRAW NOTHING for a nulled clear rather than a pressable control
+	 * that does nothing; and the guard inside the handler is the half that holds if a
+	 * future caller passes the handler through without the gate.
+	 */
+	const source = code(COMPOSER);
+	assert.match(
+		source,
+		/onClear=\{isInputDisabled \? null : clearCredential\}/,
+		"the chip layer is given no clear control while the composer refuses: the clear writes into the box and discards a value, so it answers to the same predicate as every other writer",
+	);
+	const layer = code(CHIP_LAYER);
+	assert.match(
+		layer,
+		/onClear === null/,
+		"and the layer draws no `x` for a chip whose clear is nulled, rather than a pressable control whose verb cannot run",
+	);
+	const from = source.indexOf("const clearCredential = useCallback(");
+	assert.ok(from > -1, "the clear has to still be one `useCallback`");
+	const handler = source.slice(
+		from,
+		source.indexOf("clearCitedCredential(", from),
+	);
+	assert.match(
+		handler,
+		/if \(isInputDisabled\) return;/,
+		"and the handler asks the refusal itself, ahead of reading the payload it is about to destroy",
 	);
 });
 
