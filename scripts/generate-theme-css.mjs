@@ -197,9 +197,7 @@ const scopedRoleBlock = () => {
 	const missing = [...paletteRoles].filter((r) => !harvested.has(r));
 	if (missing.length > 0) {
 		throw new Error(
-			`@theme is missing ${missing.length} role pair(s): ${missing.join(", ")}. ` +
-				`Every palette role needs a \`--x: var(--lo-x);\` line inside @theme, ` +
-				`or it reaches :root and never reaches a [data-theme] subtree.`,
+			`@theme is missing ${missing.length} role pair(s): ${missing.join(", ")}. Every palette role needs a \`--x: var(--lo-x);\` line inside @theme, or it reaches :root and never reaches a [data-theme] subtree.`,
 		);
 	}
 
@@ -208,8 +206,11 @@ const scopedRoleBlock = () => {
 	 *
 	 * Without these the guard only asserts paletteRoles subset-of harvested,
 	 * which is blind to a pair whose `--lo-*` source another pair already
-	 * supplies. Today the two sets are a bijection - 29 roles, 29 pairs - and
-	 * it is that coincidence, not the guard, that makes a short harvest loud:
+	 * supplies. Today the two sets are a bijection — a role count that moves with
+	 * every palette change, so this comment deliberately does NOT name one (it said
+	 * "29 roles, 29 pairs" for two folds after that stopped being true; the count
+	 * is whatever `Object.keys(palette).length - 1` says, and the run prints it) —
+	 * and it is that bijection, not the guard, that makes a short harvest loud:
 	 * add one alias and a truncated block passes every gate with output
 	 * byte-identical to the committed file, which is the round-1
 	 * `--shadow-overlay` defect restored. The duplicate check is the half that
@@ -219,8 +220,7 @@ const scopedRoleBlock = () => {
 	const unknown = [...harvested].filter((r) => !paletteRoles.has(r));
 	if (unknown.length > 0) {
 		throw new Error(
-			`@theme references ${unknown.length} role(s) no palette defines: ` +
-				`${unknown.join(", ")}. Check the spelling against the palette keys.`,
+			`@theme references ${unknown.length} role(s) no palette defines: ${unknown.join(", ")}. Check the spelling against the palette keys.`,
 		);
 	}
 	if (pairs.length !== harvested.size) {
@@ -229,13 +229,15 @@ const scopedRoleBlock = () => {
 			...new Set(
 				pairs
 					.map(([, , src]) => src)
-					.filter((r) => (seen.has(r) ? true : (seen.add(r), false))),
+					.filter((r) => {
+						if (seen.has(r)) return true;
+						seen.add(r);
+						return false;
+					}),
 			),
 		];
 		throw new Error(
-			`@theme maps ${dupes.join(", ")} more than once. Aliases are not ` +
-				`allowed here: two properties sharing one role break the one-to-one ` +
-				`mapping that is what makes a truncated harvest detectable at all.`,
+			`@theme maps ${dupes.join(", ")} more than once. Aliases are not allowed here: two properties sharing one role break the one-to-one mapping that is what makes a truncated harvest detectable at all.`,
 		);
 	}
 

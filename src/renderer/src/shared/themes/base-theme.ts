@@ -376,10 +376,15 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 				contrastText: palette.onAccent,
 			},
 
-			/* The system has one accent. `secondary` exists only so MUI's stock
-			   purple can never appear; it is the accent, not a second hue. The
-			   nine call sites that read it are all "an accent-coloured thing next
-			   to another accent-coloured thing", and the two now match. */
+			/* `secondary` is NOT the second accent. The contract HAS one now —
+			   `accentAlt`, the theme's decorative identity/category hue — and it is
+			   deliberately not wired here. `palette.secondary` has ZERO application
+			   reads (`grep 'palette\.secondary' src/renderer` returns nothing: the
+			   "nine call sites" this comment used to count are MUI's own internal
+			   consumers of the key, not ours), so repointing it would move no surface
+			   in this app while quietly re-labelling any ported MUI component's
+			   second colour as our decorative hue. It stays `accent`, which is the
+			   job it has: keeping MUI's stock purple out of a themed app. */
 			secondary: {
 				main: palette.accent,
 				light: palette.accentHover,
