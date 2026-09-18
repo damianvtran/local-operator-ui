@@ -575,20 +575,90 @@ try {
 			}
 		: null;
 
-	// 5. What the grid actually renders, plus the 1380x900 geometry (U1's check).
+	/*
+	 * 5. What the panel actually renders, plus the geometry.
+	 *
+	 * TWO CLAIMS, and the second is why this block was extended.
+	 *
+	 * The HORIZONTAL read is the U1 check: nothing sticks out of the window's right
+	 * edge, and the column count is the shape's own answer (a grid's tracks, or one
+	 * for a list - which is what makes this half comparable across the two shapes
+	 * rather than re-invented for one of them).
+	 *
+	 * The VERTICAL read is the clipped-last-rows defect, which was invisible to
+	 * every other instrument here: the Files view's root was `h-full` inside a
+	 * column that also held the 40px chrome bar, so the panel overflowed its own
+	 * pane by exactly the bar's height and the dock's `overflow-hidden` cut that
+	 * band off. The defect is only visible at the END of the list - the scroller
+	 * reaches its own maximum with the last rows still under the clip and its own
+	 * bottom padding unreachable - so the read scrolls to maximum first, measures,
+	 * and puts the scroll position back where it found it.
+	 *
+	 * The reading is deliberately shape-agnostic: it walks the rows container's
+	 * children and asks each one's rect, so the SAME numbers exist for a grid of
+	 * tiles and a list of rows. That is what let the fix be measured against the
+	 * code that shipped, rather than against a description of it.
+	 */
 	report.filesGrid = await cdp.evaluate(`(() => {
 		const grid = document.querySelector('[data-tour-tag="files-grid"]');
 		const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
 		const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
 		const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
+		const inner = window.innerWidth;
+
+		/*
+		 * At MAXIMUM SCROLL, which is where the defect lives. Both readings happen
+		 * here rather than in two round trips: the horizontal positions do not move
+		 * with vertical scroll, and a second evaluate would be a second chance for
+		 * the page to change between them.
+		 */
+		let vertical = null;
+		if (scroller && tiles.length > 0) {
+			const resting = scroller.scrollTop;
+			scroller.scrollTop = scroller.scrollHeight;
+			const style = window.getComputedStyle(scroller);
+			const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+			const scrollerRect = scroller.getBoundingClientRect();
+			const rowRects = tiles.map((tile) => tile.getBoundingClientRect());
+			const last = rowRects[rowRects.length - 1];
+			const pastEdge = rowRects.filter(
+				(rect) => rect.bottom > window.innerHeight + 0.5,
+			).length;
+			const visible = Math.max(
+				0,
+				Math.min(last.bottom, window.innerHeight) - Math.max(last.top, 0),
+			);
+			vertical = {
+				scrollTop: Math.round(scroller.scrollTop),
+				maxScrollTop: scroller.scrollHeight - scroller.clientHeight,
+				reachedMax:
+					scroller.scrollTop + scroller.clientHeight >=
+					scroller.scrollHeight - 1,
+				/* The panel's own bottom against the window: the defect, in one number. */
+				scrollerBottomPastWindow:
+					Math.round((scrollerRect.bottom - window.innerHeight) * 100) / 100,
+				scrollerPaddingBottom: paddingBottom,
+				lastRowBottom: Math.round(last.bottom * 100) / 100,
+				lastRowVisibleFraction: Math.round((visible / last.height) * 100) / 100,
+				lastRowInsideWindow: last.bottom <= window.innerHeight + 0.5,
+				rowsPastWindowEdge: pastEdge,
+				/* What the scroller's own bottom padding is worth once the end is reached. */
+				paddingBelowLastRow:
+					Math.round((scrollerRect.bottom - paddingBottom - last.bottom) * 100) /
+					100,
+			};
+			scroller.scrollTop = resting;
+		}
+
 		const rects = tiles
 			.map((tile) => tile.getBoundingClientRect())
 			.filter((rect) => rect.width > 0);
-		const inner = window.innerWidth;
 		const clipped = rects.filter((rect) => rect.right > inner + 0.5).length;
 		const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
 		return {
+			/* One child per file, in either shape: a grid's tiles or a list's rows. */
 			tileCount: tiles.length,
+			vertical,
 			windowInnerWidth: inner,
 			windowInnerHeight: window.innerHeight,
 			dock: dock
@@ -616,6 +686,32 @@ try {
 		};
 	})()`);
 
+	/*
+	 * The verdict, in the rig rather than in the reader's head.
+	 *
+	 * Each term is one half of the claim: nothing past the window's edge, the last
+	 * row whole inside it, the panel's own bottom inside the window (that is the
+	 * defect itself - the panel overflowed its pane by the chrome bar's height), and
+	 * the scroller's own bottom padding ACTUALLY REACHED rather than sitting in the
+	 * clipped band. The tolerances are sub-pixel: a rounded half-pixel is not a
+	 * clipped row.
+	 */
+	const bottom = report.filesGrid?.vertical ?? null;
+	report.bottomClip = bottom
+		? {
+				rowsPastWindowEdge: bottom.rowsPastWindowEdge === 0,
+				lastRowInsideWindow: bottom.lastRowInsideWindow,
+				lastRowFullyVisible: bottom.lastRowVisibleFraction >= 0.999,
+				panelInsideWindow: bottom.scrollerBottomPastWindow <= 0.5,
+				bottomPaddingReachable:
+					bottom.paddingBelowLastRow >= bottom.scrollerPaddingBottom - 1,
+				reachedMaxScroll: bottom.reachedMax,
+			}
+		: null;
+	report.bottomClipPass = report.bottomClip
+		? Object.values(report.bottomClip).every(Boolean)
+		: null;
+
 	report.focusabilityOrder = await cdp.evaluate(`(() => {
 		const card = document.querySelector('[data-tour-tag="files-grid"] > *');
 		if (!card) return null;
@@ -636,6 +732,20 @@ try {
 			JSON.stringify(report, null, 2),
 		);
 		console.log(JSON.stringify(report, null, 2));
+		/*
+		 * The vertical claim is an ASSERTION, so a run that measures the defect FAILS
+		 * rather than printing it: a number nobody reads is how the clipped band
+		 * survived in the first place. The horizontal read stays reported-only, as it
+		 * was - it measures a shape that changes, and the wrong edge there is a design
+		 * question rather than a defect with a boolean.
+		 */
+		if (report.bottomClipPass === false) {
+			console.error(
+				`geometry: the panel's last rows are not reachable - ${JSON.stringify(report.bottomClip)}`,
+			);
+			ws.close();
+			process.exit(await finish(1));
+		}
 		ws.close();
 		process.exit(await finish(0));
 	}
@@ -649,7 +759,14 @@ try {
 	// 5. Click the PDF tile and read the frame the viewer created. This is the
 	//    "prove the producer fires AND the viewer opens it" half.
 	report.pdfTileClicked = await cdp.evaluate(`(() => {
-		const grid = document.querySelector(".grid");
+		/*
+		 * The tour tag, not `
+		.grid`: an unqualified class selector matches any other
+		 * `
+		.grid` on the page, and a selector that finds the wrong element reports a
+		 * click that never happened.
+		 */
+		const grid = document.querySelector('[data-tour-tag="files-grid"]');
 		if (!grid) return false;
 		const tile = [...grid.querySelectorAll("button")].find((button) =>
 			button.innerText.toLowerCase().includes(".pdf"),
