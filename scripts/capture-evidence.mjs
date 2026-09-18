@@ -1549,6 +1549,58 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--truncating-title", 780, 560],
 	/*
+	 * The bulk read receipt, on the same real tree: the pile of unacknowledged
+	 * completions the operator reported, the PARTIAL clear (the backend refuses a
+	 * superseded token per item, and the receipt names the row that stays unread),
+	 * and the fully cleared pile with the control gone.
+	 *
+	 * The four negatives are the states the control must NOT appear in: an older
+	 * backend that does not advertise `completion_ack_bulk`, a catalogue read
+	 * that never answers, one that failed, and an empty list. Each is an absence
+	 * claim, which is why each frame carries the readout line that states it in
+	 * words beside the panel.
+	 *
+	 * Sized at 600 rather than the siblings' 560: the readout below the panel
+	 * carries two more lines (the frame tally and the control's own state), and a
+	 * clipped caption is a claim a reviewer cannot read.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-pile", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-partly-read", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-cleared", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-unsupported", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-loading", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-failed", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-empty", 780, 600],
+	/*
+	 * The states a single 360px width cannot photograph, all three asked for by
+	 * design round 1: the header row at the app's own clamps (`chat-layout.tsx`
+	 * allows 240-360, 280 is the default preference), where the action's label
+	 * sheds so the group's own name never breaks (D1, the round's blocker); and
+	 * the interval between the click and the receipt, which is the only progress
+	 * cue an irreversible write has (D4).
+	 *
+	 * 280 and 240 are the panel widths, so the frame is the panel plus the 420px
+	 * readout beside it — 720 and 680 — and the header row inside them measures
+	 * 271px and 223px.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-narrow-default", 720, 600],
+	["chat-sidebar-status-feed--mark-all-read-narrow-minimum", 680, 600],
+	/*
+	 * The pile scrolled to the bottom of its own box: the frame that proves the
+	 * header row is STICKY, since at rest a sticky row and a static one are the
+	 * same pixels and the defect design D2 found (the control 632px above the
+	 * marks it clears) exists only past the first screenful.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-scrolled", 780, 600],
+	/*
+	 * The filter case (agent review R4): one unread mark on screen, the store's
+	 * forty behind it, and no control — the frame that shows the scope being
+	 * withheld rather than silently narrowed.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-filtered", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-in-flight", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-refused", 780, 600],
+	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *
 	 * Two surfaces, and both are the row the reader is on: a conversation row
