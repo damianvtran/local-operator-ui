@@ -483,7 +483,7 @@ try {
 	);
 	await until(async () => {
 		const state = await inspector.evaluate(
-			`({state:globalThis.__signedUpdateProbe.state,error:globalThis.__signedUpdateProbe.error})`,
+			"({state:globalThis.__signedUpdateProbe.state,error:globalThis.__signedUpdateProbe.error})",
 		);
 		if (state.state === "error") throw new Error(state.error);
 		return state.state === "downloaded";
@@ -493,7 +493,7 @@ try {
 	);
 	assert.notEqual(candidateMetadata.version, capability.version);
 	await inspector.evaluate(
-		`setTimeout(()=>globalThis.__signedUpdateProbe.updater.quitAndInstall(false,false),100);true`,
+		"setTimeout(()=>globalThis.__signedUpdateProbe.updater.quitAndInstall(false,false),100);true",
 	);
 	inspector.close();
 	inspector = null;
