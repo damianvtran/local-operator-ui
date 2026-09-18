@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -33,12 +34,17 @@ const bundle = await build({
 			import { QueryClientProvider } from "@tanstack/react-query";
 			import { ProviderGrid } from "./src/renderer/src/features/providers/provider-grid";
 			import { BackendSettingsSection } from "./src/renderer/src/features/settings/components/backend-settings-section";
+			import { BackendCompatibilityBanner } from "./src/renderer/src/shared/components/common/backend-compatibility-banner";
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 			export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";
 			export { desktopResult, DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { ConfigApi } from "./src/renderer/src/shared/api/local-operator/config-api";
-			export { backendErrorKind, backendLoadErrorMessage, backendCompatibilityMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
+			export { backendErrorKind, backendLoadErrorMessage, backendCompatibilityMessage,
+				BACKEND_PAIRING_SENTENCE, BACKEND_ERROR_REMEDY, BACKEND_ERROR_DIAGNOSIS,
+				backendPairingSentence, backendUpdateIsRemedy, compatibilityBannerShown,
+			} from "./src/renderer/src/shared/api/local-operator/backend-error";
+			export { desktopFeatureState, desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 
 			const render = (Component) => (client) =>
 				renderToStaticMarkup(
@@ -46,6 +52,7 @@ const bundle = await build({
 				);
 			export const renderProviderGrid = render(ProviderGrid);
 			export const renderBackendSettings = render(BackendSettingsSection);
+			export const renderBackendCompatibilityBanner = render(BackendCompatibilityBanner);
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -74,6 +81,37 @@ const bundle = await build({
 	loader: { ".css": "empty" },
 	jsx: "automatic",
 	write: false,
+	plugins: [
+		{
+			/*
+			 * The server-status hook is faked, and ONLY it: this file's subject is the
+			 * compatibility banner's copy and controls, and the banner reads main's
+			 * pairing record through this hook. Importing the real one drags the
+			 * renderer's config module into a Node bundle, where it throws at load
+			 * ("Failed to load configuration") because `import.meta.env` only exists
+			 * under Vite - measured here, as a build-time failure rather than an
+			 * assertion. The fake keeps the SHAPE the banner reads (`data.snapshot`),
+			 * and the record it returns is main's own field for field.
+			 */
+			name: "server-health-fixture",
+			setup(builder) {
+				builder.onResolve(
+					{ filter: /^@shared\/hooks\/use-connectivity-status$/ },
+					() => ({ path: "server-health", namespace: "surfaces-fixture" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "surfaces-fixture" },
+					() => ({
+						contents:
+							"export const serverHealthQueryKey = [\"server-health\"];\n" +
+							"export const useServerHealth = () => ({ data: globalThis.__serverHealth });\n",
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
+			},
+		},
+	],
 });
 
 // Written to a real file rather than imported as a data: URL. React DOM's
@@ -94,8 +132,24 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 // `window.api.desktop` the renderer takes its browser-dev HTTP branch, which is
 // not the code that ships.
 let bridgeStatus = 503;
+/**
+ * The banner's two main-process reads, faked at the bridge for the same reason the
+ * transport is: main's pairing record and the reconnect verb are MAIN's, and a test
+ * that hand-made them would not notice the banner reading the wrong field.
+ * The verb is counted rather than called for real (design § 2, § 11.2).
+ */
+let daemonSnapshot = null;
 globalThis.window = {
 	api: {
+		updater: {
+			updateBackend: async () => true,
+			onBackendUpdateError: () => () => undefined,
+		},
+		backend: {
+			getStatus: async () => daemonSnapshot,
+			onStatusChange: () => () => undefined,
+			reconnect: async () => daemonSnapshot,
+		},
 		desktop: {
 			request: async () => ({
 				status: bridgeStatus,
@@ -118,6 +172,15 @@ const {
 	backendCompatibilityMessage,
 	renderProviderGrid,
 	renderBackendSettings,
+	renderBackendCompatibilityBanner,
+	BACKEND_PAIRING_SENTENCE,
+	BACKEND_ERROR_REMEDY,
+	BACKEND_ERROR_DIAGNOSIS,
+	backendPairingSentence,
+	backendUpdateIsRemedy,
+	compatibilityBannerShown,
+	desktopFeatureState,
+	desktopFeatureEnabled,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -794,5 +857,300 @@ test("an expired request keeps a diagnosis and its instruction", () => {
 	assert.equal(
 		backendLoadErrorMessage("Your settings could not be loaded.", upstream),
 		"Your settings could not be loaded.",
+	);
+});
+
+/*
+ * The pairing causes, one sentence each - and the controls each state is entitled
+ * to offer (design § 2, § 3, § 11.1-2).
+ *
+ * The operator's screenshot had three surfaces disagreeing about ONE fact: a banner
+ * asking them to make the app manage the server, a chat pane calling their server
+ * old, and a sidebar printing the daemon's own prose. So these cases are about the
+ * two properties that make that impossible rather than about wording: every cause's
+ * sentence exists ONCE and is selected by both surfaces from the same exported
+ * decision, and a control is offered only where an act exists that can change the
+ * condition.
+ */
+const ALL_FEATURES = {
+	auth: 1,
+	settings: 1,
+	commands: 1,
+	catalogues: 1,
+	lifecycle: 1,
+	mcp: 1,
+	radient: 1,
+	session_catalogue: 2,
+};
+
+/** The banner's two reads, answered the way main answers them. */
+function bannerClient({ pairing, features = ALL_FEATURES, owned = false }) {
+	const client = newClient();
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: pairing.available,
+		features,
+	});
+	globalThis.__serverHealth = {
+		online: true,
+		snapshot: {
+			state: "attached",
+			reconnecting: false,
+			owned,
+			url: "http://127.0.0.1:7341",
+			instanceId: "instance-1",
+			pid: 4321,
+			version: "0.55.6",
+			prefix: "/Users/x/.local/share/uv/tools/local-operator",
+			installKind: "uv-tool",
+			desktopAvailable: pairing.available,
+			pairing,
+			failures: 0,
+			capabilityStatus: null,
+			unanswered: 0,
+			lastTransportAt: null,
+			detail: "Connected to the daemon.",
+			updatedAt: 0,
+		},
+	};
+	return client;
+}
+
+/** The rendered text a user reads, with the entities a server render escapes. */
+function renderedText(html) {
+	return text(html)
+		.replace(/&#x27;/g, "'")
+		.replace(/&quot;/g, '"')
+		.replace(/&amp;/g, "&");
+}
+
+const PAIRING_CAUSES = [
+	"successor",
+	"governed-elsewhere",
+	"pre-handshake",
+	"credential-refused",
+	"unpaired",
+];
+
+test("one cause, one sentence: every pairing cause is worded once, and it is not a version problem", () => {
+	for (const cause of PAIRING_CAUSES) {
+		const sentence = BACKEND_PAIRING_SENTENCE[cause];
+		assert.ok(sentence, `${cause}: the table must carry a sentence`);
+
+		/*
+		 * The banner renders that exact sentence - not a paraphrase of it - and the
+		 * per-surface decision hands the SAME string to the chat pane and the sidebar,
+		 * which is what "one authority" has to mean to be assertable.
+		 */
+		const message = backendCompatibilityMessage({
+			kind: "unknown",
+			unpaired: true,
+			missing: [],
+			answered: true,
+			cause,
+		});
+		assert.equal(message, sentence, `${cause}: the banner's sentence is the table's`);
+		assert.equal(
+			backendPairingSentence("unpaired", cause),
+			sentence,
+			`${cause}: the pane and the list read the same sentence as the banner`,
+		);
+
+		// The app-managed clause this change removes (design § 3.1), and the version
+		// sentence a pairing condition must never borrow (design § 4).
+		assert.doesNotMatch(sentence, /manage its own server/);
+		assert.doesNotMatch(sentence, /Update the (backend|server)/i);
+		assert.doesNotMatch(sentence, /older than this app expects/);
+		assert.doesNotMatch(sentence, /Update/, `§ 4's prediction, for ${cause}`);
+	}
+
+	// S3 is the ONE cause that names an age, and it also says what still works -
+	// both halves are decisions rather than implications (design § 3.3).
+	assert.match(
+		BACKEND_PAIRING_SENTENCE["pre-handshake"],
+		/older than the pairing handshake/,
+	);
+	assert.match(BACKEND_PAIRING_SENTENCE["pre-handshake"], /CLI and the TUI are unaffected/);
+
+	/*
+	 * And the tri-state is what keeps that true at the surfaces: a payload that
+	 * closes the desktop plane is `unpaired` even with every feature advertised -
+	 * the case the chat pane used to report as a version gap.
+	 */
+	assert.equal(
+		desktopFeatureState(
+			{ desktop_available: false, features: ALL_FEATURES },
+			"session_catalogue",
+			2,
+		),
+		"unpaired",
+	);
+	assert.equal(
+		desktopFeatureEnabled(
+			{ desktop_available: false, features: ALL_FEATURES },
+			"session_catalogue",
+			2,
+		),
+		false,
+		"the boolean stays the projection, so no call site changes meaning",
+	);
+	assert.equal(
+		desktopFeatureState(
+			{ desktop_available: true, features: ALL_FEATURES },
+			"session_catalogue",
+			3,
+		),
+		"below-version",
+	);
+});
+
+test("the banner offers only the controls that can change the condition", () => {
+	const cases = [
+		// cause, retry offered, update offered
+		["successor", true, false],
+		["credential-refused", true, false],
+		["unpaired", true, false],
+		// Another program's plane: the daemon refuses a second claim even with the
+		// correct key, so a Retry there is a button that provably cannot work
+		// (design § 2 S2, § 10.2).
+		["governed-elsewhere", false, false],
+		// An install older than the handshake: the update IS the remedy, but only for
+		// an install this app holds.
+		["pre-handshake", false, false],
+	];
+	for (const [cause, retry, update] of cases) {
+		const rendered = renderedText(
+			renderBackendCompatibilityBanner(
+				bannerClient({ pairing: { available: false, cause } }),
+			),
+		);
+		assert.ok(
+			rendered.includes(BACKEND_PAIRING_SENTENCE[cause]),
+			`${cause}: the banner renders its sentence, and this one is not it: ${rendered}`,
+		);
+		assert.equal(
+			/Retry/.test(rendered),
+			retry,
+			`${cause}: Retry is offered only where re-claiming can change the state`,
+		);
+		assert.equal(
+			/Update backend/.test(rendered),
+			update,
+			`${cause}: an update is offered only where it is the remedy that exists`,
+		);
+	}
+
+	// The SAME S3 state, with main saying this app holds the serving install: there
+	// the install is its to move, so the update is offered (design § 3.4).
+	const owned = renderedText(
+		renderBackendCompatibilityBanner(
+			bannerClient({
+				pairing: { available: false, cause: "pre-handshake" },
+				owned: true,
+			}),
+		),
+	);
+	assert.match(owned, /Update backend/);
+	assert.doesNotMatch(owned, /Retry/);
+
+	// And a PAIRED app with a genuine version gap keeps the negotiated remedy.
+	const versionGap = renderedText(
+		renderBackendCompatibilityBanner(
+			bannerClient({
+				pairing: { available: true, cause: null },
+				features: { ...ALL_FEATURES, mcp: 0 },
+			}),
+		),
+	);
+	assert.match(versionGap, /Update backend/);
+
+	// The update decision itself, stated at the seam: S3 without ownership is not an
+	// update, and no other pairing cause ever is.
+	assert.equal(
+		backendUpdateIsRemedy({
+			kind: "unknown",
+			unpaired: true,
+			answered: true,
+			cause: "pre-handshake",
+			servedByThisApp: false,
+		}),
+		false,
+	);
+	assert.equal(
+		backendUpdateIsRemedy({
+			kind: "unknown",
+			unpaired: true,
+			answered: true,
+			cause: "pre-handshake",
+			servedByThisApp: true,
+		}),
+		true,
+	);
+	for (const cause of [
+		"successor",
+		"governed-elsewhere",
+		"credential-refused",
+		"unpaired",
+	]) {
+		assert.equal(
+			backendUpdateIsRemedy({
+				kind: "unknown",
+				unpaired: true,
+				answered: true,
+				cause,
+				servedByThisApp: true,
+			}),
+			false,
+			`${cause}: installing a server cannot repair a pairing this app performs itself`,
+		);
+	}
+});
+
+test("the banner is on screen for a pairing cause the capability answer cannot show", () => {
+	/*
+	 * WHY this is its own case. `/v1/capabilities` admits nobody, so a daemon this
+	 * app is not paired with answers it normally - including `desktop_available:
+	 * true`, which is what a successor with an env-governed plane reports. A banner
+	 * gated on the capability payload alone would stay silent in exactly the state
+	 * the operator photographed, so the pairing RECORD is half the condition.
+	 */
+	const healthy = { desktop_available: true, features: ALL_FEATURES };
+	assert.equal(
+		compatibilityBannerShown(healthy),
+		false,
+		"an answer that opens every surface is not on its own a reason to speak",
+	);
+	assert.equal(
+		compatibilityBannerShown(healthy, "successor"),
+		true,
+		"a pairing cause main published is a reason to speak whatever the payload says",
+	);
+	const rendered = renderedText(
+		renderBackendCompatibilityBanner(
+			bannerClient({ pairing: { available: false, cause: "successor" } }),
+		),
+	);
+	assert.match(rendered, /was replaced while this app was running/);
+});
+
+test("the banner's Retry reaches main's reconnect verb, not a refetch of a public route", () => {
+	/*
+	 * A source assertion against the shipped component, and deliberately so: the
+	 * defect is a control whose HANDLER cannot work, and `invalidateQueries` on a
+	 * public route is invisible in a rendered frame - the button looks identical and
+	 * the state does not move (design § 2, § 11.2). The behavioural half is driven
+	 * live by the frame rig, where the daemon's own access log shows the claim the
+	 * control caused.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+		"utf8",
+	);
+	assert.match(source, /window\.api\?\.backend\?\.reconnect\?\.\(\)/);
+	const verb = source.indexOf("backend?.reconnect?.()");
+	const invalidate = source.indexOf("invalidateQueries", verb);
+	assert.ok(verb > 0, "the reconnect verb must be the control's act");
+	assert.ok(
+		invalidate > verb,
+		"the refetch follows the verb rather than replacing it",
 	);
 });

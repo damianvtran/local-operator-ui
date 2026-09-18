@@ -22,6 +22,30 @@ const bundle = await build({
 });
 const source = bundle.outputFiles[0].text;
 
+/*
+ * The shared half of the desktop contract, for the machine vocabulary the refusals
+ * carry. Bundled separately because `desktop-api` imports these rather than
+ * re-exporting them, and a case that restated the strings would be asserting
+ * against its own copy rather than against what the app renders.
+ */
+const refusalContractBundle = await build({
+	stdin: {
+		contents:
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, DESKTOP_MACHINE_DETAIL } from "./src/shared/desktop-contract";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "neutral",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	write: false,
+});
+const { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, DESKTOP_MACHINE_DETAIL } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(refusalContractBundle.outputFiles[0].text).toString("base64")}`
+	);
+
 /**
  * Import a fresh copy of the transport with `window.api.desktop.request` bound
  * to `request`. A fresh copy per test keeps the module-level deadline constant
@@ -1350,5 +1374,147 @@ test("an expired read is recognisable as its own failure, and a dead backend is 
 	assert.equal(
 		isDeadlineExceeded(new DesktopControlError(null, "stalled")),
 		false,
+	);
+});
+
+/*
+ * The refusal vocabulary, and the one thing it exists to stop: the DAEMON's prose
+ * becoming this app's diagnosis.
+ *
+ * `desktopResult` used to throw the envelope's `detail` as the error's message, so
+ * the string a server wrote about its own ownership reached the screen as ours -
+ * the operator photographed exactly that, in a sidebar whose machine was simply not
+ * paired (design § 0(c), § 5.1). These cases drive the real transport against each
+ * refusal a plane can answer, and assert both halves: the code the renderer
+ * derives, and the sentence a user gets from it.
+ */
+test("a plane's refusal is coded, and the sentence is this app's rather than the server's", async () => {
+	const daemonProse =
+		"Desktop controls require a backend started by the desktop app.";
+	const cases = [
+		// status, request, expected code
+		[403, { op: "sessions.list", limit: 10 }, DESKTOP_REFUSAL_CODE.refused],
+		[401, { op: "sessions.list", limit: 10 }, DESKTOP_REFUSAL_CODE.refused],
+		[
+			503,
+			{ op: "sessions.list", limit: 10 },
+			DESKTOP_REFUSAL_CODE.planeClosed,
+		],
+		/*
+		 * The discrimination the PATH supplies: `/v1/capabilities` is served without
+		 * admitting anyone, so a 503 for it is that route's own failure and not a
+		 * statement about this app's pairing. Classifying by status alone would say
+		 * "the plane is shut" about the one route a shut plane still answers.
+		 */
+		[503, { op: "capabilities" }, undefined],
+	];
+	for (const [status, request, code] of cases) {
+		const { desktopResult, DesktopControlError, userFacingMessage } =
+			await loadTransport(async () => ({
+				status,
+				body: { detail: daemonProse },
+			}));
+		let caught = null;
+		try {
+			await desktopResult(request);
+		} catch (error) {
+			caught = error;
+		}
+		assert.ok(caught instanceof DesktopControlError, `${status}: it must reject`);
+		assert.equal(caught.code, code, `${status} ${request.op}: the code is derived`);
+		const rendered = userFacingMessage(caught, "fallback");
+		if (code === undefined) {
+			/*
+			 * The BOUNDARY, asserted rather than left implicit: the translator's scope is
+			 * the pairing family - a refusal on a route the plane has to ADMIT - and the
+			 * capability route is the one desktop op outside that set, because the plane
+			 * serves it WITHOUT admitting anyone. Its answer proves nothing either way
+			 * about this app's pairing, and it is deliberately left untranslated rather
+			 * than given a pairing code it has not earned.
+			 */
+			assert.equal(caught.code, undefined);
+			assert.equal(rendered, daemonProse);
+			return;
+		}
+		assert.equal(
+			caught.message,
+			daemonProse,
+			"the server's own words are retained on the error for machine-voice detail",
+		);
+		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.notEqual(
+			rendered,
+			daemonProse,
+			"the server's sentence must never be the app's diagnosis",
+		);
+	}
+});
+
+test("a code main declared wins, so the app's own refusal is not read as the plane's", async () => {
+	/*
+	 * Main synthesises two refusals of its own - no credential to send, and a request
+	 * it could not complete - and BOTH arrive as a 503. Without a declared code the
+	 * first would be classified as "the plane is shut", which is a different fact with
+	 * a different sentence, and the second would be reported as a pairing condition
+	 * when nothing was established about the plane at all.
+	 */
+	const cases = [
+		[DESKTOP_REFUSAL_CODE.noCredential, DESKTOP_MACHINE_DETAIL.noCredential],
+		[
+			DESKTOP_REFUSAL_CODE.transportFailed,
+			DESKTOP_MACHINE_DETAIL.transportFailed,
+		],
+	];
+	for (const [code, message] of cases) {
+		const { desktopResult, userFacingMessage } = await loadTransport(async () => ({
+			status: 503,
+			body: { detail: { code, message } },
+		}));
+		let caught = null;
+		try {
+			await desktopResult({ op: "sessions.list", limit: 10 });
+		} catch (error) {
+			caught = error;
+		}
+		assert.equal(caught.code, code);
+		const rendered = userFacingMessage(caught, "fallback");
+		assert.equal(rendered, DESKTOP_REFUSAL_SENTENCE[code]);
+		assert.doesNotMatch(
+			rendered,
+			/manage its own server|desktop-managed backend/i,
+			"the app-managed framing is gone from what a user reads (design § 3.1)",
+		);
+	}
+
+	/*
+	 * And a code that is NOT part of this vocabulary survives untouched: a refusal
+	 * about a resource is the server's category, and the renderer may not overwrite it
+	 * with a pairing fact (measured on a 409 profile conflict, whose category this
+	 * change briefly ate).
+	 */
+	const { desktopResult, userFacingMessage } = await loadTransport(async () => ({
+		status: 409,
+		body: {
+			detail: {
+				code: "unresolved_attachment",
+				message: "Choose an available profile or detach it before sending.",
+			},
+		},
+	}));
+	let caught = null;
+	try {
+		await desktopResult({
+			op: "sessions.message",
+			sessionId: "111111111111",
+			requestId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+			text: "draft",
+		});
+	} catch (error) {
+		caught = error;
+	}
+	assert.equal(caught.code, "unresolved_attachment");
+	assert.equal(
+		userFacingMessage(caught, "fallback"),
+		"Choose an available profile or detach it before sending.",
 	);
 });

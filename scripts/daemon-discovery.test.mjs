@@ -751,6 +751,50 @@ test("the claim latch's 409 and a wrong key's 401 are distinct, named outcomes",
 	await refused.close();
 });
 
+test("a claim route that is ABSENT is its own outcome, not one more refusal", async () => {
+	/*
+	 * WHY 404 gets its own outcome. It is the one refusal a status names
+	 * unambiguously: the daemon's own contract for `/v1/desktop/claim` lists
+	 * 403/400/409/503/401 and never 404, so a 404 can only mean the ROUTE does not
+	 * exist - the install predates the handshake. Lumped into `refused` it was
+	 * indistinguishable from "this daemon refused my credential", which is a
+	 * different sentence with a different remedy (design § 1.6, § 2 S3).
+	 *
+	 * The three sibling statuses are asserted beside it so the distinction cannot
+	 * quietly collapse: 409 is the latch, 401 a key the record got wrong, 403 a
+	 * refusal, and none of them may become `no-handshake`.
+	 */
+	const absent = await startDaemon({
+		instanceId: "instance-no-route",
+		version: "0.54.39",
+		claim: { status: 404, body: { detail: "Not Found" } },
+	});
+	assert.deepEqual(await claimDesktopPlane(absent.address, "key", {}), {
+		outcome: "no-handshake",
+		status: 404,
+	});
+	await absent.close();
+
+	for (const [status, expected] of [
+		[409, "already-claimed"],
+		[401, "wrong-key"],
+		[403, "refused"],
+	]) {
+		const daemon = await startDaemon({
+			instanceId: `instance-${status}`,
+			version: "0.54.46",
+			claim: { status, body: { detail: `refused ${status}` } },
+		});
+		const outcome = await claimDesktopPlane(daemon.address, "key", {});
+		assert.equal(
+			outcome.outcome,
+			expected,
+			`${status} must stay its own outcome rather than reading as an absent route`,
+		);
+		await daemon.close();
+	}
+});
+
 test("a capability refusal is read as a capability, never as liveness", async () => {
 	const gated = await startDaemon({
 		instanceId: "instance-gated",
