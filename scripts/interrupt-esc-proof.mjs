@@ -175,17 +175,28 @@ const startTurn = async (sessionId) => {
  * `scripts/browser-host-proof.mjs` established for the same reason, together
  * with a scratch `LOCAL_OPERATOR_CONFIG_DIR` so no session, credential or
  * agent registry outside this run is read either.
+ *
+ * `LOCAL_OPERATOR_LOG_DIR` is the one path HOME does NOT move: the app's logger
+ * takes its default from Electron's `home` — the OS ACCOUNT's home on macOS and
+ * Linux, which the `HOME` variable does not change — so a rig without this
+ * override appends this run's lines to the operator's own log files. That is
+ * measured, not theoretical: QA launches with scratch trees under `/private/tmp`
+ * logged `Log path: …/Library/Application Support/Local Operator/logs`. See
+ * `src/main/backend/log-dir.ts`.
  */
 const HOME_DIR = join(OUT, "home");
 const CONFIG_DIR = join(OUT, "config");
 const USER_DATA = join(OUT, "user-data");
+/** This run's app log files, through the app's own override. See above. */
+const LOG_DIR = join(OUT, "logs");
 /* Fresh per run: a leftover profile from a killed run holds the single-instance
  * lock, and the app would then refuse to start against the previous run's
  * state. */
-for (const dir of [HOME_DIR, CONFIG_DIR, USER_DATA])
+for (const dir of [HOME_DIR, CONFIG_DIR, USER_DATA, LOG_DIR])
 	rmSync(dir, { recursive: true, force: true });
 mkdirSync(HOME_DIR, { recursive: true });
 mkdirSync(CONFIG_DIR, { recursive: true });
+mkdirSync(LOG_DIR, { recursive: true });
 
 const childEnv = { ...process.env };
 for (const key of Object.keys(childEnv)) {
@@ -228,6 +239,9 @@ const spawnEnv = withNotificationsOff({
 	...childEnv,
 	HOME: HOME_DIR,
 	LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+	// The operator's own log files are the one path HOME does not move; see the
+	// ISOLATION note above.
+	LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	// This run's backend is already listening; the app must not spawn or kill one -
 	// and in a scratch HOME it would otherwise try to install and start one.

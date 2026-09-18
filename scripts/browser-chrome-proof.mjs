@@ -17,6 +17,14 @@
  * Isolation (non-negotiable, and why each piece is here):
  *   - `HOME` AND `LOCAL_OPERATOR_CONFIG_DIR` are both redirected: the config dir
  *     alone leaves the cache and hardcoded home roots in the real home.
+ *   - `LOCAL_OPERATOR_LOG_DIR` is redirected too, and it is the one path HOME
+ *     cannot move: the app's logger takes its default from Electron's `home`, the
+ *     OS ACCOUNT's home rather than the `HOME` variable, so a run without this
+ *     override appends to the operator's own log files. Measured on this machine:
+ *     QA launches with scratch trees under `/private/tmp` logged
+ *     `Log path: …/Library/Application Support/Local Operator/logs`, which is how
+ *     rig lines ended up interleaved with the operator's own and made his
+ *     window-raise log unattributable. See `src/main/backend/log-dir.ts`.
  *   - the Electron profile root is a scratch `--user-data-dir`, so the run cannot
  *     see or touch the operator's real profile — and cannot leak its own state into
  *     it either. This one matters more here than for the host PR: this harness
@@ -71,6 +79,8 @@ const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
 const OUT_DIR = join(SCRATCH, "out");
+/** This run's app log files: the override HOME cannot supply. See the header. */
+const LOG_DIR = join(SCRATCH, "logs");
 
 let DEVTOOLS_PORT = 0;
 function pickDevtoolsPort() {
@@ -236,6 +246,9 @@ async function launchApp() {
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		// The operator's own log files are the one path HOME does not move; see the
+		// header's isolation note.
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
@@ -1048,7 +1061,7 @@ function startFrontmostSampler(appPid) {
 
 async function main() {
 	rmSync(SCRATCH, { recursive: true, force: true });
-	for (const dir of [HOME_DIR, CONFIG_DIR, USER_DATA, OUT_DIR]) {
+	for (const dir of [HOME_DIR, CONFIG_DIR, USER_DATA, OUT_DIR, LOG_DIR]) {
 		mkdirSync(dir, { recursive: true });
 	}
 
