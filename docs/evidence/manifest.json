@@ -1,8 +1,8 @@
 {
 	"head": "e24af8eaebefbea09579e50058385fda26924679",
 	"headNote": "PR #362, TWICE FOLDED: onto `origin/main` = `7622b41e4` (the launch-discipline merge) and then onto `213b7c45c` (PR #361's `feat/color-application` palette re-solve). THIS file was the only conflict in both, its usual shape, since both sides rewrite it; each fold was resolved as a union - main's side wholesale, with this branch's own records re-layered on top - and every derived field was re-derived from the folded tree rather than carried across. The second fold also RE-SHOT this branch's frames, because a fold onto a palette change is the one case a re-stamp cannot pay for: `tokyoNight` differs in all six directories and the other eleven swept themes are byte-identical, which is the honest measure of what the re-solve moved on this surface. `head`, `partialCapture.addedAtHead` and `partialCapture.refreshedAtHead` name the commit that carries the frames; the two folds' own records are `partialCapture.foldOntoLaunchDisciplineRestampNote` and `partialCapture.foldOntoColourApplicationNote`.",
-	"srcTree": "140d99151c56bc773d90646075017e1a979cbab9",
-	"scriptsTree": "745fbe2e0faeca6f2b0206507f8e63c3fd77a639",
+	"srcTree": "a923c86951e18c04038977b9a42cf6f6745513f4",
+	"scriptsTree": "16497fa51d748776406b6abd5264268f8ddeeadd",
 	"dirtyWorkingTree": false,
 	"capturedAt": "2026-09-17T07:08:08.000Z",
 	"frames": 7808,

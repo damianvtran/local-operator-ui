@@ -47,6 +47,7 @@ const {
 	ViewerRecordPublisher,
 	requestDesktop,
 	requestDesktopOutcome,
+	desktopAnswerProvesPairing,
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	guardForegroundReceipts,
@@ -2234,4 +2235,48 @@ test("a ledger read outlives the old control budget and still answers", async ()
 	} finally {
 		await new Promise((resolve) => stall.close(resolve));
 	}
+});
+
+/**
+ * The pairing question, asked of one answer.
+ *
+ * WHY this is its own guard: `desktopAnswerProvesPairing` is the call site's
+ * whole contribution to the state machine's identity accounting, and the
+ * incident it exists for (2026-09-18) turned on exactly this predicate being
+ * absent - every answer, refusal included, was counted as a successful request,
+ * so a daemon replaced under the app held it at `attached` for 28 minutes while
+ * the app reported "not paired with the running Local Operator server".
+ */
+test("only an answer the desktop plane admitted proves this app is still paired", () => {
+	const gated = { op: "sessions.list", limit: 1 };
+	assert.equal(
+		desktopAnswerProvesPairing(gated, { status: 200 }),
+		true,
+		"a 2xx from a route the plane has to admit is the pairing, proven",
+	);
+	for (const status of [401, 403, 503]) {
+		assert.equal(
+			desktopAnswerProvesPairing(gated, { status }),
+			false,
+			`a ${status} is an ANSWER - liveness evidence - and never proof of a pairing`,
+		);
+	}
+	assert.equal(
+		desktopAnswerProvesPairing({ op: "capabilities" }, { status: 200 }),
+		false,
+		"the capability op is served WITHOUT admitting anyone, which is how the renderer reads a shut plane's posture - a 200 from it says nothing about this app's pairing",
+	);
+	assert.equal(
+		desktopAnswerProvesPairing(
+			{ op: "auth.start", provider: "openai" },
+			{ status: 200 },
+		),
+		false,
+		"a route OUTSIDE the desktop prefix is never pairing evidence, whatever status it answers: which status one of these families would answer is not knowable from the answer itself, which is why the predicate keys on the prefix rather than on the family - `/v1/auth` carries `require_desktop` unconditionally and answers `503` on an unclaimed daemon, while `/v1/agents` answers `200` there until the plane is enabled",
+	);
+	assert.equal(
+		desktopAnswerProvesPairing({}, { status: 422 }),
+		false,
+		"a request the schema refused was never sent, so it proves nothing",
+	);
 });
