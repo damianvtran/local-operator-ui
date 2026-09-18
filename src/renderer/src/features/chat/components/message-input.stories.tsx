@@ -1,7 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { screen, userEvent, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
@@ -752,6 +752,7 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
 const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+const CLEARED_NOTICE = /Removed LOP_SECRET_[A-Z0-9]+ from this message/;
 
 const holdShutter = () => {
 	document.documentElement.dataset.capturePending = "1";
@@ -914,6 +915,110 @@ export const CredentialPillMidProse: Story = {
 		}
 		if (value.includes(CREDENTIAL_CANARY)) {
 			throw new Error("the secret is in the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE CHIP'S CLEAR CONTROL, DRIVEN BY A REAL CLICK (operator report,
+ * 2026-09-17: "a real pill component — slick, less technical, with an x button
+ * to clear").
+ *
+ * This is the only place the control can be exercised end to end. The composer's
+ * jsdom suite cannot reach it: the chip is painted at a box MEASURED from the
+ * mirror, and jsdom has no layout engine, so `getClientRects()` reports nothing
+ * and no chip is mounted there. The pure half is pinned in
+ * `scripts/credential-capture.test.mjs` (`clearCitedCredential`: one edit, marker
+ * and its trailing space, caret where the marker was); what this frame adds is
+ * that the shipped control is reachable, that the click lands on it, and that the
+ * operator is TOLD what it cost.
+ *
+ * The sentence is chosen so the removal reads cleanly: the words that follow the
+ * reference are separated by punctuation the operator typed, so the marker's own
+ * trailing space — which goes with it, the mint's own rule — takes nothing else
+ * with it. A sentence whose grammar leans on that space ("deploy with <ref> to
+ * the box") reads differently afterwards, and that is the operator's edit to
+ * make: the app removes a reference, it does not rewrite a sentence.
+ */
+export const CredentialPillCleared: Story = {
+	render: () => (
+		<Frame label="cleared: the x on the chip took the reference out in one edit, and the composer says the value is gone">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`here is the new key /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, ", use it for the QA box");
+		if (!composerValue(box).includes("[Credential #1, 19 chars]")) {
+			throw new Error(`no chip was minted: ${composerValue(box)}`);
+		}
+		/*
+		 * The control's accessible name, which is the only handle it has: the chip is
+		 * painted over the marker's own characters, so a text query would find the
+		 * textarea's copy of the marker rather than this control.
+		 */
+		const clear =
+			await within(canvasElement).findByLabelText("Remove credential");
+		await userEvent.click(clear);
+		await screen.findByText(CLEARED_NOTICE);
+		const value = composerValue(box);
+		if (value.includes("[Credential #1")) {
+			throw new Error(`the marker survived the clear: ${value}`);
+		}
+		if (value.includes(CREDENTIAL_CANARY)) {
+			throw new Error("the secret is in the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE SAME CHIP AT THE SHIPPED COMPACT RUNG — a column under 550px, where the
+ * composer drops a type step and the padding — because the chip is painted at a
+ * box measured from the mirror and the run it covers is NARROWER there.
+ *
+ * Nothing in the composer suite can catch a geometry failure at this rung (no
+ * layout engine), so the pair of frames is what holds the claim: the chip covers
+ * the marker's box at both rungs, and the numbers behind both are printed by
+ * `scripts/credential-chip-geometry.mjs` rather than read off these pictures.
+ */
+export const CredentialPillSmallView: Story = {
+	render: () => (
+		<Frame label="small view (a 440px column): the same chip at the compact rung, over a narrower run">
+			<div className={cn("@container/chatcol")} style={{ width: 440 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={true}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, "is the deploy key");
+		if (!composerValue(box).startsWith("[Credential #1, 19 chars]")) {
+			throw new Error(`no chip was minted: ${composerValue(box)}`);
 		}
 		releaseShutter();
 	},

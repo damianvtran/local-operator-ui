@@ -105,6 +105,13 @@ export type CredentialChipProps = {
 	 * credential store or lie about what it does. Adding one would need the
 	 * message to be withdrawn from the model's context as well as from the
 	 * transcript, which is a conversation-store change rather than a render.
+	 *
+	 * Absent on the composer's chip too, in two states: a marker nothing backs (no
+	 * value to throw away) and a composer that is REFUSING input, where the clear
+	 * is a write into the box and carries the same predicate every other writer
+	 * carries. Both are the same rule — a control whose verb cannot run is not
+	 * drawn — which is why the caller passes the decision in as `null` rather than
+	 * the chip deciding for itself.
 	 */
 	onClear?: (() => void) | null;
 	/** The clear control's accessible name. Required whenever `onClear` is. */

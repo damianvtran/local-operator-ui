@@ -547,6 +547,13 @@ const CONTROLS = [
 		/*
 		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
 		 *
+		 * THIS ROW'S ELEMENT IS NOW THE WASH UNDER THE CHIP, not the whole treatment:
+		 * the operator reported the pill as square-bracketed marker text and asked for
+		 * a real chip (2026-09-17), so `credential-chip-layer.tsx` paints an opaque
+		 * chip over the marker run and what is measured here is the ground it sits on
+		 * — plus the wrapped run's documented fallback, which keeps this wash and no
+		 * chip at all. The chip's own row is below.
+		 *
 		 * Its ink is `ink`, not a semantic: the pill paints NO VISIBLE TEXT — the
 		 * marker's characters are the textarea's, and this element is a
 		 * background-only mirror behind them — so what `ink` measures here is the
@@ -617,6 +624,40 @@ const CONTROLS = [
 	 */
 	{
 		name: "credential pill (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
+	/*
+	 * THE CHIP ITSELF (`credential-chip.tsx`, operator report 2026-09-17).
+	 *
+	 * Listed separately from the two rows above even though the roles are
+	 * identical, because the CONTAINER changed: the pill used to be a wash with no
+	 * text of its own, and the chip is a real element with the glyph, the name, the
+	 * count and a clear control inside it — ink on that fill is now a pair the
+	 * component actually paints rather than one inherited from the textarea behind
+	 * it. `branding.md`'s rule is a row per component triple, and "a green run about
+	 * a component nobody listed is not evidence about that component" is exactly
+	 * what would otherwise apply here: this row is what would fail if someone gave
+	 * the chip its own fill later.
+	 *
+	 * The control's own pairs need no row of their own, and that is a measurement
+	 * rather than a shrug: the `x` is `text-ink` on this same fill (the `ink` above)
+	 * and its hover ground is `elevated`, which the INKS loop already asserts at the
+	 * strong-text floor on all four grounds. Both registers are listed because both
+	 * are chipped — a live reference and one nothing backs — and the transcript
+	 * draws the same two chips inside the user bubble's `surface`.
+	 */
+	{
+		name: "credential chip",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "ink",
+	},
+	{
+		name: "credential chip (unbacked)",
 		on: ["canvas", "surface"],
 		fill: "warningWash",
 		border: "warningBorder",
