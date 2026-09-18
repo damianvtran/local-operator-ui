@@ -83,7 +83,7 @@ backend was answering, not that one was used.
 
 `docs/evidence/chat-canonical-links-before/` is the same story, the same fixtures,
 the same twelve themes and the same rig entries on the head that adds the ninth
-shape and NOTHING of the fix (`9c58e7bb7`, rebased as `b4d12e7a8`; the story-fixture-only commit, the
+shape and NOTHING of the fix (`b4d12e7a8`, rebased as `b4d12e7a8`; the story-fixture-only commit, the
 manifest declares it as a supplementary set with that `capturedAtHead`). In it the
 operator's own sentence still underlines `/new`, and every state sits at the same
 paragraph position, so a reader can put the two halves side by side without
@@ -91,7 +91,7 @@ hunting for the row.
 
 It has FIVE states and not twenty-two, for two measured reasons rather than a
 gap. SIXTEEN of the twenty-one directories the design round handed over are
-byte-identical to the AFTER frames as committed at `74f6ea96c` (rebased as `2b3ac8a2b`), the head this
+byte-identical to the AFTER frames as committed at `2b3ac8a2b` (rebased as `2b3ac8a2b`), the head this
 pass then replaced (`magick compare -metric AE` = 0, 12 of 12 themes each): a
 "before" frame that is its after frame photographs the fix, so those sixteen are
 not landed, and `chat-canonical-links-before/`'s own README carries the same count

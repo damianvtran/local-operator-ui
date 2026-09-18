@@ -3,8 +3,8 @@
 Five states × twelve themes = **60 frames**: the same story, the same fixtures, the
 same entries, the same 1024×720 and 420×900 viewports and the same twelve themes as
 `../chat-canonical-links/`, photographed on the head that adds the ninth shape and
-NOTHING of the fix — `9c58e7bb754a757555f79626a4d6dfe3002ad34c`, rebased as
-`219c812762157768d86114e3d67a3331eacb1834`, the
+NOTHING of the fix — `b4d12e7a854a757555f79626a4d6dfe3002ad34c`, rebased as
+`b4d12e7a82157768d86114e3d67a3331eacb1834`, the
 story-fixture-only commit. These are the operator's own report in the frames: in
 them the sentence he quoted still underlines `/new`. The other half of that
 report, the strip the hover raised reading `No file at /new`, is a gesture rather
@@ -63,7 +63,7 @@ The AFTER half is the whole set, because the ninth shape sits in the story every
 state renders. This half is the five the design round actually took at that head,
 and the reason is measured rather than asserted: the artifact it handed over
 carried twenty-one directories, and SIXTEEN of them are byte-identical — 12 of 12
-themes each — to the AFTER frames as committed at `74f6ea96c` (rebased as
+themes each — to the AFTER frames as committed at `2b3ac8a2b` (rebased as
 `2b3ac8a2b`), which this pass
 then replaced (`magick compare -metric AE` = 0 for every file, checked directory
 by directory). A "before" frame that is a copy of the after frame photographs the
@@ -90,7 +90,7 @@ node scripts/capture-evidence.mjs http://localhost:6031 \
     --allow-backend
 ```
 
-in a worktree checked out at `9c58e7bb7`, rebased as `b4d12e7a8`, with the frames
+in a worktree checked out at `b4d12e7a8`, rebased as `b4d12e7a8`, with the frames
 copied here unchanged
 (`cp -Rc`, an APFS clone: ~0 bytes at creation). `--allow-backend` because this
 machine has a backend answering on the app's configured port and the rig refuses to
