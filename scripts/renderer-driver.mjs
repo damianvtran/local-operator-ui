@@ -5390,9 +5390,22 @@ async function sceneCanvasFreshness(cdp, app) {
 			return false;
 		}
 	};
+	/*
+	 * A CDP `Browser.setWindowBounds` WAS TRIED FIRST AND THIS ELECTRON BUILD DOES NOT
+	 * HONOUR IT (measured: every resized pass came back reporting the launch width, so
+	 * the numbers would have described a window that never moved - the same class of
+	 * mistake this phase was rewritten for). The resize attempt is kept, because on a
+	 * build that does honour it the loop is the right shape, but a pass whose width did
+	 * not actually move is RECORDED rather than asserted, and the width the row is
+	 * really measured at is the one the app was LAUNCHED at (`--window-size WxH` /
+	 * `LOCAL_OPERATOR_UI_WINDOW_SIZE`). The round's runs cover the finding's own width
+	 * and the default one; the reader-facing claim is asserted in whichever window the
+	 * run has.
+	 */
 	const originalBounds = await cdp
 		.send("Browser.getWindowForTarget")
 		.catch(() => null);
+	let moved = true;
 	for (const size of [
 		{ label: "1024x700", width: 1024, height: 700, assertFloor: true },
 		{ label: "1100x700", width: 1100, height: 700 },
@@ -5403,10 +5416,14 @@ async function sceneCanvasFreshness(cdp, app) {
 		const resized = await setWindowSize(size.width, size.height);
 		if (!resized) break;
 		const geometry = await rowGeometryAt();
-		note(`row geometry at a real ${size.label}`, JSON.stringify(geometry));
+		note(`row geometry at a requested ${size.label}`, JSON.stringify(geometry));
+		if (Math.abs((geometry?.windowWidth ?? size.width) - size.width) > 20) {
+			moved = false;
+			break;
+		}
 		if (size.assertFloor) {
 			check(
-				"at a real 1024x700 the reader can see the state and its action, and the stamp stays in the row",
+				`at a real ${size.label} the reader can see the state and its action, and the stamp stays in the row`,
 				geometry !== null &&
 					geometry.note.client >= 64 &&
 					geometry.stamp.client > 0 &&
@@ -5415,7 +5432,27 @@ async function sceneCanvasFreshness(cdp, app) {
 			);
 		}
 	}
-	if (originalBounds) {
+	if (!moved) {
+		/*
+		 * The host does not resize: measure the window this run actually has, and assert
+		 * the reader-facing property there. A run launched at the finding's width
+		 * (`--window-size 1024x700`) is what satisfies the finding's own case.
+		 */
+		const geometryAtLaunch = await rowGeometryAt();
+		note(
+			"Browser.setWindowBounds did not move the window; measured at the launch size instead",
+			JSON.stringify(geometryAtLaunch),
+		);
+		check(
+			"in this run's own window the hold sentence is on screen with its action, and the stamp stays inside the row",
+			geometryAtLaunch !== null &&
+				geometryAtLaunch.note.client >= 64 &&
+				geometryAtLaunch.stamp.client > 0 &&
+				geometryAtLaunch.stamp.client <= (geometryAtLaunch.region ?? 0),
+			JSON.stringify(geometryAtLaunch),
+		);
+	}
+	if (originalBounds?.bounds) {
 		await setWindowSize(
 			originalBounds.bounds.width,
 			originalBounds.bounds.height,
