@@ -164,9 +164,10 @@ test("the predicate the page runs is the predicate this suite pins", () => {
  * a throw that was never about a process as "no such process, so the profile is
  * abandoned".
  *
- * Why this is a test rather than a paragraph: it surfaced as flakiness - six
- * `countsMean` cells of that file failing together with an `ENOENT` on the
- * scratch root - on a machine running several lanes at once, which is the shape
+ * Why this is a test rather than a paragraph: it surfaced as flakiness - that
+ * file's six `countsMean` cells share one module-scope scratch root and the
+ * five that walk it fail together with an `ENOENT` on it - on a machine running
+ * several lanes at once, which is the shape
  * that costs a re-run rather than a bug report. Two properties are pinned, and
  * a fix that holds only the first is a sweep that silently stopped sweeping: an
  * abandoned profile is still reaped, and a directory whose name is not a profile
