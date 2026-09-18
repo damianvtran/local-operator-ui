@@ -204,6 +204,39 @@ a network round trip:
   modal ends by focusing its trigger, this surface has none, and before this the
   gesture left focus on `document.body` — a keyboard user had to click before the
   keyboard worked again.
+- One close is exempt, and it is the one where the row the user picked **moved
+  the view**. Picking another conversation, or the `New chat` row, changes the
+  identity the pane is keyed on (`SessionPanel key={identity}`), so the pane and
+  the composer under it are replaced, and the node captured at open belongs to
+  the pane the user has just left. A moved view **never** restores to that node —
+  being still in the document is not being still the thing the close should
+  return to, and the door that proves it is the rail: open the palette from the
+  sidebar's Search row and pick a conversation and the captured node is that rail
+  button, which survives the switch, so a rule that asked "is the captured node
+  usable" first put the caret back on the rail 8.6 ms after the destination
+  composer had focused itself. Instead the moved view decides first, and the
+  caret's state picks the rest: unclaimed (still on the palette's own field, or
+  nowhere) hands it to the composer the close mounted, and already claimed by
+  another field moves nothing — which is the measured ordering in every entrance,
+  the composer focuses itself several milliseconds before this restore runs. A
+  moved view with no composer to hand the caret to still ends on the rail's
+  Search row, never on the body. The rule and the three orderings of that race
+  are in `composer-caret.ts`, and its eight cells are pinned in
+  `scripts/palette-focus.test.mjs`; "the view moved" is asked of the pane's own
+  identity (`panelIdentityOfView`), so every row that switches a conversation is
+  covered without that row having to remember to declare itself.
+- A close that did **not** move the view is the pre-existing rule unchanged, and
+  that is what keeps `Esc` and the panel-exit path byte-for-byte what they were:
+  if the captured node is still usable the caret goes back to it, whatever else
+  holds the caret at that moment; if something else took it and the captured node
+  is gone, nothing moves at all; and with nothing restorable and nobody holding
+  the caret, the fallback is the rail's Search row, never the body.
+- A composer that **refuses input** is still a legitimate destination for the
+  moved-view restore: it holds the reader's own words and keeps the caret
+  (`readOnly`, not `disabled`). The composer's own mount self-focus keeps its
+  `!isInputDisabled` gate, so the rule is the same from every door — a
+  gesture-driven restore may land in a box that refuses input, an unprompted
+  focus grab may not.
 
 ## Adding a row
 

@@ -618,6 +618,52 @@ export function panelIdentityFor(
 }
 
 /**
+ * The SESSION a chat view is showing, from the fields it derives that from.
+ *
+ * `chat-page.tsx` reads `draft?.sessionId` when a draft is staged and
+ * `activeSessionId` otherwise - and the first term is not a detail: `stageDraft`
+ * leaves `activeSessionId` at the session the reader was in, so a rule that read
+ * only `activeSessionId` would answer with the OLD session id on both sides of a
+ * New-chat pick. It is also the id the pane hands the panel (`sessionId={id}`),
+ * so a second copy of this expression anywhere is a pane keyed on one session
+ * while the panel under it reads another.
+ *
+ * Extracted beside `panelIdentityFor` for that rule's own reason: more than one
+ * caller needs the same answer, and a rule that only exists inside one component
+ * is a rule the others drift from.
+ */
+export function panelSessionIdOfView(
+	activeDraftKey: string | null,
+	draftSessionId: string | null | undefined,
+	activeSessionId: string | null | undefined,
+): string | undefined {
+	return activeDraftKey
+		? (draftSessionId ?? undefined)
+		: (activeSessionId ?? undefined);
+}
+
+/**
+ * The pane's own KEY - `panelIdentityFor` applied to the session id above.
+ *
+ * The pane keys its panel on this, which is what makes it the right answer to
+ * "did the flow move the view": a surface that is not the pane (the command
+ * palette's close-time restore, which yields when a pick moved the view) can ask
+ * for it without keeping a second copy of the expression that computes it - and
+ * a second copy is how the two sides of that comparison come to describe
+ * different panes.
+ */
+export function panelIdentityOfView(
+	activeDraftKey: string | null,
+	draftSessionId: string | null | undefined,
+	activeSessionId: string | null | undefined,
+): string | undefined {
+	return panelIdentityFor(
+		activeDraftKey,
+		panelSessionIdOfView(activeDraftKey, draftSessionId, activeSessionId),
+	);
+}
+
+/**
  * Whether a send failed BEFORE the owner could have admitted anything.
  *
  * ONE definition, read by everything that has to act on the answer. Inside this
