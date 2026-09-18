@@ -101,6 +101,9 @@ const SEPARATOR = /[/\\]/;
 const HOME_PREFIX =
 	/^(?:(?:\/Users|\/home|[A-Za-z]:\\Users)[/\\][^/\\]+|\/root)(?=[/\\])/;
 
+/** The query's token separator. Hoisted for `useTopLevelRegex`. */
+const TOKEN_SEPARATOR = /\s+/;
+
 /**
  * The home prefix, spelled the way the app itself spells it.
  *
@@ -335,6 +338,18 @@ export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 		const directory =
 			parentDirectory(document.path) ?? parentDirectory(document.title);
 		const parent = directory === null ? null : displayParent(directory);
+		/*
+		 * A MISSING file gets no leading visual, whatever its type.
+		 *
+		 * `media` was derived from the type alone, so a `missing` image or video row
+		 * built a live `<img>`/`<video>` over a dead source inside its `bg-sunken`
+		 * box - an empty square where every other missing row shows the type glyph,
+		 * and a broken-frame icon in the app. The receipt for a file that is gone is
+		 * the glyph plus the sentence in the meta slot; asking the bridge for a
+		 * thumbnail of a path that no longer resolves is a request that can only
+		 * fail, on every render of every row in the list.
+		 */
+		const missing = document.availability === "missing";
 		return {
 			document,
 			name,
@@ -343,10 +358,10 @@ export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 			// Absent `availability` means the probe has not answered yet, which is
 			// not the same as "missing": the row renders normally until a probe
 			// says otherwise.
-			missing: document.availability === "missing",
+			missing,
 			kind: kindGroupOf(document.type),
 			media:
-				document.type === "image" || document.type === "video"
+				!missing && (document.type === "image" || document.type === "video")
 					? document.type
 					: null,
 			size: sizeLabel(document.sizeBytes),
@@ -375,7 +390,7 @@ export function filterAndSearchRows(
 	rows: FileRow[],
 	{ query, kinds }: FileRowsQuery,
 ): FileRow[] {
-	const tokens = fold(query).split(/\s+/).filter(Boolean);
+	const tokens = fold(query).split(TOKEN_SEPARATOR).filter(Boolean);
 	const wanted = kinds.length > 0 ? new Set(kinds) : null;
 	return rows.filter((row) => {
 		if (wanted && !wanted.has(row.kind)) return false;
