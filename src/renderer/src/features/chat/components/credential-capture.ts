@@ -132,6 +132,28 @@ export type Arrival = "typing" | "completion" | "caret" | "arrival";
 export const MASK_CELL = "\u2022";
 
 /**
+ * The WORDS the arming token may be spelled with: the command and its alias.
+ *
+ * The ONE place the spellings live, so the pair cannot drift apart.
+ * {@link CREDENTIAL_ARM} and {@link CREDENTIAL_TOKEN} are both BUILT from it and
+ * the composer hands it to the planner, which means a spelling added or retired
+ * here moves all three together rather than leaving two of them behind. Lower
+ * case, because it is consumed as a case-folded vocabulary (the regexes carry
+ * `i`, and the planner lower-cases the word it reads off a token).
+ */
+export const CREDENTIAL_WORDS: readonly string[] = ["credential", "cred"];
+
+/**
+ * The words as one alternation, for the two matchers below.
+ *
+ * Deliberately UNESCAPED, and the reason is this array rather than optimism:
+ * the words are literal lowercase ASCII, declared once in this file, so the
+ * pattern has no metacharacter to escape and an escape helper would be a second
+ * rule to keep in step with a vocabulary that cannot need it.
+ */
+const CREDENTIAL_WORDS_PATTERN = CREDENTIAL_WORDS.join("|");
+
+/**
  * The arming predicate, ported verbatim from `editor.py:551`:
  *
  * ```python
@@ -155,7 +177,10 @@ export const MASK_CELL = "\u2022";
  * Applied to the caret's own line, never to the whole buffer — see
  * {@link armSpan}.
  */
-export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
+export const CREDENTIAL_ARM = new RegExp(
+	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})[ \\t]*$`,
+	"i",
+);
 
 /**
  * The same token WITHOUT the end-of-line anchor, used only to RE-LOCATE a
@@ -167,7 +192,10 @@ export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
  * negative lookahead is the same partition the arming regex draws, so
  * `/credentials` is not a token here either.
  */
-export const CREDENTIAL_TOKEN = /(?:^|(?<=\s))\/(?:credential|cred)(?!\S)/gi;
+export const CREDENTIAL_TOKEN = new RegExp(
+	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})(?!\\S)`,
+	"gi",
+);
 
 /**
  * The word at the anchor, for the arm's TYPED-THROUGH rule
@@ -537,6 +565,73 @@ export function armSpan(buffer: string, caret: number): Span | null {
  * The re-anchor's vocabulary, never the arming rule: {@link CREDENTIAL_TOKEN}
  * has no end-of-line anchor, so a token it finds is not (yet) a gesture.
  */
+/**
+ * The credential run a PASTE brought in, in the operator's own terms, or `null`.
+ *
+ * WHY A PASTE IS ITS OWN PROVENANCE (QA round 6, Q-1). The lock's boundary rule is
+ * scoped to a draft the app's own Escape un-masked, because a *typed* word is
+ * ambiguous: `the docs/credential rotation policy is stale` is a sentence ABOUT a
+ * path and must send. A paste is not ambiguous in the same way — a pasted
+ * `/credential <secret>` is the command, written elsewhere and brought here — and the
+ * typed capture never arms for it, so before this the pasted secret sat in the box in
+ * the clear with no record at all: one keystroke after the paste, `x/credential
+ * <secret>` reached a message record and a provider body.
+ *
+ * THE REACH IS THE PASTED TAIL'S BYTES, for the reason the cancel record's reach is
+ * its restored characters: it is a fact about the draft in front of the operator, not
+ * about the pane's history. The tail rather than the whole payload is deliberate — an
+ * edit INSIDE the word (`/credxential <secret>`, QA round 6's PP2) leaves the tail
+ * intact and the secret still exposed, while an emptied box leaves nothing behind and
+ * is prose again. A bare pasted word carries no tail and so arms nothing.
+ *
+ * The word list and the token matcher come from this module's own table, so a
+ * spelling added to `/credential`'s vocabulary is a paste word the same day.
+ */
+/**
+ * Whether a run's characters are still standing in the draft AS A TOKEN.
+ *
+ * THE ONE RULE BOTH DIRECTIONS NEED (UX round 7, U27; QA round 6, Q-1), and it is this
+ * module's own: a token's left context is the start of the text or whitespace, and its
+ * right context is the end of the text or whitespace. `CREDENTIAL_TOKEN` spells exactly
+ * that, and the two records below are asked with the same rule rather than with a second
+ * heuristic.
+ *
+ * WHY NOT `includes`. The bound used to be a substring test, which has no position, no
+ * length and no word: a SHORT restored value re-armed the exception on a sentence the
+ * operator then wrote, so `/credential prod` -> Escape -> wipe -> `the prod/staging split
+ * is stale` consumed the tail and opened a credential dialog for a secret that never
+ * existed. Inside `prod/staging` the occurrence is not a token — the `/` is not
+ * whitespace — and that is the whole distinction. A run still standing where it was put
+ * back passes on both sides, which is the state every shape this branch closes is in.
+ */
+export function standsAsToken(draft: string, run: string): boolean {
+	if (run === "") return false;
+	for (let i = draft.indexOf(run); i !== -1; i = draft.indexOf(run, i + 1)) {
+		const before = i === 0 ? null : draft[i - 1];
+		const after = i + run.length >= draft.length ? null : draft[i + run.length];
+		if (
+			(before === null || /\s/.test(before)) &&
+			(after === null || /\s/.test(after))
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+export function pastedCredentialRun(
+	pasted: string,
+): { word: string; run: string } | null {
+	const span = tokenSpans(pasted)[0];
+	if (!span) return null;
+	const word = pasted
+		.slice(span.start, span.end)
+		.replace(/^\//, "")
+		.toLowerCase();
+	const run = pasted.slice(span.end).trim();
+	return run === "" ? null : { word, run };
+}
+
 export function tokenSpans(buffer: string): Span[] {
 	const out: Span[] = [];
 	// A module-level regex with `g` carries `lastIndex` between calls, so both
@@ -1113,13 +1208,55 @@ export function mintTypedCredential(args: {
 }
 
 /**
- * A token the composer knows it has just cancelled: the exact run, and where it
- * sat when the cancel produced it (`cancelTypedCredential`).
+ * A token the composer knows it has just cancelled: the exact run, where it sat when
+ * the cancel produced it, and HOW MANY CHARACTERS THAT CANCEL PUT BACK
+ * (`cancelTypedCredential`).
  *
  * The span is the ARRIVAL position, not a live one — see
  * {@link holdsCancelledToken}, which is the only thing that reads it.
+ *
+ * `restored` IS THE HALF THE SUBMIT SEAM NEEDS, and it is here rather than in a
+ * ref of its own because it is the same gesture's fact: the record says which run
+ * was cancelled, and the count says whether that run was holding characters. An
+ * EMPTY span restores nothing, so the words the operator writes after it are
+ * theirs by §5's own reading and the composer sends them as prose — refused
+ * outright where the draft OPENS with the token, by the leading-slash policy, in
+ * which case the words are kept and nothing is sent (UX round 4, U16); a span with
+ * characters in it restores a secret, and no later keystroke can make that untrue (review
+ * round 3, MINOR 1 — the disclosure this seam used to read is a whole-buffer
+ * equality that any keystroke clears, which is exactly how one keystroke after an
+ * Escape put a secret in a message record).
  */
-export type CancelledToken = { span: Span; text: string };
+export type CancelledToken = {
+	span: Span;
+	text: string;
+	restored: number;
+	/**
+	 * THE CHARACTERS THE CANCEL PUT BACK, verbatim — the run the operator is now
+	 * looking at, kept beside the count because one question cannot be answered
+	 * without it: "is that run still in this draft?" (UX round 6, U24).
+	 *
+	 * The count alone could not answer it. A composer that knows only *how many*
+	 * characters came back hands the record's word to the planner for any draft of
+	 * at least that length, so a user who cancels a credential, clears the box and
+	 * writes a fresh sentence got the run's rule applied to the sentence — a
+	 * truncation, a Credential dialog for a secret they do not have, and a line that
+	 * could never be sent (the loop UX round 5 filed as U20, back on a draft holding
+	 * none of the app's characters). The byte comparison is what makes the record's
+	 * reach a fact about the draft in front of the operator rather than about what
+	 * the pane has seen.
+	 *
+	 * WHY HOLDING IT IS NOT A NEW DISCLOSURE SEAM: at this point the app has already
+	 * un-masked these characters into the document — that is what the cancel DID, and
+	 * the notice says so — so this is a reference to what the box is showing, not a
+	 * second copy the operator cannot see. It lives on a ref, is never persisted to
+	 * the draft store, never enters history, telemetry or the transcript, and is
+	 * dropped with the record. The masked state's own invariant (the value lives in
+	 * {@link Capture} and nowhere else) is untouched: this is the state *after* the
+	 * mask is gone.
+	 */
+	restoredText: string;
+};
 
 /** What an Escape cancel produced: the plaintext back, and nothing else. */
 export type CancelResult = {
@@ -1205,8 +1342,7 @@ export function cancelTypedCredential(
 		};
 	}
 	const restoredText = capture.value;
-	const next =
-		buffer.slice(0, span.start) + restoredText + buffer.slice(span.end);
+	const next = unredactedBuffer(buffer, capture);
 	const tokenStart = capture.arm === null ? span.start : capture.arm.start;
 	return {
 		cancelled: true,
@@ -1217,6 +1353,8 @@ export function cancelTypedCredential(
 		token: {
 			span: { start: tokenStart, end: span.start },
 			text: buffer.slice(tokenStart, span.start),
+			restored: charCount(restoredText),
+			restoredText,
 		},
 	};
 }
@@ -1720,10 +1858,41 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
  *
  * "EXPOSE" RATHER THAN "SEND" because the consequence is shape-dependent: a
  * capture mid-prose means Enter genuinely sends the line to the model, while a
- * capture that was the WHOLE line leaves the token that dispatches the picker.
+ * capture that was the WHOLE line leaves the token that dispatches the picker —
+ * and where that token is a COMMAND-LOCKED word, Enter takes the restored
+ * characters as the command's argument and sends nothing at all (UX round 2, U7).
+ *
+ * `takenBy` is that last case, and it is the CALLER's word rather than a flag here:
+ * the sentence has to name what will take them, so "expose" is false in the
+ * direction that matters. Only the caller has the planner — the composer asks it for
+ * the same locked run the press will take — and asking in here would be a second
+ * decision about which word owns the line.
  */
-export const unredactedNotice = (length: number): string =>
-	`${length} characters are now PLAIN TEXT in the composer — Enter will expose them`;
+export const unredactedNotice = (length: number, takenBy?: string): string =>
+	takenBy === undefined
+		? `${length} characters are now PLAIN TEXT in the composer — Enter will expose them`
+		: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
+
+/**
+ * The buffer with a LIVE mask replaced by the characters it stands for.
+ *
+ * ONE RULE, TWO CALLERS, and they are the same rule: Escape unredacts a typed span
+ * (`cancelTypedCredential`), and the undo a locked run owes the user has to return
+ * the characters they TYPED rather than the mask cells the composer painted over
+ * them (UX round 2, U8). A restore that put the bullets back would be a box that
+ * looks recovered and holds nothing: the user types beside them and gets plain text
+ * next to characters that stand for nothing, which is a worse state than the silence
+ * the undo replaced,
+ *
+ * Mask cells are ONE per character of the value (`maskSpan`'s own invariant), so
+ * every offset either side of the span is unchanged and a caret recorded against the
+ * masked buffer is still correct against this one.
+ */
+export function unredactedBuffer(buffer: string, capture: Capture): string {
+	const span = maskSpan(capture);
+	if (span === null) return buffer;
+	return buffer.slice(0, span.start) + capture.value + buffer.slice(span.end);
+}
 
 /**
  * §5/§6's disclosure: the count of characters a cancel put back into the box, and

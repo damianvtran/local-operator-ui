@@ -684,12 +684,18 @@ export function stagedSentence(text: string): string {
 }
 
 /**
- * The clause the DISPATCHER's own refusal carries for a pane that can address no
- * conversation, quoted from one place because two notes now promise against it.
+ * The clause the notes carry for a pane that can address no conversation.
  *
- * It is the dispatcher's sentence verbatim (`slash-dispatch.ts`, the `!sessionId`
- * guards), so a note that shows it and the refusal the user then reads are the
- * same words (UX U5 / design D5).
+ * IT IS NOT THE DISPATCHER'S SENTENCE VERBATIM, and this docblock claimed it was
+ * until code review round 2's MINOR 3 measured the difference: the dispatcher raises
+ * `/${spec.name} needs an open conversation. Start one first.` — it names the command
+ * it refused — while this constant is the shared CLAUSE form, punctuation included,
+ * for the notes that raise it BEFORE a press. The distinction is only visible when
+ * both land together, which is why it went unnoticed: the staged and reassembled
+ * notes raise it at stage time and the dispatcher's refusal arrives on the Enter that
+ * follows (two sentences, two moments, one meaning), whereas the locked run's receipt
+ * used to carry it in the same beat as the refusal and was changed to defer to the
+ * dispatcher instead of quoting it (`lockedCommandNote`).
  */
 export const NO_CONVERSATION_CLAUSE =
 	"Needs an open conversation; start one first.";
@@ -740,6 +746,88 @@ export function reassembledNote(text: string, paneHasSession: boolean): string {
 	return paneHasSession
 		? `Staged ${stagedSentence(text)} Enter again runs it.`
 		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
+}
+
+/**
+ * The key that undoes a LOCKED run, as a label for the sentence below.
+ *
+ * `isMac` rather than a platform string, the shape `new-chat-shortcut.ts` and
+ * `palette-shortcut.ts` already take — and here in the contract with the sentence,
+ * because the label and the key the composer's handler listens for are ONE fact:
+ * a note that named a key no handler claimed would be worse than no note.
+ */
+export function lockedRunUndoCap(isMac: boolean): string {
+	return isMac ? "⌘Z" : "Ctrl+Z";
+}
+
+/**
+ * The sentence a LOCKED run raises: what happened to the words after the word,
+ * and how to get them back.
+ *
+ * WHY A LOCKED RUN OWES ONE AT ALL. Every other outcome of an Enter that does not
+ * send says something — a staged line narrates itself (`stagedNote`,
+ * `reassembledNote`), a list that owns the key says what it waits for, an
+ * unrecognised command is reported — and this one, until now, said nothing: the
+ * box quietly lost everything after the token while a dialog opened. Walked as a
+ * flow on a live conversation that is a dead-looking press that ate half a
+ * sentence, and for a draft the user typed a secret into it is worse than that:
+ * the words after the token are the command's ARGUMENT, the dispatcher strips it
+ * (`slash-dispatch.ts`, `args: ""`) so nothing stores it, and the form that opens
+ * arrives empty (design round 1, D1/D2; UX round 1, U2/U4; code review, F4).
+ *
+ * IT NEVER ECHOES THE VALUE, and that is a rule rather than a nicety: the tail is
+ * a secret, and this sentence lands in the transcript the user is looking at. It
+ * names the word (which is the catalogue's own spelling, never the tail) and the
+ * fields the value belongs in.
+ *
+ * THE RECOVERY IS THE SECOND HALF, and it is the reason this is not only a report
+ * (UX round 1, U3): the composer keeps the draft the run consumed and puts it back
+ * on `lockedRunUndoCap`, so the sentence can promise a way back rather than only
+ * describing a loss — and the key is named WITH ITS HOME, because the press that
+ * raised this sentence leaves the keyboard in the credential dialog it opened, where
+ * the chord is the field's own and inert (UX round 2, U9; QA round 2, Q-2). "In the
+ * composer" is the smallest true instruction: it is where the key is honoured, and
+ * the dialog's own `Esc closes` is how the user gets back there.
+ *
+ * `opensDialog` IS TWO FACTS THE CALLER CAN SEE, and both of them are why this
+ * sentence has two variants rather than one with a clause bolted on (`paneHasSession`
+ * and whether the catalogue resolves the word): a pane that can address no session
+ * has the dispatcher's own refusal to explain why nothing ran, and an unresolvable
+ * word reaches the dispatcher's `Unknown command /…` note and opens nothing at all
+ * (code review round 2, MINOR 4). Both panes would otherwise be told to type into a
+ * dialog that is not there. Neither pane needs the refusal repeated either: the
+ * dispatcher raises its own sentence, and a receipt that restated it in different
+ * words put two near-identical lines in front of the user (UX round 2, U12 — the
+ * round-1 form of this sentence quoted `NO_CONVERSATION_CLAUSE` and did exactly
+ * that).
+ */
+export function lockedCommandNote(
+	word: string,
+	shape: {
+		/** The dispatcher resolves the word and the pane can open the dialog it opens. */
+		dialog: boolean;
+		/** The record holds the user's own characters, so the key has something to give back. */
+		undo: boolean;
+	},
+	isMac: boolean,
+): string {
+	const taken = `The words after /${word} were taken as its argument, and a value written on a command line is not stored.`;
+	const fields = shape.dialog
+		? `Enter the secret in the dialog's Name and Value fields.`
+		: "";
+	/*
+	 * AND THE KEY ONLY WHERE THERE IS SOMETHING TO GIVE BACK (UX round 2, U8). A draft
+	 * that arrived holding MASK CELLS — a reloaded or restored masked draft, whose value
+	 * did not survive §6 — has no characters to restore: the bullets are literal text
+	 * standing for a value that is gone. The composer does not arm the undo there, so
+	 * promising it would be the same false affordance the round filed, one keystroke
+	 * further on. Those panes are told where the value belongs instead, which is the
+	 * honest instruction: it has to be entered again.
+	 */
+	const back = shape.undo
+		? `Press ${lockedRunUndoCap(isMac)} in the composer to put the words back.`
+		: "";
+	return [taken, fields, back].filter(Boolean).join(" ");
 }
 
 export type EnterFooterInput = {
