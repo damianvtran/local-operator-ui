@@ -65,6 +65,7 @@ const {
 	mcpTally,
 	onScreenFailures,
 	briefIsInTranscript,
+	childCountFitsInline,
 	childCountLabel,
 	childOpenable,
 	childrenOf,
@@ -1833,6 +1834,40 @@ test("a row says how many children it has, and a leaf says nothing", () => {
 	assert.equal(childCountLabel(byId.get("parent")), "2 children");
 	assert.equal(childCountLabel(byId.get("only")), null);
 	assert.equal(childCountLabel(byId.get("kid-2")), null);
+});
+
+/*
+ * The mark's SHED rule, and the width that decided it (design round 1, D1).
+ *
+ * `shrink-0` with no rule of its own charged the mark's whole 36px (the word
+ * alone, before D2 added its 14px cue: 54px with it) to the row's
+ * label, which is the one segment on the line that says WHICH child the row is:
+ * measured in the committed `narrow-800` frame (800x700, pane at its 320px
+ * floor), the rows of this section held 7-11 label characters behind the mark
+ * where they hold 15-19 without it. The rule is the pane's, like
+ * `tallyFitsInline`'s, and it errs toward shedding.
+ */
+test("the count mark yields at the pane's floor and stays at the pane's default", () => {
+	// The pane's own three sizes (`§ 8`): the floor is the shed, and the default
+	// and the maximum keep the mark.
+	assert.equal(childCountFitsInline(320), false);
+	assert.equal(childCountFitsInline(420), true);
+	assert.equal(childCountFitsInline(640), true);
+	// Monotonic across the widths between them, so there is no band where a wider
+	// pane draws LESS than a narrower one.
+	for (let width = 200; width <= 800; width += 4) {
+		if (childCountFitsInline(width)) {
+			assert.ok(
+				childCountFitsInline(width + 4),
+				`${width} draws the mark, ${width + 4} does not`,
+			);
+		}
+	}
+	// A width that is not a usable number falls back to the design's default
+	// rather than poisoning the comparison (`tallyBudget`'s rule).
+	assert.equal(childCountFitsInline(Number.NaN), childCountFitsInline(420));
+	assert.equal(childCountFitsInline(0), childCountFitsInline(420));
+	assert.equal(childCountFitsInline(-1000), childCountFitsInline(420));
 });
 
 test("the launch turn is reconciled, and only the ids the map vouches for", () => {

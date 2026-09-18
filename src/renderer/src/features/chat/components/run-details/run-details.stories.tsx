@@ -1601,6 +1601,70 @@ export const ReaderChildless: Story = {
 };
 
 /**
+ * The three states above at the pane's OWN FLOOR (design round 1, D1).
+ *
+ * The mark on a row of the section above is fixed-width and `shrink-0`, so the
+ * charge for it came out of the label — and the three surfaces above are declared
+ * at 1280x900 only, which leaves the pane's declared 320px floor with no frame of
+ * this state at all. The finding's own numbers for it were arithmetic on measured
+ * parts rather than a photograph; this is the photograph. The pane is pinned to
+ * 320px the way `reader-deep-floor` pins it, and the rig declares 800x700 for the
+ * same reason `narrow-800` uses that size: the pane plus the chat column's own
+ * floor, which is the narrowest window the app renders.
+ *
+ * Read with the 420px frames above: the same tree, the same rows, the same
+ * labels. What changes at the floor is the mark's own shed rule — it is not drawn,
+ * so the labels keep the characters it would have spent (`§ 8`, `§ 4`).
+ */
+export const ReaderDescendantsFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			/* The pane's own floor, which is the width the shed rule is about. */
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/** `reader-deep-children` at the pane's 320px floor — see above. */
+export const ReaderDeepChildrenFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-verify"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * `reader-childless` at the pane's 320px floor — see above.
+ *
+ * The control for the pair: the section's absence is a claim about the node, not
+ * about the width, and the floor is the width at which a section that rendered
+ * badly would be most visible.
+ */
+export const ReaderChildlessFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-check"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * § 10.1's `pending`: the child has a directory and no transcript yet.
  *
  * The copy that document fixes, and the state that breaks nothing else: the body

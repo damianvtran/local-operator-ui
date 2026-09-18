@@ -134,6 +134,14 @@ export type RunChildReaderProps = {
 	 */
 	measuredAtMs: number;
 	measuredAtRealMs: number;
+	/**
+	 * The pane's own width, which this page's own subagents section measures its
+	 * row mark's shed rule against (`childCountFitsInline`).
+	 *
+	 * Threaded like `paneWidth` is to every other section: the width the pane is
+	 * drawn at is the caller's, not this page's to look up.
+	 */
+	paneWidth: number;
 };
 
 /**
@@ -282,6 +290,7 @@ export const RunChildReader = ({
 	measuredAtMs,
 	measuredAtRealMs,
 	onUnopenable,
+	paneWidth,
 }: RunChildReaderProps) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	/**
@@ -496,6 +505,7 @@ export const RunChildReader = ({
 				rows={childRows}
 				interactive={childrenOpenable}
 				onOpenChild={onOpenChild}
+				paneWidth={paneWidth}
 			/>
 
 			{/*
