@@ -71,17 +71,24 @@ export const iceberg: ThemeDefinition = {
 		sunken: "#E0E1E6",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.75 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 2.99x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
-		 * on `surface`. ΔE00 4.08 from `surface`, 5.99 from `elevated`, 2.04 from
-		 * `sunken`, 2.93 from `accentWash`; the inks on the ground are 9.33:1,
-		 * 8.11:1, 5.58:1. Continuity with the panel: hue 4.58 degrees off the
-		 * panel's (the assertion allows 12) and chroma 4.7 where the panel carries
-		 * 1.57.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #EDEEFA  accent hue, C* 6.17, +1.51 L*, ΔE00 4.33 off `surface`,
+		 *                       `inkDim` 6.08:1 on the fill, hue 1.37° off `accent`.
+		 * rowSelected #E0E3FF  accent hue, C* 14.54, +5.06 L*, ΔE00 10.45 off
+		 *                       `surface` and 6.29 off `rowHover`, `inkDim` 5.55:1, and the
+		 *                       2px `accent` bar at 5.84:1 against it.
+		 *
+		 * NAMED EXCEPTION, recorded in `ROW_STATE_PINS` in `scripts/contrast-contract.mjs`
+		 * with its measured ceiling and the ink that binds it: this palette cannot hold
+		 * the rule's set inside the chroma ceiling, and the floor is NOT widened to fit it.
 		 */
-		highlight: "#e3e5ee",
+		rowHover: "#EDEEFA",
+		rowSelected: "#E0E3FF",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest

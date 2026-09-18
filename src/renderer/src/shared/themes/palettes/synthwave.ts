@@ -72,17 +72,20 @@ export const synthwave: ThemeDefinition = {
 		elevated: "#332F4A",
 		sunken: "#1E1B2A",
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.40x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.27 from `surface`, 2.19 from `elevated`, 9.91
-		 * from `sunken`, 5.89 from `accentWash`; the inks on the ground are 10.95:1,
-		 * 6.24:1, 5.16:1. Continuity with the panel: hue 0.46 degrees off the
-		 * panel's (the assertion allows 12) and chroma 22.31 where the panel carries
-		 * 15.94.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #362E33  accent hue, C* 5.06, +1.61 L*, ΔE00 9.06 off `surface`,
+		 *                       `inkDim` 5.46:1 on the fill, hue 1.09° off `accent`.
+		 * rowSelected #4A2D41  accent hue, C* 18.32, +4.36 L*, ΔE00 10.58 off
+		 *                       `surface` and 10.87 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 5.31:1 against it.
 		 */
-		highlight: "#343051",
+		rowHover: "#362E33",
+		rowSelected: "#4A2D41",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",

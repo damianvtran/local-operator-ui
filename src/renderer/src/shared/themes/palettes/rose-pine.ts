@@ -55,18 +55,20 @@ export const rosePine: ThemeDefinition = {
 		elevated: "#2B283F",
 		sunken: "#191822",
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 2.45 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.6 `L*`. The band is paid on the cast at 1.42x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.88
-		 * from `surface`, 4.25 from `elevated`, 10.52 from `sunken`, 5.93 from
-		 * `accentWash`; the inks on the ground are 10.69:1, 8.15:1, 5.15:1.
-		 * Continuity with the panel: hue 14.13 degrees off the panel's (the
-		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 18.18 where the panel carries 12.77.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #312727  accent hue, C* 4.99, +1.58 L*, ΔE00 10.30 off `surface`,
+		 *                       `inkDim` 5.29:1 on the fill, hue 3.60° off `accent`.
+		 * rowSelected #3F2727  accent hue, C* 12.23, +3.43 L*, ΔE00 13.49 off
+		 *                       `surface` and 6.75 off `rowHover`, `inkDim` 5.01:1, and the
+		 *                       2px `accent` bar at 8.12:1 against it.
 		 */
-		highlight: "#33263F",
+		rowHover: "#312727",
+		rowSelected: "#3F2727",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert

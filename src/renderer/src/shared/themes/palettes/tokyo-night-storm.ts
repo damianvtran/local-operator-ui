@@ -52,17 +52,20 @@ export const tokyoNightStorm: ThemeDefinition = {
 		sunken: "#1D2032",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.55 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.16 from `surface`, 2.07 from `elevated`, 9.33
-		 * from `sunken`, 5.2 from `accentWash`; the inks on the ground are 7.93:1,
-		 * 7.25:1, 5.18:1. Continuity with the panel: hue 0.56 degrees off the
-		 * panel's (the assertion allows 12) and chroma 22.6 where the panel carries
-		 * 16.33.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #253455  accent hue, C* 22.43, +1.54 L*, ΔE00 4.27 off `surface`,
+		 *                       `inkDim` 5.51:1 on the fill, hue 0.18° off `accent`.
+		 * rowSelected #373A46  accent hue, C* 7.99, +4.16 L*, ΔE00 6.44 off
+		 *                       `surface` and 8.89 off `rowHover`, `inkDim` 5.05:1, and the
+		 *                       2px `accent` bar at 4.51:1 against it.
 		 */
-		highlight: "#2F3759",
+		rowHover: "#253455",
+		rowSelected: "#373A46",
 
 		// Upstream fg C0CAF5 is 7.00:1 on `elevated` — exactly the floor, with no room for
 		// rounding. Lifted along the same periwinkle.

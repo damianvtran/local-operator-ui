@@ -41,17 +41,20 @@ export const duskfox: ThemeDefinition = {
 		sunken: "#191726",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5.8 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.39x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
-		 * the row's ground. ΔE00 5.47 from `surface`, 2.05 from `elevated`, 13.33
-		 * from `sunken`, 7.99 from `accentWash`; the inks on the ground are 8.67:1,
-		 * 7.19:1, 5.21:1. Continuity with the panel: hue 0.35 degrees off the
-		 * panel's (the assertion allows 12) and chroma 25.89 where the panel carries
-		 * 18.65.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2A3235  accent hue, C* 4.02, +1.61 L*, ΔE00 15.21 off `surface`,
+		 *                       `inkDim` 5.96:1 on the fill, hue 3.21° off `accent`.
+		 * rowSelected #233B45  accent hue, C* 10.96, +4.83 L*, ΔE00 17.45 off
+		 *                       `surface` and 6.16 off `rowHover`, `inkDim` 5.37:1, and the
+		 *                       2px `accent` bar at 4.86:1 against it.
 		 */
-		highlight: "#39355C",
+		rowHover: "#2A3235",
+		rowSelected: "#233B45",
 
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",

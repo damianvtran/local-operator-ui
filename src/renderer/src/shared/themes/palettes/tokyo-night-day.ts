@@ -62,17 +62,20 @@ export const tokyoNightDay: ThemeDefinition = {
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.95 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 3.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.54 from `surface`, 6.39 from `elevated`, 2.35
-		 * from `sunken`, 2.3 from `accentWash`; the inks on the ground are 7.66:1,
-		 * 6.97:1, 5.16:1. Continuity with the panel: hue 14.65 degrees off the
-		 * panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 5.25 where the panel carries
-		 * 1.58.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #E4E6F5  accent hue, C* 7.78, +1.51 L*, ΔE00 5.48 off `surface`,
+		 *                       `inkDim` 5.64:1 on the fill, hue 1.26° off `accent`.
+		 * rowSelected #D7DBFD  accent hue, C* 17.78, +4.99 L*, ΔE00 12.17 off
+		 *                       `surface` and 6.92 off `rowHover`, `inkDim` 5.14:1, and the
+		 *                       2px `accent` bar at 4.73:1 against it.
 		 */
-		highlight: "#D7DEE7",
+		rowHover: "#E4E6F5",
+		rowSelected: "#D7DBFD",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.

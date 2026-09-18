@@ -95,17 +95,20 @@ export const vaporwave: ThemeDefinition = {
 		sunken: "#1C152D",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.4 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.04-to-4 band
-		 * on `surface`. ΔE00 4.04 from `surface`, 2.26 from `elevated`, 8.47 from
-		 * `sunken`, 4.97 from `accentWash`; the inks on the ground are 11.23:1,
-		 * 7.11:1, 5.21:1. Continuity with the panel: hue 0.04 degrees off the
-		 * panel's (the assertion allows 12) and chroma 28.46 where the panel carries
-		 * 21.48.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2F292C  accent hue, C* 3.56, +1.58 L*, ΔE00 13.01 off `surface`,
+		 *                       `inkDim` 5.49:1 on the fill, hue 3.58° off `accent`.
+		 * rowSelected #45283A  accent hue, C* 17.69, +4.65 L*, ΔE00 9.43 off
+		 *                       `surface` and 12.16 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 7.14:1 against it.
 		 */
-		highlight: "#342750",
+		rowHover: "#2F292C",
+		rowSelected: "#45283A",
 
 		ink: "#EDE8F2",
 		/*

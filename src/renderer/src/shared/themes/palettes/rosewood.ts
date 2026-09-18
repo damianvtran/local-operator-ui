@@ -71,17 +71,20 @@ export const rosewood: ThemeDefinition = {
 		sunken: "#201718",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.05 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.52x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
-		 * the row's ground. ΔE00 4.34 from `surface`, 4.46 from `elevated`, 9.48
-		 * from `sunken`, 13.61 from `accentWash`; the inks on the ground are
-		 * 10.38:1, 7.19:1, 5.19:1. Continuity with the panel: hue 7.3 degrees off
-		 * the panel's (the assertion allows 12) and chroma 11.57 where the panel
-		 * carries 7.59.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #322A2D  accent hue, C* 4.36, +1.55 L*, ΔE00 4.02 off `surface`,
+		 *                       `inkDim` 5.43:1 on the fill, hue 2.04° off `accent`.
+		 * rowSelected #432B34  accent hue, C* 12.78, +4.24 L*, ΔE00 6.24 off
+		 *                       `surface` and 8.17 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 5.75:1 against it.
 		 */
-		highlight: "#40292d",
+		rowHover: "#322A2D",
+		rowSelected: "#432B34",
 
 		ink: "#EEE0DC",
 		/*

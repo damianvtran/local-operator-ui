@@ -54,17 +54,20 @@ export const everforestLight: ThemeDefinition = {
 		sunken: "#DCD7BC",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 6.2 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.28:1 on
-		 * the row's ground. ΔE00 4.3 from `surface`, 7.01 from `elevated`, 2.09 from
-		 * `sunken`, 7.05 from `accentWash`; the inks on the ground are 7.43:1,
-		 * 7.61:1, 5.28:1. Continuity with the panel: hue 1.25 degrees off the
-		 * panel's (the assertion allows 12) and chroma 15.98 where the panel carries
-		 * 13.08.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #E9E9E1  accent hue, C* 4.13, +1.54 L*, ΔE00 6.69 off `surface`,
+		 *                       `inkDim` 5.99:1 on the fill, hue 0.10° off `accent`.
+		 * rowSelected #E0E2BA  accent hue, C* 20.70, +4.87 L*, ΔE00 6.97 off
+		 *                       `surface` and 11.29 off `rowHover`, `inkDim` 5.48:1, and the
+		 *                       2px `accent` bar at 5.01:1 against it.
 		 */
-		highlight: "#E4DBBD",
+		rowHover: "#E9E9E1",
+		rowSelected: "#E0E2BA",
 
 		ink: "#394246",
 		/*

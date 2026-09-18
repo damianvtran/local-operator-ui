@@ -74,27 +74,24 @@ export const nightfox: ThemeDefinition = {
 		sunken: "#131A24",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.63-to-4 band
-		 * on `surface`. ΔE00 4.63 from `surface`, 2.09 from `elevated`, 11.1 from
-		 * `sunken`, 2.84 from `accentWash`; the inks on the ground are 7.69:1,
-		 * 5.7:1, 5.17:1. Continuity with the panel: hue 1.54 degrees off the
-		 * panel's (the assertion allows 12) and chroma 18.38 where the panel carries
-		 * 12.5.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * RAISED BY THE ROW/HOVER PASS, from the 3.4 `L*` step this block used to
-		 * record: the hover rung's own floor - ΔE00 2.0 off the panel,
-		 * `ELEVATED_PANEL_DELTA_E`, the number the app already uses for a hover tint -
-		 * sits above where this row was, and no rung can be both perceptibly off the
-		 * panel and BELOW a row this low, so the row came up to outrank the pointer's.
-		 * The step is the largest this palette's inks allow - `inkDim` is the binder
-		 * at 5.17:1 on the ground, against its 5.0 floor and this file's 0.15 of
-		 * headroom - which is why `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries
-		 * re-measured numbers for this palette rather than the ones it shipped with.
+		 * rowHover    #2C3035  accent hue, C* 3.80, +1.60 L*, ΔE00 6.50 off `surface`,
+		 *                       `inkDim` 5.67:1 on the fill, hue 5.94° off `accent`.
+		 * rowSelected #1E3855  accent hue, C* 20.54, +4.80 L*, ΔE00 5.65 off
+		 *                       `surface` and 11.02 off `rowHover`, `inkDim` 5.12:1, and the
+		 *                       2px `accent` bar at 5.43:1 against it.
+		 *
+		 * NAMED EXCEPTION, recorded in `ROW_STATE_PINS` in `scripts/contrast-contract.mjs`
+		 * with its measured ceiling and the ink that binds it: this palette cannot hold
+		 * the rule's set inside the chroma ceiling, and the floor is NOT widened to fit it.
 		 */
-		highlight: "#223751",
+		rowHover: "#2C3035",
+		rowSelected: "#1E3855",
 
 		ink: "#CDCECF",
 		/*

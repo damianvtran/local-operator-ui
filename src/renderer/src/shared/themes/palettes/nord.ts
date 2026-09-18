@@ -59,18 +59,20 @@ export const nord: ThemeDefinition = {
 		sunken: "#272C36",
 
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 2.4 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.36x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 4.26
-		 * from `surface`, 3.91 from `elevated`, 8.23 from `sunken`, 8.49 from
-		 * `accentWash`; the inks on the ground are 8.94:1, 7.63:1, 5.15:1.
-		 * Continuity with the panel: hue 11.53 degrees off the panel's (the
-		 * assertion allows 12) and chroma 13.04 where the panel carries 9.57.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #374042  accent hue, C* 4.04, +1.61 L*, ΔE00 7.81 off `surface`,
+		 *                       `inkDim` 5.32:1 on the fill, hue 6.52° off `accent`.
+		 * rowSelected #264750  accent hue, C* 12.99, +3.35 L*, ΔE00 11.46 off
+		 *                       `surface` and 7.63 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 5.00:1 against it.
 		 */
-		highlight: "#314254",
+		rowHover: "#374042",
+		rowSelected: "#264750",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",

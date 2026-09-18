@@ -81,17 +81,20 @@ export const gruvboxLight: ThemeDefinition = {
 		sunken: "#EFE2B9",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5.7 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.06 from `surface`, 8.44 from `elevated`, 4.86
-		 * from `sunken`, 2.8 from `accentWash`; the inks on the ground are 9.24:1,
-		 * 7.33:1, 5.16:1. Continuity with the panel: hue 6.82 degrees off the
-		 * panel's (the assertion allows 12) and chroma 15.99 where the panel carries
-		 * 15.49.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #E9F3F6  accent hue, C* 3.77, +1.53 L*, ΔE00 13.99 off `surface`,
+		 *                       `inkDim` 5.74:1 on the fill, hue 0.67° off `accent`.
+		 * rowSelected #CEEDF6  accent hue, C* 11.31, +4.88 L*, ΔE00 19.19 off
+		 *                       `surface` and 7.05 off `rowHover`, `inkDim` 5.26:1, and the
+		 *                       2px `accent` bar at 5.37:1 against it.
 		 */
-		highlight: "#E9E7C8",
+		rowHover: "#E9F3F6",
+		rowSelected: "#CEEDF6",
 
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under

@@ -49,17 +49,20 @@ export const ayuLight: ThemeDefinition = {
 		sunken: "#DBE4EB",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5.7 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.68x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `sunken` at ΔE00 2.07
-		 * against its 2.0 field floor. ΔE00 4.19 from `surface`, 7.23 from
-		 * `elevated`, 2.07 from `sunken`, 3.01 from `accentWash`; the inks on the
-		 * ground are 7.69:1, 6.98:1, 5.47:1. Continuity with the panel: hue 12.98
-		 * degrees off the panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 4.86 where
-		 * the panel carries 2.89.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #EBF2FF  accent hue, C* 7.04, +1.92 L*, ΔE00 4.30 off `surface`,
+		 *                       `inkDim` 6.02:1 on the fill, hue 4.00° off `accent`.
+		 * rowSelected #DCEAFF  accent hue, C* 11.72, +4.99 L*, ΔE00 7.61 off
+		 *                       `surface` and 3.87 off `rowHover`, `inkDim` 5.56:1, and the
+		 *                       2px `accent` bar at 5.58:1 against it.
 		 */
-		highlight: "#DDE9EE",
+		rowHover: "#EBF2FF",
+		rowSelected: "#DCEAFF",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

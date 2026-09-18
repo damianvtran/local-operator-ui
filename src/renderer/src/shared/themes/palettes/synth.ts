@@ -61,17 +61,20 @@ export const synth: ThemeDefinition = {
 		sunken: "#1C1A20",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.95 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.18 from `surface`, 2.80 from `elevated`, 17.86
-		 * from `sunken`, 9.79 from `accentWash`; the inks on the ground are 12.07:1,
-		 * 7.14:1, 5.17:1. Continuity with the panel: hue 0.37 degrees off the
-		 * panel's (the assertion allows 12) and chroma 32.77 where the panel carries
-		 * 26.82.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2F2628  accent hue, C* 4.64, +1.53 L*, ΔE00 15.48 off `surface`,
+		 *                       `inkDim` 5.71:1 on the fill, hue 3.77° off `accent`.
+		 * rowSelected #3F2A2E  accent hue, C* 10.57, +4.98 L*, ΔE00 14.36 off
+		 *                       `surface` and 6.29 off `rowHover`, `inkDim` 5.15:1, and the
+		 *                       2px `accent` bar at 4.65:1 against it.
 		 */
-		highlight: "#3b2554",
+		rowHover: "#2F2628",
+		rowSelected: "#3F2A2E",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are

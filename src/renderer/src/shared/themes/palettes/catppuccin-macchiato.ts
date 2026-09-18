@@ -54,18 +54,20 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		sunken: "#1E2132",
 
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 1.9 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.05 `L*`. The band is paid on the cast at 1.46x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.08
-		 * from `surface`, 4.35 from `elevated`, 8.17 from `sunken`, 5.82 from
-		 * `accentWash`; the inks on the ground are 8.56:1, 7.13:1, 5.15:1.
-		 * Continuity with the panel: hue 8.92 degrees off the panel's (the assertion
-		 * allows 12) and chroma 21.03 where the panel carries 14.41.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #333136  accent hue, C* 3.52, +1.63 L*, ΔE00 8.23 off `surface`,
+		 *                       `inkDim` 5.21:1 on the fill, hue 3.02° off `accent`.
+		 * rowSelected #3D2E51  accent hue, C* 24.24, +3.02 L*, ΔE00 8.91 off
+		 *                       `surface` and 14.24 off `rowHover`, `inkDim` 4.98:1, and the
+		 *                       2px `accent` bar at 0.00:1 against it.
 		 */
-		highlight: "#322F4E",
+		rowHover: "#333136",
+		rowSelected: "#3D2E51",
 
 		ink: "#CAD3F5",
 		/*

@@ -51,17 +51,20 @@ export const arctic: ThemeDefinition = {
 		sunken: "#121A25",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.41x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
-		 * the row's ground. ΔE00 4.23 from `surface`, 2.64 from `elevated`, 10.34
-		 * from `sunken`, 16.25 from `accentWash`; the inks on the ground are 9.95:1,
-		 * 7.13:1, 5.19:1. Continuity with the panel: hue 1.88 degrees off the
-		 * panel's (the assertion allows 12) and chroma 15.49 where the panel carries
-		 * 11.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2C322E  accent hue, C* 3.93, +1.52 L*, ΔE00 11.52 off `surface`,
+		 *                       `inkDim` 5.72:1 on the fill, hue 2.46° off `accent`.
+		 * rowSelected #2A3C32  accent hue, C* 10.53, +4.94 L*, ΔE00 16.55 off
+		 *                       `surface` and 6.96 off `rowHover`, `inkDim` 5.12:1, and the
+		 *                       2px `accent` bar at 7.14:1 against it.
 		 */
-		highlight: "#28384E",
+		rowHover: "#2C322E",
+		rowSelected: "#2A3C32",
 
 		ink: "#E3ECF4",
 

@@ -47,18 +47,20 @@ export const palenight: ThemeDefinition = {
 		elevated: "#353B4E",
 		sunken: "#232736",
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 2.15 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.45 `L*`. The band is paid on the cast at 1.45x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 6.05
-		 * from `surface`, 5.35 from `elevated`, 8.64 from `sunken`, 7.84 from
-		 * `accentWash`; the inks on the ground are 11.1:1, 7.06:1, 5.15:1.
-		 * Continuity with the panel: hue 13.94 degrees off the panel's (the
-		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 17.66 where the panel carries 12.19.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #3A373C  accent hue, C* 3.60, +1.58 L*, ΔE00 7.26 off `surface`,
+		 *                       `inkDim` 5.28:1 on the fill, hue 1.46° off `accent`.
+		 * rowSelected #423848  accent hue, C* 11.43, +3.17 L*, ΔE00 7.67 off
+		 *                       `surface` and 7.06 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 4.62:1 against it.
 		 */
-		highlight: "#263b54",
+		rowHover: "#3A373C",
+		rowSelected: "#423848",
 
 		ink: "#EEFFFF",
 		/*
