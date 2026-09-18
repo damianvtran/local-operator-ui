@@ -73,6 +73,10 @@ export const rosewood: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.30 from `accent` and 11.13:1 on surface, where the
 		// accent itself is 7.33:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFC4E4",
+		tokenCommand: "#82B1D4",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.

@@ -75,6 +75,10 @@ export const synthwave: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.7 from
 		// `accent` and 8.17:1 on `surface`, where the accent measures 6.10:1.
 		chartBarHover: "#F9B0E8",
+		tokenCommand: "#36F9F6",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#422F4B",
 		// The canvas at 42% of its L*: this accent is far too light for a light label
 		// to clear 4.5:1 on it.

@@ -46,6 +46,11 @@
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */
 	--color-chart-bar-hover: var(--lo-chart-bar-hover);
 
+	/* The composer's structured-token ink, for the leading `/word` a user typed:
+	   its own role because `info` is the accent's twin in three palettes and the
+	   ink's twin in a fourth. See `tokenCommand` in the palette contract. */
+	--color-token-command: var(--lo-token-command);
+
 	--color-success: var(--lo-success);
 	--color-success-wash: var(--lo-success-wash);
 	--color-success-border: var(--lo-success-border);
@@ -444,4 +449,57 @@ html .Mui-focusVisible {
  */
 [data-radix-popper-content-wrapper]:has(> [data-lo-tooltip-panel]) {
 	pointer-events: none !important;
+}
+
+/*
+ * The composer's caret, while the mirror is painting the draft.
+ *
+ * `caret-color: auto` follows `color`, and the textarea's colour is
+ * `text-transparent` in that state — an invisible caret in the app's primary
+ * input. `caret-ink` was relied on for this and Tailwind does generate it from
+ * `--color-ink`, but generation is on demand and per-utility: the rule can land
+ * in a lazily-loaded chunk in the built app, and a frame capture that measured
+ * the composer before that chunk applied read `rgba(0, 0, 0, 0)` in eight of
+ * the twelve themes (design round 1 D1). Stating it here puts the caret in the
+ * stylesheet every surface already loads, so its visibility cannot depend on
+ * which chunk happened to arrive first.
+ */
+.caret-ink {
+	caret-color: var(--lo-ink);
+}
+
+/*
+ * The command run's weight step, PAINTED rather than laid out.
+ *
+ * The mirror behind the composer is the layer that paints every glyph while the
+ * textarea's own text is transparent, so its line breaking must be the
+ * textarea's — and `font-weight` is not a way to say "heavier" there: it moves
+ * the advances, the two layers wrap at different characters, and the mirror's
+ * `overflow: hidden` clips the tail of the draft the user typed (measured: 65
+ * characters of a 78-character draft, QA round 1 Q1). A stroke paints outside
+ * the glyph outline and changes no advance, so the step the design round
+ * measured (a 4px stem against prose's 3px at dsf 2) survives with the layout
+ * untouched.
+ *
+ * ONE CONSTANT WIDTH, AT EVERY RASTER — and a raster-query floor was tried here
+ * and taken back out (design round 2 D6, withdrawn in round 3 by its own author;
+ * D8 carries the replacement judgement). The floor's premise was that a 0.5px
+ * stroke renders as nothing at a 1x raster; measured on a real `deviceScaleFactor:
+ * 1` build it renders at half strength — `+52.7%` of the run's ink mass in
+ * obsidian against no stroke, the same size as the 2x step — so the premise was
+ * an artifact of the round-2 proxy (a `zoom:0.5` raster is 0.25 device px, not the
+ * 0.5 a real 1x display gives). What the floor then did was double the step below
+ * 2dppx: 1px takes the run's stems from prose's 1 device pixel to 2 (+122% ink,
+ * and at 14px it closes the 'e' aperture), because a 1x raster has 1-device-px
+ * stems to grow where a 2x raster has 3. Half a device px of growth is the quiet
+ * step the 2x band has always shown; double the stem is not a step, it is weight
+ * spent on legibility. A stroke never moves an advance either way, so the mirror's
+ * line breaking stays the textarea's (QA round 1 Q1) at both widths.
+ *
+ * A plain rule beside `.caret-ink` for the same reason as that one: this is a
+ * vendor-prefixed paint property with no Tailwind utility, and it must not depend
+ * on which chunk happened to load first.
+ */
+.slash-run-bold {
+	-webkit-text-stroke: 0.5px currentColor;
 }

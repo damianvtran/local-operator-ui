@@ -96,6 +96,8 @@ export const localOperatorDark: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 10.70:1 on surface, where the accent
 		// itself is 8.02:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#85DEA3",
+		tokenCommand: "#86b3f2",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#16281d",
 		onAccent: "#16130e",
 
@@ -246,6 +248,8 @@ export const localOperatorLight: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 7.82:1 on surface, where the accent
 		// itself is 5.21:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#0F5A31",
+		tokenCommand: "#2368a8",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
 

@@ -69,6 +69,9 @@ export const gruvbox: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFD78C",
+		tokenCommand: "#88AB9E",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.31), at a
+		// cost of ΔE00 1.79 from the signal itself; 5.23:1 on `surface`.
 		accentWash: "#32321C",
 		onAccent: "#1D2021",
 

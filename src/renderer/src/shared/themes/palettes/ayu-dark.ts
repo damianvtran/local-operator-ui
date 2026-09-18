@@ -60,6 +60,10 @@ export const ayuDark: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 11.1:1 on surface, where the accent is
 		// 8.5:1.
 		chartBarHover: "#77DFFF",
+		tokenCommand: "#D2A6FF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#152431",
 		onAccent: "#0D1017",
 

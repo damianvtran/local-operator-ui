@@ -76,6 +76,10 @@ export const vaporwave: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.6 from
 		// `accent` and 10.96:1 on `surface`, where the accent measures 8.65:1.
 		chartBarHover: "#F1CDE7",
+		tokenCommand: "#7BD7E3",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#3B2A46",
 		onAccent: "#150824",
 

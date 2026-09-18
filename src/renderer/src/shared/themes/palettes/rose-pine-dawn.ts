@@ -73,6 +73,10 @@ export const rosePineDawn: ThemeDefinition = {
 		// 5.0:1 — the step goes deeper here, because on paper the plot ground is
 		// above the mark.
 		chartBarHover: "#803836",
+		tokenCommand: "#10746E",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#fbece8",
 		onAccent: "#fffaf3",
 

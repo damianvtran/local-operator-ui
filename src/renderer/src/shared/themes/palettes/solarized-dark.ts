@@ -84,6 +84,9 @@ export const solarizedDark: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#5CCBC0",
+		tokenCommand: "#53A7EB",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.05), at a
+		// cost of ΔE00 3.31 from the signal itself; 5.22:1 on `surface`.
 		accentWash: "#01333D",
 		onAccent: "#00252E",
 

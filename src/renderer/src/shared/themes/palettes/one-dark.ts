@@ -76,6 +76,9 @@ export const oneDark: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#9ED2FF",
+		tokenCommand: "#5ABAC6",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.40), at a
+		// cost of ΔE00 1.12 from the signal itself; 5.52:1 on `surface`.
 		accentWash: "#28333C",
 		onAccent: "#21252B",
 

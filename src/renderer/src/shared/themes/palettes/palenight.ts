@@ -56,6 +56,10 @@ export const palenight: ThemeDefinition = {
 		// ΔE00 10.4 from `accent` and 7.6:1 on surface, where the accent is
 		// 5.1:1.
 		chartBarHover: "#EEB8FF",
+		tokenCommand: "#89DDFF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2F3145",
 		onAccent: "#252939",
 

@@ -233,6 +233,45 @@ export type ThemePalette = {
 	 */
 	chartBarHover: string;
 
+	/**
+	 * The composer's STRUCTURED-TOKEN ink: the leading `/word` a user typed.
+	 *
+	 * Its own role rather than `info`, and the reason is measured rather than
+	 * stylistic: the token sits INSIDE the draft, beside prose `ink`, and the
+	 * composer already spends `accent` three times on the same screen (focus
+	 * ring, send button, popup selection). Across the palettes that shipped when
+	 * this role was authored, `info` is the accent's twin in three of them (dune,
+	 * neon, radient read ΔE00 0.0) and `ink`'s twin in a fourth (obsidian, also
+	 * 0.0), so no shipped text role could carry this run. It is the desktop's
+	 * counterpart of the TUI's `$lo-signal`, whose own file states the rule
+	 * ("`$lo-accent` is deliberately NOT used here … a recognized command word is
+	 * structure, not activity").
+	 *
+	 * FLOORS (`scripts/contrast-contract.mjs`, the "command token" block): at
+	 * least 4.5:1 as text on `surface` and on `elevated`; at least ΔE00 8 from
+	 * `ink`, from `accent` and from `success` — the three inks this run is read
+	 * against in one line of the composer. obsidian is the single pinned
+	 * exception, and it is the app's recorded monochrome case: its `info` IS its
+	 * `ink`, so `code-mirror-theme.ts` already separates tokens by WEIGHT there
+	 * and `tokenCommand` is bound to `ink` with the composer's own painted weight
+	 * step carrying the run (`slash-run-bold` — a text stroke, which thickens the
+	 * glyph without moving its advance; a real `font-weight` here moved the
+	 * MIRROR's wrap points off the textarea's and hid the tail of the draft behind
+	 * the mirror's overflow, QA round 1 Q1). Its width is ONE constant, `0.5px`, at
+	 * every raster: a raster-query floor was tried in round 2 (D6, on a proxy
+	 * measurement that a real 1x build falsified — the 0.5px stroke paints at half
+	 * strength there, not nothing) and withdrawn in round 3, because below 2dppx it
+	 * doubled the run's stem against prose's 1 device pixel and closed this row's
+	 * counters (D8). So this row's separation is the stroke as it has always been,
+	 * at every display.
+	 *
+	 * The TUI port's palettes author it as their own `info` where that value
+	 * clears the floors, which is most of them; the five that missed by a hair
+	 * record a lift of that signal and its measured cost in the palette file.
+	 * Re-measure before changing a value here.
+	 */
+	tokenCommand: string;
+
 	/* ---- semantic: each with a wash and a border ------------------------ */
 
 	/**
