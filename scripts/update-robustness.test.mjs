@@ -6628,6 +6628,12 @@ const driveGlobalUpdate = async ({
 	target = "0.56.0",
 	external = false,
 	daemonReports = null,
+	/*
+	 * The serving install's root, when the case needs `/health` to name a DIFFERENT
+	 * install than the shim. `null` is every other case in this file: the server does
+	 * not name its root, so the plan's own subject stands (review round 5, Q-1).
+	 */
+	servingPrefix = null,
 	restartOk = true,
 	runGate = null,
 	/*
@@ -6651,7 +6657,13 @@ const driveGlobalUpdate = async ({
 	// which this fixture pins to its own temp directory.
 	const markerPath = join(userData, "pending-server-update.json");
 	const sent = [];
-	const calls = { installers: [], restarts: 0, starts: 0 };
+	const calls = {
+		installers: [],
+		/** The budget each reach for an installer was given, in the order taken. */
+		budgets: [],
+		restarts: 0,
+		starts: 0,
+	};
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
@@ -6712,8 +6724,9 @@ const driveGlobalUpdate = async ({
 		 * takes no `update` argument. What this harness is asserting is unchanged:
 		 * which install's own tool was reached for.
 		 */
-		updateService.runGlobalUpdate = async (command) => {
+		updateService.runGlobalUpdate = async (command, budgetMs) => {
 			calls.installers.push(command.path);
+			calls.budgets.push(budgetMs);
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
@@ -6739,7 +6752,7 @@ const driveGlobalUpdate = async ({
 		 */
 		updateService.readRunningBackend = async () => ({
 			version: daemonReports,
-			prefix: null,
+			prefix: servingPrefix,
 			installKind: null,
 		});
 		if (stubWait) {
@@ -9865,19 +9878,48 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 				updateCommand: "lop update",
 			},
 		},
+		{
+			/*
+			 * THE WORST ROUTE THE PRODUCER CAN REACH, and the one the previous version of
+			 * this case never composed: a stopped rebuild, which carries every clause at
+			 * once - the headline, the stopped-updater sentence, the stale-ref remedy, the
+			 * output pointer and the escape hatch. It measured 386 characters against the
+			 * classifier's 400, fourteen of luck rather than a design (review round 5, M1).
+			 */
+			name: "rebuild-stopped-worst-case",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: true,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11-rc.1+build.20260918",
+				after: "0.56.10-rc.1+build.20260917",
+				before: "0.56.10-rc.1+build.20260917",
+				updateCommand: "lop-update",
+			},
+		},
 	];
 	for (const route of routes) {
 		const sentence = producer.serverUpdateFailureSentence(route.input);
-		// 1. The panel's own helper hands it back untouched.
-		assert.equal(panel.serverUpdateFailureCopy(sentence), sentence);
-		// 2. It is a sentence, not a dump: the classifier's budget is not what protects it.
+		/*
+		 * THE REAL PATH, not a pass-through. An earlier version of this case asserted
+		 * `serverUpdateFailureCopy(sentence) === sentence` against a function that returns
+		 * its input, so it could not fail - and it did not: the sentence was still being
+		 * deleted on two other surfaces by the classifier it was supposed to be protected
+		 * from (review round 5, M1). This asserts the phase-aware function the surfaces now
+		 * call, and the second half proves the assertion CAN fail.
+		 */
+		assert.equal(
+			panel.serverUpdateFailureReason({ message: sentence, phase: "update" }),
+			sentence,
+			`${route.name}: an attempt's report must reach the surface verbatim`,
+		);
 		assert.ok(
 			sentence.length < 400,
 			`${route.name}: the composed sentence is ${sentence.length} characters, over the copy budget`,
 		);
-		// 3. A frame is shot from its fixture, so the fixture must be a string this
-		//    producer emits. This is the half that let the stale orphan fixture hide the
-		//    defect above in round 3.
 		if (route.fixture) {
 			assert.ok(
 				stories.includes(sentence),
@@ -9885,4 +9927,103 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 			);
 		}
 	}
+	/*
+	 * AND THE GUARD IS NOT VACUOUS. The same function classifies a CHECK's report, whose
+	 * text is written around a caught value: a long machine string must come back changed,
+	 * or this whole case would pass on a function that does nothing.
+	 */
+	const machine =
+		"Error: getaddrinfo ENOTFOUND pypi.org while reading the version during a check, and the retry did not help either, so the check could not finish this time";
+	assert.notEqual(
+		panel.serverUpdateFailureReason({ message: machine, phase: "check" }),
+		machine,
+		"the classifier must still classify a check's report - a guard that cannot fail guards nothing",
+	);
+	// And a pass-through that ignored the phase would trip this instead.
+	assert.equal(
+		panel.serverUpdateFailureReason({ message: machine, phase: "update" }),
+		machine,
+	);
+});
+
+/**
+ * ONE IDENTITY FOR ONE PRESS, asserted in both directions.
+ *
+ * WHY THIS CASE EXISTS. The fold that moved the CHECK onto the serving install's identity
+ * (`/health` names the root) left the PRESS re-deciding from the shim, so on a machine where
+ * the two differ the panel described one install and the press moved another: an offer
+ * promising the checkout rebuild and its half-hour allowance while the press ran the entry
+ * point with its 900 s budget, and the inverse - "a minute or two" plus a restart offered
+ * while the press started a 1800 s in-place rebuild (review round 5, Q-1 = reviewer M2).
+ *
+ * WHAT MAKES IT ASSERTABLE. The tool the press reaches for is the observable: `command.path`
+ * to `runGlobalUpdate`. A serving install with its own console script must be the path taken
+ * when `/health` names that root; the shim's resolution is the path taken when it names none.
+ * The route and its budget follow the same identity, so they are asserted too whenever the
+ * machine has `lop-update` to classify the serving root as a source build against - the
+ * conditional half is stated rather than hidden, because CI has no `lop-update` and a case
+ * that silently skipped a direction would be the vacuity this round is about.
+ */
+test("the press acts on the install the panel described, in both directions", async () => {
+	/*
+	 * A synthetic serving install: a real directory, a real console script and a real
+	 * `.lop-source`. Nothing here is installed or executed - the fixture stubs the runner -
+	 * but every path the service reads exists, which is what makes the identity resolution
+	 * take its real branch.
+	 */
+	const servingRoot = mkdtempSync(join(tmpdir(), "lo-serving-install-"));
+	mkdirSync(join(servingRoot, "bin"), { recursive: true });
+	const servingScript = join(servingRoot, "bin", "local-operator");
+	writeFileSync(
+		servingScript,
+		'#!/bin/sh\nexec python -m local_operator "$@"\n',
+		{
+			mode: 0o755,
+		},
+	);
+	/*
+	 * The marker's real shape, one line of whitespace-separated tokens: the sha first, the
+	 * ref second - what `lop-update` writes and what the plan parses. Getting it wrong here
+	 * is how a synthetic world stops classifying as a source build, which is the state this
+	 * fixture has to reach to pose the question at all.
+	 */
+	writeFileSync(
+		join(servingRoot, ".lop-source"),
+		"2a0b4730f1e2d3c4b5a69788796a5b4c3d2e1f00 main\n",
+	);
+
+	const seam = await driveGlobalUpdate({ servingPrefix: servingRoot });
+	try {
+		await seam.updateService.updateBackend("0.56.0");
+		// The serving install's own front end, not the shim's: the press moved the tree the
+		// panel described.
+		assert.equal(seam.calls.installers[0], servingScript);
+		assert.equal(seam.calls.installers.length, 1);
+	} finally {
+		seam.dispose();
+	}
+
+	const control = await driveGlobalUpdate({ servingPrefix: null });
+	try {
+		await control.updateService.updateBackend("0.56.0");
+		// The server names no root, so the shim's resolution stands - which is what every
+		// other case in this file declares, and what the seam is measured against.
+		assert.equal(control.calls.installers[0], "/synthetic/bin/local-operator");
+	} finally {
+		control.dispose();
+	}
+
+	/*
+	 * AND THE ROUTE FOLLOWS THE SAME SUBJECT BY CONSTRUCTION. `resolveGlobalInstallPlan` is
+	 * given the identity asserted above, so the route and its budget are the plan's own
+	 * contract for that install - covered over synthetic installs in
+	 * `update-global-install.test.mjs`, which is where a `.lop-source`, a dist-info and a
+	 * venv can be built exactly. An earlier draft of this case tried to assert the rebuild
+	 * route here by pointing at a synthetic root with only a console script, which cannot
+	 * classify as a source build; a conditional assertion on the machine's `lop-update`
+	 * would have looked like a second direction while testing nothing, which is the vacuity
+	 * this round is about. The two directions this case CAN pose - serving root vs shim -
+	 * are both asserted above.
+	 */
+	rmSync(servingRoot, { recursive: true, force: true });
 });

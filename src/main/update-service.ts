@@ -3708,12 +3708,26 @@ export class UpdateService {
 	 * machines this check exists for. Null when the prefix carries no console
 	 * script, which is "we could not classify it" rather than a guess.
 	 */
-	private servingInstallIdentity(prefix: string): InstallIdentity | null {
+	/**
+	 * The console script an install root exposes, or null when it has none.
+	 *
+	 * ONE PLACE, because two callers must agree: the identity the app CLASSIFIES an
+	 * install by, and the command it RUNS for that install. They used to be derived
+	 * separately - the check read `<prefix>/bin/local-operator` while the press ran
+	 * whatever the shim resolved to - which is how the two halves came to describe
+	 * different installs (review round 5, Q-1 = M2).
+	 */
+	private servingConsoleScript(prefix: string): string | null {
 		const script =
 			process.platform === "win32"
 				? join(prefix, "Scripts", "local-operator.exe")
 				: join(prefix, "bin", "local-operator");
-		return existsSync(script) ? readInstallIdentity(script) : null;
+		return existsSync(script) ? script : null;
+	}
+
+	private servingInstallIdentity(prefix: string): InstallIdentity | null {
+		const script = this.servingConsoleScript(prefix);
+		return script === null ? null : readInstallIdentity(script);
 	}
 
 	/**
@@ -4892,14 +4906,38 @@ export class UpdateService {
 		 * version below is re-read: a check and a click can be minutes apart, and this
 		 * machine's `lop-update` can appear (or go away) between them. The decision is the
 		 * same function the check used, given the same two inputs, so the app runs the
-		 * route it classified rather than a route it remembers.
+		 * route it classified rather than a route it remembers - and since round 5 the
+		 * SUBJECT is the serving install too, so the command run and the identity
+		 * classified are the same install's.
 		 *
 		 * `lop-update` is absent from most machines, and that is not an error: the plan
 		 * falls back to the refusal and its command, which is what the panel renders.
 		 */
 		const rebuildPath = resolveCommandPath("lop-update");
+		/*
+		 * ONE IDENTITY FOR ONE PRESS. The check offers this update on the SERVING
+		 * install's identity - `/health` names the root, and upstream's fold made that
+		 * the subject - while this branch's press used to re-decide from the SHIM. On a
+		 * machine where the two differ, the panel therefore described one install and the
+		 * press moved another: measured in both directions, an offer promising the
+		 * checkout rebuild and its half-hour allowance while the press ran the entry
+		 * point with its 900 s budget, and the inverse - "a minute or two" plus a restart
+		 * offered while the press started a 1800 s in-place rebuild (review round 5,
+		 * Q-1 = M2). The route is still re-decided from a FRESH resolution, because a
+		 * check and a click can be minutes apart and `lop-update` can appear or go away
+		 * between them; what is no longer fresh is the SUBJECT, which is the install the
+		 * panel described.
+		 */
+		const running = await this.readRunningBackend();
+		const serving = this.readServingInstall(running);
+		const servingScript = serving.prefix
+			? this.servingConsoleScript(serving.prefix)
+			: null;
+		const servingIdentity = serving.prefix
+			? this.servingInstallIdentity(serving.prefix)
+			: null;
 		const freshPlan = resolveGlobalInstallPlan({
-			identity: readInstallIdentity(consolePath),
+			identity: servingIdentity ?? readInstallIdentity(consolePath),
 			sourceRebuild: rebuildPath,
 		});
 		const rebuildRoute =
@@ -4971,7 +5009,13 @@ export class UpdateService {
 		const run = await this.runGlobalUpdate(
 			rebuildRoute && rebuildPath !== null
 				? { path: rebuildPath, args: [] }
-				: { path: consolePath ?? "", args: ["update"] },
+				: /*
+					 * THE SERVING INSTALL'S OWN FRONT END when it has one, and the shim's
+					 * resolution only as the fallback: the identity above is that script's, so
+					 * running anything else would update one install and verify another - the
+					 * seam this case classifies (review round 5, Q-1 = M2).
+					 */
+					{ path: servingScript ?? consolePath ?? "", args: ["update"] },
 			budgetMs,
 			(pid) => {
 				/*

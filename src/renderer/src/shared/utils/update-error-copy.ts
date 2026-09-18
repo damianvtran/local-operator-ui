@@ -364,6 +364,31 @@ export function serverUpdateFailureCopy(message: string): string {
 	return message;
 }
 
+/**
+ * The reason a surface shows for a `backend-update-error` report, by PHASE.
+ *
+ * WHY ONE FUNCTION FOR ALL THREE CONSUMERS. Round 4 rescued the attempt's sentence on the
+ * notification panel by handing it to `serverUpdateFailureCopy`, but two other surfaces read
+ * the same channel and still ran it through the classifier: `run-panel` (the run that pressed
+ * the button) and `backend-compatibility-banner`. The sentence was therefore safe on one
+ * screen and deletable on two others, and today's worst producer-reachable route is 386
+ * characters against the classifier's 400 - fourteen characters of luck, not a design
+ * (review round 5, M1). They now share this, so the rule lives in one place and can be
+ * tested as behaviour rather than as a string a component happens to contain:
+ *
+ * - an ATTEMPT's report is the app's own composed sentence and is trusted verbatim;
+ * - a CHECK's report is written around a caught value - errno forms like
+ *   `getaddrinfo ENOTFOUND pypi.org` - and keeps the classifier, which is what it is for.
+ */
+export function serverUpdateFailureReason(report: {
+	message: string;
+	phase: "check" | "update";
+}): string {
+	return report.phase === "update"
+		? serverUpdateFailureCopy(report.message)
+		: updateErrorMessage(report.message);
+}
+
 /** Just the sentence, for a surface that has nowhere to put a machine line. */
 export function updateErrorMessage(message: string): string {
 	return updateErrorCopy(message).sentence;

@@ -2349,6 +2349,13 @@ export const STORIES = [
 		1280,
 		900,
 	],
+	/*
+	 * The app-owned arm of the same panel: `ManualRemedyNote` returns null for it, no
+	 * fixture set `appOwned` before round 5, and so the state this fold's re-shoot was
+	 * about was the one state with no photograph (design D1 = QA Q-2). Same viewport,
+	 * because it is the same card.
+	 */
+	["common-updatenotification--backend-manual-required-app-owned", 1280, 900],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	/*
 	 * The two states the operator's own report produced (2026-09-15), and neither
