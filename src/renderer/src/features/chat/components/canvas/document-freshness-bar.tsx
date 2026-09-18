@@ -158,17 +158,17 @@ export const DocumentFreshnessBar: FC<{
 					data-tour-tag="canvas-document-freshness-region"
 				>
 					{/*
-					 * THE STAMP YIELDS, AND THE SENTENCE KEEPS ITS WIDTH (UX round 4, U15 -
-					 * deliberately the reverse of round 2's D7, which protected the stamp).
-					 * U15 measured the note at six pixels against 264px of text at a
-					 * 1024x700 window: at the size the app's own minimum window declares,
-					 * the fact the row exists to state was gone. The stamp truncates with an
-					 * ellipsis instead when the row cannot hold both, and the tooltip now
-					 * carries its figure as well as the claim, so nothing is lost.
+					 * THE NOTE HAS A FLOOR AND THE STAMP YIELDS BELOW IT (UX round 6, U18,
+					 * superseding round 4's U15). Round 5 protected the stamp absolutely, and at a
+					 * real 1024x700 window that left the hold sentence ZERO pixels: the 244px stamp
+					 * fills the region, the note's box falls outside it, and the reader sees a
+					 * timestamp while the autosave is paused. The stamp is the half that gives way
+					 * now - it ellipsises, and the tooltip carries its figure as well as the
+					 * sentence - while the note keeps a floor of 8ch, about a state and its verb.
 					 */}
 					<span
 						className={cn(
-							"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
+							"min-w-0 truncate whitespace-nowrap text-meta text-ink-muted tabular-nums",
 						)}
 						data-tour-tag="canvas-document-modified"
 					>
@@ -192,15 +192,14 @@ export const DocumentFreshnessBar: FC<{
 					{note ? (
 						<span
 							/*
-							 * THE SENTENCE YIELDS, AND IT SAYS SO (design D16 / UX U17). It is
-							 * the flexible half (`min-w-0` lets it shrink below its content,
-							 * which is the only thing that lets `truncate`'s ellipsis fire at
-							 * all), and the stamp keeps its width beside it. Round 5 had it the
-							 * other way: a `shrink-0` note has a max-content box, so its own
-							 * ellipsis could never trigger and the region's `overflow-hidden`
-							 * sheared the text mid-word with no signal.
+							 * THE NOTE'S FLOOR (UX round 6, U18 / design D21). 8ch is about a state and
+							 * its verb, and above it the note keeps its ground while the stamp shortens -
+							 * which is what stops a reader seeing `C…` while the autosave is paused. Below
+							 * the floor the note truncates like anything else.
 							 */
-							className={cn("min-w-0 truncate text-meta text-ink-muted")}
+							className={cn(
+								"min-w-[8ch] truncate whitespace-nowrap text-meta text-ink-muted",
+							)}
 							data-tour-tag="canvas-document-freshness-note"
 						>
 							{note}

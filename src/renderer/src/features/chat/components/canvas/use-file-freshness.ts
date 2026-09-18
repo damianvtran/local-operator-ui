@@ -451,7 +451,7 @@ export function useFileFreshness({
 			 * this, the check's stale bytes were written into the store after the save
 			 * had already put the reader's bytes on disk, and the editor then adopted
 			 * the stale version and autosaved it straight back over the file. The epoch
-			 * is bumped by `saveDocument`'s own writes and by `load`, so this is the
+			 * is bumped by the buffer owner's own writes and by `load`, so this is the
 			 * same signal that cancels a pending write.
 			 */
 			const epoch = currentWriteEpoch(document.id);

@@ -5130,67 +5130,6 @@ async function sceneCanvasFreshness(cdp, app) {
 			rowGeometry.note.scroll <= rowGeometry.note.client + 1,
 		JSON.stringify(rowGeometry),
 	);
-	/*
-	 * THE ROW AT THE WIDTHS THE DESIGN AND UX ROUNDS MEASURED (design D16 / UX U17).
-	 *
-	 * The finding was that the sentence was SHEARED mid-word with no truncation signal,
-	 * because a `shrink-0` note has a max-content box and its own ellipsis can never
-	 * fire. The geometry above is the default pane; these two are the sizes the streams
-	 * cited, emulated on the renderer (`Emulation.setDeviceMetricsOverride`), and the
-	 * assertion is the signal itself: the note must be narrower than its own content,
-	 * which is the only state in which `truncate` paints an ellipsis.
-	 *
-	 * The 400px DOCK floor is not here, and that is a rig limit stated rather than
-	 * implied: it is the panel's width, not the window's, and this driver has no verb
-	 * that drags the splitter. The two streams' own measurements at that width stand as
-	 * recorded on the PR.
-	 */
-	const rowGeometryAt = () =>
-		cdp.evaluate(`(() => {
-			const stamp = document.querySelector('[data-tour-tag="canvas-document-modified"]');
-			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
-			if (!stamp || !note) return null;
-			return {
-				stamp: { client: stamp.clientWidth, scroll: stamp.scrollWidth },
-				note: { client: note.clientWidth, scroll: note.scrollWidth },
-				region: note.parentElement ? note.parentElement.clientWidth : null,
-			};
-		})()`);
-	for (const size of [
-		{ label: "1024x700", width: 1024, height: 700, assertSignal: true },
-		{ label: "800x600", width: 800, height: 600, assertSignal: false },
-	]) {
-		await cdp.send("Emulation.setDeviceMetricsOverride", {
-			width: size.width,
-			height: size.height,
-			deviceScaleFactor: 1,
-			mobile: false,
-		});
-		const geometry = await rowGeometryAt();
-		note(`row geometry at ${size.label}`, JSON.stringify(geometry));
-		/*
-		 * THE SIGNAL IS ASSERTED WHERE THE ROW HAS ROOM TO SHOW ANYTHING. At 1024x700
-		 * the row's region is ~250px: the note ellipsises (`client < scroll`) and the
-		 * stamp keeps its width, which is exactly the state D16/U17 asked for. At
-		 * 800x600 the emulated WINDOW leaves the canvas pane ~27px wide - the sidebar's
-		 * share of an 800px window, not the row's own behaviour - so the note is zero
-		 * pixels wide and no assertion about shearing means anything there. That number
-		 * is recorded rather than asserted, and it is an observation for the design
-		 * round: the canvas pane at the app's declared minimum window is nearly gone,
-		 * which is a property of the shell's split, not of this row.
-		 */
-		if (size.assertSignal) {
-			check(
-				`at ${size.label} the sentence ellipsises instead of shearing, and the stamp keeps its width`,
-				geometry !== null &&
-					geometry.note.client > 0 &&
-					geometry.note.client < geometry.note.scroll &&
-					geometry.stamp.client >= geometry.stamp.scroll,
-				JSON.stringify(geometry),
-			);
-		}
-	}
-	await cdp.send("Emulation.clearDeviceMetricsOverride");
 
 	check(
 		"and the control is inside the row, on the panel's own 8px chrome inset",
@@ -5617,6 +5556,87 @@ async function sceneCanvasFreshness(cdp, app) {
 	 * the reader's half of the same finding (U10) was measured the same way.
 	 */
 	const heldFrame = await captureSettled(cdp, "canvas-freshness-held");
+	/*
+	 * THE ROW AT THE WIDTHS A READER ACTUALLY HAS (UX round 6, U18 / design D21).
+	 *
+	 * TWO THINGS THIS PHASE GOT WRONG BEFORE, both of them the same mistake - measuring
+	 * something other than the state the finding is about:
+	 *
+	 * 1. It ran in the CODE phase, where the row's note was the short ANSWER (`Re-read`),
+	 *    not the 269px hold SENTENCE. So its `note.client > 0` clause passed on a state
+	 *    the reader never sees in this situation; had it run here, it would have failed.
+	 *    It runs in the held state now - the moment the finding is about.
+	 * 2. It emulated device metrics, which resizes the renderer but NOT the app's dock,
+	 *    so the pane it measured was not the pane the streams measured (`dock 304,
+	 *    region 251` at a real 1024x700). It sets a REAL window size now
+	 *    (`Browser.setWindowBounds`), and says so if the host refuses.
+	 *
+	 * The assertions are the finding's own remedy: at 1024x700 the note must clear its
+	 * 8ch floor (a reader has to see the state and its action, not one glyph) and the
+	 * stamp must stay inside the region it shares.
+	 */
+	const rowGeometryAt = () =>
+		cdp.evaluate(`(() => {
+			const stamp = document.querySelector('[data-tour-tag="canvas-document-modified"]');
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			if (!stamp || !note) return null;
+			const region = note.parentElement;
+			return {
+				stamp: { client: stamp.clientWidth, scroll: stamp.scrollWidth },
+				note: { client: note.clientWidth, scroll: note.scrollWidth, text: (note.textContent ?? "").slice(0, 30) },
+				region: region ? region.clientWidth : null,
+				windowWidth: window.innerWidth,
+			};
+		})()`);
+	const setWindowSize = async (width, height) => {
+		try {
+			const target = await cdp.send("Browser.getWindowForTarget");
+			await cdp.send("Browser.setWindowBounds", {
+				windowId: target.windowId,
+				bounds: { width, height, windowState: "normal" },
+			});
+			// The renderer needs a frame to lay out at the new size.
+			await new Promise((resolve) => setTimeout(resolve, 400));
+			return true;
+		} catch (error) {
+			note(
+				"Browser.setWindowBounds refused; the row could not be measured at a real size",
+				String(error),
+			);
+			return false;
+		}
+	};
+	const originalBounds = await cdp
+		.send("Browser.getWindowForTarget")
+		.catch(() => null);
+	for (const size of [
+		{ label: "1024x700", width: 1024, height: 700, assertFloor: true },
+		{ label: "1100x700", width: 1100, height: 700 },
+		{ label: "1280x800", width: 1280, height: 800 },
+		{ label: "1380x900", width: 1380, height: 900 },
+		{ label: "800x600", width: 800, height: 600 },
+	]) {
+		const resized = await setWindowSize(size.width, size.height);
+		if (!resized) break;
+		const geometry = await rowGeometryAt();
+		note(`row geometry at a real ${size.label}`, JSON.stringify(geometry));
+		if (size.assertFloor) {
+			check(
+				"at a real 1024x700 the reader can see the state and its action, and the stamp stays in the row",
+				geometry !== null &&
+					geometry.note.client >= 64 &&
+					geometry.stamp.client > 0 &&
+					geometry.stamp.client <= (geometry.region ?? 0),
+				JSON.stringify(geometry),
+			);
+		}
+	}
+	if (originalBounds) {
+		await setWindowSize(
+			originalBounds.bounds.width,
+			originalBounds.bounds.height,
+		);
+	}
 	check(
 		"the held state is a frame the app held still for, with no toast on it",
 		heldFrame.stable === true && heldFrame.toastFree === true,
