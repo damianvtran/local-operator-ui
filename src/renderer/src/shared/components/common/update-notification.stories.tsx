@@ -85,31 +85,39 @@ const createEmptyUpdaterMethods = () => {
 // Initialize empty updater methods
 createEmptyUpdaterMethods();
 
-/**
- * The main process's own sentence for the operator's case.
- *
- * The update ran, pip exited 0 and nothing was installed. It names the release the
- * attempt was for and the version still running, because that is the pair a reader
- * can check - and it is copied from `UpdateService.updateBackend`'s failing branch
- * rather than invented, since the frame is a picture of that sentence.
- */
-/**
- * The two sentences the server-update failure states would assert, as the producer
- * composes them (`serverUpdateFailureSentence` in `src/main/server-update-copy.ts`).
- *
- * Kept here as the fixtures the copy case reads: it composes every route and requires the
- * string it gets to appear in this file, so a copy edit that moves a sentence fails there
- * rather than leaving a frame - or a story - asserting something the app cannot emit
- * (review round 4, QA Q-2). The STORIES that raised these states left the set when this
- * branch was re-landed on the app-owned lane's rewrite of this file's mock: their payload
- * branches are that lane's now, and re-porting the source-build and app-owned payloads
- * into it is its own pass, recorded on the PR.
- */
 const SOURCE_BUILD_REFUSAL_SENTENCE =
 	"The server update did not install: `lop-update` exited 1. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. The installer's own output is below. You can also run `lop-update` yourself in a terminal.";
 
+const SOURCE_BUILD_REFUSAL_OUTPUT = [
+	"lop-update: warning: could not fetch origin (offline?); comparing against the last known state of origin/main",
+	"lop-update: REFUSING to release a stale ref.",
+	"local  main          = 2a0b473",
+	"remote origin/main = 4b32d95  (1 commit(s) ahead)",
+	"Local main is BEHIND origin/main, so installing it would publish code",
+	"older than what is merged -- and would report success while doing it.",
+].join("\n");
+
 const ORPHANED_UPDATER_SENTENCE =
 	"The server update did not finish: the installer could not be run to a verdict. The updater was stopped; something it started may still be replacing the install. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
+
+const ORPHANED_UPDATER_OUTPUT = [
+	"lop-update: mobile web bundle: built",
+	"Resolved 55 packages in 1.25s",
+	"   Building local-operator @ file:///tmp/lop-update.jegEuB",
+	"Downloading cryptography (3.8MiB)",
+].join("\n");
+
+const SOURCE_BUILD_REMEDY =
+	"Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+
+const OFFER_DETAIL =
+	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
+
+const APP_OWNED_REMEDY =
+	"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.";
+
+const APP_OWNED_DETAIL =
+	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
 
 const SERVER_UPDATE_FAILURE_MESSAGE =
 	"The server update to 0.55.10 did not take effect: the server is still on 0.55.9. See the update service log for pip's output, then try again.";
@@ -174,6 +182,37 @@ const mockUpdaterApi = () => {
 				}
 				return false;
 			}
+			/*
+			 * THE FAILURE THAT CARRIES A DIAGNOSIS. `SOURCE_BUILD_REFUSAL_OUTPUT` is the operator's
+			 * OWN `lop-update` output - captured by driving the real script in an isolated
+			 * repository whose `main` is one commit behind its `origin/main`, so it refuses before
+			 * it builds - with the producer's own selection applied: the diagnosis at the head,
+			 * never the line that advises going around the refusal (review round 2, U7).
+			 */
+			if (window.triggerBackendUpdateSourceBuildFailed) {
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({
+						message: SOURCE_BUILD_REFUSAL_SENTENCE,
+						installerOutput: SOURCE_BUILD_REFUSAL_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
+				}
+				return false;
+			}
+			if (window.triggerBackendUpdateFailedOrphan) {
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({
+						message: ORPHANED_UPDATER_SENTENCE,
+						installerOutput: ORPHANED_UPDATER_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
+				}
+				return false;
+			}
 			if (window.triggerBackendUpdateError) {
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
@@ -221,6 +260,8 @@ const mockUpdaterApi = () => {
 				remedy?: string;
 				detail?: string;
 				sourceBuild?: boolean;
+				/** Whether the app owns the daemon it would restart, which decides the promise. */
+				restartable?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -234,6 +275,32 @@ const mockUpdaterApi = () => {
 			}
 			// The operator's own case: a server installed as a uv tool, which the
 			// app must not pip into, with the remedy named for that install.
+			/*
+			 * THE SOURCE-BUILD ROUTE, as the main process sends it: the install is a uv-tool build
+			 * of THIS machine's checkout (`.lop-source` names a commit), the machine has
+			 * `lop-update`, and the app runs it rather than handing over a command. The payload is
+			 * the plan's own (`resolveGlobalInstallPlan` with a resolved rebuild tool), so the frame
+			 * shows copy the producer emits and not a sentence a fixture invented. The adopted arm
+			 * adds the one field they differ in: who would be restarted, and so whether the
+			 * reassurance is the restart's or the install's.
+			 */
+			if (
+				window.triggerBackendUpdateSourceBuild ||
+				window.triggerBackendUpdateSourceBuildInFlight ||
+				window.triggerBackendUpdateSourceBuildAdopted
+			) {
+				callback({
+					currentVersion: "0.56.10",
+					latestVersion: "0.56.11",
+					updateCommand: "lop-update",
+					canManageUpdate: true,
+					startupMode: "GLOBAL_INSTALL",
+					restartable: !window.triggerBackendUpdateSourceBuildAdopted,
+					remedy: SOURCE_BUILD_REMEDY,
+					detail: OFFER_DETAIL,
+					sourceBuild: true,
+				});
+			}
 			if (window.triggerBackendUpdateNonManaged) {
 				callback({
 					currentVersion: "0.54.17",
@@ -399,6 +466,8 @@ const mockUpdaterApi = () => {
 				latestVersion?: string | null;
 				currentVersion?: string | null;
 				sourceBuild?: boolean;
+				/** The app's own managed environment: the remedy is a restart, not a command. */
+				appOwned?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -427,6 +496,24 @@ const mockUpdaterApi = () => {
 			// standing panel - so the wrong command would have stayed on screen
 			// (review D4). This payload is a pipx-owned server, which is what that
 			// path has to name now.
+			/*
+			 * THE APP-OWNED ARM, which had no fixture and therefore no frame until round 5.
+			 * `ManualRemedyNote` returns null for it, and the other fixtures never set it, so the
+			 * state this pass is about was the one state with no photograph. The payload is the
+			 * producer's own: the managed-arm remedy and detail verbatim, `updateCommand: ""` and
+			 * `appOwned: true`.
+			 */
+			if (window.triggerBackendUpdateManualRequiredAppOwned) {
+				callback({
+					message: APP_OWNED_REMEDY,
+					command: "",
+					detail: APP_OWNED_DETAIL,
+					latestVersion: "0.56.11",
+					currentVersion: "0.56.10",
+					sourceBuild: false,
+					appOwned: true,
+				});
+			}
 			if (window.triggerBackendUpdateManualRequiredExistingServer) {
 				callback({
 					message:
@@ -579,7 +666,10 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onBackendUpdateProgress: (
-			callback: (progress: { phase: "installing" | "restarting" }) => void,
+			callback: (progress: {
+				phase: "installing" | "restarting";
+				sourceRebuild?: boolean;
+			}) => void,
 		) => {
 			/*
 			 * THE PHASE, as a story state (UX U6). No story drove this channel, so
@@ -598,6 +688,16 @@ const mockUpdaterApi = () => {
 			 */
 			if (window.triggerBackendUpdatePhase) {
 				callback({ phase: window.triggerBackendUpdatePhase });
+			}
+			/*
+			 * AND WHICH ROUTE IS RUNNING (review round 3, D2 = U3). The release path's
+			 * reassurance is false for a checkout rebuild - that run rewrites the install in
+			 * place, which is what can interrupt a session here - and the event is the only
+			 * place left that can say so, because the offer naming the cost unmounted the
+			 * moment the press landed.
+			 */
+			if (window.triggerBackendUpdateSourceBuildInFlight) {
+				callback({ phase: "installing", sourceRebuild: true });
 			}
 			return () => {};
 		},
@@ -627,6 +727,10 @@ declare global {
 		triggerUpdateNpxAvailable?: boolean;
 		triggerBackendUpdateSourceBuildFailed?: boolean;
 		triggerBackendUpdateFailedOrphan?: boolean;
+		triggerBackendUpdateSourceBuild?: boolean;
+		triggerBackendUpdateSourceBuildAdopted?: boolean;
+		triggerBackendUpdateSourceBuildInFlight?: boolean;
+		triggerBackendUpdateManualRequiredAppOwned?: boolean;
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
 		/**
@@ -1165,7 +1269,13 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateManualRequired"
 	| "triggerBackendUpdateManualRequiredExistingServer"
 	| "triggerBackendUpdateNonManaged"
-	| "triggerBackendUpdateError";
+	| "triggerBackendUpdateError"
+	| "triggerBackendUpdateSourceBuild"
+	| "triggerBackendUpdateSourceBuildAdopted"
+	| "triggerBackendUpdateSourceBuildInFlight"
+	| "triggerBackendUpdateSourceBuildFailed"
+	| "triggerBackendUpdateFailedOrphan"
+	| "triggerBackendUpdateManualRequiredAppOwned";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -1414,8 +1524,17 @@ export const ServerBehindAppOwnedServerDown: Story = {
 const PressUpdateServer = ({
 	outcome,
 	phase = null,
+	variant = "default",
 }: {
 	outcome: "inflight" | "failed";
+	/**
+	 * WHICH OFFER the press is made on. `default` is the release-install payload (the entry-point
+	 * route); `source-build` is the checkout rebuild, whose offer carries a different consequence
+	 * sentence and provenance line while the state - a press, and the panel that answers it - is
+	 * the same one; `orphan` is the default offer whose failure is the timeout that left something
+	 * running, so the state differs only in the sentence the main process sends.
+	 */
+	variant?: "default" | "source-build" | "orphan";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
@@ -1425,9 +1544,24 @@ const PressUpdateServer = ({
 }) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
-		window.triggerBackendUpdateAvailable = true;
-		window.triggerBackendUpdateInFlight = outcome === "inflight";
-		window.triggerBackendUpdateError = outcome === "failed";
+		if (variant === "source-build") {
+			/*
+			 * THE OFFER IS RAISED FOR BOTH OUTCOMES. The press this fixture makes is only possible
+			 * when a managed offer is on screen - "Update server" is the button the source-build
+			 * payload renders - so the failure variant has to raise it too and then let the press
+			 * fail, which is the sequence the app produces.
+			 */
+			window.triggerBackendUpdateSourceBuild = true;
+			window.triggerBackendUpdateSourceBuildInFlight = outcome === "inflight";
+			window.triggerBackendUpdateSourceBuildFailed = outcome === "failed";
+		} else if (variant === "orphan") {
+			window.triggerBackendUpdateAvailable = true;
+			window.triggerBackendUpdateFailedOrphan = outcome === "failed";
+		} else {
+			window.triggerBackendUpdateAvailable = true;
+			window.triggerBackendUpdateInFlight = outcome === "inflight";
+			window.triggerBackendUpdateError = outcome === "failed";
+		}
 		window.triggerBackendUpdatePhase = phase ?? undefined;
 		setReady(true);
 	}, [outcome, phase]);
@@ -1580,4 +1714,49 @@ export const ErrorStateDownload: Story = {
 			/>
 		</div>
 	),
+};
+
+/*
+ * THE SERVER-UPDATE STATES THIS BRANCH OWNS, in this file's own vocabulary: a flag for a
+ * state that is a payload, the press harness for a state that is an attempt. Each has a row
+ * in `scripts/capture-evidence.mjs` carrying the sentence it is evidence FOR, so the rig
+ * refuses the shutter when the frame paints something else.
+ */
+
+/**
+ * The source-build offer: the install is a uv-tool build of this machine's checkout and the
+ * app runs `lop-update` itself rather than handing over a command. The sentence the frame is
+ * for is the cost it has to name before the press.
+ */
+export const BackendUpdateOfferSourceBuild: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateSourceBuild" />,
+};
+
+/**
+ * The same offer on a machine where the app did NOT start the server - the arm users other
+ * than the operator meet, where the app cannot restart the daemon and says so.
+ */
+export const BackendUpdateOfferSourceBuildAdopted: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateSourceBuildAdopted" />,
+};
+
+/**
+ * The updater stopped on its budget while something it started was still alive - the one
+ * sentence this branch added to a shipped panel, and the reason the verdict is taken on the
+ * timer rather than on `close`.
+ */
+export const BackendUpdateFailedOrphan: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="failed" variant="orphan" />,
+};
+
+/**
+ * The app-owned arm of the by-hand panel: `ManualRemedyNote` returns null for it, so it has
+ * no command and no hand action - the remedy is a restart the user performs.
+ */
+export const BackendManualRequiredAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateManualRequiredAppOwned" />,
 };

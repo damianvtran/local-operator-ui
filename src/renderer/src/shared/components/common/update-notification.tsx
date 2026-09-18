@@ -800,9 +800,12 @@ export const UpdateNotification = ({
 	 * above the offer panel, it also took **Update server** off the screen for the
 	 * rest of the session (design D1, UX U1).
 	 */
+	const [rebuildInFlight, setRebuildInFlight] = useState(false);
 	const [backendUpdateFailure, setBackendUpdateFailure] = useState<{
 		/** The main process's own sentence. */
 		message: string;
+		/** The installer's own lines, when the failing branch had any to send. */
+		installerOutput?: string;
 		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
@@ -1764,8 +1767,16 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase }) => {
+			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
 				setBackendUpdatePhase(phase);
+				/*
+				 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
+				 * release path's reassurance is false for a checkout rebuild: that run rewrites the
+				 * install in place, which is exactly what can interrupt a session here. The event
+				 * carries it because the offer that named the cost unmounted the moment the press
+				 * landed - this is the only place left that can say it.
+				 */
+				setRebuildInFlight(sourceRebuild === true);
 			});
 
 		/**
@@ -1811,6 +1822,9 @@ export const UpdateNotification = ({
 						 * that phase rule lives, shared with the run panel and the banner.
 						 */
 						message: serverUpdateFailureReason(report),
+						// The installer's own lines travel with the report (the producer's own field),
+						// rather than being re-derived from the sentence here (review round 5, M1).
+						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
 					setBackendUpdatePhase(null);
@@ -2048,7 +2062,10 @@ export const UpdateNotification = ({
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
 						? backendUpdatePhase === "installing"
-							? /*
+							? rebuildInFlight
+								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
+									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+								: /*
 								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
 								 * ~47 s cold, against ~15 s for the restart - and the old single
 								 * sentence described only the restart, so a user watching the panel
@@ -2404,7 +2421,16 @@ export const UpdateNotification = ({
 	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
-		const failure = splitInstallerOutput(backendUpdateFailure.message);
+		/*
+		 * THE FIELD FIRST, the split only as a fallback (review round 5, M1). The producer sends
+		 * the installer's output as `installerOutput`, and a surface that re-derives it from the
+		 * sentence is a second way to get the same fact - which drifts the moment the sentence
+		 * changes. Reports written before that field existed still arrive as one string, so the
+		 * split stays for them and nothing else.
+		 */
+		const failure = backendUpdateFailure.installerOutput
+			? { sentence: backendUpdateFailure.message, output: backendUpdateFailure.installerOutput }
+			: splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
