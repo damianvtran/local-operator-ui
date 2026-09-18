@@ -25,6 +25,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over the page at the strongest alpha that keeps its own ink at 4.5:1; a semantic
  * border walks its hue toward the ground to just above the 3:1 edge floor; the shadow and the
  * scrim are the ink tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const oneLight: ThemeDefinition = {
 	id: "oneLight",
@@ -56,11 +72,31 @@ export const oneLight: ThemeDefinition = {
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same
 		// neutral, and then seated deeper again so the readout rung below it clears the
 		// ΔE00 8 ink step (mono-3 measured 1.6 from it).
-		inkMuted: "#494B55",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 7.24:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#43454F",
 		// Canonical mono-3 A0A1A7 is 1.96:1 on `sunken`, far under the 4.5 floor for a
 		// tertiary weight. Darkened along its own neutral, and kept a distinct rung from
 		// `inkMuted` above rather than collapsing the two.
-		inkDim: "#616269",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.05:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#5B5C63",
 		inkDisabled: "#A0A1A7",
 
 		hairline: "#CECED1",

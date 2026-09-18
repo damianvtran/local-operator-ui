@@ -11,6 +11,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * danger. The four semantic hues are the lowest-chroma tints that clear the
  * floors, so they read as tinted greys rather than as candy dropped onto a
  * grey theme — and info stays fully monochrome.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const obsidian: ThemeDefinition = {
 	id: "obsidian",
@@ -19,16 +35,46 @@ export const obsidian: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#09090B",
-		surface: "#18181B",
-		elevated: "#27272A",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +4.88, elevated +10.56, sunken -2.41 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #09090B -> #202021 (L* 2.51 -> 12.29)
+		 * surface #18181B -> #2A2A2D (L* 8.36 -> 17.17)
+		 * elevated #27272A -> #37363A (L* 15.75 -> 22.85)
+		 * sunken #030307 -> #1B1B1E (L* 0.9 -> 9.88)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE COST IS THE BLACK, and it is recorded rather than argued away: this
+		 * palette's upstream identity IS near-black, so a user who chose it for that
+		 * loses it (`docs/branding.md` § 2 lists the four who pay it). What survives is
+		 * the family - the hue, the chroma class and the relative ladder - and the
+		 * operator asked for exactly this trade: no page ground in this app sits below
+		 * L* 12.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#202021",
+		surface: "#2A2A2D",
+		elevated: "#37363A",
 		// The old file already used a near-black 060609 for its message view, which
 		// measures 1.02:1 against zinc 950 — too close to read as a separate
 		// ground. This is two levels lower on the same blue-leaning zinc lean
 		// (h290, the hue every other neutral here carries) at 1.03:1. True black
 		// would clear the separation floor more easily and was what this held, but
 		// a C0 value is the absence of the ramp rather than its bottom rung.
-		sunken: "#030307",
+		sunken: "#1B1B1E",
 
 		/*
 		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
@@ -57,17 +103,49 @@ export const obsidian: ThemeDefinition = {
 		highlight: "#232329",
 
 		ink: "#FAFAFA",
-		inkMuted: "#A1A1AA",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#C5C5CE",
 		// Derived. Zinc 400 D4D4D8 is lighter than zinc 500, so it cannot serve as
 		// a dimmer weight; this sits between zinc 500 and zinc 600 instead.
-		inkDim: "#8F8F97",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A7A7AF",
 		inkDisabled: "#52525B",
 
-		hairline: "#343436",
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `elevated` is the tightest ground at ΔE00 4.14.
+		 */
+		hairline: "#424244",
 		// Zinc 500 measures 2.86:1 on zinc 800, a hair under the structural floor,
 		// so it is lifted by one level. The old theme bounded inputs with zinc 50 at
 		// 20 percent alpha, about 1.8:1.
-		borderControl: "#72727B",
+		/*
+		 * Legibility pass: `borderControl` is the sole boundary of every input in the
+		 * app, so it keeps its 3:1 floor on all four grounds and moves with them - it
+		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
+		 * binds it at 3.02:1. Lightness only, at the role's own hue.
+		 */
+		borderControl: "#7F7F88",
 
 		// In a monochrome theme the accent is the off-white, which is why a primary
 		// button here is white with near-black ink.
@@ -91,7 +169,14 @@ export const obsidian: ThemeDefinition = {
 		/* Monochrome: pinned to `ink` with the painted weight step carrying the run
 		   (see the role's note in `palette-contract.ts`) — no semibold, and one
 		   constant stroke width at every raster. */
-		accentWash: "#262628",
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `surface` is the tightest base at ΔE00 2.02. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#303032",
 		onAccent: "#09090B",
 
 		// Low-chroma by design: about 30 percent saturation, so the semantic states
@@ -99,15 +184,30 @@ export const obsidian: ThemeDefinition = {
 		// one.
 		success: "#86BFA1",
 		successWash: "#181F1D",
-		successBorder: "#4E6E5F",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 */
+		successBorder: "#668777",
 
 		warning: "#CBAF7E",
 		warningWash: "#201D19",
-		warningBorder: "#75654A",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		warningBorder: "#8E7D61",
 
 		danger: "#DE9391",
 		dangerWash: "#231A1B",
-		dangerBorder: "#885C5C",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		dangerBorder: "#A17473",
 
 		// Info stays the mono accent. Adding a blue here would be the only hue in
 		// the theme, which is the opposite of what Obsidian is for.

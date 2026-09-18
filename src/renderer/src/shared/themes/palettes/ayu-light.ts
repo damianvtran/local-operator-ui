@@ -19,6 +19,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * One note on the inks: adding the fourth ground leaves the scheme's dim rung
  * 0.02 above its 4.5:1 floor, so the contract's ΔE00 8 ink step is bought by
  * pulling `inkMuted` toward `ink` rather than by moving the readout rung.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const ayuLight: ThemeDefinition = {
 	id: "ayuLight",
@@ -43,9 +59,39 @@ export const ayuLight: ThemeDefinition = {
 		 */
 		highlight: "#DFECF5",
 
-		ink: "#45494D",
-		inkMuted: "#505357",
-		inkDim: "#5B6675",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `accentWash` binds it at 7.08:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#42464A",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `accentWash` binds it at 6.43:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#494C4F",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `accentWash` binds it at 5.04:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#525C6B",
 		inkDisabled: "#9AA3AF",
 
 		hairline: "#CBD2D6",
@@ -62,22 +108,53 @@ export const ayuLight: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#D5E2EC",
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `sunken` is the tightest base at ΔE00 2. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#D3E0EA",
 		onAccent: "#FFFFFF",
 
-		success: "#526D00",
+		/*
+		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
+		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		success: "#516B00",
 		successWash: "#DBE4E1",
 		successBorder: "#536E00",
 
-		warning: "#885C00",
+		/*
+		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
+		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		warning: "#855A01",
 		warningWash: "#E0E3E3",
 		warningBorder: "#895C00",
 
-		danger: "#B43738",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
+		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		danger: "#B23537",
 		dangerWash: "#E4E1E8",
 		dangerBorder: "#B53838",
 
-		info: "#8148B8",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
+		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#7F46B6",
 		infoWash: "#DFE1F0",
 		infoBorder: "#8149B9",
 

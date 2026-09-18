@@ -21,6 +21,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1; a semantic
  * border walks its hue toward the ground to just above the 3:1 edge floor; the shadow and the
  * scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const tokyoNightStorm: ThemeDefinition = {
 	id: "tokyoNightStorm",
@@ -48,11 +64,41 @@ export const tokyoNightStorm: ThemeDefinition = {
 
 		// Upstream fg C0CAF5 is 7.00:1 on `elevated` — exactly the floor, with no room for
 		// rounding. Lifted along the same periwinkle.
-		ink: "#C1CBF6",
-		inkMuted: "#B8C2EC",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `elevated` binds it at 7.74:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#CAD4FF",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.07:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#C1CBF5",
 		// The sibling's `inkDim` measures 4.28:1 on storm's lighter `elevated` — under the 4.5
 		// floor. Lifted along the same comment blue.
-		inkDim: "#99A4CD",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A1ACD5",
 		inkDisabled: "#565F89",
 
 		// The sibling's rule lightened by the same step the ground took, so it still holds
@@ -63,7 +109,13 @@ export const tokyoNightStorm: ThemeDefinition = {
 		// shipped palette's structural edge sits at.
 		borderControl: "#7B84AB",
 
-		accent: "#7AA2F7",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#7BA2F8",
 		accentHover: "#9EBCFF",
 		accentActive: "#6D8FDA",
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2

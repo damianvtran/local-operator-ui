@@ -33,6 +33,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
  * here: this contract has no popover ground, no second label hue and no
  * selection tint, so the tints above are derived from the accent instead.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const tron: ThemeDefinition = {
 	id: "tron",
@@ -41,13 +57,43 @@ export const tron: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#060B12",
-		surface: "#0C1420",
-		elevated: "#131E2D",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.29, elevated +7.94, sunken -2.37 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #060B12 -> #1D2025 (L* 2.91 -> 12.14)
+		 * surface #0C1420 -> #1F2734 (L* 6.17 -> 15.44)
+		 * elevated #131E2D -> #273141 (L* 10.97 -> 20.08)
+		 * sunken #000207 -> #1A1B1E (L* 0.53 -> 9.78)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE COST IS THE BLACK, and it is recorded rather than argued away: this
+		 * palette's upstream identity IS near-black, so a user who chose it for that
+		 * loses it (`docs/branding.md` § 2 lists the four who pay it). What survives is
+		 * the family - the hue, the chroma class and the relative ladder - and the
+		 * operator asked for exactly this trade: no page ground in this app sits below
+		 * L* 12.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#1D2025",
+		surface: "#1F2734",
+		elevated: "#273141",
 		// The TUI's 03060B darkened one step to clear the four-ground separation
 		// floor: against `canvas` it measured 1.029:1, under the contract's 1.03. The
 		// cast is unchanged, so the Grid still reads blue-black.
-		sunken: "#000207",
+		sunken: "#1A1B1E",
 
 		/*
 		 * The current row's own ground:
@@ -61,18 +107,52 @@ export const tron: ThemeDefinition = {
 		highlight: "#0F1E2B",
 
 		ink: "#D8E6F2",
-		inkMuted: "#9FB8CC",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.8:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#A5BED2",
 		// The TUI `dim` 6A89A3 lifted by ΔE00 0.4 only — it missed 4.5:1 on `elevated`
 		// by four hundredths.
-		inkDim: "#6A8AA4",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#83A4BE",
 		// The TUI `faint` 33485C lifted to 2.3:1 on `elevated`.
 		inkDisabled: "#44596D",
 
 		// The TUI `edge` 1E3245, already inside the hairline's 1.15-2.0:1 band and
-		// clear of its ΔE00 4.0 floor on all four grounds.
-		hairline: "#1E3245",
+		// clear of its ΔE00 4.0 floor on all four grounds — both measured before
+		// the legibility pass moved this palette's ramp, which is why the value
+		// below is a step lifted from it rather than that value itself.
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `elevated` is the tightest ground at ΔE00 4.73.
+		 */
+		hairline: "#283C4F",
 		// The TUI `edge-hi` 2A4660 lifted in L* until it clears 3:1 on `elevated`.
-		borderControl: "#536E8A",
+		/*
+		 * Legibility pass: `borderControl` is the sole boundary of every input in the
+		 * app, so it keeps its 3:1 floor on all four grounds and moves with them - it
+		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
+		 * binds it at 3.02:1. Lightness only, at the role's own hue.
+		 */
+		borderControl: "#617C98",
 
 		accent: "#00D8FF",
 		accentHover: "#48F2FF",
@@ -89,25 +169,45 @@ export const tron: ThemeDefinition = {
 
 		success: "#3FE0B0",
 		successWash: "#0D2727",
-		successBorder: "#2E7765",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 */
+		successBorder: "#3D8673",
 
 		// E8C14A, the TUI's gold: with an orange danger, a second warm state can only
 		// be distinguished by hue, and gold clears the 15 ΔE00 semantic separation.
 		warning: "#E8C14A",
 		warningWash: "#232319",
-		warningBorder: "#7A6A37",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		warningBorder: "#887844",
 
 		// FF7A2F — orange, not red. The Grid's own error colour, and the reason this
 		// theme does not need a red at all.
 		danger: "#FF7A2F",
 		dangerWash: "#261916",
-		dangerBorder: "#9A5C3C",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 */
+		dangerBorder: "#A96A49",
 
 		// 7AB8FF, the TUI's `signal` — the Grid's day-cycle blue, distinct from the
 		// cyan accent by hue rather than by lightness.
 		info: "#7AB8FF",
 		infoWash: "#152131",
-		infoBorder: "#506D93",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		infoBorder: "#5E7BA1",
 
 		overlayShadow: "0 12px 32px -12px rgb(2 4 7 / 0.75)",
 		scrim: "rgb(2 4 7 / 0.65)",

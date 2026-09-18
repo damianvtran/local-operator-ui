@@ -32,6 +32,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
  * here: this contract has no popover ground, no second label hue and no
  * selection tint, so the tints above are derived from the accent instead.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const vaporwave: ThemeDefinition = {
 	id: "vaporwave",
@@ -40,10 +56,33 @@ export const vaporwave: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#1F1730",
-		surface: "#271E3B",
-		elevated: "#2F2547",
-		sunken: "#181128",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.68, elevated +7.61, sunken -3.3 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #1F1730 -> #241B35 (L* 9.93 -> 12.06)
+		 * surface #271E3B -> #2C2240 (L* 13.68 -> 15.75)
+		 * elevated #2F2547 -> #342A4C (L* 17.38 -> 19.67)
+		 * sunken #181128 -> #1C152D (L* 6.76 -> 8.76)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#241B35",
+		surface: "#2C2240",
+		elevated: "#342A4C",
+		sunken: "#1C152D",
 
 		/*
 		 * The current row's own ground:
@@ -57,18 +96,52 @@ export const vaporwave: ThemeDefinition = {
 		highlight: "#362241",
 
 		ink: "#EDE8F2",
-		inkMuted: "#C0B2D4",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `accentWash` binds it at 6.87:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#C4B6D8",
 		// The TUI `dim` 9184AE lifted in L* with hue held: 4.14 on `elevated`, under
 		// the floor.
-		inkDim: "#9A8CB7",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `accentWash` binds it at 5.04:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A89AC5",
 		// The TUI `faint` 5A4E74 lifted to 2.3:1 on `elevated`.
 		inkDisabled: "#685B82",
 
 		// The TUI `edge` 3C3158, already inside the hairline's 1.15-2.0:1 band and
-		// clear of its ΔE00 4.0 floor on all four grounds.
-		hairline: "#3C3158",
+		// clear of its ΔE00 4.0 floor on all four grounds — both measured before
+		// the legibility pass moved this palette's ramp, which is why the value
+		// below is a step lifted from it rather than that value itself.
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `elevated` is the tightest ground at ΔE00 4.11.
+		 */
+		hairline: "#40355D",
 		// The TUI `edge-hi` 4C3F6C lifted in L* until it clears 3:1 on `elevated`.
-		borderControl: "#7E6F9F",
+		/*
+		 * Legibility pass: `borderControl` is the sole boundary of every input in the
+		 * app, so it keeps its 3:1 floor on all four grounds and moves with them - it
+		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
+		 * binds it at 3:1. Lightness only, at the role's own hue.
+		 */
+		borderControl: "#8070A1",
 
 		accent: "#F7A8D8",
 		accentHover: "#FFC1F2",
@@ -85,15 +158,30 @@ export const vaporwave: ThemeDefinition = {
 
 		success: "#8FE6C0",
 		successWash: "#2E3243",
-		successBorder: "#5A7E7A",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		successBorder: "#5A7F7B",
 
 		warning: "#F0CD8A",
 		warningWash: "#3A2F3C",
-		warningBorder: "#877361",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 */
+		warningBorder: "#897562",
 
 		danger: "#F2808A",
 		dangerWash: "#3A253C",
-		dangerBorder: "#A16678",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		dangerBorder: "#A26779",
 
 		// The TUI `signal` 7FD8D4 rotated 18 degrees toward blue: the pastel mint
 		// success and this teal sat ΔE00 11.7 apart, under the contract's 15 semantic
@@ -102,7 +190,12 @@ export const vaporwave: ThemeDefinition = {
 		// a mint.
 		info: "#7BD7E3",
 		infoWash: "#2B3047",
-		infoBorder: "#577C90",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		infoBorder: "#587D91",
 
 		overlayShadow: "0 12px 32px -12px rgb(12 9 19 / 0.75)",
 		scrim: "rgb(12 9 19 / 0.65)",

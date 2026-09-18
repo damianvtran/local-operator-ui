@@ -80,6 +80,58 @@ A component never names a colour. It names a role — `bg-surface`,
 popovers, tooltips, hovered rows), plus `sunken` (wells, tracks, code grounds)
 recessed below canvas.
 
+#### The ground floors, and the ladder above them
+
+A page ground is not a taste call. It is the surface the transcript is read on
+for hours, so it has a floor rather than a band with discretion:
+
+| Rule | Value |
+|---|---|
+| dark `canvas` | **hard floor L\* 12**, declared band 12–20, hard ceiling L\* 22 |
+| light `canvas` | **ceiling L\* 94** |
+| dark `elevated` | **ceiling L\* 30** |
+| light `sunken` | **floor L\* 80** |
+| `canvas` → `surface` | **+2.5 to +5.0 `L*`** |
+| `surface` → `elevated` | **+2.5 to +6.0 `L*`** |
+| `canvas` → `sunken` (down) | **1.5 to 6.0 `L*`** |
+
+Why 12 and not 8: at canvas 12 / surface 17 / elevated 24 the three ink weights
+solve to L\* 78 / 74 / 71 with every floor and every step intact, and below that
+the ladder and the ink steps stop fitting together — measured, 8 of the 41 dark
+palettes were below L\* 5, `obsidian` at 2.51 the lowest. 12 is one rung above
+GitHub Dark's `#0D1117` (4.95) and exactly VS Code Dark+'s `#1E1E1E`, i.e.
+deliberately above GitHub's default. Why the maximums as well: an unbounded top
+step is what makes the ink budget unaffordable — at `elevated` L\* 34 an `ink-dim`
+at 5:1 needs L\* 85, and the ink/hover distinction disappears into the top of the
+ramp — and the light cap is the same arithmetic from the other end (`elevated` at
+L\* 100 is the end of sRGB's ramp, and the minimum spread is 2.5 + 2.5).
+
+**Lifting a ramp moves lightness only.** A ground is re-solved by holding its own
+`a` and `b` at a new `L*`, so a theme keeps its hue and its chroma class and
+changes only how light it is; chroma is scaled only where sRGB forces it. The cost
+is real and recorded rather than argued away: the four palettes whose upstream
+identity *is* near-black — `obsidian`, `tron`, `matrix`, `dune` — lose the black
+and keep the family. `obsidian` is the clearest case: zinc 950 becomes
+zinc-900-ish monochrome at L\* 12, with its h290 blue lean and no manufactured
+chroma.
+
+**The grounds never move alone.** Raising a dark ground raises the luminance every
+ink is measured against, so an ink that cleared its floor can fail it after:
+`localOperatorDark`'s `ink-dim` measures 4.61:1 on `elevated` as shipped, 3.86:1 on
+that same ink once the ground rises, and 5.02:1 only because the ink is re-authored
+with it. `border-control` and each semantic `-border` are the same story from the
+other side — a lifted `elevated` costs the edge its contrast, and left where they
+stood they fail 3:1 on it in eight palettes. So the ramp, the inks and the edges
+land in one change, and a change that lifts grounds without them makes the reading
+worse rather than better.
+
+**One more ground behaves like one, for text's sake.** `accent-wash` and
+`highlight` are already required roles, and both now carry the ink floors (§ 3):
+they are where a keycap on a selected row, a chip label and a reading button on its
+own hover are actually read, and neither was measured before the legibility pass —
+which is how `ink-dim` came to sit at 3.91:1 on a selected row in `cyberpunk` with
+every gate green.
+
 There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
 the ground of a row the reader is currently ON. It is a **lightness** step off
 `surface` in the direction the mode runs — darker on light themes, lighter on
@@ -196,8 +248,38 @@ mutually distinguishable, and why `check-themes` asserts it.
 `ink` (primary) → `ink-muted` (secondary) → `ink-dim` (captions, metadata,
 placeholders) → `ink-disabled`.
 
+| Role | Register | Standard floor | This system's floor |
+|---|---|---|---|
+| `ink` | body, names, headings | 4.5:1 (AA) | **7:1 on all six grounds; 8:1 on `canvas`** |
+| `ink-muted` | secondary: descriptions, 13px rows, chip labels | 4.5:1 | **5.5:1** |
+| `ink-dim` | captions, metadata, placeholders, keycaps, 11–13px | 4.5:1 | **5.0:1** |
+| `ink-disabled` | disabled controls | exempt (SC 1.4.3) | no floor — **capped at 0.8 × `ink-dim`** |
+
+The **six grounds** are the four elevation steps plus the two that carry text as a
+*state*: `accent-wash` (selection/hover tint, callouts, chips, find-match) and
+`highlight` (the current row in the sidebar and the settings rail). SC 1.4.3 asks
+4.5:1 of every ink and nothing more, and the reason this system asks more is that
+4.5:1 at 11px is not 4.5:1 at 14px: a contrast ratio is luminance-only and says
+nothing about stroke weight, size, or the thin-hairline register metadata is
+printed in. Every type step here is normal text except `text-display` (28px) —
+`text-title` is 20px and not bold at the role level — so 4.5:1 is the only
+applicable standard floor, and the floors above are the system's own.
+
+`ink` takes an extra 1:1 on `canvas` because `canvas` is the transcript — the one
+surface in this app read for hours at arm's length.
+
 `ink-disabled` is the only role exempt from a contrast floor, because a disabled
-control that meets 4.5:1 does not read as disabled.
+control that meets 4.5:1 does not read as disabled. It is not unconstrained,
+though: it is the one role bounded from **above**, at **0.8 × `ink-dim` on every
+ground**. Making the inks lighter threatens the disabled state from below, so the
+relation is asserted rather than assumed, and because both inks sit on the same
+side of every ground it reduces to a fact about the two of them.
+
+The three weights are also a hierarchy, so the floors alone are not enough — three
+inks each at their floor can be the same colour. `ΔE00(ink-muted, ink-dim) ≥ 8`
+(the same floor this doc uses for a comment against the code beside it, because a
+live chip beside an inert reading has to beat it) and `ΔE00(ink, ink-muted) ≥ 2.0`
+are asserted too.
 
 ### The structure ink that is not in the ladder
 
@@ -270,18 +352,57 @@ the weakest pair anywhere in the system is sage at 8.4.
 
 | Assertion | Floor |
 |---|---|
-| `ink` on each of the four grounds | 7:1 |
-| `ink-muted`, `ink-dim` on each of the four grounds | 4.5:1 |
-| `accent` and each semantic colour as text on canvas and surface | 4.5:1 |
+| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
+| `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
+| `ink` on each of the six grounds | 7:1 |
+| `ink` on `canvas` | 8:1 |
+| `ink-muted`, `ink-dim` on each of the six grounds | 5.5:1 / 5.0:1 |
+| `ink-disabled` against `ink-dim`, on each of the six grounds | ≤ 0.8 × |
+| `accent` and each semantic colour as text on all six grounds | 4.5:1 |
 | `on-accent` on the accent fill | 4.5:1 |
-| `border-control` on each of the four grounds | 3:1 |
+| `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
+| Any adjacent ground pair | ΔE00 2.0 |
+| The palette/picker active row (`sunken`) against the dialog's `elevated` | ΔE00 3.0, and a ≥ 2 `L*` step |
+| `accent-wash` against every ground it is painted on | ΔE00 2.0 |
+| The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 |
 | `highlight` against `surface` | ΔE00 4.0 |
 | `highlight`'s `L*` step off `surface`: the direction, and at least 3 `L*` | 3 `L*` |
 | `highlight` against `elevated` and against `sunken` | ΔE00 2.0 |
-| `ink` / `ink-muted` / `ink-dim` on `highlight`, with 0.15 of headroom | 7:1 / 4.5:1 / 4.5:1 |
+| `ink` / `ink-muted` / `ink-dim` on `highlight`, with 0.15 of headroom | 7:1 / 5.5:1 / 5.0:1 |
 | Component triples: ink on its own fill | 4.5:1 |
 | Component triples: edge (fill **or** border) against the ground behind | 3:1 |
+
+**The list holds with no exemptions.** It carried eleven, all on `elevated` and all
+in the `danger` family — eight `danger-border` edges and three `danger` text pairs —
+and every one of them existed because those two roles were measured on `canvas`,
+`surface` and `sunken` only, so the pair that failed was the one drawn on a dialog's
+own ground. The legibility pass retired them by **re-authoring the value** (the edge
+is brightened until it clears 3:1 on the lifted `elevated`) and by adding
+`elevated`, `accent-wash` and `highlight` to the lists the tone roles are measured
+against. Re-recording a pin at its new, lower ratio would have been a decision to
+keep a defect whose fix is available. Five pinned ink steps went the same way: the
+step is paid on lightness, `ink-muted` rises with `ink-dim`, and all 59 palettes now
+clear it.
+
+**A selection is not a tint.** A row the reader is *on* takes a ground step —
+`sunken` inside a dialog, `highlight` on a panel — not the accent wash, and it
+carries a non-colour mark beside it (`outline-control` on the row, or the 2px
+accent bar the slash popup uses). Two reasons, both measured. The wash collapses
+onto the ground it is painted on (`obsidian` ΔE00 0.77, i.e. no mark), and on the
+default palette the operator's own screenshot PASSED every separation threshold at
+ΔE00 7.14 while reading 1.003:1 — the entire difference was hue, so no ratio
+assertion can see the failure and no ΔE00 threshold alone can be the whole rule:
+the row has to be the panel's OWN colour at a different lightness. And in nineteen
+of the fifty-nine palettes the accent's hue is more than 45° off the panel it would
+tint, where no accent tint can ever be the state's only signal.
+
+`accent-wash` keeps every one of its other uses (pointer hover fills, callout
+grounds, chips, find-match, the ask-option cards, the browser tab-strip marker) and
+gains **ΔE00 2.0 against every ground it is painted on** instead — half a
+selection's floor, because a hover is transient and is paired with the pointer.
+These are ΔE00 assertions with the 1.03:1 ratio kept only where it was already a
+floor, because the failing cases are hue-only and read 1.00–1.24:1.
 
 `ink-disabled` is the only exemption.
 

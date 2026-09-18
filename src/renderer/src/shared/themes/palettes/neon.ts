@@ -7,6 +7,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * near-black blues, the grey inks, the cyan trio, the cyberpunk pink and the
  * orange the old file already used for its caution highlights. The theme's
  * glow effects live in the base theme, not here — a palette has no shadows.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const neon: ThemeDefinition = {
 	id: "neon",
@@ -15,13 +31,36 @@ export const neon: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#080C18",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.53, elevated +8.95, sunken -2.3 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #080C18 -> #1C2029 (L* 3.44 -> 12.22)
+		 * surface #0F1524 -> #212737 (L* 6.91 -> 15.75)
+		 * elevated #182036 -> #2B324A (L* 12.57 -> 21.17)
+		 * sunken #03040A -> #1B1B1F (L* 1.16 -> 9.92)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#1C2029",
 		// The old grounds 080C18 and 0D1220 measured 1.04:1 apart, close enough to
 		// read as one surface. Surface and elevated are spread along the same
 		// desaturated blue ramp so a card and a menu are actually distinguishable.
-		surface: "#0F1524",
-		elevated: "#182036",
-		sunken: "#03040A",
+		surface: "#212737",
+		elevated: "#2B324A",
+		sunken: "#1B1B1F",
 
 		/*
 		 * The current row's own ground: `surface` stepped up its own blue
@@ -48,11 +87,37 @@ export const neon: ThemeDefinition = {
 		highlight: "#1c2231",
 
 		ink: "#E0E0E0",
-		inkMuted: "#A0A0B0",
-		inkDim: "#8A8A9C",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.9:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#BEBECE",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A2A1B4",
 		inkDisabled: "#5E5E70",
 
-		hairline: "#0D3140",
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `surface` is the tightest ground at ΔE00 12.46.
+		 */
+		hairline: "#1F4050",
 		// Derived. The old theme bounded inputs with cyan at 20 percent alpha, about
 		// 1.3:1 — a neon outline that was not actually there.
 		borderControl: "#6F8F99",
@@ -82,13 +147,29 @@ export const neon: ThemeDefinition = {
 		// The orange the old file used for its ask highlights.
 		warning: "#FFA500",
 		warningWash: "#261E15",
-		warningBorder: "#90600B",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 */
+		warningBorder: "#A47221",
 
 		// The theme's cyberpunk pink, carried verbatim; it clears 4.5:1 on both
 		// grounds without a nudge.
-		danger: "#FF00A0",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		danger: "#FF5EAF",
 		dangerWash: "#260B28",
-		dangerBorder: "#C00784",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		dangerBorder: "#DB349B",
 
 		// Info is the accent cyan. The theme's only other bright hues are the pink,
 		// which is danger, and the orange, which is warning.

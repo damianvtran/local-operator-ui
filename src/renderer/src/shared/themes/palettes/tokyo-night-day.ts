@@ -28,6 +28,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1; a semantic
  * border walks its hue toward the ground to just above the 3:1 edge floor; the shadow and the
  * scrim are the ink tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const tokyoNightDay: ThemeDefinition = {
 	id: "tokyoNightDay",
@@ -57,15 +73,45 @@ export const tokyoNightDay: ThemeDefinition = {
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.
-		ink: "#233E7C",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `sunken` binds it at 7.44:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#223D7B",
 		// Generated comment 6172B0 is 3.31:1 on `sunken` (< 4.5). Deepened, and then
 		// deepened again so the generated dark5 below it clears the ΔE00 8 ink step — the
 		// two generated tones sit only 5.1 apart.
-		inkMuted: "#3A4883",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 6.77:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#34427D",
 		// Generated dark5 8990B3 is 2.24:1 on `sunken` (< 4.5), the largest miss of the ink
 		// weights. Deepened along its own hue, and kept a distinct rung from `inkMuted` above
 		// rather than collapsing the two.
-		inkDim: "#555D85",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#4F577F",
 		inkDisabled: "#8990B3",
 
 		hairline: "#C5C9DB",
@@ -84,7 +130,14 @@ export const tokyoNightDay: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#DADDE6",
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `sunken` is the tightest base at ΔE00 2.06. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#DEE1EB",
 		onAccent: "#E1E2E7",
 
 		// Generated green 587539 is 3.74:1 on `sunken` (< 4.5). Deepened along the same
