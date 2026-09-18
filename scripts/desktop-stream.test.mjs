@@ -169,6 +169,63 @@ test("a refused stream carries the status, which is how a 404 is tellable apart"
 	globalThis.fetch = original;
 });
 
+/*
+ * THE TERMINATOR'S OWN SPELLING, which is the part of the framing above that
+ * cannot be inferred from a pure-LF stream.
+ *
+ * A blank line is TWO line endings, and each of them may independently be `LF`,
+ * `CRLF` or a bare `CR`: `\n\r`, `\n\r\n` and `\r\n\r` terminate a record
+ * exactly as `\n\n` does. A scanner that looks for each spelling as a fixed pair
+ * (`"\r\n\r\n"`, `"\n\n"`, `"\r\r"`) therefore misses the mixed three, and the
+ * miss is silent in the worst way: two records stay in one buffer and are handed
+ * to the renderer as their concatenation, whose `JSON.parse` fails inside a
+ * `catch` that skips the frame — so both records vanish with nothing on screen
+ * to say a frame was dropped. This is a DELIVERY regression rather than a
+ * theoretical one: the pre-branch relay carried an `\n\r\n` terminator (two
+ * records) and an `\r\n\r` one (the first record), and it is the shapes a proxy
+ * or a non-Node producer can emit.
+ */
+test("a blank line is any two endings, mixed spellings included", async () => {
+	const original = globalThis.fetch;
+	const source = { current: null };
+	globalThis.fetch = async (_url, init) => {
+		source.current = sseSource(init?.signal);
+		return source.current.response;
+	};
+	const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
+	const events = [];
+	const observed = [];
+	relay.observe((sessionId, data) => observed.push({ sessionId, data }));
+	relay.subscribe({ sessionId: SESSION }, (event) => events.push(event));
+	await sleep(60);
+
+	// Each record here is terminated by a different MIXED pair, and the last two
+	// share a terminator SPLIT across reads (`\n` ends one chunk, `\r\n` starts
+	// the next) so a parser that only rebuilt whole terminators from one read
+	// would stall on a stream whose bytes are perfectly legal.
+	source.current.pushRaw('data: {"n":1}\n\r');
+	source.current.pushRaw('data: {"n":2}\n\r\n');
+	source.current.pushRaw('data: {"n":3}\r\n\r');
+	source.current.pushRaw('data: {"n":4}\n');
+	source.current.pushRaw('\r\ndata: {"n":5}\r\n\r');
+	await sleep(60);
+
+	assert.deepEqual(
+		events
+			.filter((event) => event.kind === "data")
+			.map((event) => JSON.parse(event.data)),
+		[{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }],
+		"each record terminates on its own blank line, however the two endings are spelled",
+	);
+	assert.deepEqual(
+		observed.map((entry) => JSON.parse(entry.data)),
+		[{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }],
+		"and main's own observer is handed the same five records",
+	);
+	relay.dispose();
+	globalThis.fetch = original;
+});
+
 test("unsubscribe is validated, so a garbage id cannot abort another stream", () => {
 	const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
 	// Nothing is bound to these, and neither may throw: the renderer's teardown

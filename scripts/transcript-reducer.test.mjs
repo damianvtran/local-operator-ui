@@ -3476,7 +3476,7 @@ test("a join paints the frame's own text, and marks the prefix it does not have"
 	assert.equal(joined.streaming, true);
 	assert.equal(
 		joined.truncated,
-		true,
+		"prefix",
 		"one chunk is not presented as the whole answer: the prefix is unknown",
 	);
 
@@ -3492,7 +3492,7 @@ test("a join paints the frame's own text, and marks the prefix it does not have"
 	);
 	assert.equal(
 		state.records.find((record) => record.id === "a1").truncated,
-		true,
+		"prefix",
 		"and it stays marked until the whole text arrives",
 	);
 
@@ -3528,6 +3528,40 @@ test("a join against a producer that accumulates keeps the body, and marks nothi
 	const row = state.records.find((record) => record.id === "a1");
 	assert.equal(row.text, "accumulated answer tail");
 	assert.ok(!row.truncated);
+});
+
+test("a frame that carries a body clears the mark it supplied the text for", () => {
+	// R1-2 (code review round 1): the append path kept `truncated` when a frame
+	// carried a body, so a row marked by an earlier gap kept its caption AFTER a
+	// later frame supplied the whole running text — a claim that outlives the text
+	// it qualifies, and false for as long as it lasts. The shipped producer sends
+	// empty bodies mid-stream, so only the accumulating shape reaches this, which
+	// is exactly the producer the branch is written to support.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_update", delta: "chunk", message: assistant("a1", "") },
+		1,
+	);
+	assert.equal(
+		state.records.find((record) => record.id === "a1").truncated,
+		"prefix",
+		"the delta-only frame leaves the row claiming a prefix it does not have",
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: " and more",
+			message: assistant("a1", "the running whole text"),
+		},
+		2,
+	);
+	const healed = state.records.find((record) => record.id === "a1");
+	assert.equal(healed.text, "the running whole text and more");
+	assert.ok(
+		!healed.truncated,
+		"a body is the running whole text, so the mark goes on the frame that supplies it",
+	);
 });
 
 test("a settled row drops a later delta, and the drop is COUNTED", () => {
@@ -3625,7 +3659,7 @@ test("a seeded delta extends only a row with no text, and marks the row incomple
 		"the answer so far",
 		"the seed's delta is not applied a second time",
 	);
-	assert.equal(row.truncated, true, "the row says its continuity broke");
+	assert.equal(row.truncated, "interrupted", "the row says its continuity broke");
 	assert.equal(streamDiagnostics?.seededDeltaWithheld, withheld + 1);
 
 	// (ii) The row this seed's own `message_start` mints: the delta is its first
@@ -3654,5 +3688,66 @@ test("a seeded delta extends only a row with no text, and marks the row incomple
 		"a minted row's first text is the seed's chunk",
 	);
 	assert.equal(row.streaming, true);
-	assert.equal(row.truncated, true, "and a seeded tail says it is a tail");
+	assert.equal(row.truncated, "prefix", "and a seeded tail says it is a tail");
+	// R1-3 (code review round 1): the counter counts WITHHELD deltas, and this
+	// outcome withheld nothing — the row had no text, so the seed's chunk was
+	// placed as its first. The counter's doc used to claim every marked row was
+	// counted, which made `seededDeltaWithheld=0` read as "no seed marked a row".
+	assert.equal(
+		streamDiagnostics?.seededDeltaWithheld,
+		withheld + 1,
+		"a placed seed delta is not counted as a withheld one",
+	);
+});
+
+test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim alone", () => {
+	/*
+	 * D2 (design round 1), on the reducer rather than on the sentence: the mark a
+	 * receipt gap sets is its OWN value, because the caption for it is a different
+	 * claim. A row minted by a join states that no text before its first chunk
+	 * reached this viewer:
+	 * that is true when it is written and still true across a gap, so the gap
+	 * leaves it alone. A row the gap reached holds its own earlier text on screen,
+	 * so it says part of the answer may be missing — QA round 1's Q2 observed the
+	 * old single wording denying exactly that, live.
+	 *
+	 * Settled rows are not marked at all: a durable row or an assembled
+	 * `message_end` text is whole, and the gap cannot have taken anything from it.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a2", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "written before the gap", message: assistant("a2", "") },
+		2,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "chunk", message: assistant("a1", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a3", "the whole answer") },
+		4,
+	);
+	const marked = reducer.markLiveRecordsTruncated(state);
+	const rowOf = (id) => marked.records.find((record) => record.id === id);
+	assert.equal(
+		rowOf("a2").truncated,
+		"interrupted",
+		"a streaming row the gap reached may have a hole in it",
+	);
+	assert.equal(
+		rowOf("a1").truncated,
+		"prefix",
+		"a joined row keeps its own claim: its first chunk is still all it has",
+	);
+	assert.ok(
+		!rowOf("a3").truncated,
+		"a settled row is whole, and the gap marks nothing on it",
+	);
 });

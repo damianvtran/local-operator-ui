@@ -596,17 +596,74 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 	for (const view of [0, 1]) {
 		const trace = px(GAP.trace[view]);
 		const item = px(GAP.item[view]);
+		const mark = px(GAP.mark[view]);
 		const turn = px(GAP.turn[view]);
 		assert.equal(trace, 2, "a run's rows sit a hairline apart");
 		assert.ok(
-			trace < item && item < turn,
-			`tiers must widen: trace ${trace} < item ${item} < turn ${turn}`,
+			trace < item && item < mark && mark <= turn,
+			`tiers must widen: trace ${trace} < item ${item} < mark ${mark} <= turn ${turn}`,
+		);
+		/*
+		 * D1 (design review round 1) is a RATIO requirement, not a preference: the
+		 * caption lives INSIDE the row it describes, 4px from its own chunk, so the gap
+		 * above that row has to be at least 3× the caption's margin for the line to
+		 * attach to the row rather than to the paragraph above it. 12px is the ramp's
+		 * smallest between-components step, and it is asserted here rather than trusted
+		 * to the comment because the failure mode — an `item`-sized gap on a marked row
+		 * — is invisible in a diff and reads as a note on somebody else's answer.
+		 */
+		assert.ok(
+			mark >= 12 && mark >= item * 1.5,
+			`the marked row's gap must clear the caption's own margin (mark ${mark}, item ${item})`,
 		);
 		// The hierarchy the tightening had to preserve: a turn boundary is an
 		// order of magnitude airier than an adjacent pair inside a run, so the
 		// density buys nothing at the boundary's expense.
 		assert.ok(turn >= trace * 8, "a turn boundary still reads as a boundary");
 	}
+});
+
+test("a row whose caption says its text is not whole takes the mark gap", () => {
+	/*
+	 * WHICH rows take it, and which the raise leaves alone: only the `item`/`trace`
+	 * tiers are ambiguous against a 4px caption margin. `turn` is already wider than
+	 * the floor and `first` has no row above it, so the tier is raised and never
+	 * lowered — a marked row that opens a turn keeps the turn's own air.
+	 */
+	const prose = (id, extra) => ({
+		kind: "assistant",
+		id,
+		ts: 1,
+		text: "the chunk",
+		streaming: true,
+		stopReason: null,
+		error: false,
+		...extra,
+	});
+	const marked = buildRows(
+		[
+			{ kind: "user", id: "u1", ts: 1, text: "go", images: [] },
+			prose("a1"),
+			prose("a2", { truncated: "prefix" }),
+		],
+		[],
+	);
+	assert.deepEqual(
+		marked.map((row) => row.gap),
+		["first", "turn", "mark"],
+		"the marked row separates from the answer above it",
+	);
+	// The D1 case that was worst before the tier existed: a marked row directly
+	// under a tool row used to inherit the 2px hairline.
+	const afterTool = buildRows([toolRecord("t1"), prose("a1", { truncated: "interrupted" })], []);
+	assert.equal(
+		afterTool[1].gap,
+		"mark",
+		"a marked row under a ledger row does not take the hairline",
+	);
+	// And an UNMARKED row is untouched, including the small view's narrower item.
+	const plain = buildRows([{ kind: "user", id: "u1", ts: 1, text: "go", images: [] }, prose("a1")], []);
+	assert.deepEqual(plain.map((row) => row.gap), ["first", "turn"]);
 });
 
 test("an invisible record does not consume the avatar or a turn boundary", () => {

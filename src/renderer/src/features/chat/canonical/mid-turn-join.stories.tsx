@@ -33,12 +33,14 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
+import type { CanonicalTranscriptStatus } from "./transcript-pane";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
 	applyEvent,
 	applyHistoryPage,
 	applyLiveSeed,
+	markLiveRecordsTruncated,
 } from "./transcript-reducer";
 
 /** One instant for every frame, so the frames are byte-reproducible. */
@@ -80,6 +82,34 @@ const PAGE: Entry[] = [
 ];
 
 /**
+ * The same join over a COMPLETE, UNRELATED answer (design round 1, D1).
+ *
+ * The page above the joined row is the frame a reader's eye reaches for when the
+ * caption's ownership is ambiguous: the original fixture's row above is the same
+ * sentence's first half, which happens to read correctly under either parse and
+ * so hides the defect it makes reachable. This one ends at its own full stop and
+ * does not continue into the row below, so a caption that attaches upward is
+ * visibly a claim about somebody else's paragraph.
+ */
+const PAGE_UNRELATED: Entry[] = [
+	entry("u1", TS, {
+		kind: "message",
+		role: "user",
+		content: [{ text: "What changed in the auth flow this week?" }],
+	}),
+	entry("a1", TS + 1_000, {
+		kind: "message",
+		role: "assistant",
+		content: [
+			{
+				text: "The retry budget is now per-route, and the gateway holds the token exchange.",
+			},
+		],
+		stop_reason: "stop",
+	}),
+];
+
+/**
  * The seed of a turn in flight, as the runtime retains it: the message's start
  * (with the empty content the producer mints) and the ONE latest update.
  */
@@ -105,9 +135,9 @@ const frontendOf = (seed: unknown[]): CanonicalFrontendState =>
 		live_events: seed,
 	}) as unknown as CanonicalFrontendState;
 
-const withPage = (): TranscriptState =>
+const withPage = (page: Entry[] = PAGE): TranscriptState =>
 	applyHistoryPage(EMPTY_TRANSCRIPT, {
-		entries: PAGE,
+		entries: page,
 		has_more: false,
 		cursor_missing: false,
 	});
@@ -130,6 +160,81 @@ const beforeFix = (seed: unknown[]): TranscriptState => {
 const afterFix = (seed: unknown[]): TranscriptState =>
 	applyLiveSeed(withPage(), frontendOf(seed), ARRIVAL_MS);
 
+/** The same fold over the unrelated page: the D1 frame's fixture. */
+const afterFixUnrelated = (seed: unknown[]): TranscriptState =>
+	applyLiveSeed(withPage(PAGE_UNRELATED), frontendOf(seed), ARRIVAL_MS);
+
+/**
+ * A SEED WHOSE DELTA COULD NOT BE PLACED (design round 1, D2's second state).
+ *
+ * The reconnect this PR keeps rows for: the row holds text painted before the
+ * gap and the seed names the same message with a delta nothing can position, so
+ * the delta is withheld and the row says a chunk of it may be missing. The
+ * caption for this state is NOT the join's — the row's own earlier text is on
+ * screen under it — and until this story there was no frame for it at all.
+ */
+const seededWithheld = (): TranscriptState => {
+	let next = withPage();
+	next = applyEvent(
+		next,
+		{
+			type: "message_start",
+			message: { id: "a2", role: "assistant", content: [], tool_calls: [] },
+		},
+		ARRIVAL_MS,
+	);
+	next = applyEvent(
+		next,
+		{
+			type: "message_update",
+			message: { id: "a2", role: "assistant", content: [], tool_calls: [] },
+			delta:
+				"The refresh path is shared with the mobile client, which is the part that took longest to land.",
+		},
+		ARRIVAL_MS + 500,
+	);
+	return applyLiveSeed(next, frontendOf(SEED), ARRIVAL_MS + 60_000);
+};
+
+/**
+ * A RECEIPT GAP OVER A ROW THAT WAS BEING WRITTEN (design round 1, D2's third
+ * state, and QA round 1's Q2 seen live).
+ *
+ * `markLiveRecordsTruncated` is what the gap calls now: the rows stay painted —
+ * this is the answer the operator watched vanish — and the streaming ones say
+ * their continuity broke. The row here was minted by `message_start`, so its own
+ * earlier text IS on screen, which is exactly the case the old single sentence
+ * denied.
+ */
+const afterGap = (): TranscriptState => {
+	let next = withPage();
+	next = applyEvent(
+		next,
+		{
+			type: "message_start",
+			message: { id: "a2", role: "assistant", content: [], tool_calls: [] },
+		},
+		ARRIVAL_MS,
+	);
+	for (const chunk of [
+		"Three things landed this week. ",
+		"The token exchange moved behind the gateway, ",
+		"the retry budget is now per-route, and ",
+		"the refresh path is shared.",
+	]) {
+		next = applyEvent(
+			next,
+			{
+				type: "message_update",
+				message: { id: "a2", role: "assistant", content: [], tool_calls: [] },
+				delta: chunk,
+			},
+			ARRIVAL_MS + 500,
+		);
+	}
+	return markLiveRecordsTruncated(next);
+};
+
 /**
  * The turn ENDED, with the producer's assembled text: the one thing that clears
  * the mark, and the frame that shows it clearing.
@@ -151,9 +256,11 @@ const settled = (text: string): TranscriptState =>
 const Frame = ({
 	transcript,
 	caption,
+	status = "live",
 }: {
 	transcript: TranscriptState;
 	caption: string;
+	status?: CanonicalTranscriptStatus;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -176,7 +283,7 @@ const Frame = ({
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
 					isSmallView={false}
-					status="live"
+					status={status}
 					failure={null}
 					awaitingHydration={false}
 					onReconnect={() => {}}
@@ -227,6 +334,54 @@ export const AfterJoinSettled: Story = {
 			transcript={settled(
 				"Three things landed: the token exchange moved behind the gateway, the retry budget is now per-route, and the refresh path is now shared with the mobile client.",
 			)}
+		/>
+	),
+};
+
+/**
+ * The same join, over an answer that is complete and unrelated (D1).
+ *
+ * The capture the design round asked for by name, and the reason it is a frame
+ * rather than an argument: with the ORIGINAL fixture's row above — the same
+ * sentence's first half — the caption reads correctly whether it is attached to
+ * this row or to the paragraph above it. Here the row above ends at its own full
+ * stop and elsewhere in the answer, and the caption sits 12px below it against
+ * its own 4px to the chunk, so the ownership is legible without a caption text
+ * that has to argue for it.
+ */
+export const AfterJoinUnrelated: Story = {
+	render: () => (
+		<Frame
+			caption="After, with an unrelated complete answer above it: the same joined chunk. The gap above this row is a between-components step (12px) against the caption's 4px to its own text, so the line attaches to the row it describes rather than to the answer above — the mis-parse the design round judged in the original fixture."
+			transcript={afterFixUnrelated(SEED)}
+		/>
+	),
+};
+
+/**
+ * The reconnect states that had no frame before (D2, second and third states).
+ *
+ * The caption for a row that lost continuity is `Part of this answer may be
+ * missing`, and the difference from the join's sentence is the whole point: this
+ * row's own earlier text is on screen under it, so a caption claiming a missing
+ * prefix would deny the paragraph directly beneath it.
+ */
+export const AfterSeedWithheld: Story = {
+	render: () => (
+		<Frame
+			caption="After, reconnecting: the row kept the text it had painted before the gap, and the seed's delta could not be placed after it, so the delta is withheld. The row's own earlier text is on screen, which is why its caption claims a possible hole rather than a missing prefix."
+			transcript={seededWithheld()}
+		/>
+	),
+};
+
+/** The same caption on the gap path, with the pane saying it is reconnecting. */
+export const AfterGap: Story = {
+	render: () => (
+		<Frame
+			caption="After a receipt gap, reconnecting: the answer being written is KEPT and marked uncertain rather than erased. The row was minted by `message_start`, so it starts where the answer starts and its earlier text is on screen — the real uncertainty is a hole in the middle, and the caption says that."
+			transcript={afterGap()}
+			status="reconnecting"
 		/>
 	),
 };
