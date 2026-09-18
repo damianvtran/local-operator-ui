@@ -27,23 +27,38 @@ carries the sidebar, the session list or the transcript.
 
 ```
 aed35221da88585bae851ad20ccd18073a3cfcebeac20686780c54feb77d630d  scratchpad-files-panel-before.png  43545 B
-01361ab8c538a3236c68ea16cc0683ec54e03087c2766c587a26fbcfee7a7327  scratchpad-files-panel.png         31764 B
-d25484d7a33ab13824ee3a9276fa8e0e90bed07d6220e7fda6bc3a3059154ccf  scratchpad-markdown-canvas.png     73919 B
-9782e2aa8f0dea488ffe07782440e3c09eeb5cb4673e88541d770daa73ef89ab  scratchpad-csv-canvas.png          40382 B
-68ca92d87650332d3443c0fc64a0defd22d7dd1aaa35fe99153623cdc4a8440a  scratchpad-text-canvas.png         48919 B
+d43ab0e750400880a906c71711b4e967f08f199164a46516402f31b8775c2b8c  scratchpad-files-panel.png         31769 B
+934b246daada49e10aed7037af3d04d1ece89dd062e0c781bf346fdd294a52c4  scratchpad-markdown-canvas.png     73943 B
+07603f5fafa045b2bdfc39bf935c264e333fd803742345bd99789bf712a16c5e  scratchpad-csv-canvas.png          40423 B
+1137172db0df04a8f564964037a9d6c64020605cacd4c637623eb6ad1956bf7d  scratchpad-text-canvas.png         48894 B
 ```
 
-The panel pair differs by **15,273 pixels (0.67% of the frame)** - `magick
+The panel pair differs by **15,276 pixels (0.67% of the frame)** - `magick
 compare -metric AE` - which is two tiles and one word of head copy, and nothing
-else. The two panel frames are byte-comparable because they are the same session
-on two builds: same names, same order, same grid.
+else. The same measurement on the previous pair, a different session, read
+**15,273** - so the delta is stable to three pixels and the difference is the two
+phantom tiles, not the run. The two panel frames are byte-comparable because both
+are the panel-only canvas layout: same names, same order, same grid.
 
-**Both panel frames survived the rebase byte-for-byte.** `scratchpad-files-panel.png`
-and `scratchpad-files-panel-before.png` were re-captured on the rebased tree, from
-a session with a different id, and came back with the SAME sha256 - 0 differing
-pixels from the frames committed before the rebase. That is the reading that says
-main's movement did not disturb this surface (see *Why the frames still describe
-this tree*).
+**The panel frame has now survived two folds of `main`.** It was first re-captured
+on the `2de7ae977` fold, from a session with a different id, and came back with the
+SAME sha256 - 0 differing pixels. It was re-captured again after the `0.27.0`
+release fold, and came back **4 pixels** different: `x 1155-1215, y 39-44`, channel
+deltas of one unit (`1D1A16` vs `1D1B16`), which is the anti-aliasing of one header
+icon and not a layout. Both readings say main's movement did not disturb this
+surface (see *Why the frames still describe this tree*), and the committed frame is
+the one from the final tree.
+
+**The mention list is PERSISTED, and that bit this rig once.** The panel's tiles
+live in the app's `localStorage` (`canvas-store` -> `conversations[<id>].mentionedFiles`),
+and the scratch profile keeps `localStorage` across launches. A re-capture on a
+reused profile therefore reports the tiles the PREVIOUS build produced: a head
+build measured `6 files` - both phantom tiles - twice in a row because a base
+build had written its six entries into the shared profile moments earlier. The
+same build on a cleared profile read `4 files`. `rm -rf $ISO/profile` between two
+builds is not hygiene: it is the difference between measuring this build and
+reading back the last one, and a reader who sees `6 files` on a head build should
+reach for it before concluding the fix regressed.
 
 ### Why the frames still describe this tree
 
@@ -59,9 +74,9 @@ so "nothing visual changed" has to be shown rather than assumed:
   `features/chat/components/canvas/`, `features/chat/canonical/`,
   `shared/themes/` and `styles/` is empty for both windows.
 - And the measurement agrees with the reading: the panel frame re-captured on the
-  rebased tree is **byte-identical** (0 differing pixels, same sha256), and the
-  `-before` frame likewise. A layout shift inside the canvas container would move
-  both.
+  folded tree is within **4 pixels** of the committed one (anti-aliasing on a single
+  header icon), and an earlier fold reproduced it byte-for-byte. A layout shift
+  inside the canvas container would move thousands.
 
 The canvas frames are re-taken from the run the rebased harness performs, so the
 whole set is one session on the current tree - the panel pair happens to hash the
@@ -99,7 +114,11 @@ git checkout HEAD -- src/renderer/src/features/chat/canonical/mentioned-files.ts
 
 It is committed rather than merely described because it is the half that shows
 the defect: a reader who runs only the script sees a four-tile panel and no reason
-to believe it was ever anything else.
+to believe it was ever anything else. And a warning for whoever re-runs it: on a
+freshly cleared profile the base build's canvas opens in the SPLIT layout rather
+than panel-only, so its frame will not pixel-match the committed one even though
+the reading does - `6 files`, both tiles `No longer on disk`. The count is the
+evidence; the committed frame is the one from a run whose layout matches the pair.
 
 ## What produced these frames
 
