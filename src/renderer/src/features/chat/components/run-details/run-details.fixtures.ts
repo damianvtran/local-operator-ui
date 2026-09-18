@@ -1028,6 +1028,82 @@ export const readerChild = (
 	},
 });
 
+/**
+ * A delegation tree three levels below the roster's one member: the shape the
+ * reader's own subagents section exists for (`docs/run-sidebar.md` § 5).
+ *
+ * `job-reader` is the only MEMBER — `§ 4` keeps every descendant of a member on
+ * the lineage without a roster row of its own — and the four rows under it are the
+ * levels a reader can now walk: `job-scan` and `job-verify` are `job-reader`'s
+ * children, `job-totals` is `job-verify`'s, `job-check` is `job-totals`'.
+ *
+ * The stories built on it take one page each, and that is the reason it is one
+ * fixture rather than three: `reader-descendants` opens the member's page (two
+ * rows, one carrying `1 child`), `reader-deep-children` opens the GRANDCHILD's
+ * page that itself has a child, and `reader-childless` opens the leaf, where the
+ * section is absent rather than empty.
+ *
+ * Every session id is distinct. Two rows sharing one would address one child's
+ * transcript from two pages, which is a wire state the fixture must not invent —
+ * and `childOpenable` is what makes it visible, since a row with no id at all is
+ * the unlit case the roster already carries.
+ */
+export const readerDescendants = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		readerChild(),
+		{
+			...child({
+				id: "job-scan",
+				label: "Scan the ledger export for duplicate rows",
+				status: "running",
+				startedSecondsAgo: 54,
+				progress: "grep -c '^INV' ledger/q1.csv",
+				sessionId: "5c9a1e73b204",
+			}),
+			parent_job_id: "job-reader",
+		},
+		{
+			...child({
+				id: "job-verify",
+				label: "Verify the totals",
+				role: "reviewer",
+				status: "done",
+				startedSecondsAgo: 88,
+				settledSecondsAgo: 21,
+				result: "All four unpaid rows match the ledger; the totals stand.",
+				sessionId: "bb11cc22dd33",
+			}),
+			parent_job_id: "job-reader",
+		},
+		{
+			...child({
+				id: "job-totals",
+				label: "Re-total the unpaid rows by customer",
+				status: "running",
+				startedSecondsAgo: 40,
+				progress: "pandas: groupby('customer').sum()",
+				tokens: 6_400,
+				window: 200_000,
+				cost: 0.01,
+				sessionId: "cc22dd33ee44",
+			}),
+			parent_job_id: "job-verify",
+		},
+		{
+			...child({
+				id: "job-check",
+				label: "Check the April export the same way",
+				status: "queued",
+				queued: true,
+				sessionId: "ee44ff550066",
+			}),
+			parent_job_id: "job-totals",
+		},
+	],
+	todos: [],
+});
+
 /** One durable transcript entry, in the wire's own shape. */
 const entry = (
 	id: string,

@@ -12,8 +12,12 @@
  * - `event` frames carry typed canonical AgentEvents; a terminal event is what
  *   resolves the "Waiting to start" latch. The receipt cursor is only for
  *   dedupe/reconnect, never for deciding what is newer paint state.
- * - A `gap` frame (or any replay-with-gap open) invalidates painted state; the
- *   consumer must re-read via the snapshot that follows rather than patching.
+ * - A `gap` frame (or any replay-with-gap open) says the receipt lost continuity:
+ *   painted FRONTEND state is dropped, and the transcript's in-flight rows are
+ *   KEPT and marked uncertain (`markLiveRecordsTruncated`) rather than erased,
+ *   because the snapshot that follows states what happened in the interval for
+ *   every id it names and erasing them repainted the answer being written as its
+ *   last chunk alone.
  *
  * Per-record coalescing happens at the frame queue: one animation frame per
  * batch of IPC deliveries, not one render per token. The transcript itself is
@@ -36,8 +40,8 @@ import {
 	applyHistoryPage,
 	applyLiveSeed,
 	clearTranscript,
-	dropLiveRecords,
 	labelGapCandidates,
+	markLiveRecordsTruncated,
 	reconcileLimit,
 	removeRecord,
 	seedCallsMissingLabels,
@@ -886,24 +890,26 @@ export function useCanonicalSessionStream(
 		 * Read the durable tail back and merge it, walking further back until the
 		 * page CONNECTS to a row the snapshot painted.
 		 *
-		 * WHY A SNAPSHOT ALONE BUYS THIS READ. A snapshot's history page is read
-		 * `through_id=<the owner's published history_cursor>`, so its newest entry
-		 * IS that cursor by construction — the two agree even when the cursor is
-		 * stale. That makes the page unverifiable from the frame: a page stopping
-		 * short of the durable tail (rows written after the cursor was captured,
-		 * e.g. while this reader was on another conversation) is non-empty and
-		 * reports `cursor_missing: false`, indistinguishable from a complete one.
-		 * Comparing `history.entries` against `frontend.snapshot.history_cursor`
-		 * therefore proves nothing — they are one value on two fields. The
-		 * unbounded route (`sessions.history`, no cursor) reads the tail whatever
-		 * cursor the owner published, and that is what makes it the read which
-		 * closes this: against an owner that still bounds its page by a stale
-		 * cursor it delivers the rows in between, and against one that publishes a
-		 * genuine page (the backend half of this defect, landing separately) it is
-		 * a redundant second read of rows already in hand — absorbed by the
-		 * reducer's id-keyed merge for the cost of one bounded page. Kept
-		 * unconditional because a client cannot tell the two owners apart from the
-		 * frame it was handed.
+		 * WHY A SNAPSHOT ALONE CANNOT BUY THIS READ. A snapshot's history page used to
+		 * be read `through_id=<the owner's published history_cursor>`, so its newest
+		 * entry WAS that cursor by construction — the two agreed even when the cursor
+		 * was stale. That made the page unverifiable from the frame: a page stopping
+		 * short of the durable tail (rows written after the cursor was captured, e.g.
+		 * while this reader was on another conversation) was non-empty and reported
+		 * `cursor_missing: false`, indistinguishable from a complete one. Comparing
+		 * `history.entries` against `frontend.snapshot.history_cursor` therefore proved
+		 * nothing — they were one value on two fields.
+		 *
+		 * THE SENTENCE THAT REPLACED IT is that the two owner shapes ARE now
+		 * distinguishable from the frame alone, by the one test no cursor-bounded page
+		 * can pass: a page whose newest entry is NOT the published cursor has served
+		 * rows PAST its own watermark, which only a page read from the journal's tail
+		 * can do. So a page that is non-empty, ends on a row this viewer already had on
+		 * screen, and extends past the cursor is the journal tail and this viewer is at
+		 * it: nothing exists between them to fetch, and the read is skipped (see
+		 * `needsReconcile` below). Everything else still reads, including the shape
+		 * this read was written for — a page ending AT the cursor, and a page whose
+		 * newest row this viewer never painted.
 		 *
 		 * THE BOUND, which is different in the two cases:
 		 *
@@ -1052,25 +1058,50 @@ export function useCanonicalSessionStream(
 			// updater runs lazily (and twice under StrictMode), so a side effect
 			// keyed off it would either never fire or fire on the discarded pass.
 			//
-			// EVERY snapshot justifies the read. A cold session (no live owner)
-			// snapshots with no history cursor and so an empty page, and a replaced
-			// cursor reports cursor_missing — both are the contract's "reconcile
-			// through /history" case. What changed is the third one: a NON-empty
-			// page without cursor_missing used to be accepted as complete, and it
-			// cannot be known to be — see `reconcileTail`. On the two paths that
-			// painted nothing the read is one page and no more; on the path that did
-			// it is one page unless the tail does not reach it, which is the same
-			// page this path already paid for the other two.
-			// An attention frame only justifies a refetch when it names an anchor
-			// the transcript has not painted: the backend publishes one after
-			// every successful ACK, so reconciling on all of them spent a
-			// 100-entry history fetch on a frame where only `unseen` changed.
+			// WHICH SNAPSHOTS DO, and which no longer do.
+			//
+			// Every snapshot used to. The read is for rows that became durable and
+			// were never painted — written while this reader was away, or swallowed
+			// by a receipt gap — and against an owner that bounds its page at a stale
+			// cursor the unbounded read is the only thing that can find them. But
+			// when the page already IS the journal tail, the read is a second full
+			// pass over the same rows on the owner, on the machine that is already
+			// the reason the receipt broke: the one cost that grows with load, and
+			// one that a reconnect loop multiplied.
+			//
+			// The proof that the page IS the tail is in the frame, and it has three
+			// parts, all of them required:
+			//   1. the page is non-empty (an empty page proves nothing and is the
+			//      contract's "reconcile through /history" case);
+			//   2. its NEWEST entry extends past the owner's own published
+			//      `history_cursor` — the one thing a page read `through_id=<cursor>`
+			//      can never do, so this cannot be a cursor-bounded page ending on a
+			//      stale watermark; and
+			//   3. that newest entry is a row this viewer already had on screen
+			//      (`paintedIds`, the index the LAST flush left behind — not the ids
+			//      this batch is painting, which would make the test true by
+			//      construction). A page whose newest row this viewer has never seen
+			//      is a row with something behind it, and reads.
+			// A cold snapshot, a cursor-less or `cursor_missing` one, an attention
+			// frame naming an unpainted anchor and a label-gap retry all still read:
+			// none of them passes the three, and for the first two nothing painted can
+			// satisfy any connection test anyway.
+			const pageIsPaintedTail = (
+				frame: Extract<DesktopSessionFrame, { type: "snapshot" }>,
+			) => {
+				const entries = frame.payload.history.entries;
+				const newest = entries.at(-1);
+				if (!newest) return false;
+				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
+					return false;
+				return paintedIds.current.has(newest.id);
+			};
 			const paintedAnchor = (anchor: string | null | undefined) =>
 				anchor != null && paintedIds.current.has(anchor);
 			const needsReconcile = frames.some((frame) =>
 				frame.type === "attention"
 					? !paintedAnchor(frame.payload.anchor_id)
-					: frame.type === "snapshot",
+					: frame.type === "snapshot" && !pageIsPaintedTail(frame),
 			);
 			// The second reason to read back: a snapshot's live seed names calls that
 			// settled before this viewer arrived, and the seed carries no arguments for
@@ -1167,27 +1198,35 @@ export function useCanonicalSessionStream(
 				let next = { ...current };
 				// Replay collects until the snapshot lands; applying an old delta
 				// over newer snapshot text is exactly the bug this ordering exists
-				// to prevent. Replayed EVENTS still fold into a scratch transcript:
-				// the snapshot's durable page is applied over it afterwards, so a
-				// row that became durable wins and an in-flight tail survives.
-				const replayQueue: DesktopSessionFrame[] = [];
+				// to prevent. Replayed EVENTS fold into a scratch transcript instead:
+				// the snapshot's durable page is applied over it afterwards, so a row
+				// that became durable wins and an in-flight tail survives — and the
+				// scratch is painted when the batch ends without one (see the fold
+				// below the loop), because the frames of one reconnect are not obliged
+				// to arrive in one flush.
 				let snapshotted = next.frontend !== null;
 				let replayTranscript: TranscriptState | null = null;
 				const now = Date.now();
 				for (const frame of frames) {
 					if (frame.type === "heartbeat") continue;
 					if (frame.type === "gap") {
-						// Receipt continuity broke: drop painted state and wait for the
-						// authoritative snapshot that follows rather than patching over
-						// an unknown interval. Durable rows stay painted (they cannot
-						// be wrong); only live projections are dropped.
+						// Receipt continuity broke: the authoritative snapshot that follows
+						// is the only thing that can say what happened in the interval, so
+						// painted FRONTEND state is dropped and the view says "reconnecting"
+						// rather than claiming a state it cannot prove.
+						//
+						// The transcript's live rows are KEPT and marked rather than
+						// dropped — dropping them is what made a blip look like the answer
+						// being erased and rewritten from its last chunk. See
+						// `markLiveRecordsTruncated` for what is marked and why exactly
+						// those rows.
 						next = {
 							...next,
 							frontend: null,
 							history: null,
 							terminal: null,
 							status: "reconnecting",
-							transcript: dropLiveRecords(next.transcript),
+							transcript: markLiveRecordsTruncated(next.transcript),
 						};
 						snapshotted = false;
 						continue;
@@ -1214,14 +1253,13 @@ export function useCanonicalSessionStream(
 								...next,
 								frontend: null,
 								history: null,
-								transcript: dropLiveRecords(next.transcript),
+								transcript: markLiveRecordsTruncated(next.transcript),
 							};
 							snapshotted = false;
 						}
 						continue;
 					}
 					if (!snapshotted) {
-						replayQueue.push(frame);
 						if (frame.type === "event") {
 							replayTranscript = applyEvent(
 								replayTranscript ?? next.transcript,
@@ -1302,7 +1340,6 @@ export function useCanonicalSessionStream(
 								transcript,
 							};
 							snapshotted = true;
-							replayQueue.length = 0;
 							replayTranscript = null;
 						}
 						continue;
@@ -1447,6 +1484,25 @@ export function useCanonicalSessionStream(
 							next = { ...next, subagentPulses: pulsed };
 						}
 					}
+				}
+				/*
+				 * Replayed events are painted even when no snapshot landed in the SAME
+				 * batch.
+				 *
+				 * A receipt gap's replay is a run of real event frames between the `open`
+				 * and the snapshot that follows, and the frames of one reconnect are not
+				 * obliged to arrive in one flush: the rAF (or its 250 ms backstop) can fall
+				 * between them. The scratch state was folded to be applied at the snapshot
+				 * and then thrown away when the snapshot turned out to be in a later batch
+				 * -- so the events the receipt cursor had just caught up on were silently
+				 * lost, and the rows they carried only reappeared if some later read
+				 * happened to cover them. Painting them here costs nothing when the
+				 * snapshot IS in the same batch (it is applied over this state, and the
+				 * durable page wins by id), and it is the difference between losing text
+				 * and holding it when the batch boundary falls inside the replay.
+				 */
+				if (!snapshotted && replayTranscript) {
+					next = { ...next, transcript: replayTranscript };
 				}
 				performance.mark("lop:transcript:flush:end");
 				performance.measure(
