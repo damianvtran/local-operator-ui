@@ -1586,7 +1586,7 @@ export const BackendUpdateOfferSourceBuild: Story = {
  * about it (design D1 = QA Q-2). The body names the restart the app can do and the hand
  * action it cannot, which is what the review asked to see judged from pixels.
  */
-export const BackendUpdateManualRequiredAppOwned: Story = {
+export const BackendManualRequiredAppOwned: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateManualRequiredAppOwned: true },
 	render: () => <Triggered flag="triggerBackendUpdateManualRequiredAppOwned" />,
