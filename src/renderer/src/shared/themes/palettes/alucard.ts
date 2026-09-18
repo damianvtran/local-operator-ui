@@ -38,15 +38,21 @@ export const alucard: ThemeDefinition = {
 		sunken: "#F1ECD9",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.11 from `surface`, 4.86 from `elevated` and 4.97 from `sunken`;
-		 * the step is -6.18 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.67:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 6.33 `L*` down at the panel's own
+		 * hue (1.5 degrees off, inside the 12-degree bound) and carried
+		 * 6.79 `C*` against the panel's 5.69 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.91, from
+		 * `elevated` 5.96, from `sunken` 2.53. Ink on this ground: `ink` 13.30:1,
+		 * `ink-muted` 7.16:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `0.66x` the panel's
+		 * chroma (3.76 `C*` against 5.69), 6 degrees off its hue, ΔE00 4.11 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#EAE7E0",
+		highlight: "#EAE7DA",
 
 		ink: "#1F1F1F",
 		inkMuted: "#4F4A37",

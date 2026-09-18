@@ -41,16 +41,21 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` and stepped 3.18 on the `L*` axis — branch H
-		 * of this port's selection rule. The cast is not decoration here: this palette's
-		 * `accentWash` (the app's active-row tint, `bg-accent-wash`) sits close enough to its
-		 * panel that a ground carrying only the band was ΔE00 **0.70** from the wash — the
-		 * same mark as the app's other selected row — so the row ground has to separate from
-		 * it by the contract's field floor: measured 2.92 here. ΔE00 4.03 from `surface`,
-		 * 5.44 from `elevated`, 4.62 from `sunken`, `inkDim` 5.09:1.
+		 * The current row's own ground: `surface` stepped 6.31 `L*` down at the panel's own
+		 * hue (its panel is neutral) and carried
+		 * 0.00 `C*` against the panel's 0.00 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.84, from
+		 * `elevated` 6.05, from `sunken` 0.65. Ink on this ground: `ink` 8.75:1,
+		 * `ink-muted` 6.70:1, `ink-dim` 4.69:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `202606.66x` the panel's
+		 * chroma (3.52 `C*` against 0.00), 88 degrees off its hue, ΔE00 4.03 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#E5ECF1",
+		highlight: "#E2E2E2",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

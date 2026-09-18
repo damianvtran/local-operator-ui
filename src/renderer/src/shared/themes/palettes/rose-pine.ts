@@ -39,17 +39,33 @@ export const rosePine: ThemeDefinition = {
 		elevated: "#26233a",
 		sunken: "#12101b",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast toward `accent` and stepped 3.29 on the `L*` axis — branch H of
-		 * this port's selection rule, with the cast sized by the same rule as `oneLight`'s:
-		 * the row has to clear the palette's own `accentWash` by the contract's field floor,
-		 * and the value that carried only the band measured ΔE00 **0.98** against it. Here
-		 * the wash separation is 2.75, at the cost of the louder total (ΔE00 5.97 from
-		 * `surface`, 5.73 from `elevated`, 9.41 from `sunken`, `inkDim` 4.65:1) — a
-		 * deliberate trade of loudness for two distinguishable selected-row idioms, and the
-		 * frame in the window's pixel list is where it is judged.
+		 * The current row's own ground: `surface` stepped 3.16 `L*` up at the panel's own
+		 * hue (1.2 degrees off, inside the 12-degree bound) and carried
+		 * 14.25 `C*` against the panel's 12.42 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.43, from
+		 * `elevated` 1.31, from `sunken` 7.81. Ink on this ground: `ink` 11.56:1,
+		 * `ink-muted` 8.81:1, `ink-dim` 4.67:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.04x` the panel's
+		 * chroma (12.97 `C*` against 12.42), 25 degrees off its hue, ΔE00 5.97 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * AND IT IS BELOW THE FLOOR: ΔE00 2.43 is under the 2.5 every palette must hold.
+		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
+		 * without putting this palette's own body ink under its floor, and buying it back
+		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
+		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
+		 * row-hover split rather than a louder mark here.
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.31 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#2F2131",
+		highlight: "#262337",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert

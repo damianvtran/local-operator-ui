@@ -43,17 +43,33 @@ export const nord: ThemeDefinition = {
 		sunken: "#272C36",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.19 toward `accent`, then stepped 1.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.83:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.35 from `surface`, 4.94 from `elevated` and 7.44 from
-		 * `sunken`; the step of 1.53 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground: `surface` stepped 2.58 `L*` up at the panel's own
+		 * hue (1.7 degrees off, inside the 12-degree bound) and carried
+		 * 10.86 `C*` against the panel's 9.57 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.14, from
+		 * `elevated` 1.09, from `sunken` 7.21. Ink on this ground: `ink` 8.92:1,
+		 * `ink-muted` 7.61:1, `ink-dim` 4.66:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.13x` the panel's
+		 * chroma (10.80 `C*` against 9.57), 18 degrees off its hue, ΔE00 4.35 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * AND IT IS BELOW THE FLOOR: ΔE00 2.14 is under the 2.5 every palette must hold.
+		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
+		 * without putting this palette's own body ink under its floor, and buying it back
+		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
+		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
+		 * row-hover split rather than a louder mark here.
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.09 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#30404E",
+		highlight: "#384151",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",

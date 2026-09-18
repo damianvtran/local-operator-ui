@@ -35,15 +35,26 @@ export const nightfox: ThemeDefinition = {
 		sunken: "#131A24",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.34 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.75 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.11 from `surface`, 2.12 from `elevated` and 10.76 from `sunken`;
-		 * the step is 3.79 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.75:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 4.17 `L*` up at the panel's own
+		 * hue (1.8 degrees off, inside the 12-degree bound) and carried
+		 * 14.11 `C*` against the panel's 12.47 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.11, from
+		 * `elevated` 1.02, from `sunken` 9.97. Ink on this ground: `ink` 7.65:1,
+		 * `ink-muted` 5.49:1, `ink-dim` 4.69:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.40x` the panel's
+		 * chroma (17.42 `C*` against 12.47), 2 degrees off its hue, ΔE00 4.11 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.02 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#20374F",
+		highlight: "#29374B",
 
 		ink: "#CDCECF",
 		inkMuted: "#AEAFB0",

@@ -31,30 +31,26 @@ export const obsidian: ThemeDefinition = {
 		sunken: "#030307",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
-		 * ramp 5.58 `L*`, carrying 1.90x the panel's chroma. ΔE00 4.01 from `surface`,
-		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.37 from `sunken`. The row is 1.134x the panel's relative
-		 * luminance.
+		 * The current row's own ground: `surface` stepped 6.42 `L*` up at the panel's own
+		 * hue (0.2 degrees off, inside the 12-degree bound) and carried
+		 * 2.12 `C*` against the panel's 2.25 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.09, from
+		 * `elevated` 0.63, from `sunken` 8.54. Ink on this ground: `ink` 14.64:1,
+		 * `ink-muted` 5.96:1, `ink-dim` 4.76:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#1f1f22)
-		 * stepped 3.51 `L*` off the panel, and this one steps 5.58. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
+		 * WHAT THIS REPLACES: the value before this round — `1.90x` the panel's
+		 * chroma (4.28 `C*` against 2.25), 0 degrees off its hue, ΔE00 4.01 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 *
-		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim` 4.87:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.87:1. The step here is still partly chroma-bought (1.90x the panel's, a faint violet
-		 * on a near-black neutral); the ordering above is what a re-authoring should
-		 * follow.
+		 * THE HOVER STEP IS THE COLLISION: 0.63 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#232329",
+		highlight: "#252528",
 
 		ink: "#FAFAFA",
 		inkMuted: "#A1A1AA",

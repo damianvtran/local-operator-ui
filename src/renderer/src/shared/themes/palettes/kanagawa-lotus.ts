@@ -31,15 +31,21 @@ export const kanagawaLotus: ThemeDefinition = {
 		sunken: "#D3CB9C",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.21 from `elevated` and 2.14 from `sunken`;
-		 * the step is -6.16 `L*`, in the band this branch raised to 4.0, with
-		 * inkMuted at 4.84:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 6.38 `L*` down at the panel's own
+		 * hue (0.3 degrees off, inside the 12-degree bound) and carried
+		 * 22.71 `C*` against the panel's 22.88 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.14, from
+		 * `elevated` 6.33, from `sunken` 1.63. Ink on this ground: `ink` 7.46:1,
+		 * `ink-muted` 4.81:1, `ink-dim` 4.81:1 — `ink-muted` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `0.97x` the panel's
+		 * chroma (22.09 `C*` against 22.88), 2 degrees off its hue, ΔE00 4.06 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#D6D1A7",
+		highlight: "#D7D0A5",
 
 		ink: "#363557",
 		inkMuted: "#545363",

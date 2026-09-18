@@ -81,21 +81,74 @@ popovers, tooltips, hovered rows), plus `sunken` (wells, tracks, code grounds)
 recessed below canvas.
 
 There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
-the ground of a row the reader is currently ON. It is a **lightness** step off
-`surface` in the direction the mode runs — darker on light themes, lighter on
-dark ones — and it is authored to land at **ΔE00 4.0 or better from `surface`**
-(the twelve palettes this change was authored against measure 4.01–4.15, and the
-forty-seven the theme port added were brought to the same rule in that round:
-**4.00–5.97 across the tree**, where the loudest is now `rosePine` 5.97 and
-`cyberpunk` — the palette whose cast the rule's fixed fraction first blew out to
-ΔE00 10.35 — sits at 4.14. Six palettes' `L*` shortfall is pinned where their own
-ink caps the route, and one wash pair is pinned where the floor is unreachable).
-The role was first authored at
-**2.0–2.5** for a selection the operator had asked to be subtle; he has since
-seen it rendered and reported the current row as invisible beside a hovered
-neighbour, and the band was raised in the same change.
+the ground of a row the reader is currently ON. **It is the panel's own colour,
+one step lighter on a dark theme and one step darker on a light one** — the
+operator's own words after seeing the first two attempts rendered: *"use a
+lighter color relative to the sidebar background that looks visually appealing"*.
+Three facts are asserted about it, and the second and third are what this rule
+adds:
 
-**The axis is lightness, and that is asserted rather than described.** ΔE00 is a
+- it is a **lightness** step off `surface` in the direction the mode runs, of at
+  least **3 `L*`** where the palette's own inks allow it;
+- its **hue** is the panel's, within **12 degrees**;
+- its **chroma** is the panel's — within **+15% or +1.6 C\***, and never below it.
+
+**The band is the point, and both of its ends were a defect.** Until this round
+the rule bought the mark's **ΔE00 4.0 off `surface`** from *whatever axis was
+free*, and chroma is the free one: WCAG contrast is a function of luminance
+alone, so moving chroma costs the row's own ink floors nothing while moving
+lightness spends their headroom. The fleet therefore paid in both directions —
+**eight palettes read grey** (`cyberpunk` 0.62x the panel's chroma, `alucard`
+0.66, `solarizedLight` 0.66, `arcade` 0.75, **`tokyoNight` 0.76** — the
+operator's own report, *"it looks almost grey when it should be a lighter
+slate"*, measured at 10.12 `C*` against a panel of 13.31 — `gruvboxLight` 0.86,
+`arctic` 0.91, `everforest` 0.91), **thirteen read as a colour the panel never
+had** (`oneLight` paints a *blue* highlight on a neutral `#F4F4F4` panel,
+`tokyoNightDay` 3.60x, `iceberg` 3.31x, `githubLight` 2.91x, `ayuLight` 2.21x,
+`rosePineDawn` 2.10x, `catppuccinLatte` 1.93x, `linen` 1.90x, `obsidian` 1.90x,
+`localOperatorDark` 1.87x, `localOperatorLight` 1.85x, `monokai` 1.66x,
+`oneDark` 1.48x), and eleven broke the hue outright (`arcade` 160 degrees off its
+panel's, `everforest` 36, `rosePine` 25, `neonNoir` 24, `rosePineDawn` 22,
+`catppuccinLatte` 19, `solarizedLight` 18, `nord` 18, `cyberpunk` 17, `ocean` 14,
+`solarizedDark` 14). All three lists are now asserted against, in
+`scripts/contrast-contract.mjs`.
+
+**Where the band cannot be reached, this document and the gate say so with the
+numbers.** ΔE00 4.0 at the panel's own hue and chroma is a function of the `L*`
+step alone, and a step that carries it needs **5.3–6.9 `L*`** while the palettes'
+own `ink-dim` reaches its floor with headroom at **2.4–7.5 `L*`**. Thirty-six
+palettes are capped under the band by their own inks: their value IS the step
+their ink allows, and `HIGHLIGHT_CAP_PINS` records the cap, the binder and both
+ratios, re-derived by the gate so that a record which has stopped being true
+fails rather than excuses. Seven of those cannot reach even the **ΔE00 2.5 floor
+every palette must hold** — `catppuccinFrappe`, `catppuccinMacchiato`,
+`cyberpunk`, `nord`, `palenight`, `rosePine`, `rosePineDawn` — and carry
+`subFloor: true`: a **named list, with its measurements**, because buying the
+difference back on chroma or hue is the defect above and a lower constant would
+stop asserting anything about the other fifty-two.
+
+**Two of the mark's neighbours collide with it as a consequence of the same
+bound, and both are work lists rather than fixes.** `elevated` is the hover step
+for the SAME rows (a conversation's neighbours carry `hover:bg-elevated`) and it
+is also every menu, popover and tooltip ground; `sunken` is the well below the
+panel. Both are the panel's own family one step along its own ramp, which is
+where the bounded mark now sits too, so the mark can land on a neighbour's
+shoulder — `arcade` measures ΔE00 **0.31** between its current row and a hovered
+neighbour, `tokyoNightStorm` 0.32, `ayuDark` 0.54, `oneDark` 0.54, `obsidian`
+0.63, and at the other end `oneLight` **0.65** from `sunken`. The fleet avoided
+that by hue-breaking the mark, i.e. the separation was bought *with* the defect,
+and the bound removes the purchase. Both pairs are pinned at what they measure
+(`HIGHLIGHT_ADJACENT_PINS`), and `HIGHLIGHT_WASH_PINS` records the same collision
+against `accentWash`, the app's other selected-row mark. The fix is a **row-hover
+and row-wash family that steps less than the mark**, leaving `elevated` to the
+menu job it also holds — a role this contract does not have yet, and its own
+change rather than a remediation round of this one.
+
+The role was first authored at **2.0–2.5 ΔE00** for a selection the operator had
+asked to be subtle; he has since seen it rendered and reported the current row as
+invisible beside a hovered neighbour, and the band was raised in the same change.
+
+**The step is lightness, and that is asserted rather than described.** ΔE00 is a
 budget with a chroma term in it, so a step can be made as large as you like by
 warming it at a fixed `L*` — which is how the first version of the raised band
 answered the same report twice: on `tokyoNight`, `localOperatorDark` and
@@ -103,10 +156,11 @@ answered the same report twice: on `tokyoNight`, `localOperatorDark` and
 the panel **fell** to 2.61, 2.82 and 2.52 — *less* light on the two dark themes
 than the 3.26 and 3.47 steps he had already reported as invisible. Those three
 were re-authored to **+5.09, +3.81 and −4.75 `L*`**, and
-`scripts/contrast-contract.mjs` now asserts both halves of the direction (a dark
+`scripts/contrast-contract.mjs` asserts both halves of the direction (a dark
 palette's row is lighter than its panel, a light one's darker) and a floor of
 **3 `L*`** on the magnitude, so no palette can satisfy the band while landing
-darker on a dark theme. The twelve carry 3.81–6.62 `L*` today.
+darker on a dark theme. The direction is asserted beside the size because ΔE00
+is a budget a chroma-bought step can spend while moving the wrong way.
 
 A selection is a mark on a panel, not a hole in it: `sunken` is always recessed
 and measures 3.75–14.94 from `surface`, which is a dark box rather than a
@@ -162,28 +216,33 @@ floors plus 0.15 of headroom. It no longer asserts `border-control` on it: there
 is no boundary on the row (above).
 
 **The rule a porting author follows**, so a new palette can be derived rather
-than tuned: take the `L*` step **first**, at the panel's own hue, in the direction
-the mode runs — as far as the ink floors allow — and then buy only the shortfall
-to the band's floor of **ΔE00 4.0** on the chroma axis at that same hue. Chroma
-may pay a remainder; it may not pay the step. The constraints:
+than tuned: the mark is **the panel's own colour**, moved along the **`L*`** axis
+in the direction the mode runs — as far as the ink floors allow, and at least
+3 `L*`. Nothing else moves. The constraints:
 
-- targets **ΔE00 ≥ 4.0 from `surface`**,
+- keeps the panel's **hue** within **12 degrees**, and its **chroma** within
+  **+15% or +1.6 `C*`** of the panel's and never below it (the gate asserts the
+  band where the panel itself carries at least 2 `C*`; below that an angle is
+  8-bit quantisation and the chroma band is the whole rule, which is what keeps
+  `linen` — panel 1.59 `C*` — and a deliberately neutral `highContrastLight` out
+  of the hue test while failing `oneLight`'s blue on a neutral panel);
+- targets **ΔE00 ≥ 4.0 from `surface`**, and **must reach ΔE00 2.5** — the floor
+  no palette ships under; a palette whose own inks cap it below the band belongs
+  in `HIGHLIGHT_CAP_PINS` with its numbers, and one capped below 2.5 belongs
+  there with `subFloor: true`;
 - keeps every ink floor with at least **0.15 of headroom above it** — `ink` ≥
-  7:1, `ink-muted` and `ink-dim` ≥ 4.5:1 on the row's own ground, and
-  `ink-dim` is the one that usually binds, because the caps and the `· lopdev`
-  binding inside a current row are drawn in it — and
+  7:1, `ink-muted` and `ink-dim` ≥ 4.5:1 on the row's own ground, and `ink-dim`
+  is the one that usually binds, because the caps and the `· lopdev` binding
+  inside a current row are drawn in it — and
 - stays **ΔE00 ≥ 2.0 from `elevated` and from `sunken`** (the field floor § 3
-  enforces; 2.2 is the target to aim past, being where the original band's
-  separation was measured).
+  enforces), excepting the pairs pinned in `HIGHLIGHT_ADJACENT_PINS` and
+  `HIGHLIGHT_WASH_PINS`, which are the adjacent-role work list.
 
-Four of the twelve still carry a partly chroma-bought step — `dracula` 1.20x the
-panel's chroma, `monokai` 1.66x, `obsidian` 1.90x and `iceberg` 3.31x — each
-recorded at its own value in its palette. They clear the asserted floor, and they
-are what a re-authoring should take next: `iceberg` is where the cost is visible,
-because that panel is the least chromatic of the twelve (C* 1.57), so its step
-reads as a lavender band rather than a darker row (design round 1, D4). Its
-earlier justification — that its recessed ground capped the step — was wrong:
-`sunken` sits ΔE00 3.75 from that `surface` and the row still clears it by 2.53.
+A worked example, on the operator's own theme: `tokyoNight`'s panel `#24283B`
+carries 13.31 `C*` at hue 287, and its mark is `#2F3449` — the same hue within
+1.3 degrees, 14.16 `C*`, 5.55 `L*` lighter, ΔE00 3.87 from `surface` because that
+palette's own `ink-dim` reaches its floor with the margin at 5.25 `L*`. The value
+it replaces, `#313342`, was 0.76x the panel's chroma: the grey in his report.
 
 **Elevation is a lightness step, not a shadow.** There is exactly one shadow in
 the system and it belongs only to objects that leave the flow: menu, dialog,
@@ -254,8 +313,11 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `on-accent` on the accent fill | 4.5:1 |
 | `border-control` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
-| `highlight` against `surface` | ΔE00 4.0 |
+| `highlight` against `surface` — the band | ΔE00 4.0 |
+| `highlight` against `surface` — the floor every palette holds | ΔE00 2.5 |
 | `highlight`'s `L*` step off `surface`: the direction, and at least 3 `L*` | 3 `L*` |
+| `highlight`'s hue against `surface`'s, where the panel carries ≥ 2 `C*` | 12° |
+| `highlight`'s chroma against `surface`'s | never below; ≤ +15% or +1.6 `C*` |
 | `highlight` against `elevated` and against `sunken` | ΔE00 2.0 |
 | `ink` / `ink-muted` / `ink-dim` on `highlight`, with 0.15 of headroom | 7:1 / 4.5:1 / 4.5:1 |
 | Component triples: ink on its own fill | 4.5:1 |
