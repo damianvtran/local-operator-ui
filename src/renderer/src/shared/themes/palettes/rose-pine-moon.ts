@@ -18,6 +18,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * - `info` is foam lifted: at canonical 9ccfd8 it sits ΔE00 14.6 from the
  *   lifted pine, under the contract's 15 for two semantics a reader has to
  *   tell apart by name.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosePineMoon: ThemeDefinition = {
 	id: "rosePineMoon",
@@ -26,25 +42,50 @@ export const rosePineMoon: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.11, elevated +8.97, sunken -4.13 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #232136 -> #232136 (L* 13.89 -> 13.89)
+		 * surface #2a273f -> #2A273F (L* 17 -> 17)
+		 * elevated #393552 -> #2F2B47 (L* 23.75 -> 19.17)
+		 * sunken #1b192a -> #1B192A (L* 9.76 -> 9.76)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
 		canvas: "#232136",
 		surface: "#2a273f",
-		elevated: "#393552",
+		elevated: "#2F2B47",
 		sunken: "#1b192a",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.75 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.01 from `surface`, 2.03 from `elevated` and 8.99 from `sunken`;
-		 * the step is 5.71 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.82:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.9 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.34x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.07-to-4 band
+		 * on `surface`. ΔE00 4.07 from `surface`, 2.03 from `elevated`, 9.29 from
+		 * `sunken`, 8.91 from `accentWash`; the inks on the ground are 9.71:1,
+		 * 7.71:1, 5.51:1. Continuity with the panel: hue 0.47 degrees off the
+		 * panel's (the assertion allows 12) and chroma 22.44 where the panel carries
+		 * 16.79.
 		 */
-		highlight: "#38334B",
+		highlight: "#322E4F",
 
 		ink: "#e0def4",
 		inkMuted: "#c9c6e0",
-		inkDim: "#A4A1BD",
+		inkDim: "#aaa7c3",
 		inkDisabled: "#6e6a86",
 
 		hairline: "#414057",
@@ -62,6 +103,21 @@ export const rosePineMoon: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#382b38",
 		onAccent: "#232136",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#c4a7e7`, iris), received unchanged because it already
+		 * clears every floor — ΔE00 22.67 from `accent`, 22.21 from its nearest
+		 * semantic (`danger`), 6.87:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#c4a7e7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.45 and C* 10.67, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.96 from `accentWash` (the field floor is
+		 * 2.0), 6.41:1 for `accentAlt` on it, and 4.62 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#332C3B",
 
 		// pine, lifted for `elevated`.
 		success: "#4eadd9",

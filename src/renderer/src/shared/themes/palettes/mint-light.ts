@@ -22,6 +22,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * `dim`, `edge-hi` and the state hues re-seat only as far as the floors
  * require: in a light theme it is the deepest ground that caps them, not the
  * brightest.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const mintLight: ThemeDefinition = {
 	id: "mintLight",
@@ -29,31 +45,76 @@ export const mintLight: ThemeDefinition = {
 	description: "Crisp white with the cool cast of fresh mint.",
 	palette: {
 		mode: "light",
-		canvas: "#E5F2E8",
-		surface: "#F1F8F3",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A light page ground is capped at L* 94 here, because `elevated`
+		 * at L* 100 is the end of sRGB's ramp and the minimum canvas-to-elevated
+		 * spread is 2.5 + 2.5 L*.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +2.64, elevated +5.16, sunken -3.67 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #E5F2E8 -> #E4F1E7 (L* 94.31 -> 93.96)
+		 * surface #F1F8F3 -> #F0F7F2 (L* 96.95 -> 96.6)
+		 * elevated #FBFDFB -> #FBFDFB (L* 99.11 -> 99.11)
+		 * sunken #D6E9DB -> #D5E8DA (L* 90.64 -> 90.29)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#E4F1E7",
+		surface: "#F0F7F2",
 		elevated: "#FBFDFB",
-		sunken: "#D6E9DB",
+		sunken: "#D5E8DA",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.03 from `surface`, 6.08 from
-		 * `elevated` and 6.24 from `sunken`; the step is -6.65 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.3 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.43x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
+		 * the row's ground. ΔE00 4.15 from `surface`, 7.01 from `elevated`, 4.6 from
+		 * `sunken`, 6.09 from `accentWash`; the inks on the ground are 11.59:1,
+		 * 7.5:1, 5.18:1. Continuity with the panel: hue 0.46 degrees off the panel's
+		 * (the assertion allows 12) and chroma 5.12 where the panel carries 3.57.
 		 */
-		highlight: "#DEE5E0",
+		highlight: "#DCE6DF",
 
 		ink: "#1C2B21",
 
 		// The TUI's muted, lifted 7.1 L*: 7.01:1 on `sunken`, the ground that caps
 		// secondary text here.
-		inkMuted: "#3C4E42",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.48:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#38493E",
 
 		// The TUI's dim, lifted 9.5 L* to clear 4.5:1 on all four grounds — 4.77:1 on
 		// `sunken`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
 		// so a control and a reading stay two inks.
-		inkDim: "#54675A",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#4F6155",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
@@ -95,6 +156,23 @@ export const mintLight: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 5.98:1 on all three accent
 		// fills.
 		onAccent: "#FBFDFB",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#77579e`),
+		 * moved onto the floors: as received it read 4.50:1 as text on `sunken`.
+		 * The shortfall is paid on LIGHTNESS at the source hue — L* 43.07 → 42.67 —
+		 * which is what this port does to every one of its own tokens. Measured:
+		 * ΔE00 42.68 from `accent`, 32.55 from its nearest semantic (`danger`),
+		 * 4.57:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#76569D",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 93.54 and C* 11.42, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.42 from `accentWash` (the field floor is
+		 * 2.0), 4.98:1 for `accentAlt` on it, and 12.27 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F3E9FD",
 
 		// Upstream success, clearing 5.19:1 at its tightest ground; upstream warning,
 		// danger and info re-seat the same way, only as far as their own floors
@@ -108,10 +186,20 @@ export const mintLight: ThemeDefinition = {
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.30:1 at its tightest ground.
-		successBorder: "#538F6C",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		successBorder: "#528E6C",
 		warning: "#7E5800",
 		warningWash: "#E8EBE0",
-		warningBorder: "#99803C",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		warningBorder: "#987F3C",
 		danger: "#B0312E",
 
 		// The TUI's own danger tint.
@@ -119,14 +207,24 @@ export const mintLight: ThemeDefinition = {
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.29:1 at its tightest.
-		dangerBorder: "#C06B66",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		dangerBorder: "#BE6A65",
 
 		// The TUI's signal hue, this family's file/reference colour.
 		info: "#09649B",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
 		infoWash: "#E6F0F7",
-		infoBorder: "#448AB0",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		infoBorder: "#4389AF",
 
 		// The one shadow in the system, tinted with the theme's own ink.
 		overlayShadow: "0 12px 32px -12px rgb(28 43 33 / 0.22)",
