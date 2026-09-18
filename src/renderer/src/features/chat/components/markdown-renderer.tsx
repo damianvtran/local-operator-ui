@@ -297,16 +297,25 @@ export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
 };
 
 /**
- * Hoisted, and that matters more than it looks.
+ * Hoisted, and that matters more than it looks - though not for the reason this
+ * comment used to give.
  *
- * react-markdown memoises its pipeline against the props it is given. Rebuilding
- * this literal inside the component body handed it a new object on every render,
- * so the memo missed every time and the whole document was re-processed — the
- * exact cost the streaming path is built to avoid.
+ * MEASURED, react-markdown 10.1.0, in jsdom, for the evidence change below:
+ * `Markdown(options)` builds a fresh processor and calls `runSync` on EVERY
+ * render, so a per-render literal here would not miss a memo - there is no memo
+ * to miss, and the document is re-processed per render whatever the identity is.
+ * What actually bounds that work is this repo's own `memo()` on the two
+ * components that hold a `<ReactMarkdown>` (`MarkdownRenderer`, and
+ * `StableBlock` below).
+ *
+ * So why hoist? Because it costs nothing, because a module-scope array is the
+ * shape a future react-markdown restoring an internal memo would read, and
+ * because a per-render literal here would allocate on the streaming path for no
+ * reason at all.
  *
  * The `a` entry is the anchor every link in the app renders as
- * (`MarkdownAnchor`), because the alternative — a second anchor implementation
- * for the transcript's rows — is the "second implementation of one thing" § 9
+ * (`MarkdownAnchor`), because the alternative - a second anchor implementation
+ * for the transcript's rows - is the "second implementation of one thing" § 9
  * refuses, and because the links that need the new behaviour are exactly the
  * ones markdown produces.
  */
@@ -332,9 +341,13 @@ const MARKDOWN_COMPONENTS: Components = {
 /**
  * The same map with the citation override, for the one caller that opts in.
  *
- * Hoisted for the same reason the map above is: react-markdown memoises its
- * pipeline against the props it is handed, so an object rebuilt per render
- * re-processes the whole document on every frame.
+ * Hoisted for the same reason the map above is - and, MEASURED on react-markdown
+ * 10.1.0, that reason is not a memo the library keeps: `Markdown(options)` builds
+ * a fresh processor per render, so an object rebuilt per render re-processes the
+ * whole document either way (see `MARKDOWN_COMPONENTS`). Module scope is kept
+ * because it costs nothing, because it is what an upgrade restoring an internal
+ * memo would read, and because it gives `citationAwareAnchor` one object identity
+ * to be built into rather than one per frame.
  */
 const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 	...MARKDOWN_COMPONENTS,
@@ -348,10 +361,20 @@ const GFM_ONLY = [remarkGfm];
 const GFM_AND_MATH = [remarkGfm, remarkMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
- * reason `MARKDOWN_COMPONENTS`'s comment records: react-markdown memoises against
- * the ARRAY IDENTITY, so a function that returned a fresh array for the same
- * arguments would miss that memo on every render. Eight constants rather than a
- * builder, and `REMARK_PIPELINES` below is only a selector over them.
+ * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
+ * react-markdown 10.1.0, that reason is NOT an internal memo: `Markdown(options)`
+ * builds a fresh processor and calls `runSync` on EVERY render, so a fresh array
+ * here would miss nothing and the document is re-processed per render whatever
+ * the identity is. The identity is kept because it costs nothing, because a
+ * module-scope array is the shape a future react-markdown restoring an internal
+ * memo would read, and because a builder function returning a fresh array for
+ * the same arguments would be the thing that defeats such a memo rather than the
+ * thing that benefits from it. What bounds the re-parse today is this repo's own
+ * `memo()` on the components that own a `<ReactMarkdown>`, plus the state bump
+ * `useLinkEvidence` uses as its re-parse trigger.
+ *
+ * Eight constants rather than a builder, and `REMARK_PIPELINES` below is only a
+ * selector over them.
  */
 const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
 const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
@@ -422,16 +445,19 @@ const useStyleVariables = (
  *
  * `linkify` and `citations` are the second and third things this hook decides,
  * and they are parameters rather than props of their own because every answer
- * has to come out as ONE array identity: react-markdown memoises its pipeline
- * against the arrays it is handed, so a caller that picked the arrays itself
- * could hand it a fresh pair on every render.
+ * has to come out as ONE array identity. Measured (see `MARKDOWN_COMPONENTS`):
+ * react-markdown 10.1.0 re-runs the pipeline per render whatever that identity
+ * is, so it buys nothing today - it is kept as the contract a memo inside a
+ * future react-markdown would read, and because keying `REMARK_PIPELINES` and
+ * returning one of its constants is a better shape than nested ternaries over
+ * eight combinations, or than mutating a shared array to switch pipelines.
  *
  * The name says MATH because that was its only subject when it was written, and
  * it is kept rather than renamed: the file that carries it was rewritten on `main`
  * for the linkifier in the same window this branch added the citation pass, and a
  * rename here would be a third spelling of the same function for no behaviour.
  * `REMARK_PIPELINES` above is what holds the answer; every branch of it is a
- * hoisted array, which is the memo the arrays exist to keep.
+ * hoisted array, which is what such a memo would read.
  */
 const useMathPipeline = (
 	content: string,

@@ -57,13 +57,21 @@
  *
  * ## The plugin takes no options, and that is a performance decision
  *
- * react-markdown memoises its pipeline against the props it is given, and
- * `MARKDOWN_COMPONENTS`'s own comment records what a per-render literal cost:
- * a new object every render made the memo miss every time and re-parsed the
- * whole document per frame. An options object here would be the same bug one
- * level down, so the plugin is optionless and the module-scope array is built
- * once (see `GFM_LINKIFY` in `markdown-renderer.tsx`); all policy lives
- * downstream, in the component that renders the anchor.
+ * WHAT IS MEASURED (react-markdown 10.1.0, in jsdom, for this change): the
+ * pipeline re-runs on every render - `Markdown(options)` calls `createProcessor`
+ * and `runSync` each time - so the bound on re-parsing is this repo's own
+ * `memo()` on the components that hold `<ReactMarkdown>`, not any identity this
+ * module hands over. What an options object would cost TODAY is therefore one
+ * object per render, not a cache miss, and this paragraph is written that way
+ * rather than repeating the memo argument the plugin and the hoisted arrays were
+ * first built on.
+ *
+ * The plugin stays optionless anyway, for two reasons that survive the
+ * measurement: an option that CHANGED what is linkified would have to be part of
+ * the pipeline's identity, which is the coupling this shape avoids; and the
+ * module-scope array (`GFM_LINKIFY`) is the shape a future react-markdown
+ * restoring an internal memo would read. All policy lives downstream - in the
+ * component that renders the anchor, and in `LINK_POLICY_EVIDENCED` below.
  *
  * ## What the anchor carries
  *
