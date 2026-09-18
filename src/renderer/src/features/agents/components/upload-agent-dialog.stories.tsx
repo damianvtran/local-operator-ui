@@ -458,10 +458,23 @@ export const Default: Story = {
  * kind of mistake that is invisible in a text field and is exactly what a
  * pre-flight is for.
  */
-export const PreValidationBlocked: Story = publishDialog({
-	agent: { ...AGENT, name: "adverse media screener.", description: "" },
-	instructions: "",
-});
+export const PreValidationBlocked: Story = {
+	...publishDialog({
+		agent: { ...AGENT, name: "adverse media screener.", description: "" },
+		instructions: "",
+	}),
+	/*
+	 * Waited on the LAST of the three rules the state exists to show, and that wait
+	 * is not decoration: the instruction rule is the one this dialog cannot decide
+	 * by itself. Its inputs are the document reads, so while the instruction body is
+	 * still in flight `instructions === null` reads as "not known yet" rather than
+	 * as a violation and the rule is absent - which is why the committed frames for
+	 * this state showed two rules of the three the README names, in every theme.
+	 * `settleOn` holds the shutter until the sentence is up and stays up, so the
+	 * frame is the whole blocked list rather than whichever reads had landed.
+	 */
+	play: settleOn("The instruction body must not be empty."),
+};
 
 /**
  * The name is already on the hub under another account, discovered after
