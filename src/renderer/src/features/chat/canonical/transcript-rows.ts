@@ -324,7 +324,8 @@ export function buildRows(
 		 * `turn` already clears the floor (24px, 16px small) and `first` has no row
 		 * above it at all, so neither is touched: the tier is raised, never lowered.
 		 */
-		const marked = record.kind === "assistant" && record.truncated !== undefined;
+		const marked =
+			record.kind === "assistant" && record.truncated !== undefined;
 		if (marked && (gap === "item" || gap === "trace")) gap = "mark";
 		const closesTurn = closingAnswers.has(record.id);
 		const prior = reusable.get(record.id);
