@@ -167,6 +167,49 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * THE COMPOSER THAT REFUSES INPUT, which is a state rather than a second
+		 * control: `message-input.tsx` paints the composer box `bg-surface` with
+		 * `border-control` and, in this state, its ink `ink-disabled`
+		 * (`read-only:text-ink-disabled`, `docs/branding.md` § 6's colour step).
+		 *
+		 * A row of its own because the pairing differs from the row above: the ink
+		 * is the floor-exempt disabled role, which is the point of the state - a
+		 * refusal has to READ as one - and a row that kept `ink` here would be
+		 * attesting a legibility the user never sees while claiming to be evidence
+		 * about the state that ships. `AGENTS.md`'s rule is the reason it cannot be
+		 * left out instead: green output about a component nobody listed is not
+		 * evidence about that component.
+		 *
+		 * What this asserts is therefore the control's EDGE (fill or border against
+		 * each of the four grounds), which is in scope for every state, plus the
+		 * claim that the ink in use IS the exempt one - `EXEMPT_INK` in the loop
+		 * below. The composer keeps its boundary while it refuses, which is what
+		 * keeps the box visible as a box at exactly the moment its ink goes quiet.
+		 *
+		 * WHY THE EXEMPT INK IS RIGHT HERE, since a number this low deserves its
+		 * reason written down (design round 1, D2) and this row is where it becomes
+		 * visible: measured on the shipped palettes, the refusal ink is 2.52:1 in
+		 * the dark brand, 2.84:1 in the light one, median 2.55 across the 59, worst
+		 * 1.80 in `arctic` - and in the EMPTY refusal that ink carries the box's
+		 * only sentence ("This conversation is gone"). Two facts make it still
+		 * correct. The reader can RETRIEVE what is in the box: it keeps focus, and
+		 * its text stays readable, selectable and copyable, which is what `readOnly`
+		 * bought and what a `disabled` box could not give, so nothing is lost at
+		 * this contrast. And the state's MEANING is not carried by the box's ink:
+		 * the transcript above says the sentence in full ("This conversation is no
+		 * longer on this machine.", tied to the control by `aria-describedby`) and
+		 * holds the way out. A refusal that met 4.5:1 would stop reading as a
+		 * refusal, which is the reason `EXEMPT_INK` exists at all. No colour change
+		 * is implied: the ink is byte-identical to the base's `disabled` state.
+		 */
+		name: "composer (read-only)",
+		on: GROUNDS,
+		fill: "surface",
+		border: "borderControl",
+		ink: "inkDisabled",
+	},
+	{
 		name: "success callout",
 		on: ["canvas", "surface"],
 		fill: "successWash",
@@ -2409,6 +2452,18 @@ for (const { id, palette: p } of palettes) {
 			const inkOnFill = ratio(ink, fill);
 			if (
 				inkOnFill < FLOOR.text &&
+				/*
+				 * `EXEMPT_INK`'s own rule, applied to a CONTROL's label as well as to a
+				 * bare ink: SC 1.4.3 exempts inactive controls, and a disabled control
+				 * that meets 4.5:1 does not read as disabled (see the set's comment at
+				 * the top of this file, and § 4 of `docs/branding.md`). This loop was
+				 * the one place that still demanded the floor of that role - which no
+				 * row had asked it for until the composer's refusal state needed one,
+				 * and which would have made the state unlistable rather than
+				 * unmeasurable. The EDGE assertion below is untouched, so the row still
+				 * fails if the boundary stops being perceivable.
+				 */
+				!EXEMPT_INK.has(c.ink) &&
 				!findException(id, c.ink, c.fill ?? g, inkOnFill)
 			) {
 				fail(

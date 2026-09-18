@@ -289,3 +289,135 @@ test("the key listener owns the field's keys, not the dialog's", () => {
 		"the handler must stand down unless the event's target is the query field",
 	);
 });
+
+/* ---------------------------------------------------------------- */
+/* The close-time restore, and the one close it could not cover      */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The reported defect was not "the palette focuses the wrong thing": it was
+ * that picking another conversation REPLACES the pane (`SessionPanel` is keyed
+ * on the pane identity), so the node the palette captured on open is left
+ * behind in the pane the user just left, the old `isConnected` question
+ * answered "gone", and the restore parked the caret on the rail's Search button
+ * 8-13 ms after the incoming composer had focused itself. Everything typed
+ * afterwards reached a button.
+ *
+ * These are source pins on the two halves that make the new rule real, asserted
+ * here rather than inferred from a mounted dialog because the question is
+ * whether the CONTRACT is still wired to the same rule: the predicate itself is
+ * exercised by `scripts/palette-focus.test.mjs`, and the behaviour by the
+ * renderer driver's palette scenes and by QA on the built app.
+ */
+const PALETTE_SOURCE =
+	"src/renderer/src/features/command-palette/components/command-palette.tsx";
+
+test("the close-time restore asks the caret rule BEFORE it moves the caret anywhere", () => {
+	/*
+	 * A DESTINATION PIN, not a statement-order curiosity (review round 1, MINOR
+	 * 2). What the old rule got wrong was not that it focused the rail - it was
+	 * that it focused a node without asking the question that knew about the view
+	 * move. So what this pins is the sequence: the rule is consulted, and only
+	 * then may anything be focused. A restore that focuses first and asks later
+	 * fails here whatever order its arms are written in.
+	 */
+	const palette = withoutComments(read(PALETTE_SOURCE));
+	const from = palette.indexOf("const restoreFocus = useCallback(");
+	assert.ok(from > -1, "the palette's close-time restore is gone");
+	const restore = palette.slice(from, palette.indexOf("}, []);", from));
+	const rule = restore.indexOf("closeTimeFocusOutcome({");
+	assert.ok(
+		rule > -1,
+		"the restore must ask `closeTimeFocusOutcome`, not only 'is the captured node still connected' - the question that put focus on the rail",
+	);
+	const firstFocus = restore.indexOf(".focus()");
+	assert.ok(firstFocus > -1, "the restore no longer focuses anything at all");
+	assert.ok(
+		firstFocus > rule,
+		"nothing may be focused before the rule answers - a restore that focuses first is the rail door's defect with a rule bolted on beside it",
+	);
+});
+
+test("each of the rule's three caret outcomes reaches its own destination", () => {
+	/*
+	 * The outcomes are the rule's (`scripts/palette-focus.test.mjs` bundles the
+	 * eight cells); this is the other half of the contract - that the component
+	 * still routes each one somewhere, and somewhere DIFFERENT. Written as one
+	 * test because the claim is relational: `composer` hands over, `leave` moves
+	 * nothing, `captured` is the only arm that focuses a captured node, and the
+	 * rail's Search row is what is left when none of those applies.
+	 */
+	const palette = withoutComments(read(PALETTE_SOURCE));
+	const from = palette.indexOf("const restoreFocus = useCallback(");
+	assert.ok(from > -1, "the palette's close-time restore is gone");
+	const restore = palette.slice(from, palette.indexOf("}, []);", from));
+
+	const composerArm = restore.indexOf('if (outcome === "composer"');
+	const leaveArm = restore.indexOf('if (outcome === "leave")');
+	const capturedArm = restore.indexOf('if (outcome === "captured"');
+	assert.ok(
+		composerArm > -1,
+		"a moved view has to be able to hand the caret to the composer it mounted",
+	);
+	assert.ok(
+		leaveArm > composerArm,
+		"the `leave` arm belongs after the hand-off",
+	);
+	assert.ok(
+		capturedArm > leaveArm,
+		"the captured-node restore is the last of the three",
+	);
+
+	assert.match(
+		restore.slice(composerArm, leaveArm),
+		/handCaretToComposer\(\)\) return;/,
+		"`composer` must be answered by the composer's own hand-off, and must return rather than falling through to the rail when the hand-off fails on its own terms",
+	);
+	assert.doesNotMatch(
+		restore.slice(leaveArm, capturedArm),
+		/\.focus\(\)/,
+		"`leave` means the caret is not moved: a `leave` arm that focuses is `captured` under another name",
+	);
+	assert.match(
+		restore.slice(capturedArm),
+		/previous\.focus\(\)/,
+		"`captured` is the arm that puts the caret back where it was",
+	);
+	assert.equal(
+		(restore.match(/previous\.focus\(\)/g) ?? []).length,
+		1,
+		"the captured node is focused in exactly one place, and it is behind the outcome that says so",
+	);
+
+	const trigger = restore.indexOf("[data-command-palette-trigger]");
+	assert.ok(
+		trigger > capturedArm,
+		"the rail's Search row is the fallback - reached after the rule's own arms, never before them",
+	);
+});
+
+test("the pane identity is captured at open, by the pane's own rule", () => {
+	const palette = withoutComments(read(PALETTE_SOURCE));
+	const open = palette.slice(
+		palette.indexOf("if (!isCommandPaletteOpen) return;"),
+		palette.indexOf("}, [isCommandPaletteOpen]);"),
+	);
+	assert.match(
+		open,
+		/returnFocusTo\.current =\s*active instanceof HTMLElement \? active : null;/,
+		"the captured node is still captured where it always was",
+	);
+	assert.match(
+		open,
+		/identityAtOpen\.current = currentPanelIdentity\(\);/,
+		"the identity has to be captured in the SAME effect, or the comparison it feeds is between two different instants",
+	);
+	/*
+	 * And the rule behind it is the pane's, not a second notion of "the view
+	 * moved": the draft's own session id is read, which is the term that makes
+	 * the New-chat row (a fresh `draft:<uuid>`) a move - `stageDraft` leaves
+	 * `activeSessionId` at the conversation the user is leaving.
+	 */
+	assert.match(palette, /panelIdentityOfView\(/);
+	assert.match(palette, /state\.drafts\[draftKey\]\?\.sessionId/);
+});

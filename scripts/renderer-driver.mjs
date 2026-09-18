@@ -2220,16 +2220,57 @@ async function scenePinsScrolled(cdp) {
 				rows: afterA.rows.slice(0, 3).map((row) => [row.id, row.pinned]),
 			}),
 		);
+		/*
+		 * D24: A WITNESS THAT THE PRESS ACTED, so a dropped press cannot read as a geometry result.
+		 * The parked-pointer guard drops a repeat press inside its 6px slop, and a dropped press
+		 * produces `delta 0` on the neighbour below - the SAME number a held anchor produces - so
+		 * without this the scene reported its own dropped presses as boundary failures (design
+		 * round 7: three of ten scripted presses). The press's own effect is the discriminator:
+		 * the store's pin for the pressed row must have inverted, or nothing downstream measured
+		 * anything. Kept as a `check` rather than a `require` so a drop is reported as a drop.
+		 */
+		const pressedNowA = afterA.rows.find((row) => row.id === targetA.id)?.pinned;
 		check(
-			"the list did not move under the pointer: the row beside the pressed one keeps its line (U1)",
-			Math.abs(
-				(afterA.rows.find((row) => row.id === neighbourA.id)?.box.top ??
-					Number.NaN) - neighbourA.box.top,
-			) <= 2,
+			"the press acted: the pressed row's pin state inverted (D24: a dropped press must not read as a geometry failure)",
+			wasA?.pinned !== undefined && pressedNowA !== undefined && wasA.pinned !== pressedNowA,
+			JSON.stringify({ pin_before: wasA?.pinned, pin_after: pressedNowA }),
+		);
+		/*
+		 * D25: THE ANCHOR IS A PROMISE ABOUT THE LIST, NOT ABOUT THE VIEWPORT.
+		 * Two corrections, both from design round 7's three-boot measurement:
+		 *   (a) the neighbour's line is measured in CONTENT coordinates (box.top + scrollTop).
+		 *       Measured in viewport tops, a shift of the panel's own chrome - the designer's boots
+		 *       varied the region top by 256.5px - pass as an anchor failure, which is a defect in
+		 *       the instrument rather than in the panel;
+		 *   (b) the region's own scrollTop is asserted, because that IS the property the correction
+		 *       protects: if the list scrolled under the pointer, the neighbour's content position
+		 *       can hold while the reader's view moved.
+		 * The row ABOVE the pressed row is deliberately not asserted: it moves exactly one pitch by
+		 * construction - the pressed row left its slot - and the source's own neighbour selection
+		 * (`rows[index + 1] ?? rows[index - 1]`) says so. Asserting both sides would make the check
+		 * fail on correct behaviour, which is how a check stops being read.
+		 */
+		const neighbourAfterA = afterA.rows.find((row) => row.id === neighbourA.id);
+		const neighbourContentDelta =
+			(neighbourAfterA?.box.top ?? Number.NaN) +
+			afterA.scrollTop -
+			(neighbourA.box.top + beforeA.scrollTop);
+		check(
+			"the list did not move under the pointer: the row BELOW the pressed one keeps its line in CONTENT coordinates (U1, D25)",
+			Math.abs(neighbourContentDelta) <= 2,
 			JSON.stringify({
 				neighbour: neighbourA.id,
-				top_before: neighbourA.box.top,
-				top_after: afterA.rows.find((row) => row.id === neighbourA.id)?.box.top,
+				top_before_viewport: neighbourA.box.top,
+				top_after_viewport: neighbourAfterA?.box.top,
+				scroll_before: beforeA.scrollTop,
+				scroll_after: afterA.scrollTop,
+				content_delta: neighbourContentDelta,
+			}),
+		);
+		check(
+			"the region did not scroll under the pointer (U1, D25: the promise in its own terms)",
+			Math.abs(afterA.scrollTop - beforeA.scrollTop) <= 1,
+			JSON.stringify({
 				scroll_before: beforeA.scrollTop,
 				scroll_after: afterA.scrollTop,
 			}),

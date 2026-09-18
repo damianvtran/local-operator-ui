@@ -1,4 +1,36 @@
 /**
+ * Whether this composer has to be SEEDED from the conversation it is showing.
+ *
+ * The question the effect below means to ask, and the reason it was not asking
+ * it: its dependency array was `[conversationId, hydrated, getCurrentInput,
+ * historyIndex, submittedMessages]`, so it also ran on every submit SETTLE -
+ * `addSubmittedMessage` installs a new array identity and `retireDraft` nulls the
+ * history index, both in the same turn - and then re-seeded the box from
+ * `getCurrentInput`, which `retireDraft` had just written to `""`. That is the
+ * measured destruction of text typed while a send was in flight: 16 of 16
+ * characters at one hold, 5 of 16 at another (the report's Flow 2 control run),
+ * with the caret still in the box. It is a DIFFERENT writer from the documented
+ * clear (`clearOnce`/`clearSubmittedText`), whose whole purpose is that an echo
+ * landing late must not clear what the user has typed since - which is exactly
+ * the guarantee the second writer was breaking.
+ *
+ * So the gate is the conversation identity the effect claims to key on: seed
+ * when this composer has not seeded for THIS conversation, and never again while
+ * it is the same one. A remount still seeds (a fresh hook instance has no
+ * `lastInitialisedRef`), which is what keeps the history branch reachable - the
+ * ArrowUp/ArrowDown path writes the box in the key handler itself, so an index
+ * that is live across a remount is the only case that branch is for.
+ *
+ * Pure and exported so the rule is asserted without a DOM, in the shape
+ * `ask-answer.ts`'s predicates are.
+ */
+export const shouldReinitialiseComposer = (
+	initialisedFor: string | undefined,
+	conversationId: string | undefined,
+	hydrated: boolean,
+): boolean => hydrated && initialisedFor !== conversationId;
+
+/**
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 
@@ -430,6 +462,15 @@ export const useMessageInput = ({
 		).hasHydrated?.() ?? false,
 	);
 	const initializedRef = useRef<string | undefined>(undefined);
+	/*
+	 * The conversation this composer last SEEDED its box from, beside
+	 * `initializedRef` rather than instead of it: that one answers "has this hook
+	 * adopted the conversation?" and is read by `clearOnce` and the draft-sync
+	 * effect, while this one answers "has it seeded the box?" - the question the
+	 * seeding effect below has to ask to stop running on every submit settle.
+	 * Only `shouldReinitialiseComposer` writes it.
+	 */
+	const lastInitialisedRef = useRef<string | undefined>(undefined);
 	const [inputValue, setInputValue] = useState<string>("");
 
 	useEffect(() => {
@@ -484,7 +525,15 @@ export const useMessageInput = ({
 
 	// On mount or conversation change, set inputValue to the correct state (draft or log message)
 	useEffect(() => {
-		if (!hydrated) return;
+		if (
+			!shouldReinitialiseComposer(
+				lastInitialisedRef.current,
+				conversationId,
+				hydrated,
+			)
+		)
+			return;
+		lastInitialisedRef.current = conversationId;
 		if (conversationId) {
 			const draft = getCurrentInput(conversationId);
 			if (historyIndex !== null && submittedMessages.length > 0) {
