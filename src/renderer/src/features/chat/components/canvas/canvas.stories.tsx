@@ -321,6 +321,50 @@ const MANY_DOCUMENTS: CanvasDocument[] = [
 	},
 ];
 
+/**
+ * The two leading visuals a media row can have, one of them resolvable.
+ *
+ * `dashboard.png` in `DOCUMENTS` cannot load here: its path is a real one and
+ * Storybook has no file bridge, so every frame in this set has drawn that row as
+ * the browser's broken-image icon - which left the "a real thumbnail for media"
+ * claim asserted in prose and photographed nowhere (design round 1, D7). The first
+ * row's path is an inline `data:` PNG, which `getUrl` returns unchanged, so the
+ * frame shows the thumbnail path actually painting.
+ *
+ * The third row is the other half of the rule: an image whose file is GONE shows
+ * the type glyph and no `bg-sunken` box at all, because a thumbnail request for a
+ * path that no longer resolves can only come back empty (or as the browser's own
+ * broken-frame icon) on every render.
+ */
+const MEDIA_DOCUMENTS: CanvasDocument[] = [
+	{
+		id: "inline-thumbnail",
+		title: "site-screenshot.png",
+		path: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAbElEQVR42u2VwQkAIRADU+dVYiVWdKVcISoI4rE+hJ1fIL+VmZeJvreEeUoNc/teKL2fhNIDQS79L0inbwKCvgQQfQo4+hCg9KMg8fcJpQeC9OYQSt8EUOsJpU8B2tjyHngPvAfeA++B96CnAe59EGprIux0AAAAAElFTkSuQmCC",
+		content: "",
+		type: "image",
+		availability: "present",
+		sizeBytes: 24_576,
+	},
+	{
+		id: "/Users/dana/work/reports/gone-screenshot.png",
+		title: "gone-screenshot.png",
+		path: "/Users/dana/work/reports/gone-screenshot.png",
+		content: "",
+		type: "image",
+		availability: "missing",
+	},
+	{
+		id: "/Users/dana/work/notes/async-standup.md",
+		title: "async-standup.md",
+		path: "/Users/dana/work/notes/async-standup.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+		sizeBytes: 4_096,
+	},
+];
+
 /** Let a driven state paint before the frame is taken. */
 const settle = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -2087,11 +2131,156 @@ export const FilesScrolled: Story = {
 /**
  * The blank canvas, and the way into the files the conversation already touched.
  *
- * Nothing is open and the conversation has thirteen files, so the Files action is
+ * Nothing is open and the conversation has twelve files, so the Files action is
  * the panel's one `primary` and carries the count at the point of decision. The
  * three actions keep this order in every state: an action that moves between
  * conversations is the same defect as a row that re-sorts itself.
  */
 export const NothingOpen: Story = {
 	render: () => <CanvasFrame view="documents" activeId={null} documents={[]} />,
+};
+
+/**
+ * A list of ordinary rows, for the rig to put a pointer and the keyboard on.
+ *
+ * The row's hover ground, its `:focus-visible` ring and its revealed `⋯` are
+ * BROWSER state rather than class state: `:hover` is only set by real pointer
+ * input, and a ring is only drawn for a real keyboard interaction - the sidebar's
+ * own focus story records measuring a programmatic `.focus()` coming back with the
+ * ground and no ring at all. So this story supplies the rows and the captures are
+ * rig entries with `{ hover }` and `{ tabTo }` in `scripts/capture-evidence.mjs`,
+ * which drive CDP input rather than dispatching synthetic events a browser will
+ * not honour (design round 1, D1).
+ */
+export const FilesRowStates: Story = {
+	render: () => <CanvasFrame view="files" activeId={null} documents={[]} />,
+};
+
+/**
+ * The same rows at the dock's narrow end, where a hovered row's trailing gutter is
+ * a smaller share of the row and the revealed `⋯` has less room to sit in.
+ */
+export const FilesRowStatesNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={null} documents={[]} width={400} />
+	),
+};
+
+/**
+ * The dock's OWN default width, which is 450px (`chat-content.tsx`), photographed
+ * because the set jumped 400 -> 720 and the frame that claimed to be the default
+ * was the story's own 720. 450 is also the one width where this surface's two
+ * container thresholds disagree: the directory line's 416 and the size slot's 544
+ * fall either side of it, so the row shows its directory-for-a-clash and hides the
+ * size at the width the panel actually opens at.
+ */
+export const FilesDockDefault: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={null} documents={[]} width={450} />
+	),
+};
+
+/**
+ * A media row's leading visual, both ways it can go.
+ *
+ * See `MEDIA_DOCUMENTS`: a resolvable thumbnail on the first row, and an image
+ * whose file is gone on the second, which must show the type glyph rather than an
+ * empty `bg-sunken` box (design round 1, D7).
+ */
+export const FilesMedia: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={MEDIA_DOCUMENTS}
+		/>
+	),
+};
+
+/**
+ * The shortest list the panel can hold: one row, and a count that says "1 file"
+ * rather than "1 files".
+ */
+export const FilesSingle: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={DOCUMENTS.slice(0, 1)}
+		/>
+	),
+};
+
+/**
+ * A filter that hides every row - the one body copy on this surface no round had
+ * ever seen rendered.
+ *
+ * Driven through the real menu, because the state is a selected kind and not a
+ * prop. `Archives` is the group no `DOCUMENTS` fixture carries, so selecting it
+ * empties the list without touching the twelve files the other frames show.
+ */
+export const FilesFilteredEmpty: Story = {
+	render: () => <CanvasFrame view="files" activeId={null} documents={[]} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			await userEvent.click(
+				await canvas.findByLabelText("Filter by file type"),
+			);
+			/*
+			 * `screen`, not the canvas: Radix renders the menu through a portal at the
+			 * document root, where the canvas element cannot see it.
+			 */
+			const archives = await screen.findByRole("menuitemcheckbox", {
+				name: "Archives",
+			});
+			await userEvent.click(archives);
+			await settle();
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * No files yet, and no scan running: the static body.
+ *
+ * The one state whose body is a `h-full` block, and the one the design review
+ * asked for a frame of: it is reachable only from a conversation whose transcript
+ * has been read and which mentions nothing, so no other state in this set renders
+ * it (design round 1, D4).
+ */
+export const FilesNoFiles: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={[]}
+		/>
+	),
+};
+
+/**
+ * The blank canvas with nothing to browse: the hierarchy's other branch.
+ *
+ * With no files the Files action is a `secondary` beside its siblings rather than
+ * the panel's one `primary`, and it drops the count rather than printing
+ * `(0)` - the case `nothing-open` cannot show, because it shoots the state with
+ * twelve files in the conversation.
+ */
+export const NothingOpenEmpty: Story = {
+	render: () => (
+		<CanvasFrame
+			view="documents"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={[]}
+		/>
+	),
 };
