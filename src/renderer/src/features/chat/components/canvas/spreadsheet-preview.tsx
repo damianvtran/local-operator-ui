@@ -21,12 +21,13 @@ import { iconSetQuartz } from "ag-grid-community";
 import type { CanvasDocument } from "../../types/canvas";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import {
-	clearDocumentDirty,
-	isAutosaveHeld,
-	releaseDocumentHold,
-	saveDocument,
-	setDocumentDirty,
-} from "./file-freshness";
+	adoptBuffer,
+	closeBuffer,
+	commitCanvasDocument,
+	proposeBuffer,
+	saveBuffer,
+} from "./document-buffers";
+import { setDocumentDirty } from "./file-freshness";
 
 type SpreadsheetPreviewProps = {
 	document: CanvasDocument;
@@ -554,6 +555,52 @@ const applyColumnFormats = (
 	}
 };
 
+/**
+ * Build the bytes a workbook save writes, from the LIVE grid.
+ *
+ * Module level because it is the buffer owner's serialiser: the owner calls it AT
+ * WRITE TIME, from whatever the grid holds then - never from a debounced snapshot a
+ * component captured. The rule it enforces is unchanged and load-bearing (see the
+ * two-read comment in the component): every row is rebuilt from the TYPED copy,
+ * overlaying only what changed, because `json_to_sheet` types whatever it is given
+ * and writing the display strings directly stored every number and date as text.
+ */
+function serialiseWorkbook(input: {
+	sheetsData: Record<string, Record<string, unknown>[]>;
+	path: string;
+	originalDisplay: Record<string, Record<string, unknown>[]>;
+	originalRaw: Record<string, Record<string, unknown>[]>;
+	formats: Record<string, Record<string, string>>;
+}): string {
+	const workbook = XLSX.utils.book_new();
+	for (const [sheetName, sheetData] of Object.entries(input.sheetsData)) {
+		const originalDisplay = input.originalDisplay[sheetName] ?? [];
+		const originalTyped = input.originalRaw[sheetName] ?? [];
+		const rows = sheetData.map((row, i) => {
+			const wasDisplay = originalDisplay[i];
+			const wasTyped = originalTyped[i];
+			const out: Record<string, unknown> = {};
+			for (const [key, value] of Object.entries(row)) {
+				const untouched = wasDisplay !== undefined && wasDisplay[key] === value;
+				if (untouched && wasTyped !== undefined && key in wasTyped) {
+					out[key] = wasTyped[key];
+					continue;
+				}
+				out[key] = coerceEditedCell(value);
+			}
+			return out;
+		});
+		const worksheet = XLSX.utils.json_to_sheet(rows);
+		applyColumnFormats(worksheet, input.formats[sheetName]);
+		XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+	}
+	const fileType = getFileTypeFromPath(input.path);
+	const isCsv = fileType === "spreadsheet" && input.path.endsWith(".csv");
+	return isCsv
+		? XLSX.write(workbook, { bookType: "csv", type: "string" })
+		: XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
+}
+
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
 	conversationId,
@@ -586,10 +633,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	const originalFormatsRef = useRef<Record<string, Record<string, string>>>({});
 	const isInitialLoadRef = useRef(true);
 
-	const { setFiles, setSpreadsheetData } = useCanvasStore();
-	const canvasState = useCanvasStore((state) =>
-		conversationId ? state.conversations[conversationId] : undefined,
-	);
+	const { setSpreadsheetData } = useCanvasStore();
 
 	const debouncedSheetsData = useDebouncedValue(sheetsData, 3000);
 
@@ -699,39 +743,68 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		setDocumentDirty(document.id, hasUserChanges);
 	}, [document.id, hasUserChanges]);
 	/*
-	 * THE UNMOUNT OWES THE SAME THREE THINGS the other editors owe (QA round 3, Q11;
-	 * code review round 3's hold-cleanup finding): the buffer is committed to the
-	 * persisted store (so a close costs nothing), a write that should happen is
-	 * flushed through the gate, and the hold is released - which cannot lose anything
-	 * once the buffer is in the store.
-	 */
-	/*
-	 * THE UNMOUNT OWES THE SAME DUTIES THE OTHER EDITORS OWE (QA round 3, Q11; code
-	 * review round 3's hold-cleanup finding): a write that should happen is flushed
-	 * through the gate, and the hold and dirty flag are released for the document
-	 * that was being edited. It is the document's IDENTITY that registers this, not
-	 * the `document` object, which is new on every render and would re-run a cleanup
-	 * on each keystroke.
+	 * THE BUFFER OWNER OWNS THIS SURFACE'S BYTES (round 4, I6).
 	 *
-	 * WHAT IT CANNOT DO, stated rather than implied: the grid's buffer is not
-	 * committed to the store the way the text editors' buffers are - serialising a
-	 * workbook without parsing it back is a second implementation of `saveChanges`'
-	 * own output path, and this round's subject is the write. So a close while the
-	 * document is HELD still loses the grid edits; the flushed path writes them when
-	 * the file has not moved, and the fact (which outlives the mount) is what tells
-	 * the reader on their return that the file's version won.
+	 * A workbook is far too expensive to build on every cell edit, so this surface
+	 * proposes a cheap REVISION TOKEN and registers a SERIALISER: the bytes that reach
+	 * the file are built at write time from the live grid, which is what makes "the
+	 * text written is this document's current buffer" hold for a surface whose buffer
+	 * is a grid rather than a string.
 	 */
-	useEffect(
-		() => () => {
-			const id = idRef.current;
-			if (hasUserChangesRef.current && !isAutosaveHeld(id)) {
-				void saveChangesRef.current?.(false);
-			}
-			releaseDocumentHold(id);
-			clearDocumentDirty(id);
-		},
+	const documentRef = useRef(document);
+	documentRef.current = document;
+	const revisionRef = useRef(0);
+	/*
+	 * The serialiser reads the grid through a ref, so the bytes it builds at write time
+	 * are the ones on screen rather than the ones this render closed over.
+	 */
+	const sheetsDataRef = useRef(sheetsData);
+	sheetsDataRef.current = sheetsData;
+	const serialise = useCallback(
+		() => ({
+			text: serialiseWorkbook({
+				sheetsData: sheetsDataRef.current,
+				path: documentRef.current.path,
+				originalDisplay: originalDataRef.current,
+				originalRaw: originalRawRef.current,
+				formats: originalFormatsRef.current,
+			}),
+			encoding: documentRef.current.path.endsWith(".csv")
+				? ("utf-8" as const)
+				: ("base64" as const),
+		}),
 		[],
 	);
+	useEffect(() => {
+		adoptBuffer({
+			documentId: document.id,
+			path: document.path,
+			text: document.content,
+			token: String(revisionRef.current),
+			mtimeMs: document.readMtimeMs,
+			encoding: document.path.endsWith(".csv") ? "utf-8" : "base64",
+			serialize: serialise,
+			commit: (text, mtimeMs) => {
+				if (!conversationId) return;
+				const current = documentRef.current;
+				commitCanvasDocument(conversationId, {
+					...current,
+					content: text,
+					readMtimeMs: mtimeMs ?? current.readMtimeMs,
+					lastAgentModified: mtimeMs ?? current.lastAgentModified,
+				});
+			},
+		});
+	}, [conversationId, document, serialise]);
+	/*
+	 * The unmount is one call. The owner flushes a write that should happen THROUGH
+	 * THE GATE, and commits the reader's grid - serialised - through the port above,
+	 * whatever the file's state is: that is what closes this surface's old gap, since
+	 * a close while the document was held used to keep the words nowhere at all. The
+	 * dirty flag and the hold are the owner's to keep while the fact stands (R4-1).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the bytes and the store handoff.
+	useEffect(() => () => closeBuffer(document.id), [document.id]);
 
 	const saveChangesRef = useRef<((explicit?: boolean) => Promise<void>) | null>(
 		null,
@@ -742,133 +815,43 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 
 	const saveChanges = useCallback(
 		async (explicit = false) => {
-			if (
-				!document.path ||
-				Object.keys(debouncedSheetsData).length === 0 ||
-				isSaving ||
-				!hasUserChanges
-			) {
-				return;
-			}
-
-			// Final check - compare data to prevent unnecessary saves
-			if (
-				JSON.stringify(debouncedSheetsData) ===
-				JSON.stringify(originalDataRef.current)
-			) {
-				// Data is the same, reset the hasUserChanges flag
-				setHasUserChanges(false);
-				return;
-			}
-
+			if (!document.path || isSaving) return;
 			setIsSaving(true);
-
-			const workbook = XLSX.utils.book_new();
-			for (const [sheetName, sheetData] of Object.entries(
-				debouncedSheetsData,
-			)) {
-				/*
-				 * Rebuild each row from the TYPED copy, overlaying only what changed.
-				 *
-				 * `sheetData` holds display strings (see the two-read comment above),
-				 * and `json_to_sheet` types whatever it is given - so handing it these
-				 * directly stored every number and date in the file as text. A cell
-				 * the user never touched is therefore written from `originalRawRef`,
-				 * byte-for-byte what was read; only a cell they actually edited is
-				 * re-derived, and then a value that is wholly numeric becomes a
-				 * number so it stays arithmetic rather than becoming text on its
-				 * first edit.
-				 */
-				const originalDisplay = originalDataRef.current[sheetName] ?? [];
-				const originalTyped = originalRawRef.current[sheetName] ?? [];
-				const rows = sheetData.map((row, i) => {
-					const wasDisplay = originalDisplay[i];
-					const wasTyped = originalTyped[i];
-					const out: Record<string, unknown> = {};
-					for (const [key, value] of Object.entries(row)) {
-						const untouched =
-							wasDisplay !== undefined && wasDisplay[key] === value;
-						if (untouched && wasTyped !== undefined && key in wasTyped) {
-							out[key] = wasTyped[key];
-							continue;
-						}
-						out[key] = coerceEditedCell(value);
-					}
-					return out;
-				});
-				const worksheet = XLSX.utils.json_to_sheet(rows);
-				applyColumnFormats(worksheet, originalFormatsRef.current[sheetName]);
-				XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-			}
-
-			const fileType = getFileTypeFromPath(document.path);
-			const isCsv =
-				fileType === "spreadsheet" && document.path.endsWith(".csv");
-
-			const newContent = isCsv
-				? XLSX.write(workbook, { bookType: "csv", type: "string" })
-				: XLSX.write(workbook, {
-						type: "base64",
-						bookType: "xlsx",
-					});
-
 			try {
 				/*
-				 * THE WRITE GOES THROUGH THE GATE (QA round 3, Q9; code review round 3, A),
-				 * encoding and all. The spreadsheet's debounce is three seconds against a
-				 * 2000ms poll, so a file rewritten on disk just before it fired was
-				 * overwritten by this save with no fact raised. The gate stats first; a
-				 * refusal raises the sticky sentence and holds the document, and an
-				 * EXPLICIT save is never refused - it replaces the file and the row says so.
+				 * THE GRID'S CURRENT BYTES, proposed and then written in one step. The
+				 * token is a revision marker (a workbook is too expensive to build per cell
+				 * edit); the bytes themselves are built by the serialiser, at write time.
 				 */
-				const current =
-					canvasState?.files.find((file) => file.id === document.id) ??
-					document;
-				const outcome = await saveDocument(current, newContent, {
-					explicit,
-					encoding: isCsv ? "utf-8" : "base64",
-				});
-				if (outcome.status !== "written") {
-					// Nothing is on disk: the buffer stays dirty, the toast says what happened,
-					// and the row carries the fact.
-					if (outcome.status === "blocked") {
-						showErrorToast(
-							"The file changed on disk, so this save was not written. Use the row above to load it or save over it.",
-						);
-					}
+				revisionRef.current += 1;
+				proposeBuffer(document.id, String(revisionRef.current), serialise);
+				const payload = serialise();
+				const outcome = await saveBuffer(document.id, { explicit });
+				if (outcome.status === "blocked") {
+					showErrorToast(
+						"The file changed on disk, so this save was not written. Use the row above to load it or save over it.",
+					);
 					return;
 				}
-				// Update canvas store with the document the gate probed after writing: the
-				// write moved the file's mtime, so the store must be told what it moved to
-				// or the next tick reads this save back.
-				if (conversationId && canvasState) {
-					setFiles(
-						conversationId,
-						canvasState.files.map((file) =>
-							file.id === document.id ? outcome.document : file,
-						),
-					);
-				}
+				if (outcome.status !== "written") return;
 
 				/*
 				 * Re-parse the saved content rather than hand-refreshing the refs.
 				 *
-				 * Refreshing `originalDataRef` alone left `originalRawRef` and the
-				 * format map holding the PREVIOUS parse. A second save with no
-				 * re-parse in between then compared every cell the first save
-				 * edited against its old display value, found them "untouched", and
-				 * wrote the stale typed value back - edit one silently reverted.
-				 * In the shipped chat surface the store round-trip re-triggers
-				 * `parseFile` and masked it; on any surface where the store does not
-				 * bounce, it was live.
+				 * Refreshing `originalDataRef` alone left `originalRawRef` and the format
+				 * map holding the PREVIOUS parse. A second save with no re-parse in between
+				 * then compared every cell the first save edited against its old display
+				 * value, found them "untouched", and wrote the stale typed value back - edit
+				 * one silently reverted. In the shipped chat surface the store round-trip
+				 * re-triggers `parseFile` and masked it; on any surface where the store does
+				 * not bounce, it was live.
 				 *
-				 * Parsing our own output is also the honest definition of "saved":
-				 * whatever the file now contains is the truth the next edit works
-				 * from, including anything the write normalised.
+				 * Parsing our own output is also the honest definition of "saved": whatever
+				 * the file now contains is the truth the next edit works from, including
+				 * anything the write normalised.
 				 */
-				parseFile(newContent, document.path);
+				parseFile(payload.text, document.path);
 				setHasUserChanges(false);
-
 				showSuccessToast("Spreadsheet saved");
 			} catch (error) {
 				console.error("Failed to save file:", error);
@@ -879,23 +862,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				setIsSaving(false);
 			}
 		},
-		[
-			/*
-			 * `document` as a whole, not its fields: the gate's lookup falls back to the
-			 * document object itself, so listing `path`/`id` was "more specific than its
-			 * captures" (biome's own words) and the callback is re-created when the store
-			 * hands it a new one either way. The autosave's guards make an extra call
-			 * cheap: it returns immediately unless the buffer is dirty and the data differs.
-			 */
-			document,
-			debouncedSheetsData,
-			conversationId,
-			canvasState,
-			setFiles,
-			hasUserChanges,
-			isSaving,
-			parseFile,
-		],
+		[document.id, document.path, isSaving, parseFile, serialise],
 	);
 
 	saveChangesRef.current = saveChanges;
@@ -928,6 +895,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		};
 	}, [saveChanges]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the body reaches this value through the owner and the callback it holds, so the dependency is deliberate: what the hook is watching is named here and nothing else re-registers it.
 	const onCellValueChanged = useCallback(
 		(event: CellValueChangedEvent) => {
 			const { colDef, newValue, data } = event;
@@ -961,8 +929,14 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			};
 			setSheetsData(newSheetsData);
 
-			// Mark that user has made changes and this is no longer initial load
+			/*
+			 * Mark the change, and tell the buffer owner: its dirty flag is what the
+			 * freshness check consults before replacing the grid, and what the write
+			 * gate reads to decide there is something to write.
+			 */
 			isInitialLoadRef.current = false;
+			revisionRef.current += 1;
+			proposeBuffer(document.id, String(revisionRef.current), serialise);
 			setHasUserChanges(true);
 
 			// Update canvas store immediately for real-time sync (but don't save to disk yet)

@@ -25,19 +25,27 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useDebouncedValue } from "../../../../shared/hooks/use-debounced-value";
-import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
 import { diffHighlight } from "./code-editor-diff";
 import {
-	clearDocumentDirty,
-	isDocumentDirty,
-	releaseDocumentHold,
-	saveDocument,
-	setDocumentDirty,
-} from "./file-freshness";
+	adoptBuffer,
+	closeBuffer,
+	commitCanvasDocument,
+	proposeBuffer,
+	saveBuffer,
+} from "./document-buffers";
+import { isDocumentDirty } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
+
+/**
+ * How long the reader's typing settles before an automatic save is asked for.
+ *
+ * The one-second debounce this editor has always used. It is a TRIGGER now, not a
+ * payload: the owner writes its own current text when the timer fires, so the value
+ * that reaches the file is the reader's latest, whatever the timer was armed over.
+ */
+const CODE_AUTOSAVE_MS = 1000;
 
 type CodeEditorProps = {
 	/**
@@ -62,15 +70,9 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	agentId,
 }) => {
 	const [content, setContent] = useState(document.content);
-	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
-	const { setFiles } = useCanvasStore();
-	const canvasState = useCanvasStore((state) =>
-		conversationId ? state.conversations[conversationId] : undefined,
-	);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
-	const debouncedContent = useDebouncedValue(content, 1000);
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
@@ -175,7 +177,6 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 			 */
 			if (isDocumentDirty(document.id)) return;
 			setContent(document.content);
-			setHasUserChanges(false);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
@@ -189,146 +190,68 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	}, [document.title]);
 
 	/*
-	 * Publish "this buffer differs from the file", for the canvas's freshness
-	 * check to consult before it replaces anything.
-	 *
-	 * The store cannot answer this question and that is the whole reason the
-	 * registry exists: between a keystroke and the debounced write below, the
-	 * store still holds the OLD bytes, so a check driven by the store's own copy
-	 * would see "nothing has changed here" and overwrite what is being typed.
-	 * The unmount cleanup is the other half - a closed tab must not leave a
-	 * suppression behind for the next document that reuses the path.
+	 * THE BUFFER OWNER OWNS THIS DOCUMENT'S TEXT (round 4). This effect is the whole
+	 * lifecycle contract the editor owes: register the document, and hand the owner a
+	 * `commit` port for the store. The owner adopts the file's content whenever this
+	 * buffer has nothing unsaved, publishes the dirty registry itself, and is the only
+	 * thing that writes - so nothing below carries text anywhere.
 	 */
+	const latestDocumentRef = useRef(document);
+	latestDocumentRef.current = document;
 	useEffect(() => {
-		setDocumentDirty(document.id, hasUserChanges);
-	}, [document.id, hasUserChanges]);
-	/*
-	 * THE UNMOUNT OWES THREE THINGS, and round 2 owed one of them (QA round 3, Q11;
-	 * code review round 3's hold-cleanup finding).
-	 *
-	 * 1. **A pending write that SHOULD happen is flushed**, not cancelled: the
-	 *    debounce is up to a second wide, and unmounting inside it used to drop the
-	 *    reader's last words on the floor. The flush goes through the same gate, so
-	 *    it cannot overwrite a file that moved on.
-	 * 2. **A buffer that must NOT be written is kept anyway** - in the store, which is
-	 *    persisted - so closing the tab or leaving the chat route costs nothing. The
-	 *    document stays dirty and its fact (which now outlives the mount) still says
-	 *    the file on disk is not what the reader is looking at.
-	 * 3. **The hold is released**, because this editor is no longer the thing
-	 *    honouring it; the buffer is in the store and the fact is what protects it
-	 *    now. Nothing can be lost by releasing it here: the words are one `setFiles`
-	 *    away.
-	 */
-	const latestRef = useRef({
-		content,
-		conversationId,
-		canvasState,
-		dirty: hasUserChanges,
-	});
-	latestRef.current = {
-		content,
-		conversationId,
-		canvasState,
-		dirty: hasUserChanges,
-	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document on purpose - the body reads the latest buffer, conversation and store through `latestRef`, so it neither re-runs per keystroke nor closes over a stale buffer.
-	useEffect(
-		() => () => {
-			const latest = latestRef.current;
-			const changed = latest.content !== originalContentRef.current;
-			if (changed) {
-				// (2) The reader's bytes survive the unmount even when they are not
-				// written: the store is persisted, so a tab close is a pause rather
-				// than a loss.
-				if (latest.conversationId && latest.canvasState) {
-					setFiles(
-						latest.conversationId,
-						latest.canvasState.files.map((file) =>
-							file.id === document.id
-								? { ...file, content: latest.content }
-								: file,
-						),
-					);
-				}
-				// (1) ...and a write that should happen still happens.
-				void saveDocument(
-					latest.canvasState?.files.find((file) => file.id === document.id) ??
-						document,
-					latest.content,
-				).catch(() => {
-					/* The gate refused or the write failed: the fact is raised, the buffer
-					 * is in the store, and the next mount shows both. */
+		adoptBuffer({
+			documentId: document.id,
+			path: document.path,
+			text: document.content,
+			mtimeMs: document.readMtimeMs,
+			commit: (text, mtimeMs) => {
+				if (!conversationId) return;
+				const current = latestDocumentRef.current;
+				commitCanvasDocument(conversationId, {
+					...current,
+					content: text,
+					readMtimeMs: mtimeMs ?? current.readMtimeMs,
+					lastAgentModified: mtimeMs ?? current.lastAgentModified,
 				});
-			}
-			// (3)
-			releaseDocumentHold(document.id);
-			clearDocumentDirty(document.id);
-		},
-		[document.id, setFiles],
-	);
+			},
+		});
+	}, [conversationId, document]);
+	/*
+	 * The unmount is one call. The owner flushes a write that should happen, commits
+	 * the buffer through the port above so a close is a pause rather than a loss, and
+	 * KEEPS the dirty flag while the document is held (code review round 4, R4-1) -
+	 * which is why this editor no longer clears the registry itself, and why a held
+	 * document's next activation cannot apply the file's version over the reader's
+	 * words.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
+	useEffect(() => () => closeBuffer(document.id), [document.id]);
 
 	/*
-	 * THE ONE WRITE PATH (QA round 3 Q9, code review round 3 A). Every save in this
-	 * editor - the debounce above and the explicit ⌘S below - goes through
-	 * `saveDocument`, which stats the file FIRST and refuses to write when its mtime
-	 * is not the one the held bytes came from. The hold this editor used to honour
-	 * before writing was the poll's view of the world, and the poll is a 2s timer
-	 * against a 1s debounce: a file rewritten on disk just before the debounce fired
-	 * was overwritten by this save, and because the save then recorded its own mtime
-	 * as the baseline, no fact was ever raised. The gate closes that ordering, and it
-	 * costs one `stat` per write.
+	 * THE DEBOUNCE ONLY TRIGGERS; IT CARRIES NO TEXT (round 4). This used to hand
+	 * `debouncedContent` to the write gate, which is exactly how a stale snapshot
+	 * reached a file after a load, and how another document's bytes could reach this
+	 * one. The owner reads its own current text at write time and returns `clean`
+	 * without probing anything when there is nothing to write.
 	 */
-	const write = useCallback(
-		async (bytes: string, explicit: boolean) => {
-			const current =
-				canvasState?.files.find((file) => file.id === document.id) ?? document;
-			const outcome = await saveDocument(current, bytes, { explicit });
-			if (outcome.status !== "written") return outcome;
-			/*
-			 * The write and the baseline it produced are one step: the store gets the
-			 * document the gate probed AFTER writing, so the next tick does not re-read
-			 * our own save - and the flag clears only now, when the bytes are on disk.
-			 */
-			originalContentRef.current = bytes;
-			setHasUserChanges(false);
-			if (conversationId && canvasState) {
-				setFiles(
-					conversationId,
-					canvasState.files.map((file) =>
-						file.id === document.id ? outcome.document : file,
-					),
-				);
-			}
-			return outcome;
-		},
-		[canvasState, conversationId, document, setFiles],
-	);
-
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `content` is the TRIGGER, not a value the body reads - the owner writes its own current text, and the effect re-arms the debounce on every keystroke on purpose.
 	useEffect(() => {
-		if (
-			editable &&
-			hasUserChanges &&
-			!isInitialLoadRef.current &&
-			debouncedContent !== originalContentRef.current &&
-			document.path
-		) {
-			/*
-			 * Held or not is the GATE's question now, and it answers with a fact rather
-			 * than by making this effect second-guess the filesystem: a refusal raises
-			 * the sticky sentence and holds the document, and the reader's two routes
-			 * out are the row's control and ⌘S.
-			 */
-			void write(debouncedContent, false).catch((error) => {
-				/*
-				 * The write failed, so nothing on disk matches the buffer: the dirty
-				 * flag stays set (the next debounce tries again) and the check keeps
-				 * out of the way.
-				 */
-				console.error("Could not save the document:", error);
-			});
-		}
-	}, [debouncedContent, document.path, editable, hasUserChanges, write]);
+		if (!editable || !document.path) return;
+		const timer = window.setTimeout(() => {
+			void saveBuffer(document.id)
+				.then((outcome) => {
+					if (outcome.status === "failed") {
+						console.error("Could not save the document:", outcome.error);
+					}
+				})
+				.catch((error) => {
+					console.error("Could not save the document:", error);
+				});
+		}, CODE_AUTOSAVE_MS);
+		return () => window.clearTimeout(timer);
+	}, [content, document.id, editable]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the body reaches this value through the owner and the callback it holds, so the dependency is deliberate: what the hook is watching is named here and nothing else re-registers it.
 	const handleContentChange = useCallback(
 		(value: string) => {
 			setContent(value);
@@ -336,13 +259,11 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				isInitialLoadRef.current = false;
 			}
 			/*
-			 * RECOMPUTED, NOT LATCHED (UX round 3, U11). This used to set true and
-			 * never set false, so an undo back to the file's own bytes - or any
-			 * sequence that ends where it started - left the row claiming there were
-			 * unsaved edits, and left the write gate holding a document with nothing
-			 * to save. The comparison is the same one the debounce uses.
+			 * THE READER'S TEXT, reported to its owner (I1). The owner recomputes the
+			 * dirty flag from it (UX U11: an undo back to the file's own bytes clears
+			 * it) and publishes the registry the freshness check consults.
 			 */
-			setHasUserChanges(value !== originalContentRef.current);
+			proposeBuffer(document.id, value);
 			if (onContentChange) {
 				onContentChange(value);
 			}
@@ -350,6 +271,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		[onContentChange],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the body reaches this value through the owner and the callback it holds, so the dependency is deliberate: what the hook is watching is named here and nothing else re-registers it.
 	const highlightPlugin = useMemo(() => {
 		return ViewPlugin.fromClass(
 			class {
@@ -378,7 +300,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				}
 			},
 		);
-	}, [inlineEdit, reviewState]);
+	}, [document.id, inlineEdit, reviewState]);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
@@ -460,18 +382,17 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		});
 
 		setContent(finalContent);
-		setHasUserChanges(true);
 		setReviewState(null);
 		setInlineEdit(null);
 
 		if (document.path && finalContent !== originalContentRef.current) {
 			/*
 			 * An inline edit's own finalize is a save the READER asked for by approving
-			 * the diff, so it is EXPLICIT: the gate never refuses it, and it converts a
-			 * standing "changed on disk" fact into the truthful sentence about what the
-			 * reader's bytes just replaced.
+			 * the diff, so it is EXPLICIT: the gate never refuses it on a version
+			 * conflict, and the owner writes the reader's current buffer (I3).
 			 */
-			void write(finalContent, true);
+			proposeBuffer(document.id, finalContent);
+			void saveBuffer(document.id, { explicit: true });
 		}
 	};
 
@@ -483,16 +404,25 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	 * handler, on the surface that lacked it - and the HTML viewer's edit mode is
 	 * this same component, so it inherits it.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the body reaches this value through the owner and the callback it holds, so the dependency is deliberate: what the hook is watching is named here and nothing else re-registers it.
 	useEffect(() => {
 		if (!editable) return;
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (!(event.metaKey || event.ctrlKey) || event.key !== "s") return;
 			event.preventDefault();
-			void write(content, true);
+			/*
+			 * I3, at the surface where it was measured: the chord writes the text the
+			 * owner holds NOW, not the debounce's value as of up to a second ago. QA's
+			 * Q13 was exactly this pair - Meta+S inside the debounce window saving the
+			 * pre-edit buffer and then marking the document clean, so the autosave that
+			 * would have written the words never ran either.
+			 */
+			proposeBuffer(document.id, content);
+			void saveBuffer(document.id, { explicit: true });
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [content, editable, write]);
+	}, [content, document.id, document.path, editable]);
 
 	const handleEdit = useCallback(
 		(

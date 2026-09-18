@@ -323,7 +323,13 @@ export function isAutosaveHeld(documentId: string): boolean {
 	return heldAutosave.has(documentId);
 }
 
-function setAutosaveHeld(documentId: string, held: boolean): void {
+/**
+ * Hold or release a document's autosaves. Exported for the buffer owner, which is
+ * the thing that decides why a hold exists; the runner still sets it from the
+ * dirty-tick's own reading, so the two agree by construction rather than by
+ * convention.
+ */
+export function setAutosaveHeld(documentId: string, held: boolean): void {
 	if (held) heldAutosave.add(documentId);
 	else heldAutosave.delete(documentId);
 }
@@ -413,8 +419,16 @@ export function cancelPendingWrites(documentId: string): void {
  * for every other one, which is what the registry's own cleanup has always done.
  */
 export function releaseDocumentHold(documentId: string): void {
+	/*
+	 * THE EPOCH IS NOT TOUCHED (code review round 4, R4-2). This used to DELETE it,
+	 * which reset the counter to zero: every save in flight - including the flush
+	 * this very cleanup had just started - then failed its own epoch comparison and
+	 * abandoned itself, so the reader's last second of typing never landed on a
+	 * document that had ever been saved before. Cancelling a write belongs to the
+	 * resolution that means it (`cancelPendingWrites`, called by the control's load),
+	 * and releasing a hold says nothing about writes at all.
+	 */
 	setAutosaveHeld(documentId, false);
-	writeEpochs.delete(documentId);
 }
 
 /**
