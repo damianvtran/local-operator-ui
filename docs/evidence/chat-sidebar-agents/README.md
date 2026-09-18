@@ -56,6 +56,24 @@ Agents section paints the same pixels on both trees. Recorded here because a
 reader diffing this directory sees no frame move and would otherwise have to
 guess whether the fold was checked or assumed.
 
+**Round 3's remediation re-rendered the whole set again, at the commit carrying
+the fix (`c1dfcc27f`), and this directory still carries no new bytes.** The
+change it answers is structural rather than visual: the batch's completion
+summary was being unmounted by the refresh the batch itself triggers (QA round
+1, Q1), so the section now renders ONE `InstallBuiltinAgents` across both of its
+states — the empty state's padded box in one case, `display: contents` in the
+other — and the question this set had to answer is whether removing and adding a
+box moves a pixel. 82 of the 84 frames came back byte-identical on that run. The
+two that did not are `installing-mid-run` frames, and that state's composite is
+simply not deterministic across runs: its twelve frames are byte-identical to
+the committed ones on a run of the PRE-fix tree and on two of three runs of the
+fixed one, and the runs that differ disagree about WHICH themes (`monokai` and
+`tokyoNight` once, `dune`, `obsidian` and `sage` on another) — a per-run
+rasterisation of a panel composited while an install is held open, not a
+property of the change. The committed frames are that state's settled sample, so
+they are kept rather than churned, and the two runs that agreed with them are
+the reason "no frame moved" here is a measurement again rather than luck.
+
 **The batch's announcement and its focus are read from the page, not from these
 stills.** UX round 2's U10 and U11 were both about what happens BETWEEN frames:
 the progress sentence and the summary were two live regions each inserted already
