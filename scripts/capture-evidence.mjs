@@ -3220,6 +3220,46 @@ const teardown = () => {
 	}
 };
 
+/*
+ * The largest pid `process.kill` accepts. No real `process.pid` exceeds it, so
+ * a suffix above it is not a profile this script could have created.
+ */
+const MAX_PID = 2_147_483_647;
+
+/*
+ * The whole shape of the name this script gives its Chrome profile in the shared
+ * temp directory. Hoisted out of `profileOwnerPid` for the same reason
+ * `DEBUG_PORT_LINE` is hoisted out of its handler, and so the rule the sweep
+ * matches on has one place to be read from.
+ */
+const PROFILE_DIR_NAME = /^lo-evidence-(\d+)$/;
+
+/**
+ * The pid a Chrome profile directory name belongs to, or `null` if `name` is
+ * not one of our profiles.
+ *
+ * A profile is only ever named by this script's own creation site -
+ * `join(tmpdir(), `lo-evidence-${process.pid}`)`, in `main` below - so the
+ * whole of the shape is that literal, a decimal pid and nothing else. Every
+ * other name in the shared temp directory belongs to somebody else, and the
+ * point of returning `null` rather than a pid is that "not ours" then has to
+ * be stated by the name itself: there is no way to sweep a directory by
+ * forgetting a check.
+ *
+ * `Number.isInteger` and the `MAX_PID` bound are NOT redundant with the `\d+`
+ * above. A suffix long enough to overflow a double is still all digits, and
+ * `process.kill` answers a pid that is not an integer in range with a
+ * `TypeError`/`RangeError` instead of a signal - a throw the sweep reads as
+ * "no such process". The guard is what keeps that class of mistake from
+ * reaching the `kill` at all.
+ */
+export const profileOwnerPid = (name) => {
+	const match = PROFILE_DIR_NAME.exec(name);
+	if (match === null) return null;
+	const pid = Number(match[1]);
+	return Number.isInteger(pid) && pid > 0 && pid <= MAX_PID ? pid : null;
+};
+
 /**
  * Remove Chrome profiles left by runs that never reached `teardown`.
  *
@@ -3232,12 +3272,36 @@ const teardown = () => {
  *
  * Own directories are skipped by pid, so concurrent runs do not delete each
  * other's profile out from under them.
+ *
+ * The candidate test is `profileOwnerPid`, and that is a correction rather
+ * than a flourish: this loop used to take any name starting with
+ * `lo-evidence-`. That prefix is not specific enough to be a profile.
+ * `evidence-manifest.test.mjs` builds its synthetic evidence tree in the same
+ * shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
+ * - named deliberately, so that a leaked one is identifiable - and it starts
+ * with exactly that prefix.
+ * `Number("manifest-XXXXXX")` is `NaN`, `process.kill(NaN, 0)` throws a
+ * `TypeError`, and the bare `catch` below read a throw that was never about a
+ * process as "no such process, so the profile is abandoned" and deleted a LIVE
+ * tree out from under a test that was walking it. It presented as flakiness
+ * rather than as a deletion - six `countsMean` cells of that file failing
+ * together with an `ENOENT` on the scratch root - which is the worst shape a
+ * bug in here can take on a machine running several lanes at once.
+ *
+ * Exported for the same reason `clearSweptFrames` is: the name-to-pid rule and
+ * the reap have to be exercisable against a synthetic temp root, without a
+ * capture and without Chrome.
  */
-const sweepStaleProfiles = () => {
+export const sweepStaleProfiles = () => {
 	const mine = `lo-evidence-${process.pid}`;
 	for (const name of readdirSync(tmpdir())) {
-		if (!name.startsWith("lo-evidence-") || name === mine) continue;
-		const pid = Number(name.slice("lo-evidence-".length));
+		/*
+		 * Only a name that decodes to the pid this script names its own profile
+		 * after is a candidate for reaping. A name that does not decode is not a
+		 * profile, so it is not this sweep's to delete.
+		 */
+		const pid = name === mine ? null : profileOwnerPid(name);
+		if (pid === null) continue;
 		try {
 			// Signal 0 tests for the process without touching it.
 			process.kill(pid, 0);

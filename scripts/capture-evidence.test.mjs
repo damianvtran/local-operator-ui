@@ -15,18 +15,24 @@
  *      tool rows were ported from - goes silently.
  */
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 
-import { clearSweptFrames, storyDrew } from "./capture-evidence.mjs";
+import {
+	clearSweptFrames,
+	profileOwnerPid,
+	storyDrew,
+} from "./capture-evidence.mjs";
 
 const build = () => {
 	const out = mkdtempSync(join(tmpdir(), "lo-sweep-"));
@@ -139,4 +145,129 @@ test("the predicate the page runs is the predicate this suite pins", () => {
 	for (const counted of [0, 2, 8, 9, 40]) {
 		assert.equal(inPage(counted), storyDrew(counted));
 	}
+});
+
+/* ---- the stale-profile sweep, over a synthetic temp root ----------------- */
+
+/*
+ * The sweep's candidate rule, which used to be a loose prefix.
+ *
+ * `sweepStaleProfiles` reaps abandoned Chrome profiles out of the SHARED system
+ * temp directory, so the only thing between it and another process's directory
+ * is its own name test. That test used to be `startsWith("lo-evidence-")`, and
+ * `evidence-manifest.test.mjs` builds its synthetic evidence tree in that same
+ * directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))` - so a
+ * capture running at the same time deleted a LIVE tree out from under a test
+ * that was walking it. The mechanism is worth stating, because no reading of
+ * either file shows it: `Number("manifest-XXXXXX")` is `NaN`,
+ * `process.kill(NaN, 0)` throws a `TypeError`, and the sweep's bare `catch` read
+ * a throw that was never about a process as "no such process, so the profile is
+ * abandoned".
+ *
+ * Why this is a test rather than a paragraph: it surfaced as flakiness - six
+ * `countsMean` cells of that file failing together with an `ENOENT` on the
+ * scratch root - on a machine running several lanes at once, which is the shape
+ * that costs a re-run rather than a bug report. Two properties are pinned, and
+ * a fix that holds only the first is a sweep that silently stopped sweeping: an
+ * abandoned profile is still reaped, and a directory whose name is not a profile
+ * is not deleted.
+ */
+
+/** A pid that is certainly not running: a child that exited and was reaped. */
+const deadPid = () => spawnSync(process.execPath, ["-e", ""]).pid;
+
+/*
+ * The scratch roots the test below makes, reclaimed when the file finishes.
+ * They are real temp directories with a child's HOME in one of them, so leaving
+ * them behind would outlive the run rather than tidy itself up.
+ */
+const cleaned = [];
+after(() => {
+	for (const dir of cleaned) rmSync(dir, { recursive: true, force: true });
+});
+
+test("the profile-name rule answers for the profile shape and nothing else", () => {
+	assert.equal(profileOwnerPid("lo-evidence-4242"), 4242);
+	assert.equal(profileOwnerPid("lo-evidence-1"), 1);
+	// The name that made this a defect: a sibling test's live scratch tree.
+	assert.equal(profileOwnerPid("lo-evidence-manifest-uexKDI"), null);
+	/*
+	 * Suffix shapes that are not a pid. Every one of these reached `process.kill`
+	 * before this rule existed, and every throw it produced was read as
+	 * "abandoned". The last is the one `\d+` alone would still admit: all digits,
+	 * and far above any pid the kernel hands out.
+	 */
+	assert.equal(profileOwnerPid("lo-evidence-"), null);
+	assert.equal(profileOwnerPid("lo-evidence-abc"), null);
+	assert.equal(profileOwnerPid("lo-evidence-12x"), null);
+	assert.equal(profileOwnerPid("lo-evidence-0"), null);
+	assert.equal(profileOwnerPid("lo-evidence-99999999999999999999"), null);
+	// Not this script's directories at all.
+	assert.equal(profileOwnerPid("lo-evidence"), null);
+	assert.equal(profileOwnerPid("lo-sweep-4242"), null);
+});
+
+test("the sweep takes the abandoned profile and leaves the rest of the temp directory", () => {
+	const root = mkdtempSync(join(tmpdir(), "lo-sweep-profiles-"));
+	// A scratch home for the child, so nothing it does derives from the
+	// operator's, and deliberately OUTSIDE the swept root.
+	const home = mkdtempSync(join(tmpdir(), "lo-sweep-home-"));
+	cleaned.push(root, home);
+
+	// What a SIGKILL under `timeout` leaves behind: the profile, uncollected.
+	const abandoned = join(root, `lo-evidence-${deadPid()}`);
+	mkdirSync(join(abandoned, "Default"), { recursive: true });
+	writeFileSync(join(abandoned, "Default", "Cookies"), "a leaked profile");
+
+	/*
+	 * A sibling test's scratch tree, under the name that collided with the loose
+	 * prefix. Its frame is the thing the ENOENT was raised on, so it is asserted
+	 * by path and not by the directory alone.
+	 */
+	const sibling = join(root, "lo-evidence-manifest-uexKDI");
+	const siblingFrame = join(sibling, "swept-story", "localOperatorDark.webp");
+	mkdirSync(join(sibling, "swept-story"), { recursive: true });
+	writeFileSync(siblingFrame, "a live tree");
+
+	/*
+	 * A third name that is not a profile, so the rule is pinned as a shape rather
+	 * than as "the manifest one is special".
+	 */
+	const other = join(root, "lo-evidence-not-a-pid");
+	mkdirSync(other, { recursive: true });
+
+	/*
+	 * The sweep is module-scope and reads `tmpdir()`, so the only way to exercise
+	 * it against a synthetic root without a capture and without Chrome is a child
+	 * whose TMPDIR is that root. The environment is built rather than inherited:
+	 * `CMUX_*`/`LOP_*` belong to whatever session is running this suite, and a test
+	 * that spawns anything must not hand them on.
+	 */
+	const script = `import { sweepStaleProfiles } from ${JSON.stringify(
+		new URL("./capture-evidence.mjs", import.meta.url).href,
+	)};
+sweepStaleProfiles();`;
+	const run = spawnSync(
+		process.execPath,
+		["--input-type=module", "-e", script],
+		{
+			env: { PATH: process.env.PATH, HOME: home, TMPDIR: root },
+			encoding: "utf8",
+		},
+	);
+	assert.equal(
+		run.status,
+		0,
+		`the sweep child exited ${run.status}: ${run.stderr}`,
+	);
+
+	// (1) the abandoned profile is still reaped, whole
+	assert.ok(!existsSync(abandoned), "an abandoned profile is the sweep's job");
+	// (2) the sibling's tree is not, and neither is a name that is not a profile
+	assert.ok(
+		existsSync(siblingFrame),
+		"a directory that is not a profile is not the sweep's to delete",
+	);
+	assert.ok(existsSync(other));
+	assert.ok(existsSync(root));
 });
