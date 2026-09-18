@@ -8,6 +8,7 @@
 import { AgentCard } from "@features/agent-hub/components/agent-card";
 import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
 import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
+import { pullRefusalMessage } from "@features/agents/utils/publication-failure";
 import type { Agent } from "@shared/api/radient/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
@@ -201,11 +202,21 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 					data-testid="onboarding-add-error"
 				>
 					<span className="min-w-0 flex-1">
-						{failures.length === 1
-							? `${failures[0].name} could not be added.`
-							: `${failures.length} agents could not be added: ${failures
-									.map((failure) => failure.name)
-									.join(", ")}.`}
+						{/*
+						 * One sentence per failed agent, each naming its own reason, rather
+						 * than a count and a list of names. A batch can fail for different
+						 * causes at once - a listing the hub no longer has beside a hub that
+						 * stopped answering - so the count told the user nothing about why,
+						 * and the reason is the half that says whether retrying can work
+						 * (design round 3, D1). `pullRefusalMessage` is the pull's own
+						 * vocabulary: the local-server classifier this used to reach for
+						 * answers about the wrong process entirely.
+						 */}
+						{failures.map((failure, index) => (
+							<span key={`${failure.name}-${index}`} className="block">
+								{pullRefusalMessage(failure.error, failure.name)}
+							</span>
+						))}
 					</span>
 					<Button
 						variant="ghost"

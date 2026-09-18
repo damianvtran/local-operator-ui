@@ -1,3 +1,4 @@
+import { agentActionFailureMessage } from "@features/agents/utils/publication-failure";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
 	BaseDialog,
@@ -182,14 +183,30 @@ export const AgentDetailsPage: React.FC = () => {
 	const failure = !failedAction
 		? null
 		: failedAction === "like"
-			? { error: likeMutation.error, retry: handleLikeToggle }
+			? {
+					action: "like" as const,
+					error: likeMutation.error,
+					retry: handleLikeToggle,
+				}
 			: failedAction === "favourite"
-				? { error: favouriteMutation.error, retry: handleFavouriteToggle }
+				? {
+						action: "favourite" as const,
+						error: favouriteMutation.error,
+						retry: handleFavouriteToggle,
+					}
 				: failedAction === "download"
-					? { error: downloadMutation.error, retry: handleDownload }
+					? {
+							action: "download" as const,
+							error: downloadMutation.error,
+							retry: handleDownload,
+						}
 					: // Delisting is confirmed through the dialog, so the failed attempt is
 						// reported and not silently repeated from here.
-						{ error: delistMutation.error, retry: undefined };
+						{
+							action: "delist" as const,
+							error: delistMutation.error,
+							retry: undefined,
+						};
 
 	const handleBack = () => {
 		navigate("/agent-hub");
@@ -403,9 +420,10 @@ export const AgentDetailsPage: React.FC = () => {
 				>
 					<AlertTitle>{FAILURE_TITLES[failedAction]}</AlertTitle>
 					<AlertDescription>
-						{backendLoadErrorMessage(
-							"The action did not complete.",
+						{agentActionFailureMessage(
+							failure.action,
 							failure.error,
+							agent.name,
 						)}
 					</AlertDescription>
 					{/* A sibling, never a child: `AlertDescription` is a `<p>`. */}

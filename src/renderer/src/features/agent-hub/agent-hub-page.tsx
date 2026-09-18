@@ -272,6 +272,15 @@ export const AgentHubPage: React.FC = () => {
 	 * announced and focus still on the body, because the failure is not an answer
 	 * the surface hands anywhere (UX round 2, U9). Same treatment as the cleared
 	 * filter above: read the DOM after the re-render, then move focus.
+	 *
+	 * BOTH ARMS OWE A HAND-OFF, because the alert unmounts in both. The failure
+	 * arm returns a control of its own to land on; the SUCCESS arm takes the alert
+	 * away and leaves whatever the retry fetched, which is where the user is now
+	 * standing - and it was the arm left on the body, measured there from +250ms
+	 * through +5s (design round 3, D2). It lands on the same two targets, and for
+	 * the same reason, as the cleared filter: the controls row when records came
+	 * back, and the empty panel's own action when none did, because an empty or
+	 * failed hub hides that row and `searchRef` is null with it.
 	 */
 	const retryRef = useRef<HTMLButtonElement>(null);
 	const retryPressedRef = useRef(false);
@@ -344,6 +353,7 @@ export const AgentHubPage: React.FC = () => {
 		if (!retryPressedRef.current || isColdLoading) return;
 		retryPressedRef.current = false;
 		if (error) retryRef.current?.focus();
+		else (searchRef.current ?? publishRef.current)?.focus();
 	}, [isColdLoading, error]);
 
 	const handlePageChange = (newPage: number) => {
