@@ -2268,7 +2268,7 @@ test("the Jobs section draws the partition's rows, and nothing in it is pressabl
 	);
 	assert.match(
 		roster,
-		/<SubagentRowBody\s+[\s\S]*?row=\{row\}[\s\S]*?detail=\{<DetailLine row=\{row\} \/>\}/,
+		/<SubagentRowBody\s+[\s\S]{0,200}?row=\{row\}[\s\S]{0,200}?detail=\{<DetailLine row=\{row\} \/>\}/,
 	);
 });
 
