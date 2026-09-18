@@ -45,11 +45,11 @@ export const kanagawaWave: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.98, elevated +10.65, sunken -4.59 L*), so the hierarchy the
+		 * (surface +4.98, elevated +10.65, sunken -4.59 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #1F1F28 -> #1F1F28 (L* 12.12 -> 12.12)
 		 * surface #2A2A37 -> #292936 (L* 17.57 -> 17.1)
-		 * elevated #363646 -> #353545 (L* 23.22 -> 22.77)
+		 * elevated #363646 -> #313140 (L* 23.22 -> 20.90)
 		 * sunken #16161D -> #16161D (L* 7.53 -> 7.53)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -63,7 +63,7 @@ export const kanagawaWave: ThemeDefinition = {
 		 */
 		canvas: "#1F1F28",
 		surface: "#292936",
-		elevated: "#353545",
+		elevated: "#313140",
 		sunken: "#16161D",
 
 		/*
@@ -71,7 +71,7 @@ export const kanagawaWave: ThemeDefinition = {
 		 * stepped 4.6 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.49x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
-		 * the row's ground. ΔE00 4.4 from `surface`, 2.1 from `elevated`, 11.08 from
+		 * the row's ground. ΔE00 4.4 from `surface`, 2.37 from `elevated`, 11.08 from
 		 * `sunken`, 4.52 from `accentWash`; the inks on the ground are 8.61:1,
 		 * 6.79:1, 5.21:1. Continuity with the panel: hue 0.69 degrees off the
 		 * panel's (the assertion allows 12) and chroma 13.49 where the panel carries

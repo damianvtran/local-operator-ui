@@ -48,11 +48,11 @@ export const autumn: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.49, elevated +8.61, sunken -3.33 L*), so the hierarchy the
+		 * (surface +4.49, elevated +8.61, sunken -3.33 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #1D1510 -> #261E1A (L* 7.54 -> 12.06)
 		 * surface #271E17 -> #312720 (L* 12.1 -> 16.54)
-		 * elevated #30261E -> #3A3027 (L* 16.05 -> 20.67)
+		 * elevated #30261E -> #362D24 (L* 16.05 -> 19.18)
 		 * sunken #140E09 -> #1D1815 (L* 4.36 -> 8.73)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -66,7 +66,7 @@ export const autumn: ThemeDefinition = {
 		 */
 		canvas: "#261E1A",
 		surface: "#312720",
-		elevated: "#3A3027",
+		elevated: "#362D24",
 		sunken: "#1D1815",
 
 		/*
@@ -74,7 +74,7 @@ export const autumn: ThemeDefinition = {
 		 * stepped 3.2 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.52x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.2 from `surface`, 4.18 from `elevated`, 9.68 from
+		 * the row's ground. ΔE00 4.2 from `surface`, 4.71 from `elevated`, 9.68 from
 		 * `sunken`, 9.95 from `accentWash`; the inks on the ground are 10.15:1,
 		 * 7.09:1, 5.16:1. Continuity with the panel: hue 7.91 degrees off the
 		 * panel's (the assertion allows 12) and chroma 10.93 where the panel carries
@@ -85,7 +85,7 @@ export const autumn: ThemeDefinition = {
 		ink: "#EDDFD0",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.88:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.20:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -100,7 +100,7 @@ export const autumn: ThemeDefinition = {
 		// so a control and a reading stay two inks.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.25:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -118,7 +118,7 @@ export const autumn: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.47.
+		 * `elevated` is the tightest ground at ΔE00 5.60.
 		 */
 		hairline: "#48382F",
 
@@ -185,7 +185,7 @@ export const autumn: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		successBorder: "#757F4D",
 		warning: "#DDAB35",
@@ -193,7 +193,7 @@ export const autumn: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		warningBorder: "#97752C",
 		danger: "#F37F6F",
@@ -206,7 +206,7 @@ export const autumn: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
 		dangerBorder: "#B76355",
 
@@ -218,7 +218,7 @@ export const autumn: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		infoBorder: "#627E91",
 

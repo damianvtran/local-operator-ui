@@ -38,11 +38,11 @@ export const dune: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.15, elevated +8.3, sunken -2.92 L*), so the hierarchy the
+		 * (surface +4.15, elevated +8.3, sunken -2.92 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #0F0D0B -> #21201E (L* 3.74 -> 12.29)
 		 * surface #1A1714 -> #2C2825 (L* 7.98 -> 16.44)
-		 * elevated #261E17 -> #393028 (L* 11.97 -> 20.58)
+		 * elevated #261E17 -> #362D25 (L* 11.97 -> 19.20)
 		 * sunken #050403 -> #1B1A1A (L* 1.14 -> 9.37)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -63,7 +63,7 @@ export const dune: ThemeDefinition = {
 		 */
 		canvas: "#21201E",
 		surface: "#2C2825",
-		elevated: "#393028",
+		elevated: "#362D25",
 		// The old theme had no recessed ground at all; this one was authored as
 		// 050403, a step far enough below the canvas to stay distinguishable, and
 		// the legibility pass then moved it with the rest of the ramp (see the
@@ -76,7 +76,7 @@ export const dune: ThemeDefinition = {
 		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 2.10x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
-		 * the row's ground. ΔE00 4.2 from `surface`, 2.22 from `elevated`, 8.89 from
+		 * the row's ground. ΔE00 4.2 from `surface`, 2.21 from `elevated`, 8.89 from
 		 * `sunken`, 7.14 from `accentWash`; the inks on the ground are 11.96:1,
 		 * 7.1:1, 5.15:1. Continuity with the panel: hue 11.95 degrees off the
 		 * panel's (the assertion allows 12) and chroma 6.08 where the panel carries
@@ -91,7 +91,7 @@ export const dune: ThemeDefinition = {
 		ink: "#F8F3EC",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.95:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.25:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -102,7 +102,7 @@ export const dune: ThemeDefinition = {
 		inkMuted: "#C9BCB0",
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.04:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.26:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -117,7 +117,7 @@ export const dune: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 8.79.
+		 * `elevated` is the tightest ground at ΔE00 9.14.
 		 */
 		hairline: "#49391E",
 		// Derived. The old theme bounded inputs with orange at 10 percent alpha,
@@ -165,7 +165,7 @@ export const dune: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		successBorder: "#6E814E",
 
@@ -174,7 +174,7 @@ export const dune: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#8E783D",
 
@@ -191,7 +191,7 @@ export const dune: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		dangerBorder: "#BE5E4D",
 
@@ -202,7 +202,7 @@ export const dune: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		infoBorder: "#AF6937",
 

@@ -77,11 +77,11 @@ export const neonNoir: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.94, elevated +8.14, sunken -2.47 L*), so the hierarchy the
+		 * (surface +3.94, elevated +8.14, sunken -2.47 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #15171C -> #1D2025 (L* 7.73 -> 12.14)
 		 * surface #1C1F26 -> #25282F (L* 11.73 -> 16.09)
-		 * elevated #242830 -> #2D313A (L* 16.03 -> 20.28)
+		 * elevated #242830 -> #2A2E37 (L* 16.03 -> 18.89)
 		 * sunken #101216 -> #191B1E (L* 5.43 -> 9.67)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -95,7 +95,7 @@ export const neonNoir: ThemeDefinition = {
 		 */
 		canvas: "#1D2025",
 		surface: "#25282F",
-		elevated: "#2D313A",
+		elevated: "#2A2E37",
 		sunken: "#191B1E",
 
 		/*
@@ -103,7 +103,7 @@ export const neonNoir: ThemeDefinition = {
 		 * stepped 3.15 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.77x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is the ΔE00 4.01-to-4 band
-		 * on `surface`. ΔE00 4.01 from `surface`, 2.77 from `elevated`, 8.48 from
+		 * on `surface`. ΔE00 4.01 from `surface`, 2.61 from `elevated`, 8.48 from
 		 * `sunken`, 8.05 from `accentWash`; the inks on the ground are 10.1:1,
 		 * 7.16:1, 5.22:1. Continuity with the panel: hue 8.15 degrees off the
 		 * panel's (the assertion allows 12) and chroma 8.96 where the panel carries
@@ -114,7 +114,7 @@ export const neonNoir: ThemeDefinition = {
 		ink: "#DCDFE4",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.91:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.22:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -128,7 +128,7 @@ export const neonNoir: ThemeDefinition = {
 		// ink and these grounds are both near-neutral.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.04:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.26:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -147,7 +147,7 @@ export const neonNoir: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.22.
+		 * `elevated` is the tightest ground at ΔE00 5.16.
 		 */
 		hairline: "#383E48",
 		// The TUI `edge-hi` 3A414E lifted in L* until it clears 3:1 on `elevated`.
@@ -195,7 +195,7 @@ export const neonNoir: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		successBorder: "#578271",
 
@@ -204,7 +204,7 @@ export const neonNoir: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#887857",
 
@@ -215,7 +215,7 @@ export const neonNoir: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		dangerBorder: "#9D6C76",
 
@@ -226,7 +226,7 @@ export const neonNoir: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.17:1.
 		 */
 		infoBorder: "#667C96",
 

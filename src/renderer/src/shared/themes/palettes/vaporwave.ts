@@ -73,11 +73,11 @@ export const vaporwave: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.68, elevated +7.61, sunken -3.3 L*), so the hierarchy the
+		 * (surface +3.68, elevated +7.61, sunken -3.3 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #1F1730 -> #241B35 (L* 9.93 -> 12.06)
 		 * surface #271E3B -> #2C2240 (L* 13.68 -> 15.75)
-		 * elevated #2F2547 -> #342A4C (L* 17.38 -> 19.67)
+		 * elevated #2F2547 -> #312749 (L* 17.38 -> 18.30)
 		 * sunken #181128 -> #1C152D (L* 6.76 -> 8.76)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -91,7 +91,7 @@ export const vaporwave: ThemeDefinition = {
 		 */
 		canvas: "#241B35",
 		surface: "#2C2240",
-		elevated: "#342A4C",
+		elevated: "#312749",
 		sunken: "#1C152D",
 
 		/*
@@ -99,7 +99,7 @@ export const vaporwave: ThemeDefinition = {
 		 * stepped 3.4 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is the ΔE00 4.04-to-4 band
-		 * on `surface`. ΔE00 4.04 from `surface`, 2.35 from `elevated`, 8.47 from
+		 * on `surface`. ΔE00 4.04 from `surface`, 2.26 from `elevated`, 8.47 from
 		 * `sunken`, 4.97 from `accentWash`; the inks on the ground are 11.23:1,
 		 * 7.11:1, 5.21:1. Continuity with the panel: hue 0.04 degrees off the
 		 * panel's (the assertion allows 12) and chroma 28.46 where the panel carries
@@ -143,7 +143,7 @@ export const vaporwave: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.11.
+		 * `elevated` is the tightest ground at ΔE00 4.96.
 		 */
 		hairline: "#40355D",
 		// The TUI `edge-hi` 4C3F6C lifted in L* until it clears 3:1 on `elevated`.
@@ -191,7 +191,7 @@ export const vaporwave: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		successBorder: "#5A7F7B",
 
@@ -200,7 +200,7 @@ export const vaporwave: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#897562",
 
@@ -209,7 +209,7 @@ export const vaporwave: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		dangerBorder: "#A26779",
 
@@ -223,7 +223,7 @@ export const vaporwave: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		infoBorder: "#587D91",
 

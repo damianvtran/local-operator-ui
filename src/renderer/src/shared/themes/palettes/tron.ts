@@ -74,11 +74,11 @@ export const tron: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.29, elevated +7.94, sunken -2.37 L*), so the hierarchy the
+		 * (surface +3.29, elevated +7.94, sunken -2.37 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #060B12 -> #1D2025 (L* 2.91 -> 12.14)
 		 * surface #0C1420 -> #1F2734 (L* 6.17 -> 15.44)
-		 * elevated #131E2D -> #273141 (L* 10.97 -> 20.08)
+		 * elevated #131E2D -> #232D3D (L* 10.97 -> 18.24)
 		 * sunken #000207 -> #1A1B1E (L* 0.53 -> 9.78)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -99,7 +99,7 @@ export const tron: ThemeDefinition = {
 		 */
 		canvas: "#1D2025",
 		surface: "#1F2734",
-		elevated: "#273141",
+		elevated: "#232D3D",
 		// The TUI's 03060B darkened one step to clear the four-ground separation
 		// floor: against `canvas` it measured 1.029:1, under the contract's 1.03. The
 		// cast is unchanged, so the Grid still reads blue-black.
@@ -110,7 +110,7 @@ export const tron: ThemeDefinition = {
 		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is the ΔE00 4.04-to-4 band
-		 * on `surface`. ΔE00 4.04 from `surface`, 2.51 from `elevated`, 10.6 from
+		 * on `surface`. ΔE00 4.04 from `surface`, 2.41 from `elevated`, 10.6 from
 		 * `sunken`, 8.41 from `accentWash`; the inks on the ground are 10.72:1,
 		 * 7.07:1, 5.21:1. Continuity with the panel: hue 5.3 degrees off the panel's
 		 * (the assertion allows 12) and chroma 14.11 where the panel carries 9.59.
@@ -120,7 +120,7 @@ export const tron: ThemeDefinition = {
 		ink: "#D8E6F2",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.8:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.20:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -133,7 +133,7 @@ export const tron: ThemeDefinition = {
 		// by four hundredths.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.30:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -153,7 +153,7 @@ export const tron: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.73.
+		 * `elevated` is the tightest ground at ΔE00 5.69.
 		 */
 		hairline: "#283C4F",
 		// The TUI `edge-hi` 2A4660 lifted in L* until it clears 3:1 on `elevated`.
@@ -198,7 +198,7 @@ export const tron: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.21:1.
 		 */
 		successBorder: "#3D8673",
 
@@ -209,7 +209,7 @@ export const tron: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.18:1.
 		 */
 		warningBorder: "#887844",
 
@@ -220,7 +220,7 @@ export const tron: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.20:1.
 		 */
 		dangerBorder: "#A96A49",
 
@@ -231,7 +231,7 @@ export const tron: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.19:1.
 		 */
 		infoBorder: "#5E7BA1",
 

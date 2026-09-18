@@ -39,11 +39,11 @@ export const synth: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +2.62, elevated +8.56, sunken -2.36 L*), so the hierarchy the
+		 * (surface +2.62, elevated +8.56, sunken -2.36 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #120720 -> #231C32 (L* 3.48 -> 12.08)
 		 * surface #1B0A2F -> #2E1D42 (L* 5.92 -> 14.7)
-		 * elevated #2C1D43 -> #3A2A51 (L* 14.51 -> 20.63)
+		 * elevated #2C1D43 -> #36274D (L* 14.51 -> 19.10)
 		 * sunken #06020D -> #1C1A20 (L* 1 -> 9.72)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -57,7 +57,7 @@ export const synth: ThemeDefinition = {
 		 */
 		canvas: "#231C32",
 		surface: "#2E1D42",
-		elevated: "#3A2A51",
+		elevated: "#36274D",
 		sunken: "#1C1A20",
 
 		/*
@@ -65,7 +65,7 @@ export const synth: ThemeDefinition = {
 		 * stepped 4.95 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.18 from `surface`, 2.63 from `elevated`, 17.86
+		 * the row's ground. ΔE00 4.18 from `surface`, 2.80 from `elevated`, 17.86
 		 * from `sunken`, 9.79 from `accentWash`; the inks on the ground are 12.07:1,
 		 * 7.14:1, 5.17:1. Continuity with the panel: hue 0.37 degrees off the
 		 * panel's (the assertion allows 12) and chroma 32.77 where the panel carries
@@ -79,7 +79,7 @@ export const synth: ThemeDefinition = {
 		ink: "#F7F2FB",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.92:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.26:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -90,7 +90,7 @@ export const synth: ThemeDefinition = {
 		inkMuted: "#C7B8D8",
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.25:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -108,7 +108,7 @@ export const synth: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 12.57.
+		 * `elevated` is the tightest ground at ΔE00 13.03.
 		 */
 		hairline: "#64224E",
 		// Derived. The old theme bounded inputs with neon blue at 25 percent alpha,
@@ -172,7 +172,7 @@ export const synth: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
 		successBorder: "#37886F",
 
@@ -182,7 +182,7 @@ export const synth: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#A76E21",
 
@@ -194,7 +194,7 @@ export const synth: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
 		dangerBorder: "#BE5C66",
 
@@ -204,7 +204,7 @@ export const synth: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		infoBorder: "#1585A0",
 

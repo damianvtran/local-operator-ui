@@ -38,11 +38,11 @@ export const neon: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.53, elevated +8.95, sunken -2.3 L*), so the hierarchy the
+		 * (surface +3.53, elevated +8.95, sunken -2.3 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #080C18 -> #1C2029 (L* 3.44 -> 12.22)
 		 * surface #0F1524 -> #212737 (L* 6.91 -> 15.75)
-		 * elevated #182036 -> #2B324A (L* 12.57 -> 21.17)
+		 * elevated #182036 -> #272E46 (L* 12.57 -> 19.34)
 		 * sunken #03040A -> #1B1B1F (L* 1.16 -> 9.92)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -59,7 +59,7 @@ export const neon: ThemeDefinition = {
 		// read as one surface. Surface and elevated are spread along the same
 		// desaturated blue ramp so a card and a menu are actually distinguishable.
 		surface: "#212737",
-		elevated: "#2B324A",
+		elevated: "#272E46",
 		sunken: "#1B1B1F",
 
 		/*
@@ -67,7 +67,7 @@ export const neon: ThemeDefinition = {
 		 * stepped 4.05 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.40x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
-		 * the row's ground. ΔE00 4.05 from `surface`, 2.07 from `elevated`, 11.4
+		 * the row's ground. ΔE00 4.05 from `surface`, 2.04 from `elevated`, 11.4
 		 * from `sunken`, 10.93 from `accentWash`; the inks on the ground are 9.99:1,
 		 * 7.19:1, 5.21:1. Continuity with the panel: hue 1.71 degrees off the
 		 * panel's (the assertion allows 12) and chroma 15.99 where the panel carries
@@ -78,7 +78,7 @@ export const neon: ThemeDefinition = {
 		ink: "#E0E0E0",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.9:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.31:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -89,7 +89,7 @@ export const neon: ThemeDefinition = {
 		inkMuted: "#BEBECE",
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.30:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -156,7 +156,7 @@ export const neon: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.20:1.
 		 */
 		warningBorder: "#A47221",
 
@@ -177,7 +177,7 @@ export const neon: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.18:1.
 		 */
 		dangerBorder: "#DB349B",
 

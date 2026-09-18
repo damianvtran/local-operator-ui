@@ -50,11 +50,11 @@ export const forest: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.5, elevated +8.67, sunken -3.42 L*), so the hierarchy the
+		 * (surface +4.5, elevated +8.67, sunken -3.42 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #0F1A13 -> #18221B (L* 8.02 -> 12.07)
 		 * surface #17231B -> #1F2C23 (L* 12.37 -> 16.57)
-		 * elevated #1F2C23 -> #28352C (L* 16.57 -> 20.75)
+		 * elevated #1F2C23 -> #26322A (L* 16.57 -> 19.48)
 		 * sunken #0A120D -> #151A17 (L* 4.75 -> 8.65)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -68,7 +68,7 @@ export const forest: ThemeDefinition = {
 		 */
 		canvas: "#18221B",
 		surface: "#1F2C23",
-		elevated: "#28352C",
+		elevated: "#26322A",
 		sunken: "#151A17",
 
 		/*
@@ -76,7 +76,7 @@ export const forest: ThemeDefinition = {
 		 * stepped 2.9 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.48x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.16 from `surface`, 3.9 from `elevated`, 11.46
+		 * the row's ground. ΔE00 4.16 from `surface`, 4.46 from `elevated`, 11.46
 		 * from `sunken`, 3.77 from `accentWash`; the inks on the ground are 10.55:1,
 		 * 7.21:1, 5.18:1. Continuity with the panel: hue 2.03 degrees off the
 		 * panel's (the assertion allows 12) and chroma 13.15 where the panel carries
@@ -87,7 +87,7 @@ export const forest: ThemeDefinition = {
 		ink: "#DDE8DD",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.95:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.24:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -102,7 +102,7 @@ export const forest: ThemeDefinition = {
 		// so a control and a reading stay two inks.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.21:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -120,7 +120,7 @@ export const forest: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.17.
+		 * `elevated` is the tightest ground at ΔE00 5.27.
 		 */
 		hairline: "#2E4033",
 
@@ -187,7 +187,7 @@ export const forest: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		successBorder: "#55865E",
 		warning: "#D8AE52",
@@ -195,7 +195,7 @@ export const forest: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#8E793E",
 		danger: "#E58579",
@@ -208,7 +208,7 @@ export const forest: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.12:1.
 		 */
 		dangerBorder: "#AB695D",
 
@@ -220,7 +220,7 @@ export const forest: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
 		infoBorder: "#55828D",
 

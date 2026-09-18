@@ -38,11 +38,11 @@ export const monokai: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.26, elevated +8.85, sunken -4.33 L*), so the hierarchy the
+		 * (surface +3.26, elevated +8.85, sunken -4.33 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #272822 -> #272822 (L* 15.82 -> 15.82)
 		 * surface #2E2F28 -> #2E2F28 (L* 19.09 -> 19.09)
-		 * elevated #3E3D32 -> #3C3B31 (L* 25.54 -> 24.67)
+		 * elevated #3E3D32 -> #39382F (L* 25.54 -> 23.35)
 		 * sunken #1E1F1A -> #1E1F1A (L* 11.49 -> 11.49)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -60,7 +60,7 @@ export const monokai: ThemeDefinition = {
 		// ΔE00 1.95 from canvas — a card edge that is not there. One unit up the
 		// same olive ramp reads 2.26, and still leaves 5.05 up to elevated.
 		surface: "#2E2F28",
-		elevated: "#3C3B31",
+		elevated: "#39382F",
 		sunken: "#1E1F1A",
 
 		/*
@@ -68,7 +68,7 @@ export const monokai: ThemeDefinition = {
 		 * stepped 4.7 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.52x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.04 from `surface`, 2.07 from `elevated`, 8.97
+		 * the row's ground. ΔE00 4.04 from `surface`, 2.30 from `elevated`, 8.97
 		 * from `sunken`, 7.42 from `accentWash`; the inks on the ground are 10.86:1,
 		 * 6.29:1, 5.18:1. Continuity with the panel: hue 1.28 degrees off the
 		 * panel's (the assertion allows 12) and chroma 7.31 where the panel carries
@@ -135,7 +135,7 @@ export const monokai: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
 		successBorder: "#6E8F2A",
 
@@ -145,7 +145,7 @@ export const monokai: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		warningBorder: "#B3772D",
 
@@ -166,7 +166,7 @@ export const monokai: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		dangerBorder: "#DE527E",
 
@@ -176,7 +176,7 @@ export const monokai: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		infoBorder: "#4F8D97",
 

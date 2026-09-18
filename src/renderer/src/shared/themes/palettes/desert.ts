@@ -50,11 +50,11 @@ export const desert: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.39, elevated +8.21, sunken -4.22 L*), so the hierarchy the
+		 * (surface +4.39, elevated +8.21, sunken -4.22 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #271E12 -> #271E13 (L* 11.98 -> 12)
 		 * surface #31271A -> #31271A (L* 16.4 -> 16.4)
-		 * elevated #3A2F21 -> #3A2F21 (L* 20.21 -> 20.21)
+		 * elevated #392E20 -> #392E20 (L* 20.21 -> 19.75)
 		 * sunken #1D160C -> #1D160C (L* 7.78 -> 7.78)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -68,7 +68,7 @@ export const desert: ThemeDefinition = {
 		 */
 		canvas: "#271E13",
 		surface: "#31271A",
-		elevated: "#3A2F21",
+		elevated: "#392E20",
 		sunken: "#1D160C",
 
 		/*
@@ -76,7 +76,7 @@ export const desert: ThemeDefinition = {
 		 * stepped 4.3 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
-		 * the row's ground. ΔE00 4.23 from `surface`, 2.74 from `elevated`, 10.14
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.76 from `elevated`, 10.14
 		 * from `sunken`, 9.5 from `accentWash`; the inks on the ground are 10.43:1,
 		 * 7.1:1, 5.19:1. Continuity with the panel: hue 1.82 degrees off the panel's
 		 * (the assertion allows 12) and chroma 15.29 where the panel carries 10.62.
@@ -195,7 +195,7 @@ export const desert: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.07:1.
 		 */
 		infoBorder: "#617E8B",
 

@@ -48,11 +48,11 @@ export const lavender: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.04, elevated +8.07, sunken -3.39 L*), so the hierarchy the
+		 * (surface +4.04, elevated +8.07, sunken -3.39 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #191623 -> #211E2B (L* 8.15 -> 12.13)
 		 * surface #211E2E -> #292637 (L* 12.28 -> 16.17)
-		 * elevated #2A2638 -> #332E41 (L* 16.33 -> 20.2)
+		 * elevated #2A2638 -> #302B3D (L* 16.33 -> 18.77)
 		 * sunken #110F19 -> #191821 (L* 4.8 -> 8.74)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -66,7 +66,7 @@ export const lavender: ThemeDefinition = {
 		 */
 		canvas: "#211E2B",
 		surface: "#292637",
-		elevated: "#332E41",
+		elevated: "#302B3D",
 		sunken: "#191821",
 
 		/*
@@ -74,7 +74,7 @@ export const lavender: ThemeDefinition = {
 		 * stepped 3.15 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.19 from `surface`, 2.76 from `elevated`, 10.34
+		 * the row's ground. ΔE00 4.19 from `surface`, 3.04 from `elevated`, 10.34
 		 * from `sunken`, 7.39 from `accentWash`; the inks on the ground are 10.58:1,
 		 * 7.03:1, 5.16:1. Continuity with the panel: hue 2.75 degrees off the
 		 * panel's (the assertion allows 12) and chroma 17.36 where the panel carries
@@ -85,7 +85,7 @@ export const lavender: ThemeDefinition = {
 		ink: "#E6E2F0",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.82:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.13:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -100,7 +100,7 @@ export const lavender: ThemeDefinition = {
 		// so a control and a reading stay two inks.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.23:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -121,7 +121,7 @@ export const lavender: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 5.75.
+		 * `elevated` is the tightest ground at ΔE00 6.62.
 		 */
 		hairline: "#3C3656",
 
@@ -191,7 +191,7 @@ export const lavender: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		successBorder: "#578365",
 		warning: "#DCAE54",
@@ -199,7 +199,7 @@ export const lavender: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#927543",
 		danger: "#EF8595",
@@ -212,7 +212,7 @@ export const lavender: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		dangerBorder: "#AE6372",
 
@@ -224,7 +224,7 @@ export const lavender: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		infoBorder: "#5D7C9E",
 

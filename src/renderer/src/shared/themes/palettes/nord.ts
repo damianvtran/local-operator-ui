@@ -53,7 +53,7 @@ export const nord: ThemeDefinition = {
 		// A step between nord0 and nord1: nord2 434C5E sits above nord1 and a fifth ground
 		// would only cost every ink headroom.
 		surface: "#343B49",
-		elevated: "#3B4252",
+		elevated: "#3A4150",
 		// A step under nord0. Nord has no recessed tone of its own — nord2 is lighter than
 		// nord1 — so the well is derived, and nord3 4C566A is far too light to be a well.
 		sunken: "#272C36",
@@ -65,7 +65,7 @@ export const nord: ThemeDefinition = {
 		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.36x the
 		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
 		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 4.26
-		 * from `surface`, 4.09 from `elevated`, 8.23 from `sunken`, 8.49 from
+		 * from `surface`, 3.91 from `elevated`, 8.23 from `sunken`, 8.49 from
 		 * `accentWash`; the inks on the ground are 8.94:1, 7.63:1, 5.15:1.
 		 * Continuity with the panel: hue 11.53 degrees off the panel's (the
 		 * assertion allows 12) and chroma 13.04 where the panel carries 9.57.
@@ -79,7 +79,7 @@ export const nord: ThemeDefinition = {
 		// it sits beside in the editor, where the same hue at full chroma measured 6.9.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.03:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.12:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.

@@ -38,11 +38,11 @@ export const radient: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.87, elevated +10.8, sunken -2.87 L*), so the hierarchy the
+		 * (surface +4.87, elevated +10.8, sunken -2.87 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #10151C -> #1B2027 (L* 6.6 -> 12.04)
 		 * surface #1A1F2F -> #25293A (L* 11.99 -> 16.92)
-		 * elevated #282D47 -> #303550 (L* 19.15 -> 22.84)
+		 * elevated #282D47 -> #2D324D (L* 19.15 -> 21.49)
 		 * sunken #0A0D12 -> #181A1D (L* 3.58 -> 9.17)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -59,7 +59,7 @@ export const radient: ThemeDefinition = {
 		// same value, so a card was invisible against the page. Surface and elevated
 		// take the two blues the file already used for its sidebars.
 		surface: "#25293A",
-		elevated: "#303550",
+		elevated: "#2D324D",
 		sunken: "#181A1D",
 
 		/*
@@ -67,7 +67,7 @@ export const radient: ThemeDefinition = {
 		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.31x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
-		 * the row's ground. ΔE00 4.23 from `surface`, 2.12 from `elevated`, 13.05
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.19 from `elevated`, 13.05
 		 * from `sunken`, 6.79 from `accentWash`; the inks on the ground are 11.43:1,
 		 * 7.97:1, 5.15:1. Continuity with the panel: hue 1.58 degrees off the
 		 * panel's (the assertion allows 12) and chroma 15.57 where the panel carries
@@ -89,7 +89,7 @@ export const radient: ThemeDefinition = {
 		inkMuted: "#C2D2E0",
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.24:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -104,7 +104,7 @@ export const radient: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 6.36.
+		 * `elevated` is the tightest ground at ΔE00 6.98.
 		 */
 		hairline: "#3C404F",
 		// Derived. The old theme bounded inputs with white at 20 percent alpha,
@@ -152,7 +152,7 @@ export const radient: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.17:1.
 		 */
 		successBorder: "#4C8C73",
 
@@ -161,7 +161,7 @@ export const radient: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		warningBorder: "#957C4B",
 
@@ -170,7 +170,7 @@ export const radient: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		dangerBorder: "#B16C72",
 
@@ -181,7 +181,7 @@ export const radient: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		infoBorder: "#6A81A0",
 

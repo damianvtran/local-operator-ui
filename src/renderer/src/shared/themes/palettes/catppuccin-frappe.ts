@@ -50,11 +50,11 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.15, elevated +6.24, sunken -3.12 L*), so the hierarchy the
+		 * (surface +3.15, elevated +6.24, sunken -3.12 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #303446 -> #303445 (L* 22.04 -> 21.99)
 		 * surface #363B4E -> #363B4E (L* 25.14 -> 25.14)
-		 * elevated #3D4255 -> #3D4255 (L* 28.23 -> 28.23)
+		 * elevated #3C4153 -> #3C4153 (L* 28.23 -> 27.75)
 		 * sunken #2A2D3E -> #2A2D3E (L* 18.87 -> 18.87)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -68,7 +68,7 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 */
 		canvas: "#303445",
 		surface: "#363B4E",
-		elevated: "#3D4255",
+		elevated: "#3C4153",
 		sunken: "#2A2D3E",
 		/*
 		 * The current row's own ground, and the one palette class this pass pins:
@@ -77,7 +77,7 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.49x the
 		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
 		 * What binds this one is `ink-dim` at 5.16:1 on the row's ground. ΔE00 5.2
-		 * from `surface`, 4.88 from `elevated`, 8.66 from `sunken`, 6.43 from
+		 * from `surface`, 5.02 from `elevated`, 8.66 from `sunken`, 6.43 from
 		 * `accentWash`; the inks on the ground are 7.45:1, 7.18:1, 5.16:1.
 		 * Continuity with the panel: hue 8.45 degrees off the panel's (the assertion
 		 * allows 12) and chroma 18.8 where the panel carries 12.6.

@@ -44,11 +44,11 @@ export const ayuMirage: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.97, elevated +9.94, sunken -5.85 L*), so the hierarchy the
+		 * (surface +4.97, elevated +9.94, sunken -5.85 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #242936 -> #242936 (L* 16.64 -> 16.64)
 		 * surface #2E3544 -> #2D3442 (L* 22.1 -> 21.61)
-		 * elevated #39404F -> #383F4E (L* 27.02 -> 26.58)
+		 * elevated #39404F -> #353C4B (L* 27.02 -> 25.25)
 		 * sunken #191D27 -> #191D27 (L* 10.79 -> 10.79)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -62,7 +62,7 @@ export const ayuMirage: ThemeDefinition = {
 		 */
 		canvas: "#242936",
 		surface: "#2D3442",
-		elevated: "#383F4E",
+		elevated: "#353C4B",
 		sunken: "#191D27",
 
 		/*
@@ -70,7 +70,7 @@ export const ayuMirage: ThemeDefinition = {
 		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.09 from `surface`, 2.26 from `elevated`, 11.22
+		 * the row's ground. ΔE00 4.09 from `surface`, 2.27 from `elevated`, 11.22
 		 * from `sunken`, 4.19 from `accentWash`; the inks on the ground are 7.29:1,
 		 * 7.17:1, 5.17:1. Continuity with the panel: hue 1.04 degrees off the
 		 * panel's (the assertion allows 12) and chroma 13.48 where the panel carries

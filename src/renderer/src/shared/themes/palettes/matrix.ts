@@ -75,11 +75,11 @@ export const matrix: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +2.97, elevated +7.58, sunken -1.62 L*), so the hierarchy the
+		 * (surface +2.97, elevated +7.58, sunken -1.62 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #050D07 -> #1C211D (L* 3.03 -> 12.11)
 		 * surface #0B160E -> #1F2822 (L* 6.11 -> 15.09)
-		 * elevated #122016 -> #253328 (L* 10.7 -> 19.7)
+		 * elevated #122016 -> #212E24 (L* 10.7 -> 17.48)
 		 * sunken #020703 -> #1B1D1B (L* 1.55 -> 10.49)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -100,7 +100,7 @@ export const matrix: ThemeDefinition = {
 		 */
 		canvas: "#1C211D",
 		surface: "#1F2822",
-		elevated: "#253328",
+		elevated: "#212E24",
 		sunken: "#1B1D1B",
 
 		/*
@@ -122,7 +122,7 @@ export const matrix: ThemeDefinition = {
 		// this ramp makes possible — it is the family's darkest set of grounds.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.35:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -142,7 +142,7 @@ export const matrix: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 5.79.
+		 * `elevated` is the tightest ground at ΔE00 7.14.
 		 */
 		hairline: "#263F2D",
 		// The TUI `edge-hi` 2A4A33 lifted in L* until it clears 3:1 on `elevated`; the
@@ -191,7 +191,7 @@ export const matrix: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.23:1.
 		 */
 		successBorder: "#428656",
 
@@ -200,7 +200,7 @@ export const matrix: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.23:1.
 		 */
 		warningBorder: "#817A3F",
 
@@ -209,7 +209,7 @@ export const matrix: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.23:1.
 		 */
 		dangerBorder: "#AB665B",
 
@@ -220,7 +220,7 @@ export const matrix: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.21:1.
 		 */
 		infoBorder: "#40837B",
 

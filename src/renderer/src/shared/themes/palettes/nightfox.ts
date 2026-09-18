@@ -52,11 +52,11 @@ export const nightfox: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.7, elevated +10.18, sunken -4.33 L*), so the hierarchy the
+		 * (surface +4.7, elevated +10.18, sunken -4.33 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #192330 -> #192330 (L* 13.36 -> 13.36)
 		 * surface #212E3F -> #202D3E (L* 18.52 -> 18.06)
-		 * elevated #29394F -> #29394F (L* 23.55 -> 23.55)
+		 * elevated #243449 -> #243449 (L* 23.55 -> 21.25)
 		 * sunken #131A24 -> #131A24 (L* 9.03 -> 9.03)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -70,26 +70,36 @@ export const nightfox: ThemeDefinition = {
 		 */
 		canvas: "#192330",
 		surface: "#202D3E",
-		elevated: "#29394F",
+		elevated: "#243449",
 		sunken: "#131A24",
 
 		/*
 		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.4 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.03-to-4 band
-		 * on `surface`. ΔE00 4.03 from `surface`, 2.17 from `elevated`, 10.42 from
-		 * `sunken`, 2.85 from `accentWash`; the inks on the ground are 7.94:1,
-		 * 5.89:1, 5.34:1. Continuity with the panel: hue 0.09 degrees off the
-		 * panel's (the assertion allows 12) and chroma 17.96 where the panel carries
+		 * stepped 4.5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.63-to-4 band
+		 * on `surface`. ΔE00 4.63 from `surface`, 2.09 from `elevated`, 11.1 from
+		 * `sunken`, 2.84 from `accentWash`; the inks on the ground are 7.69:1,
+		 * 5.7:1, 5.17:1. Continuity with the panel: hue 1.54 degrees off the
+		 * panel's (the assertion allows 12) and chroma 18.38 where the panel carries
 		 * 12.5.
+		 *
+		 * RAISED BY THE ROW/HOVER PASS, from the 3.4 `L*` step this block used to
+		 * record: the hover rung's own floor - ΔE00 2.0 off the panel,
+		 * `ELEVATED_PANEL_DELTA_E`, the number the app already uses for a hover tint -
+		 * sits above where this row was, and no rung can be both perceptibly off the
+		 * panel and BELOW a row this low, so the row came up to outrank the pointer's.
+		 * The step is the largest this palette's inks allow - `inkDim` is the binder
+		 * at 5.17:1 on the ground, against its 5.0 floor and this file's 0.15 of
+		 * headroom - which is why `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries
+		 * re-measured numbers for this palette rather than the ones it shipped with.
 		 */
-		highlight: "#1F354E",
+		highlight: "#223751",
 
 		ink: "#CDCECF",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 5.52:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 5.95:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -101,7 +111,7 @@ export const nightfox: ThemeDefinition = {
 		// the scheme's dim rung, relaxed to clear ΔE00 8 from `inkMuted`.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.39:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.

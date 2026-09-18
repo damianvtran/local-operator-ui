@@ -53,7 +53,7 @@ export const solarizedDark: ThemeDefinition = {
 		surface: "#05333F",
 		// A step ABOVE base02: base03 to base02 measures ΔE00 3.4 in total, so two 2.0
 		// steps cannot fit inside upstream's ramp and the top ground is derived.
-		elevated: "#0D3C49",
+		elevated: "#093A46",
 		sunken: "#00252E",
 
 		/*
@@ -61,7 +61,7 @@ export const solarizedDark: ThemeDefinition = {
 		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.1 from `surface`, 3.66 from `elevated`, 7.52 from
+		 * the row's ground. ΔE00 4.1 from `surface`, 4.20 from `elevated`, 7.52 from
 		 * `sunken`, 6.2 from `accentWash`; the inks on the ground are 7.59:1,
 		 * 7.09:1, 5.16:1. Continuity with the panel: hue 14.32 degrees off the
 		 * panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 15.85 where the panel carries
@@ -73,7 +73,7 @@ export const solarizedDark: ThemeDefinition = {
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
-		 * is 7:1 on all six grounds and `elevated` binds it at 7.4:1.
+		 * is 7:1 on all six grounds and `elevated` binds it at 7.63:1.
 		 *
 		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
 		 * surface the operator's report is about.
@@ -87,7 +87,7 @@ export const solarizedDark: ThemeDefinition = {
 		// step up, which keeps the readout rung quiet and still distinct.
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.91:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.13:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -101,7 +101,7 @@ export const solarizedDark: ThemeDefinition = {
 		// the control rung above.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.03:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.19:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.

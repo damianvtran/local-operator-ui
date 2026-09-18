@@ -219,7 +219,24 @@ const LIFT = {
  */
 const STEP = {
 	canvasSurface: [2.5, 5.0],
-	surfaceElevated: [2.5, 6.0],
+	/*
+	 * 2.0 rather than 2.5, and the third bound is what moved it (the row/hover
+	 * pass): the hovered rung is also the ground a current row has to OUTRANK,
+	 * so it is placed as close to the panel as it can legally sit, and on the
+	 * dark family the row's own ink cap leaves so little room that a 2.5 floor
+	 * and `FIELD_SEPARATION_FLOOR` cannot both hold - `dune` measured ΔE00 1.74
+	 * between the row and a 2.5-step hover, under the field floor, so the pair
+	 * it is meant to keep apart stopped being a pair at all.
+	 *
+	 * The L* floor was always a PROXY for "the two grounds do not merge", and the
+	 * proxy is now the looser of the two: `ELEVATED_PANEL_DELTA_E` below asserts
+	 * the perceptual statement directly on this pair, which this ladder never
+	 * did (it measured only the 1.03 ratio here). A floor that is only a proxy
+	 * for a perceptual bound, set ABOVE the bound, cannot be met by measuring the
+	 * bound - which is what the row/hover ordering needs and what this pass had
+	 * to buy.
+	 */
+	surfaceElevated: [2.0, 6.0],
 	canvasSunken: [1.5, 6.0],
 };
 
@@ -2659,6 +2676,193 @@ const HIGHLIGHT_SEPARATION_FLOOR = 4.0;
 const HIGHLIGHT_LIGHTNESS_STEP_FLOOR = 3.0;
 const HIGHLIGHT_INK_MARGIN = 0.15;
 
+/*
+ * THE ROW OUTRANKS THE HOVERED RUNG, and this is the fourth bound on the pair.
+ *
+ * The state pair `highlight` / `elevated` is not symmetric: `elevated` is the
+ * TRANSIENT mark (where the pointer is) and `highlight` is the PERSISTENT one
+ * (where the reader is). The operator reported this surface twice - grey, then
+ * invisible - so the row the reader is on has to be the louder of the two on
+ * every palette, and "louder" here is a lightness fact: the row is LIGHTER on a
+ * dark palette and DARKER on a light one. The field floor above says only that
+ * the two are two different grounds, which is consistent with the pointer's row
+ * being the brighter one - which is what shipped at the merge base on 36 of the
+ * 41 dark palettes, so the row was misread beside a hover on 88% of the dark
+ * family while every floor in this file was green.
+ *
+ * WHY THE STEP IS 0.5 AND NOT MORE. It is the largest floor the binders allow
+ * across the family, and the binders are stated here rather than left to a
+ * reader:
+ *
+ *   - the row's ceiling is an INK cap, not a taste call. A lighter row lowers
+ *     every ink ratio on it, and `inkDim` (the caps and the `· lopdev` binding
+ *     inside a current row) is authored at 5.15-5.22:1 against the 5.0 floor
+ *     with this file's 0.15 of headroom, so the row sits AT its cap on 37 of
+ *     the 41 and can rise 0.05-1.50 L* at most (`tokyoNight` is the one with
+ *     room left, and this pass spends it).
+ *   - the hover's floor is `ELEVATED_PANEL_DELTA_E`: a rung closer to the panel
+ *     than that is not a hover the pointer can report, and it is the app's own
+ *     hover number (`HOVER_DELTA_E`, asserted on `accentWash`).
+ *
+ * The usable window is therefore `cap - panel floor`, measured at 0.4-5.2 L* on
+ * the dark family and 5.5-11.0 on the light one - and on eleven palettes it is
+ * narrower than this step or closed outright, which `HIGHLIGHT_HOVER_ORDER_
+ * EXCEPTIONS` below records palette by palette rather than lowering the floor
+ * for everybody. THE ORDERING IS WHAT THIS PASS BOUGHT WHERE IT COULD BE
+ * BOUGHT, AND THE SEPARATION IS WHAT IT COST: bringing the hovered rung down to
+ * its floor shortens the pair's ΔE00 as well as flipping which of the two is
+ * lighter, so on the dark family the two marks sit 2.02-4.98 apart rather than
+ * 4.44 at the merge base on `arcade`. The design round asked for both; they
+ * cannot both hold on these palettes, and the ordering is the half the
+ * operator's two reports are about. Buying the separation as well needs the
+ * hovered row to have a ground of its own, or the row's ink cap to be raised
+ * with `inkDim` - both are re-authorings of a different scope, and neither is
+ * done here.
+ */
+const HIGHLIGHT_HOVER_ORDER_STEP = 0.5;
+
+/*
+ * The hovered rung's own floor off the panel, which this file did not assert
+ * before this pass and had to: the ladder's `surface -> elevated` step was
+ * measured only as a ratio (1.03), so a rung could sit 2.5 L* up and still be
+ * ΔE00 1.58 from the panel (`rosewood`) - a hover nobody can see, on the one
+ * ground the row/hover ordering is about. The number is the app's existing
+ * hover floor (`HOVER_DELTA_E`, stated for `accentWash`), because the pointer's
+ * two marks are the same kind of signal.
+ */
+const ELEVATED_PANEL_DELTA_E = 2.0;
+
+/**
+ * The palettes whose ink cap leaves the row/hover window under
+ * `HIGHLIGHT_HOVER_ORDER_STEP` - and on five of them, closed outright.
+ *
+ * THE BINDER IS THE SAME ON EVERY ONE: `inkDim` at its 5.0 floor with this
+ * file's 0.15 of headroom, which caps the row at 2.00-3.50 `L*` above the
+ * panel, while a hovered rung that is perceptibly off that panel
+ * (`ELEVATED_PANEL_DELTA_E`) needs 2.6-3.1 - so the row cannot get above the
+ * hover on these palettes without putting the caps inside a current row under
+ * their floor. The alternative would be to re-author `inkDim` with the ground
+ * (the coupling `palette-contract.ts` describes) - a text change on eleven
+ * themes for a row mark, and a bigger one than this finding - or to give the
+ * hovered row a ground of its own, which is a role decision rather than a
+ * value and is not taken here.
+ *
+ * WHAT EACH ENTRY RECORDS is the same pin-not-mute shape as
+ * `HIGHLIGHT_STEP_PINS`: the margin the pair actually measures (negative where
+ * the window is closed, which is what "unreachable" means), the row's own ink
+ * cap re-derived the same way, and the binding ink's ratio on it. The assertion
+ * below re-derives all three and fails if any has moved, so a palette that
+ * gains room (a re-authored ink, a lifted `surface`) re-opens its own entry
+ * instead of leaving it green, and an entry whose pair now clears the step is
+ * dead weight and fails as stale.
+ *
+ * `arcade`, `cyberpunk`, `tron`, `matrix`, `obsidian` and `tokyoNight` - the
+ * six dark palettes the design round measured the pair on - are NOT here: their
+ * windows run 0.72-2.78 `L*` and they hold the step.
+ *
+ * @type {{theme: string, margin: number, cap: number, inkRole: string, onGround: number, why: string}[]}
+ */
+const HIGHLIGHT_HOVER_ORDER_EXCEPTIONS = [
+	{
+		theme: "catppuccinMacchiato",
+		margin: -0.85,
+		cap: 2,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "the shortest route in the tree: `inkDim` reaches its floor at 2.00 `L*`, and the panel floor keeps the hover at 2.84 - the one palette where the row measures measurably BELOW a hovered neighbour, which is the defect this pass answers, recorded rather than papered over",
+	},
+	{
+		theme: "palenight",
+		margin: -0.8,
+		cap: 2.25,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "cap 2.25 against a panel floor of 3.11: closed. `palenight`, `nord` and `catppuccinMacchiato` are the palettes `HIGHLIGHT_STEP_PINS` already records as ink-capped, and a hover rung cannot fit under a row the caps will not let rise",
+	},
+	{
+		theme: "nord",
+		margin: -0.19,
+		cap: 2.25,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "cap 2.25 against a panel floor of 2.70: closed by two tenths, so the row reads below the pointer's row",
+	},
+	{
+		theme: "rosewood",
+		margin: -0.1,
+		cap: 3.25,
+		inkRole: "inkDim",
+		onGround: 5.19,
+		why: "cap 3.25 against a panel floor of 3.13: closed by a tenth. It is also the palette the ΔE00 1.58 `surface`/`elevated` measurement comes from - the rung this pass had to lower is the one that was least visible to begin with",
+	},
+	{
+		theme: "catppuccinFrappe",
+		margin: -0.02,
+		cap: 2.75,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "cap 2.75 against a panel floor of 2.61, so the window is 0.14 wide and the pair lands a hundredth either side of level. Its sibling `catppuccinMocha` has the room (2.04)",
+	},
+	{
+		theme: "obsidian",
+		margin: 0.05,
+		cap: 4.75,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "cap 4.75 against a panel floor of 4.77 - yet another tenth. This palette's floor is not `ELEVATED_PANEL_DELTA_E` but the accent wash's: `accentWash` sits at `L*` 19.93 between the panel (17.17) and the row (21.99), and the hover rung is forbidden to come within ΔE00 2.0 of it, so the rung stops at 4.77 and the ordering is bought with 0.05 `L*`",
+	},
+	{
+		theme: "forest",
+		margin: 0.14,
+		cap: 3.0,
+		inkRole: "inkDim",
+		onGround: 5.18,
+		why: "cap 3.00 against a panel floor of 2.90: the ordering is bought with a 0.14 `L*` step - real, and the thinnest positive one in the tree",
+	},
+	{
+		theme: "solarizedDark",
+		margin: 0.15,
+		cap: 3.25,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "cap 3.25 against a panel floor of 2.99; the window is 0.26 wide and the ordering sits at its floor",
+	},
+	{
+		theme: "neonNoir",
+		margin: 0.26,
+		cap: 3.5,
+		inkRole: "inkDim",
+		onGround: 5.22,
+		why: "cap 3.50 against a panel floor of 2.81; `inkDim` has 0.04 of headroom left on this ground, which is why the row cannot take the extra step the window would allow",
+	},
+	{
+		theme: "rosePine",
+		margin: 0.27,
+		cap: 2.5,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "cap 2.50 against a panel floor of 2.24 - the window is 0.26 wide and the ordering is inside it",
+	},
+	{
+		theme: "lavender",
+		margin: 0.45,
+		cap: 3.0,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "cap 3.00 against a panel floor of 2.60: the window orders the pair and is not wide enough for the 0.5 step",
+	},
+	{
+		theme: "ocean",
+		margin: 0.48,
+		cap: 3.0,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "cap 3.00 against a panel floor of 2.60 - a 0.4 window, just under the step",
+	},
+];
+
+const hoverOrderSeen = new Set();
+
 /* Lab chroma, hue angle and the unsigned hue difference, for the continuity
    clause below. Nine lines rather than a colour library, like the rest of this
    file: `toLab` is already here and the two derived quantities are one line
@@ -3499,19 +3703,19 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
 	{
 		theme: "nightfox",
 		mode: "dark",
-		ratio: 1.44,
-		chroma: 5.46,
-		over: 3.58,
+		ratio: 1.47,
+		chroma: 5.88,
+		over: 4.0,
 		ceiling: 1.88,
 		reach: 4.57,
-		dh: 0.09,
-		dE: 4.03,
+		dh: 1.54,
+		dE: 4.63,
 		tightRotation: -6,
 		tightReach: 4.21,
 		tightChroma: 1.89,
 		inkRole: "inkDim",
-		onGround: 5.34,
-		why: "its chroma sits 5.46 C* over the panel where the tightened clause grants 1.88 + 0.5 of slack, at 1.44x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.21 at 1.89 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+		onGround: 5.17,
+		why: "RE-MEASURED by the row/hover pass, which raised this palette's row to its ink cap (`highlight` is the one role this pass moved on two palettes, because the hover rung had no legal place under a row this low). Its chroma sits 5.88 C* over the panel where the tightened clause grants 1.88 + 0.5 of slack, at 1.47x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.21 at 1.89 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
 	},
 	{
 		theme: "nord",
@@ -3571,7 +3775,7 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
 		chroma: 3.88,
 		over: 2.28,
 		ceiling: 1.6,
-		reach: 0.0,
+		reach: 3.85,
 		dh: 2.06,
 		dE: 4.08,
 		tightRotation: -6,
@@ -3579,7 +3783,7 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
 		tightChroma: 1.77,
 		inkRole: "inkDim",
 		onGround: 5.26,
-		why: "its chroma sits 3.88 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.61x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.01 at 1.77 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+		why: "`reach` was 0.00 before the row/hover pass and is 3.85 after it: the sample is bounded by the field floors, whose `elevated` half this pass moved, so the clause's own reach moved with it while the palette's row did not. Its chroma sits 3.88 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.61x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.01 at 1.77 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
 	},
 	{
 		theme: "oneLight",
@@ -3771,19 +3975,19 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
 	{
 		theme: "tokyoNight",
 		mode: "dark",
-		ratio: 1.44,
-		chroma: 5.83,
-		over: 3.84,
+		ratio: 1.47,
+		chroma: 6.29,
+		over: 4.3,
 		ceiling: 1.99,
 		reach: 4.77,
-		dh: 0.79,
-		dE: 4.16,
+		dh: 0.39,
+		dE: 4.98,
 		tightRotation: -5,
 		tightReach: 4.05,
 		tightChroma: 2.42,
 		inkRole: "inkDim",
-		onGround: 5.41,
-		why: "its chroma sits 5.83 C* over the panel where the tightened clause grants 1.99 + 0.5 of slack, at 1.44x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 5 degrees (ΔE00 4.05 at 2.42 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+		onGround: 5.15,
+		why: "RE-MEASURED by the row/hover pass, which raised this palette's row to its ink cap - the 1.50 `L*` of headroom the legibility pass left here is what the row/hover ordering needed, and it is why this entry's `ratio`, `chroma`, `over`, `dh`, `dE` and `onGround` all moved together. Its chroma sits 6.29 C* over the panel where the tightened clause grants 1.99 + 0.5 of slack, at 1.47x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 5 degrees (ΔE00 4.05 at 2.42 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
 	},
 	{
 		theme: "tokyoNightDay",
@@ -4252,6 +4456,79 @@ for (const { id, palette: p } of palettes) {
 					: "";
 			fail(
 				`${id}: \`highlight\` ${p.highlight} sits ${r2(step)} \`L*\` from \`surface\` ${p.surface}, so the current row is ${p.mode === "dark" ? "LIGHTER" : "DARKER"} than its panel by ${r2(wanted)} — the floor is ${HIGHLIGHT_LIGHTNESS_STEP_FLOOR} \`L*\` in that direction${wrongSide}. Author the step as a LIGHTNESS step at the surface's own hue - the largest one the ink floors allow - and buy only the shortfall to ΔE00 ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue: \`palette-contract.ts\`'s \`highlight\` doc states the rule in full`,
+			);
+		}
+	}
+	/*
+	 * 5b. THE ORDER: the row is the LIGHTER mark on a dark palette and the darker
+	 * one on a light palette, and it clears the hovered rung by a stated step.
+	 *
+	 * This sits beside the band and the direction because it is the same kind of
+	 * statement about the same pair, and it is the one bound of the four the
+	 * frames alone can settle: the field floor above is satisfied by two grounds
+	 * that are level in lightness and differ only in hue, which is exactly the
+	 * state the order reports last. The step's own number, the two binders that set
+	 * it and the palettes they starve are argued at
+	 * `HIGHLIGHT_HOVER_ORDER_STEP` and in `HIGHLIGHT_HOVER_ORDER_EXCEPTIONS`.
+	 */
+	if (isHex(p.highlight) && isHex(p.elevated)) {
+		assertions++;
+		const order =
+			(toLab(p.highlight)[0] - toLab(p.elevated)[0]) *
+			(p.mode === "dark" ? 1 : -1);
+		const entry = HIGHLIGHT_HOVER_ORDER_EXCEPTIONS.find((x) => x.theme === id);
+		if (entry) {
+			hoverOrderSeen.add(entry);
+			/* The row's own ink cap, re-derived exactly as `HIGHLIGHT_STEP_PINS`
+			   re-derives it: the largest L* step off `surface`, at the surface's
+			   own `a` and `b`, that keeps every ink at its floor with this file's
+			   headroom. It is what makes the entry a measurement rather than an
+			   excuse - a palette that gains room re-opens it. */
+			const [capL, capA, capB] = toLab(p.surface);
+			let cap = 0;
+			for (let s = 0.25; s <= 8; s += 0.25) {
+				const at = labToHex([
+					p.mode === "dark" ? capL + s : capL - s,
+					capA,
+					capB,
+				]);
+				if (!at) break;
+				if (
+					INKS.every(
+						([role, floor]) =>
+							ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
+					)
+				)
+					cap = s;
+			}
+			const onGround = ratio(p[entry.inkRole], p.highlight);
+			if (Math.abs(order - entry.margin) > 0.05) {
+				fail(
+					`${id}: the recorded row/hover margin moved - recorded ${entry.margin} \`L*\`, measured ${r2(order)}. Re-measure it and update the entry (previously: ${entry.why})`,
+				);
+			}
+			if (Math.abs(cap - entry.cap) > 0.5) {
+				fail(
+					`${id}: the recorded ink cap for the row/hover entry moved - recorded ${entry.cap} \`L*\`, re-derived ${r2(cap)}. If \`${entry.inkRole}\` has moved, re-author the row to its new cap and record the new window`,
+				);
+			}
+			if (onGround < entry.onGround - 0.05) {
+				fail(
+					`${id}: \`${entry.inkRole}\` measures ${r2(onGround)}:1 on the row's ground, under the recorded ${entry.onGround}:1 — the binder this entry rests on has been spent`,
+				);
+			}
+			if (order >= HIGHLIGHT_HOVER_ORDER_STEP) {
+				fail(
+					`${id}: the row/hover exception is STALE — the pair now clears ${HIGHLIGHT_HOVER_ORDER_STEP} \`L*\` (measured ${r2(order)}), so the palette has room the entry was recording as missing. Remove the entry rather than leaving a mute button over an assertion that now holds`,
+				);
+			}
+		} else if (order < HIGHLIGHT_HOVER_ORDER_STEP) {
+			const cap = INKS.map(([role]) => [
+				role,
+				ratio(p[role], p.highlight),
+			]).sort((a, b) => a[1] - b[1])[0];
+			fail(
+				`${id}: \`highlight\` ${p.highlight} sits ${r2(order)} \`L*\` ${p.mode === "dark" ? "above" : "below"} \`elevated\` ${p.elevated} (need ${HIGHLIGHT_HOVER_ORDER_STEP}) — the persistent mark has to outrank the transient one, and a hovered neighbour that is the louder of the two is the state the operator reported twice. Two levers: raise the row as far as \`${cap[0]}\` at ${r2(cap[1])}:1 on this ground allows, and bring \`elevated\` to the lowest rung that clears ΔE00 ${ELEVATED_PANEL_DELTA_E} off \`surface\`. Where the two windows do not overlap, record the palette in \`HIGHLIGHT_HOVER_ORDER_EXCEPTIONS\` with its measured cap and the ink that binds it - the window, not the value, is what is missing`,
 			);
 		}
 	}
@@ -5153,14 +5430,24 @@ for (const { id, palette: p } of palettes) {
 			   here as well for the three NAMED steps, so the ladder's own rule is
 			   stated where the ladder is. */
 			assertPair(id, p, from, to, GROUND_RATIO, `${name} step`);
-			/* This adds the perceptual half for the one pair no loop measured
-			   before. */
-			if (from === "canvas" && to === "sunken") {
+			/* This adds the perceptual half for the two pairs no loop measured
+			   before: the well under the canvas, and - since the row/hover pass -
+			   the hovered rung over its panel, whose L* floor above is only a
+			   proxy for it. See `ELEVATED_PANEL_DELTA_E` for why the proxy had to
+			   become the looser of the two. */
+			if (
+				(from === "canvas" && to === "sunken") ||
+				(from === "surface" && to === "elevated")
+			) {
 				assertions++;
-				const got = deltaE(p.canvas, p.sunken);
-				if (got < GROUND_STEP_DELTA_E) {
+				const got = deltaE(p[from], p[to]);
+				const need =
+					from === "canvas" ? GROUND_STEP_DELTA_E : ELEVATED_PANEL_DELTA_E;
+				if (got < need) {
 					fail(
-						`${id}: \`canvas\` and \`sunken\` are ΔE00 ${r2(got)} apart (need ${GROUND_STEP_DELTA_E}) — a well nobody can see is not a well, and both blocks that paint one are read inside a trace that sits on the canvas`,
+						from === "canvas"
+							? `${id}: \`canvas\` and \`sunken\` are ΔE00 ${r2(got)} apart (need ${need}) — a well nobody can see is not a well, and both blocks that paint one are read inside a trace that sits on the canvas`
+							: `${id}: \`surface\` ${p.surface} and \`elevated\` ${p.elevated} are ΔE00 ${r2(got)} apart (need ${need}) — the hover rung is the ground a hover, a menu and a dialog are all painted on, so it cannot sit closer to the panel than this and still report the pointer; it is also the ground the current row has to outrank, so a rung at this floor is what the row/hover ordering is measured against. Place it at the lowest \`L*\` that clears this and no lower, then let \`HIGHLIGHT_HOVER_ORDER_STEP\` below decide whether the row can clear it`,
 					);
 				}
 			}
@@ -5454,6 +5741,22 @@ if (stalePerceptible.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * And the same from the other side for the row/hover ledger: an entry whose pair
+ * now clears `HIGHLIGHT_HOVER_ORDER_STEP` is a mute button over an assertion
+ * that holds - the palette has window the entry records as missing, which is
+ * what a re-authored ink or a lifted `surface` would produce.
+ */
+const staleHoverOrder = HIGHLIGHT_HOVER_ORDER_EXCEPTIONS.filter(
+	(e) => !hoverOrderSeen.has(e),
+);
+if (staleHoverOrder.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${staleHoverOrder.length} recorded row/hover window(s) are no longer reported by the palette (${staleHoverOrder.map((e) => e.theme).join(", ")}). Remove the entry; the pair holds the ${HIGHLIGHT_HOVER_ORDER_STEP} L* step now.`,
+	);
+	process.exit(1);
+}
+
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_CONTINUITY_EXCEPTIONS.length} measured continuity exception(s), ${overBand} over-band exception(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_CONTINUITY_EXCEPTIONS.length} measured continuity exception(s), ${overBand} over-band exception(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s), ${HIGHLIGHT_HOVER_ORDER_EXCEPTIONS.length} recorded row/hover window(s).`,
 );

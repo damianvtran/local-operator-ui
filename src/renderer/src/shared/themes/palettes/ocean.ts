@@ -49,11 +49,11 @@ export const ocean: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.71, elevated +8.78, sunken -3.42 L*), so the hierarchy the
+		 * (surface +4.71, elevated +8.78, sunken -3.42 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #0C1A20 -> #142228 (L* 8.32 -> 12.26)
 		 * surface #132630 -> #1A2C37 (L* 14.05 -> 16.97)
-		 * elevated #1B2E39 -> #223540 (L* 17.84 -> 21.04)
+		 * elevated #1B2E39 -> #1E323C (L* 17.84 -> 19.57)
 		 * sunken #081218 -> #131A20 (L* 4.97 -> 8.84)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -67,7 +67,7 @@ export const ocean: ThemeDefinition = {
 		 */
 		canvas: "#142228",
 		surface: "#1A2C37",
-		elevated: "#223540",
+		elevated: "#1E323C",
 		sunken: "#131A20",
 
 		/*
@@ -75,7 +75,7 @@ export const ocean: ThemeDefinition = {
 		 * stepped 2.95 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.49x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.11 from `surface`, 3.34 from `elevated`, 10.51
+		 * the row's ground. ΔE00 4.11 from `surface`, 3.27 from `elevated`, 10.51
 		 * from `sunken`, 11.92 from `accentWash`; the inks on the ground are
 		 * 10.72:1, 7.09:1, 5.17:1. Continuity with the panel: hue 3.18 degrees off
 		 * the panel's (the assertion allows 12) and chroma 14.97 where the panel
@@ -86,7 +86,7 @@ export const ocean: ThemeDefinition = {
 		ink: "#DCEBEE",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.87:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.20:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -101,7 +101,7 @@ export const ocean: ThemeDefinition = {
 		// so a control and a reading stay two inks.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.24:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -180,7 +180,7 @@ export const ocean: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		successBorder: "#49876D",
 		warning: "#D9B45C",
@@ -188,7 +188,7 @@ export const ocean: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#8B7A47",
 		danger: "#EF8B85",
@@ -201,7 +201,7 @@ export const ocean: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		dangerBorder: "#AC6967",
 
@@ -213,7 +213,7 @@ export const ocean: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
 		infoBorder: "#5280A0",
 
