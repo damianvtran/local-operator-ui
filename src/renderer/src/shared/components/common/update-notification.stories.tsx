@@ -120,8 +120,27 @@ const SERVER_UPDATE_FAILURE_MESSAGE =
  * the remedy is the defect review round 2 filed (U7). The sentence before the blank
  * line is the producer's, and the block below it is the installer's own words.
  */
+/*
+ * The offer's plan copy, as `resolveGlobalInstallPlan` emits it for a source build.
+ *
+ * Shared between the two offer stories below because the two arms differ only in who
+ * would be restarted, and the cost sentence is the same: the app rebuilds the checkout
+ * in place. The adopted variant is the arm users other than the operator meet, and it
+ * had no frame at all until round 4 (design D3).
+ */
+const SOURCE_BUILD_REMEDY =
+	"Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+
+/** The classification line, a machine fact in the ribbon rather than app prose. */
+const OFFER_DETAIL =
+	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
+
+/** The by-hand arm's classification line: the script is absent, so the app does not rebuild. */
+const BY_HAND_DETAIL =
+	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; `lop update` would install the published release over it.";
+
 const SOURCE_BUILD_REFUSAL_SENTENCE =
-	"The server update did not install: `lop-update` exited 1. The running backend is still serving version 0.56.10. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. You can also run `lop-update` yourself in a terminal.";
+	"The server update did not install: `lop-update` exited 1. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. The installer's own output is below. You can also run `lop-update` yourself in a terminal.";
 
 /**
  * The installer's OWN words for that refusal, in the field the producer fills.
@@ -155,7 +174,7 @@ const SOURCE_BUILD_REFUSAL_OUTPUT = [
  * until it exits.
  */
 const ORPHANED_UPDATER_SENTENCE =
-	"The server update did not finish: the installer could not be run to a verdict or timed out. The updater was stopped, and something it started may still be running - it may still be replacing the install, and another update will not be started until it exits. The running backend is still serving version 0.56.10; see the update service log for the installer's output.";
+	"The server update did not finish: the installer could not be run to a verdict. The updater was stopped; something it started may still be replacing the install. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
 /**
  * The CHILD's output for that frame, not the app's log line.
@@ -167,6 +186,12 @@ const ORPHANED_UPDATER_SENTENCE =
  * round 3, MINOR-2). These lines are the tool's own, taken from the isolated rebuild
  * transcript in docs/evidence/server-update-source-build/README.md, cut where the stop
  * landed.
+ *
+ * THEY ARE STDERR, WHICH IS THE STREAM THE PRODUCER READS FIRST. `runGlobalUpdateAttempt`
+ * selects `run.stderr.length > 0 ? run.stderr : run.stdout`, so a fixture drawn from the
+ * tool's stdout would be a frame of a stream the panel only shows when stderr is empty -
+ * real output, real provenance, wrong field. uv writes its resolver and build progress to
+ * stderr, which is what these are (QA round 4, NOTE).
  */
 const ORPHANED_UPDATER_OUTPUT = [
 	"lop-update: mobile web bundle: built",
@@ -386,7 +411,8 @@ const mockUpdaterApi = () => {
 			 */
 			if (
 				window.triggerBackendUpdateSourceBuild ||
-				window.triggerBackendUpdateSourceBuildInFlight
+				window.triggerBackendUpdateSourceBuildInFlight ||
+				window.triggerBackendUpdateSourceBuildAdopted
 			) {
 				callback({
 					currentVersion: "0.56.10",
@@ -394,11 +420,11 @@ const mockUpdaterApi = () => {
 					updateCommand: "lop-update",
 					canManageUpdate: true,
 					startupMode: "GLOBAL_INSTALL",
-					restartable: true,
-					remedy:
-						"The app rebuilds this source checkout with `lop-update` and then restarts the server it started. That rebuild reinstalls the install in place, so sessions running on this machine can be interrupted while it happens, and it can take a few minutes. The version this install reports afterwards is the checkout's, not the release the app offered.",
-					detail:
-						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; the app rebuilds it with the checkout's own script.",
+					// The one field the two arms differ in: who would be restarted, and therefore
+					// whether the reassurance is the restart's or the install's.
+					restartable: !window.triggerBackendUpdateSourceBuildAdopted,
+					remedy: SOURCE_BUILD_REMEDY,
+					detail: OFFER_DETAIL,
 					sourceBuild: true,
 				});
 			}
@@ -528,8 +554,7 @@ const mockUpdaterApi = () => {
 					message:
 						"This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
 					command: "lop update",
-					detail:
-						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; `lop update` would install the published release over it.",
+					detail: BY_HAND_DETAIL,
 					latestVersion: "0.54.20",
 					currentVersion: "0.54.14",
 					sourceBuild: true,
@@ -694,7 +719,28 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateProgress: () => () => {},
+		/*
+		 * THE REGISTRATION HAS TO BE ON **THIS** OBJECT, not on
+		 * `createEmptyUpdaterMethods`. The mock below assigns `window.api.updater` this
+		 * literal wholesale, so a registration added to the empty object is thrown away
+		 * with it: zero listeners, no phase, and the panel paints the phase-null fallback -
+		 * which is why `backend-update-in-flight-source-build` was byte-identical to the
+		 * release route in 12/12 themes even after the copy it claimed to show existed
+		 * (QA Q-3 = design D1 = UX U2, round 4). Two streams executed that, and this is the
+		 * one-line cause.
+		 */
+		onBackendUpdateProgress: (
+			callback: (progress: {
+				phase: "installing" | "restarting";
+				sourceRebuild?: boolean;
+			}) => void,
+		) => {
+			backendUpdateProgressListeners.push(callback);
+			return () => {
+				const index = backendUpdateProgressListeners.indexOf(callback);
+				if (index >= 0) backendUpdateProgressListeners.splice(index, 1);
+			};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -724,6 +770,13 @@ declare global {
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
 		triggerBackendUpdateSourceBuild?: boolean;
+		/**
+		 * The same offer on a machine where the app did NOT start the server. The arm users
+		 * other than the operator meet, and until round 4 it had no frame anywhere in the
+		 * tree, so the cost sentence claimed for it could not be judged from pixels (design
+		 * D3).
+		 */
+		triggerBackendUpdateSourceBuildAdopted?: boolean;
 		triggerBackendUpdateSourceBuildInFlight?: boolean;
 		triggerBackendUpdateSourceBuildFailed?: boolean;
 		triggerBackendUpdateFailedOrphan?: boolean;
@@ -1217,6 +1270,7 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateNonManaged"
 	| "triggerBackendUpdateError"
 	| "triggerBackendUpdateSourceBuild"
+	| "triggerBackendUpdateSourceBuildAdopted"
 	| "triggerBackendUpdateSourceBuildInFlight"
 	| "triggerBackendUpdateSourceBuildFailed"
 	| "triggerBackendUpdateFailedOrphan";
@@ -1476,6 +1530,24 @@ export const BackendUpdateOfferSourceBuild: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateSourceBuild: true },
 	render: () => <Triggered flag="triggerBackendUpdateSourceBuild" />,
+};
+
+/**
+ * The SAME OFFER, on a machine where the app did not start the server.
+ *
+ * WHY THIS FRAME EXISTS. The adopted arm (`restartable: false`) is where users other than
+ * the operator meet the reconstruction cost, because it is the arm that swaps the
+ * app-owned sentence for the reassurance - and the swap is where the cost clause went
+ * missing until it was fixed to append the plan's later sentences rather than replace them
+ * (round 3, U2). A claim about what that arm SHOWS could not be judged from pixels while
+ * no frame showed it (round 4, D3), so this is its frame: the reassurance about the restart
+ * and the cost about the rebuild now sit in one paragraph with their own referents, and
+ * only a still can show whether a reader can tell them apart.
+ */
+export const BackendUpdateOfferSourceBuildAdopted: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateSourceBuildAdopted: true },
+	render: () => <Triggered flag="triggerBackendUpdateSourceBuildAdopted" />,
 };
 
 /**

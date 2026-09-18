@@ -238,6 +238,46 @@ export const THEMES = [
 export const SESSION_SECTION =
 	"[data-panel-body] section:has(input[aria-label='Search sessions'])";
 
+/**
+ * WHAT A FRAME MUST SHOW, for the states whose whole point is a sentence.
+ *
+ * WHY THIS EXISTS. `backend-update-in-flight-source-build` was committed as evidence
+ * for copy that no reader could see: the stories' mock overwrote
+ * `window.api.updater` with an object whose `onBackendUpdateProgress` was a no-op, so
+ * zero listeners were registered, the panel painted the phase-null fallback, and the
+ * frame was byte-identical to the release route's in all twelve themes. Every gate
+ * passed - the story rendered, the frame was sharp, the count was right - because a
+ * still cannot tell two sentences apart and nothing here was looking for one (QA Q-3 =
+ * design D1 = UX U2, round 4). `storyDrew` counts elements; this asks whether the
+ * sentence the story is ABOUT is on the screen, and refuses the shutter when it is not.
+ *
+ * Keep the substrings short and distinctive: each is asserted against the rendered
+ * text, so a copy edit that moves the claim should fail here rather than quietly
+ * shipping a frame of something else.
+ */
+const STORY_CLAIMS = new Map([
+	[
+		"common-updatenotification--backend-update-in-flight-source-build",
+		"reinstalls the install in place",
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build",
+		"Rebuilds this checkout with `lop-update`. The rebuild happens in place",
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		"The rebuild happens in place",
+	],
+	[
+		"common-updatenotification--backend-update-failed-source-build",
+		"REFUSING to release a stale ref",
+	],
+	[
+		"common-updatenotification--backend-update-failed-orphan",
+		"something it started may still be replacing the install",
+	],
+]);
+
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -2336,6 +2376,18 @@ export const STORIES = [
 	 * on its budget with something it started still alive.
 	 */
 	["common-updatenotification--backend-update-offer-source-build", 1280, 900],
+	/*
+	 * The same offer on a machine where the app did NOT start the server. It had no frame
+	 * anywhere in the tree until round 4, and it is the arm users other than the operator
+	 * meet: the reassurance about the restart and the cost about the rebuild sit in one
+	 * paragraph there, and only a still can show whether a reader can tell them apart
+	 * (design D3). Same viewport as the app-owned arm, because the two are the same card.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		1280,
+		900,
+	],
 	[
 		"common-updatenotification--backend-update-in-flight-source-build",
 		1280,
@@ -4036,6 +4088,25 @@ const main = async () => {
 				}
 				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
+			}
+			/*
+			 * THE CLAIM CHECK, at the last moment before the shutter: the story says which
+			 * sentence it is evidence FOR, and a frame that does not carry it is not
+			 * evidence for anything. It runs here rather than in the probe so it costs a
+			 * round trip per captured frame and never blocks a story that has no claim.
+			 */
+			const claim = STORY_CLAIMS.get(story);
+			if (claim) {
+				const { result: claimResult } = await cdp.send("Runtime.evaluate", {
+					expression: "document.body.innerText || ''",
+					returnByValue: true,
+				});
+				const rendered = claimResult?.value ?? "";
+				if (!rendered.includes(claim)) {
+					throw new Error(
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. The story exists to show ${JSON.stringify(claim)}, and the rendered text does not contain it - a frame of the right size and the wrong copy is what shipped for this state once already (QA round 4, Q-3). Rendered text: ${JSON.stringify(rendered.replace(/\s+/g, " ").slice(0, 300))}`,
+					);
+				}
 			}
 			if (!prepared) {
 				throw new Error(

@@ -341,6 +341,29 @@ function isAuthoredSentence(text: string): boolean {
 	return sentence.split(WHITESPACE_RUN).length >= 4;
 }
 
+/**
+ * The sentence a SERVER-UPDATE failure panel shows, verbatim.
+ *
+ * WHY IT IS NOT `updateErrorMessage`. That function exists to tell an app's copy from
+ * the machine's, and the only lever it has is a length: `AUTHORED_SENTENCE_MAX_LENGTH`
+ * reads anything longer than 400 characters as a dump and replaces it with the check
+ * stage's sentence. The message on this channel is not a dump - the main process
+ * COMPOSED it, from the app's own vocabulary, in `serverUpdateFailureSentence` - but it
+ * measured 401, 467 and 481-483 characters across the three routes, so two of them had
+ * their sentence silently replaced: the panel showed "The update check could not
+ * finish" under a heading that said the update did not finish, and the cost clause added
+ * for a user-visible change never reached a reader (reviewer M1 = UX U1 = QA Q-1,
+ * round 4). A heuristic that deletes user-facing copy is the bug; the cap was only its
+ * trigger, and raising the cap would move the trigger rather than remove it.
+ *
+ * The check path - toasts, and reports written around a caught value - keeps the
+ * classifier, which is what it is for. This channel's payload is data the renderer
+ * trusts, and the guard test asserts every route's composed sentence survives it.
+ */
+export function serverUpdateFailureCopy(message: string): string {
+	return message;
+}
+
 /** Just the sentence, for a surface that has nowhere to put a machine line. */
 export function updateErrorMessage(message: string): string {
 	return updateErrorCopy(message).sentence;

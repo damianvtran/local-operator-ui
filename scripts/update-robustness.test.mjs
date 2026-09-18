@@ -9774,3 +9774,115 @@ test("an unpackaged instance leaves the packaged app's install state alone", asy
 		rmSync(userData, { recursive: true, force: true });
 	}
 });
+
+/**
+ * THE SERVER-UPDATE FAILURE SENTENCE IS THE APP'S OWN COPY, AND IT ARRIVES VERBATIM.
+ *
+ * WHY THIS CASE EXISTS. The panel used to run the composed sentence through the copy
+ * classifier, whose only lever is a length: `AUTHORED_SENTENCE_MAX_LENGTH = 400` reads
+ * anything longer as a machine dump and substitutes the check stage's sentence. The
+ * composed payload measured 401, 467 and 481-483 characters on the three routes, so two
+ * of them showed "The update check could not finish" under a heading saying the update
+ * did not finish, and a cost clause that a whole review round was spent adding never
+ * reached a reader. Nothing in the suite failed, because the classifier's rule was
+ * working exactly as written - the defect was the rule's reach, and the guard has to be
+ * about the promise instead: every route's sentence reaches the panel unchanged, it is
+ * inside a budget a person would read, and the fixtures the frames are shot from are
+ * strings this producer can actually emit (reviewer M1 = UX U1 = QA Q-1/Q-2, round 4).
+ */
+test("every server-update failure sentence reaches the panel verbatim, and the fixtures are producible", async () => {
+	const bundleOf = async (entry) => {
+		const built = await build({
+			stdin: {
+				contents: `export * from "${entry}";`,
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			write: false,
+		});
+		return import(
+			`data:text/javascript;base64,${Buffer.from(
+				built.outputFiles[0].text,
+			).toString("base64")}`
+		);
+	};
+	const producer = await bundleOf("./src/main/server-update-copy");
+	const panel = await bundleOf(
+		"./src/renderer/src/shared/utils/update-error-copy",
+	);
+	const stories = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.stories.tsx",
+		),
+		"utf8",
+	);
+	const routes = [
+		{
+			name: "release",
+			input: {
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis: "error: no matching distribution found for local-operator\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+		{
+			name: "rebuild-refusal",
+			fixture: "SOURCE_BUILD_REFUSAL_SENTENCE",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop-update",
+			},
+		},
+		{
+			name: "orphan",
+			fixture: "ORPHANED_UPDATER_SENTENCE",
+			input: {
+				rebuildRoute: false,
+				ran: false,
+				exitCode: null,
+				groupSurvived: true,
+				diagnosis: "installer exited 127\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+	];
+	for (const route of routes) {
+		const sentence = producer.serverUpdateFailureSentence(route.input);
+		// 1. The panel's own helper hands it back untouched.
+		assert.equal(panel.serverUpdateFailureCopy(sentence), sentence);
+		// 2. It is a sentence, not a dump: the classifier's budget is not what protects it.
+		assert.ok(
+			sentence.length < 400,
+			`${route.name}: the composed sentence is ${sentence.length} characters, over the copy budget`,
+		);
+		// 3. A frame is shot from its fixture, so the fixture must be a string this
+		//    producer emits. This is the half that let the stale orphan fixture hide the
+		//    defect above in round 3.
+		if (route.fixture) {
+			assert.ok(
+				stories.includes(sentence),
+				`${route.fixture} is not the string the producer composes - re-shoot from a producible value`,
+			);
+		}
+	}
+});
