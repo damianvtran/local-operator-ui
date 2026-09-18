@@ -519,6 +519,44 @@ async function stopProcess(handle, { termMs = 8000, killMs = 5000 } = {}) {
  */
 const reaping = { running: false };
 
+/**
+ * Wait a moment for this run's processes to go, then kill what is left.
+ *
+ * WHY A WAIT AND A KILL RATHER THAN A SINGLE LOOK. A renderer helper can outlive
+ * its browser process by a moment - the app is SIGTERMed, the helper re-parents
+ * to launchd before it notices, and it is gone a second later - and a leaked one
+ * sits on the operator's screen for as long as nobody looks. Measured on this
+ * scene's own run: one `Electron Helper (Renderer)` with this run's
+ * `--user-data-dir` on its command line, seconds after the app was stopped and
+ * re-parented to pid 1. So the reap is bounded (five seconds), and it escalates
+ * by EXACT PID - never by pattern, because a `pkill` would take the operator's
+ * own running app with it - and the caller still reports what it had to kill, so
+ * a rig that starts leaking loudly keeps saying so.
+ */
+async function reapStrays({ graceMs = 5000 } = {}) {
+	const started = Date.now();
+	for (;;) {
+		const seen = thisRunsProcesses();
+		const pids = seen.lines
+			.map((line) => Number(line.trim().split(/\s+/)[0]))
+			.filter((pid) => Number.isInteger(pid) && pid > 0);
+		if (pids.length === 0) {
+			return { killed: [], waitedMs: Date.now() - started };
+		}
+		if (Date.now() - started > graceMs) {
+			for (const pid of pids) {
+				try {
+					process.kill(pid, "SIGKILL");
+				} catch {
+					// Already gone between the listing and the kill.
+				}
+			}
+			return { killed: pids, waitedMs: Date.now() - started };
+		}
+		await wait(250);
+	}
+}
+
 async function reapLiveBoots({ code, why }) {
 	if (reaping.running) return;
 	reaping.running = true;
@@ -653,6 +691,20 @@ async function launchApp({
 
 	const port = await pickFreePort();
 	if (await isListening(port)) throw new Error(`picked port ${port} is in use`);
+	/*
+	 * A SECOND, SEPARATE port for the MAIN process's Node inspector.
+	 *
+	 * Nothing about the app's behaviour changes with it - it is the same switch a
+	 * Node process takes - and what it buys is the only instrument this harness has
+	 * for the claims about TIME: the probe counts are `fs` calls main itself makes,
+	 * and main is the one process a page-level wrapper cannot reach (see
+	 * `CdpClient.attachNode`). It is a distinct port from the renderer's own
+	 * `--remote-debugging-port` because they are two different debuggers on two
+	 * different targets, and the run asserts which one it attached to.
+	 */
+	const inspectPort = await pickFreePort();
+	if (await isListening(inspectPort))
+		throw new Error(`picked inspect port ${inspectPort} is in use`);
 
 	/*
 	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
@@ -677,6 +729,7 @@ async function launchApp({
 			// rather than a machine-wide exclusion — the harness does not serialise.
 			`--user-data-dir=${USER_DATA}-${tag}`,
 			`--remote-debugging-port=${port}`,
+			`--inspect=${inspectPort}`,
 			"--window-mode=headless",
 			`--window-size=${WINDOW_SIZE}`,
 		],
@@ -697,6 +750,7 @@ async function launchApp({
 	const handle = {
 		child,
 		port,
+		inspectPort,
 		pid: child.pid,
 		logPath,
 		stream,
@@ -709,6 +763,39 @@ async function launchApp({
 	 */
 	liveBoots.add(handle);
 	return handle;
+}
+
+/**
+ * Let this run's backend be framed, in the BUILD OUTPUT only.
+ *
+ * WHY THIS IS NEEDED AT ALL, and why it is not a change to the app. The renderer's
+ * CSP is a meta tag in `src/renderer/index.html`, and its `frame-src` names
+ * `http://localhost:1111` and `http://127.0.0.1:1111` - the operator's own
+ * backend. A driver run points the app at an ISOLATED backend on a port picked
+ * for it, so the HTML viewer's iframe is refused before a request is ever made:
+ * measured on this scene's first attempt, the pane painted blank and the
+ * renderer's request log stayed empty, which looks exactly like "the viewer did
+ * not re-read the file".
+ *
+ * The accommodation is the one this repo's `mentioned-files-app` rig records for
+ * its media frames: the directive is widened in the BUILD OUTPUT (`out/` is
+ * gitignored) and `src/` is untouched, so no committed file knows this harness
+ * exists. It is applied only when `--backend` was given, it says what it did in
+ * the run's own output, and the run asserts the app is talking to that backend
+ * and no other.
+ */
+function widenCspForBackend(backendUrl) {
+	const file = join(ROOT, "out/renderer/index.html");
+	if (!existsSync(file)) return "no built renderer to widen";
+	const origin = backendUrl.replace(/\/$/, "");
+	const before = readFileSync(file, "utf8");
+	if (before.includes(origin)) return `already widened for ${origin}`;
+	const widened = before
+		.replace(/frame-src ([^"]*?)"/, (_m, list) => `frame-src ${list.trim()} ${origin}"`)
+		.replace(/media-src ([^"]*?)"/, (_m, list) => `media-src ${list.trim()} ${origin}"`);
+	if (widened === before) return "no frame-src/media-src directive to widen";
+	writeFileSync(file, widened);
+	return `out/renderer/index.html: ${origin} added to frame-src and media-src (build output only; src/ untouched)`;
 }
 
 async function readAppLog(handle) {
@@ -766,12 +853,27 @@ class CdpClient {
 		this.nextId = 1;
 		this.pending = new Map();
 		this.console = [];
+		/*
+		 * Every URL the target requested, for the one claim in the canvas-freshness
+		 * scene that is ABOUT a request rather than about the page: the HTML viewer
+		 * renders a backend URL in an iframe, so "the fresh bytes reached the screen"
+		 * is observable as a NEW request for that URL, and nothing else is. The
+		 * iframe is cross-origin from the app, so its DOM cannot be read back - the
+		 * request is the honest instrument (`Network.enable` is asked for below).
+		 */
+		this.requests = [];
 		socket.addEventListener("message", (event) => {
 			let message = null;
 			try {
 				message = JSON.parse(event.data);
 			} catch {
 				return;
+			}
+			if (message.method === "Network.requestWillBeSent") {
+				this.requests.push({
+					at: Date.now(),
+					url: message.params?.request?.url ?? "",
+				});
 			}
 			if (message.method === "Runtime.consoleAPICalled") {
 				this.console.push(
@@ -823,6 +925,7 @@ class CdpClient {
 				const client = new CdpClient(socket);
 				client.send("Runtime.enable").catch(() => {});
 				client.send("Page.enable").catch(() => {});
+				client.send("Network.enable").catch(() => {});
 				return client;
 			}
 			if (Date.now() - started > timeoutMs) {
@@ -848,6 +951,57 @@ class CdpClient {
 				}
 			}, 30_000);
 		});
+	}
+
+	/**
+	 * Attach to the app's MAIN process, over its Node inspector.
+	 *
+	 * WHY THIS EXISTS AT ALL, and why the page could not do it instead. The canvas
+	 * freshness checks are claims about TIME, and the instrument that makes them
+	 * measurable is a count of the probes the app made. The renderer cannot be
+	 * counted from the page: `window.api` is a `contextBridge` object, so a wrapper
+	 * assigned over one of its properties is silently ignored (measured - the first
+	 * version of this scene installed one and read zero for a run in which probes
+	 * demonstrably happened), and Electron 44 never replays
+	 * `Runtime.executionContextCreated`, so the preload's own `ipcRenderer` cannot
+	 * be reached either.
+	 *
+	 * Main has neither problem: it is a Node process with a Node inspector, and the
+	 * counter below wraps the `fs` calls the probe handler itself makes. The run
+	 * VALIDATES it before measuring anything (a probe issued from the renderer must
+	 * appear in the log), so a later zero is a zero rather than a broken wrapper.
+	 *
+	 * The inspector is launched for this run only (`--inspect=<port>`), on a port
+	 * picked free for it, and the app is otherwise untouched: no switch changes what
+	 * the app does, only what can be observed about it.
+	 */
+	static async attachNode(port, timeoutMs = 60_000) {
+		const started = Date.now();
+		for (;;) {
+			let list = [];
+			try {
+				list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+			} catch {
+				list = [];
+			}
+			const target = list.find((entry) => entry.type === "node");
+			if (target) {
+				const socket = new WebSocket(target.webSocketDebuggerUrl);
+				await new Promise((resolveOpen, rejectOpen) => {
+					socket.addEventListener("open", resolveOpen, { once: true });
+					socket.addEventListener("error", rejectOpen, { once: true });
+				});
+				const client = new CdpClient(socket);
+				client.send("Runtime.enable").catch(() => {});
+				return client;
+			}
+			if (Date.now() - started > timeoutMs) {
+				throw new Error(
+					`no main-process inspector target on port ${port} after ${timeoutMs}ms`,
+				);
+			}
+			await wait(250);
+		}
 	}
 
 	/**
@@ -4535,7 +4689,77 @@ function setExactMtime(path, seconds) {
 	return statSync(path).mtimeMs;
 }
 
-async function sceneCanvasFreshness(cdp) {
+/**
+ * Count the app's own `fs` calls for this run's scratch root, in MAIN.
+ *
+ * WHY HERE AND NOT IN THE PAGE: the claims this scene makes about time are
+ * claims about the app's work - "the poll probed the document on screen three
+ * times in six seconds", "the tab that is off screen was not probed at all" -
+ * and the page cannot be counted. `window.api` is a `contextBridge` object, so a
+ * wrapper assigned over one of its properties is silently ignored: the first
+ * version of this scene installed one and read zero for a run in which probes
+ * demonstrably happened, and the store reading that replaced it proves
+ * non-APPLICATION rather than non-probing, which are different claims. Main is a
+ * Node process with an inspector, so the counter wraps the `fs` calls the probe
+ * handler itself makes and the scene's numbers are the app's own.
+ *
+ * The instrument is VALIDATED before it is used, by every run: a probe issued
+ * from the renderer through `window.api.probeFiles` must appear in the log. A
+ * count of zero after that is a measurement, not a broken wrapper.
+ */
+function installProbeCounter(main, root) {
+	return main.evaluate(`(() => {
+		if (globalThis.__probeLog) return "already installed";
+		const log = [];
+		globalThis.__probeLog = log;
+		const fs = process.mainModule?.require("node:fs") ?? globalThis.require?.("node:fs");
+		if (!fs) return "unreachable: process.mainModule is " + String(process.mainModule);
+		for (const name of ["statSync", "lstatSync", "readFileSync"]) {
+			const original = fs[name];
+			if (typeof original !== "function") continue;
+			fs[name] = function (target, ...rest) {
+				if (typeof target === "string" && target.startsWith(${JSON.stringify(root)})) {
+					log.push({ at: Date.now(), fn: name, path: target });
+				}
+				return original.apply(this, [target, ...rest]);
+			};
+		}
+		return "installed";
+	})()`);
+}
+
+/**
+ * How many times main touched one path since an instant.
+ *
+ * `statSync`/`lstatSync` are the probes (`probe-files` answers from a `statSync`
+ * with `throwIfNoEntry: false`); `readFileSync` is a read, and the two are
+ * counted separately because "did not look" and "did not read" are different
+ * claims - the check that a document is not being worked on behind the reader's
+ * back is about LOOKING.
+ */
+function mainCalls(main, path, sinceMs, { reads = false } = {}) {
+	const names = reads ? '["readFileSync"]' : '["statSync", "lstatSync"]';
+	return main.evaluate(
+		`globalThis.__probeLog.filter((entry) => entry.at >= ${sinceMs} && ${names}.includes(entry.fn) && entry.path === ${JSON.stringify(path)}).length`,
+	);
+}
+
+/**
+ * Prove the counter counts, by making the app probe a path through its own
+ * bridge and watching the log move. Every run does this before it measures
+ * anything, so a later zero is a zero.
+ */
+async function validateProbeCounter(main, cdp, path) {
+	const before = await mainCalls(main, path, 0);
+	await cdp.evaluate(
+		`window.api.probeFiles([${JSON.stringify(path)}]).then((answers) => answers.length)`,
+	);
+	await wait(250);
+	const after = await mainCalls(main, path, 0);
+	return { before, after, counted: after === before + 1 };
+}
+
+async function sceneCanvasFreshness(cdp, app) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
 	check(
@@ -4613,6 +4837,20 @@ async function sceneCanvasFreshness(cdp) {
 	note("the route the scene works on", JSON.stringify(routed));
 
 	/*
+	 * The instrument, installed and PROVED before anything is measured. See
+	 * `installProbeCounter`: the page cannot count the app's probes and this can,
+	 * and a count of zero from a wrapper nobody validated would be worth nothing.
+	 */
+	const main = await CdpClient.attachNode(app.inspectPort);
+	const counter = await installProbeCounter(main, SCRATCH);
+	note("probe counter (in main)", `${counter}, root ${SCRATCH}`);
+	check(
+		"the probe counter is installed in the process the probes run in",
+		counter === "installed",
+		counter,
+	);
+
+	/*
 	 * ---- the markdown document: the poll, the mtime gate, the control --------
 	 */
 	const opened = await verb(cdp, "openCanvasDocument", { path: markdown });
@@ -4626,6 +4864,14 @@ async function sceneCanvasFreshness(cdp) {
 		"the document's bytes were read into the canvas, not left to a viewer",
 		opened.contentLength === markdownBody("first-version").length,
 		`${opened.contentLength} characters for a ${markdownBody("first-version").length}-character file`,
+	);
+
+	const proof = await validateProbeCounter(main, cdp, markdown);
+	note("the counter's own proof", JSON.stringify(proof));
+	check(
+		"the counter counts a probe this run made through the app's own bridge",
+		proof.counted,
+		`${proof.before} -> ${proof.after} probe(s) for the document`,
 	);
 
 	const first = await canvasDocumentText(cdp);
@@ -4707,8 +4953,8 @@ async function sceneCanvasFreshness(cdp) {
 	})()`);
 	note("geometry", JSON.stringify(geometry));
 	check(
-		"the document's line is one 28px row",
-		geometry !== null && Math.abs(geometry.lineHeight - 28) < 0.5,
+		"the document's line is one 32px row, the tab strip's own height",
+		geometry !== null && Math.abs(geometry.lineHeight - 32) < 0.5,
 		JSON.stringify(geometry),
 	);
 	check(
@@ -4742,10 +4988,28 @@ async function sceneCanvasFreshness(cdp) {
 		applied.ok,
 		`waited ${appliedLatencyMs}ms (poll every ${CANVAS_FRESHNESS_POLL_MS}ms); last text ${JSON.stringify(String(applied.last).slice(0, 120))}`,
 	);
+	const probesSinceWrite = await mainCalls(main, markdown, write2At);
 	check(
-		"the automatic pickup is the poll's, not an accident of some faster path",
-		appliedLatencyMs >= CANVAS_FRESHNESS_POLL_MS / 2,
-		`${appliedLatencyMs}ms after the write`,
+		"and the poll is what picked it up: the app probed the path, then read it",
+		applied.ok &&
+			probesSinceWrite >= 1 &&
+			appliedLatencyMs <= CANVAS_FRESHNESS_POLL_MS * 2 + 500,
+		`applied ${appliedLatencyMs}ms after the write on ${probesSinceWrite} probe(s) - a free-running ${CANVAS_FRESHNESS_POLL_MS}ms poll, so the latency is its phase and not a delay (the lower bound this check used to assert was wrong for that reason: QA round 1, Q2)`,
+	);
+
+	/*
+	 * The idle interval, counted rather than asserted: three ticks of a document
+	 * nobody is touching. This is the number the "efficient" half of the request
+	 * rests on - one `statSync` per two seconds, and no read at all.
+	 */
+	const idleSince = Date.now();
+	await wait(CANVAS_FRESHNESS_POLL_MS * 3);
+	const idleProbes = await mainCalls(main, markdown, idleSince);
+	const idleReads = await mainCalls(main, markdown, idleSince, { reads: true });
+	check(
+		"an idle on-screen document costs one probe per tick and no read",
+		idleProbes >= 2 && idleProbes <= 4 && idleReads === 0,
+		`${idleProbes} probe(s) and ${idleReads} read(s) in ${Date.now() - idleSince}ms`,
 	);
 	const stampAfterApply = await textOf(
 		cdp,
@@ -4839,13 +5103,21 @@ async function sceneCanvasFreshness(cdp) {
 		JSON.stringify(secondOpen),
 	);
 
+	const backgroundSince = Date.now();
 	writeFileSync(markdown, markdownBody("fourth-version"));
 	const markdownMtime2 = setExactMtime(markdown, MARKDOWN_T2);
 	await wait(CANVAS_FRESHNESS_POLL_MS * 2 + 1000);
 	const backgroundHeld = await storedDocument(cdp, markdown);
 	const backgroundShown = await canvasDocumentText(cdp);
+	const backgroundProbes = await mainCalls(main, markdown, backgroundSince);
+	const onScreenProbes = await mainCalls(main, code, backgroundSince);
 	check(
-		"a tab that is off screen is left alone: nothing was applied to it in five seconds",
+		"a tab that is off screen is NOT PROBED - the app does not look at it at all",
+		backgroundProbes === 0,
+		`${backgroundProbes} probe(s) for the off-screen document and ${onScreenProbes} for the one on screen, in ${Date.now() - backgroundSince}ms`,
+	);
+	check(
+		"and nothing was applied to it either, so the two claims agree",
 		backgroundHeld?.content.includes("fourth-version") === false,
 		`the store holds ${JSON.stringify(String(backgroundHeld?.content).slice(0, 60))} for a file whose mtime moved about ${Date.now() - markdownMtime2}ms ago`,
 	);
@@ -4873,10 +5145,13 @@ async function sceneCanvasFreshness(cdp) {
 		activated.ok && activatedStore?.content === markdownBody("fourth-version"),
 		`applied ${activationLatencyMs}ms after the switch; the store now holds ${JSON.stringify(String(activatedStore?.content).slice(0, 60))}`,
 	);
+	const switchProbes = await mainCalls(main, markdown, switchAt);
 	check(
-		"and the switch is what paid for it, inside one poll interval of the press",
-		activated.ok && activationLatencyMs < CANVAS_FRESHNESS_POLL_MS,
-		`${activationLatencyMs}ms after the switch, against a ${CANVAS_FRESHNESS_POLL_MS}ms poll`,
+		"and the switch is what paid for it: it probed the path, inside one poll interval",
+		activated.ok &&
+			activationLatencyMs < CANVAS_FRESHNESS_POLL_MS &&
+			switchProbes >= 1,
+		`applied ${activationLatencyMs}ms after the switch on ${switchProbes} probe(s), against a ${CANVAS_FRESHNESS_POLL_MS}ms poll`,
 	);
 	const stampOnSwitch = await textOf(
 		cdp,
@@ -4910,6 +5185,86 @@ async function sceneCanvasFreshness(cdp) {
 		"the activation frame is stable and toast-free",
 		activation.stable && activation.toastFree,
 		`attempts=${activation.attempts} stable=${activation.stable} toastFree=${activation.toastFree}`,
+	);
+
+	/*
+	 * ---- the HTML document: the one viewer whose bytes the BACKEND fetches ----
+	 *
+	 * WHY IT GETS ITS OWN HALF (code review round 1, M1). Every other viewer is
+	 * reachable from a store write: the text kinds re-read from `document.content`
+	 * and the byte kinds re-key an object URL. `html` renders a URL the backend
+	 * serves, inside an iframe, and the store write alone changed nothing on
+	 * screen - so this was the one kind where the freshness line moved, the store
+	 * held the file's new bytes, and the reader kept looking at the old document.
+	 *
+	 * HOW IT IS MEASURED. The iframe is cross-origin from the app, so its DOM
+	 * cannot be read back; what CAN be observed is the request it makes, and that
+	 * is exactly the claim - the preview fetched the new bytes rather than keeping
+	 * the document it was showing. The renderer client records every request
+	 * (`Network.enable` in `CdpClient.attach`).
+	 */
+	const htmlPath = join(dir, "panel.html");
+	const htmlBody = (marker) =>
+		`<!doctype html>\n<html>\n<body>\n<p id="marker">${marker}</p>\n</body>\n</html>\n`;
+	writeFileSync(htmlPath, htmlBody("html-first-version"));
+	const htmlMtime0 = setExactMtime(htmlPath, BASE_SECOND - 300);
+	const htmlOpen = await verb(cdp, "openCanvasDocument", { path: htmlPath });
+	note("openCanvasDocument (html)", JSON.stringify(htmlOpen));
+	const htmlMounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('#canvas-document-panel iframe'))`,
+		10_000,
+	);
+	const htmlRequests = () =>
+		cdp.requests.filter((entry) => entry.url.includes("panel.html")).length;
+	check(
+		"the html document opened in its own viewer, at the mtime the file has",
+		htmlMounted.ok && htmlOpen.readMtimeMs === htmlMtime0,
+		`${htmlOpen.readMtimeMs} against ${htmlMtime0}; iframe mounted=${htmlMounted.ok}`,
+	);
+	const htmlRequestsBefore = await htmlRequests();
+	const htmlBefore = await captureSettled(cdp, "canvas-freshness-html-before");
+	check(
+		"the html preview's before frame is stable and toast-free",
+		htmlBefore.stable && htmlBefore.toastFree,
+		`attempts=${htmlBefore.attempts} stable=${htmlBefore.stable} toastFree=${htmlBefore.toastFree}`,
+	);
+
+	writeFileSync(htmlPath, htmlBody("html-second-version"));
+	const htmlMtime1 = setExactMtime(htmlPath, BASE_SECOND - 200);
+	const htmlApplied = await waitForCondition(
+		cdp,
+		`(() => { const raw = window.localStorage.getItem("canvas-store"); return raw ? raw.includes("html-second-version") : false; })()`,
+		CANVAS_FRESHNESS_POLL_MS * 4,
+	);
+	const htmlRequestsAfter = await htmlRequests();
+	check(
+		"a file written on disk while its html tab is open reaches the store",
+		htmlApplied.ok,
+		`waited ${CANVAS_FRESHNESS_POLL_MS * 4}ms; the store says ${String(htmlApplied.last)}`,
+	);
+	check(
+		"and the preview FETCHED it again - the viewer the store write alone could not reach",
+		htmlRequestsAfter > htmlRequestsBefore,
+		`${htmlRequestsAfter - htmlRequestsBefore} new request(s) for panel.html (before ${htmlRequestsBefore}, after ${htmlRequestsAfter})`,
+	);
+	const htmlAfter = await captureSettled(cdp, "canvas-freshness-html-after");
+	check(
+		"the html preview's after frame is stable and toast-free",
+		htmlAfter.stable && htmlAfter.toastFree,
+		`attempts=${htmlAfter.attempts} stable=${htmlAfter.stable} toastFree=${htmlAfter.toastFree}`,
+	);
+	const htmlStamp = await textOf(
+		cdp,
+		'[data-tour-tag="canvas-document-modified"]',
+	);
+	const expectedHtmlStamp = await cdp.evaluate(
+		`new Date(${htmlMtime1}).toLocaleString(navigator.language, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })`,
+	);
+	check(
+		"and the html document's line moved with the file",
+		htmlStamp === `Modified ${expectedHtmlStamp}`,
+		`${JSON.stringify(htmlStamp)} against ${JSON.stringify(`Modified ${expectedHtmlStamp}`)}`,
 	);
 }
 
@@ -5957,6 +6312,8 @@ async function main() {
 	}
 	APP_API_URL = apiUrl;
 	writeAppCwdEnv();
+	if (BACKEND) note("csp for this run's backend", widenCspForBackend(BACKEND));
+
 	if (BACKEND_RECORDS) {
 		const records = join(CONFIG_DIR, "run", "serve");
 		mkdirSync(records, { recursive: true });
@@ -6155,7 +6512,8 @@ async function main() {
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "browser-mark") await sceneBrowserMark(cdp);
-			else if (SCENE === "canvas-freshness") await sceneCanvasFreshness(cdp);
+			else if (SCENE === "canvas-freshness")
+				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
@@ -6186,6 +6544,13 @@ async function main() {
 	 * nothing survived — a probe that never matches anything would otherwise pass
 	 * this forever, which is how the claim above outlived its truth for a round.
 	 */
+	const strays = await reapStrays();
+	if (strays.killed.length > 0) {
+		note(
+			"orphans this run killed by exact pid",
+			`${strays.killed.join(", ")} after ${strays.waitedMs}ms`,
+		);
+	}
 	const leftovers = thisRunsProcesses();
 	if (leftovers.measured) {
 		check(

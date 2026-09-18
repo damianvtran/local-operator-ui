@@ -41,6 +41,14 @@ export type FreshnessDecision =
 	| { kind: "unchanged" }
 	/** The path resolves to nothing: the viewer has to say so. */
 	| { kind: "missing" }
+	/*
+	 * The probe could not LOOK - a permission bit, a broken mount. It reports
+	 * `exists: false` like a deleted file does, and the contract's own note says
+	 * why the two must not be conflated: "deleted" and "cannot look" deserve
+	 * different words on screen, and a reader told their file is gone will go and
+	 * look for a file that is sitting right there (QA round 1, Q1).
+	 */
+	| { kind: "unreadable" }
 	/**
 	 * A viewer that reads its own bytes (PDF, image, audio, video). Nothing is
 	 * read here: the object URL is cached under `file:<path>:<mtime>`, so moving
@@ -107,6 +115,9 @@ export function freshnessDecision(
 	probe: ProbedFile | null | undefined,
 ): FreshnessDecision {
 	if (!probe) return { kind: "unavailable" };
+	// The error is checked FIRST: a failed `stat` answers `exists: false` too, and
+	// reporting a permission error as a deleted file is the one wrong word here.
+	if (probe.error) return { kind: "unreadable" };
 	if (!probe.exists || !probe.isFile) return { kind: "missing" };
 	const mtimeMs = probe.mtimeMs;
 	if (mtimeMs === null) return { kind: "unavailable" };
@@ -143,15 +154,16 @@ export type FreshnessOutcome =
 	| { status: "unchanged" }
 	/** No bridge, or a probe answer that cannot be used. */
 	| { status: "unavailable" }
-	/**
-	 * A mounted editor has unsaved changes for this document, so nothing was
-	 * applied. `diskChanged` is answered only for a FORCED check, which is the
-	 * one that probes anyway in order to say something specific on screen; a
-	 * background tick skips the probe outright, because a buffer that cannot be
-	 * replaced makes the file's state unusable whatever it is.
+	/** A mounted editor has unsaved changes for this document, so nothing was
+	 * applied. EVERY check probes, forced or not: a background tick that skipped
+	 * the probe could not tell the reader that the file moved on underneath their
+	 * typing, which is the one thing this state exists to say (UX round 1, U1). A
+	 * tick that finds the file unmoved costs one `stat` and says nothing.
 	 */
 	| { status: "skipped-dirty"; diskChanged: boolean }
 	| { status: "missing"; document: CanvasDocument }
+	/** The probe's `stat` itself failed: the file may well be there. */
+	| { status: "unreadable"; document: CanvasDocument }
 	| { status: "adopted"; document: CanvasDocument }
 	/** The mtime moved and the bytes did not: the baseline advances, nothing repaints. */
 	| { status: "identical"; document: CanvasDocument }
@@ -265,6 +277,33 @@ export function subscribeDocumentDirty(listener: () => void): () => void {
 }
 
 /**
+ * The answer for a check that found a mounted editor's unsaved buffer.
+ *
+ * TWO THINGS DEPEND ON THIS BEING A PROBE AND NOT A SHORTCUT. The reader's
+ * question is "has the file moved on underneath me", and only a `stat` answers
+ * it - the store still holds the bytes from before the first keystroke, so a
+ * check that read the store would answer "nothing has changed" about a file that
+ * has. And a tick that finds the file unmoved costs exactly one `stat` and
+ * writes nothing anywhere, which is what makes probing on every dirty tick
+ * affordable at all (UX round 1, U1).
+ *
+ * `known` is the probe a caller already has in hand, so the second ask inside
+ * one run does not stat twice.
+ */
+async function dirtyOutcome(
+	document: CanvasDocument,
+	ports: FreshnessPorts,
+	known?: ProbedFile | null,
+): Promise<FreshnessOutcome> {
+	const probe = known ?? (await ports.probe(document.path));
+	const baseline = baselineOf(document);
+	const diskChanged = Boolean(
+		probe?.exists && probe.mtimeMs !== null && probe.mtimeMs !== baseline,
+	);
+	return { status: "skipped-dirty", diskChanged };
+}
+
+/**
  * The checker for one on-screen document.
  *
  * ONE READ IN FLIGHT PER DOCUMENT, and the de-duplication is the returned
@@ -287,23 +326,22 @@ export function createFreshnessRunner(
 		document: CanvasDocument,
 		{ force }: { force: boolean },
 	): Promise<FreshnessOutcome> => {
-		if (isDirty(document.id)) {
-			if (!force) return { status: "skipped-dirty", diskChanged: false };
-			/*
-			 * A FORCED check still probes, and only to be able to say something true:
-			 * the reader pressing Refresh deserves to know whether the file they are
-			 * looking at has in fact moved on, even though the buffer in front of them
-			 * is the one that wins. Nothing is applied either way - see the registry's
-			 * own note for why that is not negotiable.
-			 */
-			const probe = await ports.probe(document.path);
-			const baseline = baselineOf(document);
-			const diskChanged = Boolean(
-				probe?.exists && probe.mtimeMs !== null && probe.mtimeMs !== baseline,
-			);
-			return { status: "skipped-dirty", diskChanged };
-		}
+		if (isDirty(document.id)) return dirtyOutcome(document, ports);
 		const probe = await ports.probe(document.path);
+		/*
+		 * AND AGAIN IF IT BECAME DIRTY WHILE WE WERE LOOKING (code review round 1,
+		 * M3). The gate above is read at the top of the run; the probe and, below,
+		 * the read are awaits, and a keystroke that lands inside one of them makes
+		 * the buffer dirty while this check is already committed to replacing it.
+		 * Reproduced against this module: `setDocumentDirty(id, true)` during a
+		 * gated read, then release, and the file's bytes were applied over the
+		 * typing. The reader's characters never reached disk and were gone from the
+		 * screen, which is the one outcome this feature must never produce.
+		 *
+		 * So the registry is asked a second time, immediately before any outcome
+		 * that carries bytes back into the store.
+		 */
+		if (isDirty(document.id)) return dirtyOutcome(document, ports, probe);
 		let decision: FreshnessDecision | { kind: "bust" } = freshnessDecision(
 			document,
 			probe,
@@ -336,6 +374,16 @@ export function createFreshnessRunner(
 				document: { ...document, availability: "missing" },
 			};
 		}
+		if (decision.kind === "unreadable") {
+			/*
+			 * The file may be sitting right there; what failed was the look. The held
+			 * bytes and the baseline both stay as they are, because nothing was learned
+			 * about either - and `availability` is left alone rather than set to
+			 * "missing", which would push "No longer on disk" onto the tile and the tab
+			 * for a file that has not gone anywhere (QA round 1, Q1).
+			 */
+			return { status: "unreadable", document };
+		}
 		if (decision.kind === "adopt") {
 			return {
 				status: "adopted",
@@ -362,6 +410,17 @@ export function createFreshnessRunner(
 			};
 		}
 		if (decision.kind === "repoint") {
+			/*
+			 * A byte viewer whose mtime moved: the object URL is cached under
+			 * `file:<path>:<mtime>`, so moving the KEY is what makes the viewer ask
+			 * again. WHY THERE IS NO IDENTICAL-BYTES BACKSTOP HERE, and what it costs:
+			 * these bytes never pass through this process, so the only cheap comparison
+			 * available is the size the probe already reports - and gating on size would
+			 * MISS the case that matters most, an in-place edit that keeps the byte
+			 * count. A `touch` therefore costs a full re-read and, for video, a restart
+			 * of playback; that is the honest price of not being able to look at the
+			 * bytes without pulling them across IPC (code review round 1, m3).
+			 */
 			return {
 				status: "applied",
 				document: withProbeFacts(document, probe, { moveBlobKey: true }),
@@ -369,6 +428,14 @@ export function createFreshnessRunner(
 		}
 		const read = await ports.read(document.path, decision.encoding);
 		if (!read.ok) return { status: "failed", error: read.error };
+		/*
+		 * THE SECOND ASK (code review round 1, M3), and it is the read that makes it
+		 * necessary: reading a large file over IPC is the longest await in this run,
+		 * and a keystroke landing inside it must win over the bytes it was racing.
+		 * Checked before BOTH byte-carrying outcomes below - the apply and the
+		 * identical-bytes baseline move - because either one writes to the store.
+		 */
+		if (isDirty(document.id)) return dirtyOutcome(document, ports, probe);
 		/*
 		 * THE BACKSTOP. An mtime that moved while the bytes did not is ordinary:
 		 * `touch`, a `cp -p` from an identical source, an editor's save with no

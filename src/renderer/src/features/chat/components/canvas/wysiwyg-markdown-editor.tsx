@@ -43,6 +43,7 @@ import type { CanvasDocument } from "../../types/canvas";
 import {
 	clearDocumentDirty,
 	documentAfterSelfWrite,
+	isDocumentDirty,
 	probeLocalFile,
 	setDocumentDirty,
 } from "./file-freshness";
@@ -830,6 +831,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when lastAgentModified changes
 	useEffect(() => {
 		if (document.lastAgentModified && editorRef.current) {
+			/*
+			 * The same guard as the code editor's, for the same reason (code review
+			 * round 1, M3): this is the markdown surface's own route for the store's
+			 * bytes to reach the screen, and a check that began before the reader typed
+			 * must not take their paragraph with it. `lastAgentModified` is what a text
+			 * apply always moves (`withFreshContent`), so this effect fires for exactly
+			 * the applies the freshness gate could not have seen.
+			 */
+			if (isDocumentDirty(document.id)) return;
 			const htmlContent = markdownToHtml(document.content);
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
@@ -839,7 +849,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				undoManagerRef.current?.saveCurrentState();
 			}
 		}
-	}, [document.lastAgentModified]);
+	}, [document.id, document.lastAgentModified]);
 
 	/*
 	 * Publish "this buffer differs from the file", which is what the canvas's

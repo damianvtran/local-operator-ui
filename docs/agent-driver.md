@@ -300,20 +300,36 @@ rule:
 
 - **`canvas-freshness`** — the canvas document kept current with the file on
   disk. The scene writes the file ITSELF, from outside the app, which is the only
-  way to produce the event the feature exists for, and it sets the mtime exactly
-  so the two halves are not clock-dependent: a write with a new mtime must appear
-  with no interaction, and a write with the SAME mtime must not — then the
-  refresh control must apply it anyway. It also installs a counter over the app's
-  own `probeFiles` (a scene-level use of the bridge, not a verb), and that is
-  what makes the two claims about TIME assertable rather than merely plausible:
-  a tab that is not on screen is not probed at all while it is off screen, and
-  it IS probed within a moment of being switched to. This is also the scene that
-  needed a new verb (`openCanvasDocument`), because a driver run has no other way
-  to put a file in the canvas: the tiles come from a transcript, ⌘O is an OS
-  dialog, and the create-file dialog needs an agent id that only a session
-  supplies. What it cannot show is a window that is genuinely `hidden`, or a real
-  user's typing — the run's renderer reports `visible`, and the dirty-suppression
-  half is covered against the shipped module by
+  way to produce the event the feature exists for, and it sets the mtime to a
+  FIXED epoch rather than to the clock, so every claim in it is exact rather than
+  phase-dependent and a re-take is byte-comparable: a write with a new mtime must
+  appear with no interaction, and a write with the SAME mtime must not — then the
+  refresh control must apply it anyway, and the preview of an HTML document must
+  be re-FETCHED rather than left showing the bytes it had.
+
+  Its two claims about TIME are counted, and the counter lives in MAIN. The
+  renderer cannot be counted from the page: `window.api` is a `contextBridge`
+  object, so a wrapper assigned over one of its properties is silently ignored
+  (measured — this scene's first version installed one and read zero for a run in
+  which probes demonstrably happened), and what replaced it at the time was the
+  app's own `canvas-store` entry, which proves non-APPLICATION rather than
+  non-probing. Main has no such problem, so the scene launches with
+  `--inspect=<port>` and installs a counter over the `fs` calls `probe-files`
+  itself makes, limited to this run's scratch root, and it PROVES the counter
+  before measuring anything: a probe issued from the renderer through the app's
+  own bridge must appear in the log, so a later zero is a measurement rather than
+  a broken wrapper. That is what makes "3 probes in 6 seconds on screen, 0 for the
+  tab that is off screen, 0 while the panel is closed" assertable, and what
+  replaced the latency lower bound the scene used to assert (a free-running poll
+  makes latency uniform in (0, interval], so the lower bound failed on roughly
+  half of runs — QA round 1, Q2).
+
+  This is also the scene that needed a new verb (`openCanvasDocument`), because a
+  driver run has no other way to put a file in the canvas: the tiles come from a
+  transcript, ⌘O is an OS dialog, and the create-file dialog needs an agent id
+  that only a session supplies. What it cannot show is a window that is genuinely
+  `hidden`, or a real user's typing — the run's renderer reports `visible`, and
+  the dirty-suppression half is covered against the shipped module by
   `scripts/canvas-file-freshness.test.mjs`.
 
 - **It is isolated from the operator's state, not from the network.** The run

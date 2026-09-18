@@ -97,29 +97,68 @@ export type DocumentFreshness = {
 };
 
 /**
- * What the outcome means for the document on screen, in one line each.
+ * What one outcome leaves in the row's register.
  *
- * `forced` is the manual control's press rather than a tick, and it is why
- * "unavailable" earns a sentence: in the app that state is a transient one, but
- * a reader who PRESSED something is owed an answer even when the app cannot read
- * their disk at all (a build with no local-file bridge).
+ * TWO SLOTS, NOT ONE, and the split is round 1's flicker fixed at the source
+ * (review m2, UX U1/U3/U4). A FACT is a state of the FILE - "no longer on disk",
+ * "changed on disk while your buffer is unsaved" - and it stays until an outcome
+ * arrives that says it no longer holds, because a background tick that found
+ * nothing new has no business replacing a sentence the reader is acting on. An
+ * ANSWER is the reply to something the reader DID - a press that found nothing
+ * to do ("Already up to date") or the apply a press or a tick produced ("Updated
+ * from disk") - and a tick with nothing to do leaves it standing rather than
+ * trading it for silence a second and a half later.
+ *
+ * `undefined` means "leave that slot alone", which is why this returns a partial
+ * register rather than a whole one: "found nothing new" and "say nothing new"
+ * are different instructions and the flicker lived in conflating them.
+ *
+ * The dirty sentence LEADS WITH THE CLAUSE THAT SURVIVES TRUNCATION (design
+ * round 1, D4): at the dock's 400px floor the row renders about 135px of it, and
+ * the reader must keep the reassurance and the instruction, not lose them to the
+ * diagnosis.
  */
-function noteFor(outcome: FreshnessOutcome, forced: boolean): string | null {
+function registerFor(
+	outcome: FreshnessOutcome,
+	forced: boolean,
+): { fact?: string | null; answer?: string | null } {
 	switch (outcome.status) {
 		case "missing":
-			return "This file is no longer on disk. The last version we read is still shown.";
+			return {
+				fact: "This file is no longer on disk. The last version we read is still shown.",
+			};
+		case "unreadable":
+			return {
+				fact: "This file could not be read. The last version we read is still shown.",
+			};
 		case "failed":
-			return "This file could not be re-read, so the version we last read is still shown.";
-		case "unavailable":
-			return forced
-				? "Local file access is unavailable, so there is nothing to re-read from."
-				: null;
+			return {
+				fact: "This file could not be re-read, so the version we last read is still shown.",
+			};
 		case "skipped-dirty":
 			return outcome.diskChanged
-				? "The file changed on disk. Your unsaved edits are kept - save or discard them to load it."
-				: "Your unsaved edits are kept.";
+				? {
+						fact: "Your unsaved edits are kept - the file changed on disk. Save or discard them to load the change.",
+					}
+				: {};
+		case "applied":
+			return { fact: null, answer: "Updated from disk" };
+		case "identical":
+		case "adopted":
+			return { fact: null };
+		case "unchanged":
+			return forced
+				? { fact: null, answer: "Already up to date" }
+				: { fact: null };
+		case "unavailable":
+			return forced
+				? {
+						answer:
+							"Local file access is unavailable, so there is nothing to re-read from.",
+					}
+				: {};
 		default:
-			return null;
+			return {};
 	}
 }
 
@@ -134,7 +173,18 @@ export function useFileFreshness({
 		() => false,
 	);
 	const [refreshing, setRefreshing] = useState(false);
-	const [note, setNote] = useState<string | null>(null);
+	const [fact, setFact] = useState<string | null>(null);
+	const [answer, setAnswer] = useState<string | null>(null);
+	/*
+	 * Both slots belong to the document that reported them, so a tab switch starts
+	 * the new document's row empty rather than inheriting the last one's sentence.
+	 * Declared before the activation effect below so the reset lands first.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the document's identity is the trigger, not a value the body reads.
+	useEffect(() => {
+		setFact(null);
+		setAnswer(null);
+	}, [document.id]);
 	/*
 	 * The document as of the LATEST render, so a check started by a timer reads
 	 * the store's current content rather than whatever the closure captured. Read
@@ -222,7 +272,9 @@ export function useFileFreshness({
 			try {
 				const outcome = await runner.check(latest.current, force);
 				if ("document" in outcome) apply(outcome.document);
-				setNote(noteFor(outcome, force));
+				const register = registerFor(outcome, force);
+				if (register.fact !== undefined) setFact(register.fact);
+				if (register.answer !== undefined) setAnswer(register.answer);
 			} finally {
 				if (force) setRefreshing(false);
 			}
@@ -274,7 +326,8 @@ export function useFileFreshness({
 	return {
 		lastModifiedMs: document.readMtimeMs ?? null,
 		refreshing,
-		note,
+		// A state of the file outranks a reply to a gesture, and only one line fits.
+		note: fact ?? answer,
 		dirty,
 		refresh,
 	};

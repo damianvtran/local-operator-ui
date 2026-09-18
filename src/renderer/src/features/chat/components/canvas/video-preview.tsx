@@ -46,9 +46,20 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
 	);
-	/* Read once, used for both the token and the key: two spellings of
-	 * "which version is this" would be a way for them to disagree. */
-	const version = document.readMtimeMs ?? 0;
+	/*
+	 * Read once, used for both the token and the key: two spellings of
+	 * "which version is this" would be a way for them to disagree.
+	 *
+	 * BOTH FIELDS, because both move for a reason and a viewer keyed on one alone
+	 * misses a case the control exists for (code review round 1, M2). An ordinary
+	 * re-read moves `readMtimeMs`; a FORCED one - the file's bytes changed and its
+	 * mtime did not, which is what `cp -p`, two writes inside one filesystem tick
+	 * or a restored timestamp produce - moves `lastAgentModified` instead and
+	 * deliberately leaves the file's own timestamp alone. Keyed on `readMtimeMs`
+	 * only, that press re-created nothing and requested the same URL the element
+	 * already held, so the reader's re-read was a no-op on screen.
+	 */
+	const version = `${document.readMtimeMs ?? 0}:${document.lastAgentModified ?? 0}`;
 	const url = useMemo(
 		() => `${client.static.getVideoUrl(document.path)}&v=${version}`,
 		[client, document.path, version],
