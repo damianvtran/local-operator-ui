@@ -45,7 +45,7 @@ about_launch
 about_start_sampler
 
 about_wait_for_window
-about_census --onscreen-only >"$SCRATCH/windows-before.json"
+about_census >"$SCRATCH/windows-before.json"
 BEFORE_IDS="$(about_window_ids)"
 echo "== windows owned by this app BEFORE the action:"
 if [ -n "$BEFORE_IDS" ]; then sed 's/^/   /' "$SCRATCH/windows-before.json"; else echo "   (none)"; fi
@@ -55,7 +55,7 @@ node "$HARNESS/drive.mjs" "$INSPECT_PORT" "$SCRATCH" "inactive" "$APP_PID" panel
 sleep 3
 about_stop_sampler
 
-about_census --onscreen-only >"$SCRATCH/windows-after.json"
+about_census >"$SCRATCH/windows-after.json"
 AFTER_IDS="$(about_window_ids)"
 NEW_IDS="$(comm -13 <(echo "$BEFORE_IDS") <(echo "$AFTER_IDS") | tr '\n' ' ')"
 echo "== windows owned by this app AFTER the action:"
@@ -65,6 +65,9 @@ if [ -z "$NEW_IDS" ]; then
 	echo "FAIL: the action created no window, so there is no panel to photograph - the app was probably not ready yet (see $SCRATCH/electron.log)" >&2
 	exit 1
 fi
+
+ONSCREEN="$(about_onscreen_ids | tr '\n' ' ')"
+echo "== the window server's ON-SCREEN set for this pid: ${ONSCREEN:-(none)}"
 
 INDEX=0
 for id in $NEW_IDS; do

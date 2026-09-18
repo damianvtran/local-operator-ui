@@ -135,6 +135,19 @@ about_census() {
 }
 
 about_window_ids() {
+	about_census | sed -n 's/.*"id": \([0-9]*\).*/\1/p' | sort
+}
+
+# The window server's on-screen set for this pid, reported as its own line because
+# it is evidence about the SCREEN rather than what the difference below is
+# computed from: it is empty for a background app while the display is asleep or
+# the screen is locked, which was measured on this machine (an `inactive` run at
+# 00:47 whose window the app reported as `visible=true focused=false` appeared in
+# `--onscreen-only` not at all, while the full list carried it with
+# `onscreen: false` and `screencapture -l` still rendered it). A diff over the
+# on-screen set would read that as "the action created nothing" - the one answer
+# this rig must never give for the wrong reason.
+about_onscreen_ids() {
 	about_census --onscreen-only | sed -n 's/.*"id": \([0-9]*\).*/\1/p' | sort
 }
 

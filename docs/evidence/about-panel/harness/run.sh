@@ -47,9 +47,9 @@ about_launch
 about_start_sampler
 
 about_wait_for_window
-about_census --onscreen-only >"$SCRATCH/windows-before.json"
+about_census >"$SCRATCH/windows-before.json"
 BEFORE_IDS="$(about_window_ids)"
-echo "== windows owned by this app BEFORE the action (window server's list, on screen only):"
+echo "== windows owned by this app BEFORE the action (the window server's own list; its onscreen flag is its answer per window):"
 if [ -n "$BEFORE_IDS" ]; then sed 's/^/   /' "$SCRATCH/windows-before.json"; else echo "   (none)"; fi
 
 node "$HARNESS/drive.mjs" "$INSPECT_PORT" "$SCRATCH" "headless" "$APP_PID" action | tee "$SCRATCH/drive.out"
@@ -60,12 +60,17 @@ node "$HARNESS/drive.mjs" "$INSPECT_PORT" "$SCRATCH" "headless" "$APP_PID" actio
 sleep 3
 about_stop_sampler
 
-about_census --onscreen-only >"$SCRATCH/windows-after.json"
+about_census >"$SCRATCH/windows-after.json"
 AFTER_IDS="$(about_window_ids)"
 NEW_IDS="$(comm -13 <(echo "$BEFORE_IDS") <(echo "$AFTER_IDS") | tr '\n' ' ')"
 
 echo "== windows owned by this app AFTER the action:"
 if [ -n "$AFTER_IDS" ]; then sed 's/^/   /' "$SCRATCH/windows-after.json"; else echo "   (none)"; fi
+# The window server's on-screen set for this pid, reported separately: it is empty
+# for a background app while the display is asleep, so it is evidence about the
+# screen rather than the thing the difference above is computed from.
+ONSCREEN="$(about_onscreen_ids | tr '\n' ' ')"
+echo "== the window server's ON-SCREEN set for this pid: ${ONSCREEN:-(none)}"
 
 FAILED=0
 if [ -n "$NEW_IDS" ]; then
