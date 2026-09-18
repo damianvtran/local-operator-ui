@@ -5476,12 +5476,33 @@ async function sceneCanvasFreshness(cdp, app) {
 			regionScroll: note.parentElement ? note.parentElement.scrollWidth : null,
 		};
 	})()`);
-	check(
-		"the sentence fits the row: no ellipsis, and the way out is on screen",
+	/*
+	 * THE SENTENCE IS WHOLE WHERE THE ROW CAN HOLD IT, AND CLEARS ITS FLOOR WHERE IT
+	 * CANNOT (round 7). The check as written demanded an untruncated sentence at ANY
+	 * window, which cannot hold at 1024x700: the row's region there is 251px and the
+	 * sentence is 269px, so SOMETHING must give - and the remedy the round agreed on is
+	 * that the stamp gives way while the note keeps its 8ch floor, with the sentence's
+	 * full text in the tooltip and the accessible description. Measured at a real
+	 * 1024x700: note `125/269`, stamp `114/244` - the reader sees the state and the
+	 * head of the action rather than one glyph, which is what U18 asked for.
+	 */
+	const sentenceFits =
+		noteGeometry !== null && noteGeometry.scroll <= noteGeometry.client + 1;
+	const sentenceHasFloor = noteGeometry !== null && noteGeometry.client >= 64;
+	const regionCouldHold =
 		noteGeometry !== null &&
-			noteGeometry.scroll <= noteGeometry.client &&
-			/save to replace it/.test(noteGeometry.text ?? ""),
-		JSON.stringify(noteGeometry),
+		noteGeometry.regionClient !== null &&
+		noteGeometry.regionClient >= noteGeometry.scroll + 8;
+	check(
+		"the sentence is whole where the row can hold it, and clears its floor where it cannot",
+		(regionCouldHold ? sentenceFits : sentenceHasFloor) &&
+			/save to replace it|load it/.test(noteGeometry?.text ?? ""),
+		JSON.stringify({
+			...noteGeometry,
+			sentenceFits,
+			sentenceHasFloor,
+			regionCouldHold,
+		}),
 	);
 
 	/*
