@@ -385,13 +385,34 @@ async function expectedPaths() {
 try {
 	const deadline = Date.now() + DEADLINE_MS;
 	let page = null;
+	/*
+	 * THE APP'S OWN PAGE, not the first `page` target to appear.
+	 *
+	 * Measured on this machine (2026-09-18): a boot of the built app publishes TWO
+	 * `about:blank` page targets BEFORE the window's own `out/renderer/index.html`,
+	 * because the browser feature opens its tabs early in startup. So
+	 * `find((target) => target.type === "page")` attached to a blank page, where
+	 * `window.api` is undefined - and the failure that produced was "the app is not
+	 * paired with the backend", three lines below, which blames the pairing model
+	 * for a wrong-target bug. The loop waits for the renderer URL instead, and names
+	 * what it saw when none arrives.
+	 */
 	while (Date.now() < deadline) {
-		page = (await targets()).find((target) => target.type === "page");
+		page = (await targets()).find(
+			(target) =>
+				target.type === "page" &&
+				String(target.url).includes("out/renderer/index.html"),
+		);
 		if (page) break;
 		await sleep(500);
 	}
 	if (!page) {
-		console.error(`no renderer target appeared; log:\n${log.join("")}`);
+		const seen = (await targets()).map(
+			(target) => `${target.type} ${target.url}`,
+		);
+		console.error(
+			`no renderer target appeared (saw: ${JSON.stringify(seen)}); log:\n${log.join("")}`,
+		);
 		// Stopped before exiting, the way every other exit in this file is: a boot
 		// that failed to come up is exactly when an app is left running, and the
 		// single-instance lock it holds is per profile, so this rig's own next run in
@@ -603,6 +624,7 @@ try {
 		const grid = document.querySelector('[data-tour-tag="files-grid"]');
 		const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
 		const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
+		const canvas = document.querySelector('[data-tour-tag="canvas-container"]');
 		const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
 		const inner = window.innerWidth;
 
@@ -612,6 +634,25 @@ try {
 		 * with vertical scroll, and a second evaluate would be a second chance for
 		 * the page to change between them.
 		 */
+		/*
+		 * The root-cause box, too: the panel's own root and the height it computes
+		 * to. The defect was one class (h-full where the element is the rest of a
+		 * column), and these two numbers are the mechanism rather than the symptom:
+		 * 868px of a pane that has 828 to give, with a min-height of auto as the
+		 * floor that stopped flex from shrinking it.
+		 */
+		const viewerRoot = canvas ? (canvas.children[1] ?? null) : null;
+		const rootBox = (element) => {
+			if (!element) return null;
+			const rect = element.getBoundingClientRect();
+			return {
+				tag: element.tagName.toLowerCase(),
+				top: Math.round(rect.top * 100) / 100,
+				bottom: Math.round(rect.bottom * 100) / 100,
+				height: Math.round(rect.height * 100) / 100,
+			};
+		};
+
 		let vertical = null;
 		if (scroller && tiles.length > 0) {
 			const resting = scroller.scrollTop;
@@ -629,6 +670,13 @@ try {
 				Math.min(last.bottom, window.innerHeight) - Math.max(last.top, 0),
 			);
 			vertical = {
+				viewerRoot: rootBox(viewerRoot),
+				viewerRootHeight: viewerRoot
+					? window.getComputedStyle(viewerRoot).height
+					: null,
+				viewerRootMinHeight: viewerRoot
+					? window.getComputedStyle(viewerRoot).minHeight
+					: null,
 				scrollTop: Math.round(scroller.scrollTop),
 				maxScrollTop: scroller.scrollHeight - scroller.clientHeight,
 				reachedMax:
@@ -642,10 +690,24 @@ try {
 				lastRowVisibleFraction: Math.round((visible / last.height) * 100) / 100,
 				lastRowInsideWindow: last.bottom <= window.innerHeight + 0.5,
 				rowsPastWindowEdge: pastEdge,
-				/* What the scroller's own bottom padding is worth once the end is reached. */
-				paddingBelowLastRow:
-					Math.round((scrollerRect.bottom - paddingBottom - last.bottom) * 100) /
-					100,
+				rowsEntirelyPastWindowEdge: rowRects.filter(
+					(rect) => rect.top >= window.innerHeight - 0.5,
+				).length,
+				/* The panel's bottom against the dock it lives in, which is the same 40px. */
+				scrollerBottomToDockBottom: dock
+					? Math.round(
+							(dock.getBoundingClientRect().bottom - scrollerRect.bottom) * 100,
+						) / 100
+					: null,
+				/*
+				 * What sits below the last row INSIDE the panel's own box: its bottom
+				 * padding plus border, measured rather than assumed. At maximum scroll the
+				 * last row's bottom is the content's bottom, so this should equal the
+				 * scroller's computed bottom padding - and it is the number that says the
+				 * list does not end flush against the box.
+				 */
+				insetBelowLastRow:
+					Math.round((scrollerRect.bottom - last.bottom) * 100) / 100,
 			};
 			scroller.scrollTop = resting;
 		}
@@ -692,9 +754,16 @@ try {
 	 * Each term is one half of the claim: nothing past the window's edge, the last
 	 * row whole inside it, the panel's own bottom inside the window (that is the
 	 * defect itself - the panel overflowed its pane by the chrome bar's height), and
-	 * the scroller's own bottom padding ACTUALLY REACHED rather than sitting in the
-	 * clipped band. The tolerances are sub-pixel: a rounded half-pixel is not a
-	 * clipped row.
+	 * the surface's own bottom padding sitting below the last row rather than the
+	 * list ending flush against it. The tolerances are sub-pixel: a rounded
+	 * half-pixel is not a clipped row.
+	 *
+	 * WHICH TERMS DISCRIMINATE, measured against the code that shipped: the padding
+	 * term is a sanity check rather than the defect. Before the fix the scroller's
+	 * bottom was 40px past the window with two rows past it and the last row's
+	 * visible fraction at 0.89 - and the padding below the last row was still 24.33px,
+	 * because a clipped panel does not change the gap INSIDE its own box. It is the
+	 * three window-relative terms that a revert breaks.
 	 */
 	const bottom = report.filesGrid?.vertical ?? null;
 	report.bottomClip = bottom
@@ -704,7 +773,7 @@ try {
 				lastRowFullyVisible: bottom.lastRowVisibleFraction >= 0.999,
 				panelInsideWindow: bottom.scrollerBottomPastWindow <= 0.5,
 				bottomPaddingReachable:
-					bottom.paddingBelowLastRow >= bottom.scrollerPaddingBottom - 1,
+					bottom.insetBelowLastRow >= bottom.scrollerPaddingBottom - 1,
 				reachedMaxScroll: bottom.reachedMax,
 			}
 		: null;
