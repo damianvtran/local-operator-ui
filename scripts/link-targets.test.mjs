@@ -731,7 +731,7 @@ test("the pre-scan and the walker agree: a token the raw scan cannot name is not
 	 * answer for the spelling, and still plain text - so the scoping moved the
 	 * extensioned class only. Measured before the scoping, with every one of these
 	 * five spellings primed: `linksIn` returned plain text for all five, against
-	 * links for all five at `74f6ea96c` (rebased as `2b3ac8a2b`).
+	 * links for all five at `2b3ac8a2b` (rebased as `2b3ac8a2b`).
 	 */
 	for (const spelling of ["/tmp/a.pdf", "~/notes/todo.md", "/tmp/b.pdf"]) {
 		assert.equal(evidenceFor(spelling), "unknown", spelling);
@@ -758,7 +758,7 @@ test("the pre-scan and the walker agree: a token the raw scan cannot name is not
 	 * decodes the escape, so the node value holds the token at index 4 while the raw
 	 * text the pre-scan reads holds the backslash - so nothing asks, and the walker
 	 * links the spelling once the cache has it (primed by the row above). It measures
-	 * the same on `74f6ea96c` (rebased as `2b3ac8a2b`), so this is a gap the rule neither introduced nor
+	 * the same on `2b3ac8a2b` (rebased as `2b3ac8a2b`), so this is a gap the rule neither introduced nor
 	 * closes; if a later change reaches inside node values, these two assertions are
 	 * the ones to change deliberately.
 	 */

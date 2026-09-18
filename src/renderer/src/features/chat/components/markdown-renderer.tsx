@@ -352,8 +352,9 @@ const MARKDOWN_COMPONENTS: Components = {
 const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 	...MARKDOWN_COMPONENTS,
 	// The factory is called HERE, once at module scope, so the override keeps one
-	// object identity for react-markdown's memo - and the anchor it delegates to is
-	// the renderer's own, which is the only link implementation in the app.
+	// object identity for the renderer's whole life rather than a fresh map per
+	// frame - and the anchor it delegates to is the renderer's own, which is the
+	// only link implementation in the app.
 	a: citationAwareAnchor(MarkdownAnchor),
 };
 
