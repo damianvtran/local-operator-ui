@@ -5133,7 +5133,9 @@ async function sceneCanvasFreshness(cdp, app) {
 		JSON.stringify({
 			controlRight: rowGeometry?.controlRight,
 			rowRight: rowGeometry?.rowRight,
-			inset: rowGeometry ? rowGeometry.rowRight - rowGeometry.controlRight : null,
+			inset: rowGeometry
+				? rowGeometry.rowRight - rowGeometry.controlRight
+				: null,
 		}),
 	);
 	const refreshed = await waitForCondition(
