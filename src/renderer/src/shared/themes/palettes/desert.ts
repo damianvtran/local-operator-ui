@@ -49,13 +49,16 @@ export const desert: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.39, elevated +8.21, sunken -4.22 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #271E12 -> #271E13 (L* 11.98 -> 12)
-		 * surface #31271A -> #31271A (L* 16.4 -> 16.4)
-		 * elevated #392E20 -> #392E20 (L* 20.21 -> 19.75)
-		 * sunken #1D160C -> #1D160C (L* 7.78 -> 7.78)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +4.52, elevated +7.75, sunken -4.08 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +4.39, elevated +8.21, sunken -4.22 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #271E12 -> #271E13 -> #342A1F  (L* 11.98 -> 12 -> 17.85)
+		 * surface #31271A -> #31271A -> #3E3426  (L* 16.4 -> 16.4 -> 22.37)
+		 * elevated #392E20 -> #392E20 -> #463B2C  (L* 20.21 -> 19.75 -> 25.60)
+		 * sunken #1D160C -> #1D160C -> #29221A  (L* 7.78 -> 7.78 -> 13.77)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -66,10 +69,10 @@ export const desert: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#271E13",
-		surface: "#31271A",
-		elevated: "#392E20",
-		sunken: "#1D160C",
+		canvas: "#342A1F",
+		surface: "#3E3426",
+		elevated: "#463B2C",
+		sunken: "#29221A",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
@@ -78,14 +81,14 @@ export const desert: ThemeDefinition = {
 		 * reported as spent. The rule, and why neither role is a neutral step, are in the
 		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #312B27  accent hue, C* 4.07, +1.64 L*, ΔE00 5.32 off `surface`,
-		 *                       `inkDim` 5.61:1 on the fill, hue 2.02° off `accent`.
-		 * rowSelected #422F23  accent hue, C* 13.03, +4.86 L*, ΔE00 6.22 off
-		 *                       `surface` and 7.60 off `rowHover`, `inkDim` 5.08:1, and the
-		 *                       2px `accent` bar at 5.63:1 against it.
+		 * rowHover    #3F3834  accent hue, C* 4.26, +1.73 L*, ΔE00 5.61 off `surface`,
+		 *                       `inkDim` 5.62:1 on the fill, hue 2.08° off `accent`.
+		 * rowSelected #513C30  accent hue, C* 13.22, +4.91 L*, ΔE00 7.36 off
+		 *                       `surface` and 7.61 off `rowHover`, `inkDim` 5.04:1, and the
+		 *                       2px `accent` bar at 4.59:1 against it.
 		 */
-		rowHover: "#312B27",
-		rowSelected: "#422F23",
+		rowHover: "#3F3834",
+		rowSelected: "#513C30",
 
 		ink: "#F0E6D5",
 
@@ -101,7 +104,16 @@ export const desert: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkMuted: "#CEBEA9",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 6.96:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.20, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#E2D2BD",
 
 		// The TUI's dim, lifted 8.0 L* to clear 4.5:1 on all four grounds — 4.78:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
@@ -116,19 +128,41 @@ export const desert: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#B0A38A",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.04:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.20, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#C1B49B",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
 		inkDisabled: "#5B503E",
 
-		hairline: "#4A3C2A",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.20:1 against `elevated` at its tightest.
+		 */
+		hairline: "#554634",
 
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
 		// — 3.21:1 on `elevated`, the ground that caps it.
-		borderControl: "#8E7B63",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#97846C",
 
 		accent: "#E59D6A",
 
@@ -138,7 +172,7 @@ export const desert: ThemeDefinition = {
 		accentActive: "#D6905D",
 
 		// The chart's hover mark, a step AWAY from the plot ground rather than along
-		// the accent ramp: ΔE00 11.29 from `accent` and 9.77:1 on surface, where the
+		// the accent ramp: ΔE00 11.29 from `accent` and 8.14:1 on surface, where the
 		// accent itself is 6.52:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFC993",
 		tokenCommand: "#84BAD8",
@@ -148,27 +182,27 @@ export const desert: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#2F2E18",
+		accentWash: "#3D3B24",
 
 		// The theme's own deepest ground, at 6.83:1 on all three accent fills.
 		onAccent: "#1D160C",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
 		 * `label` token (`#cb9edc`), received unchanged because it already clears
-		 * every floor — ΔE00 36.78 from `accent`, 24.47 from its nearest semantic
+		 * every floor — ΔE00 36.78 from `accent`, 56.94 from its nearest semantic
 		 * (`danger`), 6.59:1 as text on the tightest ground (`surface`).
 		 */
 		accentAlt: "#cb9edc",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 18.47 and C* 14.79, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 26.72 from `accentWash` (the field floor is
-		 * 2.0), 6.21:1 for `accentAlt` on it, and 18.02 from the nearest ground it
+		 * receives: `accentWash`'s own L* 24.47 and C* 14.98, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 26.65 from `accentWash` (the field floor is
+		 * 2.0), 5.13:1 for `accentAlt` on it, and 18.11 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#36283B",
+		accentAltWash: "#433549",
 
-		// Upstream success, clearing 7.21:1 at its tightest ground.
+		// Upstream success, clearing 5.38:1 at its tightest ground.
 		success: "#9AC275",
 
 		// The TUI has no success or warning tint, so both are the state hue at 13%
@@ -178,18 +212,36 @@ export const desert: ThemeDefinition = {
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.37:1 at its tightest ground.
-		successBorder: "#6C804D",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#7A8E5A",
 		warning: "#E2B148",
 		warningWash: "#483920",
-		warningBorder: "#977632",
-		danger: "#F58384",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#A4823E",
+		danger: "#F88586",
 
 		// The TUI's own danger tint.
 		dangerWash: "#3B2419",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.31:1 at its tightest.
-		dangerBorder: "#BD6865",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.01:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#C46E6B",
 
 		// The TUI's signal hue, this family's file/reference colour.
 		info: "#84BAD8",
@@ -201,7 +253,13 @@ export const desert: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.07:1.
 		 */
-		infoBorder: "#617E8B",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#6E8B98",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(29 22 12 / 0.7)",

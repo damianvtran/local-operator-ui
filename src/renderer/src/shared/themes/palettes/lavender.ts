@@ -47,13 +47,16 @@ export const lavender: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.04, elevated +8.07, sunken -3.39 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #191623 -> #211E2B (L* 8.15 -> 12.13)
-		 * surface #211E2E -> #292637 (L* 12.28 -> 16.17)
-		 * elevated #2A2638 -> #302B3D (L* 16.33 -> 18.77)
-		 * sunken #110F19 -> #191821 (L* 4.8 -> 8.74)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +4.02, elevated +6.55, sunken -3.27 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +4.04, elevated +8.07, sunken -3.39 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #191623 -> #211E2B -> #292633  (L* 8.15 -> 12.13 -> 15.99)
+		 * surface #211E2E -> #292637 -> #322E3F  (L* 12.28 -> 16.17 -> 20.01)
+		 * elevated #2A2638 -> #302B3D -> #393345  (L* 16.33 -> 18.77 -> 22.54)
+		 * sunken #110F19 -> #191821 -> #212029  (L* 4.8 -> 8.74 -> 12.71)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -64,10 +67,10 @@ export const lavender: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#211E2B",
-		surface: "#292637",
-		elevated: "#302B3D",
-		sunken: "#191821",
+		canvas: "#292633",
+		surface: "#322E3F",
+		elevated: "#393345",
+		sunken: "#212029",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
@@ -76,14 +79,14 @@ export const lavender: ThemeDefinition = {
 		 * reported as spent. The rule, and why neither role is a neutral step, are in the
 		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2D2A33  accent hue, C* 6.40, +1.53 L*, ΔE00 4.36 off `surface`,
-		 *                       `inkDim` 5.40:1 on the fill, hue 0.56° off `accent`.
-		 * rowSelected #352C49  accent hue, C* 20.11, +4.03 L*, ΔE00 6.12 off
-		 *                       `surface` and 9.59 off `rowHover`, `inkDim` 5.01:1, and the
-		 *                       2px `accent` bar at 5.89:1 against it.
+		 * rowHover    #36323B  accent hue, C* 6.35, +1.50 L*, ΔE00 4.26 off `surface`,
+		 *                       `inkDim` 5.47:1 on the fill, hue 3.27° off `accent`.
+		 * rowSelected #3E3452  accent hue, C* 20.37, +3.96 L*, ΔE00 6.33 off
+		 *                       `surface` and 9.70 off `rowHover`, `inkDim` 5.04:1, and the
+		 *                       2px `accent` bar at 5.21:1 against it.
 		 */
-		rowHover: "#2D2A33",
-		rowSelected: "#352C49",
+		rowHover: "#36323B",
+		rowSelected: "#3E3452",
 
 		ink: "#E6E2F0",
 		/*
@@ -96,7 +99,16 @@ export const lavender: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkMuted: "#BEB8D1",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 6.92:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.11, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#CBC5DE",
 
 		// The TUI's dim, lifted 7.5 L* to clear 4.5:1 on all four grounds — 4.79:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
@@ -111,7 +123,16 @@ export const lavender: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#A49CBB",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.04:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.11, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#AFA7C6",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
@@ -119,14 +140,21 @@ export const lavender: ThemeDefinition = {
 
 		// The TUI's decorative edge, moved ΔE00 0.32 into this contract's two-sided
 		// window: a rule has to be SEEN (ΔE00 4+ on every ground) without becoming a
-		// border (2:1 at most). Here it is 1.20:1 at its quietest.
+		// border (2:1 at most). Here it is 1.16:1 at its quietest.
 		/*
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 6.62.
+		 * `elevated` is the tightest ground at ΔE00 6.08.
 		 */
-		hairline: "#3C3656",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.16:1 against `elevated` at its tightest.
+		 */
+		hairline: "#413B5B",
 
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
@@ -138,7 +166,13 @@ export const lavender: ThemeDefinition = {
 		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
 		 * binds it at 3.03:1. Lightness only, at the role's own hue.
 		 */
-		borderControl: "#7D749E",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.01:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#8279A3",
 
 		accent: "#B9A3E8",
 
@@ -148,7 +182,7 @@ export const lavender: ThemeDefinition = {
 		accentActive: "#AB96DA",
 
 		// The chart's hover mark, a step AWAY from the plot ground rather than along
-		// the accent ramp: ΔE00 11.46 from `accent` and 11.22:1 on surface, where the
+		// the accent ramp: ΔE00 11.46 from `accent` and 9.06:1 on surface, where the
 		// accent itself is 7.34:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#E4CDFF",
 		tokenCommand: "#7DB2E2",
@@ -158,7 +192,7 @@ export const lavender: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#1F2333",
+		accentWash: "#272B3B",
 
 		// The theme's own deepest ground, at 7.33:1 on all three accent fills.
 		onAccent: "#110F19",
@@ -174,14 +208,14 @@ export const lavender: ThemeDefinition = {
 		accentAlt: "#FCA8E2",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 14.01 and C* 11.46, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 10.52 from `accentWash` (the field floor is
-		 * 2.0), 8.83:1 for `accentAlt` on it, and 6.90 from the nearest ground it
+		 * receives: `accentWash`'s own L* 17.80 and C* 11.13, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.86 from `accentWash` (the field floor is
+		 * 2.0), 7.94:1 for `accentAlt` on it, and 7.00 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2F1E2A",
+		accentAltWash: "#382632",
 
-		// Upstream success, clearing 8.26:1 at its tightest ground.
+		// Upstream success, clearing 6.15:1 at its tightest ground.
 		success: "#7FC98F",
 
 		// The TUI has no success or warning tint, so both are the state hue at 13%
@@ -196,7 +230,13 @@ export const lavender: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		successBorder: "#578365",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#5D896B",
 		warning: "#DCAE54",
 		warningWash: "#393133",
 		/*
@@ -204,7 +244,13 @@ export const lavender: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		warningBorder: "#927543",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#987B49",
 		danger: "#EF8595",
 
 		// The TUI's own danger tint.
@@ -217,7 +263,13 @@ export const lavender: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
-		dangerBorder: "#AE6372",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#B56978",
 
 		// The TUI's signal hue, this family's file/reference colour.
 		info: "#7DB2E2",
@@ -229,7 +281,13 @@ export const lavender: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		infoBorder: "#5D7C9E",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#6382A4",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(17 15 25 / 0.7)",

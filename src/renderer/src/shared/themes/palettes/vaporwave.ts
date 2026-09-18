@@ -72,13 +72,16 @@ export const vaporwave: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.68, elevated +7.61, sunken -3.3 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #1F1730 -> #241B35 (L* 9.93 -> 12.06)
-		 * surface #271E3B -> #2C2240 (L* 13.68 -> 15.75)
-		 * elevated #2F2547 -> #312749 (L* 17.38 -> 18.30)
-		 * sunken #181128 -> #1C152D (L* 6.76 -> 8.76)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +3.66, elevated +6.12, sunken -3.17 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +3.68, elevated +7.61, sunken -3.3 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #1F1730 -> #241B35 -> #2E2540  (L* 9.93 -> 12.06 -> 16.86)
+		 * surface #271E3B -> #2C2240 -> #372C4B  (L* 13.68 -> 15.75 -> 20.52)
+		 * elevated #2F2547 -> #312749 -> #3C3154  (L* 17.38 -> 18.30 -> 22.99)
+		 * sunken #181128 -> #1C152D -> #261F38  (L* 6.76 -> 8.76 -> 13.70)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -89,10 +92,10 @@ export const vaporwave: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#241B35",
-		surface: "#2C2240",
-		elevated: "#312749",
-		sunken: "#1C152D",
+		canvas: "#2E2540",
+		surface: "#372C4B",
+		elevated: "#3C3154",
+		sunken: "#261F38",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
@@ -101,14 +104,14 @@ export const vaporwave: ThemeDefinition = {
 		 * reported as spent. The rule, and why neither role is a neutral step, are in the
 		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2F292C  accent hue, C* 3.56, +1.58 L*, ΔE00 13.01 off `surface`,
-		 *                       `inkDim` 5.49:1 on the fill, hue 3.58° off `accent`.
-		 * rowSelected #45283A  accent hue, C* 17.69, +4.65 L*, ΔE00 9.43 off
-		 *                       `surface` and 12.16 off `rowHover`, `inkDim` 5.00:1, and the
-		 *                       2px `accent` bar at 7.14:1 against it.
+		 * rowHover    #3A3337  accent hue, C* 4.21, +1.57 L*, ΔE00 12.43 off `surface`,
+		 *                       `inkDim` 5.64:1 on the fill, hue 0.14° off `accent`.
+		 * rowSelected #513345  accent hue, C* 17.61, +4.88 L*, ΔE00 9.57 off
+		 *                       `surface` and 11.52 off `rowHover`, `inkDim` 5.05:1, and the
+		 *                       2px `accent` bar at 6.05:1 against it.
 		 */
-		rowHover: "#2F292C",
-		rowSelected: "#45283A",
+		rowHover: "#3A3337",
+		rowSelected: "#513345",
 
 		ink: "#EDE8F2",
 		/*
@@ -121,7 +124,16 @@ export const vaporwave: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkMuted: "#C4B6D8",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 6.90:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.13, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#D5C7E9",
 		// The TUI `dim` 9184AE lifted in L* with hue held: 4.14 on `elevated`, under
 		// the floor.
 		/*
@@ -134,7 +146,16 @@ export const vaporwave: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#A89AC5",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.05:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.13, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#B7A9D4",
 		// The TUI `faint` 5A4E74 lifted to 2.3:1 on `elevated`.
 		inkDisabled: "#685B82",
 
@@ -146,9 +167,16 @@ export const vaporwave: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.96.
+		 * `elevated` is the tightest ground at ΔE00 4.28.
 		 */
-		hairline: "#40355D",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.21:1 against `elevated` at its tightest.
+		 */
+		hairline: "#483D65",
 		// The TUI `edge-hi` 4C3F6C lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -156,7 +184,13 @@ export const vaporwave: ThemeDefinition = {
 		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
 		 * binds it at 3:1. Lightness only, at the role's own hue.
 		 */
-		borderControl: "#8070A1",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#8878A9",
 
 		accent: "#F7A8D8",
 		accentHover: "#FFC1F2",
@@ -168,7 +202,7 @@ export const vaporwave: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#3B2A46",
+		accentWash: "#463552",
 		onAccent: "#150824",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#c5a3f0`),
@@ -182,12 +216,12 @@ export const vaporwave: ThemeDefinition = {
 		accentAlt: "#A8A9F9",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 20.16 and C* 20.30, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 6.86 from `accentWash` (the field floor is
-		 * 2.0), 6.04:1 for `accentAlt` on it, and 4.22 from the nearest ground it
+		 * receives: `accentWash`'s own L* 25.13 and C* 20.35, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 6.82 from `accentWash` (the field floor is
+		 * 2.0), 5.12:1 for `accentAlt` on it, and 4.84 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2D2E4C",
+		accentAltWash: "#383958",
 
 		success: "#8FE6C0",
 		successWash: "#2E3243",
@@ -196,7 +230,13 @@ export const vaporwave: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
-		successBorder: "#5A7F7B",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#628783",
 
 		warning: "#F0CD8A",
 		warningWash: "#3A2F3C",
@@ -205,16 +245,28 @@ export const vaporwave: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		warningBorder: "#897562",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#917D6A",
 
-		danger: "#F2808A",
+		danger: "#F6838D",
 		dangerWash: "#3A253C",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
-		dangerBorder: "#A26779",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#AB6F81",
 
 		// The TUI `signal` 7FD8D4 rotated 18 degrees toward blue: the pastel mint
 		// success and this teal sat ΔE00 11.7 apart, under the contract's 15 semantic
@@ -228,7 +280,13 @@ export const vaporwave: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
-		infoBorder: "#587D91",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#608599",
 
 		overlayShadow: "0 12px 32px -12px rgb(12 9 19 / 0.75)",
 		scrim: "rgb(12 9 19 / 0.65)",

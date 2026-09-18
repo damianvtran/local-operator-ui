@@ -47,13 +47,16 @@ export const autumn: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.49, elevated +8.61, sunken -3.33 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #1D1510 -> #261E1A (L* 7.54 -> 12.06)
-		 * surface #271E17 -> #312720 (L* 12.1 -> 16.54)
-		 * elevated #30261E -> #362D24 (L* 16.05 -> 19.18)
-		 * sunken #140E09 -> #1D1815 (L* 4.36 -> 8.73)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +4.50, elevated +7.08, sunken -3.24 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +4.49, elevated +8.61, sunken -3.33 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #1D1510 -> #261E1A -> #2C2420  (L* 7.54 -> 12.06 -> 14.96)
+		 * surface #271E17 -> #312720 -> #382D26  (L* 12.1 -> 16.54 -> 19.46)
+		 * elevated #30261E -> #362D24 -> #3D332A  (L* 16.05 -> 19.18 -> 22.04)
+		 * sunken #140E09 -> #1D1815 -> #231E1B  (L* 4.36 -> 8.73 -> 11.72)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -64,10 +67,10 @@ export const autumn: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#261E1A",
-		surface: "#312720",
-		elevated: "#362D24",
-		sunken: "#1D1815",
+		canvas: "#2C2420",
+		surface: "#382D26",
+		elevated: "#3D332A",
+		sunken: "#231E1B",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
@@ -76,14 +79,14 @@ export const autumn: ThemeDefinition = {
 		 * reported as spent. The rule, and why neither role is a neutral step, are in the
 		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #3A291D  accent hue, C* 12.52, +1.71 L*, ΔE00 4.21 off `surface`,
-		 *                       `inkDim` 5.39:1 on the fill, hue 0.80° off `accent`.
-		 * rowSelected #482B15  accent hue, C* 22.50, +4.13 L*, ΔE00 10.22 off
-		 *                       `surface` and 6.12 off `rowHover`, `inkDim` 5.01:1, and the
-		 *                       2px `accent` bar at 4.96:1 against it.
+		 * rowHover    #412F23  accent hue, C* 12.61, +1.66 L*, ΔE00 4.07 off `surface`,
+		 *                       `inkDim` 5.42:1 on the fill, hue 0.43° off `accent`.
+		 * rowSelected #4F311B  accent hue, C* 22.40, +4.00 L*, ΔE00 9.95 off
+		 *                       `surface` and 5.98 off `rowHover`, `inkDim` 5.02:1, and the
+		 *                       2px `accent` bar at 4.53:1 against it.
 		 */
-		rowHover: "#3A291D",
-		rowSelected: "#482B15",
+		rowHover: "#412F23",
+		rowSelected: "#4F311B",
 
 		ink: "#EDDFD0",
 		/*
@@ -96,7 +99,16 @@ export const autumn: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkMuted: "#CFBAA5",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 6.97:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.18, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#D9C4AF",
 
 		// The TUI's dim, lifted 7.3 L* to clear 4.5:1 on all four grounds — 4.78:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
@@ -111,7 +123,16 @@ export const autumn: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#B09F8A",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.02:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.18, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#B8A792",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
@@ -121,9 +142,16 @@ export const autumn: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 5.60.
+		 * `elevated` is the tightest ground at ΔE00 4.47.
 		 */
-		hairline: "#48382F",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.16:1 against `elevated` at its tightest.
+		 */
+		hairline: "#4B3B32",
 
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
@@ -135,7 +163,13 @@ export const autumn: ThemeDefinition = {
 		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
 		 * binds it at 3.02:1. Lightness only, at the role's own hue.
 		 */
-		borderControl: "#8B7768",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#8E7A6B",
 
 		accent: "#E08D4F",
 
@@ -145,7 +179,7 @@ export const autumn: ThemeDefinition = {
 		accentActive: "#D18043",
 
 		// The chart's hover mark, a step AWAY from the plot ground rather than along
-		// the accent ramp: ΔE00 11.46 from `accent` and 9.70:1 on surface, where the
+		// the accent ramp: ΔE00 11.46 from `accent` and 7.93:1 on surface, where the
 		// accent itself is 6.30:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFB978",
 		tokenCommand: "#7FB0D3",
@@ -155,27 +189,27 @@ export const autumn: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#292312",
+		accentWash: "#302918",
 
 		// The theme's own deepest ground, at 6.27:1 on all three accent fills.
 		onAccent: "#140E09",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
 		 * `label` token (`#c599d6`), received unchanged because it already clears
-		 * every floor — ΔE00 39.04 from `accent`, 28.70 from its nearest semantic
+		 * every floor — ΔE00 39.05 from `accent`, 54.99 from its nearest semantic
 		 * (`danger`), 6.17:1 as text on the tightest ground (`surface`).
 		 */
 		accentAlt: "#c599d6",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 13.93 and C* 12.31, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 21.24 from `accentWash` (the field floor is
-		 * 2.0), 6.64:1 for `accentAlt` on it, and 12.12 from the nearest ground it
+		 * receives: `accentWash`'s own L* 16.89 and C* 12.34, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 20.84 from `accentWash` (the field floor is
+		 * 2.0), 6.13:1 for `accentAlt` on it, and 12.03 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2B1F2F",
+		accentAltWash: "#322535",
 
-		// Upstream success, clearing 7.54:1 at its tightest ground.
+		// Upstream success, clearing 5.68:1 at its tightest ground.
 		success: "#A2B96A",
 
 		// The TUI has no success or warning tint, so both are the state hue at 13%
@@ -190,7 +224,13 @@ export const autumn: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		successBorder: "#757F4D",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#798351",
 		warning: "#DDAB35",
 		warningWash: "#3F301B",
 		/*
@@ -198,7 +238,13 @@ export const autumn: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.14:1.
 		 */
-		warningBorder: "#97752C",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#9B7930",
 		danger: "#F37F6F",
 
 		// The TUI's own danger tint.
@@ -211,7 +257,13 @@ export const autumn: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.16:1.
 		 */
-		dangerBorder: "#B76355",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.01:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#BA6658",
 
 		// The TUI's signal hue, this family's file/reference colour.
 		info: "#7FB0D3",
@@ -223,7 +275,13 @@ export const autumn: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		infoBorder: "#627E91",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.00:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#658194",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(20 14 9 / 0.7)",
