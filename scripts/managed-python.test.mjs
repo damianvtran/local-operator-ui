@@ -20,6 +20,7 @@ import {
 	writeFileSync,
 	writeSync,
 } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -1370,12 +1371,52 @@ test("an update publishes a new generation beside the published one, and keeps i
 	);
 	const root = managedPythonRoot(opts);
 	const state = { installs: 0 };
+	const pointer = join(root, "selected-environment.json");
+	/*
+	 * THE FLIP, OBSERVED WHILE IT HAPPENS (review R1).
+	 *
+	 * The suite asserted only that no `.selection-*` temporary was left behind, and
+	 * that assertion holds just as well for a direct in-place write: the reviewer
+	 * mutated the flip to `writeFile(pointer, bytes)` and the whole file stayed green
+	 * (30/30), including the case whose comment claims "the pointer moved by rename,
+	 * so no half-written record is ever observed". A claim a mutation cannot break is
+	 * a restatement of the implementation, and a torn pointer is not a cosmetic
+	 * failure: it parses as `unprepared`, which the app answers by publishing a
+	 * generation from scratch.
+	 *
+	 * Two readers, because they fail differently:
+	 *
+	 *  - a concurrent loop that reads the pointer for the whole publish and asserts
+	 *    every observation parsed and named one of the two generations. It catches a
+	 *    torn write whenever the two syscalls of an in-place write are separated by a
+	 *    scheduling point - real, because Node's `writeFile` truncates and writes as
+	 *    separate asynchronous requests, but not guaranteed on any single run.
+	 *  - the pointer's INODE, which is the same file before and after an in-place
+	 *    write and a DIFFERENT file after a rename. That one is deterministic, and it
+	 *    is the part that fails every time against the mutation above.
+	 */
+	const inodeBefore = statSync(pointer).ino;
+	const observed = { reads: 0, failures: [], venvs: new Set() };
+	let flipping = true;
+	const reader = (async () => {
+		while (flipping) {
+			observed.reads += 1;
+			try {
+				const record = JSON.parse(await readFile(pointer, "utf8"));
+				observed.venvs.add(record.venv);
+			} catch (error) {
+				observed.failures.push(String(error));
+			}
+		}
+	})();
 
 	const outcome = await updateManagedPython(
 		opts,
 		installReporting(state, "0.2.0"),
 		{ target: "0.2.0", isNewer },
 	);
+	flipping = false;
+	await reader;
 
 	assert.equal(state.installs, 1);
 	assert.equal(outcome.replaced, true);
@@ -1403,6 +1444,33 @@ test("an update publishes a new generation beside the published one, and keeps i
 		readdirSync(root).filter((name) => name.startsWith(".selection-")),
 		[],
 		"the pointer is published atomically, so nothing may be left mid-write",
+	);
+	/*
+	 * ...AND THE SAME CLAIM, DISCRIMINATED. The inode is the deterministic half:
+	 * `rename` publishes the temporary file's inode, an in-place `writeFile` keeps
+	 * the published file's own - so this assertion is what a non-atomic flip breaks,
+	 * every time, and the mutation the reviewer ran is what it was checked against.
+	 */
+	assert.notEqual(
+		statSync(pointer).ino,
+		inodeBefore,
+		"the pointer must be REPLACED by rename, not rewritten in place: a reader either sees the old record or the new one, and an in-place write is the case where it can see neither",
+	);
+	assert.ok(
+		observed.reads > 0,
+		"the reader must have run while the publish was in flight, or it asserts nothing",
+	);
+	assert.deepEqual(
+		observed.failures,
+		[],
+		`a reader never sees a half-written pointer: ${JSON.stringify(observed.failures.slice(0, 2))}`,
+	);
+	assert.deepEqual(
+		[...observed.venvs].filter(
+			(venv) => venv !== first.venv && venv !== outcome.selection.venv,
+		),
+		[],
+		`every observation names one of the two published generations, never a tree this publish did not make: ${JSON.stringify([...observed.venvs])}`,
 	);
 
 	// The superseded generation survives, complete, with its own record untouched -

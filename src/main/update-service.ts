@@ -40,10 +40,12 @@ import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	type ManagedUpdateOutcome,
+	managedPythonRoot,
 	publishedBackendVersion,
 	updateManagedPython,
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
+import { setupFailureCause } from "./backend/setup-failure-causes";
 import {
 	legacyEnvironmentReport,
 	legacyVenvPaths,
@@ -139,6 +141,26 @@ const INSTALL_IN_FLIGHT_RECHECK_MS = 10_000;
 
 /** What `launchctl remove` prints when the job is not loaded. */
 const LAUNCHCTL_NOT_LOADED_REGEX = /could not find|no such process/i;
+
+/**
+ * The free space an app-owned publish needs before it starts (review R2).
+ *
+ * WHY A REFUSAL RATHER THAN A SMALLER CLAIM: this is the only path in the product
+ * that spends a second environment's worth of bytes on a volume the user is also
+ * working on, and the cost is paid in three places at once - a `ditto` of the
+ * signed runtime (~44 MB), a fresh environment (~105-157 MB), and the wheel closure
+ * re-downloaded into `TMPDIR` on the same volume because the install command
+ * carries `--no-cache-dir` (~150 MB). QA measured ~150 MB of headroom for the
+ * publish itself on this machine and the install's closure is the same order again,
+ * which is where the 450 MB comes from: the measured cost plus the download, so a
+ * volume that clears this number is not one that fills half-way through a write.
+ *
+ * A failure without it is safe - no flip happens - but it is not actionable: the
+ * user gets the generic "did not install" over a disk they could have fixed first.
+ * The number is a REFUSAL threshold, not a requirement of the mechanism, so it is
+ * deliberately above the measurement rather than equal to it.
+ */
+const APP_OWNED_PUBLISH_HEADROOM_BYTES = 450 * 1024 * 1024;
 
 /**
  * How long `codesign --verify` gets on the installed bundle.
@@ -548,6 +570,29 @@ export type BackendUpdateCompletion = {
 	unattended?: boolean;
 	/** Whether the daemon serving this app is one the APP may restart. */
 	restartable?: boolean;
+	/**
+	 * Whether the environment this attempt moved is the app's OWN managed one.
+	 *
+	 * Travels beside `restartable` for the same reason it does on the offer: the two
+	 * ask different questions, and the renderer's skew panel needs the install's
+	 * ownership to decide whether the press it offers is the restart its label
+	 * promises (design D5).
+	 */
+	appOwnedEnvironment?: boolean;
+	/**
+	 * True when the app restarted the daemon onto its own published environment and
+	 * the server did not answer afterwards (UX U1).
+	 *
+	 * Why this is a FIELD and not the absence of `runningVersion`: that absence is
+	 * also what a declined reading looks like everywhere else, and every other arm
+	 * treats it as silence (the panel may not claim a skew it cannot see). Here the
+	 * app performed the restart ITSELF and watched the health probe fail, so the
+	 * missing reading is the news rather than a gap in it - and without this field
+	 * the renderer's funnel declined and the press was answered with the success
+	 * toast ("Server update completed successfully") about a server that is not
+	 * running. Set only on that branch, for that arm.
+	 */
+	serverDidNotComeBack?: boolean;
 	/** The install version read before an unattended attempt, when there was one. */
 	before?: string | null;
 };
@@ -617,6 +662,20 @@ export type BackendUpdateInfo = {
 	 * build until it restarts on its own, and no turn in flight is dropped.
 	 */
 	restartable?: boolean;
+	/**
+	 * Whether the environment `update-backend` would move is the app's OWN one.
+	 *
+	 * The second ownership reading, and it is not the same question as `restartable`
+	 * (design D5): that one answers "did the app start the daemon serving this app?",
+	 * which is ALSO true in GLOBAL_INSTALL mode, where the app is the parent of a
+	 * daemon whose install is a uv tool / pipx / global one. This one answers whose
+	 * INSTALL the press would move, and it is what lets the skew panel offer its
+	 * restart control only where that press really is the publish-and-restart the
+	 * label promises - on a global install the same press runs the install's own
+	 * updater or lands on the by-hand panel, which is the "action that cannot act as
+	 * labelled" class this line of work exists to remove.
+	 */
+	appOwnedEnvironment?: boolean;
 	/** The startup mode of the backend service */
 	startupMode?: LocalOperatorStartupMode;
 	/**
@@ -3987,7 +4046,18 @@ export class UpdateService {
 		return {
 			canManageUpdate: true,
 			updateCommand: "pip install --upgrade local-operator",
-			remedy: "Updating the server will improve AI functionality.",
+			/*
+			 * A REAL CONSEQUENCE, not the benefit sentence a second time (UX U2). This
+			 * string rendered through `managedCostSentence`, and the panel above it
+			 * already carries the static line about AI functionality, security and
+			 * bugs - so the offer showed the same filler twice, in two lengths, and the
+			 * one sentence that has to be here (what the press does to the server the
+			 * reader is talking to) was missing on the only arm whose press now
+			 * publishes a generation and restarts a daemon. It is the managed global
+			 * arm's own wording, aimed at this arm's mechanism.
+			 */
+			remedy:
+				"The app publishes a new server environment and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
 			/*
@@ -4323,6 +4393,13 @@ export class UpdateService {
 					eventRunning: this.eventRunningVersion(runningVersion),
 					silent,
 					releaseRead: false,
+					/*
+					 * The ownership reading is local too, so the offline pass carries it as
+					 * well: the control this event may offer must be offered, or withheld,
+					 * on exactly the reading an online check uses. An offline machine whose
+					 * environment is the app's own still gets its restart.
+					 */
+					appOwnedEnvironment: this.appOwnsInstall(startupMode, serving),
 				});
 				return { status: "unavailable", info: null };
 			}
@@ -4525,6 +4602,16 @@ export class UpdateService {
 					 * other two events already carry. It travels here too.
 					 */
 					restartable: this.backendIsAppOwned(),
+					/*
+					 * AND WHOSE INSTALL A PRESS WOULD MOVE (design D5), which is the other
+					 * ownership reading: `restartable` is true here on a global install too,
+					 * where the app supervises a daemon it did not install. The mode alone
+					 * cannot answer it either - a GLOBAL_INSTALL launch can be serving from
+					 * the app's OWN managed environment, and since #318 landed that arm IS
+					 * routed to the publish path below - so the reading is the mode plus the
+					 * serving install's own root.
+					 */
+					appOwnedEnvironment: this.appOwnsInstall(startupMode, serving),
 					/* `silent` is the whole difference between the two callers: the periodic
 					   and start-up checks pass `true`, the IPC handlers behind the buttons
 					   pass `false`. The renderer needs to know which one it is answering,
@@ -4584,6 +4671,12 @@ export class UpdateService {
 			 * `sendBackendSkewNotice`, which the network-unavailable path calls too (QA round
 			 * 3, Q3-1) - so the pair an offline machine is told about and the pair an online
 			 * one is told about are the same construction rather than two.
+			 *
+			 * AND WHOSE INSTALL A PRESS WOULD MOVE travels with them (design D5), because
+			 * this event opens the panel that ACTS: the control it may offer is a
+			 * publish-and-restart the app performs only on its own environment, so the
+			 * reading that keeps that press off a global install belongs in the same
+			 * construction rather than in a second send beside it.
 			 */
 			this.sendBackendSkewNotice({
 				installedVersion,
@@ -4595,6 +4688,7 @@ export class UpdateService {
 				 * current. The offline caller passes false for exactly that reason.
 				 */
 				releaseRead: true,
+				appOwnedEnvironment: this.appOwnsInstall(startupMode, serving),
 			});
 
 			/*
@@ -5108,6 +5202,14 @@ export class UpdateService {
 	 * panel's own rule - "a reading that cannot be taken is silence" - applied to one
 	 * clause of it). Every caller that did read the release, and every pre-existing
 	 * reader of this event, sees the payload it always saw.
+	 *
+	 * AND WHOSE INSTALL A PRESS WOULD MOVE (design D5) travels with the pair, because
+	 * this event opens the one panel that ACTS: `restartable` says who started the
+	 * DAEMON, which is also true in GLOBAL_INSTALL mode, while the control the panel may
+	 * offer is a publish-and-restart the app performs only on its own environment. So
+	 * both ownership readings ride one payload, and BOTH callers pass both - the offline
+	 * pass measures this reading locally like the rest of the pair, so a machine that
+	 * reports no network is not the machine that loses its restart control.
 	 */
 	private sendBackendSkewNotice(options: {
 		installedVersion: string | null;
@@ -5115,6 +5217,8 @@ export class UpdateService {
 		eventRunning: string | null;
 		silent: boolean;
 		releaseRead: boolean;
+		/** Whether the INSTALL a press would move is the app's own (design D5). */
+		appOwnedEnvironment: boolean;
 	}): void {
 		const { installedVersion, eventRunning, silent, releaseRead } = options;
 		const readingsDiffer =
@@ -5134,15 +5238,68 @@ export class UpdateService {
 				version: string | null;
 				runningVersion: string | null;
 				restartable: boolean;
+				appOwnedEnvironment: boolean;
 				releaseRead?: boolean;
 			} = {
 				version: installedVersion,
 				runningVersion: eventRunning,
 				/** Whether the app may restart the daemon that is behind. */
 				restartable: this.backendIsAppOwned(),
+				/*
+				 * WHOSE INSTALL THE PANEL'S PRESS WOULD MOVE (design D5). `restartable`
+				 * above answers who started the DAEMON and is true on a global install too,
+				 * where the press behind that control runs the install's own updater rather
+				 * than the restart its label promises - so the control the renderer may offer
+				 * needs this second reading beside it. It travels on this event rather than in
+				 * a second send, because this is the event whose panel acts.
+				 */
+				appOwnedEnvironment: options.appOwnedEnvironment,
 			};
 			if (!releaseRead) payload.releaseRead = false;
 			this.mainWindow.webContents.send("backend-update-not-available", payload);
+		}
+	}
+
+	/**
+	 * Whether the INSTALL this app would move is the app's own managed environment.
+	 *
+	 * THE SECOND OWNERSHIP READING, and it is deliberately not `backendIsAppOwned`
+	 * (design D5). That one asks who started the DAEMON, and it answers yes in
+	 * `GLOBAL_INSTALL` mode as well: the app spawns and supervises a daemon whose
+	 * install is a uv tool / pipx / global one, so the app owns the process and not
+	 * the environment. The two questions diverge on exactly that machine, and the
+	 * skew panel's restart control is decided by this one, because `update-backend`
+	 * on a global install runs the install's own updater (an install, not a restart)
+	 * or lands on the by-hand panel - a control whose label promises a restart the
+	 * press does not perform.
+	 *
+	 * Only `APP_BUNDLED_VENV` is the app's own environment. `EXISTING_SERVER` and
+	 * `NOT_STARTED` are not installs the app may move at all, and the two are stated
+	 * rather than left to a default so a new mode has to be classified here on
+	 * purpose instead of inheriting an answer.
+	 */
+	private appOwnsInstall(
+		startupMode: LocalOperatorStartupMode,
+		serving: { appOwned?: boolean } | null,
+	): boolean {
+		switch (startupMode) {
+			case LocalOperatorStartupMode.APP_BUNDLED_VENV:
+				return true;
+			case LocalOperatorStartupMode.GLOBAL_INSTALL:
+			case LocalOperatorStartupMode.EXISTING_SERVER:
+				/*
+				 * A GLOBAL LAUNCH CAN STILL SERVE FROM THE APP'S OWN ENVIRONMENT, and that
+				 * is this fix's own machine: #318 resolved who owns the install serving
+				 * this app (`serving.appOwned`, read from the root `/health` named), and on
+				 * the operator's report the daemon is his global launch while the tree it
+				 * runs from is the app's managed environment. The startup mode says who
+				 * launched the process; it does not say whose tree that process reads - so
+				 * asking the mode alone answered `false` for the one environment this
+				 * change exists to move.
+				 */
+				return serving?.appOwned === true;
+			case LocalOperatorStartupMode.NOT_STARTED:
+				return false;
 		}
 	}
 
@@ -5396,6 +5553,12 @@ export class UpdateService {
 				runningVersion: running,
 				restarted: false,
 				restartable: this.backendIsAppOwned(),
+				/*
+				 * FALSE BY CONSTRUCTION, and stated rather than left absent: this arm is
+				 * the global install's own updater, so the environment it moved is never
+				 * the app's managed one (design D5).
+				 */
+				appOwnedEnvironment: false,
 			});
 			return true;
 		}
@@ -5531,6 +5694,13 @@ export class UpdateService {
 			restarted: false,
 			unattended: true,
 			restartable: this.backendIsAppOwned(),
+			/*
+			 * False, and it is also the honest answer to UX U3: the marker is written
+			 * on the global path only, and this reader compares it against
+			 * `readGlobalInstallVersion()` - the install the global updater moves -
+			 * so nothing here is a statement about the app's own environment.
+			 */
+			appOwnedEnvironment: false,
 			before: marker.before,
 		});
 	}
@@ -5615,6 +5785,29 @@ export class UpdateService {
 					const target =
 						targetVersion ?? this.lastPublishedBackendVersion ?? null;
 
+					/*
+					 * THE APP'S OWN SERVING INSTALL, routed to the path that can actually move
+					 * it.
+					 *
+					 * #318 - which landed on `main` while this branch was in review - resolves
+					 * WHO OWNS the install serving this app, and for a daemon running out of
+					 * the app's managed environment it answers `serving.appOwned`. The plan
+					 * then says `canManageUpdate: false`, correctly: no package manager owns
+					 * that tree, and `pip install --upgrade` inside a live environment is the
+					 * in-place rewrite the managed layout exists to avoid.
+					 *
+					 * But the app CAN move it, by publishing a generation beside the published
+					 * one and flipping the pointer - which is what this branch adds. This is the
+					 * follow-up this PR's own body deferred until #318 landed ("When #318
+					 * lands, its `serving.appOwned` arm should route to
+					 * `updateAppOwnedEnvironment` too - a two-line follow-up on that diff"), and
+					 * it is not optional: without it the publish path is unreachable on the
+					 * exact machine this change was written for, where the startup mode is
+					 * `GLOBAL_INSTALL` and only the SERVING reading knows the tree is the app's.
+					 */
+					if (serving.appOwned) {
+						return await this.updateAppOwnedEnvironment(targetVersion ?? null);
+					}
 					if (plan.canManageUpdate) {
 						/*
 						 * The app runs the install's own updater. This is the ONE branch that
@@ -5855,11 +6048,90 @@ export class UpdateService {
 		}
 
 		const before = publishedBackendVersion(options);
+		/*
+		 * NO MARKER IS WRITTEN ON THIS ARM (UX U3, deferred with its reason). The
+		 * durable record of an attempt nobody watched belongs to the global path
+		 * above, and its reader (`reportUnattendedServerUpdate`) compares `before`
+		 * against `readGlobalInstallVersion()` - the `lop` shim's identity, an
+		 * install with nothing to do with this environment. So a marker written here
+		 * would be judged against the wrong root, and half a fix is worse than the
+		 * gap it covers: a relaunch would report an interrupted app-owned update as
+		 * unchanged, or report one that never happened. Closing it means giving the
+		 * marker an install discriminator and reading it back through
+		 * `publishedBackendVersion` for this arm, which is its own change (and the
+		 * state it reports is coherent without it: the app comes up on whichever
+		 * generation the pointer names, and the skew notice speaks if that is not
+		 * what the daemon serves).
+		 */
+		/*
+		 * AND WHAT "ROLLBACK" MEANS HERE (review R4, recorded rather than fixed). The
+		 * superseded generation is RETAINED - kept in both roots, never overwritten,
+		 * byte-identical - and nothing flips the pointer back to it. The panel's
+		 * remedy restarts onto the same build, so a generation that smokes but is
+		 * functionally worse has no way back through any surface. That is a later PR
+		 * by design (a restore path is a user-facing capability with its own story),
+		 * and it is written down here because "rollback" in this file currently reads
+		 * as a capability. The narrower claim it does support: a structurally broken
+		 * published generation is recovered without it, because the repair path
+		 * publishes a fresh generation BESIDE it rather than overwriting it.
+		 */
+		/*
+		 * WHETHER A PUBLISH WILL ACTUALLY RUN, decided BEFORE the phase is announced
+		 * (design D2). The phase used to be sent unconditionally, so the press this
+		 * panel's own control produces - the install already IS the published release
+		 * and only the daemon is behind - told the reader "Installing the new server
+		 * build ... This can take a minute or two" one statement before the log said
+		 * nothing was installed, and the only work that press does is the restart.
+		 * That is a claim about work that cannot happen, on the one panel whose copy
+		 * the whole line of work exists to make true.
+		 *
+		 * The prediction is the module's own rule rather than a second one:
+		 * `updateManagedPython` publishes only when what is published cannot satisfy
+		 * the target, and its two terms are exactly these - a published version that
+		 * could not be read (null) is never treated as current, and otherwise the
+		 * app's own comparator decides. Same read (`publishedBackendVersion`), same
+		 * ordering (`isNewerVersion`, which the module is handed below), so a press
+		 * that publishes nothing cannot be announced as an install and vice versa.
+		 *
+		 * A press with nothing to publish is announced as the RESTART, which is what
+		 * it is: the in-flight panel then says the new build has landed and the server
+		 * is coming back onto it, which is true and is also the cost the reader is
+		 * paying (design D3).
+		 */
+		const willPublish = before === null || this.isNewerVersion(target, before);
+		/*
+		 * THE FREE-SPACE PRECONDITION, before anything is spent (review R2). See
+		 * `APP_OWNED_PUBLISH_HEADROOM_BYTES` for the measurement behind the number.
+		 * An unreadable free-space answer is NOT a refusal: `freeBytesAt` returns null
+		 * when the volume cannot be stat'ed, and refusing an update because the app
+		 * could not measure something would trade a working path for a guess.
+		 */
+		if (willPublish) {
+			const free = this.freeBytesAt(managedPythonRoot(options));
+			if (free !== null && free < APP_OWNED_PUBLISH_HEADROOM_BYTES) {
+				const neededMb = Math.ceil(
+					APP_OWNED_PUBLISH_HEADROOM_BYTES / 1024 / 1024,
+				);
+				const freeMb = Math.floor(free / 1024 / 1024);
+				logger.error(
+					`Refusing the app-managed environment update: ${freeMb} MB free where ${neededMb} MB is needed`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.sendToRenderer("backend-update-error", {
+					message: `The server update needs about ${neededMb} MB of free space on this disk, and ${freeMb} MB is free, so the app left the environment serving this app alone. Free some space and try again.`,
+					phase: "update",
+					logPath: serverUpdateLogPath(),
+				});
+				return false;
+			}
+		}
 		logger.info(
-			`Updating the app-managed environment (published ${before ?? "no reading"}, target ${target})`,
+			`Updating the app-managed environment (published ${before ?? "no reading"}, target ${target}, publishes: ${willPublish})`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		this.sendToRenderer("backend-update-progress", { phase: "installing" });
+		this.sendToRenderer("backend-update-progress", {
+			phase: willPublish ? "installing" : "restarting",
+		});
 
 		let outcome: ManagedUpdateOutcome;
 		try {
@@ -5883,12 +6155,29 @@ export class UpdateService {
 			 * and in service, and the remedy the app names is trying again.
 			 */
 			const reason = error instanceof Error ? error.message : String(error);
+			/*
+			 * THE ACTIONABLE CAUSE, when the product already knows one (review R2). A
+			 * full disk reached the user as "The server update did not install ... No
+			 * space left on device" - the two remedies this product has for that are
+			 * `SETUP_FAILURE_CAUSES`' own sentence and its free-space instruction, and
+			 * both lived behind the installer, which the update path cannot import (it
+			 * pulls the platform install scripts in as `?raw`). Same table, asked
+			 * through a dependency-free leaf, so the two paths cannot drift.
+			 *
+			 * AND THE MACHINE'S OWN WORDS ARE A SEPARATE BLOCK (UX's note on R2, and
+			 * `splitInstallerOutput`'s contract): the renderer splits this message on
+			 * its first blank line into the app's sentence and the monospace output the
+			 * reader can copy, so the raw error belongs after that break rather than
+			 * welded onto the sentence - which is what the global arm does and what a
+			 * one-line `was left as it was. ${reason}` did not.
+			 */
+			const cause = setupFailureCause(error);
 			logger.error(
 				`The app-managed environment update published nothing: ${reason}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message: `The server update did not install, so the environment serving this app was left as it was. ${reason}`,
+				message: `The server update did not install, so the environment serving this app was left as it was.${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -5911,11 +6200,56 @@ export class UpdateService {
 		 * (stop, pip, restart); taking it last is what lets the new build land without
 		 * touching anything that is running.
 		 */
+		/*
+		 * NOT UNCONDITIONALLY, which is review R3. If nothing was published AND the
+		 * daemon is already on `installVersion`, there is nothing to move, and
+		 * restarting it anyway terminates a live server for no gain - the retire
+		 * contract hands its in-process work to a shutdown that cancels it
+		 * (`local_operator/server/retire.py`, and `SchedulerService._run_tasks` runs
+		 * inside that process). The case is real on this arm and not hypothetical: the
+		 * skew notice's press is offered on exactly the state where the install is
+		 * already the published release, so the only presses that reach this line with
+		 * `replaced === false` are the ones where the daemon was behind - and a daemon
+		 * that answered the new version by the time the press was processed has moved
+		 * on its own.
+		 *
+		 * The completion still answers the press: a press that reports nothing is the
+		 * silence this panel may not produce (review R2-3), and the honest report is
+		 * the two readings that made the restart pointless. Dismissed as a skew by the
+		 * renderer's own funnel (they are equal), so the reader gets the outcome rather
+		 * than a panel about a gap that is not there.
+		 */
+		const servingBeforeRestart = await this.getInstalledBackendVersion();
+		const movedTheServer =
+			outcome.replaced || servingBeforeRestart !== installVersion;
+		if (!movedTheServer) {
+			logger.info(
+				`The published environment already satisfies ${target} and the server serving this app already reports ${servingBeforeRestart}; nothing to move, so it was not restarted`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-completed", {
+				installVersion,
+				runningVersion: servingBeforeRestart,
+				restarted: false,
+				restartable: true,
+				appOwnedEnvironment: true,
+			});
+			return true;
+		}
 		logger.info(
 			"Restarting backend service onto the published environment...",
 			LogFileType.UPDATE_SERVICE,
 		);
-		this.sendToRenderer("backend-update-progress", { phase: "restarting" });
+		/*
+		 * Announced ONCE per attempt: a press that published nothing was already told
+		 * it is in the restart phase (that is the phase an install-less press opens
+		 * on, design D2), and repeating it would be the same sentence twice for no
+		 * news - while a press that DID publish is still on "installing" and needs
+		 * this one.
+		 */
+		if (willPublish) {
+			this.sendToRenderer("backend-update-progress", { phase: "restarting" });
+		}
 		backend.setAutoUpdating(true);
 		const restarted = await backend.restart();
 		backend.setAutoUpdating(false);
@@ -5943,6 +6277,20 @@ export class UpdateService {
 				runningVersion: serving,
 				restarted: false,
 				restartable: true,
+				appOwnedEnvironment: true,
+				/*
+				 * THE MISSING READING IS THE NEWS (UX U1). `serving === null` is not only
+				 * "no comparison available": it is a restart the app performed ITSELF, on
+				 * an environment it owns, after which the process it stopped did not
+				 * answer. Without this field the renderer's funnel declined - correctly,
+				 * by its own rule, for want of a reading - and the press was answered by
+				 * the fall-through success toast, "Server update completed successfully",
+				 * about a server that is not running. That is the same class of claim as
+				 * the operator's original report (a surface asserting what it had not
+				 * proved), which is why this branch exists rather than a softer sentence
+				 * on it.
+				 */
+				serverDidNotComeBack: serving === null,
 			});
 			return true;
 		}
@@ -5962,6 +6310,14 @@ export class UpdateService {
 				runningVersion: serving,
 				restarted: false,
 				restartable: true,
+				appOwnedEnvironment: true,
+				/*
+				 * This arm is NOT `serverDidNotComeBack` even when `serving` is null, and
+				 * the difference is what the app knows: the daemon answered the health
+				 * probe a moment ago (that is the branch above this one), so a missing
+				 * reading here is a version read that failed rather than a server that
+				 * never came back, and the panel may not claim the second.
+				 */
 			});
 			return true;
 		}

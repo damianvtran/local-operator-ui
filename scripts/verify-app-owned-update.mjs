@@ -46,6 +46,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -293,6 +294,17 @@ console.log(
 
 console.log(`\n=== 3. the app presses update at ${target} ===`);
 const installs = [];
+/*
+ * THE FLIP, DISCRIMINATED (review R1). This harness asserted that no
+ * `.selection-*` temporary survived, and its PASS line then claimed the pointer
+ * "flipped atomically" - two statements a direct in-place `writeFile(pointer)`
+ * satisfies just as well, which is exactly what the reviewer's mutation showed.
+ * The inode is the difference: `rename` publishes the TEMPORARY file's inode, an
+ * in-place write keeps the published file's own, so this is the assertion a
+ * non-atomic flip breaks. The concurrent-reader half of the same guard lives in
+ * `scripts/managed-python.test.mjs`, where it can observe a whole publish.
+ */
+const pointerInodeBefore = statSync(pointer).ino;
 const outcome = await runtime.updateManagedPython(
 	options,
 	(venv, python) => {
@@ -315,6 +327,11 @@ assert.equal(outcome.previous?.venv, first.venv);
 assert.equal(outcome.selection.backendVersion, target);
 assert.notEqual(outcome.selection.venv, first.venv);
 assert.deepEqual(tempPointers(), []);
+assert.notEqual(
+	statSync(pointer).ino,
+	pointerInodeBefore,
+	"the pointer must be REPLACED by rename rather than rewritten in place, or a reader can observe neither record",
+);
 // The pointer's own record and the new environment's agree, and the pointer names
 // the NEW generation: that is the flip.
 assert.equal(
@@ -366,5 +383,5 @@ console.log(
 	`\n${JSON.stringify({ first: first.venv, published: outcome.selection.venv, pointer }, null, 2)}`,
 );
 console.log(
-	"\nPASS: a failed smoke left the pointer untouched; the second generation was published beside the first with the pointer flipped atomically; the superseded generation is byte-identical and complete; an older target and a repeated press installed nothing; no `.selection-*` temp was left behind",
+	"\nPASS: a failed smoke left the pointer untouched; the second generation was published beside the first and the pointer was REPLACED by rename (its inode moved, so a reader sees one complete record or the other); the superseded generation is byte-identical and complete; an older target and a repeated press installed nothing; no `.selection-*` temp was left behind",
 );

@@ -882,6 +882,22 @@ function dangerToasts(handle) {
 	return visible(handle).filter((alert) => alert.variant === "danger");
 }
 
+/** Every success toast on screen right now (the completion sentence's carrier). */
+function successToasts(handle) {
+	return visible(handle).filter((alert) => alert.variant === "success");
+}
+
+/**
+ * Every button in the rendered tree, in document order.
+ *
+ * The skew panel's footer order is a finding in its own right (design D4), and
+ * order is a property no per-control lookup can express: `control()` finds one
+ * button wherever it is.
+ */
+function buttons(handle) {
+	return walk(handle.tree).filter((node) => node.type === Button);
+}
+
 /**
  * The sentence the FAILURE PANEL is carrying, or null when none is up.
  *
@@ -1376,6 +1392,7 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		version: "0.56.2",
 		runningVersion: "0.56.0",
 		restartable: true,
+		appOwnedEnvironment: true,
 	});
 	handle.render();
 	const copy = allCopy(handle);
@@ -1404,6 +1421,37 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		copy.some((text) => /can restart it onto the new build now/.test(text)),
 		JSON.stringify(copy),
 	);
+	/*
+	 * WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used to be the
+	 * one commit control in the component with no cost line above it: the price - the
+	 * server going down and in-flight work being dropped - was stated only in the
+	 * in-flight panel, one batch later, when it could no longer be withdrawn. The
+	 * sentence is asserted as the same one the restart phase uses, so the two cannot
+	 * drift apart.
+	 */
+	assert.ok(
+		copy.some(
+			(text) =>
+				/offline while it comes back - usually a few seconds, up to half a minute/.test(
+					text,
+				) && /drops anything that is in flight/.test(text),
+		),
+		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
+	);
+	/*
+	 * DISMISS FIRST, COMMIT LAST (design D4), which is this component's own rule and
+	 * the order of every sibling footer in the release. The row used to be the
+	 * inverse, and the cost was not cosmetic: `Understood` writes the reading into
+	 * `dismissedSkewRef`, so a habit-trained press on the rightmost button buried the
+	 * only surface that states the skew for that pair. Asserted as ORDER, because
+	 * that is the whole of the finding - both controls were always present.
+	 */
+	assert.deepEqual(
+		buttons(handle).map((button) => button.props.children),
+		["Understood", "Restart the server"],
+		"the committing control is last, as it is in every other footer here",
+	);
+
 	control(handle, "Restart the server").props.onClick();
 	assert.equal(
 		updater.backendUpdates.length,
@@ -1429,6 +1477,7 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		version: "0.56.2",
 		runningVersion: "0.56.0",
 		restartable: false,
+		appOwnedEnvironment: true,
 	});
 	foreign.render();
 	const foreignCopy = allCopy(foreign).join(" ");
@@ -1525,6 +1574,220 @@ test("a daemon ahead of the install raises no skew notice", () => {
 		copy.some((text) => /is still running 0\.56\.3/.test(text)),
 		false,
 		JSON.stringify(copy),
+	);
+});
+
+/**
+ * D5: the daemon the app started is not the install the app owns.
+ *
+ * `restartable` answers "did the app start the daemon serving this app?", and the
+ * answer is yes in GLOBAL_INSTALL mode too - the app spawns a daemon whose install
+ * is a uv tool or pipx one. So a panel gated on that reading alone offered "Restart
+ * the server" on a machine where the press behind it is `update-backend` on a
+ * GLOBAL_INSTALL: the install's own updater (an install, not a restart) or, on a
+ * legacy layout, the by-hand panel. That is the "action that cannot act as labelled"
+ * class this line of work exists to remove, so the control takes the second reading
+ * and the sentence stops claiming an environment it never measured.
+ *
+ * Both panels below are given the same two numbers and differ in ONE field.
+ */
+test("the restart control needs the app's own environment as well as its own daemon", () => {
+	const owned = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.ok(
+		ownedCopy.includes("Restart the server"),
+		`the app-owned arm must offer the action: ${ownedCopy}`,
+	);
+	/*
+	 * The sentence claims only the environment the app has: with the same daemon
+	 * ownership and NO app-owned environment, the old copy asserted "Local Operator's
+	 * own environment is already updated" about an environment that may not exist on
+	 * that machine at all.
+	 */
+	assert.ok(
+		!ownedCopy.includes("Local Operator's own environment is already updated"),
+		ownedCopy,
+	);
+
+	const global = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+		appOwnedEnvironment: false,
+	});
+	global.render();
+	const globalCopy = allCopy(global).join(" ");
+	assert.ok(
+		!globalCopy.includes("Restart the server"),
+		`a global install's press is not the restart the label names: ${globalCopy}`,
+	);
+	assert.ok(
+		!globalCopy.includes("Local Operator's own environment is already updated"),
+		globalCopy,
+	);
+	assert.ok(
+		!globalCopy.includes("This app started that server, so it can restart it"),
+		`and it may not claim the app restarts that environment: ${globalCopy}`,
+	);
+	assert.ok(
+		/Restart Local Operator and the server comes back on the new build/.test(
+			globalCopy,
+		),
+		`and the arm names what actually moves it, in main's own words: ${globalCopy}`,
+	);
+	// The control is absent, not hidden behind a disabled state: this tree has one
+	// button here and it is the dismissal.
+	assert.deepEqual(
+		buttons(global).map((button) => button.props.children),
+		["Understood"],
+	);
+});
+
+/**
+ * U1: a restart that does not bring the server back is never a success.
+ *
+ * The state the app-owned arm reports when `backend.restart()` fails or the health
+ * probe after it never answers (`update-service.ts`), and the one outcome the whole
+ * line of work exists to stop the app claiming: the install moved, the server is
+ * not running, and the surface said "Server update completed successfully" - because
+ * the renderer's own funnel declined for want of a reading (correctly, by its rule)
+ * and the completion listener then fell through to its toast.
+ *
+ * The missing reading IS the news here, and it is the app's own action that produced
+ * it, so the panel states what it knows and offers the one step left.
+ */
+test("a restart that leaves the server down is a failure surface, not a success toast", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: null,
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+		serverDidNotComeBack: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.ok(
+		/^The server did not come back after the restart/.test(copy) ||
+			copy.includes("The server did not come back after the restart"),
+		`the heading must state the outcome: ${copy}`,
+	);
+	assert.ok(
+		/the server serving this app did not answer after it was restarted/.test(
+			copy,
+		),
+		`and the sentence must say what was observed: ${copy}`,
+	);
+	assert.equal(
+		showsText(handle, "Server update completed successfully"),
+		false,
+		"the success toast is a claim about the server, and this server is not running",
+	);
+	assert.equal(
+		successToasts(handle).length,
+		0,
+		JSON.stringify(visible(handle)),
+	);
+	// The step that can still fix it, and its cost, on the panel rather than in a
+	// sentence about a restart that already failed.
+	control(handle, "Restart the server");
+	control(handle, "Understood");
+	assert.deepEqual(
+		buttons(handle).map((button) => button.props.children),
+		["Understood", "Restart the server"],
+	);
+});
+
+/**
+ * D1: one panel may not hold two opposite claims about who started the daemon.
+ *
+ * The failed-restart arm for a daemon that is still ANSWERING. The panel said
+ * "the server serving this app was started outside Local Operator, so it was left
+ * running on 0.56.8" one paragraph above "This app started that server" - and the
+ * first sentence was simply false on the arm this PR's own button leads into,
+ * because `restartable: true` is true by construction there.
+ *
+ * The fix is the two readings the app actually has, and the assertions below are
+ * the pair: the sentences that must be there, and the one that must not.
+ */
+test("a failed restart names the readings, not a daemon started somewhere else", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.ok(
+		/The install is now at 0\.56\.12, but the server serving this app is still running 0\.56\.8/.test(
+			copy,
+		),
+		`both readings, on the arm the app's own restart produces: ${copy}`,
+	);
+	assert.ok(
+		!copy.includes("started outside Local Operator"),
+		`the app started that daemon, so the panel may not say otherwise: ${copy}`,
+	);
+	// And the mirror, so the clause was MOVED rather than deleted: an adopted daemon
+	// is the arm it was written for, and it still carries it.
+	const adopted = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: false,
+		appOwnedEnvironment: false,
+	});
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.ok(
+		/started outside Local Operator/.test(adoptedCopy),
+		`the adopted daemon is the arm that sentence is true for: ${adoptedCopy}`,
+	);
+});
+
+/**
+ * The positive control for U1: a completion whose readings agree is NOT a failure.
+ *
+ * The app ran the restart, the daemon answered, and it answered the build that was
+ * just published - so there is no skew, no server down, and nothing to report but
+ * the success the press earned. Without this case the restarted-failed arm could be
+ * widened until every completion raised a panel.
+ */
+test("a restart that came back on the new build is still the success toast", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.12",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	handle.render();
+
+	assert.equal(
+		showsText(handle, "The server did not come back after the restart"),
+		false,
+		JSON.stringify(visible(handle)),
+	);
+	assert.ok(
+		successToasts(handle).length > 0 ||
+			showsText(handle, "Server update completed successfully"),
+		JSON.stringify(visible(handle)),
 	);
 });
 

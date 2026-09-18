@@ -30,42 +30,8 @@ import {
 	macosInstallScript,
 	windowsInstallScript,
 } from "./scripts";
+import { setupFailureCause } from "./setup-failure-causes";
 import { VENV_PATH_ENV, managedVenvPath } from "./venv-paths";
-/**
- * The three failure classes a user can act on, matched on the error's own words.
- *
- * Ordered, and that order is the decision: a full disk is the one cause whose
- * remedy is the user's (`free space`), and it can look like a missing file, so
- * it is tested first.
- */
-const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
-	[
-		/ENOSPC|No space left|not enough (?:free )?space/i,
-		"This Mac ran out of disk space while setting up the backend. Free some space and retry.",
-	],
-	[
-		/Another Local Operator instance is preparing/i,
-		"Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
-	],
-	[
-		/*
-		 * The smoke arm only. `did not complete` used to be in here, and it is the
-		 * phrase `prepareManagedPython` throws when the install callback returns
-		 * false - a pip or network failure, where nothing was installed at all - so
-		 * the user read "The backend was installed but did not start correctly" about
-		 * an install that never happened (review round 2, N6). It now falls through
-		 * to the generic cause, which is true of it, and the app's own sentence still
-		 * follows under `The app recorded:`.
-		 */
-		/did not become healthy|Backend smoke|exited with/i,
-		"The backend was installed but did not start correctly.",
-	],
-	[
-		/ENOENT|no such file or directory|could not find|did not match its signed seed/i,
-		"A file the setup needed was missing, which usually means the download or the copy did not finish.",
-	],
-];
-
 /**
  * The failure dialog's detail line: what happened, then what was recorded.
  *
@@ -87,9 +53,14 @@ export function backendSetupFailureDetail(
 	support: string,
 ): string {
 	const raw = error instanceof Error ? error.message : String(error);
+	/*
+	 * The causes table itself lives in `setup-failure-causes.ts`, because the
+	 * app-owned update path now needs the same remedy and cannot import this module
+	 * (it would pull the three install scripts in as `?raw`). This is the same
+	 * derivation, asked through the shared leaf.
+	 */
 	const cause =
-		SETUP_FAILURE_CAUSES.find(([pattern]) => pattern.test(raw))?.[1] ??
-		"The backend could not be set up on this Mac.";
+		setupFailureCause(error) ?? "The backend could not be set up on this Mac.";
 	return [
 		`What happened: ${cause}`,
 		`The app recorded: ${raw}`,

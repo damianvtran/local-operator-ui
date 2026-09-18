@@ -2520,13 +2520,28 @@ export const STORIES = [
 	 *
 	 * Captured twice on purpose, and this entry is the second half: the same story on
 	 * the tree BEFORE the change states the fact and offers only "Understood", and
-	 * `docs/evidence/app-owned-managed-env-update/README.md` carries that arm's frame
+	 * `docs/evidence/server-behind-app-owned-before/README.md` carries that arm's frame
 	 * and how it was taken. The difference between the two frames is renderer copy
 	 * and one control, so unlike a payload-only pair there is a real pre-change tree
 	 * to photograph - which is what makes this pair evidence rather than an
 	 * illustration.
 	 */
 	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	/*
+	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
+	 * frame on any branch, and neither is reachable from a trigger flag: both exist
+	 * only as a COMPLETION the producer sends after a restart that did not take, so
+	 * the stories drive that payload. They are the two states this round's blocker
+	 * findings are about - the panel that contradicted itself, and the toast that
+	 * called a stopped server a success - and a finding about what a reader SEES
+	 * cannot be closed without the frame it is seen in.
+	 */
+	[
+		"common-updatenotification--server-behind-app-owned-restart-failed",
+		1280,
+		900,
+	],
+	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only

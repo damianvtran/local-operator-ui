@@ -230,6 +230,14 @@ const mockUpdaterApi = () => {
 				version: string;
 				runningVersion?: string | null;
 				restartable?: boolean;
+				/**
+				 * The install's own ownership, carried on this event too (design D5).
+				 *
+				 * Declared here as well as forwarded below because this mock stands in for
+				 * the preload bridge, and a mock whose parameter type is narrower than the
+				 * bridge's is a story that cannot reach the arm its docstring describes.
+				 */
+				appOwnedEnvironment?: boolean;
 			}) => void,
 		) => {
 			/*
@@ -248,6 +256,15 @@ const mockUpdaterApi = () => {
 					version: window.backendSkewReadings.version,
 					runningVersion: window.backendSkewReadings.runningVersion,
 					restartable: window.backendSkewReadings.restartable,
+					/*
+					 * FORWARDED, not just declared. The flag on the readings is what the
+					 * panel's control is gated on (design D5), so a mock that dropped it
+					 * rendered the panel in its no-action state and the frame showed a
+					 * different surface than the story's own docstring describes - caught
+					 * by LOOKING at the re-taken frame, which is the only way this class
+					 * of gap is visible.
+					 */
+					appOwnedEnvironment: window.backendSkewReadings.appOwnedEnvironment,
 				});
 			}
 			// For stories that need to trigger this callback
@@ -263,8 +280,10 @@ const mockUpdaterApi = () => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateCompleted) {
 				// Immediately trigger the callback. Null is the plain success payload;
-				// the shaped ones are what the skew stories drive.
-				callback(null);
+				// a shaped one is what a story that is about a FAILED attempt sets -
+				// `backendSkewCompletion` - so the frame shows what the producer actually
+				// sends on `restarted: false` rather than a thinner fixture.
+				callback(window.backendSkewCompletion ?? null);
 			}
 			return () => {};
 		},
@@ -562,6 +581,31 @@ declare global {
 			version: string;
 			runningVersion: string;
 			restartable: boolean;
+			/**
+			 * Whether the INSTALL this check read is the app's own environment.
+			 *
+			 * The second ownership reading (design D5), and the one the panel's restart
+			 * control is gated on: `restartable` is true on a global install too, where
+			 * the press behind that control is the install's own updater.
+			 */
+			appOwnedEnvironment: boolean;
+		};
+		/**
+		 * The completion payload a story drives, instead of the plain success `null`.
+		 *
+		 * The failed-restart arms exist only as a COMPLETION - `restarted: false` with
+		 * the readings the attempt read afterwards - so a story that has to show what
+		 * the user sees after a restart that did not take has to send one. Both arms
+		 * of that failure are here: the daemon still answering an older build, and the
+		 * daemon that never came back at all (UX U1).
+		 */
+		backendSkewCompletion?: {
+			installVersion: string | null;
+			runningVersion: string | null;
+			restarted: boolean;
+			restartable?: boolean;
+			appOwnedEnvironment?: boolean;
+			serverDidNotComeBack?: boolean;
 		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
@@ -1174,10 +1218,16 @@ export const BackendUpdateNonManaged: Story = {
  *
  * What the frame is: this machine's install is the published release and the daemon
  * SERVING this app is still on the previous build - which the app may restart,
- * because it started that daemon itself (`restartable`). The two numbers are real
- * readings from the operator's own machine at the time of the report: `/health`
- * answered 0.56.8 from the app's managed environment while 0.56.x was published,
- * and the machine's recorded preparation stamp was older still.
+ * because it started that daemon itself (`restartable`), and the install is the
+ * app's own managed environment (`appOwnedEnvironment`), which is what makes the
+ * press this panel offers the restart its label names (design D5). Where the two
+ * digits come from, stated exactly (design D9): the `0.56.8` half is a REAL
+ * reading - the live `/health` on the operator's machine, answered by the app's
+ * managed environment - while the `0.56.12` half is the published RELEASE that
+ * machine was offered, not a version measured on it (that box's app-owned tree held
+ * 0.56.8, and its recorded preparation stamp was older still). The frame is
+ * therefore the state this change produces - a landed publish whose restart has not
+ * happened - and it says so rather than implying both digits were read there.
  *
  * What the pair records is the panel's ENDING. Before, the sentence described the
  * remedy and the panel's only control was "Understood" - a true fact with nothing
@@ -1188,8 +1238,10 @@ export const BackendUpdateNonManaged: Story = {
  * restarts the daemon onto it.
  *
  * Same story, same readings, captured on the tree before this change and on the one
- * after it; the set and the argument for it are under
- * `docs/evidence/app-owned-managed-env-update/`.
+ * after it; that set and its argument are under
+ * `docs/evidence/server-behind-app-owned-before/`, and the after half is
+ * `common-updatenotification/server-behind-app-owned/`, declared in
+ * `docs/evidence/manifest.json`.
  */
 const ServerBehindAppOwnedBuild = () => {
 	const [ready, setReady] = useState(false);
@@ -1198,6 +1250,13 @@ const ServerBehindAppOwnedBuild = () => {
 			version: "0.56.12",
 			runningVersion: "0.56.8",
 			restartable: true,
+			/*
+			 * The install is the app's OWN managed environment, which is what makes the
+			 * panel's control offerable at all (design D5): the press behind it is
+			 * `update-backend`, and on a global install that is the install's own updater
+			 * rather than the restart the label names.
+			 */
+			appOwnedEnvironment: true,
 		};
 		window.triggerBackendUpdateSkew = true;
 		setReady(true);
@@ -1208,6 +1267,68 @@ const ServerBehindAppOwnedBuild = () => {
 export const ServerBehindAppOwned: Story = {
 	args: { autoCheck: false },
 	render: () => <ServerBehindAppOwnedBuild />,
+};
+
+/**
+ * THE RESTART THAT DID NOT TAKE, in both of its outcomes - the pair design D1 and
+ * UX U1 are filed against.
+ *
+ * These two states are reachable only as a COMPLETION: the app publishes nothing
+ * (the install is already the release), restarts the daemon onto it, and reports
+ * what it read afterwards. So the story drives the producer's own payload rather
+ * than a trigger flag, and the two cases differ in one field - whether the daemon
+ * answered at all:
+ *
+ * - `daemonBehind` (the D1 frame): `restartable: true` with the daemon still
+ *   answering the OLD build. The panel said, before this round, "the server serving
+ *   this app was started outside Local Operator, so it was left running on 0.56.8"
+ *   one paragraph above "This app started that server, so it can restart it onto
+ *   the new build now" - two contradictory sentences, and the first one false on
+ *   the arm the app's own button leads into.
+ * - `serverDown` (the U1 frame): the same restart with nothing answering afterwards
+ *   (`serverDidNotComeBack`). The success toast - "Server update completed
+ *   successfully" - was the whole surface for this state, about a server that is not
+ *   running.
+ *
+ * Both are photographed on the app's own arm (`appOwnedEnvironment: true`), which
+ * is the arm whose press produces them.
+ */
+const ServerBehindAppOwnedAfterRestart = ({
+	serverDown,
+}: { serverDown: boolean }) => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewCompletion = serverDown
+			? {
+					installVersion: "0.56.12",
+					runningVersion: null,
+					restarted: false,
+					restartable: true,
+					appOwnedEnvironment: true,
+					serverDidNotComeBack: true,
+				}
+			: {
+					installVersion: "0.56.12",
+					runningVersion: "0.56.8",
+					restarted: false,
+					restartable: true,
+					appOwnedEnvironment: true,
+					serverDidNotComeBack: false,
+				};
+		window.triggerBackendUpdateCompleted = true;
+		setReady(true);
+	}, [serverDown]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+export const ServerBehindAppOwnedRestartFailed: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedAfterRestart serverDown={false} />,
+};
+
+export const ServerBehindAppOwnedServerDown: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedAfterRestart serverDown />,
 };
 
 /**
