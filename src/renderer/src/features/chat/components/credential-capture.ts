@@ -565,6 +565,73 @@ export function armSpan(buffer: string, caret: number): Span | null {
  * The re-anchor's vocabulary, never the arming rule: {@link CREDENTIAL_TOKEN}
  * has no end-of-line anchor, so a token it finds is not (yet) a gesture.
  */
+/**
+ * The credential run a PASTE brought in, in the operator's own terms, or `null`.
+ *
+ * WHY A PASTE IS ITS OWN PROVENANCE (QA round 6, Q-1). The lock's boundary rule is
+ * scoped to a draft the app's own Escape un-masked, because a *typed* word is
+ * ambiguous: `the docs/credential rotation policy is stale` is a sentence ABOUT a
+ * path and must send. A paste is not ambiguous in the same way — a pasted
+ * `/credential <secret>` is the command, written elsewhere and brought here — and the
+ * typed capture never arms for it, so before this the pasted secret sat in the box in
+ * the clear with no record at all: one keystroke after the paste, `x/credential
+ * <secret>` reached a message record and a provider body.
+ *
+ * THE REACH IS THE PASTED TAIL'S BYTES, for the reason the cancel record's reach is
+ * its restored characters: it is a fact about the draft in front of the operator, not
+ * about the pane's history. The tail rather than the whole payload is deliberate — an
+ * edit INSIDE the word (`/credxential <secret>`, QA round 6's PP2) leaves the tail
+ * intact and the secret still exposed, while an emptied box leaves nothing behind and
+ * is prose again. A bare pasted word carries no tail and so arms nothing.
+ *
+ * The word list and the token matcher come from this module's own table, so a
+ * spelling added to `/credential`'s vocabulary is a paste word the same day.
+ */
+/**
+ * Whether a run's characters are still standing in the draft AS A TOKEN.
+ *
+ * THE ONE RULE BOTH DIRECTIONS NEED (UX round 7, U27; QA round 6, Q-1), and it is this
+ * module's own: a token's left context is the start of the text or whitespace, and its
+ * right context is the end of the text or whitespace. `CREDENTIAL_TOKEN` spells exactly
+ * that, and the two records below are asked with the same rule rather than with a second
+ * heuristic.
+ *
+ * WHY NOT `includes`. The bound used to be a substring test, which has no position, no
+ * length and no word: a SHORT restored value re-armed the exception on a sentence the
+ * operator then wrote, so `/credential prod` -> Escape -> wipe -> `the prod/staging split
+ * is stale` consumed the tail and opened a credential dialog for a secret that never
+ * existed. Inside `prod/staging` the occurrence is not a token — the `/` is not
+ * whitespace — and that is the whole distinction. A run still standing where it was put
+ * back passes on both sides, which is the state every shape this branch closes is in.
+ */
+export function standsAsToken(draft: string, run: string): boolean {
+	if (run === "") return false;
+	for (let i = draft.indexOf(run); i !== -1; i = draft.indexOf(run, i + 1)) {
+		const before = i === 0 ? null : draft[i - 1];
+		const after = i + run.length >= draft.length ? null : draft[i + run.length];
+		if (
+			(before === null || /\s/.test(before)) &&
+			(after === null || /\s/.test(after))
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+export function pastedCredentialRun(
+	pasted: string,
+): { word: string; run: string } | null {
+	const span = tokenSpans(pasted)[0];
+	if (!span) return null;
+	const word = pasted
+		.slice(span.start, span.end)
+		.replace(/^\//, "")
+		.toLowerCase();
+	const run = pasted.slice(span.end).trim();
+	return run === "" ? null : { word, run };
+}
+
 export function tokenSpans(buffer: string): Span[] {
 	const out: Span[] = [];
 	// A module-level regex with `g` carries `lastIndex` between calls, so both

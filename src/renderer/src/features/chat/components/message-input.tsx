@@ -130,6 +130,8 @@ import {
 	isArmed,
 	isTyping,
 	mintTypedCredential,
+	pastedCredentialRun,
+	standsAsToken,
 	storedNotice,
 	substituteCredentials,
 	syncCapture,
@@ -1267,6 +1269,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * distinction, taken where the pick happens.
 		 */
 		const pickedToken = useRef<string | null>(null);
+		/*
+		 * The credential run a PASTE brought in, and its word (QA round 6, Q-1).
+		 *
+		 * The third provenance, and the one that had no record at all: the typed capture
+		 * arms for typing and the picker records its own write, but a pasted
+		 * `/credential <secret>` arrives with neither, sits in the box in the clear, and
+		 * `Esc` afterwards changes nothing — so one keystroke after the paste the in-word
+		 * forms reached the model. It is a record of its own rather than a re-widening of
+		 * the boundary, because the two drafts it separates are not look-alikes:
+		 * `the docs/credential rotation policy is stale` was never pasted, and stays prose.
+		 */
+		const pastedRun = useRef<{ word: string; run: string } | null>(null);
 		/*
 		 * The draft a LOCKED run consumed, and what the undo owes the user (UX round 1, U3).
 		 *
@@ -2510,7 +2524,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */
 					unmaskedRunWord: carriesRestoredRun(draft)
 						? cancelledToken.current?.text.trim().replace(/^\//, "")
-						: undefined,
+						: carriesPastedRun(draft)
+							? pastedRun.current?.word
+							: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2673,7 +2689,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const carriesRestoredRun = useCallback((draft: string): boolean => {
 			const cancelled = cancelledToken.current;
 			if (cancelled === null || cancelled.restored === 0) return false;
-			return draft.includes(cancelled.restoredText);
+			/*
+			 * AS A TOKEN, not as a substring (UX round 7, U27): `prod` restored from
+			 * `/credential prod` is not the `prod` inside `the prod/staging split is stale`,
+			 * and a sentence the operator wrote must not have its tail taken because two
+			 * characters of it happen to match a short value.
+			 */
+			return standsAsToken(draft, cancelled.restoredText);
+		}, []);
+		/**
+		 * Whether this draft still carries the run a PASTE brought in (QA round 6, Q-1).
+		 *
+		 * The same shape as `carriesRestoredRun` and for the same reason — the bytes
+		 * decide, not the history — with the pasted TAIL as the bytes: an edit inside the
+		 * word leaves the secret exposed and must stay covered, while a box that no longer
+		 * holds the pasted value is prose again.
+		 */
+		const carriesPastedRun = useCallback((draft: string): boolean => {
+			const pasted = pastedRun.current;
+			return pasted !== null && standsAsToken(draft, pasted.run);
 		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
@@ -4005,6 +4039,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 			}
+			/*
+			 * AN ORDINARY PASTE IS ITS OWN PROVENANCE (QA round 6, Q-1). This is the
+			 * fall-through — no capture armed — so the browser's own insert is about to
+			 * happen and the payload is about to be IN the box, in the clear. Recording the
+			 * run it brought in is what lets the lock see the keystroke after it; the record
+			 * is asked for its word only while those bytes are still in the draft, exactly
+			 * like the cancel's, so an emptied box is prose again.
+			 */
+			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {

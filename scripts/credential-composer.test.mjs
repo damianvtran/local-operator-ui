@@ -3764,19 +3764,197 @@ test("a live run keeps the record's reach, including over a slash the operator w
 	);
 	await enter(frame);
 	await settle();
+	/*
+	 * REWRITTEN BY UX ROUND 7's U27, and this is the residual rather than a window now.
+	 *
+	 * This shape deletes the WORD out of `/credential ` and leaves its `/` against the
+	 * restored characters, so the draft is `see src/button.tsx /<the run>`: the run's left
+	 * context is no longer the space the cancel put it in, which is exactly the condition
+	 * U27 asks the bound to test (`standsAsToken`: start-or-whitespace on the left,
+	 * end-or-whitespace on the right). A rule that still claimed this draft would claim
+	 * `prod` inside `prod/staging` — the substring test U27 removed — so it is recorded
+	 * instead of covered: the draft is prose and its bytes travel as a message, which is
+	 * `main`'s behaviour for the same draft, measured here and stated in the body's
+	 * residual list. What is NOT recorded is the shape the round-6 pin was written for: a
+	 * live run whose own context survives is still the dispatcher's, and that is pinned by
+	 * the paste cells and the escaped-shape tests above.
+	 */
 	assert.equal(
 		ran.length,
-		1,
-		"the run is the dispatcher's: the path is read as the recorded word's token",
+		0,
+		"the run's context was destroyed by the edit, so the draft is prose",
 	);
-	assert.equal(
-		ran[0].name,
-		"credential",
-		"and the command is the recorded word",
-	);
-	assert.equal(frame.sent.length, 0, "nothing reaches the model");
+	assert.equal(frame.sent.length, 1, "and it is sent");
 	assert.ok(
-		!JSON.stringify(frame.sent).includes(CANARY),
-		"the restored characters are the command's argument, not a message",
+		JSON.stringify(frame.sent).includes(CANARY),
+		"including the characters — main's behaviour for this draft, recorded as a residual",
+	);
+});
+
+test("a pasted credential run is the command, and a pasted sentence about a path is not (QA round 6, Q-1)", async () => {
+	/*
+	 * QA ROUND 6's BLOCKER, and the last provenance with no record. The typed capture arms
+	 * for typing and the picker records its own write; a PASTED `/credential <secret>` had
+	 * neither, so it sat in the box in the clear, `Esc` afterwards changed nothing, and one
+	 * keystroke later the in-word forms reached a message record and a provider body —
+	 * `main` sends them, and against this branch's own pre-round-5 head the shape was
+	 * covered by a boundary relaxation that was then narrowed for the prose half.
+	 *
+	 * The fix is a record rather than a re-widening: the paste's own run is recorded at the
+	 * paste, and its word is handed to the planner only while those bytes are still in the
+	 * draft. A paste is not ambiguous the way a typed word is — a pasted `/credential
+	 * <secret>` IS the command — which is why the same sentence ARRIVING BY PASTE with no
+	 * tail, or after the pasted value has been cleared, is prose and sends in full.
+	 */
+	const CANARY = "LOP_R6_Q1_PASTE_CANARY_9b31";
+	const pasted = `please /credential ${CANARY}`;
+	const cells = [
+		{
+			label: "PP1, a character typed in front of the slash",
+			edit: async (frame) => {
+				await placeCaret(frame, 0);
+				await type(frame, "x");
+			},
+			box: `x${pasted}`,
+		},
+		{
+			label: "PP2, a character typed inside the word",
+			edit: async (frame) => {
+				await placeCaret(frame, pasted.indexOf("/credential") + 5);
+				await type(frame, "x");
+			},
+			box: `please /credxential ${CANARY}`,
+		},
+		{ label: "PP3, the paste untouched", edit: async () => {}, box: pasted },
+	];
+	for (const { label, edit, box } of cells) {
+		const ran = [];
+		const frame = await mount({
+			conversationId: `conv-q1-${label.slice(0, 3)}`,
+			paneHasSession: true,
+			sessionStatus: { frontend: null },
+			onSlashCommand: async (command) => {
+				ran.push(command);
+				return "consumed";
+			},
+		});
+		await writeValue(frame.textarea(), pasted, pasted.length);
+		await paste(frame, pasted);
+		await edit(frame);
+		assert.equal(
+			frame.value(),
+			box,
+			`${label}: the box is the shape under test`,
+		);
+		await enter(frame);
+		await settle();
+		assert.equal(ran.length, 1, `${label}: the run is the dispatcher's`);
+		assert.equal(ran[0].name, "credential", `${label}: the word`);
+		assert.equal(ran[0].args, CANARY, `${label}: the tail is its argument`);
+		assert.equal(frame.sent.length, 0, `${label}: nothing is sent`);
+		assert.ok(
+			!JSON.stringify(frame.sent).includes(CANARY),
+			`${label}: the secret travels in no message`,
+		);
+	}
+
+	/*
+	 * THE CONTROLS. A sentence ABOUT a path that arrives by paste is not credentialed —
+	 * there is no tail to record — and a pasted value the operator has cleared no longer
+	 * reaches anything. Without these two, the fix could be a re-widening wearing a new
+	 * name, which is the outcome the manager asked to avoid by name.
+	 */
+	const controls = [
+		{
+			label: "a pasted sentence about a path",
+			setup: async (frame) => {
+				const sentence = "the docs/credential rotation policy is stale";
+				await writeValue(frame.textarea(), sentence, sentence.length);
+				await paste(frame, sentence);
+			},
+			box: "the docs/credential rotation policy is stale",
+		},
+		{
+			label: "the pasted value cleared out of the box",
+			setup: async (frame) => {
+				await writeValue(frame.textarea(), pasted, pasted.length);
+				await paste(frame, pasted);
+				for (let i = 0; i < pasted.length; i++)
+					await key(frame, { key: "Backspace" });
+				await type(frame, "the docs/credential rotation policy is stale");
+			},
+			box: "the docs/credential rotation policy is stale",
+		},
+	];
+	for (const { label, setup, box } of controls) {
+		const ran = [];
+		const frame = await mount({
+			conversationId: `conv-q1-ctl-${label.length}`,
+			paneHasSession: true,
+			sessionStatus: { frontend: null },
+			onSlashCommand: async (command) => {
+				ran.push(command);
+				return "consumed";
+			},
+		});
+		await setup(frame);
+		assert.equal(
+			frame.value(),
+			box,
+			`${label}: the box is the shape under test`,
+		);
+		await enter(frame);
+		await settle();
+		assert.equal(ran.length, 0, `${label}: no command runs over a sentence`);
+		assert.equal(frame.sent.length, 1, `${label}: the sentence is sent`);
+		assert.ok(
+			JSON.stringify(frame.sent).includes(box),
+			`${label}: in full, byte for byte`,
+		);
+	}
+});
+
+test("a restored run is the command only as a token, not as a substring (UX round 7, U27)", async () => {
+	/*
+	 * UX ROUND 7's MAJOR. The bound was `draft.includes(restoredText)` — no position, no
+	 * length, no word — so a SHORT restored value re-armed the exception on a sentence the
+	 * operator wrote afterwards: `/credential prod` -> Escape -> wipe -> `the prod/staging
+	 * split is stale` took the tail, truncated the sentence and opened a Credential dialog
+	 * asking for a secret that never existed.
+	 *
+	 * The rule is now this codebase's own tokenizer rule, the one `CREDENTIAL_TOKEN` spells:
+	 * start-or-whitespace on the left, end-or-whitespace on the right. `prod` inside
+	 * `prod/staging` fails on the right — the `/` is not whitespace — while a restored run
+	 * still standing where the cancel put it passes on both sides, which is the state every
+	 * shape this branch closes is in at its press. The positive half is pinned by this
+	 * branch's own escaped-shape tests; this is the negative half.
+	 */
+	const SHORT = "prod";
+	const sentence = "the prod/staging split is stale";
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-u27-prod",
+		paneHasSession: true,
+		sessionStatus: { frontend: null },
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, SHORT);
+	await esc(frame);
+	const held = frame.value();
+	assert.ok(held.includes(SHORT), "the app un-masked the characters");
+	for (let i = 0; i < held.length; i++) await key(frame, { key: "Backspace" });
+	assert.equal(frame.value(), "", "the box is cleared");
+	await type(frame, sentence);
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 0, "no command runs over the operator's sentence");
+	assert.equal(frame.sent.length, 1, "the sentence is sent");
+	assert.ok(
+		JSON.stringify(frame.sent).includes(sentence),
+		"in full, byte for byte",
 	);
 });
