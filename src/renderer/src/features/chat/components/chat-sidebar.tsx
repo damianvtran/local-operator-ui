@@ -121,7 +121,8 @@ const rowStyle =
  * it measures 9.6 — which is why this is a call-site ground and NOT a wash:
  * strengthening `accentWash` for the panels that draw it on `surface` would make
  * every hover tint in the app louder. (The SETTINGS rail was the other `surface`
- * panel and takes this same role: `features/settings/components/settings-sidebar.tsx`.)
+ * panel and takes this same role — it imports `rowCurrent` from this file rather
+ * than restating it, see the note at the declaration below.)
  *
  * WHY NOT `sunken`, WHICH IS WHAT THIS USED TO BE. `sunken` is the RECESSED
  * role: a well, a track, a code ground — a hole in the panel rather than a mark
@@ -189,8 +190,27 @@ const rowStyle =
  * shipped `cn`, and `contrast-contract.mjs` pins this string — a bare
  * `bg-accent-wash` here is invisible in tokyoNight and no palette assertion can
  * see a class.
+ *
+ * WHY THIS IS EXPORTED, AND WHY THE SINGLE SPELLING LIVES HERE (round 5: design
+ * D22, agent A-7). The role has three consumers — this panel, the settings rail
+ * and the story specimen the mark's 30 committed frames are taken through — and
+ * each of them used to spell the four terms by hand. Two of those copies then
+ * drifted a term each (design rounds 3 and 4, D17 and D19), and the frames they
+ * produced are the ONLY committed pictures of the mark on the selection ground,
+ * so a copy is a picture of a row the app does not draw. A text guard over the
+ * replicas could only ever watch the copies it knew about: both drifts happened
+ * at an ELEMENT (the wrapper painting the retired ground, the button painting
+ * half the role) while the copied string above it stayed verbatim. So the copy
+ * is gone rather than pinned: the role is declared once, here, and imported by
+ * `features/settings/components/settings-sidebar.tsx` and
+ * `features/browser/components/browser-conversation-mark.stories.tsx`, and
+ * `scripts/chat-sidebar-selection.test.mjs` both asserts that no class literal
+ * in the shipped tree spells these terms a second time and resolves the
+ * specimen's two call sites through the shipped `cn`, the way it already
+ * resolves this panel's and the rail's.
  */
-const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
+export const rowCurrent =
+	"bg-highlight font-medium text-ink hover:bg-highlight";
 
 import {
 	type FocusedSlot,
