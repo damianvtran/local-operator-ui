@@ -335,6 +335,13 @@ const api = {
 				version: string;
 				runningVersion?: string | null;
 				restartable?: boolean;
+				/**
+				 * False when the check that sent this pair never READ the published release, so
+				 * the notice may state the two readings without calling the install current.
+				 * Absent means the release was read. Only the network-unavailable pass sends
+				 * false (QA round 3, Q3-1).
+				 */
+				releaseRead?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);

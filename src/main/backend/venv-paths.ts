@@ -79,6 +79,47 @@ export function legacyVenvPaths(support: string): string[] {
 }
 
 /**
+ * The directories a daemon this app started can have booted from.
+ *
+ * WHY THIS EXISTS. A daemon the app spawns outlives the app process that started
+ * it - that is the ordinary desktop lifecycle, and it is how the operator's own
+ * daemon came to be adopted as `EXISTING_SERVER` by the next app process. The
+ * daemon's own record answers "who started me" (`desktop` with an unspent
+ * `claim_key`), but a build predating that handshake publishes an empty key
+ * either way, so the environment it runs from is the reading that still holds: an
+ * environment THIS instance built is one whose daemon this app started.
+ *
+ * WHICH ROOTS, and why the answer is scope-specific. `managedPythonRoot`'s tree
+ * for this instance's packaged/dev scope is the whole of the environment layout
+ * (`environments/` generations, `runtimes/`), so a daemon booted from a
+ * SUPERSEDED generation of the same tree is still this app's. The pre-split venv
+ * names are included because an install from before the split built those, and
+ * the packaged/dev split is deliberately NOT crossed: a dev instance must not
+ * claim the installed app's daemon as its own to restart, which is the same
+ * separation `DEV_VENV_DIR_NAME` exists for.
+ *
+ * Off darwin the runtime is not provisioned under the support root at all, so the
+ * only environment this can honestly claim is this instance's own venv - and the
+ * caller gets just that rather than a guess. An unprepared (sentinel) venv path
+ * is no environment and is left out.
+ */
+export function managedEnvironmentRoots(input: {
+	platform: NodeJS.Platform;
+	home: string;
+	packaged: boolean;
+	venvPath: string;
+}): string[] {
+	const ownVenv = isUnpreparedVenvPath(input.venvPath) ? [] : [input.venvPath];
+	if (input.platform !== "darwin") return ownVenv;
+	const support = managedSupportRoot(input.home);
+	return [
+		...ownVenv,
+		join(support, "managed-python", input.packaged ? "packaged" : "dev"),
+		...legacyVenvPaths(support),
+	];
+}
+
+/**
  * The variable the app hands its resolved venv path to the install scripts in.
  *
  * The scripts cannot derive it: they run as a subprocess with no view of
