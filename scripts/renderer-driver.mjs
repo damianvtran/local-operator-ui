@@ -2229,10 +2229,14 @@ async function scenePinsScrolled(cdp) {
 		 * the store's pin for the pressed row must have inverted, or nothing downstream measured
 		 * anything. Kept as a `check` rather than a `require` so a drop is reported as a drop.
 		 */
-		const pressedNowA = afterA.rows.find((row) => row.id === targetA.id)?.pinned;
+		const pressedNowA = afterA.rows.find(
+			(row) => row.id === targetA.id,
+		)?.pinned;
 		check(
 			"the press acted: the pressed row's pin state inverted (D24: a dropped press must not read as a geometry failure)",
-			wasA?.pinned !== undefined && pressedNowA !== undefined && wasA.pinned !== pressedNowA,
+			wasA?.pinned !== undefined &&
+				pressedNowA !== undefined &&
+				wasA.pinned !== pressedNowA,
 			JSON.stringify({ pin_before: wasA?.pinned, pin_after: pressedNowA }),
 		);
 		/*
