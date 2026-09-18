@@ -274,26 +274,38 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 * in default app` to nobody swallowed the click. A click must always
 			 * produce something - a viewer, the OS, or a sentence.
 			 *
-			 * One re-probe first, because the interval between the probe and the click
-			 * is exactly when an agent writes the file. A tile can already know its
-			 * file is gone, and it must not be handed to the OS, which would either do
-			 * nothing or open the wrong thing.
+			 * The probe is unconditional now, where it used to run only for a tile
+			 * that already knew its file was gone, and the extra `stat` buys three
+			 * facts the document it opens needs: the mtime its bytes are being read
+			 * at (both the freshness baseline the canvas checks against later and
+			 * the blob cache's key), the size the viewers state "too large" from,
+			 * and `availability`. The tile's own copy of those is a reading taken
+			 * when the tile was scanned, and the interval between that and this
+			 * click is exactly when an agent writes the file.
 			 */
 			const normalizedPath = stripFileUrl(fileDoc.path);
-			if (fileDoc.availability === "missing") {
-				const [probe] = await window.api.probeFiles([normalizedPath]);
-				if (!probe || !probe.exists || !probe.isFile) {
-					showErrorToast(
-						`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
-						{
-							// What to do next, not only what happened: the path alone leaves
-							// the reader with a three-line wrap and nowhere to go.
-							description:
-								"Copy its path from the tile's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
-						},
-					);
-					return;
-				}
+			/*
+			 * The bridge is absent in a browser build, and a click must still open what
+			 * it can there: no probe answer is "nothing is known", which leaves the
+			 * document without a freshness baseline rather than failing the click. The
+			 * same shape `use-mentioned-files` asks its own probes with.
+			 */
+			const probe =
+				typeof window.api?.probeFiles === "function"
+					? ((await window.api.probeFiles([normalizedPath]))[0] ?? null)
+					: null;
+			const onDisk = Boolean(probe?.exists && probe.isFile);
+			if (fileDoc.availability === "missing" && !onDisk) {
+				showErrorToast(
+					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+					{
+						// What to do next, not only what happened: the path alone leaves
+						// the reader with a three-line wrap and nowhere to go.
+						description:
+							"Copy its path from the tile's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+					},
+				);
+				return;
 			}
 
 			if (kind === null) return fallbackAction();
@@ -313,8 +325,16 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			const carried = {
 				title,
 				type: getFileTypeFromPath(normalizedPath),
-				lastAgentModified: fileDoc.lastAgentModified,
-				sizeBytes: fileDoc.sizeBytes,
+				lastAgentModified: probe?.mtimeMs ?? fileDoc.lastAgentModified,
+				/*
+				 * The freshness baseline: the mtime these bytes are being read at. Only
+				 * ever a probe answer - never `fileDoc.lastAgentModified`, which is
+				 * also set to `Date.now()` by the attachment path, and a baseline in
+				 * the future is a file that never looks new.
+				 */
+				readMtimeMs: probe?.mtimeMs ?? undefined,
+				availability: onDisk ? ("present" as const) : undefined,
+				sizeBytes: probe?.sizeBytes ?? fileDoc.sizeBytes,
 			};
 
 			const encoding = READ_ENCODING[kind];
