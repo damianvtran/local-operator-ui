@@ -40,6 +40,12 @@ import {
 import { type FC, memo } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import {
+	clearDocumentDirty,
+	documentAfterSelfWrite,
+	probeLocalFile,
+	setDocumentDirty,
+} from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
@@ -475,14 +481,33 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			return;
 		}
 
-		window.api.saveFile(document.path, content);
-		showSuccessToast("File saved");
-		originalContentRef.current = content;
-		setHasUserChanges(false);
+		/*
+		 * A manual save owes the same baseline every other write owes: the file's
+		 * mtime has just moved because of us, so the canvas's freshness check has to
+		 * be told what it moved to - otherwise the next tick reads back this save.
+		 * The dirty flag clears only after the probe answers, so a check landing
+		 * mid-write cannot replace a buffer that is not yet on disk.
+		 */
+		void (async () => {
+			try {
+				await window.api.saveFile(document.path, content);
+				const probe = await probeLocalFile(document.path);
+				showSuccessToast("File saved");
+				originalContentRef.current = content;
+				setHasUserChanges(false);
 
-		if (conversationId && canvasState) {
-			updateOneFile(conversationId, { ...document, content });
-		}
+				if (conversationId && canvasState) {
+					updateOneFile(
+						conversationId,
+						documentAfterSelfWrite(document, probe, content),
+					);
+				}
+			} catch (error) {
+				// The bytes are not on disk, so the buffer stays dirty and the next
+				// save attempts it again.
+				console.error("Could not save the document:", error);
+			}
+		})();
 	}, [
 		hasUserChanges,
 		content,
@@ -816,6 +841,19 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, [document.lastAgentModified]);
 
+	/*
+	 * Publish "this buffer differs from the file", which is what the canvas's
+	 * freshness check consults before replacing anything - see the registry in
+	 * `file-freshness.ts`. This editor is the one that made it necessary: its
+	 * write is debounced by three seconds, so for three seconds after the last
+	 * keystroke the store holds bytes the user has already replaced, and a
+	 * check driven off the store would see no change and overwrite the typing.
+	 */
+	useEffect(() => {
+		setDocumentDirty(document.id, hasUserChanges);
+	}, [document.id, hasUserChanges]);
+	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
+
 	// Manage UndoManager lifecycle
 	useEffect(() => {
 		const onStateChange = (canUndo: boolean, canRedo: boolean) => {
@@ -861,16 +899,26 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			debouncedContent !== originalContentRef.current &&
 			document.path
 		) {
-			window.api.saveFile(document.path, debouncedContent);
-			showSuccessToast("File saved");
-			originalContentRef.current = debouncedContent;
+			/* Same one-step rule as the manual save above: the write, then the probe
+			 * that tells the canvas what the file's mtime became. */
+			void (async () => {
+				try {
+					await window.api.saveFile(document.path, debouncedContent);
+					const probe = await probeLocalFile(document.path);
+					showSuccessToast("File saved");
+					originalContentRef.current = debouncedContent;
+					setHasUserChanges(false);
 
-			if (conversationId && canvasState) {
-				updateOneFile(conversationId, {
-					...document,
-					content: debouncedContent,
-				});
-			}
+					if (conversationId && canvasState) {
+						updateOneFile(
+							conversationId,
+							documentAfterSelfWrite(document, probe, debouncedContent),
+						);
+					}
+				} catch (error) {
+					console.error("Could not save the document:", error);
+				}
+			})();
 		}
 	}, [
 		debouncedContent,

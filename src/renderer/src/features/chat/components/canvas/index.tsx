@@ -30,6 +30,7 @@ import {
 } from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
+import { DocumentFreshnessBar } from "./document-freshness-bar";
 
 type CanvasProps = {
 	/**
@@ -569,6 +570,17 @@ const CanvasComponent: FC<CanvasProps> = ({
 							id={CANVAS_DOCUMENT_PANEL_ID}
 							labelledBy={CANVAS_SELECTED_TAB_ID}
 						>
+							{/*
+							 * The document's own line: the file's last modification, and the
+							 * control that reads it again. Inside the panel, so it travels
+							 * with the `aria-controls` relationship the strip already establishes,
+							 * and OUTSIDE `CanvasContent` so every viewer gets it - including
+							 * the ones with no chrome bar of their own.
+							 */}
+							<DocumentFreshnessBar
+								document={activeDocument}
+								conversationId={conversationId}
+							/>
 							<CanvasContent
 								document={activeDocument}
 								conversationId={conversationId}

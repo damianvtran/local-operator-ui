@@ -44,6 +44,15 @@ export type CanvasDocumentOptions = {
 	sizeBytes?: number;
 	/** Last agent modification, ms since epoch. */
 	lastAgentModified?: number;
+	/**
+	 * The file's mtime at the moment this content was read, ms since epoch.
+	 *
+	 * A caller that read the bytes off a probe answer passes it, because the
+	 * canvas's freshness check has nothing else to compare a later probe
+	 * against; a caller that did not (the OS dialog, a file created here) leaves
+	 * it absent, which the check reads as "adopt what the file says now".
+	 */
+	readMtimeMs?: number;
 };
 
 /** Strip a `file://` prefix, keeping the rest of the path intact. */
@@ -67,5 +76,7 @@ export function canvasDocumentForPath(
 	if (options.sizeBytes !== undefined) document.sizeBytes = options.sizeBytes;
 	if (options.lastAgentModified !== undefined)
 		document.lastAgentModified = options.lastAgentModified;
+	if (options.readMtimeMs !== undefined)
+		document.readMtimeMs = options.readMtimeMs;
 	return document;
 }
