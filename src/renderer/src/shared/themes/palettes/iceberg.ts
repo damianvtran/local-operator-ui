@@ -152,8 +152,10 @@ export const iceberg: ThemeDefinition = {
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		success: "#4B682C",
 		successWash: "#DBE0DB",
@@ -168,8 +170,10 @@ export const iceberg: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		warning: "#8C5129",
 		warningWash: "#E5DDDA",
@@ -185,8 +189,10 @@ export const iceberg: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.54:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.54:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#AA315B",
 		dangerWash: "#E5DAE1",
@@ -202,8 +208,10 @@ export const iceberg: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.53:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.53:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#306581",
 		infoWash: "#D7DFE5",

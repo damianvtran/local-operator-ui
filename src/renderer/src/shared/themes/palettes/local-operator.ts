@@ -270,8 +270,10 @@ export const localOperatorLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		accent: "#137742",
 		accentHover: "#116036",

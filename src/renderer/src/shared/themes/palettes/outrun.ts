@@ -152,8 +152,12 @@ export const outrun: ThemeDefinition = {
 		/*
 		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 83.07 -> 64.8, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		accent: "#FF607B",
 		accentHover: "#FF4578",
@@ -173,6 +177,8 @@ export const outrun: ThemeDefinition = {
 		 * three times and the chart's hover mark has to stay ΔE00 10 clear of the
 		 * resting mark, so both move at their own hue rather than letting the accent
 		 * pull away from them.
+		 * Its chroma comes down with the accent's (C* 61.57 -> 48.6), which is
+		 * the same gamut exception: the required `L*` leaves sRGB at the old chroma.
 		 */
 		chartBarHover: "#FF88A9",
 		tokenCommand: "#2DE2E6",

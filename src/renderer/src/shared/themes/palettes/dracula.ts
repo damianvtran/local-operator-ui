@@ -118,8 +118,10 @@ export const dracula: ThemeDefinition = {
 		/*
 		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		accent: "#C096FC",
 		accentHover: "#D1AEFF",
@@ -159,8 +161,12 @@ export const dracula: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.53:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.53:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 60.47 -> 50.37, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF8784",
 		dangerWash: "#422F3A",

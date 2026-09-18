@@ -150,8 +150,12 @@ export const monokai: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 63.64 -> 56, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF77A3",
 		dangerWash: "#40282C",
