@@ -680,9 +680,26 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	composer.type("hunter2");
 	composer.escape();
 	const { token } = composer.state.lastCancel;
+	/*
+	 * `restored` IS PART OF THE TOKEN NOW (review round 3, MINOR 1). The submit seam
+	 * has to know whether this cancel put characters back — an empty span restores
+	 * nothing, so the words written after it are the operator's own prose, while a
+	 * span that held characters leaves a secret in the box — and the record of the
+	 * gesture is where that fact belongs, because nothing later can tell the two
+	 * apart from the buffer.
+	 */
+	/*
+	 * `restoredText` moved with the count (UX round 6, U24): the composer needed the
+	 * characters themselves to answer "is the run still in this draft?", because a count
+	 * alone let a cleared box and a fresh sentence be read as the run's draft. Both
+	 * halves of this pair assert it — the characters here, and the empty string for the
+	 * span that put nothing back.
+	 */
 	assert.deepEqual(token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
+		restored: 7,
+		restoredText: "hunter2",
 	});
 	assert.ok(holdsCancelledToken(composer.state.buffer, token));
 	// Prose written AROUND the restored characters leaves it standing — this is
@@ -706,6 +723,8 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	assert.deepEqual(empty.state.lastCancel.token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
+		restored: 0,
+		restoredText: "",
 	});
 	assert.equal(empty.state.lastCancel.restored, 0);
 	// The characters the operator writes AFTER an empty-span cancel land after
