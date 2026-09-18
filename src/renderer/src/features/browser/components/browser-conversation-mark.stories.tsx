@@ -1,3 +1,4 @@
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { within } from "@storybook/test";
@@ -55,26 +56,41 @@ const summary = (
  * `chat-sidebar.tsx`), so the frames are about the product's geometry.
  */
 /*
- * THE SELECTION ROLE, VERBATIM FROM THE SIDEBAR, and a copy rather than an import on
- * purpose: this file is a SPECIMEN of the row the mark sits in, and importing the product's
- * own row would turn it into a second rendering of the sidebar rather than a controlled
- * stand-in whose ground and neighbour a reviewer can hold still.
+ * THE SELECTION ROLE IS IMPORTED, THE ROW AROUND IT IS NOT.
  *
- * A copy drifts, and this one did - twice (design rounds 3 and 4, D17 and D19): first it kept
- * painting the retired `sunken` ground, then it painted the new ground and dropped the weight
- * that ground was moved for. `scripts/chat-sidebar-selection.test.mjs` therefore holds this
- * literal to `chat-sidebar.tsx`'s `rowCurrent` verbatim, so the specimen cannot photograph a
- * row the app does not draw in ANY of the role's terms.
+ * Importing the product's own row would turn this into a second rendering of the sidebar
+ * rather than a controlled stand-in whose ground and neighbour a reviewer can hold still, so
+ * the DOM below is still this file's own. The ROLE - the one string that decides what the
+ * current row paints - is not: it is a plain constant, `chat-sidebar.tsx`'s `rowCurrent`, and
+ * it is imported rather than re-spelled.
  *
- * EVERY TERM IS VISIBLE, which is why the copy has to be whole: `bg-highlight` is the ground
- * that makes the row read as the current one, `font-medium` is the non-colour step `main`
- * added because a neighbouring row's hover step (`elevated`) is still the larger step off
- * `surface` on most palettes, `text-ink` is the ink `highlight`'s floor is asserted on, and
- * `hover:bg-highlight` is the pair the mark's own `!current` guard answers. Both elements
+ * WHY THE COPY WENT. This file carried its own four-term copy of that constant, and it
+ * drifted twice in two rounds (design rounds 3 and 4, D17 and D19): first it kept painting
+ * the retired `sunken` ground, then it painted the new ground and dropped `font-medium` and
+ * `text-ink`. Both times the frames in `docs/evidence/browser-conversation-mark/` - the only
+ * committed picture of the mark on the selection ground - drew a row the app does not draw.
+ * A guard over the copy could only pin the copy: the pass-4 guard held this literal equal to
+ * the sidebar's and stayed green through both historical shapes, because both lived one
+ * indirection away, at the element (round 5: design D22, agent A-7). With the role imported
+ * there is no second spelling to drift, and the shapes that DID drift are the ones
+ * `scripts/chat-sidebar-selection.test.mjs` now resolves: it runs BOTH `cn` calls below
+ * through the shipped `cn` and requires the whole role on each element.
+ *
+ * EVERY TERM IS VISIBLE, which is why the role has to arrive whole: `bg-highlight` is the
+ * ground that makes the row read as the current one, `font-medium` is the non-colour step
+ * `main` added because a neighbouring row's hover step (`elevated`) is still the larger step
+ * off `surface` on most palettes, `text-ink` is the ink `highlight`'s floor is asserted on,
+ * and `hover:bg-highlight` is the pair the mark's own `!current` guard answers. Both elements
  * below take it through `cn`, as the sidebar does - that is what keeps `text-ink` and the
  * type step from colliding in one call (see `shared/lib/utils.ts`).
+ *
+ * WHAT IS STILL HAND-WRITTEN HERE, so a later reader knows what to look at: the two
+ * `cn` calls that decide WHEN the role applies (`current && …` on the wrapper, `current ? …
+ * : …` on the row button) and the non-current halves they fall back to. That is the residual
+ * shape this file cannot make impossible by construction, and it is asserted rather than
+ * trusted: those two expressions are entries in the guard's `CURRENT` table, so a half-role
+ * or a retired ground at either element reddens it.
  */
-const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
 
 const Row: FC<
 	BrowserConversationMarkProps & {
@@ -275,8 +291,9 @@ export const Focused: Story = {
 /**
  * THE ROW-CONTEXT SPECIMEN, on both grounds a row can paint: the resting `surface` and
  * the current row's `highlight` — and, on the current row, the whole of the role that
- * ground belongs to (`rowCurrent`: the ground, `font-medium` and `text-ink`, all three
- * asserted as one string against `chat-sidebar.tsx`).
+ * ground belongs to (`rowCurrent`, imported from `chat-sidebar.tsx`: the ground,
+ * `font-medium` and `text-ink`, resolved on BOTH elements of this row by
+ * `scripts/chat-sidebar-selection.test.mjs`).
  *
  * WHY BOTH. The mark is a 24px control inside a row that owns the current-state ground,
  * so "the badge is legible" is a claim about a `nav`-grounded panel and a selection-grounded
@@ -291,7 +308,8 @@ export const Focused: Story = {
  * The current row paints `rowCurrent` — `chat-sidebar.tsx`'s own role, the one `main`
  * re-authored in #281 as a lightness step off `surface` in the direction the mode runs,
  * plus the `font-medium` and `text-ink` that step came with and that this specimen carried
- * only half of until design round 4, D19. That is the pair a reader needs and the one thing
+ * only half of until design round 4, D19 (it imports the role since round 5: D22). That is
+ * the pair a reader needs and the one thing
  * a single-row frame cannot show:
  * the badge's `canvas` ring and the mark's own ink ramp drawn on the panel's resting
  * ground and on the selection ground in the same frame. THE ROW'S OWN HOVER PAIR IS THE
