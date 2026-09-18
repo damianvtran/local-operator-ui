@@ -1072,6 +1072,22 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	),
 };
 
+/**
+ * A turn that is still working: the answer has not been handed over yet, so the
+ * turn carries no caption at all.
+ *
+ * This is the state the operator's sentence is really about. He asked for a caption
+ * on the agent's FINAL responses, having just asked for the footer gone from
+ * under the working line - so the frame has to show the turn that is still in
+ * flight, where every row is either narration before the answer, a call, or an
+ * answer still arriving. `closingAnswerIds` gates the caption on the turn's last
+ * painted row AND on that row having settled, so there is nothing to caption
+ * here: the settled narration above the call is not what the reader is being
+ * handed, and the streaming answer cannot carry a time for itself. The pair is
+ * `AnswerInProgress` against `prose-between-calls`, which ends on a settled
+ * answer and therefore carries exactly one caption - the difference between the
+ * two frames is the rule.
+ */
 export const AnswerInProgress: Story = {
 	render: () => (
 		<Frame
@@ -1085,6 +1101,11 @@ export const AnswerInProgress: Story = {
 					text: "Which invoices were paid late?",
 					images: [],
 				},
+				// Settled prose, and still no caption: the turn's last painted row is
+				// the streaming answer below, so this turn has not handed the reader its
+				// answer yet. That is the whole point of the story - a live turn carries
+				// no caption anywhere, in any of its rows, and the working line is the
+				// only liveness element on screen (§ 7).
 				{
 					kind: "assistant",
 					id: "p2",
