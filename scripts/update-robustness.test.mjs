@@ -3943,23 +3943,35 @@ test("every executable's claim is judged, not only the launcher's", () => {
 		helpers: [helper],
 	});
 	const clean = "<key>com.apple.security.cs.allow-jit</key><true/>";
-	const twoClaims = profileAuthorizationCheck(launcherClean, {
-		run: gateRunner({
-			entitlements: (path) =>
-				path.endsWith("ShipIt") ? V0296_SIGNATURE_ENTITLEMENTS : clean,
-		}),
-	});
+	// `[authorization, readability]`, in that order. The split is not cosmetic:
+	// `verify-signed-update.mjs` classifies by id, and the read half is the host's
+	// capability question while the authorization half is the candidate's own
+	// (review round 2).
+	const [twoClaims, twoClaimsReadable] = profileAuthorizationCheck(
+		launcherClean,
+		{
+			run: gateRunner({
+				entitlements: (path) =>
+					path.endsWith("ShipIt") ? V0296_SIGNATURE_ENTITLEMENTS : clean,
+			}),
+		},
+	);
 	assert.equal(twoClaims.passed, false);
+	assert.equal(twoClaims.id, "app-profile-authorization");
 	assert.match(twoClaims.output, /ShipIt claims keychain-access-groups/);
 	// "1 of 2" rather than "an executable is suspicious": the launcher's clean signature
 	// was read and PASSED in the same walk, which is what makes this a walk rather
 	// than a lucky single read — the old single-`codesign` call saw the launcher only
 	// and called this bundle clean.
 	assert.match(twoClaims.output, /1 of 2 executable\(s\)/);
+	// Every signature WAS readable, so the read row passes: the two are independent
+	// questions and a bundle can only fail one of them.
+	assert.equal(twoClaimsReadable.passed, true);
+	assert.equal(twoClaimsReadable.id, "app-entitlements-readable");
 
 	// The same bundle with the claim removed everywhere: the shipped default, and
 	// green — the walk is not simply "helpers are suspicious".
-	const groupFree = profileAuthorizationCheck(launcherClean, {
+	const [groupFree] = profileAuthorizationCheck(launcherClean, {
 		run: gateRunner({ entitlements: clean }),
 	});
 	assert.equal(groupFree.passed, true);
@@ -3971,7 +3983,7 @@ test("every executable's claim is judged, not only the launcher's", () => {
 		helpers: [helper],
 		profile: "synthetic\n",
 	});
-	const withProfile = profileAuthorizationCheck(authorized, {
+	const [withProfile] = profileAuthorizationCheck(authorized, {
 		run: gateRunner({
 			entitlements: V0296_SIGNATURE_ENTITLEMENTS,
 			profileDump:
@@ -3982,15 +3994,136 @@ test("every executable's claim is judged, not only the launcher's", () => {
 
 	// "We could not ask" is not "nothing is claimed": a signature whose
 	// entitlements cannot be read is red here rather than an empty plist that
-	// passes because `[].every()` is true (review round 1, finding 3).
-	const unreadable = profileAuthorizationCheck(launcherClean, {
-		run: (command, args) =>
-			args.join(" ").includes("--entitlements")
-				? { status: 1, stdout: "", stderr: "bundle format unrecognized" }
-				: gateRunner({ entitlements: clean })(command, args),
+	// passes because `[].every()` is true (review round 1, finding 3) — and it is
+	// the READ row that carries it, so the harness can bucket it as BLOCKED rather
+	// than as a candidate failure (review round 2).
+	const [unreadableClaim, unreadableRead] = profileAuthorizationCheck(
+		launcherClean,
+		{
+			run: (command, args) =>
+				args.join(" ").includes("--entitlements")
+					? { status: 1, stdout: "", stderr: "bundle format unrecognized" }
+					: gateRunner({ entitlements: clean })(command, args),
+		},
+	);
+	assert.equal(unreadableRead.passed, false);
+	assert.match(unreadableRead.output, /could not be read/);
+	// An unreadable signature claims nothing this walk can see, so the
+	// authorization row is silent: the two rows must not both shout about one cause.
+	assert.equal(unreadableClaim.passed, true);
+
+	// Fail-closed on an EMPTY population (review round 2, finding 3): a bundle
+	// whose executables the walk cannot find has not been answered about, and
+	// `[].every()` is how that reads as a pass. Measured case: the app directory
+	// exists and holds no Mach-O at all.
+	const emptyApp = join(tempDir("lo-gate-empty-"), "Local Operator.app");
+	mkdirSync(join(emptyApp, "Contents", "Resources"), { recursive: true });
+	const [noPopulation, noPopulationRead] = profileAuthorizationCheck(emptyApp, {
+		run: () => ({ status: 0, stdout: "", stderr: "" }),
 	});
-	assert.equal(unreadable.passed, false);
-	assert.match(unreadable.output, /could not be read/);
+	assert.equal(noPopulation.passed, false);
+	assert.match(
+		noPopulation.output,
+		/no executable was found in the bundle to judge/,
+	);
+	assert.equal(noPopulationRead.passed, false);
+	assert.match(noPopulationRead.output, /no executable was found to read/);
+
+	// A bundle that cannot be walked reports a row rather than throwing out of the
+	// gate: the release step asks for a report, and a stack trace is not one.
+	const [unwalkable, unwalkableRead] = profileAuthorizationCheck(
+		join(tempDir("lo-gate-missing-"), "Local Operator.app"),
+		{ run: () => ({ status: 0, stdout: "", stderr: "" }) },
+	);
+	assert.equal(unwalkable.passed, false);
+	assert.match(unwalkable.output, /could not be walked for executables/);
+	assert.equal(unwalkableRead.passed, false);
+	assert.match(unwalkableRead.output, /could not be walked for executables/);
+});
+
+test("the spawn probe owns its env, whatever signature the runner has", () => {
+	/*
+	 * Why this is asserted here rather than left to the runner: `env` is a parameter
+	 * the runner has to forward, and a runner that does not forward it drops
+	 * `ELECTRON_RUN_AS_NODE` SILENTLY — which turns the probe into a real app launch.
+	 * QA round 2 measured that from a scratch harness: five stray executions of the
+	 * app binary, every one of them raising and FOCUSING the operator's window (the
+	 * app's own `[window-raise]` line for each). The check applies its own
+	 * environment, so a runner of any signature — including one that ignores the
+	 * parameters it is handed and inherits the process environment, which is what
+	 * `spawnSync` does by default — sees the switch the probe depends on.
+	 */
+	const app = gateFixtureBundle("lo-gate-env-");
+	const probeSaw = [];
+	// A runner that takes the first three arguments and nothing else: the shape that
+	// dropped the switch. It reads the process environment, which is what a
+	// `spawnSync`-based runner does by default.
+	const threeArgumentRunner = (command, args, input) => {
+		void command;
+		void input;
+		if (args.join(" ").includes("process.exit(0)"))
+			probeSaw.push(process.env.ELECTRON_RUN_AS_NODE ?? null);
+		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	};
+	const rows = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run: threeArgumentRunner,
+	});
+	assert.ok(rows.length > 0, "the checks did not run at all");
+	// Exactly once, and with the switch: the probe is the only check that carries it,
+	// so a null here is the switch being dropped on the way to the child.
+	assert.deepEqual(
+		probeSaw,
+		["1"],
+		"ELECTRON_RUN_AS_NODE did not reach the runner: a drop-in runner would launch the real app",
+	);
+	// And it is restored afterwards, so no later check inherits node mode.
+	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+});
+
+test("the gate's own results carry the bundle-walk rows", () => {
+	/*
+	 * The walk left the censused `artifactChecks` list when it became a scan of the
+	 * bundle, so nothing in the census asserts it any more — and dropping one of the
+	 * three call sites (`checkApp`, the app loop, `verify-signed-update.mjs`) would
+	 * leave a green suite, a step still printing plenty of output, and a gate that
+	 * quietly stopped asking the question this change exists for. `require-report.sh`
+	 * cannot see that either: it reads that a report was produced, not which
+	 * questions it asked (review round 2, finding 1).
+	 */
+	const dist = tempDir("lo-dist-walk-");
+	const app = join(dist, "mac-arm64", "Local Operator.app");
+	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+	);
+	writeMachO(join(app, "Contents", "MacOS", "Local Operator"));
+	writeFileSync(join(dist, "local-operator-ui-0.0.0-arm64.dmg"), "x");
+
+	const result = verifyArtifacts({
+		dist,
+		run: () => ({ status: 0, stdout: "accepted", stderr: "" }),
+		log: () => {},
+	});
+	const ids = new Set(result.results.map((row) => row.id));
+	// Both halves by id: the authorization row is what makes a candidate FAIL this
+	// job, and the read row is what makes an unsigned one BLOCKED instead.
+	for (const id of ["app-profile-authorization", "app-entitlements-readable"]) {
+		assert.ok(
+			ids.has(id),
+			`${id} is declared but never reached: the gate ran ${JSON.stringify([...ids])}`,
+		);
+	}
+	const walkRows = result.results.filter((row) =>
+		["app-profile-authorization", "app-entitlements-readable"].includes(row.id),
+	);
+	assert.equal(
+		walkRows.filter((row) => row.passed).length,
+		walkRows.length,
+		`a fixture bundle claiming no restricted entitlement must pass both rows: ${JSON.stringify(walkRows)}`,
+	);
 });
 
 test("the gate's policy predicate and the app's agree on every key", () => {
