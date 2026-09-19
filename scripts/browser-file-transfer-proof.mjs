@@ -248,7 +248,8 @@ function startSite() {
 				response.writeHead(200, {
 					"Content-Type": "application/pdf",
 					"Content-Length": String(204_800),
-					"Content-Disposition": 'attachment; filename="quarterly-accounts.pdf"',
+					"Content-Disposition":
+						'attachment; filename="quarterly-accounts.pdf"',
 				});
 				response.write(Buffer.alloc(102_400, 7));
 				setTimeout(() => response.destroy(), 50);
@@ -457,9 +458,9 @@ async function launchApp() {
 		// rig's argv is honest wherever it runs.
 		withMockKeychain([
 			".",
-				`--user-data-dir=${USER_DATA}`,
-				`--remote-debugging-port=${devtoolsPort}`,
-				`--window-size=${WINDOW_SIZE.width}x${WINDOW_SIZE.height}`,
+			`--user-data-dir=${USER_DATA}`,
+			`--remote-debugging-port=${devtoolsPort}`,
+			`--window-size=${WINDOW_SIZE.width}x${WINDOW_SIZE.height}`,
 			"--password-store=basic",
 		]),
 		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
@@ -1004,7 +1005,9 @@ async function main() {
 	check(
 		"C4 an over-cap download is refused pre-write, and the sentence names the RULE and the file's own size rather than two raw byte counts",
 		hugeResult.files?.length === 0 &&
-			/over the \d+ MiB per-file download limit/.test(hugeResult.reason ?? "") &&
+			/over the \d+ MiB per-file download limit/.test(
+				hugeResult.reason ?? "",
+			) &&
 			/it is \d+ bytes/.test(hugeResult.reason ?? "") &&
 			!new RegExp(`over the ${CAPS_BYTES} byte`).test(hugeResult.reason ?? ""),
 		JSON.stringify(hugeResult.reason),
@@ -1342,7 +1345,9 @@ for raw in paths:
 	check(
 		"G3 the same transfer lands when it is given the time, so the cancel paths are not refusing ordinary downloads",
 		slowResult.json?.ok === true &&
-			(existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []).includes("slow-a.pdf"),
+			(existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []).includes(
+				"slow-a.pdf",
+			),
 		JSON.stringify({
 			files: existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : [],
 			reason: slowResult.json?.result?.reason,
@@ -1370,9 +1375,9 @@ for raw in paths:
 			/did not finish within \d+s and was cancelled/i.test(
 				deadlineRow.text ?? "",
 			) &&
-			!(
-				existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []
-			).includes("slow-b.pdf"),
+			!(existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []).includes(
+				"slow-b.pdf",
+			),
 		JSON.stringify({
 			row: deadlineRow.text,
 			reason: deadlineArm.json?.result?.reason,
@@ -1436,7 +1441,9 @@ for raw in paths:
 	const longRow = await rowReading();
 	const longSpans = (await rowSpanReadings()) ?? [];
 	const longFrame = await frame(state, token, "08-long-name-refused");
-	const nameSpan = longSpans.find((span) => span.text.startsWith("quarterly-financial"));
+	const nameSpan = longSpans.find((span) =>
+		span.text.startsWith("quarterly-financial"),
+	);
 	const consequence = longSpans.find((span) =>
 		span.text.startsWith("Nothing was saved"),
 	);
