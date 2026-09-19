@@ -25,6 +25,7 @@ import {
 	readdirSync,
 	rmSync,
 	statSync,
+	writeFileSync,
 } from "node:fs";
 import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
@@ -61,6 +62,14 @@ const bundle = await build({
 			'export { ipcMain } from "electron";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
+			// The download capture and the file-transfer policy pair. Bundled so the
+			// arm-gated save path, the name refusal and the caps can be driven against a
+			// real temp directory and a fake `DownloadItem` — the rules worth testing —
+			// without Chromium's download stack (design §12.2).
+			'export * from "./src/main/browser/downloads";',
+			'export * from "./src/main/browser/actions/upload";',
+			'export * from "./src/main/browser/vendor/driver/file-transfer-policy";',
+			'export * from "./src/main/browser/vendor/driver/file-transfer.tables.gen";',
 			'export * from "./src/main/browser/settle";',
 			'export * from "./src/main/browser/log-capture";',
 			'export * from "./src/main/browser/actions/gate";',
@@ -127,6 +136,15 @@ const {
 	safeHttpUrl,
 	navigateView,
 	settle,
+	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
+	// app host runs, and the shared generated tables it reads.
+	DownloadArmer,
+	CAPS,
+	CONFORMANCE_CASES,
+	executableName,
+	safeName,
+	HEALTH_PATH,
+	HOST_CAPABILITIES,
 } = mod;
 
 /** A fake `WebContentsView` with the shape the registry and the driver read. */
@@ -565,6 +583,12 @@ test("health identifies the process without the key, and only the process", asyn
 		proto: PROTO_VERSION,
 		pid: process.pid,
 		console: false,
+		// ADDITIVE, and asserted here so the whole body stays pinned: the capabilities
+		// list is what lets a harness refuse a method this build does not serve WITHOUT
+		// opening a socket (design §6.3), and it is the same list the discovery record
+		// carries. A reader that predates the key ignores it; this assertion is what
+		// stops the key from quietly disappearing or growing a second source.
+		capabilities: [...HOST_CAPABILITIES],
 	});
 	assert.equal(response.headers.get("access-control-allow-origin"), null);
 	const wrongPath = await post(
@@ -1991,6 +2015,9 @@ test("an ids intent naming a tab that is already gone closes the rest and does n
 
 test("a conversation id is validated at the IPC boundary rather than trusted (R1)", async () => {
 	const { host } = makeHost();
+	/** Every directory the reveal was asked to open, so the test can assert WHICH one
+	 * it was: the channel takes no argument, and that is the property under test. */
+	const revealed = [];
 	// The window the handlers authorize, with the shape `authorize` compares.
 	const frame = { url: "http://localhost:5173/index.html" };
 	const webContents = { id: 1, mainFrame: frame };
@@ -2001,6 +2028,13 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 		expectedUrl: "http://localhost:5173",
 		host: () => host,
 		clearData: async () => {},
+		// The reveal's ANSWER is recorded rather than performed: this fixture has no
+		// window manager, and what the channel must prove is that the path it opens is
+		// the HOST's, never one a caller named.
+		revealDownloads: async () => {
+			revealed.push(host.downloads.activity().dir ?? "");
+			return "";
+		},
 		log: () => {},
 	});
 	/**
@@ -2329,11 +2363,17 @@ function makeHost(overrides = {}) {
 			);
 		},
 	});
+	const downloads = new DownloadArmer({
+		tabForWebContents: (webContentsId) =>
+			registry.byWebContents(webContentsId)?.tabId ?? null,
+		log: () => {},
+	});
 	const host = new BrowserHost({
 		registry,
 		cdp,
 		approvals,
 		ownership,
+		downloads,
 		log: () => {},
 		onChanged: () => {},
 		facts: () => ({
@@ -2346,7 +2386,16 @@ function makeHost(overrides = {}) {
 		}),
 		...overrides,
 	});
-	return { host, registry, views, removed, notified, approvals, cdp };
+	return {
+		host,
+		registry,
+		views,
+		removed,
+		notified,
+		approvals,
+		cdp,
+		downloads,
+	};
 }
 
 test("real dispatcher records allocation, fences peers, recovers and finishes exactly its tab", async () => {
@@ -4337,4 +4386,578 @@ test("the browser host is attached inside the window factory, so every creation 
 		2,
 		"expected the declaration plus exactly one call site, the seam assignment in the ready path",
 	);
+});
+
+// ---- file transfer: the download capture (design §5.2, §10.3, §11.4) -------
+
+/**
+ * A fake `DownloadItem`: the shape `downloads.ts` reads, and nothing else.
+ *
+ * The `done` listener is fired by the TEST rather than by a timer, because the
+ * interesting states are "the write finished" and "the write did not finish" and a
+ * test that waits for a real download can only ever produce the first. Electron
+ * emits `done` with `(event, state)`; that is the signature reproduced here.
+ */
+class FakeDownloadItem {
+	constructor({
+		filename,
+		url = "https://approved.example/receipt.pdf",
+		mime = "application/pdf",
+		total = 10,
+		received = 10,
+		saveThrows = false,
+	} = {}) {
+		this.filename = filename;
+		this.url = url;
+		this.mime = mime;
+		this.total = total;
+		this.received = received;
+		this.saveThrows = saveThrows;
+		this.savePath = "";
+		this.cancelled = false;
+		this.listeners = [];
+	}
+
+	getFilename() {
+		return this.filename;
+	}
+
+	getURL() {
+		return this.url;
+	}
+
+	getMimeType() {
+		return this.mime;
+	}
+
+	getTotalBytes() {
+		return this.total;
+	}
+
+	getReceivedBytes() {
+		return this.received;
+	}
+
+	setSavePath(path) {
+		if (this.saveThrows) throw new Error("EACCES: permission denied");
+		this.savePath = path;
+	}
+
+	getSavePath() {
+		return this.savePath;
+	}
+
+	cancel() {
+		this.cancelled = true;
+	}
+
+	getState() {
+		return "progressing";
+	}
+
+	once(event, listener) {
+		if (event === "done") this.listeners.push(listener);
+		return this;
+	}
+
+	/** Fire `done`, as Chromium would once the write settles. */
+	finish(state = "completed") {
+		for (const listener of this.listeners) listener({}, state);
+		return this;
+	}
+}
+
+/** An armer over one tab, with the quiet window shortened so the suite is not
+ * slowed by real waiting. `log` is collected so a test can assert the operator's
+ * trace exists without reading stdout. */
+function makeArmer({ tabId = 7, webContentsId = 101, lines = [] } = {}) {
+	const armer = new DownloadArmer({
+		tabForWebContents: (id) => (id === webContentsId ? tabId : null),
+		log: (message) => lines.push(message),
+		quietMs: 5,
+	});
+	return { armer, tabId, webContentsId, lines };
+}
+
+function tempDir(name) {
+	return mkdtempSync(join(tmpdir(), `lo-dl-${name}-`));
+}
+
+test("a download on a tab with no arm is CANCELLED, which is the pre-feature rule", () => {
+	const { armer, webContentsId } = makeArmer();
+	const decision = armer.decide(
+		new FakeDownloadItem({ filename: "receipt.pdf" }),
+		webContentsId,
+	);
+	assert.equal(decision.cancel, true);
+	assert.equal(decision.reason, "no download call is armed on this tab");
+});
+
+test("an armed download is saved into the harness directory under its sanitised name", async () => {
+	const dir = tempDir("save");
+	const { armer, tabId, webContentsId } = makeArmer();
+	const arm = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "receipt.pdf",
+		total: 1_234,
+		received: 1_234,
+	});
+	const decision = armer.decide(item, webContentsId);
+	assert.deepEqual(decision, { cancel: false, reason: "" });
+	assert.equal(
+		item.savePath,
+		join(dir, "receipt.pdf"),
+		"the save path is inside the directory the harness composed",
+	);
+	// The file itself, because the mode is asserted below: Chromium creates it with the
+	// process umask's mode, and the host restricts it to 0600 once the write is done.
+	writeFileSync(item.savePath, "%PDF-1.4\n");
+	item.finish("completed");
+	const result = await arm.done();
+	assert.equal(result.armed, true);
+	assert.equal(result.reason, "");
+	assert.equal(result.files.length, 1);
+	assert.deepEqual(result.files[0], {
+		name: "receipt.pdf",
+		path: join(dir, "receipt.pdf"),
+		bytes: 1_234,
+		mime: "application/pdf",
+		sniffed: "",
+		// EMPTY, and that is the contract rather than an unfinished field: Python
+		// computes the digest over the bytes it reads, so a host-reported hash would be
+		// a host's word taken on trust (§6.1).
+		sha256: "",
+	});
+	assert.equal(
+		statSync(item.savePath).mode & 0o777,
+		0o600,
+		"the landed file is restricted to 0600 once the write completes",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a second download of the same name is uniquified rather than overwriting the first", async () => {
+	const dir = tempDir("unique");
+	writeFileSync(join(dir, "receipt.pdf"), "first");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf" });
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	assert.equal(item.savePath, join(dir, "receipt (1).pdf"));
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a page-supplied path cannot become a directory: the name is truncated to a basename", () => {
+	const dir = tempDir("traversal");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "../../.ssh/authorized_keys",
+	});
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	assert.equal(item.savePath, join(dir, "authorized_keys"));
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("an executable NAME is refused before anything lands, and the reason says why", () => {
+	const dir = tempDir("exe");
+	const { armer, tabId, webContentsId, lines } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "setup.exe" });
+	const decision = armer.decide(item, webContentsId);
+	assert.equal(decision.cancel, true);
+	assert.match(decision.reason, /executable\/script type/);
+	assert.match(decision.reason, /setup\.exe/);
+	// Nothing was given a save path, so Chromium never opened a file.
+	assert.equal(item.savePath, "");
+	assert.equal(readdirSync(dir).length, 0, "nothing was written");
+	assert.ok(
+		lines.some((line) => line.includes("setup.exe")),
+		"the refusal reaches the app log",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a file over the per-file cap is refused pre-write, with its size", () => {
+	const dir = tempDir("cap");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "huge.pdf",
+		total: CAPS.downloadMaxBytes + 1,
+	});
+	const decision = armer.decide(item, webContentsId);
+	assert.equal(decision.cancel, true);
+	assert.match(decision.reason, /per-file limit/);
+	assert.match(decision.reason, new RegExp(String(CAPS.downloadMaxBytes)));
+	assert.equal(item.savePath, "");
+	assert.equal(readdirSync(dir).length, 0);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("an unknown size cannot cap pre-write, so the file lands and the fact carries its bytes", async () => {
+	// The honest case §10.3's R2 describes: a chunked response with no
+	// `Content-Length` reports -1, the cap cannot fire, and the file that DID land is
+	// reported rather than the attempt being refused on a guess.
+	const dir = tempDir("unknown");
+	const { armer, tabId, webContentsId } = makeArmer();
+	const arm = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "chunked.pdf",
+		total: -1,
+		received: 42,
+	});
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	item.finish("completed");
+	const result = await arm.done();
+	assert.equal(result.files[0].bytes, 42);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("an unwritable directory cancels the attempt instead of falling back to the user's Downloads", () => {
+	const dir = tempDir("throw");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "receipt.pdf",
+		saveThrows: true,
+	});
+	const decision = armer.decide(item, webContentsId);
+	assert.equal(decision.cancel, true);
+	assert.match(
+		decision.reason,
+		/could not write into the quarantine directory/,
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("an interrupted write is reported as an answer, not counted as a file", async () => {
+	const dir = tempDir("interrupt");
+	const { armer, tabId, webContentsId } = makeArmer();
+	const arm = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf" });
+	armer.decide(item, webContentsId);
+	item.finish("interrupted");
+	const result = await arm.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /did not finish \(interrupted\)/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a call where the page starts nothing answers with the no-download copy, not a timeout error", async () => {
+	const dir = tempDir("empty");
+	const { armer, tabId } = makeArmer();
+	const arm = armer.arm(tabId, dir, 5_000);
+	armer.forget(tabId);
+	const result = await arm.done();
+	assert.deepEqual(result.files, []);
+	assert.equal(result.armed, true);
+	assert.match(result.reason, /no download started within/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("the arm is dropped with its call, so a later page download is refused again", () => {
+	const dir = tempDir("release");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	armer.forget(tabId);
+	const decision = armer.decide(
+		new FakeDownloadItem({ filename: "receipt.pdf" }),
+		webContentsId,
+	);
+	assert.equal(decision.cancel, true);
+	assert.equal(decision.reason, "no download call is armed on this tab");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("the armer creates the harness directory 0700", () => {
+	const parent = tempDir("mode");
+	const dir = join(parent, "20260918-120000-session1");
+	new DownloadArmer({
+		tabForWebContents: () => 1,
+		log: () => {},
+	}).arm(1, dir, 5_000);
+	assert.equal(statSync(dir).mode & 0o777, 0o700);
+	rmSync(parent, { recursive: true, force: true });
+});
+
+// ---- file transfer: the vendored policy, against the shared fixture --------
+
+test("the vendored policy port reproduces the shared conformance fixture", () => {
+	// WHAT THIS PINS, and what it cannot (§10.4's own statement of its limit): the
+	// fixture's content half is Python's classifier, which this side cannot run and
+	// must not reimplement. The half a host can compute is whether the SANITISED
+	// name's own extension is on the deny list — the check that refuses a `.url` or a
+	// `.reg`, whose bytes are text and whose danger is the name. So that is the
+	// assertion, over every case Python generated the table from.
+	assert.ok(
+		CONFORMANCE_CASES.length >= 10,
+		"the fixture is present and populated",
+	);
+	for (const testCase of CONFORMANCE_CASES) {
+		assert.equal(
+			executableName(testCase.name),
+			testCase.nameIsDenyListed,
+			`${testCase.name}: the TS name check must agree with Python's fixture`,
+		);
+	}
+});
+
+test("the sanitiser strips a path, controls, bidi overrides and reserved stems", () => {
+	// Not from the fixture: these are the cases the FIXTURE is not about (it is about
+	// content verdicts), and each one is a distinct way a hostile name does damage.
+	assert.equal(safeName("../../etc/passwd"), "passwd");
+	assert.equal(safeName("..\\..\\windows\\system32\\x.dll"), "x.dll");
+	assert.equal(safeName("in\u0000voice.pdf"), "invoice.pdf");
+	assert.equal(safeName("receipt\u202Efdp.pdf"), "receiptfdp.pdf");
+	assert.match(safeName("CON"), /^download-[0-9a-f]{8}$/);
+	assert.match(safeName(""), /^download-[0-9a-f]{8}$/);
+	assert.equal(safeName("report.pdf.exe"), "report.pdf.exe");
+	assert.ok(
+		new TextEncoder().encode(safeName(`${"a".repeat(400)}.pdf`)).length <= 200,
+		"a long name is capped in BYTES",
+	);
+});
+
+// ---- file transfer: capabilities, on both readers (§6.3) -------------------
+
+test("/health carries the capabilities this build serves", async () => {
+	const response = await fetch(rpcUrl(HEALTH_PATH));
+	const body = await response.json();
+	assert.deepEqual(body.capabilities, ["download", "upload"]);
+});
+
+test("the state file carries the same list, from the same constant", () => {
+	const path = stateFilePath(join(root, `state-caps-${Math.random()}`));
+	const writer = new BrowserStateWriter(
+		path,
+		() => ({ tabs: 1, agentTabs: 0, profileDir: "/scratch" }),
+		{ appVersion: "0.29.2" },
+	);
+	writer.start(51235, sessionKey);
+	const record = JSON.parse(readFileSync(path, "utf8"));
+	assert.deepEqual(record.capabilities, [...HOST_CAPABILITIES]);
+	assert.equal(record.proto, 1, "PROTO_VERSION is untouched by this feature");
+});
+
+// ---- file transfer: the dispatcher's two new verbs -------------------------
+
+/** Open one approved tab and hand back its handle and owner params. */
+async function openApprovedTab(host) {
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "allocation-file-transfer",
+	};
+	const url = "https://approved.example/";
+	await host.dispatch("request_access", { ...owner, url }, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", { ...owner, url }, "open");
+	return { owner, tab: opened.tab };
+}
+
+test("download refuses to arm without the harness's directory", async () => {
+	const { host } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	await assert.rejects(
+		() => host.dispatch("download", { ...owner, tab }, "dl"),
+		(error) =>
+			error.code === "internal" &&
+			/harness-composed directory/.test(error.message),
+	);
+});
+
+test("download with no page download answers with the no-download copy rather than an error", async () => {
+	const dir = tempDir("dispatch");
+	const { host } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const result = await host.dispatch(
+		"download",
+		{ ...owner, tab, dir, timeout_s: 0.05 },
+		"dl",
+	);
+	assert.equal(result.armed, true);
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /no download started within/);
+	assert.equal(result.url, "https://approved.example/");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload attaches absolute paths, reads the input back, and reports what the DOM holds", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const dir = tempDir("upload");
+	const first = join(dir, "deck.pptx");
+	const second = join(dir, "notes file with spaces.pdf");
+	writeFileSync(first, "a".repeat(13));
+	writeFileSync(second, "b".repeat(69));
+
+	const seen = [];
+	cdp.send = async (_contents, method, params) => {
+		seen.push({ method, params });
+		if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+		if (method === "DOM.querySelector") return { nodeId: 42 };
+		if (method === "DOM.resolveNode") return { object: { objectId: "obj-1" } };
+		if (method === "DOM.getAttributes")
+			return { attributes: ["type", "file", "accept", ".pptx,.pdf"] };
+		if (method === "DOM.setFileInputFiles") return {};
+		if (method === "Runtime.callFunctionOn") {
+			return {
+				result: {
+					value: {
+						count: 2,
+						names: ["deck.pptx", "notes file with spaces.pdf"],
+						sizes: [13, 69],
+					},
+				},
+			};
+		}
+		return {};
+	};
+
+	const result = await host.dispatch(
+		"upload",
+		{ ...owner, tab, selector: "input[type=file]", paths: [first, second] },
+		"up",
+	);
+	const attach = seen.find((call) => call.method === "DOM.setFileInputFiles");
+	assert.deepEqual(attach.params.files, [first, second]);
+	assert.deepEqual(result.inputs, ["input[type=file]"]);
+	assert.deepEqual(
+		result.accepted.map((fact) => [fact.name, fact.bytes]),
+		[
+			["deck.pptx", 13],
+			["notes file with spaces.pdf", 69],
+		],
+	);
+	assert.equal(
+		result.accepted[0].sha256,
+		"",
+		"the digest is Python's to compute",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload FAILS when the DOM does not hold what was attached, naming both sides", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const dir = tempDir("upload-mismatch");
+	const path = join(dir, "deck.pptx");
+	writeFileSync(path, "a".repeat(13));
+	cdp.send = async (_contents, method) => {
+		if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+		if (method === "DOM.querySelector") return { nodeId: 42 };
+		if (method === "DOM.resolveNode") return { object: { objectId: "obj-1" } };
+		if (method === "DOM.getAttributes")
+			return { attributes: ["accept", ".pptx"] };
+		// The input silently ignored the attach: the read-back is the whole reason
+		// this action can be trusted at all (§9.3).
+		if (method === "Runtime.callFunctionOn") {
+			return { result: { value: { count: 0, names: [], sizes: [] } } };
+		}
+		return {};
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"upload",
+				{ ...owner, tab, selector: "input", paths: [path] },
+				"up",
+			),
+		(error) =>
+			error.code === "internal" &&
+			/did not take the files/.test(error.message) &&
+			/nothing/.test(error.message) &&
+			/deck\.pptx/.test(error.message),
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload refuses a relative path, an empty list, and an over-count call before touching the page", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"upload",
+				{ ...owner, tab, selector: "input", paths: ["notes.pdf"] },
+				"up",
+			),
+		(error) => /absolute paths/.test(error.message),
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"upload",
+				{ ...owner, tab, selector: "input", paths: [] },
+				"up",
+			),
+		(error) => /non-empty list/.test(error.message),
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"upload",
+				{
+					...owner,
+					tab,
+					selector: "input",
+					paths: Array.from({ length: CAPS.uploadMaxFiles + 1 }, (_, index) =>
+						join(tmpdir(), `f${index}.pdf`),
+					),
+				},
+				"up",
+			),
+		(error) => new RegExp(`at most ${CAPS.uploadMaxFiles}`).test(error.message),
+	);
+	assert.equal(
+		cdp.calls.length,
+		before,
+		"no CDP was issued for a refused argument",
+	);
+});
+
+test("the download reveal opens the host's own directory and takes no path from the caller", async () => {
+	const { host, downloads } = makeHost();
+	const dir = tempDir("reveal");
+	downloads.arm(7, dir, 50);
+	const opened = [];
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => host,
+		clearData: async () => {},
+		revealDownloads: async () => {
+			opened.push(host.downloads.activity().dir);
+			return "";
+		},
+		log: () => {},
+	});
+	const handler = ipcMain.handlers.get("browser-reveal-downloads");
+	assert.ok(handler, "the reveal channel is registered");
+	// A path IS passed here, deliberately: the channel must ignore it, which is what
+	// makes "the renderer can never name what `shell.openPath` opens" a property of
+	// the handler rather than of the UI that calls it.
+	const result = await Promise.resolve().then(() =>
+		handler({ sender: webContents, senderFrame: frame }, "/etc/passwd"),
+	);
+	assert.deepEqual(opened, [dir]);
+	assert.deepEqual(result, { opened: true, message: "" });
+	// And the same authorize gate as every other channel in this namespace: a sender
+	// that is not the app's own main frame is refused.
+	await assert.rejects(
+		() =>
+			Promise.resolve().then(() =>
+				handler({ sender: { id: 2 }, senderFrame: frame }),
+			),
+		/This window cannot use the browser controls/,
+	);
+	downloads.forget(7);
+	rmSync(dir, { recursive: true, force: true });
 });
