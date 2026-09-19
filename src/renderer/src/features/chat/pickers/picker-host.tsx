@@ -482,7 +482,24 @@ export const PickerRow: FC<PickerRowProps> = memo(
 					)}
 				</span>
 				{option.description && (
-					<span className="truncate text-ink-muted text-meta">
+					/*
+					 * `title` ON A `truncate` LINE, and only that combination needs it (review
+					 * round 1, MINOR 3). This span clips, and since design D6 replaced the
+					 * pickers' raw `live: wedged` token with the catalogue's own sentence it now
+					 * carries the LONGEST label in the app - "Not answering · process alive (last
+					 * heartbeat 4m ago)" - so a clip can hide the half that says which state the
+					 * row is in. The host caps at `max-w-xl` and the sentence measures ~300px at
+					 * this role, so it fits on one line in the default width and the tooltip is
+					 * what covers the narrower case, rather than a claim that it never clips.
+					 *
+					 * NOT A SHADOWING TOOLTIP: the option row itself carries no `title`, so this
+					 * is the innermost one and it hides nothing - which is the failure
+					 * `chat-session-status.tsx` had to have removed from the sidebar's rows.
+					 */
+					<span
+						className="truncate text-ink-muted text-meta"
+						title={option.description}
+					>
 						{option.description}
 					</span>
 				)}
