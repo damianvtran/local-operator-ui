@@ -2709,14 +2709,23 @@ export const UpdateNotification = ({
 					 * THE HEADING SAYS WHICH REFUSAL THIS IS (design round 2, D6). Two of the
 					 * three refusal sites happen AFTER the build landed - the restart was held
 					 * back, the install was not - and the sentence under this heading says so in
-					 * its own words, so a fixed "The update did not start" made the frame
+					 * its own words, so a fixed "The update didn't start" made the frame
 					 * contradict itself in one paragraph. The producer knows which arm it is and
 					 * travels the fact as a field rather than leaving the renderer to infer it.
+					 *
+					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). These two
+					 * strings shipped un-contracted beside "The server update didn't finish" and
+					 * "The update wasn't installed" - the failure headings on this same surface,
+					 * and the two a reader meets a scroll apart. The file mixes both spellings
+					 * ("The server did not come back after the restart" is un-contracted), so this
+					 * is a consistency call rather than a correctness one, decided the way the
+					 * refusal's own neighbours are: one voice per panel. The story's own wait and
+					 * the capturer's claim both name this literal, so the three move together.
 					 */}
 					<UpdateHeading>
 						{refusal.installLanded
-							? "The update did not finish restarting"
-							: "The update did not start"}
+							? "The update didn't finish restarting"
+							: "The update didn't start"}
 					</UpdateHeading>
 					{/*
 					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are

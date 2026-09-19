@@ -127,7 +127,7 @@ const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
  *
  * WHY THIS IS A STORY RATHER THAN A PAGE PATCH (design round 2, D6). Both
  * restart-leg refusals happen after the build is on disk and only the bounce was
- * held back, so their heading is not "The update did not start" - the producer
+ * held back, so their heading is not "The update didn't start" - the producer
  * states the fact and the panel keys on it. The design round had to inject this
  * payload into the shipped component from a CDP pre-document script to judge it,
  * which is not a state the repo's own rig can re-photograph; declared here, the
@@ -1886,8 +1886,8 @@ const PressUpdateServer = ({
 						 * heading it is a story about rather than for one arm's.
 						 */
 						variant === "refused-landed"
-						? "The update did not finish restarting"
-						: "The update did not start"
+						? "The update didn't finish restarting"
+						: "The update didn't start"
 					: "The server update didn't finish";
 		const settle = async () => {
 			/* The offer is raised by the mount effect, so the control exists only
@@ -1918,7 +1918,17 @@ const PressUpdateServer = ({
 			cancelled = true;
 			delete document.documentElement.dataset.capturePending;
 		};
-	}, [ready, outcome]);
+		/*
+		 * `variant` IS A DEPENDENCY BECAUSE THE EFFECT READS IT (round 4). The D6 arm
+		 * above made `expected` depend on which refusal arm this story is, and the deps
+		 * list still named only `ready`/`outcome` - so the hook read a value it did not
+		 * declare, which is exactly what `lint/correctness/useExhaustiveDependencies`
+		 * reports. Nothing local could see it: `pnpm lint` is red on this branch and on
+		 * `main` for an unrelated pre-existing error, and the CI job that reports the
+		 * exit code never ran, because GitHub creates no workflow run for a conflicting
+		 * head. Caught on the first run the rebase made possible.
+		 */
+	}, [ready, outcome, variant]);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
 };
 
@@ -2113,7 +2123,7 @@ export const BackendUpdateRefusedUnreadableFleet: Story = {
  * held back is the BOUNCE rather than the install.
  *
  * The wait, the count and the sessions are the busy arm's; the fact this story exists
- * for is that "The update did not start" is false here, and the sentence above the
+ * for is that "The update didn't start" is false here, and the sentence above the
  * heading says so in its own words - which is exactly the contradiction the frame
  * carried before the producer started sending the fact (design round 2, D6).
  */

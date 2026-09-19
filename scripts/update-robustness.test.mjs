@@ -13209,7 +13209,10 @@ const driveAppOwnedUpdate = async ({
 				 * `fleetAfterPublish` is the middle one and is consumed once, because a case
 				 * that made both post-publish reads answer it would describe a machine where
 				 * nothing was left to displace at all - which is the opposite of what the
-				 * case is about.
+				 * case is about. `fleet` is every OTHER read, so the shape a case chooses for
+				 * it decides which read carries the loss: the retirement case hands b2 to
+				 * `fleetAfterPublish` alone (`fleet: []`), which is what makes the before-side
+				 * exist only through the union (review round 3, R3-M1).
 				 */
 				const wire =
 					fleetAfter === null
@@ -14941,7 +14944,7 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 		/*
 		 * AND THE HEADING'S FACT TRAVELS WITH IT (design round 2, D6). The panel cannot
 		 * infer this from the sentence: two of the three refusal sites happen after the
-		 * install landed, and a heading of "The update did not start" over the sentence
+		 * install landed, and a heading of "The update didn't start" over the sentence
 		 * above is the frame contradicting itself in one paragraph. The field is also what
 		 * keeps the OTHER clause out of this arm's sentence - they are alternatives, not
 		 * additions.
@@ -15155,11 +15158,25 @@ test("a retirement during the drain, before the restart, is still re-engaged", a
 	 * is never put back. The reading is now taken between the publish and the drain and
 	 * unioned with the pre-restart one - which is the reading the rebuild route already
 	 * kept for its own install leg.
+	 *
+	 * THE FIXTURE IS A READ SCHEDULE, NOT A MONOTONE MACHINE, and what this case is
+	 * worth is WHICH READ NAMES b2 (review round 3, R3-M1). The publish-side snapshot is
+	 * the only one of the press's reads that carries b2: the drain's own read and the
+	 * pre-restart read both answer without it, so the before-side can hold b2 ONLY
+	 * through the union, and reverting the union leaves nothing displaced at all. It used
+	 * to hand b2 to the drain's read and to every read after the publish-side one, so the
+	 * pre-restart snapshot named b2 by itself and this case passed with the union
+	 * reverted - an evidence defect, not a behavioural one: the union is correct and was
+	 * unguarded. The shape is `fleet: []` with `fleetAfterPublish: [b2]` for exactly that
+	 * reason, and the union is what makes the difference.
 	 */
 	const driven = await driveAppOwnedUpdate({
 		servingBeforeRestart: "0.56.8",
 		servingAfterRestart: "0.56.12",
-		fleet: [
+		/* The press's reads other than the publish-side one: no b2 in any of them. */
+		fleet: [],
+		/* The publish-side read, and the ONLY read that names the retired session. */
+		fleetAfterPublish: [
 			{
 				id: "bbbbbbbbbbb2",
 				name: "Unwatched daemon",
@@ -15167,8 +15184,6 @@ test("a retirement during the drain, before the restart, is still re-engaged", a
 				live_state: "idle",
 			},
 		],
-		/* What the publish took: the same session, gone, before the restart read. */
-		fleetAfterPublish: [],
 		fleetAfter: [],
 	});
 	try {
@@ -15275,14 +15290,14 @@ test("the press holds the update-in-flight flag for the whole drain, not only th
  * the generation rule cannot stub it: the tree has to exist for the same reason it
  * has to exist in the app.
  */
-	/*
-	 * RENAMED AT THE REBASE ONTO `main` (round 4, PR #371). main grew its own
-	 * `generationInstall` while this branch had this one - a generation under a caller's
-	 * stable root for the pointer cases, against a synthetic generation in its own temp
-	 * root for the fleet-gate case - and the two are different fixtures rather than two
-	 * versions of one, so they cannot share the name. The new one is the file's own
-	 * vocabulary (`syntheticInstall`) applied to what this builds.
-	 */
+/*
+ * RENAMED AT THE REBASE ONTO `main` (round 4, PR #371). main grew its own
+ * `generationInstall` while this branch had this one - a generation under a caller's
+ * stable root for the pointer cases, against a synthetic generation in its own temp
+ * root for the fleet-gate case - and the two are different fixtures rather than two
+ * versions of one, so they cannot share the name. The new one is the file's own
+ * vocabulary (`syntheticInstall`) applied to what this builds.
+ */
 const syntheticGenerationInstall = (id = "g0001") => {
 	const root = tempDir("lo-generation-");
 	mkdirSync(join(root, "generations", id), { recursive: true });
