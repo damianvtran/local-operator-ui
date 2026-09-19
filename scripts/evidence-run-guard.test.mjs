@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import {
-	chmodSync,
 	copyFileSync,
 	existsSync,
 	mkdirSync,
@@ -18,6 +17,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 import { pythonChildEnv } from "./python-child-env.mjs";
 
 const guard = fileURLToPath(
@@ -164,7 +164,7 @@ test(
 );
 
 test(
-	"real CLI defers before frames, retains image lease, and preserves failures",
+	"real CLI defers before frames, holds the lease itself, and preserves failures",
 	{ timeout: 15000 },
 	async (t) => {
 		const lock = fixture(t);
@@ -240,15 +240,40 @@ test(
 		);
 		const evidence = join(root, "docs/evidence");
 		mkdirSync(evidence, { recursive: true });
-		writeFileSync(join(evidence, "synthetic.webp"), "synthetic image fixture");
-		const report = join(root, "image-report.json");
-		const magick = join(root, "magick");
-		writeFileSync(
-			magick,
-			`#!/usr/bin/env python3\nimport json, os, stat, subprocess, sys\np = subprocess.run(['python3', ${JSON.stringify(guard)}, ${JSON.stringify(lock)}, sys.executable, '-c', 'print("UNSAFE")'], capture_output=True)\nwith open(${JSON.stringify(report)}, 'w') as f:\n json.dump({'lease_fd': stat.S_ISREG(os.fstat(3).st_mode), 'nice': os.getpriority(os.PRIO_PROCESS, 0), 'contender': p.returncode}, f)\nif os.environ.get('SYNTHETIC_IMAGE_FAIL'): sys.exit(7)\nprint('60: #000000\\n40: #FFFFFF')\n`,
+		/*
+		 * A REAL frame, decoded by the guard's own reader.
+		 *
+		 * The fixture used to put a stub `magick` on PATH and let the sweep call
+		 * it; the sweep now decodes in process, so the only way to exercise the
+		 * real path is to hand it a real image. 10x10 with 60 ground pixels and 40
+		 * white ones reproduces what the stub printed (`60: #000000`, `40:
+		 * #FFFFFF`): the mode is the palette's one ground colour and its coverage
+		 * is 60%, which is what `assertFramePaints` demands - a frame that is
+		 * entirely one colour would fail the uniformity ceiling instead.
+		 *
+		 * Lossless, so the pixels are exactly the ones written: a lossy encode
+		 * would shift them and this test would be asserting the encoder's
+		 * rounding rather than the guard's.
+		 */
+		const pixels = Buffer.alloc(10 * 10 * 3, 0xff);
+		for (let index = 0; index < 60; index += 1)
+			pixels.fill(0, index * 3, index * 3 + 3);
+		await sharp(pixels, { raw: { width: 10, height: 10, channels: 3 } })
+			.webp({ lossless: true })
+			.toFile(join(evidence, "synthetic.webp"));
+		/*
+		 * `sharp` resolves through `node_modules`, and the relocated CLI is a copy
+		 * in a tmp tree: without this link the guard's own import of the decoder
+		 * cannot be resolved and every case below would fail for a reason that has
+		 * nothing to do with admission. Linked rather than copied for the same
+		 * reason a worktree is: the dependency store is shared on this machine and
+		 * a second copy of it is not what this test is about.
+		 */
+		symlinkSync(
+			join(dirname(dirname(guard)), "node_modules"),
+			join(root, "node_modules"),
 		);
-		chmodSync(magick, 0o700);
-		const cliEnv = { ...env, PATH: `${root}:${env.PATH}` };
+		const cliEnv = { ...env };
 		const cli = (extra = {}) =>
 			spawnSync(process.execPath, [entry], {
 				env: { ...cliEnv, ...extra },
@@ -272,12 +297,26 @@ test(
 		const passed = cli();
 		assert.equal(passed.status, 0, passed.stderr);
 		assert.match(passed.stdout, /Evidence holds: 1 frames/);
-		const image = JSON.parse(readFileSync(report, "utf8"));
-		assert.equal(image.lease_fd, true);
-		assert.equal(image.contender, 75);
-		assert.ok(image.nice >= 10);
-		const failed = cli({ SYNTHETIC_IMAGE_FAIL: "1" });
-		assert.equal(failed.status, 1);
+		/*
+		 * The two readings the decode CHILD used to report - that it had inherited
+		 * the lease on fd 3, and that a contender was deferred while it ran - are
+		 * deliberately not replaced one for one. There is no child any more: the
+		 * sweep decodes in its own process and holds admission for exactly its own
+		 * lifetime, which is what the `deferred` case above and the "heavy child
+		 * retains admission after its launcher exits" case already pin at the guard
+		 * level, where the property belongs.
+		 */
+		/*
+		 * A frame whose THEME still resolves, in a subdirectory, so this case
+		 * reaches the decode rather than the "no palette named" check that would
+		 * catch a misnamed file first. The verdict under test is "this tool could
+		 * not read the file", which is a different finding from "this frame is not
+		 * a picture of its theme".
+		 */
+		mkdirSync(join(evidence, "broken"), { recursive: true });
+		writeFileSync(join(evidence, "broken", "synthetic.webp"), "not an image");
+		const failed = cli();
+		assert.equal(failed.status, 1, failed.stdout);
 		assert.match(failed.stderr, /could not read the image/);
 		const unavailable = cli({ PATH: root });
 		assert.equal(unavailable.status, 1);

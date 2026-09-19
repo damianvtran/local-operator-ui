@@ -7,7 +7,10 @@ inherited descriptor closes, including after SIGKILL. PID metadata is only
 diagnostic, so stale files and PID reuse never authorize stealing a live lock.
 
 Usage: evidence-run-guard.py LOCK_PATH COMMAND [ARG ...]
-The command inherits the lease on fd 3 and must pass it to heavy children.
+The command inherits the lease on fd 3 and holds it for as long as it runs.
+It is not passed to a child: the sweep decodes each frame in its own process
+(scripts/check-evidence.mjs), so the descriptor's job is to keep admission
+occupied for exactly as long as this process lives.
 The production caller uses one fixed /tmp path, not HOME/TMPDIR or the
 checkout. An explicit path here lets subprocess tests use an isolated lease,
 never the operator's production lock. This is macOS/Linux developer tooling;
@@ -55,15 +58,17 @@ def main():
             if error.errno not in (errno.EACCES, errno.EAGAIN):
                 raise
             print(
-                "Evidence check DEFERRED: another sweep (or its image child) "
-                "holds the machine lease; retry after it finishes. "
+                "Evidence check DEFERRED: another sweep holds the machine "
+                "lease; retry after it finishes. "
                 "No frames checked. Do not delete the lock file.",
                 file=sys.stderr,
             )
             return 75
 
-        # A killed launcher must not free capacity while its image child
-        # consumes it. exec keeps the lease; Node forwards it to ImageMagick.
+        # A killed launcher must not free capacity while its own decoding
+        # continues: exec keeps the lease open across the handoff, and the
+        # sweeping process holds it - with no child of its own to inherit it -
+        # until it exits.
         os.dup2(fd, 3, inheritable=True)
         # dup2(fd, fd) is a no-op on POSIX, including its close-on-exec bit.
         os.set_inheritable(3, True)
