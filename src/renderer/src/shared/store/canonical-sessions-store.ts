@@ -2294,16 +2294,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							(row) => forgotten[row.session_id] === undefined,
 						);
 						/*
-							 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
-							 * `replaceSessionRows` rebuilds membership and values from the page
-							 * alone, so a page whose request STARTED before a press would hand the
-							 * panel the pre-press value - the row visibly regresses under a control
-							 * the reader just used - and would DROP a row the press inserted for a
-							 * conversation the page cannot carry. A write newer than the page's own
-							 * request outranks it, exactly as it outranks the page's facts above:
-							 * the row keeps the value the write put there, and it keeps its place
-							 * until a page requested AFTER the write arrives to settle it.
-							 */
+						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
+						 * `replaceSessionRows` rebuilds membership and values from the page
+						 * alone, so a page whose request STARTED before a press would hand the
+						 * panel the pre-press value - the row visibly regresses under a control
+						 * the reader just used - and would DROP a row the press inserted for a
+						 * conversation the page cannot carry. A write newer than the page's own
+						 * request outranks it, exactly as it outranks the page's facts above:
+						 * the row keeps the value the write put there, and it keeps its place
+						 * until a page requested AFTER the write arrives to settle it.
+						 */
 						const protectedRows = state.sessions.filter(
 							(row) =>
 								forgotten[row.session_id] === undefined &&
@@ -3094,6 +3094,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 */
 					let archiveFacts: Record<string, ArchiveFact> | null = null;
 					for (const hit of hits) {
+						/*
+						 * THE ARCHIVE HALF FIRST, and OUTSIDE the pin's own guard below. A hit
+						 * that describes no pin still SPEAKS about the conversation - it names an
+						 * id, which is the whole of what the archive rule needs - so gating both
+						 * halves on `pinned` would leave an archived fact alive through every
+						 * answer that happened not to describe a pin.
+						 */
+						const archivedFact = state.archiveFacts[hit.id];
+						if (archivedFact !== undefined && archivedFact.at < seq) {
+							archiveFacts = archiveFacts ?? { ...state.archiveFacts };
+							delete archiveFacts[hit.id];
+						}
 						if (typeof hit.pinned !== "boolean") continue;
 						const fact = state.pinFacts[hit.id];
 						if (fact !== undefined && fact.at >= seq) continue;
@@ -3111,13 +3123,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								if (row.session_id === hit.id) row.pinned = hit.pinned === true;
 							}
 						}
-						const archivedFact = state.archiveFacts[hit.id];
-						if (archivedFact !== undefined && archivedFact.at < seq) {
-							archiveFacts = archiveFacts ?? { ...state.archiveFacts };
-							delete archiveFacts[hit.id];
-						}
 					}
-					if (facts === null && rows === null && archiveFacts === null) return {};
+					if (facts === null && rows === null && archiveFacts === null)
+						return {};
 					return {
 						...(facts === null ? {} : { pinFacts: facts }),
 						...(rows === null ? {} : { sessions: rows }),

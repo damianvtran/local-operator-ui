@@ -139,7 +139,7 @@ test("the fail-closed gate covers the slot, the marker and the wrapper's group h
 	 * hook the reveal hangs off). With the capability absent the panel is the panel
 	 * that never knew about archiving.
 	 */
-	assert.match(source, /archiveEnabled && "group"/);
+	assert.match(source, /(pinsEnabled || archiveEnabled) && "group"/);
 	assert.match(source, /archiveEnabled && archived && \(/);
 	assert.match(source, /archiveEnabled && \(\s*<button/);
 	assert.match(source, /archiveEnabled && query\.trim\(\) && \(/);
@@ -230,10 +230,13 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 		/useChatSearch\(query, ready && searchSupported, widened\)/,
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgottenFacts\)\)/);
-	assert.match(source, /searchChats\(listed, query, hits, archiveView\)/);
 	assert.match(
 		source,
-		/searchChats\(\s*listed,\s*search\.data\.query,\s*search\.data\.sessions,\s*archiveView,?\s*\)/,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*query,\s*hits,\s*pinFactValues,\s*archiveView,?\s*\)/,
+	);
+	assert.match(
+		source,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*search\.data\.query,\s*search\.data\.sessions,\s*pinFactValues,\s*archiveView,?\s*\)/,
 	);
 });
 

@@ -365,7 +365,17 @@ const CURRENT = [
 		// mention first.
 		expression: () =>
 			expressionAfter(SIDEBAR, "data-session-row={row.session_id}"),
-		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
+		stubs: {
+			revealArmed: true,
+			rowBoxStyle,
+			rowCurrent,
+			current: true,
+			// Both per-row capabilities present: the box the ground is asserted on is
+			// carried while EITHER control is mounted, and this is the delivered
+			// state (the pin and the archive control both advertised).
+			pinsEnabled: true,
+			archiveEnabled: true,
+		},
 		ground: true,
 	},
 	{
@@ -823,7 +833,15 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// `!current` guard, so it is one of the elements `CURRENT` resolves - see its
 				// entry above, which is also what keeps a new control inside a current row
 				// from being seen by nobody.
-				"hover:bg-row-hover": 6,
+				// SEVEN: the archive control added one more row-state step beside the pin,
+				// the entity disclosure, its name button and the two row boxes. It takes
+				// the ROW state (never a ground), which is what this expectation exists
+				// to hold.
+				// EIGHT: the archive control added one row-state step beside the pin, and the
+				// shared control the pair sheds into (the band below the panel's default
+				// width) adds the last one. All three take the ROW state, never a ground,
+				// which is what this expectation exists to hold.
+				"hover:bg-row-hover": 8,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

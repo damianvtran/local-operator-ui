@@ -683,6 +683,7 @@ test("the control admits the archived hit, and the row it builds says so", () =>
 		[],
 		"quarterly",
 		[archivedHit("aaaaaaaaaaaa", true)],
+		{},
 		{ include: true, facts: {} },
 	);
 	assert.equal(outcome.rows.length, 1);
@@ -699,6 +700,7 @@ test("the control admits the archived hit, and the row it builds says so", () =>
 		[],
 		"quarterly",
 		[archivedHit("bbbbbbbbbbbb", false)],
+		{},
 		live,
 	);
 	assert.equal(liveOutcome.rows[0].archived, false);
@@ -710,6 +712,7 @@ test("the client's own fact outranks the hit it is rebuilding the row from", () 
 		[],
 		"quarterly",
 		[archivedHit("aaaaaaaaaaaa", false)],
+		{},
 		{ include: false, facts: { aaaaaaaaaaaa: true } },
 	);
 	assert.deepEqual(
@@ -722,6 +725,7 @@ test("the client's own fact outranks the hit it is rebuilding the row from", () 
 		[],
 		"quarterly",
 		[archivedHit("aaaaaaaaaaaa", true)],
+		{},
 		{ include: true, facts: { aaaaaaaaaaaa: false } },
 	);
 	assert.equal(justRestored.rows.length, 1);
@@ -740,7 +744,7 @@ test("this module never filters the rows it is handed", () => {
 	const rows = [
 		{ session_id: "aaaaaaaaaaaa", title: "Quarterly", archived: true },
 	];
-	const outcome = searchChats(rows, "quarterly", null, live);
+	const outcome = searchChats(rows, "quarterly", null, {}, live);
 	assert.deepEqual(outcome.rows, rows);
 });
 
@@ -758,6 +762,7 @@ test("a conversation this window deleted cannot come back from a cached answer",
 		[{ session_id: "aaaaaaaaaaaa", title: "Doomed", archived: false }],
 		"doomed",
 		[hit],
+		{},
 		{ include: true, facts: {}, forgotten: new Set(["aaaaaaaaaaaa"]) },
 	);
 	assert.deepEqual(outcome.rows, [], "the local half drops the deleted row");
@@ -777,6 +782,7 @@ test("a conversation this window deleted cannot come back from a cached answer",
 		],
 		"",
 		null,
+		{},
 		{ include: false, facts: {}, forgotten: new Set(["aaaaaaaaaaaa"]) },
 	);
 	assert.deepEqual(
