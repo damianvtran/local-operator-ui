@@ -5,6 +5,10 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import type {
+	SidebarOrder,
+	SidebarRegions,
+} from "@features/chat/sidebar-split";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
@@ -269,6 +273,41 @@ type UiPreferencesState = {
 	chatSidebarWidth: number;
 
 	/**
+	 * Which of the sidebar's two regions are visible: both, or one of them.
+	 *
+	 * ONE union rather than two booleans, so "neither region" is unrepresentable
+	 * — a column holding a title, a search box and two restore rows is a state
+	 * that can be persisted, and therefore a state somebody would reach. The
+	 * rule that keeps it unreachable, and the alternative it rejects, are in
+	 * `features/chat/sidebar-split.ts`'s `hideRegion`, which is the only thing
+	 * that decides this value.
+	 */
+	chatSidebarRegions: SidebarRegions;
+
+	/**
+	 * The height of the sidebar's chats list in pixels, or `null` for the auto
+	 * rule.
+	 *
+	 * `null` is a first-class state rather than a missing value: it means the
+	 * region is drawn at its content's height, capped — the shipped layout, and
+	 * therefore what every user who has never dragged the new boundary sees. A
+	 * number here is a height the user chose, and it is never rewritten by a
+	 * window resize: the RENDER clamps, so a window too small to honour it does
+	 * not destroy it (`chat-layout.tsx` clamps `chatSidebarWidth` at its render
+	 * boundary for the same reason).
+	 */
+	chatSidebarListHeight: number | null;
+
+	/**
+	 * Which of the sidebar's two regions is drawn first.
+	 *
+	 * The header row and the search field stay put; only the two regions trade
+	 * places, which is what lets "agents at the bottom, chats at the top" be one
+	 * press rather than a drag.
+	 */
+	chatSidebarOrder: SidebarOrder;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -296,6 +335,42 @@ type UiPreferencesState = {
 	 * @param width - The new width in pixels
 	 */
 	setChatSidebarWidth: (width: number) => void;
+
+	/**
+	 * Set which regions the sidebar shows.
+	 *
+	 * Takes the resolved union rather than the region to hide, because the
+	 * control is the caller and the rule that keeps "neither" unreachable is
+	 * `hideRegion`'s — a setter that computed it would be a second place that
+	 * rule lives.
+	 */
+	setChatSidebarRegions: (regions: SidebarRegions) => void;
+
+	/**
+	 * Set the chats list's height in pixels.
+	 *
+	 * NOT clamped here, deliberately. The range a drag can produce is already
+	 * clamped by the boundary's own live bounds, and a tampered value never
+	 * reaches a setter at all — zustand's persist rehydrates PAST the setters —
+	 * so the one place a stored height is validated is `parseSidebarListHeight`,
+	 * on read, which is where a tampered value actually arrives.
+	 */
+	setChatSidebarListHeight: (height: number) => void;
+
+	/**
+	 * Restore the chats list to the auto rule: the boundary's double-click and
+	 * its Enter key, which are the same gesture one panel over.
+	 *
+	 * There is deliberately no reset for the collapse state: its own control is
+	 * its inverse and is on screen whenever a region is hidden.
+	 */
+	restoreDefaultChatSidebarListHeight: () => void;
+
+	/**
+	 * Set which region is drawn first.
+	 * @param order - The region to draw above the other
+	 */
+	setChatSidebarOrder: (order: SidebarOrder) => void;
 
 	/**
 	 * Restore the canvas width to its default value
@@ -443,6 +518,18 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			themeName: DEFAULT_THEME,
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
+			/*
+			 * Both defaults are the SHIPPED panel: no stored height means the list
+			 * region is drawn at its content's height under the same cap it always
+			 * had, and "both" means neither region is hidden. An upgrading user's
+			 * stored blob has no keys for these, and with `zustand ^5` a persisted
+			 * blob that lacks a key rehydrates to the initial state's value for it
+			 * — so there is nothing to migrate and nothing is written until the
+			 * user drags or collapses something.
+			 */
+			chatSidebarRegions: "both",
+			chatSidebarListHeight: null,
+			chatSidebarOrder: "entities-first",
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
@@ -580,6 +667,30 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setChatSidebarWidth: (width: number) => {
 				set({
 					chatSidebarWidth: Math.min(360, Math.max(240, width)),
+				});
+			},
+
+			setChatSidebarRegions: (regions: SidebarRegions) => {
+				set({
+					chatSidebarRegions: regions,
+				});
+			},
+
+			setChatSidebarListHeight: (height: number) => {
+				set({
+					chatSidebarListHeight: height,
+				});
+			},
+
+			restoreDefaultChatSidebarListHeight: () => {
+				set({
+					chatSidebarListHeight: null,
+				});
+			},
+
+			setChatSidebarOrder: (order: SidebarOrder) => {
+				set({
+					chatSidebarOrder: order,
 				});
 			},
 
