@@ -178,7 +178,13 @@ reason and § 6 its measured consequence.
              H = the largest raised L* step at which ink / ink-muted / ink-dim still
                  read 7.0 / 5.5 / 5.0 on the fill, authored 0.02:1 above each floor
 
-4. HOVER     step_hover ← clamp(0.65 × step_selected, 1.5, step_selected − 1.15)
+4. HOVER     step_hover ← clamp(0.65 × step_selected, 1.5 + 0.02, step_selected − 1.15)
+             the lower bound is the absolute floor plus ONE 0.02 authoring grid
+             step. The floor itself is 1.5 and it is asserted on the AUTHORED
+             hex, so a value authored AT the floor can round to 1.49 and fail a
+             bound it is allowed to sit on; authoring one grid step above it is
+             what makes the authored value and the asserted value the same
+             statement. The fleet's achieved hover step bottoms at 1.53.
              then walk step_hover DOWN in 0.02 steps until the rank, measured on the
              AUTHORED hexes, clears 1.0 L*
 
@@ -192,25 +198,39 @@ measurement beside it, exactly as the roles are authored today — never compute
 runtime, never a mix percentage. The procedure is deterministic: it reads only
 `surface`, `accent`, `ink`, `ink-muted`, `ink-dim` and the mode.
 
-The fleet result, over all 59 (dark / light):
+The fleet result, over all 59 (and, where the split matters, over the 41 dark and
+the 18 light separately — every cell below carries its own population, because a
+reader comparing two medians drawn from different sets is not comparing like with
+like):
 
-| | before | after |
+| quantity | before | after |
 | --- | --- | --- |
-| hover step `L*` | 1.50–2.07 / 1.50–1.92 | **1.49–3.25 / 2.79–3.25** |
-| selection step `L*` | 2.77–5.72 / 4.08–4.99 | **2.68–5.00 / 4.30–5.00** |
-| hover share of available headroom | 30% | **65%** |
-| ΔE00 off `surface`, hover | 4.00–20.42 (median 6.50) | 1.67–5.81 (median 3.81) |
-| ΔE00 off `surface`, selection | 4.22–27.51 (median 10.95) | 3.18–6.86 (median 4.26) |
-| pair separation | 2.69–11.52 (median 6.78) | 2.15–7.01 (median 6.01) |
-| `L*` rank (selection − hover) | 0.16–1.98 (median 1.30) | **0.94–2.03 (median 1.62)** |
-| `C*` rank | −22.19 … +6.74 signed, i.e. often *inverted* | **2.50–11.46 (median 7.62)** |
-| `ink-dim` on the selection | 5.00–6.24 | 5.02–6.24 |
+| hover step `L*` | 1.50–4.99 (1.61) · dark 1.50–4.99 (1.61) · light 1.50–1.92 (1.60) | **1.53–3.86 (3.17)** · dark 1.53–3.38 (3.03) · light 2.79–3.86 (3.23) |
+| selection step `L*` | 2.77–5.72 (4.87) · dark 2.77–5.72 (4.70) · light 4.07–4.99 (4.90) | 2.56–5.16 (4.89) · dark 2.56–5.16 (4.60) · light 4.14–5.07 (4.94) |
+| hover's share of the selection's step | 0.30–0.87 (0.34) | **0.57–0.77 (0.66)** |
+| ΔE00 off `surface`, hover | 4.00–20.42 (6.50) · dark 4.00–15.48 (6.78) · light 4.30–20.42 (6.09) | 1.67–5.81 (**3.58**) · dark 2.02–5.81 (3.81) · light 1.67–5.52 (2.72) |
+| ΔE00 off `surface`, selection | 4.22–27.51 (10.95) · dark 4.22–21.23 (10.58) · light 6.56–27.51 (11.45) | 3.18–6.86 (4.26) · dark 3.18–5.23 (4.21) · light 3.29–6.86 (4.50) |
+| pair separation | 2.69–11.52 (6.78) · dark 3.56–11.52 (6.88) · light 2.69–11.29 (6.22) | 2.15–7.01 (**5.68**) · dark 2.75–7.01 (6.01) · light 2.15–6.79 (4.16) |
+| `L*` rank — `\|selection − hover\|`, MODE-SIGNED (`contrast-contract.mjs:3330-3333`: the raw difference is negative on a light palette by construction, so the rank is its magnitude) | **0.72–3.48 (3.22)** · dark 0.72–3.46 (2.97) · light 2.45–3.48 (3.33) | **0.94–2.03 (1.62)** · dark 0.94–2.03 (1.53) · light 1.18–1.94 (1.67) |
+| `C*` rank (`C*(selection) − C*(hover)`, measured on the authored hexes) | −14.43–17.79 (7.82) · dark −14.43–17.79 (8.09) · light 2.14–16.57 (7.54) | **2.07–12.09 (7.52)** · dark 2.74–12.09 (8.05) · light 2.07–10.86 (4.78) |
+| `ink-dim` on the selection | 5.00–6.24 (5.09) | 5.02–6.24 (5.10) |
 
-Two of those lines move the wrong way and both are the trade: the band off
-`surface` falls (that is § 9's assertion change, and it is what the operator asked
-for) and the pair separation's median falls from 6.78 to 6.01 — because 6.78 was
-bought by hue rotation, and the *rank* that a reader actually scans by rises from
-1.30 to 1.62 on the `L*` axis with a `C*` rank that no longer runs backwards.
+The `C*` rank row is measured on the AUTHORED hexes, not on the rule's target
+triples: the clamp difference `max(5.0, C*(surface)) − max(2.5, 0.5 × C*(surface))`
+is 2.50 at a cast-less panel, and no hex reaches it — `oneLight`'s round trip
+takes its hover to `C*` 2.61 and its selection to 4.68, a rank of 2.07, which is
+where the fleet's minimum sits.
+
+The band off `surface` falls and the pair separation's median falls with it — both
+are § 9's assertion change and the trade clause 2 makes, since 6.78 was bought by
+hue rotation. **The `L*` rank does NOT rise; it falls**, from 3.22 to 1.62, because
+the hover now takes 66% of the selection's step where it used to take 34%. What
+improves is (i) the **worst** rank — 0.72 (`obsidian`) becomes 0.94
+(`catppuccinMacchiato`) — and (ii) the `C*` axis, which ran **backwards on 2 of
+the 59** before (`tokyoNightStorm` −14.43, `kanagawaWave` −5.06) and on none now.
+§ 5.4's conclusion — that the fill ranks the pair and the rank is asserted where
+it was not — is what the numbers support; the ordering of the rank did not move
+the way the first draft of this table claimed.
 
 ---
 
@@ -301,39 +321,43 @@ quiet its hover past half its own cast and pass.
 
 | | floor | what the rule takes | fleet median | fleet range |
 | --- | --- | --- | --- | --- |
-| `rowHover`, absolute | 1.5 `L*` (unchanged) | `0.65 × step_selected` | 3.09 dark / 3.25 light | 1.49 – 3.25 |
-| `rowHover`, **share of the selection** | **0.5 ×** (new) | `0.65 ×` | 0.65 | 0.56 – 0.65 |
-| `rowSelected` | 1.5 `L*` (unchanged) | the whole legal budget, capped at 5.0 | 4.76 dark / 5.00 light | 2.68 – 5.00 |
+| `rowHover`, absolute | 1.5 `L*` (unchanged; authored at 1.52, § 4) | `0.65 × step_selected` | 3.17 (dark 3.03, light 3.23) | 1.53 – 3.86 |
+| `rowHover`, **share of the selection** | **0.5 ×** (new) | `0.65 ×` | 0.66 | 0.57 – 0.77 |
+| `rowSelected` | 1.5 `L*` (unchanged) | the whole legal budget, capped at 5.0 | 4.89 (dark 4.60, light 4.94) | 2.56 – 5.16 |
 
 **The absolute hover floor stays at 1.5 and clause 2 is asserted as a
 relationship instead** — `step_hover ≥ 0.5 × step_selected`, a new constant
-(`ROW_HOVER_SHARE_FLOOR`). An absolute floor cannot encode clause 2 on this fleet:
-the hover's step is bounded by the budget the ink floors leave the *selection*, so
-asking for an absolute 2.0 on every palette would force the pair's rank below 1.0
-on `catppuccinMacchiato`, `rosePine` and `palenight` (§ 5.4) rather than buy
-anything. A share of the selection's step is the shape the operator's sentence
-actually has — *more* of the signal than today's 30% — and it holds everywhere
-with the measured minimum at **0.56**. The achieved medians are **2.1×** today's
-on dark and **2.0×** on light, and the fleet's hover step bottoms at **1.49 `L*`**
-(`catppuccinMacchiato`, whose whole budget is 2.68).
+(`ROW_HOVER_STEP_SHARE_FLOOR`). An absolute floor cannot encode clause 2 on this
+fleet: the hover's step is bounded by the budget the ink floors leave the
+*selection*, so asking for an absolute 2.0 on every palette would force the pair's
+rank below 1.0 on `catppuccinMacchiato`, `rosePine` and `palenight` (§ 5.4)
+rather than buy anything. A share of the selection's step is the shape the
+operator's sentence actually has — *more* of the signal than the shipped 34% — and
+it holds everywhere with the measured minimum at **0.57** (`rosePine`, the palette
+the rank clause walks down furthest). The shipped share before this change ran
+0.30–0.87 with a median of **0.34**, so the median share roughly doubles, which is
+the 2× the clause asks for. The fleet's hover step bottoms at **1.53 `L*`**
+(`rosePine`), one authoring grid step above the floor, exactly as § 4's rule
+produces; `catppuccinMacchiato`, whose whole legal budget is 2.56, measures 1.62.
 
-`step_selected` is capped at 5.0 by the existing `ROW_SELECTED_STEP_CEILING`,
-and underneath that by the three ink floors, which is what binds almost
-everywhere: the fleet's median headroom is 4.85 `L*` on dark and 7.35 on light,
-so on dark the ink floor — not the ceiling — is the limit. **No palette is asked
-for a step it cannot take**: `step_selected = min(H, 5.0)` reads `H`, so the two
-palettes whose headroom is below the ceiling (`catppuccinMacchiato` 2.96,
-`rosePine` 2.95) take 2.96 and 2.95 and the rule does not ask for more.
+`step_selected` is capped at 5.0 by the existing `ROW_SELECTED_STEP_CEILING`, and
+underneath that by the three ink floors, which is what binds almost everywhere:
+**44 of the 59 palettes sit below the ceiling** (median 4.89, dark 4.60, light
+4.94), so on dark the ink floor — not the ceiling — is the limit. **No palette is
+asked for a step it cannot take**: `step_selected = min(H, 5.0)` reads `H`, so a
+palette whose ink-legal budget is under the ceiling takes the budget — the two the
+brief named take 2.56 (`catppuccinMacchiato`) and 2.70 (`rosePine`) — and the rule
+does not ask for more.
 
-**Where the budget is spent on the pair, and where it is not.** On 56 of 59
-palettes the hover takes 65% of the selection's step and the pair still separates
-by ΔE00 2.68 or more, because the selection's extra cast does the rest. On
-**`catppuccinMacchiato`** the rank is **0.94 `L*`** against the 1.0 floor: its
-headroom is 2.96, so the selection cannot rise past 2.96 and the hover cannot fall
-below its own 2.0 floor without the ink floors refusing the hover instead. The
-floor that refuses is **`ink-dim`'s 5.0:1 on the selection**, and this is the one
-palette in the fleet where the pair is ranked by its chroma rank (2.9) rather than
-by its lightness. § 9 states it as a named shortfall rather than a relaxed floor.
+**Where the budget is spent on the pair, and where it is not.** On **57 of 59**
+palettes the pair separates by ΔE00 2.68 or more, because the selection's extra
+cast does the rest of the work the rank no longer does. On **`catppuccinMacchiato`**
+the rank is **0.94 `L*`** against the 1.0 floor: its legal budget is 2.56, so the
+selection cannot rise past it and the hover cannot fall below its own floor without
+the ink floors refusing the hover instead. The floor that refuses is
+**`ink-dim`'s 5.0:1 on the selection**, and this is the one palette in the fleet
+where the pair is ranked by its chroma rank (10.72) rather than by its lightness.
+§ 9 states it as a named shortfall rather than a relaxed floor.
 
 ### 5.4 The hover-vs-selection separation: the fill ranks now
 
@@ -354,9 +378,10 @@ Under the direction there is **no bar**, so the fill has to rank. The floors:
 - **`C*` rank ≥ 2.0** (new) — the selection must carry at least 2 chroma more
   than the hover. This is the axis that costs nothing: `L*` determines relative
   luminance, so contrast ratios are blind to chroma, and the pair can be ranked on
-  cast at zero ink cost. The fleet's `C*` rank is 2.50 – 11.46;
-- **pair separation ≥ ΔE00 2.0** (unchanged) — `catppuccinMacchiato` is the only
-  palette near it, at 2.68 … 6.01 fleet median.
+  cast at zero ink cost. The fleet's `C*` rank is 2.07 – 12.09 (median 7.52);
+- **pair separation ≥ ΔE00 2.0** (unchanged) — `oneLight` (2.15) and
+  `highContrastLight` (2.16) are the two nearest it, and the fleet's median is
+  5.68 … 6.01 on dark.
 
 And `font-medium` stays, which is why the least-privileged palette
 (`obsidian`, whose panel has almost no cast) still has a non-colour mark.
@@ -399,6 +424,14 @@ strong cast. `H` is the available headroom; the bands are ΔE00 off `surface`;
 `inkDim(s)` is the ratio on the selected fill. All after-column values are from
 the rule as stated in § 4.
 
+**These are the RULE'S OWN targets, and the hex that ships is the hex the triple
+rounds to** — the two differ by the 8-bit round trip, and it is the shipped hex
+that `contrast-contract.mjs` measures and that the appendix tabulates. Read a
+number here as "what the rule asks for" and the appendix as "what landed". `dune`
+is the one row whose RULE-TARGET this document no longer states: the remediation
+round lifted its hover step off the rule's `0.65 × step_selected` to the lowest
+rung that clears the 2.0 field floor, and the row shows the shipped value.
+
 | palette | mode | panel | H | hover: before → after | selected: before → after | band h/s | pair | rank | inkDim(s) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `localOperatorDark` | dark | `#2b2721` L\*15.9 C\*4.7 h83 | 4.4 | `#272C28` h150 +1.52 (band 5.91) → **`#302D29` C\*2.8 h81 +2.72** | `#1F3624` C\*16.2 h148 +4.40 (15.40) → **`#372F24` C\*8.7 h80 +4.18** | 2.30 / 4.16 | 4.49 | 1.28 | 5.05 |
@@ -409,7 +442,7 @@ the rule as stated in § 4.
 | `tokyoNightStorm` | dark | `#2B3048` L\*20.4 C\*16.3 h287 | 4.3 | `#253455` C\*22.4 h282 +1.54 (4.27) → **`#353745` C\*9.8 h287 +2.89** | `#373A46` C\*8.0 h283 +4.16 (6.44) → **`#323958` C\*20.3 h287 +4.44** | 5.03 / 3.81 | 6.92 | 1.27 | 5.04 |
 | `cyberpunk` | dark | `#282332` L\*14.9 C\*10.9 h305 | 3.9 | `#2A2923` C\*4.2 h102 +1.64 (14.55) → **`#2C2932` C\*6.5 h304 +2.35** | `#312E1C` C\*12.3 h100 +3.90 (21.23) → **`#302A3F` C\*14.9 h303 +3.62** | 3.97 / 3.59 | 6.26 | 1.32 | 5.03 |
 | `kanagawaLotus` | light | `#E9E2B6` L\*89.4 C\*22.9 h102 | 8.3 | `#DADCE4` C\*4.2 h281 +1.62 (20.42) → **`#DDD8BE` C\*13.7 h101 +3.25** | `#CBD3E9` C\*11.8 h278 +4.87 (27.51) → **`#DBD4A6` C\*24.0 h102 +5.00** | 5.52 / 3.29 | 5.82 | 1.67 | 5.51 |
-| `dune` | dark | `#2C2825` L\*16.4 C\*2.9 h66 | 4.4 | `#342A23` C\*7.1 h62 +1.51 (4.00) → **`#322E2B` C\*2.5 h66 +2.77** | `#462C1C` C\*18.2 h57 +4.34 (12.07) → **`#393029` C\*6.9 h66 +4.26** | 1.91 / 4.35 | 3.48 | 1.36 | 5.03 |
+| `dune` | dark | `#2C2825` L\*16.4 C\*2.9 h66 | 4.4 | `#342A23` C\*7.1 h62 +1.51 (4.00) → **`#322E2C` C\*2.4 h66 +2.85** | `#462C1C` C\*18.2 h57 +4.34 (12.07) → **`#393029` C\*6.6 h66 +4.17** | 2.05 / 4.35 | 3.84 | 1.33 | 5.03 |
 | `iceberg` | light | `#F2F3F6` L\*95.8 C\*1.6 h277 | 8.9 | `#EDEEFA` C\*6.2 h287 +1.51 (4.33) → **`#E9E9EE` C\*2.5 h290 +3.25** | `#E2E4F4` C\*8.3 h286 +4.98 (6.56) → **`#E3E4EF` C\*5.6 h287 +5.00** | 2.39 / 4.91 | 2.91 | 1.67 | 5.55 |
 | `tokyoNight` | dark | `#313448` L\*22.2 C\*13.4 h288 | 4.8 | `#363940` C\*4.8 h276 +1.72 (7.05) → **`#3A3B48` C\*8.1 h288 +3.16** | `#333F5F` C\*21.1 h283 +4.76 (5.98) → **`#3A3E59` C\*17.4 h288 +4.86** | 4.01 / 4.26 | 6.01 | 1.68 | 5.04 |
 
@@ -515,9 +548,15 @@ the panel's own family, lifted.
 ### 7.3 The frames' own limits
 
 - The tiles are the **row list only**, cropped to the rows' bounding box, so the
-  panel's header and the search field are not in frame. The search field is where
-  `sunken` lives, so the one place a selection could be confused with a well is
-  outside these crops — § 9's rung exemption is stated without a frame to back it.
+  panel's header and the search field are not in frame. `sunken` is NOT where the
+  search field lives — the chat sidebar's field is `bg-surface` + `border-control`
+  (`chat-sidebar.tsx`) — and the rung this exemption actually had to answer for is
+  the **app rail's own `<nav>`, which was `sunken`, and the agent-hub categories
+  rail's column, which was on `canvas`**. Both are re-grounded to `surface` with
+  frames and a DOM readback in `docs/evidence/row-states-refined/`, so the
+  exemption that remains is the `elevated` one and it is about a dialog's ground
+  or an input well rather than about a rung a row is painted on. § 9.2 carries the
+  sentence this bullet used to point at.
 - **No light-theme tile has a hovered neighbour on a light panel with a strong
   cast** other than `kanagawaLotus`; `everforestLight` and `gruvboxLight`, the
   fleet's other two strong-cast light palettes, are in the 59-sheet only.
@@ -636,12 +675,14 @@ round trip's own error (up to 0.16 `L*`).
   Withdrawn rather than lowered, because the measurement says it is not a floor a
   backdrop-relative fill can hold: with the hue and chroma held, the band reaches
   4.0 on 40 of 59 palettes and is as low as 2.08. What replaces it is the pair of
-  assertions that measure what the direction actually asks for — **the `L*` step
-  floor (2.0 hover, 1.5 selection)** and **ΔE00 ≥ 2.0 off `surface`** (the file's
-  own field floor, so a fill literally indistinguishable from its panel still
-  fails). The consequence to accept: the achieved band's median falls from 6.50 to
-  3.81 on the hover and from 10.95 to 4.26 on the selection. **That is the
-  trade clause 2 makes**, and it is why the step floors have to rise with it.
+  what the direction actually asks for — **the `L*` step floors (1.5 for the
+  hover, 1.5 for the selection: the absolute hover floor is what § 5.3 argues for,
+  and clause 2 is asserted as the SHARE instead)** and **ΔE00 ≥ 2.0 off
+  `surface`** (the file's own field floor, so a fill literally indistinguishable
+  from its panel still fails). The consequence to accept: the achieved band's
+  median falls from 6.50 to **3.58** on the hover and from 10.95 to 4.26 on the
+  selection, over all 59 (dark: 6.78 → 3.81). **That is the trade clause 2 makes**,
+  and it is why the step floors have to rise with it.
 - **The accent-bar assertions** (`ROW_STATE_BAR_FLOOR` 3.0 and
   `ROW_STATE_BAR_DELTA_E` 2.0, `:3155-3171`) — retired with the bar. One thing
   worth saying: the measured `accent`-on-`rowSelected` ratios they asserted
@@ -662,11 +703,32 @@ round trip's own error (up to 0.16 `L*`).
   collision: there is no cast with which to be a different colour at the same
   depth."* The direction generalises that sentence from "the accent has no chroma"
   to "the fill is a step of the panel's ladder", which is now every palette.
-  **The risk this accepts, stated plainly**: a selected row can be the same colour
-  as a dialog's ground or an input well. They are never adjacent inside one list —
-  the sidebar's own `elevated` use is the `· lopdev` cap and the `⋯` button, which
-  are text-sized, not full-width rows — and § 7.3 names the one place a frame
-  cannot check it.
+  **THE PREMISE THE WITHDRAWAL USED TO REST ON, CORRECTED.** It read "they are
+  never adjacent inside one list", and that sentence is FALSE on two surfaces: the
+  app rail's own `<nav>` was `bg-sunken` and the agent-hub categories rail's column
+  painted nothing at all over the shell's `canvas`, and BOTH are lists whose rows
+  carry these two roles. A row state's own backdrop is the one adjacency a row
+  cannot avoid, so the fix is the invariant rather than a value: **a surface that
+  paints `rowCurrent` or `hover:bg-row-hover` wears `surface`.** Both surfaces were
+  re-grounded — `sidebar-navigation.tsx`'s `<nav>` to `bg-surface` with
+  `border-r border-hairline` carrying the boundary its tonal step used to, and the
+  categories column in `agent-hub-page.tsx` to a `rounded-md bg-surface p-2` panel
+  — which puts all six `rowCurrent` surfaces (the chat sidebar, the settings rail,
+  the app rail, the categories rail, the agents sidebar and the agents page's
+  roster) on `surface`, plus the canvas Files list. `scripts/chat-sidebar-selection.test.mjs`
+  asserts every call site against its ground, so a new one on a rung fails the
+  gate. Re-asserting the ROLES against `sunken`/`canvas` instead was measured and
+  refused: on the light fleet the largest ink-legal fill reaches ΔE00 1.73–2.81
+  against `canvas`, and clearing `sunken` forces `alucard`'s selection to a 2.36
+  `L*` step, under the pair's own floors.
+  **The risk this still accepts, stated plainly**: a selected row can be the same
+  colour as a dialog's ground or an input well. `elevated` keeps its exemption
+  because a menu, popover, tooltip, dialog or drawn card is not a row's plane and
+  no row is painted on one — the sidebar's own `elevated` use is the `· lopdev`
+  cap and the `⋯` button, which are text-sized, not full-width rows. The two
+  `hover`-only sites that still ride a rung are recorded with their numbers in
+  `scripts/chat-sidebar-selection.test.mjs` (`HOVER_STATES_ON_A_RUNG`): the canvas
+  document-tab strip, which § 10 scopes out, and the schedules page's annex.
 - **`chat sidebar current-row ground`'s pinned literal**
   (`contrast-contract.mjs:1944-1947`) loses `relative` and the `before:*` terms.
   The pin stays a pin: it is the only place that catches the wrong ground or a
@@ -768,19 +830,37 @@ that being wrong is cheap to see.
    settable higher and I under-set it; if it reads as one mark, this is the palette
    that proves the ink floors are the cap.
 5. **The band off `surface` is smaller everywhere and it does not matter**: the
-   hover's median drops from ΔE00 6.50 to 3.81. If any palette now reads as *not
-   marked at all* — the operator's original `tokyoNight` report, ΔE00 1.05 — the
-   band withdrawal was wrong and the step floor is carrying more than it can.
+   hover's median drops from ΔE00 6.50 to **3.58** over all 59 (3.81 over the 41
+dark, 2.72 over the 18 light — the medians move with their population, so a
+reader comparing across this change has to hold the set fixed). If any palette
+   now reads as *not marked at all* — the operator's original `tokyoNight` report,
+   ΔE00 1.05 — the band withdrawal was wrong and the step floor is carrying more
+   than it can. The three palettes that sat under the file's 2.0 field floor when
+   this shipped (`rosePineDawn` 1.67, `dune` 1.91, `ayuLight` 1.95) are down to
+   **one**: `dune` and `ayuLight` were lifted in the remediation round (§ D7 of
+   the design round) and `rosePineDawn` is a ledger row whose ceiling is now
+   recorded. `rosePineDawn` is the fleet minimum and its frame pair is in
+   `docs/evidence/row-states-refined/`.
 6. **The bar's removal restores the left rounding on five surfaces at once**
    (settings rail, app rail, agents sidebar, agent-categories sidebar, agents
    page), because they share `rowCurrent`. If any one of them is still square on
    the left, a caller is restating the bar rather than importing the constant.
-7. **`kanagawaLotus`'s selection is the loudest in the after fleet at C\* 24.0**,
-   on a panel of 22.9 — i.e. it is the palette most likely to be called "a
-   saturated plane" under the new rule, and it is the one to look at if the
-   ceiling needs re-arguing.
+7. **`outrun`'s selection is the loudest in the after fleet at C\* 24.47**, on a
+   panel of 21.0 — then `vaporwave` 24.25 on 21.5 and `kanagawaLotus` 24.17 on
+   22.9 — i.e. it is the palette most likely to be called "a saturated plane"
+   under the new rule, and it is the one to look at if the ceiling needs
+   re-arguing. Its frame is in the set (`after/neighbour-hovered/outrun.webp`),
+   where it reads as a step of its own panel rather than as a plane.
+   **Why this pointer was wrong when this document was written, since it is the
+   kind of error worth naming**: § 6's worked table carries the three selections
+   rounded to ONE decimal, where all three read **24.0** — equal to the flat cap —
+   so a reader comparing them there cannot tell them apart. The three differ in
+   the second decimal, and § 13.6 does not "record 24.47 for `outrun`" either: the
+   figure appears nowhere in this document (it is in `contrast-contract.mjs`'s cap
+   note, which is a different file). What the appendix tabulates now is the
+   shipped hex, where the ordering is the one above.
 8. **Nothing in the light fleet gets lighter.** Every light selection step is
-   between 4.30 and 5.00 `L*` *downward*. If a light palette's selected row reads
+   between 4.14 and 5.07 `L*` *downward*. If a light palette's selected row reads
    as raised rather than recessed, the direction sign was inverted somewhere.
 
 ---
@@ -846,68 +926,74 @@ inside two failure-message strings (`:3059`, `:3131`), compared nowhere;
 ## Appendix: the fleet, after
 
 Per palette, mode, hue source, panel cast, the two authored values, their steps,
-the band, the pair, the rank, and `ink-dim` on the selection. Generated by
-`~/scratchpad/rule_final.py`; the full 59-row CSV is the same script's
-`after-table.csv`.
+the band, the pair, the rank, and `ink-dim` on the selection — **every cell
+measured on the SHIPPED hex in
+`src/renderer/src/shared/themes/palettes/`, not on the rule's target triples**,
+because the two differ by the 8-bit round trip and it is the hex that ships
+(`contrast-contract.mjs` asserts the hex). `hue` is the source § 5.1 takes, keyed
+on `C*(panel)`; `rank` is the mode-signed magnitude of `selection − hover` in
+`L*`, the same quantity the contract's rank floor reads. The steps read `+` on
+both fleet halves because the sign is applied per mode (§ 5.6) and the column
+prints its magnitude.
 
 | palette | mode | hue | C\*(panel) | hover | hover step | selected | sel step | band h/s | pair | rank | `ink-dim`(s) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `alucard` | light | panel | 5.7 | `#EDECE5` | +3.25 | `#ECE7D4` | +5.00 | 2.61 / 4.35 | 5.02 | 1.73 | 5.17 |
-| `arcade` | dark | panel | 2.1 | `#2D2D31` | +3.02 | `#303039` | +4.64 | 2.02 / 4.72 | 3.20 | 1.58 | 5.04 |
-| `arctic` | dark | panel | 11.0 | `#2F353E` | +3.25 | `#29394E` | +5.00 | 4.00 / 4.21 | 5.76 | 1.56 | 5.12 |
-| `autumn` | dark | panel | 7.4 | `#3A342F` | +2.60 | `#453429` | +4.00 | 3.58 / 4.12 | 6.17 | 1.11 | 5.06 |
-| `ayuDark` | dark | panel | 7.9 | `#2D3037` | +3.25 | `#2B3445` | +5.00 | 3.23 / 4.41 | 5.19 | 1.74 | 5.12 |
-| `ayuLight` | light | panel | 2.9 | `#E9EFF2` | +3.25 | `#DCEBF4` | +5.00 | 1.95 / 4.74 | 3.99 | 1.88 | 5.56 |
-| `ayuMirage` | dark | panel | 9.7 | `#373B44` | +3.25 | `#343F54` | +5.00 | 3.53 / 4.57 | 5.68 | 1.70 | 5.10 |
-| `catppuccinFrappe` | dark | panel | 12.6 | `#3E404C` | +2.20 | `#3B425C` | +3.38 | 3.71 / 3.57 | 6.01 | 1.04 | 5.04 |
-| `catppuccinLatte` | light | panel | 2.2 | `#E5E8EC` | +3.25 | `#DDE3EE` | +5.00 | 2.02 / 4.49 | 3.39 | 1.79 | 5.24 |
-| `catppuccinMacchiato` | dark | panel | 14.4 | `#30313D` | +1.49 | `#2E324E` | +2.68 | 4.46 / 3.18 | 6.96 | 0.94 | 5.06 |
-| `catppuccinMocha` | dark | panel | 11.5 | `#3A3943` | +3.24 | `#3C3B53` | +4.98 | 4.39 / 4.43 | 6.52 | 1.48 | 5.03 |
-| `cyberpunk` | dark | panel | 10.9 | `#2C2932` | +2.35 | `#302A3F` | +3.62 | 3.97 / 3.59 | 6.26 | 1.32 | 5.03 |
-| `desert` | dark | panel | 10.7 | `#423C33` | +3.22 | `#4C3E2B` | +4.96 | 3.94 / 4.24 | 5.65 | 1.52 | 5.06 |
-| `dracula` | dark | panel | 14.2 | `#383946` | +3.25 | `#393C57` | +5.00 | 4.57 / 4.24 | 6.08 | 1.78 | 5.20 |
-| `dune` | dark | panel | 2.9 | `#322E2B` | +2.77 | `#393029` | +4.26 | 1.91 / 4.35 | 3.48 | 1.36 | 5.03 |
-| `duskfox` | dark | panel | 18.7 | `#353243` | +3.25 | `#383456` | +5.00 | 4.98 / 4.13 | 6.75 | 1.83 | 5.33 |
-| `everforest` | dark | panel | 5.6 | `#3F4649` | +3.25 | `#374C55` | +5.00 | 3.16 / 5.22 | 5.57 | 1.76 | 5.29 |
-| `everforestLight` | light | panel | 13.1 | `#E8E4D5` | +3.25 | `#E7DFBF` | +5.00 | 4.04 / 3.85 | 5.92 | 1.83 | 5.46 |
-| `forest` | dark | panel | 8.7 | `#303833` | +2.92 | `#2A3E31` | +4.50 | 4.06 / 4.48 | 6.85 | 1.55 | 5.02 |
-| `githubLight` | light | accent | 1.8 | `#EBEBF0` | +3.25 | `#E5E6F1` | +5.00 | 2.82 / 5.21 | 2.90 | 1.67 | 5.28 |
-| `gruvbox` | dark | accent | 1.2 | `#3A3734` | +3.25 | `#403B34` | +5.00 | 2.63 / 5.19 | 2.75 | 1.89 | 5.38 |
-| `gruvboxLight` | light | panel | 15.5 | `#F1ECDB` | +3.25 | `#F0E8C2` | +5.00 | 4.78 / 3.85 | 6.79 | 1.62 | 5.25 |
-| `highContrastLight` | light | accent | 0.0 | `#E9E8ED` | +3.25 | `#E4E3EC` | +5.00 | 3.41 / 5.53 | 2.16 | 1.65 | 6.24 |
-| `iceberg` | light | accent | 1.6 | `#E9E9EE` | +3.25 | `#E3E4EF` | +5.00 | 2.39 / 4.91 | 2.91 | 1.67 | 5.55 |
-| `kanagawaLotus` | light | panel | 22.9 | `#DDD8BE` | +3.25 | `#DBD4A6` | +5.00 | 5.52 / 3.29 | 5.82 | 1.67 | 5.51 |
-| `kanagawaWave` | dark | panel | 9.0 | `#313038` | +3.25 | `#333347` | +5.00 | 3.55 / 4.61 | 6.01 | 1.79 | 5.13 |
-| `lavender` | dark | panel | 11.8 | `#37353F` | +2.69 | `#3B364E` | +4.14 | 4.40 / 4.05 | 6.84 | 1.34 | 5.03 |
-| `linen` | light | accent | 1.6 | `#DAE1DF` | +3.25 | `#CFDEDA` | +5.00 | 3.40 / 6.86 | 3.71 | 1.69 | 5.33 |
-| `localOperatorDark` | dark | panel | 4.7 | `#302D29` | +2.72 | `#372F24` | +4.18 | 2.30 / 4.16 | 4.49 | 1.28 | 5.05 |
-| `localOperatorLight` | light | panel | 3.6 | `#EDECE7` | +3.25 | `#EBE7D8` | +5.00 | 2.11 / 4.52 | 4.44 | 1.77 | 5.04 |
-| `matrix` | dark | panel | 6.1 | `#282D2A` | +2.98 | `#233329` | +4.58 | 3.69 / 4.84 | 7.01 | 1.68 | 5.02 |
-| `mintLight` | light | panel | 3.6 | `#E8EDEA` | +3.25 | `#DCEBE0` | +5.00 | 2.42 / 5.31 | 5.87 | 1.61 | 5.36 |
-| `monokai` | dark | panel | 4.8 | `#353632` | +3.25 | `#383B2D` | +5.00 | 2.98 / 5.23 | 5.78 | 1.79 | 5.13 |
-| `neon` | dark | panel | 11.4 | `#2B2E38` | +3.25 | `#293248` | +5.00 | 3.89 / 4.22 | 5.68 | 1.88 | 5.04 |
-| `neonNoir` | dark | panel | 4.9 | `#333539` | +3.09 | `#323846` | +4.76 | 2.91 / 4.77 | 5.46 | 1.39 | 5.05 |
-| `nightfox` | dark | panel | 12.5 | `#2D343E` | +3.25 | `#25384F` | +5.00 | 4.32 / 4.15 | 6.04 | 1.51 | 5.10 |
-| `nord` | dark | panel | 9.6 | `#3C3F48` | +2.05 | `#384257` | +3.26 | 3.09 / 3.76 | 5.64 | 1.23 | 5.04 |
-| `obsidian` | dark | panel | 2.1 | `#313135` | +3.25 | `#34343D` | +5.00 | 2.34 / 4.91 | 3.18 | 1.56 | 5.16 |
-| `ocean` | dark | panel | 10.2 | `#303A41` | +2.77 | `#223F4F` | +4.26 | 3.81 / 3.97 | 5.99 | 1.35 | 5.02 |
-| `oneDark` | dark | panel | 6.4 | `#383B41` | +3.25 | `#363F4E` | +5.00 | 2.93 / 4.53 | 4.81 | 1.62 | 5.11 |
-| `oneLight` | light | accent | 0.0 | `#EBEAEF` | +3.25 | `#E6E5EE` | +5.00 | 3.40 / 5.51 | 2.15 | 1.65 | 5.33 |
-| `outrun` | dark | panel | 21.0 | `#2C2C3E` | +2.73 | `#2B2D51` | +4.20 | 5.46 / 3.23 | 6.88 | 1.25 | 5.02 |
-| `palenight` | dark | panel | 12.2 | `#363843` | +1.85 | `#333A53` | +3.00 | 3.66 / 3.43 | 6.20 | 1.08 | 5.06 |
-| `paper` | light | panel | 8.1 | `#E3DFD6` | +3.25 | `#E4DAC4` | +5.00 | 3.23 / 4.08 | 5.29 | 1.60 | 5.36 |
-| `radient` | dark | panel | 11.9 | `#2E303B` | +3.25 | `#2D344B` | +5.00 | 3.81 / 4.23 | 5.57 | 1.94 | 5.15 |
-| `rosePine` | dark | panel | 13.0 | `#36333F` | +1.63 | `#38344E` | +2.86 | 3.62 / 3.41 | 6.31 | 1.17 | 5.06 |
-| `rosePineDawn` | light | panel | 2.7 | `#F1ECE8` | +2.79 | `#F3E7DD` | +4.30 | 1.67 / 4.33 | 3.62 | 1.35 | 5.02 |
-| `rosePineMoon` | dark | panel | 16.8 | `#322F3E` | +3.25 | `#353150` | +5.00 | 4.81 / 4.20 | 6.70 | 1.78 | 5.29 |
-| `rosewood` | dark | panel | 7.4 | `#3B3232` | +2.79 | `#483133` | +4.30 | 3.97 / 4.52 | 6.84 | 1.31 | 5.03 |
-| `sage` | light | panel | 5.8 | `#EFEDE6` | +3.25 | `#EEE8D5` | +5.00 | 2.60 / 4.34 | 5.00 | 1.73 | 5.38 |
-| `solarizedDark` | dark | panel | 15.3 | `#22373E` | +2.47 | `#003C4C` | +3.80 | 4.65 / 3.20 | 5.96 | 1.18 | 5.05 |
-| `solarizedLight` | light | panel | 6.3 | `#EEECE5` | +3.25 | `#EDE7D3` | +5.00 | 2.87 / 4.31 | 5.35 | 1.75 | 5.42 |
-| `synth` | dark | panel | 26.8 | `#32273E` | +3.25 | `#39294A` | +5.00 | 5.81 / 3.84 | 4.06 | 2.03 | 5.13 |
-| `synthwave` | dark | panel | 15.9 | `#33313F` | +2.78 | `#363250` | +4.28 | 4.78 / 3.78 | 6.92 | 1.41 | 5.04 |
-| `tokyoNight` | dark | panel | 13.4 | `#3A3B48` | +3.16 | `#3A3E59` | +4.86 | 4.01 / 4.26 | 6.01 | 1.68 | 5.04 |
-| `tokyoNightDay` | light | accent | 1.6 | `#E1E2E6` | +3.25 | `#DBDCE7` | +5.00 | 2.01 / 5.00 | 3.56 | 1.94 | 5.13 |
-| `tokyoNightStorm` | dark | panel | 16.3 | `#353745` | +2.89 | `#323958` | +4.44 | 5.03 / 3.81 | 6.92 | 1.27 | 5.04 |
-| `tron` | dark | panel | 9.6 | `#282D35` | +2.82 | `#243043` | +4.34 | 3.41 / 3.83 | 5.47 | 1.32 | 5.08 |
-| `vaporwave` | dark | panel | 21.5 | `#3D3548` | +3.25 | `#43365A` | +5.00 | 5.51 / 3.80 | 6.53 | 1.78 | 5.04 |
+| `alucard` | light | panel | 5.71 | `#EDECE5` | +3.19 | `#ECE7D4` | +4.93 | 2.61 / 4.35 | 5.02 | 1.73 | 5.17 |
+| `arcade` | dark | panel | 2.11 | `#2D2D31` | +2.87 | `#303039` | +4.45 | 2.02 / 4.72 | 3.2 | 1.58 | 5.04 |
+| `arctic` | dark | panel | 11 | `#2F353E` | +3.36 | `#29394E` | +4.92 | 4 / 4.21 | 5.76 | 1.56 | 5.12 |
+| `autumn` | dark | panel | 7.42 | `#3A342F` | +2.70 | `#453429` | +3.81 | 3.58 / 4.12 | 6.17 | 1.11 | 5.06 |
+| `ayuDark` | dark | panel | 7.9 | `#2D3037` | +3.29 | `#2B3445` | +5.03 | 3.23 / 4.41 | 5.19 | 1.74 | 5.12 |
+| `ayuLight` | light | panel | 2.89 | `#E7EDF0` | +3.86 | `#DCEBF4` | +5.04 | 2.36 / 4.74 | 3.89 | 1.18 | 5.56 |
+| `ayuMirage` | dark | panel | 9.75 | `#373B44` | +3.21 | `#343F54` | +4.91 | 3.53 / 4.57 | 5.68 | 1.7 | 5.1 |
+| `catppuccinFrappe` | dark | panel | 12.6 | `#3E404C` | +2.19 | `#3B425C` | +3.23 | 3.71 / 3.57 | 6.01 | 1.04 | 5.04 |
+| `catppuccinLatte` | light | panel | 2.16 | `#E5E8EC` | +3.22 | `#DDE3EE` | +5.02 | 2.02 / 4.49 | 3.39 | 1.79 | 5.24 |
+| `catppuccinMacchiato` | dark | panel | 14.41 | `#30313D` | +1.62 | `#2E324E` | +2.56 | 4.46 / 3.18 | 6.96 | 0.94 | 5.06 |
+| `catppuccinMocha` | dark | panel | 11.52 | `#3A3943` | +3.33 | `#3C3B53` | +4.81 | 4.39 / 4.43 | 6.52 | 1.48 | 5.03 |
+| `cyberpunk` | dark | panel | 10.9 | `#2C2932` | +2.37 | `#302A3F` | +3.69 | 3.97 / 3.59 | 6.26 | 1.32 | 5.03 |
+| `desert` | dark | panel | 10.7 | `#423C33` | +3.28 | `#4C3E2B` | +4.80 | 3.94 / 4.24 | 5.65 | 1.53 | 5.06 |
+| `dracula` | dark | panel | 14.21 | `#383946` | +3.36 | `#393C57` | +5.13 | 4.57 / 4.24 | 6.08 | 1.78 | 5.2 |
+| `dune` | dark | panel | 2.89 | `#322E2C` | +2.85 | `#393029` | +4.17 | 2.05 / 4.35 | 3.84 | 1.33 | 5.03 |
+| `duskfox` | dark | panel | 18.65 | `#353243` | +3.18 | `#383456` | +5.01 | 4.98 / 4.13 | 6.75 | 1.83 | 5.33 |
+| `everforest` | dark | panel | 5.56 | `#3F4649` | +3.34 | `#374C55` | +5.10 | 3.16 / 5.22 | 5.57 | 1.76 | 5.29 |
+| `everforestLight` | light | panel | 13.08 | `#E8E4D5` | +3.16 | `#E7DFBF` | +4.99 | 4.04 / 3.85 | 5.92 | 1.83 | 5.46 |
+| `forest` | dark | panel | 8.68 | `#303833` | +2.81 | `#2A3E31` | +4.36 | 4.06 / 4.48 | 6.85 | 1.55 | 5.02 |
+| `githubLight` | light | accent | 1.84 | `#EBEBF0` | +3.22 | `#E5E6F1` | +4.89 | 2.82 / 5.21 | 2.9 | 1.67 | 5.28 |
+| `gruvbox` | dark | accent | 1.16 | `#3A3734` | +3.24 | `#403B34` | +5.12 | 2.63 / 5.19 | 2.75 | 1.89 | 5.38 |
+| `gruvboxLight` | light | panel | 15.49 | `#F1ECDB` | +3.35 | `#F0E8C2` | +4.97 | 4.78 / 3.85 | 6.79 | 1.62 | 5.25 |
+| `highContrastLight` | light | accent | 0 | `#E9E8ED` | +3.29 | `#E4E3EC` | +4.95 | 3.41 / 5.53 | 2.16 | 1.65 | 6.24 |
+| `iceberg` | light | accent | 1.57 | `#E9E9EE` | +3.37 | `#E3E4EF` | +5.04 | 2.39 / 4.91 | 2.91 | 1.67 | 5.55 |
+| `kanagawaLotus` | light | panel | 22.88 | `#DDD8BE` | +3.33 | `#DBD4A6` | +5.00 | 5.52 / 3.29 | 5.82 | 1.67 | 5.51 |
+| `kanagawaWave` | dark | panel | 9.05 | `#313038` | +3.15 | `#333347` | +4.94 | 3.55 / 4.61 | 6.01 | 1.79 | 5.13 |
+| `lavender` | dark | panel | 11.75 | `#37353F` | +2.71 | `#3B364E` | +4.05 | 4.4 / 4.05 | 6.84 | 1.34 | 5.03 |
+| `linen` | light | accent | 1.59 | `#DAE1DF` | +3.24 | `#CFDEDA` | +4.92 | 3.4 / 6.86 | 3.71 | 1.69 | 5.33 |
+| `localOperatorDark` | dark | panel | 4.67 | `#302D29` | +2.78 | `#372F24` | +4.06 | 2.3 / 4.16 | 4.49 | 1.28 | 5.05 |
+| `localOperatorLight` | light | panel | 3.64 | `#EDECE7` | +3.17 | `#EBE7D8` | +4.93 | 2.11 / 4.52 | 4.44 | 1.77 | 5.04 |
+| `matrix` | dark | panel | 6.11 | `#282D2A` | +2.81 | `#233329` | +4.49 | 3.69 / 4.84 | 7.01 | 1.68 | 5.02 |
+| `mintLight` | light | panel | 3.57 | `#E8EDEA` | +3.29 | `#DCEBE0` | +4.91 | 2.42 / 5.31 | 5.87 | 1.61 | 5.36 |
+| `monokai` | dark | panel | 4.8 | `#353632` | +3.31 | `#383B2D` | +5.10 | 2.98 / 5.23 | 5.77 | 1.79 | 5.13 |
+| `neon` | dark | panel | 11.4 | `#2B2E38` | +3.28 | `#293248` | +5.16 | 3.89 / 4.22 | 5.68 | 1.88 | 5.04 |
+| `neonNoir` | dark | panel | 4.95 | `#333539` | +3.20 | `#323846` | +4.60 | 2.91 / 4.77 | 5.46 | 1.39 | 5.05 |
+| `nightfox` | dark | panel | 12.5 | `#2D343E` | +3.38 | `#25384F` | +4.89 | 4.32 / 4.15 | 6.04 | 1.51 | 5.1 |
+| `nord` | dark | panel | 9.57 | `#3C3F48` | +1.93 | `#384257` | +3.15 | 3.09 / 3.76 | 5.64 | 1.23 | 5.04 |
+| `obsidian` | dark | panel | 2.08 | `#313135` | +3.30 | `#34343D` | +4.86 | 2.34 / 4.91 | 3.18 | 1.56 | 5.16 |
+| `ocean` | dark | panel | 10.18 | `#303A41` | +2.75 | `#223F4F` | +4.09 | 3.81 / 3.97 | 5.99 | 1.34 | 5.02 |
+| `oneDark` | dark | panel | 6.36 | `#383B41` | +3.23 | `#363F4E` | +4.85 | 2.93 / 4.53 | 4.81 | 1.62 | 5.11 |
+| `oneLight` | light | accent | 0 | `#EBEAEF` | +3.29 | `#E6E5EE` | +4.94 | 3.4 / 5.51 | 2.15 | 1.65 | 5.33 |
+| `outrun` | dark | panel | 21.02 | `#2C2C3E` | +2.80 | `#2B2D51` | +4.05 | 5.46 / 3.23 | 6.88 | 1.25 | 5.02 |
+| `palenight` | dark | panel | 12.19 | `#363843` | +1.78 | `#333A53` | +2.86 | 3.66 / 3.43 | 6.2 | 1.08 | 5.06 |
+| `paper` | light | panel | 8.13 | `#E3DFD6` | +3.26 | `#E4DAC4` | +4.86 | 3.23 / 4.08 | 5.29 | 1.6 | 5.36 |
+| `radient` | dark | panel | 11.89 | `#2E303B` | +3.17 | `#2D344B` | +5.11 | 3.81 / 4.23 | 5.57 | 1.94 | 5.15 |
+| `rosePine` | dark | panel | 13 | `#36333F` | +1.53 | `#38344E` | +2.70 | 3.62 / 3.41 | 6.31 | 1.17 | 5.06 |
+| `rosePineDawn` | light | panel | 2.7 | `#F1ECE8` | +2.79 | `#F3E7DD` | +4.14 | 1.67 / 4.33 | 3.62 | 1.35 | 5.02 |
+| `rosePineMoon` | dark | panel | 16.79 | `#322F3E` | +3.28 | `#353150` | +5.06 | 4.81 / 4.2 | 6.7 | 1.78 | 5.29 |
+| `rosewood` | dark | panel | 7.43 | `#3B3232` | +2.93 | `#483133` | +4.24 | 3.97 / 4.52 | 6.84 | 1.31 | 5.03 |
+| `sage` | light | panel | 5.78 | `#EFEDE6` | +3.19 | `#EEE8D5` | +4.92 | 2.6 / 4.34 | 5 | 1.73 | 5.38 |
+| `solarizedDark` | dark | panel | 15.32 | `#22373E` | +2.60 | `#003C4C` | +3.79 | 4.65 / 3.2 | 5.97 | 1.18 | 5.05 |
+| `solarizedLight` | light | panel | 6.28 | `#EEECE5` | +3.17 | `#EDE7D3` | +4.92 | 2.87 / 4.31 | 5.35 | 1.75 | 5.42 |
+| `synth` | dark | panel | 26.82 | `#32273E` | +3.12 | `#39294A` | +5.15 | 5.81 / 3.84 | 4.06 | 2.03 | 5.13 |
+| `synthwave` | dark | panel | 15.94 | `#33313F` | +2.71 | `#363250` | +4.12 | 4.78 / 3.78 | 6.92 | 1.41 | 5.04 |
+| `tokyoNight` | dark | panel | 13.44 | `#3A3B48` | +3.03 | `#3A3E59` | +4.70 | 4 / 4.26 | 6.01 | 1.68 | 5.04 |
+| `tokyoNightDay` | light | accent | 1.58 | `#E1E2E6` | +3.14 | `#DBDCE7` | +5.07 | 2.01 / 5 | 3.56 | 1.94 | 5.13 |
+| `tokyoNightStorm` | dark | panel | 16.33 | `#353745` | +2.98 | `#323958` | +4.25 | 5.03 / 3.81 | 6.92 | 1.27 | 5.04 |
+| `tron` | dark | panel | 9.59 | `#282D35` | +2.86 | `#243043` | +4.18 | 3.41 / 3.83 | 5.47 | 1.32 | 5.08 |
+| `vaporwave` | dark | panel | 21.54 | `#3D3548` | +3.17 | `#43365A` | +4.95 | 5.51 / 3.8 | 6.53 | 1.78 | 5.04 |

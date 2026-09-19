@@ -85,9 +85,12 @@ repository):
 ## What the frames do not show
 
 - The crop is the **row list only**, so the panel's header and the search field
-  are outside every tile. That matters for exactly one question — whether a
-  selected row can be confused with the `sunken` search well — and it is stated as
-  an unbacked claim in § 9.2 of the document rather than implied by these images.
+  are outside every tile. The search field is NOT the `sunken` surface this
+  section used to point at — the chat sidebar's field is `bg-surface` +
+  `border-control` — and the rung the withdrawal actually had to answer for is the
+  **app rail's own `<nav>` and the agent-hub categories rail's column**, both of
+  which are re-grounded to `surface` with frames and a DOM readback in
+  `docs/evidence/row-states-refined/`. See § 9.2 of the document.
 - No light-theme tile pairs a hovered neighbour with a **strong-cast light panel**
   other than `kanagawaLotus`; `everforestLight` and `gruvboxLight` are in the
   59-palette simulation only.

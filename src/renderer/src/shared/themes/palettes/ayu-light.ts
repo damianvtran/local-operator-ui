@@ -56,23 +56,27 @@ export const ayuLight: ThemeDefinition = {
 		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
 		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #E9EFF2  panel hue, C* 2.58,
-		 *                       the rule's 0.60 x the panel's 2.89; +3.16 L*,
-		 *                       ΔE00 1.95 off `surface`, `inkDim` 5.83:1.
+		 * rowHover    #E7EDF0  panel hue, C* 2.59,
+		 *                       the rule's 0.60 x the panel's 2.89, floored at 2.5;
+		 *                       -3.86 L*, ΔE00 2.36 off `surface`, `inkDim` 5.73:1.
 		 * rowSelected #DCEBF4  panel hue, C* 6.86,
 		 *                       the panel's cast + 4.0, floored at 5.0; +5.04 L*,
-		 *                       ΔE00 4.74 off `surface` and 3.99 off
-		 *                       `rowHover`; the pair ranks 1.88 `L*` and 4.3 `C*`,
+		 *                       ΔE00 4.74 off `surface` and 3.89 off
+		 *                       `rowHover`; the pair ranks 1.18 `L*` and 4.3 `C*`,
 		 *                       `inkDim` 5.56:1.
 		 *
-		 * THE HOVER'S BAND OFF `surface` IS 1.95, under the 2.0 field floor, and it
-		 * is the same wall as this palette's light-family neighbours: the panel's cast
-		 * is C* 2.9, so the fill's chroma is capped at the rule's own 2.5, and a light
-		 * palette's ΔE00 is compressed by the S_l term — the whole legal step of
-		 * 3.25 L* is worth 1.95 there. Named in `contrast-contract.mjs`'s
-		 * `ROW_STATE_MEASURED_SHORTFALL`.
+		 * THE HOVER'S STEP IS LIFTED OFF THE RULE'S OWN 0.65 x THE SELECTION (3.28)
+		 * TO THE TOP OF ITS LEGAL WINDOW, which is what moved this palette off
+		 * `ROW_STATE_MEASURED_SHORTFALL` in the remediation round. The band was 1.95,
+		 * under the 2.0 field floor, and it is the same wall as this palette's
+		 * light-family neighbours: the panel's cast is C* 2.9, so the fill's chroma is
+		 * capped at the rule's own 2.5, and a light palette's ΔE00 is compressed by the
+		 * S_l term. With no cast to spend, the only axis is the step, and the window
+		 * for it is wide here (the selection's own step is 5.04), so the lift lands at
+		 * 3.86 — the largest rung at or under `step_selected - 1.15` that keeps the
+		 * pair's rank above its floor.
 		 */
-		rowHover: "#E9EFF2",
+		rowHover: "#E7EDF0",
 		rowSelected: "#DCEBF4",
 
 		/*

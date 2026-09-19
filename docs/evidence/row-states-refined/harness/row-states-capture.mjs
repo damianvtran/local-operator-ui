@@ -63,7 +63,70 @@ const SERVE = flag("serve");
 const HALF = flag("half", "after");
 const THEMES = flag("themes").split(",");
 const STATES = (flag("states") ?? "rest,neighbour-hovered").split(",");
-const STORY = flag("story", "chat-sidebar-current-row--selected-row");
+/*
+ * A SCENE is one surface this rig photographs, and each one names the four
+ * selectors that make it a surface: the story that renders it, the CURRENT row
+ * (the element the two row roles are painted on), the element that paints the
+ * GROUND the row sits on, and the box the frame is cropped to.
+ *
+ * It exists because the row states are painted on seven surfaces now and only
+ * one of them is the chat sidebar: the app rail and the agent-hub categories rail
+ * are the two whose ground the remediation round changed, and "the fill is a step
+ * of the panel" is a claim about the GROUND — which a frame of the row list alone
+ * cannot settle. Hence `assertGround`: on the after half the painted ancestor's
+ * computed background is compared to `var(--lo-surface)` and the run FAILS if it
+ * differs, so the frame's ground is asserted rather than eyeballed. The before
+ * half is never asked that question — its ground is the state being photographed.
+ *
+ * `crop` is either a single element or the UNION of every match (`cropIsUnion`),
+ * which is how the chat sidebar's frames are the row list's own bounding box.
+ */
+const SCENES = {
+	"chat-sidebar": {
+		story: "chat-sidebar-current-row--selected-row",
+		row: '[data-chat-row][aria-current="page"]',
+		hover:
+			'div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]',
+		crop: "[data-chat-row]",
+		cropIsUnion: true,
+		assertGround: null,
+	},
+	"rail-expanded": {
+		story: "shell-app-shell--agents",
+		row: 'nav [aria-current="page"]',
+		hover: null,
+		crop: "nav",
+		cropIsUnion: false,
+		assertGround: "surface",
+	},
+	"rail-collapsed": {
+		story: "shell-app-shell--rail-collapsed",
+		row: 'nav [aria-current="page"]',
+		hover: null,
+		crop: "nav",
+		cropIsUnion: false,
+		assertGround: "surface",
+	},
+	"categories-rail": {
+		story: "agent-hub-page--grid",
+		row: '[data-tour-tag="agent-hub-sidebar-container"] [aria-pressed="true"]',
+		hover: null,
+		/*
+		 * The ROWS, not the column, with a small pad. The column is `h-full` of a
+		 * ~5900px page, so a frame of the column would be 99% empty ground; what the
+		 * frame has to show is the row's fill AGAINST the ground it sits on, and
+		 * 10px of the ground on every side does that. The readback asserts the
+		 * ground itself, so the crop is free to be the useful one.
+		 */
+		crop: '[data-tour-tag="agent-hub-sidebar-container"] button',
+		cropIsUnion: true,
+		cropPad: 10,
+		assertGround: "surface",
+	},
+};
+const SCENE = SCENES[flag("scene", "chat-sidebar")];
+if (!SCENE) throw new Error(`no such scene: ${flag("scene")}`);
+const STORY = flag("story", SCENE.story);
 const W = Number(flag("width", "780"));
 const H = Number(flag("height", "560"));
 const SCALE = Number(flag("scale", "2"));
@@ -255,12 +318,12 @@ const main = async () => {
 				await sleep(500);
 
 				const neighbour =
-					state === "neighbour-hovered"
+					state === "neighbour-hovered" && SCENE.hover !== null
 						? await cdp.eval(
-								`(()=>{const e=document.querySelector('div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]');if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`,
+								`(()=>{const e=document.querySelector(${JSON.stringify(SCENE.hover)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`,
 							)
 						: null;
-				if (state === "neighbour-hovered") {
+				if (state === "neighbour-hovered" && SCENE.hover !== null) {
 					if (!neighbour) {
 						throw new Error(`${theme}/${state}: hover target not found`);
 					}
@@ -277,8 +340,11 @@ const main = async () => {
 					await sleep(350);
 				}
 
+				const pad = SCENE.cropPad ?? 0;
 				const rect = await cdp.eval(
-					`(()=>{const a=document.querySelectorAll('[data-chat-row]');if(!a.length)return null;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;a.forEach(e=>{const r=e.getBoundingClientRect();x0=Math.min(x0,r.left);y0=Math.min(y0,r.top);x1=Math.max(x1,r.right);y1=Math.max(y1,r.bottom);});return {x:x0,y:y0,w:x1-x0,h:y1-y0};})()`,
+					SCENE.cropIsUnion
+						? `(()=>{const a=document.querySelectorAll(${JSON.stringify(SCENE.crop)});if(!a.length)return null;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;a.forEach(e=>{const r=e.getBoundingClientRect();x0=Math.min(x0,r.left);y0=Math.min(y0,r.top);x1=Math.max(x1,r.right);y1=Math.max(y1,r.bottom);});return {x:x0-${pad},y:y0-${pad},w:x1-x0+2*${pad},h:y1-y0+2*${pad}};})()`
+						: `(()=>{const e=document.querySelector(${JSON.stringify(SCENE.crop)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left-${pad},y:r.top-${pad},w:r.width+2*${pad},h:r.height+2*${pad}};})()`,
 				);
 				if (!rect) throw new Error(`${theme}/${state}: no rows on screen`);
 
@@ -300,10 +366,36 @@ const main = async () => {
 				toWebp(png, join(dir, `${theme}.webp`));
 				rmSync(png, { force: true });
 
+				/*
+				 * The DOM READBACK, and it is the instrument the rail's 0.44 was read with:
+				 * the current row's own computed background, the element that actually
+				 * PAINTS the ground under it (the nearest ancestor with a non-transparent
+				 * one), that element's colour, and the page's ground variables. A frame
+				 * with a readback beside it can be checked against its palette; a frame
+				 * alone has to be trusted.
+				 */
 				const read = await cdp.eval(
-					`(()=>{const e=document.querySelector('[data-chat-row][aria-current="page"]');const n=document.querySelector('div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]');const s=getComputedStyle(document.documentElement);const f=x=>x?getComputedStyle(x).backgroundColor:'—';return {selected:f(e),neighbour:f(n),varSel:s.getPropertyValue('--lo-row-selected').trim(),varHov:s.getPropertyValue('--lo-row-hover').trim()};})()`,
+					`(()=>{const row=document.querySelector(${JSON.stringify(SCENE.row)});const painted=(el)=>{let n=el.parentElement;while(n&&n!==document.documentElement){const bg=getComputedStyle(n).backgroundColor;if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent')return {tag:n.tagName.toLowerCase(),cls:String(n.className).slice(0,140),bg};n=n.parentElement;}return null;};const s=getComputedStyle(document.documentElement);const v=(n)=>s.getPropertyValue(n).trim();const probe=document.createElement('div');probe.style.backgroundColor='var(--lo-surface)';document.body.appendChild(probe);const surfaceRgb=getComputedStyle(probe).backgroundColor;probe.remove();const rows=[...document.querySelectorAll('[data-chat-row]')].map((e)=>{const r=e.getBoundingClientRect();return {label:e.textContent.trim().slice(0,32),bg:getComputedStyle(e).backgroundColor,w:Math.round(r.width),h:Math.round(r.height)};});/* THE BOUNDARY, read rather than assumed: the rail's own border-r has to be the only one on that seam, or two rules double into a 2px line where the design asks for one. */const rail=row?row.closest('nav'):null;const next=rail?rail.nextElementSibling:null;const boundary= rail?{railBorderRight:getComputedStyle(rail).borderRightWidth+' '+getComputedStyle(rail).borderRightColor,nextTag:next?next.tagName.toLowerCase():null,nextBorderLeft:next?getComputedStyle(next).borderLeftWidth+' '+getComputedStyle(next).borderLeftColor:null}:null;return {row: row?getComputedStyle(row).backgroundColor:null,rowLabel: row?row.textContent.trim().slice(0,40):null,painted: row?painted(row):null,surfaceRgb,surface:v('--lo-surface'),sunken:v('--lo-sunken'),canvas:v('--lo-canvas'),varSel:v('--lo-row-selected'),varHov:v('--lo-row-hover'),boundary,rows};})()`,
 				);
-				if (HALF === "after") {
+				if (read.row === null) {
+					throw new Error(
+						`${theme}/${state}: no current row matched ${SCENE.row}`,
+					);
+				}
+				if (HALF === "after" && SCENE.assertGround === "surface") {
+					/*
+					 * THE GROUND IS ASSERTED, not left to the eye: a surface that paints
+					 * `rowCurrent`/`hover:bg-row-hover` wears `surface`, so the element the
+					 * row is actually painted on has to resolve to `var(--lo-surface)`.
+					 * On the app rail this is the check that reads 0.44 when it is wrong.
+					 */
+					if (read.painted === null || read.painted.bg !== read.surfaceRgb) {
+						throw new Error(
+							`${theme}/${state}: the row is painted on ${JSON.stringify(read.painted)}, not on var(--lo-surface) = ${read.surfaceRgb} (surface ${read.surface}, sunken ${read.sunken}, canvas ${read.canvas})`,
+						);
+					}
+				}
+				if (HALF === "after" && SCENE.assertGround === null) {
 					/* The ONE thing the before half cannot be asked: that the page is showing
 					   the SHIPPED role variables rather than whatever a proposal left
 					   behind. Read from the same parser the contrast gate reads, so a frame

@@ -210,10 +210,12 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
 					 * computes and the pair every citation of it here uses) — a row with no
 					 * ground at all, marked only by its accent glyph and weight. The wash is
-					 * not invisible everywhere: the app rail paints the SAME wash on
-					 * `sunken`, where it measures 9.6 and does read, so the role was fine and
-					 * the panel under it was the problem — which is why this is a role of its
-					 * own rather than a change to the wash.
+					 * not invisible everywhere: the app rail painted the SAME wash, and on the
+					 * `sunken` ground that rail then carried it measured 9.6 and did read, so the
+					 * role was fine and the panel under it was the problem — which is why this is
+					 * a role of its own rather than a change to the wash. (The rail is `surface`
+					 * since the row-state refinement, for the reason its own ground note gives:
+					 * it is a surface that paints `rowCurrent`.)
 					 *
 					 * It then spent a round on `sunken`, and that is what the operator
 					 * reported: `sunken` is RECESSED, always a well rather than a mark, and
@@ -231,8 +233,11 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * visual boundary of an input, select, checkbox or outlined button* — and
 					 * both rails drew it with the same 1px, radius and ink as the search field
 					 * above the chat list, so the row read as a filled field (design round 1,
-					 * D3). The mark is the ground, the weight and the bar, and the bar is the
-					 * non-boundary-shaped second signal this role owns. See
+					 * D3). The mark is the ground and the weight — and it USED to be a 2px
+					 * `accent` bar as well, which the row-state refinement removed: the bar's
+					 * square overlay painted over the row's own `rounded-md`, so removing it is
+					 * what restored the operator's left rounding, and the refined roles rank the
+					 * pair on the fill's own step and cast instead. See
 					 * `features/chat/components/chat-sidebar.tsx`'s `rowCurrent` block: one
 					 * decision, two call sites — and since round 5 (design D22, agent A-7) the
 					 * terms are IMPORTED from that block rather than spelled a second time
