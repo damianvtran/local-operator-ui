@@ -119,8 +119,26 @@ const APP_OWNED_REMEDY =
 const APP_OWNED_DETAIL =
 	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
 
+/*
+ * THE SENTENCE MAIN COMPOSES FOR THIS STATE, not a paraphrase of it (design
+ * review round 2, D2).
+ *
+ * WHY IT CHANGED. This fixture is a stand-in for the payload `backend-update-error`
+ * carries, and the story is the only committed frame for "a genuine failure still
+ * reads as a failure". It used to read "...the server is still on 0.55.9. See the
+ * update service log for pip's output, then try again.", which NO arm of
+ * `serverUpdateFailureSentence` can produce - so the frame a reviewer would cite
+ * for that claim was a picture of wording this build cannot emit, the class the
+ * alert's own comment names ("a fixture drifts from the component it stands for").
+ *
+ * It is now the composer's own non-rebuild, ran-true, exit-0 arm at these two
+ * versions, and `scripts/update-robustness.test.mjs` composes the same facts
+ * through the real module and fails if this literal drifts from it again - the
+ * composer lives in the main process, so the story cannot import it and a test is
+ * what holds the two together.
+ */
 const SERVER_UPDATE_FAILURE_MESSAGE =
-	"The server update to 0.55.10 did not take effect: the server is still on 0.55.9. See the update service log for pip's output, then try again.";
+	"The server update to 0.55.10 did not take effect: the install still reports 0.55.9. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
 /**
  * The listeners `onBackendUpdateError` has registered for the current story.
