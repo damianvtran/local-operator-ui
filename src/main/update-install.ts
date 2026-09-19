@@ -1082,6 +1082,19 @@ export function zipListingHasEmbeddedProfile(listing: string): boolean {
  * about the wrong binary — this module wants the executable launchd would run.
  * The entry has to be a file, so the bare directory entries a zip also lists
  * (they end in `/`) are skipped.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT COVER, so nobody reads the refusal as a wider
+ * guarantee than it is: the helpers. A bundle whose main executable is clean and
+ * whose helpers are not is installable by this pre-flight and dies later, at the
+ * relaunch leg — and that shape is not hypothetical, it is what the operator's
+ * 0.29.6 bundle measured (its ShipIt and its bundled python carry the group too,
+ * and `ELECTRON_RUN_AS_NODE` on the launcher says nothing about either). Reading
+ * them here is not free the way it is for the launcher: each is another archive
+ * member to extract, and the archive is not mounted, so the check would pay a
+ * seek per helper for a claim the build no longer makes. The gate is where that
+ * is asserted instead — `app-profile-authorization` walks every Mach-O in the
+ * built bundle and requires the embedded profile to authorize each claim
+ * (review round 1, finding 1).
  */
 export function zipMainExecutableEntry(listing: string): string | null {
 	for (const raw of String(listing ?? "").split("\n")) {
@@ -1103,10 +1116,28 @@ export function zipMainExecutableEntry(listing: string): string | null {
  * pipeline had (and every check this pre-flight already had) passed on that
  * artifact, because none of them asks whether macOS will spawn it.
  *
- * The remedy is a reinstall rather than a retry: the artifact is already here,
- * verified byte for byte, and re-downloading the same release would deliver the
- * same bundle — which is why the copy sends the user to the download page
- * instead of telling them to check for updates again.
+ * TWO ARMS, TWO HEADINGS. A signature this app could READ and one it could not
+ * are different news: the first establishes that macOS refuses this artifact,
+ * the second only that this app cannot tell. `InstallBlockCode` has one value
+ * for both (the renderer's heading map is keyed by code), so the arm that only
+ * knows it could not check carries its own `heading` — a panel painting "The
+ * update can't be launched" over a body saying launchability was never
+ * established asserts the one thing the body declines to assert (design round
+ * 1, D3).
+ *
+ * THE REMEDY IS NEVER THE DOWNLOAD PAGE (design round 1, D1). `DOWNLOAD_PAGE_URL`
+ * is a REINSTALL door and every affordance behind it resolves to
+ * `releases/latest` — which is the channel that staged this artifact in the
+ * first place. Sending the reader there hands them the exact bundle this check
+ * just refused and asks them to put it in /Applications by hand, past every gate
+ * added to stop it; on the release day this fix exists for, that reinstalls the
+ * brick. It is also wrong twice over: nothing was installed, so the running app
+ * is intact and there is nothing to replace. So this copy names the version to
+ * avoid and says the next release arrives the ordinary way — true both when
+ * `latest` is the broken build and when it is fine, which pointing at `latest`
+ * cannot be. The download-page wording stays with the states where the
+ * INSTALLED bundle is the damaged thing (`installed-bundle-not-sealed`,
+ * `installFailurePayload`).
  */
 export function stagedSignatureBlock(
 	facts: StagedSignatureFacts,
@@ -1129,14 +1160,15 @@ export function stagedSignatureBlock(
 		if (facts.embeddedProfile) return null;
 		return {
 			code: "artifact-cannot-launch",
+			heading: "The update couldn't be checked",
 			message: facts.version
 				? `The update to version ${facts.version} can't be checked for launch, so it wasn't installed.`
 				: "The downloaded update can't be checked for launch, so it wasn't installed.",
 			remedy: {
-				text: "Download a fresh copy from the website and replace the app in Applications.",
-				url: DOWNLOAD_PAGE_URL,
+				text: "Check for updates again to re-download the release.",
 			},
-			detail: `${facts.artifactName} carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH} and its signature could not be read, so a restricted entitlement it may claim cannot be shown to be authorized.`,
+			detail: `${facts.artifactName} carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH} and its signature could not be read.`,
+			dismissLabel: "Not now",
 		};
 	}
 	const claimed = profileBackedEntitlementKeys(facts.entitlementsPlist);
@@ -1148,10 +1180,18 @@ export function stagedSignatureBlock(
 			? `The update to version ${facts.version} can't be launched by macOS, so it wasn't installed.`
 			: "The downloaded update can't be launched by macOS, so it wasn't installed.",
 		remedy: {
-			text: "Download a fresh copy from the website and replace the app in Applications.",
-			url: DOWNLOAD_PAGE_URL,
+			text: facts.version
+				? `Keep using this copy, and skip version ${facts.version} if you download one by hand — the next release will be offered here as usual.`
+				: "Keep using this copy; the next release will be offered here as usual.",
 		},
-		detail: `${facts.artifactName} claims ${claimed.join(", ")} in its signature and carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH}: macOS requires a profile to authorize a restricted entitlement (Apple TN3125) and refuses to launch the app without one.`,
+		// The facts a reader can check, and nothing else: which archive, which
+		// claim, which file macOS found missing. TN3125's rule (a restricted
+		// entitlement needs a profile) is what makes the refusal TRUE, but a
+		// reader who wants the rule wants Apple's document, and 250 characters of
+		// it in a mono column made the details block 44% of the panel (design
+		// round 1, D4). It belongs in this comment, not in the card.
+		detail: `${facts.artifactName} claims ${claimed.join(", ")} and carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH}.`,
+		dismissLabel: "Not now",
 	};
 }
 

@@ -299,9 +299,13 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
 	// The refusal for an artifact macOS would not launch (the 0.29.6 class: a
 	// restricted entitlement with no provisioning profile behind it). It is
 	// deliberately in the user's terms rather than the OS's — the detail line
-	// carries the entitlement and the profile path for whoever reads the log — and
-	// its remedy is a reinstall rather than a retry, because the artifact is
-	// already here and re-downloading the same release delivers the same bundle.
+	// carries the entitlement and the profile path for whoever reads the log.
+	//
+	// This heading is the map's entry for the arm that ESTABLISHED the refusal. The
+	// other arm of the same code — the signature could not be read at all, so macOS
+	// was never shown to refuse anything — carries its own `heading` from its
+	// producer, because "the update can't be launched" is the one thing that arm
+	// does not know (design round 1, D3).
 	"artifact-cannot-launch": "The update can't be launched",
 };
 
