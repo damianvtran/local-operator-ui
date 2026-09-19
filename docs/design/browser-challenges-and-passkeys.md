@@ -369,10 +369,32 @@ end for anybody with two passkeys for one site, so the app now answers it:
   on screen offering buttons that cannot do anything (design round 1, D2). The
   outcome travels with it because the endings differ for the user: `chosen` and
   `dismissed` are their own act and get no paragraph, while an expiry, a host
-  stop and a credential that was not offered are explained in words;
-- requests are offered **oldest first**, and the ones behind are named
-  ("One more site is waiting for a passkey.") rather than silently replacing the
-  request they displaced (review round 1, finding 7);
+  stop and a credential that was not offered are explained in words. There is no
+  `no-accounts` ending: Electron's event can arrive with nothing to offer, and
+  that case is answered before a request is ever pending — so it was removed from
+  the outcome union, the wire type and the copy rather than kept as a state the
+  surface could not render (review round 2, R2);
+- requests are offered **oldest first**, and the ones behind are counted —
+  "One more passkey request is waiting." **Requests**, not sites, because main
+  keys its pending map by request id with no dedupe by relying party, so two tabs
+  of one site both asking would make a site count false (review round 2, N3; UX
+  round 2, U7);
+- **an ending can never hide or cancel a live request** (review round 2, R1 MAJOR).
+  The panel is one discriminated value (`model/webauthn-panel.ts`): a live request
+  always wins, a pending ending is shown only once nothing is answerable, and the
+  ending branch carries no request at all — so the Close press that acknowledges
+  an ending cannot settle anything. The failed shape is worth naming: round 1 kept
+  the ending in a `notice` slot beside the queue, the oldest of two expiring
+  rendered the ending *instead of* the live request's rows, and the only button on
+  screen ran the live branch's answer, cancelling a request the user had never
+  seen. The property is asserted by `scripts/webauthn.test.mjs` (which fails on
+  the round-1 behaviour) and re-measured live by the rig's queued-expiry step;
+- **focus is captured once per opening and restored by the dialog's own close**
+  (`onCloseAutoFocus`). Re-capturing on every change of the offered request
+  recorded Radix's dialog content instead of the user's element as soon as a
+  second request was queued, and the restore then targeted a disconnected node —
+  while restoring from an effect lost a race with Radix's return-to-`body` for
+  the ending's dismissal (review round 2, R5; UX round 2, U6);
 - the dialog is the existing hand-over dialog's shape — the same `BaseDialog` and
   roles, sentence case, no emoji, `cn` for class names (branding contract) — and
   everything it says is **derived from the request**: the lead sentence says which
@@ -382,14 +404,33 @@ end for anybody with two passkeys for one site, so the app now answers it:
   second line, the page the request came from is named when the event's frame
   resolves to a tab, a long login wraps or ellipsises instead of being cut
   mid-character at the panel edge, the Touch ID sentence is pinned in the footer
-  rather than left below a scrolling list, and the panel's width is a fixed step
-  so the same dialog is the same size for every site;
+  rather than left below a scrolling list, the panel's width is a fixed step
+  so the same dialog is the same size for every site. Two of those were refined in
+  round 2: the positional fallback ("Passkey 1") is neither a person's name nor a
+  machine string, so it leads its row in the app's own ink while a login keeps the
+  machine voice (N2), and the unnamed row's second line now carries the recovery
+  clause — what to do when the pick is the wrong one — rather than only what the
+  pick decides (UX round 2, U8). The rows' text also dims with the disabled state
+  again (one `disabled:[&>span]:text-ink-disabled` on the row, because the D1 fix's
+  spans declared their own colours and overrode the primitive's), and the
+  "Answering…" cue moved out of the scrolling body into the footer for the same
+  reason the Touch ID sentence is there (design round 2, N1);
 - a dismissal, an unknown request id, a credential that was not offered, and the
   60 s timeout all answer Electron with **nothing** and log a line, because an
-  unanswered callback is the dead end this feature exists to remove;
+  unanswered callback is the dead end this feature exists to remove. That is now
+  true of a THROW as well: the pre-timer body of `handle` (which resolves the
+  frame description) is guarded and answers nothing if it fails, rather than
+  leaving the callback — and the page's promise — pending (review round 2, N2).
+  The mirror also merges main's snapshot instead of overwriting it, so the reply
+  and a concurrent push cannot lose a request to their ordering (review round 2,
+  N1);
 - stopping the host cancels what is pending — and removes the Session listener —
   so a window that is going away does not leave a page's promise pending, and a
-  second host start in the same process cannot find a second chooser.
+  second host start in the same process cannot find a second chooser. The gate's
+  own cleanup has the matching rule: `Page` is disabled whenever the ensure may
+  have enabled it, including when the frame read that followed the enable failed
+  (review round 2, R3) — the flag records what was enabled, and the fallback's log
+  line says the domain may still be armed.
 
 A single matching credential never reaches any of this: Electron dispatches it.
 
@@ -428,6 +469,41 @@ behaviour and the reason the OS sheet cannot be verified here (§4).
 runs before the build, binds the team id to the secret and nothing else, and the
 build consumes `$ENTITLEMENTS_PLIST`; the committed plist carries no
 `keychain-access-groups` at all.
+
+**The release-side check is bound to the app it is checking** (review round 2,
+R4). It reads the plist back off the signed bundle and requires a `<string>` whose
+value ends with `.<CFBundleIdentifier>.webauthn` **inside**
+`keychain-access-groups`'s own array — the previous pattern walked past the
+array's `</array>` with an open-ended `[\s\S]*?`, so a `.webauthn` group for a
+different bundle id, or in some other array entirely, satisfied a gate whose whole
+purpose is catching that. The nested-array question persists: the bundle also
+carries `keychain-access-groups`-shaped keys under `com.apple.security.*` scopes,
+so "inside an array" is not "inside a keychain-access-groups array". Measured
+through the exported predicate: a group for another bundle id → false; a group for
+this app in another array → false; an empty (ad-hoc) signature → false; this
+app's own group → true.
+
+The team id stays unverifiable here, and that is the honest limit: the release
+gate can prove the entitlement LANDED and that the group is for this app, and the
+running app compares the group's full value against its own signature before
+enabling anything (§3.2). What neither can prove from this machine is that the
+team id in the rendered group is the one the signature was made with.
+
+**The entitlement read uses `-` with `--xml`, not `:-`** (QA round 2, Q1). The
+deprecation warning is real — `codesign` says *"Specifying ':' in the path is
+deprecated and will not work in a future release"* — but the suggested spelling is
+not the fix, and the three were measured on an ad-hoc bundle signed with the
+committed plist (2026-09-18, macOS 26):
+
+| argv | stdout | stderr |
+| --- | --- | --- |
+| `-d --entitlements :- <app>` | XML plist | the deprecation warning |
+| `-d --entitlements - <app>` | a human-readable `[Dict] [Key] [Value]` dump | — |
+| `-d --entitlements - --xml <app>` | the same XML plist | — |
+
+So dropping `:` alone changes the FORMAT and both parsers (this gate's pattern and
+`src/main/webauthn.ts`'s `parseKeychainAccessGroups`) read XML. `--xml` is the
+non-deprecated spelling that keeps it, and both call sites use it.
 
 **And the signed artifact is now asserted, not trusted** (review round 1, finding
 6). Every failure downstream of a missing entitlement is silent by design — the
@@ -568,10 +644,21 @@ frames and the numbers are in `docs/evidence/browser-webauthn/README.md`.
   a real signature.
 - **The 1Password / Apple Passwords sheet cannot work at all** (§3.5), and no
   amount of testing here would change that; it needs a native addon.
+- **Two keyboard surfaces are unmeasured, and QA round 2 says so rather than
+  implying coverage**: what a half-typed composer draft does when a passkey
+  chooser takes focus on a boot where the chat route is reachable (round 2 had no
+  backend, so the composer was not rendered at all), and whether pressing a
+  captcha widget *inside* a cross-origin frame works when the view is driven over
+  CDP — the frame reported no click at all this round, which is the mechanism
+  `src/main/browser/actions/input.ts` documents (synthetic input is dropped on a
+  view that is not visible) plus a node lookup that does not pierce frames. Round
+  1's interactive press on the same unchanged file is the standing evidence for
+  that path.
 
 The next signed release owes, in this order: the release gate's new
 `app-webauthn-entitlement` check passing on the shipped `.app`
-(`codesign -d --entitlements :-` showing the rendered group); then a boot of that
+(`codesign -d --entitlements - --xml` showing the rendered group, the spelling
+§3.4 settles); then a boot of that
 signed bundle whose log line names the group instead of `unpackaged`; then one real
 `navigator.credentials.create()` on a test site with the sheet appearing and a
 credential being created; and a real two-account `select-webauthn-account` — the

@@ -54,11 +54,24 @@ export function noteWebauthnRequest(request: WebauthnChoiceRequest): void {
 /**
  * Main's own answer to "what is still waiting". Called when the prompt mounts, so
  * a request raised while nothing was listening is recoverable rather than lost.
+ *
+ * MERGED rather than overwritten (agent review round 2, N1). The reply and a
+ * concurrent push are ordered today only because main sets its pending entry
+ * BEFORE it notifies, so anything the renderer has seen is already in the
+ * snapshot it pulls; overwriting was correct by that ordering coincidence and
+ * would silently drop a request if the two adjacent lines in `webauthn.ts` were
+ * ever reordered. Entries main's snapshot does not know about are kept, appended
+ * in arrival order, and the settle push is what removes a request main no longer
+ * holds.
  */
 export function replaceWebauthnRequests(
 	requests: WebauthnChoiceRequest[],
 ): void {
-	publish(requests.slice());
+	const known = new Set(requests.map((entry) => entry.requestId));
+	publish([
+		...requests,
+		...pending.filter((entry) => !known.has(entry.requestId)),
+	]);
 }
 
 /**

@@ -133,7 +133,6 @@ declare global {
 							| "dismissed"
 							| "expired"
 							| "host-stopped"
-							| "no-accounts"
 							| "credential-not-offered";
 					}) => void,
 				) => () => void;

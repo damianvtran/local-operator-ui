@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import type { WebauthnChoiceRequest } from "../model/webauthn-chooser";
+import {
+	type WebauthnEnding,
+	chooserPanel,
+	endingFor,
+} from "../model/webauthn-panel";
 import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
 
 /**
@@ -68,21 +73,36 @@ function request(
 	};
 }
 
+/**
+ * One story's inputs, turned into the panel the dialog actually renders.
+ *
+ * The panel is BUILT BY THE MODEL (`chooserPanel`) rather than written out, so a
+ * frame of any state below shows what the product would compute from these
+ * inputs. That is also what makes the round-2 rule visible in the artifact: an
+ * ending passed while a request is still queued does NOT render the ending, so
+ * there is no story — and no state — in which a live request sits behind one.
+ */
 const state = (
-	overrides: Partial<Parameters<typeof BrowserWebauthnDialog>[0]> = {},
+	input: {
+		requests?: WebauthnChoiceRequest[];
+		ending?: WebauthnEnding | null;
+		answering?: boolean;
+	} = {},
 ) => ({
 	render: (args: Parameters<typeof BrowserWebauthnDialog>[0]) => (
 		<BrowserWebauthnDialog {...args} />
 	),
 	args: {
 		open: true,
-		request: request(),
-		waitingBehind: 0,
-		answering: false,
-		notice: null,
-		onDismiss: () => {},
+		panel: chooserPanel({
+			requests: input.requests ?? [request()],
+			ending: input.ending ?? null,
+			answering: input.answering ?? false,
+		}),
 		onChoose: () => {},
-		...overrides,
+		onCancelRequest: () => {},
+		onDismissEnding: () => {},
+		onCloseAutoFocus: () => {},
 	},
 });
 
@@ -92,52 +112,58 @@ export const SeveralNamed: Story = state();
 /** One passkey. Electron dispatches a single match itself, so this is the
  * defensive shape — but the copy has to be true for it (design round 1, D3). */
 export const OneAccount: Story = state({
-	request: request({ accounts: [request().accounts[0]] }),
+	requests: [request({ accounts: [request().accounts[0]] })],
 });
 
 /** Three credentials, none of which the OS gave a name. The rows say so, and the
  * lead sentence explains what the choice actually decides (UX round 1, U1). */
 export const Nameless: Story = state({
-	request: request({
-		accounts: [
-			{ credentialId: "a", displayName: null, name: null },
-			{ credentialId: "b", displayName: "  ", name: "" },
-			{ credentialId: "c", displayName: null, name: null },
-		],
-	}),
+	requests: [
+		request({
+			accounts: [
+				{ credentialId: "a", displayName: null, name: null },
+				{ credentialId: "b", displayName: "  ", name: "" },
+				{ credentialId: "c", displayName: null, name: null },
+			],
+		}),
+	],
 });
 
 /** A display name and a login that both exceed the panel: the case that used to be
  * cut mid-character with no ellipsis and no wrap (design round 1, D1). */
 export const LongNames: Story = state({
-	request: request({
-		relyingPartyId: "identity.very-long-corporate-domain.example.com",
-		accounts: [
-			{
-				credentialId: "a",
-				displayName:
-					"Alexandra Featherstonehaugh-Wallington the Third (Personal)",
-				name: "alexandra.featherstonehaugh-wallington+personal@very-long-corporate-domain.example.com",
-			},
-			{
-				credentialId: "b",
-				displayName: null,
-				name: "a.much.longer.login.with.a.plus.tag+work@another-long-domain.example.com",
-			},
-		],
-	}),
+	requests: [
+		request({
+			relyingPartyId: "identity.very-long-corporate-domain.example.com",
+			accounts: [
+				{
+					credentialId: "a",
+					displayName:
+						"Alexandra Featherstonehaugh-Wallington the Third (Personal)",
+					name: "alexandra.featherstonehaugh-wallington+personal@very-long-corporate-domain.example.com",
+				},
+				{
+					credentialId: "b",
+					displayName: null,
+					name: "a.much.longer.login.with.a.plus.tag+work@another-long-domain.example.com",
+				},
+			],
+		}),
+	],
 });
 
 /** Twelve credentials in a 900-tall viewport: the list scrolls, and the Touch ID
  * sentence is pinned rather than left below the fold (design round 1, D8). */
 export const ManyAccounts: Story = state({
-	request: request({
-		accounts: Array.from({ length: 12 }, (_, index) => ({
-			credentialId: `cred-${index + 1}`,
-			displayName: `Account ${index + 1}`,
-			name: `account.${index + 1}@example.com`,
-		})),
-	}),
+	requests: [
+		request({
+			accounts: Array.from({ length: 12 }, (_, index) => ({
+				credentialId: `cred-${index + 1}`,
+				displayName: `Account ${index + 1}`,
+				name: `account.${index + 1}@example.com`,
+			})),
+		}),
+	],
 });
 
 /** An answer in flight: this dialog's own state, not the surface's shared busy
@@ -146,29 +172,29 @@ export const Answering: Story = state({ answering: true });
 
 /** A second request waiting behind this one, named rather than silently
  * replacing it (reviewer round 1, finding 7). */
-export const WaitingBehind: Story = state({ waitingBehind: 2 });
+export const WaitingBehind: Story = state({
+	requests: [
+		request(),
+		request({ requestId: "req-2" }),
+		request({ requestId: "req-3" }),
+	],
+});
 
 /** The page that asked, which is the one thing the user cannot see while the
  * chooser is up because the native view is suppressed (UX round 1, U3). */
 export const FromAPage: Story = state({
-	request: request({ pageTitle: "Quincy Beginnings — Muddy River News" }),
+	requests: [request({ pageTitle: "Quincy Beginnings — Muddy River News" })],
 });
 
 /** The ending the user did not cause, in words instead of a live-looking dialog
  * whose click would be discarded (design round 1, D2). */
 export const Expired: Story = state({
-	request: null,
-	notice: {
-		title: "This passkey request expired",
-		body: "Nobody chose a passkey within a minute, so the site's request was cancelled. Ask the site for a passkey again.",
-	},
+	requests: [],
+	ending: endingFor("req-1", "expired"),
 });
 
 /** The same panel for a cancellation: the tab that asked went away. */
 export const HostStopped: Story = state({
-	request: null,
-	notice: {
-		title: "This passkey request was cancelled",
-		body: "The browser tab that asked went away before a passkey was chosen, so the request was cancelled.",
-	},
+	requests: [],
+	ending: endingFor("req-1", "host-stopped"),
 });

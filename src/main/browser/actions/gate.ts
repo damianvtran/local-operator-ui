@@ -83,7 +83,13 @@ export interface OriginGateResult {
  */
 export interface MainFrameRead {
 	mainFrameId: string | null;
-	/** True when THIS read enabled `Page`, and therefore owes a `Page.disable`. */
+	/** True when `Page` may be enabled because of THIS read, and therefore owes a
+	 * `Page.disable`. Set as soon as the enable resolves rather than at the end of
+	 * the read: `Page.enable` is what turned the domain on, so a `getFrameTree`
+	 * that fails afterwards must still report the debt (agent review round 2, R3).
+	 * False for a read whose enable never resolved — including one whose reply
+	 * never came inside the send's bound, where the domain's state is unknown and
+	 * the disable is therefore sent anyway (it is idempotent). */
 	pageEnabled: boolean;
 }
 
@@ -91,18 +97,20 @@ async function resolveMainFrameId(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 ): Promise<MainFrameRead> {
+	let pageEnabled = false;
 	try {
 		await ctx.cdp.send(contents, "Page.enable", {});
+		pageEnabled = true;
 		const tree = await ctx.cdp.send<{
 			frameTree?: { frame?: { id?: unknown } };
 		}>(contents, "Page.getFrameTree", {});
 		const id = tree?.frameTree?.frame?.id;
 		return {
 			mainFrameId: typeof id === "string" && id ? id : null,
-			pageEnabled: true,
+			pageEnabled,
 		};
 	} catch {
-		return { mainFrameId: null, pageEnabled: false };
+		return { mainFrameId: null, pageEnabled };
 	}
 }
 
@@ -128,7 +136,13 @@ export async function withOriginGate<T>(
 	const mainFrameId = frameTree.mainFrameId;
 	if (mainFrameId === null) {
 		ctx.log(
-			`[browser] could not read the frame tree for ${requester}; this navigation is gated on every Document request, which may refuse cross-origin frames the page needs`,
+			`[browser] could not read the frame tree for ${requester}; this navigation is gated on every Document request, which may refuse cross-origin frames the page needs${
+				// The domain's state travels with the fallback because it is not
+				// inferable from the failure: an enable that resolved and a read that
+				// did not left `Page` armed, an enable that never resolved did not
+				// (agent review round 2, R3).
+				frameTree.pageEnabled ? " (the Page domain may still be enabled)" : ""
+			}`,
 		);
 	}
 	/** Requests whose frame could not be attributed to the main frame, counted so

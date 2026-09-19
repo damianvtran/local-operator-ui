@@ -346,13 +346,30 @@ export async function readAppSignature(
 		return { ...base, unreadable: `codesign -dv failed: ${messageOf(error)}` };
 	}
 	try {
-		// `:-` writes the plist to stdout. It exits 0 with EMPTY output when the
-		// signature carries no entitlements (measured), which is a fact about the
-		// app rather than a failure to read it.
+		/*
+		 * `-` writes to stdout and `--xml` is what makes it an XML plist. Both
+		 * details are measured rather than assumed, on an ad-hoc bundle signed with
+		 * the committed plist (2026-09-18, macOS 26):
+		 *
+		 *   `-d --entitlements :- <app>`  -> XML plist
+		 *                                   + stderr: "Specifying ':' in the path is
+		 *                                     deprecated and will not work in a
+		 *                                     future release"
+		 *   `-d --entitlements - <app>`   -> a human-readable `[Dict] [Key] [Value]`
+		 *                                   dump, which the parser below cannot read
+		 *   `-d --entitlements - --xml`   -> the same XML plist, and no warning
+		 *
+		 * So the deprecation QA round 2 flagged (Q1) is real, and its suggested
+		 * spelling is not the fix: dropping `:` changes the FORMAT. `--xml` is the
+		 * non-deprecated spelling that keeps it. The read exits 0 with EMPTY output
+		 * when the signature carries no entitlements (measured), which is a fact
+		 * about the app rather than a failure to read it.
+		 */
 		const entitlements = await run("/usr/bin/codesign", [
 			"-d",
 			"--entitlements",
-			":-",
+			"-",
+			"--xml",
 			bundlePath,
 		]);
 		base.keychainAccessGroups = parseKeychainAccessGroups(entitlements.stdout);
@@ -493,10 +510,17 @@ export type WebauthnChooserOutcome =
 	| "expired"
 	/** The browser host stopped with the request still pending. */
 	| "host-stopped"
-	/** Electron offered no account to choose from. */
-	| "no-accounts"
 	/** The answer named a credential that was not offered. */
 	| "credential-not-offered";
+
+/*
+ * There is no `no-accounts` outcome, deliberately (agent review round 2, R2).
+ * Electron's event can in principle arrive with an empty account list, and
+ * `handle` below answers it with nothing and returns BEFORE a pending entry
+ * exists — so no chooser was ever on screen, there is nothing for the user to
+ * acknowledge, and an outcome (plus its copy, its wire value and its test) would
+ * be a state the surface could never show. The case is logged instead.
+ */
 
 /** Where a request came from, as the host can resolve it from the event's own
  * frame. Both null means "the frame did not resolve to a tab of this host". */
@@ -576,6 +600,37 @@ export class WebauthnChooser {
 		 * answer stops here.
 		 */
 		const answer = onceAnswer(callback);
+		/*
+		 * EVERY PATH BELOW SETTLES THE CALLBACK, a throw included.
+		 *
+		 * The timeout is armed after the frame description is resolved, so anything
+		 * that throws in between — `describeSource` walks the webContents tree — would
+		 * leave Electron's callback, and with it the page's promise, pending with
+		 * nothing left to answer it, which is the one outcome this class exists to
+		 * prevent (reviewer round 2, N2). Guarding the pre-timer body makes the
+		 * headline true by construction rather than by inspection of its callees.
+		 */
+		try {
+			this.prepare(details, answer);
+		} catch (error) {
+			this.options.log(
+				`[webauthn] a passkey request could not be prepared (${String(
+					error,
+				)}); cancelling it`,
+			);
+			answer(null);
+		}
+	}
+
+	/** The pre-timer half of `handle`: everything that can still throw. */
+	private prepare(
+		details: {
+			relyingPartyId?: unknown;
+			accounts?: unknown;
+			frame?: unknown;
+		},
+		answer: (credentialId: string | null) => void,
+	): void {
 		const relyingPartyId =
 			typeof details.relyingPartyId === "string" ? details.relyingPartyId : "";
 		const accounts = Array.isArray(details.accounts)
@@ -586,6 +641,12 @@ export class WebauthnChooser {
 					)
 					.map((account) => toAccountView(account))
 			: [];
+		/*
+		 * The empty-offer case is answered here, before anything is pending, and is
+		 * logged rather than surfaced: a request with no credential to offer has
+		 * nothing for the user to choose, so it is not one of the endings the chooser
+		 * explains (see the note on the outcome union above).
+		 */
 		if (accounts.length === 0) {
 			this.options.log(
 				`[webauthn] ${relyingPartyId || "a site"} asked for a passkey with no account to choose; cancelling the request`,

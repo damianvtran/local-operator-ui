@@ -160,6 +160,9 @@ test("the release gate accepts a rendered group and refuses a signature without 
 	 */
 	const group = webauthnKeychainAccessGroup(TEAM_ID, "com.local-operator");
 	const rendered = renderEntitlementsPlist(COMMITTED, [group]);
+	assert.equal(hasWebauthnEntitlement(rendered, "com.local-operator"), true);
+	// Without the bundle id the check falls back to the group's shape, and says so
+	// in its own description (the app's Info.plist is what supplies the id).
 	assert.equal(hasWebauthnEntitlement(rendered), true);
 
 	// An ad-hoc signature prints nothing at all for `-d --entitlements :-`
@@ -178,5 +181,36 @@ test("the release gate accepts a rendered group and refuses a signature without 
 			"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.shared</string></array>",
 		),
 		false,
+	);
+
+	/*
+	 * The check is bound to the app's OWN bundle id and to the keychain array
+	 * itself (agent review round 2, R4): the old pattern walked past the array's
+	 * close and accepted any `.webauthn` string anywhere after it, so a release
+	 * whose group was rendered for a different bundle — or present in another
+	 * array — passed a gate whose whole purpose is catching exactly that.
+	 */
+	assert.equal(
+		hasWebauthnEntitlement(
+			"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.somebody-else.webauthn</string></array>",
+			"com.local-operator",
+		),
+		false,
+	);
+	assert.equal(
+		hasWebauthnEntitlement(
+			"<key>another-feature</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.shared</string></array>",
+			"com.local-operator",
+		),
+		false,
+	);
+	// The runtime's own group passes with the bundle id in hand, which is the
+	// positive case that makes the two above discriminating rather than vacuous.
+	assert.equal(
+		hasWebauthnEntitlement(
+			`<key>keychain-access-groups</key><array><string>${group}</string></array>`,
+			"com.local-operator",
+		),
+		true,
 	);
 });

@@ -34,13 +34,17 @@ export interface WebauthnRequestPayload {
 	pageTitle: string | null;
 }
 
-/** Why a chooser main was holding is gone. */
+/** Why a chooser main was holding is gone.
+ *
+ * There is no `no-accounts` member: a request Electron raises with nothing to
+ * offer is answered before it is ever pending, so no chooser was on screen to
+ * explain and the state could not be rendered even if it were sent (agent review
+ * round 2, R2). */
 export type WebauthnSettledOutcome =
 	| "chosen"
 	| "dismissed"
 	| "expired"
 	| "host-stopped"
-	| "no-accounts"
 	| "credential-not-offered";
 
 const SETTLED_OUTCOMES: readonly WebauthnSettledOutcome[] = [
@@ -48,7 +52,6 @@ const SETTLED_OUTCOMES: readonly WebauthnSettledOutcome[] = [
 	"dismissed",
 	"expired",
 	"host-stopped",
-	"no-accounts",
 	"credential-not-offered",
 ];
 
