@@ -207,14 +207,26 @@ test("the duplicate-key scanner fires on a duplicate, and not on siblings that s
 		null,
 		"sibling objects may hold the same key",
 	);
-	assert.equal(duplicatedKey('{"a": {"a": 1}}'), null, "a nested key is a different key");
+	assert.equal(
+		duplicatedKey('{"a": {"a": 1}}'),
+		null,
+		"a nested key is a different key",
+	);
 	assert.equal(
 		duplicatedKey('{"a\\u0062": 1, "ab": 2}'),
 		"ab",
 		"escapes are decoded, or a duplicate could hide behind one",
 	);
-	assert.equal(duplicatedKey('{"l": [{"k": 1}, {"k": 1}]}'), null, "array elements are separate objects");
-	assert.equal(duplicatedKey('{"i": 1, "s": "a:b", "t": "}"}'), null, "a colon or a brace inside a string is content");
+	assert.equal(
+		duplicatedKey('{"l": [{"k": 1}, {"k": 1}]}'),
+		null,
+		"array elements are separate objects",
+	);
+	assert.equal(
+		duplicatedKey('{"i": 1, "s": "a:b", "t": "}"}'),
+		null,
+		"a colon or a brace inside a string is content",
+	);
 });
 
 test("the repository's own manifest declares no key twice", () => {

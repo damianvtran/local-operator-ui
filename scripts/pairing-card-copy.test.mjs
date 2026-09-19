@@ -18,7 +18,7 @@ const bundle = await (async () => {
 	return await build({
 		stdin: {
 			contents: `
-				export { pairingCardCopy, BACKEND_PAIRING_SENTENCE, backendLoadErrorMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
+				export { pairingCardCopy, BACKEND_PAIRING_CARD_SENTENCE, BACKEND_PAIRING_SENTENCE, backendLoadErrorMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
 				export { pairingHasRemedy } from "./src/shared/backend-status";
 			`,
 			resolveDir: process.cwd(),
@@ -58,10 +58,22 @@ test("no-remedy causes state their cause and offer no control", () => {
 			/not answering|503|may not be running/i,
 			`${cause}: names its own cause, never the sentence for a server that is not answering`,
 		);
-		assert.equal(
+		/*
+		 * THE CARD'S OWN LINE, NOT THE BAND'S (design review round 5, D37, and UX round
+		 * 5's U13): the card rendered the band's 169-character sentence verbatim - the
+		 * same string 380 px below itself - and lost its own lead doing it. So the card
+		 * carries a lead of its own and does NOT equal what the band says for the same
+		 * cause.
+		 */
+		assert.match(
+			sentence,
+			/^Your settings could not be loaded:/,
+			`${cause}: the card keeps its own lead`,
+		);
+		assert.notEqual(
 			sentence,
 			mod.BACKEND_PAIRING_SENTENCE[cause],
-			`${cause}: the pairing table's sentence, the same one the banner renders`,
+			`${cause}: the card must not render the band's sentence again`,
 		);
 	}
 });
@@ -76,7 +88,7 @@ test("a remediable cause keeps its control", () => {
 			new Error("x"),
 		);
 		assert.equal(remedy, true, `${cause}: an act exists, so the control stays`);
-		assert.equal(sentence, mod.BACKEND_PAIRING_SENTENCE[cause]);
+		assert.notEqual(sentence, mod.BACKEND_PAIRING_SENTENCE[cause]);
 	}
 });
 
@@ -123,5 +135,51 @@ test("both cards render through the one authority, and the page gates its Retry"
 		page,
 		/\{loadErrorRemedy && \(/,
 		"the page's Retry is gated on a remedy existing",
+	);
+});
+
+/*
+ * EVERY CAUSE, BOTH TABLES, ONE CHECK (D37 residual): the two tables exist precisely
+ * because one string cannot serve a band that lists what the APP loses and a card that
+ * says what THIS PAGE cannot read. If a future edit points the card back at the band's
+ * table, this fails for every cause at once rather than for whichever one a frame
+ * happened to show.
+ */
+test("no card sentence is the band's sentence for any cause", () => {
+	for (const cause of CAUSES) {
+		assert.notEqual(
+			mod.BACKEND_PAIRING_CARD_SENTENCE[cause],
+			mod.BACKEND_PAIRING_SENTENCE[cause],
+			`${cause}: one condition, two surfaces, two registers - not one string twice`,
+		);
+		assert.match(
+			mod.BACKEND_PAIRING_CARD_SENTENCE[cause],
+			/^Your settings could not be loaded:/,
+			`${cause}: and the card's line says what the page cannot do`,
+		);
+	}
+});
+
+/*
+ * R5-1: the section card's remedy gate was unpinned - reverting it to always render
+ * left every test green, including the ones that assert no control appears, because
+ * those mount the card in states where no cause exists at all. A source guard is the
+ * shape this repository already uses for exactly this (`backend-error-surfaces`), and
+ * it fails the moment the gate goes.
+ */
+test("the section card gates its Retry on a remedy existing", () => {
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/backend-settings-section.tsx",
+		"utf8",
+	);
+	assert.match(
+		section,
+		/\{remedy && \(/,
+		"the section's Retry must be gated on the remedy the authority returned",
+	);
+	assert.match(
+		section,
+		/const \{ sentence: pairingSentence, remedy \} = pairingCardCopy\(/,
+		"and it must take both from the one authority",
 	);
 });
