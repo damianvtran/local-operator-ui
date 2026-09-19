@@ -98,6 +98,7 @@ const {
 const {
 	buildWatchdogPlan,
 	installLivenessNow,
+	installLivenessText,
 	isInstallInFlight,
 	parsePendingInstallMarker,
 	requiredDiskBytes,
@@ -444,7 +445,12 @@ test("a marker's own installer pid wins over the install job", () => {
 			marker: markerOf(4242),
 			commandLine: `${shipItPath} com.local-operator.ShipIt ${stagingRoot}/0.28.5-abc/state.plist`,
 		}),
-		{ installerRunning: true, jobState: "unread", decidedBy: "installer-pid" },
+		{
+			installerRunning: true,
+			jobState: "unread",
+			decidedBy: "installer-pid",
+			installerSignal: "pid",
+		},
 	);
 	assert.equal(jobAsked, 0);
 	assert.equal(listAsked, 0);
@@ -454,6 +460,7 @@ test("a marker's own installer pid wins over the install job", () => {
 		installerRunning: false,
 		jobState: "unread",
 		decidedBy: "installer-pid",
+		installerSignal: null,
 	});
 	assert.equal(jobAsked, 0);
 	// The pid stopped being the installer, but an install it started is still being
@@ -462,15 +469,49 @@ test("a marker's own installer pid wins over the install job", () => {
 	// recovery's action on "dead" is to reap the tree a live installer is using.
 	assert.deepEqual(
 		livenessOf({ marker: markerOf(4242), commandLine: null, elsewhere: true }),
-		{ installerRunning: true, jobState: "unread", decidedBy: "installer-pid" },
+		{
+			installerRunning: true,
+			jobState: "unread",
+			decidedBy: "installer-pid",
+			installerSignal: "elsewhere",
+		},
 	);
 	assert.equal(listAsked, 2);
+	/*
+	 * And the log line says WHICH process is holding: the pid the marker names is
+	 * dead in that case, so a line that named it as the running process would send a
+	 * reader to a pid that answers with nothing (review R2-2). The distinction is
+	 * carried, not re-derived here.
+	 */
+	assert.equal(
+		installLivenessText(
+			{
+				installerRunning: true,
+				jobState: "unread",
+				decidedBy: "installer-pid",
+				installerSignal: "elsewhere",
+			},
+			4242,
+		),
+		"the install this app started is still running (pid 4242 has gone; its ShipIt is still at work)",
+	);
+	assert.equal(
+		installLivenessText(
+			livenessOf({
+				marker: markerOf(4242),
+				commandLine: `${shipItPath} com.local-operator.ShipIt ${stagingRoot}/0.28.5-abc/state.plist`,
+			}),
+			4242,
+		),
+		"the installer this app started (pid 4242) is still running",
+	);
 	// The older path, and the fallback: no pid, so the job is the answer - and the
 	// listing is not read, because there is no pid to have lost.
 	assert.deepEqual(livenessOf({ marker: markerOf(null), commandLine: null }), {
 		installerRunning: false,
 		jobState: "running",
 		decidedBy: "install-job",
+		installerSignal: null,
 	});
 	assert.equal(jobAsked, 1);
 	assert.equal(listAsked, 2);
