@@ -54,6 +54,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
@@ -148,6 +149,15 @@ const RECEIPTS = 7;
 /** Over the per-file cap, declared so the host can refuse it BEFORE the write.
  * The body is never finished: the refusal happens at `will-download`. */
 const OVER_CAP_BYTES = 256 * 1024 * 1024 + 1;
+/** The same cap as a string, for the negative half of `C4`: the refusal must NOT
+ * print the raw byte count beside a raw byte count any more (review round 1, D1). */
+const CAPS_BYTES = String(256 * 1024 * 1024);
+/** A name long enough that the refusal's own sentence cannot fit beside it, which is
+ * the case D3 is about: the NAME must elide and the consequence must not. Measured
+ * rather than guessed — see G8, which asserts which span is the clipped one. */
+const LONG_EXE_NAME = `${"quarterly-financial-statements-and-notes-2026-q3-final".repeat(
+	3,
+)}.exe`;
 
 let sitePort = 0;
 /** What the upload endpoint actually received, so the proof can compare digests
@@ -186,7 +196,14 @@ function startSite() {
 <button id="download-all" onclick="document.querySelectorAll('a[id^=receipt-]').forEach(a => a.click())">Download all</button>
 <p><button id="nothing" type="button">Nothing</button></p>
 <p><a id="exe-link" href="/setup.exe" download>${EXE_NAME}</a></p>
-<p><a id="huge-link" href="/huge.pdf" download>huge.pdf</a></p>`,
+<p><a id="huge-link" href="/huge.pdf" download>huge.pdf</a></p>
+<p><a id="long-exe-link" href="/long.exe" download>${LONG_EXE_NAME}</a></p>
+<p><a id="stall-link" href="/stall.pdf" download>quarterly-accounts.pdf</a></p>
+<p><a id="hung-link" href="/hung.pdf" download>never-finishes.pdf</a></p>
+<p><a id="slow-a-link" href="/slow-a.pdf" download>slow-a.pdf</a></p>
+<p><a id="slow-b-link" href="/slow-b.pdf" download>slow-b.pdf</a></p>
+<p><a id="dup-link" href="#" onclick="document.getElementById('dup-a').click(); document.getElementById('dup-b').click(); return false">Two files named same.pdf</a></p>
+<p hidden><a id="dup-a" href="/dup-a.pdf" download>dup a</a><a id="dup-b" href="/dup-b.pdf" download>dup b</a></p>`,
 					),
 				);
 				return;
@@ -221,6 +238,76 @@ function startSite() {
 					"Content-Disposition": 'attachment; filename="huge.pdf"',
 				});
 				response.write(Buffer.alloc(1024));
+				return;
+			}
+			if (path === "/stall.pdf") {
+				// DECLARES 200 KB AND STOPS AFTER 100 KB (review round 1, U1): the shape the
+				// round-1 walk found with NO row, `notes: []` and a partial file on disk under
+				// a complete-looking name. The socket is aborted rather than ended cleanly, so
+				// Chromium reports the write as `interrupted` rather than as a short file.
+				response.writeHead(200, {
+					"Content-Type": "application/pdf",
+					"Content-Length": String(204_800),
+					"Content-Disposition": 'attachment; filename="quarterly-accounts.pdf"',
+				});
+				response.write(Buffer.alloc(102_400, 7));
+				setTimeout(() => response.destroy(), 50);
+				return;
+			}
+			if (path === "/hung.pdf") {
+				// DECLARES 5 MB AND NEVER ANSWERS: the write stays in flight for the whole
+				// call, which is the deadline path (B1/M1).
+				response.writeHead(200, {
+					"Content-Type": "application/pdf",
+					"Content-Length": String(5 * 1024 * 1024),
+					"Content-Disposition": 'attachment; filename="never-finishes.pdf"',
+				});
+				return;
+			}
+			if (path === "/slow-a.pdf" || path === "/slow-b.pdf") {
+				// 4 MB in chunks, so the row can be read and photographed WHILE it writes
+				// (D6's in-progress state, U6's progress line) — and so a deadline can arrive
+				// with bytes on disk, which is the case B1/M1 is about.
+				const name = path.slice(1);
+				const chunks = 64;
+				const size = chunks * 64 * 1024;
+				response.writeHead(200, {
+					"Content-Type": "application/pdf",
+					"Content-Length": String(size),
+					"Content-Disposition": `attachment; filename="${name}"`,
+				});
+				let sent = 0;
+				const timer = setInterval(() => {
+					if (sent >= chunks) {
+						clearInterval(timer);
+						response.end();
+						return;
+					}
+					sent += 1;
+					response.write(Buffer.alloc(64 * 1024, 3));
+				}, 40);
+				response.on("close", () => clearInterval(timer));
+				return;
+			}
+			if (path === "/dup-a.pdf" || path === "/dup-b.pdf") {
+				// TWO DIFFERENT URLS, ONE FILENAME (review round 1, Q1): both accepted in one
+				// call, both in flight, and the disk empty for both when each is probed.
+				const body = Buffer.from(path.endsWith("a.pdf") ? "first" : "second");
+				response.writeHead(200, {
+					"Content-Type": "application/pdf",
+					"Content-Length": String(body.length),
+					"Content-Disposition": 'attachment; filename="same.pdf"',
+				});
+				response.end(body);
+				return;
+			}
+			if (path === "/long.exe") {
+				response.writeHead(200, {
+					"Content-Type": "application/octet-stream",
+					"Content-Length": String(PE_BYTES.length),
+					"Content-Disposition": `attachment; filename="${LONG_EXE_NAME}"`,
+				});
+				response.end(PE_BYTES);
 				return;
 			}
 			if (path === "/auto") {
@@ -357,12 +444,24 @@ async function launchApp() {
 	devtoolsPort = await freePort();
 	const child = spawn(
 		ELECTRON_BIN,
-		[
+		// THE KEYCHAIN SWITCHES, and this app launch is exactly the shape the repo's own
+		// keychain guard cannot see (review round 1, operator-safety item):
+		// `chrome-keychain.test.mjs` classifies a launch by whether the command it starts
+		// says "chrome", and an Electron rig boots the app rather than a browser - so the
+		// argv below is invisible to the very scan that exists to keep this switch on
+		// every launch. It is passed through `withMockKeychain` for the reason that helper
+		// gives: `HOME` is redirected to a scratch tree here, that tree has no login
+		// keychain, and Chromium asks macOS to CREATE one - the `Keychain Not Found`
+		// dialog on the operator's screen, once per launch, from a rig he did not start.
+		// `--password-store=basic` is the Linux half of the same switch, named here so the
+		// rig's argv is honest wherever it runs.
+		withMockKeychain([
 			".",
-			`--user-data-dir=${USER_DATA}`,
-			`--remote-debugging-port=${devtoolsPort}`,
-			`--window-size=${WINDOW_SIZE.width}x${WINDOW_SIZE.height}`,
-		],
+				`--user-data-dir=${USER_DATA}`,
+				`--remote-debugging-port=${devtoolsPort}`,
+				`--window-size=${WINDOW_SIZE.width}x${WINDOW_SIZE.height}`,
+			"--password-store=basic",
+		]),
 		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
 	);
 	const stream = [];
@@ -546,18 +645,44 @@ async function contentRect() {
 	})()`);
 }
 
-/** The download row, as the DOM actually holds it (#16.4's surface). */
+/** The transfer row, as the DOM actually holds it (#16.4's surface). */
 async function rowReading() {
 	return await evaluate(`(() => {
-		const row = document.querySelector('[data-tour-tag="browser-download-row"]');
+		const row = document.querySelector('[data-tour-tag="browser-file-transfer-row"]');
 		if (!row) return { present: false };
 		const r = row.getBoundingClientRect();
 		return {
 			present: true,
 			text: row.innerText.replace(/\\s+/g, ' ').trim(),
 			actions: [...row.querySelectorAll('button')].map((b) => b.innerText.trim()),
+			names: [...row.querySelectorAll('button')].map((b) => b.getAttribute('aria-label')),
 			rect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
 		};
+	})()`);
+}
+
+/** The row's own spans, with the numbers that decide whether the CONSEQUENCE
+ * survived the layout (review round 1, D3): a `truncate` span clips its own
+ * content (`scrollWidth > clientWidth`), and a `shrink-0` span must not be pushed
+ * past the paragraph's content box. Measuring this rather than reading the copy is
+ * the difference between "the sentence was composed" and "the sentence is on
+ * screen", and only the second is the claim the row makes. */
+async function rowSpanReadings() {
+	return await evaluate(`(() => {
+		const row = document.querySelector('[data-tour-tag="browser-file-transfer-row"]');
+		if (!row) return null;
+		const p = row.querySelector('p');
+		if (!p) return null;
+		const box = p.getBoundingClientRect();
+		return [...p.querySelectorAll('span')].map((s) => {
+			const r = s.getBoundingClientRect();
+			return {
+				text: s.innerText.trim(),
+				clipped: s.scrollWidth > s.clientWidth + 1,
+				inside: r.right <= box.right + 1 && r.left >= box.left - 1,
+				width: Math.round(r.width),
+			};
+		});
 	})()`);
 }
 
@@ -877,9 +1002,11 @@ async function main() {
 	});
 	const hugeResult = hugeArm.json?.result ?? {};
 	check(
-		"C4 an over-cap download is refused pre-write, with the size in the reason",
+		"C4 an over-cap download is refused pre-write, and the sentence names the RULE and the file's own size rather than two raw byte counts",
 		hugeResult.files?.length === 0 &&
-			/over the \d+ byte per-file limit/.test(hugeResult.reason ?? ""),
+			/over the \d+ MiB per-file download limit/.test(hugeResult.reason ?? "") &&
+			/it is \d+ bytes/.test(hugeResult.reason ?? "") &&
+			!new RegExp(`over the ${CAPS_BYTES} byte`).test(hugeResult.reason ?? ""),
 		JSON.stringify(hugeResult.reason),
 	);
 	check(
@@ -1041,6 +1168,19 @@ async function main() {
 		receivedFrame.path,
 	);
 
+	// D8. THE UPLOAD'S OWN LINE (U3). The round-1 walk found three files leaving the
+	// machine with `notes: []`, no row and no toast — and the published frames showing
+	// the strip narrate an unrelated DOWNLOAD refusal while they left. The row is read
+	// here rather than the state file, because the claim is about what the user sees.
+	const uploadRow = await rowReading();
+	check(
+		"D8 an upload leaves a line in the strip, naming how many files and where they went",
+		uploadRow.present === true &&
+			/were attached to/.test(uploadRow.text ?? "") &&
+			(uploadRow.text ?? "").includes("127.0.0.1"),
+		JSON.stringify({ row: uploadRow.text }),
+	);
+
 	// ---- E. the window never took the operator's focus ---------------------
 	const focus = await evaluate(
 		"({ hasFocus: document.hasFocus(), visibility: document.visibilityState })",
@@ -1114,6 +1254,222 @@ for raw in paths:
 			`${rows[0]?.reason} | ${rows[1]?.reason}`,
 		);
 	}
+
+	// ---- G. the four round-1 streams, as facts about the running app -------
+	// Each case below is a finding from round 1 and each is answered by a READING of
+	// the running app — the row out of the DOM, the bytes off the disk, the host's own
+	// projection over RPC — rather than by a sentence about the source. The isolated
+	// quarantine directory is the harness-composed one, so these runs write where a
+	// real call writes and nowhere near the operator's own downloads.
+
+	// The tab is put back on the page that offers these fixtures FIRST: the upload case
+	// above pressed the form's own Send, so the tab is on `/echo` and no selector below
+	// would resolve. Navigation is part of the setup, not part of what is being proved.
+	const back = await rpc(state, "goto", {
+		tab: token,
+		url: `${origin()}/receipts`,
+		requester: "session:proof",
+	});
+	check(
+		"G0 the tab is back on the fixture page before the round-1 cases run",
+		back.json?.ok === true && /\/receipts/.test(back.json?.result?.url ?? ""),
+		JSON.stringify(back.json?.result?.url ?? back.json?.error),
+	);
+
+	// G1. A WRITE THAT DIES MID-FLIGHT (U1). Declares 200 KB, sends 100 KB, then the
+	// socket goes away, which is `interrupted` rather than a short file.
+	const stallArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#stall-link",
+		dir: QUARANTINE,
+		timeout_s: 20,
+		requester: "session:proof",
+	});
+	await sleep(700);
+	const stallRow = await rowReading();
+	const stallFiles = existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : [];
+	check(
+		"G1 a transfer that dies mid-flight leaves a row saying so, and no partial file under a complete-looking name",
+		stallArm.json?.ok === true &&
+			stallRow.present === true &&
+			/Download refused/.test(stallRow.text ?? "") &&
+			/partial file was discarded/.test(stallRow.text ?? "") &&
+			!stallFiles.includes("quarterly-accounts.pdf"),
+		JSON.stringify({
+			row: stallRow.text,
+			files: stallFiles,
+			reason: stallArm.json?.result?.reason,
+		}),
+	);
+
+	// G2/G3. A WRITE STILL IN FLIGHT (U6, D6): the row must say something other than
+	// "still going", and the frame below is the in-progress state §12.3 asks for and
+	// no earlier version of these frames showed.
+	const slowArm = rpc(state, "download", {
+		tab: token,
+		selector: "#slow-a-link",
+		dir: QUARANTINE,
+		timeout_s: 30,
+		requester: "session:proof",
+	});
+	await sleep(900);
+	const progressRow = await rowReading();
+	// THE CHROME HALF IS TAKEN IN FLIGHT AND THE PAGE HALF AFTER, and that is a property
+	// of the host rather than a shortcut: `screenshot` is tab-scoped, so it takes the
+	// tab's command lane — the SAME lane this `download` call is holding until it
+	// answers, which is why asking for the page now would come back empty (the first
+	// version of this case did exactly that and shipped a blank page area). The page
+	// does not change while the transfer runs, so the composite is the same document;
+	// the row's own pixels are the mid-flight ones.
+	const inFlightRect = await contentRect();
+	const inFlightChrome = await grabRenderer("06-downloading");
+	const slowResult = await slowArm;
+	await sleep(500);
+	await compose(
+		"06-downloading",
+		inFlightChrome,
+		await capturePage(state, token, "06-downloading"),
+		inFlightRect,
+	);
+	const progressFrame = { path: join(OUT_DIR, "06-downloading.png") };
+	check(
+		"G2 a transfer in flight reports its progress rather than one static line",
+		progressRow.present === true &&
+			/Downloading/.test(progressRow.text ?? "") &&
+			/(KiB|MiB|%)/.test(progressRow.text ?? ""),
+		JSON.stringify({ row: progressRow.text, frame: progressFrame.path }),
+	);
+	check(
+		"G3 the same transfer lands when it is given the time, so the cancel paths are not refusing ordinary downloads",
+		slowResult.json?.ok === true &&
+			(existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []).includes("slow-a.pdf"),
+		JSON.stringify({
+			files: existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : [],
+			reason: slowResult.json?.result?.reason,
+		}),
+	);
+
+	// G4. THE DEADLINE, WITH BYTES ON DISK (B1/M1): the one case the harness cannot
+	// describe honestly — Python takes its snapshot immediately after this answer, so
+	// a write still going is either measured as a prefix or lands with nothing left to
+	// classify it.
+	const deadlineArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#slow-b-link",
+		dir: QUARANTINE,
+		timeout_s: 2,
+		requester: "session:proof",
+	});
+	await sleep(700);
+	const deadlineRow = await rowReading();
+	check(
+		"G4 a transfer still writing at the deadline is cancelled, reported by name, and its partial discarded",
+		/budget expired/i.test(deadlineArm.json?.result?.reason ?? "") &&
+			// The row composes its own sentence from the rule (D1/D3), so it says what
+			// happened rather than repeating the tool result's wording.
+			/did not finish within \d+s and was cancelled/i.test(
+				deadlineRow.text ?? "",
+			) &&
+			!(
+				existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : []
+			).includes("slow-b.pdf"),
+		JSON.stringify({
+			row: deadlineRow.text,
+			reason: deadlineArm.json?.result?.reason,
+			files: existsSync(QUARANTINE) ? readdirSync(QUARANTINE) : [],
+		}),
+	);
+
+	// G5. TWO SAME-NAMED TRANSFERS IN ONE CALL (Q1): the silent overwrite §11.4
+	// forbids, with the result reporting two facts at one path.
+	const dupDir = join(QUARANTINE, "dup");
+	const dupArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#dup-link",
+		dir: dupDir,
+		timeout_s: 20,
+		requester: "session:proof",
+	});
+	await sleep(700);
+	const dupFiles = (existsSync(dupDir) ? readdirSync(dupDir) : []).sort();
+	const dupFacts = dupArm.json?.result?.files ?? [];
+	check(
+		"G5 two transfers of one name in ONE call land as two files, and the result names two paths",
+		dupFiles.length === 2 &&
+			new Set(dupFacts.map((fact) => fact.path)).size === dupFacts.length,
+		JSON.stringify({ files: dupFiles, paths: dupFacts.map((f) => f.path) }),
+	);
+
+	// G6. WHERE THE FILE WENT (D4/U2), read off the row rather than off the state
+	// file: the path is on screen and the controls are self-describing (D7).
+	const savedRow = await rowReading();
+	check(
+		"G6 the row names the folder it wrote into, and its controls say what they do",
+		(savedRow.text ?? "").includes(QUARANTINE) &&
+			(savedRow.names ?? []).includes("Open downloads folder") &&
+			(savedRow.names ?? []).includes("Dismiss download notice"),
+		JSON.stringify({ row: savedRow.text, names: savedRow.names }),
+	);
+
+	// G7. THE DURABLE ROUTE (U2): the chrome keeps a control that opens the same
+	// directory, so dismissing the row does not take the user's download away.
+	const folderControl = await evaluate(
+		'Boolean(document.querySelector(`[data-tour-tag="browser-downloads-folder"]`))',
+	);
+	check(
+		"G7 the chrome carries a durable route to the download folder",
+		folderControl === true,
+		String(folderControl),
+	);
+
+	// G8. A LONG NAME'S REFUSAL (D3), and this is a LAYOUT measurement rather than a
+	// copy one: the name span is the one that clips, and the consequence is not
+	// clipped and sits inside the paragraph's content box.
+	const longArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#long-exe-link",
+		dir: QUARANTINE,
+		timeout_s: 10,
+		requester: "session:proof",
+	});
+	await sleep(400);
+	const longRow = await rowReading();
+	const longSpans = (await rowSpanReadings()) ?? [];
+	const longFrame = await frame(state, token, "08-long-name-refused");
+	const nameSpan = longSpans.find((span) => span.text.startsWith("quarterly-financial"));
+	const consequence = longSpans.find((span) =>
+		span.text.startsWith("Nothing was saved"),
+	);
+	check(
+		"G8 a long name's refusal clips the NAME, not the consequence (D3)",
+		longArm.json?.result?.reason?.includes("executable/script type") === true &&
+			nameSpan?.clipped === true &&
+			consequence?.clipped === false &&
+			consequence?.inside === true,
+		JSON.stringify({ spans: longSpans, frame: longFrame.path }),
+	);
+
+	// G9. THE ROW STACKED WITH THE CONSENT BAND (D6): the composition worst case, and
+	// the one arrangement the "it reflowed rather than overlapped" claim had not been
+	// shown for. The prompt is raised on a DIFFERENT origin — `localhost` is not
+	// `127.0.0.1`, so the grant above does not cover it.
+	await rpc(state, "request_access", {
+		url: `http://localhost:${sitePort}/other`,
+		requester: "session:proof",
+	});
+	const bandReady = await waitFor(() =>
+		evaluate(
+			'Boolean(document.querySelector(`[data-tour-tag="browser-consent-request"]`))',
+		),
+	);
+	const stackedRow = await rowReading();
+	const stackedFrame = await frame(state, token, "07-row-and-band");
+	await clickTag("browser-consent-deny");
+	check(
+		"G9 the row and the consent band stack in the same strip, and the page keeps its own area",
+		bandReady === true && stackedRow.present === true,
+		JSON.stringify({ row: stackedRow.text, frame: stackedFrame.path }),
+	);
 
 	// ---- the transcript ----------------------------------------------------
 	writeFileSync(

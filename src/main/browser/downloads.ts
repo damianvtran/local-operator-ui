@@ -175,14 +175,19 @@ export interface ActiveTransfer {
 	name: string;
 	received: number;
 	total: number;
+	/** The tab this transfer belongs to, so a row rendered beside ANOTHER tab says
+	 * so rather than appearing to describe the page on screen. */
+	tabId: number;
 }
 
-/** What the chrome row renders: the transfer in flight, where downloads go, and
- * the last few decisions OF ONE TAB, newest-first. */
+/** What the chrome row renders: the transfer in flight, where downloads go, the
+ * last few decisions, and which tab's chrome this is (so a decision taken
+ * elsewhere can be LABELLED rather than shown as if it were about this page). */
 export interface TransferActivity {
 	active: ActiveTransfer | null;
 	dir: string | null;
 	notes: TransferNote[];
+	activeTabId: number | null;
 }
 
 /** One accepted download still writing. `weCancelled` is what separates a write
@@ -354,6 +359,7 @@ export class DownloadArmer {
 		this.cancelLive(
 			capture,
 			"was still being written when the download call ended",
+			{ rule: "interrupted", bytes: 0, limit: 0 },
 		);
 		if (!capture.settled) {
 			capture.settled = true;
@@ -454,21 +460,31 @@ export class DownloadArmer {
 	 *
 	 * `null` is "no tab is active", which renders nothing: the strip belongs to a
 	 * tab, and there is no tab to speak for.
+	 *
+	 * WHY THE NOTES ARE HOST-WIDE AND THE TAB IS NAMED INSTEAD OF FILTERED OUT, which
+	 * is a correction to this change's own first attempt at D2. Filtering the notes to
+	 * the active tab looks like the reviewer's "scope it to the tab whose decision it
+	 * was", and it HIDES the case the feature exists for: an agent tab is created
+	 * INACTIVE by design (`tabs.ts`: "An agent `open` NEVER changes which tab the user
+	 * is looking at", §11.4's focus-safety rule), so an agent's own download would
+	 * leave no trace anywhere on screen — the exact complaint U3 files against the
+	 * upload path, reintroduced on the download path. What the reviewer's finding
+	 * actually needs is that the strip must not APPEAR to be about the page on screen:
+	 * so the note keeps its `tabId`, the projection carries `activeTabId`, and the row
+	 * says "on the agent's tab" when the two differ.
 	 */
 	activityFor(tabId: number | null): TransferActivity {
-		const capture = tabId === null ? undefined : this.captures.get(tabId);
+		const newest = [...this.captures.values()].at(-1);
 		return {
-			active: capture?.active ?? null,
+			active: newest?.active ?? null,
 			// The DIRECTORY is reported from a live capture even before anything has
 			// started, so the reveal is available for the whole of a call rather than
 			// only after the first file lands. The NAME is not: "Downloading <a
 			// directory>" would be a row that appears before the page has decided to
 			// download anything.
-			dir: this.downloadDir(capture),
-			notes:
-				tabId === null
-					? []
-					: this.notes.filter((note) => note.tabId === tabId).reverse(),
+			dir: this.downloadDir(),
+			notes: [...this.notes].reverse(),
+			activeTabId: tabId,
 		};
 	}
 
@@ -478,14 +494,9 @@ export class DownloadArmer {
 	 * HOST-WIDE ON PURPOSE, which is why it is not `activityFor`'s own field: the
 	 * button is about the FOLDER the host writes into, not about a tab. Upload notes
 	 * carry no directory, so they cannot answer for one. */
-	downloadDir(capture?: Capture): string | null {
+	downloadDir(): string | null {
 		const dirs = this.notes.filter((note) => note.dir !== "").map((n) => n.dir);
-		return (
-			capture?.dir ??
-			[...this.captures.values()].at(-1)?.dir ??
-			dirs.at(-1) ??
-			null
-		);
+		return [...this.captures.values()].at(-1)?.dir ?? dirs.at(-1) ?? null;
 	}
 
 	/** One upload's own line (review round 1, U3).
@@ -634,6 +645,7 @@ export class DownloadArmer {
 					name: basename(last.savePath),
 					received: last.item.getReceivedBytes(),
 					total: last.item.getTotalBytes(),
+					tabId: capture.tabId,
 				}
 			: null;
 		const now = (this.options.now ?? Date.now)();
@@ -702,7 +714,11 @@ export class DownloadArmer {
 	}
 
 	/** Cancel every download this capture still has writing. */
-	private cancelLive(capture: Capture, clause: string): void {
+	private cancelLive(
+		capture: Capture,
+		clause: string,
+		refusal: TransferRefusal,
+	): void {
 		const live = [...capture.live];
 		capture.live = [];
 		for (const entry of live) {
@@ -711,11 +727,7 @@ export class DownloadArmer {
 				capture,
 				entry,
 				`\`${basename(entry.savePath)}\` ${clause}`,
-				{
-					rule: "interrupted",
-					bytes: entry.item.getReceivedBytes(),
-					limit: 0,
-				},
+				{ ...refusal, bytes: entry.item.getReceivedBytes() },
 			);
 		}
 	}
@@ -752,9 +764,17 @@ export class DownloadArmer {
 		// is written here rather than in the `done` handler because in the deadline
 		// case that event arrives after the answer is already out.
 		if (capture.pending > 0) {
+			// THE DEADLINE IS ITS OWN RULE, not `interrupted`: the row's sentence says
+			// what happened ("did not finish within 120s and was cancelled") and the
+			// harness's cache of what a rule means depends on that being true.
 			this.cancelLive(
 				capture,
 				`was still being written when the ${Math.round(capture.timeoutMs / 1000)}s budget expired`,
+				{
+					rule: "deadline",
+					bytes: 0,
+					limit: Math.round(capture.timeoutMs / 1000),
+				},
 			);
 		}
 		capture.settled = true;
