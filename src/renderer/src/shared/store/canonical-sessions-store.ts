@@ -37,6 +37,19 @@ export type CanonicalSessionRow = {
 	live_state?: string;
 	pending?: string | null;
 	active?: boolean;
+	/**
+	 * The backend's pin state for this conversation, as the catalogue row carried
+	 * it. Declared explicitly beside `active`/`status` because this row type's
+	 * index signature would otherwise type every read of it `unknown` at the one
+	 * place that writes it optimistically (`setSessionPin`).
+	 *
+	 * The wire row's `pinned` is ALWAYS present (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts` says why that matters here): the merge below
+	 * is `{...current, ...incoming}`, so an omitted key would leave this app's
+	 * optimistic `true` immortal after an unpin made somewhere else - the
+	 * terminal, or another window.
+	 */
+	pinned?: boolean;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -57,6 +70,65 @@ type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
 	mtime: number;
+};
+/**
+ * A pin press the backend did not accept, and what to say about it.
+ *
+ * Carries the INTENT rather than the row, so the retry re-sends the same desired
+ * state the user asked for and nothing else: a retry that re-read the row would
+ * send whatever the catalogue says NOW, which after a merge could be the value
+ * the failed press failed to change.
+ */
+/**
+ * What this client knows about one conversation's pin, and WHEN it learned it.
+ *
+ * The `at` stamp is the currency that keeps two writers ordered. Without it the
+ * fact outranks every later answer, so a pin made here and removed on the other
+ * surface leaves the row reading pinned and the next press sends the state the
+ * backend already holds - round 2's Qr2-1 with the polarity reversed, against
+ * the two-way claim this work exists for. With it, an answer that SPEAKS about
+ * the id (the catalogue page, the search answer) supersedes a fact older than the
+ * answer's own request, while a fact written after that request survives it -
+ * which is the half that stops an answer in flight across a press from undoing
+ * the press. The stamp is taken when the REQUEST starts, never when its answer
+ * lands: comparing arrival times would let an answer that predates a press
+ * supersede it, the same defect on a shorter clock.
+ */
+export type PinFact = {
+	pinned: boolean;
+	/** The sequence this write took, which orders it against every request. */
+	at: number;
+	/*
+	 * What a ROW needs to be drawn, carried WITH the fact (design round 4, D17; UX round 4,
+	 * U14). The panel may have to draw a pinned conversation its catalogue page does not
+	 * carry, and a fact that were only a boolean would leave it drawing nothing at all - a
+	 * pin the terminal and the backend both hold and the app silently under-reports, which
+	 * is the state the round refused. Taken from the row the press acted on, or from the
+	 * seed the press carried when the store held no row.
+	 */
+	title?: string;
+	updated_at?: number;
+};
+
+export type PinFailure = {
+	sessionId: string;
+	/** The desired state that was refused, not the state on screen. */
+	pinned: boolean;
+	/**
+	 * The conversation's title as the row carried it when the user pressed, so the
+	 * sentence names the row they pressed rather than one a later catalogue read
+	 * has retitled or dropped.
+	 */
+	title: string;
+	/**
+	 * The backend's own sentence for the refusal, EMPTY when the failure was not
+	 * one either this transport or the backend authored - a runtime exception's
+	 * `message` is a stack-trace fragment, and putting it on screen states the
+	 * failure in the language of the crash (`userFacingMessage` says the same
+	 * thing for the same reason). Empty means the store's own sentence is the
+	 * whole truth about what happened.
+	 */
+	detail: string;
 };
 export type ChatDraft = {
 	key: string;
@@ -1212,6 +1284,94 @@ type CanonicalSessionsState = {
 	 */
 	navigationError: string | null;
 	/**
+	 * A pin press that did not survive, held until the user presses again.
+	 *
+	 * The optimistic write is reverted with this, and both halves are the point:
+	 * a glyph left lit on a failed write is a claim about durable state the store
+	 * does not hold, and a SILENT revert is the "the pin keeps un-pinning itself"
+	 * report all over again. It is one record rather than a log because there is
+	 * one row under the pointer: a second failure replaces the first, which is
+	 * what that user is looking at.
+	 */
+	pinFailure: PinFailure | null;
+	/**
+	 * The client's own pin state for conversations its catalogue page may not hold.
+	 *
+	 * WHY THIS EXISTS BESIDE `sessions`. `replaceSessionRows` rebuilds the row list
+	 * from the page payload alone, deliberately: the page is the authority on which
+	 * conversations exist, and a row kept past it would be one the backend had
+	 * deleted. But `sessions.list` is CAPPED (500 rows, reported as `truncated`),
+	 * while the search answer is asked of the whole store - so a conversation the
+	 * user just pinned from a search hit is in neither: its row is inserted by
+	 * `setSessionPin` and then dropped by the catalogue refresh that very write
+	 * triggers. The row then falls back to the cached wire hit, which reports the
+	 * state the search last saw, and the next press re-sends the state already
+	 * applied - QA round 2's Qr2-1, measured: wire `pinned: true`, store file
+	 * holding the id, DOM row `aria-pressed="false"`, and the follow-up press
+	 * sending `true` again.
+	 *
+	 * A pin is a fact this client wrote and the backend confirmed, so it is held
+	 * here rather than inferred from a page that cannot carry it. `searchChats`
+	 * renders it for a row the catalogue does not list, and the press inverts it,
+	 * which is what makes the control's state and the press's direction the same
+	 * fact (the round's own requirement).
+	 *
+	 * Cleared nowhere on purpose: it is one boolean per conversation this window
+	 * has pinned, which is bounded by what the user pressed, and a row that
+	 * reappears in a later page carries the wire's `pinned` over it by load order
+	 * (`mergeRow`: the incoming row wins).
+	 */
+	pinFacts: Record<string, PinFact>;
+	/**
+	 * The answer counter every fact and every request is stamped against.
+	 *
+	 * One monotonic sequence over every state-changing event on this client: each
+	 * request takes the next value when it STARTS, and each write takes the next
+	 * value when it LANDS. So `fact.at < answerSeq-of-this-request` means the
+	 * answer is newer than the write and may supersede it, and the reverse order
+	 * means the write is newer and the answer must not touch it (`PinFact` has the
+	 * reasoning). Writes take their own value rather than reading the current one
+	 * so that two writes can never share a stamp and mistake each other for
+	 * themselves.
+	 */
+	answerSeq: number;
+	/**
+	 * Apply the backend's pin state to one row, optimistically.
+	 *
+	 * Optimistic rather than refetch-and-wait: `sessions.list` is a WHOLE
+	 * catalogue read (measured at ~120 ms median for 200 rows, and the sidebar
+	 * asks for 500), so a refetch per press would be visibly slower than the
+	 * state change it is confirming. On success the row is reconciled with the
+	 * answer's own `pinned`, so a response that disagreed would still win; on
+	 * failure the row is put back and `pinFailure` says what happened.
+	 *
+	 * Returns whether the press stands, for a caller that wants to act on it.
+	 */
+	/**
+	 * Pin or unpin, and INSERT the row when the store does not hold it yet.
+	 *
+	 * WHY the seed. A conversation reached through the search answer - a hit for a
+	 * session this client's page does not list - has no row here, so a press used to
+	 * write the backend and change nothing this panel could read: the sidebar kept
+	 * drawing the synthesized row from the cached WIRE hit, whose `pinned` no store
+	 * write updates, and the next press re-sent the state already applied (QA round 2,
+	 * Qr2-1: a pin that could not be undone from the row it was made on).
+	 *
+	 * So the press carries enough of the row to hold it: from that moment the STORE's
+	 * `pinned` is what the control renders and what the press inverts, and the wire hit
+	 * is only what a conversation the store has never held is drawn from.
+	 */
+	beginAnswer: () => number;
+	applySearchAnswer: (
+		seq: number,
+		hits: { id: string; pinned?: boolean }[],
+	) => void;
+	setSessionPin: (
+		sessionId: string,
+		pinned: boolean,
+		seed?: { title?: string; updated_at?: number },
+	) => Promise<boolean>;
+	/**
 	 * Which reads the daemon could not answer on the last successful session
 	 * list, in the daemon's own vocabulary (`liveness`, `wakes`, `attention`), or
 	 * empty when it answered every one of them.
@@ -1732,6 +1892,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			sessionByAgent: {},
 			validatingSessionId: null,
 			navigationError: null,
+			pinFailure: null,
+			pinFacts: {},
+			answerSeq: 0,
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
@@ -1740,6 +1903,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCwd: (cwd) => set({ cwd }),
 			fetchSessions: async (limit = 500) => {
 				const generation = ++refreshGeneration;
+				/*
+				 * The page is an answer too, so it carries the same currency: taken when the
+				 * REQUEST starts, so a page already in flight across a press cannot supersede
+				 * that press (`PinFact`).
+				 */
+				const answerAt = get().answerSeq + 1;
+				set({ answerSeq: answerAt });
 				set({ loading: true, error: null });
 				try {
 					const result = await desktopResult<{
@@ -1758,19 +1928,72 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						title: name,
 						updated_at: mtime,
 					}));
-					set((state) => ({
-						sessions: replaceSessionRows(state.sessions, rows),
-						loading: false,
-						truncated: result.truncated === true,
+					set((state) => {
 						/*
-						 * Read only from an answer that arrived: a failed read leaves the last
-						 * known list in place (and says so through `error`), so the marker that
-						 * belonged to those rows is the honest thing to keep beside them.
+						 * A page newer than the write settles the WHOLE pinned set, not only
+						 * the rows it happens to carry.
+						 *
+						 * It used to keep the facts for conversations the page could not
+						 * carry, because on a paged client that was the only way a pin made
+						 * here stayed visible for a conversation past the page: the page was
+						 * silent about them, so silence had to mean "still pinned". The list
+						 * route now APPENDS every pinned conversation below the newest
+						 * `limit` rows (the sibling backend increment, `feat/desktop-session-pins`),
+						 * so the page speaks for the pinned set as a whole - and under that
+						 * contract silence means the opposite: a conversation is absent from
+						 * a newer page because it is unpinned or gone. Keeping the fact then
+						 * RESURRECTS it: a conversation whose directory has been deleted
+						 * would go on drawing a row from this client's memory while the
+						 * backend answers 200 without it (UX round 5, U15's follow-up).
+						 *
+						 * Constraint this carries: it assumes a daemon that appends off-page
+						 * pinned rows. A daemon without that increment would hide an off-page
+						 * pin until it was unpinned - which is why the two halves ship as one
+						 * stack and why the capability stays `session_pins: 1` on both.
 						 */
-						statusUnavailable: Array.isArray(result.degraded)
-							? result.degraded.filter((read) => typeof read === "string")
-							: [],
-					}));
+						const facts = { ...state.pinFacts };
+						for (const [id, fact] of Object.entries(facts)) {
+							if (fact.at >= answerAt) continue;
+							delete facts[id];
+						}
+						/*
+						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
+						 * `replaceSessionRows` rebuilds membership and values from the page
+						 * alone, so a page whose request STARTED before a press would hand the
+						 * panel the pre-press value - the row visibly regresses under a control
+						 * the reader just used - and would DROP a row the press inserted for a
+						 * conversation the page cannot carry. A write newer than the page's own
+						 * request outranks it, exactly as it outranks the page's facts above:
+						 * the row keeps the value the write put there, and it keeps its place
+						 * until a page requested AFTER the write arrives to settle it.
+						 */
+						const protectedRows = state.sessions.filter(
+							(row) => (state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
+						);
+						let next = replaceSessionRows(state.sessions, rows);
+						for (const held of protectedRows) {
+							const fact = state.pinFacts[held.session_id];
+							const at = next.findIndex(
+								(row) => row.session_id === held.session_id,
+							);
+							if (at === -1) next = [...next, { ...held, pinned: fact.pinned }];
+							else next[at] = { ...next[at], pinned: fact.pinned };
+						}
+						return {
+							sessions: next,
+							pinFacts: facts,
+							loading: false,
+							truncated: result.truncated === true,
+							/*
+							 * Read only from an answer that arrived: a failed read leaves the last
+							 * known list in place (and says so through `error`), so the marker that
+							 * belonged to those rows is the honest thing to keep beside them.
+							 */
+							statusUnavailable: Array.isArray(result.degraded)
+								? result.degraded.filter((read) => typeof read === "string")
+								: [],
+						};
+					});
 				} catch (error) {
 					if (generation === refreshGeneration)
 						set({
@@ -2319,6 +2542,238 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),
+			/*
+			 * The pin press, in the order the two writes have to happen: the row moves
+			 * first (the feedback IS the state, and a spinner on a 24px control in a
+			 * list reads as a stall), then the backend answers, then the answer is
+			 * what the row holds.
+			 *
+			 * WHAT THE ANSWER BEING AUTHORITATIVE BUYS, given the optimistic write
+			 * already put the value on screen: a backend that refused to move - the
+			 * 51st pin dropping the oldest instead of this one, a store that
+			 * could not write - is not something this client can predict, so the
+			 * reconcile below is not a no-op check, it is the only place the row can
+			 * learn it was wrong. Both directions on failure: the value goes back to
+			 * what the row held BEFORE the press (read here, not derived from the
+			 * incoming state, so a concurrent catalog read cannot make the revert
+			 * write a third value), and `pinFailure` states it.
+			 */
+			/**
+			 * Take the sequence for an answer that is ABOUT TO BE REQUESTED.
+			 *
+			 * Called by the search hook when its request starts, so the number describes
+			 * the moment the question was asked rather than the moment the answer came
+			 * back: an answer in flight across a press must not be able to supersede it.
+			 */
+			beginAnswer: () => {
+				const seq = get().answerSeq + 1;
+				set({ answerSeq: seq });
+				return seq;
+			},
+			/**
+			 * Apply a search answer's own pin state to the facts it speaks about.
+			 *
+			 * This is the supersession half of the currency rule (`PinFact`): a fact older
+			 * than the request that produced this answer gives way to the answer, so a pin
+			 * removed on the other surface stops reading pinned here as soon as this client
+			 * asks again. A fact written AFTER the request started is left alone, and a hit
+			 * that carries no `pinned` says nothing and therefore supersedes nothing.
+			 */
+			applySearchAnswer: (seq, hits) =>
+				set((state) => {
+					let facts: Record<string, PinFact> | null = null;
+					/*
+					 * The ROW gives way too, not only the fact. A press on a conversation the
+					 * catalogue page cannot carry INSERTS a row (see `setSessionPin`), and that
+					 * row carries the pressed state until something speaks about it - a fact
+					 * swept away while its row kept the stale pin would leave the panel saying
+					 * exactly what the review said it must not. So an answer newer than the
+					 * press writes the answer's own value onto the row as well.
+					 */
+					let rows: typeof state.sessions | null = null;
+					for (const hit of hits) {
+						if (typeof hit.pinned !== "boolean") continue;
+						const fact = state.pinFacts[hit.id];
+						if (fact !== undefined && fact.at >= seq) continue;
+						if (fact !== undefined) {
+							facts = facts ?? { ...state.pinFacts };
+							delete facts[hit.id];
+						}
+						if (
+							state.sessions.some(
+								(row) => row.session_id === hit.id && row.pinned !== hit.pinned,
+							)
+						) {
+							rows = rows ?? state.sessions.map((row) => ({ ...row }));
+							for (const row of rows) {
+								if (row.session_id === hit.id) row.pinned = hit.pinned === true;
+							}
+						}
+					}
+					if (facts === null && rows === null) return {};
+					return {
+						...(facts === null ? {} : { pinFacts: facts }),
+						...(rows === null ? {} : { sessions: rows }),
+					};
+				}),
+			setSessionPin: async (sessionId, pinned, seed) => {
+				const before = get().sessions.find(
+					(row) => row.session_id === sessionId,
+				);
+				/*
+				 * What this client knew BEFORE the press, which is what a refused write
+				 * reverts to. The fact outranks the row's own field: for a conversation the
+				 * catalogue page does not carry, the row is the cached wire hit and is not
+				 * evidence, while the fact is this client's own last confirmed state. `null`
+				 * rather than `false` for "no fact", because reverting must not MINT one: a
+				 * row the catalogue does not carry and this window never pinned has nothing
+				 * to put back.
+				 */
+				const factBefore = get().pinFacts[sessionId] ?? null;
+				/*
+				 * What the CONTROL RENDERED before the press, which is what a refused write has
+				 * to put back. The row's own field wins when the store holds the row - it is
+				 * what the glyph was drawn from - and the client's fact is the only witness for
+				 * a conversation the catalogue page does not carry, where the row is the cached
+				 * wire hit and says nothing about what was on screen.
+				 */
+				const held =
+					before === undefined
+						? (factBefore?.pinned ?? false)
+						: before.pinned === true;
+				/*
+				 * A row the store does not hold is INSERTED from the seed rather than left
+				 * absent: the map below is a no-op without it, and a press whose result the
+				 * panel cannot read is the failure this exists to prevent. `updated_at` is
+				 * the wire's own mtime when the hit carried one, so the row sorts where the
+				 * search said it belongs rather than at the top of the list.
+				 */
+				const seedRow: CanonicalSessionRow | null =
+					before === undefined && seed !== undefined
+						? {
+								session_id: sessionId,
+								title: seed.title || "Untitled chat",
+								updated_at: seed.updated_at,
+								pinned,
+							}
+						: null;
+				/*
+				 * The stamp this write owns: a FRESH sequence, taken rather than read. Every
+				 * later handler asks whether it is still the latest write for this conversation
+				 * before it touches anything, and two presses in flight on one row settle in the
+				 * order they were MADE (review round 4, m2). Reading the sequence instead of
+				 * taking one left two presses in the same tick sharing a stamp, so neither could
+				 * tell that the other had happened.
+				 */
+				const stamp = get().beginAnswer();
+				/*
+				 * What a row needs if the panel has to DRAW this conversation later: the title
+				 * from the row the press acted on, or from the seed when the store held none.
+				 * Carried on the fact so a held pin is never the invisible half of the set
+				 * (design round 4, D17).
+				 */
+				const title = before?.title ?? seed?.title;
+				const updated_at = before?.updated_at ?? seed?.updated_at;
+				set((state) => ({
+					sessions:
+						seedRow === null
+							? state.sessions.map((row) =>
+									row.session_id === sessionId ? { ...row, pinned } : row,
+								)
+							: [...state.sessions, seedRow],
+					// The fact as well as the row: the row can be dropped by the next
+					// catalogue page (see `pinFacts`), and the fact cannot. Stamped with the
+					// sequence current NOW, so an answer requested after this press supersedes
+					// it and an answer requested before it does not.
+					pinFacts: {
+						...state.pinFacts,
+						[sessionId]: { pinned, at: stamp, title, updated_at },
+					},
+					// A press retires the previous press's sentence: the notice is about the
+					// row under the pointer, and two of them would be a log.
+					pinFailure: null,
+				}));
+				try {
+					const answer = await desktopResult<{
+						session_id: string;
+						pinned: boolean;
+					}>({ op: "sessions.pin", sessionId, pinned });
+					let settled = false;
+					set((state) => {
+						/*
+						 * A LATER PRESS OWNS THE ROW NOW. `setSessionPin` stamps each write, and a
+						 * second press on the same row replaces the fact - so an answer whose
+						 * stamp is no longer the fact's belongs to a press the user has already
+						 * superseded, and applying it would settle the row on the stale half of
+						 * two in-flight writes (review round 4, m2).
+						 */
+						const current = state.pinFacts[sessionId];
+						if (current === undefined || current.at !== stamp) return {};
+						settled = true;
+						return {
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId
+									? { ...row, pinned: answer.pinned === true }
+									: row,
+							),
+							pinFacts: {
+								...state.pinFacts,
+								[sessionId]: {
+									...current,
+									pinned: answer.pinned === true,
+								},
+							},
+						};
+					});
+					return settled;
+				} catch (error) {
+					set((state) => {
+						/*
+						 * A later press's write is not this call's to revert, for the same
+						 * reason an earlier press's answer is not this call's to apply.
+						 */
+						const current = state.pinFacts[sessionId];
+						if (current !== undefined && current.at !== stamp) return {};
+						// The fact goes back to what it was, or goes away: a revert that MINTED
+						// one would claim this window knows the state of a conversation it has
+						// only just failed to write.
+						const facts = { ...state.pinFacts };
+						// The fact follows the row: a revert that restored a fact DISAGREEING
+						// with the row it just put back would leave the two saying opposite
+						// things about the same conversation. The stamp is kept where the fact
+						// survived and taken fresh where a fact is minted, so a revert cannot
+						// make a fact look older than the write it is about.
+						if (factBefore === null && before === undefined) {
+							delete facts[sessionId];
+						} else {
+							/*
+							 * The stamp goes back with the value: the fact describes the state the
+							 * control was showing again, and it must not look older than the press
+							 * whose refusal it records.
+							 */
+							facts[sessionId] = {
+								pinned: held,
+								at: Math.max(factBefore?.at ?? 0, stamp),
+								title: factBefore?.title ?? title,
+								updated_at: factBefore?.updated_at ?? updated_at,
+							};
+						}
+						return {
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId ? { ...row, pinned: held } : row,
+							),
+							pinFacts: facts,
+							pinFailure: {
+								sessionId,
+								pinned,
+								title: before?.title || "this chat",
+								detail: userFacingMessage(error, ""),
+							},
+						};
+					});
+					return false;
+				}
+			},
 			upsertSession: (row) =>
 				set((state) => {
 					const present = state.sessions.some(

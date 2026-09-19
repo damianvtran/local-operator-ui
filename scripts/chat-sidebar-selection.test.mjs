@@ -311,6 +311,7 @@ const literalOf = (file, name) => {
 const carriesGround = (classes) => classes.includes("bg-row-selected");
 
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
+const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
 
 /*
@@ -324,6 +325,13 @@ const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
  */
 const CURRENT = [
 	{
+		/*
+		 * The conversation BUTTON: the row's `flex-1` half, which keeps the ground under
+		 * the pointer. Anchored on its own hook (`data-child`) rather than on the current
+		 * row's predicate, because that predicate is now computed once as `current` and
+		 * worn by three elements - see the `same terms` test below, which is what holds
+		 * that single decision together.
+		 */
 		what: "the selected conversation",
 		file: SIDEBAR,
 		/*
@@ -333,6 +341,7 @@ const CURRENT = [
 		 */
 		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
 		stubs: {
+			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			nested: false,
@@ -341,10 +350,29 @@ const CURRENT = [
 		ground: true,
 	},
 	{
+		/*
+		 * The row's BOX, added with the split row (review round 1, M1). The ground has
+		 * to be on the container and not only inside the button, because the pin slot is
+		 * a sibling: a mark painted only in the button stops at the slot's edge, and the
+		 * filled pin - which is the state the ground is there to sit behind - is drawn
+		 * outside the row that says it is current. Same shape as the entity row's
+		 * wrapper, which carries `staged && rowCurrent` for the same reason.
+		 */
+		what: "the conversation row's box",
+		file: SIDEBAR,
+		// The JSX attribute rather than the attribute's name: the move-anchoring
+		// effect also SELECTS `[data-session-row="…"]`, and a bare search finds that
+		// mention first.
+		expression: () =>
+			expressionAfter(SIDEBAR, "data-session-row={row.session_id}"),
+		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
+		ground: true,
+	},
+	{
 		what: "the All chats filter",
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { rowStyle, rowCurrent, all: true },
+		stubs: { revealArmed: true, rowStyle, rowCurrent, all: true },
 		ground: true,
 	},
 	{
@@ -352,6 +380,7 @@ const CURRENT = [
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">New chat</span>"),
 		stubs: {
+			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			activeDraftKey: "draft-key",
@@ -363,7 +392,7 @@ const CURRENT = [
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
-		stubs: { rowCurrent, staged: true },
+		stubs: { revealArmed: true, rowCurrent, staged: true },
 		ground: true,
 	},
 	{
@@ -373,25 +402,45 @@ const CURRENT = [
 		what: "the entity row's name button",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
-		stubs: { rowStyle, rowCurrent, staged: true },
+		stubs: { revealArmed: true, rowStyle, rowCurrent, staged: true },
 		ground: true,
 	},
 	{
 		what: "the entity row's disclosure control",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-disclosure"),
-		stubs: { staged: true },
+		stubs: { revealArmed: true, staged: true },
 		ground: false,
-		notCurrent: { staged: false },
+		notCurrent: { revealArmed: true, staged: false },
 	},
 	{
 		what: "the entity row's manage control",
 		file: SIDEBAR,
 		expression: () =>
 			expressionBefore(SIDEBAR, "aria-label={`Manage ${name}`}"),
-		stubs: { staged: true },
+		stubs: { revealArmed: true, staged: true },
 		ground: false,
-		notCurrent: { staged: false },
+		notCurrent: { revealArmed: true, staged: false },
+	},
+	{
+		/*
+		 * The conversation row's pin control, added with the pinned section. It sits
+		 * INSIDE a row that can be current, which is exactly the case this table's
+		 * count exists to force somebody to notice: it carries `hover:bg-elevated`
+		 * like the two 24px controls above, and it drops it while the row is the
+		 * current one, so the pointer cannot paint over the ground that says where
+		 * the reader is. Stubbed on a row that is NOT pinned, because that is the
+		 * state in which the control is revealed and the pointer is over it.
+		 */
+		what: "the conversation row's pin control",
+		file: SIDEBAR,
+		// The JSX attribute, newline-terminated: the panel also SELECTS
+		// `[data-session-pin]` in the effect that restores focus after a pin moves a
+		// row, and a bare search for the name finds that selector first.
+		expression: () => expressionAfter(SIDEBAR, "data-session-pin\n"),
+		stubs: { revealArmed: true, pinned: false, current: true },
+		ground: false,
+		notCurrent: { revealArmed: true, pinned: false, current: false },
 	},
 	{
 		/*
@@ -411,9 +460,14 @@ const CURRENT = [
 				SETTINGS_RAIL,
 				'aria-current={isActive ? "page" : undefined}',
 			),
-		stubs: { labelled: true, isActive: true, rowCurrent },
+		stubs: { revealArmed: true, labelled: true, isActive: true, rowCurrent },
 		ground: true,
-		notCurrent: { labelled: true, isActive: false, rowCurrent },
+		notCurrent: {
+			revealArmed: true,
+			labelled: true,
+			isActive: false,
+			rowCurrent,
+		},
 	},
 ];
 
@@ -719,19 +773,23 @@ test("the file accounts for every hover ground the two panels declare", () => {
 			SIDEBAR,
 			{
 				// `rowStyle` (1), resolved through every expression that carries it; the two
-				// 24px controls' `!staged` guards (2); the disclosure HEADING row
-				// (1), which is never a current row — it holds a section, and the panel
-				// marks the row the reader is IN, not the heading above it; and the
-				// "Mark all N read" control (1), which is a heading-row sibling too —
-				// a list-level action for a set the store owns, never the row the reader
-				// is in, so no `CURRENT` entry can ever be asked to resolve it.
-				// ALL FIVE rows' hovers are the row state now, so there is no
+				// 24px controls' `!staged` guards (2); the conversation row's pin control
+				// (1), whose own guard is `!current` (its `CURRENT` entry above resolves
+				// it); the disclosure HEADING row (1), which is never a current row —
+				// it holds a section, and the panel marks the row the reader is IN, not
+				// the heading above it; and the "Mark all N read" control (1), which is a
+				// heading-row sibling too — a list-level action for a set the store owns,
+				// never the row the reader is in, so no `CURRENT` entry can ever be asked
+				// to resolve it.
+				// ALL SIX rows' hovers are the row state now, so there is no
 				// `hover:bg-elevated` left in this panel to account for: `elevated`
 				// is a GROUND (it is every menu, popover, tooltip and dialog in the
 				// app) and a row state is not a ground — that is the boundary the
 				// two `row*` roles exist to draw, and the test below holds it for
-				// every row surface in the tree.
-				"hover:bg-row-hover": 5,
+				// every row surface in the tree. The pin control is the sixth because a
+				// control inside a row takes the ROW's own hover step, exactly as the two
+				// 24px controls beside it do: its ground is the row's state, not a menu's.
+				"hover:bg-row-hover": 6,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

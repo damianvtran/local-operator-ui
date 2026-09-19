@@ -52,6 +52,7 @@ export const CHAT_SEARCH_DEBOUNCE_MS = 150;
 export function chatSearchKey(query: string) {
 	return ["desktop", "sessions", "search", query] as const;
 }
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 
 export function useChatSearch(query: string, enabled: boolean) {
 	// The DEBOUNCED query is what is asked for and what keys the cache; the raw
@@ -76,12 +77,26 @@ export function useChatSearch(query: string, enabled: boolean) {
 	const result = useQuery({
 		queryKey: chatSearchKey(asked),
 		enabled: enabled && asked.length > 0 && !refused,
-		queryFn: () =>
-			desktopResult<SessionSearchResult>({
+		queryFn: async () => {
+			/*
+			 * THE ANSWER'S CURRENCY, taken here rather than where the answer is read. The
+			 * sequence describes the moment this request STARTS, so an answer that was in
+			 * flight across a pin press cannot supersede the press it predates - and an
+			 * answer requested after a press does supersede it, which is what makes a pin
+			 * removed on the other surface stop reading pinned here (round 3's code round:
+			 * without this the client's fact outranked every later answer).
+			 */
+			const seq = useCanonicalSessionsStore.getState().beginAnswer();
+			const answer = await desktopResult<SessionSearchResult>({
 				op: "sessions.search",
 				q: asked,
 				limit: SESSION_SEARCH_DEFAULT_LIMIT,
-			}),
+			});
+			useCanonicalSessionsStore
+				.getState()
+				.applySearchAnswer(seq, answer.sessions ?? []);
+			return answer;
+		},
 		// Long enough that re-typing the same query during a session is free,
 		// short enough that a conversation finished a moment ago appears when its
 		// name is typed without waiting for a refetch.
