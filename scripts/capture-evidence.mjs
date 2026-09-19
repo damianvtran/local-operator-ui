@@ -2962,6 +2962,47 @@ export const STORIES = [
 	["chat-sidebar-agents--install-summary", 420, 760],
 
 	/*
+	 * The chat sidebar's SPLIT (`docs/design/sidebar-sections.md`) at rest: the
+	 * boundary between the entity lists and the chats list, the two collapse
+	 * controls that live on it, the order control beside them, and the restore
+	 * row a hidden region leaves behind.
+	 *
+	 * The state a frame is FROM is set through the store by the story, which is
+	 * the honest split of labour for this surface: a drag is the driver's
+	 * business (`--scene sidebar-split`), and these frames are the RESOLVED
+	 * layouts a reviewer judges and a later round diffs. `resting-default` is
+	 * the parity claim's after half - with no stored value it is the panel as it
+	 * ships, which is what the four committed sidebar sets photograph.
+	 *
+	 * WIDTH is the panel plus the 380px readout beside it, and the readout is
+	 * part of the evidence rather than decoration: it prints the separator's own
+	 * `aria-valuenow/min/max`, the regions that are actually mounted, the drawn
+	 * height and the stored preference, read out of the DOM. That is what makes
+	 * `short-window` legible as a claim - `Stored: 900px` beside `now 352` is
+	 * the render clamping without rewriting - and it is what keeps every frame
+	 * here clear of `check-evidence`'s uniformity ceiling, since a frame of a
+	 * mostly-empty panel would otherwise be one ground and nothing else.
+	 *
+	 * HEIGHT is sized to the band each state draws, for the reason the usage
+	 * states are: `entities-only` is a filled column and a 28px row, and a 900px
+	 * frame of it would be a picture of ground.
+	 */
+	["chat-sidebar-sections--resting-default", 741, 660],
+	["chat-sidebar-sections--dragged-split", 741, 660],
+	["chat-sidebar-sections--entities-only", 741, 420],
+	["chat-sidebar-sections--chats-only", 741, 480],
+	/*
+	 * A stored 900px in a window that cannot honour it: the clamp and the kept
+	 * preference in one frame, which is the pair `resting-default` cannot show.
+	 */
+	["chat-sidebar-sections--short-window", 741, 520],
+	/* The panel at its own width clamp, where the boundary and the restore row
+	   have the least room they ever get - and the rows wrap hardest. */
+	["chat-sidebar-sections--narrow-240", 621, 760],
+	/* The collapse held while a query renders both regions over it. */
+	["chat-sidebar-sections--query-while-collapsed", 741, 460],
+
+	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
 	 * blocked-field list that disables submit, and each refusal with its own
