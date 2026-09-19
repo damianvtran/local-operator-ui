@@ -83,7 +83,13 @@ import {
 } from "./slash-contract";
 import { firstContentLine } from "./slash-highlight";
 import { commandSuggestions, matchChoices } from "./slash-rank";
-import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
+import {
+	type ArgumentShapeRow,
+	type ArmingCatalogueRow,
+	argumentShapeVocabulary,
+	armedOnlyVocabulary,
+	prefixingVocabulary,
+} from "./slash-submit";
 import {
 	caretPhase,
 	replaceSpan,
@@ -109,6 +115,16 @@ export type SlashCommandMeta = {
 	arguments: "none" | "optional" | "required";
 	echo: boolean;
 	consumes_prompt: boolean;
+	/*
+	 * The endpoint's own admission vocabulary, optional and additive — see the
+	 * contract's `DesktopCommandMetadata`, which is where the wire declares them.
+	 * Read here rather than only there because this is the row type the catalogue
+	 * query is read as, so the fields have to survive the fetch to reach the
+	 * planner that answers with them.
+	 */
+	prefixes_text?: boolean;
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	argument_words?: string[];
 	destination: string;
 	execution: "owner" | "native";
 };
@@ -269,6 +285,19 @@ export type SlashCompletionState = {
 	 * their whole-draft forms as prose (review round 1, R1).
 	 */
 	argumentCommands: ReadonlySet<string>;
+	/**
+	 * The wire's own `argument_shape` / `argument_words`, keyed by primary and
+	 * alias, and the `prefixes_text` half of the same publication.
+	 *
+	 * THE AUTHORITY THE THREE SETS ABOVE APPROXIMATE. They are derived from the same
+	 * catalogue rows the popup renders, so a row can neither be in the registry and
+	 * missing here nor the reverse. A row that publishes no shape is absent from the
+	 * map on purpose — that is a backend older than the field, and
+	 * `argumentShapeVocabulary` states why a default would be worse than the
+	 * fallback it would replace.
+	 */
+	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
+	prefixingCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/**
 	 * Lower-cased roster names the list's own query holds, for the syntax
@@ -444,6 +473,21 @@ export function useSlashCompletion({
 		}
 		return names;
 	}, [registry]);
+	/*
+	 * The wire's own vocabulary, read off the SAME rows — and deliberately an
+	 * ADDITION beside the three derivations above rather than a replacement for
+	 * them: the planner needs the fallback for a backend that predates these
+	 * fields, so both are carried and the planner states which one is the
+	 * authority.
+	 */
+	const argumentShapes = useMemo(
+		() => argumentShapeVocabulary(registry),
+		[registry],
+	);
+	const prefixingCommands = useMemo(
+		() => prefixingVocabulary(registry),
+		[registry],
+	);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -774,6 +818,8 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		valueArgumentCommands,
 		argumentCommands,
+		argumentShapes,
+		prefixingCommands,
 		nameListCommands: vocabulary.nameList,
 		nameChoices,
 		argumentWords: vocabulary.words,

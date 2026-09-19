@@ -43,10 +43,13 @@ const bundle = await build({
 	write: false,
 });
 const {
+	argumentFits,
+	argumentShapeVocabulary,
 	armedOnlyVocabulary,
 	completionFor,
 	planSlashArming,
 	planSlashSubmission,
+	prefixingVocabulary,
 	slashTokenSpan,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -1557,5 +1560,214 @@ test("the locked scan costs one pass, not one call per slash", () => {
 	assert.ok(
 		median(matching) <= Math.max(median(withWords) * RATIO_MAX, 1),
 		`a match must not cost more than the scan that finds it: ${median(matching).toFixed(4)} ms against ${median(withWords).toFixed(4)} ms`,
+	);
+});
+
+/*
+ * THE WIRE'S OWN VOCABULARY — `prefixes_text`, `argument_shape` and
+ * `argument_words`, the fields the messages endpoint's admission rule is written
+ * against (`command_argument_is_used`, `local_operator/slash_commands.py`).
+ *
+ * The rows below are the shapes the released backend publishes for these words,
+ * including the two that the registry's booleans cannot express and that the
+ * operator's own report turned on: `/mcp logout` is a valid subcommand while
+ * `/mcp logout seems to cause a crash` is the sentence he was writing, and
+ * `/login openai` is a command while `/login zzz` is not.
+ *
+ * The pins are DELETION-SENSITIVE rather than decorative: the shape cases are
+ * exactly the rows the three registry vocabularies above answer differently
+ * (none of `usage`, `compact` or `mcp` is in them), so a planner that stops
+ * reading `argumentShapes` fails here, and one that DEFAULTS a shape-less row to
+ * `any` fails the fallback case.
+ */
+const WIRE_ROWS = [
+	{
+		name: "team",
+		aliases: ["teams"],
+		prefixes_text: true,
+		argument_shape: "any",
+		argument_words: [],
+	},
+	{
+		name: "agent",
+		aliases: ["agents"],
+		prefixes_text: true,
+		argument_shape: "any",
+		argument_words: [],
+	},
+	{
+		name: "goal",
+		aliases: [],
+		prefixes_text: true,
+		argument_shape: "any",
+		argument_words: [],
+	},
+	{
+		name: "move",
+		aliases: [],
+		prefixes_text: false,
+		argument_shape: "any",
+		argument_words: [],
+	},
+	{
+		name: "credential",
+		aliases: ["cred"],
+		prefixes_text: false,
+		argument_shape: "any",
+		argument_words: [],
+	},
+	{ name: "usage", aliases: [], argument_shape: "word", argument_words: [] },
+	{ name: "compact", aliases: [], argument_shape: "none", argument_words: [] },
+	{
+		name: "login",
+		aliases: [],
+		argument_shape: "provider",
+		argument_words: ["openai", "anthropic"],
+	},
+	{
+		name: "mcp",
+		aliases: [],
+		argument_shape: "subcommand",
+		argument_words: ["logout", "login", "grant"],
+	},
+];
+const WIRE_SHAPES = argumentShapeVocabulary(WIRE_ROWS);
+const WIRE_PREFIXING = prefixingVocabulary(WIRE_ROWS);
+const WIRE_NAMES = new Set([...COMMAND_NAMES, "mcp"]);
+
+/** The composer's own call, with the wire the catalogue hands it. */
+const planWire = (draft, caret, over = {}) =>
+	plan(draft, caret, {
+		commandNames: WIRE_NAMES,
+		argumentShapes: WIRE_SHAPES,
+		prefixingCommands: WIRE_PREFIXING,
+		...over,
+	});
+
+test("the wire's argument shape decides the whole draft", () => {
+	const cases = [
+		// `word` takes one token: a selector's short form, not a sentence.
+		["/usage on", "whole"],
+		["/usage more prose", "send"],
+		// `none` owns nothing after it, and a bare word is still the command.
+		["/compact", "whole"],
+		["/compact hello", "send"],
+		// `provider` is one token DRAWN FROM THE PUBLISHED VOCABULARY.
+		["/login openai", "whole"],
+		["/login zzz", "send"],
+		// `subcommand` is at most two tokens, the first a real subcommand — the
+		// operator's own draft is the row this field exists for.
+		["/mcp logout", "whole"],
+		["/mcp logout seems to cause a crash", "send"],
+		// `any` owns whatever follows it.
+		["/move ~/x", "whole"],
+		["/credential hunter2", "whole"],
+	];
+	for (const [draft, expected] of cases) {
+		assert.equal(
+			planWire(draft, draft.length).kind,
+			expected,
+			`${JSON.stringify(draft)} at its end`,
+		);
+	}
+});
+
+test("a row the wire says nothing about keeps its own answer", () => {
+	/*
+	 * ABSENCE IS NOT A DEFAULT. The fields are additive, so a backend that does not
+	 * publish them must compose exactly as it did before they existed — and the
+	 * direction that would be silent is a shape-less row defaulting to `any`, which
+	 * is the answer that hands a sentence to a command.
+	 */
+	const silentAboutUsage = argumentShapeVocabulary(
+		WIRE_ROWS.filter((row) => row.name !== "usage"),
+	);
+	assert.equal(
+		planWire("/usage on", 9, { argumentShapes: silentAboutUsage }).kind,
+		"send",
+		"no shape published, so the registry's own answer stands",
+	);
+	assert.equal(
+		planWire("/usage on", 9).kind,
+		"whole",
+		"and the published shape is what changes it",
+	);
+});
+
+test("the leading line is read for a word the wire says owns its tail", () => {
+	/*
+	 * THE CARET NO LONGER DECIDES THE DRAFT-OPENING BRANCH. `slashTokenSpan` claims
+	 * the caret's own line, so this draft had no token at a caret in the body and
+	 * planned `send` there while planning the command with the caret inside its
+	 * word — the same keystrokes, two answers.
+	 */
+	const draft = "/team ops fix this\nand then ship it";
+	const carets = [0, 4, 12, draft.length];
+	assert.deepEqual(
+		carets.map((caret) => planWire(draft, caret).kind),
+		["reassemble", "reassemble", "reassemble", "reassemble"],
+	);
+	assert.equal(
+		planWire(draft, draft.length).kind,
+		"reassemble",
+		"the caret in the instruction is the case this repairs",
+	);
+	// With the wire silent the free-text half of the registry answers the hoist,
+	// so the repair is not gated on a backend this app may not be talking to.
+	assert.deepEqual(
+		carets.map((caret) => plan(draft, caret).kind),
+		["reassemble", "reassemble", "reassemble", "reassemble"],
+	);
+});
+
+test("the hoist is `any`-only, so a value-shaped word above a paragraph stays prose", () => {
+	/*
+	 * THE ROW THE HOIST MUST NOT TAKE. `logout` is a real subcommand and the word
+	 * `mcp` is a real command, so a hoist that validated the LEADING LINE's own
+	 * tokens ("logout") ran this as `/mcp` while the endpoint read the paragraph —
+	 * the operator's own two-sentence report, arriving as a command.
+	 */
+	const draft = "/mcp logout\nseems to cause a crash on the TUI";
+	assert.equal(
+		planWire(draft, draft.length).kind,
+		"send",
+		"the caret's line decides, and the shape does not own it",
+	);
+	// ... while the caret-led case is NOT narrowed: the shape validates it.
+	assert.equal(planWire("/mcp logout", 11).kind, "whole");
+});
+
+test("the wire vocabulary is keyed by alias, and `argumentFits` is the endpoint's shape test", () => {
+	assert.equal(
+		WIRE_SHAPES.get("teams"),
+		WIRE_SHAPES.get("team"),
+		"an alias resolves to its primary's row",
+	);
+	assert.equal(
+		WIRE_SHAPES.has("fast"),
+		false,
+		"a row with no published shape is left out, never defaulted",
+	);
+	assert.equal(
+		WIRE_PREFIXING.has("teams"),
+		true,
+		"`prefixes_text` is keyed by alias too",
+	);
+	assert.equal(
+		argumentFits(
+			{ shape: "subcommand", words: new Set(["logout"]) },
+			"logout seems to cause a crash",
+		),
+		false,
+	);
+	assert.equal(
+		argumentFits({ shape: "word", words: new Set() }, ""),
+		false,
+		"the empty argument is the whole-draft form, not this function's to answer",
+	);
+	assert.equal(
+		argumentFits({ shape: "provider", words: new Set(["openai"]) }, "zzz"),
+		false,
+		"a provider outside the published vocabulary is not one",
 	);
 });
