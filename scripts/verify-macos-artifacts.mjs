@@ -1042,7 +1042,8 @@ export function verifyArtifacts({
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
 		// Neither of the next six is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
-		// obvious.		results.push(bundledBytecodeCheck(appPath));
+		// obvious.
+		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
 		results.push(prunedSeedCheck(appPath));

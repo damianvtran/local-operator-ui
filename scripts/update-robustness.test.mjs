@@ -1496,6 +1496,18 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		null,
 		"startup",
 	);
+	// The other refusal on this panel, and the one the 0.29.6 incident produced:
+	// the artifact macOS refuses to spawn. It is built by a different producer
+	// (`stagedSignatureBlock`), so its fixture has to be held to that producer's
+	// strings for the same reason as the two above - the design round signs off on
+	// pixels, and a fixture that drifted renders a sentence the app never sends.
+	const unlaunchable = install.stagedSignatureBlock({
+		entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.ok(unlaunchable, "the 0.29.6 signature must still be refused");
 	for (const [what, text] of [
 		["the in-flight message", inFlight.message],
 		["the cancelled-by-relaunch message", cancelled.message],
@@ -1520,6 +1532,8 @@ test("the story fixtures carry the payload strings verbatim", () => {
 			"the server-update failure message",
 			SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence,
 		],
+		["the unlaunchable-artifact message", unlaunchable.message],
+		["the unlaunchable-artifact remedy", unlaunchable.remedy.text],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
