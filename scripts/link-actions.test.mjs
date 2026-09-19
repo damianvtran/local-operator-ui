@@ -575,12 +575,32 @@ test("a probe is asked once per target, and its answer is cached", async () => {
 	const asked = [];
 	const ask = async (paths) => {
 		asked.push(paths);
-		return [{ exists: true, isFile: true }];
+		return [
+			{
+				exists: true,
+				isFile: true,
+				resolved: "/tmp/a.pdf",
+				sizeBytes: 1024,
+				mtimeMs: 1_760_000_000_000,
+			},
+		];
 	};
 	await probeTarget("/tmp/a.pdf", ask);
 	await probeTarget("/tmp/a.pdf", ask);
 	assert.deepEqual(asked, [["/tmp/a.pdf"]]);
-	assert.deepEqual(probeStateFor("/tmp/a.pdf"), { exists: true, isFile: true });
+	/*
+	 * The whole answer is cached, not the two booleans it started with: the press
+	 * that needs the RESOLVED path (the document's identity), the size (the read's
+	 * ceiling) and the mtime (the freshness baseline) reads them from here rather
+	 * than asking again on the path the reader is waiting on.
+	 */
+	assert.deepEqual(probeStateFor("/tmp/a.pdf"), {
+		exists: true,
+		isFile: true,
+		resolved: "/tmp/a.pdf",
+		sizeBytes: 1024,
+		mtimeMs: 1_760_000_000_000,
+	});
 	// Two spellings of one file are two keys: the toolbar acts on the string the
 	// reader is looking at, and the second is not asked on the first's answer.
 	await probeTarget("~/x/a.pdf", ask);
@@ -595,6 +615,9 @@ test("a negative is cached too, and a failed press is what clears it", async () 
 	assert.deepEqual(probeStateFor("/tmp/gone.pdf"), {
 		exists: false,
 		isFile: false,
+		resolved: "/tmp/gone.pdf",
+		sizeBytes: null,
+		mtimeMs: null,
 	});
 	/*
 	 * The recovery the app has: `openLocalTarget` drops the entry when the press

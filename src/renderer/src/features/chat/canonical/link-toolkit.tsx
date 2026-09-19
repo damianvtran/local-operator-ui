@@ -222,8 +222,17 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	 * and the OS with them, and the icon map below chooses the canvas mark with the
 	 * same answer (`canvasActionFor` applies the matrix's own rules about
 	 * directories and known-missing paths, so the two cannot drift).
+	 *
+	 * `kind === "file"` is part of the fact rather than a repetition of the
+	 * caller's own state: `viewerFor` routes by the last path segment, so a URL
+	 * like `https://example.com/paper.pdf` has a viewer and would answer `true` -
+	 * which would put `PanelRightOpen` on a button whose label is `Open in
+	 * browser`, for as long as the probe is unanswered (a URL is never probed) and
+	 * permanently on a surface with no probe bridge. The press itself is already
+	 * right (a URL browses before any canvas question is asked), so this guard is
+	 * only about the mark agreeing with the label beside it.
 	 */
-	const canOpenInCanvas = opensInCanvas(pane, target);
+	const canOpenInCanvas = kind === "file" && opensInCanvas(pane, target);
 	const canvasAction = canvasActionFor({
 		isDirectory: probe?.exists === true && !probe.isFile,
 		probe,
@@ -307,6 +316,14 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 		 * default app` produces. Both are on screen together for a canvas-openable
 		 * file, so they have to read as two different places rather than two
 		 * versions of one.
+		 *
+		 * ONE EXCEPTION, named because someone will find it: the canvas's OWN chrome
+		 * marks this same action with `FileUp` (the viewer's `Open in default app`
+		 * control), which is the mark for "hand this file on" at the point where the
+		 * document is already on screen. Here the strip is offering two
+		 * DESTINATIONS before either has been chosen, so the window - the other
+		 * place - is the mark that distinguishes them; changing the chrome's is not
+		 * this change's to make.
 		 */
 		open: canvasAction ? (
 			<PanelRightOpen />

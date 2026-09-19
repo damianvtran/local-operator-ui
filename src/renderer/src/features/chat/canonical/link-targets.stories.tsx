@@ -173,7 +173,7 @@ const NO_VIEWER = "~/workspace/opoint-renewal-2026-09-17/bundle.zip";
 /*
  * NO SPACE IN THIS ONE, and that is a fixture constraint rather than taste:
  * `PROSE_PATH` (`link-grammar.ts`) stops at whitespace, so
- * `Local Operator.dmg` would linkify as `.../Local` - a frame showing a broken
+ * `local-operator-0.28.4.dmg` would linkify as `.../Local` - a frame showing a broken
  * link that no change on this branch produced. A name with a space reaches the
  * app as a `file://` URL, which is what `SHOTS` in the other fixture is for.
  */
@@ -341,7 +341,7 @@ export const DetectedTargetsNarrow: Story = {
 /**
  * The same routing rule from the other side: paths the canvas declines.
  *
- * `bundle.zip` and `Local Operator.dmg` are local, existing files with no viewer
+ * `bundle.zip` and `local-operator-0.28.4.dmg` are local, existing files with no viewer
  * (`viewerFor` answers `null`), so their toolbar keeps the single `Open` that
  * hands them to the OS - and the `.xlsx` on the next line, one paragraph down,
  * shows the five-action strip beside them. The pair is the assertion: the new

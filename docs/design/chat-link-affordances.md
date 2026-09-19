@@ -237,11 +237,24 @@ more than 30 — and found two states where what is covered is text a reader wan
 
 | state | strip rect (LIVE, this head) | covered ink | what it is |
 |---|---|---|---|
-| `hover-file` | `[174,337,302,369]` | 0 px | nothing — the first-line case is genuinely clean |
-| `hover-directory` | `[584,612,682,644]` | 42 px | the glyph tops of the line below, grazed by the strip's last two rows |
-| `hover-url` | `[245,486,343,518]` | **169 px** | the table's own column header, the word `path` |
-| `hover-missing` | `[217,612,475,644]` | 82 px | the tail of the sentence's wrapped continuation |
-| `hover-cell` | `[255,569,383,601]` | 671 px | the paragraph below the table (see the container paragraph under this table) |
+| `hover-file` | `[175,334,330,363]` | 0 px | nothing — the first-line case is genuinely clean. The rect is 30px wider than round 3's: the fifth button (`Open in canvas` · `Open in default app` in place of the lone `Open`) |
+| `hover-directory` | `[584,612,682,644]` | 42 px | the glyph tops of the line below, grazed by the strip's last two rows. UNCHANGED by this round: a directory still gets `Copy path · Open · Quote` |
+| `hover-url` | `[245,486,343,518]` | **169 px** | the table's own column header, the word `path`. UNCHANGED: a URL still gets `Copy link · Open in browser · Quote` |
+| `hover-missing` | `[217,612,475,644]` | 82 px | the tail of the sentence's wrapped continuation. UNCHANGED: a path that is not there still gets `Copy path · Quote` |
+| `hover-cell` | `[256,565,411,594]` | **776 px** | the paragraph below the table (see the container paragraph under this table). 776 against 671 before this round: the added 30px band covers 133 px of that paragraph, +21% |
+
+THE `hover-file` / `hover-cell` RECTS MOVED AGAIN, by 30px, and the ink column
+with them — this is the round that put the operator's own ask on the strip, so
+the two states that are ABOUT a canvas-openable file grew a button while
+`hover-directory`, `hover-url` and `hover-missing` did not (their matrices are
+untouched, which is why three of these five rows are the previous round's
+numbers unchanged). The ink numbers were re-measured at this head by the same
+reading: pixels of the resting frame more than 30 away from the strip's own
+surface. `hover-file` stays at 0 px, and the one that moves in kind is
+`hover-cell` — the fifth button hangs over the paragraph below the table, 28px
+below the table's own edge, so its cost is 133 px of prose rather than a glyph
+top. That is the price of showing both destinations, and it is recorded here at
+the size it actually is rather than as "+30px".
 
 EVERY RECT IN THIS TABLE IS 31px WIDER THAN THE ONE ROUND 2 PUBLISHED, and
 that is the round-3 correction (design round 3, D2): the earlier column was
@@ -269,8 +282,9 @@ and the cost is recorded here, with both sides photographed (`hover-file` above,
 
 **The strip may leave its container, and does.** In a table, the cell link's box
 is `[255,544,612,561]`, the table ends at 573, and the strip lands at
-`[255,569,383,601]` — 28px of it below the table, over the paragraph that follows
-(`hover-cell`, 671 ink px of that paragraph). The placement clamps to the pane
+`[256,565,411,594]` — 28px of it below the table, over the paragraph that follows
+(`hover-cell`, 776 ink px of that paragraph, the number this round's fifth button
+moved from 671). The placement clamps to the pane
 (`quote-anchor.ts`), not to the
 anchor's own ancestors, and deliberately: a link can sit in a table cell, a list
 item, a blockquote or a paragraph, and a container-aware rule would need an
@@ -594,28 +608,42 @@ this press all route through the same predicate, so a format added to the viewer
 list is openable from a link in the same commit.
 
 **`utils/open-in-canvas.ts` owns the rule and the effect.** `opensInCanvas(pane,
-path)` answers the decision (a pane in reach AND a viewer for the type);
-`openPathInCanvas(conversationId, path)` performs it: probe answer consulted from
-the CACHE, the document built, the text kinds read, `setCanvasOpen(true)` then
-`addFileAndSelect`. Its answer is a boolean, and the caller's fallback is the
-point of it — a refusal means "do what this app did before", which is the OS
-hand-off and its own sentence.
+path)` answers the decision (a pane in reach AND a viewer for the type — asked of
+FILES only, because `viewerFor` reads the last path segment and a URL like
+`https://example.com/paper.pdf` would otherwise wear the canvas mark on a button
+labelled `Open in browser`); `openPathInCanvas(conversationId, path)` performs it:
+the probe answer, the document, the text kinds' bounded read,
+`setCanvasOpen(true)` then `addFileAndSelect`. Its answer is a boolean, and the
+caller's fallback is the point of it — a refusal means "do what this app did
+before", which is the OS hand-off and its own sentence.
 
 Three bounds are deliberate and are stated in that module rather than here:
 
-- **the probe is the cache, not a new round trip.** The toolbar already asked on
-  reveal, and asking again per press would be the stat storm that design is built
-  to avoid. `null` — nothing known — attempts the canvas anyway, which is the
-  optimistic direction `probeTarget` documents;
+- **the press ASKS when nothing is cached.** The hover normally warms the answer
+  (the toolbar's liveness is learned there, so a row is not a stat storm), but a
+  press can arrive with no hover at all — a keyboard activation, a touch, a link
+  whose strip was never revealed — and the kinds that read their own bytes read
+  nothing here, so a file deleted between the reveal and the press used to open a
+  tab onto nothing while a text file correctly fell back to the OS. One stat on
+  the path the reader is pressing, and `null` (no bridge, a probe that threw)
+  still attempts the canvas, which is the optimistic direction `probeTarget`
+  documents;
 - **a refusal never leaves a dead tab.** A directory, a type with no viewer or a
-  path the cached answer already calls gone gets no document at all: the tab is
-  written only after every check has passed;
-- **the document carries no freshness baseline.** `readMtimeMs`/`sizeBytes` come
-  from a probe answer and the cached one is two booleans, so a link-opened document
-  is built the way ⌘O's is (`canvas/index.tsx`'s `handleOpenFile`) and carries
-  neither. The cost is that the canvas's own "changed on disk" comparison has to
-  adopt what the file says on its first read. Widening the probe cache is the change
-  that removes it, and it is not this one.
+  path the answer calls gone — cached or just asked — gets no document at all: the
+  tab is written only after every check has passed;
+- **the document is bounded, and carries the answer's facts.** Its `id` and `path`
+  are the probe's RESOLVED spelling, which is the identity the store dedupes by
+  and the same string the Files panel's tile for that file already carries
+  (`use-mentioned-files.ts` rewrites every tile to `result.resolved`); without it
+  the transcript's `~/` spelling and the panel's `/Users/...` spelling became two
+  tabs on one file (review round 1, M1). `availability`, `sizeBytes` and
+  `lastAgentModified` come from the same answer, the eager read is capped at
+  `MAX_EAGER_READ_BYTES` (1 MiB) because the store persists its documents to
+  `localStorage`, and above that cap the document is opened as a POINTER — the
+  shape every Files-panel mention has — with the viewer reading on demand.
+  `readMtimeMs` is set only when bytes were actually read, so a pointer leaves the
+  freshness baseline to whoever reads it. (The Files panel's own click still reads
+  uncapped; that is its own change, not this one's.)
 
 **`utils/canvas-pane.tsx` is how the pane reaches the two components that need it.**
 The anchor is `MarkdownRenderer`'s (`MarkdownAnchor`), which every markdown surface
@@ -630,10 +658,21 @@ its value is the OPENER bound to that conversation, not the id:
   refuses;
 - the value is memoised on the id, because a transcript re-renders per streaming
   delta and a fresh context value would re-render every anchor in every row;
-- an absent `conversationId` provides `null` rather than skipping the provider, so a
-  story, a session-less draft and the run panel's child reader all get the same
-  "no pane in reach" answer and the same behaviour they had before this module
-  existed (`scripts/chat-link-affordances.test.mjs` asserts that press).
+- an absent `conversationId` provides `null` rather than skipping the provider, so
+the surfaces that render markdown OUTSIDE the chat pane - the run panel's child
+reader, which passes no id at all, plus the legacy `message-item` rows and the
+trace rows of § 8 - get the same "no pane in reach" answer and the same
+behaviour they had before this module existed. That press is ASSERTED rather
+than photographed, and the difference is stated here because review round 1 (U4)
+found the earlier wording claiming a story got the null answer: the story file
+passes a `conversationId` on purpose, so its frames show the five-action canvas
+strip, and therefore NO frame in `docs/evidence/chat-canonical-links/` is a
+pane-less press. What covers it is
+`scripts/chat-link-affordances.test.mjs`'s "a press with NO pane is exactly the
+press of before: the OS", which drives a real anchor with no provider and reads
+the OS call back off the bridge. (`hover-no-viewer` is the OTHER half - a path
+with no viewer, not a pane with no canvas - and its four-action strip is not
+evidence for this one.)
 
 The consequence worth naming: **canvas routing is provided to exactly the surface
 that offers the toolbar.** The trace rows, the gate card and the legacy
