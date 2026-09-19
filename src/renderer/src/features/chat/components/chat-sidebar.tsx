@@ -1327,13 +1327,28 @@ export function ChatSidebar({
 				   nowhere drawing — the reported defect, in the channel a reader reaches
 				   by hovering, and the row that most needs the tooltip to be true. */
 				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
-					/* The remedy's second channel. That the clause stays OUT of the accessible
-					   name does not follow from this attribute but from where its target
-					   renders — see the span after the mark. `undefined` on every other code and
-					   on a row with no status: an `aria-describedby` naming an element nobody
-					   rendered resolves to no description at all, which is worse than not
-					   pointing (the same rule `setting-control.tsx` states for its own help). */
-					aria-describedby={silent ? silentRemedyId(row.session_id) : undefined}
+				/*
+				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
+				 * this is the keyboard's, and it is the one a person using the `sr-only` name
+				 * beside the mark can actually reach — Chromium does not present a `title` on
+				 * focus, so before this the advice existed for hover alone. It points at the
+				 * clause rather than carrying it in the NAME, which is the design's call: the
+				 * name stays the state's sentence, and a description is announced after it, on
+				 * focus, on the rows that carry one.
+				 *
+				 * THAT REQUIRES THE TARGET TO SIT OUTSIDE THIS BUTTON — the association alone
+				 * does not keep a sentence out of the name, and the first version of this
+				 * shipped it as a child of the button, where name-from-content collected it
+				 * too (round 2's MAJOR 2). See the span below the `</button>` for the
+				 * measurement; what this attribute needs to be true is that its target renders
+				 * and renders outside the named element.
+				 *
+				 * `undefined` on every other code, and on a row with no status at all — an
+				 * `aria-describedby` naming an element nobody rendered resolves to no
+				 * description at all, which is a worse outcome than not pointing (the same
+				 * rule `setting-control.tsx` states for its own help sentence).
+				 */
+				aria-describedby={silent ? silentRemedyId(row.session_id) : undefined}
 				onClick={(event) => {
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
@@ -1356,14 +1371,6 @@ export function ChatSidebar({
 				}}
 			>
 				<ChatSessionStatus row={row} />
-					{silent ? (
-						/* The sentence `aria-describedby` names, and `sr-only` rather than hidden:
-						   a `display: none` or `hidden` element is out of the accessibility tree,
-						   which is exactly the failure the association exists to avoid. */
-						<span id={silentRemedyId(row.session_id)} className="sr-only">
-							{SILENT_REMEDY}
-						</span>
-					) : null}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 			    in `features/chat/chat-search.ts` — which is also where the three
 			    failed layouts that led to it are written down (an orphan `·` from
@@ -1446,6 +1453,33 @@ export function ChatSidebar({
 		 * state only a pin can produce. "Byte-identical to the pre-change panel" is still the
 		 * claim this branch makes; what moved is which panel is the pre-change one.
 		 */
+		/*
+		 * THE SENTENCE `aria-describedby` NAMES, AND IT IS OUT HERE ON PURPOSE (review round 2's
+		 * MAJOR 2, design D5, QA Q-4 and UX U6 - all four roles measured the same thing).
+		 *
+		 * It shipped INSIDE the button, and a button takes its accessible name from its contents
+		 * (AccName 1.2 § 4.3.1 step 2F, "name from each child"): the clause was collected into
+		 * the NAME as well as into the description, so a reader heard the advice twice per pass
+		 * over the row while the name stopped being the state's sentence. Measured in Chromium's
+		 * own tree, the shipped row read `name: "Not answering · process alive (last heartbeat
+		 * 15m ago) /stop if it stays silent Quiet owner (stale beat)"`.
+		 *
+		 * ONE LEVEL OUT, and both channels are what they claim: `aria-describedby` resolves by id
+		 * anywhere in the document, so the description survives, and the name is the state's
+		 * sentence again. It is rendered BESIDE the button rather than collapsed into it - the
+		 * placement `directory-indicator.tsx` uses for the same job - and at BOTH row shapes
+		 * below, because the remedy is about the session's state and not about the pin
+		 * capability: a row that offers no pin still offers the stop.
+		 *
+		 * `sr-only` rather than `hidden`: a `display: none` element is out of the accessibility
+		 * tree altogether, which is exactly the failure the association exists to avoid.
+		 */
+		const silentRemedy = silent ? (
+			<span id={silentRemedyId(row.session_id)} className="sr-only">
+				{SILENT_REMEDY}
+			</span>
+		) : null;
+
 		if (!pinsEnabled) {
 			return (
 				<div
@@ -1453,6 +1487,7 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{silentRemedy}
 				</div>
 			);
 		}
@@ -1465,6 +1500,7 @@ export function ChatSidebar({
 				className={cn("group", rowBoxStyle, current && rowCurrent)}
 			>
 				{rowButton}
+				{silentRemedy}
 				{/*
 				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
 				 * AT REST whenever the capability is present, so the reveal cannot reflow

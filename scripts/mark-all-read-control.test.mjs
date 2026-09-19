@@ -767,6 +767,27 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 			clause.textContent && !clause.textContent.includes("·"),
 			"the description kept the tooltip's separator, which is read aloud as punctuation",
 		);
+		/*
+		 * AND THE TARGET IS OUTSIDE THE ROW, which is the half that decides whether the
+		 * clause is ALSO in the accessible name (review round 2's MAJOR 2, measured in
+		 * Chromium's tree by all four roles). A button takes its name from its contents,
+		 * so an `sr-only` span inside it is collected into the name as well as pointed at
+		 * by the description — the reader heard the advice twice, and the name stopped
+		 * being the state's sentence. This harness has no accessibility tree, so it
+		 * asserts the STRUCTURAL fact the property rests on rather than the property:
+		 * the named element is not a descendant of the named element's owner. The tree
+		 * reading itself is in the round's evidence, and `directory-indicator.tsx` places
+		 * its own sentence the same way.
+		 */
+		assert.equal(
+			silent.querySelector(`#${id}`),
+			null,
+			"the remedy is inside the row button, so name-from-content collects it into the accessible name as well",
+		);
+		assert.ok(
+			silent.parentElement?.querySelector(`#${id}`),
+			"the remedy is not beside the row either — `aria-describedby` resolves by id, so it has to render somewhere",
+		);
 		// The control: the state next door offers no stop.
 		assert.equal(failed.getAttribute("aria-describedby"), null);
 		assert.doesNotMatch(failed.getAttribute("title") ?? "", /\/stop/);
