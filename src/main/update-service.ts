@@ -1451,6 +1451,12 @@ function startRelaunchWatchdog(input: {
 		// script would wait on a launchd job that this path never submits, and settle
 		// on the bound instead of on the install (management MAJOR-1).
 		installerPid: input.installerPid ?? null,
+		// The same two facts `installerIsAlive`/`installerElsewhere` use on this side
+		// of the seam, so the script's own "is the installer gone" answer cannot
+		// disagree with the app's (review R2-1): the script asks them of a process
+		// listing before it relaunches the app into an install that is still running.
+		shipItPath: shipItPathInBundle(bundlePath),
+		stagingRoot: updateStagingRoot(app.getPath("userData")),
 		// What "the install is over" is measured against on disk (review R11):
 		// the updater's advertised version, and nothing that is already in place
 		// (review R15).
