@@ -60,6 +60,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 import { withNotificationsOff } from "../../../../scripts/notifications-off.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -258,7 +259,14 @@ env.LOCAL_OPERATOR_UI_WINDOW_MODE = "headless";
 
 const child = spawn(
 	ELECTRON_BIN,
-	[
+	/*
+	 * THE MOCK KEYCHAIN SWITCH COMES FROM ITS ONE HOME (`scripts/chrome-keychain.mjs`):
+	 * a scratch HOME has no login keychain, and a Chromium that reaches Keychain
+	 * Services there asks macOS to CREATE one - on the operator's screen. Spelling
+	 * the switch here instead of importing it is what `chrome-keychain.test.mjs`
+	 * fails on by name.
+	 */
+	withMockKeychain([
 		// The app directory as an argument, and the cwd outside the checkout: the
 		// app's dotenv reads `.env` from its cwd with `override: true`.
 		ROOT,
@@ -266,10 +274,7 @@ const child = spawn(
 		`--remote-debugging-port=${port}`,
 		"--window-mode=headless",
 		`--window-size=${WINDOW_SIZE}`,
-		// A scratch HOME has no login keychain, and a Chromium that reaches Keychain
-		// Services there asks macOS to CREATE one - on the operator's screen.
-		"--use-mock-keychain",
-	],
+	]),
 	{ env, cwd: APP_CWD, stdio: ["ignore", "pipe", "pipe"] },
 );
 const stream = [];
