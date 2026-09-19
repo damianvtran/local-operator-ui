@@ -144,7 +144,25 @@ export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
  * the page-level fallback and this one are the same sentence about the same
  * event and drifted apart when they were two literals.
  */
-export const SEND_UNCONFIRMED_MESSAGE =
+export /**
+ * The app's own sentence for a REFUSAL, and the error's own for everything else.
+ *
+ * WHY THIS IS NOT A BARE `userFacingMessage` CALL (measured, review round 3): the
+ * translator composes the desktop transport's refusal vocabulary, and the store's
+ * errors are not all refusals - a session the server does not know arrives as the
+ * app's own "Unknown session." and routing it through the translator replaced it
+ * with the generic fallback, which is the same class of mistake in the other
+ * direction (three session-switch cases caught it). A transport refusal has a
+ * `DesktopControlError`; anything else keeps the message it was given.
+ */
+const storeErrorMessage = (error: unknown, fallback: string): string =>
+	error instanceof DesktopControlError
+		? userFacingMessage(error, fallback)
+		: error instanceof Error
+			? error.message
+			: fallback;
+
+const SEND_UNCONFIRMED_MESSAGE =
 	"The send could not be confirmed. Retry this draft.";
 
 /**
@@ -1783,7 +1801,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * (measured at 18.3 s; UX round 2, U1). The send path already
 							 * composed ours; this is the store's error value doing the same.
 							 */
-							error: userFacingMessage(
+							error: storeErrorMessage(
 								error,
 								"Chats could not refresh. Retry to reconnect.",
 							),
@@ -1823,7 +1841,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					// Same rule as `fetchSessions` above: the app states the refusal's own
 					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({
-						error: userFacingMessage(
+						error: storeErrorMessage(
 							error,
 							"Chat could not start. Retry with the same draft.",
 						),
@@ -2151,7 +2169,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * user with the server's own sentence about itself (review round
 							 * 3). Same seam as the other two.
 							 */
-							navigationError: userFacingMessage(
+							navigationError: storeErrorMessage(
 								error,
 								"Chat could not open. Retry.",
 							),

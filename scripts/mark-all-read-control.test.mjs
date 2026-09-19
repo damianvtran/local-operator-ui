@@ -717,8 +717,14 @@ test("the store composes the refusal's own sentence instead of storing the serve
 			"Desktop controls require a backend started by the desktop app.";
 		window.api = {
 			desktop: {
+				/*
+				 * A DesktopControlError, because that is what the transport throws for a
+				 * refusal: the store keeps the message of anything else (its own "Unknown
+				 * session." is not a refusal), so a plain Error here would test the wrong
+				 * branch.
+				 */
 				request: () =>
-					Promise.reject(new Error(`Get sessions request failed: 503 ${prose}`)),
+					Promise.reject(new DesktopControlError(503, prose)),
 			},
 		};
 		await store.getState().fetchSessions({ silent: true });
