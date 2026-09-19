@@ -1269,10 +1269,27 @@ function writeBundleFixture(
 		appPath,
 	]);
 	if (tamper) {
-		// A file added to a SEALED bundle: `codesign --verify` reports it as a
-		// sealed resource that is missing or invalid, which is the reading the
-		// staging step makes and Apple's own validation would make too.
-		writeFileSync(join(contents, "MacOS", "added-after-signing.txt"), "x");
+		/*
+		 * A file added to a SEALED bundle: `codesign --verify` reports it as a sealed
+		 * resource that is missing or invalid, which is the reading the staging step
+		 * makes and Apple's own validation would make too.
+		 *
+		 * NOT under `Contents/MacOS/`, and that is the fix for a test that was green in
+		 * CI and red here (manager round 3, R3-4). Main's pre-flight gate reads the
+		 * FIRST `<name>.app/Contents/MacOS/<file>` entry of the archive as the app's
+		 * own executable and asks `codesign` about it (`zipMainExecutableEntry`,
+		 * `inspectStagedSignature`); `ditto`'s entry order is not ours to choose, and on
+		 * this machine the added `.txt` sorted ahead of the binary. The gate then read an
+		 * unsigned text file, could not establish launchability, and answered
+		 * `artifact-cannot-launch` BEFORE the staged-bundle seal check this case exists
+		 * for - while CI, where the binary sorted first, reached the seal check and passed.
+		 * A tamper file belongs anywhere in the bundle EXCEPT the one directory another
+		 * check picks the executable out of: the seal is broken just as thoroughly from
+		 * `Contents/Resources/`, and the case then tests what it says it tests, on every
+		 * machine.
+		 */
+		mkdirSync(join(contents, "Resources"), { recursive: true });
+		writeFileSync(join(contents, "Resources", "added-after-signing.txt"), "x");
 	}
 	return appPath;
 }
@@ -1734,6 +1751,26 @@ test(
 	"a staged tree that is not this app, or is not sealed, is blocked rather than handed to Squirrel",
 	{ skip: process.platform !== "darwin" },
 	async () => {
+		/*
+		 * WHICH REFUSAL OWNS WHICH CASE, decided rather than discovered (manager round 3,
+		 * R3-4). Two checks can stop a bad staged artifact and they ask different
+		 * questions:
+		 *
+		 *   - MAIN'S pre-flight gate asks "would macOS launch this artifact?" of the
+		 *     archive's own executable, BEFORE anything is extracted. It answers
+		 *     `artifact-cannot-launch` - either because it READ the signature and found a
+		 *     profile-backed claim, or (the arm that fired here) because it could not read
+		 *     one at all and no profile is embedded, which is 0.29.6's exact shape.
+		 *   - THIS BRANCH'S staging check asks "is the EXTRACTED tree this app, and is its
+		 *     seal intact?" and answers `download-verification-failed`.
+		 *
+		 * For both cases below the artifact is properly signed and claims nothing macOS
+		 * needs a profile for, so main's gate reads it and returns null - and the staged
+		 * tree's own verdict is the one that answers, which is what these cases are for.
+		 * The third case exists to pin the other order deliberately rather than leave it
+		 * to `ditto`: it makes the archive's executable genuinely unreadable, so main's
+		 * gate owns that one and answers with its own code and its own heading.
+		 */
 		const cases = [
 			{
 				name: "a staged bundle that is a different application",
@@ -1743,6 +1780,7 @@ test(
 						shipItLog,
 						bundleId: "com.local-operator.something-else",
 					}),
+				code: "download-verification-failed",
 				detail: /is not this application/,
 			},
 			{
@@ -1753,7 +1791,55 @@ test(
 						shipItLog,
 						tamper: true,
 					}),
+				code: "download-verification-failed",
 				detail: /seal reads `unsealed`/,
+			},
+			{
+				/*
+				 * The arm the fixture used to reach by accident. An executable `codesign`
+				 * cannot read is "we could not establish that macOS would launch this", and
+				 * main's gate refuses that before a single byte is extracted - which is the
+				 * right order for it: the refusal costs nothing, and the alternative is
+				 * staging a tree whose launchability is unknown. Asserted here so a future
+				 * change to either check has to keep the ordering.
+				 *
+				 * The archive is BUILT for this, rather than borrowed from a tampered one:
+				 * `Contents/MacOS/` holds a single entry that is not a Mach-O, so the entry
+				 * main's gate picks is unsigned whatever order `ditto` chose - which is the
+				 * nondeterminism that made this case green in CI and red on the machine that
+				 * wrote it (manager round 3).
+				 */
+				name: "a staged artifact whose executable cannot be read at all",
+				zip: (dir, shipItLog) => {
+					const staged = join(dir, "unsigned-tree");
+					mkdirSync(staged, { recursive: true });
+					const appPath = writeBundleFixture(
+						join(staged, `${FIXTURE_APP_NAME}.app`),
+						{ version: "0.0.2", shipItLog },
+					);
+					rmSync(join(appPath, "Contents", "MacOS", FIXTURE_APP_NAME), {
+						force: true,
+					});
+					writeFileSync(
+						join(appPath, "Contents", "MacOS", "!not-a-macho"),
+						"not a mach-o\n",
+					);
+					const zipPath = join(dir, "local-operator-ui-0.0.2-arm64.zip");
+					execFileSync("/usr/bin/ditto", [
+						"-c",
+						"-k",
+						"--sequesterRsrc",
+						"--keepParent",
+						appPath,
+						zipPath,
+					]);
+					return zipPath;
+				},
+				code: "artifact-cannot-launch",
+				// The DETAIL, not the message: it names the two facts a support thread
+				// quotes - no embedded profile, and a signature that could not be read.
+				detail:
+					/carries no .*embedded\.provisionprofile and its signature could not be read/,
 			},
 		];
 		for (const testCase of cases) {
@@ -1791,11 +1877,23 @@ test(
 					(entry) => entry.channel === "update-install-blocked",
 				);
 				assert.ok(block, `${testCase.name}: no block reached the renderer`);
-				assert.equal(block.payload.code, "download-verification-failed");
+				assert.equal(
+					block.payload.code,
+					testCase.code,
+					`${testCase.name}: the wrong refusal answered`,
+				);
 				assert.match(block.payload.detail, testCase.detail, testCase.name);
+				/*
+				 * And the log line names the owner: the staged-tree verdicts say
+				 * "Refusing to install the staged update", main's pre-flight gate says
+				 * "Refusing the update to", and a case that reached the wrong one would pass
+				 * on its code alone if the two ever merged.
+				 */
 				assert.ok(
 					globalThis.__loTestLogs.some((line) =>
-						/Refusing to install the staged update: /.test(line),
+						testCase.code === "artifact-cannot-launch"
+							? /Refusing the update to /.test(line)
+							: /Refusing to install the staged update: /.test(line),
 					),
 					`${testCase.name}: ${JSON.stringify(globalThis.__loTestLogs)}`,
 				);
