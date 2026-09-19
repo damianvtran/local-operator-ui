@@ -301,6 +301,23 @@ now arms instead of printing a refusal, and the browser host takes the plan's
 `show` to suppress consent banners. Both directions are the safe one, and both
 are why an assumed mode is reported on stdout rather than left implicit.
 
+**The mode governs the WINDOW; it cannot promise what the rig does afterwards.**
+Measured on this machine: 46 app instances launched by rigs, 227 window samples,
+**zero windows** — the policy working exactly as documented — and one of those
+windowless, unfocusable instances was still the **frontmost application for about
+eight seconds**. "Never shown" and "cannot take the operator's focus" are
+different properties: the launch decides the first, and the requests the rig
+makes decide the second. So a rig script never calls `window.focus()` (which asks
+macOS to order the window *and* activate the app) and never sends
+`Page.bringToFront` or `Target.activateTarget` over CDP. Element focus —
+`input.focus()`, `document.body.focus()` — moves a caret inside the page, and
+`Emulation.setFocusEmulationEnabled` makes a page that is not on screen read as
+focused; between them they cover every focus assertion a rig needs, which is why
+the rule bans the three calls that leave the page rather than focus itself.
+`scripts/window-mode.test.mjs` scans `scripts/` for those three the same way it
+scans `src/main` for off-site raises, because the `src/main` scan cannot see a
+request made from the renderer side — which is where a rig reaches the OS.
+
 ```bash
 # The built app, driven over CDP at an exact size, with no window at all.
 #
