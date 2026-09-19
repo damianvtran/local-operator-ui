@@ -3,13 +3,27 @@ import {
 	AvatarFallback,
 	Badge,
 	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 	Skeleton,
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Bot, FileText, Globe } from "lucide-react";
+import {
+	Archive,
+	ArchiveRestore,
+	Bot,
+	FileText,
+	Globe,
+	MoreHorizontal,
+	Trash2,
+} from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
+import { archiveControlLabel } from "../chat-archived";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 
@@ -102,6 +116,33 @@ type ChatHeaderProps = {
 	 * the number is the whole information the badge carries (spec 5.1, 7.3).
 	 */
 	browserAttentionCount?: number;
+	/**
+	 * Whether THIS conversation is archived, as the pane knows it, and whether the
+	 * backend can hold archived conversations at all.
+	 *
+	 * `archived` is a plain boolean rather than a lookup here for the reason the
+	 * header takes `fileCount`: the pane owns the canonical stream and the session
+	 * store, and this component is rendered by stories with fixtures and by the
+	 * legacy path with nothing. `archiveEnabled` is the capability, passed down
+	 * rather than re-read, so the pill and the sidebar's control cannot gate on two
+	 * different answers.
+	 */
+	archived?: boolean;
+	archiveEnabled?: boolean;
+	/**
+	 * The session's own actions: archive/unarchive it, and delete it permanently.
+	 *
+	 * Absent when the host cannot offer them (no capability, or a pane with no
+	 * session), which is what keeps the menu out of the DOM entirely rather than
+	 * rendering a set of items that do nothing - the same fail-closed rule the
+	 * archive slot in the sidebar follows.
+	 *
+	 * `onRequestDelete` OPENS a confirmation and deletes nothing: the wire requires
+	 * a confirmed delete, so this component's job ends at asking.
+	 */
+	onSetArchived?: (archived: boolean) => void;
+	deleteEnabled?: boolean;
+	onRequestDelete?: () => void;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
@@ -116,6 +157,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	readerChildId = null,
 	onOpenBrowser,
 	browserAttentionCount = 0,
+	archived = false,
+	archiveEnabled = false,
+	onSetArchived,
+	deleteEnabled = false,
+	onRequestDelete,
 }) => {
 	/*
 	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
@@ -335,6 +381,115 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
 				)}
 			>
+				{/*
+				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
+				 *
+				 * The state is a `Badge shape="pill"` and the action is a ghost icon
+				 * button beside it - two elements rather than one pill-shaped button, and
+				 * the contract is what decides it: `badge.tsx` states that a badge is not a
+				 * control ("if it can be clicked or dismissed it is a button or a chip"),
+				 * and `branding.md` § 598 reserves `rounded-full` for avatars, status dots
+				 * and pill badges, so a Button cannot be the pill. The pair is also the
+				 * arrangement the badge idiom already uses in this cluster: a count badge on
+				 * a control states the fact, and the control is what acts.
+				 *
+				 * Archiving the OPEN conversation leaves it open and merely adds this
+				 * ("archive hides from lists; it does not close"), which is why the marker
+				 * lives in the header at all rather than being implied by the row having
+				 * left the sidebar.
+				 *
+				 * The action's own name states the ACTION and the badge states the STATE,
+				 * the rule the pin control is written under: a control whose name is a state
+				 * makes a screen reader ask what pressing it would do.
+				 */}
+				{archiveEnabled && archived && (
+					<>
+						<Badge
+							shape="pill"
+							data-session-archived-pill
+							title="This conversation is archived. It is hidden from your chats until you restore it."
+						>
+							<Archive aria-hidden="true" />
+							Archived
+						</Badge>
+						{onSetArchived && (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onSetArchived(false)}
+								aria-label={archiveControlLabel(agentName, true)}
+								title={archiveControlLabel(agentName, true)}
+							>
+								<ArchiveRestore aria-hidden="true" />
+							</Button>
+						)}
+					</>
+				)}
+				{/*
+				 * THE CONVERSATION'S OWN MENU: the one surface that acts on the session as
+				 * a whole rather than on what is inside it.
+				 *
+				 * It exists because the alternative the brief names - the chat options
+				 * sheet (`chat-options-sidebar.tsx`, which hosts the existing destructive
+				 * "Clear conversation") - is UNREACHABLE on the canonical path this header
+				 * is the top of: `chat-content.tsx` renders that sheet only for `!canonical`
+				 * and `chat-page.tsx` passes `isOptionsSidebarOpen={false}` unconditionally,
+				 * so a delete control there would be dead UI. The header is the session's
+				 * options surface in the shipped app, and `DropdownMenu` is this
+				 * repository's established shape for a small set of row-level actions.
+				 *
+				 * FAIL-CLOSED AND WHOLE: with neither capability this renders nothing at
+				 * all - no trigger, no reserved box - so the withdrawn header is the header
+				 * that never knew about archiving. A trigger whose only item is disabled is
+				 * a menu that advertises a feature the backend does not have.
+				 */}
+				{(archiveEnabled || deleteEnabled) && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label="Conversation actions"
+							>
+								<MoreHorizontal aria-hidden="true" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="min-w-45">
+							{archiveEnabled && (
+								<DropdownMenuItem
+									onSelect={() => onSetArchived?.(!archived)}
+									disabled={!onSetArchived}
+								>
+									{archived ? (
+										<ArchiveRestore aria-hidden="true" />
+									) : (
+										<Archive aria-hidden="true" />
+									)}
+									<span>
+										{archived ? "Restore conversation" : "Archive conversation"}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{archiveEnabled && deleteEnabled && <DropdownMenuSeparator />}
+							{deleteEnabled && (
+								<DropdownMenuItem
+									/*
+									 * `text-danger`, the ink the app paints a destructive row in (the
+									 * command palette's own destructive items use it). The action does
+									 * NOT delete: it opens the confirmation, because the wire requires a
+									 * confirmed delete and a menu pick is not a confirmation.
+									 */
+									className="text-danger"
+									onSelect={() => onRequestDelete?.()}
+									disabled={!onRequestDelete}
+								>
+									<Trash2 aria-hidden="true" />
+									<span>Delete conversation…</span>
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<RunDetailsTrigger
 					details={runDetails}
 					mcpServers={mcpServers}
