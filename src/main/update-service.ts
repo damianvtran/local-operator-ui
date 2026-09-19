@@ -113,6 +113,7 @@ import {
 	installInFlightPayload,
 	installJobState,
 	installLaunchHoldNotice,
+	installPointerPath,
 	installedBundleSealBlock,
 	installerSearchPath,
 	isInstallInFlight,
@@ -3296,6 +3297,7 @@ export class UpdateService {
 	 * a dismiss: the panel that reports a failure is not the only place the user
 	 * can find out what happened, which is what made Dismiss an information loss
 	 * (reviews U1, D3).
+	 *
 	 */
 	public lastInstallAttempt(): LastInstallAttempt | null {
 		return readLastInstallAttempt(this.markerDir());
@@ -4684,11 +4686,17 @@ export class UpdateService {
 	 * uv tool root), so a prefix held from minutes ago can name a tree nothing is
 	 * using any more. The reading is what `didSourceRebuildLand` compares, in both
 	 * directions.
+	 *
+	 * Read through the install's own pointer for the same reason the version is (see
+	 * `readInstallVersionAt`): a rebuild keeps `pyproject.toml`'s version and moves the
+	 * `.lop-source` ref, so the marker is the ONLY evidence of that move on this route -
+	 * and a marker read from the frozen `generations/<id>` the daemon started from cannot
+	 * show it any more than the version could.
 	 */
 	private readRebuildMarkerState(
 		installPath: string | null,
 	): SourceMarkerState {
-		const identity = readInstallIdentity(installPath);
+		const identity = readInstallIdentity(installPointerPath(installPath));
 		return readSourceMarkerState(identity.venvPrefix ?? null);
 	}
 
@@ -5935,9 +5943,18 @@ export class UpdateService {
 	 * than into a plausible number. The one caller with a record and no path - the
 	 * reconciliation reading a marker an older build wrote - names its fallback explicitly
 	 * and logs it.
+	 *
+	 * AND THE INSTALL IS READ THROUGH ITS OWN POINTER, because on a generation layout the
+	 * install it names cannot move under it: the tree `/health` reports as the install root
+	 * is `generations/<id>`, an install lands BESIDE it, and only `<stable>/current` moves.
+	 * Reading the concrete path here is what produced the false "did not take effect" verdict
+	 * of 2026-09-18; `installPointerPath` is the same install named so the flip is visible,
+	 * and it is a no-op on every other layout.
 	 */
 	private readInstallVersionAt(installPath: string | null): string | null {
-		return readInstallIdentity(installPath)?.version ?? null;
+		return (
+			readInstallIdentity(installPointerPath(installPath))?.version ?? null
+		);
 	}
 
 	/**
@@ -6353,8 +6370,17 @@ export class UpdateService {
 			 * The install this attempt runs, recorded so a later launch does not have to resolve
 			 * one of its own: the reconciliation reads this, and a marker without it (an older
 			 * build's) is the only case that falls back.
+			 *
+			 * RECORDED THROUGH ITS OWN POINTER where the layout has one, so the record outlives
+			 * the tree it names: on a generation install the flip an install performs is visible
+			 * only through `<stable>/current`, and the generation this attempt started from is
+			 * unreferenced the moment it is superseded - which makes it prunable, and a record
+			 * naming a pruned tree reads as "nothing moved" for an install that landed. A record
+			 * an older build wrote carries the concrete generation path instead, which the reader
+			 * resolves through the same pointer (`installPointerPath` is idempotent, so both
+			 * spellings land in the same place).
 			 */
-			installPath,
+			installPath: installPointerPath(installPath),
 		};
 		writePendingServerUpdateMarker(this.markerDir(), marker);
 		const run = await this.runGlobalUpdate(
@@ -6383,7 +6409,7 @@ export class UpdateService {
 					deadlineAt: marker.deadlineAt,
 					groupPid: pid,
 					groupStartedAt: readProcessStartStamp(pid),
-					installPath,
+					installPath: installPointerPath(installPath),
 				});
 			},
 		);

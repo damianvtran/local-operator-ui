@@ -12,7 +12,14 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, delimiter, dirname, join } from "node:path";
+import {
+	basename,
+	delimiter,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+} from "node:path";
 import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
 
 /**
@@ -1121,6 +1128,12 @@ export type PendingServerUpdateMarker = {
 	 * Optional because a record written by an older build does not have it; a reader
 	 * that finds none falls back to the shim and SAYS SO, rather than pretending the
 	 * reading is about the attempt's install.
+	 *
+	 * AND ON A GENERATION INSTALL IT IS SPELLED THROUGH THAT INSTALL'S POINTER
+	 * (`installPointerPath`): the generation the attempt started from is unreferenced
+	 * once superseded and therefore prunable, while the pointer names the install the
+	 * attempt moved. Records written by older builds carry a concrete generation path,
+	 * which the reader resolves the same way, so both spellings answer alike.
 	 */
 	installPath?: string | null;
 };
@@ -3618,6 +3631,62 @@ export function generationInstallRoot(
 		}
 		dir = parent;
 	}
+}
+
+/**
+ * The same install, named through its own `current` pointer, when it has one.
+ *
+ * WHY A READER IN A GENERATION INSTALL NEEDS THIS. Under the layout above, the
+ * tree a process was launched from is `generations/<id>` and is NEVER mutated by
+ * an install: `local-operator update` builds a NEW generation and flips
+ * `<stable>/current` to it. So a path handed out by a running daemon - `/health`
+ * reports its own install root, and that root names the generation the daemon
+ * started from - is a photograph of a moment, and any "did this install move"
+ * reading taken against it compares the same frozen tree with itself.
+ *
+ * That is the whole defect this function exists for, measured on this machine
+ * 2026-09-18: the app ran the serving install's own front end (correct), and then
+ * read both halves of its verdict - the version and the rebuild marker - from the
+ * generation the daemon came from, so a run that created `20260918T233919Z-0.59.7`
+ * and flipped the pointer reported "The server update to 0.59.7 did not take
+ * effect: the install still reports 0.59.6" while Settings, one second later,
+ * read 0.59.7 through the shim.
+ *
+ * WHAT IT IS NOT. Not a re-resolution of the install: the caller's subject stays
+ * the install it named (round 5/6's rule), and the pointer names the SAME install
+ * - one stable root, one layout - so `generations/<id>` and `<stable>/current`
+ * are two spellings of one subject that differ only in whether a flip is visible
+ * through them, which is the difference the evidence needs and the one the layout
+ * is for (`docs/design-install-generations.md` §2/§3.2).
+ *
+ * IDEMPOTENT: a path already spelled through the pointer resolves to the same
+ * string (the relative part is taken against the resolved generation), so it is
+ * safe on a record written by this build and on one written by an older build
+ * that stored a concrete generation path.
+ *
+ * Returns the path unchanged for every other layout - there is no pointer to
+ * follow on an install that rewrites itself in place - and null only for a null
+ * input, so a caller may pass its subject straight through.
+ */
+export function installPointerPath(filePath: string | null): string | null {
+	if (!filePath) return null;
+	const identity = readInstallIdentity(filePath);
+	const generation = generationInstallRoot(identity);
+	if (!generation) return filePath;
+	let resolved: string;
+	try {
+		resolved = realpathSync(identity.realPath ?? identity.path ?? filePath);
+	} catch {
+		return filePath;
+	}
+	const inside = relative(generation, resolved);
+	// A file that is not in the generation it was recognised by cannot be
+	// re-pointed by a relative move, and guessing where it lands is how a reader
+	// ends up describing a tree nobody named. The caller's own spelling stands.
+	if (inside === "" || inside.startsWith("..") || isAbsolute(inside)) {
+		return filePath;
+	}
+	return join(dirname(dirname(generation)), "current", inside);
 }
 
 /**

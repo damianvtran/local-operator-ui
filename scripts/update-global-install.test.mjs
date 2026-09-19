@@ -3,6 +3,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	realpathSync,
+	renameSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
@@ -55,6 +56,7 @@ const {
 	classifyGlobalInstall,
 	didUpgradeLand,
 	generationInstallRoot,
+	installPointerPath,
 	installerSearchPath,
 	isSourceBuildRef,
 	readInstallIdentity,
@@ -657,5 +659,102 @@ test("`lop update` exiting 0 is not evidence that the install moved", () => {
 	assert.equal(
 		didUpgradeLand({ before: null, after: "0.55.10", target: "0.56.0" }),
 		false,
+	);
+});
+
+// ---------------------------------------------------------------------------
+// Evidence reads follow the install's own pointer
+// ---------------------------------------------------------------------------
+
+/**
+ * One generation of the layout `lop update` installs into: the venv under
+ * `tools/local-operator`, the generation's own console script a relative symlink
+ * into it, and `<stable>/current` naming the generation.
+ */
+const generationInstall = (stable, id, version) => {
+	const root = join(stable, "generations", id);
+	const venv = uvToolEnv(join(root, "tools", "local-operator"), {
+		version,
+		sourceRef: `pypi ${version}`,
+	});
+	mkdirSync(join(root, "bin"), { recursive: true });
+	symlinkSync(
+		join("..", "tools", "local-operator", "bin", "local-operator"),
+		join(root, "bin", "local-operator"),
+	);
+	return { root, venv };
+};
+
+/** Point `<stable>/current` at a generation: staged sibling, then an atomic rename. */
+const flipPointer = (stable, root) => {
+	const staged = join(stable, `current.tmp-${process.pid}`);
+	symlinkSync(root, staged);
+	renameSync(staged, join(stable, "current"));
+};
+
+test("an evidence read of a generation install follows the install's own pointer", () => {
+	/*
+	 * THE DEFECT, at the reader. A generation install never moves the tree a process
+	 * was launched from: an install lands BESIDE it and flips `<stable>/current`
+	 * (`docs/design-install-generations.md` § 2/§ 3.2). The install root `/health`
+	 * reports is that generation, so a reader handed it saw the same version before
+	 * and after - and on 2026-09-18 the app told the operator "The server update to
+	 * 0.59.7 did not take effect: the install still reports 0.59.6" for an install
+	 * that had landed, while Settings read 0.59.7 through the shim.
+	 *
+	 * `installPointerPath` is the same install named through the one spelling that
+	 * moves. Both halves are asserted here, because a fix that made the frozen path
+	 * work would be a different bug: the concrete generation must STAY put.
+	 */
+	const root = tempRoot("pointer-evidence");
+	const stable = join(root, "lop");
+	const first = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, first.root);
+	const script = join(first.venv, "bin", "local-operator");
+
+	assert.equal(readInstallIdentity(script).version, "0.59.6");
+	const pointer = installPointerPath(script);
+	assert.equal(
+		pointer,
+		join(stable, "current", "tools", "local-operator", "bin", "local-operator"),
+	);
+	assert.equal(readInstallIdentity(pointer).version, "0.59.6");
+	// Idempotent: the pointer spelling resolves to itself, which is what makes it safe
+	// on a record this build wrote and on one an older build wrote with a concrete path.
+	assert.equal(installPointerPath(pointer), pointer);
+	// The generation's own `bin` script and the launcher in `~/.local/bin` are the same
+	// install, so both spell to the same pointer path.
+	assert.equal(
+		installPointerPath(join(first.root, "bin", "local-operator")),
+		pointer,
+	);
+
+	// The install lands: a new generation beside it, and the flip.
+	const second = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	flipPointer(stable, second.root);
+
+	// The tree the daemon came from cannot move - that is the layout's whole point, and
+	// the reason a verdict read from it was frozen rather than merely stale.
+	assert.equal(readInstallIdentity(script).version, "0.59.6");
+	// And the pointer follows the flip.
+	assert.equal(readInstallIdentity(pointer).version, "0.59.7");
+
+	/*
+	 * The edges. Every other layout answers the caller's own path, because there is no
+	 * pointer to follow on an install that rewrites itself in place - and null stays
+	 * null so a caller may pass its subject straight through.
+	 */
+	const legacy = legacyInstall(root, { version: "0.55.10" });
+	const legacyScript = join(legacy, "bin", "local-operator");
+	assert.equal(installPointerPath(legacyScript), legacyScript);
+	assert.equal(installPointerPath(null), null);
+
+	// A `generations/` directory with no pointer is not the layout in use, so there is
+	// nothing to resolve through: the read stands as the caller spelled it.
+	const unpointed = join(root, "lop-no-current", "generations", "id");
+	uvToolEnv(unpointed, { version: "0.55.10" });
+	assert.equal(
+		installPointerPath(join(unpointed, "bin", "local-operator")),
+		join(unpointed, "bin", "local-operator"),
 	);
 });

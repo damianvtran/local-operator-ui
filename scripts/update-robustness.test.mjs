@@ -12771,3 +12771,164 @@ test("no attempt-scoped evidence read resolves an install of its own", async () 
 		"exactly one caller may fall back to the shim: a record an older build wrote",
 	);
 });
+
+/**
+ * A GENERATION INSTALL CANNOT MOVE UNDER AN EVIDENCE READ, SO THE READ FOLLOWS THE POINTER.
+ *
+ * The operator's report of 2026-09-18: the press ran the serving install's own updater,
+ * that updater created `generations/20260918T233919Z-0.59.7` and flipped `<stable>/current`
+ * to it, and the app then told the user "The server update to 0.59.7 did not take effect:
+ * the install still reports 0.59.6" - while Settings, reading the same install through the
+ * shim one second later, printed 0.59.7.
+ *
+ * The mechanism was the layout's own point: the tree `/health` reports as the install root
+ * is the generation the DAEMON started from, an install lands beside it and never touches
+ * it, so `before` and `after` were two photographs of one frozen tree. `installPointerPath`
+ * names the same install through `<stable>/current`, which is the one spelling that moves.
+ *
+ * These cases drive the SHIPPED press against a real generation layout (`realEvidenceReads`,
+ * so the verdict comes from dist-info on disk and not from a scripted reading) and flip the
+ * pointer from inside the run, which is exactly what `lop update` does.
+ */
+
+/** One generation of the install layout: the venv under `tools/local-operator`, and its own `bin`. */
+const generationInstall = (stable, id, version) => {
+	const root = join(stable, "generations", id);
+	const venv = join(root, "tools", "local-operator");
+	mkdirSync(join(venv, "bin"), { recursive: true });
+	writeFileSync(join(venv, "bin", "local-operator"), "#!/bin/sh\nexit 0\n", {
+		mode: 0o755,
+	});
+	writeFileSync(join(venv, "pyvenv.cfg"), "home = /usr/bin\n");
+	writeFileSync(
+		join(venv, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+	);
+	writeFileSync(join(venv, ".lop-source"), `pypi ${version}\n`, "utf8");
+	const site = join(venv, "lib", "python3.13", "site-packages");
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	// The generation's console script is a symlink into its own venv (the layout's
+	// § 2), so `<generation>/bin/local-operator` and the venv's script are one file.
+	mkdirSync(join(root, "bin"), { recursive: true });
+	symlinkSync(
+		join("..", "tools", "local-operator", "bin", "local-operator"),
+		join(root, "bin", "local-operator"),
+	);
+	return { root, venv, script: join(venv, "bin", "local-operator") };
+};
+
+/** Point `<stable>/current` at a generation, staged-then-renamed as `lop update` does. */
+const flipPointer = (stable, root) => {
+	const staged = join(stable, `current.tmp-${process.pid}`);
+	symlinkSync(root, staged);
+	renameSync(staged, join(stable, "current"));
+};
+
+test("a landed install behind a generation pointer is not reported as a failed update", async () => {
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-stable-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const after = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	let markerDuring = null;
+	const run = await driveGlobalUpdate({
+		before: "0.59.6",
+		after: "0.59.7",
+		target: "0.59.7",
+		// The install root `/health` reports: the generation the daemon came from.
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+		runGate: ({ markerPath }) => {
+			// What the installer does while the app waits: build beside, then flip.
+			markerDuring = JSON.parse(readFileSync(markerPath, "utf8"));
+			flipPointer(stable, after.root);
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.59.7"), true);
+		assert.deepEqual(
+			backendErrors(run.sent),
+			[],
+			"an install that landed must not be reported as one that did not",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		/*
+		 * The record the reconciliation reads later carries the POINTER spelling: a
+		 * generation this attempt superseded is unreferenced and therefore prunable
+		 * (`design-install-generations.md` § 3.3), and a record naming a pruned tree
+		 * would read as "nothing moved" for an install that landed.
+		 */
+		assert.equal(
+			markerDuring?.installPath,
+			join(
+				stable,
+				"current",
+				"tools",
+				"local-operator",
+				"bin",
+				"local-operator",
+			),
+		);
+	} finally {
+		run.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+test("the unattended reconciliation follows the pointer a record names", async () => {
+	/*
+	 * The same seam on the launch-time path, where there is no press in scope. The
+	 * record this case writes carries the CONCRETE generation path, deliberately: that
+	 * is the spelling every record written before this fix holds, so the case is about
+	 * a marker an older build left as much as about one this build writes.
+	 */
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-record-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const landed = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	const drive = await driveGlobalUpdate({
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+	});
+	try {
+		// The install landed with nothing watching: the new generation exists and the
+		// pointer names it, and the record was written before the flip.
+		flipPointer(stable, landed.root);
+		writeFileSync(
+			drive.markerPath,
+			JSON.stringify({
+				before: "0.59.6",
+				target: "0.59.7",
+				startedAt: new Date().toISOString(),
+				deadlineAt: new Date(Date.now() - 60_000).toISOString(),
+				groupPid: null,
+				groupStartedAt: null,
+				installPath: before.script,
+			}),
+		);
+		await drive.updateService.reportUnattendedServerUpdate();
+		const completed = backendCompletion(drive.sent);
+		assert.ok(
+			completed,
+			`a landed unattended update must be reported: ${JSON.stringify(drive.sent.map((c) => c.channel))}`,
+		);
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		assert.equal(completed.payload.unattended, true);
+		assert.equal(existsSync(drive.markerPath), false);
+	} finally {
+		drive.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
