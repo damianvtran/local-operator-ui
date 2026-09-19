@@ -81,24 +81,26 @@ never focused: the run asserts both from main's own window facts before it takes
 | [`pins-withdrawn-dark`](pins-withdrawn-dark.png) ([light](pins-withdrawn-light.png)) | a backend whose capabilities omit `session_pins`, at rest | **Fail-closed**: no affordance anywhere, and the row is MAIN's own box with its button grown into it (design round 8, D1) |
 | [`pins-withdrawn-selected-dark`](pins-withdrawn-selected-dark.png) ([light](pins-withdrawn-selected-light.png)) | the same backend with **a conversation open** | **...and the state the defect hid in** (design round 8, D1): the selected row's ground and the row's own click strip are on screen, where a button that has lost its flex parent shrinks. At rest the two trees paint the same panel either way, which is why this second state exists rather than a re-run of the first |
 | [`pins-withdrawn-main-dark`](pins-withdrawn-main-dark.png) ([light](pins-withdrawn-main-light.png)) | the same backend, driven by the **same scene on `origin/main`** | **...byte-identical to the pre-change panel**, at rest — see below |
-| [`pins-withdrawn-selected-main-dark`](pins-withdrawn-selected-main-dark.png) ([light](pins-withdrawn-selected-main-light.png)) | `origin/main` (`a17a6b3ba`) in that same opened state | **...byte-identical again**, in the state that discriminates — the comparison D1 turns on |
+| [`pins-withdrawn-selected-main-dark`](pins-withdrawn-selected-main-dark.png) ([light](pins-withdrawn-selected-main-light.png)) | `origin/main` (`e8d56ef3e`) in that same opened state | **...byte-identical again**, in the state that discriminates — the comparison D1 turns on |
 
 Two things are worth reading off the file set rather than per frame:
 
 * **`pins-withdrawn-{dark,light}.png` and `pins-withdrawn-main-{dark,light}.png` are
   byte-identical**, and so are `pins-withdrawn-selected-{dark,light}.png` and
   `pins-withdrawn-selected-main-{dark,light}.png` (`cmp` prints nothing for all four pairs;
-  sha256 `fd0ada779841` / `d8fe9972a77d` at rest and `53754cd6c238` / `fb58c9ee4aa6` with a
+  sha256 `fd0ada779841` / `d8fe9972a77d` at rest and `8b722184531a` / `021bb538fe4d` with a
   conversation open). The `main` halves come from a second worktree at `origin/main`
-  (`a17a6b3ba`) running the *same* scene against the *same* daemon, so what the pair compares
-  is the two trees and nothing else — and this pair was **re-shot** for design round 8 rather
-  than re-stamped: the previous four frames were identical to `origin/main` as it stood then
-  (`013aad424`), but the withdrawn path no longer rendered main's row box, and a re-stamp would
-  have certified that regression as unchanged. The hashes above are not the previous pass's for
-  a second reason worth naming: the rig seeded a fresh store, and the seeded transcript's
-  minute-resolution timestamps are what the panel draws. This is the claim the design states
-  as "the row is byte-identical to the pre-change frame", and it is a measurement rather than an
-  assertion.
+  (`e8d56ef3e`, the fold before this head) running the *same* scene against the *same* daemon,
+  **one launch per theme**, so what the pair compares is the two trees and nothing else. The
+  OPENED pair was **re-shot for this round**, and the reason is the fold rather than this
+  branch: main's `chat-content.tsx` change repaints two transcript lines, which moved that pair
+  by 2,974 px in the same two bands in both themes (y `1261-1283`, y `1403-1425`, x >= 1128 -
+  inside the transcript pane, nowhere near the sidebar row the claim is about). The AT-REST
+  pair was NOT re-shot, and that is a measurement rather than a saving: both frames reproduce
+  byte-for-byte at this head (`fd0ada779841` / `d8fe9972a77d`, unchanged). The pair is also the
+  reason a full re-shoot is not free: the opened state contains the composer, whose caret
+  blinks, so one capture in three lands on the other phase - 66 px in one `2x33` box at
+  `1098,1531` - and the committed pair is the two attempts that agree.
 * **`pins-withdrawn-dark.png` is also byte-identical to `pins-unpinned-dark.png` — as a measurement
   on ONE rig, which is where it was taken, and NOT as a property of the two committed files.** With
   the capability present and nothing pinned, the panel paints exactly what it paints with the
