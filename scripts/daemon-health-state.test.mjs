@@ -19,6 +19,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -761,5 +762,38 @@ test("a relay is rebuilt when the CREDENTIAL changes under a stable address", ()
 		relayNeedsRebuild({ url, token: null }, { url, token: "key-a" }),
 		true,
 		"a relay built before the credential existed is not reusable once it does",
+	);
+});
+
+/*
+ * THE CALL SITE, PINNED BESIDE THE RULE.
+ *
+ * `relayNeedsRebuild` can be perfect and unused: a revert of the one line that
+ * consults it is what the round-1 defect WAS, and the rule's own cases cannot see
+ * that revert (review round 2). `backend-service.ts` cannot be bundled into this
+ * harness - it pulls in Electron and the whole main process - so the call site is
+ * asserted as source, and the behaviour is asserted by the cases above. A revert
+ * has to survive both.
+ */
+test("the feed relay's rebuild consults the rule, for the credential as well as the address", () => {
+	const source = readFileSync("src/main/backend/backend-service.ts", "utf8");
+	const feed = source.slice(
+		source.indexOf("getDesktopFeedRelay()"),
+		source.indexOf("getDesktopFeedRelay()") + 2_500,
+	);
+	assert.match(
+		feed,
+		/relayNeedsRebuild\(/,
+		"the feed relay must answer the rebuild question with the shared rule",
+	);
+	assert.match(
+		feed,
+		/feedRelayToken = this\.desktopToken/,
+		"and it must record the credential it rebuilt with, or the rule cannot fire twice",
+	);
+	assert.doesNotMatch(
+		feed,
+		/feedRelayUrl !== this\.backendUrl/,
+		"the URL-only test is the defect: the credential is the half a re-pair changes",
 	);
 });

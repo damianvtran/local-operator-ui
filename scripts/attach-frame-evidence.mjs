@@ -558,6 +558,13 @@ const READ_PAGE = `(async () => {
 				"older than the pairing handshake",
 				"credential for the running Local Operator server was refused",
 				"is not paired with the running Local Operator server",
+				/*
+				 * And the PANE-SCOPED table this branch introduced (review round 2, D16):
+				 * a reader that only knew the band's wording reported "no sentence" over a
+				 * pane that was saying the right thing in its own words, which is exactly
+				 * the copy D1 exists to keep from being a duplicate of the band's.
+				 */
+				"cannot be read here",
 				"Choose an agent or team",
 				"Start a chat",
 				"Connecting to the backend",
