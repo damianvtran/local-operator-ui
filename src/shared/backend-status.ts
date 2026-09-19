@@ -317,10 +317,19 @@ export function serverBannerCopy(
 						retry: remedy,
 					}
 				: {
+						/*
+						 * The non-reconnecting arm answers the same question as the
+						 * reconnecting one (UX round 2, U7): measured at main's 90 s
+						 * boundary, both un-remediable causes switch to this title and
+						 * this arm offered a Retry whose press asks `/health` and
+						 * `/v1/capabilities` only - it changes nothing and says nothing.
+						 * The promise in the title is kept, because the app really does
+						 * keep looking; the control is withheld where no act exists.
+						 */
 						title:
 							"The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears.",
 						detail,
-						retry: true,
+						retry: remedy,
 					};
 		default:
 			// attached / degraded / replaced / connecting: no banner. A missing probe

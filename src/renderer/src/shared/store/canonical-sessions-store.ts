@@ -1775,10 +1775,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (generation === refreshGeneration)
 						set({
 							loading: false,
-							error:
-								error instanceof Error
-									? error.message
-									: "Chats could not refresh. Retry to reconnect.",
+							/*
+							 * THROUGH THE APP'S OWN SENTENCE, not the transport's. This stored
+							 * `error.message` raw, so a daemon-authored refusal - the 503 whose
+							 * prose the operator photographed - reached the sidebar and the pane
+							 * as this app's diagnosis for the whole window a re-pair takes
+							 * (measured at 18.3 s; UX round 2, U1). The send path already
+							 * composed ours; this is the store's error value doing the same.
+							 */
+							error: userFacingMessage(
+								error,
+								"Chats could not refresh. Retry to reconnect.",
+							),
 						});
 				}
 			},
@@ -1812,11 +1820,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					});
 					return result.session_id;
 				} catch (error) {
+					// Same rule as `fetchSessions` above: the app states the refusal's own
+					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({
-						error:
-							error instanceof Error
-								? error.message
-								: "Chat could not start. Retry with the same draft.",
+						error: userFacingMessage(
+							error,
+							"Chat could not start. Retry with the same draft.",
+						),
 					});
 					throw error;
 				}

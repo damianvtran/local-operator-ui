@@ -389,12 +389,10 @@ test("settings classifies a rejected bearer as unauthorized, not as an unreachab
 	await seedCapabilitiesFailure(client, 401);
 	const rendered = text(renderBackendSettings(client));
 
-	// The remedy, which is the part that has to be right: restart, because the
-	// app starts and pairs with its own server.
-	assert.match(
-		rendered,
-		/Restart the app so it starts and pairs with its own server\./,
-	);
+	// The remedy, which is the part that has to be right - and it is now that
+	// there is NONE: the instruction this surface used to carry asked the user to
+	// make the app own a server it may only adopt (UX round 2, U2). The diagnosis
+	// stays, the app-managed instruction is asserted absent below.
 	assert.match(rendered, /This app cannot authenticate to the running/);
 	// The wrong answers, each of which shipped on this surface: the update
 	// remedy, the "may not be running" hedge about a server that is
@@ -425,7 +423,11 @@ test("settings reports an unreachable server as offline rather than as needing a
 	const rendered = text(renderBackendSettings(client));
 
 	assert.match(rendered, /The Local Operator server is not answering\./);
-	assert.match(rendered, /Restart the app so it can start its own server\./);
+	assert.doesNotMatch(
+		rendered,
+		/start its own server|starts and pairs with its own server/,
+		"no pairing-cause surface may print the app-managed remedy (UX round 2, U2)",
+	);
 	assert.doesNotMatch(rendered, /update/i);
 
 	client.clear();
@@ -614,9 +616,10 @@ test("a config failure carries its status, so Settings can classify it", async (
 		sentence,
 		/cannot authenticate to the running Local Operator server/,
 	);
-	assert.match(
+	assert.doesNotMatch(
 		sentence,
-		/Restart the app so it starts and pairs with its own server\./,
+		/own server/,
+		"no pairing-cause surface may print the app-managed remedy (UX round 2, U2)",
 	);
 	assert.doesNotMatch(sentence, /may not be running|not answering|update/i);
 	// The raw exception stays on the error for logs and support, and off the
@@ -852,7 +855,7 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 // one surface with no in-place retry — told a user their server "did not answer
 // as expected" and stopped. A server wedged for the app's whole budget is the
 // case that banner exists for, and its instruction is what gets it answered.
-test("an expired request keeps a diagnosis and its instruction", () => {
+test("an expired request keeps a diagnosis and offers no app-managed instruction", () => {
 	const ours = new DesktopControlError(
 		504,
 		"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
@@ -866,7 +869,11 @@ test("an expired request keeps a diagnosis and its instruction", () => {
 		ours,
 	);
 	assert.match(sentence, /did not answer in time/);
-	assert.match(sentence, /Restart the app so it can start its own server\./);
+	assert.doesNotMatch(
+		sentence,
+		/start its own server|starts and pairs with its own server/,
+		"no pairing-cause surface may print the app-managed remedy (UX round 2, U2)",
+	);
 	// Not the offline claim, which this is not: nothing established that the
 	// server was stopped, only that it stayed silent for the whole budget.
 	assert.doesNotMatch(sentence, /is not answering\./);
@@ -878,7 +885,11 @@ test("an expired request keeps a diagnosis and its instruction", () => {
 		answered: false,
 	});
 	assert.match(banner, /did not answer in time/);
-	assert.match(banner, /Restart the app so it can start its own server\./);
+	assert.doesNotMatch(
+		banner,
+		/start its own server|starts and pairs with its own server/,
+		"no pairing-cause surface may print the app-managed remedy (UX round 2, U2)",
+	);
 
 	// And a 504 that is NOT ours — an upstream gateway's — keeps the honest
 	// "we cannot advise" instead of borrowing our reason (review round 1, N2).

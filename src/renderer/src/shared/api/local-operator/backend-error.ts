@@ -99,15 +99,28 @@ export function backendErrorKind(error: unknown): BackendErrorKind {
  * artifact rather than the running process, and it is a control, not prose.
  */
 export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
-	unreachable: "Restart the app so it can start its own server.",
+	/*
+	 * EMPTY for the three causes that used to carry the app-managed instruction, and
+	 * that instruction is gone from the vocabulary entirely (UX round 2, U2): it was
+	 * "Restart the app so it can start its own server.", which asks the user to make
+	 * the app own a plane this change exists to let it ADOPT. Settings rendered it in
+	 * every state the change introduces, including two where restarting the app cannot
+	 * reach the daemon at all.
+	 *
+	 * Empty rather than reworded, because the act belongs to the surface and the
+	 * cause: the surfaces that can repair a pairing offer the reconnect control, and
+	 * one that cannot states the condition and stops. A shared string cannot know
+	 * which of those a caller is, so it says nothing and the composition drops it.
+	 */
+	unreachable: "",
 	// The same instruction as `unreachable`, for the same reason: a server that
 	// has been silent for the whole budget is not answering, and restarting the
 	// app is what starts a new one. It is NOT the panel copy — a panel renders
 	// the request's own authored sentence, which says the app stopped waiting
 	// rather than that the server is down (design round 1, D3: this instruction
 	// must survive on the surfaces that have no in-place retry).
-	deadline: "Restart the app so it can start its own server.",
-	unauthorized: "Restart the app so it starts and pairs with its own server.",
+	deadline: "",
+	unauthorized: "",
 	outdated: "Update the server and try again.",
 	unknown: "",
 };
@@ -355,11 +368,11 @@ export function backendCompatibilityMessage(input: {
 	if (cause !== null) return BACKEND_PAIRING_SENTENCE[cause];
 	if (!answered) {
 		if (kind === "unreachable")
-			return `${BACKEND_ERROR_DIAGNOSIS.unreachable} Provider sign-in, settings, slash commands and MCP management need it running. ${BACKEND_ERROR_REMEDY.unreachable}`;
+			return `${BACKEND_ERROR_DIAGNOSIS.unreachable} Provider sign-in, settings, slash commands and MCP management need it running.`;
 		if (kind === "unauthorized")
 			// "protected controls are unavailable" was jargon two sentences away
 			// from this file's own plain list of the same surfaces (design D10).
-			return `This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable. ${BACKEND_ERROR_REMEDY.unauthorized}`;
+			return "This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable.";
 		if (kind === "deadline")
 			// A server that has been silent for the app's whole budget is a wedged
 			// server, which is the case this banner exists for. It names that, and
@@ -367,7 +380,7 @@ export function backendCompatibilityMessage(input: {
 			// own: dropping the remedy would leave the user a statement and no
 			// action (design round 1, D3). It is also not "as expected" — nothing
 			// arrived at all, which is a different fact from an unexpected answer.
-			return `${BACKEND_ERROR_DIAGNOSIS.deadline} Provider sign-in, settings, slash commands and MCP management need it answering. ${BACKEND_ERROR_REMEDY.deadline}`;
+			return `${BACKEND_ERROR_DIAGNOSIS.deadline} Provider sign-in, settings, slash commands and MCP management need it answering.`;
 		if (kind === "outdated")
 			// The trailing clause read "stay off until then", whose antecedent left
 			// with the remedy when it was extracted into the shared sentence --

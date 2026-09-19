@@ -15,7 +15,11 @@
  *
  *   1. `attached` - a real `lop serve` with a seeded conversation. Cell: the
  *      conversation list loads and nothing claims the server is away.
- *   2. `absent` - the configured address answers nothing. Cell: the honest copy
+ *   2. `absent` - the honest copy for an address with no usable daemon. CORRECTED
+ *      (review round 2, QA Q-4): it does NOT mean "nothing answers". The scene
+ *      runs its own stub on that port, so something answers and is REJECTED for
+ *      want of a serve record; what the cell photographs is "the address answers
+ *      but publishes no record, and this app may not start one". Cell: the honest copy
  *      (which the base tree does not say at all). The `unattachable` state the
  *      spawn gate produces is NOT photographable in this stub environment; the
  *      scene's own comment says why and what covers it instead.
@@ -1125,6 +1129,13 @@ async function sceneAnyDaemon() {
 	 */
 	const governedRecord = JSON.parse(readFileSync(recordFile, "utf8"));
 	summary.scenes["any-daemon"] = {
+		/*
+		 * Spread first: the boot wrote this scene's own record (the address it was
+		 * configured for), and assigning a fresh object here used to drop it - which
+		 * is how a committing run published frames without the one field that says
+		 * which backend they are about.
+		 */
+		...(summary.scenes["any-daemon"] ?? {}),
 		claimed: claimed[0],
 		recordAfterClaim: {
 			desktop: governedRecord.desktop,
