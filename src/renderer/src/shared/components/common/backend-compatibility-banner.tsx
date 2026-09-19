@@ -60,7 +60,7 @@ export const BackendCompatibilityBanner = () => {
 	const [updating, setUpdating] = useState(false);
 	const [updateError, setUpdateError] = useState<string | null>(null);
 
-		/*
+	/*
 	 * The pairing cause comes from MAIN, not from the capability answer.
 	 *
 	 * `/v1/capabilities` admits nobody by design, so the same answer arrives before
@@ -72,9 +72,10 @@ export const BackendCompatibilityBanner = () => {
 	 * (design § 2, § 5.2).
 	 */
 	const snapshot = serverHealth?.snapshot ?? null;
-	const cause = snapshot && !snapshot.pairing.available
-		? (snapshot.pairing.cause ?? "unpaired")
-		: null;
+	const cause =
+		snapshot && !snapshot.pairing.available
+			? (snapshot.pairing.cause ?? "unpaired")
+			: null;
 	/*
 	 * Whether THIS app holds the install serving it, from main's own answer.
 	 *
@@ -245,7 +246,11 @@ export const BackendCompatibilityBanner = () => {
 							</Button>
 						)}
 						{offerRetry && (
-							<Button variant="secondary" size="sm" onClick={() => void retry()}>
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={() => void retry()}
+							>
 								Retry
 							</Button>
 						)}

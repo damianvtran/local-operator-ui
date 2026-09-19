@@ -35,6 +35,7 @@ const bundle = await build({
 			import { ProviderGrid } from "./src/renderer/src/features/providers/provider-grid";
 			import { BackendSettingsSection } from "./src/renderer/src/features/settings/components/backend-settings-section";
 			import { BackendCompatibilityBanner } from "./src/renderer/src/shared/components/common/backend-compatibility-banner";
+			export { backendPaneSentence } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 			export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";
@@ -202,6 +203,7 @@ const {
 	renderBackendSettings,
 	renderBackendCompatibilityBanner,
 	BACKEND_PAIRING_SENTENCE,
+	backendPaneSentence,
 	BACKEND_ERROR_REMEDY,
 	BACKEND_ERROR_DIAGNOSIS,
 	backendPairingSentence,
@@ -1003,7 +1005,7 @@ test("one cause, one sentence: every pairing cause is worded once, and it is not
 	);
 	assert.match(
 		BACKEND_PAIRING_SENTENCE["pre-handshake"],
-		/CLI and the TUI are unaffected/,
+		/anything you run against it from the terminal, are unaffected/,
 	);
 
 	/*
@@ -1087,16 +1089,67 @@ test("the banner offers only the controls that can change the condition", () => 
 	assert.match(owned, /Update backend/);
 	assert.doesNotMatch(owned, /Retry/);
 
-	// And a PAIRED app with a genuine version gap keeps the negotiated remedy.
-	const versionGap = renderedText(
+	/*
+	 * A PAIRED app with a genuine version gap keeps the negotiated remedy ONLY
+	 * when the install is this app's to move. The pair of cases is the whole point:
+	 * the update is offered where main says the app owns the serving install, and
+	 * withheld where it does not - installing a newer server cannot make somebody
+	 * else's daemon advertise a capability to this app (design § 3.4, review round
+	 * 1 MINOR-2).
+	 */
+	const ownedGap = renderedText(
 		renderBackendCompatibilityBanner(
 			bannerClient({
 				pairing: { available: true, cause: null },
 				features: { ...ALL_FEATURES, mcp: 0 },
+				owned: true,
 			}),
 		),
 	);
-	assert.match(versionGap, /Update backend/);
+	assert.match(ownedGap, /Update backend/);
+	const adoptedGap = renderedText(
+		renderBackendCompatibilityBanner(
+			bannerClient({
+				pairing: { available: true, cause: null },
+				features: { ...ALL_FEATURES, mcp: 0 },
+				owned: false,
+			}),
+		),
+	);
+	assert.doesNotMatch(
+		adoptedGap,
+		/Update backend/,
+		"a daemon this app adopted is not an install it may move",
+	);
+	assert.match(adoptedGap, /missing/);
+
+	/*
+	 * The PANE states its OWN consequence, from the same cause - never the band's
+	 * sentence again. Measured from the frame the two surfaces were caught on: one
+	 * 169-character sentence was rendered twice, the second copy a screen-height
+	 * below the first, and it listed the app-wide losses inside a pane whose own
+	 * condition is that this conversation cannot be read (design round 1, D1/D6).
+	 */
+	for (const cause of PAIRING_CAUSES) {
+		const pane = backendPaneSentence("unpaired", cause);
+		assert.notEqual(
+			pane,
+			BACKEND_PAIRING_SENTENCE[cause],
+			`${cause}: the pane must not repeat the band's sentence`,
+		);
+		assert.match(pane, /cannot be read here/);
+		assert.match(
+			pane,
+			/Your chats are still on that server/,
+			`${cause}: the screen that hides the conversations says where they are`,
+		);
+		assert.doesNotMatch(pane, /manage its own server|Update/);
+	}
+	assert.equal(
+		backendPaneSentence("below-version", null),
+		null,
+		"a version gap is not a pairing condition, and the pane keeps its own copy for it",
+	);
 
 	// The update decision itself, stated at the seam: S3 without ownership is not an
 	// update, and no other pairing cause ever is.

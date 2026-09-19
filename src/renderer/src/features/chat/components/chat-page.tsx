@@ -1,8 +1,8 @@
+import { backendPaneSentence } from "@shared/api/local-operator/backend-error";
 import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
-import { backendPairingSentence } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -11,8 +11,8 @@ import {
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
-import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
+import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
@@ -2089,7 +2089,7 @@ export function ChatPage() {
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
 			: null;
-	const pairingSentence = backendPairingSentence(catalogueState, pairingCause);
+	const pairingSentence = backendPaneSentence(catalogueState, pairingCause);
 	/*
 	 * NO CONTROL WHERE NO REMEDY EXISTS, the same rule the banner applies: S2 is
 	 * another program's plane and S3 is a daemon older than the handshake, and in

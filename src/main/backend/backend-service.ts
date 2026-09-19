@@ -27,7 +27,7 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DaemonStatusSnapshot } from "../../shared/backend-status";
-import { DAEMON_PAIRED } from "../../shared/backend-status";
+import { DAEMON_PAIRED, relayNeedsRebuild } from "../../shared/backend-status";
 import type {
 	DesktopFeedState,
 	DesktopResponse,
@@ -372,6 +372,20 @@ export class BackendServiceManager {
 	 */
 	private feedRelay: DesktopFeedRelay | null = null;
 	private feedRelayUrl = "";
+	/**
+	 * The credential the current feed relay was built with.
+	 *
+	 * WHY IT IS TRACKED AT ALL, and the defect it stands for: the relay takes its
+	 * bearer ONCE, at construction, and a re-pair leaves the address unchanged
+	 * while replacing the credential - same port, new claim key. A rebuild keyed on
+	 * the URL alone therefore keeps a relay that 401s on every attempt, for good:
+	 * measured after the successor swap, the app was `attached` and paired with the
+	 * new daemon while the sidebar still rendered "Not connected to the backend -
+	 * showing the last known state." more than a minute later, and the same line
+	 * never cleared (QA round 1 Q-2, design round 1 D3). The stream relay next door
+	 * already compares the token; this one now does too.
+	 */
+	private feedRelayToken: string | null = null;
 	/** Both survive relay recreation, so a URL rotation cannot silently detach
 	 * the banner path or leave the sidebar reading a stale connection state. */
 	private feedFrameObserver: ((frame: DesktopFeedFrame) => void) | null = null;
@@ -517,7 +531,13 @@ export class BackendServiceManager {
 	 * backend-ready hook, which is the first moment the token exists.
 	 */
 	getDesktopFeedRelay(): DesktopFeedRelay {
-		if (!this.feedRelay || this.feedRelayUrl !== this.backendUrl) {
+		if (
+			!this.feedRelay ||
+			relayNeedsRebuild(
+				{ url: this.feedRelayUrl, token: this.feedRelayToken },
+				{ url: this.backendUrl, token: this.desktopToken },
+			)
+		) {
 			this.feedRelay?.stop();
 			this.feedRelay = new DesktopFeedRelay(
 				this.backendUrl,
@@ -542,6 +562,7 @@ export class BackendServiceManager {
 			this.feedRelay.observe(this.feedFrameObserver);
 			this.feedRelay.watchState(this.feedStateObserver);
 			this.feedRelayUrl = this.backendUrl;
+			this.feedRelayToken = this.desktopToken;
 		}
 		return this.feedRelay;
 	}
@@ -1439,7 +1460,8 @@ export class BackendServiceManager {
 					);
 					this.daemonState.setPairing({
 						available: false,
-						cause: outcome.status === 503 ? "pre-handshake" : "credential-refused",
+						cause:
+							outcome.status === 503 ? "pre-handshake" : "credential-refused",
 					});
 					return false;
 				case "unreachable":

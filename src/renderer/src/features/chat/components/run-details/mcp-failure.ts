@@ -55,14 +55,14 @@
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
+	DesktopControlError,
+	UserFacingError,
+} from "@shared/api/local-operator/desktop-api";
+import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_SENTENCE,
 	isDesktopRefusalCode,
 } from "../../../../../../shared/desktop-contract";
-import {
-	DesktopControlError,
-	UserFacingError,
-} from "@shared/api/local-operator/desktop-api";
 import { MCP_CONTROL_WORD, type McpRemedy } from "./run-detail-model";
 
 /**

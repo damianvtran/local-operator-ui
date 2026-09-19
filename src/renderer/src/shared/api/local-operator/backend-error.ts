@@ -18,8 +18,8 @@
  * agreement is assertable because both selectors are plain functions.
  */
 
-import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import type { DaemonPairingCause } from "../../../../../shared/backend-status";
+import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
 
 /**
@@ -195,7 +195,7 @@ export const BACKEND_PAIRING_SENTENCE: Record<DaemonPairingCause, string> = {
 	// routes fine, and saying so is a decision rather than an implication
 	// (design § 3.3).
 	"pre-handshake":
-		"The Local Operator server on this machine is older than the pairing handshake this app uses, so this app cannot drive its controls. The server itself, the CLI and the TUI are unaffected.",
+		"The Local Operator server on this machine is older than the pairing handshake this app uses, so this app cannot drive its controls. The server itself, and anything you run against it from the terminal, are unaffected.",
 	"credential-refused":
 		"This app's credential for the running Local Operator server was refused, so provider sign-in, settings, slash commands and MCP management are unavailable.",
 	unpaired:
@@ -213,6 +213,47 @@ export const BACKEND_PAIRING_SENTENCE: Record<DaemonPairingCause, string> = {
  * the sentence for it is the surface's OWN (what that surface cannot do), which
  * is the split S6 keeps.
  */
+/**
+ * The PANE's own sentence, per cause.
+ *
+ * WHY THE PANE DOES NOT REUSE THE BANNER'S TABLE, measured from the frame
+ * (design review round 1, D1): the governed screen rendered the band's
+ * 169-character sentence twice - once across the top, once centred in the pane -
+ * and the second copy listed what the APP loses (settings, provider sign-in,
+ * slash commands, MCP) inside a pane whose own consequence is that this
+ * conversation cannot be read. A reader who reached the pane learned nothing the
+ * band had not already said a screen-height above.
+ *
+ * So the two surfaces are worded from their own consequence and still selected
+ * from the SAME cause: the band says what the app cannot do, the pane says what
+ * this conversation cannot do - and, because that is the screen which hides the
+ * user's conversations, it also says where they still are (design round 1, D6).
+ */
+export const BACKEND_PANE_SENTENCE: Record<DaemonPairingCause, string> = {
+	successor:
+		"This conversation cannot be read here until the app finishes pairing with the replacement server. Your chats are still on that server.",
+	"governed-elsewhere":
+		"This conversation cannot be read here: the server's desktop controls belong to another program. Your chats are still on that server.",
+	"pre-handshake":
+		"This conversation cannot be read here: that server is older than the pairing handshake this app uses. Your chats are still on that server.",
+	"credential-refused":
+		"This conversation cannot be read here: the server refused this app's credential. Your chats are still on that server.",
+	unpaired:
+		"This conversation cannot be read here: the app is not paired with the running server. Your chats are still on that server.",
+};
+
+/**
+ * The pane's sentence, or null when the pane's own reading is not a pairing
+ * condition (a version gap keeps its own copy).
+ */
+export function backendPaneSentence(
+	state: "enabled" | "unpaired" | "below-version" | "unknown",
+	cause: DaemonPairingCause | null,
+): string | null {
+	if (state !== "unpaired") return null;
+	return BACKEND_PANE_SENTENCE[cause ?? "unpaired"];
+}
+
 export function backendPairingSentence(
 	state: "enabled" | "unpaired" | "below-version" | "unknown",
 	cause: DaemonPairingCause | null,
@@ -248,8 +289,13 @@ export function backendUpdateIsRemedy(input: {
 	/** Main's answer that this app holds the serving install (`owned`). */
 	servedByThisApp?: boolean;
 }): boolean {
-	const { kind, unpaired, answered, cause = null, servedByThisApp = false } =
-		input;
+	const {
+		kind,
+		unpaired,
+		answered,
+		cause = null,
+		servedByThisApp = false,
+	} = input;
 	// S3 is the ONE pairing cause an install can repair, and only for an install
 	// this app holds.
 	if (cause === "pre-handshake") return servedByThisApp;
@@ -257,9 +303,15 @@ export function backendUpdateIsRemedy(input: {
 	if (cause !== null) return false;
 	// Re-pairing, not installing, is what an unpaired backend needs.
 	if (unpaired) return false;
-	// A backend that answered and named the features it lacks is genuinely out
-	// of date; that is the negotiated case, not a guess from a missing payload.
-	if (answered) return true;
+	/*
+	 * The negotiated case - a backend that answered and named the features it
+	 * lacks - is the one place an update is genuinely the remedy, and it is still
+	 * the app's to offer only when the install is the app's to move. A paired
+	 * daemon adopted from elsewhere with an absent feature is not out of date in
+	 * any way this app may repair: installing a newer server cannot make somebody
+	 * else's daemon advertise a capability to this app (design § 3.4, § 10.1).
+	 */
+	if (answered) return servedByThisApp;
 	// `unknown` deliberately does NOT offer the update. It used to, because the
 	// fallback sentence was the update sentence, so every unmatched status was
 	// answered with an install that could not fix it.

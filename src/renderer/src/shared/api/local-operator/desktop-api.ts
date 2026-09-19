@@ -246,7 +246,10 @@ export class UserFacingError extends Error {
  * how a raw exception finds its way back to the screen.
  */
 export function userFacingMessage(error: unknown, fallback: string): string {
-	if (error instanceof DesktopControlError || error instanceof UserFacingError) {
+	if (
+		error instanceof DesktopControlError ||
+		error instanceof UserFacingError
+	) {
 		/*
 		 * A REFUSAL of the pairing family is composed from its code, never echoed.
 		 *
@@ -318,14 +321,23 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 					: null;
 		throw new DesktopControlError(
 			response.status,
+			/*
+			 * A refusal whose body carried neither a code nor a message. It used to
+			 * say "Update the backend and try again", which is the one instruction
+			 * this whole change removes for a pairing condition - and a bare 404 from
+			 * a server that predates a route is exactly that (design round 1, D7).
+			 * The app states what it observed and stops.
+			 */
 			detail ??
-				"This backend does not support the requested desktop control. Update the backend and try again.",
+				"This server did not answer the request for its desktop controls.",
 			undefined,
 			desktopErrorMessageCode(
 				request,
 				response.status,
 				detail,
-				typeof envelope?.detail === "object" ? envelope.detail?.code : undefined,
+				typeof envelope?.detail === "object"
+					? envelope.detail?.code
+					: undefined,
 			),
 		);
 	}

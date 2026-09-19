@@ -25,7 +25,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/backend/daemon-status"; export { isServerReachable, serverBannerCopy } from "./src/shared/backend-status";',
+			'export * from "./src/main/backend/daemon-status"; export { isServerReachable, serverBannerCopy, pairingHasRemedy, relayNeedsRebuild } from "./src/shared/backend-status";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -42,6 +42,8 @@ const {
 	REATTACH_BACKOFF_MS,
 	REATTACH_BACKOFF_CEILING_MS,
 	isServerReachable,
+	pairingHasRemedy,
+	relayNeedsRebuild,
 	serverBannerCopy,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -667,5 +669,90 @@ test("an ADMITTED request still clears the count, which is what a pairing is", (
 		machine.observe({ kind: "contradicted", detail: "another process" }),
 		"degraded",
 		"and the count really was cleared: one contradiction is again the FIRST of three, not the third",
+	);
+});
+
+/*
+ * The two bands answer ONE question the same way, and the record is what answers
+ * it (design round 1, D2; UX round 1, U3).
+ *
+ * The compatibility band withholds its control for exactly the causes where
+ * re-pairing cannot help; the connectivity band sits a line above it on the same
+ * screen and offered its Retry regardless, so the screen carried the verb the
+ * band below had already declared inert. These cases pin the shared rule and the
+ * promise that goes with it.
+ */
+test("the connectivity band offers its Retry only where a re-pairing act exists", () => {
+	const detached = (cause, owned = false) => ({
+		state: "detached",
+		reconnecting: true,
+		detail: "The daemon did not answer.",
+		pairing: { available: false, cause },
+		owned,
+	});
+
+	assert.equal(pairingHasRemedy("governed-elsewhere"), false);
+	assert.equal(pairingHasRemedy("pre-handshake"), false);
+	for (const cause of ["successor", "credential-refused", "unpaired", null])
+		assert.equal(pairingHasRemedy(cause), true, `${cause} is the app's to repair`);
+
+	const governed = serverBannerCopy(detached("governed-elsewhere"));
+	assert.equal(
+		governed.retry,
+		false,
+		"another principal's plane will not be re-claimed by trying again",
+	);
+	assert.doesNotMatch(
+		governed.title,
+		/reconnects to it on its own/,
+		"and the band does not promise a reconnection it cannot make",
+	);
+	const successor = serverBannerCopy(detached("successor"));
+	assert.equal(successor.retry, true);
+	assert.match(successor.title, /reconnects to it on its own/);
+	/*
+	 * A snapshot from a build that predates the pairing record answers
+	 * permissively: a surface may not withhold a control on the strength of a
+	 * field it never read.
+	 */
+	const legacy = serverBannerCopy({
+		state: "detached",
+		reconnecting: true,
+		detail: null,
+	});
+	assert.equal(legacy.retry, true);
+});
+
+/*
+ * A RELAY IS BOUND TO A CREDENTIAL, NOT ONLY TO AN ADDRESS.
+ *
+ * The defect this pins was measured, not imagined: after a build swap the app
+ * re-paired with the successor on the same port, and the sidebar went on saying
+ * "Not connected to the backend - showing the last known state." because the
+ * feed relay had been rebuilt on the URL rule alone and kept the retired claim
+ * key, so every attempt was refused and no state transition could ever clear the
+ * line (QA round 1 Q-2, design round 1 D3).
+ */
+test("a relay is rebuilt when the CREDENTIAL changes under a stable address", () => {
+	const url = "http://127.0.0.1:46140";
+	assert.equal(
+		relayNeedsRebuild({ url, token: "key-a" }, { url, token: "key-a" }),
+		false,
+		"an unchanged pair keeps the relay, and its socket",
+	);
+	assert.equal(
+		relayNeedsRebuild({ url, token: "key-a" }, { url, token: "key-b" }),
+		true,
+		"a re-pair on the same port must rebuild: the old bearer is refused forever",
+	);
+	assert.equal(
+		relayNeedsRebuild({ url, token: "key-a" }, { url: "http://127.0.0.1:46141", token: "key-a" }),
+		true,
+		"and so must a moved address",
+	);
+	assert.equal(
+		relayNeedsRebuild({ url, token: null }, { url, token: "key-a" }),
+		true,
+		"a relay built before the credential existed is not reusable once it does",
 	);
 });
