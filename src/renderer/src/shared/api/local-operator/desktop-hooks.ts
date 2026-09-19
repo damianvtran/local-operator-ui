@@ -323,8 +323,12 @@ export type DesktopFeature =
 	 * advertises neither the key nor the row field, and the sidebar then mounts no
 	 * control, marks nothing and partitions nothing - see `visibleRows` in
 	 * `features/chat/chat-archived`, which is the ONE place that decision is
-	 * written down. Absent means the panel's DOM and class set stay byte-identical
-	 * to the panel that never knew about archiving.
+	 * written down. Absent means the panel mounts no control, marks no row and
+	 * partitions nothing: every row it draws is a row an enabled panel also draws,
+	 * with the same classes, and the only difference is the archived set - an
+	 * ENABLED panel hides those, and this one cannot (see the withdrawn pair in
+	 * `docs/evidence/session-archive/README.md`, which measures a 690x60 band around
+	 * a live row as byte-identical and the panel's row COUNT as one apart).
 	 */
 	| "session_archive"
 	/**

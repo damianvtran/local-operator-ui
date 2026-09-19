@@ -1631,6 +1631,17 @@ async function clickAt(cdp, selector) {
  * the one delete confirmation reads as the app's danger role. Each is a state
  * this scene puts the app into and photographs.
  *
+ * ROUND 1 ADDED FOUR STATES THE FIRST SET DID NOT CARRY, three of them surfaces of
+ * this change that had no frame at all and one a frame the design round asked for
+ * to settle a finding: the open conversation archived, with the header's pill and
+ * its restore control (D2); the delete REFUSED through the dialog that asked, with
+ * the keyboard back on the safe action (D3, UX U3); the archive refused, in the
+ * panel's own register beside the list (D3); and the row's own hover with the
+ * pointer on the title rather than on the control (D5). The undo offer a
+ * successful archive makes (D7) is photographed too - in its own frame, with its
+ * own assertion, because it is a TOAST and every other capture here asserts
+ * `toastFree`.
+ *
  * ## What it runs against
  *
  * `--backend` names the harness's own stand-in daemon
@@ -1681,6 +1692,14 @@ async function sceneSessionArchive(cdp) {
 	note("row", JSON.stringify(firstRow));
 
 	const frames = [];
+	/*
+	 * Frames that are OF a transient, kept apart from the settled ones: the undo
+	 * offer IS a toast (design round 1, D7), so a scene whose every capture asserts
+	 * `toastFree` structurally cannot photograph it. This list carries its own
+	 * checks - the toast is on screen and the picture is held still - rather than
+	 * being exempted from the assertions silently.
+	 */
+	const toastFrames = [];
 
 	/* 1. At rest: no query, so no control in the search block, and no slot spent. */
 	await parkPointer(cdp);
@@ -1757,7 +1776,15 @@ async function sceneSessionArchive(cdp) {
 	 */
 	note(
 		"title width cost",
-		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's gap, taken from the title on every row at rest; the row's own button is ${firstRow.rect.width}px of a ${hello.viewport.width}px window`,
+		/*
+		 * WHAT `firstRow` MEASURED, named rather than implied (review round 1, N1: the
+		 * figure this line reports was being read as a session row's, and it is not one
+		 * - `[data-chat-row]` matches a section heading first, and a heading is a
+		 * full-width button). The reservation itself is the load-bearing number here;
+		 * the row geometry the README quotes comes from the frames (`magick`), where a
+		 * session row can be measured rather than guessed.
+		 */
+		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's 4px gap, reserved on every row at rest; the first [data-chat-row] box is ${firstRow.rect.width}px of a ${hello.viewport.width}px window (that box is a section heading, not a session row)`,
 	);
 	frames.push(await captureSettled(cdp, `row-hover${RUN_LABEL}`));
 
@@ -1799,6 +1826,15 @@ async function sceneSessionArchive(cdp) {
 	frames.push(await captureSettled(cdp, `search-on${RUN_LABEL}`));
 
 	/*
+	 * THE BOX IS CLEARED before the surfaces below, and it is a fact about the
+	 * instrument rather than a courtesy: a query FILTERS the list, so a row the next
+	 * steps press is not drawn while `notes` is still in the box - measured here as
+	 * the refusal step failing to find its control after ten seconds of waiting.
+	 */
+	await clickAt(cdp, '[aria-label="Clear search"]');
+	await wait(400);
+
+	/*
 	 * 4. The one permanent delete, through the surface that owns it: the header's
 	 * conversation menu asks, and the dialog is what confirms. Two presses, and the
 	 * frame is the state between them. The command's own confirmation is the SAME
@@ -1819,10 +1855,223 @@ async function sceneSessionArchive(cdp) {
 	);
 	frames.push(await captureSettled(cdp, `delete-dialog${RUN_LABEL}`));
 
+	/*
+	 * 5. Closing the dialog (UX round 1, U9). The menu ITEM that opened it is
+	 *    unmounted with the menu, so the successor control of the same act is the
+	 *    header's own trigger - and the staged candidate must be gone, or the next
+	 *    route would open the same question unbidden.
+	 */
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(300);
+	const trigger = await verb(cdp, "measure", "[data-conversation-actions]");
+	check(
+		"closing the delete dialog hands the keyboard back to the control that opened it",
+		trigger.focused === true,
+		JSON.stringify(trigger),
+	);
+	let dialogStillOpen = true;
+	try {
+		await verb(cdp, "measure", {
+			selector: '[role="dialog"]',
+			timeoutMs: 400,
+		});
+	} catch {
+		dialogStillOpen = false;
+	}
+	check(
+		"and cancelling clears the staged candidate, so no dialog waits on the next route",
+		dialogStillOpen === false,
+		"a dialog was still in the document after Cancel",
+	);
+
+	/*
+	 * 6. The delete REFUSED (design round 1, D3). The stub answers the route's own
+	 *    409 for a conversation a live session claims, so the dialog that asked stays
+	 *    up over the sentence the backend authored plus the remedy this window can
+	 *    actually offer (UX round 1, U3) - and the keyboard must be back on CANCEL,
+	 *    because the press that was refused left it on the destructive button.
+	 */
+	await verb(cdp, "navigate", "/chat/7c1b0f2a4d31");
+	await wait(400);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(300);
+	await clickAt(cdp, "[data-confirm-action]");
+	await wait(600);
+	const refusedDialog = await verb(cdp, "measure", '[role="dialog"]');
+	const cancelHolds = await verb(cdp, "measure", "[data-cancel-action]");
+	check(
+		"the refused delete stays in the dialog that asked it",
+		refusedDialog.inViewport === true,
+		JSON.stringify(refusedDialog),
+	);
+	check(
+		"and the refusal leaves the keyboard on the SAFE action, not the destructive one",
+		cancelHolds.focused === true,
+		JSON.stringify(cancelHolds),
+	);
+	frames.push(await captureSettled(cdp, `delete-refused${RUN_LABEL}`));
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(300);
+
+	/*
+	 * 7. The archive REFUSED. A refused press reports in the panel's own register
+	 *    beside the list rather than in a dialog it never opened, with the Retry
+	 *    that re-sends the DESIRED state (design round 1, D3).
+	 */
+	await parkPointer(cdp);
+	/*
+	 * `previous` is EXPANDED first: a collapsed section draws no rows, and the two
+	 * rows this step and the last one press live there (measured: the refusal step
+	 * could not find its control while the section was collapsed).
+	 */
+	await clickAt(cdp, '[data-chat-section="previous"]');
+	await wait(400);
+	const claimedRow = "[aria-label='Archive “Migration checklist”']";
+	await hoverOver(cdp, claimedRow);
+	await clickAt(cdp, claimedRow);
+	await wait(600);
+	const archiveFailure = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure]",
+	);
+	check(
+		"a refused archive is reported beside the list it was made from, with its retry",
+		archiveFailure.inViewport === true,
+		JSON.stringify(archiveFailure),
+	);
+	frames.push(await captureSettled(cdp, `archive-refused${RUN_LABEL}`));
+
+	/*
+	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
+	 *    the pair with `row-hover` is what settles whether the row's highlight
+	 *    survives the pointer leaving the control's 24px box.
+	 */
+	await parkPointer(cdp);
+	const titledRow = await verb(cdp, "measure", "[data-chat-row]");
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: titledRow.rect.x + 60,
+		y: titledRow.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	frames.push(await captureSettled(cdp, `row-hover-body${RUN_LABEL}`));
+
+	/*
+	 * 9. The open conversation archived (design round 1, D2): the header's pill and
+	 *    its restore control, with no dialog over them, and the pane still open on
+	 *    the conversation - archive hides, it does not close. The press raises the
+	 *    undo offer, so this frame is taken after that offer's OWN ceiling retires it:
+	 *    the pill's ink is what a reviewer has to judge here, and the offer has its
+	 *    own frame below.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat/2d5ad5da0025");
+	await wait(400);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-archive-action]");
+	await wait(500);
+	const pill = await verb(cdp, "measure", "[data-session-archived-pill]");
+	const openAfter = await verb(cdp, "state");
+	check(
+		"archiving the OPEN conversation adds the pill and leaves the pane open on it",
+		pill.inViewport === true && openAfter.activeSessionId === "2d5ad5da0025",
+		`${JSON.stringify(pill)} activeSessionId=${openAfter.activeSessionId}`,
+	);
+	const clearance = await waitForNoToasts(cdp, 20_000);
+	check(
+		"the archive offer outlives the catalogue answers and retires on its own ceiling",
+		clearance.timedOut === false && clearance.waitedMs >= 10_000,
+		`waited ${clearance.waitedMs}ms for the toast to go (the old rule retired it in 0.4-1.6s) `,
+	);
+	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
+
+	/*
+	 * 10. The row press, LAST because it is the frame that is OF a toast (design
+	 *     round 1, D7): the same act as the header's and as a typed `/archive`, so it
+	 *     makes the same offer (UX round 1, U2), and the keyboard lands on the row
+	 *     that took the place of the one that left (UX round 1, U5).
+	 */
+	await parkPointer(cdp);
+	/*
+	 * No expansion click here: `Previous chats` was opened by the refusal step above
+	 * and the sidebar PERSISTS its disclosures for the session, so a second click
+	 * would COLLAPSE the section the row lives in - which is how this step failed
+	 * the first time it ran. The order of these two steps is therefore load-bearing,
+	 * and it is why the toggle is a hoisted ancestor of the row rather than a
+	 * `data-chat-row` the scene could have scrolled to.
+	 */
+	const offeredRow = "[aria-label='Archive “Release notes for 0.29”']";
+	await hoverOver(cdp, offeredRow);
+	await clickAt(cdp, offeredRow);
+	await wait(500);
+	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
+		null,
+	);
+	check(
+		"the keyboard lands on a row rather than back on the document",
+		successor !== null &&
+			successor.focused === true &&
+			!/Release notes for 0\.29/.test(successor.target ?? ""),
+		JSON.stringify(successor),
+	);
+	const offered = await toastsOnScreen(cdp);
+	check(
+		"a successful archive offers an Undo on the surface that performed it",
+		offered === 1,
+		`${offered} toasts on screen`,
+	);
+	const offerFirst = await capture(cdp, `undo-offer${RUN_LABEL}`);
+	await wait(200);
+	const offerSecond = await capture(cdp, `undo-offer${RUN_LABEL}`);
+	toastFrames.push({
+		label: `undo-offer${RUN_LABEL}`,
+		stable: readFileSync(offerFirst.path).equals(
+			readFileSync(offerSecond.path),
+		),
+		toastOnScreen: (await toastsOnScreen(cdp)) === 1,
+	});
+
+	/*
+	 * 11. Deleting the OPEN conversation (UX round 1, U1): the pane must land on the
+	 *     missing-session notice it ALREADY had rather than on a writable draft bound
+	 *     to an id that is gone. The conversation is the one this scene archived in
+	 *     step 9, which is the interesting case rather than a special one - archive
+	 *     hides, delete removes, and the notice is the same element either way.
+	 */
+	await waitForNoToasts(cdp, 20_000);
+	await parkPointer(cdp);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(300);
+	await clickAt(cdp, "[data-confirm-action]");
+	await wait(700);
+	const notice = await verb(cdp, "measure", "#lo-missing-session-notice");
+	const afterDelete = await verb(cdp, "state");
+	check(
+		"deleting the open conversation lands the pane on its EXISTING missing-session notice",
+		notice.inViewport === true &&
+			afterDelete.activeSessionId === "2d5ad5da0025",
+		`${JSON.stringify(notice)} activeSessionId=${afterDelete.activeSessionId}`,
+	);
+	frames.push(await captureSettled(cdp, `deleted-open${RUN_LABEL}`));
+
 	check(
 		"every capture is a frame the app held still for, with no toast on it",
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
+	);
+	check(
+		"the offer's own frame is a still picture of a toast that was really there",
+		toastFrames.length === 1 &&
+			toastFrames[0].stable === true &&
+			toastFrames[0].toastOnScreen === true,
+		JSON.stringify(toastFrames),
 	);
 	check(
 		"every capture wrote a PNG of the requested size",

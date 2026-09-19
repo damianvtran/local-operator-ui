@@ -88,6 +88,43 @@ export type ArchiveFact = {
 	at: number;
 };
 /**
+ * A conversation THIS WINDOW has permanently deleted, and when.
+ *
+ * WHY A TOMBSTONE RATHER THAN A FILTERED ARRAY. Dropping the row from `sessions`
+ * is not enough to delete anything: every read this store issues REPLACES
+ * membership from its own answer, so a catalogue page whose request started
+ * before the delete - and there is nearly always one, because the page is read on
+ * mount, on focus, on visibility, on every catalogue revision and by the 30 s
+ * safety poll - lands afterwards and puts the row straight back, drawing a
+ * conversation the user permanently removed. The archive press has been protected
+ * against exactly this shape since it was written (`archiveFacts` + the stamp); a
+ * delete without the same record is the same defect one direction over, and the
+ * measured one is worse: the row comes back clickable and re-deletable.
+ *
+ * The stamp is the archive fact's own currency (`answerSeq`, taken at the WRITE,
+ * compared against the sequence a read took when its REQUEST STARTED), so the two
+ * records answer the same question the same way: a page asked for after the delete
+ * speaks about membership and settles the tombstone, while a page asked for before
+ * it cannot resurrect the id.
+ *
+ * The title is kept only so a surface that has to NAME the conversation after the
+ * row is gone can still do so - the pane's header is the one that needs it, and
+ * "Untitled chat" over a conversation the user just deleted names nothing.
+ *
+ * A SEARCH ANSWER DOES NOT SETTLE A TOMBSTONE, deliberately: search answers are
+ * cached per query for 30 s (`session-search.ts`), so an answer already in hand
+ * can name the deleted id long after the delete, and the page is the read whose
+ * membership claim is complete (`include_archived` is asked of it). The tombstone
+ * therefore lives until the next page, and every search answer in the meantime is
+ * filtered against it at the join (`searchChats`, `ArchiveView.forgotten`).
+ */
+export type ForgottenFact = {
+	/** The request sequence the delete took, which orders it against every read. */
+	at: number;
+	/** The conversation's name as the row held it, for a surface that must name it. */
+	title?: string;
+};
+/**
  * An archive press the backend did not accept, and what to say about it.
  *
  * Carries the INTENT rather than the row, so a retry re-sends the same desired
@@ -1315,6 +1352,18 @@ type CanonicalSessionsState = {
 	 */
 	archiveFacts: Record<string, ArchiveFact>;
 	/**
+	 * The conversations THIS WINDOW has deleted and that the next catalogue page
+	 * has not yet settled, keyed by session id (see `ForgottenFact`).
+	 *
+	 * Read by three surfaces, all of them for the same reason - a delete must not be
+	 * undone by an answer that predates it: the catalogue page filters its rows
+	 * through it, the search join drops the hits that name a forgotten id (a cached
+	 * answer can outlive the delete by its 30 s `staleTime`), and the pane reads it
+	 * to land on the existing missing-session notice instead of a writable draft
+	 * bound to an id that is gone.
+	 */
+	forgotten: Record<string, ForgottenFact>;
+	/**
 	 * The last archive press the backend did not accept, or null.
 	 *
 	 * Rendered in the panel's own register beside the list rather than in a toast
@@ -1349,8 +1398,9 @@ type CanonicalSessionsState = {
 	) => Promise<boolean>;
 	/**
 	 * Delete ONE conversation, permanently. Never optimistic: the row is dropped
-	 * only after the backend confirms, because a delete this client invented cannot
-	 * be undone by a later read the way an archive can.
+	 * only after the backend confirms, and the drop is recorded as a TOMBSTONE
+	 * (`forgotten`) rather than as a plain removal from the array, because an answer
+	 * whose request started before the delete would otherwise restore the row.
 	 */
 	deleteSession: (
 		sessionId: string,
@@ -1747,21 +1797,23 @@ function heldStatusOver(
 	};
 }
 /**
- * The facts a write newer than `floor` still owns.
+ * The stamped records a read newer than `floor` still owns.
  *
- * A read asked about at `floor` speaks about everything it covers, so a fact
- * written before that request is settled by it and must go. A fact written AFTER
- * the request survives: that is the half that stops an answer in flight across a
- * press from undoing the press (see `archiveFacts`).
+ * Used for both records this store orders against its reads - the archive facts
+ * (`archiveFacts`) and the delete tombstones (`forgotten`) - because the rule is
+ * one rule: a read asked about at `floor` speaks about everything it covers, so a
+ * record written before that request is settled by it and must go, while a record
+ * written AFTER the request survives. That second half is what stops an answer in
+ * flight across a write from undoing the write.
  *
  * Returns the SAME object when nothing is dropped, so a page that settles nothing
  * does not re-render every row it carried.
  */
-function factsNewerThan(
-	facts: Record<string, ArchiveFact>,
+function factsNewerThan<T extends { at: number }>(
+	facts: Record<string, T>,
 	floor: number,
-): Record<string, ArchiveFact> {
-	const kept: Record<string, ArchiveFact> = {};
+): Record<string, T> {
+	const kept: Record<string, T> = {};
 	let dropped = false;
 	for (const [id, fact] of Object.entries(facts)) {
 		if (fact.at < floor) {
@@ -1800,21 +1852,25 @@ function applyArchiveFacts(
 }
 
 /**
- * The state a delete leaves behind: the row is gone, and so is anything this
- * client remembered about it.
+ * The state a delete leaves behind: the row is gone, anything this client
+ * remembered about it is gone, and a TOMBSTONE is left in its place.
  *
- * The fact goes with the row because both describe a conversation the backend no
- * longer holds - a surviving fact would resurrect the row's state on the next
- * answer that mentioned the id (a search hit, say), which is the one thing the
- * frozen contract says a delete must not do.
+ * The archive fact goes with the row because both describe a conversation the
+ * backend no longer holds - a surviving fact would resurrect the row's state on
+ * the next answer that mentioned the id (a search hit, say), which is the one
+ * thing the frozen contract says a delete must not do.
+ *
+ * The tombstone is what makes the delete STICK against the reads in flight
+ * (`ForgottenFact`): absence from the array is not a claim, because the next page
+ * replaces membership wholesale.
  *
  * `activeSessionId` IS DELIBERATELY LEFT ALONE. Deleting the conversation you
- * have open must land the pane on its EXISTING missing-session state (the 404
- * path in `use-canonical-session`, whose sentence already reads "This
- * conversation is no longer on this machine."), and that state is reached by the
- * pane asking about an id the daemon no longer has. Clearing the selection here
- * instead would replace it with a blank pane that explains nothing, which is the
- * second missing-session state this change is told not to invent.
+ * have open must land the pane on its EXISTING missing-session state rather than
+ * on a blank one, and that state is reached by the pane asking about an id the
+ * daemon no longer has - which is why the tombstone is also what the pane reads
+ * to know the answer before the wire gives it (`chat-content.tsx`). Clearing the
+ * selection here instead would replace it with a pane that explains nothing,
+ * which is the second missing-session state this change is told not to invent.
  */
 function forgetSession<T extends SessionForgetState>(
 	state: T,
@@ -1822,9 +1878,29 @@ function forgetSession<T extends SessionForgetState>(
 ): Partial<T> {
 	const facts = { ...state.archiveFacts };
 	delete facts[sessionId];
+	/*
+	 * Stamped like a press, AND ADVANCING THE COUNTER, which is one decision rather
+	 * than two: a write takes the sequence the next request will take, so a page
+	 * asked for afterwards carries a greater value and settles the tombstone, while
+	 * a page asked for before it cannot. Stamping without advancing leaves the next
+	 * read at the same value (`fact.at < floor` is false), so the tombstone would
+	 * outlive the very answer that proves the conversation is gone - measured as
+	 * three suite failures before this line existed.
+	 */
+	const at = state.answerSeq + 1;
 	return {
 		sessions: state.sessions.filter((row) => row.session_id !== sessionId),
 		archiveFacts: facts,
+		answerSeq: at,
+		forgotten: {
+			...state.forgotten,
+			[sessionId]: {
+				at,
+				title:
+					state.sessions.find((row) => row.session_id === sessionId)?.title ??
+					undefined,
+			},
+		},
 		deleteCandidate:
 			state.deleteCandidate === sessionId ? null : state.deleteCandidate,
 	} as Partial<T>;
@@ -1833,6 +1909,9 @@ function forgetSession<T extends SessionForgetState>(
 type SessionForgetState = {
 	sessions: CanonicalSessionRow[];
 	archiveFacts: Record<string, ArchiveFact>;
+	forgotten: Record<string, ForgottenFact>;
+	/** The stamp counter the tombstone's `at` is taken from (see `answerSeq`). */
+	answerSeq: number;
 	deleteCandidate: string | null;
 };
 
@@ -1954,6 +2033,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			statusUnavailable: [],
 			answerSeq: 0,
 			archiveFacts: {},
+			forgotten: {},
 			archiveFailure: null,
 			deleteCandidate: null,
 			error: null,
@@ -2024,6 +2104,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 */
 						const facts = factsNewerThan(state.archiveFacts, answerAt);
 						/*
+						 * AND THE TOMBSTONES THE SAME WAY, then the rows through them. A page
+						 * asked for after a delete settles the tombstone - it answers complete
+						 * membership (`include_archived` is asked of it), so the id it does not
+						 * carry is a conversation this window really does not have - while a page
+						 * asked for BEFORE the delete is filtered, which is the arm that stops a
+						 * permanently deleted conversation being re-added by a read that was
+						 * already in flight when the user confirmed (`forgotten`).
+						 */
+						const forgotten = factsNewerThan(state.forgotten, answerAt);
+						const page = rows.filter(
+							(row) => forgotten[row.session_id] === undefined,
+						);
+						/*
 						 * AND THE ROWS, not only the facts. `replaceSessionRows` rebuilds each
 						 * row's values from the page, so a page whose request STARTED before a
 						 * press would hand the panel the pre-press value: the row the user just
@@ -2034,10 +2127,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 */
 						return {
 							sessions: applyArchiveFacts(
-								replaceSessionRows(state.sessions, rows),
+								replaceSessionRows(state.sessions, page),
 								facts,
 							),
 							archiveFacts: facts,
+							forgotten,
 							loading: false,
 							truncated: result.truncated === true,
 							/*
@@ -2103,6 +2197,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * has to leave the list the moment the user presses (an archive that waits
 				 * for a round trip reads as a control that does nothing), and the answer
 				 * that follows is one this client cannot trust to be newer than the press.
+				 *
+				 * THE ASSUMPTION THE STAMP RESTS ON IS OWED TO QA, and this is where it is
+				 * written down rather than assumed silently. A press takes the sequence the
+				 * NEXT request will take, so every reader that starts after it carries a
+				 * stamp greater than the fact's and settles it (`factsNewerThan`). That is
+				 * sound only if a read WHOSE REQUEST STARTED AFTER THIS PRESS observes the
+				 * write - i.e. if the daemon applies `POST .../archive` before it answers a
+				 * read issued afterwards. Over two connections and more than one worker that
+				 * is the route's business, not this client's: if it does not hold, an answer
+				 * can say `archived: false`, the fact is settled, and the row reappears
+				 * until the next page. QA settles what the sibling route guarantees; the
+				 * client's half (stamp, revert, refusal register) is what is exercised here.
 				 */
 				const at = get().answerSeq + 1;
 				const previous = get().sessions.find(

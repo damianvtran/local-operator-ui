@@ -30,6 +30,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { offerArchiveUndo } from "../archive-undo";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
@@ -365,6 +366,14 @@ const EMPTY_PULSES: Readonly<Record<string, number>> = {};
  */
 const canonicalSpeaking = (
 	canonical?: ChatContentProps["canonical"],
+	/*
+	 * Whether the pane's conversation is one THIS WINDOW no longer has - the state
+	 * a confirmed delete puts it in before any read can answer, which the band has
+	 * the same business in as the transport states above (a greeting offered over a
+	 * conversation the user just deleted is the same mistake the cached and
+	 * vanished cases were).
+	 */
+	gone = false,
 ): boolean =>
 	Boolean(
 		canonical &&
@@ -376,7 +385,7 @@ const canonicalSpeaking = (
 				// must not have the greeting offered over it. The rest of the pane's view
 				// is not this predicate's question, so it is not handed over.
 				stale: canonical.view.stale,
-				missing: canonical.view.missing,
+				missing: canonical.view.missing || gone,
 			}),
 	);
 
@@ -506,8 +515,46 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							?.archived) === true
 				: false,
 		);
+		/*
+		 * THE CONVERSATION THIS WINDOW HAS DELETED, read here rather than waited for
+		 * from the wire.
+		 *
+		 * The pane's missing-session state used to arrive only as a 404 on the
+		 * conversation's own stream, and a delete this window performed does not wait
+		 * for one: the store knows (`forgotten`), and the pane therefore landed on an
+		 * empty draft bound to an id that no longer exists - the header over `Untitled
+		 * chat`, an enabled composer accepting a message that can only fail, and no
+		 * statement anywhere that the conversation was deleted (UX round 1, U1). The
+		 * state it lands on now is the ONE that already exists for this
+		 * (`MISSING_SESSION_NOTICE_ID`), not a second one.
+		 */
+		const sessionGone = useCanonicalSessionsStore((state) =>
+			sessionId ? state.forgotten[sessionId] !== undefined : false,
+		);
+		const gone = sessionGone || canonical?.view.missing === true;
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
+		);
+		/*
+		 * The header's archive press, in the same register as the other two routes
+		 * (UX round 1, U2): the pane's menu item, the row's control and a typed
+		 * `/archive` are ONE act, so all three offer the same Undo when the press is
+		 * accepted and the direction is the one that hides the conversation. The pane
+		 * stays open either way - archiving hides, it does not close.
+		 */
+		const archiveFromHeader = useCallback(
+			async (next: boolean) => {
+				if (!sessionId) return;
+				const accepted = await setSessionArchived(sessionId, next, agentName);
+				if (!accepted || !next) return;
+				offerArchiveUndo({
+					sessionId,
+					title: agentName,
+					archived: true,
+					onUndo: () => void setSessionArchived(sessionId, false, agentName),
+				});
+			},
+			[sessionId, agentName, setSessionArchived],
 		);
 		const requestSessionDelete = useCanonicalSessionsStore(
 			(state) => state.requestSessionDelete,
@@ -967,10 +1014,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							archiveEnabled={archiveEnabled}
 							archived={archived}
 							onSetArchived={
-								sessionId
-									? (next) =>
-											void setSessionArchived(sessionId, next, agentName)
-									: undefined
+								sessionId ? (next) => void archiveFromHeader(next) : undefined
 							}
 							deleteEnabled={deleteEnabled}
 							onRequestDelete={
@@ -1062,7 +1106,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										// the conversation rather than the owner's, or the
 										// conversation may not be on this machine at all.
 										stale={canonical.view.stale}
-										missing={canonical.view.missing}
+										missing={gone}
 									/>,
 								)
 							: asTabPanel(
@@ -1105,7 +1149,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												starting: canonical.starting === true,
 												startingAfterId: canonical.startingAfterId ?? null,
 												gate: canonical.view.frontend?.pending_gate ?? null,
-												unavailable: canonicalSpeaking(canonical),
+												unavailable: canonicalSpeaking(canonical, gone),
 												records: canonical.view.transcript.records,
 											}),
 										),
@@ -1129,7 +1173,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											 * reconnect) rather than answering anybody.
 											 */
 											canonical.view.transcript.records.length > 0 ||
-											canonicalSpeaking(canonical) ||
+											canonicalSpeaking(canonical, gone) ||
 											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
@@ -1205,7 +1249,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// accepting a message that can only 404. The pane above
 								// carries the sentence and the way out (M6); this only
 								// refuses the keystroke.
-								unavailable={Boolean(canonical?.view.missing)}
+								unavailable={gone}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={

@@ -657,3 +657,44 @@ test("this module never filters the rows it is handed", () => {
 	const outcome = searchChats(rows, "quarterly", null, live);
 	assert.deepEqual(outcome.rows, rows);
 });
+
+test("a conversation this window deleted cannot come back from a cached answer", () => {
+	/*
+	 * Agent review round 1 (M1), second surface: a search answer is cached per query
+	 * for 30 s (`session-search.ts`), and `searchChats` builds a row for every hit it
+	 * is handed - so an answer taken just before a delete kept drawing the deleted
+	 * conversation for the rest of that window, with no 404 path to correct it. The
+	 * join filters against the tombstone for BOTH halves, and the empty-query arm is
+	 * filtered too: it is not a filter the user can switch off.
+	 */
+	const hit = archivedHit("aaaaaaaaaaaa", false, "Doomed");
+	const outcome = searchChats(
+		[{ session_id: "aaaaaaaaaaaa", title: "Doomed", archived: false }],
+		"doomed",
+		[hit],
+		{ include: true, facts: {}, forgotten: new Set(["aaaaaaaaaaaa"]) },
+	);
+	assert.deepEqual(outcome.rows, [], "the local half drops the deleted row");
+	assert.deepEqual(
+		[...outcome.synthesized],
+		[],
+		"and the wire half cannot rebuild it from a hit",
+	);
+	/*
+	 * And with an EMPTY query, where the module returns the rows it was handed: the
+	 * deleted conversation is gone here too.
+	 */
+	const empty = searchChats(
+		[
+			{ session_id: "aaaaaaaaaaaa", title: "Doomed", archived: false },
+			{ session_id: "bbbbbbbbbbbb", title: "Kept", archived: false },
+		],
+		"",
+		null,
+		{ include: false, facts: {}, forgotten: new Set(["aaaaaaaaaaaa"]) },
+	);
+	assert.deepEqual(
+		empty.rows.map((entry) => entry.session_id),
+		["bbbbbbbbbbbb"],
+	);
+});

@@ -98,10 +98,36 @@ export function matchesLabel(row: CanonicalSessionRow, query: string): boolean {
 export type ArchiveView = {
 	include: boolean;
 	facts: Record<string, boolean>;
+	/**
+	 * The ids THIS WINDOW has deleted and not yet had settled by a catalogue page
+	 * (`forgotten` in the store). Optional, and absent means none: a caller that
+	 * holds no tombstones - a surface with no store behind it, or one of this
+	 * module's own tests - is not claiming anything about deletions.
+	 *
+	 * A SET rather than the store's stamped record, for the same reason `facts` is a
+	 * plain map: ordering a tombstone against an answer is the store's business, and
+	 * the join only needs to know which ids may not be drawn - from a row OR from a
+	 * hit. The hit half is the one that needs saying out loud: a search answer is
+	 * cached per query for 30 s, so an answer already in hand can keep naming a
+	 * conversation the user has deleted in the meantime, and rebuilding a row from
+	 * it is exactly how a permanently deleted conversation comes back.
+	 */
+	forgotten?: ReadonlySet<string>;
 };
 
 /** The archive facts a caller with none in hand passes. */
-export const NO_ARCHIVE_VIEW: ArchiveView = { include: false, facts: {} };
+export const NO_ARCHIVE_VIEW: ArchiveView = {
+	include: false,
+	facts: {},
+	forgotten: new Set<string>(),
+};
+
+/**
+ * No deletions to filter, for the callers that hold no store: a module-level
+ * constant rather than a fresh `Set` per call, so the no-tombstone path does no
+ * allocation at all.
+ */
+const NO_FORGOTTEN: ReadonlySet<string> = new Set<string>();
 
 /**
  * The rows a query admits, best first, with the conversation-matched ids.
@@ -133,8 +159,28 @@ export function searchChats(
 	archive: ArchiveView = NO_ARCHIVE_VIEW,
 ): ChatSearchOutcome {
 	const needle = query.trim();
+	/*
+	 * THE TOMBSTONE APPLIES TO EVERY ARM, the empty query included: it is not a
+	 * filter the user can switch off, it is what this window knows it deleted. Both
+	 * the rows and the hits are filtered once, here, so a forgotten conversation
+	 * cannot be drawn by the local half or rebuilt from a cached answer by the wire
+	 * half.
+	 */
+	const forgotten = archive.forgotten ?? NO_FORGOTTEN;
+	const liveRows =
+		forgotten.size === 0
+			? rows
+			: rows.filter((row) => !forgotten.has(row.session_id));
+	const liveHits =
+		hits === null || forgotten.size === 0
+			? hits
+			: hits.filter((hit) => !forgotten.has(hit.id));
 	if (!needle) {
-		return { rows, conversationMatches: new Set(), synthesized: new Set() };
+		return {
+			rows: liveRows,
+			conversationMatches: new Set(),
+			synthesized: new Set(),
+		};
 	}
 	/**
 	 * A conversation's archive state as this client knows it: its own fact first,
@@ -143,11 +189,11 @@ export function searchChats(
 	 */
 	const archivedOf = (id: string, fromWire: boolean | undefined): boolean =>
 		archive.facts[id] ?? fromWire === true;
-	const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
+	const byId = new Map((liveHits ?? []).map((hit) => [hit.id, hit]));
 	const conversationMatches = new Set<string>();
 	const admitted: { row: CanonicalSessionRow; rank: number }[] = [];
 	const seen = new Set<string>();
-	for (const row of rows) {
+	for (const row of liveRows) {
 		const hit = byId.get(row.session_id);
 		const labelMatch = matchesLabel(row, needle);
 		if (!hit && !labelMatch) continue;
@@ -188,7 +234,7 @@ export function searchChats(
 	 * follow the same rules as every other admitted row.
 	 */
 	const synthesized = new Set<string>();
-	for (const hit of hits ?? []) {
+	for (const hit of liveHits ?? []) {
 		if (seen.has(hit.id)) continue;
 		/*
 		 * AN ARCHIVED HIT IS DROPPED WHILE THE CONTROL IS OFF, whatever the answer

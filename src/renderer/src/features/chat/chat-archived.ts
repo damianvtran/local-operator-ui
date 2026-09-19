@@ -132,10 +132,12 @@ export function archiveDestinationApplies(
  * Why a typed archive command did not run, in the register the panel already
  * uses for a `/move` it cannot perform.
  *
- * TWO sentences for two causes, because they are not the same problem and only
- * one of them has anything the user can do: a backend that cannot archive is
- * an update, and a conversation that is already in the state the command asks
- * for is nothing at all.
+ * THREE sentences for three causes, because they are not the same problem and only
+ * two of them are about a state the user can see: a backend that cannot archive is
+ * an update, a conversation already in the state the command asks for is nothing at
+ * all, and a conversation whose archived state this window does NOT KNOW is a third
+ * thing again - `archiveDestinationApplies` withholds `/unarchive` for it, so a
+ * typed one has to say why rather than claim a state nobody established.
  */
 export const ARCHIVE_UNAVAILABLE_REASON =
 	"This backend cannot archive conversations. Update the backend and try again.";
@@ -145,3 +147,67 @@ export const ARCHIVE_ALREADY_ARCHIVED_REASON =
 
 export const ARCHIVE_NOT_ARCHIVED_REASON =
 	"This conversation is not archived, so there is nothing to restore.";
+
+/**
+ * The third arm of the same refusal (`archiveDestinationApplies`).
+ *
+ * Reached when the pane's conversation carries NO archived value at all - it is
+ * not on this client's catalogue page, so neither a fact nor a row speaks for it.
+ * Saying "not archived" there would be the client asserting a state it does not
+ * have (review round 1, N4); the honest sentence says what is unknown and names
+ * the one route that does reach the conversation (a search, whose hit carries its
+ * state).
+ */
+export const ARCHIVE_STATE_UNKNOWN_REASON =
+	"This window cannot tell whether that conversation is archived - it is not among the chats listed here. Find it with search and use its row to restore it.";
+
+/**
+ * Whether a search may draw archived conversations.
+ *
+ * THREE INPUTS, and the three-way answer is the reason this is a function a test
+ * can call rather than a condition inside the sidebar's JSX:
+ *
+ * - `enabled` is the capability (`session_archive`). Absent, the widening does not
+ *   exist at all - the same fail-closed rule `visibleRows` follows.
+ * - `control` is the user's `Include archived` box, which is REMEMBERED across a
+ *   cleared box rather than reset with the query (UX round 1, U8). Clearing the
+ *   field used to disarm the widening, so a user who cleared and retyped the same
+ *   query lost the archived result they had just found, with nothing saying why.
+ *   Remembering it costs nothing hidden: the box is drawn CHECKED when the query
+ *   returns, so the state is visible where it acts.
+ * - `query` is what keeps the remembered widening from outliving the search: with
+ *   no query in force there is no widened LIST either, so the at-rest panels draw
+ *   exactly what they drew before the box was ever ticked. That is the same
+ *   one-state rule the control's own visibility follows (it exists only while a
+ *   query does), applied to what it MEANS rather than to where it is drawn.
+ */
+export function archivedSearchWidened(
+	control: boolean,
+	query: string,
+	enabled: boolean,
+): boolean {
+	return enabled && control && query.trim().length > 0;
+}
+
+/**
+ * Whether an undo offer still stands, given what this client now knows.
+ *
+ * THE RETIREMENT RULE IN ONE SENTENCE, and it is the sentence the caller's own
+ * docstring carries: the offer stands while the conversation still holds the
+ * state the offer was taken from, and is retired the moment this client knows it
+ * does not.
+ *
+ * `current` is the effective value (this window's own fact first, the catalogue
+ * row second) and `undefined` is "no such conversation here" - a deleted one, or
+ * one the page stopped carrying - which is never the state the offer was about.
+ * It is a function rather than a condition inline for the reason this whole module
+ * exists: the version that shipped retired the offer on the first answer that
+ * MENTIONED the row, so it lasted 0.4-1.6 s and nobody could reach it (UX round
+ * 1, U4), and a rule with one home is a rule a test can hold.
+ */
+export function undoOfferStands(
+	offered: boolean,
+	current: boolean | undefined,
+): boolean {
+	return current === offered;
+}
