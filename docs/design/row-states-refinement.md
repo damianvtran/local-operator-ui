@@ -761,7 +761,8 @@ round trip's own error (up to 0.16 `L*`).
   flat 3:1 on the edge, because neither arm clears the fleet alone: the fill
   misses the field floor on those eight palettes while the edge clears at
   3.02–4.66, and the edge misses the non-text floor on 12 palettes against a
-  selection (`vaporwave` 2.77) and 5 against a hover (`catppuccinMocha` 2.92)
+  selection (`vaporwave` 2.77, tied with `catppuccinMocha`) and 5 against a hover
+  (`catppuccinMocha` 2.92)
   while the fill carries it there. No palette fails both arms on either state.
   The colours are measured per palette in `scripts/contrast-contract.mjs`; the
   class — every object a row state can paint over, discovered from the tree
