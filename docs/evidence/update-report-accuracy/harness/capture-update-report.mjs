@@ -50,7 +50,11 @@
  *
  * `--expect-record` / `--expect-notice` are the run's own claim, so a run that
  * photographs the other build's behaviour FAILS rather than committing the wrong
- * frame under the right name.
+ * frame under the right name. Every flag is accepted in BOTH spellings,
+ * `--flag=value` and `--flag value` (review round 4, Q-2): the reader once took
+ * only the space form while every document here spelled the `=`, so the claim was
+ * silently dropped and the run could not fail. The `=` spelling is the one the
+ * docs and the pull request use, and both were measured to behave identically.
  */
 
 import { spawn } from "node:child_process";
@@ -73,9 +77,27 @@ import { withNotificationsOff } from "../../../../scripts/notifications-off.mjs"
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..", "..", "..");
 
+/*
+ * BOTH SPELLINGS, because the header, the surface README and the pull request
+ * all document `--flag=value` while this reader once accepted only `--flag value`
+ * (review round 4, Q-2 = QA's row 4): the flag was then silently NOT FOUND, the
+ * run fell back to whatever the app did, and a claim the run was supposed to
+ * enforce could not fail. A/B on the same tree, before the fix:
+ *
+ *   --scenario stale-record --expect-record present   -> FAIL (rc=1)
+ *   --scenario stale-record --expect-record=present   -> PASS (rc=0)   <- the claim was ignored
+ *
+ * The `=` form is read first because it is the one the docs spell, and the space
+ * form never takes a following `--flag` as its value: a claim that swallows the
+ * next switch would resurrect the same silent pass in the other spelling.
+ */
 const argValue = (name, fallback = null) => {
+	const attached = process.argv.find((a) => a.startsWith(`${name}=`));
+	if (attached !== undefined) return attached.slice(name.length + 1);
 	const at = process.argv.indexOf(name);
-	return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
+	if (at === -1) return fallback;
+	const next = process.argv[at + 1];
+	return next === undefined || next.startsWith("--") ? fallback : next;
 };
 
 const SCENARIO = argValue("--scenario", null);

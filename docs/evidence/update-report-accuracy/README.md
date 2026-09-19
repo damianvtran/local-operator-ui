@@ -20,6 +20,12 @@ node docs/evidence/update-report-accuracy/harness/capture-update-report.mjs \
   --out docs/evidence/update-report-accuracy/unattended-<before|after>
 ```
 
+Every flag is accepted in both spellings, `--flag=value` and `--flag value`
+(review round 4, Q-2: the reader once took only the space form while this file,
+the harness header and the pull request all spelled the `=`, so the claim was
+silently dropped and the run could not fail - both spellings were measured to
+behave identically after the fix, including on an intentionally wrong value).
+
 Run it once in a tree built from the base (`--expect-notice=absent`) and once in
 a tree built from the branch (`--expect-notice=present`). Nothing else about the
 command changes, which is what makes the pair comparable. The pair committed here
