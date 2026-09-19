@@ -25,14 +25,21 @@
  *
  * ## What it admits, and what it deliberately does not
  *
- * The grammar is `link-grammar.ts` — the SAME token grammar the Files panel
- * uses, called with `LINK_POLICY`. The two surfaces differ in exactly TWO
- * admissions, both named on `TargetPolicy` and both measured: the known-extension
- * filter (dropped here, because a link is a rendering of what was written rather
- * than a claim that a file exists) and the fragment guard (kept here, because a
- * bare token that stopped inside a longer name renders an anchor whose claim is
- * wrong). Relative tokens (`notes.md`, `src/foo.ts`) are admitted by NEITHER:
- * with no cwd, admitting one means guessing a root.
+ * The grammar is `link-grammar.ts` - the SAME token grammar the Files panel
+ * uses, called with `LINK_POLICY_EVIDENCED` below. The two surfaces differ in
+ * exactly THREE admissions, all named on `TargetPolicy` and all measured: the
+ * known-extension filter (dropped here, because a link is a rendering of what
+ * was written rather than a claim that a file exists), the fragment guard (kept
+ * here, because a bare token that stopped inside a longer name renders an anchor
+ * whose claim is wrong), and the EVIDENCE gate (dropped here because the
+ * linkifier can ask the disk, which is what the extension filter stands in for
+ * on the panel's side). That third one is this file's job to supply: the
+ * renderer has one "does it exist" knowledge - the probe cache the link toolbar
+ * already fills - and `LINK_POLICY_EVIDENCED` injects it, so `/new` in a
+ * sentence about starting a conversation stays plain text instead of rendering
+ * an anchor that answers `No file at /new`. Relative tokens (`notes.md`,
+ * `src/foo.ts`) are admitted by NEITHER: with no cwd, admitting one means
+ * guessing a root.
  *
  * Two node kinds are rewritten and no others:
  *
@@ -50,13 +57,21 @@
  *
  * ## The plugin takes no options, and that is a performance decision
  *
- * react-markdown memoises its pipeline against the props it is given, and
- * `MARKDOWN_COMPONENTS`'s own comment records what a per-render literal cost:
- * a new object every render made the memo miss every time and re-parsed the
- * whole document per frame. An options object here would be the same bug one
- * level down, so the plugin is optionless and the module-scope array is built
- * once (see `GFM_LINKIFY` in `markdown-renderer.tsx`); all policy lives
- * downstream, in the component that renders the anchor.
+ * WHAT IS MEASURED (react-markdown 10.1.0, in jsdom, for this change): the
+ * pipeline re-runs on every render - `Markdown(options)` calls `createProcessor`
+ * and `runSync` each time - so the bound on re-parsing is this repo's own
+ * `memo()` on the components that hold `<ReactMarkdown>`, not any identity this
+ * module hands over. What an options object would cost TODAY is therefore one
+ * object per render, not a cache miss, and this paragraph is written that way
+ * rather than repeating the memo argument the plugin and the hoisted arrays were
+ * first built on.
+ *
+ * The plugin stays optionless anyway, for two reasons that survive the
+ * measurement: an option that CHANGED what is linkified would have to be part of
+ * the pipeline's identity, which is the coupling this shape avoids; and the
+ * module-scope array (`GFM_LINKIFY`) is the shape a future react-markdown
+ * restoring an internal memo would read. All policy lives downstream - in the
+ * component that renders the anchor, and in `LINK_POLICY_EVIDENCED` below.
  *
  * ## What the anchor carries
  *
@@ -77,11 +92,58 @@
  * Pure: no React, no DOM. Asserted by `scripts/link-targets.test.mjs`.
  */
 
+import { evidenceFor } from "@features/chat/utils/link-actions";
 import {
 	LINK_POLICY,
+	type TargetPolicy,
 	type TargetSpan,
+	allowsProsePathAfter,
+	isAmbiguousCandidate,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
+
+/**
+ * The policy this walker actually runs, which is the linkifier's plus the disk.
+ *
+ * ONE module-scope constant, because building it per call would hand the grammar
+ * a fresh object per node - cheap in itself, but the shape that makes "the
+ * policy is one decision a reviewer can see" true is a constant rather than an
+ * expression buried in two call sites.
+ *
+ * `evidenceFor` reads the probe cache the link toolbar fills, so a spelling the
+ * reader already hovered is answered from memory and a spelling nobody has asked
+ * about answers `unknown`, which the grammar's gate REFUSES. Plain text until
+ * the disk says otherwise is the direction this module trades in throughout (a
+ * missing link, never an anchor whose claim is wrong); the probe that fills the
+ * cache for the transcript's own rows is issued by `useLinkEvidence` in
+ * `markdown-renderer.tsx`, inside the component that owns the parse.
+ *
+ * The import direction is deliberate and one-way: a grammar that imported this
+ * module would stop being importable by a bare `node --test`, which is the whole
+ * reason the oracle is injected rather than called.
+ *
+ * THE SECOND GATE, and why it is not part of this policy: an ambiguous target the
+ * pre-scan could not have named is refused before the oracle is consulted at all
+ * (`allowsProsePathAfter`, applied by `atomsFor` to the source character before a
+ * node's first character - the NODE BOUNDARY, the one position a node value
+ * cannot answer for itself). The disk is the only authority on whether an
+ * extensionless token exists, but the ASK is the renderer's - `useLinkEvidence`
+ * asks about `ambiguousTargetsIn`'s suspects and nothing else - so a spelling
+ * outside that set has no answer of its own to inherit and is refused there.
+ * Round 1's review R1-4 measured what it inherited instead: the anchor's presence
+ * depended on whether another row had primed the cache.
+ *
+ * SCOPED TO THE AMBIGUOUS TARGET (round 2, review R2-3), because the ask is the
+ * only thing the gate can be about: an extensioned or dotfile target is admitted
+ * on its shape, so its anchor exists on every row whatever the cache holds and
+ * there is nothing for the asker and the walker to disagree about. The gate is
+ * still not part of the policy object - it refuses a target the policy would
+ * admit - but it names the class it refuses.
+ */
+const LINK_POLICY_EVIDENCED: TargetPolicy = {
+	...LINK_POLICY,
+	evidence: evidenceFor,
+};
 
 /**
  * The shape this walker needs from mdast, declared here rather than imported.
@@ -98,7 +160,29 @@ type MdastNode = {
 	/** Set on the `link` atoms this plugin builds; never read from the input. */
 	url?: string;
 	children?: MdastNode[];
+	/**
+	 * The node's own offsets in the source, read for ONE question.
+	 *
+	 * A node value starts where markdown decided it starts, and markdown CONSUMES
+	 * the characters it stood between: `_/Users/x/workspace_` reaches this walker as
+	 * a single text node whose value begins at index 0 with `/Users/x/workspace`.
+	 * The scanner's predecessor rule cannot run on that value, because index 0 has
+	 * no preceding character inside it - so the walker reads the SOURCE instead
+	 * (`predecessorOf`). Only `start.offset` is used; nothing here is rendered, and
+	 * a tree without positions simply keeps the pre-existing behaviour.
+	 */
+	position?: { start?: { offset?: number } };
 };
+
+/**
+ * The one field of the parsed file this walker needs: the markdown it parsed.
+ *
+ * Declared structurally rather than imported, for the reason `MdastNode` is -
+ * see below. `react-markdown` hands its transformer a `VFile` whose `value` is
+ * the source (`createFile`), which is what makes the predecessor question
+ * answerable at all.
+ */
+type ParsedFile = { value?: unknown };
 
 /**
  * Node kinds whose children are NEVER rewritten, and why each one is here.
@@ -142,15 +226,88 @@ const codeLinkAtom = (url: string, code: MdastNode): MdastNode => ({
 });
 
 /**
+ * The source character a node's first character follows, when it can be known.
+ *
+ * `undefined` covers the two cases the rule must not act on: a node at offset 0
+ * follows nothing at all (the same case `targetsIn` treats as a legal start), and
+ * a tree carrying no positions - one built by hand rather than parsed - has no
+ * source to read. Both take `allowsProsePathAfter(undefined)` = true, which is
+ * this walker's behaviour before the rule existed. The production pipeline always
+ * has both, so the tolerant branch is for callers who never had the rule.
+ */
+function predecessorOf(
+	node: MdastNode,
+	source: string | undefined,
+): string | undefined {
+	const offset = node.position?.start?.offset;
+	if (source === undefined || typeof offset !== "number") return undefined;
+	return source[offset - 1];
+}
+
+/**
  * One text node's value, as a run of text and link atoms.
  *
  * The slices come straight from the scanner's offsets, so the atoms spell the
- * node's own value exactly — no re-escaping, no re-quoting, and a markdown
+ * node's own value exactly - no re-escaping, no re-quoting, and a markdown
  * emphasis marker that happened to abut a path (`\`**\`/tmp/a.pdf\`**\``) stays
  * in the text atom on the correct side of the link.
+ *
+ * `rest` IS THE NEXT SIBLING'S FIRST WORD, and scanning `value + rest` is what
+ * stops a token that the MARKDOWN SPLIT from being linked as if it were whole:
+ * `write to /tmp/<name>.json` is one string to the scanner and correctly refused
+ * as a placeholder, but mdast hands the walker `text("write to /tmp/")`,
+ * `html("<name>")`, `text(".json")` - three nodes - and a per-node scan sees a
+ * complete token `/tmp/` and links it. The guard that exists for exactly this
+ * (`isFragment`, in the grammar) cannot see past a node boundary.
+ *
+ * WHAT THE `rest` SCAN IS FOR, and what it costs. Only targets that END INSIDE
+ * this node survive the filter below (`end <= value.length`): a token that the
+ * concatenation completes or extends - `/Users/x/rep` plus `` `ort.md` `` -
+ * belongs to the next node as much as to this one, so it is refused rather than
+ * half-linked. The trade is narrow on purpose: a token followed by WHITESPACE
+ * before the boundary (the ordinary `See /tmp <b>bold</b>` shape, whose text node
+ * ends in the space) is untouched, and so is one followed by a node with no text
+ * of its own (`**bold**`, an image), because `continuation` answers "" for those.
+ * What it refuses, and states here because it is a real false negative: a token
+ * glued to an inline HTML or code node that closes before any whitespace
+ * (`See /tmp<b>bold</b>`) stops linking - the same trade `isPlaceholderTail`
+ * documents on the grammar's side.
  */
-function atomsFor(value: string): MdastNode[] {
-	const targets = targetsIn(value, LINK_POLICY);
+function atomsFor(
+	value: string,
+	rest = "",
+	predecessor: string | undefined = undefined,
+): MdastNode[] {
+	const targets = targetsIn(value + rest, LINK_POLICY_EVIDENCED).filter(
+		(target) =>
+			target.end <= value.length &&
+			/*
+			 * THE PREDECESSOR TEST AT INDEX 0, which is the one position a node value
+			 * cannot answer for itself: `targetsIn` applies the rule to the character
+			 * before a token in the string it is handed, so a value that BEGINS with a
+			 * token has no predecessor for it to read, while the raw document the
+			 * pre-scan reads has the character markdown consumed. Round 1's review R1-4
+			 * measured the consequence: `ambiguousTargetsIn` on `_/Users/x/workspace_`
+			 * returns `[]`, so nothing asks the disk, and the anchor appeared only when
+			 * another row had already asked about that spelling - a link whose existence
+			 * depended on unrelated cache state. `allowsProsePathAfter` reads the SOURCE's
+			 * own character, so such a token is refused here in every case.
+			 *
+			 * ONLY AN AMBIGUOUS TOKEN IS REFUSED, which is the whole class the rule can
+			 * be about (round 2, review R2-3): the disagreement it closes is between the
+			 * asker and the walker, and the evidence gate is the only thing an ask feeds
+			 * - so an extensioned target, which is admitted on its shape and never asks,
+			 * cannot inherit a neighbour's answer and has nothing to be refused FOR.
+			 * Applying the test to it anyway took real links away with no property
+			 * behind the cost: `_/tmp/a.pdf_`, `__/tmp/a.pdf__`, `_~/notes/todo.md_`,
+			 * `~~/tmp/a.pdf~~` and an extensioned path right after an inline node all
+			 * linked before round 1's remediation and rendered plain after it. Both
+			 * halves are pinned in `scripts/link-targets.test.mjs`.
+			 */
+			(target.start !== 0 ||
+				!isAmbiguousCandidate(target.target) ||
+				allowsProsePathAfter(predecessor)),
+	);
 	if (targets.length === 0) return [];
 	const atoms: MdastNode[] = [];
 	let cursor = 0;
@@ -176,13 +333,41 @@ function atomsFor(value: string): MdastNode[] {
  * targets (`` `/a.pdf /b.pdf` ``) is refused for the same reason — the
  * alternative is an anchor per token inside one code span, i.e. a linkified
  * command line, which is exactly the reading the whole-span rule prevents.
+ *
+ * NO PREDECESSOR TEST HERE, which is not an exemption but a consequence: the raw
+ * scanner meets this target at the code span's opening backtick, and a backtick is
+ * in `ALLOWED_PREFIX`, so the asker can always name what this returns and the
+ * test `atomsFor` applies at index 0 can never fail for it.
  */
 function wholeSpanTarget(value: string): TargetSpan | null {
-	const targets = targetsIn(value, LINK_POLICY);
+	const targets = targetsIn(value, LINK_POLICY_EVIDENCED);
 	const [only] = targets;
 	if (!only || targets.length > 1) return null;
 	return only.start === 0 && only.end === value.length ? only : null;
 }
+
+/** Where a following node's contribution to a token stops. */
+const CONTINUATION_BREAK = /\s/;
+
+/**
+ * The first word of the next sibling's text, or "" when there is none.
+ * Only the FIRST whitespace-delimited run: the walker wants to know what the
+ * scanner would have seen as one token continuing past this node's end, and a
+ * following node's whole text (`ort.md and here is more prose`) would put
+ * unrelated words inside the scan window. A sibling with no `value` of its own -
+ * `strong`, `emphasis`, an image - answers "" rather than recursing into its
+ * children, because the character immediately after this node is that sibling's
+ * MARKER (`*`, `_`, `![`), not its rendered text, and a scanner run over the
+ * marker would decide the fragment question from a `*`.
+ */
+const continuation = (
+	children: readonly MdastNode[],
+	index: number,
+): string => {
+	const next = children[index + 1];
+	if (!next || typeof next.value !== "string") return "";
+	return next.value.split(CONTINUATION_BREAK, 1)[0] ?? "";
+};
 
 /**
  * Rewrite every child list in the tree, once.
@@ -196,14 +381,18 @@ function wholeSpanTarget(value: string): TargetSpan | null {
  * inert: a linkified `inlineCode` is ONE node replacing ONE node, so a length
  * comparison reads "unchanged" and the rewrite is thrown away.
  */
-function walk(node: MdastNode): void {
+function walk(node: MdastNode, source: string | undefined): void {
 	const children = node.children;
 	if (!children) return;
 	const rewritten: MdastNode[] = [];
 	let changed = false;
-	for (const child of children) {
+	for (const [index, child] of children.entries()) {
 		if (child.type === "text" && typeof child.value === "string") {
-			const atoms = atomsFor(child.value);
+			const atoms = atomsFor(
+				child.value,
+				continuation(children, index),
+				predecessorOf(child, source),
+			);
 			if (atoms.length > 0) {
 				rewritten.push(...atoms);
 				changed = true;
@@ -225,7 +414,7 @@ function walk(node: MdastNode): void {
 				continue;
 			}
 		}
-		if (!NO_DESCENT.has(child.type)) walk(child);
+		if (!NO_DESCENT.has(child.type)) walk(child, source);
 		rewritten.push(child);
 	}
 	if (changed) node.children = rewritten;
@@ -234,6 +423,13 @@ function walk(node: MdastNode): void {
 /**
  * The plugin. Optionless by design; see this file's header.
  */
-export const remarkLinkifyTargets = () => (tree: MdastNode) => {
-	walk(tree);
-};
+export const remarkLinkifyTargets =
+	() => (tree: MdastNode, file?: ParsedFile) => {
+		/*
+		 * The source travels with the tree rather than being read off it, because the
+		 * predecessor test needs a character the node value no longer holds (see
+		 * `predecessorOf`). `react-markdown` passes the parsed `VFile`, whose `value`
+		 * is what was parsed; a caller that passes nothing gets the tolerant branch.
+		 */
+		walk(tree, typeof file?.value === "string" ? file.value : undefined);
+	};
