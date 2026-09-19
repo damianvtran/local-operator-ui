@@ -83,11 +83,17 @@ export interface BrowserFileTransferRowProps {
 	/** Open the directory the host wrote into. Takes no path by design — `main`
 	 * decides which one, so a renderer bug cannot point `openPath` anywhere. */
 	onReveal: () => void;
+	/** How to name the tab a decision belongs to, when it is not the one on screen
+	 * (review round 1, D2). The surface owns the tab list, so it owns the words; a
+	 * decision taken elsewhere is LABELLED rather than hidden, because an agent's tab
+	 * is created inactive and hiding it would take the file off screen entirely. */
+	tabLabel?: (tabId: number) => string;
 }
 
 export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	transfers,
 	onReveal,
+	tabLabel,
 }) => {
 	// The newest decision is what the row speaks about when nothing is in flight.
 	const latest = transfers?.notes[0] ?? null;
@@ -120,6 +126,13 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	const sending = !active && latest?.outcome === "sent";
 	const direction = active ? "download" : (latest?.direction ?? "download");
 	const name = active?.name ?? latest?.name ?? "";
+	// WHOSE DECISION THIS IS, when it is not the tab on screen. `null` means no tab is
+	// active, which is not the same as "another tab" — there is nothing for the row to
+	// contradict, so it says nothing.
+	const owner =
+		active || latest
+			? awayLabel(transfers, active?.tabId ?? latest?.tabId, tabLabel)
+			: "";
 
 	return (
 		<output
@@ -170,7 +183,12 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				</p>
 			) : (
 				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted">
-					<span className="min-w-0 truncate font-mono text-mono-sm">
+					{/* THE NAME KEEPS ITS OWN SPACE HERE, which is the one place this row's
+					    layout differs from the refusal's: a DECIDED transfer is one quiet line
+					    (branding § 7) and the file's name is what the reader is looking for, so
+					    the path — which is long by nature — is the part that gives way. The
+					    refusal's sentence is a different problem (D3) and is handled below. */}
+					<span className="max-w-[32ch] shrink-0 truncate font-mono text-mono-sm">
 						{sending && (latest?.count ?? 1) > 1
 							? `${latest?.count} files`
 							: name}
@@ -196,6 +214,10 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					</span>
 				</p>
 			)}
+
+			{/* WHOSE DECISION THIS IS, when it is another tab's (review round 1, D2): the
+			    sentence must not read as a statement about the page the user is on. */}
+			{owner && <span className="shrink-0 text-ink-dim">{owner}</span>}
 
 			{/* The reveal is pointless for an upload (there is no file of ours on disk),
 			    and for a download it is live in every state — including mid-flight, where
@@ -226,6 +248,18 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 		</output>
 	);
 };
+
+/** How a decision that belongs to another tab is named, or "" when it is this
+ * tab's own (or when no tab is active at all). */
+function awayLabel(
+	transfers: TransferActivityView,
+	tabId: number | undefined,
+	tabLabel: ((tabId: number) => string) | undefined,
+): string {
+	if (tabId === undefined || transfers.activeTabId === null) return "";
+	if (transfers.activeTabId === tabId) return "";
+	return tabLabel ? tabLabel(tabId) : "on another tab";
+}
 
 /** What a transfer in flight says about itself.
  *

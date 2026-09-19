@@ -37,6 +37,7 @@ const SAVED: TransferNoteView = {
 	direction: "download",
 	site: "",
 	refusal: null,
+	tabId: 7,
 };
 
 const REFUSED: TransferNoteView = {
@@ -50,6 +51,7 @@ const REFUSED: TransferNoteView = {
 	direction: "download",
 	site: "",
 	refusal: { rule: "executable", bytes: 0, limit: 0 },
+	tabId: 7,
 };
 
 const OVER_CAP: TransferNoteView = {
@@ -63,6 +65,7 @@ const OVER_CAP: TransferNoteView = {
 	direction: "download",
 	site: "",
 	refusal: { rule: "limit", bytes: 268_435_457, limit: 268_435_456 },
+	tabId: 7,
 };
 
 /** The state the round-1 walk found with nothing on screen at all (U3). */
@@ -76,6 +79,7 @@ const SENT: TransferNoteView = {
 	direction: "upload",
 	site: "forms.example",
 	refusal: null,
+	tabId: 7,
 };
 
 /** A long name at the narrow window, which is the shape D3 asked to see: the name
@@ -91,12 +95,13 @@ const LONG_NAME: TransferNoteView = {
 	direction: "download",
 	site: "",
 	refusal: { rule: "executable", bytes: 0, limit: 0 },
+	tabId: 7,
 };
 
 const activity = (
 	notes: TransferNoteView[],
 	active: ActiveTransferView | null = null,
-): TransferActivityView => ({ active, dir: DIR, notes });
+): TransferActivityView => ({ active, dir: DIR, notes, activeTabId: 7 });
 
 const meta = {
 	title: "Browser/File transfer row",
@@ -113,6 +118,7 @@ export const Downloading: Story = {
 			name: "receipt-3.pdf",
 			received: 14_680_064,
 			total: 41_943_040,
+			tabId: 7,
 		}),
 		onReveal: () => {},
 	},
@@ -126,6 +132,7 @@ export const DownloadingUnknownSize: Story = {
 			name: "chunked.bin",
 			received: 8_388_608,
 			total: 0,
+			tabId: 7,
 		}),
 		onReveal: () => {},
 	},
@@ -163,6 +170,22 @@ export const LongNameAtMinimumWindow: Story = {
 			<BrowserFileTransferRow transfers={args.transfers} onReveal={() => {}} />
 		</div>
 	),
+};
+
+/** A decision taken on ANOTHER tab (D2): the strip says whose it is rather than
+ * appearing to describe the page on screen. This is the state the row is in for the
+ * common agent case — an agent tab is created inactive, so its download belongs to a
+ * tab the user is not looking at — and it is rendered rather than hidden, because
+ * hiding it would take the file off screen entirely (which is U3's complaint). */
+export const OtherTabsTransfer: Story = {
+	args: {
+		transfers: {
+			...activity([{ ...SAVED, tabId: 3 }]),
+			activeTabId: 7,
+		},
+		onReveal: () => {},
+		tabLabel: () => "· on the agent's tab",
+	},
 };
 
 /** Nothing to say: the row is absent rather than empty. A host that predates the
