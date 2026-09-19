@@ -156,6 +156,7 @@ const STUB_PATHS = [
 	"react-router-dom",
 	"@shared/hooks/use-canonical-session",
 	"@shared/api/local-operator/desktop-api",
+	"@shared/hooks/use-connectivity-status",
 ];
 const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 
@@ -192,7 +193,7 @@ export const desktopResult = request => globalThis.__ack(request);`,
 	 * here. `desktopFeatureEnabled` is re-exported from the shipped module rather
 	 * than re-implemented, so the gate under test is the app's own.
 	 */
-	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({
@@ -208,6 +209,16 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 		"export const useChatSearch = () => ({ data: undefined, refused: false, isError: false, refetch: async () => undefined });",
 	"@shared/hooks/use-desktop-feed":
 		"export const useDesktopFeed = () => ({ available: false, connected: true, catalogueRevision: 0 });",
+	/*
+	 * The sidebar's status read is stubbed like the rest of the surfaces' data - it
+	 * is where main's pairing record arrives (`DaemonStatusSnapshot.pairing`), and
+	 * these cases are about the control's own copy, not about the record. Without
+	 * this stub the graph pulls the real hook, and with it the renderer's config
+	 * module and a `backend-error` export the stub below does not carry: measured as
+	 * a build failure rather than a failing assertion.
+	 */
+	"@shared/hooks/use-connectivity-status":
+		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
 	"react-router-dom": "export const useNavigate = () => () => undefined;",
@@ -292,6 +303,7 @@ const {
 	useCanonicalSessionsStore: store,
 	ThemedToastContainer,
 	realDesktopResult,
+	DESKTOP_FOREGROUND_REQUIRED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	QueryClient,
 	QueryClientProvider,
@@ -689,23 +701,54 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 });
 
 /*
- * THE REMEDY IS REACHABLE WITHOUT A POINTER, and that is a claim no source text
- * can settle (UX round 1, U2; review round 1, MINOR 1).
+ * THE STORE'S OWN ERROR VALUE, which is where the daemon's prose used to become
+ * this app's diagnosis (review round 2 U1/D14, and round 3's note that the fix was
+ * credited to a test that does not cover it).
  *
- * The measurement that turned this into a case: with the wedged row on screen,
- * `title` was the only carrier of `/stop if it stays silent` over the whole
- * document — no accessible name held it, no row pointed at it with
- * `aria-describedby`, and Chromium does not present a `title` on focus, so for
- * the modality the `sr-only` name exists for the advice did not exist. The case
- * mounts the shipped sidebar for the same reason the ones above do: the two
- * facts are about ELEMENTS (does the row point at the sentence, and does the
- * sentence exist to be found), and reading the component's source would pass
- * with an `aria-describedby` naming an id nobody rendered.
- *
- * The failed row is here as the CONTROL: the remedy is advice about the state
- * that is merely silent, and an error row that offered "stop" would be telling a
- * person to kill the session they most likely want to reopen.
+ * The window measured in the built app was 18.3 s, and its shape was: a re-pair
+ * replaces the daemon, the app's catalogue read is refused with the NEW daemon's
+ * 503 prose, and the sidebar and the pane render the stored `error` verbatim. So
+ * the assertion is on the VALUE the store stores - not on a frame, and not on the
+ * transport in isolation.
  */
+test("the store composes the refusal's own sentence instead of storing the server's", async () => {
+	try {
+		const prose =
+			"Desktop controls require a backend started by the desktop app.";
+		window.api = {
+			desktop: {
+				/*
+				 * A DesktopControlError, because that is what the transport throws for a
+				 * refusal: the store keeps the message of anything else (its own "Unknown
+				 * session." is not a refusal), so a plain Error here would test the wrong
+				 * branch.
+				 */
+				request: () => Promise.reject(new DesktopControlError(503, prose)),
+			},
+		};
+		await store.getState().fetchSessions({ silent: true });
+		const stored = store.getState().error;
+		assert.ok(stored, "a refused catalogue read must store an error");
+		assert.doesNotMatch(
+			String(stored),
+			/started by the desktop app/,
+			"the server's own sentence about itself is not this app's diagnosis",
+		);
+		assert.doesNotMatch(String(stored), /503|request failed/);
+		/*
+		 * THE OTHER HALF LIVES IN `session-switch`, and deliberately: a rejection at
+		 * the BRIDGE is turned into a transport error by the client before the store
+		 * ever sees it, so a domain error cannot be produced from here. What proves
+		 * the distinction is the pair of suites together - a `DesktopControlError`
+		 * composed into our sentence here, and a domain error keeping its own
+		 * ("Unknown session.") in `session-switch`'s three cases, which failed when
+		 * `storeErrorMessage` was not there.
+		 */
+	} finally {
+		window.api = undefined;
+	}
+});
+
 test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
 	const SILENT = "d4e5f6a7b8c9";
 	const FAILED = "e5f6a7b8c9d0";

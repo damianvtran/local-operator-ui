@@ -1,4 +1,6 @@
 import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
 	type DesktopResponse,
 	desktopEndpoint,
 	desktopRequestByteBudget,
@@ -71,13 +73,19 @@ export async function requestDesktopOutcome(
 	}
 	const request = parsed.data;
 	if (request.op !== "capabilities" && !token) {
-		// Never sent: this app has no credential to send.
+		// Never sent: this app has no credential to send. The refusal carries a CODE
+		// as well as its machine sentence, because the renderer has to be able to
+		// tell THIS 503 (a pairing condition: the daemon was never asked) from the
+		// daemon's own 503 for a shut plane - two conditions that need two
+		// sentences, and one status that cannot separate them (design § 5.1).
 		return {
 			response: {
 				status: 503,
 				body: {
-					detail:
-						"Restart with a desktop-managed backend to use these controls.",
+					detail: {
+						code: DESKTOP_REFUSAL_CODE.noCredential,
+						message: DESKTOP_MACHINE_DETAIL.noCredential,
+					},
 				},
 			},
 			answered: false,
@@ -183,8 +191,10 @@ export async function requestDesktopOutcome(
 			response: {
 				status: 503,
 				body: {
-					detail:
-						"The backend could not complete this request. Check its connection and try again.",
+					detail: {
+						code: DESKTOP_REFUSAL_CODE.transportFailed,
+						message: DESKTOP_MACHINE_DETAIL.transportFailed,
+					},
 				},
 			},
 			/*

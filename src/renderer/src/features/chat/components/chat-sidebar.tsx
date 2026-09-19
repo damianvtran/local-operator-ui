@@ -3,6 +3,7 @@ import { compatibilityBannerShown } from "@shared/api/local-operator/backend-err
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -13,6 +14,7 @@ import {
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
@@ -445,11 +447,28 @@ export function ChatSidebar({
 	 */
 	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const error = useCanonicalSessionsStore((s) => s.error);
-	const ready = desktopFeatureEnabled(
+	/*
+	 * The TRI-STATE, because the gate owes two different sentences and can only pick
+	 * between them if it is told which half closed: an unavailable plane is a pairing
+	 * condition this app can act on, while a backend that does not advertise
+	 * `session_catalogue` is a version gap (design § 4).
+	 */
+	const catalogueState = desktopFeatureState(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
+	const ready = catalogueState === "enabled";
+	/*
+	 * Main's pairing cause, read for the same reason the pane reads it: the sentence
+	 * for an unavailable plane comes from the one shared table, selected by the cause
+	 * main published (design § 5.2, § 11.1).
+	 */
+	const { data: serverHealth } = useServerHealth();
+	const pairingCause =
+		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
+			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
+			: null;
 	/*
 	 * Losing the backend mid-session must not look like an empty catalogue, and
 	 * neither must losing the GATE. Once the sidebar has been ready we keep its
@@ -496,7 +515,8 @@ export function ChatSidebar({
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
 	const { stale, showList, notice } = catalogueGate({
-		ready,
+		state: catalogueState,
+		cause: pairingCause,
 		failed: Boolean(capabilities.error),
 		answered: Boolean(capabilities.data),
 		wasReady: wasReady.current,
@@ -506,7 +526,10 @@ export function ChatSidebar({
 		storeFailed: Boolean(error),
 		// The banner's own condition, read through the same predicate it uses, so
 		// the two cannot drift into stating one condition twice (design round 1, D3).
-		coveredByCompatibilityBanner: compatibilityBannerShown(capabilities.data),
+		coveredByCompatibilityBanner: compatibilityBannerShown(
+			capabilities.data,
+			pairingCause,
+		),
 	});
 	/*
 	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY

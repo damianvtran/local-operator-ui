@@ -1,14 +1,17 @@
+import { backendPaneSentence } from "@shared/api/local-operator/backend-error";
 import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
@@ -40,6 +43,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import {
 	type AnswerOutcome,
@@ -2064,11 +2068,49 @@ export function ChatPage() {
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
-	const enabled = desktopFeatureEnabled(
+	/*
+	 * THE CAUSE, not only the boolean (design § 4).
+	 *
+	 * This pane used to render "Update the backend to use canonical chats" for
+	 * every closed gate, including the one where this app holds no credential for a
+	 * perfectly current server - the operator's own screenshot, where the pane told
+	 * them their server was old while the sidebar called the server unreachable and
+	 * the banner asked them to restart (design § 0(b)). The tri-state says WHICH
+	 * condition closed the gate; the pairing sentence for that cause is the same one
+	 * the banner renders, because it is the same fact.
+	 */
+	const catalogueState = desktopFeatureState(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
+	const enabled = catalogueState === "enabled";
+	const { data: serverHealth } = useServerHealth();
+	const pairingCause =
+		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
+			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
+			: null;
+	const pairingSentence = backendPaneSentence(catalogueState, pairingCause);
+	/*
+	 * NO CONTROL WHERE NO REMEDY EXISTS, asked of the ONE predicate that answers it
+	 * (design round 3): this used to spell the two causes out again, which is a
+	 * second copy of a rule that has three other readers, and a copy is how the
+	 * pane and the band come to disagree about a cause one of them learns later.
+	 */
+	const offerRetry = pairingHasRemedy(pairingCause);
+	/**
+	 * The pane's one retry: the RECONNECT verb when this is a pairing state.
+	 *
+	 * `capabilities.refetch()` cannot change a pairing - the route is public and
+	 * answers identically before and after - so the control was inert in exactly the
+	 * states that offered it. Main's reconnect verb is the claim path, and for every
+	 * other state (a failed query, a version gap) the refetch is still the right act
+	 * and stays beside it (design § 2).
+	 */
+	const paneRetry = useCallback(async () => {
+		if (catalogueState === "unpaired") await window.api?.backend?.reconnect?.();
+		await capabilities.refetch();
+	}, [catalogueState, capabilities]);
 	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
 	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
 	const draft = useCanonicalSessionsStore((state) =>
@@ -2214,16 +2256,22 @@ export function ChatPage() {
 								{capabilities.isLoading
 									? "Connecting to the backend…"
 									: capabilities.error
-										? capabilities.error.message
-										: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+										? userFacingMessage(
+												capabilities.error,
+												"The Local Operator server did not answer as expected.",
+											)
+										: (pairingSentence ??
+											"Update the backend to use canonical chats. Your existing histories are unchanged.")}
 							</p>
-							<button
-								type="button"
-								className={cn("underline")}
-								onClick={() => void capabilities.refetch()}
-							>
-								Retry
-							</button>
+							{offerRetry && (
+								<button
+									type="button"
+									className={cn("underline")}
+									onClick={() => void paneRetry()}
+								>
+									Retry
+								</button>
+							)}
 						</div>
 					) : identity ? (
 						<div className={cn("min-h-0 flex-1")}>

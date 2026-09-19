@@ -69,3 +69,14 @@ node scripts/attach-frame-evidence.mjs --out /tmp/frames --label after --scene f
 The rig reaps what it starts: each scene owns its child's process group and
 kills anything still holding its own scratch profile in a `finally`, so a
 finished run leaves no `Electron.app` behind.
+
+> **Caption correction (review round 1, QA Q-1).** The `absent` scene above was
+> shot with a rig whose app boots inherited the checkout's `.env`
+> (`src/main/backend/config.ts` folds it from `process.cwd()` with `override:
+> true`), so the app was configured for the operator's live daemon on :1111 and
+> the stub the scene built was never contacted: the frame is "something answered
+> the configured address but published no serve record", not "nothing answered".
+> The rig now gives every boot its own working directory and asserts the
+> configured address from the app's own log, and this set's `absent` frame is left
+> as it was taken, with this correction, rather than presented as the state its
+> caption names.
