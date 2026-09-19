@@ -59,7 +59,19 @@ const AS_JSON = ARGS.includes("--json");
 const flag = (name) =>
 	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const OUT = flag("out") ?? join(tmpdir(), "toast-close-geometry");
-const PORT = Number(flag("port") ?? 5431);
+/*
+ * 5430: distinct from every other rig's default AND from every service on this
+ * machine, which matters twice over because the port is taken with `strictPort`
+ * and this box runs many sessions at once. Rig defaults at the time of writing:
+ * 5198 (diff-body, hosting-census), 5199 (backend-error), 5202 (submit-latency),
+ * 5204 (draft-pick, draft-splash), 5206 (new-chat-shortcut), 5211
+ * (session-switch), 5251 (backend-settings), 5429 (composer-alert) and 5431
+ * (store-refusal, which is what this rig collided with). 5432 - the obvious
+ * neighbour - is NOT free either: the operator's own postgres listens there, and
+ * a default the rig cannot bind is a default nobody can run. `--port=` still
+ * overrides it.
+ */
+const PORT = Number(flag("port") ?? 5430);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const ONLY = flag("only");
 

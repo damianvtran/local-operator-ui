@@ -32,7 +32,8 @@ export default defineConfig({
 	},
 	plugins: [react(), tailwindcss()],
 	server: {
-		port: Number(process.env.TOAST_CLOSE_PORT ?? 5431),
+		/* 5430, kept in step with the driver's own default: see its comment. */
+		port: Number(process.env.TOAST_CLOSE_PORT ?? 5430),
 		strictPort: true,
 	},
 });
