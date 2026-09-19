@@ -62,20 +62,25 @@ export const tokyoNightDay: ThemeDefinition = {
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 1.58) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #E4E6F5  accent hue, C* 7.78, +1.51 L*, ΔE00 5.48 off `surface`,
-		 *                       `inkDim` 5.64:1 on the fill, hue 1.26° off `accent`.
-		 * rowSelected #D7DBFD  accent hue, C* 17.78, +4.99 L*, ΔE00 12.17 off
-		 *                       `surface` and 6.92 off `rowHover`, `inkDim` 5.14:1, and the
-		 *                       2px `accent` bar at 4.73:1 against it.
+		 * rowHover    #E1E2E6  `accent` hue, C* 2.10,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.14 L*,
+		 *                       ΔE00 2.01 off `surface`, `inkDim` 5.40:1.
+		 * rowSelected #DBDCE7  `accent` hue, C* 5.75,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.07 L*,
+		 *                       ΔE00 5.00 off `surface` and 3.56 off
+		 *                       `rowHover`; the pair ranks 1.94 `L*` and 3.6 `C*`,
+		 *                       `inkDim` 5.13:1.
 		 */
-		rowHover: "#E4E6F5",
-		rowSelected: "#D7DBFD",
+		rowHover: "#E1E2E6",
+		rowSelected: "#DBDCE7",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.

@@ -305,8 +305,10 @@ const literalOf = (file, name) => {
  * `outline-control` ring beside it: that half is retired (design round 1, D3 —
  * the role is § 2's *sole boundary of a control* and both rails drew it with the
  * search field's own ink, radius and height, so the current row read as a filled
- * field). The mark is the row role (`bg-row-selected`) plus `font-medium` plus the
- * 2px accent bar, and all three are asserted here.
+ * field). The mark is the row role (`bg-row-selected`) plus `font-medium`, and
+ * both are asserted here. The 2px `accent` bar was the third until the refinement
+ * round removed it, so what `font-medium` has to carry is stated in the test
+ * below rather than assumed.
  */
 const carriesGround = (classes) => classes.includes("bg-row-selected");
 
@@ -474,7 +476,7 @@ const CURRENT = [
 test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
 		rowCurrent.includes("bg-row-selected"),
-		`the current row's ground must be the role authored for it — \`rowSelected\`, the ROW STATE the row-state pass added: a tint of the palette's own accent hue, asserted at ΔE00 4.0 off \`surface\` AND 2.0 off \`rowHover\` (the role the rows around it now take under the pointer), with a 1.5-5.0 \`L*\` step in the direction the mode runs. Its own fill is a bigger step than the wash it replaced (\`accent-wash\`, ΔE00 1.05 on this panel's ground in tokyoNight), and on the selected row it is carried as much by the 2px \`accent\` bar and \`font-medium\` as by the fill. The bands and the direction are asserted in \`scripts/contrast-contract.mjs\`, which is where a colour can be measured. Got:\n${rowCurrent}`,
+		`the current row's ground must be the role authored for it — \`rowSelected\`, the ROW STATE the row-state pass added: a step of the palette's OWN panel, at the panel's own hue, asserted at the file's field floor (ΔE00 2.0) off \`surface\` and ranked above \`rowHover\` (the role the rows around it now take under the pointer) on both \`L*\` and cast, with a 1.5-5.0 \`L*\` step in the direction the mode runs. Its own fill is a bigger step than the wash it replaced (\`accent-wash\`, ΔE00 1.05 on this panel's ground in tokyoNight), and on the selected row it is carried by that fill and by \`font-medium\` — the 2px \`accent\` bar was removed with the refinement round, because the fill now carries the ranking and the bar squared the row's leading edge. The floors, the rank and the direction are asserted in \`scripts/contrast-contract.mjs\`, which is where a colour can be measured. Got:\n${rowCurrent}`,
 	);
 	assert.ok(
 		!rowCurrent.includes("bg-accent-wash"),
@@ -487,47 +489,40 @@ test("the current row's ground is a step off its panel, not a wash", () => {
 });
 
 /*
- * THE THREE NON-COLOUR DEGREES OF THE MARK, and why a ground is not enough.
+ * THE MARK'S NON-COLOUR HALF, and why a ground is not enough.
  *
  * The ROW-STATE PASS REPLACED THE PREMISE OF THIS BLOCK rather than its finding.
  * It used to say that a ground alone cannot outrank the step the rows AROUND it
  * take under the pointer, because the ink floors cap how far the row's mark can
  * climb while the hover the neighbours carried — `elevated` — could not come down
  * to meet it: `elevated` is also every menu, popover and tooltip ground in the
- * app. That is exactly the bound the two new roles remove. The hover is now
- * `rowHover`, its own role with its own floor (ΔE00 4.0 off `surface`, against the
- * median 2.45 the operator twice reported as a whisper), and the selection is
- * `rowSelected`, asserted 4.0 off `surface` AND 2.0 off `rowHover`. The order of
- * the two marks is a contract now rather than a coincidence of two values that
- * happened to land the right way round.
+ * app. That is exactly the bound the two new roles remove. The hover is
+ * `rowHover`, its own role, and the selection is `rowSelected`, ranked above it on
+ * both `L*` and cast. The order of the two marks is a contract now rather than a
+ * coincidence of two values that happened to land the right way round.
  *
- * What has NOT changed is that two fills of one hue at two strengths need a degree
- * that is not a colour distance, and there are three of them here: `font-medium`
- * (the weight the settings rail's active row already carried, now on every selected
- * row), the 2px `accent` BAR the role brings (the same idiom `at-picker.tsx` and
- * `slash-commands.tsx` already use for the row Enter will apply), and the fact that
- * the bar is drawn out of the row's flow — `relative` on the role,
- * `before:absolute` on the bar — so it cannot reflow the label. An earlier round
- * added a 1px `outline-control` boundary beside the ground and it is RETIRED
- * (design round 1, D3), because `border-control` is § 2's *sole boundary of a
- * control* and both rails drew it with the search field's own ink, height and
- * radius — the current row read as a filled field.
+ * WHAT THE REFINEMENT ROUND CHANGED HERE is only WHICH half is non-colour. The
+ * 2px `accent` BAR is gone (the operator asked for it; it also squared the row's
+ * leading edge over `rowStyle`'s `rounded-md`), and the roles it ranked are no
+ * longer two strengths of one hue: each is now a step of its own panel, ranked by
+ * the fill. So the mark is the ground plus `font-medium` — the weight the settings
+ * rail's active row already carried, and the WHOLE of the mark on the palette whose
+ * panel has almost no cast (`obsidian`, C* 2.08, whose pair still separates by
+ * ΔE00 3.18). What is asserted below is that the weight is still there, that a row
+ * that is NOT current does not carry it, and that nothing in the mark moves the
+ * row's box. An earlier round added a 1px `outline-control` boundary beside the
+ * ground and it is RETIRED (design round 1, D3), because `border-control` is § 2's
+ * *sole boundary of a control* and both rails drew it with the search field's own
+ * ink, height and radius — the current row read as a filled field.
  *
- * `scripts/contrast-contract.mjs` states both bands, asserts the DIRECTION of each
- * step and floors their magnitudes and their separation; this file cannot see a
- * colour at all.
+ * `scripts/contrast-contract.mjs` asserts the floors, the DIRECTION of each step,
+ * the two rank floors and the pair's separation; this file cannot see a colour at
+ * all.
  */
 test("a current row carries a non-colour step, and a row that is not current does not", () => {
 	assert.ok(
 		rowCurrent.includes("font-medium"),
-		`the current row must carry a second signal beside its ground: the two row fills are one hue at two strengths, so colour alone makes the reader work out which mark is which. Got:\n${rowCurrent}`,
-	);
-	assert.ok(
-		/before:absolute/.test(rowCurrent) &&
-			/before:inset-y-0 before:left-0 before:w-0\.5 before:bg-accent/.test(
-				rowCurrent,
-			),
-		`the current row's third degree is the 2px \`accent\` bar on its leading edge, and the role must carry it as one \`before:\` group: absolutely positioned (so it costs no layout), full-height on the leading edge, half a unit wide, in the accent. Without it the row has only two fills of one hue and a weight. Got:\n${rowCurrent}`,
+		`the current row must carry a second signal beside its ground: the two row states are told apart by their fill, so colour alone leaves the reader without a non-colour mark to fall back on — on \`obsidian\` and on any palette whose panel has almost no cast, this weight IS the mark. Got:\n${rowCurrent}`,
 	);
 	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
 	assert.notEqual(
@@ -662,45 +657,26 @@ test("the mark is colour plus weight, and neither one can move the row", () => {
 	 * the operator asked for that border to go. So no class in the mark may carry
 	 * geometry, which is asserted on the tokens rather than described.
 	 *
-	 * THE BAR IS THE ONE EXCEPTION, and it is an allowlist rather than a widened
-	 * deny-list on purpose. `before:inset-y-0`, `before:left-0` and `before:w-0.5`
-	 * all read as geometry to the regex below, and they are geometry — of a
-	 * PSEUDO-ELEMENT that is absolutely positioned inside a `relative` row, so it
-	 * has no box of its own to move. Naming them one by one is what keeps the
-	 * guard's real claim: anything ELSE in the role that carries geometry is still
-	 * a reflow waiting to happen. `relative` needs no entry — it establishes the
-	 * containing block and sets no offset — but it IS asserted, because a bar
-	 * inside a static row would position itself against the nearest positioned
-	 * ancestor and escape the row entirely.
+	 * THE ALLOWLIST IS GONE WITH THE BAR (refinement round). It existed for the 2px
+	 * `accent` bar's `relative` containing block and its `before:inset-y-0` /
+	 * `before:left-0` / `before:w-0.5` geometry, all of which read as geometry to the
+	 * regex below and were geometry — of an absolutely positioned pseudo-element. The
+	 * bar is removed, so the mark has no exception to make, and the guard is now the
+	 * whole of what it always claimed: ANY token here that carries layout or box is a
+	 * reflow waiting to happen.
 	 */
-	const BAR = [
-		"relative",
-		"before:absolute",
-		"before:inset-y-0",
-		"before:left-0",
-		"before:w-0.5",
-		"before:bg-accent",
-	];
 	const GEOMETRY =
 		/^-?(m|p|size|w|h|gap|border|inset|top|left|right|bottom|translate|scale)/;
 	for (const token of rowCurrent.split(" ")) {
-		if (BAR.includes(token)) continue;
 		assert.ok(
 			!GEOMETRY.test(token.replace(/^[a-z-]+:/, "")),
 			`\`${token}\` in the current row's mark is a layout or box class, so the mark can move the row in the current state only — the reflow the New chat row's own comment records as the reason its border was removed:\n${rowCurrent}`,
 		);
 	}
 	assert.ok(
-		rowCurrent.split(" ").includes("relative") &&
-			rowCurrent.includes("before:absolute"),
-		`the current row's bar is \`absolute\` with no positioned ancestor unless the role also carries \`relative\`, and it would then position itself against whatever ancestor is positioned — off the row it marks. Got:\n${rowCurrent}`,
+		!rowCurrent.includes("before:"),
+		`the current row's mark carries a \`before:\` pseudo-element again: the 2px \`accent\` bar was removed by the refinement round because the fill ranks the pair itself, and with the bar went \`relative\` — a pseudo-element here would be positioned against whatever ancestor is positioned, off the row it marks:\n${rowCurrent}`,
 	);
-	for (const token of BAR) {
-		assert.ok(
-			rowCurrent.split(" ").includes(token),
-			`\`${token}\` is gone from the current row's mark, so the bar is no longer the out-of-flow, full-height, accent-wide leading edge this guard allowlists:\n${rowCurrent}`,
-		);
-	}
 	assert.ok(
 		!rowCurrent.includes("outline-control"),
 		`the current row is drawn with a \`border-control\`-role boundary again; that role is § 2's *sole boundary of an input, select, checkbox or outlined button*, and the ring rendered as the search field one row below the list (design round 1, D3):\n${rowCurrent}`,
@@ -1012,7 +988,7 @@ test("no row surface in the tree hovers or selects on a ground role", () => {
 	assert.deepEqual(
 		offenders,
 		[],
-		`a row surface paints a GROUND as its hover or selection: ${JSON.stringify(offenders)}. A row state is one of the two \`row*\` roles (\`hover:bg-row-hover\`, \`bg-row-selected\` with its accent bar), which is what the operator's "the sidebar hover is much too subtle" is answered with; a ground cannot do the job, because \`elevated\` is also every menu, popover, tooltip and dialog in the app. If the element really is a control primitive's own state rather than a row's, take it off this list and say why here.`,
+		`a row surface paints a GROUND as its hover or selection: ${JSON.stringify(offenders)}. A row state is one of the two \`row*\` roles (\`hover:bg-row-hover\`, \`bg-row-selected\`), which is what the operator's "the sidebar hover is much too subtle" is answered with; a ground cannot do the job, because \`elevated\` is also every menu, popover, tooltip and dialog in the app. If the element really is a control primitive's own state rather than a row's, take it off this list and say why here.`,
 	);
 });
 

@@ -72,20 +72,30 @@ export const dune: ThemeDefinition = {
 		sunken: "#1B1A1A",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #342A23  accent hue, C* 7.11, +1.51 L*, ΔE00 4.00 off `surface`,
-		 *                       `inkDim` 5.46:1 on the fill, hue 4.18° off `accent`.
-		 * rowSelected #462C1C  accent hue, C* 18.19, +4.34 L*, ΔE00 12.08 off
-		 *                       `surface` and 8.26 off `rowHover`, `inkDim` 5.01:1, and the
-		 *                       2px `accent` bar at 5.53:1 against it.
+		 * rowHover    #322E2B  panel hue, C* 2.82,
+		 *                       the rule's 0.60 x the panel's 2.89; +2.81 L*,
+		 *                       ΔE00 1.91 off `surface`, `inkDim` 5.25:1.
+		 * rowSelected #393029  panel hue, C* 6.57,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.17 L*,
+		 *                       ΔE00 4.35 off `surface` and 3.48 off
+		 *                       `rowHover`; the pair ranks 1.36 `L*` and 3.7 `C*`,
+		 *                       `inkDim` 5.03:1.
+		 *
+		 * THE HOVER'S BAND OFF `surface` IS 1.91, under the 2.0 field floor: the
+		 * panel carries C* 2.9, so the fill cannot be more coloured than the rule's
+		 * own 2.5, and the remaining axis is lightness — this palette's whole legal
+		 * step is 2.77 L*. Named in `contrast-contract.mjs`'s
+		 * `ROW_STATE_MEASURED_SHORTFALL`.
 		 */
-		rowHover: "#342A23",
-		rowSelected: "#462C1C",
+		rowHover: "#322E2B",
+		rowSelected: "#393029",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
 		// holds R greater than G greater than B, and one cool value in an otherwise

@@ -79,20 +79,24 @@ export const solarizedLight: ThemeDefinition = {
 		sunken: "#E5DFCC",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #ECF1F8  accent hue, C* 3.96, +1.59 L*, ΔE00 9.47 off `surface`,
-		 *                       `inkDim` 5.91:1 on the fill, hue 0.26° off `accent`.
-		 * rowSelected #D7E9FF  accent hue, C* 12.73, +4.89 L*, ΔE00 16.48 off
-		 *                       `surface` and 6.75 off `rowHover`, `inkDim` 5.42:1, and the
-		 *                       2px `accent` bar at 4.85:1 against it.
+		 * rowHover    #EEECE5  panel hue, C* 3.66,
+		 *                       the rule's 0.60 x the panel's 6.28; +3.17 L*,
+		 *                       ΔE00 2.87 off `surface`, `inkDim` 5.67:1.
+		 * rowSelected #EDE7D3  panel hue, C* 10.54,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.92 L*,
+		 *                       ΔE00 4.31 off `surface` and 5.35 off
+		 *                       `rowHover`; the pair ranks 1.75 `L*` and 6.9 `C*`,
+		 *                       `inkDim` 5.42:1.
 		 */
-		rowHover: "#ECF1F8",
-		rowSelected: "#D7E9FF",
+		rowHover: "#EEECE5",
+		rowSelected: "#EDE7D3",
 
 		ink: "#073642",
 		// Canonical base01 586E75 is 4.39:1 on `sunken` — under the 4.5 floor, and only

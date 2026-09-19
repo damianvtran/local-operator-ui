@@ -81,20 +81,29 @@ export const gruvboxLight: ThemeDefinition = {
 		sunken: "#EFE2B9",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #E9F3F6  accent hue, C* 3.77, +1.53 L*, ΔE00 13.99 off `surface`,
-		 *                       `inkDim` 5.74:1 on the fill, hue 0.67° off `accent`.
-		 * rowSelected #CEEDF6  accent hue, C* 11.31, +4.88 L*, ΔE00 19.19 off
-		 *                       `surface` and 7.05 off `rowHover`, `inkDim` 5.26:1, and the
-		 *                       2px `accent` bar at 5.37:1 against it.
+		 * rowHover    #F1ECDB  panel hue, C* 8.91,
+		 *                       the rule's 0.60 x the panel's 15.49; +3.35 L*,
+		 *                       ΔE00 4.78 off `surface`, `inkDim` 5.47:1.
+		 * rowSelected #F0E8C2  panel hue, C* 19.78,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.97 L*,
+		 *                       ΔE00 3.85 off `surface` and 6.79 off
+		 *                       `rowHover`; the pair ranks 1.62 `L*` and 10.9 `C*`,
+		 *                       `inkDim` 5.25:1.
+		 *
+		 * THE SELECTION IS ΔE00 1.44 FROM `accentWash`, under the 2.0 wash floor:
+		 * this palette's wash is `accent`-derived and carries C* 20.6 at L* 93, which
+		 * is inside the window the selection's own cast (the panel's 15.5 plus 4) may
+		 * occupy. Named in `contrast-contract.mjs`'s `ROW_STATE_MEASURED_SHORTFALL`.
 		 */
-		rowHover: "#E9F3F6",
-		rowSelected: "#CEEDF6",
+		rowHover: "#F1ECDB",
+		rowSelected: "#F0E8C2",
 
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under

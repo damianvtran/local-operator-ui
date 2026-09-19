@@ -98,20 +98,24 @@ export const vaporwave: ThemeDefinition = {
 		sunken: "#261F38",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #3A3337  accent hue, C* 4.21, +1.57 L*, ΔE00 12.43 off `surface`,
-		 *                       `inkDim` 5.64:1 on the fill, hue 0.14° off `accent`.
-		 * rowSelected #513345  accent hue, C* 17.61, +4.88 L*, ΔE00 9.57 off
-		 *                       `surface` and 11.52 off `rowHover`, `inkDim` 5.05:1, and the
-		 *                       2px `accent` bar at 6.05:1 against it.
+		 * rowHover    #3D3548  panel hue, C* 13.13,
+		 *                       the rule's 0.60 x the panel's 21.54; +3.17 L*,
+		 *                       ΔE00 5.51 off `surface`, `inkDim` 5.35:1.
+		 * rowSelected #43365A  panel hue, C* 24.25,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.95 L*,
+		 *                       ΔE00 3.80 off `surface` and 6.53 off
+		 *                       `rowHover`; the pair ranks 1.78 `L*` and 11.1 `C*`,
+		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#3A3337",
-		rowSelected: "#513345",
+		rowHover: "#3D3548",
+		rowSelected: "#43365A",
 
 		ink: "#EDE8F2",
 		/*
