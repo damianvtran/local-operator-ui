@@ -223,6 +223,31 @@ takes the developer path, which is the only reason agent-run suites on a laptop
 are capped at all. A probe failure degrades to a CPU-only cap, and the governor
 never raises a machine's parallelism above what node itself would have used.
 
+## Running only the desktop tests a diff can reach
+
+`pnpm test:desktop:changed` runs `scripts/run-desktop-tests.mjs --scope=origin/main`,
+which computes its own file list from `scripts/desktop-test-scope.mjs`: the subset of
+`test:desktop` the diff can reach, the WHOLE suite when that module refuses to narrow,
+or NOTHING when nothing in the suite can be observing the diff. It is the same runner
+and the same concurrency cap either way, it prints which of the three it decided,
+and it exits 0 with that line as its only output in the third case - an empty run is
+an answer about reachability, not a green suite.
+
+The rule is that a test file may be skipped only when every way it could observe the
+changed paths has been enumerated: its module specifiers resolved (the esbuild entry
+strings included), their imports followed, every repo-rooted path literal it carries
+recorded, and a literal directory covering its subtree. A file access the graph cannot
+ground in a path - a loop over a variable directory, a helper parameter - is not
+grounded and not skipped: that file is selected for EVERY diff, and the scope line
+reports how many files ride on that rule, which is the number to weigh before
+trusting a narrowed run. `src/**` and the suite's own test files are the only paths it
+will narrow; a manifest, a lockfile, a workflow, a `docs/evidence/**` frame, or any
+other `scripts/` file runs everything, with the offending path printed.
+
+CI is unchanged and still runs the whole suite on every pull request. The narrowed
+run is the loop's convenience on a developer's machine; a green narrowed run is not
+evidence that the whole suite passes, and the PR body says which one was run.
+
 ## Running the app without taking the operator's focus
 
 Agents run this app on the operator's own desktop, several at a time. Until the

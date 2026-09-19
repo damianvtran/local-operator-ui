@@ -4,11 +4,22 @@
  *
  *     node scripts/run-desktop-tests.mjs scripts/*.test.mjs
  *     node scripts/run-desktop-tests.mjs --test-concurrency=12 scripts/*.test.mjs
+ *     node scripts/run-desktop-tests.mjs --scope=origin/main
  *
  * `pnpm test:desktop` invokes this instead of `node --test` so the cap in
  * `desktop-test-concurrency.mjs` applies without every caller having to
  * remember it. The reasoning for the cap, and for every constant in it, is in
  * that file's docstring.
+ *
+ * `--scope[=<ref>]` (`pnpm test:desktop:changed`) computes its own file list
+ * from `desktop-test-scope.mjs` instead of taking one: the files a diff can
+ * reach, or the WHOLE suite when that module refuses to narrow, or NO files when
+ * nothing in the suite can be observing the diff. It is the same runner and the
+ * same cap either way, and it prints which of the three it decided before the
+ * first test - the line is what a reviewer reads to know what actually ran. The
+ * scope decision is never allowed to shrink silently: every mode is announced,
+ * and `--scope` alongside an explicit file list is a usage error rather than a
+ * union nobody asked for.
  *
  * Two escape hatches, and they behave differently on purpose:
  *
@@ -37,6 +48,12 @@ import {
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+import {
+	SCOPE_MODES,
+	formatScopeLine,
+	planFromGit,
+	readSuiteFiles,
+} from "./desktop-test-scope.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 /**
@@ -59,7 +76,69 @@ const _TEST_CONTEXT_ENV = "NODE_TEST_CONTEXT";
 /** A positive whole number of workers, which is all node's flag accepts. */
 const WORKER_COUNT_PATTERN = /^\d+$/;
 
-const args = process.argv.slice(2);
+const rawArgs = process.argv.slice(2);
+
+/*
+ * `--scope` is resolved BEFORE anything counts files, because it decides the
+ * file list: the concurrency line has to report the number of files that will
+ * actually run, and a count taken from the pre-scope argv would be a claim about
+ * the suite rather than about this run.
+ */
+const scopeArg = rawArgs.find(
+	(arg) => arg === "--scope" || arg.startsWith("--scope="),
+);
+const args = rawArgs.filter((arg) => arg !== scopeArg);
+
+if (scopeArg !== undefined) {
+	// A union of "the diff's files" and "the files you named" is not a scope any
+	// rule here computed, and silently running it would make the printed reason
+	// wrong; refusing is the only answer that keeps the line evidence.
+	const named = args.filter((arg) => !arg.startsWith("-"));
+	if (named.length > 0) {
+		console.error(
+			`desktop tests: --scope computes its own file list; pass either --scope or explicit files, not both (got ${named.length} file argument(s)).`,
+		);
+		process.exit(2);
+	}
+	const since = scopeArg.includes("=")
+		? scopeArg.slice(scopeArg.indexOf("=") + 1)
+		: "origin/main";
+	if (!since) {
+		console.error(
+			"desktop tests: --scope needs a base ref (e.g. --scope=origin/main)",
+		);
+		process.exit(2);
+	}
+	const plan = planFromGit({ root: process.cwd(), since });
+	console.log(formatScopeLine(plan));
+	if (plan.mode === SCOPE_MODES.NONE) {
+		// An empty run is a real answer here and not an error: the classifier or
+		// the reachability graph proved nothing in the suite can see this diff.
+		// It exits 0 with the line above saying so, rather than being flattened
+		// into "the suite passed".
+		console.log(
+			"desktop tests: no files to run; nothing in the suite can observe this diff",
+		);
+		process.exit(0);
+	}
+	const full =
+		plan.mode === SCOPE_MODES.WHOLE ? readSuiteFiles(process.cwd()) : [];
+	if (plan.mode === SCOPE_MODES.WHOLE && full.length === 0) {
+		console.error(
+			"desktop tests: the scope refused to narrow (see the line above) and package.json's test:desktop list could not be read, so the whole suite cannot be spelled",
+		);
+		process.exit(2);
+	}
+	args.push(...(plan.mode === SCOPE_MODES.WHOLE ? full : plan.files));
+	if (
+		process.env.LOCAL_OPERATOR_UI_SCOPE_EXPLAIN === "1" &&
+		plan.files.length > 0
+	) {
+		for (const [file, why] of plan.detail.reasons ?? []) {
+			console.log(`desktop scope:   ${file} - ${why}`);
+		}
+	}
+}
 
 // Both spellings node accepts. Detecting only the `=` form would let
 // `--test-concurrency 12` slip past the governor and be capped anyway, which is
