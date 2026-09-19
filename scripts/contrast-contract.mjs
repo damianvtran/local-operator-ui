@@ -3491,6 +3491,48 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/*
+	 * THE SECOND PLATE INSIDE A ROW, and the state the account row's pair does not
+	 * have to answer: the agents sidebar's own row IS a destination, so it paints
+	 * `rowCurrent` under a selection as well as `hover:bg-row-hover` under the
+	 * pointer (`features/agents/components/agents-sidebar.tsx`; both are asserted
+	 * from that call site in `scripts/chat-sidebar-selection.test.mjs`). Its avatar
+	 * plate is `sunken` with the same `border-control` edge, and the same two-arm
+	 * pair is asked of BOTH states the row can be in — `sunken` at the field floor
+	 * OR the edge at the non-text floor, per state, per palette.
+	 *
+	 * The pair is what makes this satisfiable rather than a flat 3:1 on the edge:
+	 * `borderControl` against `rowSelected` bottoms at 2.77 (`vaporwave`) and against
+	 * `rowHover` at 2.92 (`catppuccinMocha`), so an edge-only floor would fail 12 and
+	 * 5 palettes respectively — and on every one of those the FILL clears the field
+	 * floor. The other arm fails in the other direction: `sunken` misses the field
+	 * floor against the selection on seven palettes (the tightest `alucard` 0.44) and
+	 * against the hover on one (`iceberg` 1.86), and on every one of those the edge
+	 * clears, 3.02-4.66 against the selection and 3.35 against the hover. No palette
+	 * fails both arms on either state, which is what this asserts.
+	 *
+	 * The class half — that the plate still wears the edge, and that the class of
+	 * "an object inside a row state with a ground of its own" is enumerated rather
+	 * than assumed — is in `scripts/chat-sidebar-selection.test.mjs`.
+	 */
+	if (
+		isHex(p.sunken) &&
+		isHex(p.rowHover) &&
+		isHex(p.rowSelected) &&
+		isHex(p.borderControl)
+	) {
+		for (const state of ["rowHover", "rowSelected"]) {
+			assertions++;
+			const avatarField = deltaE(p.sunken, p[state]);
+			const avatarEdge = ratio(p.borderControl, p[state]);
+			if (avatarField < FIELD_SEPARATION_FLOOR && avatarEdge < FLOOR.nonText) {
+				fail(
+					`${id}: the agents sidebar's avatar plate has no perceivable edge against \`${state}\` — its \`sunken\` fill ${p.sunken} is ΔE00 ${r2(avatarField)} from it (need ${FIELD_SEPARATION_FLOOR}) and the plate's \`borderControl\` edge ${p.borderControl} is ${r2(avatarEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the row's own ${state === "rowHover" ? "hover" : "selection"} turns the avatar into a disc of the row's fill. Give the plate an edge the row's state cannot overrun, or a fill that state cannot land on`,
+				);
+			}
+		}
+	}
+
 	/* Structural edges: the control's own boundary, the focus ring, and each
 	   semantic's edge, on all four grounds. */
 	for (const role of STRUCTURAL) {

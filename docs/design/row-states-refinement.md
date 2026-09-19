@@ -745,8 +745,32 @@ round trip's own error (up to 0.16 `L*`).
   colour as a dialog's ground or an input well. `elevated` keeps its exemption
   because a menu, popover, tooltip, dialog or drawn card is not a row's plane and
   no row is painted on one — the sidebar's own `elevated` use is the `· lopdev`
-  cap and the `⋯` button, which are text-sized, not full-width rows. The two
-  `hover`-only sites that still ride a rung are recorded with their numbers in
+  cap and the `⋯` button, which are text-sized, not full-width rows.
+  **THE ADJACENCY THAT ACTUALLY BITES IS ANSWERED RATHER THAN ACCEPTED, and it is
+  not the container: it is a MARK INSIDE THE ROW.** A row state is a step of the
+  panel it sits on, so an object with a ground of its own inside such a row lands
+  on the row's own state on some palette — measured on the shipped values, the
+  rail's account plate (`elevated`) is ΔE00 **0.00** on `arcade` and inside the
+  2.0 field floor on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90, and
+  the agents sidebar's avatar (`sunken`) is **0.44** on `alucard` and inside it
+  on six more light palettes, plus `iceberg` 1.86 under the pointer. That is not
+  a value to re-solve — some palette's state will always land on some rung — so
+  **the rule is: a row is a state, and an object inside a state keeps its own
+  edge.** Both plates wear `border-control`, this system's role for an edge that
+  IS the boundary of a thing, and the pair is asserted AS a pair rather than as a
+  flat 3:1 on the edge, because neither arm clears the fleet alone: the fill
+  misses the field floor on those eight palettes while the edge clears at
+  3.02–4.66, and the edge misses the non-text floor on 12 palettes against a
+  selection (`vaporwave` 2.77) and 5 against a hover (`catppuccinMocha` 2.92)
+  while the fill carries it there. No palette fails both arms on either state.
+  The colours are measured per palette in `scripts/contrast-contract.mjs`; the
+  class — every object a row state can paint over, discovered from the tree
+  rather than listed by hand, with the four carriers that legitimately need no
+  edge recorded and their reasons asserted — is in
+  `scripts/chat-sidebar-selection.test.mjs`. The **container** adjacency above
+  stays accepted, and this paragraph is the place it is recorded.
+  The two `hover`-only sites that still ride a rung are recorded with their
+  numbers in
   `scripts/chat-sidebar-selection.test.mjs` (`HOVER_STATES_ON_A_RUNG`): the canvas
   document-tab strip, which § 10 scopes out, and the schedules page's annex.
 - **`chat sidebar current-row ground`'s pinned literal**
