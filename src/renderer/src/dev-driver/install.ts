@@ -462,15 +462,25 @@ export function installDevDriver(): string[] {
 			if (!probe || !probe.exists || !probe.isFile) {
 				throw new Error(`no file at ${probe?.resolved ?? path}`);
 			}
-			const document = canvasDocumentForPath(path, {
+			/*
+			 * THE RESOLVED SPELLING, which is this app's document identity
+			 * (`canvas-document.ts`: the store dedupes by `id` alone). A payload path can
+			 * arrive `~`-spelled, and the transcript's own press keys its document the
+			 * same way (`open-in-canvas.ts`), so the driver must not be the one route
+			 * that puts a second copy of one file in the store (review round 2: the
+			 * identity rule is end-to-end or it is not a rule).
+			 */
+			const resolved = probe.resolved ?? path;
+			const document = canvasDocumentForPath(resolved, {
 				title,
-				type: getFileTypeFromPath(path),
+				type: getFileTypeFromPath(resolved),
 				availability: "present",
 				sizeBytes: probe.sizeBytes ?? undefined,
 				lastAgentModified: probe.mtimeMs ?? undefined,
 				readMtimeMs: probe.mtimeMs ?? undefined,
 			});
-			const encoding = READ_ENCODING[viewerFor(path, document.type) ?? "code"];
+			const encoding =
+				READ_ENCODING[viewerFor(resolved, document.type) ?? "code"];
 			if (encoding === "utf-8" || encoding === "base64") {
 				const result = await window.api.readFile(document.path, encoding);
 				if (!result.success) {

@@ -9,6 +9,7 @@ import ReactMarkdown, {
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { type CanvasPane, useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_ATTR,
 	LINK_TARGET_PATH_ATTR,
@@ -23,6 +24,7 @@ import {
 	scanMarkdownBlocks,
 	trimmedEndLength,
 } from "../utils/markdown-blocks";
+import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
@@ -139,12 +141,20 @@ const NEWLINE_REGEX = /\n$/;
  * fact rather than a defect to fix here - the link toolbar therefore offers Quote
  * on hover as well (`link-toolkit.tsx`), so the affordance does not depend on a
  * selection the browser will not make.
+ *
+ * WHERE A PRESS GOES. A local path this app has a VIEWER for, inside a pane that
+ * has a canvas, opens THERE - the operator's ask - and every other press keeps
+ * the OS hand-off exactly as it was. The pane arrives through a context
+ * (`canvas-pane.tsx`) rather than a prop, because this anchor is rendered by every
+ * markdown surface in the app and only one of them has a pane at all; with no
+ * provider the context answers `null` and the click is the click of before.
  */
 const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	href,
 	children,
 }) => {
 	const target = classifyHref(href);
+	const pane = useCanvasPane();
 	if (!target || target.kind === "other") {
 		return (
 			<a href={href} target="_blank" rel="noopener noreferrer">
@@ -170,7 +180,11 @@ const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 			 */
 			target={target.kind === "url" ? "_blank" : undefined}
 			rel={target.kind === "url" ? "noopener noreferrer" : undefined}
-			onClick={target.kind === "file" ? handleFileAnchorClick : undefined}
+			onClick={
+				target.kind === "file"
+					? (event) => handleFileAnchorClick(event, pane)
+					: undefined
+			}
 		>
 			{children}
 		</a>
@@ -212,19 +226,36 @@ const LINK_TARGET_PATH = LINK_TARGET_PATH_ATTR;
  * mandatory `preventDefault` for a file target, and the drag-select refusal. The
  * live selection is the input because the browser owns it - whatever ended the
  * gesture, the state that matters is whether text is still lit.
+ *
+ * THE FALLBACK IS PART OF THE RULE, not an error path. A pane refuses a press it
+ * cannot honour - a directory, a type with no viewer, a read that failed, a path
+ * the probe already knows is gone (`open-in-canvas.ts` says which) - and that
+ * refusal means "do what this app did before", which is the OS attempt and its
+ * own `Could not open …` toast. Without the fallback the pane's honest refusal
+ * would be a press that did nothing at all, which is the failure the whole matrix
+ * exists to remove.
  */
-const handleFileAnchorClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+const handleFileAnchorClick = (
+	event: ReactMouseEvent<HTMLAnchorElement>,
+	pane: CanvasPane | null,
+) => {
 	const anchor = event.currentTarget;
 	const kind = (anchor.getAttribute(LINK_TARGET_ATTR) ?? "file") as LinkKind;
+	const target = anchor.getAttribute(LINK_TARGET_PATH);
 	const outcome = clickDecision({
 		kind,
 		hasHighlight: selectionTouches(anchor),
+		canOpenInCanvas: opensInCanvas(pane, target),
 	});
 	if (outcome === "browse") return;
 	event.preventDefault();
-	if (outcome === "hold") return;
-	const target = anchor.getAttribute(LINK_TARGET_PATH);
-	if (!target) return;
+	if (outcome === "hold" || !target) return;
+	if (outcome === "canvas" && pane) {
+		void pane.openInCanvas(target).then((opened) => {
+			if (!opened) void openLocalTarget(target);
+		});
+		return;
+	}
 	void openLocalTarget(target);
 };
 

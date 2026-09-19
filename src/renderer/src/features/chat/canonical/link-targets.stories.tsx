@@ -124,6 +124,13 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
  * 7. a path that does not exist, so the "no file" state is on screen;
  * 8. a path long enough to wrap, which is the case that puts the tooltip below the
  *    link rather than over the text beside it.
+ *
+ * A ninth shape - `NoViewerTargets`, below - is a story of its own rather than a
+ * paragraph here, because this fixture is what every frame in
+ * `docs/evidence/chat-canonical-links/` photographs: adding to it would move the
+ * links under it and re-measure every strip in the set. That story is the
+ * UNCHANGED half of "a supported file opens in the canvas" - a `.zip` and a
+ * `.dmg` keep the OS's own `Open` beside an `.xlsx` that does not.
  */
 const ANSWER = [
 	`Saved it to ${REPORT} (37 KB, 8 sheets).`,
@@ -148,6 +155,40 @@ const CONVERSATION: TranscriptRecord[] = [
 		"Where did the adverse-media run put everything? Save the paths.",
 	),
 	record("a1", "assistant", ANSWER),
+];
+
+/**
+ * The other half of the routing decision: local paths the canvas has NO viewer
+ * for, beside one it has.
+ *
+ * This is a second story rather than two more sentences in `ANSWER`, and the
+ * reason is the frames rather than tidiness: every entry in
+ * `docs/evidence/chat-canonical-links/` photographs the transcript above, so a
+ * paragraph inserted into it moves the links below it and re-measures every strip
+ * in the set. A separate fixture keeps the new claim additive - the unchanged
+ * side of "opens in the canvas by default" is what a reviewer needs to see beside
+ * the changed one, and a `.zip` or a `.dmg` is where it is visible.
+ */
+const NO_VIEWER = "~/workspace/opoint-renewal-2026-09-17/bundle.zip";
+/*
+ * NO SPACE IN THIS ONE, and that is a fixture constraint rather than taste:
+ * `PROSE_PATH` (`link-grammar.ts`) stops at whitespace, so
+ * `local-operator-0.28.4.dmg` would linkify as `.../Local` - a frame showing a broken
+ * link that no change on this branch produced. A name with a space reaches the
+ * app as a `file://` URL, which is what `SHOTS` in the other fixture is for.
+ */
+const INSTALLER =
+	"~/workspace/opoint-renewal-2026-09-17/local-operator-0.28.4.dmg";
+
+const NO_VIEWER_ANSWER = [
+	`The bundle is at ${NO_VIEWER} (18 MB) and the installer is ${INSTALLER}.`,
+	"",
+	`The report inside it is ${REPORT} (37 KB, 8 sheets) - that one opens here.`,
+].join("\n");
+
+const NO_VIEWER_CONVERSATION: TranscriptRecord[] = [
+	record("u1", "user", "What did you build, and where are the artifacts?"),
+	record("a1", "assistant", NO_VIEWER_ANSWER),
 ];
 
 /** The pane's own sentinel, as `chat-content.tsx` hands it one. */
@@ -184,14 +225,16 @@ const Frame = ({
 	height = 720,
 	width = 1024,
 	composer = false,
+	records = CONVERSATION,
 }: {
 	height?: number;
 	width?: number;
 	composer?: boolean;
+	records?: TranscriptRecord[];
 }) => {
 	useCleanReplies();
 	const containerRef = useRef<HTMLDivElement>(null);
-	const transcript = useMemo(() => transcriptOf(CONVERSATION), []);
+	const transcript = useMemo(() => transcriptOf(records), [records]);
 	return (
 		<div className="flex flex-col bg-canvas" style={{ width, height }}>
 			<div className="flex min-h-0 grow flex-col px-4 pt-4">
@@ -293,6 +336,19 @@ export const DetectedTargets: Story = {
  */
 export const DetectedTargetsNarrow: Story = {
 	render: () => <Frame width={420} height={900} />,
+};
+
+/**
+ * The same routing rule from the other side: paths the canvas declines.
+ *
+ * `bundle.zip` and `local-operator-0.28.4.dmg` are local, existing files with no viewer
+ * (`viewerFor` answers `null`), so their toolbar keeps the single `Open` that
+ * hands them to the OS - and the `.xlsx` on the next line, one paragraph down,
+ * shows the five-action strip beside them. The pair is the assertion: the new
+ * default is about files the app can SHOW, not about every path an agent writes.
+ */
+export const NoViewerTargets: Story = {
+	render: () => <Frame height={360} records={NO_VIEWER_CONVERSATION} />,
 };
 
 /**

@@ -82,7 +82,10 @@ const bundle = await build({
 		contents: `
 			export { MarkdownRenderer, LINK_URL_TRANSFORM } from "./src/renderer/src/features/chat/components/markdown-renderer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
-			export { classifyHref } from "./src/renderer/src/features/chat/utils/link-actions";
+			export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane";
+			export { classifyHref, probeStateFor, probeTarget, resetProbeCache } from "./src/renderer/src/features/chat/utils/link-actions";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 		`,
 		resolveDir: ROOT,
 	},
@@ -123,8 +126,14 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	MarkdownRenderer,
 	CanonicalTranscript,
+	CanvasPaneProvider,
 	LINK_URL_TRANSFORM,
 	classifyHref,
+	probeTarget,
+	probeStateFor,
+	resetProbeCache,
+	useCanvasStore,
+	useUiPreferencesStore,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ the mount */
@@ -306,8 +315,20 @@ function mountDom() {
 
 /* ------------------------------------------------------------------ fixtures */
 
+const HOME = "/Users/someone";
+/*
+ * What the main process's `resolveUserPath` does to the spelling a link wrote.
+ * The suite needs it because the app's own probe answers with the RESOLVED path
+ * and that string is the document's identity - a stub that answers
+ * `resolved: input` makes every identity assertion below true for the wrong
+ * reason (review round 1, M1).
+ */
+const resolveUserPath = (path) =>
+	path.startsWith("~/") ? `${HOME}/${path.slice(2)}` : path;
 const REPORT =
 	"~/workspace/opoint-renewal-2026-09-17/opoint_adverse_media_query_failures_2026-09-17.xlsx";
+/** The same file, as the probe and the Files panel's tile spell it. */
+const RESOLVED_REPORT = resolveUserPath(REPORT);
 const SHOTS = "/Users/someone/Downloads/Screenshot 2026-09-17 at 10.14.02.png";
 /** The same URL as the story fixture writes it: percent-encoded, as prose. */
 const FILE_URL = `file://${SHOTS.replace(/ /g, "%20")}`;
@@ -351,16 +372,16 @@ const TRANSCRIPT = {
  * Installed per test rather than once, because the missing-path case is the
  * interesting one and the honest default (no bridge) is optimistic.
  */
-function stubApi(window, { exists = true } = {}) {
+function stubApi(window, { exists = true, sizeBytes = 37_000 } = {}) {
 	window.api = {
 		...window.api,
 		probeFiles: async (paths) =>
 			paths.map((input) => ({
 				input,
-				resolved: input,
+				resolved: resolveUserPath(input),
 				exists: exists && !input.startsWith(MISSING_MARKER),
 				isFile: true,
-				sizeBytes: 37_000,
+				sizeBytes,
 				mtimeMs: 1_760_000_000_000,
 			})),
 	};
@@ -630,7 +651,8 @@ test("a press opens the DECODED path; a press with a live highlight opens nothin
 
 /** Mount the transcript with the fixture, and stub every box it measures. */
 async function mountTranscript(options = {}) {
-	stubApi(frame.window, options);
+	const { transcript = TRANSCRIPT, ...apiOptions } = options;
+	stubApi(frame.window, apiOptions);
 	/*
 	 * The layout stubs go in BEFORE the mount: the toolbar's buttons carry Radix
 	 * tooltips, which position themselves on mount, and a zero-sized reference
@@ -640,7 +662,7 @@ async function mountTranscript(options = {}) {
 	const containerRef = React.createRef();
 	await frame.render(
 		React.createElement(CanonicalTranscript, {
-			transcript: TRANSCRIPT,
+			transcript,
 			frontend: null,
 			gate: null,
 			waiting: false,
@@ -966,6 +988,629 @@ test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape h
 	 * scored against the FILE rather than the test, so a green suite came back red.
 	 * The frame's own rAF work is tracked and dropped by `restore`; only these
 	 * delays need to be let through first, and they are bounded.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 450));
+});
+
+/* --------------------------------------------- where a press goes: canvas or OS */
+
+/*
+ * THE OPERATOR'S ASK, DRIVEN THROUGH THE SHIPPED ANCHOR AND THE SHIPPED TOOLBAR.
+ *
+ * "opening up files in local-operator-ui that are supported by canvas view (PDFs,
+ * XLSX/csvs, text, markdown, etc) by default are opened in the canvas instead of
+ * opened by the OS unless the user clicks to open with default application in the
+ * hover popup (add this). Change open to 'Open in canvas' on the tooltip and then
+ * another button for open in default application."
+ *
+ * Four things that sentence implies, and each is one of the tests below:
+ *
+ *   1. the press on the LINK goes to the canvas (not the OS);
+ *   2. the toolbar offers BOTH presses, and the OS one still reaches the OS;
+ *   3. a target the canvas cannot show - no viewer for the type, a path the probe
+ *      already knows is gone - keeps exactly the press it had. This is the half a
+ *      green frame cannot carry: a regression that routed every local path to the
+ *      canvas would look NEW rather than wrong in a still, and the reader's `.zip`
+ *      would open a tab saying nothing;
+ *   4. with no pane provider at all - Storybook, the legacy message rows, the
+ *      trace rows, the run panel's child reader - the press is the press of
+ *      before. That is one assertion rather than a promise: the anchor is rendered
+ *      by every markdown surface in this app and only one of them has a pane.
+ *
+ * The stores are real (bundled from source, not stubbed) because the claim is
+ * about what a press WRITES: a stub would only assert that the wiring matches the
+ * stub. Their keys are synthetic and cleared before each of these tests.
+ */
+
+const PANE = "links-test-pane";
+
+const canvasStateFor = (conversationId) =>
+	useCanvasStore.getState().conversations[conversationId];
+
+/**
+ * Empty the two stores a canvas press writes to.
+ *
+ * `canvas-store` persists to `localStorage` and `ui-preferences-store` owns the
+ * right-hand slot, so a tab left behind by one test would be read as the next
+ * test's own press - the failure that looks like a passing assertion about the
+ * wrong press.
+ */
+function resetCanvasStores() {
+	useCanvasStore.setState({ conversations: {} });
+	useUiPreferencesStore.setState({ isCanvasOpen: false });
+}
+
+/**
+ * Render one paragraph of markdown, inside a pane or not, with both bridges
+ * recorded.
+ *
+ * `probeFiles` answers "it is there and it is a file" for everything, which is
+ * the state a reader's own hover leaves behind; `readFile` echoes the path and the
+ * encoding it was asked for, so a document's content is evidence about WHICH read
+ * the press made rather than a constant.
+ */
+async function renderInPane(content, { pane = PANE, probeFiles } = {}) {
+	stubApi(frame.window);
+	/* A caller that needs its own answers (a gone file, a huge one) replaces the
+	 * default stub rather than layering on it. */
+	if (probeFiles) frame.window.api.probeFiles = probeFiles;
+	const opened = [];
+	frame.window.api.openFile = async (target) => {
+		opened.push(target);
+		return { ok: true, resolved: target };
+	};
+	const read = [];
+	frame.window.api.readFile = async (target, encoding) => {
+		read.push({ target, encoding });
+		return { success: true, data: `${target}|${encoding}` };
+	};
+	resetCanvasStores();
+	const anchor = () => frame.document.querySelector('a[data-lo-kind="file"]');
+	const render = pane
+		? React.createElement(
+				CanvasPaneProvider,
+				{ conversationId: pane },
+				React.createElement(MarkdownRenderer, { content }),
+			)
+		: React.createElement(MarkdownRenderer, { content });
+	await frame.render(render);
+	return { opened, read, anchor: anchor() };
+}
+
+test("a press inside a pane opens the file in the CANVAS, and never asks the OS", async () => {
+	const { opened, anchor } = await renderInPane(`Saved it to ${REPORT}.`);
+	const press = await frame.dispatch(anchor, "click");
+	assert.equal(
+		press.defaultPrevented,
+		true,
+		"the default must still be cancelled",
+	);
+	/*
+	 * The document is built behind an `await` (the text kinds are read before the
+	 * tab is opened), so the promise chain has to drain before the store can be
+	 * read - the flush is the ONLY thing the async `act` is for here.
+	 */
+	await act(async () => {});
+	assert.deepEqual(
+		opened,
+		[],
+		"the OS must not be asked for a file the canvas took",
+	);
+	const state = canvasStateFor(PANE);
+	assert.ok(state, "the pane must have canvas state");
+	assert.equal(
+		state.selectedTabId,
+		RESOLVED_REPORT,
+		"the tab is the RESOLVED path's document, which is the identity the Files panel's tile for this file carries",
+	);
+	assert.equal(
+		state.viewMode,
+		"documents",
+		"the pane must switch to the viewer",
+	);
+	assert.deepEqual(
+		state.openTabs.map((tab) => tab.id),
+		[RESOLVED_REPORT],
+		"one file, one tab: the transcript's `~/` spelling and the panel's `/Users/...` spelling are the same document",
+	);
+	const document = state.files.at(-1);
+	assert.equal(
+		document.id,
+		RESOLVED_REPORT,
+		"the document's id is the probe's RESOLVED path, not the spelling the transcript wrote",
+	);
+	assert.equal(document.path, RESOLVED_REPORT);
+	assert.equal(
+		document.title,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		"the title is the basename the tab and the viewer chrome show",
+	);
+	/*
+	 * The bytes are the ones THIS layer read, at the encoding the router chose for
+	 * the kind: an `.xlsx` is a spreadsheet, so base64 - and a document that
+	 * carried no content would be a viewer waiting on a read that never happens.
+	 */
+	/* The read is asked for the spelling the reader pressed; `read-file` resolves
+	 * `~/` itself, so the bytes come back either way. */
+	assert.equal(document.content, `${REPORT}|base64`);
+	assert.equal(
+		useUiPreferencesStore.getState().isCanvasOpen,
+		true,
+		"the right-hand slot must be claimed, or the tab opens into a canvas nobody sees",
+	);
+});
+
+test("a press on a text file reads it as utf-8, and on a PDF does not read it at all", async () => {
+	/*
+	 * The router's own split, at the press rather than in the table: `utf-8` and
+	 * `base64` are read here, and the kinds that read their own bytes (`bytes`,
+	 * `range`) are handed over without them - a PDF's 40 MB must never become a
+	 * string in a store persisted to `localStorage`.
+	 */
+	const text = await renderInPane("The log is at /tmp/x/run.log.");
+	await frame.dispatch(text.anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(
+		text.read.map((entry) => entry.encoding),
+		["utf-8"],
+	);
+	assert.equal(
+		canvasStateFor(PANE).files.at(-1).content,
+		"/tmp/x/run.log|utf-8",
+	);
+
+	const pdf = await renderInPane("The report is at /tmp/x/summary.pdf.");
+	await frame.dispatch(pdf.anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(pdf.read, [], "the viewer reads a PDF's bytes itself");
+	assert.equal(canvasStateFor(PANE).files.at(-1).path, "/tmp/x/summary.pdf");
+});
+
+test("a press with NO pane is exactly the press of before: the OS", async () => {
+	/*
+	 * The degradation the context exists to give, asserted on the same path the
+	 * canvas case uses: no provider, no canvas, and the OS hand-off untouched. Every
+	 * surface that renders markdown without a chat pane depends on this, and so does
+	 * the canvas's own viewer chrome (which renders its own markdown).
+	 */
+	const { opened, anchor } = await renderInPane(`Saved it to ${REPORT}.`, {
+		pane: null,
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [REPORT], "the OS is what opens it there");
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"and nothing may be opened into a canvas this surface does not have",
+	);
+	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+});
+
+test("a type with no canvas viewer keeps the OS hand-off even inside a pane", async () => {
+	/*
+	 * `viewerFor`'s `null` is the documented "hand it to the OS", and this is the
+	 * assertion that the new default did not swallow it: a `.zip` is a local path
+	 * with no viewer, so the press must be the press it always was.
+	 */
+	const { opened, anchor } = await renderInPane(
+		"The bundle is /tmp/x/bundle.zip.",
+	);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, ["/tmp/x/bundle.zip"]);
+	assert.equal(canvasStateFor(PANE), undefined);
+});
+
+test("a path the probe already knows is GONE gets no canvas tab", async () => {
+	/*
+	 * The one case where a canvas open would be a LIE rather than a downgrade: the
+	 * toolbar already asked, the answer was "not there", and a tab would open onto a
+	 * viewer saying nothing. The cached answer is read (no new round trip on the
+	 * press), the canvas is skipped, and the reader keeps the OS attempt and its own
+	 * sentence - which is what the missing-file matrix offers beside it.
+	 */
+	resetProbeCache();
+	await probeTarget(GONE, async () => [
+		{ input: GONE, resolved: GONE, exists: false, isFile: false },
+	]);
+	const { opened, anchor } = await renderInPane(`The report is at ${GONE}.`);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [GONE], "the OS attempt, as before this change");
+	assert.equal(canvasStateFor(PANE), undefined, "and no dead tab");
+	resetProbeCache();
+});
+
+test("a press with nothing cached ASKS, and refuses a path the probe says is gone", async () => {
+	/*
+	 * Review round 1, Q1. The hover normally warms the probe cache, and the kinds
+	 * that read their own bytes (`bytes`, `range`) read nothing at the press - so
+	 * without a press-time question a PDF that vanished between the reveal and the
+	 * press opened a tab onto nothing, where a text file correctly refused and
+	 * handed the path to the OS.
+	 *
+	 * Nothing is cached here on purpose (`resetProbeCache`), which is also the
+	 * keyboard/touch shape: a press can arrive on a link that was never hovered.
+	 */
+	resetProbeCache();
+	const pdf = "/tmp/x/vanishing.pdf";
+	const asked = [];
+	const { opened, anchor } = await renderInPane(`The report is at ${pdf}.`, {
+		probeFiles: async (paths) => {
+			asked.push(...paths);
+			return paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: false,
+				isFile: false,
+				sizeBytes: null,
+				mtimeMs: null,
+			}));
+		},
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.ok(
+		asked.includes(pdf),
+		"the press must ask about the path it is about to open, not trust a hover that may not have happened",
+	);
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"a path the probe says is gone gets no tab, for a file kind that would never have read it",
+	);
+	assert.deepEqual(
+		opened,
+		[pdf],
+		"and the OS attempt and its sentence are what is left",
+	);
+});
+
+test("a file above the read ceiling is REFUSED: nothing read, nothing written", async () => {
+	/*
+	 * Review round 2's blocker, and the first version of this case is why it was
+	 * missed: that one asserted the document's SHAPE (no bytes, `sizeBytes` carried)
+	 * and so was satisfied by the very state that took the app down. A document
+	 * without bytes is not a viewer waiting for a read - the three kinds this cap
+	 * covers render `document.content` - and for a spreadsheet the sheet viewer
+	 * throws `Workbook is empty` the moment the reader leaves the tab, which the
+	 * ErrorBoundary turns into a dead window.
+	 *
+	 * So the assertion here is the whole contract in one place: the press refuses,
+	 * the file is never read, and the store is exactly as it was - the tab that
+	 * would have been the empty one does not exist.
+	 */
+	resetProbeCache();
+	const huge = "/tmp/x/enormous.csv";
+	const { read, opened, anchor } = await renderInPane(
+		`The export is ${huge}.`,
+		{
+			probeFiles: async (paths) =>
+				paths.map((input) => ({
+					input,
+					resolved: input,
+					exists: true,
+					isFile: true,
+					sizeBytes: 8 * 1024 * 1024,
+					mtimeMs: 1_760_000_000_000,
+				})),
+		},
+	);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(
+		read,
+		[],
+		"nothing above the ceiling is read into the persisted store",
+	);
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"and no document is written, so no viewer can be handed an empty one",
+	);
+	assert.deepEqual(
+		opened,
+		[huge],
+		"the OS hand-off and its sentence are what a refusal leaves the reader",
+	);
+	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+});
+
+test("above the read ceiling the strip loses the canvas and says why", async () => {
+	/*
+	 * Round 3, U8a, at the toolbar rather than at the matrix: the same mounted
+	 * transcript, the same file, one difference - the probe answers 9 MB. The strip
+	 * must not offer a destination the press refuses (UX measured exactly that: a
+	 * button reading `Open in canvas` handing the file to the OS), so the canvas
+	 * action is gone and the note explains the absence, because a reader who has
+	 * learned that a `.xlsx` opens in the canvas reads a missing button as a bug.
+	 */
+	resetProbeCache();
+	resetCanvasStores();
+	await mountTranscript({ sizeBytes: 9_411_130 });
+	const report = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	await frame.dispatch(report, "focusin");
+	/* The reveal's probe is a promise; the strip's own answer lands one turn later. */
+	await act(async () => {});
+	const strip = frame.document.querySelector("[data-lo-link-toolbar]");
+	const labels = [...strip.querySelectorAll("button")].map((button) =>
+		button.getAttribute("aria-label"),
+	);
+	assert.deepEqual(
+		labels,
+		["Copy path", "Open", "Open folder", "Quote"],
+		"the canvas action must be gone when the press would refuse it",
+	);
+	assert.match(
+		strip.textContent,
+		/Too large for the canvas preview/,
+		"and the note must say why the canvas is absent",
+	);
+});
+
+test("an already-open document is SELECTED, not refused, above the ceiling too", async () => {
+	/*
+	 * Round 3, U8b. The Files panel's own click reads uncapped, so a 9 MB
+	 * spreadsheet can already be open in this pane when its link is pressed. The
+	 * ceiling is about what this press can BUILD, so a document that is already
+	 * built must win: the old order refused it and sent the reader to the OS to open
+	 * the file they were looking at. The panel's tile op runs after the mount here
+	 * because the mount clears the stores - which is also the incidental proof that
+	 * the press reads the store at press time rather than trusting anything it saw
+	 * when it rendered.
+	 */
+	resetProbeCache();
+	const { read, opened, anchor } = await renderInPane(
+		`The export is ${REPORT}.`,
+		{
+			probeFiles: async (paths) =>
+				paths.map((input) => ({
+					input,
+					resolved: resolveUserPath(input),
+					exists: true,
+					isFile: true,
+					sizeBytes: 9_411_130,
+					mtimeMs: 1_760_000_000_000,
+				})),
+		},
+	);
+	useCanvasStore.getState().addFileAndSelect(PANE, {
+		id: RESOLVED_REPORT,
+		path: RESOLVED_REPORT,
+		title: "opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		type: "spreadsheet",
+		content: "the-panels-own-read",
+	});
+	useCanvasStore.getState().setSelectedTab(PANE, null);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	const state = canvasStateFor(PANE);
+	assert.equal(
+		state.selectedTabId,
+		RESOLVED_REPORT,
+		"the open document is selected rather than refused",
+	);
+	assert.deepEqual(
+		opened,
+		[],
+		"and the OS is not asked to open what is on screen",
+	);
+	assert.deepEqual(
+		read,
+		[],
+		"and nothing is re-read: the store's own document is kept",
+	);
+	assert.equal(state.files.length, 1, "one document, not two");
+	assert.equal(
+		state.files[0].content,
+		"the-panels-own-read",
+		"and the bytes the panel read survive the press",
+	);
+	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+});
+
+test("a file deleted AFTER the hover is refused too: the press asks for itself", async () => {
+	/*
+	 * Review round 2, QA R2-2. Round 1's fix asked only when nothing was cached, so
+	 * this exact repro - hover (which caches `exists: true`), delete the file, press -
+	 * still opened a dead tab for the kinds that read nothing here, with no OS
+	 * hand-off and no sentence. A cached positive is a fact about a moment that has
+	 * passed, so the press asks the bridge itself and treats the cache as a fallback.
+	 */
+	resetProbeCache();
+	const pdf = "/tmp/x/vanishing.pdf";
+	/* The hover: a cached positive, which is the state that used to be trusted. */
+	await probeTarget(pdf, async () => [
+		{
+			input: pdf,
+			resolved: pdf,
+			exists: true,
+			isFile: true,
+			sizeBytes: 13_904,
+			mtimeMs: 1_760_000_000_000,
+		},
+	]);
+	assert.ok(
+		probeStateFor(pdf),
+		"precondition: the hover left a positive behind",
+	);
+	const { opened, anchor } = await renderInPane(`The report is at ${pdf}.`, {
+		probeFiles: async (paths) =>
+			paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: false,
+				isFile: false,
+				sizeBytes: null,
+				mtimeMs: null,
+			})),
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"a stale positive must not become a dead tab",
+	);
+	assert.deepEqual(
+		opened,
+		[pdf],
+		"the OS attempt and its sentence are what is left",
+	);
+	assert.equal(
+		probeStateFor(pdf),
+		undefined,
+		"and the stale entry is dropped, so the next reveal asks again (forgetProbe)",
+	);
+});
+
+test("a second press on an open document does not read it again", async () => {
+	/*
+	 * Review round 1, n2. `addFileAndSelect` keeps the entry it already has, so a
+	 * re-read would be bytes nobody looks at - and the read is the expensive half
+	 * of the press.
+	 */
+	resetProbeCache();
+	const { read, anchor } = await renderInPane(`Saved it to ${REPORT}.`);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.equal(
+		read.length,
+		1,
+		"the file is read once, however many presses it takes to open it",
+	);
+	assert.deepEqual(
+		canvasStateFor(PANE).openTabs.map((tab) => tab.id),
+		[RESOLVED_REPORT],
+	);
+});
+
+test("a URL's browser press wears the browser mark, never the canvas one", async () => {
+	/*
+	 * Design round 2, D3. M2's guard is this delta's only user-visible behaviour
+	 * change and nothing covered it: `viewerFor` routes by the last path segment, so
+	 * a URL ending in `.pdf` has a viewer and, before the guard, the strip's `Open in
+	 * browser` button wore `PanelRightOpen` - a mark disagreeing with the label beside
+	 * it. No committed frame can show it (the fixture's URL carries no extension), so
+	 * the assertion lives here and the set README's limits say as much.
+	 *
+	 * Both directions are asserted, because "the URL is not the canvas" is only
+	 * meaningful beside "the file is": one mount, two subjects, two marks.
+	 */
+	resetProbeCache();
+	const urlWithViewer = "https://example.com/reports/paper.pdf";
+	await mountTranscript({
+		transcript: {
+			records: [
+				record("u1", "user", "Where did the run put everything?"),
+				record(
+					"a1",
+					"assistant",
+					`The upstream page is ${urlWithViewer} and the file is ${REPORT}.`,
+				),
+			],
+			index: new Map([
+				["u1", 0],
+				["a1", 1],
+			]),
+		},
+	});
+	const markOf = (label) => {
+		const button = frame.document.querySelector(
+			`[data-lo-link-toolbar] button[aria-label="${label}"]`,
+		);
+		assert.ok(button, `the strip must offer ${label}`);
+		return button.querySelector("svg")?.getAttribute("class") ?? "";
+	};
+	/* The strip is raised per subject, so the two subjects are read in turn. */
+	const urlAnchor = frame.document.querySelector('a[data-lo-kind="url"]');
+	assert.ok(urlAnchor, "the URL must render as a URL anchor");
+	await frame.dispatch(urlAnchor, "focusin");
+	assert.match(
+		markOf("Open in browser"),
+		/external-link/,
+		"the browser press wears the browser mark",
+	);
+	assert.doesNotMatch(
+		markOf("Open in browser"),
+		/panel-right-open/,
+		"and never the canvas mark, though this URL's last segment has a viewer",
+	);
+	await frame.dispatch(
+		anchorFor(
+			frame.document,
+			"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		),
+		"focusin",
+	);
+	assert.match(
+		markOf("Open in canvas"),
+		/panel-right-open/,
+		"while the file's own canvas press wears the canvas mark",
+	);
+});
+
+test("the strip offers both opens, and each press does its own thing", async () => {
+	/*
+	 * The operator's second half: the toolbar's `Open` becomes `Open in canvas` and
+	 * a second button opens the OS's application. Driven through the SHIPPED toolbar
+	 * buttons - the labels are the accessible names the reader's tooltip shows, so
+	 * this asserts the copy as well as the wiring - and each press is read back off
+	 * the store and the bridge it reaches.
+	 */
+	const opened = [];
+	stubApi(frame.window);
+	frame.window.api.openFile = async (target) => {
+		opened.push(target);
+		return { ok: true, resolved: target };
+	};
+	frame.window.api.readFile = async (target, encoding) => ({
+		success: true,
+		data: `${target}|${encoding}`,
+	});
+	resetCanvasStores();
+	await mountTranscript();
+	const report = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	await frame.dispatch(report, "focusin");
+	const labels = [
+		...frame.document.querySelectorAll("[data-lo-link-toolbar] button"),
+	].map((button) => button.getAttribute("aria-label"));
+	assert.deepEqual(labels, [
+		"Copy path",
+		"Open in canvas",
+		"Open in default app",
+		"Open folder",
+		"Quote",
+	]);
+	const button = (label) =>
+		frame.document.querySelector(
+			`[data-lo-link-toolbar] button[aria-label="${label}"]`,
+		);
+	await frame.dispatch(button("Open in canvas"), "click");
+	await act(async () => {});
+	assert.deepEqual(
+		opened,
+		[],
+		"Open in canvas must not reach the OS's application",
+	);
+	assert.equal(canvasStateFor("links-test").selectedTabId, RESOLVED_REPORT);
+	/* And the OS press still does, from the same strip, on the same path. */
+	await frame.dispatch(button("Open in default app"), "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [REPORT]);
+	/*
+	 * The Radix tooltip delays this test arms, drained before teardown for the
+	 * reason the keyboard test above documents in full: a delay that fires after
+	 * `restore` reads a global that is gone, and node scores it against the FILE.
 	 */
 	await new Promise((resolve) => setTimeout(resolve, 450));
 });
