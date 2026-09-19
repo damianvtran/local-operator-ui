@@ -726,6 +726,35 @@ test("the connectivity band offers its Retry only where a re-pairing act exists"
 		detail: null,
 	});
 	assert.equal(legacy.retry, true);
+
+	/*
+	 * AND THE LATE ARM, which the cases above did not reach: every one of them
+	 * built `reconnecting: true`, so this arm's control was pinned by nothing and
+	 * passed before the round-2 change (review round 3). `reconnecting: false` is
+	 * what main publishes past its 90 s boundary, and it is exactly where UX round
+	 * 2 measured a Retry that asks `/health` and `/v1/capabilities` only.
+	 */
+	const late = (cause) =>
+		serverBannerCopy({
+			state: "detached",
+			reconnecting: false,
+			detail: "A local daemon may still be running, but could not be attached.",
+			pairing: { available: false, cause },
+			owned: false,
+		});
+	for (const cause of ["governed-elsewhere", "pre-handshake"]) {
+		const copy = late(cause);
+		assert.equal(copy.retry, false, `${cause}: the late arm must withhold the Retry`);
+		/*
+		 * And it may not assert a stop it cannot know: main's own detail beside it
+		 * says a daemon may still be running, which for these two causes is the
+		 * truth - the process is fine and this app may not attach (UX round 3, U10).
+		 */
+		assert.doesNotMatch(copy.title, /stopped/i, `${cause}: no stop is established`);
+	}
+	const lateRepairable = late("successor");
+	assert.equal(lateRepairable.retry, true);
+	assert.match(lateRepairable.title, /stopped/i);
 });
 
 /*

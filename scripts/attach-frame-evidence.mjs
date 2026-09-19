@@ -55,6 +55,7 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
@@ -62,6 +63,7 @@ import {
 	readFileSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
@@ -152,6 +154,73 @@ const HEALTH_PATH_FOR_RIG = "/health";
  * the app's diagnosis, and the frame that proves it is gone has to carry the string
  * the server really sends rather than one invented here (design § 0(c), § 5.1).
  */
+/**
+ * The identity of the BUILT BUNDLE these frames will depict.
+ *
+ * WHY IT EXISTS (review round 2 D13, round 3 D18): the first version of this
+ * record quoted `out/main/index.js` — a 72-byte bytecode STUB whose sha256 is
+ * identical across every build on this machine, including builds that predate the
+ * fix — so the identity could not fail, and "a grep of the bundle finds no
+ * occurrence of X" was vacuously true of 72 bytes. The artifacts that actually
+ * change between builds are the renderer chunk and the compiled main bytecode, so
+ * those are what this records, per scene, beside the newest source mtime.
+ *
+ * And it REFUSES to run against a stale tree: a rig that photographs whatever
+ * happens to be in `out/` is how the round-1 "re-shot" frames came to be
+ * byte-identical to the frames they claimed to replace.
+ */
+function bundleIdentity() {
+	const sha256 = (file) =>
+		createHash("sha256").update(readFileSync(file)).digest("hex");
+	const describe = (file) => ({
+		file: file.replace(`${REPO}/`, ""),
+		sha256: sha256(file),
+		builtAt: statSync(file).mtime.toISOString(),
+	});
+	const mainBundle = join(REPO, "out/main/index.jsc");
+	if (!existsSync(mainBundle))
+		throw new Error(
+			"out/main/index.jsc is missing: run pnpm build before the rig",
+		);
+	const assets = join(REPO, "out/renderer/assets");
+	const chunks = readdirSync(assets).filter((entry) =>
+		/^index-.*\.js$/.test(entry),
+	);
+	if (chunks.length === 0)
+		throw new Error("out/renderer/assets holds no entry chunk: run pnpm build");
+	const chunk = chunks
+		.map((entry) => join(assets, entry))
+		.sort((a, b) => statSync(b).size - statSync(a).size)[0];
+	// The newest source file, so the age of the build can be judged against the
+	// tree it claims to photograph rather than against the clock.
+	let newest = { file: "", at: 0 };
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(path);
+				continue;
+			}
+			const at = statSync(path).mtimeMs;
+			if (at > newest.at) newest = { file: path.replace(`${REPO}/`, ""), at };
+		}
+	};
+	walk(join(REPO, "src"));
+	const builtAtMs = Math.min(
+		statSync(mainBundle).mtimeMs,
+		statSync(chunk).mtimeMs,
+	);
+	if (newest.at > builtAtMs)
+		throw new Error(
+			`out/ is STALE: ${newest.file} is newer than the build (${new Date(newest.at).toISOString()} > ${new Date(builtAtMs).toISOString()}). Run pnpm build, then re-shoot.`,
+		);
+	return {
+		mainBytecode: describe(mainBundle),
+		rendererChunk: describe(chunk),
+		newestSource: { file: newest.file, at: new Date(newest.at).toISOString() },
+	};
+}
+
 const DAEMON_PLANE_REFUSAL =
 	"Desktop controls require a backend started by the desktop app.";
 /**
@@ -545,26 +614,20 @@ const READ_PAGE = `(async () => {
 		 * engine's own answer to "would a reader see this".
 		 */
 		pane: (() => {
+			/*
+			 * THE PANE'S OWN SENTENCES, and nothing else (review round 3, D19).
+			 *
+			 * One list holding both band and pane strings, read with "take the last DOM
+			 * match", let a frame in which the pane was stating its own condition be
+			 * recorded as the BAND's: the governed scene's page.pane came back holding
+			 * the band's sentence with the band's geometry (text-body-sm, w1062, y80)
+			 * instead of the pane's (text-center, w832, y469). Each reader therefore
+			 * carries its own vocabulary, and the scene asserts both fields.
+			 */
 			const wanted = [
+				"cannot be read here",
 				"Update the backend to use canonical chats",
 				"cannot use the backend's desktop controls",
-				/*
-				 * The PANE's own sentences for a pairing cause (design § 4). A reader that
-				 * only looked for the version sentence reads "no sentence in the pane" over
-				 * a pane that is saying the right thing.
-				 */
-				"already managed by another program",
-				"was replaced while this app was running",
-				"older than the pairing handshake",
-				"credential for the running Local Operator server was refused",
-				"is not paired with the running Local Operator server",
-				/*
-				 * And the PANE-SCOPED table this branch introduced (review round 2, D16):
-				 * a reader that only knew the band's wording reported "no sentence" over a
-				 * pane that was saying the right thing in its own words, which is exactly
-				 * the copy D1 exists to keep from being a duplicate of the band's.
-				 */
-				"cannot be read here",
 				"Choose an agent or team",
 				"Start a chat",
 				"Connecting to the backend",
@@ -963,7 +1026,18 @@ function armHeartbeat(runDir, port, pid, options = {}) {
 	return setInterval(() => writeRecord(runDir, port, pid, options), 5_000);
 }
 
-const summary = { label: LABEL, scenes: {} };
+/*
+ * The bundle these frames depict, computed BEFORE any scene runs and refused if it
+ * is older than the sources: a rig that photographs whatever is in out/ is how the
+ * round-1 "re-shot" frames came to be byte-identical to the ones they claimed to
+ * replace (D13). Recorded per scene as well as once, because a reader checking a
+ * single frame should not have to look elsewhere for the build it came from (D18).
+ */
+const BUNDLE = bundleIdentity();
+console.log(
+	`# bundle: ${BUNDLE.rendererChunk.file} sha256=${BUNDLE.rendererChunk.sha256.slice(0, 16)} built=${BUNDLE.rendererChunk.builtAt} newestSource=${BUNDLE.newestSource.file}`,
+);
+const summary = { label: LABEL, bundle: BUNDLE, scenes: {} };
 
 async function sceneAttached() {
 	const configDir = join(ROOT, "config-attached");
@@ -1341,6 +1415,40 @@ async function sceneOtherPrincipal() {
 		 * correct key), and the daemon's own prose appears NOWHERE in what the app
 		 * renders.
 		 */
+		/*
+		 * BOTH SURFACES, each read from its own vocabulary (review round 3, D19). The
+		 * band must carry a band sentence, and the pane - when it states one - must
+		 * state the PANE's: this frame used to pass every assertion while its pane
+		 * field held the band's sentence with the band's geometry.
+		 */
+		/*
+		 * The band's own sentence, read from the page's FIRST LINES rather than from a
+		 * second in-page walk: the in-page reader threw inside the shared page eval and
+		 * took the whole read down ("the app's page never became readable over CDP"),
+		 * which is a worse failure than the one it was there to detect. The band's
+		 * vocabulary is unique to the band now that the pane has its own copy (D1), so
+		 * the page's own lines answer the same question.
+		 */
+		const bandWanted = [
+			"already managed by another program",
+			"was replaced while this app was running",
+			"older than the pairing handshake",
+			"credential for the running Local Operator server was refused",
+			"is not paired with the running Local Operator server",
+			"Not connected to a Local Operator server",
+		];
+		page.bandSentence =
+			(page.first_lines ?? []).find((line) =>
+				bandWanted.some((w) => line.includes(w)),
+			) ?? null;
+		if (!page.bandSentence)
+			throw new Error(
+				"other-principal: no band sentence was read at all, so this frame cannot show what the band says",
+			);
+		if (page.pane?.sentence && page.pane.sentence === page.bandSentence)
+			throw new Error(
+				"other-principal: the pane field holds the BAND's sentence - the probe's lists are mixing surfaces again",
+			);
 		const rendered = JSON.stringify(page);
 		/*
 		 * THE GUARD ON THE DAEMON'S PROSE, AND ITS MEASURED LIMIT.
@@ -1650,7 +1758,7 @@ try {
 			// A scene that fails keeps what the others produced and says so: this
 			// rig's frame evidence is read scene by scene, and losing three scenes
 			// because the fourth threw is how a run reports nothing at all.
-			summary.scenes[name] = { error: String(error) };
+			summary.scenes[name] = { error: String(error), bundle: BUNDLE };
 			console.log(`# scene ${name} FAILED: ${error}`);
 		}
 	}
@@ -1676,7 +1784,7 @@ try {
 			continue;
 		const other = JSON.parse(readFileSync(join(OUT, entry), "utf8"));
 		for (const [name, value] of Object.entries(other.scenes ?? {}))
-			summary.scenes[name] = value;
+			summary.scenes[name] = { bundle: BUNDLE, ...value };
 	}
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),

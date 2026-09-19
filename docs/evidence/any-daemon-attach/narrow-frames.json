@@ -1,0 +1,40 @@
+{
+  "label": "narrow",
+  "bundle": {
+    "mainBytecode": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
+      "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
+      "builtAt": "2026-09-19T05:45:21.296Z"
+    },
+    "rendererChunk": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
+      "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
+      "builtAt": "2026-09-19T05:46:04.168Z"
+    },
+    "newestSource": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T05:43:41.289Z"
+    }
+  },
+  "scenes": {
+    "other-principal": {
+      "bundle": {
+        "mainBytecode": {
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
+          "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
+          "builtAt": "2026-09-19T05:45:21.296Z"
+        },
+        "rendererChunk": {
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
+          "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
+          "builtAt": "2026-09-19T05:46:04.168Z"
+        },
+        "newestSource": {
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
+          "at": "2026-09-19T05:43:41.289Z"
+        }
+      },
+      "error": "Error: the app's page never became readable over CDP"
+    }
+  }
+}

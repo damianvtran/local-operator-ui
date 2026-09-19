@@ -589,9 +589,9 @@ place to look is the claim path, not the copy.
 
 ---
 
-## 12. Corrected and added by review round 1
+## 12. Corrected and added by review rounds 1-3
 
-This section is the round's own record of where the design above was wrong or
+This section is the rounds' own record of where the design above was wrong or
 incomplete. The text above is left as it was written; these entries govern.
 
 1. **§ 0(c) and § 2 S2 mis-attribute the operator's screen (design round 1, D5).**
@@ -635,3 +635,29 @@ incomplete. The text above is left as it was written; these entries govern.
    whatever that file pinned. Every boot in `attach-frame-evidence.mjs` now names a
    scratch working directory, the app is launched by absolute path, and each scene
    asserts from the app's own log which address it was configured for.
+
+6. **Round 2 corrected the EVIDENCE, not the design (D13/D15, and they were right).**
+   The frames had been shot from a stale `out/`: the rig boots whatever is built, so
+   a "re-shoot" that does not rebuild is indistinguishable from the frames it claims
+   to replace. The rig now computes the identity of the artifacts that actually
+   change between builds (the renderer entry chunk and the compiled main bytecode),
+   records it per scene, and REFUSES to run when the sources are newer than the
+   build. And the record may not describe a guard that does not exist: the governed
+   scene publishes `desktopRoutesServed`, which is 0, rather than implying the
+   daemon's prose reached the app and was suppressed.
+
+7. **Round 2 found a defect the design never names: the chat store rendered the
+   server's sentence (D14/U1).** `fetchSessions`, `createSession` and `openSession`
+   stored the transport's raw `error.message`, so a daemon-authored refusal became
+   this app's diagnosis on the sidebar and the pane for the whole 18.3 s a re-pair
+   takes. § 5.1's promise was true of the send path and false here. All three now
+   compose through `userFacingMessage`, and the store's own error VALUE is asserted
+   by a test - not a frame, because the value is the thing that was wrong.
+
+8. **Round 3 narrowed § 3.4's remedy further.** With the app-managed instruction
+   removed from the shared table, Settings still printed "The Local Operator server
+   is not answering." over a daemon that was answering, with a Retry that cannot
+   change a governed or pre-handshake plane. A surface must not state a false
+   diagnosis: Settings now renders the pairing table's sentence for the cause main
+   published, and withholds its control where no act exists - by the same predicate
+   the banner and the pane call.

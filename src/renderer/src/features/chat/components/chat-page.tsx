@@ -9,6 +9,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
@@ -2091,12 +2092,12 @@ export function ChatPage() {
 			: null;
 	const pairingSentence = backendPaneSentence(catalogueState, pairingCause);
 	/*
-	 * NO CONTROL WHERE NO REMEDY EXISTS, the same rule the banner applies: S2 is
-	 * another program's plane and S3 is a daemon older than the handshake, and in
-	 * both a Retry would be a button that provably cannot work (design § 2, § 10.2).
+	 * NO CONTROL WHERE NO REMEDY EXISTS, asked of the ONE predicate that answers it
+	 * (design round 3): this used to spell the two causes out again, which is a
+	 * second copy of a rule that has three other readers, and a copy is how the
+	 * pane and the band come to disagree about a cause one of them learns later.
 	 */
-	const offerRetry =
-		pairingCause !== "governed-elsewhere" && pairingCause !== "pre-handshake";
+	const offerRetry = pairingHasRemedy(pairingCause);
 	/**
 	 * The pane's one retry: the RECONNECT verb when this is a pairing state.
 	 *

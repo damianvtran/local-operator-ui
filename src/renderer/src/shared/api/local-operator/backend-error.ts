@@ -80,10 +80,11 @@ export function backendErrorKind(error: unknown): BackendErrorKind {
  *
  * Every sentence here names something the USER can do. `unreachable` used to
  * read "Retry once it has started.", which is the most common of the five
- * conditions and the only one that asked the user to wait for an event they
- * have no way to cause -- while the `unauthorized` sentence beside it states
- * plainly that the app starts the server itself (design D5). Restarting the
- * app is the action that actually reaches the stated outcome.
+ * conditions, and the case that taught this table its shape: it used to carry
+ * "Restart the app so it can start its own server.", which asked the user to make
+ * the app own a plane this change exists to let it adopt (UX round 2, U2). What
+ * is left for these three kinds is a DIAGNOSIS and no instruction at all; the
+ * surfaces that can repair a pairing offer the reconnect control themselves.
  *
  * ## The noun is "the Local Operator server"
  *
@@ -113,12 +114,11 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
 	 * which of those a caller is, so it says nothing and the composition drops it.
 	 */
 	unreachable: "",
-	// The same instruction as `unreachable`, for the same reason: a server that
-	// has been silent for the whole budget is not answering, and restarting the
-	// app is what starts a new one. It is NOT the panel copy — a panel renders
+	// As `unreachable`, and for the same reason: a server that has been silent for
+	// the whole budget is not answering. It is NOT the panel copy — a panel renders
 	// the request's own authored sentence, which says the app stopped waiting
-	// rather than that the server is down (design round 1, D3: this instruction
-	// must survive on the surfaces that have no in-place retry).
+	// rather than that the server is down (design round 1, D3) — and it carries no
+	// instruction (UX round 2, U2).
 	deadline: "",
 	unauthorized: "",
 	outdated: "Update the server and try again.",
@@ -376,9 +376,11 @@ export function backendCompatibilityMessage(input: {
 		if (kind === "deadline")
 			// A server that has been silent for the app's whole budget is a wedged
 			// server, which is the case this banner exists for. It names that, and
-			// keeps the restart instruction, because the banner has no retry of its
-			// own: dropping the remedy would leave the user a statement and no
-			// action (design round 1, D3). It is also not "as expected" — nothing
+			// names NO action: keeping the restart instruction here was justified by
+			// the banner having no retry of its own, but the instruction is the one
+			// this change removes, and the justification was false anyway — this
+			// branch is reached in every state, including ones where the banner does
+			// offer a Retry (review round 3). It is also not "as expected": nothing
 			// arrived at all, which is a different fact from an unexpected answer.
 			return `${BACKEND_ERROR_DIAGNOSIS.deadline} Provider sign-in, settings, slash commands and MCP management need it answering.`;
 		if (kind === "outdated")

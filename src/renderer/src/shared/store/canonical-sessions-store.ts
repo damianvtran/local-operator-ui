@@ -2145,10 +2145,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									? previous.activeDraftKey
 									: null,
 							validatingSessionId: null,
-							navigationError:
-								error instanceof Error
-									? error.message
-									: "Chat could not open. Retry.",
+							/*
+							 * The third catch in this file, and the last one holding the
+							 * transport's raw message: a refused desktop read greeted the
+							 * user with the server's own sentence about itself (review round
+							 * 3). Same seam as the other two.
+							 */
+							navigationError: userFacingMessage(
+								error,
+								"Chat could not open. Retry.",
+							),
 						});
 					return false;
 				}

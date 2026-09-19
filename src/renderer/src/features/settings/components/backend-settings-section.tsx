@@ -28,7 +28,10 @@
  *   section AND the tier its target lives in before it focuses it.
  */
 
-import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import {
+	BACKEND_PAIRING_SENTENCE,
+	backendLoadErrorMessage,
+} from "@shared/api/local-operator/backend-error";
 import type {
 	BackendSetting,
 	BackendSettings,
@@ -38,8 +41,10 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -693,6 +698,27 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		(capabilities.data ? null : capabilities.error) ?? settingsQuery.error;
 	if (loadError || !settings) {
 		const retrying = capabilities.isFetching || settingsQuery.isFetching;
+		/*
+		 * WHAT THIS SURFACE MAY SAY, and what it may offer.
+		 *
+		 * WHY IT ASKS MAIN RATHER THAN COMPOSING ITS OWN SENTENCE (UX round 2 and 3,
+		 * U2): with the app-managed remedy gone, this panel still printed "The Local
+		 * Operator server is not answering." over a daemon that IS answering - the
+		 * band two lines above names the true cause - and its Retry cannot change a
+		 * plane another program governs or an install older than the handshake. So
+		 * the sentence is the pairing table's for the cause main published, and the
+		 * control is withheld where no act exists, by the same predicate the banner
+		 * and the pane use.
+		 */
+		const { data: serverHealth } = useServerHealth();
+		const pairingCause =
+			serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
+				? (serverHealth.snapshot.pairing.cause ?? "unpaired")
+				: null;
+		const pairingSentence = pairingCause
+			? BACKEND_PAIRING_SENTENCE[pairingCause]
+			: null;
+		const remedy = pairingHasRemedy(pairingCause);
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
@@ -700,30 +726,33 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 					    and the providers grid. Nothing about this surface makes its
 					    diagnosis of the server different from theirs. */}
 					<span>
-						{backendLoadErrorMessage(
-							"Your settings could not be loaded.",
-							loadError,
-						)}
+						{pairingSentence ??
+							backendLoadErrorMessage(
+								"Your settings could not be loaded.",
+								loadError,
+							)}
 					</span>
 					{/* `isFetching` on both, because either query may be the one
 					    in flight; an errored query keeps `status: "error"` through its
 					    refetch, so without this the click changes nothing on screen. */}
-					<Button
-						variant="secondary"
-						size="sm"
-						className="shrink-0"
-						onClick={() => {
-							// Retry what actually broke. On the gated path capabilities are
-							// the fault and the reason this query never ran, so re-asking
-							// only the gated query would re-fail against the same unfixed
-							// cause without ever retrying it.
-							if (capabilities.isError) void capabilities.refetch();
-							else void settingsQuery.refetch();
-						}}
-						disabled={retrying}
-					>
-						{retrying ? "Retrying" : "Retry"}
-					</Button>
+					{remedy && (
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => {
+								// Retry what actually broke. On the gated path capabilities are
+								// the fault and the reason this query never ran, so re-asking
+								// only the gated query would re-fail against the same unfixed
+								// cause without ever retrying it.
+								if (capabilities.isError) void capabilities.refetch();
+								else void settingsQuery.refetch();
+							}}
+							disabled={retrying}
+						>
+							{retrying ? "Retrying" : "Retry"}
+						</Button>
+					)}
 				</div>
 			</Alert>
 		);
