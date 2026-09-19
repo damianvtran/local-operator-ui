@@ -817,7 +817,23 @@ test("two askers of one spelling in the same frame cost one call", async () => {
 	release();
 	await Promise.all([first, second]);
 	assert.equal(calls, 1);
-	assert.deepEqual(probeStateFor("/tmp/dup"), { exists: true, isFile: true });
+	/*
+	 * The FULL answer, not the two booleans this assertion pinned before the fold:
+	 * `origin/main`'s one-target probe wrote `resolved`, `sizeBytes` and `mtimeMs`
+	 * into the cache beside them (the canvas opens the RESOLVED path, and the
+	 * eager-read ceiling reads the size), and this branch's batched `probeTargets`
+	 * is now the single writer of all five. The stub above answers existence only,
+	 * so the three fall back exactly as upstream's own body did - the spelling
+	 * itself for `resolved`, `null` for the pair it had no answer for - which is
+	 * what makes this assertion the merge's shape rather than either side's.
+	 */
+	assert.deepEqual(probeStateFor("/tmp/dup"), {
+		exists: true,
+		isFile: true,
+		resolved: "/tmp/dup",
+		sizeBytes: null,
+		mtimeMs: null,
+	});
 });
 
 test("a landed answer notifies with the spellings it landed, once", async () => {
