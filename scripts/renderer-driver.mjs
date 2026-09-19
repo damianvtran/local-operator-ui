@@ -270,6 +270,31 @@ const BACKEND = argValue("--backend", null);
  * daemon was started with).
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
+/*
+ * The palette a run photographs, when a scene's frames are per-theme files.
+ *
+ * One launch per theme rather than one launch that sets both: `setTheme` waits
+ * out the `transition-colors` the change starts, so a second frame in the same
+ * launch is a state the app had to travel through - and a frame whose NAME says
+ * which palette it is has to be that palette and nothing else. The run reports
+ * which one it used, so a reader comparing a frame against a fresh capture knows
+ * what they are comparing.
+ */
+const THEME = argValue("--theme", null);
+/*
+ * A suffix on every frame's file name, for a scene that is run twice against two
+ * backends (`session-archive`'s withdrawn pair: the same app against a daemon
+ * that advertises the capability and one that has never heard of it).
+ */
+const RUN_LABEL = argValue("--run-label", "");
+/*
+ * The withdrawn half of the fail-closed pair: the same scene against a daemon
+ * that has never heard of archiving (`stub-daemon.mjs --no-archive`). Every
+ * assertion below inverts, and the frames are byte-compared against the capable
+ * run's - which is what makes "the panel is the panel it was" a measurement
+ * rather than a promise.
+ */
+const WITHDRAWN = process.argv.includes("--capability-withdrawn");
 /**
  * The terminal's own store, for `--scene pins`' cross-surface step.
  *
@@ -1561,6 +1586,299 @@ function connectionsTo(pid, url) {
  * driving a selector nothing renders. Its three committed frames
  * (`docs/evidence/browser-conversation-mark/live/`) went with them.
  */
+
+/*
+ * Move the REAL pointer over an element, and leave it there.
+ *
+ * A reveal that hangs off `:hover` cannot be produced by dispatching anything
+ * inside the page - `group-hover` is compositor state, not an event the element
+ * is handed - so the pointer has to come through the input pipeline this driver
+ * already speaks for keys (`Input.dispatchKeyEvent`). The app answers where the
+ * element IS (`measure`), because the layout is the app's own and the driver has
+ * no evaluation channel by design.
+ */
+async function hoverOver(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: box.centre.x,
+		y: box.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	return box;
+}
+
+/** Park the pointer off every surface, so the next frame is a rest state. */
+async function parkPointer(cdp) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: 2,
+		y: 2,
+		button: "none",
+		buttons: 0,
+	});
+}
+
+/**
+ * Click an element with the REAL pointer, and wait for it to exist first.
+ *
+ * WHY NOT THE `press` VERB, which is what most scenes use: `press` dispatches
+ * synthetic pointer events straight at the element, and a synthetic
+ * `mousedown` does not move FOCUS in Chromium. A scene that then types
+ * (`Input.insertText`) would type into nothing, silently - measured here, on the
+ * search field, as a query that never arrived and a frame of an empty box.
+ * The pointer this helper moves is the trusted one the input pipeline produces,
+ * which is also the gesture a reviewer makes: focus follows the press, the
+ * element's own hover state applies, and the app's handlers are the ones it
+ * really has.
+ */
+async function clickAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	const { x, y } = box.centre;
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	return box;
+}
+
+/**
+ * `session-archive`: the sidebar and the header as the archive feature leaves them.
+ *
+ * ## What this scene is for
+ *
+ * Four of the claims this change makes are claims about PIXELS, and none of them
+ * is reachable from the unit suite: that a row spends no width at rest, that the
+ * pointer reveals the archive control without moving anything, that the search
+ * block gains its `Include archived` control only while a query exists, and that
+ * the one delete confirmation reads as the app's danger role. Each is a state
+ * this scene puts the app into and photographs.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names the harness's own stand-in daemon
+ * (`docs/evidence/session-archive/harness/stub-daemon.mjs`), because the backend
+ * half of the feature is its own pull request and no daemon answers
+ * `session_archive` yet. The app is the real one: its own catalogue read, its own
+ * store, its own search, its own header and dialog. The README says per frame
+ * which half that is.
+ *
+ * ## The pair that is a measurement
+ *
+ * `at-rest` is captured twice - once against a daemon that advertises the two
+ * capabilities and once against `stub-daemon.mjs --no-archive` - and the two
+ * frames are byte-compared (`cmp`) in the README's table. That is the fail-closed
+ * claim stated as something a reader can check rather than as prose: with the
+ * capability absent the panel has no slot, no marker, no control and no chrome.
+ */
+async function sceneSessionArchive(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * The catalogue has to have arrived before anything is photographed: the rows
+	 * come from the daemon, and a frame taken against an empty list would be a
+	 * picture of this feature's absence rather than of its rest state.
+	 */
+	const firstRow = await verb(cdp, "measure", "[data-chat-row]");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered and the panel is drawing its rows",
+		state.sessionCount >= 4,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	note("row", JSON.stringify(firstRow));
+
+	const frames = [];
+
+	/* 1. At rest: no query, so no control in the search block, and no slot spent. */
+	await parkPointer(cdp);
+	frames.push(await captureSettled(cdp, `at-rest${RUN_LABEL}`));
+
+	if (WITHDRAWN) {
+		/*
+		 * THE WITHDRAWN RUN. Nothing below needs a press: the claims are all about
+		 * what is NOT there, and asserting absence is the whole of it.
+		 */
+		let controlPresent = true;
+		try {
+			await verb(cdp, "measure", {
+				selector: "[data-session-archive]",
+				timeoutMs: 500,
+			});
+		} catch {
+			controlPresent = false;
+		}
+		check(
+			"with the capability absent there is no archive control on any row",
+			controlPresent === false,
+			`[data-session-archive] ${controlPresent ? "matched a control" : "matched nothing"}`,
+		);
+		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		await cdp.send("Input.insertText", { text: "notes" });
+		await wait(600);
+		let togglePresent = true;
+		try {
+			await verb(cdp, "measure", {
+				selector: "#chat-search-include-archived",
+				timeoutMs: 500,
+			});
+		} catch {
+			togglePresent = false;
+		}
+		check(
+			"with the capability absent the search block gains no Include archived control",
+			togglePresent === false,
+			`#chat-search-include-archived ${togglePresent ? "matched a control" : "matched nothing"}`,
+		);
+		frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
+		check(
+			"every capture is a frame the app held still for, with no toast on it",
+			frames.every(
+				(frame) => frame.stable === true && frame.toastFree === true,
+			),
+			frames
+				.map((frame) => `${frame.label}: stable=${frame.stable}`)
+				.join(" | "),
+		);
+		return frames;
+	}
+
+	/*
+	 * 2. The pointer on a row. The reveal is the whole point of the reserved slot:
+	 * the control appears WITHOUT the row moving, which is what a reader checks by
+	 * comparing the two frames' row geometry rather than by trusting a class list.
+	 */
+	const hovered = await hoverOver(cdp, "[data-session-archive]");
+	await wait(400);
+	const revealed = await verb(cdp, "measure", "[data-session-archive]");
+	check(
+		"the archive control exists at rest and the pointer is over it",
+		revealed.inViewport === true,
+		JSON.stringify(revealed),
+	);
+	/*
+	 * The COST of the reserved slot, as a number rather than as an impression: the
+	 * control's own box plus the row wrapper's gap to the row's button is title
+	 * width the title no longer has, on every row, at rest. Reported here so the
+	 * pull request can state it and the design round can rule on it - `size-6` is
+	 * 24px, so this is the half of a two-slot reservation that exists today.
+	 */
+	note(
+		"title width cost",
+		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's gap, taken from the title on every row at rest; the row's own button is ${firstRow.rect.width}px of a ${hello.viewport.width}px window`,
+	);
+	frames.push(await captureSettled(cdp, `row-hover${RUN_LABEL}`));
+
+	/*
+	 * 3. The search box with a query and the control OFF, then ON. The archived
+	 * conversation is absent from the first and present in the second, and that
+	 * difference is asserted as a MEASUREMENT (`[data-session-archived]` matches
+	 * nothing, then matches a box) rather than left to the reader's eye.
+	 */
+	await parkPointer(cdp);
+	await clickAt(cdp, '[aria-label="Search chats and agents"]');
+	await cdp.send("Input.insertText", { text: "notes" });
+	await wait(600);
+	frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
+
+	let archivedBefore = true;
+	try {
+		await verb(cdp, "measure", {
+			selector: "[data-session-archived]",
+			timeoutMs: 400,
+		});
+	} catch {
+		archivedBefore = false;
+	}
+	check(
+		"the archived conversation is NOT in the list while Include archived is off",
+		archivedBefore === false,
+		`[data-session-archived] ${archivedBefore ? "matched a row" : "matched nothing"}`,
+	);
+
+	await clickAt(cdp, "#chat-search-include-archived");
+	await wait(600);
+	const archivedAfter = await verb(cdp, "measure", "[data-session-archived]");
+	check(
+		"turning the control on puts the archived conversation in the list, marked",
+		archivedAfter.inViewport === true,
+		JSON.stringify(archivedAfter),
+	);
+	frames.push(await captureSettled(cdp, `search-on${RUN_LABEL}`));
+
+	/*
+	 * 4. The one permanent delete, through the surface that owns it: the header's
+	 * conversation menu asks, and the dialog is what confirms. Two presses, and the
+	 * frame is the state between them. The command's own confirmation is the SAME
+	 * dialog (a typed `/delete` stages the same candidate), which is why this frame
+	 * is the frame for both routes.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat/2d5ad5da0025");
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(400);
+	const dialog = await verb(cdp, "measure", '[role="dialog"]');
+	check(
+		"the delete confirmation is open on the conversation the menu was opened on",
+		dialog.inViewport === true,
+		JSON.stringify(dialog),
+	);
+	frames.push(await captureSettled(cdp, `delete-dialog${RUN_LABEL}`));
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio,
+		),
+		frames.map((f) => `${f.label}: ${f.bytes}B`).join(" | "),
+	);
+	return frames;
+}
 
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -11270,6 +11588,8 @@ async function main() {
 				);
 			}
 			if (SCENE === "states") await sceneStates(cdp);
+			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
+			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
