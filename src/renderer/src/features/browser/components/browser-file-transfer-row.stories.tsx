@@ -218,10 +218,12 @@ export const Sent: Story = {
 };
 
 /** The long name at the declared minimum window, which is the frame D3 asked for:
- * the consequence stays whole and, since design round 3 (D14), the RULE beside it
- * stays legible at this width — the name is the span that yields now, so the file
- * name is what clips and `is an executable/script type.` is what survives. The rig's
- * `G8c` measures the same three spans against the app itself at this width. */
+ * the consequence stays whole and the RULE beside it stays legible at this width.
+ * Since design round 4 (D16) that is the WRAP's doing rather than a floor's: this
+ * paragraph is 268.7 px here while the row's non-elidable clauses alone need 316.5 px,
+ * so the sentence takes its own lines — the name yields on the first, the reason
+ * renders UNCUT on the second, the consequence shares the third. The rig's `G8c`
+ * measures those rectangles against the app itself at this width, on both branches. */
 export const LongNameAtMinimumWindow: Story = {
 	args: { transfers: activity([LONG_NAME]), onReveal: () => {} },
 	render: (args) => (

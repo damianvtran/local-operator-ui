@@ -120,7 +120,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Poll until `reading` answers truthy, so the rig waits on the PRODUCT rather than
  * on a sleep: a fixed wait is the flake, and a null answer here is reported by the
  * check that needed it. */
-async function waitFor(reading, timeoutMs = 20_000) {
+/*
+ * THE DEFAULT CEILING IS 120 s RATHER THAN 20 s, for the reason `waitForState` records
+ * above: on this box the app's own bundles take minutes to come up, and every wait here
+ * is on the PRODUCT answering (a route rendering, a marker appearing) rather than on a
+ * fixed sleep. A longer ceiling does not weaken a check — each one still fails on the
+ * thing it is about — it stops the rig measuring the machine's load. The waits that
+ * carry their own tighter bound (the two viewport pins) keep them.
+ */
+async function waitFor(reading, timeoutMs = 120_000) {
 	const started = Date.now();
 	for (;;) {
 		try {
@@ -186,6 +194,13 @@ const MINIMUM_WINDOW_WIDTH = 800;
 const LONG_EXE_NAME = `${"quarterly-financial-statements-and-notes-2026-q3-final".repeat(
 	3,
 )}.exe`;
+/** A long name for the SAVED branch's own frame at the app's minimum window (design
+ * round 4, D16's unphotographed observation): that branch carried the same absolute
+ * `max-w-[32ch] shrink-0` cap the refusal did, so at a 268.7 px paragraph the decided
+ * sentence collided with itself for the same reason — and no frame in the set showed
+ * it. Long enough to reach the proportional cap there, which is the state `G8c` now
+ * measures on BOTH branches. */
+const SAVED_LONG_NAME = "quarterly-accounts-and-notes-2026-q3-final-v7.pdf";
 
 let sitePort = 0;
 /** What the upload endpoint actually received, so the proof can compare digests
@@ -238,6 +253,7 @@ function startSite() {
 <p><a id="exe-link" href="/setup.exe" download>${EXE_NAME}</a></p>
 <p><a id="huge-link" href="/huge.pdf" download>huge.pdf</a></p>
 <p><a id="long-exe-link" href="/long.exe" download>${LONG_EXE_NAME}</a></p>
+<p><a id="saved-long-link" href="/saved-long.pdf" download>${SAVED_LONG_NAME}</a></p>
 <p><a id="stall-link" href="/stall.pdf" download>quarterly-accounts.pdf</a></p>
 <p><a id="hung-link" href="/hung.pdf" download>never-finishes.pdf</a></p>
 <p><a id="slow-a-link" href="/slow-a.pdf" download>slow-a.pdf</a></p>
@@ -256,6 +272,18 @@ function startSite() {
 					"Content-Type": "application/pdf",
 					"Content-Length": String(bytes.length),
 					"Content-Disposition": `attachment; filename="receipt-${index}.pdf"`,
+				});
+				response.end(bytes);
+				return;
+			}
+			if (path === "/saved-long.pdf") {
+				// The DECIDED branch at the app's minimum window: the state design round 4
+				// observed colliding and no frame in this set showed (see `SAVED_LONG_NAME`).
+				const bytes = PDF_BYTES(9);
+				response.writeHead(200, {
+					"Content-Type": "application/pdf",
+					"Content-Length": String(bytes.length),
+					"Content-Disposition": `attachment; filename="${SAVED_LONG_NAME}"`,
 				});
 				response.end(bytes);
 				return;
@@ -672,7 +700,19 @@ async function hostIsLive(file) {
 	}
 }
 
-async function waitForState(timeoutMs = 60_000) {
+/*
+ * HOW LONG THE APP MAY TAKE TO REGISTER ITS HOST (measured on this box, 2026-09-19).
+ *
+ * This was 60 s, which is generous on a quiet machine and far too tight on this one:
+ * a build of the SAME tree booted to its first log line in ~120 s and wrote its state
+ * file at ~210 s with the box at load 100-150 and ~25 sessions running, because the
+ * main thread spends that time in V8 compiling the bundle (sampled: the process is in
+ * `ScriptCompiler::ScriptStreamingTask::Run`, not waiting on anything). A peer
+ * worktree's build behaved the same way, so the bound was measuring the machine rather
+ * than this code. Five minutes is a ceiling, not an expectation: the wait still ends
+ * the moment `/health` answers.
+ */
+async function waitForState(timeoutMs = 300_000) {
 	const started = Date.now();
 	while (Date.now() - started < timeoutMs) {
 		if (existsSync(stateFilePath())) {
@@ -845,10 +885,56 @@ async function rowSpanReadings() {
 				clipped: s.scrollWidth > s.clientWidth + 1,
 				inside: r.right <= box.right + 1 && r.left >= box.left - 1,
 				width: Math.round(r.width),
+				// THE BOX, not only its width (design round 4, D16): two clauses that share a
+				// column are only distinguishable by their rectangles, and the layout that
+				// fixed the collision has to be provable as rectangles that do not intersect
+				// rather than as widths that happen to add up.
+				left: Math.round(r.left * 10) / 10,
+				right: Math.round(r.right * 10) / 10,
+				top: Math.round(r.top * 10) / 10,
+				bottom: Math.round(r.bottom * 10) / 10,
 				title: s.getAttribute('title'),
 			};
 		});
 	})()`);
+}
+
+/**
+ * The sentence's own arrangement, from the boxes `G8c` reads (design round 4, D16).
+ *
+ * WHY THE TOP VALUES ARE CLUSTERED RATHER THAN COUNTED: a span's own box is its inline
+ * box, whose height follows its FONT SIZE — the name and the path are mono and smaller
+ * than their neighbours — so two spans on one line can sit a pixel or two apart, and
+ * two spans on different lines are a line-height (about 19.5 px here) apart. Counting
+ * distinct `top` values would read a font-size difference as a line, and comparing tops
+ * for the OVERLAP test would miss the case the test exists for: runs whose boxes cover
+ * each other. So the overlap test compares rectangles (both axes) and the line count
+ * clusters the tops with a tolerance well below the line-height and well above the
+ * font-size spread.
+ */
+function sentenceLines(spans) {
+	const tops = [...new Set(spans.map((span) => span.top))].sort(
+		(a, b) => a - b,
+	);
+	let lines = 0;
+	let last = Number.NEGATIVE_INFINITY;
+	for (const top of tops) {
+		if (top - last > 8) {
+			lines += 1;
+			last = top;
+		}
+	}
+	return lines;
+}
+
+function overlappingRuns(spans) {
+	return spans.filter((a, index) =>
+		spans.slice(index + 1).some((b) => {
+			const xOverlap = a.left < b.right - 1 && b.left < a.right - 1;
+			const yOverlap = a.top < b.bottom - 1 && b.top < a.bottom - 1;
+			return xOverlap && yOverlap;
+		}),
+	);
 }
 
 /** The paragraph's own content box, in CSS px, for `G8c`: the `.webp` a reader
@@ -965,6 +1051,29 @@ async function main() {
 	const state = await waitForState();
 	await connectRenderer();
 	say(`host: port ${state.port} pid ${state.pid}`);
+	/*
+	 * AND WAIT FOR THE DOCUMENT, NOT ONLY THE TARGET (measured on this box, 2026-09-19).
+	 *
+	 * The debugging target exists as soon as the window is created, which on a loaded box
+	 * is well before its first navigation COMMITS: this target answered `about:blank` for
+	 * tens of seconds here, and a route written into that document is thrown away by the
+	 * navigation that follows. That is how `A0` failed on a head whose renderer paints the
+	 * surface in ~7 s once its own document is up (`hash: ""`, `textLength: 0`): the rig
+	 * was not measuring the app, it was measuring how long Chromium took to commit a
+	 * navigation on a box at load 100+. Waiting here changes nothing about what `A0`
+	 * asserts — only whether the route it asserts about was ever applied.
+	 */
+	const ownDocument = await waitFor(async () =>
+		String(await evaluate("document.location.href")).startsWith("file://"),
+	);
+	if (ownDocument !== true) {
+		throw new Error(
+			`the app's renderer never committed its own document (href=${await evaluate("document.location.href")})`,
+		);
+	}
+	await waitFor(
+		async () => (await evaluate("document.readyState")) === "complete",
+	);
 
 	// THE /browser ROUTE, and this is the whole reason the rig does not need a backend:
 	// the browser surface is a route of its own (`app.tsx`'s `/browser`), where the
@@ -973,16 +1082,30 @@ async function main() {
 	// route renders the same surface, so the band, the strip and the download row are
 	// the ones the user gets — with an isolated, backend-less boot that cannot touch
 	// the operator's own app.
-	await evaluate("window.location.hash = '#/browser'");
-	const surface = await waitFor(() =>
-		evaluate(
-			"Boolean(document.querySelector('[data-tour-tag=\"browser-content\"]'))",
-		),
-	);
+	// WRITTEN MORE THAN ONCE IF IT DID NOT TAKE: a renderer that reloads leaves the hash
+	// empty and the route unapplied, and waiting longer on a route that was never set is a
+	// wait that can only time out. What the check below asserts is unchanged.
+	let surface = false;
+	for (let attempt = 0; attempt < 3 && surface !== true; attempt += 1) {
+		await evaluate("window.location.hash = '#/browser'");
+		surface = await waitFor(() =>
+			evaluate(
+				"Boolean(document.querySelector('[data-tour-tag=\"browser-content\"]'))",
+			),
+		);
+	}
 	check(
 		"A0 the /browser route renders its surface",
 		surface === true,
-		String(surface),
+		// A failure here is worth more than `null`: the route, the document's readiness
+		// and how much text the renderer painted are the three things that separate
+		// "not up yet on a loaded box" from "the renderer never rendered at all".
+		JSON.stringify({
+			surface,
+			readyState: await evaluate("document.readyState"),
+			hash: await evaluate("window.location.hash"),
+			textLength: await evaluate("document.body?.innerText?.length ?? -1"),
+		}),
 	);
 
 	// ---- A. capability advertisement (§6.3) --------------------------------
@@ -1341,6 +1464,17 @@ async function main() {
 		selector: "#send",
 		requester: "session:proof",
 	});
+	// THE UPLOAD'S ROW IS READ HERE, WHERE IT IS FRESH — and `D8` asserts about THIS
+	// reading rather than one taken later (measured 2026-09-19 on a box at load ~190). A
+	// decided transfer's note carries a two-minute TTL, and the reads, frames and digest
+	// work between this point and `D8` took longer than that there: the row had aged out,
+	// and the check reported an absent row as a missing line rather than as a copy or
+	// layout fault. The wait is on the upload's own sentence, so a strip still showing an
+	// older note is not mistaken for this one; what `D8` asserts is unchanged.
+	const uploadRow = await waitFor(async () => {
+		const reading = await rowReading();
+		return /were attached to/.test(reading.text ?? "") ? reading : null;
+	});
 	check(
 		"D5 the form's own Send control was pressed through the host",
 		send.json?.ok === true,
@@ -1375,7 +1509,6 @@ async function main() {
 	// machine with `notes: []`, no row and no toast — and the published frames showing
 	// the strip narrate an unrelated DOWNLOAD refusal while they left. The row is read
 	// here rather than the state file, because the claim is about what the user sees.
-	const uploadRow = await rowReading();
 	check(
 		"D8 an upload leaves a line in the strip, naming WHICH files left and where they went",
 		uploadRow.present === true &&
@@ -1689,6 +1822,28 @@ for raw in paths:
 			/is an executable\/script type\./.test(ruleSpan?.text ?? ""),
 		JSON.stringify(ruleSpan ?? null),
 	);
+	check(
+		"G8d the rule holds no hole mid-sentence at the app's default window (design round 4, D17)",
+		// THE COST OF A FLOOR WIDER THAN ITS CLAUSE. Round 3 floored this span at
+		// `min(24ch, 50%)`, which resolves to 196.5 px at the default window while the
+		// clause it protects renders 168 px — so the consequence started 26.5 px further
+		// along than the sentence needs, a hole in the middle of a sentence that had room
+		// to spare (design round 4 measured the difference as 794.0 px -> 820.5 px, with
+		// every other run in the row identical to a tenth of a pixel). The span has no
+		// floor now; `gap-1` is 4 px, so anything past 6 px here is that hole returning.
+		typeof ruleSpan?.right === "number" &&
+			typeof consequence?.left === "number" &&
+			consequence.left - ruleSpan.right <= 6,
+		JSON.stringify({
+			rule: ruleSpan,
+			consequence,
+			gap:
+				typeof ruleSpan?.right === "number" &&
+				typeof consequence?.left === "number"
+					? Math.round((consequence.left - ruleSpan.right) * 10) / 10
+					: null,
+		}),
+	);
 
 	// G8c. THE SAME REFUSAL AT THE APP'S MINIMUM WINDOW (design round 3, D14), which is
 	// where the name's cap used to cost the sentence its reason: `max-w-[32ch] shrink-0`
@@ -1717,7 +1872,11 @@ for raw in paths:
 	});
 	const minimumPinned = await waitFor(
 		async () => (await evaluate("window.innerWidth")) === MINIMUM_WINDOW_WIDTH,
-		5_000,
+		// 20 s rather than 5: this is an `Emulation` round-trip to a renderer that may
+		// still be doing its first paint on a loaded box, and a missed pin is an
+		// exception rather than a check (the frames after it would claim a width they
+		// were not taken at), so the bound buys patience rather than hiding anything.
+		20_000,
 	);
 	await sleep(400);
 	const minimumSpans = (await rowSpanReadings()) ?? [];
@@ -1733,50 +1892,117 @@ for raw in paths:
 	const minimumRule = minimumSpans.find((span) =>
 		span.text.startsWith("is an executable"),
 	);
+	// The overlap detector and the line count live beside the readings they describe
+	// (design round 4, D16): two spans whose rectangles intersect are two runs in one
+	// box, whatever their widths are, and the number of distinct `top` values is the
+	// number of lines the sentence actually occupies.
+	const minimumOverlaps = overlappingRuns(minimumSpans);
+	const minimumLines = sentenceLines(minimumSpans);
 	check(
-		"G8c at the app's minimum window the NAME yields and the rule keeps the larger share (D14)",
+		"G8c at the app's minimum window the sentence WRAPS: no two runs share a box, and none paints outside the paragraph (design round 4, D16 / R4-1)",
+		// D16'S OWN ACCEPTANCE CRITERION, MEASURED RATHER THAN DESCRIBED: no two of the
+		// sentence's runs may share a box, and no run may paint outside the paragraph
+		// ("inside === false" is what "paints under a control" looks like from here, since
+		// the controls are the paragraph's siblings). Both were violated at the round-3 head:
+		// four runs shared columns and the age struck through the "Open folder" label, which
+		// is what frame "09" photographed and what design round 4 measured glyph for glyph.
 		minimumPinned === true &&
-			// The rank both rounds want, in the two numbers a still cannot show: the name
-			// gives up most of its room, and the reason is left with at least as much as
-			// the name has. Both are load- and font-independent (the ratio is what D14 is
-			// about); the widths themselves are recorded in the detail.
-			(minimumName?.width ?? Number.POSITIVE_INFINITY) <
-				(nameSpan?.width ?? 0) / 2 &&
-			// Yields, but does not vanish: a zero-width name is a layout bug rather than a
-			// clip, so the name keeps its own proportional floor.
-			(minimumName?.width ?? 0) > 0 &&
-			minimumName?.clipped === true &&
-			(minimumRule?.width ?? 0) >= (minimumName?.width ?? 0) &&
-			/is an executable\/script type\./.test(minimumRule?.text ?? "") &&
-			minimumRule?.title === "is an executable/script type.",
+			minimumSpans.length > 0 &&
+			minimumOverlaps.length === 0 &&
+			minimumSpans.every((span) => span.inside === true) &&
+			// AND A SECOND LINE IS WHAT THE FIX IS: at 268.7 px of paragraph the clauses
+			// cannot share one line, so a single-line reading here would mean the break
+			// went away rather than that the sentence fits.
+			minimumLines >= 2,
 		JSON.stringify({
 			atMinimum: minimumSpans,
+			overlapping: minimumOverlaps,
+			lines: minimumLines,
 			paragraphWidth: minimumParagraphWidth,
-			atDefault: { name: nameSpan, rule: ruleSpan },
 			frame: minimumFrame.path,
 		}),
 	);
-	// WHAT THE MINIMUM WINDOW'S OWN WIDTH IS, RECORDED RATHER THAN ASSERTED INTO
-	// LEGIBILITY (design round 3, D14). The frame above is the honest photograph of
-	// this state, and the numbers beside it are why this state is a layout problem
-	// rather than a flex-priority one: the specimen `LongNameAtMinimumWindow` gives the
-	// paragraph ~576 px, while the APP at its own 800 px window spends ~248 px of that on
-	// the navigation rail and leaves the strip a fraction of it — at which point the
-	// label (`Download refused —`, ~125 px), the consequence (`Nothing was saved.`, ~118
-	// px) and the age (~58 px) exceed the paragraph between them, so no division of the
-	// name and the rule can put the sentence on one line there. That is recorded, and the
-	// finding is stated rather than papered over: making it legible needs the row to
-	// rearrange itself at that width (wrap, or drop the age), which is the design round's
-	// call and not something this case should assert its way past.
+	check(
+		"G8c at the app's minimum window the RULE paints its whole clause and the NAME yields (design rounds 3 D14 / 4 D16)",
+		// THE RANK D14 ASKED FOR, now with the reason UNCUT at the width round 3 measured
+		// `is …` at 22 px: on a line it cannot share with the consequence, the rule takes
+		// its own measure — 168 px of clause — and needs no floor to do it. That is also
+		// why the floor is gone (design round 4, D17): where the row HAS room a floor
+		// wider than the clause is only a hole in the sentence, and where it does not,
+		// the wrap is what protects the clause.
+		// THE NAME YIELDS — narrower than at the default window, still present, and still
+		// the span that clips. The ratio is no longer "less than half", and that is the
+		// WRAP's doing rather than a relaxation: with the reason on its own line the name
+		// no longer has to give up everything, so it measured 121 px at 800 px against 230
+		// at 1380 (where round 3's one-line arrangement squeezed it to 43). What the check
+		// is about is that the name is the half that yields and that it keeps its floor.
+		(minimumName?.width ?? Number.POSITIVE_INFINITY) <
+			(nameSpan?.width ?? 0) * 0.8 &&
+			(minimumName?.width ?? 0) > 0 &&
+			minimumName?.clipped === true &&
+			minimumRule?.clipped === false &&
+			/is an executable\/script type\./.test(minimumRule?.text ?? "") &&
+			minimumRule?.title === "is an executable/script type.",
+		JSON.stringify({
+			atMinimum: { name: minimumName, rule: minimumRule },
+			atDefault: { name: nameSpan, rule: ruleSpan },
+		}),
+	);
+	// THE DECIDED BRANCH AT THE SAME WIDTH (design round 4's unphotographed observation):
+	// it carried the same absolute cap the refusal did, so it collided for the same
+	// reason and is held to the same two rules — and this is its first frame.
+	const savedMinimumArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#saved-long-link",
+		dir: QUARANTINE,
+		timeout_s: 10,
+		requester: "session:proof",
+	});
+	const savedMinimumSettled = await waitFor(
+		async () => /was saved to/.test(await rowText()),
+		15_000,
+	);
+	await sleep(300);
+	const savedMinimumSpans = (await rowSpanReadings()) ?? [];
+	const savedMinimumFrame = await frame(
+		state,
+		token,
+		"10-saved-minimum-window",
+	);
+	const savedMinimumOverlaps = overlappingRuns(savedMinimumSpans);
+	check(
+		"G8c the DECIDED branch wraps at the app's minimum window too (design round 4: the absolute `max-w-[32ch] shrink-0` cap collided here the same way)",
+		savedMinimumArm.json?.ok === true &&
+			savedMinimumSettled !== null &&
+			savedMinimumSpans.length > 0 &&
+			savedMinimumOverlaps.length === 0 &&
+			savedMinimumSpans.every((span) => span.inside === true) &&
+			sentenceLines(savedMinimumSpans) >= 2,
+		JSON.stringify({
+			spans: savedMinimumSpans,
+			overlapping: savedMinimumOverlaps,
+			frame: savedMinimumFrame.path,
+			reason: savedMinimumArm.json?.result?.reason ?? null,
+		}),
+	);
+	// WHAT THIS WIDTH IS, RECORDED RATHER THAN ASSERTED INTO LEGIBILITY (design rounds 3
+	// D14 / 4 D16). The two frames above are the state at the app's own minimum window,
+	// wrapped: the paragraph there is 268.7 px, and the row's NON-ELIDABLE clauses alone —
+	// the label (124.7 px), the consequence (118.0) and the age (57.8), with four gaps
+	// (16) — need 316.5 px before the name and the rule get a pixel, which is why the
+	// clauses take their own lines instead of sharing columns. The specimen
+	// `LongNameAtMinimumWindow` gives the paragraph ~576 px; the app's 800 px window
+	// spends 220 px of it on the navigation rail (design round 4, D18 — this line and the
+	// README said ~248 px, measured wrong against `rowBox.x = 220` at both widths).
 	record(
-		"G8c (observation) the app's minimum window is much tighter than the specimen's",
+		"G8c (observation) both branches' own numbers at the app's minimum window",
 		JSON.stringify({
 			paragraphWidth: minimumParagraphWidth,
-			outsideTheOwnBox: minimumSpans
-				.filter((span) => span.inside === false)
-				.map((span) => `${span.text.slice(0, 24)}=${span.width}px`),
-			spans: minimumSpans.map(
-				(span) => `${span.text.slice(0, 24)}=${span.width}px`,
+			refusal: minimumSpans.map(
+				(span) => `${span.text.slice(0, 22)}=${span.width}px@${span.top}`,
+			),
+			saved: savedMinimumSpans.map(
+				(span) => `${span.text.slice(0, 22)}=${span.width}px@${span.top}`,
 			),
 		}),
 	);
@@ -1788,7 +2014,7 @@ for raw in paths:
 	await cdp("Emulation.clearDeviceMetricsOverride", {});
 	const backToDefault = await waitFor(
 		async () => (await evaluate("window.innerWidth")) === WINDOW_SIZE.width,
-		5_000,
+		20_000,
 	);
 	if (backToDefault !== true) {
 		throw new Error(
@@ -1938,6 +2164,17 @@ for raw in paths:
 	// asserts the host's reading and the server's pushed bytes, and treats the poller's
 	// own reading as the corroboration it is: asserted when it caught the crossing,
 	// recorded in the transcript when it did not, never a FAIL about the product.
+	//
+	// AND IT DELIBERATELY NO LONGER BOUNDS THE OVERSHOOT (design round 4, R4-3), so that
+	// nobody later reads this case as the bound the feature has: `hostReadAtCancel >
+	// DOWNLOAD_CAP_BYTES` holds both for a slower sampler cadence and for a starved main
+	// process, and the two are indistinguishable from here. The measured spread is the
+	// proof that no byte ceiling belongs here — 8.9 MiB over on an idle box, 58.8 and
+	// 60.2 busy, 125.5 at load 124, 515.2 at load 100+ — one sample interval (100 ms) of
+	// this box's throughput, late by however late the box made it. A sampler that stops
+	// firing entirely still fails, through the `overrun` rule and the empty directory;
+	// nothing tighter than that is asserted, because a tighter bound would gate the
+	// machine's load rather than this code, which is how QA filed Q6.
 	//
 	// AND THE MEASUREMENT IS THE RIG'S OWN, not the host's self-report: the partial is
 	// on disk under its final name while it is written, so a 10 ms poller over that
