@@ -1040,11 +1040,17 @@ const NoticeRow = memo(function NoticeRow({
  * was the model-facing envelope verbatim — `<peer-session-message from_pid=92064
  * …>` and all.
  *
- * The peer row takes the shared name column and the outcome ink every receipt
- * takes (`rowInk("receipt")` is `text-ink-muted`), which is deliberate: giving it
- * an accent of its own would make a receipt louder than the calls around it. The
- * trace has ONE ink expression and no per-tool table, so there is nothing for a
- * new tool — or for this row — to be added to.
+ * The peer row takes the shared name column and the ink a row with no category
+ * takes: `peer` is a glyph in the TUI's table rather than a classified tool, so
+ * `toolCategory` files it `plain` and it settles to `ink-muted`. Giving a receipt
+ * an accent of its own would make it louder than the calls around it. Its sibling
+ * `WakeRow` is the same row in the same register, and for the reason that decides
+ * it there: a RECEIPT is not a CALL. `wake` is a `meta` tool in both maps, but
+ * those maps are consulted by TOOL CARDS — `_category_element` has one caller
+ * (`tool_card.py:3240`, inside `ToolCard`) — while the TUI draws both receipts as
+ * blocks that paint icon `dim` / name `muted` and ask the table nothing
+ * (`transcript.py:2152-2153`, `:2836-2837`). So both rows settle to the neutral,
+ * which is what `rowInk`'s `receipt` branch states once for the pair.
  *
  * The disclosure is offered only when the expansion carries a fact the collapsed
  * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds
@@ -1146,7 +1152,10 @@ const PeerRow = memo(function PeerRow({
  * and the headline is the TUI's `WakeBlock` headline — the delivery's envelope
  * with the `(alarm)` marker, the `Scheduled wake` prefix and the cancel how-to
  * stripped, so what the reader gets is WHICH wake fired (`w-9 (1, every 6h)`)
- * rather than instructions addressed to the model.
+ * rather than instructions addressed to the model. The receipt's INK is not that
+ * category's, though: this is the delivery BLOCK, whose TUI analogue paints the
+ * neutral register, so it settles to `ink-muted` beside `PeerRow` — see that
+ * row's doc, and `rowInk`'s `receipt` branch for the rule.
  *
  * The disclosure is offered only when a prompt came with it. The TUI's blocks
  * return `can_expand() == true` unconditionally, but it also has a stated rule
