@@ -1022,6 +1022,75 @@ retried and then allowed to proceed — "we could not ask" is not "the bundle is
 exists); this section and the files it names are authoritative for anything about
 where the interpreter lives or how it is updated.
 
+### A launch during a live install stands down
+
+Squirrel's ShipIt asks whether any instance of the target app is running ONCE, as its
+last check before it swaps the bundle, and abandons the install when one is (`App Still
+Running Error`, `SQRLInstallerErrorDomain Code=-9`). So a launch that finds a LIVE
+install does not open a window: `holdLaunchForLiveInstall`
+(`src/main/update-service.ts`) reads the pending marker, asks launchd what the install's
+job is doing, tells the user and quits - inside `whenReady`, before the menu, the backend
+or a window exists. Measured on this machine against a packaged bundle by
+`scripts/hold-lifetime-rig.mjs`: 0.79 s, 2.29 s and 2.48 s of process, exit 0, no window
+and no `Update service initialized` line (QA measured 4.03 s and 5.98 s on a host at load
+165-190, so quote the bound rather than the small number). The facts that decide it: 
+
+- **A RUNNING job plus a current marker is an install in flight** (`isInstallInFlight`),
+  and the launch is held. NOT a merely registered one, and this is the part that was
+  wrong first: launchd keeps the job registered after the install ends - measured here,
+  the app's job is still listed 72 minutes after a successful install with
+  `state = not running`, and so are other applications' ShipIt jobs, indefinitely. Read
+  as liveness, a registration turned the gate into "a marker younger than ~29 minutes",
+  so the launch the watchdog made after a SUCCESSFUL update showed a banner and quit and
+  every click for the next half hour did the same, with no way to open the app at all.
+  `installJobState` separates `running` from `registered` (`launchctl list` carries the
+  job's `"PID" = n;` field only while its program executes), and the same reading decides
+  recovery: a marker the running version has REACHED is `succeeded` and a job that is not
+  running is not an install, so the app opens, clears the marker, and - when the install
+  really did fail - draws the "the last update didn't finish" panel a person goes looking
+  for. A marker past `PENDING_INSTALL_LAUNCH_HOLD_SECONDS` opens too; the marker, the
+  install's job and its staging tree are never touched by the hold.
+- **The hold ends before the watchdog's hard bound** (`LAUNCH_HOLD_END_MARGIN_SECONDS`).
+  That bound is where the relaunch watchdog deliberately starts the app into a live
+  install rather than leave a user with no app; a hold that swallowed it would ensure a
+  watchdog on its way out and repeat forever. The WATCHDOG still asks the registered
+  question deliberately - its job is to keep the app from opening back into its own
+  install, and a registration that outlives an install is the conservative direction - so
+  the two readings differ by design, and `shipItJobLabel` says why.
+- **The notice is bounded, the caller bounds it again, and the quit is bounded twice.**
+  The app's own banner gets `LAUNCH_HOLD_NOTICE_DEADLINE_MS`, then the notice falls back
+  to the channel the install's own messages use (`osascript`, the same one the relaunch
+  watchdog notifies through) when the banner does not report itself shown, and the whole
+  notice budget is also armed by the caller (`LAUNCH_HOLD_NOTICE_BUDGET_MS`) so a notice
+  that wedges costs the message and never the quit; a quit that wedges is forced
+  (`LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS`). The delivered channel is written to
+  `update-service.log` before the quit, and `LOCAL_OPERATOR_NO_NOTIFICATIONS` silences it,
+  because a rig that switches notifications off must not put a banner on the operator's
+  screen. The relaunch promise holds here too, and it is stated only when
+  `ensureRelaunchWatchdog` actually arranged one - the watchdog is ensured BEFORE the
+  quit, which is the rule every other quit path follows.
+
+`scripts/update-window-report.mjs` measures the closed window this is about (read-only,
+with the baselines in its header, and it names a running installer's own `ps` facts), and
+`scripts/sec-check.c` times the call the install blocks in:
+`pnpm sec-check --via-launchd <path>` measures it from an ordinary process and as a job
+submitted to launchd, and `--background` under `taskpolicy -b` - seconds against minutes
+on identical content, with under a second of CPU. **What that difference IS, stated no
+further than the measurement goes (review R1):** the same validation costs 0.25-3.85 s
+from a shell (eight runs), 33.3 s when submitted as a launchd job on the same bundle in
+the same minute, and 331-777 s under the background class, while the 11:59 install spent
+4 min 27 s inside it at 4.3% of a core. Which part of that context costs the time -
+launchd's scheduling, the Security framework's own worker threads, or this machine's
+contention - is NOT established, and the installer's own job carries `nice = -1` with no
+background process type, so an earlier "it is the scheduling class" reading does not
+survive the machine. What IS established is that the cost belongs to the context, not to
+this app's bundle: file count is refuted as the lever (a `ditto` of the full 1808-file
+bundle produced 19-21 Gatekeeper scans; the same write with the Python seed removed, 269
+files, produced 32 and 17). `scripts/hold-lifetime-rig.mjs` measures the launch side of
+this against a packaged build with the machine's own launchd (`--job running|registered|
+absent`), so the numbers above can be re-derived rather than quoted; it says so in its
+header, including what it does NOT show (a headless run cannot prove a window's absence).
+
 ## Which pnpm may install and package
 
 Every workflow that INSTALLS pnpm pins it to **10.29.2** (the `version:` input
