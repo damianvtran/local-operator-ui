@@ -4529,23 +4529,27 @@ async function storedSelectedTab(cdp) {
 }
 
 /**
- * THE STORE'S OWN WRITE LOG, and why a settled read is not enough (QA round 1, Q1).
+ * THE STORE'S OWN WRITE LOG, and why the state alone is not enough (QA round 1, Q1).
  *
- * The close's harm is a WRITE ORDER, not a state: on the pre-fix tree the ✕ removes
- * the document and the viewer's unmount commit puts it straight back (`[...files,
- * document]`), so a read taken at the press and a read taken 4.2s later are BOTH
- * correct on that tree - and the branch's own close phase, which takes exactly those
- * two readings, could not fail on the tree the fix is for. QA reproduced the
- * resurrection only with the app's store as the instrument: `+851ms files=[a,b]`,
- * `+851ms files=[b]` (the close), `+855ms files=[b,a]` (the unmount's upsert), then
- * `+1827ms files=[b]` - the re-listing is undone about a second later, so the window
- * is ~1s wide and no still frame can be its witness.
+ * The close's harm is a WRITE ORDER, not only a state: on the pre-fix tree the ✕
+ * removes the document and the viewer's unmount commit puts it straight back
+ * (`[...files, document]`). QA round 2 measured that re-listing on BOTH bases
+ * (`0c02556ba` and `e3f9fec32`) and it is PERMANENT rather than a flicker: the
+ * document is still listed 8s on, after the ten writes that follow the press, so the
+ * base's SETTLED read is exactly the reading that fails there - and the branch's own
+ * close phase, which takes that reading, does fail on the base's build. QA's round-1
+ * `+1827ms files=[b]`, from which this paragraph once drew a ~1s window that "no
+ * still frame can be its witness", is WITHDRAWN by that round's Q3: nothing removes
+ * the re-listing, and the rig that showed the removal had a second close/unmount
+ * cycle in its shape.
  *
  * So the phase records every write of the `canvas-store` key, with each write's
  * `files` and `openTabs` IDs and its selected tab, and asserts the two halves the
  * mechanism has: that the close reaches the store as a write that DROPS the
  * document, and that no later write in the phase puts it back. On the pre-fix tree
- * the second half fails on the unmount commit's own write, which is the point.
+ * the second half fails on the unmount commit's own write, which is the point - and
+ * it is the half no state read can carry, because the state a close that never ran
+ * leaves is the state the base ends in.
  *
  * Installed in the PAGE, wrapping `Storage.prototype.setItem` - the app's persisted
  * store writes through it, and the wrapper is consulted per call, so this catches
@@ -6313,11 +6317,13 @@ async function sceneCanvasFreshness(cdp, app) {
 
 	/*
 	 * THE STORE'S WRITE LOG, INSTALLED BEFORE THE SUBJECTS ARE OPENED (QA round 1,
-	 * Q1), and PROVED on those opens before it is asked about the close. A settled
-	 * read cannot fail on the pre-fix tree - the re-listing is undone about a second
-	 * later - so the scene's instrument for "the tab came back" has to be the store's
-	 * own writes, and an instrument that is never shown to work is a zero that could
-	 * mean anything. See `CANVAS_STORE_WRITE_LOG_INSTALL_EXPR`.
+	 * Q1), and PROVED on those opens before it is asked about the close. A state is a
+	 * snapshot: it cannot say that the CLOSE's own write dropped the document, nor
+	 * that no write after it re-listed one, and the base ends in exactly the state a
+	 * close that never ran would leave (QA round 2: the re-listing is permanent). The
+	 * scene's instrument for "the tab came back" is therefore the store's own writes,
+	 * and an instrument that is never shown to work is a zero that could mean
+	 * anything. See `CANVAS_STORE_WRITE_LOG_INSTALL_EXPR`.
 	 */
 	const writeLogInstalled = await installCanvasStoreWriteLog(cdp);
 	note("the canvas store's write log", writeLogInstalled);
@@ -6446,11 +6452,12 @@ async function sceneCanvasFreshness(cdp, app) {
 	);
 	/*
 	 * THE RESURRECTION, AND ITS ABSENCE (QA round 1, Q1). Read as the store's own
-	 * writes rather than as a state, because the state heals: on the pre-fix tree the
-	 * unmount commit writes the document back into `files` a few milliseconds after
-	 * the close, and the same write that re-listed it is undone about a second later,
-	 * so both of the readings above are correct pre-fix. What is NOT correct pre-fix
-	 * is this: no write AFTER the close lists the document again.
+	 * writes rather than as a state, because the state is the same either way: on the
+	 * pre-fix tree the unmount commit writes the document back into `files` a few
+	 * milliseconds after the close, and QA round 2 measured that re-listing as
+	 * PERMANENT on both bases - still there 8s and ten writes after the press - so
+	 * the settled readings above are the ones that fail there. What is NOT correct
+	 * pre-fix is this: no write AFTER the close lists the document again.
 	 */
 	const cleanWrites = await canvasStoreWrites(cdp);
 	const cleanWriteRows = canvasStoreWriteRows(cleanWrites ?? []);
