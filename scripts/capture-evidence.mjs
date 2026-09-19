@@ -2555,6 +2555,15 @@ export const STORIES = [
 	["canvas-workspace--files-no-files", 1280, 900],
 	["canvas-workspace--nothing-open-empty", 1280, 900],
 	/*
+	 * THE BLANK CANVAS AT THE DOCK'S 400px FLOOR (design round 2, D9). The two
+	 * `nothing-open*` frames above render at the story default (718px measured),
+	 * where the action row has room and its `flex-wrap` never fires - so the state
+	 * the row was fixed FOR had no picture, and the round-1 record claimed one. This
+	 * entry is that state: the three actions, with files, inside a 351px content
+	 * box.
+	 */
+	["canvas-workspace--nothing-open-narrow", 1280, 900],
+	/*
 	 * THE ROW'S INTERACTIVE STATES (design round 1, D1), each driven by the rig
 	 * rather than by a story's play function - because `:hover` is set only by real
 	 * pointer input and a `:focus-visible` ring only by a real keyboard

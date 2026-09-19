@@ -2169,10 +2169,17 @@ export const FilesRowStatesNarrow: Story = {
 /**
  * The dock's OWN default width, which is 450px (`chat-content.tsx`), photographed
  * because the set jumped 400 -> 720 and the frame that claimed to be the default
- * was the story's own 720. 450 is also the one width where this surface's two
- * container thresholds disagree: the directory line's 416 and the size slot's 544
- * fall either side of it, so the row shows its directory-for-a-clash and hides the
- * size at the width the panel actually opens at.
+ * was the story's own 720.
+ *
+ * What 450 shows is NOT a second threshold: this surface has exactly ONE container
+ * query, `@max-[34rem]/fileslist:hidden` on the size slot (544px, `file-row.tsx`),
+ * and the directory line is clash-gated rather than width-gated — it appears
+ * wherever two rows share a basename at any width, because that is the only thing
+ * that tells `~/work/reports/summary.md` from `~/work/archive/summary.md`. A
+ * comment here once taught a 416px directory threshold alongside the 544: no such
+ * width exists in the code, and the story is worth its own frame because 450 is
+ * where the panel OPENS, with the size column already hidden and the clash
+ * directories still shown (design round 2, D10).
  */
 export const FilesDockDefault: Story = {
 	render: () => (
@@ -2282,5 +2289,24 @@ export const NothingOpenEmpty: Story = {
 			documents={[]}
 			mentionedFiles={[]}
 		/>
+	),
+};
+
+/**
+ * The blank canvas at the dock's 400px FLOOR, which is the state the action row
+ * was fixed for and the one NO frame held: `nothing-open` and
+ * `nothing-open-empty` are 718px, the `CanvasFrame` default, where the row has
+ * room and `flex-wrap` never fires (design round 2, D9).
+ *
+ * With files, because that is the wrapping case: `Browse files (12)` is the widest
+ * of the three actions, and it is the measurement that failed at this width before
+ * the fix - the three buttons measured 374px inside a 351px content box and
+ * painted into their own `p-6` padding, 13px and 12px from the pane's edges where
+ * the padding asks for 24 and 24. The frame to read is that row: two lines inside
+ * the content box rather than one line across the padding.
+ */
+export const NothingOpenNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="documents" activeId={null} documents={[]} width={400} />
 	),
 };
