@@ -182,6 +182,19 @@ const code = new Map([
 ]);
 
 /**
+ * The comment-stripped source of a file, cached in the map above.
+ *
+ * The two entries the map is seeded with are the panels this file was written
+ * for; everything else it reads — the other `rowCurrent` surfaces and the files
+ * their grounds live in — comes through here, so a new surface costs no
+ * plumbing and the comment-stripping is the same one pass.
+ */
+const sourceOf = (file) => {
+	if (!code.has(file)) code.set(file, stripComments(read(file)));
+	return code.get(file);
+};
+
+/**
  * Every comment-stripped `.ts`/`.tsx` source under a directory, with its path, so a test can
  * ask a question of the whole shipped tree rather than of a table of files.
  *
@@ -240,7 +253,7 @@ const argumentsFrom = (source, open) => {
 
 /** The next element's `cn(...)` at or after an anchor. */
 const expressionAfter = (file, anchor) => {
-	const source = code.get(file);
+	const source = sourceOf(file);
 	const at = source.indexOf(anchor);
 	assert.notEqual(
 		at,
@@ -252,7 +265,7 @@ const expressionAfter = (file, anchor) => {
 
 /** The `cn(...)` that owns an anchor sitting INSIDE its own argument list. */
 const expressionBefore = (file, anchor) => {
-	const source = code.get(file);
+	const source = sourceOf(file);
 	const at = source.indexOf(anchor);
 	assert.notEqual(
 		at,
@@ -285,7 +298,7 @@ const merged = (file, expression, stubs) => {
 
 /** The literal class strings a row declares, comments removed. */
 const literalOf = (file, name) => {
-	const source = code.get(file);
+	const source = sourceOf(file);
 	const at = source.indexOf(`const ${name} =`);
 	assert.notEqual(at, -1, `${file} no longer declares \`${name}\``);
 	const match = source.slice(at, source.indexOf(";", at)).match(/"([^"]*)"/);
@@ -1029,4 +1042,322 @@ test("every selected row in the tree takes the role by import, not by copy", () 
 		[],
 		`a row surface names \`rowCurrent\` without importing it, so it is using a local or a copy: ${JSON.stringify(missing)}`,
 	);
+});
+
+/*
+ * ============================================================================
+ * THE GROUND A ROW STATE IS PAINTED ON.
+ *
+ * Both roles are authored as a step of the palette's own `surface`
+ * (`docs/design/row-states-refinement.md` § 4): `rowSelected` and `rowHover` are
+ * measured AGAINST `surface`, which is the plane a row is drawn on. So a surface
+ * that paints either role has to WEAR `surface` — and that is an invariant of the
+ * app, not something a palette can be re-solved for. Re-asserting the roles
+ * against the rungs was measured and refused: on the light fleet the largest
+ * ink-legal fill reaches ΔE00 1.73-2.81 against `canvas`, and clearing `sunken`
+ * forces `alucard`'s selection to a 2.36 `L*` step, under the pair's own floors.
+ *
+ * THE DEFECT THIS EXISTS FOR, because it shipped green and no instrument in the
+ * tree could see it: the app rail's own `<nav>` was `bg-sunken` and the agent-hub
+ * categories rail's column painted nothing at all, so both lists were painted on
+ * a rung. Measured on the shipped values: the current row's fill sat ΔE00 0.44
+ * off the rail on `alucard` (7 of the 59 palettes under the contract's own 2.0
+ * field floor) and 0.83 off `canvas` on `kanagawaLotus`, and on 13 of the 59 the
+ * row under the POINTER read at least as far off the rail's ground as the row the
+ * reader was ON — the defect `sidebar-navigation.tsx`'s own comment records
+ * fixing once before, reintroduced by the ground rather than by the mark. Both
+ * surfaces were re-grounded (the rail taking `border-r border-hairline` for the
+ * boundary its `sunken` step used to carry) and this table asserts the result.
+ *
+ * IT IS A TABLE OF CALL SITES, so a NEW one fails here rather than shipping: the
+ * completeness assertion below reads the whole tree for the role and requires
+ * every file that paints it to be named, and each entry resolves BOTH halves
+ * through the shipped `cn` — the row must still take a row role, and the element
+ * that paints the ground must resolve to `surface` and to no rung.
+ *
+ * WHAT IT DOES NOT CATCH, stated rather than implied, because a guard read as
+ * broader than it is is worse than a narrow one: the ground is asserted per
+ * NAMED SURFACE (per file), not re-derived per element. A new call site added
+ * inside a file that is already named — on a rung, while that file's own named
+ * ground still resolves to `surface` — passes this file. That shape was probed
+ * and it does pass, and what catches it instead is review plus the entry's own
+ * row selector: an element on a rung inside one of these files is a change to
+ * the surface the entry already describes. The shapes this DOES fail are the two
+ * defects that shipped on this branch (either named ground moved back onto a
+ * rung) and a NEW surface painting the role at all (the completeness assertion,
+ * whichever ground it is on) — all three probed, in a scratch copy of the tree,
+ * with the failures quoted in the round's remediation comment.
+ *
+ * THE RAIL'S TWO TIGHTEST PAIRS, for the reader who wonders whether `surface` is
+ * still chrome on the light fleet: this rail's ground against the `canvas` beside
+ * it measures ΔE00 2.32 on `localOperatorLight` and 2.60 on `alucard`, the
+ * fleet's two tightest chrome/content pairs, and the hairline is the only
+ * boundary on both. The rail's ⌘K cap is FILL-LESS (it carries no fill and no
+ * border by construction — `shared/components/common/keyboard-shortcut.tsx`,
+ * `CAP`), so the re-grounding cannot collapse a key into it; the evidence README
+ * records that as a DOM readback beside the rail's frames rather than as a claim.
+ * ============================================================================
+ */
+
+const APP_RAIL =
+	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx";
+const CATEGORIES_RAIL =
+	"src/renderer/src/features/agent-hub/components/agent-categories-sidebar.tsx";
+const CATEGORIES_COLUMN =
+	"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
+const AGENTS_SIDEBAR =
+	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
+const AGENTS_PAGE =
+	"src/renderer/src/features/agents/components/agents-page.tsx";
+const CANVAS_SECTION =
+	"src/renderer/src/features/chat/components/canvas/index.tsx";
+const FILE_ROW =
+	"src/renderer/src/features/chat/components/canvas/file-row.tsx";
+
+/** The comment-stripped source of a file, cached the way the two above are. */
+/*
+ * A plain `className="..."` literal, addressed by a nearby anchor and a
+ * direction. The ground elements in this table are containers rather than the
+ * rows themselves, and a container is where a call site's own expression cannot
+ * reach: the row resolves what IT paints, and this resolves what it is painted
+ * ON. It reads the file rather than a string written here, which is the whole
+ * point of the table.
+ */
+const literalClassAt = (file, anchor, where) => {
+	const source = sourceOf(file);
+	const at = source.indexOf(anchor);
+	assert.notEqual(
+		at,
+		-1,
+		`no element in ${file} matches ${JSON.stringify(anchor)}`,
+	);
+	const window =
+		where === "before" ? source.slice(0, at) : source.slice(at, at + 2000);
+	const matches = [...window.matchAll(/className="([^"]*)"/g)];
+	assert.notEqual(
+		matches.length,
+		0,
+		`the element at ${JSON.stringify(anchor)} in ${file} carries no plain className literal, so this file cannot read the ground a row state is painted on`,
+	);
+	return matches[where === "before" ? matches.length - 1 : 0][1];
+};
+
+const ROW_STATE_GROUNDS = [
+	{
+		what: "the chat sidebar's list panel",
+		rowFile: SIDEBAR,
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		stubs: { rowStyle, rowCurrent, nested: false, current: true },
+		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
+		groundFile: SIDEBAR,
+	},
+	{
+		what: "the settings rail",
+		rowFile: SETTINGS_RAIL,
+		expression: () =>
+			expressionAfter(
+				SETTINGS_RAIL,
+				'aria-current={isActive ? "page" : undefined}',
+			),
+		stubs: { labelled: true, isActive: true, rowCurrent },
+		ground: () =>
+			literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after"),
+		groundFile: SETTINGS_RAIL,
+	},
+	{
+		/*
+		 * THE SURFACE THIS TABLE WAS WRITTEN FOR. Its `<nav>` was `bg-sunken` and
+		 * the ground now has to come from the row's own element's ANCESTOR, which is
+		 * why this one entry resolves a `cn(...)` rather than a literal: the rail's
+		 * class list is built from `expanded` and the two width constants.
+		 */
+		what: "the app rail (the surface that is not the row's own)",
+		rowFile: APP_RAIL,
+		expression: () => expressionAfter(APP_RAIL, "data-tour-tag={item.tourTag}"),
+		stubs: { expanded: true, item: { isActive: true }, rowCurrent },
+		ground: () =>
+			merged(
+				APP_RAIL,
+				expressionBefore(APP_RAIL, "group flex shrink-0 flex-col"),
+				{
+					expanded: true,
+					RAIL_WIDTH: { expanded: "w-[220px]", collapsed: "w-12" },
+				},
+			),
+		groundFile: APP_RAIL,
+	},
+	{
+		/*
+		 * The ground is in ANOTHER FILE, and it is on the column rather than on this
+		 * component: `agent-hub-page.tsx`'s tour-tagged div. The design record this
+		 * change carries names `agent-hub-page.tsx:133` as the page's ground, and
+		 * that line is `AgentCardSkeleton`'s CARD — the page root carries no ground
+		 * at all, and the rows' painted ancestor is this column.
+		 */
+		what: "the agent-hub categories rail",
+		rowFile: CATEGORIES_RAIL,
+		expression: () =>
+			expressionAfter(CATEGORIES_RAIL, "aria-pressed={selected}"),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			literalClassAt(
+				CATEGORIES_COLUMN,
+				'data-tour-tag="agent-hub-sidebar-container"',
+				"before",
+			),
+		groundFile: CATEGORIES_COLUMN,
+	},
+	{
+		what: "the agents sidebar",
+		rowFile: AGENTS_SIDEBAR,
+		expression: () =>
+			expressionAfter(AGENTS_SIDEBAR, 'data-tour-tag="agent-list-item-button"'),
+		stubs: { isSelected: true, rowCurrent },
+		ground: () => literalClassAt(AGENTS_SIDEBAR, "<SidebarHeader", "before"),
+		groundFile: AGENTS_SIDEBAR,
+	},
+	{
+		what: "the agents page's roster row",
+		rowFile: AGENTS_PAGE,
+		expression: () =>
+			expressionBefore(AGENTS_PAGE, "row.name === name && rowCurrent"),
+		stubs: { row: { name: "agent" }, name: "agent", rowCurrent },
+		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
+		groundFile: AGENTS_PAGE,
+	},
+	{
+		/*
+		 * The canvas Files list. It is a `rowCurrent` call site like the other six
+		 * and it is on the canvas SECTION's `surface`; it is here because the
+		 * completeness assertion below is over the tree rather than over the list of
+		 * surfaces the direction happens to name, and a call site nobody enumerates
+		 * is exactly how the rail's ground went unmeasured.
+		 */
+		what: "the canvas Files list",
+		rowFile: FILE_ROW,
+		expression: () => expressionBefore(FILE_ROW, 'data-tour-tag="file-row"'),
+		stubs: { rowCurrent, current: true },
+		ground: () =>
+			merged(
+				CANVAS_SECTION,
+				expressionAfter(CANVAS_SECTION, "data-canvas-shortcuts"),
+				{},
+			),
+		groundFile: CANVAS_SECTION,
+	},
+];
+
+/* Every grounding class a row state may NOT be painted on. `elevated` is in the
+   list even though the withdrawal keeps its exemption: the exemption is about a
+   dialog's ground or an input well, and no row is painted on one — a row painted
+   on `elevated` is a row on a menu. */
+const RUNGS = ["bg-canvas", "bg-elevated", "bg-sunken"];
+
+test("every call site that paints a row state is painted on `surface`", () => {
+	/*
+	 * Completeness first, and it is over the TREE: every file that paints
+	 * `rowCurrent` has to be named above, so a new call site is an edit to this
+	 * table rather than a silent exemption. `rowCurrent` in a file that only
+	 * MENTIONS the symbol (a docstring, a comment) is not a call site — the
+	 * comment-stripped read is what makes that distinction, and the two are worth
+	 * separating: `file-row.tsx` names it in prose as well as painting it.
+	 */
+	const painters = sourcesIn("src")
+		.filter(({ source }) => /rowCurrent/.test(source))
+		.map(({ file }) => file)
+		.sort();
+	const named = [...new Set(ROW_STATE_GROUNDS.map((e) => e.rowFile))].sort();
+	assert.deepEqual(
+		painters,
+		named,
+		`${painters.length} file(s) in the tree paint or name \`rowCurrent\` and ${named.length} are named in ROW_STATE_GROUNDS. A surface that paints the role has to have its ground asserted here; one that only names it in prose belongs in neither list, which is why the read excludes comments: ${JSON.stringify(painters)} vs ${JSON.stringify(named)}`,
+	);
+
+	for (const entry of ROW_STATE_GROUNDS) {
+		const row = merged(entry.rowFile, entry.expression(), entry.stubs);
+		assert.ok(
+			carriesGround(row.split(/\s+/)),
+			`${entry.what}: the row's own expression no longer resolves to a row role. Got:\n${row}`,
+		);
+		const classes = entry
+			.ground()
+			.split(/\s+/)
+			.filter((c) => c.length > 0);
+		assert.ok(
+			classes.includes("bg-surface"),
+			`${entry.what}: the ground a row state is painted on resolves to ${JSON.stringify(classes)}, not to \`bg-surface\`. Both row roles are steps of the palette's own \`surface\`, so a surface that paints them has to BE \`surface\` — on a rung the fill lands inside the ladder instead of out of the panel (measured: ΔE00 0.44 on \`alucard\` for the app rail, 0.83 on \`kanagawaLotus\` for the categories rail). See the ground note at the head of this block.`,
+		);
+		const rung = RUNGS.find((r) => classes.includes(r));
+		assert.equal(
+			rung,
+			undefined,
+			`${entry.what}: the ground is \`${rung}\`, a rung of the elevation ladder. A row state is authored against \`surface\` and the withdrawal's exemption is for \`elevated\` as a DIALOG's ground, not for a row painted on one. Got:\n${classes.join(" ")}`,
+		);
+		/* The file the ground was read from has to be the one named, so a reader
+		   chasing a failure lands in the right place. */
+		assert.ok(
+			typeof entry.groundFile === "string" && entry.groundFile.length > 0,
+			`${entry.what}: no ground file named`,
+		);
+	}
+});
+
+/*
+ * THE TWO ROW-STATE SITES THAT STILL RIDE A RUNG, RECORDED RATHER THAN
+ * RE-GROUNDED, and why the record is a table and not an assertion over the tree.
+ *
+ * Both are `hover`-only: neither paints `rowCurrent`, so neither can be
+ * re-grounded by the rule this block asserts (a surface that paints the
+ * PERSISTENT state wears `surface`) without moving a surface the direction
+ * deliberately scoped out. The canvas document-tab strip has been outside that
+ * scope since § 10; the schedules page's annex is a ground an earlier round
+ * chose on purpose. They are named here WITH their numbers so the next reader
+ * does not rediscover them as a regression, and each entry asserts the facts it
+ * claims — the file paints the hover role, and the rung is really where the
+ * entry says it is — so the record cannot rot into a sentence.
+ */
+const HOVER_STATES_ON_A_RUNG = [
+	{
+		what: "the canvas document-tab strip",
+		rowFile: "src/renderer/src/features/chat/components/canvas/canvas-tabs.tsx",
+		rowAnchor: "bg-sunken px-1 py-1",
+		rungFile:
+			"src/renderer/src/features/chat/components/canvas/canvas-tabs.tsx",
+		rungAnchor: "bg-sunken px-1 py-1",
+		rung: "bg-sunken",
+		note: "the selected tab takes `bg-surface` and the rest hover on `rowHover` while the strip is `sunken`: hover-off-`sunken` measures ΔE00 1.86 at its worst (`iceberg`, 1 of the 59 palettes under the field floor). § 10 of the direction scopes this surface out, which is a recorded fact rather than a sentence now.",
+	},
+	{
+		what: "the schedules page's legacy annex",
+		rowFile:
+			"src/renderer/src/features/schedules/components/schedule-list-item.tsx",
+		rowAnchor: "hover:bg-row-hover",
+		rungFile:
+			"src/renderer/src/features/schedules/components/schedules-page.tsx",
+		rungAnchor: "bg-sunken",
+		rung: "bg-sunken",
+		note: "the annex is `sunken` and its rows take `rowHover`; it is a deliberate ground of an earlier round (that file's own D5), so it is recorded and not re-grounded here. Its rows never carry `rowCurrent`.",
+	},
+];
+
+test("the hover-only row sites that ride a rung are recorded, and the record is true", () => {
+	for (const entry of HOVER_STATES_ON_A_RUNG) {
+		const row = sourceOf(entry.rowFile);
+		assert.ok(
+			row.includes("hover:bg-row-hover"),
+			`${entry.what}: ${entry.rowFile} no longer paints \`hover:bg-row-hover\`, so this record is stale — remove the entry or re-point it`,
+		);
+		assert.ok(
+			!row.includes("rowCurrent"),
+			`${entry.what}: ${entry.rowFile} now paints \`rowCurrent\`, so it is NOT a hover-only site any more and it has to be a ROW_STATE_GROUNDS entry on \`surface\` rather than a recorded exception`,
+		);
+		assert.ok(
+			sourceOf(entry.rungFile).includes(entry.rungAnchor),
+			`${entry.what}: ${entry.rungFile} no longer paints \`${entry.rungAnchor}\`, so the rung this record names is gone — check whether the site still rides one at all`,
+		);
+		assert.ok(
+			entry.note.includes("ΔE00") || entry.what.includes("schedules"),
+			`${entry.what}: the record has to carry its measurement, not just the fact`,
+		);
+	}
 });

@@ -2805,17 +2805,19 @@ const ROW_STATE_WASH_FLOOR = 2.0;
  */
 const ROW_HOVER_STEP_SHARE_FLOOR = 0.5;
 /*
- * The floor against the three ELEVATION grounds is a COLLISION floor and not the
- * field floor, and the measurement is why. A state sits one step off `surface`,
- * while the ladder's own steps are asserted at ΔE00 >= 2.0 (`GROUND_STEP_DELTA_E`,
- * `ELEVATED_PANEL_DELTA_E`) - so on the palettes whose ladder is at its floor the
- * state is INSIDE that gap by construction and no value can be 2.0 clear of it
- * while also holding its own band. Measured: requiring 2.0 there makes the pair
- * unsatisfiable on 19 of the 59 and the rule's own worked values violate it. What
- * IS asserted is that the state is not the same colour as a ground, at the same
- * hard floor the fleet asserts for two canvases.
+ * The hover's step is AUTHORED one 0.02 grid step above this floor, and the
+ * relationship is stated because authoring AT the floor does not survive the
+ * measurement: this file asserts the step on the AUTHORED HEX, and the 8-bit
+ * round trip can land a value authored at exactly 1.50 at 1.49 - a value that
+ * satisfies the rule and fails the gate that measures it. So § 4 authors
+ * `step_hover` at `max(1.5 + 0.02, 0.65 x step_selected)`, the floor stays 1.5
+ * here, and a rule-faithful value cannot land under it. The alternative (slack
+ * on the floor assertion, the way the cast floors carry it) was refused: the
+ * step is what a reader scans by, so the assertion stays sharp and the authoring
+ * rule carries the grid rather than the gate carrying the slack. The fleet's
+ * achieved hover minimum is 1.53, one grid step above this floor, which is what
+ * that rule produces.
  */
-const ROW_STATE_COLLISION_FLOOR = 1.0;
 const ROW_HOVER_STEP_FLOOR = 1.5;
 /*
  * The hover's floor, and now the selection's too. The selection sat at 3.0
@@ -2932,10 +2934,15 @@ const ROW_STATE_STEP_SLACK = 0.25;
  *     longer covers `obsidian`, and that is a ledger row below rather than a
  *     widening here.
  *
- * THE PAIR FLOOR IS THE ONE RELAXATION THE CLASS STILL CARRIES, and no palette
- * uses it: the class's pair floor is `ROW_STATE_COLLISION_FLOOR` (1.0) where the
- * fleet asserts `ROW_PAIR_SEPARATION` (2.0), and the seven members' measured
- * pairs run 2.15-3.71, all clear of the fleet's own floor.
+ * THE PAIR FLOOR IS NO LONGER RELAXED FOR THE CLASS. It was: the class's pair
+ * floor was a collision floor (1.0) where the fleet asserts `ROW_PAIR_SEPARATION`
+ * (2.0), and the seven members' pairs run 2.15-3.71 - every one of them clear of
+ * the fleet's own floor, so the relaxation was DEAD CODE that a future cast-less
+ * palette would have landed in as a silent escape rather than as a failure. It is
+ * retired rather than left standing (design D8): the pair floor is the fleet's
+ * for every palette, and a cast-less palette that cannot hold it is a ledger row
+ * with a reading, which is the shape this file uses for every other bound a
+ * palette genuinely cannot hold.
  *
  * THERE IS STILL NO PIN TABLE FOR A PALETTE THAT MERELY MISSES A BOUND, and the
  * thirteen rows the earlier round carried are why: they reconciled as four
@@ -2994,28 +3001,12 @@ const ROW_STATE_MEASURED_SHORTFALL = [
 			"the INK FLOORS are what refuse the rank: this palette's whole legal step is 2.68 L*, so the selection cannot rise past it and the hover cannot fall without putting `inkDim` under its floor on the hover instead. The pair still separates by ΔE00 6.96 and ranks 4.9 C*, so this is the one palette in the fleet whose pair is ranked by cast rather than by lightness - which is the point of adding the C* rank at all",
 	},
 	{
-		id: "ayuLight",
-		role: "rowHover",
-		bound: "band",
-		measured: 1.95,
-		reason:
-			"the panel's cast is C* 2.9, so the fill's chroma is the rule's own 2.5 floor, capped by the panel itself; the remaining axis is lightness and a light palette's ΔE00 is compressed by the S_l term - the whole legal step of 3.25 L* is worth 1.95 there. Repaying it needs more step than the ink floors allow",
-	},
-	{
-		id: "dune",
-		role: "rowHover",
-		bound: "band",
-		measured: 1.91,
-		reason:
-			"same wall as `ayuLight`'s with a smaller budget: the panel carries C* 2.9, the rule's own 2.5 floor is the whole of the cast, and this palette's legal step is 2.77 L*. There is no axis left to buy the band with",
-	},
-	{
 		id: "rosePineDawn",
 		role: "rowHover",
 		bound: "band",
 		measured: 1.67,
 		reason:
-			"the fleet's minimum band, and it is the light family's compression at its worst: C* 2.7 puts the fill at the rule's own floor of 2.5, and at L* 94 the S_l term divides the 2.79 L* step down to 1.67. FLAGGED FOR THE VISUAL AUDIT rather than asserted away - if this reads as an unmarked row on the frames, the field floor is carrying more than it can and the withdrawal above was wrong",
+			"the fleet's minimum band, and it is the light family's compression at its worst: C* 2.7 puts the fill at the rule's own floor of 2.5, and at L* 94 the S_l term divides the 2.79 L* step down to 1.67. ITS CEILING IS 1.88, measured on this rule's own window: with the casts held at the panel's own (the rule's 2.5 floor on this palette), the hover's step is bounded by the pair's rank at 3.14 - one grid rung, 1.88 - and raising the selection to the largest step its inks allow (4.14, where `inkDim` is 5.02) does not widen it, because the 8-bit rung is the same. Clearing the 2.0 field floor here needs the hover's cast PAST the ceiling the rule names (C* 3.23 at step 2.99 measures ΔE00 2.03, 0.53 over that ceiling - inside this file's cap slack, which is the hex round trip's error and not a licence to sit over the bound). So the class's floor on this palette is 1.9 and not 2.0, and if 2.0 is to hold here what changes is the floor's statement, not the value. The band's frame is committed and the disposition is a look judgement: at 1.67 it still reads as a mark",
 	},
 	{
 		id: "gruvboxLight",
@@ -3157,11 +3148,32 @@ for (const { id, palette: p } of palettes) {
 	 *     (`alucard` 0.44 against `sunken`, `arcade` 0.0 against `elevated`,
 	 *     `duskfox` 0.47, `kanagawaLotus` 0.83, `rosePine` 0.85, `tokyoNightDay`
 	 *     0.51) where the shipped values escaped only by being rotated to a
-	 *     different hue. THE RISK IS STATED RATHER THAN HIDDEN: a selected row can
-	 *     be the same colour as a dialog's ground or an input well. They are never
-	 *     adjacent inside one list - this panel's own `elevated` use is the
-	 *     `· lopdev` cap and the `⋯` button, both text-sized rather than
-	 *     full-width rows.
+	 *     different hue. THE WITHDRAWAL'S ARGUMENT USED TO BE THAT THESE PAIRS
+	 *     NEVER OCCUR INSIDE ONE LIST, AND THAT SENTENCE WAS FALSE: the app rail's
+	 *     own `<nav>` was `bg-sunken` and the agent-hub categories rail was on
+	 *     `canvas`, and both of them are LISTS whose rows carry these two roles, so
+	 *     the row sat directly on the rung - measured at ΔE00 0.44 (`alucard`, the
+	 *     rail) and 0.83 (`kanagawaLotus`, categories), and on 13 of the 59 the
+	 *     hovered row read at least as far off the rail's ground as the row the
+	 *     reader was ON. THE FIX IS THE RULE THE DIRECTION STATES, not a value: a
+	 *     surface that paints these two roles wears `surface`, so both of those
+	 *     surfaces were re-grounded (`shared/components/navigation/
+	 *     sidebar-navigation.tsx`, and the categories column in
+	 *     `features/agent-hub/agent-hub-page.tsx`), the rail taking
+	 *     `border-r border-hairline` for the boundary the tonal step used to carry.
+	 *     All six `rowCurrent` surfaces are therefore on `surface`: the chat
+	 *     sidebar, the settings rail, the app rail, the categories rail, the agents
+	 *     sidebar and the agents page's roster.
+	 *     WHAT THE WITHDRAWAL STILL ACCEPTS is the one ground class that is not a
+	 *     row's backdrop at all: a SELECTED ROW CAN BE THE SAME COLOUR AS A
+	 *     DIALOG'S GROUND OR AN INPUT WELL. `elevated` keeps its exemption because
+	 *     a menu, popover, tooltip, dialog or drawn card is not a row's plane and
+	 *     no row is painted on one; this panel's own `elevated` use is the
+	 *     `· lopdev` cap and the `⋯` button, both text-sized rather than full-width
+	 *     rows. The two `hover`-only sites that still ride a rung are recorded
+	 *     rather than re-grounded, with their numbers, in
+	 *     `scripts/chat-sidebar-selection.test.mjs`'s `HOVER_STATES_ON_A_RUNG`:
+	 *     the canvas document-tab strip and the schedules page's legacy annex.
 	 *   - the two `accent`-bar ratios (`ROW_STATE_BAR_FLOOR`,
 	 *     `ROW_STATE_BAR_DELTA_E`) - retired with the bar. They never measured the
 	 *     bar being visible; they measured the FILL being distinct enough for a bar
@@ -3422,13 +3434,13 @@ for (const { id, palette: p } of palettes) {
 	if (isHex(p.rowHover) && isHex(p.rowSelected)) {
 		assertions++;
 		const apart = deltaE(p.rowSelected, p.rowHover);
-		/* The pair's separation is a COLLISION floor, not a field floor: what
-		   ranks the two states is the fill's own two ranks above plus
-		   `font-medium`, so all the colour has to do is not be the same mark
-		   twice. */
-		const apartFloor = isNeutralClass(p)
-			? ROW_STATE_COLLISION_FLOOR
-			: ROW_PAIR_SEPARATION;
+		/* The pair's separation is the FLEET's floor on every palette, including the
+		   cast-less class: this used to be a collision floor (1.0) for that class
+		   and no palette ever used it (their pairs run 2.15-3.71), so the waiver is
+		   retired - see the note beside `ROW_HOVER_STEP_FLOOR`. What ranks the two
+		   states is the fill's own two ranks above plus `font-medium`, so all the
+		   colour has to do is not be the same mark twice. */
+		const apartFloor = ROW_PAIR_SEPARATION;
 		if (apart < apartFloor - 1e-9) {
 			fail(
 				`${id}: \`rowHover\` ${p.rowHover} and \`rowSelected\` ${p.rowSelected} are ΔE00 ${r2(apart)} apart (need ${apartFloor}) — the reader sees two marks and cannot rank them. This was the second half of the operator's report: on \`neon\` the shipped pair sat 1.80 ΔE apart while each was ~6.2 ΔE off the panel. The ranking is the fill's now, so a palette that misses this is missing because the two fills are the SAME MARK — give the selection more step or more cast than the hover`,

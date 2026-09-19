@@ -79,22 +79,26 @@ export const dune: ThemeDefinition = {
 		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
 		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #322E2B  panel hue, C* 2.82,
-		 *                       the rule's 0.60 x the panel's 2.89; +2.81 L*,
-		 *                       ΔE00 1.91 off `surface`, `inkDim` 5.25:1.
+		 * rowHover    #322E2C  panel hue, C* 2.36,
+		 *                       the rule's 0.60 x the panel's 2.89, floored at 2.5;
+		 *                       +2.85 L*, ΔE00 2.05 off `surface`, `inkDim` 5.25:1.
 		 * rowSelected #393029  panel hue, C* 6.57,
 		 *                       the panel's cast + 4.0, floored at 5.0; +4.17 L*,
 		 *                       ΔE00 4.35 off `surface` and 3.48 off
-		 *                       `rowHover`; the pair ranks 1.36 `L*` and 3.7 `C*`,
+		 *                       `rowHover`; the pair ranks 1.33 `L*` and 4.2 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 *
-		 * THE HOVER'S BAND OFF `surface` IS 1.91, under the 2.0 field floor: the
-		 * panel carries C* 2.9, so the fill cannot be more coloured than the rule's
-		 * own 2.5, and the remaining axis is lightness — this palette's whole legal
-		 * step is 2.77 L*. Named in `contrast-contract.mjs`'s
-		 * `ROW_STATE_MEASURED_SHORTFALL`.
+		 * THE HOVER'S STEP IS LIFTED OFF THE RULE'S OWN 0.65 x THE SELECTION (2.71)
+		 * TO THE LOWEST RUNG THAT CLEARS THE 2.0 FIELD FLOOR, which is what moved
+		 * this palette off `ROW_STATE_MEASURED_SHORTFALL` in the remediation round.
+		 * The band used to be 1.91, under the floor: C* 2.9 leaves the fill at the
+		 * rule's own 2.5 floor with no cast to spend, so lightness is the only axis,
+		 * and this palette's whole legal step is 2.77 L*. The 8-bit grid has no rung
+		 * between the old 2.81 and 3.17 (which would put the pair's rank on its own
+		 * 1.0 floor), so 2.85 is the lift, and it keeps the panel's own cast rather
+		 * than spending the cap slack to buy a wider band.
 		 */
-		rowHover: "#322E2B",
+		rowHover: "#322E2C",
 		rowSelected: "#393029",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
