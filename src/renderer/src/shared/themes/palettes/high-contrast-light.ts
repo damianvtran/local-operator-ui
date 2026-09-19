@@ -44,20 +44,25 @@ export const highContrastLight: ThemeDefinition = {
 		sunken: "#D6D6D6",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 0.00) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #EEECF9  accent hue, C* 6.74, +1.61 L*, ΔE00 6.51 off `surface`,
-		 *                       `inkDim` 6.80:1 on the fill, hue 1.39° off `accent`.
-		 * rowSelected #E4E1FE  accent hue, C* 15.11, +4.94 L*, ΔE00 12.51 off
-		 *                       `surface` and 6.29 off `rowHover`, `inkDim` 6.24:1, and the
-		 *                       2px `accent` bar at 6.21:1 against it.
+		 * rowHover    #E9E8ED  `accent` hue, C* 2.61,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.29 L*,
+		 *                       ΔE00 3.41 off `surface`, `inkDim` 6.51:1.
+		 * rowSelected #E4E3EC  `accent` hue, C* 4.69,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.95 L*,
+		 *                       ΔE00 5.53 off `surface` and 2.16 off
+		 *                       `rowHover`; the pair ranks 1.65 `L*` and 2.1 `C*`,
+		 *                       `inkDim` 6.24:1.
 		 */
-		rowHover: "#EEECF9",
-		rowSelected: "#E4E1FE",
+		rowHover: "#E9E8ED",
+		rowSelected: "#E4E3EC",
 
 		ink: "#0A0A0A",
 

@@ -270,6 +270,24 @@ export type DesktopFeature =
 	 */
 	| "frontend_replace"
 	/**
+	 * Durable conversation pinning: the `pinned` flag on every catalogue row and
+	 * the `sessions.pin` write (`POST /v1/desktop/sessions/{id}/pin`).
+	 *
+	 * Its OWN key rather than a bump of `session_catalogue`, on the rule
+	 * `session_search` states above: the existing surface is the WHOLE chats list,
+	 * which renders perfectly well against a backend whose pin store does not
+	 * exist, so gating the list on a newer catalogue version would hide a working
+	 * surface behind an update it does not need. A backend that predates the pin
+	 * store advertises neither the key nor the row field, and the sidebar mounts
+	 * no affordance at all for it - see `pinSections`, which is the ONE place
+	 * that decision is written down. Absent means NO slot, no reveal and no
+	 * handler: the row's DOM and class set stay byte-identical to the panel
+	 * without the feature, because a reserved empty slot advertises something the
+	 * user cannot get and a disabled pin reads as a feature they have not
+	 * unlocked (the `session_interrupt` precedent).
+	 */
+	| "session_pins"
+	/**
 	 * `references`: the harness expands a draft's `@path` tokens into file content
 	 * before the message reaches the model.
 	 *

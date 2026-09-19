@@ -61,6 +61,7 @@ import { KNOWN_EXTENSIONS } from "@features/chat/utils/file-kind";
 import {
 	API_PATH_PREFIXES,
 	ELLIPSIS_SEGMENT,
+	LINE_REFERENCE,
 	MAX_CANDIDATE_LENGTH,
 	MENTION_POLICY,
 	PLACEHOLDER_MARKERS,
@@ -179,6 +180,14 @@ function scanProse(text: string): string[] {
  * returned rather than rejected, because the key already said "this is a path"
  * and the cwd decides whether it can be resolved. Everything a URL-shaped or
  * API-shaped string is rejected by is shared with the prose path.
+ *
+ * ONE difference is enough only because the editor line reference is trimmed here
+ * too, in the same order and for the same reason (`LINE_REFERENCE`): round 1's
+ * review R1-5 measured the second difference this tier used to carry, where
+ * `{"path": "…/run.mjs:59"}` kept the `:59` that prose - and the same spelling
+ * under a non-path key - had already stopped naming. A path key says the value is
+ * a path, and a `:59` is not part of one, so the two tiers of the panel agree and
+ * the extent of that agreement is pinned in `mentioned-files.test.mjs`.
  */
 function normalizePathValue(raw: string): string | null {
 	const stripped = raw.startsWith("file://")
@@ -187,19 +196,22 @@ function normalizePathValue(raw: string): string | null {
 	const candidate = stripped.trim().replace(TRAILING_PUNCTUATION, "");
 	if (!candidate) return null;
 	if (candidate.length > MAX_CANDIDATE_LENGTH) return null;
-	if (candidate.includes("://")) return null;
-	if (candidate.startsWith("//")) return null;
-	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
+	// The line reference, on this tier as well; see this function's docblock.
+	const canonical = candidate.replace(LINE_REFERENCE, "");
+	if (!canonical) return null;
+	if (canonical.includes("://")) return null;
+	if (canonical.startsWith("//")) return null;
+	if (API_PATH_PREFIXES.some((prefix) => canonical.startsWith(prefix)))
 		return null;
 	// Whitespace inside a path key's value means the value is prose (a whole
 	// command, a sentence), and treating a sentence as a path is how a panel
 	// fills with junk. The prose scanner handles those values instead.
-	if (WHITESPACE.test(candidate)) return null;
+	if (WHITESPACE.test(canonical)) return null;
 	// A glob, a placeholder or an abbreviation under a path key is still not a
 	// file.
-	if (PLACEHOLDER_MARKERS.test(candidate)) return null;
-	if (ELLIPSIS_SEGMENT.test(candidate)) return null;
-	return candidate;
+	if (PLACEHOLDER_MARKERS.test(canonical)) return null;
+	if (ELLIPSIS_SEGMENT.test(canonical)) return null;
+	return canonical;
 }
 
 /** Every string in an arbitrarily nested argument value, in order. */

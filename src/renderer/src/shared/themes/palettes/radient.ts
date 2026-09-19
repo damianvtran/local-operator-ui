@@ -63,20 +63,24 @@ export const radient: ThemeDefinition = {
 		sunken: "#181A1D",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #252E39  accent hue, C* 8.30, +1.64 L*, ΔE00 5.47 off `surface`,
-		 *                       `inkDim` 5.74:1 on the fill, hue 3.50° off `accent`.
-		 * rowSelected #1D3650  accent hue, C* 18.79, +4.95 L*, ΔE00 8.01 off
-		 *                       `surface` and 6.88 off `rowHover`, `inkDim` 5.18:1, and the
-		 *                       2px `accent` bar at 5.99:1 against it.
+		 * rowHover    #2E303B  panel hue, C* 7.51,
+		 *                       the rule's 0.60 x the panel's 11.89; +3.17 L*,
+		 *                       ΔE00 3.81 off `surface`, `inkDim` 5.48:1.
+		 * rowSelected #2D344B  panel hue, C* 15.57,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.11 L*,
+		 *                       ΔE00 4.23 off `surface` and 5.57 off
+		 *                       `rowHover`; the pair ranks 1.94 `L*` and 8.1 `C*`,
+		 *                       `inkDim` 5.15:1.
 		 */
-		rowHover: "#252E39",
-		rowSelected: "#1D3650",
+		rowHover: "#2E303B",
+		rowSelected: "#2D344B",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the

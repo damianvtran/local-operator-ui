@@ -62,20 +62,30 @@ export const rosePineDawn: ThemeDefinition = {
 		sunken: "#f2e7da",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #FFECEB  accent hue, C* 6.86, +1.62 L*, ΔE00 6.56 off `surface`,
-		 *                       `inkDim` 5.36:1 on the fill, hue 3.14° off `accent`.
-		 * rowSelected #FFE3E0  accent hue, C* 10.37, +4.07 L*, ΔE00 9.57 off
-		 *                       `surface` and 3.45 off `rowHover`, `inkDim` 5.03:1, and the
-		 *                       2px `accent` bar at 4.55:1 against it.
+		 * rowHover    #F1ECE8  panel hue, C* 2.71,
+		 *                       the rule's 0.60 x the panel's 2.70; +2.79 L*,
+		 *                       ΔE00 1.67 off `surface`, `inkDim` 5.20:1.
+		 * rowSelected #F3E7DD  panel hue, C* 6.75,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.14 L*,
+		 *                       ΔE00 4.33 off `surface` and 3.62 off
+		 *                       `rowHover`; the pair ranks 1.35 `L*` and 4.0 `C*`,
+		 *                       `inkDim` 5.02:1.
+		 *
+		 * THE HOVER'S BAND OFF `surface` IS 1.67, the fleet's minimum, and it is
+		 * this palette's LIGHT-MODE compression rather than its cast: C* 2.7 puts the
+		 * fill at the rule's own floor of 2.5, and at L* 94 the CIEDE2000 S_l term
+		 * divides the 2.79 L* step down to 1.67. Named in
+		 * `contrast-contract.mjs`'s `ROW_STATE_MEASURED_SHORTFALL`.
 		 */
-		rowHover: "#FFECEB",
-		rowSelected: "#FFE3E0",
+		rowHover: "#F1ECE8",
+		rowSelected: "#F3E7DD",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
