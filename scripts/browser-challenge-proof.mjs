@@ -940,6 +940,38 @@ async function emitChooser(client, { requestId, relyingPartyId, accounts }) {
 	return result;
 }
 
+/**
+ * How many settle pushes the renderer has seen, optionally only those with one
+ * outcome. The arm counts them because a settle push carries MAIN's own request
+ * id, never the key the arm used to raise the request.
+ */
+async function settleCount(renderer, outcome = "expired") {
+	const seen = await evaluateValue(
+		renderer,
+		"JSON.stringify((window.__settles ?? []).map((p) => p.outcome))",
+		8_000,
+	).catch(() => "[]");
+	const outcomes = String(seen);
+	try {
+		const parsed = JSON.parse(outcomes);
+		return outcome === "all"
+			? parsed.length
+			: parsed.filter((value) => value === outcome).length;
+	} catch {
+		return 0;
+	}
+}
+
+/** The settle pushes themselves, for a failure message. */
+async function readSettles(renderer) {
+	const raw = await evaluateValue(
+		renderer,
+		"JSON.stringify(window.__settles ?? [])",
+		8_000,
+	).catch((error) => String(error));
+	return String(raw);
+}
+
 /** What Electron's callbacks have received, in order. */
 async function readAnswers(client) {
 	return await evaluateValue(
@@ -980,6 +1012,22 @@ const CHOOSER_STATE = `(() => {
 			};
 		}),
 		panel: panel ? rect(panel) : null,
+		// The Answering state (design round 2, N1): what the rows actually paint,
+		// and where the cue that explains the freeze is.
+		rowsDisabled: rows.length > 0 && rows.every((row) => row.disabled),
+		labelInk: (() => {
+			const span = rows[0]?.querySelector("span");
+			return span ? getComputedStyle(span).color : null;
+		})(),
+		answeringCue: (() => {
+			const cue = [...document.querySelectorAll('[role="dialog"] p')].find((p) => p.textContent.trim() === "Answering…");
+			if (!cue) return null;
+			const note = [...document.querySelectorAll('[role="dialog"] p')].find((p) => p.textContent.includes("Touch ID"));
+			// Same footer container as the Touch ID sentence: that is what "pinned
+			// rather than the scrolling body's last child" means, and it is the
+			// reason the cue survives a long list.
+			return note ? cue.parentElement === note.parentElement : null;
+		})(),
 		// The Touch ID sentence lives in the dialog's footer; whether it is inside
 		// the panel's visible box is the whole D8 question.
 		// The note lives in the dialog's FOOTER, and "data-tour-tag" sits on the
@@ -1308,12 +1356,236 @@ async function runWebauthnAttempt() {
 	await captureFrame("chooser-queued", { renderer });
 	check(
 		"a second request is named as waiting rather than replacing the first (finding 7)",
-		queued.paragraphs.some((p) => p.includes("One more site is waiting")) &&
-			queued.paragraphs.some((p) => p.includes("first.example.com")),
+		queued.paragraphs.some((p) =>
+			p.includes("One more passkey request is waiting"),
+		) && queued.paragraphs.some((p) => p.includes("first.example.com")),
 		queued.paragraphs.join(" / "),
 	);
 	await pressChooser(renderer, "cancel");
 	await sleep(600);
+	await pressChooser(renderer, "cancel");
+	await sleep(600);
+
+	/*
+	 * THE ROUND-2 BLOCKER, MEASURED LIVE (agent review round 2, R1).
+	 *
+	 * Two requests, the OLDEST expiring while the newer is still answerable. What is
+	 * on screen has to stay the request the user can answer; the ending waits its
+	 * turn and is the panel only once nothing is answerable, and its Close settles
+	 * nothing. The round-1 shape failed all three: the ending replaced the live
+	 * request and its one button cancelled it.
+	 */
+	// Seeded BEFORE the pair is raised, so the ending's dismissal can be judged for
+	// the caret as well: UX round 2's U6 is exactly this door (an ending dismissed
+	// through Close left the caret on `<body>` while Cancel and answering did not).
+	await evaluateValue(
+		renderer,
+		"(() => { const el = document.querySelector('[data-tour-tag=\"nav-item-chat\"]'); if (!el) return null; el.focus(); return document.activeElement === el; })()",
+		8_000,
+	);
+	const queuedStartedAt = Date.now();
+	await emitChooser(main, {
+		requestId: "webauthn-arm-5c",
+		relyingPartyId: "oldest.example.com",
+		accounts: NAMED,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the oldest of a queued pair",
+		20_000,
+	);
+	// A REAL gap between the two, because the bound is 60 s from each emit: raised
+	// a second apart, both expired inside one poll and the state this step exists to
+	// photograph never existed (measured: at 61 s, `rows=0 expires=2`). Twenty
+	// seconds leaves the newer request ~40 s of life when the older dies.
+	await sleep(20_000);
+	await emitChooser(main, {
+		requestId: "webauthn-arm-5d",
+		relyingPartyId: "newer.example.com",
+		accounts: NAMED,
+	});
+	await sleep(900);
+	await captureFrame("chooser-oldest-expiring-while-queued", { renderer });
+	const answersBeforeQueueExpiry = await readAnswers(main);
+	// Counted rather than matched by id: main mints its OWN request ids
+	// (`webauthn-<n>-<base36>`) and the id the arm passes to `emit` is only the
+	// arm's key for the callback tape — so an earlier version of this loop waited
+	// for a string that can never appear in a settle push.
+	const settlesBefore = await settleCount(renderer, "all");
+	let afterOldestExpired = null;
+	const queuedExpiryDeadline = Date.now() + 95_000;
+	let lastQueuedTrace = 0;
+	while (Date.now() < queuedExpiryDeadline) {
+		const state = await chooserState(renderer);
+		const expired = await settleCount(renderer, "expired");
+		if (Date.now() - lastQueuedTrace > 20_000) {
+			say(
+				`[webauthn] queued-expiry wait: elapsed=${Math.round((Date.now() - queuedStartedAt) / 1000)}s open=${state?.open} rows=${state?.rows.length ?? "-"} settles=${settlesBefore} expires=${expired}`,
+			);
+			lastQueuedTrace = Date.now();
+		}
+		if (expired > 0) {
+			afterOldestExpired = await chooserState(renderer);
+			break;
+		}
+		await sleep(2_500);
+	}
+	if (!afterOldestExpired)
+		throw new Error(
+			`timed out waiting for the oldest queued request to expire (settles=${JSON.stringify(await readSettles(renderer))})`,
+		);
+	await captureFrame("chooser-queued-oldest-expired", { renderer });
+	check(
+		"an expiry BEHIND a live request leaves the living request on screen (round 2, R1)",
+		afterOldestExpired.open === true &&
+			afterOldestExpired.rows.length === 2 &&
+			afterOldestExpired.paragraphs.join(" ").includes("newer.example.com") &&
+			!/expired/i.test(
+				[afterOldestExpired.title ?? "", ...afterOldestExpired.paragraphs].join(
+					" ",
+				),
+			),
+		`rows=${afterOldestExpired.rows.length} title=${afterOldestExpired.title} paras=${afterOldestExpired.paragraphs.join(" / ")}`,
+	);
+
+	// Cancelling the live one hands the panel to the ending it was hiding, and the
+	// ending's own Close answers nothing: the tape must not grow.
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => {
+			const state = await chooserState(renderer);
+			return state?.open === true && state.rows.length === 0;
+		},
+		"the ending the live request was hiding",
+		20_000,
+	);
+	const endingAfterQueue = await chooserState(renderer);
+	await captureFrame("chooser-ending-after-the-queue", { renderer });
+	const answersAtEnding = await readAnswers(main);
+	check(
+		"the ending becomes the panel once nothing is answerable, in words (R1)",
+		endingAfterQueue.rows.length === 0 &&
+			/expired/i.test(
+				[endingAfterQueue.title ?? "", ...endingAfterQueue.paragraphs].join(
+					" ",
+				),
+			),
+		`title=${endingAfterQueue.title} paras=${endingAfterQueue.paragraphs.join(" / ")}`,
+	);
+	check(
+		"cancelling the live request settled only that request",
+		answersAtEnding !== answersBeforeQueueExpiry &&
+			String(answersAtEnding).includes("webauthn-arm-5d"),
+		`answers=${answersAtEnding}`,
+	);
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the ending to close",
+		15_000,
+	);
+	const answersAfterEndingClose = await readAnswers(main);
+	check(
+		"the ending's Close answers nothing: the tape does not grow",
+		answersAfterEndingClose === answersAtEnding,
+		`before=${answersAtEnding} after=${answersAfterEndingClose}`,
+	);
+	const focusAfterEnding = await evaluateValue(
+		renderer,
+		"document.activeElement ? (document.activeElement.getAttribute('data-tour-tag') ?? document.activeElement.tagName) : null",
+		8_000,
+	);
+	await captureFrame("chooser-ending-dismissed", { renderer });
+	check(
+		"dismissing an ENDING hands the caret back rather than leaving it on the body (UX U6)",
+		focusAfterEnding === "nav-item-chat",
+		`activeElement=${focusAfterEnding}`,
+	);
+
+	/*
+	 * THE ANSWERING STATE, photographed rather than described (design round 2, N1).
+	 *
+	 * `answer()` drops the answered request from the mirror before it awaits, so
+	 * this state is only on screen when a second request is queued behind — and only
+	 * for as long as the IPC takes, which is a few milliseconds. The answer call is
+	 * therefore held open in the renderer for the duration of one frame. If the
+	 * preload's object refuses the patch (contextBridge objects are read-only), the
+	 * step says so and the state is evidenced from the stories file instead.
+	 */
+	await emitChooser(main, {
+		requestId: "webauthn-arm-8a",
+		relyingPartyId: "answering.example.com",
+		accounts: NAMED,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the request the answering state needs",
+		20_000,
+	);
+	await emitChooser(main, {
+		requestId: "webauthn-arm-8b",
+		relyingPartyId: "answering.example.com",
+		accounts: NAMED,
+	});
+	await sleep(600);
+	const holdInstalled = await evaluateValue(
+		renderer,
+		`(() => {
+			try {
+				const api = window.api.browser;
+				const real = api.respondToWebauthn;
+				let heldArgs = null;
+				api.respondToWebauthn = (requestId, credentialId) =>
+					heldArgs === null
+						? ((heldArgs = [requestId, credentialId]), new Promise(() => {}))
+						: real(requestId, credentialId);
+				// Releasing the held answer with the SAME arguments, so the request
+				// settles before the arm moves on rather than sitting in main until its
+				// own 60 s bound.
+				window.__releaseHeldRespond = () => {
+					if (heldArgs === null) return "nothing held";
+					const [requestId, credentialId] = heldArgs;
+					heldArgs = null;
+					return real(requestId, credentialId);
+				};
+				return api.respondToWebauthn !== real;
+			} catch (error) {
+				return String(error);
+			}
+		})()`,
+		8_000,
+	);
+	if (holdInstalled === true) {
+		await pressChooser(renderer, "0");
+		await waitFor(
+			async () => (await chooserState(renderer))?.rowsDisabled === true,
+			"the answering state",
+			10_000,
+		);
+		const answering = await chooserState(renderer);
+		await captureFrame("chooser-answering", { renderer });
+		check(
+			"the Answering state disables the rows and dims the text inside them (N1)",
+			answering.rowsDisabled === true &&
+				answering.answeringCue === true &&
+				answering.labelInk !== null &&
+				answering.labelInk !== "rgb(241, 238, 230)",
+			`disabled=${answering.rowsDisabled} cueInFooter=${answering.answeringCue} labelInk=${answering.labelInk}`,
+		);
+		await pressChooser(renderer, "cancel");
+		await sleep(900);
+		const released = await evaluateValue(
+			renderer,
+			"String(window.__releaseHeldRespond?.() ?? 'missing')",
+			8_000,
+		);
+		say(`[webauthn] the held answer was released after the frame: ${released}`);
+		await sleep(600);
+	} else {
+		say(
+			`[webauthn] the answer call could not be held for a frame (${holdInstalled}); the Answering state is evidenced from the stories file instead`,
+		);
+	}
 	await pressChooser(renderer, "cancel");
 	await sleep(600);
 

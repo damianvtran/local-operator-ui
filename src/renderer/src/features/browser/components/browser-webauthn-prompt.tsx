@@ -6,7 +6,11 @@ import {
 } from "@shared/browser-webauthn-queue";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import { settledChooserCopy } from "../model/webauthn-chooser";
+import {
+	type WebauthnEnding,
+	chooserPanel,
+	endingFor,
+} from "../model/webauthn-panel";
 import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
 
 /**
@@ -35,13 +39,20 @@ import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
  * is no quieter place to put it — but nothing here raises, focuses or activates a
  * window: `src/main/window-raise.ts` stays the only module that decides that, and
  * this component only draws.
+ *
+ * THE ENDING IS A SECOND THING THE PANEL CAN BE, NOT A SECOND FLAG BESIDE IT.
+ * Round 1 kept a `notice` slot beside the queue and let the two disagree: with two
+ * requests queued, the oldest expiring rendered the ending *instead of* the live
+ * one, and its one button cancelled the request the user had never seen (agent
+ * review round 2, R1). The panel is now a single discriminated value
+ * (`model/webauthn-panel.ts`) where a live request always wins, an ending is only
+ * shown once nothing is answerable, and the ending branch carries no request for a
+ * dismissal to settle.
  */
 export const BrowserWebauthnPrompt: FC = () => {
 	const requests = useWebauthnRequests();
 	const [answering, setAnswering] = useState(false);
-	const [notice, setNotice] = useState<{ title: string; body: string } | null>(
-		null,
-	);
+	const [ending, setEnding] = useState<WebauthnEnding | null>(null);
 	/**
 	 * Where focus was before the chooser appeared.
 	 *
@@ -52,9 +63,12 @@ export const BrowserWebauthnPrompt: FC = () => {
 	 * the control that opened it.
 	 */
 	const previousFocus = useRef<Element | null>(null);
+	/** Whether the chooser was already up on the previous render, so the focus
+	 * capture above fires once per opening rather than once per offered request. */
+	const wasOpen = useRef(false);
 
-	const current = requests[0] ?? null;
-	const currentId = current?.requestId ?? null;
+	const panel = chooserPanel({ requests, ending, answering });
+	const panelOpen = panel.kind !== "none";
 
 	useEffect(() => {
 		const api = window.api?.browser;
@@ -74,10 +88,14 @@ export const BrowserWebauthnPrompt: FC = () => {
 		const offRequest = api.onWebauthnRequest?.(noteWebauthnRequest);
 		const offSettled = api.onWebauthnSettled?.((payload) => {
 			const removed = clearWebauthnRequest(payload.requestId);
-			const copy = settledChooserCopy(payload.outcome);
 			// Only explain an ending the user did not cause, and only for a request
-			// this surface was actually showing.
-			if (copy && removed) setNotice(copy);
+			// the mirror was actually holding: a request raised and ended while
+			// nothing was mounted was never on screen, so there is no ending to
+			// acknowledge (the pull cannot replay a request main has already
+			// answered either).
+			if (!removed) return;
+			const settled = endingFor(payload.requestId, payload.outcome);
+			if (settled) setEnding(settled);
 		});
 		return () => {
 			cancelled = true;
@@ -86,10 +104,30 @@ export const BrowserWebauthnPrompt: FC = () => {
 		};
 	}, []);
 
+	/*
+	 * Capture where focus was when the chooser OPENS, once per opening.
+	 *
+	 * Re-capturing on every change of the offered request looks equivalent and is
+	 * not: after the first of two queued requests is answered, Radix has already
+	 * moved focus into the dialog, so the second capture records the dialog's own
+	 * content and the restore at the end targets a disconnected node — a silent
+	 * no-op that leaves a keyboard user on `<body>` (agent review round 2, R5). The
+	 * closed-to-open transition is the moment the element the user was on is still
+	 * the active one.
+	 */
 	useEffect(() => {
-		if (!currentId) return;
-		previousFocus.current = document.activeElement;
-	}, [currentId]);
+		if (!panelOpen) {
+			wasOpen.current = false;
+			return;
+		}
+		if (wasOpen.current) return;
+		wasOpen.current = true;
+		const active = document.activeElement;
+		previousFocus.current =
+			active instanceof HTMLElement && !active.closest("[role=dialog]")
+				? active
+				: null;
+	}, [panelOpen]);
 
 	/**
 	 * Answer main and drop the request from the mirror at once.
@@ -130,39 +168,39 @@ export const BrowserWebauthnPrompt: FC = () => {
 	}, []);
 
 	/*
-	 * Give focus back when the last chooser goes.
+	 * Give focus back when the panel closes FOR GOOD.
 	 *
 	 * Measured before this: focus sat on `<body>` after the dialog closed, which
-	 * leaves a keyboard user with no position at all (UX round 1, U5). The
-	 * transition is what is tracked rather than "no requests": a queue that empties
-	 * and refills would otherwise move focus out from under the dialog that is
-	 * already up.
+	 * leaves a keyboard user with no position at all (UX round 1, U5). Restoring it
+	 * from an effect lost a race with Radix's own return-to-`body`, which is why the
+	 * ENDING's dismissal left the caret on the body while answering and cancelling
+	 * did not (UX round 2, U6): `onCloseAutoFocus` is Radix's own hook for exactly
+	 * this, so the restore happens as part of the close, in the close's own order,
+	 * and only when the dialog really closes — a queue that advances keeps it open
+	 * and never moves focus out from under itself.
 	 */
-	const wasOpen = useRef(false);
-	useEffect(() => {
-		if (requests.length === 0 && notice === null && wasOpen.current) {
+	const handleCloseAutoFocus = useCallback(
+		(event: Event) => {
+			event.preventDefault();
 			restoreFocus();
-		}
-		wasOpen.current = requests.length > 0 || notice !== null;
-	}, [requests.length, notice, restoreFocus]);
-
-	const open = current !== null || notice !== null;
+		},
+		[restoreFocus],
+	);
 
 	return (
 		<BrowserWebauthnDialog
-			open={open}
-			request={current}
-			waitingBehind={Math.max(0, requests.length - 1)}
-			answering={answering}
-			notice={notice}
-			onDismiss={() => {
-				if (current) answer(current.requestId, null);
-				if (notice) setNotice(null);
-			}}
+			open={panelOpen}
+			panel={panel}
 			onChoose={(credentialId) => {
-				if (!current) return;
-				answer(current.requestId, credentialId);
+				if (panel.kind !== "request") return;
+				answer(panel.request.requestId, credentialId);
 			}}
+			onCancelRequest={() => {
+				if (panel.kind !== "request") return;
+				answer(panel.request.requestId, null);
+			}}
+			onDismissEnding={() => setEnding(null)}
+			onCloseAutoFocus={handleCloseAutoFocus}
 		/>
 	);
 };

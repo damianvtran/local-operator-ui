@@ -1,11 +1,22 @@
-# The passkey chooser, on the round-1 remediation head
+# The passkey chooser, on the round-2 remediation head
 
 Frames from `scripts/browser-challenge-proof.mjs --arm webauthn --attempts 1`
 (committed, re-runnable) against this branch's built tree, `--window-mode=headless`.
-Each frame is the APP'S OWN RENDERER, captured over CDP (`Page.captureScreenshot`)
-while the chooser is up. That is the whole frame in this arm: the native page view
-is suppressed by the dialog's own overlay policy, and the arm opens no tab — so
-there is no second layer to composite, and nothing in these pictures is a stand-in.
+Each `chooser-*` frame is the APP'S OWN RENDERER, captured over CDP
+(`Page.captureScreenshot`) while the chooser is up. That is the whole frame in this
+arm: the native page view is suppressed by the dialog's own overlay policy, and the
+arm opens no tab — so there is no second layer to composite, and nothing in these
+pictures is a stand-in.
+
+The two `*-storybook.webp` frames are the exception, and they say so in their
+names: they are the committed stories file rendered through Storybook
+(`browser-webauthn-dialog--answering`, `--several-named`) and captured in a real
+browser, because the Answering state is the one state the app-side rig cannot hold
+— measured, not assumed: the preload's `contextBridge` object refuses the patch
+(`api.respondToWebauthn = …` leaves the original in place), and the only way to
+keep the IPC pending from the main process would freeze the same process that
+serves the screenshot. The pair exists to show the design-round-2 N1 dim: same
+dialog, same rows, one state disabled.
 
 Run:
 
@@ -13,20 +24,26 @@ Run:
 node scripts/browser-challenge-proof.mjs --arm webauthn --attempts 1 --out /tmp/webauthn
 ```
 
-Result on this head: **arm=webauthn pass=1/1**, 14 checks, all PASS. Per-check output
+Result on this head: **arm=webauthn pass=1/1**, 21 checks, all PASS. Per-check output
 is in the run's `proof.md`; the numbers cited below are from that transcript.
 
 | frame | state | what it shows |
 | --- | --- | --- |
 | `chooser-several-named.webp` | two named passkeys | the everyday multi-match: the lead names the site, both rows carry a name and a login |
 | `chooser-answered.webp` | after choosing | the dialog is gone, the credential reached Electron's callback, focus is back on the rail row it was on before |
-| `chooser-nameless.webp` | three unnamed credentials | the copy says the OS gave no names and what the choice decides, and every row says so as well |
+| `chooser-nameless.webp` | three unnamed credentials | the copy says the OS gave no names and what the choice decides, and every row says so as well — the second line now also carries the recovery clause (UX U8) |
 | `chooser-long-names.webp` | a long display name and a 76-character login | both rows wrap: `client=396 scroll=396`, `overflowing=false`, no text outside the panel |
 | `chooser-many-accounts.webp` | twelve credentials | the list scrolls; the Touch ID sentence stays inside the panel (`notePinned=true`) |
-| `chooser-queued.webp` | two requests at once | the second is NAMED as waiting ("One more site is waiting for a passkey.") instead of replacing the first |
+| `chooser-queued.webp` | two requests at once | the second is COUNTED as waiting ("One more passkey request is waiting." — requests, not sites: N3/U7) instead of replacing the first |
+| `chooser-oldest-expiring-while-queued.webp` | the older of two, seconds before it expires | both requests live, oldest first: `rows=2`, lead names `oldest.example.com` |
+| `chooser-queued-oldest-expired.webp` | the older one has expired, the newer is still live | **the round-2 blocker measured**: `elapsed=61s open=true rows=2 expires=1` — the panel still shows `newer.example.com`, and no ending is on screen |
+| `chooser-ending-after-the-queue.webp` | the newer one cancelled | the ending the live request was hiding becomes the panel: `rows=0`, "This passkey request expired", one Close |
+| `chooser-ending-dismissed.webp` | the ending dismissed | the dialog is gone and the caret is back on the rail row — `activeElement=nav-item-chat` (UX U6) |
 | `chooser-on-chat-route.webp` | raised while the browser surface is NOT mounted | `hash=#/chat`, `surface-mounted=false`, and the dialog is up and answerable |
 | `chooser-after-return.webp` | back on the surface | byte-identical to `chooser-several-named.webp` — the same request, unchanged by the route change |
 | `chooser-expired.webp` | 60.3 s later | the rows are replaced by the ending in words, not a live-looking dialog whose click would be discarded |
+| `chooser-answering-storybook.webp` | the Answering state (stories file) | the rows' text takes the disabled ink and "Answering…" is pinned in the footer beside Cancel (design N1) |
+| `chooser-several-named-storybook.webp` | the same dialog, enabled | the contrast half of that pair: the labels paint `ink` |
 
 ## What was measured, and what it is evidence for
 
@@ -42,6 +59,9 @@ Round 1's findings, each with the number the rig printed:
 | design D8 — the Touch ID sentence scrolled away | `notePinned=true` with twelve accounts |
 | design D7 — the panel's width followed its content | 398px for both the two-account and the twelve-account states (`fullWidth maxWidth="xs"`) |
 | UX U5 — focus landed on `<body>` after the dialog closed | `before=nav-item-chat after=nav-item-chat` |
+| agent review 2 R1 / UX U2 — a live request hidden behind an ending, cancelled by its Close | `elapsed=61s open=true rows=2 expires=1` (the living request stays on screen), then `rows=0` with the ending only after the queue emptied, and `the ending's Close answers nothing: the tape does not grow` |
+| UX U6 — dismissing an ENDING left the caret on `<body>` | `activeElement=nav-item-chat` after the ending's Close, and the frame `chooser-ending-dismissed.webp` |
+| design N1 — the Answering state's text no longer dimmed | pixels sampled from the two story frames: label-region `ink` 2902 → 1539 and `ink-disabled` 118 → 2585 (same dialog, same rows) |
 
 ## The one synthetic part, stated plainly
 
@@ -69,11 +89,12 @@ Two limits that follow, and are not papered over:
 
 The chooser's stories file
 (`src/renderer/src/features/browser/components/browser-webauthn-dialog.stories.tsx`)
-is committed with five `STORIES` rows in `scripts/capture-evidence.mjs`
+is committed with six `STORIES` rows in `scripts/capture-evidence.mjs`
 (`browser-webauthn-dialog--*`), so the swept set covers this surface from the next
 sweep onward. The sweep for THIS pass could not run: `capture-evidence.mjs` refuses
 to capture while a Local Operator backend answers on `localhost:1111`, and the
 operator's own backend is up on this machine — stopping it is not this rig's
 business. The frames above are the declared substitute, captured from the running
-app instead of from Storybook, and the manifest's `webAuthnRemediationNote` records
-that.
+app instead of from Storybook — except the two `*-storybook.webp` frames, whose
+provenance is stated at the top — and the manifest's `webAuthnRemediationNote`
+records that.

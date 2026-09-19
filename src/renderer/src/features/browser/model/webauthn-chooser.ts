@@ -52,17 +52,21 @@ export type WebauthnSettledOutcome =
 	| "dismissed"
 	| "expired"
 	| "host-stopped"
-	| "no-accounts"
 	| "credential-not-offered";
 
 /** Which typographic voice a row's first line is in.
  *
- * `human` is a person's name (`displayName`); `machine` is a login, an address or
- * the positional fallback. Branding § 4: monospace is the machine voice and a
- * login is not prose — the model draws that distinction and the frame used to
- * erase it by rendering a `name` fallback at the same weight as a display name
- * (design round 1, D4), which reads an email address as "the person". */
-export type AccountVoice = "human" | "machine";
+ * `human` is a person's name (`displayName`); `login` is a machine string — a
+ * username or an address — and reads in the machine voice; `ordinal` is the
+ * positional fallback, which is neither: a position is not an identity and not a
+ * machine string either, so it takes the row's own primary ink and lets the
+ * explaining sentence below it be the secondary line (design round 2, N2).
+ *
+ * Branding § 4: monospace is the machine voice and a login is not prose — the
+ * model draws that distinction and the frame used to erase it by rendering a
+ * `name` fallback at the same weight as a display name (design round 1, D4),
+ * which reads an email address as "the person". */
+export type AccountVoice = "human" | "login" | "ordinal";
 
 /**
  * What to call one account.
@@ -87,22 +91,27 @@ export function accountChoiceLabel(
 /**
  * The voice the label is read in.
  *
- * A display name is a person's name; a login is a machine string. The fallback is
- * machine voice too, because it is a position rather than an identity.
+ * A display name is a person's name; a login is a machine string; the positional
+ * fallback is a position, which leads the row in the app's own voice rather than
+ * the machine one (design round 2, N2).
  */
 export function accountChoiceVoice(
 	account: WebauthnAccountChoice | null | undefined,
 ): AccountVoice {
-	return (account?.displayName?.trim() ?? "") ? "human" : "machine";
+	if ((account?.displayName?.trim() ?? "") !== "") return "human";
+	if ((account?.name?.trim() ?? "") !== "") return "login";
+	return "ordinal";
 }
 
 /** The second line of a row whose site stored no name for the credential.
  *
  * Said rather than left blank (UX round 1, U1; design round 1, D9): a chooser
  * offering three ordinals gives no basis for a choice, and a row that explains
- * it is one the user can at least cancel deliberately. */
+ * it is one the user can at least cancel deliberately. The recovery clause is
+ * UX round 2's U8: the row said what the pick decides and not what to do when it
+ * is the wrong one, which is the only thing a user in this state can act on. */
 export const UNNAMED_ACCOUNT_DETAIL =
-	"The site stored no name for this passkey.";
+	"The site stored no name for this passkey. If it is the wrong one, sign out and ask the site again.";
 
 /**
  * The second line for an account, or null when there is nothing to add.
@@ -158,12 +167,16 @@ export function chooserPageNote(request: WebauthnChoiceRequest): string | null {
 		: null;
 }
 
-/** How many further requests are waiting behind the one on screen. */
+/** How many further requests are waiting behind the one on screen.
+ *
+ * REQUESTS, not sites (design round 2, N3; UX round 2, U7): main's pending map is
+ * keyed by request id with no dedupe by relying party, so two tabs of one site
+ * both asking would make "2 more sites" false. The count is real either way. */
 export function chooserQueueNote(waiting: number): string | null {
 	if (waiting <= 0) return null;
 	return waiting === 1
-		? "One more site is waiting for a passkey."
-		: `${waiting} more sites are waiting for a passkey.`;
+		? "One more passkey request is waiting."
+		: `${waiting} more passkey requests are waiting.`;
 }
 
 /** The sentence a request that ended without the user leaves behind.
@@ -191,11 +204,6 @@ export function settledChooserCopy(
 			return {
 				title: "That passkey was not offered",
 				body: "The choice did not name a passkey this site offered, so the request was cancelled. Try again from the site.",
-			};
-		case "no-accounts":
-			return {
-				title: "No passkey to choose",
-				body: "This Mac offered no passkey for the site, so the request was cancelled.",
 			};
 		default:
 			return null;

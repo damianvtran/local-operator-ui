@@ -30,7 +30,9 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/webauthn";',
 			'export * from "./src/renderer/src/features/browser/model/webauthn-chooser";',
+			'export * from "./src/renderer/src/features/browser/model/webauthn-panel";',
 			'export * from "./src/shared/webauthn-request";',
+			'export * from "./src/renderer/src/shared/browser-webauthn-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -65,7 +67,13 @@ const {
 	chooserLead,
 	chooserPageNote,
 	chooserQueueNote,
+	chooserPanel,
+	endingFor,
 	parseWebauthnRequest,
+	noteWebauthnRequest,
+	clearWebauthnRequest,
+	replaceWebauthnRequests,
+	webauthnRequestsSnapshot,
 	settledChooserCopy,
 	UNNAMED_ACCOUNT_DETAIL,
 	accountChoiceLabel,
@@ -239,7 +247,10 @@ test("the signature probe spawns codesign only for a packaged macOS bundle", asy
 	assert.deepEqual(calls[1][1], [
 		"-d",
 		"--entitlements",
-		":-",
+		"-",
+		// `--xml` is what keeps the read an XML plist rather than codesign's
+		// human-readable dump, without the deprecated `:` path spelling.
+		"--xml",
 		"/Applications/Local Operator.app",
 	]);
 
@@ -732,15 +743,17 @@ test("a nameless multi-match is explained rather than offered as an arbitrary ch
 		}),
 		/More than one of your passkeys matches/,
 	);
-	// The voice follows the field the label came from (design round 1, D4).
-	assert.equal(accountChoiceVoice(nameless[0]), "machine");
+	// The voice follows the field the label came from (design round 1, D4; the
+	// positional fallback gained its own voice in round 2, N2, because a position is
+	// neither a person nor a machine string).
+	assert.equal(accountChoiceVoice(nameless[0]), "ordinal");
 	assert.equal(
 		accountChoiceVoice({ credentialId: "a", displayName: "Ada", name: "a@x" }),
 		"human",
 	);
 	assert.equal(
 		accountChoiceVoice({ credentialId: "a", displayName: null, name: "a@x" }),
-		"machine",
+		"login",
 	);
 	// And nothing at all for a request that came from no page.
 	assert.equal(chooserPageNote(request), null);
@@ -749,9 +762,12 @@ test("a nameless multi-match is explained rather than offered as an arbitrary ch
 		"The page asking is \u201cQuincy Beginnings\u201d.",
 	);
 	// The requests waiting behind are named, not hidden (reviewer round 1, 7).
+	// REQUESTS, not sites: main keys its pending map by request id with no dedupe
+	// by relying party, so two tabs of one site would make "2 more sites" false
+	// (design round 2, N3; UX round 2, U7).
 	assert.equal(chooserQueueNote(0), null);
-	assert.equal(chooserQueueNote(1), "One more site is waiting for a passkey.");
-	assert.equal(chooserQueueNote(2), "2 more sites are waiting for a passkey.");
+	assert.equal(chooserQueueNote(1), "One more passkey request is waiting.");
+	assert.equal(chooserQueueNote(2), "2 more passkey requests are waiting.");
 });
 
 test("only the endings the user did not choose carry copy", () => {
@@ -759,16 +775,108 @@ test("only the endings the user did not choose carry copy", () => {
 	// dismissal is the user's own act and gets no paragraph.
 	assert.equal(settledChooserCopy("chosen"), null);
 	assert.equal(settledChooserCopy("dismissed"), null);
-	for (const outcome of [
-		"expired",
-		"host-stopped",
-		"credential-not-offered",
-		"no-accounts",
-	]) {
+	// No `no-accounts` member: a request Electron raises with nothing to offer is
+	// answered before it is ever pending, so the state could never be shown
+	// (agent review round 2, R2).
+	for (const outcome of ["expired", "host-stopped", "credential-not-offered"]) {
 		const copy = settledChooserCopy(outcome);
 		assert.ok(copy, `${outcome} has copy`);
 		assert.ok(copy.title.length > 0 && copy.body.length > 0);
 	}
+});
+
+test("the mirror merges main's snapshot instead of overwriting what it holds", () => {
+	/*
+	 * Agent review round 2, N1. The pull used to REPLACE the mirror with main's
+	 * answer, which is correct only because main sets its pending entry before it
+	 * notifies — so a push that arrived between the invoke and the reply is always
+	 * present in the snapshot. That is an ordering coincidence between two adjacent
+	 * lines in `src/main/webauthn.ts`, and overwriting would silently drop a request
+	 * if they were ever reordered. Merging makes the mirror order-independent.
+	 */
+	const entries = () => webauthnRequestsSnapshot();
+	for (const entry of entries()) clearWebauthnRequest(entry.requestId);
+
+	const first = {
+		requestId: "req-1",
+		relyingPartyId: "one.test",
+		accounts: [{ credentialId: "a", displayName: null, name: null }],
+		tabId: 1,
+		pageTitle: null,
+	};
+	const second = { ...first, requestId: "req-2", relyingPartyId: "two.test" };
+	noteWebauthnRequest(first);
+	// A snapshot taken before `second` was pushed: the push must survive the pull.
+	replaceWebauthnRequests([first]);
+	noteWebauthnRequest(second);
+	replaceWebauthnRequests([first, second]);
+	assert.deepEqual(
+		entries().map((entry) => entry.requestId),
+		["req-1", "req-2"],
+		"main's order first, and nothing the mirror already held is dropped",
+	);
+
+	// A settle is what removes an entry, and only the one it names.
+	assert.equal(clearWebauthnRequest("req-1")?.requestId, "req-1");
+	assert.deepEqual(
+		entries().map((entry) => entry.requestId),
+		["req-2"],
+	);
+	clearWebauthnRequest("req-2");
+});
+
+test("a live request is never hidden behind an ending, and an ending cancels nothing", () => {
+	/*
+	 * THE ROUND-2 BLOCKER, as a property rather than as a copy change (agent review
+	 * round 2, R1). Round 1 held the ending in a single `notice` slot beside the
+	 * queue; with two requests queued the oldest expiring rendered the ending
+	 * INSTEAD of the live request's rows, and the only button on screen — the
+	 * ending's Close — ran the live branch's answer with nothing, cancelling a
+	 * request the user had never seen. The old behaviour fails the first assertion
+	 * below: it had no panel at all, and its ending state was reachable while a
+	 * request was still answerable.
+	 */
+	const live = {
+		requestId: "req-new",
+		relyingPartyId: "second.test",
+		accounts: [{ credentialId: "credB", displayName: null, name: null }],
+		tabId: 2,
+		pageTitle: null,
+	};
+	const ending = {
+		requestId: "req-old",
+		title: "That passkey request expired",
+		body: "Nobody chose a passkey within a minute.",
+	};
+
+	const both = chooserPanel({ requests: [live], ending, answering: false });
+	assert.equal(both.kind, "request");
+	assert.equal(both.request.requestId, "req-new");
+	// The ending is not lost, it waits: it is shown once nothing is answerable.
+	const afterQueue = chooserPanel({ requests: [], ending, answering: false });
+	assert.equal(afterQueue.kind, "ending");
+	assert.equal(afterQueue.body, ending.body);
+	// And the panel the user presses Close on holds no request at all, which is
+	// what makes "the ending's press cannot answer anything" structural.
+	assert.equal("request" in afterQueue, false);
+	assert.equal(
+		chooserPanel({ requests: [], ending: null, answering: false }).kind,
+		"none",
+	);
+
+	// The queue behind the offered request is counted, oldest first.
+	const queued = chooserPanel({
+		requests: [live, { ...live, requestId: "req-third" }],
+		ending: null,
+		answering: false,
+	});
+	assert.equal(queued.waitingBehind, 1);
+
+	// Only an ending the user did not cause produces one, and it is tied to the
+	// request it ended (so a dismissal settles that one and nothing else).
+	assert.equal(endingFor("req-1", "chosen"), null);
+	assert.equal(endingFor("req-1", "dismissed"), null);
+	assert.equal(endingFor("req-1", "expired")?.requestId, "req-1");
 });
 
 test("an inbound chooser payload is validated once, for both channels", () => {

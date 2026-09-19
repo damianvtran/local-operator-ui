@@ -789,6 +789,12 @@ export const STORIES = [
 	 * that the Touch ID sentence stays pinned under it.
 	 */
 	["browser-webauthn-dialog--several-named", 1024, 620],
+	// The Answering state is the one state the app-side rig cannot hold (the preload
+	// object refuses the patch, and holding it from main would freeze the process
+	// that serves the screenshot), so the dimming rule design round 2 found broken
+	// is captured here — disabled rows and the pinned cue — against the enabled
+	// state above it.
+	["browser-webauthn-dialog--answering", 1024, 620],
 	["browser-webauthn-dialog--nameless", 1024, 660],
 	["browser-webauthn-dialog--long-names", 1024, 620],
 	["browser-webauthn-dialog--many-accounts", 1024, 900],

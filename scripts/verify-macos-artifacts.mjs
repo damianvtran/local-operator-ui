@@ -24,6 +24,7 @@ import {
 	existsSync,
 	lstatSync,
 	openSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	statSync,
@@ -69,13 +70,57 @@ const XCRUN = "/usr/bin/xcrun";
  * reached the signature would ship a passkey feature that can never work, with
  * nothing in the pipeline saying so.
  */
-export const WEBAUTHN_GROUP_PATTERN =
-	/<key>keychain-access-groups<\/key>\s*<array>[\s\S]*?<string>[^<]*\.webauthn<\/string>/;
+/**
+ * The bundle identifier an app declares, read from its own `Info.plist`, or null
+ * when it cannot be read (no plist, or one this does not parse).
+ *
+ * It is here because the WebAuthn group is `<TEAM_ID>.<THIS bundle id>.webauthn`,
+ * and a shape-only check was satisfiable by a group for a DIFFERENT bundle id or
+ * by a `.webauthn` string in some other array — a release that passes such a
+ * check ships an inert passkey feature, which is the hole this check exists to
+ * close (reviewer round 2, R4). The team id is a release secret and stays
+ * unverifiable here; the bundle id is not a secret and is read off the artifact.
+ */
+export function bundleIdentifierFromInfoPlist(appPath) {
+	try {
+		const plist = readFileSync(join(appPath, "Contents", "Info.plist"), "utf8");
+		const match = plist.match(
+			/<key>CFBundleIdentifier<\/key>\s*<string>([^<]+)<\/string>/,
+		);
+		return match?.[1]?.trim() || null;
+	} catch {
+		return null;
+	}
+}
 
-/** Whether an entitlements plist (from `codesign -d --entitlements :-`) carries a
- * WebAuthn keychain access group. Exported so its test can assert both verdicts. */
-export function hasWebauthnEntitlement(plistText) {
-	return WEBAUTHN_GROUP_PATTERN.test(plistText);
+/**
+ * The WebAuthn group an entitlements plist carries, or null.
+ *
+ * The array is BOUNDED at its own `</array>` rather than searched with an
+ * open-ended `[\s\S]*?`: an unbounded walk leaves the array it started in, so a
+ * `.webauthn` string anywhere later in the plist satisfied the old pattern
+ * (reviewer round 2, R4). With a bundle id in hand the value must also be for
+ * THIS app.
+ */
+export function webauthnEntitlementGroup(plistText, bundleId) {
+	const array = plistText.match(
+		/<key>keychain-access-groups<\/key>\s*<array>([\s\S]*?)<\/array>/,
+	);
+	if (!array) return null;
+	for (const [, value] of array[1].matchAll(/<string>([^<]*)<\/string>/g)) {
+		if (!value.endsWith(".webauthn")) continue;
+		if (bundleId && !value.endsWith(`.${bundleId}.webauthn`)) continue;
+		return value;
+	}
+	return null;
+}
+
+/** Whether an entitlements plist (from `codesign -d --entitlements -`) carries a
+ * WebAuthn keychain access group for `bundleId` (or of that shape at all, when
+ * the bundle id could not be read). Exported so its test can assert both
+ * verdicts. */
+export function hasWebauthnEntitlement(plistText, bundleId) {
+	return webauthnEntitlementGroup(plistText, bundleId) !== null;
 }
 
 /**
@@ -88,6 +133,7 @@ export function hasWebauthnEntitlement(plistText) {
  */
 export function artifactChecks({ appPath, dmgPath }) {
 	const checks = [];
+	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
 	if (appPath) {
 		checks.push(
 			{
@@ -121,12 +167,19 @@ export function artifactChecks({ appPath, dmgPath }) {
 				id: "app-webauthn-entitlement",
 				scope: "app",
 				target: appPath,
-				description: "the signature carries the WebAuthn keychain access group",
-				// `:-` writes the plist to stdout and exits 0 with empty output for a
+				description: bundleId
+					? `the signature carries a WebAuthn keychain access group for ${bundleId}`
+					: "the signature carries a WebAuthn keychain access group (shape only: the app's Info.plist did not name a bundle id)",
+				// `-` writes to stdout and `--xml` keeps it an XML plist: measured on
+				// an ad-hoc bundle signed with the committed plist, `-` alone prints a
+				// human-readable `[Dict] [Key] [Value]` dump the pattern below cannot
+				// read, and `:-` prints the XML but warns that the `:` path spelling is
+				// deprecated (QA round 2, Q1 — the warning is real, the suggested
+				// spelling was not the fix). It exits 0 with empty output for a
 				// signature that has none — which is exactly the failure this catches.
 				command: CODESIGN,
-				args: ["-d", "--entitlements", ":-", appPath],
-				expect: (result) => hasWebauthnEntitlement(result.stdout),
+				args: ["-d", "--entitlements", "-", "--xml", appPath],
+				expect: (result) => hasWebauthnEntitlement(result.stdout, bundleId),
 			},
 		);
 	}
