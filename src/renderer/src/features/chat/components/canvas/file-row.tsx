@@ -139,7 +139,36 @@ const FileRowItemComponent = ({
 	const Icon = getIconForFileType(document.type);
 
 	return (
-		<li className={cn("group relative")} data-tour-tag="file-row">
+		/*
+		 * THE GROUND IS ON THE ROW, not on the button inside it (design round 2,
+		 * D11). The actions menu is the button's SIBLING — it has to be, because the
+		 * button is the row and the menu must not open a link inside it — so a ground
+		 * painted by the button dropped the instant the pointer reached the `⋯`: the
+		 * row read as un-hovered while one of its own controls was under the pointer.
+		 * Hovering anywhere in the row, menu included, now keeps it, which is also
+		 * what makes the reveal stop looking like a state of its own.
+		 *
+		 * `hover:bg-row-hover` and NOT a ground role: `scripts/chat-sidebar-selection.test.mjs`
+		 * refuses `hover:bg-elevated` on a row surface, because `elevated` is also
+		 * every menu, popover, tooltip and dialog in the app — a ground cannot be a
+		 * row's state. This file is on that list now rather than exempt from it (see
+		 * `ROW_SURFACES`), which is what the round-2 review asked for: the guard was
+		 * passing only because a new surface is not enumerated by default.
+		 *
+		 * `rowCurrent` goes on the SAME element `hover:bg-row-hover` does, for the
+		 * reason the sidebar's own row states: a hover variant outranks a bare
+		 * background in the cascade, so without `rowCurrent`'s own
+		 * `hover:bg-row-selected` a row the user is IN would be repainted as the row
+		 * the pointer is over.
+		 */
+		<li
+			className={cn(
+				"group relative rounded-sm",
+				"transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				current && rowCurrent,
+			)}
+			data-tour-tag="file-row"
+		>
 			<Tooltip content={tooltip}>
 				<button
 					ref={buttonRef}
@@ -152,14 +181,6 @@ const FileRowItemComponent = ({
 					 */
 					className={cn(
 						"flex h-9 w-full items-center gap-2 rounded-sm py-0 pr-8 pl-2 text-left",
-						"transition-colors duration-fast ease-out-quart",
-						"hover:bg-elevated",
-						// The shared current-row role, applied rather than re-spelled: it
-						// is declared once in the chat panel and its `hover:` half is what
-						// stops the hover step above from repainting a row the user is IN
-						// (design D22, and `scripts/chat-sidebar-selection.test.mjs` fails
-						// on a second spelling of its terms).
-						current && rowCurrent,
 					)}
 				>
 					<span className={cn("flex w-7 shrink-0 items-center justify-center")}>
