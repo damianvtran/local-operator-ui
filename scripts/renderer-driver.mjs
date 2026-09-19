@@ -6896,6 +6896,27 @@ async function sceneCanvasFreshness(cdp, app) {
 		JSON.stringify(overflowLeftover),
 	);
 
+	/*
+	 * AND A TAB SWITCH SAYS NOTHING, which is the other half of the report's contract
+	 * (UX round 1, U1). The held document was reopened by the phase above - dirty,
+	 * held, still in `files` - so pressing another tab unmounts its editor and runs
+	 * exactly the `closeBuffer` the close path runs. The report is gated on the store
+	 * for this reason: a document that is still open was not closed, and a message
+	 * here would put the close's sentence under the reader's nose every time they
+	 * switched tabs away from something with un-written words. The instrument for
+	 * "nothing was said" is the toast itself, read after the unmount has settled.
+	 */
+	await verb(cdp, "press", { selector: tabFor(closeHeld) });
+	await wait(400);
+	await verb(cdp, "press", { selector: tabFor(overflowSubjects[0]) });
+	await wait(700);
+	const switchToast = await toastText(cdp);
+	check(
+		"and a tab SWITCH raises no message: the document is still open, so nothing was closed",
+		switchToast === null,
+		JSON.stringify(switchToast),
+	);
+
 	const closeFrames = [
 		closeCleanFrame,
 		closeSettledFrame,
