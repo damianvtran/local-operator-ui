@@ -108,7 +108,23 @@ branch gives the settled row its CATEGORY ink back — `read` -> `info`, `meta` 
 `accentAlt`, the rest the neutral ramp — and the set a reader opened still showed
 the ink it replaced, so the operator's own report was reproducing in the
 repository's own evidence. Every frame below was re-captured from the branch's
-own static Storybook build at `2fe1f8e982`, which is the tree that ships this.
+own static Storybook build, in TWO passes that this lineage carries: the round-1
+pass shot them at the tree this fold spells `4271c27c6` — the commit
+`manifest.json`'s `head` names, whose `dirtyWorkingTree: true` discloses that the
+round's own edits were uncommitted when the run started — and `5f0ff1ea6`, the
+remediation commit that re-shot the ten directories this round's ink change
+repaints, is where this set's shipped bytes come from. NEITHER SPELLING IS THE
+CLAIM a later fold inherits: the claim is the derivation, and the derivation is
+`git log --format=%h -1 -- docs/evidence/chat-tool-rows/states/<theme>.webp`,
+which answers `5f0ff1ea6` for every frame in the ten directories below and an
+earlier pass's commit for every frame outside them — so a fold that re-spells the
+commits moves the hash and not the sentence. The PRE-REBASE spelling `2fe1f982`,
+which earlier revisions of this note carried, resolves on no clone a reviewer
+has, so this record does not cite it. Nor is "the tree that ships this" a claim
+either pass can make on its own: the frames ship in THIS tree because every
+commit above `5f0ff1ea6` is this record or its stamps, and a comment cannot paint
+a pixel — which is the property that makes the citation a claim about `src/`
+rather than about the tip's SHA.
 
 **WHICH SETS CARRY THE TWO INKS, so a reader knows where to look.** The ledger's
 category ink is visible in these, and they are the ones a round about the ink
@@ -143,13 +159,87 @@ ground and a ratio read from them would understate it.
 `meta` tool. `operator-spacing-cases` is the one that does, which is why it is
 named above rather than left to be found.
 
+**The hovered set photographs ONE of the ten re-seated palettes, and that gap is
+recorded here rather than left to be found.** `operator-spacing-cases-hovered`
+sweeps the twelve-theme list — `dracula`, `dune`, `iceberg`, `localOperatorDark`,
+`localOperatorLight`, `monokai`, `neon`, `obsidian`, `radient`, `sage`, `synth`,
+`tokyoNight` — and of the ten palettes this branch re-seated so the identity ink
+would clear the row's state ground, exactly ONE (`monokai`) is in it. So the six
+the design round named as the worst for that floor — `kanagawaWave`, `oneDark`,
+`nightfox`, `nord`, `solarizedDark`, `everforest` — have **no hovered frame at
+all**: what the fix ships for them is a gate assertion over all fifty-nine
+palettes plus one photographed palette, and a reader cannot LOOK at the six the
+finding was written about. The floor is asserted numerically either way, which is
+why this is recorded as a coverage gap rather than left as a claim of coverage;
+closing it is one `--only` run —
+`node scripts/capture-evidence.mjs <storybook-url> --only=chat-tool-rows--operator-spacing-cases --themes=kanagawaWave,oneDark,nightfox,nord,solarizedDark,everforest --allow-backend`
+(the hovered entry is that story's `b1` variant, so the six frames land in this
+directory) — and the reason it did not happen in this pass is the design round's
+own measurement: its attempt died in the rig's launch/hang failure, the one
+recorded under the traps below.
+
+**The same move reaches a surface OUTSIDE this set, and its frames were not
+re-taken.** Ten palettes' `accentAlt` moved in `5f0ff1ea6`, and `accentAlt` is
+what the theme picker's miniature paints (`theme-selector.tsx`'s `ThemeSwatch`, a
+`bg-accent-alt` bar beside the `bg-accent` one), so
+`docs/evidence/settings-appearance/gallery/` still carries the
+PRE-REMEDIATION fill on tiles of exactly the surface a reader opens to judge the
+theme work — decisively for `ayuMirage`, `catppuccinMocha` and `nightfox`. No
+sentence in THIS set's record could show that, so the disclosure, its measured
+tile list and the command that closes it live in that set's own README
+(`../settings-appearance/README.md`, section "The tiles this branch left stale")
+and in `manifest.json`'s `themePortCapture.staleTilesNote`; this paragraph is the
+pointer, not the record.
+
 **What this re-capture does NOT carry.** The set's other directories were not
 re-shot in that pass — the host was at load 90-295 for the window it ran in and
 `capture-evidence.mjs` allows Chrome 30 s to report its debug port, which a cold
-start on this machine missed repeatedly. `docs/evidence/manifest.json`'s
-`partialCapture` names the directories that WERE refreshed, so read a frame's
-provenance there rather than from this note; a directory not named in it still
-carries the previous tree's ink.
+start on this machine missed repeatedly.
+
+**THIS PASS'S OWN LIST, because `partialCapture` cannot give it.** An earlier
+revision of this note sent a reader to `docs/evidence/manifest.json`'s
+`partialCapture` "for a frame's provenance", and that field does not answer the
+question it was being asked. Its `refreshedStories` is a UNION across every pass
+the block records — 602 entries at this head — so a directory named there was
+not necessarily touched by THIS pass, and a reader who took presence in that
+list as "this pass re-shot it" would conclude backwards for most of them:
+measured against this set, 41 of its 49 frame-bearing directories are named
+there and **31 of those 41 belong to other passes**. What this pass rewrote is
+the ten directories the ink change repaints — `states`, `names-and-fallbacks`,
+`receipt-rows`, `receipt-hostile-sender`, `operator-spacing-cases`,
+`operator-spacing-cases-hovered`, `screenshots`, `screenshots-two`, `narrow` and
+`mixed-run` — and it is derivable from the tree rather than from the field:
+`git log --format=%h -1 -- docs/evidence/chat-tool-rows/<dir>/<theme>.webp`
+answers `5f0ff1ea6` for every frame in those ten and an earlier pass's commit
+for every frame outside them. A directory not on that list still carries the
+previous tree's ink.
+
+**The set's most glanceable artefact is NOT in that list.**
+`contact-sheet/tool-row-states.png` and `tool-row-states-colour-themes.png` were
+not re-composed, so the sheet's "after" column still shows the HUELESS pass.
+The sheet is labelled with its own head (`4755b126c`) and the section on the
+colour-application pass explains the pair, so the sheet is not false — but a
+reader who opens the sheet before the frames sees the pre-fix state under an
+"after" heading, and that is worth knowing before the columns are read.
+
+**Three traps for the next person who re-shoots this set**, all measured on this
+host rather than inferred. (1) A `capture-evidence` run REWRITES
+`docs/evidence/manifest.json` and leaves any theme outside the sweep's own list
+as an untracked frame, so `node --test scripts/evidence-manifest.test.mjs` then
+fails with `partialCapture claims N refreshed frames, but M committed frames
+stand in the directories refreshedStories names at HEAD` —
+`git checkout -- docs/evidence && git clean -f docs/evidence` restores it, and
+that the same test is 35 pass / 0 fail on the restored tree is what shows the
+failure is the rig's write rather than the environment (QA round 1, Q-4). (2)
+The rig DELETES every `.webp` outside a declared set (`clearSweptFrames`,
+`capture-evidence.mjs`), so a narrowed run against a tree whose frames are not
+committed takes the committed ones with it: commit or stash first, and check
+`git status docs/evidence` before the run. (3) The rig gives Chrome 30 s to
+report its debug port (`capture-evidence.mjs:4765`); on a loaded host that line
+failed four launches in five this round, and the one launch that got through
+wrote nine frames and then hung in a CDP await for twelve minutes without
+reporting — its browser was reaped by exact pid, which is why none was left
+behind.
 
 ## The turn stamps (the `feat/transcript-timestamps` branch)
 

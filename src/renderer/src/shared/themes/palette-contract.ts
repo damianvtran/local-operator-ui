@@ -624,6 +624,20 @@ export type ThemePalette = {
 	 *   disagreed in three ways (the contract's 8.01 was the pair's value BEFORE
 	 *   the register re-solve moved both of its values; the shipped pair measured
 	 *   8.19).
+	 *
+	 *   THE FIVE PINS ARE ACCEPTED RESIDUALS, NOT FIXES, and this note says so
+	 *   where the pins are explained rather than only in a review thread, because a
+	 *   later reader skims labels: on a pinned palette the row still paints `read`
+	 *   and `meta` as one hue at two weights (the three `catppuccin*` palettes) or
+	 *   as the same ink outright (the palettes whose `info` IS their `accent`), and
+	 *   re-seating was MEASURED and refused rather than postponed. What tells the
+	 *   two families apart on those palettes is the row's own GLYPH — the channel
+	 *   that survives when the ink cannot spend a second hue: `read` draws the page
+	 *   (`tool-glyphs.ts`'s `FileText`) while the coordination family draws its own
+	 *   marks (`Users` for `task`/`agent`, `Send`, `Clock`, `ListChecks`, and the
+	 *   wrench the TUI itself gives `hub`/`ask`), and `mcp__*` draws the plug. A
+	 *   pinned palette should send the reader to where the answer IS — the row's
+	 *   shape — rather than leave the note saying only that a floor is waived.
 	 * - **ΔE00 >= 8 from `info`, at the role's decorative sites** — the reduced
 	 *   floor, deliberately lighter: `info` is the cool counterweight the port
 	 *   mapped `signal` onto, so on the palettes whose second hue is in that family

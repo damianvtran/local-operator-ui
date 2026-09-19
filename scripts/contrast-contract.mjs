@@ -2315,14 +2315,23 @@ const findPerceptibleException = (theme, role, ground, got) => {
  *
  *    FIVE PALETTES CANNOT REACH IT, and they are RECORDED rather than silently
  *    exempted, with the constraint that refuses each named on the pin. Re-seating
- *    was measured first and refused: on `catppuccinMocha` - the binding value,
- *    and the palette whose second hue sits 2.68 degrees off `info`'s - the
- *    cheapest value that clears 15 at the role's own hue also drops BELOW the 8
- *    it already held against `info` (measured 6.24), and every value that clears
- *    both is drained to the chroma floor (C* 15 at L* 89-90), which is the one
- *    way `ALT_ACCENT_CHROMA_FLOOR`'s own comment says the role stops being a hue.
+ *    was measured first and refused, and the SEARCH SPACE is named here because
+ *    this figure has been mis-quoted twice: on `catppuccinMocha` - the binding
+ *    value, and the palette whose second hue sits 2.68 degrees off `info`'s -
+ *    lifting `L*` to the ground the row paints the ink on (the 4.5:1 text floor
+ *    on `elevated`, which lands on the hex `#7AA3DD` at the held hue 272.6 and
+ *    `C*` 33.97) walks the value into `info`: it reads ΔE00 6.08 there, BELOW
+ *    the 8 it already held. Every value that clears both is instead drained to
+ *    the chroma floor (C* 15 at L* 89-90), which is the one way
+ *    `ALT_ACCENT_CHROMA_FLOOR`'s own comment says the role stops being a hue.
  *    So the palette cannot move and the assertion keeps its bound; the five are
- *    pinned at their measured ΔE00 with the reason.
+ *    pinned at their measured ΔE00 with the reason, and the pins are ACCEPTED
+ *    RESIDUALS rather than fixes. RECOMPUTED ONCE, because the two records
+ *    disagreed: 6.00 was the crossing read one stop too far (`L*` 66.4, the
+ *    shipped value's own lightness) and 6.24 was a read on unquantized `Lab`
+ *    values (which recompute to 6.22); 6.08 is the hex read at the crossing,
+ *    reproducible with this file's own `deltaE`, and it is what both records
+ *    now state.
  *
  * 2. `info` vs `accent`, at 8: the settled `read` ink against the ink a RUNNING
  *    row wears. The bound is the file's "reliably take different names rather
@@ -2382,7 +2391,7 @@ const PAIR_PINS = [
 		b: "info",
 		floor: IDENTITY_PAIR_FLOOR,
 		got: 8.58,
-		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - the cheapest value clearing 15 at this hue drops to ΔE00 6.24 from `info` (below the 8 it already held) and every value clearing both is at C* 15, the chroma floor that makes the role a second grey",
+		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - lifting `L*` to the ground the row paints it on (the 4.5:1 text floor on `elevated`, hex `#7AA3DD`) drops it to ΔE00 6.08 from `info` (below the 8 it already held) and every value clearing both is at C* 15, the chroma floor that makes the role a second grey",
 	},
 	{
 		theme: "catppuccinMacchiato",
