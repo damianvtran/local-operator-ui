@@ -1227,7 +1227,7 @@ export type PendingInstallMarker = {
 	 * "is an install in flight" is the job (`launchdJobLoaded`). The app's own path
 	 * (`src/main/update-shipit.ts`) spawns ShipIt itself, so there is no job to ask
 	 * about and the installer's own pid is the answer instead - which is why this
-	 * field exists and why `installRunningNow` prefers it.
+	 * field exists and why `installLivenessNow` prefers it.
 	 *
 	 * Required rather than optional so every write site says which path it took: the
 	 * fallback is `installerPid: null` and nothing else, which is the same marker
@@ -2025,6 +2025,19 @@ export type InstallLiveness = {
 	 */
 	jobState: InstallJobState;
 	decidedBy: "installer-pid" | "install-job";
+	/**
+	 * WHICH fact made an `installer-pid` marker read as live, when it did.
+	 *
+	 * `pid` is the installer the marker names, still running; `elsewhere` is this
+	 * app's own ShipIt found under a different pid, which is the case
+	 * `installerElsewhere` exists for; `null` is an install the machine says is over
+	 * (or a marker whose liveness was never asked). Carried rather than folded into
+	 * the boolean because the log line has to name the process a person can go and
+	 * look at, and the one the marker names is not always the one doing the work
+	 * (review R2-2) - and because this is the only place that distinction is
+	 * decided, so no reader has to re-derive it.
+	 */
+	installerSignal: "pid" | "elsewhere" | null;
 };
 
 /**
@@ -2054,9 +2067,20 @@ export function installLivenessText(
 	 */
 	installerPid?: number | null,
 ): string {
-	return liveness.decidedBy === "installer-pid"
-		? `the installer this app started (pid ${installerPid ?? "unknown"}) is still running`
-		: `install job ${liveness.jobState}`;
+	if (liveness.decidedBy !== "installer-pid") {
+		return `install job ${liveness.jobState}`;
+	}
+	const named = installerPid ?? "unknown";
+	/*
+	 * The pid the marker names is dead in the `elsewhere` case, so naming it as the
+	 * process at work would send the reader to a pid that answers with nothing - or,
+	 * worse, with whatever reused it. Say which of the two is holding, and say that
+	 * the named one has gone rather than leaving its absence to be inferred (review
+	 * R2-2).
+	 */
+	return liveness.installerSignal === "elsewhere"
+		? `the install this app started is still running (pid ${named} has gone; its ShipIt is still at work)`
+		: `the installer this app started (pid ${named}) is still running`;
 }
 
 /**
@@ -2089,6 +2113,8 @@ export function installLivenessNow(input: {
 			installerRunning: false,
 			jobState: input.jobState(),
 			decidedBy: "install-job",
+			// No pid was asked about, so no pid-shaped fact decided.
+			installerSignal: null,
 		};
 	}
 	const pidIsLive = installerIsAlive({
@@ -2097,14 +2123,18 @@ export function installLivenessNow(input: {
 		shipItPath: input.shipItPath,
 		stagingRoot: input.stagingRoot,
 	});
+	// The pid first, and a listing only when it has stopped being the installer:
+	// one pid is a snapshot, and the process that inherited the install may not be
+	// the process that started it (see `installerElsewhere`, which also states the
+	// direction this fails in). Asked only in that branch, so the common case pays
+	// no second `ps` - and `installerSignal` records which of the two answered,
+	// because the log line names a process by pid (review R2-2).
+	const elsewhere = pidIsLive ? false : input.installerElsewhere();
 	return {
-		// The pid first, and a listing only when it has stopped being the installer:
-		// one pid is a snapshot, and the process that inherited the install may not be
-		// the process that started it (see `installerElsewhere`, which also states the
-		// direction this fails in).
-		installerRunning: pidIsLive || input.installerElsewhere(),
+		installerRunning: pidIsLive || elsewhere,
 		jobState: "unread",
 		decidedBy: "installer-pid",
+		installerSignal: pidIsLive ? "pid" : elsewhere ? "elsewhere" : null,
 	};
 }
 
@@ -2438,10 +2468,15 @@ export function installInFlightPayload(
  * was already there. Three things this copy carries deliberately (review U4, U5,
  * U7):
  *
- * - the DURATION, in the same words the watchdog's own notice uses ("this can
- *   take a few minutes"), because the install already told the user that and a
- *   second message about one wait should not be silent on the only question it
- *   answers - how long am I waiting;
+ * - NO duration, and that is deliberate rather than an omission (QA round 2,
+ *   Q2). This notice used to carry the watchdog's old "this can take a few
+ *   minutes", which was that notice's own defect (UX U1) repeated here: on the
+ *   direct path the install this describes finishes in seconds, so the copy
+ *   over-promised the wait it was explaining, and the fallback path - which
+ *   really is minutes - is not distinguishable from it at this point. What is
+ *   left is the one sentence that is true and actionable on both, and the
+ *   install's own surface is where the scale is stated (
+ *   "usually a few seconds, occasionally a few minutes");
  * - the roofline for the click. macOS activates the app when its notification is
  *   clicked, and on this path that lands in another hold and another notice
  *   seconds later, so the copy SAYS a click will not open the app sooner rather
@@ -2465,7 +2500,7 @@ export function installLaunchHoldNotice(
 			: "Local Operator will open by itself when the install finishes.";
 	return {
 		title: "Local Operator is still updating",
-		body: `The update to version ${marker.targetVersion} is still installing — this can take a few minutes, and opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
+		body: `The update to version ${marker.targetVersion} is still installing — opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
 	};
 }
 
@@ -2665,6 +2700,20 @@ export function buildWatchdogPlan(input: {
 	 */
 	installerPid?: number | null;
 	/**
+	 * This app's own ShipIt, and its own staging root - the two facts that identify
+	 * the install's installer when the pid above is no longer it.
+	 *
+	 * The script's `installer_running` asks them of a process listing before it
+	 * declares the installer gone, which is the same pair `installerElsewhere`
+	 * requires on the app's side: without them the script and the app disagreed
+	 * about whether an install was still running in exactly the case that predicate
+	 * exists for (review R2-1), and the script's answer is the one that relaunches
+	 * the app. Optional, and empty means the script falls back to the pid alone -
+	 * the pre-R2-1 behaviour rather than a guess about another app's ShipIt.
+	 */
+	shipItPath?: string | null;
+	stagingRoot?: string | null;
+	/**
 	 * The last-resort bound, used only once the soft bound has arrived with the
 	 * install's job still loaded. Defaults to `WATCHDOG_HARD_TIMEOUT_SECONDS`;
 	 * an argument because a test cannot wait half an hour to see the difference
@@ -2779,6 +2828,13 @@ SHIPIT_JOB="\${LO_UPDATE_WATCHDOG_SHIPIT_JOB:-}"
 # signal and the job label above is not consulted at all - see install_live.
 INSTALLER_PID="\${LO_UPDATE_WATCHDOG_INSTALLER_PID:-}"
 TARGET_VERSION="\${LO_UPDATE_WATCHDOG_TARGET_VERSION:-}"
+# The two facts that identify this install's installer when the recorded pid is no
+# longer it: this app's own ShipIt, and this app's own staging root. Empty (an
+# older plan, or a platform the app could not resolve them on) means the second
+# half of installer_running declines rather than guessing - the pid alone decides,
+# which is exactly what this script did before review R2-1.
+SHIPIT_PATH="\${LO_UPDATE_WATCHDOG_SHIPIT_PATH:-}"
+STAGING_ROOT="\${LO_UPDATE_WATCHDOG_STAGING_ROOT:-}"
 # The two probes, from the platform the plan was built for. Empty means the
 # platform has no such tool and the signal is unavailable - not "the job is not
 # loaded" and not "the swap has not landed". shipit_loaded, swap_landed and
@@ -2791,15 +2847,43 @@ if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 fi
 now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
+# Whether ANY process is this install's ShipIt, for the pid that stopped being it.
+#
+# The same two facts installerElsewhere requires of a line in its listing: this
+# app's OWN ShipIt path AND a state plist under this app's OWN staging root. Both,
+# never either - this machine runs several other applications' ShipIt processes,
+# and a live foreign one must not be read as this install's.
+#
+# One listing per call and only reached when the recorded pid has stopped
+# answering, which is the same economy the app's own reader keeps: a live pid is
+# the whole answer (installer_running below).
+shipit_elsewhere() {
+	[ -n "$SHIPIT_PATH" ] && [ -n "$STAGING_ROOT" ] || return 1
+	ps -Ao command= -ww 2>/dev/null | grep -F "$SHIPIT_PATH" | grep -F "$STAGING_ROOT" >/dev/null 2>&1
+}
 # The installer the app spawned, alive or gone. A pid with nothing under it is
 # gone, which is the same question app_running asks of the app and the same one
-# the app's own reap asks of a watchdog. The app's own predicate is stricter than
-# this (installerIsAlive also reads the command line, because a false "alive"
-# there would refuse recovery forever); here the only cost of a stale pid being
-# reused is waiting out the bound, and the bound is what ends it.
+# the app's own reap asks of a watchdog.
+#
+# TWO STEPS, because the app's own reader has two (review R2-1: installLivenessNow
+# asks installerIsAlive, and installerElsewhere before it declares the installer
+# dead). One pid is a snapshot: the spawner execs ShipIt so the common case keeps
+# the pid, but a ShipIt that re-execs or forks internally would leave the recorded
+# pid dead while an install it is in the middle of continues - and a script that
+# read that as "the install is over" would relaunch the app into it, which is the
+# Code=-9 abort this whole change exists to remove.
+#
+# The one asymmetry is deliberate and it is in the FIRST step only: the app also
+# reads the pid's command line (installerIsAlive), because a false "alive" there
+# would make recovery refuse forever. Here the only cost of a stale pid being
+# reused is waiting out the bound, and the bound is what ends it - so this asks
+# kill -0 and spends no listing on a pid that answers. The second step is not
+# optional in the same way: its false negative is the direction that starts the
+# app into a live install.
 installer_running() {
 	[ -n "$INSTALLER_PID" ] || return 1
-	kill -0 "$INSTALLER_PID" 2>/dev/null
+	if kill -0 "$INSTALLER_PID" 2>/dev/null; then return 0; fi
+	shipit_elsewhere
 }
 # "The install is still running", from whichever signal this install has: the pid
 # the app spawned, or - for an install Squirrel submitted - the job. There is
@@ -2979,29 +3063,19 @@ while app_running; do
 	if [ "$(now)" -ge "$deadline" ]; then break; fi
 	sleep ${intervalSeconds}
 done
-# 1b. The app is gone, so an install is at work: say so a few seconds in, so the
-#     window that just vanished comes with an explanation. This is the moment the
-#     operator of 2026-09-13 was left guessing, and reopening the app four
-#     minutes later is what aborted their install. Two conditions, each of them a
-#     defect this notice had (UX U1):
+# 1b. The app is gone and an install is at work, so the window that just
+#     vanished owes the person an explanation a few seconds in. Only the PAUSE is
+#     here: the notice is raised at 2b below, once the liveness question has an
+#     answer (QA round 2, Q1).
 #
-#       - the app is still gone: a quit the user cancelled installs nothing, and
-#         nothing should be claimed;
-#       - the install is STILL RUNNING at the moment the notice is raised. Naming
-#         a duration was the other half of that defect: it promised minutes, and
-#         on the direct path the whole window is 2-5 s - so the notice arrived
-#         telling a person to keep closed an app ShipIt had already reopened. The
-#         instruction that matters, "don't reopen it", is the same on both paths
-#         and is all this says now.
-#
-#     With no signal to ask about, the notice is unconditional: an install that
-#     cannot be asked about cannot be shown to be over either, and staying silent
-#     there would be the original defect back again.
+#     It used to be raised from here, and that is the one thing this step could
+#     not do on Squirrel's path: the job is submitted as part of the quit, so
+#     launchd can answer 113 for the first seconds of the appear window below -
+#     which is exactly why that window exists - and a gate evaluated once, before
+#     the thing it gates on has appeared, suppressed the only notice the user was
+#     going to get in the moment they most needed it.
 if ! app_running; then
 	sleep ${announceSeconds}
-	if [ "$signal_known" -eq 0 ] || install_live; then
-		notify "Installing the update. Keep Local Operator closed until it opens again by itself."
-	fi
 fi
 # 2. An install Squirrel submitted starts as part of the quit, so it may not be
 #    visible the instant the app is gone: give it a bounded window to appear
@@ -3022,6 +3096,35 @@ if [ "$signal_known" -eq 1 ] && [ -z "$INSTALLER_PID" ]; then
 		if [ "$(now)" -ge "$appear_deadline" ] || [ "$(now)" -ge "$deadline" ]; then break; fi
 		sleep ${intervalSeconds}
 	done
+fi
+# 2b. The window that vanished, explained - and it is raised HERE rather than at
+#     1b so that on Squirrel's path it is asked once the job it asks about has
+#     been submitted (QA round 2, Q1). The two conditions are the ones the notice
+#     has to meet, each of them a defect it once had (UX U1):
+#
+#       - the app is still gone: a quit the user cancelled installs nothing, and
+#         nothing should be claimed;
+#       - the install is STILL RUNNING at the moment the notice is raised. Naming
+#         a duration was the other half of that defect: it promised minutes, and
+#         on the direct path the whole window is 2-5 s - so the notice arrived
+#         telling a person to keep closed an app ShipIt had already reopened. The
+#         instruction that matters, "don't reopen it", is the same on both paths
+#         and is all this says now.
+#
+#     What moving it costs: on Squirrel's path the notice now waits for the job to
+#     appear (the loop above breaks the moment it does, so that is a poll
+#     interval, not the whole window), and a job that never appears raises no
+#     notice at all - correct, because nothing is installing and the app is about
+#     to come back with its own failure panel. On the direct path the loop is
+#     skipped and this is the same instant the old code used.
+#
+#     With no signal to ask about, the notice is unconditional: an install that
+#     cannot be asked about cannot be shown to be over either, and staying silent
+#     there would be the original defect back again.
+if ! app_running; then
+	if [ "$signal_known" -eq 0 ] || install_live; then
+		notify "Installing the update. Keep Local Operator closed until it opens again by itself."
+	fi
 fi
 # 3. Wait for the install to be decided - by the job going, or by the swap
 #    landing. The soft bound ends this wait only when there is no loaded job
@@ -3104,6 +3207,11 @@ exit 0
 			// "which liveness signal is this install's" (see `install_live`).
 			LO_UPDATE_WATCHDOG_INSTALLER_PID:
 				input.installerPid != null ? String(input.installerPid) : "",
+			// The identity pair, empty rather than absent for the same reason as the pid:
+			// the script reads them with `:-` defaults and an empty value is the whole
+			// answer to "can this install's installer be recognised under another pid".
+			LO_UPDATE_WATCHDOG_SHIPIT_PATH: input.shipItPath ?? "",
+			LO_UPDATE_WATCHDOG_STAGING_ROOT: input.stagingRoot ?? "",
 			LO_UPDATE_WATCHDOG_TARGET_VERSION: input.targetVersion ?? "",
 			// Empty off macOS, which the script reads as "this signal is not available
 			// here" rather than as a negative answer (see `watchdogSignals`).
