@@ -627,3 +627,119 @@ test("the count badge announces its claim once, in every state", async () => {
 		assert.ok(!/\+\s*or more/.test(spoken), spoken);
 	}
 });
+
+/*
+ * ARCHIVING, at the join.
+ *
+ * The catalogue route takes `include_archived` (default false, asked for by this
+ * app); the search route takes it too (the sidebar's own control). What this
+ * module owns is the third thing: what a HIT may contribute, and which state a
+ * synthesized row should draw, given that an answer in hand may predate the press
+ * the user just made.
+ *
+ * The two cases that cannot be reached by reading either the wire or the control:
+ *
+ *   - A hit the answer carries as archived is NOT admitted while the control is
+ *     off. Two states collapse into this one assertion: the user has just turned
+ *     the control off while the previous answer (asked for WITH the flag) is
+ *     still served - the answers to one query text echo the same `query`, so
+ *     `hitsAnswerQuery` cannot tell them apart - and the user has just archived
+ *     this very conversation, whose row is rebuilt from the cached hit on every
+ *     render. Without the line, the rows the control just hid sit there for the
+ *     length of a request and then vanish, which reads as a filter that sometimes
+ *     does not work.
+ *   - The client's own FACT outranks the hit, in both directions. A press writes
+ *     the backend and then reads back the state the search last saw, so the
+ *     control could never invert what it cannot see.
+ */
+const archivedHit = (id, archived, name = "name") => ({
+	id,
+	name,
+	mtime: 1,
+	forked: false,
+	rank: SESSION_RANK_NAME,
+	body_match: false,
+	archived,
+});
+const live = { include: false, facts: {} };
+
+test("an archived hit is withheld while the control is off, whatever the answer says", () => {
+	const outcome = searchChats(
+		[],
+		"quarterly",
+		[archivedHit("aaaaaaaaaaaa", true), archivedHit("bbbbbbbbbbbb", false)],
+		live,
+	);
+	assert.deepEqual(
+		outcome.rows.map((entry) => entry.session_id),
+		["bbbbbbbbbbbb"],
+		"only the live hit is drawn",
+	);
+	assert.equal(outcome.synthesized.has("aaaaaaaaaaaa"), false);
+});
+
+test("the control admits the archived hit, and the row it builds says so", () => {
+	const outcome = searchChats(
+		[],
+		"quarterly",
+		[archivedHit("aaaaaaaaaaaa", true)],
+		{ include: true, facts: {} },
+	);
+	assert.equal(outcome.rows.length, 1);
+	/*
+	 * The synthesized row CARRIES the state, because two surfaces read it: the
+	 * muted marker beside the title, and the control whose press must invert it.
+	 * A row that said nothing would offer "Archive" on a conversation that is
+	 * already archived.
+	 */
+	assert.equal(outcome.rows[0].archived, true);
+	// And the live case carries the other value rather than nothing, so the two
+	// surfaces can tell "live" from "not said".
+	const liveOutcome = searchChats(
+		[],
+		"quarterly",
+		[archivedHit("bbbbbbbbbbbb", false)],
+		live,
+	);
+	assert.equal(liveOutcome.rows[0].archived, false);
+});
+
+test("the client's own fact outranks the hit it is rebuilding the row from", () => {
+	// Archived a moment ago: the fact says archived, the cached hit still says live.
+	const justArchived = searchChats(
+		[],
+		"quarterly",
+		[archivedHit("aaaaaaaaaaaa", false)],
+		{ include: false, facts: { aaaaaaaaaaaa: true } },
+	);
+	assert.deepEqual(
+		justArchived.rows,
+		[],
+		"the row the user just archived must leave at once, not after a round trip",
+	);
+	// And the other direction: restored a moment ago, and the hit is the stale half.
+	const justRestored = searchChats(
+		[],
+		"quarterly",
+		[archivedHit("aaaaaaaaaaaa", true)],
+		{ include: true, facts: { aaaaaaaaaaaa: false } },
+	);
+	assert.equal(justRestored.rows.length, 1);
+	assert.equal(justRestored.rows[0].archived, false);
+});
+
+test("this module never filters the rows it is handed", () => {
+	/*
+	 * DELIBERATE SPLIT, and it is asserted so it cannot drift. An archived ROW is
+	 * the caller's business (`visibleRows` in `chat-archived` partitions it out of
+	 * every at-rest list before this module sees it), because a row's state is
+	 * already on screen while a hit's is not - and a second filter here would be a
+	 * second place to keep in step with the capability gate, which is the one that
+	 * has to be fail-closed.
+	 */
+	const rows = [
+		{ session_id: "aaaaaaaaaaaa", title: "Quarterly", archived: true },
+	];
+	const outcome = searchChats(rows, "quarterly", null, live);
+	assert.deepEqual(outcome.rows, rows);
+});
