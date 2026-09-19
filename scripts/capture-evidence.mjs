@@ -2993,8 +2993,21 @@ export const STORIES = [
 	 * refusal's shape on purpose - same subject (an update that will not be
 	 * installed), same remedy - so what a reader compares across the two frames is
 	 * the heading, not the layout, and the mechanism stays in the details block.
+	 *
+	 * The remedy is a retry with no download page (design round 1, D1), which is why
+	 * this state's frame differs from its sibling's below the message: the sibling
+	 * sends the reader to a fresh copy, and this one must not.
 	 */
 	["common-updatenotification--install-blocked-cannot-launch", 1280, 900],
+	/*
+	 * The other arm of the same code, which had no fixture and therefore no frame
+	 * until design round 1 (D3): the staged archive's signature could not be read and
+	 * no profile is embedded, so the app refuses without being able to say macOS
+	 * refused anything. The heading differs from its sibling's above because the
+	 * heading map is keyed by code - that is the whole finding, so it has to be
+	 * photographed rather than argued.
+	 */
+	["common-updatenotification--install-blocked-cannot-check", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the

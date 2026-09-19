@@ -616,7 +616,7 @@ const mockUpdaterApi = () => {
 			// authorize it, so macOS refuses to spawn it and installing it would leave
 			// the user with no app at all. Production builds this one in
 			// `stagedSignatureBlock` (`src/main/update-install.ts`), and the drift guard in
-			// `scripts/update-robustness.test.mjs` asserts both strings below equal that
+			// `scripts/update-robustness.test.mjs` asserts the strings below equal that
 			// builder's own - a frame captured from this fixture has to show the copy
 			// the app would really send.
 			if (window.triggerUpdateInstallBlockedCannotLaunch) {
@@ -625,12 +625,41 @@ const mockUpdaterApi = () => {
 					version: "0.29.6",
 					message:
 						"The update to version 0.29.6 can't be launched by macOS, so it wasn't installed.",
+					// No URL, and that is the point of this fixture (design round 1, D1): every
+					// affordance behind the download page resolves to `releases/latest`, the
+					// channel that staged this artifact, so the primary action would hand the
+					// reader the bundle the app just refused. The sentence names the version to
+					// avoid and says the next release arrives the ordinary way.
 					remedy: {
-						text: "Download a fresh copy from the website and replace the app in Applications.",
-						url: "https://local-operator.com/download",
+						text: "Keep using this copy, and skip version 0.29.6 if you download one by hand — the next release will be offered here as usual.",
 					},
+					// "Not now" rather than the shared "Update later": this state says the
+					// update cannot be installed, so a label promising it will happen later
+					// contradicts the panel (design round 1, D6).
+					dismissLabel: "Not now",
 					detail:
-						"local-operator-ui-0.29.6-arm64.zip claims keychain-access-groups in its signature and carries no Contents/embedded.provisionprofile: macOS requires a profile to authorize a restricted entitlement (Apple TN3125) and refuses to launch the app without one.",
+						"local-operator-ui-0.29.6-arm64.zip claims keychain-access-groups and carries no Contents/embedded.provisionprofile.",
+				});
+			}
+			// The same code, the other arm: the staged archive's signature could not be
+			// READ at all and no profile is embedded, so the app refuses rather than
+			// guess - and it must not paint "The update can't be launched", which is the
+			// one thing this state does not know (design round 1, D3). Production builds
+			// it in the same `stagedSignatureBlock`, whose `entitlementsPlist == null`
+			// branch carries the heading below.
+			if (window.triggerUpdateInstallBlockedCannotCheck) {
+				callback({
+					code: "artifact-cannot-launch",
+					version: "0.29.6",
+					heading: "The update couldn't be checked",
+					message:
+						"The update to version 0.29.6 can't be checked for launch, so it wasn't installed.",
+					remedy: {
+						text: "Check for updates again to re-download the release.",
+					},
+					dismissLabel: "Not now",
+					detail:
+						"local-operator-ui-0.29.6-arm64.zip carries no Contents/embedded.provisionprofile and its signature could not be read.",
 				});
 			}
 			return () => {};
@@ -840,6 +869,7 @@ declare global {
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
+		triggerUpdateInstallBlockedCannotCheck?: boolean;
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
@@ -883,6 +913,8 @@ const meta = {
 					context.parameters.triggerUpdateInstallBlockedAtStartup;
 				window.triggerUpdateInstallBlockedCannotLaunch =
 					context.parameters.triggerUpdateInstallBlockedCannotLaunch;
+				window.triggerUpdateInstallBlockedCannotCheck =
+					context.parameters.triggerUpdateInstallBlockedCannotCheck;
 				window.triggerUpdateInstallFailed =
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
@@ -900,6 +932,7 @@ const meta = {
 				context.parameters.triggerUpdateInstallBlocked,
 				context.parameters.triggerUpdateInstallBlockedAtStartup,
 				context.parameters.triggerUpdateInstallBlockedCannotLaunch,
+				context.parameters.triggerUpdateInstallBlockedCannotCheck,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
@@ -1319,6 +1352,7 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallBlockedAtStartup"
 	| "triggerUpdateInstallBlockedCannotLaunch"
+	| "triggerUpdateInstallBlockedCannotCheck"
 	| "triggerUpdateInstallFailed"
 	| "triggerUpdateInstallFailedCancelledByRelaunch"
 	| "triggerUpdateInstallInFlight"
@@ -1383,13 +1417,33 @@ export const InstallBlockedAtStartup: Story = {
  * behind it, and it does so at exec - so `codesign --verify`, `spctl` and the
  * notarization staple all pass on the artifact while the app never comes back.
  * The panel is deliberately the same shape as the seal refusal: the subject is
- * the same (an update that will not be installed), the remedy is the same (a
- * fresh copy), and only the mechanism differs - which is the detail line's job.
+ * the same (an update that will not be installed), and only the mechanism and
+ * the remedy differ.
+ *
+ * The remedy is NOT the download page (design round 1, D1). Every affordance
+ * behind it resolves to `releases/latest`, which is where this artifact came
+ * from, so the primary action would hand the reader the bundle the app just
+ * refused; the sentence names the version to avoid instead, which is true both
+ * when `latest` is broken and when it is fine.
  */
 export const InstallBlockedCannotLaunch: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallBlockedCannotLaunch: true },
 	render: () => <Triggered flag="triggerUpdateInstallBlockedCannotLaunch" />,
+};
+
+/**
+ * The same code, the arm that knows less: the staged archive's signature could
+ * not be read and no profile is embedded, so the app refuses rather than guess.
+ * It carries its own heading, because the panel's heading map would paint "The
+ * update can't be launched" over a body that declines to say macOS refused
+ * anything (design round 1, D3) - and its remedy is a retry, since nothing was
+ * established about this artifact.
+ */
+export const InstallBlockedCannotCheck: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedCannotCheck: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedCannotCheck" />,
 };
 
 /**

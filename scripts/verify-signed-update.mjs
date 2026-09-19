@@ -51,6 +51,7 @@ import {
 import {
 	bundledBytecodeCheck,
 	bundledPythonCheck,
+	profileAuthorizationCheck,
 	runChecks,
 	spawnRunner,
 } from "./verify-macos-artifacts.mjs";
@@ -365,6 +366,10 @@ try {
 			run: spawnRunner,
 			checkApp: (app, arch) => [
 				...runChecks({ appPath: app, dmgPath: null, run: spawnRunner }),
+				// The candidate's own answer to the 0.29.6 class, walked over every
+				// executable in the bundle rather than its launcher alone — the
+				// artifact this harness exists to vet carried the group on eight.
+				profileAuthorizationCheck(app, { run: spawnRunner }),
 				bundledPythonCheck(app, { expectArch: arch }),
 				bundledBytecodeCheck(app),
 				privatePythonSeedCheck(app, { expectArch: arch }),

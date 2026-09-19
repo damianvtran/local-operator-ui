@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	appendFileSync,
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -230,11 +231,16 @@ const {
 	discoverDmg,
 	discoverArtifacts,
 	mainExecutablePath,
+	profileAuthorizationCheck,
 	profileAuthorizes,
 	runChecks,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+// The policy module the GATE reads, imported beside the bundle the APP reads from
+// (`install` above): the two implementations of one rule are only allowed to stay
+// separate because a test asserts they agree, and that test needs both in scope.
+const policy = await import("./macos-entitlement-policy.mjs");
 
 const tempDirs = [];
 function tempDir(prefix) {
@@ -1508,6 +1514,20 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		version: "0.29.6",
 	});
 	assert.ok(unlaunchable, "the 0.29.6 signature must still be refused");
+	// The OTHER arm of the same code, which no fixture covered until design round 1
+	// (D3): a signature that could not be read, so the app knows only that it cannot
+	// tell. Its heading, message and remedy are asserted the same way, because the
+	// frame is the only place a reader sees which of the two states they are in.
+	const unchecked = install.stagedSignatureBlock({
+		entitlementsPlist: null,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.ok(
+		unchecked,
+		"an unreadable signature with no profile must be refused",
+	);
 	for (const [what, text] of [
 		["the in-flight message", inFlight.message],
 		["the cancelled-by-relaunch message", cancelled.message],
@@ -1534,6 +1554,11 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		],
 		["the unlaunchable-artifact message", unlaunchable.message],
 		["the unlaunchable-artifact remedy", unlaunchable.remedy.text],
+		["the unlaunchable-artifact dismiss label", unlaunchable.dismissLabel],
+		["the unchecked-artifact heading", unchecked.heading],
+		["the unchecked-artifact message", unchecked.message],
+		["the unchecked-artifact remedy", unchecked.remedy.text],
+		["the unchecked-artifact dismiss label", unchecked.dismissLabel],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
@@ -1551,6 +1576,36 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// app is what an unhealed break leads to, not something this pass can assert
 	// about a bundle it has only just measured (review R2).
 	assert.doesNotMatch(startup.message, /will refuse/);
+
+	/*
+	 * D1's own regression guard, which the verbatim list cannot express because it is
+	 * about a field that must be ABSENT. The refusal's remedy used to carry
+	 * `DOWNLOAD_PAGE_URL`, whose every affordance resolves to `releases/latest` —
+	 * the channel that staged the artifact being refused — so the primary action
+	 * handed the reader the bundle the app had just declined to install. A frame
+	 * cannot show that the button is wrong (it looks the same as the sibling's), so
+	 * the guard is on the fixture's shape: no url in this state, and the dismiss
+	 * label that does not promise a retry (design round 1, D1 and D6).
+	 */
+	const cannotLaunchBody = stories.slice(
+		stories.indexOf("if (window.triggerUpdateInstallBlockedCannotLaunch)"),
+	);
+	const cannotLaunchFixture = cannotLaunchBody.slice(
+		0,
+		cannotLaunchBody.indexOf(
+			"if (window.triggerUpdateInstallBlockedCannotCheck)",
+		),
+	);
+	assert.ok(
+		cannotLaunchFixture.length > 0,
+		"the unlaunchable-artifact fixture was not found in the story file",
+	);
+	assert.doesNotMatch(
+		cannotLaunchFixture,
+		/url:/,
+		"the refusal fixture must not offer the download page: it serves the artifact this state refused",
+	);
+	assert.match(cannotLaunchFixture, /dismissLabel: "Not now"/);
 
 	/*
 	 * The installer output is a shell transcript in the fixture - an array joined
@@ -3596,9 +3651,12 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			// Honoured only by executing the binary — amfid's refusal is invisible to
 			// codesign, spctl and stapler alike (both measured on the real bundle).
 			"app-spawn",
-			// The cause behind it: a restricted entitlement with no profile to
-			// authorize it.
-			"app-profile-authorization",
+			// The cause behind it — a restricted entitlement with no profile to
+			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
+			// which walks every executable in the bundle rather than reading the
+			// launcher's signature once (review round 1, finding 1). Keeping the id
+			// while widening the population is deliberate: a failure is still the
+			// candidate's own, which is what `verify-signed-update.mjs` acts on.
 			// The passkey entitlement, asserted on the SIGNED bundle: every failure
 			// downstream of it is silent by design, so the release gate reads it off
 			// the artifact rather than trusting the build (review round 1, finding 6).
@@ -3774,8 +3832,16 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 const V0296_SIGNATURE_ENTITLEMENTS = `<plist version="1.0"><dict><key>com.apple.security.cs.allow-dyld-environment-variables</key><true/><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/><key>com.apple.security.device.audio-input</key><true/><key>com.apple.security.device.camera</key><true/><key>com.apple.security.device.microphone</key><true/><key>com.apple.security.device.screen-capture</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.downloads.read-write</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/><key>com.apple.security.network.client</key><true/><key>com.apple.security.network.server</key><true/><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></plist>`;
 
 /** A bundle laid out enough for the gate: an Info.plist naming the executable and
- * the bundle id, and a file where that executable would be. */
-function gateFixtureBundle(prefix, { profile = null } = {}) {
+ * the bundle id, and a file where that executable would be.
+ *
+ * The "executables" are four bytes of Mach-O magic with the execute bit, not the
+ * literal word `fixture`, and that is load-bearing: `profileAuthorizationCheck`
+ * finds the files it judges by walking for Mach-O headers, so a fixture holding
+ * text would make the walk inspect nothing and pass for the wrong reason. The set
+ * can be widened with `helpers` — the shape that matters here, since a bundle
+ * whose launcher is clean and whose helpers are not is what 0.29.6 shipped.
+ */
+function gateFixtureBundle(prefix, { profile = null, helpers = [] } = {}) {
 	const dir = tempDir(prefix);
 	const app = join(dir, "Local Operator.app");
 	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
@@ -3783,10 +3849,22 @@ function gateFixtureBundle(prefix, { profile = null } = {}) {
 		join(app, "Contents", "Info.plist"),
 		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
 	);
-	writeFileSync(join(app, "Contents", "MacOS", "Local Operator"), "fixture\n");
+	writeMachO(join(app, "Contents", "MacOS", "Local Operator"));
+	for (const helper of helpers) {
+		const path = join(app, helper);
+		mkdirSync(dirname(path), { recursive: true });
+		writeMachO(path);
+	}
 	if (profile != null)
 		writeFileSync(join(app, "Contents", "embedded.provisionprofile"), profile);
 	return app;
+}
+
+/** The four bytes `machOFiles` reads, 64-bit little-endian (`cffaedfe`), plus
+ * the execute bit that makes it a file the bundle can spawn. */
+function writeMachO(path) {
+	writeFileSync(path, Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0, 0, 0, 0]));
+	chmodSync(path, 0o755);
 }
 
 /**
@@ -3795,17 +3873,25 @@ function gateFixtureBundle(prefix, { profile = null } = {}) {
  *
  * The probe's answer is the one measured on the real 0.29.6 bundle: killed by a
  * signal at exec, no output (a shell reports that as `Killed: 9`, exit 137).
- * `spawnRunner` turns it into `status: 1, signal: "SIGKILL"`; the stub produces
- * that same shape rather than a fabricated exit code, because the predicate's
- * whole point is that this shape is red.
+ * `spawnRunner` turns it into `status: null, signal: "SIGKILL"`; the stub
+ * produces that same shape rather than a fabricated exit code, because the
+ * predicate's whole point is that this shape is red — and because a signal death
+ * has no exit status to report (QA round 1, Q1).
+ *
+ * `entitlements` is a plist string, or a function of the file being read when a
+ * case needs to differ per executable: the authorization walk reads every
+ * Mach-O in the bundle, and "the launcher is clean and the helper is not" is the
+ * case that tells the walk apart from the single `codesign` call it replaced.
  */
 function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
+	const claimedIn = (path) =>
+		typeof entitlements === "function" ? entitlements(path) : entitlements;
 	return (command, args) => {
 		const joined = args.join(" ");
 		if (joined === "-p process.exit(0)") {
 			return spawnFails
 				? {
-						status: 1,
+						status: null,
 						signal: "SIGKILL",
 						timedOut: false,
 						stdout: "",
@@ -3821,7 +3907,11 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 			};
 		}
 		if (joined.includes("--entitlements")) {
-			return { status: 0, stdout: entitlements, stderr: "" };
+			return {
+				status: 0,
+				stdout: claimedIn(args[args.length - 1]),
+				stderr: "",
+			};
 		}
 		if (command === "/usr/bin/codesign")
 			return { status: 0, stdout: "", stderr: "" };
@@ -3837,11 +3927,118 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 	};
 }
 
+test("every executable's claim is judged, not only the launcher's", () => {
+	/*
+	 * The shape this test exists for is the one 0.29.6 actually shipped and the
+	 * first version of this gate got wrong: the launcher clean, the helpers not.
+	 * Measured on the operator's real bundle, the group is on EIGHT of its sixteen
+	 * executables — `ShipIt`, the four helpers, the crashpad handler and the
+	 * bundled python among them — and `ShipIt` is the one the updater execs to
+	 * relaunch, so a launcher-only check passes a bundle that dies exactly where
+	 * 0.29.6 died. The assertion has to name the helper, not just fail.
+	 */
+	const helper =
+		"Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt";
+	const launcherClean = gateFixtureBundle("lo-gate-helper-", {
+		helpers: [helper],
+	});
+	const clean = "<key>com.apple.security.cs.allow-jit</key><true/>";
+	const twoClaims = profileAuthorizationCheck(launcherClean, {
+		run: gateRunner({
+			entitlements: (path) =>
+				path.endsWith("ShipIt") ? V0296_SIGNATURE_ENTITLEMENTS : clean,
+		}),
+	});
+	assert.equal(twoClaims.passed, false);
+	assert.match(twoClaims.output, /ShipIt claims keychain-access-groups/);
+	// "1 of 2" rather than "an executable is suspicious": the launcher's clean signature
+	// was read and PASSED in the same walk, which is what makes this a walk rather
+	// than a lucky single read — the old single-`codesign` call saw the launcher only
+	// and called this bundle clean.
+	assert.match(twoClaims.output, /1 of 2 executable\(s\)/);
+
+	// The same bundle with the claim removed everywhere: the shipped default, and
+	// green — the walk is not simply "helpers are suspicious".
+	const groupFree = profileAuthorizationCheck(launcherClean, {
+		run: gateRunner({ entitlements: clean }),
+	});
+	assert.equal(groupFree.passed, true);
+	assert.match(groupFree.output, /2 executable\(s\) inspected/);
+
+	// A profile that authorizes the claim: the passkey arrangement done right, and
+	// the one state in which `ShipIt` may carry the group.
+	const authorized = gateFixtureBundle("lo-gate-auth-", {
+		helpers: [helper],
+		profile: "synthetic\n",
+	});
+	const withProfile = profileAuthorizationCheck(authorized, {
+		run: gateRunner({
+			entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+			profileDump:
+				"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+		}),
+	});
+	assert.equal(withProfile.passed, true);
+
+	// "We could not ask" is not "nothing is claimed": a signature whose
+	// entitlements cannot be read is red here rather than an empty plist that
+	// passes because `[].every()` is true (review round 1, finding 3).
+	const unreadable = profileAuthorizationCheck(launcherClean, {
+		run: (command, args) =>
+			args.join(" ").includes("--entitlements")
+				? { status: 1, stdout: "", stderr: "bundle format unrecognized" }
+				: gateRunner({ entitlements: clean })(command, args),
+	});
+	assert.equal(unreadable.passed, false);
+	assert.match(unreadable.output, /could not be read/);
+});
+
+test("the gate's policy predicate and the app's agree on every key", () => {
+	/*
+	 * The JSON is shared, so a SPELLING can only be wrong once — but the PREDICATE
+	 * (`includes` plus the prefix loop, and the empty-string-means-nothing rule)
+	 * exists twice, in `scripts/macos-entitlement-policy.mjs` and in the app's
+	 * `update-install.ts`, and nothing tied the two together: a change to one copy
+	 * alone would leave the gate and the pre-flight disagreeing about which claims
+	 * need a profile, which is the drift the shared file's own docstring says it
+	 * exists to prevent (review round 1, finding 2). This is the tie.
+	 */
+	const keys = [
+		...policy.POLICY.unrestrictedEntitlementKeys,
+		...policy.POLICY.unrestrictedEntitlementPrefixes.map(
+			(prefix) => `${prefix}something`,
+		),
+		// The real 0.29.6 claim, a synthetic restricted one, and one nobody has
+		// invented yet — the fail-closed direction.
+		"keychain-access-groups",
+		"com.apple.developer.associated-domains",
+		"com.apple.some.future.thing",
+		"",
+	];
+	for (const key of keys) {
+		assert.equal(
+			install.isProfileBackedEntitlement(key),
+			policy.isProfileBackedEntitlement(key),
+			`the app and the gate disagree about ${JSON.stringify(key)}`,
+		);
+	}
+	// The scan, over the same plist: both sides must pick the same keys out.
+	assert.deepEqual(
+		install.profileBackedEntitlementKeys(V0296_SIGNATURE_ENTITLEMENTS),
+		policy.profileBackedEntitlementKeys(V0296_SIGNATURE_ENTITLEMENTS),
+	);
+	assert.deepEqual(
+		install.profileBackedEntitlementKeys(""),
+		policy.profileBackedEntitlementKeys(""),
+	);
+});
+
 test("the gate refuses the 0.29.6 signature and passes the group-free one", () => {
 	const bricked = gateFixtureBundle("lo-gate-brick-");
 	// The real broken signature: a restricted claim, no profile, and a spawn the OS
-	// refuses. Three findings, because three different questions were unanswerable
-	// about this bundle until this change.
+	// refuses. Two findings from `runChecks` — the third question this bundle raises,
+	// whether EVERY executable's claim is authorized rather than just the launcher's,
+	// is the walk asserted on its own below.
 	assert.deepEqual(
 		summarize(
 			runChecks({
@@ -3853,7 +4050,7 @@ test("the gate refuses the 0.29.6 signature and passes the group-free one", () =
 				}),
 			}),
 		).failures.map((result) => result.id),
-		["app-spawn", "app-profile-authorization", "app-webauthn-entitlement"],
+		["app-spawn", "app-webauthn-entitlement"],
 	);
 
 	// The shipped default: the committed plist, no restricted claim at all. This
@@ -3944,11 +4141,32 @@ test("the update pre-flight refuses the artifact macOS would not launch", () => 
 	});
 	assert.equal(block.code, "artifact-cannot-launch");
 	assert.match(block.message, /update to version 0\.29\.6 can't be launched/);
-	assert.equal(block.remedy.url, install.DOWNLOAD_PAGE_URL);
+	// The remedy is NOT the download page (design round 1, D1). Every affordance
+	// behind `DOWNLOAD_PAGE_URL` resolves to `releases/latest`, which is the channel
+	// that staged this artifact: sending the reader there hands them the bundle this
+	// check just refused and asks them to install it by hand, past every gate added
+	// to stop it. It names the version to avoid instead, which is true both when
+	// `latest` is the broken build and when it is fine.
+	assert.equal(block.remedy.url, undefined);
+	assert.equal(block.remedy.command, undefined);
+	assert.match(block.remedy.text, /skip version 0\.29\.6/);
+	assert.match(block.remedy.text, /next release will be offered/);
+	// The dismiss control must not promise a retry this state says cannot happen
+	// (design round 1, D6), and this arm needs no heading override: it established
+	// the refusal, so the renderer's heading map is the right one.
+	assert.equal(block.dismissLabel, "Not now");
+	assert.equal(block.heading, undefined);
 	// The detail names the cause, not just the symptom: it is what a support thread
-	// has to quote, and the entitlement alone would not say why it matters.
+	// has to quote, and the entitlement alone would not say why it matters. Trimmed
+	// to the facts a reader can check (design round 1, D4) — which archive, which
+	// claim, which file is missing — because the full rule made the details block
+	// 44% of the panel.
 	assert.match(block.detail, /keychain-access-groups/);
 	assert.match(block.detail, /embedded\.provisionprofile/);
+	assert.ok(
+		block.detail.length < 160,
+		`detail is ${block.detail.length} characters; the panel's mono column is ~10 lines at 250`,
+	);
 
 	// The positive direction: the committed, group-free signature is what the
 	// release path ships now, and it must install.
@@ -3973,15 +4191,22 @@ test("the update pre-flight refuses the artifact macOS would not launch", () => 
 		null,
 	);
 	// "We could not read the signature" is not "nothing is claimed": refused when
-	// no profile is embedded, allowed when one is.
-	assert.equal(
-		install.stagedSignatureBlock({
-			entitlementsPlist: null,
-			embeddedProfile: false,
-			artifactName: "unknown.zip",
-		})?.code,
-		"artifact-cannot-launch",
-	);
+	// no profile is embedded, allowed when one is. It is also a DIFFERENT state from
+	// the arm above, so it carries its own heading and its own remedy: the body
+	// declines to assert that macOS refused anything, and a heading asserting it
+	// would contradict the sentence under it (design round 1, D3).
+	const unchecked = install.stagedSignatureBlock({
+		entitlementsPlist: null,
+		embeddedProfile: false,
+		artifactName: "unknown.zip",
+		version: "0.29.6",
+	});
+	assert.equal(unchecked?.code, "artifact-cannot-launch");
+	assert.equal(unchecked?.heading, "The update couldn't be checked");
+	assert.match(unchecked?.message, /can't be checked for launch/);
+	assert.match(unchecked?.remedy.text, /Check for updates again/);
+	assert.equal(unchecked?.remedy.url, undefined);
+	assert.equal(unchecked?.dismissLabel, "Not now");
 	assert.equal(
 		install.stagedSignatureBlock({
 			entitlementsPlist: null,
