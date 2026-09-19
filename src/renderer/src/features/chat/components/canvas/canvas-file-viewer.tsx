@@ -735,7 +735,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					{scan?.stopped && (
 						<div
 							className={cn(
-								"flex w-full flex-wrap items-center gap-x-3 gap-y-1",
+								// `pr-8` is the head's trailing gutter, the same one the count takes
+								// below: the row's `⋯` reserves 28px (see `file-row.tsx`), so the two
+								// right-ragged statements in this head have to give up the same 32px
+								// or the head has TWO right edges in one state - the count ending at
+								// 1238 and this action at 1271, 33px apart, which is what design
+								// round 2's D2 measured (design D2/D3).
+								"flex w-full flex-wrap items-center gap-x-3 gap-y-1 pr-8",
 							)}
 						>
 							{/*
