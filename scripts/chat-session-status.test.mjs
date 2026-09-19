@@ -53,14 +53,62 @@ test("read complete rests, unread complete keeps the attention check", () => {
 	// The narrow gating is a contract, not an accident: a code that keeps its own
 	// meaning keeps its own name, whether or not the row is unseen.
 	assert.doesNotMatch(render("danger", true), /unread/);
+	// And a row with NO status pair draws no mark either: a locally created row
+	// carries none until its first catalogue read, and unknown is not unread.
+	assert.doesNotMatch(
+		renderToStaticMarkup(
+			createElement(ChatSessionStatus, {
+				row: { session_id: "fixture", attention: { unseen: true } },
+			}),
+		),
+		/unread/,
+	);
 });
+/*
+ * The marks that are NOT the completion check: `error` and `interrupted`.
+ *
+ * They keep the glyph and the ink their code already had — the warning/danger
+ * signalling a reader depends on — and gain only the accessible name, because
+ * they are `unreadMarkKind`'s other two members: the runtime ranks them as
+ * outstanding completions and labels them "Unseen error" / "Unseen
+ * interruption", and a screen reader has to hear that while the mark stands.
+ *
+ * The delta is EXACTLY the suffix, which is what `before.replace(...)` asserts:
+ * acknowledgement may not change a mark-bearing row's glyph, ink or label, only
+ * stop it claiming the mark.
+ */
 for (const [code, icon, ink] of [
 	["error", "circle-alert", "danger"],
+	["interrupted", "pause", "warning"],
+]) {
+	test(`${code} draws its own glyph and names the unseen mark`, () => {
+		const before = render(code, true);
+		const after = render(code, false);
+		assert.ok(before.includes(", unread"), `${code} unseen lost the suffix`);
+		assert.equal(
+			after,
+			before.replace(", unread", ""),
+			"acknowledging changed more than the suffix",
+		);
+		assert.doesNotMatch(after, /unread/);
+		assert.match(before, new RegExp(`lucide-${icon}`));
+		assert.match(after, new RegExp(`lucide-${icon}`));
+		assert.match(before, new RegExp(`text-${ink}`));
+		assert.match(after, new RegExp(`text-${ink}`));
+	});
+}
+
+/*
+ * And the codes that draw NO mark of their own, which must render identically
+ * whether the row is acknowledged or not — the property an unconditional
+ * `, unread` suffix would break, and the reported defect in the one channel the
+ * ink cannot show it in.
+ */
+for (const [code, icon, ink] of [
 	["wedged", "circle-alert", "danger"],
 	["busy", "loader-circle", "accent"],
 	["answer", "circle-alert", "warning"],
 	["approval", "circle-alert", "warning"],
-	["interrupted", "pause", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
 	["idle", "circle", "ink-dim"],

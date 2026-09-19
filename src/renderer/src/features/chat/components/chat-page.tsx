@@ -222,7 +222,6 @@ function SessionPanel({
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
-	const end = useRef<HTMLDivElement>(null);
 	const draftIdentity = draftIdentityFor(draftKey, sessionId);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
@@ -1914,10 +1913,8 @@ function SessionPanel({
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}
-					isFetchingMore={canonical.loadingOlder}
 					isFarFromBottom={isFarFromBottom}
 					messagesContainerRef={container}
-					messagesEndRef={end}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}

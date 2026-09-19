@@ -10,9 +10,9 @@
  * rather than chrome — Slack and iMessage collapse consecutive messages from
  * one speaker into a block with a single avatar and a single timestamp; Linear's
  * activity feed does the same for consecutive events by one actor. Before this
- * existed, `messages-view` used one flat 16px gap for every pair of rows and
- * `message-item` cancelled it again with a `-mt-4` sibling hack so that runs of
- * traces would close up. Both the rhythm and the hack are replaced by one
+ * existed, the legacy message list used one flat 16px gap for every pair of rows
+ * and `message-item` cancelled it again with a `-mt-4` sibling hack so that runs
+ * of traces would close up. Both the rhythm and the hack are replaced by one
  * pass over the list that answers three questions per row:
  *
  *  - how much air goes above it (`boundary`),
