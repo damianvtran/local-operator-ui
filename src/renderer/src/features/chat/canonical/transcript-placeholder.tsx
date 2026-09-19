@@ -1,58 +1,6 @@
 import { Skeleton } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
-import type { DesktopColdReason } from "../../../../../shared/desktop-session-contract";
-
-/*
- * WHY THIS PLACEHOLDER CAN NOW SAY WHY.
- *
- * The operator's complaint had two halves, and this pane is the second: clicking
- * a quiet owner commits immediately, and the panel then hydrates from the event
- * stream with no client-side bound on the first paint — a 45 s silence watchdog
- * and a renderer retry budget behind it — so up to a minute can pass with
- * nothing on screen but an undifferentiated "Loading conversation…". The row had
- * already said WHICH session this was; what was missing is why the read is slow.
- *
- * THE BACKEND ALREADY MEASURES IT. A cold read comes back with `cold_reason`
- * (`DesktopColdReason`: no pid holds the session's lease, one holds it and did
- * not deliver canonical state, or the record is finishing a turn first) and with
- * `attaching` when a dial is retained and its state has not landed. The tokens
- * are the contract and the SENTENCE IS THE SURFACE'S — the same discipline the
- * error ladder's `code` follows — so the mapping lives here, once, and no other
- * renderer module reads those two fields.
- *
- * THE CAPTION REPLACES "Loading conversation…" RATHER THAN JOINING IT, which is
- * this file's own rule rather than a preference: two claims about one wait is
- * the failure the placeholder's re-homing was for. When nothing is known about
- * why the wait is happening the original words stand unchanged, because a
- * placeholder that guessed a cause would be worse than one that admits it has
- * none — and the caller passes nothing at all for a session-less pane, which has
- * no reason to give.
- *
- * The skeleton bars are untouched: this is a change to WORDS, and the motion, the
- * ink role and the ground were each measured where they stand.
- */
-/**
- * What the wait is, in the product's own words, or null when nothing is known.
- *
- * The words follow the row's vocabulary rather than inventing one: a session
- * whose owner stopped reporting is "not answering" everywhere else in the
- * product, and the disk is where this client's reads are answered from whenever
- * no runtime is bound — which is a fact about the mechanism, not a promise that
- * the wait is short.
- */
-const waitCaption = (
-	reason: DesktopColdReason | null,
-	attaching: boolean,
-): string | null => {
-	if (reason === "owner-silent") return "Not answering — reading it from disk.";
-	if (reason === "owner-leaving")
-		return "Finishing a turn first — reading from disk.";
-	if (reason === "no-runtime")
-		return "No runtime is holding it — opening from disk.";
-	if (attaching) return "Connected — waiting for its state.";
-	return null;
-};
 
 /*
  * What a conversation pane shows while its transcript is still in flight.
@@ -109,52 +57,30 @@ const waitCaption = (
 type TranscriptPlaceholderProps = {
 	/** Compact spacing below the small-view breakpoint, like the rows it stands in for. */
 	isSmallView?: boolean;
-	/**
-	 * WHY the read this pane is waiting on has not answered, when this session's own
-	 * stream has said so (`CanonicalSessionView.coldReason`).
-	 *
-	 * Optional and defaulted to the unknown case, which is the honest one for the
-	 * callers with no session behind them: a staged draft opens no stream at all, so
-	 * it has no read to explain.
-	 */
-	coldReason?: DesktopColdReason | null;
-	/** A retained dial whose canonical state has not arrived yet. */
-	attaching?: boolean;
 };
 
 export const TranscriptPlaceholder: FC<TranscriptPlaceholderProps> = ({
 	isSmallView = false,
-	coldReason = null,
-	attaching = false,
-}) => {
-	const caption = waitCaption(coldReason, attaching);
-	return (
-		/*
-		 * ONE element, `<output>` rather than a div with role="status": it carries
-		 * the same implicit live-region semantics as a native element, which is what
-		 * the a11y lint asks for, and the `aria-label` names the region. The visible
-		 * caption lives INSIDE it rather than beside it, so the whole placeholder is
-		 * one subtree - the transcript's own "is there content yet" reads exclude
-		 * this element by that name, and a caption sitting outside it would have read
-		 * as a transcript row (which is exactly how it was caught: every hydrating
-		 * frame reported itself as settled).
-		 *
-		 * THE NAME FOLLOWS THE CAPTION, or the region would tell a screen reader
-		 * "Loading conversation" while the screen says the read is being answered from
-		 * disk. With no reason known it is the original string, which is also the one
-		 * the switch rigs select the placeholder by — they stage no cold read, so they
-		 * meet it unchanged.
-		 */
-		<output
-			aria-label={caption ?? "Loading conversation"}
-			className={cn("flex flex-col gap-2", isSmallView && "gap-1.5")}
-		>
-			<Skeleton className={cn("h-3 w-56 bg-elevated animate-pulse-visible")} />
-			<Skeleton className={cn("h-3 w-80 bg-elevated animate-pulse-visible")} />
-			<Skeleton className={cn("h-3 w-64 bg-elevated animate-pulse-visible")} />
-			<span className={cn("mt-1 text-ink-dim text-meta")}>
-				{caption ?? "Loading conversation…"}
-			</span>
-		</output>
-	);
-};
+}) => (
+	/*
+	 * ONE element, `<output>` rather than a div with role="status": it carries
+	 * the same implicit live-region semantics as a native element, which is what
+	 * the a11y lint asks for, and the `aria-label` names the region. The visible
+	 * caption lives INSIDE it rather than beside it, so the whole placeholder is
+	 * one subtree - the transcript's own "is there content yet" reads exclude
+	 * this element by that name, and a caption sitting outside it would have read
+	 * as a transcript row (which is exactly how it was caught: every hydrating
+	 * frame reported itself as settled).
+	 */
+	<output
+		aria-label="Loading conversation"
+		className={cn("flex flex-col gap-2", isSmallView && "gap-1.5")}
+	>
+		<Skeleton className={cn("h-3 w-56 bg-elevated animate-pulse-visible")} />
+		<Skeleton className={cn("h-3 w-80 bg-elevated animate-pulse-visible")} />
+		<Skeleton className={cn("h-3 w-64 bg-elevated animate-pulse-visible")} />
+		<span className={cn("mt-1 text-ink-dim text-meta")}>
+			Loading conversation…
+		</span>
+	</output>
+);

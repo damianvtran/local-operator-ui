@@ -141,6 +141,17 @@ for (const [code, icon, ink] of [
  * under deuteranopia — the silhouettes have to differ on their own, and a test
  * that only pinned the two class names would pass with two identical marks in two
  * colours.
+ *
+ * WHICH OF THESE ASSERTIONS DISCRIMINATES, because one of them does not on its
+ * own (QA round 1, Q-1). `notEqual` is a smoke assertion: the two rows differ in
+ * their LABELS as well as their marks, so it passes for the exact regression this
+ * case exists to catch — a `wedged` row wearing `error`'s silhouette in the
+ * warning ink — and both reviewers had to mutate the component to establish that.
+ * The discriminating pair is `match(/lucide-equal-approximately/)` with
+ * `doesNotMatch(/lucide-circle-alert/)`: those two fail on such a mutant while
+ * `notEqual` still passes. They are kept TOGETHER and after it, so the shape is
+ * named rather than left to be inferred from a case that reads like an
+ * inequality test.
  */
 test("a not-answering row is not drawn like a failed one", () => {
 	const failed = render("error", false);
@@ -158,9 +169,18 @@ test("a not-answering row is not drawn like a failed one", () => {
  * THE WORDS STAY ON THE WIRE. The state's sentence is the backend's
  * (`session/catalog.py`'s `status`) and the renderer must read it rather than
  * re-author it — so a row carrying a DIFFERENT label has to render that label,
- * in both channels that show it (the `sr-only` name and the tooltip). The
- * assertion is deliberately made with a label no other code in this repo
- * contains, so a hard-coded `"Not answering · process alive"` fails here.
+ * in the channel this component owns (the `sr-only` name). The assertion is
+ * deliberately made with a label no other code in this repo contains, so a
+ * hard-coded `"Not answering · process alive"` fails here.
+ *
+ * THE TOOLTIP CHANNEL MOVED TO THE ROW (review round 1, MINOR 1), and the second
+ * half of this case is now the assertion that keeps it there: this component used
+ * to put `title` on the span wrapping the mark, which — nested inside the row's
+ * button — SHADOWED the row's composed tooltip over the mark itself, hiding the
+ * remedy clause over the very glyph it is about. The label is still shown by a
+ * tooltip, the row's, and that is asserted where the row is (`mark-all-read-
+ * control.test.mjs`, which mounts the shipped sidebar); what is asserted here is
+ * that no `title` comes back to shadow it.
  */
 test("the wedged row renders the backend's sentence, not one of its own", () => {
 	const label = "Not answering · process alive (last heartbeat 4m ago)";
@@ -179,9 +199,10 @@ test("the wedged row renders the backend's sentence, not one of its own", () => 
 		markup.includes(`sr-only">${label}`),
 		"the accessible name lost the backend's sentence",
 	);
-	assert.ok(
-		markup.includes(`title="${label}"`),
-		"the tooltip lost the backend's sentence",
+	assert.doesNotMatch(
+		markup,
+		/title=/,
+		"a `title` came back onto the mark, where it shadows the row's tooltip",
 	);
 });
 

@@ -707,44 +707,10 @@ export type DesktopHistoryPage = {
 export type DesktopChildTranscriptPage = DesktopHistoryPage & {
 	state: "ready" | "pending" | "gone";
 };
-/**
- * WHY a session's canonical state came back cold, as the wire states it.
- *
- * A TOKEN, not a sentence, and deliberately so: the copy belongs to the surface
- * (the same discipline the error ladder's `code` follows), while the token is the
- * contract. The three cases are the ones a read can actually establish — no pid
- * holds the session's transcript lease (`no-runtime`), one does and did not
- * deliver canonical state (`owner-silent`), or the record is finishing work in
- * flight first (`owner-leaving`) — and they ask different things of a reader, so
- * one sentence for all three would be the conflation these tokens exist to
- * remove. The backend's own model (`SnapshotPayload` in
- * `server/models/desktop_sessions.py`) is the producer.
- */
-export type DesktopColdReason = "no-runtime" | "owner-silent" | "owner-leaving";
-
 export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;
 	history: DesktopHistoryPage;
 	cold: boolean;
-	/**
-	 * The reason, when the read came back cold; `null`/absent on a live one.
-	 *
-	 * ADDITIVE, and optional rather than required for the reason the backend
-	 * defaults it: a host that does not track the distinction (an in-process one, a
-	 * test's stand-in) still validates, and the documented fallback for a reader
-	 * that meets neither field is "cold, and no reason given". The renderer's use
-	 * of it is the WAIT STATE — see `transcript-placeholder.tsx` for why the honest
-	 * answer to a slow open is this token rather than a spinner.
-	 */
-	cold_reason?: DesktopColdReason | null;
-	/**
-	 * An authenticated dial is retained and its canonical state has not arrived.
-	 *
-	 * Distinct from `cold`: the read answered from disk meanwhile, and the sync
-	 * that lands later publishes the rollover the renderer already handles for an
-	 * epoch change.
-	 */
-	attaching?: boolean;
 };
 type Receipt<T extends string, P> = {
 	session_id: CanonicalSessionId;
@@ -806,15 +772,6 @@ export type DesktopSessionFrame =
 			{
 				frontend: CanonicalFrontendSync;
 				cold: boolean;
-				/**
-				 * The cold pair, on the frame that also CLEARS it: this is the rollover the
-				 * bridge publishes when an owner comes back (`_publish_frontend_replace`
-				 * spreads the same `_cold_fields` the snapshot carries), so a renderer
-				 * holding a reason from the opening read learns here that the wait it
-				 * described is over. Additive for an older renderer, which ignores both.
-				 */
-				cold_reason?: DesktopColdReason | null;
-				attaching?: boolean;
 			}
 	  >
 	| Receipt<"event", { type: string; [key: string]: unknown }>

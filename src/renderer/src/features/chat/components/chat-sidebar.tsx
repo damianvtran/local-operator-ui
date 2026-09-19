@@ -350,12 +350,40 @@ const CATALOGUE_SAFETY_POLL_MS = 30_000;
  *
  * ONLY ON `wedged`, deliberately: an `error` row is one to reopen and a busy row
  * one to wait for, so a remedy printed on each of them would be advice about the
- * wrong state. And deliberately NOT in the accessible name
- * (`chat-session-status.tsx`'s `sr-only` span): that span carries the state's
- * words, and a clause a reader hears on every arrow-key stop through the list is
- * noise the hover channel can carry on its own.
+ * wrong state.
+ *
+ * TWO CHANNELS, AND THE HOVER ONE IS NOT ENOUGH ON ITS OWN (UX round 1, U2, with
+ * review round 1's MINOR 1). This used to justify the pointer-only placement
+ * with "a clause a reader hears on every arrow-key stop through the list" — which
+ * is false as written, because the clause is appended on `wedged` rows alone: a
+ * reader walking the list hears it once, on the one row it is about. What
+ * replaced the claim is a measurement — over the whole document `title` was the
+ * ONLY carrier of the clause, no accessible name held it, no row pointed at it
+ * with `aria-describedby`, and Chromium does not present `title` on focus — so
+ * for the modality this file already renders an `sr-only` name for, the remedy
+ * did not exist at all. It now rides BOTH channels: the tooltip for a pointer,
+ * and `aria-describedby` (the row's, below) for a reader who reaches the row by
+ * keyboard, which announces the clause on focus WITHOUT putting it in the name —
+ * the name still carries the state's sentence and nothing else, which is design
+ * D2's call and still holds.
+ *
+ * ONE HOME FOR THE WORDS. The constant is the clause alone and the tooltip's own
+ * expression adds the separator, rather than a second copy of the sentence in a
+ * form only a tooltip can use: a description is announced straight after the
+ * name, where a leading " · " would be read as a separator that is already
+ * implied.
  */
-const SILENT_REMEDY = " · /stop if it stays silent";
+const SILENT_REMEDY = "/stop if it stays silent";
+
+/**
+ * The id of a row's remedy sentence, WHEN that row renders one.
+ *
+ * Derived from the session id rather than from a `useId()` call because the rows
+ * are built by a plain render function (`sessionRow`), where a hook would run a
+ * different number of times per render. Rows are keyed by this id, so it is
+ * unique in the document by construction.
+ */
+const silentRemedyId = (sessionId: string) => `chat-row-remedy-${sessionId}`;
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -1214,6 +1242,13 @@ export function ChatSidebar({
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
 		 * what let the deleted browser mark paint its hover fill over the selected row). */
 		const current = selectedConversation === row.session_id && !activeDraftKey;
+		/**
+		 * WHETHER THIS ROW OFFERS THE REMEDY, read once for the same reason `current` is —
+		 * it decides three things now (the tooltip's tail, the `aria-describedby` and the
+		 * sentence that id names), and three copies of the predicate would be three
+		 * chances for the row to point at a sentence it is not rendering.
+		 */
+		const silent = row.status?.code === "wedged";
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
@@ -1291,7 +1326,14 @@ export function ChatSidebar({
 				   busy or gated row's tooltip claim a mark its own spinner and gate were
 				   nowhere drawing — the reported defect, in the channel a reader reaches
 				   by hovering, and the row that most needs the tooltip to be true. */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.status?.code === "wedged" ? SILENT_REMEDY : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+					/* The remedy's second channel. That the clause stays OUT of the accessible
+					   name does not follow from this attribute but from where its target
+					   renders — see the span after the mark. `undefined` on every other code and
+					   on a row with no status: an `aria-describedby` naming an element nobody
+					   rendered resolves to no description at all, which is worse than not
+					   pointing (the same rule `setting-control.tsx` states for its own help). */
+					aria-describedby={silent ? silentRemedyId(row.session_id) : undefined}
 				onClick={(event) => {
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
@@ -1314,6 +1356,14 @@ export function ChatSidebar({
 				}}
 			>
 				<ChatSessionStatus row={row} />
+					{silent ? (
+						/* The sentence `aria-describedby` names, and `sr-only` rather than hidden:
+						   a `display: none` or `hidden` element is out of the accessibility tree,
+						   which is exactly the failure the association exists to avoid. */
+						<span id={silentRemedyId(row.session_id)} className="sr-only">
+							{SILENT_REMEDY}
+						</span>
+					) : null}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 			    in `features/chat/chat-search.ts` — which is also where the three
 			    failed layouts that led to it are written down (an orphan `·` from

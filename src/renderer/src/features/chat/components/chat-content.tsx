@@ -976,19 +976,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										awaitingHydration={canonical.view.awaitingHydration}
 										/*
-										 * WHY THE WAIT IS A WAIT, handed to the same pane that draws the
-										 * skeleton. The handle already carries the read path's own
-										 * answer (`cold_reason`/`attaching` off the snapshot and off the
-										 * rollover that clears them), and the placeholder turns the token
-										 * into the sentence — the division that keeps the copy on the
-										 * surface and the token on the wire. Without it a quiet owner's
-										 * open is up to a minute of undifferentiated "Loading
-										 * conversation…", which is the half of the operator's report
-										 * the row's own mark cannot answer.
-										 */
-										coldReason={canonical.view.coldReason}
-										attaching={canonical.view.attaching}
-										/*
 										 * The identity the composer BELOW is given as its
 										 * `conversationId`, and deliberately the same local
 										 * const rather than a second spelling of it: the

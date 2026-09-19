@@ -292,7 +292,6 @@ const {
 	useCanonicalSessionsStore: store,
 	ThemedToastContainer,
 	realDesktopResult,
-	DESKTOP_FOREGROUND_REQUIRED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	QueryClient,
 	QueryClientProvider,
@@ -685,6 +684,94 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 			"Migrate the deploy script: Approval needed",
 		);
 	} finally {
+		await harness.unmount();
+	}
+});
+
+/*
+ * THE REMEDY IS REACHABLE WITHOUT A POINTER, and that is a claim no source text
+ * can settle (UX round 1, U2; review round 1, MINOR 1).
+ *
+ * The measurement that turned this into a case: with the wedged row on screen,
+ * `title` was the only carrier of `/stop if it stays silent` over the whole
+ * document — no accessible name held it, no row pointed at it with
+ * `aria-describedby`, and Chromium does not present a `title` on focus, so for
+ * the modality the `sr-only` name exists for the advice did not exist. The case
+ * mounts the shipped sidebar for the same reason the ones above do: the two
+ * facts are about ELEMENTS (does the row point at the sentence, and does the
+ * sentence exist to be found), and reading the component's source would pass
+ * with an `aria-describedby` naming an id nobody rendered.
+ *
+ * The failed row is here as the CONTROL: the remedy is advice about the state
+ * that is merely silent, and an error row that offered "stop" would be telling a
+ * person to kill the session they most likely want to reopen.
+ */
+test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
+	const SILENT = "d4e5f6a7b8c9";
+	const FAILED = "e5f6a7b8c9d0";
+	const rows = [
+		{
+			session_id: SILENT,
+			title: "Quiet owner (stale beat)",
+			active: true,
+			status: {
+				code: "wedged",
+				label: "Not answering · process alive (last heartbeat 4m ago)",
+			},
+		},
+		{
+			session_id: FAILED,
+			title: "Failed turn",
+			active: true,
+			status: { code: "error", label: "Failed" },
+		},
+	];
+	/*
+	 * Staged through the app's own read as well as the store: the sidebar issues
+	 * `sessions.list` on mount and the stub answers every other op with the bulk
+	 * receipt, so a case that only calls `mount` gets its roster replaced by one
+	 * junk row before an attribute can be read.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	try {
+		const row = (name) =>
+			harness.ring().find((element) => element.textContent?.includes(name));
+		const silent = row("Quiet owner (stale beat)");
+		const failed = row("Failed turn");
+		assert.ok(silent, "the not-answering row did not render");
+		assert.ok(failed, "the failed row did not render");
+		// The pointer channel: the composed tooltip ends with the clause, so the
+		// row itself still carries it where a pointer lands.
+		assert.match(
+			silent.getAttribute("title") ?? "",
+			/· \/stop if it stays silent$/,
+		);
+		// The keyboard channel: the row POINTS at the sentence, which is what
+		// makes it announced on focus when the name is read.
+		const id = silent.getAttribute("aria-describedby");
+		assert.ok(id, "the not-answering row points at no remedy");
+		const clause = document.getElementById(id);
+		assert.ok(
+			clause,
+			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
+		);
+		assert.equal(clause.textContent, "/stop if it stays silent");
+		assert.ok(
+			clause.textContent && !clause.textContent.includes("·"),
+			"the description kept the tooltip's separator, which is read aloud as punctuation",
+		);
+		// The control: the state next door offers no stop.
+		assert.equal(failed.getAttribute("aria-describedby"), null);
+		assert.doesNotMatch(failed.getAttribute("title") ?? "", /\/stop/);
+	} finally {
+		globalThis.__ack = undefined;
 		await harness.unmount();
 	}
 });

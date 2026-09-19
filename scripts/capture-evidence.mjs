@@ -1690,18 +1690,13 @@ export const STORIES = [
 	 */
 	["chat-session-status--neighbours", 860, 720],
 	/*
-	 * The region a slow open shows, which had NO committed frame before this
-	 * change: the story existed, the capture set did not name it, so the second
-	 * half of the operator's report ("you click in and it takes forever to load")
-	 * had no picture anywhere in the review set. Two states rather than one:
-	 * `hydrating` is the unknown case whose words are UNCHANGED by this branch and
-	 * is therefore the regression half of the pair, and `reasons` carries all four
-	 * of the codes the read path can publish, so the token-to-sentence mapping is
-	 * checked in one frame instead of in four. Both are the same viewport, which is
-	 * what makes the first a comparison rather than an illustration.
+	 * THE AMBER CLASS IN ONE COLUMN (design round 1, D4), which the set could not
+	 * answer before: the four marks a reader meets in one list were legible only by
+	 * cross-referencing the matrix's two columns, and the closest pair — the waves
+	 * against `Pause`'s bars — never appeared together. One column, four rows, ~300px
+	 * tall.
 	 */
-	["chat-hydration-placeholder--hydrating", 760, 600],
-	["chat-hydration-placeholder--reasons", 760, 600],
+	["chat-session-status--amber-class", 460, 300],
 	/*
 	 * The conversation sidebar's row status, delivered by the machine-wide feed
 	 * rather than by a catalogue read. THREE frames, and the pair they are half of
