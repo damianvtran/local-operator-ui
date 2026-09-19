@@ -134,7 +134,25 @@ export const kanagawaWave: ThemeDefinition = {
 		 * own tokens. Measured: ΔE00 15.59 from `accent`, 29.18 from its nearest
 		 * semantic (`danger`), 4.55:1 on the tightest ground (`surface`).
 		 */
-		accentAlt: "#9D87C0",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.05:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 306.69 -> 311.61 deg, L* 60.16 -> 63.88, C* 33.22 -> 33.08):
+		 * 4.58:1 on `elevated`, 5.14:1 on `surface`, 6.46:1 on `sunken`,
+		 * 5.86:1 on `canvas` - ΔE00 29.66 from `info` (the 8 floor intact),
+		 * 16.20 from `accent`, 39.01 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.14:1.
+		 */
+		accentAlt: "#AD8FC7",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 18.69 and C* 8.99, with the hue moved to

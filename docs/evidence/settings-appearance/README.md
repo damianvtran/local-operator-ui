@@ -167,3 +167,59 @@ npx http-server storybook-static -p 6047 --silent
 node scripts/capture-evidence.mjs http://localhost:6047 \
   --only=settings-appearance--gallery --themes=<the ThemeName ids to re-shoot> --allow-backend
 ```
+
+## The tiles this branch left stale (not re-shot, and why)
+
+**What these frames carry is older than the palettes they are pictures of, and
+until this note nothing in the set said so.** The bytes in the tree are
+`488c5456a`'s ("re-shoot the frames the row/hover change invalidates", 2026-09-18
+— the last commit to touch this directory, which
+`git log --format=%h -1 -- docs/evidence/settings-appearance/gallery/<theme>.webp`
+answers for all fifty-nine). Two palette moves have landed since, and the
+miniature paints their values: `theme-selector.tsx`'s `ThemeSwatch` renders
+`canvas`, `sunken`, `accent-wash`, `accent`, `ink-dim`, `surface`, `ink`,
+`elevated`, `accent-alt` and `border-control` inside the tile's own
+`[data-theme]` subtree.
+
+- **Ten palettes' `accentAlt` moved in `5f0ff1ea6`** (PR #391's remediation,
+  where the second accent was re-seated so the ledger's identity ink clears the
+  text floor on a row's state ground). The `bg-accent-alt` bar in each of those
+  tiles therefore still paints the PRE-REMEDIATION colour, decisively on three:
+  `ayuMirage` `#CA973E` → `#E79509`, `catppuccinMocha` `#719AD4` → `#48A6FF`,
+  `nightfox` `#A581DF` → `#AE89EA`. The other seven are `everforest`
+  `#CE9DC3` → `#DBA3D0`, `gruvbox` `#d3869b` → `#DA8DA2`, `kanagawaWave`
+  `#9D87C0` → `#AD8FC7`, `monokai` `#ae81ff` → `#B68CFF`, `nord` `#BF99B8` →
+  `#C7A1C6`, `oneDark` `#CC7DE3` → `#D686ED`, `solarizedDark` `#8B8FDB` →
+  `#9497E1`.
+- **`main`'s register re-solve moved the grounds and inks of eleven** (`canvas`,
+  `surface`, `elevated`, `sunken`, `accentWash`, `inkDim`, `borderControl` on
+  nine of the eleven, and `ink` on two), so
+  those tiles are stale a second way: `autumn`, `catppuccinMocha`, `desert`,
+  `forest`, `lavender`, `neonNoir`, `ocean`, `rosePine`, `rosewood`,
+  `tokyoNight`, `vaporwave`.
+
+Union: **20 of the 59 tiles** (nine by `accentAlt` alone, ten by the grounds
+alone, `catppuccinMocha` by both) carry values this tree no longer ships. The
+other 39 paint only roles that have not moved since `488c5456a`, which is what
+makes the staleness enumerable at all — it is a role-by-role diff of the
+palettes at `488c5456a` against this head, not an assumption that the set is old.
+
+**The choice made here, and it is deliberate: the record discloses rather than
+re-shoots, in this pass.** Re-shooting is the better answer and stays open — it
+is one `--only` run once a Storybook is rebuilt and served (the command is at the
+foot of this file) — but three things decide against doing it inside a
+record-only commit, and none of them is "the rig cannot reach the surface": (1)
+the rig's writes are the commit (`capture-evidence.mjs` rewrites
+`docs/evidence/manifest.json`, and `clearSweptFrames` deletes every `.webp`
+outside a declared set, so a run against an uncommitted tree takes committed
+frames with it); (2) on this host the rig's 30 s Chrome-debug-port line failed
+four launches in five and the one launch that got through hung twelve minutes in
+a CDP await without reporting — the design round's own measurement this round;
+and (3) the reason that settles it — re-shooting the ten `accentAlt` tiles would
+NOT leave a consistent set, because the eleven ground-moved tiles have to be
+re-shot in the same pass for the set to be a picture of one tree at all. A
+partial re-shoot would buy a consistent-looking set with an inconsistent
+provenance, which is the defect this note exists to close rather than to re-open.
+So the disclosure is the minimum that is true today, and the re-shoot — all
+twenty tiles, one run — is recorded here as the follow-up rather than implied to
+have happened.

@@ -124,7 +124,25 @@ export const nord: ThemeDefinition = {
 		 * from its nearest semantic (`danger`), 4.53:1 on the tightest ground
 		 * (`surface`).
 		 */
-		accentAlt: "#BF99B8",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.12:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 331.22 -> 326.20 deg, L* 67.52 -> 70.67, C* 22.16 -> 24.51):
+		 * 4.55:1 on `elevated`, 5.00:1 on `surface`, 6.23:1 on `sunken`,
+		 * 5.56:1 on `canvas` - ΔE00 24.26 from `info` (the 8 floor intact),
+		 * 32.75 from `accent`, 24.22 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.02:1.
+		 */
+		accentAlt: "#C7A1C6",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 24.60 and C* 6.50, with the hue moved to

@@ -609,13 +609,42 @@ export type ThemePalette = {
 	 *   moved rather than accepted, because the faithful port of a theme's own
 	 *   token is not an argument against the reader's ability to tell a
 	 *   decoration from a failure.
-	 * - **ΔE00 >= 8 from `info`**, deliberately the lighter floor. `info` is the
-	 *   cool counterweight the port mapped `signal` onto, so on the palettes whose
-	 *   second hue is in that family 15 would fail BY CONSTRUCTION rather than by
-	 *   defect: the tightest are `catppuccinMocha` 8.01, `catppuccinMacchiato`
-	 *   8.58 and `catppuccinFrappe` 8.60 - the three whose second hue sits in
-	 *   `info`'s own family (2.68, 19.42 and 17.02 degrees off it, in that order) -
-	 *   then `localOperatorDark` 12.57 and `ayuLight` 13.57. 8 is the file's
+	 * - **ΔE00 >= 15 from `info`, as the ledger's two CATEGORY inks.** The tool
+	 *   row draws this role as the settled `meta` row's identity ink and `info` as
+	 *   `read`'s, one line apart in one column, so the two are compared as text and
+	 *   the bound is the contract's own "difference of category, not of shade". The
+	 *   reduced 8 below the decorative sites is the OLD bound for this pair, argued
+	 *   for the sites the role had then (a 1px bar in a 40px miniature, a 6px mark
+	 *   in a diagram) and not for two 12px inks on one rail. FIVE PALETTES CANNOT
+	 *   REACH THE 15 and are pinned in `contrast-contract.mjs`'s `PAIR_PINS` with
+	 *   the constraint that refuses each - they are the palettes whose second hue
+	 *   sits in `info`'s own family. Re-measure, do not re-quote: the run's
+	 *   `Identity pairs:` line prints the tightest pair the fleet holds, from the
+	 *   same `deltaE` the floor uses, because this figure ran in three places and
+	 *   disagreed in three ways (the contract's 8.01 was the pair's value BEFORE
+	 *   the register re-solve moved both of its values; the shipped pair measured
+	 *   8.19).
+	 *
+	 *   THE FIVE PINS ARE ACCEPTED RESIDUALS, NOT FIXES, and this note says so
+	 *   where the pins are explained rather than only in a review thread, because a
+	 *   later reader skims labels: on a pinned palette the row still paints `read`
+	 *   and `meta` as one hue at two weights (the three `catppuccin*` palettes) or
+	 *   as the same ink outright (the palettes whose `info` IS their `accent`), and
+	 *   re-seating was MEASURED and refused rather than postponed. What tells the
+	 *   two families apart on those palettes is the row's own GLYPH — the channel
+	 *   that survives when the ink cannot spend a second hue: `read` draws the page
+	 *   (`tool-glyphs.ts`'s `FileText`) while the coordination family draws its own
+	 *   marks (`Users` for `task`/`agent`, `Send`, `Clock`, `ListChecks`, and the
+	 *   wrench the TUI itself gives `hub`/`ask` — the SAME wrench `tool-glyphs.ts`
+	 *   gives any tool it has no entry for, so `team` and an unknown tool wear it
+	 *   too: on a pinned palette a `hub` row and an unknown-tool row are the same
+	 *   ink AND the same shape), and `mcp__*` draws the plug. A
+	 *   pinned palette should send the reader to where the answer IS — the row's
+	 *   shape — rather than leave the note saying only that a floor is waived.
+	 * - **ΔE00 >= 8 from `info`, at the role's decorative sites** — the reduced
+	 *   floor, deliberately lighter: `info` is the cool counterweight the port
+	 *   mapped `signal` onto, so on the palettes whose second hue is in that family
+	 *   15 would fail BY CONSTRUCTION rather than by defect. 8 is the file's
 	 *   "reliably take different names rather than scraping the side-by-side
 	 *   threshold" floor (`SYNTAX_COMMENT_FLOOR`).
 	 * - **C* >= 15.** The second accent has to be a hue and not a second grey.
@@ -634,11 +663,14 @@ export type ThemePalette = {
 	 * ## What may spend it — and the may-not list, which is the longer one
 	 *
 	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
-	 * `bg-accent-alt` bar beside the `bg-accent` one) and mermaid's categorical
-	 * fills (`accentAltWash` at index 1 of the wash cycle). The sibling legibility
-	 * spec's identity sites — an agent/entity glyph, a provider label, a
-	 * tab-strip mark — are the same kind of use and each brings its own `CONTROLS`
-	 * row when it lands.
+	 * `bg-accent-alt` bar beside the `bg-accent` one), mermaid's categorical fills
+	 * (`accentAltWash` at index 1 of the wash cycle), and the settled trace row's
+	 * IDENTITY ink — `tool-row.tsx`'s `CATEGORY_INK.meta`, the name and glyph of a
+	 * `task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake` row in the shared name column.
+	 * The sibling legibility spec's identity sites — an agent/entity glyph, a
+	 * provider label, a tab-strip mark — are the same kind of use and each brings
+	 * its own `CONTROLS` row when it lands; the trace row's brought the text floor
+	 * on a state ground below, and the ten re-seated values with it.
 	 *
 	 * MAY NOT, and the reason fits in a sentence: **interaction, selection and
 	 * semantics stay on `accent`.** Every selection and hover ground, the focus
