@@ -12,9 +12,14 @@ import { join } from "node:path";
  * 2026-09-18: the same call is 0.25-3.85 s from an ordinary process, 33.3 s as a
  * launchd job, and 331-777 s under `taskpolicy -b`, while a real install sat in it
  * for 4 min 26.6 s at 4.3% CPU with 100% of `sample`'s samples in a `__ulock_wait`.
- * Spawned directly instead, the same ShipIt completes a whole install - validate,
- * swap, relaunch - in 2.3-5.2 s (`scripts/shipit-direct-spike.mjs`, Appendix A of
- * `docs/design/update-install-window.md`).
+ * Spawned directly instead, the same ShipIt completes the install's own two phases -
+ * validate and swap - in 2.3-5.2 s (`scripts/shipit-direct-spike.mjs`, Appendix A of
+ * `docs/design/update-install-window.md`, runs whose state plist kept
+ * `launchAfterInstallation: false` on purpose). The relaunch is the third phase and
+ * the spike deliberately did not exercise it: its evidence is the launchd path's own
+ * log (a real install's `Launching new ShipIt ... with instructions to launch ...`,
+ * 2.2 s after `Installation completed`) plus the state plist this module writes,
+ * which is where that instruction comes from.
  *
  * So nothing about the install is re-implemented here. The installer is still
  * Apple's, the validation is still Apple's, the swap is still Apple's, and this
@@ -438,4 +443,50 @@ export function installerIsAlive(input: {
 		line.includes(input.shipItPath) &&
 		line.includes(input.stagingRoot)
 	);
+}
+
+/**
+ * Whether ANY process is this install's ShipIt, for the pid that stopped being it.
+ *
+ * WHY THIS EXISTS, AND WHICH WAY IT FAILS. The marker records one pid, and one pid
+ * is a snapshot: the spawner `exec`s ShipIt (same pid, so the common case is
+ * covered), but a ShipIt that re-execs or forks internally would leave the recorded
+ * pid dead while an install it is in the middle of continues. The reader that acts
+ * on "the installer is gone" is recovery, and its action is destructive - it
+ * declares the install failed and reaps the staged tree, which a live installer is
+ * renaming - so a false negative there is the 2026-09-13 incident class and the one
+ * failure direction worth paying a second `ps` to avoid.
+ *
+ * So the recorded pid is the fast path and this is the answer before declaring the
+ * installer dead: one `ps -Ao command= -ww` listing, matched on the same two facts
+ * `installerIsAlive` requires of the pid - this app's own ShipIt AND a state plist
+ * under this app's own staging root. It is not asked the other way round, and
+ * deliberately: a live foreign `ShipIt` (another application's install, which this
+ * machine has several of) must never be read as ours.
+ *
+ * An unreadable listing (`null`) answers false, and that is the direction stated
+ * rather than hidden: a `ps` that cannot run leaves the installer unproven, and the
+ * caller treats unproven as gone. That is the safe direction for the LAUNCH HOLD
+ * (better a launch the install may abort than an app the user cannot open) and the
+ * unsafe one for recovery's reap - named here so the next reader does not have to
+ * rediscover which way it leans.
+ */
+export function installerElsewhere(input: {
+	/** `ps -Ao command= -ww`, or null when the listing could not be read. */
+	processList: string | null;
+	/** This app's own ShipIt, as resolved from the running bundle. */
+	shipItPath: string | null;
+	/** This app's staging root - the directory every install's plist lives under. */
+	stagingRoot: string | null;
+}): boolean {
+	if (!input.processList || !input.shipItPath || !input.stagingRoot) {
+		return false;
+	}
+	return input.processList
+		.split("\n")
+		.some(
+			(line) =>
+				line.includes(input.shipItPath as string) &&
+				line.includes(input.stagingRoot as string),
+		);
 }

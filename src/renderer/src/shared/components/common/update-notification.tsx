@@ -11,6 +11,10 @@ import {
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
+import {
+	installPhaseCopy,
+	installSucceededCopy,
+} from "@shared/utils/update-install-copy";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";
@@ -951,6 +955,21 @@ export const UpdateNotification = ({
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
 
+	/**
+	 * Which step the pressed install is on, and what just landed.
+	 *
+	 * The pre-quit work is the longest wait this surface ever shows (a `codesign`
+	 * over the installed bundle, a full extraction and a seal probe), so the phase
+	 * replaces the button's single "Preparing to install..." with the work actually
+	 * happening (UX U5). The affirmation is the other half of the same change: a
+	 * fast install's window is seconds, so the app coming back no longer tells the
+	 * user their update went in (UX U4).
+	 */
+	const [installPhase, setInstallPhase] = useState<
+		"verifying" | "staging" | "starting" | null
+	>(null);
+	const [installSucceeded, setInstallSucceeded] = useState<string | null>(null);
+
 	// Install refusals, an install that never completed, and an install that is
 	// still running. Kept apart from each other because only one of them is a
 	// failure, and only one of them has an install still to save.
@@ -1555,6 +1574,19 @@ export const UpdateNotification = ({
 				setChecking(false);
 			});
 
+		// The step the install the user just started is on, and the install that
+		// landed. Neither is a state of the update CHECK, so neither touches
+		// `checking`: one describes work the user asked for and is watching, the
+		// other is the outcome of the previous one.
+		const removeInstallProgressListener =
+			window.api.updater.onUpdateInstallProgress((info) => {
+				setInstallPhase(info.phase);
+			});
+		const removeInstallSucceededListener =
+			window.api.updater.onUpdateInstallSucceeded((info) => {
+				setInstallSucceeded(info.version);
+			});
+
 		// Frontend update progress
 		const removeUpdateProgressListener = window.api.updater.onUpdateProgress(
 			(progressObj) => {
@@ -1868,6 +1900,8 @@ export const UpdateNotification = ({
 			removeInstallBlockedListener();
 			removeInstallFailedListener();
 			removeInstallInFlightListener();
+			removeInstallProgressListener();
+			removeInstallSucceededListener();
 		};
 	}, [
 		announceBackendSkew,
@@ -1918,6 +1952,20 @@ export const UpdateNotification = ({
 	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
 		<>
 			{panel}
+			{/* The update that just landed sits beside whichever surface is up, and
+			    independent of the error slot: an install is not a state of the update
+			    check, and this arrives on a launch where there may be nothing to offer
+			    at all (UX U4). */}
+			{installSucceeded !== null ? (
+				<FloatingAlert
+					open
+					autoHideDuration={8000}
+					onClose={() => setInstallSucceeded(null)}
+					variant="success"
+				>
+					{installSucceededCopy(installSucceeded)}
+				</FloatingAlert>
+			) : null}
 			{error !== null ? (
 				<UpdateErrorAlert
 					open={snackbarOpen}
@@ -2365,10 +2413,23 @@ export const UpdateNotification = ({
 					    carrying less consequence (review D2). Three sentences, not one
 					    run-on whose payload trails a spliced clause (review D5). */}
 				<p className="mt-2 text-body text-ink-muted">
-					Installing closes the app for a few minutes while the update is
-					verified and put in place. Don't reopen it until it starts by itself.
-					Opening it while the update is installing cancels the install.
+					Installing closes the app while the update is verified and put in
+					place — usually a few seconds, occasionally a few minutes. Don't
+					reopen it until it starts by itself. Opening it while the update is
+					installing cancels the install.
 				</p>
+				{/* What the wait actually is, from the main process's own phases rather
+				    than from a timer guessing at them (UX U5). It replaces the button's
+				    generic label for the seconds the pre-flight runs, where the only
+				    feedback used to be two disabled buttons. */}
+				{installing ? (
+					/* `<output>` rather than a `<p role="status">`: it is the element the
+					   platform already treats as a live region for the result of an
+					   action, which is exactly what this is (a11y/useSemanticElements). */
+					<output className="mt-2 block text-body text-ink-muted">
+						{installPhaseCopy(installPhase)}
+					</output>
+				) : null}
 
 				<UpdateActions>
 					<Button

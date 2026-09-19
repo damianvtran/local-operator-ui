@@ -9,10 +9,12 @@ import { createHash, randomBytes } from "node:crypto";
 import {
 	constants,
 	accessSync,
+	closeSync,
 	createReadStream,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	openSync,
 	readdirSync,
 	rmSync,
 	statSync,
@@ -94,6 +96,7 @@ import {
 	type InstallJobState,
 	type InstallLaunchHoldNotice,
 	type InstallLiveness,
+	type InstallProgressPhase,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
 	type SealBlockContext,
@@ -166,6 +169,7 @@ import {
 	buildInstallerSpawn,
 	evaluateStagedBundle,
 	extractionArguments,
+	installerElsewhere,
 	installerLogPath,
 	sameVolume,
 	shipItPathInBundle,
@@ -448,6 +452,116 @@ function readCommandOutput(command: string, args: string[]): string | null {
 }
 
 /**
+ * Extract the update bundle into the staging root, without blocking the app.
+ *
+ * `ditto -x -k` is the tool Squirrel.Mac itself uses, so the tree is the one
+ * Apple's own path would have produced - measured to leave the signature intact
+ * (`codesign --verify --strict --deep`: `valid on disk`, and `spctl` accepting it
+ * as `source=Notarized Developer ID`, with no quarantine attribute anywhere in the
+ * tree). The exit status is checked because `ditto` reports a truncated archive
+ * that way.
+ *
+ * `spawn` with an awaited timer rather than `spawnSync` with a timeout, and the
+ * difference is the whole point (review MINOR-5): this runs on the main process's
+ * own thread, the bound is generous (ten minutes, against a measured ~5 s for the
+ * real 152 MB artifact), and the case the bound is for - a wedged `ditto` on a slow
+ * or nearly-full volume - is exactly the case where a synchronous call would freeze
+ * the app, install panel included, for the entire bound before the refusal was even
+ * decided. A hard kill on the way out, because a `ditto` that will not answer must
+ * not outlive the decision to stop waiting for it.
+ */
+export function runExtraction(
+	zipPath: string,
+	stagingRoot: string,
+	/**
+	 * The extractor, and how long it may take. Both are arguments so a test can
+	 * drive the wedge the bound exists for without waiting ten minutes for it, and
+	 * so the timeout is provable rather than asserted in prose.
+	 */
+	options: { command?: string; timeoutMs?: number } = {},
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+	const command = options.command ?? DITTO_PATH;
+	const timeoutMs = options.timeoutMs ?? EXTRACTION_TIMEOUT_MS;
+	return new Promise((resolve) => {
+		let settled = false;
+		const finish = (result: { ok: true } | { ok: false; reason: string }) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			resolve(result);
+		};
+		const child = spawn(command, extractionArguments(zipPath, stagingRoot), {
+			/*
+			 * Its own process group, so the bound below can take down the whole tree.
+			 * A kill by pid alone leaves anything the extractor started running, and
+			 * this is the one process in the change that is killed rather than waited
+			 * for: the same teardown discipline the app applies to its own children,
+			 * for the same reason - a half-written staging tree with a live process
+			 * inside it is worse than no staging tree.
+			 */
+			detached: true,
+			stdio: ["ignore", "ignore", "pipe"],
+		});
+		let stderr = "";
+		child.stderr?.on("data", (chunk: Buffer | string) => {
+			stderr += String(chunk);
+		});
+		const timer = setTimeout(() => {
+			logger.warn(
+				`The update bundle's extraction did not finish within ${timeoutMs} ms; stopping it.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			killExtractionTree(child.pid, (message) =>
+				logger.warn(message, LogFileType.UPDATE_SERVICE),
+			);
+			finish({
+				ok: false,
+				reason: `it was still running after ${timeoutMs} ms`,
+			});
+		}, timeoutMs);
+		child.on("error", (error) => finish({ ok: false, reason: String(error) }));
+		child.on("close", (code) =>
+			finish(
+				code === 0
+					? { ok: true }
+					: {
+							ok: false,
+							reason: `ditto exited ${code}${stderr.trim() ? `: ${stderr.trim()}` : ""}`,
+						},
+			),
+		);
+	});
+}
+
+/**
+ * Stop a wedged extraction, and anything it started.
+ *
+ * The process GROUP (`-pid`) rather than the process: the plan spawns it detached so
+ * it leads its own group, and a `ditto` killed by pid alone can leave a child it
+ * started still writing into the staging tree. ESRCH on the group - already gone, or
+ * never a group leader - falls back to the pid, and a process that is already gone is
+ * the outcome this is for, so a second ESRCH is not an error worth reporting as one.
+ */
+function killExtractionTree(
+	pid: number | undefined,
+	warn: (message: string) => void,
+): void {
+	if (pid == null) return;
+	try {
+		process.kill(-pid, "SIGKILL");
+	} catch (groupError) {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch (error) {
+			warn(
+				`Could not stop the wedged extraction (pid ${pid}): ${String(error)}`,
+			);
+		}
+		void groupError;
+	}
+}
+
+/**
  * Everything the app needs to hand an update to ShipIt itself.
  *
  * One object rather than six arguments, because the spawner, the state plist, the
@@ -469,6 +583,28 @@ type InstallerHandoff = {
 	/** Squirrel's own ShipIt log, which is where both of these streams go. */
 	logPath: string;
 };
+
+/**
+ * What the staging step decided, in the three shapes its caller acts on.
+ *
+ *   - `staged`: the tree is extracted, proved to be this app and sealed, and its
+ *     state plist is written - hand it to the installer;
+ *   - `fallback`: a precondition this path cannot work around (no ShipIt, another
+ *     volume, an extraction that failed), so the install goes to Squirrel as it
+ *     always did. Minutes slower, same install;
+ *   - `blocked`: the STAGED TREE itself is wrong - it is not this app, or its seal
+ *     is broken. The fallback cannot help here and never could: Squirrel unpacks
+ *     and validates the same artifact with the same tools, so handing it the same
+ *     bytes buys a four-minute closed window and the same refusal, delivered as a
+ *     failed install rather than as a panel with a remedy (review MINOR-2).
+ *
+ * The distinction is the point of the union rather than a boolean: nothing about
+ * "we chose Squirrel" should be able to reach a user as "your update is bad".
+ */
+type StageOutcome =
+	| { kind: "staged"; handoff: InstallerHandoff }
+	| { kind: "fallback" }
+	| { kind: "blocked"; block: InstallBlock };
 
 /**
  * Whether a path is a file this process may execute.
@@ -1221,20 +1357,34 @@ function installLivenessFor(input: {
 	jobState?: () => InstallJobState;
 	/** Defaults to a `ps` read of the pid the marker names; a harness substitutes it. */
 	installerCommandLine?: (pid: number) => string | null;
+	/** Defaults to `ps -Ao command= -ww`; a harness substitutes it. */
+	processList?: () => string | null;
 	/** Defaults to the bundle this process runs from; a harness substitutes it. */
 	bundlePath?: () => string | null;
 }): InstallLiveness {
 	const commandLine = input.installerCommandLine ?? defaultInstallerCommandLine;
+	const processList = input.processList ?? defaultProcessList;
 	const bundlePath =
 		input.bundlePath ?? (() => appBundleFromExecutable(process.execPath));
+	// One resolution of the two facts both halves of the identity check need, so the
+	// pid's own answer and the listing's answer cannot disagree about which ShipIt
+	// and which staging root they are looking for.
+	const shipItPath = shipItPathInBundle(bundlePath());
+	const stagingRoot = updateStagingRoot(app.getPath("userData"));
 	return installLivenessNow({
 		marker: input.marker,
 		installerCommandLine: () => {
 			const pid = input.marker?.installerPid ?? null;
 			return pid == null ? null : commandLine(pid);
 		},
-		shipItPath: shipItPathInBundle(bundlePath()),
-		stagingRoot: updateStagingRoot(app.getPath("userData")),
+		installerElsewhere: () =>
+			installerElsewhere({
+				processList: processList(),
+				shipItPath,
+				stagingRoot,
+			}),
+		shipItPath,
+		stagingRoot,
 		jobState: input.jobState ?? probeShipItInstallJobState,
 	});
 }
@@ -1248,6 +1398,19 @@ function installLivenessFor(input: {
  */
 function defaultInstallerCommandLine(pid: number): string | null {
 	return readCommandOutput("/bin/ps", ["-o", "command=", "-p", String(pid)]);
+}
+
+/**
+ * Every process's command line, for the check that a stopped pid does not mean a
+ * stopped installer (`installerElsewhere`).
+ *
+ * `-Ao command= -ww`: all processes, command line only, never truncated by a tty
+ * width - the fact being matched is the installer's own argv, and a clipped line
+ * is a false "not ours". Paid for only when the recorded pid has stopped
+ * answering, which is the moment the answer changes what the app does.
+ */
+function defaultProcessList(): string | null {
+	return readCommandOutput("/bin/ps", ["-Ao", "command=", "-ww"]);
 }
 
 /**
@@ -1654,7 +1817,7 @@ export function holdLaunchForLiveInstall(options: {
 	if (reading.kind === "open") return false;
 
 	options.log(
-		`Holding this launch for the install of version ${reading.marker.targetVersion} that is still running (${installLivenessText(liveness)}): a window here would make this process the running instance Squirrel's final check aborts the install on, so the app tells the user and quits.`,
+		`Holding this launch for the install of version ${reading.marker.targetVersion} that is still running (${installLivenessText(liveness, reading.marker.installerPid)}): a window here would make this process the running instance Squirrel's final check aborts the install on, so the app tells the user and quits.`,
 	);
 	// Before the quit, never after: the notice's promise - and, on the branch where
 	// nothing could be arranged, its warning - is about what happens once this
@@ -1753,6 +1916,13 @@ export class UpdateService {
 	 * available", which is how `shouldFilterUpdateError` would otherwise read it.
 	 */
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
+
+	/**
+	 * The install that just landed, for the one-line affirmation the next launch
+	 * owes the user (UX U4). Null once it has been reported.
+	 */
+	private pendingInstallSucceeded: { version: string } | null = null;
+	private installSucceededDelivered = false;
 
 	/**
 	 * How many app-channel checks are in flight right now.
@@ -2217,7 +2387,7 @@ export class UpdateService {
 		 */
 		if (marker) {
 			logger.info(
-				`Pending install marker for version ${marker.targetVersion} on disk; ${installLivenessText(liveness)}.`,
+				`Pending install marker for version ${marker.targetVersion} on disk; ${installLivenessText(liveness, marker.installerPid)}.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 		}
@@ -2254,6 +2424,19 @@ export class UpdateService {
 				// An install this machine reached is the end of the failure record too: it named
 				// the version that would not land, and this is the launch that proves it did.
 				this.retireSupersededInstallRecord();
+				/*
+				 * THE ONE PLACE THE APP LEARNS AN INSTALL LANDED, so it is the one
+				 * place that can say so (UX U4). The old path's report was the
+				 * window coming back minutes later; on the direct path the window is
+				 * back in seconds and, until this, the only witness to a successful
+				 * update was the version in Settings. Nothing is claimed here that
+				 * was not observed: the marker said which version was being
+				 * installed and the running bundle is that version.
+				 */
+				this.pendingInstallSucceeded = {
+					version: outcome.marker.targetVersion,
+				};
+				this.scheduleInstallSucceededDelivery();
 				return;
 			case "stale":
 				// A marker from an install this machine has already moved past. It is
@@ -2273,7 +2456,7 @@ export class UpdateService {
 			case "in-flight": {
 				this.installWasInFlight = true;
 				logger.info(
-					`Update marker: the install of version ${outcome.marker.targetVersion} is still running (${installLivenessText(liveness)}). Leaving the marker, the staged tree, the install job and the relaunch watchdog in place.`,
+					`Update marker: the install of version ${outcome.marker.targetVersion} is still running (${installLivenessText(liveness, outcome.marker.installerPid)}). Leaving the marker, the staged tree, the install job and the relaunch watchdog in place.`,
 					LogFileType.UPDATE_SERVICE,
 				);
 				// The user is told, because the app being open is what stops this
@@ -2377,12 +2560,6 @@ export class UpdateService {
 			"CFBundleIdentifier",
 		]);
 		return value && BUNDLE_ID_REGEX.test(value) ? value : null;
-	}
-
-	/** The launchd job Squirrel's install runs under, by label. */
-	private shipItJob(): string | null {
-		const bundleId = this.bundleIdentifier();
-		return bundleId ? shipItJobLabel(bundleId) : null;
 	}
 
 	/**
@@ -2604,6 +2781,20 @@ export class UpdateService {
 	}
 
 	/**
+	 * What the pre-quit work is doing, on the update surface that is already up.
+	 *
+	 * A phase rather than a percentage: the three steps are `codesign` over the
+	 * installed bundle plus a hash of the artifact, the `ditto` extraction and its
+	 * seal probe, and the spawn - each of them one indivisible call this app does not
+	 * get progress out of, and inventing a bar for them would be a lie about what is
+	 * known (UX U5). Sent before each step starts, so the sentence on screen always
+	 * names the work that is actually happening.
+	 */
+	private reportInstallProgress(phase: InstallProgressPhase): void {
+		this.sendToRenderer("update-install-progress", { phase });
+	}
+
+	/**
 	 * Deliver the still-installing notice once the renderer can hear it.
 	 *
 	 * Same shape and the same reason as the failure's delivery: the marker is read
@@ -2622,6 +2813,43 @@ export class UpdateService {
 			webContents.once("did-finish-load", deliver);
 		}
 		setTimeout(deliver, 5000);
+	}
+
+	/**
+	 * Deliver the "the update went in" notice once the renderer can hear it.
+	 *
+	 * Same shape and the same reason as the in-flight and failure notices: recovery
+	 * runs while the window is still loading, and the component subscribes from a
+	 * React effect that can run after `did-finish-load`. Unlike the failure there is
+	 * nothing to keep on disk if the push is lost - the marker is cleared either way,
+	 * because it is the marker's job to be gone and this is a courtesy - so a missed
+	 * notice costs the sentence and nothing else.
+	 */
+	private scheduleInstallSucceededDelivery(): void {
+		if (!this.pendingInstallSucceeded || this.installSucceededDelivered) return;
+		const deliver = () => this.deliverPendingInstallSucceeded();
+		const webContents = this.mainWindow?.webContents;
+		if (webContents && !webContents.isDestroyed()) {
+			webContents.once("did-finish-load", deliver);
+		}
+		setTimeout(deliver, 5000);
+	}
+
+	private deliverPendingInstallSucceeded(): void {
+		if (!this.pendingInstallSucceeded || this.installSucceededDelivered) return;
+		if (
+			!this.sendToRenderer(
+				"update-install-succeeded",
+				this.pendingInstallSucceeded,
+			)
+		) {
+			return;
+		}
+		this.installSucceededDelivered = true;
+		logger.info(
+			"Reported a completed update install to the renderer",
+			LogFileType.UPDATE_SERVICE,
+		);
 	}
 
 	private deliverPendingInstallInFlight(): void {
@@ -3428,7 +3656,7 @@ export class UpdateService {
 	 */
 	private async stageInstallerHandoff(
 		info: UpdateInfo | null,
-	): Promise<InstallerHandoff | null> {
+	): Promise<StageOutcome> {
 		/*
 		 * Every refusal here falls back to Squirrel's own path, which is the whole
 		 * safety of this change: the new path is all-or-nothing (Appendices 5.4 and
@@ -3437,12 +3665,36 @@ export class UpdateService {
 		 * So each one is logged with the reason rather than thrown, and the caller
 		 * cannot tell a refusal from an absent precondition - which is the intent.
 		 */
-		const refuse = (reason: string): null => {
+		const refuse = (reason: string): StageOutcome => {
 			logger.info(
 				`Not staging the update for the installer: ${reason}. The install will be handed to Squirrel's own path instead, which takes minutes but is the same install.`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			return null;
+			return { kind: "fallback" };
+		};
+		/*
+		 * The staged tree's own verdicts, as opposed to a precondition: these fail
+		 * identically under Squirrel, so the install is stopped here with the reason
+		 * in front of the user instead of after another four-minute closed window.
+		 */
+		const block = (
+			detail: string,
+			message: string,
+			remedy: string,
+		): StageOutcome => {
+			logger.warn(
+				`Refusing to install the staged update: ${detail}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return {
+				kind: "blocked",
+				block: {
+					code: "download-verification-failed",
+					message,
+					remedy: { text: remedy },
+					detail,
+				},
+			};
 		};
 
 		if (process.platform !== "darwin") {
@@ -3512,24 +3764,11 @@ export class UpdateService {
 			return refuse(`the staging root could not be created: ${String(error)}`);
 		}
 
-		/*
-		 * `ditto -x -k`, the tool Squirrel.Mac itself uses, so the tree is the one
-		 * Apple's own path would have produced - measured to leave the signature
-		 * intact (`codesign --verify --strict --deep`: `valid on disk`, and `spctl`
-		 * accepting it as `source=Notarized Developer ID`). The exit status is
-		 * checked because `ditto` reports a truncated archive that way, and the
-		 * timeout exists because a wedged extraction would hold the whole install
-		 * panel with nothing to show for it.
-		 */
 		const started = Date.now();
-		const extraction = spawnSync(
-			DITTO_PATH,
-			extractionArguments(zipPath, stagingRoot),
-			{ encoding: "utf8", timeout: EXTRACTION_TIMEOUT_MS },
-		);
-		if (extraction.error || extraction.status !== 0) {
+		const extraction = await runExtraction(zipPath, stagingRoot);
+		if (!extraction.ok) {
 			return refuse(
-				`the update bundle could not be extracted (${extraction.error ? String(extraction.error) : `ditto exited ${extraction.status}: ${(extraction.stderr ?? "").trim()}`})`,
+				`the update bundle could not be extracted (${extraction.reason})`,
 			);
 		}
 		logger.info(
@@ -3545,7 +3784,11 @@ export class UpdateService {
 			runningArchitecture: process.arch,
 		});
 		if (!verdict.ok) {
-			return refuse(`the staged bundle is not the app: ${verdict.detail}`);
+			return block(
+				`The staged update bundle is not this application: ${verdict.detail}.`,
+				`The downloaded update${versionSuffix(version)} is not this application, so it wasn't installed.`,
+				"Check for updates again to re-download the release.",
+			);
 		}
 
 		/*
@@ -3571,9 +3814,23 @@ export class UpdateService {
 				`the staged bundle's seal could not be probed: ${String(error)}`,
 			);
 		}
+		if (stagedSeal.kind === "unsealed") {
+			/*
+			 * A VERDICT, not an inability to ask: the tree ShipIt is about to validate
+			 * has already failed the same validation here, so Squirrel's path - which
+			 * unpacks the same artifact and runs the same check - cannot reach a
+			 * different answer. `unavailable` below is the other case, and that one
+			 * does fall back: a probe that could not run proves nothing.
+			 */
+			return block(
+				`The staged update bundle's seal reads \`unsealed\` (${stagedSeal.detail}), so Apple's own validation would have the same answer.`,
+				`The downloaded update${versionSuffix(version)} is damaged, so it wasn't installed.`,
+				"Check for updates again to re-download the release.",
+			);
+		}
 		if (stagedSeal.kind !== "sealed") {
 			return refuse(
-				`the staged bundle's seal reads \`${stagedSeal.kind}\` (${stagedSeal.detail}), so Apple's own validation would have the same answer`,
+				`the staged bundle's seal could not be read (${stagedSeal.detail})`,
 			);
 		}
 
@@ -3596,18 +3853,42 @@ export class UpdateService {
 		}
 
 		const label = shipItJobLabel(bundleId);
+		/*
+		 * The one precondition that would otherwise fail INSIDE the child, after the
+		 * app is gone (review MINOR-1). The spawner's own redirect is
+		 * `exec ... >>"$LOG" 2>&1`, run after this process has quit: on a `sh` a
+		 * failed redirect on `exec` ends the shell, so ShipIt never starts, nothing
+		 * is logged, and the user is left with a marker naming a dead pid and a
+		 * failure panel for an install that could not begin - repeatable for as long
+		 * as the cache directory stays unwritable. Every other precondition here is
+		 * checked before the quit; this one is knowable here too, and refusing is the
+		 * safe direction because the fallback still installs.
+		 */
+		const logPath = installerLogPath(
+			shipItCacheDir(join(homedir(), "Library", "Caches"), bundleId),
+		);
+		try {
+			mkdirSync(dirname(logPath), { recursive: true });
+			closeSync(openSync(logPath, "a"));
+		} catch (error) {
+			return refuse(
+				`the installer's log ${logPath} could not be opened for appending: ${String(error)}`,
+			);
+		}
 		return {
-			stagingRoot,
-			stagedAppPath,
-			shipItPath,
-			statePath,
-			label,
-			// The SAME log launchd's redirection writes for a Squirrel-run install:
-			// the failure panel's detail line and scripts/update-window-report.mjs
-			// both read that path (see installerLogPath).
-			logPath: installerLogPath(
-				shipItCacheDir(join(homedir(), "Library", "Caches"), bundleId),
-			),
+			kind: "staged",
+			handoff: {
+				stagingRoot,
+				stagedAppPath,
+				shipItPath,
+				statePath,
+				label,
+				// The SAME log launchd's redirection writes for a Squirrel-run
+				// install: the failure panel's detail line and
+				// scripts/update-window-report.mjs both read that path (see
+				// installerLogPath).
+				logPath,
+			},
 		};
 	}
 
@@ -3634,20 +3915,12 @@ export class UpdateService {
 			logPath: handoff.logPath,
 		});
 		/*
-		 * The log's directory is launchd's to create on Squirrel's path, and ours to
-		 * create here: the script appends to that path with `>>`, and an absent
-		 * directory would make the redirect fail - which on `exec` is a shell that
-		 * has already replaced itself, so ShipIt would never start and nothing would
-		 * say why.
+		 * The log file is already openable: `stageInstallerHandoff` proves it before
+		 * anything is recorded or any process starts, because the redirect lives
+		 * inside the child and a failed one there is a shell that has already
+		 * replaced itself - ShipIt never starting, and nothing saying why (review
+		 * MINOR-1). Nothing is created here; the precondition owns that.
 		 */
-		try {
-			mkdirSync(dirname(handoff.logPath), { recursive: true });
-		} catch (error) {
-			logger.warn(
-				`Could not create the installer's log directory ${dirname(handoff.logPath)}: ${String(error)}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-		}
 		try {
 			const child = spawn("sh", plan.args, {
 				detached: true,
@@ -3741,7 +4014,9 @@ export class UpdateService {
 	 * job, and an install Squirrel submitted has no pid. Both probes are process
 	 * spawns, so only the one that can answer is asked.
 	 */
-	private installLiveness(marker: PendingInstallMarker | null): InstallLiveness {
+	private installLiveness(
+		marker: PendingInstallMarker | null,
+	): InstallLiveness {
 		return installLivenessFor({
 			marker,
 			bundlePath: () => this.runningBundlePath(),
@@ -4438,6 +4713,15 @@ export class UpdateService {
 			this.updateStage = "installing";
 			let block: InstallBlock | null = null;
 			let handoff: InstallerHandoff | null = null;
+			/*
+			 * This is the longest silent wait the person sits through (UX U5): the
+			 * pre-flight runs `codesign` over the ~1 GiB installed bundle and hashes
+			 * the artifact, and the staging below extracts it and probes the result -
+			 * seconds of work whose only feedback used to be a disabled button. Each
+			 * step is reported as it starts, on the update surface that is already on
+			 * screen, so the wait has a name rather than a spinner invented for it.
+			 */
+			this.reportInstallProgress("verifying");
 			try {
 				block = await this.runInstallPreflight(this.lastUpdateInfo);
 				/*
@@ -4449,8 +4733,12 @@ export class UpdateService {
 				 * leaves the Squirrel path below untouched - so a staging failure cannot
 				 * be mistaken for a cleanup failure here.
 				 */
-				if (!block)
-					handoff = await this.stageInstallerHandoff(this.lastUpdateInfo);
+				if (!block) {
+					this.reportInstallProgress("staging");
+					const staged = await this.stageInstallerHandoff(this.lastUpdateInfo);
+					if (staged.kind === "staged") handoff = staged.handoff;
+					if (staged.kind === "blocked") block = staged.block;
+				}
 				// Native updaters do not await Electron's async quit listeners.
 				// Cleanup must precede even the watchdog/marker handoff effects.
 				if (!block) await this.backendService?.stop(false);
@@ -4499,6 +4787,7 @@ export class UpdateService {
 			 * a live install as a failure. `handoff` without a pid is the spawn failing,
 			 * and that falls back exactly like a staging refusal does.
 			 */
+			if (handoff) this.reportInstallProgress("starting");
 			const installerPid = handoff ? this.startInstaller(handoff) : null;
 			const watchdogPid = this.launchWatchdog(targetVersion, installerPid);
 			let marker: PendingInstallMarker;
