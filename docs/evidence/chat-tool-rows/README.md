@@ -118,12 +118,12 @@ CLAIM a later fold inherits: the claim is the derivation, and the derivation is
 `git log --format=%h -1 -- docs/evidence/chat-tool-rows/states/<theme>.webp`,
 which answers `5f0ff1ea6` for every frame in the ten directories below and an
 earlier pass's commit for every frame outside them — so a fold that re-spells the
-commits moves the hash and not the sentence. The PRE-REBASE spelling `2fe1f982`,
-which earlier revisions of this note carried, resolves on no clone a reviewer
-has, so this record does not cite it. Nor is "the tree that ships this" a claim
-either pass can make on its own: the frames ship in THIS tree because every
-commit above `5f0ff1ea6` is this record or its stamps, and a comment cannot paint
-a pixel — which is the property that makes the citation a claim about `src/`
+commits moves the hash and not the sentence. The PRE-REBASE spelling
+`2fe1f8e982`, which earlier revisions of this note carried, resolves on no clone
+a reviewer has, so this record does not cite it. Nor is "the tree that ships this"
+a claim either pass can make on its own: the frames ship in THIS tree because
+every commit above `5f0ff1ea6` is this record or its stamps, and a comment cannot
+paint a pixel — which is the property that makes the citation a claim about `src/`
 rather than about the tip's SHA.
 
 **WHICH SETS CARRY THE TWO INKS, so a reader knows where to look.** The ledger's
@@ -200,8 +200,9 @@ start on this machine missed repeatedly.
 revision of this note sent a reader to `docs/evidence/manifest.json`'s
 `partialCapture` "for a frame's provenance", and that field does not answer the
 question it was being asked. Its `refreshedStories` is a UNION across every pass
-the block records — 602 entries at this head — so a directory named there was
-not necessarily touched by THIS pass, and a reader who took presence in that
+the block records — 607 entries at this head, a count that moves with every fold
+because it IS that union and not a figure to cite — so a directory named there
+was not necessarily touched by THIS pass, and a reader who took presence in that
 list as "this pass re-shot it" would conclude backwards for most of them:
 measured against this set, 41 of its 49 frame-bearing directories are named
 there and **31 of those 41 belong to other passes**. What this pass rewrote is
@@ -235,8 +236,10 @@ The rig DELETES every `.webp` outside a declared set (`clearSweptFrames`,
 `capture-evidence.mjs`), so a narrowed run against a tree whose frames are not
 committed takes the committed ones with it: commit or stash first, and check
 `git status docs/evidence` before the run. (3) The rig gives Chrome 30 s to
-report its debug port (`capture-evidence.mjs:4765`); on a loaded host that line
-failed four launches in five this round, and the one launch that got through
+report its debug port (`capture-evidence.mjs`'s `Chrome did not report a debug
+port`, the message its 30_000 ms wait throws — cited by message rather than by
+line, because a fold moves the line and never the message); on a loaded host that
+wait failed four launches in five this round, and the one launch that got through
 wrote nine frames and then hung in a CDP await for twelve minutes without
 reporting — its browser was reaped by exact pid, which is why none was left
 behind.

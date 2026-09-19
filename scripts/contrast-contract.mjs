@@ -2391,7 +2391,7 @@ const PAIR_PINS = [
 		b: "info",
 		floor: IDENTITY_PAIR_FLOOR,
 		got: 8.58,
-		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - lifting `L*` to the ground the row paints it on (the 4.5:1 text floor on `elevated`, hex `#7AA3DD`) drops it to ΔE00 6.08 from `info` (below the 8 it already held) and every value clearing both is at C* 15, the chroma floor that makes the role a second grey",
+		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - lifting `L*` to the ground the row paints it on (the 4.5:1 text floor on `elevated`, hex `#7AA3DD`) drops it to ΔE00 6.08 from `info` (below the 8 it already held) and every value clearing both AT THIS HUE is at C* 15, the chroma floor that makes the role a second grey",
 	},
 	{
 		theme: "catppuccinMacchiato",

@@ -192,7 +192,8 @@ miniature paints their values: `theme-selector.tsx`'s `ThemeSwatch` renders
   `#C7A1C6`, `oneDark` `#CC7DE3` → `#D686ED`, `solarizedDark` `#8B8FDB` →
   `#9497E1`.
 - **`main`'s register re-solve moved the grounds and inks of eleven** (`canvas`,
-  `surface`, `elevated`, `sunken`, `accentWash`, `inkDim`, and `ink` on two), so
+  `surface`, `elevated`, `sunken`, `accentWash`, `inkDim`, `borderControl` on
+  nine of the eleven, and `ink` on two), so
   those tiles are stale a second way: `autumn`, `catppuccinMocha`, `desert`,
   `forest`, `lavender`, `neonNoir`, `ocean`, `rosePine`, `rosewood`,
   `tokyoNight`, `vaporwave`.
