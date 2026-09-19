@@ -3,40 +3,40 @@
   "bundle": {
     "mainBytecode": {
       "file": "out/main/index.jsc",
-      "sha256": "ccfe65c7940da29321d91242ac0bd13f66b429ff0e44b79746e3ecbcb90faba7",
-      "builtAt": "2026-09-19T08:15:44.580Z"
+      "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+      "builtAt": "2026-09-19T15:59:16.452Z"
     },
     "rendererChunk": {
-      "file": "out/renderer/assets/index-CEO213-u.js",
-      "sha256": "5e4def147a91214ddc4275305561b2123cb353491ae1d30041b5cdb248714aed",
-      "builtAt": "2026-09-19T08:16:09.695Z"
+      "file": "out/renderer/assets/index-CaQSxb2x.js",
+      "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+      "builtAt": "2026-09-19T16:01:15.786Z"
     },
     "newestSource": {
-      "file": "src/renderer/src/shared/store/canonical-sessions-store.ts",
-      "at": "2026-09-19T07:53:11.555Z"
+      "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T15:58:10.438Z"
     }
   },
   "scenes": {
     "other-principal": {
-      "bundle": {
-        "mainBytecode": {
-          "file": "out/main/index.jsc",
-          "sha256": "ccfe65c7940da29321d91242ac0bd13f66b429ff0e44b79746e3ecbcb90faba7",
-          "builtAt": "2026-09-19T08:15:44.580Z"
-        },
-        "rendererChunk": {
-          "file": "out/renderer/assets/index-CEO213-u.js",
-          "sha256": "5e4def147a91214ddc4275305561b2123cb353491ae1d30041b5cdb248714aed",
-          "builtAt": "2026-09-19T08:16:09.695Z"
-        },
-        "newestSource": {
-          "file": "src/renderer/src/shared/store/canonical-sessions-store.ts",
-          "at": "2026-09-19T07:53:11.555Z"
-        }
-      },
       "configured": {
         "port": 46150,
         "url": "http://127.0.0.1:46150"
+      },
+      "bundle": {
+        "mainBytecode": {
+          "file": "out/main/index.jsc",
+          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+          "builtAt": "2026-09-19T15:59:16.452Z"
+        },
+        "rendererChunk": {
+          "file": "out/renderer/assets/index-CaQSxb2x.js",
+          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+          "builtAt": "2026-09-19T16:01:15.786Z"
+        },
+        "newestSource": {
+          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+          "at": "2026-09-19T15:58:10.438Z"
+        }
       },
       "bandSentenceSource": "first_lines",
       "bandLines": [
@@ -214,18 +214,18 @@
     "any-daemon": {
       "bundle": {
         "mainBytecode": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-          "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
-          "builtAt": "2026-09-19T06:18:30.944Z"
+          "file": "out/main/index.jsc",
+          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+          "builtAt": "2026-09-19T15:59:16.452Z"
         },
         "rendererChunk": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
-          "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
-          "builtAt": "2026-09-19T06:19:17.534Z"
+          "file": "out/renderer/assets/index-CaQSxb2x.js",
+          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+          "builtAt": "2026-09-19T16:01:15.786Z"
         },
         "newestSource": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
-          "at": "2026-09-19T06:08:52.483Z"
+          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+          "at": "2026-09-19T15:58:10.438Z"
         }
       },
       "configured": {
@@ -235,10 +235,10 @@
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "GGgZbWdvA4Z7uU3l42j3HW_BpxaMu3vRGPTzVxNwPVE",
-        "instance_id": "aNF1ipVOhKs9e1XicGos6_DaBY_b4HAYokiSBxeiaVE",
+        "claim_key": "eJbbezu-OxtOWLCaTW87Q-AaSPqXtD7i0htReWoh_Xk",
+        "instance_id": "QrLeyVB6C7Q1mBnbw8js9_B9VzJHStzBUEBq3RKNO3Y",
         "version": "0.59.9",
-        "pid": 94259
+        "pid": 22217
       },
       "claimInDaemonLog": true,
       "page": {
@@ -250,16 +250,16 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 94259,
+          "pid": 22217,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 94259, v0.59.9).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 22217, v0.59.9).",
           "pairing": {
             "available": true,
             "cause": null
           }
         },
-        "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back…",
+        "sidebar": "Chats Agents Loading agents… Create agent Teams Loading teams… Create team All chats New chat ⌘ + N Active chats Nothing running right now. Previous chats Not connected to the backend — showing the last known state.",
         "pane": {
           "sentence": "Choose an agent or team",
           "chain": [
@@ -418,7 +418,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 94259,
+            "pid": 22217,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -580,10 +580,10 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 94604,
+            "pid": 25690,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 94604, v0.59.9).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 25690, v0.59.9).",
             "pairing": {
               "available": true,
               "cause": null
