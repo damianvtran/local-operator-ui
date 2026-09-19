@@ -308,14 +308,17 @@ run: the clamped case cannot be mistaken for the passing one.
 ## The gates at this head
 
 | Gate | Output |
+| Gate | Output (this head: `2d4b2a24b`; the code commit is `78e0be744`) |
 | --- | --- |
-| `pnpm lint` | `Checked 715 files in 224ms. No fixes applied. Found 68 warnings.` (the warnings are the tree's pre-existing backlog; `scripts/` is covered by the gate below) |
-| `pnpm lint:scripts` | `check-scripts-lint: 7 changed file(s) under scripts/ are lint-clean against origin/main (3afcc73)` |
-| `pnpm check-types` | `tsc --noEmit -p tsconfig.app.json` and `-p tsconfig.main.json`, both clean |
-| `pnpm test:desktop` | 2314 of 2317 pass. Two failures are the machine's, not this diff's (`update-robustness.test.mjs`'s "operator's own install" and `python-bytecode-cache.test.mjs`'s prefix test, both failing identically in a worktree at `origin/main`). The third is `the SHIPPED manifest's stamps describe the tree it ships in`: `docs/evidence/manifest.json`'s `srcTree`/`scriptsTree` are written by the `pnpm check-evidence` sweep, which is deferred on this head, so the stamps still describe the previous one. It is a re-stamp, not a code failure - and it is named here rather than left to be discovered |
-| `pnpm build` | clean |
-| `pnpm check-themes` | `Contrast contract holds: 16070 assertions across 59 themes, 11 pinned exception(s), 5 pinned ink step(s).` |
-| `pnpm check-evidence` | **DEFERRED, not passed.** The gate admits one sweep per machine and a sibling lane held the lease while this head was prepared; the frames in this directory were captured directly by the scene runner (`[capture] ... N checks passed, 0 failed`, pasted above) and are re-stamped in the single unbounded sweep when the manager schedules it. Nothing here should be read as that gate having run |
+| `pnpm lint` | `Checked 777 files in 667ms. No fixes applied. Found 88 warnings.` The warnings are the tree's pre-existing backlog and `scripts/` is covered by the gate below; the one component this round touched carries a single warning, the same one the same file carries on `origin/main` |
+| `pnpm lint:scripts` | `check-scripts-lint: 6 changed file(s) under scripts/ are lint-clean against origin/main (a17a6b3).` |
+| `biome check` (the touched files) | no errors; warnings only, and no warning this round introduced |
+| `pnpm check-types` | `tsc --noEmit -p tsconfig.node.json` and `-p tsconfig.app.json`, both clean |
+| `node scripts/run-desktop-tests.mjs <the files this fold touched + the evidence guard>` | 152 of 153 pass. The one failure is `python-bytecode-cache.test.mjs`'s `every backend spawn carries the prefix even with the shell-env load unresolved`, which fails identically in a worktree at unmodified `origin/main` (44 of 46 there) — the machine's, not this diff's. The evidence guard passes on both halves: `the SHIPPED manifest's stamps describe the tree it ships in` and `the SHIPPED manifest's head citations lie in the history it ships in` |
+| `pnpm build` | clean, and this round's frames were taken by the app built from this tree against the daemon named above |
+| `pnpm check-themes` | `Contrast contract holds: 25855 assertions across 59 themes, 0 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s).` |
+| `pnpm check-evidence` | **DEFERRED, not passed.** The gate admits one sweep per machine, the sweep needs the surfaces frozen, and the manager holds the decision on spending it. The frames here were taken by the scene runner (its per-assertion `[PASS]`/`[FAIL]` lines are quoted above) and the manifest's stamps are re-derived from the committed tree. Nothing here should be read as that gate having run |
+| CI on this head | `Lint`, `Type Checking`, `Runtime Dependencies`, `Security Audit`, `Change Scope` and `Version Bump Guard` pass; `Desktop Tests` and one `NPX Sanity Check` shard were still running when this round was written |
 
 ## The rounds, and what each one changed
 
