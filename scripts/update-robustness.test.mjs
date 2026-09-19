@@ -5729,7 +5729,7 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 			 * pass while the function the app calls answered something else.
 			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift"; export * from "./src/main/desktop-stream";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -12359,6 +12359,184 @@ exit 1
  * "the restart came after the publish" are asserted as sequences rather than as
  * two separate facts.
  */
+/**
+ * A loopback daemon that enforces the preconditions the real desktop daemon does.
+ *
+ * WHY THIS EXISTS AT ALL (review round 2, R2-M1). The engage this PR shipped posted
+ * `sessions.watch` with a FRESHLY GENERATED subscription id, and every fixture in this
+ * file answered 200 to it - so the committed cases passed on a call the real daemon
+ * answers with a 404, and the recovery half of this change was a no-op nobody could
+ * see. The two route contracts the engage has to satisfy are both modelled here rather
+ * than stubbed away:
+ *
+ * - **an id only exists while a stream holds it.** `sessions.watch` hands its id to
+ *   `DesktopSessionBridge.watch`, which looks it up in its subscriber table and raises
+ *   `KeyError` for one it has never seen - so this answers 404 for any id that is not
+ *   currently held by an OPEN events stream, and records the attempt.
+ * - **a visible lease is what creates residency.** The real bridge warms for a live
+ *   visible lease on a cold session (`refresh_watch`), which is why an accepted lease
+ *   here is what makes the session's runtime appear in the roster - and a refused lease
+ *   therefore cannot.
+ *
+ * The events stream is a REAL HTTP response over loopback and the `open` frame is
+ * parsed by the app's own `DesktopStreamRelay`, so the subscription id travels the path
+ * it travels in production: minted by the bridge, carried in the frame's payload, read
+ * by the relay. The watch and warm legs are answered by the fixture's `requestDesktop`
+ * (it replaces the transport, not the daemon), and both consult this object's state, so
+ * a lease can only be accepted for an id a live stream is holding.
+ */
+const startFakeDesktopDaemon = async ({ refuseStreams = false } = {}) => {
+	/** subscriptionId -> the session whose stream minted it, for as long as it is open. */
+	const held = new Map();
+	/** Every id this daemon has minted, in order, whether or not it is still held. */
+	const mintedIds = [];
+	/** The sessions whose runtime this daemon has started (warm, or an accepted lease). */
+	const started = new Set();
+	/** Every lease it accepted, so a case can assert WHICH id a lease was made on. */
+	const acceptedLeases = [];
+	/** Every lease it refused, with the id, so a case can assert WHY it was refused. */
+	const refusedLeases = [];
+	let minted = 0;
+	const server = createServer((request, response) => {
+		const url = new URL(request.url ?? "/", "http://127.0.0.1");
+		const match =
+			/^\/v1\/desktop\/sessions\/([a-f0-9]+)\/(events|watch|warm)$/.exec(
+				url.pathname,
+			);
+		if (!match) {
+			response.writeHead(404);
+			response.end();
+			return;
+		}
+		const [, sessionId, route] = match;
+		if (route === "events") {
+			if (refuseStreams) {
+				/*
+				 * THE SHAPE THE SESSION-GONE ARM TAKES. A stream the daemon will not open is
+				 * the one way a caller with no id can be met without anything being wrong with
+				 * the caller: there is no `open` frame, so there is nothing to lease.
+				 */
+				response.writeHead(404, { "Content-Type": "application/json" });
+				response.end(
+					JSON.stringify({
+						detail:
+							"Requested session, profile, team or subscription not found",
+					}),
+				);
+				return;
+			}
+			/*
+			 * The id the bridge mints. 32 lowercase hex, the contract's own pattern, and
+			 * held only while this response is open - the `close` handler below is what
+			 * makes a lease against a closed stream fail, which is the arm a caller that
+			 * caches an id would hit.
+			 */
+			const subscriptionId = (++minted).toString(16).padStart(32, "0");
+			mintedIds.push(subscriptionId);
+			held.set(subscriptionId, sessionId);
+			response.writeHead(200, {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-store",
+			});
+			response.write(
+				`data: ${JSON.stringify({
+					session_id: sessionId,
+					epoch: "fixture",
+					seq: 0,
+					type: "open",
+					payload: { subscription_id: subscriptionId, gap: false },
+				})}\n\n`,
+			);
+			/*
+			 * THE ID LIVES AS LONG AS THE CONNECTION. `IncomingMessage`'s own `close`
+			 * fires when the REQUEST has completed, which for a GET is immediately - it
+			 * would release the id before the caller could lease it, and every lease
+			 * would 404 for a reason that has nothing to do with the caller. The SOCKET's
+			 * close is the event that means "the client went away", which is exactly what
+			 * the bridge's subscriber table does.
+			 */
+			request.socket.on("close", () => held.delete(subscriptionId));
+			return;
+		}
+		response.writeHead(200, { "Content-Type": "application/json" });
+		response.end(JSON.stringify({ result: {} }));
+	});
+	/*
+	 * EVERY SOCKET IS TRACKED AND REAPED BY NAME.
+	 *
+	 * WHY A FIXTURE THAT LEAVES A SOCKET OPEN IS A HANG RATHER THAN A WARNING: this file
+	 * runs under `scripts/run-desktop-tests.mjs` with no `--test-force-exit`, so an open
+	 * handle keeps the worker alive after the last test and the run never ends - measured
+	 * here as "Promise resolution is still pending but the event loop has already
+	 * resolved" with the file-level test as the only summary. The relay's stream and the
+	 * keep-alive connection it leaves behind are both real sockets, so teardown destroys
+	 * them rather than hoping `close()` is enough.
+	 */
+	const sockets = new Set();
+	server.on("connection", (socket) => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
+	});
+	await new Promise((resolve) =>
+		server.listen(0, "127.0.0.1", () => resolve(undefined)),
+	);
+	/* A leaked server must not be able to hold the process open on its own. */
+	server.unref();
+	return {
+		url: `http://127.0.0.1:${server.address().port}`,
+		held,
+		mintedIds,
+		started,
+		acceptedLeases,
+		refusedLeases,
+		/**
+		 * The route ladder for the two non-stream ops, spoken the way the app's own
+		 * request object is shaped (`{op, sessionId, subscriptionId, visible, canNotify}`).
+		 */
+		requestDesktop: (request) => {
+			if (request.op === "sessions.watch") {
+				const holder = held.get(request.subscriptionId);
+				if (holder !== request.sessionId) {
+					refusedLeases.push({
+						sessionId: request.sessionId,
+						subscriptionId: request.subscriptionId ?? null,
+						heldNow: [...held.entries()],
+					});
+					return {
+						status: 404,
+						body: {
+							detail:
+								"Requested session, profile, team or subscription not found",
+						},
+					};
+				}
+				/*
+				 * RESIDENCY: a live visible lease on a cold session is what starts the
+				 * runtime (`DesktopSessionBridge.refresh_watch`), so the roster below
+				 * reports the session as live from here on.
+				 */
+				acceptedLeases.push({
+					sessionId: request.sessionId,
+					subscriptionId: request.subscriptionId,
+				});
+				started.add(request.sessionId);
+				return { status: 200, body: { result: { lease_seconds: 45 } } };
+			}
+			if (request.op === "sessions.warm") {
+				started.add(request.sessionId);
+				return { status: 200, body: { result: { state: "warming" } } };
+			}
+			return { status: 200, body: { result: {} } };
+		},
+		close: () =>
+			new Promise((resolve) => {
+				for (const socket of sockets) socket.destroy();
+				sockets.clear();
+				server.close(() => resolve(undefined));
+			}),
+	};
+};
+
 const driveAppOwnedUpdate = async ({
 	published = "0.56.8",
 	target = "0.56.12",
@@ -12425,6 +12603,39 @@ const driveAppOwnedUpdate = async ({
 	 * pinned on a virtual clock in `scripts/update-fleet-drain.test.mjs`.
 	 */
 	retireSettleMs = 5,
+	retireGraceMs = 25,
+	/*
+	 * The engage's three bounds (`sessionEngageOpenMs` / `BeatMs` / `HoldMs`). Small
+	 * rather than zero, so a case still exercises a wait rather than a single check -
+	 * and generous enough that a loaded box (this suite runs under a concurrency cap
+	 * on a shared machine) cannot turn a socket's own scheduling into a failure.
+	 */
+	engageOpenMs = 2_000,
+	engageBeatMs = 50,
+	engageHoldMs = 2_000,
+	/*
+	 * The roster as it reads BETWEEN THE PUBLISH AND THE RESTART, when a case needs the
+	 * publish's own retirement wave to be visible before the drain (review round 2,
+	 * R2-M3). Null is the default: nothing retires while the app waits, so the pre-restart
+	 * read is the only before-side and the older cases are unchanged.
+	 */
+	fleetAfterPublish = null,
+	/*
+	 * A daemon that will not open the session's events stream, which is the arm a caller
+	 * with no subscription id can meet without the caller being wrong (review round 2,
+	 * R2-M1).
+	 */
+	refuseStreams = false,
+	/*
+	 * A LEDGER THAT ALREADY CARRIES AN EARLIER LEG'S WAIT, and the press that owns it. A
+	 * rebuild press drains twice under ONE budget (round 1, m2), so the second leg starts
+	 * with `spentMs > 0` and its own `outcome.waitedMs` near zero - which is the shape the
+	 * refusal's number has to survive (review round 2, R2-m1 = design D9). Driving the
+	 * rebuild route itself needs a checkout on PATH; this is its ledger, which is the
+	 * only part of it the refusal reads.
+	 */
+	presetDrainSpentMs = 0,
+	holdTakenElsewhere = false,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -12446,6 +12657,17 @@ const driveAppOwnedUpdate = async ({
 	const order = [];
 	const sent = [];
 	let fleetReads = 0;
+	/** Whether the publish has happened yet, for the roster the reads answer with. */
+	let publishedOnce = false;
+	/** How many roster reads have happened since the publish, for the shape above. */
+	let postPublishReads = 0;
+	/*
+	 * The fake desktop daemon and the app's own relay, assigned inside the `try` below
+	 * once the service module is loaded (the relay is the shipped class, so it needs
+	 * that import). Null here so a teardown that runs before they exist is a no-op.
+	 */
+	let daemon = null;
+	let relay = null;
 	/**
 	 * Whether the manager's update-in-flight flag is up right now.
 	 *
@@ -12481,6 +12703,13 @@ const driveAppOwnedUpdate = async ({
 	globalThis.__loManagedPublished = () => published;
 	globalThis.__loManagedUpdate = async ({ install, decision }) => {
 		order.push("publish");
+		/*
+		 * THE PUBLISH IS WHAT RETIRES A FLEET MEMBER ON THE RELEASE PATH: the new
+		 * generation is on disk, so an idle runtime notices the build change on its own
+		 * check and leaves - which is the wave the case for review round 2's R2-M3 waits
+		 * through the drain. Recorded here because the roster switch below is keyed on it.
+		 */
+		publishedOnce = true;
 		for (let index = 0; index < installRuns; index++) {
 			calls.installers.push(decision.target);
 			const landed = await install(
@@ -12569,7 +12798,8 @@ const driveAppOwnedUpdate = async ({
 				autoUpdating = value;
 				calls.autoUpdating.push(value);
 			},
-			checkIsAutoUpdating: () => autoUpdating,
+			checkIsAutoUpdating: () =>
+				holdTakenElsewhere === true ? true : autoUpdating,
 			/*
 			 * The app's existing busy reading, and the ROSTER beside it - the two the fleet
 			 * gate waits on (`drainFleetForUpdate`). A `workState` list is the machine that
@@ -12597,15 +12827,69 @@ const driveAppOwnedUpdate = async ({
 			 */
 			servingSessionFleet: async () => {
 				fleetReads += 1;
+				/*
+				 * THREE SHAPES, in the order the press reads them: the drain's own read (the
+				 * machine as it arrived), the PUBLISH-SIDE SNAPSHOT (what the publish has
+				 * already retired), and the PRE-RESTART snapshot (what is left at the bounce).
+				 * `fleetAfterPublish` is the middle one and is consumed once, because a case
+				 * that made both post-publish reads answer it would describe a machine where
+				 * nothing was left to displace at all - which is the opposite of what the
+				 * case is about.
+				 */
 				const wire =
-					fleetAfter === null || calls.restarts === 0 ? fleet : fleetAfter;
-				return wire === null
-					? null
-					: service.fleetRosterFromSessions({ result: { sessions: wire } });
+					fleetAfter === null
+						? fleet
+						: calls.restarts > 0
+							? fleetAfter
+							: publishedOnce && fleetAfterPublish !== null
+								? ++postPublishReads === 1
+									? fleetAfterPublish
+									: fleet
+								: fleet;
+				if (wire === null) return null;
+				/*
+				 * A RUNTIME THE DAEMON HAS STARTED IS IN THE ROSTER. This is the read the
+				 * engage's own verdict is made of (`sessionHasRuntime`), so the fixture has
+				 * to answer for the sessions `daemon.started` holds - otherwise the engage
+				 * could start a runtime and still read as a miss, and the case would be
+				 * asserting the fixture's bookkeeping rather than the app's behaviour.
+				 */
+				const rows = [...wire];
+				/*
+				 * `daemon` is stood up after this stub exists (it is created just before the
+				 * press, so nothing fallible can leak a listening socket), and the press makes
+				 * one roster read before the drain - which is why the guard is here rather
+				 * than an assumption that it is up.
+				 */
+				for (const id of daemon?.started ?? []) {
+					if (rows.some((candidate) => candidate.id === id)) continue;
+					rows.push({
+						id,
+						name: `engaged ${id}`,
+						kind: "daemon",
+						live_state: "idle",
+					});
+				}
+				return service.fleetRosterFromSessions({ result: { sessions: rows } });
+			},
+			/*
+			 * The app's own relay, over real loopback HTTP, so the subscription id the
+			 * engage leases is one a LIVE STREAM minted rather than one this process made
+			 * up - which is the whole difference between this change and its predecessor.
+			 */
+			getStreamRelay: () => {
+				if (!relay) throw new Error("the fixture's relay is not up yet");
+				return relay;
 			},
 			requestDesktop: async (request) => {
 				calls.desktop.push(request);
-				return { status: 200, body: { result: {} } };
+				/*
+				 * EVERY DESKTOP OP GOES THROUGH THE FAKE DAEMON, including the two the engage
+				 * uses - which is what makes the lease precondition real: an id no live stream
+				 * holds is answered 404 here, exactly as the bridge answers it.
+				 */
+				if (!daemon) throw new Error("the fixture's daemon is not up yet");
+				return daemon.requestDesktop(request);
 			},
 			stop: async () => {
 				calls.stops += 1;
@@ -12639,6 +12923,13 @@ const driveAppOwnedUpdate = async ({
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+		/*
+		 * The relay first, so its open streams are aborted before the server they are
+		 * against is closed, and both before the case returns: a stream left open is a
+		 * socket the next case's server would inherit.
+		 */
+		if (relay) relay.dispose();
+		if (daemon) void daemon.close();
 		// By literal path, and only for a directory this run made: every teardown here
 		// removes a `mkdtemp` root of its own and nothing else.
 		for (const dir of extraScratch)
@@ -12655,6 +12946,23 @@ const driveAppOwnedUpdate = async ({
 		 * virtual clock). Small rather than zero, so a case still exercises a WAIT.
 		 */
 		updateService.fleetRetireSettleMs = retireSettleMs;
+		/*
+		 * AND ITS GRACE, which is also a bound a case must not pay: the wait now runs to
+		 * the grace whenever the pre-swap runtimes never leave (the idle-gated arm, and the
+		 * ordinary one where the wave has not started), so the shipped 60 s would put a
+		 * minute on every case that reaches the re-engage.
+		 */
+		updateService.fleetRetireGraceMs = retireGraceMs;
+		/*
+		 * THE ENGAGE'S OWN BOUNDS, in milliseconds (review round 2, R2-M1). The shipped
+		 * ones hold the session's stream for twenty seconds while the runtime comes up,
+		 * which is the right number in production and no case here should pay: the
+		 * fixture's daemon starts a runtime on the lease itself, so the wait is over on
+		 * the first check.
+		 */
+		updateService.sessionEngageOpenMs = engageOpenMs;
+		updateService.sessionEngageBeatMs = engageBeatMs;
+		updateService.sessionEngageHoldMs = engageHoldMs;
 		updateService.getLatestPypiVersion = async () => target;
 		updateService.freeBytesAt = () => freeBytes;
 		updateService.checkBackendHealth = async () => {
@@ -12701,8 +13009,29 @@ const driveAppOwnedUpdate = async ({
 			installKind: "pip",
 			appOwned: servingAppOwned,
 		});
+		/*
+		 * THE DAEMON THE RE-ENGAGE ACTUALLY TALKS TO (review round 2, R2-M1), stood up
+		 * LAST so no earlier failure can leak a listening socket: `getStreamRelay` is the
+		 * app's own relay, and the daemon below is the only place a subscription id can
+		 * come from - it is a real loopback HTTP server whose `open` frame the shipped
+		 * relay parses.
+		 *
+		 * ASSIGNED, NOT DECLARED: the manager stub above closes over the `daemon` this
+		 * function declares, and a `const` here would be a second binding that stub never
+		 * sees - so every desktop op would throw "not up yet" while the fixture looked
+		 * wired.
+		 */
+		daemon = await startFakeDesktopDaemon({ refuseStreams });
+		relay = new service.DesktopStreamRelay(daemon.url, "fixture-token");
+		/*
+		 * THE LEDGER, SET BEFORE THE PRESS TAKES IT. `updateBackend` zeroes
+		 * `fleetDrainSpentMs` only when IT takes the update-in-flight flag, so a press whose
+		 * flag is already held carries the earlier leg's spend into its own drain - which is
+		 * how the rebuild route reaches a restart leg with ~0 left of the budget.
+		 */
+		updateService.fleetDrainSpentMs = presetDrainSpentMs;
 		const result = await updateService.updateBackend(target);
-		return { result, sent, calls, order, updateService, dispose };
+		return { result, sent, calls, order, updateService, daemon, dispose };
 	} catch (error) {
 		dispose();
 		throw error;
@@ -14234,6 +14563,16 @@ test("a press that cannot drain does not restart the server, and says why", asyn
 		 * the promise this change removes.
 		 */
 		assert.match(refused[0].payload.message, /install itself has landed/);
+		/*
+		 * AND THE HEADING'S FACT TRAVELS WITH IT (design round 2, D6). The panel cannot
+		 * infer this from the sentence: two of the three refusal sites happen after the
+		 * install landed, and a heading of "The update did not start" over the sentence
+		 * above is the frame contradicting itself in one paragraph. The field is also what
+		 * keeps the OTHER clause out of this arm's sentence - they are alternatives, not
+		 * additions.
+		 */
+		assert.equal(refused[0].payload.refusal.installLanded, true);
+		assert.doesNotMatch(refused[0].payload.message, /Nothing was installed/);
 		assert.deepEqual(
 			completions(driven.sent),
 			[],
@@ -14325,6 +14664,186 @@ test("the move re-engages the sessions it displaced, and only those", async () =
 		assert.match(watch.subscriptionId, /^[a-f0-9]{32}$/);
 		assert.equal(watch.visible, true);
 		assert.equal(watch.canNotify, false);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the re-engage leases the id the session's own stream minted, and nothing else", async () => {
+	/*
+	 * THE FIX FOR REVIEW ROUND 2'S R2-M1, ASSERTED AGAINST A DAEMON THAT ENFORCES THE
+	 * PRECONDITION. The old engage generated a random subscription id per attempt, and
+	 * the bridge answers one it has never seen with `KeyError` -> 404, so the recovery
+	 * half of this PR was a no-op against the real daemon while every case here stayed
+	 * green - because the fixture answered 200 to any id. The daemon behind this case
+	 * holds ids only while a stream does, so `acceptedLeases` can only contain an id a
+	 * LIVE events stream minted: an id this process made up is not in `mintedIds`, and
+	 * a lease on one is refused and recorded in `refusedLeases`.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "ccccccccccc3",
+				name: "Delegated run",
+				kind: "daemon",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
+		],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			true,
+			JSON.stringify(updateErrors(driven.sent).map((e) => e.payload.message)),
+		);
+		assert.deepEqual(
+			driven.daemon.refusedLeases,
+			[],
+			"no lease may be sent on an id no stream holds",
+		);
+		assert.deepEqual(
+			driven.daemon.acceptedLeases.map((lease) => lease.sessionId),
+			["ccccccccccc3"],
+			"the displaced session is the one leased",
+		);
+		const lease = driven.daemon.acceptedLeases[0];
+		assert.ok(
+			driven.daemon.mintedIds.includes(lease.subscriptionId),
+			`the lease id must be one an events stream minted, not one this process made up: ${lease.subscriptionId}`,
+		);
+		/*
+		 * AND THE RUNTIME IS THE MEASURE OF SUCCESS, not the lease: `daemon.started` is
+		 * the roster's own answer, which is what `engageSessionRuntime` returns true on.
+		 * A fixture that answered 200 without starting anything would fail here.
+		 */
+		assert.ok(
+			driven.daemon.started.has("ccccccccccc3"),
+			"the engage must leave a runtime behind, not a receipt",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a session whose stream cannot be opened is reported, never leased on an invented id", async () => {
+	/*
+	 * THE ARM THE OLD CODE COULD NOT TELL APART (review round 2, R2-M1). With no `open`
+	 * frame there is no subscription id anywhere, so the only honest move is to stop:
+	 * inventing one sends a call the daemon refuses, and - worse - reports a miss the app
+	 * could have predicted rather than the reason it actually had. The daemon here refuses
+	 * the stream, so this asserts that NO lease was attempted at all.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		refuseStreams: true,
+		fleet: [
+			{
+				id: "ccccccccccc3",
+				name: "Delegated run",
+				kind: "daemon",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			true,
+			`the update itself still lands: ${JSON.stringify(updateErrors(driven.sent).map((e) => e.payload.message))}`,
+		);
+		assert.deepEqual(
+			driven.calls.desktop.filter((request) => request.op === "sessions.watch"),
+			[],
+			"a lease with no subscription to name is not sent",
+		);
+		assert.deepEqual(driven.daemon.acceptedLeases, []);
+		assert.deepEqual(driven.daemon.started, new Set());
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a retirement during the drain, before the restart, is still re-engaged", async () => {
+	/*
+	 * THE HOLE THE ROUND-1 M2 FIX LEFT ON THIS ROUTE (review round 2, R2-M3). The
+	 * before-side was the pre-restart read alone, and the publish happens minutes earlier
+	 * in the same method: an idle runtime retires on the build skew while the app waits
+	 * out a ten-minute drain, so it is gone before the only read that could name it and
+	 * is never put back. The reading is now taken between the publish and the drain and
+	 * unioned with the pre-restart one - which is the reading the rebuild route already
+	 * kept for its own install leg.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		fleet: [
+			{
+				id: "bbbbbbbbbbb2",
+				name: "Unwatched daemon",
+				kind: "daemon",
+				live_state: "idle",
+			},
+		],
+		/* What the publish took: the same session, gone, before the restart read. */
+		fleetAfterPublish: [],
+		fleetAfter: [],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			true,
+			JSON.stringify(updateErrors(driven.sent).map((e) => e.payload.message)),
+		);
+		assert.deepEqual(
+			driven.daemon.acceptedLeases.map((lease) => lease.sessionId),
+			["bbbbbbbbbbb2"],
+			"a session the publish retired is displaced by this press and must come back",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the refusal reports the press's wait, not the leg's", async () => {
+	/*
+	 * D9 = R2-m1: ONE JOURNEY, ONE NUMBER. The reading the reader watches (`draining`'s
+	 * `waitedMs`) is the press's total - `spentMs + elapsedMs` - and the refusal used to
+	 * report the SECOND leg's own elapsed, which is ~0 once the first leg has spent the
+	 * budget. The ledger below carries a spent leg with the flag already held, which is
+	 * the state the rebuild route reaches; the refusal's number must be the press's,
+	 * which is at least everything the panel already showed.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		workState: "busy",
+		fleet: [
+			{
+				id: "aaaaaaaaaaa1",
+				name: "Nightly enrichment",
+				kind: "daemon",
+				live_state: "busy",
+			},
+		],
+		presetDrainSpentMs: 240_000,
+		holdTakenElsewhere: true,
+	});
+	try {
+		assert.equal(driven.result, false);
+		const refused = updateErrors(driven.sent);
+		assert.equal(refused.length, 1, JSON.stringify(refused));
+		assert.ok(
+			refused[0].payload.refusal.waitedMs >= 240_000,
+			`the refusal must carry the press's total, not this leg's share: ${refused[0].payload.refusal.waitedMs}`,
+		);
 	} finally {
 		driven.dispose();
 	}

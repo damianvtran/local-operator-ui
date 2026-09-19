@@ -161,13 +161,23 @@ export async function waitForFleetIdle(input: {
 		waitedMs = input.now() - startedAt;
 		if (waitedMs >= budgetMs) {
 			const unknown = workState === "unknown";
+			/*
+			 * THE REASON IS READ BEFORE THE ROSTER, deliberately (review round 2,
+			 * R2-n1). `readUnreadableReason` answers from the transport's own
+			 * per-request reading, and `servingSessionFleet` OVERWRITES it - so a poll
+			 * that saw a 401 followed by a failed roster read used to compose its
+			 * refusal from the later, different failure and take the "try again once
+			 * the server is answering" arm about a door that was already open. The two
+			 * fields of one refusal must describe one reading of the server.
+			 */
+			const refusedCredentials =
+				unknown && input.readUnreadableReason?.() === "refused-credentials";
 			return {
 				kind: "refused",
 				because: unknown ? "unknown" : "busy",
 				waitedMs,
 				busy: busyRosterRows((await input.readRoster()) ?? []),
-				credentialsRefused:
-					unknown && input.readUnreadableReason?.() === "refused-credentials",
+				credentialsRefused: refusedCredentials,
 			};
 		}
 		input.onWait?.(waitedMs, workState);
@@ -212,14 +222,34 @@ export async function waitForFleetIdle(input: {
  */
 export function fleetDrainRefusalSentence(
 	outcome: Extract<FleetDrainOutcome, { kind: "refused" }>,
+	/**
+	 * Whether the install this press was asked for has already landed.
+	 *
+	 * WHY THE SENTENCE TAKES IT (design round 2, D6). The two arms of a refusal used
+	 * to be composed by two authors - this function wrote "Nothing was installed and
+	 * the server keeps running the build it loaded" and the caller appended "The
+	 * install itself has landed" - so the panel that keyed its heading on the second
+	 * fact printed both clauses in one paragraph, three lines apart, about one
+	 * event. The facts are alternatives, not additions: on the install leg nothing
+	 * was installed, and on the restart legs the build is on disk and the bounce is
+	 * what was held back. One author, two arms.
+	 */
+	installLanded = false,
 ): string {
 	const minutes = Math.max(1, Math.round(outcome.waitedMs / 60_000));
 	const waited = `${minutes} minute${minutes === 1 ? "" : "s"}`;
+	/**
+	 * The closing clause, which is the only place the two arms differ: what the app
+	 * did or did not leave on disk, and what the server is running as a result.
+	 */
+	const closing = installLanded
+		? "The install itself has landed, and the server keeps running the build it loaded until it can restart onto it; the app will offer this update again."
+		: "Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.";
 	if (outcome.because === "unknown") {
 		const lead = outcome.credentialsRefused
 			? "The server refused this app's credentials, so the app could not read which sessions are running on this machine."
 			: "The app could not read which sessions are running on this machine, so it did not update the server.";
-		return `${lead}\n\nReading an unreadable fleet as idle could cut off a turn that is in flight, so the app waited ${waited} and then stopped. Nothing was installed and the server is untouched, and the app will offer this update again.`;
+		return `${lead}\n\nReading an unreadable fleet as idle could cut off a turn that is in flight, so the app waited ${waited} and then stopped. ${closing}`;
 	}
 	const names = outcome.busy
 		.slice(0, 3)
@@ -237,7 +267,7 @@ export function fleetDrainRefusalSentence(
 		outcome.busy.length === 0
 			? "The app could not name the sessions that were still working."
 			: `${outcome.busy.length} session${outcome.busy.length === 1 ? " is" : "s are"} still running a turn on this machine: ${names}${more}.`;
-	return `${lead}\n\nThe app waited ${waited} for them to finish and then stopped rather than cut a turn short. Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.`;
+	return `${lead}\n\nThe app waited ${waited} for them to finish and then stopped rather than cut a turn short. ${closing}`;
 }
 
 /**
@@ -248,8 +278,25 @@ export function fleetDrainRefusalSentence(
  * daemon that does not publish the field. The row id has to be there too: an
  * engage is addressed by it.
  */
-const isLiveRow = (row: FleetRosterRow): boolean =>
+export const isLiveRow = (row: FleetRosterRow): boolean =>
 	row.liveState !== "" && row.liveState !== null && row.sessionId !== "";
+
+/**
+ * Whether one session has a runtime behind it, from a roster read.
+ *
+ * Exported because the re-engage's own verification asks it (`session-engage.ts`
+ * decides whether a lease actually produced a runtime by asking this of the same
+ * roster the gate reads), and a second spelling of "live" is how the engage and
+ * the diff would come to disagree about what came back. Null is a roster that
+ * could not be read, which is not evidence either way.
+ */
+export const sessionHasRuntime = (
+	rows: readonly FleetRosterRow[] | null,
+	sessionId: string,
+): boolean | null => {
+	if (rows === null) return null;
+	return rows.some((row) => row.sessionId === sessionId && isLiveRow(row));
+};
 
 /**
  * The ids of the rows that are live, or null when the roster did not answer.
@@ -296,6 +343,17 @@ export type FleetReengageResult = {
 	engaged: string[];
 	/** The ones it did not, with the reason, so a silent half is not a claim. */
 	failed: { sessionId: string; reason: string }[];
+	/**
+	 * The pre-swap sessions still running when the wait ended, in snapshot order.
+	 *
+	 * Not a failure and not a displaced session: their runtime is still there, so
+	 * there is nothing to put back. It is reported because it is the arm the wait
+	 * cannot see the end of - an idle-gated retirement has no clock bound (a runtime
+	 * that declined a build because it had work leaves when its turn ends) - so a
+	 * caller reading only `displaced` would record "nothing to do" about sessions the
+	 * app stopped watching one moment before they went cold.
+	 */
+	stillResident: FleetRosterRow[];
 };
 
 /**
@@ -383,7 +441,8 @@ export async function reengageDisplacedSessions(input: {
 	 * this is the one arm that may answer without reading anything. It is NOT the
 	 * "first read shows nothing displaced" arm - see the loop below.
 	 */
-	if (snapshot.length === 0) return { displaced: [], engaged: [], failed: [] };
+	if (snapshot.length === 0)
+		return { displaced: [], engaged: [], failed: [], stillResident: [] };
 	const snapshotIds = snapshot.map((row) => row.sessionId);
 	/**
 	 * The pre-swap sessions still live in a read, or null when it did not answer.
@@ -402,20 +461,41 @@ export async function reengageDisplacedSessions(input: {
 	let stillLive = stillLiveIn(after) ?? new Set(snapshotIds);
 	let lastChangeAt = input.now();
 	/*
-	 * THE WAIT ENDS TWO WAYS, and neither of them is early: the pre-swap live set
-	 * has not moved for a full convergence stride (nothing more is coming), or the
-	 * grace ran out (a runtime that is never leaving). A repeated set is NOT a
-	 * reason to stop - that is what the old rule broke on, one poll after the
-	 * restart, while the wave was still inside its settle window - and neither is an
-	 * EMPTY one: a pre-swap runtime can come back on its own (a viewer spawning the
-	 * successor), so "the set looks empty" is not the statement "the wave has stopped
-	 * moving", and the diff is taken from the read the wait ENDS on rather than from
-	 * the first one that happened to look quiet.
+	 * WHETHER THE WAVE HAS BEEN SEEN TO MOVE AT ALL, which is the difference between
+	 * a fleet that has NOT BEGUN to retire and one that has finished (review round 2,
+	 * R2-M2). `lastChangeAt` used to start at the call's own first instant, so a
+	 * quiet pre-swap set - the ordinary shape for the first seconds after a restart,
+	 * because a runtime retires on its own build check - left the loop free to end
+	 * after ONE stride from the call. The wave's own horizon is up to ~35 s after the
+	 * marker (`BUILD_CHECK_S + BUILD_SETTLE_S + BUILD_STAGGER_S`, and the marker is
+	 * published before the drain), so that stride expired before the first
+	 * retirement had a chance to land: wait ended at 30 s, `engaged=[]`, and the
+	 * unwatched session lost its runtime anyway.
+	 */
+	let waveMoved = stillLive.size < snapshotIds.length;
+	/*
+	 * THE WAIT ENDS THREE WAYS, and only one of them is a stride. Two are facts about
+	 * the fleet rather than about the clock:
+	 *
+	 * - the pre-swap live set is EMPTY, i.e. every pre-swap runtime has left - the
+	 *   reference tool's own exit (`~/tools/lop-fleet-update`'s `wait_for_retire`
+	 *   returns the moment its pid set is empty) and the one arm where waiting longer
+	 *   cannot find anything;
+	 * - the wave has MOVED and then held still for a full convergence stride, which is
+	 *   the statement "nothing more is coming" the stride was always meant to make;
+	 * - the grace ran out (a runtime that is never leaving - an idle-gated retirement
+	 *   after a turn that outlasted the wait, or a session that went busy again).
+	 *
+	 * A repeated set BEFORE anything has moved is not any of those: it is a wave that
+	 * has not started, and ending there is what the old rule did one poll after the
+	 * restart. A read that could not be taken is no information rather than a move, so
+	 * it neither ends the wait nor resets its clock.
 	 */
 	for (;;) {
 		const elapsed = input.now() - startedAt;
 		if (elapsed >= graceMs) break;
-		if (input.now() - lastChangeAt >= settleMs) break;
+		if (stillLive.size === 0) break;
+		if (waveMoved && input.now() - lastChangeAt >= settleMs) break;
 		await input.sleep(Math.min(pollMs, Math.max(1, graceMs - elapsed)));
 		after = await input.readRoster();
 		const next = stillLiveIn(after);
@@ -426,9 +506,31 @@ export async function reengageDisplacedSessions(input: {
 		) {
 			stillLive = next;
 			lastChangeAt = input.now();
+			waveMoved = true;
 		}
 	}
+	/*
+	 * LOOK AGAIN (review round 2, R2-M2). The engage set is the difference the LAST
+	 * read shows, and the waiter's last read is up to one poll old by the time the
+	 * loop leaves - a retirement that landed inside that window would be named by a
+	 * read taken a moment later and missed by the one the diff is built from. This is
+	 * also the read a full-grace exit needs: at the grace the question is not "did the
+	 * wave stop" but "what is gone NOW", and the answer has to be a fresh reading
+	 * rather than the one that expired the clock.
+	 */
+	const finalRead = await input.readRoster();
+	if (finalRead !== null) after = finalRead;
 	const displaced = displacedSessions(input.before, after);
+	/*
+	 * WHAT IS STILL LIVE IS NAMED, NOT DROPPED. A pre-swap runtime still resident when
+	 * the wait ends is not "nothing to do": it is a runtime that declined to retire
+	 * (an idle-gated one retires when its turn ends, which no clock here can cover)
+	 * and whose session will have no runtime the moment it leaves. Reporting it is the
+	 * difference between a log that says the app stopped watching and one that claims
+	 * the fleet had nothing left to put back - and the caller's own repair walks are
+	 * the only thing that can act on it afterwards.
+	 */
+	const stillResident = snapshot.filter((row) => stillLive.has(row.sessionId));
 	const engaged: string[] = [];
 	const failed: { sessionId: string; reason: string }[] = [];
 	for (const row of displaced) {
@@ -447,7 +549,7 @@ export async function reengageDisplacedSessions(input: {
 		}
 	}
 	input.log?.(
-		`Re-engaged ${engaged.length} of ${displaced.length} displaced session(s)${failed.length > 0 ? `; ${failed.length} did not answer (${failed.map((row) => row.sessionId).join(", ")})` : ""}`,
+		`Re-engaged ${engaged.length} of ${displaced.length} displaced session(s)${failed.length > 0 ? `; ${failed.length} did not answer (${failed.map((row) => row.sessionId).join(", ")})` : ""}${stillResident.length > 0 ? `; ${stillResident.length} pre-swap runtime(s) still resident when the wait ended (${stillResident.map((row) => row.sessionId).join(", ")})` : ""}`,
 	);
-	return { displaced, engaged, failed };
+	return { displaced, engaged, failed, stillResident };
 }

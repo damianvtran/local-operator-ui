@@ -3065,7 +3065,18 @@ export const STORIES = [
 		1280,
 		900,
 		{
-			expectSentence: "Waiting for the turns running on this machine to finish",
+			expectSentence: [
+				"Waiting for the turns running on this machine to finish",
+				/*
+				 * AND THE READING UNDER IT (design round 2, D8). The entry guarded only the
+				 * sentence, so a frame with NO elapsed line - which the shipped producer cannot
+				 * produce and the story's own mock used to, because it sent the phase without
+				 * `waitedMs` - was admitted as evidence for the state D3 added. The mock now
+				 * carries the fixture number and this claim is what refuses the shutter if it
+				 * stops reaching the screen.
+				 */
+				"Waiting 12 seconds so far",
+			],
 		},
 	],
 	["common-updatenotification--backend-update-failed", 1280, 900],
@@ -3089,6 +3100,24 @@ export const STORIES = [
 		1280,
 		900,
 		{ expectSentence: "The server refused this app's credentials" },
+	],
+	/*
+	 * AND THE THIRD ARM, WHICH IS A DIFFERENT HEADING (design round 2, D6): this press
+	 * published the build and was refused the bounce, so the panel may not say "The
+	 * update did not start" over a sentence that says the install has landed. Declared
+	 * as its own story rather than injected into a page, which is how the round-2 review
+	 * had to judge it.
+	 */
+	[
+		"common-updatenotification--backend-update-refused-landed-install",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"The update did not finish restarting",
+				"The install itself has landed",
+			],
+		},
 	],
 	/*
 	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
@@ -6933,15 +6962,29 @@ const main = async () => {
 			 * and not a sentence the reader is meant to read: one name for two meanings is how a
 			 * guard stops guarding.
 			 */
-			if (options?.expectSentence) {
+			/*
+			 * A LIST IS ALLOWED, and the draining entry is why: the state it exists for is a
+			 * sentence AND the reading under it, and a single substring claim about the
+			 * sentence cannot refuse a shutter on a frame that lost the reading (design round
+			 * 2, D8). One claim, one meaning - each string is a sentence the reader is meant
+			 * to read.
+			 */
+			const claims =
+				options?.expectSentence === undefined
+					? []
+					: Array.isArray(options.expectSentence)
+						? options.expectSentence
+						: [options.expectSentence];
+			if (claims.length > 0) {
 				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
 					expression: "document.body.innerText || ''",
 					returnByValue: true,
 				});
 				const painted = String(claimRead?.value ?? "");
-				if (!painted.includes(options.expectSentence)) {
+				for (const claim of claims) {
+					if (painted.includes(claim)) continue;
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(claim)}, and a frame without it is evidence for something else.`,
 					);
 				}
 			}

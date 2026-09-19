@@ -26,7 +26,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/backend/fleet-drain"; export * from "./src/main/backend-version-drift";',
+			'export * from "./src/main/backend/fleet-drain"; export * from "./src/main/backend-version-drift"; export * from "./src/main/backend/session-engage";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -42,12 +42,16 @@ const gate = await import(
 const {
 	FLEET_DRAIN_BUDGET_MS,
 	FLEET_DRAIN_POLL_MS,
+	FLEET_RETIRE_GRACE_MS,
+	FLEET_RETIRE_SETTLE_MS,
 	busyRosterRows,
 	displacedSessions,
+	engageSessionThroughStream,
 	fleetDrainRefusalSentence,
 	fleetRosterFromSessions,
 	reengageDisplacedSessions,
 	servingWorkStateFromSessions,
+	sessionHasRuntime,
 	unionFleetSnapshots,
 	waitForFleetIdle,
 } = gate;
@@ -747,6 +751,261 @@ test("the before-side of a diff is the union of the snapshots that can hold the 
 	assert.equal(unionFleetSnapshots(null, null), null);
 });
 
+test("a wave that has not begun cannot end the wait at one stride from the call", async () => {
+	/*
+	 * THE STRIDE MEASURED FROM THE WRONG END (review round 2, R2-M2). `lastChangeAt`
+	 * used to start at the call's first instant, so a quiet pre-swap set left the loop
+	 * free to end after one stride - 30 s - while the wave it exists for had not
+	 * started: a runtime retires on its own build check (5 s), once the marker is 10 s
+	 * old, inside a 20 s stagger, and the marker is published before the drain. The
+	 * reproduction this case pins is the reviewer's own: b2 goes cold at 45 s, INSIDE
+	 * the 60 s grace, and the old rule ended the wait at t=30 000 with `engaged=[]`.
+	 */
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	let engagedAt = null;
+	const engaged = [];
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () =>
+			fleetRosterFromSessions(
+				body(
+					time.now() < 45_000
+						? [row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]
+						: [row("aaaaaaaaaaa1", "idle")],
+				),
+			),
+		engage: async (entry) => {
+			engaged.push(entry.sessionId);
+			engagedAt = time.now();
+			return true;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 60_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	assert.deepEqual(
+		result.displaced.map((entry) => entry.sessionId),
+		["bbbbbbbbbbb2"],
+	);
+	assert.deepEqual(engaged, ["bbbbbbbbbbb2"]);
+	assert.ok(
+		engagedAt !== null && engagedAt >= 45_000,
+		`the wait must still be running when the retirement lands: engaged at ${engagedAt}ms`,
+	);
+});
+
+test("a runtime still resident at the grace is reported, not passed over as nothing to do", async () => {
+	/*
+	 * THE ARM NO CLOCK CAN REACH (review round 2, R2-M2, second half). A runtime that
+	 * declined to retire because it had work leaves when its TURN ends - minutes later,
+	 * after any bound this wait can honestly carry - so "still live at the end" is not
+	 * "nothing happened": it is a session that will have no runtime the moment it goes
+	 * cold, and the app has already stopped watching. b2 goes cold at 90 s here, well
+	 * outside the 60 s grace, which is why the honest answer is the name and the reason
+	 * rather than a claim.
+	 */
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	const logged = [];
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () =>
+			fleetRosterFromSessions(
+				body(
+					time.now() < 90_000
+						? [row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]
+						: [row("aaaaaaaaaaa1", "idle")],
+				),
+			),
+		engage: async () => true,
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 60_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: (line) => logged.push(line),
+	});
+	assert.deepEqual(result.displaced, []);
+	assert.deepEqual(result.engaged, []);
+	/*
+	 * BOTH pre-swap sessions are still live at the grace - neither retired - so both
+	 * are named. The arm records what was left running, not only the one the reviewer's
+	 * clock was watching.
+	 */
+	assert.deepEqual(
+		result.stillResident.map((entry) => entry.sessionId),
+		["aaaaaaaaaaa1", "bbbbbbbbbbb2"],
+	);
+	assert.ok(
+		logged.some((line) => line.includes("still resident")),
+		`the log must name what was left running: ${JSON.stringify(logged)}`,
+	);
+	assert.ok(
+		time.now() >= 60_000 && time.now() < 65_000,
+		`the wait is still bounded by the grace: ${time.now()}ms`,
+	);
+});
+
+test("the refusal's credentials reading is the one that produced the verdict", async () => {
+	/*
+	 * ONE READING, ONE REFUSAL (review round 2, R2-n1). `readUnreadableReason` answers
+	 * from the transport's per-request reading, and the roster read OVERWRITES it - so
+	 * composing the refusal roster-first let a later, different failure answer for the
+	 * poll that produced the verdict, sending a signed-out app at the "try again once
+	 * the server is answering" arm. The roster here is the overwriting read: it flips
+	 * the transport's answer as a side effect, exactly as `servingSessionFleet` does.
+	 */
+	let reason = "refused-credentials";
+	const outcome = await waitForFleetIdle({
+		readWorkState: async () => "unknown",
+		readRoster: async () => {
+			reason = "unreachable";
+			return [];
+		},
+		readUnreadableReason: () => reason,
+		sleep: async () => {},
+		now: () => 0,
+		budgetMs: 0,
+		pollMs: 1_000,
+	});
+	assert.equal(outcome.kind, "refused");
+	assert.equal(
+		outcome.credentialsRefused,
+		true,
+		"the 401 that produced the verdict is the one the refusal reports",
+	);
+});
+
+test("the refusal says which arm left what on disk, and never names it twice", () => {
+	/*
+	 * ONE AUTHOR, TWO ALTERNATIVES (design round 2, D6). The install-less arm and the
+	 * after-the-install arm are different facts about the same ten-minute wait, and
+	 * they used to be composed by two authors - this sentence's prose and the caller's
+	 * appended clause - which put "Nothing was installed" and "The install itself has
+	 * landed" in one paragraph three lines apart.
+	 */
+	const busy = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "busy", { name: "Nightly enrichment" })]),
+	);
+	assert.ok(busy);
+	const outcome = {
+		kind: "refused",
+		because: "busy",
+		waitedMs: 600_000,
+		busy,
+	};
+	const installLess = fleetDrainRefusalSentence(outcome);
+	assert.match(installLess, /Nothing was installed/);
+	assert.doesNotMatch(installLess, /install itself has landed/);
+	const landed = fleetDrainRefusalSentence(outcome, true);
+	assert.match(landed, /install itself has landed/);
+	assert.doesNotMatch(
+		landed,
+		/Nothing was installed/,
+		"the two clauses are alternatives, not additions",
+	);
+	/* The unreadable arm carries the same pair, through the same author. */
+	const unknownArm = fleetDrainRefusalSentence({
+		kind: "refused",
+		because: "unknown",
+		waitedMs: 600_000,
+		busy: [],
+		credentialsRefused: true,
+	});
+	assert.match(unknownArm, /Nothing was installed/);
+	assert.doesNotMatch(unknownArm, /install itself has landed/);
+});
+
+test("an engage that cannot see a subscription id does not invent one", async () => {
+	/*
+	 * THE SHAPE THAT SHIPPED (review round 2, R2-M1). The engage used to generate its
+	 * own subscription id, which the bridge has never heard of - so the lease was
+	 * refused one request before the warm and the engage reported a miss it could have
+	 * predicted. The rule here is that the id can only come from the session's own
+	 * events stream; a stream that never announces one leaves nothing to lease, and the
+	 * call must say so rather than sending a call it knows will be refused.
+	 */
+	let watches = 0;
+	const time = clock();
+	const outcome = await engageSessionThroughStream({
+		sessionId: "ccccccccccc3",
+		// A stream that opens and says nothing: no `open` frame, no error, no end.
+		subscribe: () => ({ streamId: "stream-1" }),
+		unsubscribe: () => {},
+		watch: async () => {
+			watches += 1;
+			return { status: 200 };
+		},
+		warm: async () => ({ status: 200 }),
+		hasRuntime: async () => false,
+		sleep: time.sleep,
+		now: time.now,
+		openMs: 1_000,
+		beatMs: 500,
+		holdMs: 1_000,
+	});
+	assert.equal(outcome.engaged, false);
+	assert.equal(watches, 0, "no lease may be sent without the stream's own id");
+	assert.match(String(outcome.reason), /never announced a subscription/);
+});
+
+test("a lease the daemon accepts is not a runtime, and the engage says which it got", async () => {
+	/*
+	 * THE RECEIPT IS NOT THE EFFECT (review round 2, R2-M1). Every route on this path
+	 * answers 200 to a call it will not act on - the warm's own docstring says so - so
+	 * what decides the engage is the roster, which is the same reader the fleet gate
+	 * uses (`sessionHasRuntime`). A daemon that accepts the lease and never produces a
+	 * runtime must read as a miss, or the caller's "re-engaged N of M" is a claim about
+	 * a status code.
+	 */
+	const time = clock();
+	const watched = [];
+	const outcome = await engageSessionThroughStream({
+		sessionId: "ccccccccccc3",
+		// The shipped `open` frame shape, payload and all.
+		subscribe: (_sessionId, emit) => {
+			queueMicrotask(() =>
+				emit({
+					kind: "data",
+					data: JSON.stringify({
+						type: "open",
+						payload: { subscription_id: "a".repeat(32) },
+					}),
+				}),
+			);
+			return { streamId: "stream-1" };
+		},
+		unsubscribe: () => {},
+		watch: async (subscriptionId) => {
+			watched.push(subscriptionId);
+			return { status: 200 };
+		},
+		warm: async () => ({ status: 200 }),
+		hasRuntime: async () => false,
+		sleep: time.sleep,
+		now: time.now,
+		openMs: 1_000,
+		beatMs: 500,
+		holdMs: 2_000,
+	});
+	assert.equal(outcome.engaged, false);
+	assert.match(String(outcome.reason), /no runtime/);
+	assert.ok(
+		watched.length > 1 && watched[0] === "a".repeat(32),
+		`the held lease is renewed with the stream's own id: ${JSON.stringify(watched)}`,
+	);
+});
+
 test("the shipped bounds are the host tool's own, not invented here", () => {
 	/*
 	 * A release is rarely urgent enough to cut off somebody's turn, and ten minutes
@@ -757,4 +1016,12 @@ test("the shipped bounds are the host tool's own, not invented here", () => {
 	 */
 	assert.equal(FLEET_DRAIN_BUDGET_MS, 600_000);
 	assert.equal(FLEET_DRAIN_POLL_MS, 5_000);
+	/*
+	 * The retire wait's two ends are this module's own, and both come from the
+	 * harness's constants: the stride is `BUILD_SETTLE_S + BUILD_STAGGER_S` (10 + 20),
+	 * and the grace is the host tool's `RETIRE_GRACE_S` whose comment reads "~45 s is
+	 * the honest ceiling" - 60 s with the slack that judgement implies.
+	 */
+	assert.equal(FLEET_RETIRE_SETTLE_MS, 30_000);
+	assert.equal(FLEET_RETIRE_GRACE_MS, 60_000);
 });

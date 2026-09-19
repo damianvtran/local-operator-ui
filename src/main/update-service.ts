@@ -5,7 +5,7 @@ import {
 	spawn,
 	spawnSync,
 } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
 	createReadStream,
 	existsSync,
@@ -55,6 +55,7 @@ import {
 	type FleetDrainOutcome,
 	fleetDrainRefusalSentence,
 	reengageDisplacedSessions,
+	sessionHasRuntime,
 	unionFleetSnapshots,
 	waitForFleetIdle,
 } from "./backend/fleet-drain";
@@ -67,6 +68,12 @@ import {
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
 import { NOTIFICATIONS_ENV } from "./backend/notification-launch";
+import {
+	SESSION_ENGAGE_BEAT_MS,
+	SESSION_ENGAGE_HOLD_MS,
+	SESSION_ENGAGE_OPEN_MS,
+	engageSessionThroughStream,
+} from "./backend/session-engage";
 import { setupFailureCause } from "./backend/setup-failure-causes";
 import {
 	legacyEnvironmentReport,
@@ -745,6 +752,16 @@ export type BackendUpdateErrorReport = {
 		command: string | null;
 		/** The server answered and refused this app's credentials. */
 		credentialsRefused: boolean;
+		/**
+		 * Whether the install this press was asked for had already landed.
+		 *
+		 * The three refusal sites are two different events (design round 2, D6): the
+		 * install leg's refusal left nothing on disk, while both restart-leg refusals
+		 * happen after the build landed and only the bounce was held back. The panel
+		 * keys its heading on this rather than saying "the update did not start" over
+		 * a panel whose own body says the install has landed.
+		 */
+		installLanded: boolean;
 	};
 };
 
@@ -1769,6 +1786,20 @@ export class UpdateService {
 	 */
 	public fleetRetireGraceMs = FLEET_RETIRE_GRACE_MS;
 	public fleetRetireSettleMs = FLEET_RETIRE_SETTLE_MS;
+
+	/**
+	 * The engage's own three bounds: how long the session's events stream may take
+	 * to announce its subscription, how often the held lease is renewed, and how
+	 * long the stream is held while the runtime comes up.
+	 *
+	 * Fields for the reason the four above are - a service-level case drives them in
+	 * milliseconds rather than paying twenty seconds per session - and the numbers
+	 * themselves, with the harness constants they come from, are argued in
+	 * `backend/session-engage.ts`.
+	 */
+	public sessionEngageOpenMs = SESSION_ENGAGE_OPEN_MS;
+	public sessionEngageBeatMs = SESSION_ENGAGE_BEAT_MS;
+	public sessionEngageHoldMs = SESSION_ENGAGE_HOLD_MS;
 
 	/**
 	 * How long the press IN FLIGHT has already spent waiting for the fleet.
@@ -6107,10 +6138,10 @@ export class UpdateService {
 			);
 			return true;
 		}
-		const landedClause = input.installLanded
-			? " The install itself has landed; the server keeps running the build it loaded until it can restart onto it."
-			: "";
-		const message = `${fleetDrainRefusalSentence(outcome)}${landedClause}`;
+		const message = fleetDrainRefusalSentence(
+			outcome,
+			input.installLanded === true,
+		);
 		/*
 		 * THE COMMAND IS ITS OWN FIELD (design D2). It used to be a clause inside the
 		 * sentence, printed with literal backticks, so the one panel that TELLS the
@@ -6119,8 +6150,18 @@ export class UpdateService {
 		 * line; the panel renders this as a code block.
 		 */
 		const command = input.command ?? null;
+		/*
+		 * THE PRESS'S TOTAL, NOT THIS LEG'S (review round 2, R2-m1 = design D9). The
+		 * ledger above is one budget for the whole press (round 1, m2), so a rebuild
+		 * can spend minutes in the install leg and reach this refusal with a leg of
+		 * ~0 - and the panel the reader is looking at has been showing the PRESS's
+		 * total all along (`draining`'s `spentMs + elapsedMs`). Reporting the leg made
+		 * the app say "waited 1 minute" after a ten-minute press, about the same wait
+		 * it had just counted to 9m 30s on screen.
+		 */
+		const pressWaitedMs = spentMs + outcome.waitedMs;
 		logger.warn(
-			`Refusing to ${what}: the fleet did not drain in ${outcome.waitedMs}ms (${outcome.because}, ${outcome.busy.length} mid-turn). ${message}${command ? ` By hand: ${command}` : ""}`,
+			`Refusing to ${what}: the fleet did not drain in ${pressWaitedMs}ms (${outcome.because}, ${outcome.busy.length} mid-turn, this leg spent ${outcome.waitedMs}ms). ${message}${command ? ` By hand: ${command}` : ""}`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.sendToRenderer("backend-update-error", {
@@ -6135,9 +6176,19 @@ export class UpdateService {
 			 */
 			refusal: {
 				because: outcome.because,
-				waitedMs: outcome.waitedMs,
+				waitedMs: pressWaitedMs,
 				command,
 				credentialsRefused: outcome.credentialsRefused === true,
+				/*
+				 * WHICH REFUSAL THIS IS (design round 2, D6). The heading is the reader's
+				 * takeaway from a panel they have been looking at for ten minutes, and the
+				 * three refusal sites are not the same event: the install leg's refusal left
+				 * nothing on disk, while the two restart-leg refusals happen AFTER the build
+				 * landed. "The update did not start" is false on the second pair - the
+				 * producer's own doc for `installLanded` says so - so the fact travels with
+				 * the report and the panel keys its heading on it.
+				 */
+				installLanded: input.installLanded === true,
 			},
 		});
 		return false;
@@ -6173,7 +6224,26 @@ export class UpdateService {
 				retirePollMs: this.fleetDrainPollMs,
 				log: (line) => logger.info(line, LogFileType.UPDATE_SERVICE),
 			});
-			if (result.displaced.length === 0) return;
+			if (result.displaced.length === 0) {
+				/*
+				 * NOTHING WAS DISPLACED is not the same statement as NOTHING LEFT TO DO
+				 * (review round 2, R2-M2). A pre-swap runtime that declined to retire
+				 * because it had work - the idle-gated arm, which no clock in this wait can
+				 * bound - is still resident at every read, so it is never "displaced" and
+				 * never engaged; it leaves when its turn ends, which is after this app has
+				 * stopped watching. Saying so is the difference between a log that records
+				 * what the app saw and one that claims the fleet was intact.
+				 */
+				if (result.stillResident.length > 0) {
+					logger.info(
+						`Nothing was displaced after the restart; ${result.stillResident.length} pre-swap runtime(s) were still resident when the wait ended (${result.stillResident
+							.map((row) => row.sessionId)
+							.join(", ")}) and will go cold on their own schedule`,
+						LogFileType.UPDATE_SERVICE,
+					);
+				}
+				return;
+			}
 			if (result.failed.length > 0) {
 				logger.warn(
 					`${result.failed.length} displaced session(s) did not come back after the restart: ${result.failed
@@ -6193,79 +6263,100 @@ export class UpdateService {
 	/**
 	 * Start one session's runtime again, without submitting anything to it.
 	 *
-	 * WHY A LEASE AND A WARM RATHER THAN A MESSAGE. `sessions.warm` is the
-	 * desktop plane's "start this session's runtime" op - it admits no work, runs
-	 * no turn and writes nothing to the conversation - and the route expects a
-	 * caller that already holds the session's bridge, so the app takes the watch
-	 * lease the route's own contract names and then warms.
+	 * THE APP'S OWN PATH FOR OPENING A SESSION (review round 2, R2-M1, which is the
+	 * finding that this call was a no-op against the shipped daemon). What this used
+	 * to do - post `sessions.watch` with a freshly generated subscription id and then
+	 * post `sessions.warm` - breaks BOTH preconditions the two routes carry:
 	 *
-	 * WHAT THE LEASE IS NOT, STATED PLAINLY (review round 1, m3 and the honest
-	 * reading behind it). Two claims this comment used to make are wrong and are
-	 * not replaced by softer ones:
+	 * - **The lease must name a subscription the bridge KNOWS.** The id is minted
+	 *   server-side by an events subscription (`DesktopSessionBridge.subscribe`) and
+	 *   `watch` looks it up in that table, raising `KeyError` for one it has never
+	 *   seen - which the route ladder answers as a **404**, one request before the
+	 *   warm. A random id therefore never leased anything, and the engage reported
+	 *   "did not answer" about a call it could have known would fail.
+	 * - **A warm only survives while something else holds the bridge.** The bridge is
+	 *   reference-counted by IN-FLIGHT REQUESTS; a warm issued while nothing holds it
+	 *   is cancelled the moment its own request returns (`routes/desktop_sessions.py`'s
+	 *   `warm` docstring, pinned by
+	 *   `tests/unit/server/test_desktop_sessions.py::test_a_warm_survives_its_own_request_while_a_subscriber_holds_the_bridge`).
+	 *   The renderer's panel path works because a mounted `SessionPanel` holds an
+	 *   EVENTS STREAM for its whole life; a one-shot warm from main held nothing, so
+	 *   the 200 said the call was admitted, not that a runtime exists.
 	 *
-	 * - **A WATCH LEASE IS NOT WHAT KEEPS THE WARM ALIVE.** The bridge is
-	 *   reference-counted by IN-FLIGHT REQUESTS (`acquire()`/`release()` around
-	 *   each route; `_detach()` cancels `warm_task` when the last one leaves),
-	 *   and a stored lease SUBSCRIPTION does not increment that count. The
-	 *   harness pins both directions of exactly this
-	 *   (`tests/unit/server/test_desktop_sessions.py::test_a_warm_survives_its_own_request_while_a_subscriber_holds_the_bridge`:
-	 *   "a warm issued while NOBODY else holds the bridge is cancelled the moment
-	 *   its own request releases"), and the panel path works because a mounted
-	 *   `SessionPanel` holds an EVENTS STREAM - an open request - for its whole
-	 *   life. This path holds none, so the spawn it asks for is issued and then
-	 *   cancelled with the bridge; the 200 says the call was admitted, not that a
-	 *   runtime exists. Recorded here rather than fixed here: giving the engage a
-	 *   holder is a change to how this app holds session streams (and to what
-	 *   `hasOpenSessionStreams` then means for quitting), which is its own
-	 *   change rather than a line in a remediation.
-	 * - **`visible: true` IS ONLY SAFE WHERE A PRESENCE RECORD EXISTS.** The
-	 *   runtime prefers this app's machine-wide presence record and falls back to
-	 *   exactly this per-connection flag (`session/runtime/server.py::_desktop_visible`),
-	 *   so on a machine with no record the app is telling a session's runtime that
-	 *   somebody is looking at a session nobody has open - which can suppress a
-	 *   banner for it (`_visible_attach_surfaces`). It is kept because the
-	 *   lease-driven warm needs a VISIBLE lease (`_lease_warm_loop`), and the flag
-	 *   is harmless on every machine that has a record.
+	 * So the engage is what CLICKING THE SESSION does, through the app's own relay:
+	 * hold the session's events stream, take the subscription id its `open` frame
+	 * carries, lease that id as a VISIBLE watch (a live visible lease is what CREATES
+	 * residency for a cold session - `DesktopSessionBridge.refresh_watch`), warm it,
+	 * and keep holding until the roster says the runtime is there.
+	 * `session-engage.ts` owns that rule and the evidence each leg rests on.
+	 *
+	 * AND THE BOOLEAN IS A CLAIM ABOUT THE MACHINE, not about a status code: every
+	 * route on this path answers 200 to a call it will not act on, so what decides the
+	 * outcome is the same roster read the fleet gate uses (`sessionHasRuntime`). The
+	 * caller's "re-engaged N of M" log line is worth exactly that much.
+	 *
+	 * `visible: true` IS ONLY SAFE WHERE A PRESENCE RECORD EXISTS. The runtime prefers
+	 * this app's machine-wide presence record and falls back to exactly this
+	 * per-connection flag (`session/runtime/server.py::_desktop_visible`), so on a
+	 * machine with no record the app is telling a session's runtime that somebody is
+	 * looking at a session nobody has open - which can suppress a banner for it
+	 * (`_visible_attach_surfaces`). It is kept because the lease-driven warm requires
+	 * a VISIBLE lease (`_lease_warm_loop`), and it is the flag the renderer's own beat
+	 * sends for a session it really is showing.
 	 *
 	 * NOT `sessions.message`, deliberately: a message would admit a turn in every
-	 * conversation this machine holds, which is work and spend the user did not
-	 * ask for, and the drain that ran before the restart is what makes a notice
-	 * about interrupted work unnecessary - by construction nothing was mid-turn
-	 * when the server moved.
+	 * conversation this machine holds, which is work and spend the user did not ask
+	 * for, and the drain that ran before the restart is what makes a notice about
+	 * interrupted work unnecessary - by construction nothing was mid-turn when the
+	 * server moved.
 	 */
 	private async engageSessionRuntime(
 		backend: BackendServiceManager,
 		row: FleetRosterRow,
 	): Promise<boolean> {
-		const lease = await backend.requestDesktop({
-			op: "sessions.watch",
+		const relay = backend.getStreamRelay();
+		return await engageSessionThroughStream({
 			sessionId: row.sessionId,
-			// The contract's own pattern (`SUBSCRIPTION_ID_PATTERN`): 32 lowercase hex
-			// characters. A uuid's dashes would be refused by the transport's schema
-			// before a byte left this process.
-			subscriptionId: randomUUID().replace(/-/g, ""),
-			visible: true,
-			canNotify: false,
+			subscribe: (sessionId, emit) =>
+				relay.subscribe({ sessionId }, (event) => {
+					if (event.kind === "data") {
+						emit({ kind: "data", data: event.data });
+						return;
+					}
+					if (event.kind === "error") {
+						emit({ kind: "error", detail: event.detail });
+						return;
+					}
+					emit({ kind: "end" });
+				}),
+			unsubscribe: (streamId) => relay.unsubscribe(streamId),
+			watch: (subscriptionId) =>
+				backend.requestDesktop({
+					op: "sessions.watch",
+					sessionId: row.sessionId,
+					subscriptionId,
+					visible: true,
+					canNotify: false,
+				}),
+			warm: (sessionId) =>
+				backend.requestDesktop({ op: "sessions.warm", sessionId }),
+			hasRuntime: async () =>
+				sessionHasRuntime(await backend.servingSessionFleet(), row.sessionId),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+			now: () => Date.now(),
+			openMs: this.sessionEngageOpenMs,
+			beatMs: this.sessionEngageBeatMs,
+			holdMs: this.sessionEngageHoldMs,
+			log: (line) => logger.info(line, LogFileType.UPDATE_SERVICE),
+		}).then((outcome) => {
+			if (!outcome.engaged) {
+				logger.warn(
+					`The re-engage of ${row.sessionId} did not start a runtime: ${outcome.reason ?? "no reason given"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+			return outcome.engaged;
 		});
-		if (lease.status !== 200) {
-			logger.warn(
-				`The re-engage lease for ${row.sessionId} answered ${lease.status}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return false;
-		}
-		const warm = await backend.requestDesktop({
-			op: "sessions.warm",
-			sessionId: row.sessionId,
-		});
-		if (warm.status !== 200) {
-			logger.warn(
-				`The re-engage warm for ${row.sessionId} answered ${warm.status}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return false;
-		}
-		return true;
 	}
 
 	/**
@@ -7967,6 +8058,28 @@ export class UpdateService {
 		 * refusal says exactly that to a reader who asked for an update and did get
 		 * one on disk.
 		 */
+		/*
+		 * THE BEFORE-SIDE IS TAKEN HERE, BETWEEN THE PUBLISH AND THE DRAIN (review
+		 * round 2, R2-M3).
+		 *
+		 * The restart-leg snapshot below is the right reading for the interval the
+		 * RESTART covers, but it is the only read the release path had, and the
+		 * publish happens minutes earlier in the same method. A publish moves the
+		 * install under the runtimes serving this machine, so an idle runtime retires
+		 * on its own build check (5 s cadence, once the marker is 10 s old, spread
+		 * over a 20 s stagger) - and the drain between here and the restart can last
+		 * ten minutes when another session is mid-turn, which is exactly the press
+		 * this gate exists for. Those sessions are gone before the only read that
+		 * could name them, so they were never re-engaged: the idle members of a fleet
+		 * were the ones the app silently lost.
+		 *
+		 * This is the reading the REBUILD route already keeps for its own install leg
+		 * (`fleetBeforeInstall`, taken before its drain and unioned below), and the
+		 * union's stated trade is the right side here too: re-engaging a session that
+		 * retired on its own is cheaper than leaving a lost one, and the two readings
+		 * together are still "what actually vanished".
+		 */
+		const fleetAfterPublish = await this.readFleetSnapshot(backend);
 		if (
 			!(await this.drainFleetForUpdate({
 				backend,
@@ -8105,9 +8218,20 @@ export class UpdateService {
 		 * the update being finished - the restart is not "done" until what it
 		 * displaced is back - and is best effort by design: a session that will not
 		 * come back is logged, never a failed update.
+		 *
+		 * THE SNAPSHOT IS THE UNION OF THE PUBLISH-SIDE AND PRE-RESTART READS (review
+		 * round 2, R2-M3), which is the reading the rebuild route already takes: the
+		 * publish retires idle runtimes on the build skew and the drain between the two
+		 * reads can be ten minutes long, so a diff taken only across the restart cannot
+		 * see what the publish itself took away. Deduplicated by session id, so no
+		 * session is engaged twice.
 		 */
-		if (fleetBeforeRestart !== null) {
-			await this.reengageFleetAfterRestart(backend, fleetBeforeRestart);
+		const reengageSnapshot = unionFleetSnapshots(
+			fleetAfterPublish,
+			fleetBeforeRestart,
+		);
+		if (reengageSnapshot !== null) {
+			await this.reengageFleetAfterRestart(backend, reengageSnapshot);
 		}
 		this.sendToRenderer("backend-update-completed", {
 			installVersion,
