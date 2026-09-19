@@ -855,7 +855,16 @@ export function profileAuthorizationCheck(
 ) {
 	const embedded = profile ?? readEmbeddedProfileEntitlements(appPath, run);
 	const bundleId = bundleIdentifierFromInfoPlist(appPath);
-	const executables = bundleExecutables(appPath);
+	// A walk that cannot run is a third outcome, and it must not escape as a stack
+	// trace: the gate reports rows, and `require-report.sh` wants a report even when
+	// the thing it was pointed at could not be read.
+	let executables = [];
+	let walkError = null;
+	try {
+		executables = bundleExecutables(appPath);
+	} catch (error) {
+		walkError = error.message ?? String(error);
+	}
 	const unauthorized = [];
 	const unreadable = [];
 	for (const relative of executables) {
@@ -882,15 +891,30 @@ export function profileAuthorizationCheck(
 		}
 	}
 	const reasons = [];
+	if (walkError != null)
+		reasons.push(
+			`the bundle could not be walked for executables (${walkError}), so no claim in it was judged`,
+		);
+	if (walkError == null && executables.length === 0)
+		reasons.push(
+			"no executable was found in the bundle to judge, and a bundle with no Mach-O the walk can find is not one a launcher-only read would have covered either",
+		);
 	if (unauthorized.length > 0)
 		reasons.push(
 			`${unauthorized.length} of ${executables.length} executable(s) claim a restricted entitlement the embedded profile does not authorize: ${unauthorized.slice(0, 4).join("; ")}${unauthorized.length > 4 ? ` (and ${unauthorized.length - 4} more)` : ""}`,
 		);
-	if (unreadable.length > 0)
-		reasons.push(
-			`the entitlements of ${unreadable.length} executable(s) could not be read: ${unreadable.slice(0, 4).join(", ")}`,
-		);
-	return {
+	/*
+	 * TWO ROWS, because the two failure modes have different owners and
+	 * `verify-signed-update.mjs` classifies by id. An unauthorized claim is the
+	 * CANDIDATE's own defect — the 0.29.6 class — and stays out of
+	 * `SIGNATURE_CHECK_IDS` so it FAILS that job. A signature this host could not
+	 * read at all is the HOST's capability question (an unsigned candidate built by
+	 * a runner with no signing identity), so it gets its own id and rides the
+	 * BLOCKED bucket beside `app-codesign`. One row for both would have put "we could
+	 * not check" into the FAIL bucket, which is the confusion that bucket exists to
+	 * prevent (review round 2).
+	 */
+	const authorization = {
 		id: "app-profile-authorization",
 		scope: "app",
 		target: appPath,
@@ -903,6 +927,27 @@ export function profileAuthorizationCheck(
 				? `${executables.length} executable(s) inspected, none claim a restricted entitlement`
 				: reasons.join(" | "),
 	};
+	const readability = {
+		id: "app-entitlements-readable",
+		scope: "app",
+		target: appPath,
+		description:
+			"the entitlements of every executable in the bundle can be read from its signature",
+		// Fail-closed on an EMPTY population too: `[].every()` passing over a bundle
+		// the walk could not enumerate is the vacuous pass this check exists to
+		// refuse (review round 2, finding 3).
+		passed:
+			walkError == null && executables.length > 0 && unreadable.length === 0,
+		output:
+			walkError != null
+				? `the bundle could not be walked for executables: ${walkError}`
+				: unreadable.length > 0
+					? `the entitlements of ${unreadable.length} executable(s) could not be read: ${unreadable.slice(0, 4).join(", ")}`
+					: executables.length === 0
+						? "no executable was found to read"
+						: `the entitlements of ${executables.length} executable(s) were read`,
+	};
+	return [authorization, readability];
 }
 
 /*
@@ -917,7 +962,41 @@ export function profileAuthorizationCheck(
  * tree in the bundle for a venv to resolve into.
  */
 
-/** Run each check with the given runner and judge it.
+/**
+ * Run one check with the check's own `env` applied to THIS process for the call.
+ *
+ * Why not only hand it to the runner: `env` is the runner's fourth parameter, and
+ * a runner that does not forward it drops the switch SILENTLY — and for the spawn
+ * probe that switch is `ELECTRON_RUN_AS_NODE=1`, the only thing that makes
+ * `app-spawn` a probe instead of a real app launch. QA round 2 measured exactly
+ * that from a four-parameter runner in a scratch harness: five stray launches of
+ * the app binary, every one of them raising and focusing the operator's window.
+ * The check owns its environment here, so any runner that inherits the process
+ * environment — which is the default for `spawnSync`, and what `spawnRunner`
+ * does — applies it whether it forwards the parameter or not.
+ *
+ * Scoped to the call and restored in a `finally`: these checks run one at a time,
+ * so nothing else can observe the variable, and a check that threw cannot leave
+ * `ELECTRON_RUN_AS_NODE` behind for the next one.
+ */
+function withCheckEnv(env, work) {
+	if (!env) return work();
+	const saved = new Map();
+	for (const [key, value] of Object.entries(env)) {
+		saved.set(key, process.env[key]);
+		process.env[key] = value;
+	}
+	try {
+		return work();
+	} finally {
+		for (const [key, value] of saved) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	}
+}
+
+/** Run each check with the runner, and judge it.
  *
  * `profile` is the embedded-profile read, passed in by a caller that already has
  * it: two of the checks ask whether the signature's claims are authorized, and
@@ -932,12 +1011,8 @@ export function runChecks({ appPath, dmgPath, run, profile = null }) {
 		: { present: false, entitlements: null };
 	return artifactChecks({ appPath, dmgPath, profile: embedded }).map(
 		(check) => {
-			const result = run(
-				check.command,
-				check.args,
-				check.input,
-				check.env,
-				check.timeoutMs,
+			const result = withCheckEnv(check.env, () =>
+				run(check.command, check.args, check.input, check.env, check.timeoutMs),
 			);
 			const passed = check.expect(result);
 			const output = [result.stdout, result.stderr]
@@ -1139,7 +1214,7 @@ export function verifyArtifacts({
 		const profile = readEmbeddedProfileEntitlements(path, run);
 		return [
 			...runChecks({ appPath: path, dmgPath: null, run, profile }),
-			profileAuthorizationCheck(path, { run, profile }),
+			...profileAuthorizationCheck(path, { run, profile }),
 			bundledBytecodeCheck(path),
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
@@ -1166,7 +1241,7 @@ export function verifyArtifacts({
 			`Checking app: ${appPath} (embedded provisioning profile: ${profile.present ? "present" : "absent"})`,
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
-		results.push(profileAuthorizationCheck(appPath, { run, profile }));
+		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
 		// Neither of the next six is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
