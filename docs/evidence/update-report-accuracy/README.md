@@ -20,12 +20,14 @@ node docs/evidence/update-report-accuracy/harness/capture-update-report.mjs \
   --out docs/evidence/update-report-accuracy/unattended-<before|after>
 ```
 
-Run it once in a tree built from `main` (`--expect-notice=absent`) and once in a
-tree built from the branch (`--expect-notice=present`). Nothing else about the
+Run it once in a tree built from the base (`--expect-notice=absent`) and once in
+a tree built from the branch (`--expect-notice=present`). Nothing else about the
 command changes, which is what makes the pair comparable. The pair committed here
-came from `origin/main` = `0c02556ba` and from this branch's `dfbaad981`,
-re-taken after the fold onto that base so both frames describe the tree that
-ships.
+came from `origin/main` = `a17a6b3ba`, the rebase base this branch now sits on,
+and from this branch's `a87834921` (the code fix; the round's rig change was
+uncommitted in the worktree the run booted, and it only writes frames). Both
+halves were re-taken with the fixed rig described below, in the same pass, so
+neither is an older run's bytes.
 
 The rig boots the BUILT app in `headless` mode on a scratch `HOME`, scratch
 config root and scratch `--user-data-dir`, seeds a marker that a real install
@@ -37,7 +39,7 @@ newer generation, which is the state the operator's machine was in at
 
 | frame | `--expect-notice` | what the app does |
 | --- | --- | --- |
-| `unattended-before/localOperatorDark.webp` | `absent` | reconciles the record against the frozen generation, concludes "did not move the install", and reports nothing at all - for 30 s of frames. The committed frame is the last of that window (`probe-59`), because with no notice in any of the sixty there is no moment the run could pick; the sixty PNGs stay in the run's scratch tree beside it. |
+| `unattended-before/localOperatorDark.webp` | `absent` | reconciles the record against the frozen generation, concludes "did not move the install", and reports nothing at all - for 30 s of frames. The committed frame is the LAST frame of that window (`probe-59`), taken by the same run that judged the notice absent: with no notice in any of the sixty there is no moment the run could prefer, and the rig now falls back to its last probe for exactly this scenario. Before that fallback a no-notice run committed NOTHING, so every re-take re-encoded the after half and silently kept the before half's older bytes (review round 1, R1-1). The probe PNGs live in the run's scratch tree, which `--keep` retains; they are no longer written into `--out`, because that is a committed directory. |
 | `unattended-after/localOperatorDark.webp` | `present` | the same launch reports the landed update: the "Server update completed successfully" notice, 3.0 s into the run |
 
 ## What is NOT here, and why
