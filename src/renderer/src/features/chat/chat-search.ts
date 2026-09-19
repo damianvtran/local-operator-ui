@@ -82,6 +82,28 @@ export function matchesLabel(row: CanonicalSessionRow, query: string): boolean {
 }
 
 /**
+ * What this search knows about archiving, as two inputs to the join.
+ *
+ * Two rather than one because they answer different questions. `include` is the
+ * user's control in the search block (`Include archived`) and says whether an
+ * archived conversation may be drawn at all; `facts` is what THIS CLIENT knows
+ * about ids whose state an answer in hand may predate - a press made a moment ago
+ * writes the backend and then reads back an answer requested before it, so the
+ * hit's own `archived` can be the value the user just changed.
+ *
+ * The facts are a plain map rather than the store's stamped records because this
+ * module is pure: ordering a fact against an answer is the store's business
+ * (`applySearchAnswer`), and a row only needs what to draw.
+ */
+export type ArchiveView = {
+	include: boolean;
+	facts: Record<string, boolean>;
+};
+
+/** The archive facts a caller with none in hand passes. */
+export const NO_ARCHIVE_VIEW: ArchiveView = { include: false, facts: {} };
+
+/**
  * The rows a query admits, best first, with the conversation-matched ids.
  *
  * `hits` is the backend's answer for THIS query — the caller must not pass the
@@ -89,6 +111,13 @@ export function matchesLabel(row: CanonicalSessionRow, query: string): boolean {
  * answer", which degrades to the local label search rather than to an empty
  * list: a search field that silently stops finding chats is worse than one that
  * finds fewer.
+ *
+ * `archive` decides what a HIT may contribute, and it is the one place the
+ * client's own archive state overrides the wire's. The rows handed in are the
+ * caller's business (`visibleRows` in `chat-archived` is what keeps archived
+ * conversations out of the at-rest lists and out of the local match while the
+ * control is off), because a row's state is already on screen and a hit's is
+ * not.
  *
  * Ordering is `(tier, recency)` — the tiers above, then the order the rows
  * arrived in, which the catalogue already ranks newest-first. The sort is
@@ -110,11 +139,19 @@ export function searchChats(
 	 * the client knows better (QA round 2, Qr2-1).
 	 */
 	pinFacts: Record<string, boolean> = {},
+	archive: ArchiveView = NO_ARCHIVE_VIEW,
 ): ChatSearchOutcome {
 	const needle = query.trim();
 	if (!needle) {
 		return { rows, conversationMatches: new Set(), synthesized: new Set() };
 	}
+	/**
+	 * A conversation's archive state as this client knows it: its own fact first,
+	 * the wire's second, and `false` when neither speaks - an answer that does not
+	 * describe a conversation is not evidence that it is archived.
+	 */
+	const archivedOf = (id: string, fromWire: boolean | undefined): boolean =>
+		archive.facts[id] ?? fromWire === true;
 	const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
 	const conversationMatches = new Set<string>();
 	const admitted: { row: CanonicalSessionRow; rank: number }[] = [];
@@ -162,6 +199,26 @@ export function searchChats(
 	const synthesized = new Set<string>();
 	for (const hit of hits ?? []) {
 		if (seen.has(hit.id)) continue;
+		/*
+		 * AN ARCHIVED HIT IS DROPPED WHILE THE CONTROL IS OFF, whatever the answer
+		 * in hand says. Two different states are covered by this one line, and both
+		 * are reachable:
+		 *
+		 *   - the answer was asked for WITH `include_archived` and the user has since
+		 *     turned the control off. The two answers to one query echo the same
+		 *     `query`, so `hitsAnswerQuery` cannot tell them apart and the previous
+		 *     answer is served while the new one is in flight (`keepPreviousData`) -
+		 *     without this the rows the control just hid would sit there for the
+		 *     length of a request and then vanish, which reads as a filter that
+		 *     sometimes does not work (the stale-row case `chat-search.test.mjs`
+		 *     pins);
+		 *   - the user archived this very conversation a moment ago. The write is
+		 *     optimistic and this row is rebuilt from the cached hit on every
+		 *     render, so the row would stay on screen claiming to be live - and it is
+		 *     the fact, not the hit, that knows otherwise.
+		 */
+		const archived = archivedOf(hit.id, hit.archived);
+		if (archived && !archive.include) continue;
 		synthesized.add(hit.id);
 		/*
 		 * The client's own fact first, the hit's own second, and NOTHING when
@@ -188,6 +245,12 @@ export function searchChats(
 				const known = clientPinned ?? hit.pinned;
 				return typeof known === "boolean" ? { pinned: known } : {};
 			})(),
+			/*
+			 * The state the row should DRAW, which is the client's when it has one:
+			 * a row synthesized from a hit carries the marker and offers the control
+			 * that inverts it, and both read this field.
+			 */
+			archived,
 		};
 		if (hit.body_match) conversationMatches.add(hit.id);
 		admitted.push({ row, rank: hit.rank });

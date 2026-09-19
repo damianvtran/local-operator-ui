@@ -42,6 +42,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	PANEL_REQUEST_TTL_MS,
 	usePanelPresentationStore,
@@ -52,6 +53,14 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
+import { offerArchiveUndo } from "../archive-undo";
+import {
+	ARCHIVE_ALREADY_ARCHIVED_REASON,
+	ARCHIVE_NOT_ARCHIVED_REASON,
+	ARCHIVE_UNAVAILABLE_REASON,
+	archiveDestinationApplies,
+} from "../chat-archived";
+import { DELETE_UNAVAILABLE_REASON } from "../delete-conversation";
 import type { DraftPickerDestination } from "../draft-selection";
 import {
 	MOVE_NOT_READY_REASON,
@@ -277,6 +286,22 @@ export function useSlashDispatch({
 	 * a different sentence from "cannot", and the difference is the whole of R-3.
 	 */
 	const paneReady = moveReady ?? true;
+	/*
+	 * The archive capability, read once at the top for the reason `canMove` above
+	 * is: the answer changes what the user is TOLD, not merely whether a request
+	 * succeeds. A backend without the archive store is a sentence to report, not a
+	 * round trip to spend learning 404 - and it is the same capability the
+	 * palette's row filter consults, so a row that is not offered and a word that is
+	 * typed and refused cannot disagree about why.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	const deleteEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_delete",
+	);
 
 	const commandsQuery = useQuery({
 		queryKey: desktopKeys.commands,
@@ -602,6 +627,108 @@ export function useSlashDispatch({
 					canonical.clearView();
 					return "consumed";
 				}
+				/*
+				 * ARCHIVE AND UNARCHIVE, typed (`/archive`, `/unarchive`).
+				 *
+				 * Locally resolved rather than posted to the session command endpoint, for the
+				 * reason `/move` is: the backend's own catalogue presents the destination
+				 * (`sessions.archive`) and the WRITE belongs to this app's store, which owns
+				 * the row's optimistic value, the currency stamp that orders it against the
+				 * answers, and the refusal register beside the list. A round trip through the
+				 * command endpoint would answer a `native_action` this branch would have to
+				 * resolve back into the same call.
+				 */
+				if (entry.action === "archive" || entry.action === "unarchive") {
+					const archived = entry.action === "archive";
+					if (!sessionId) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
+					const store = useCanonicalSessionsStore.getState();
+					const row = store.sessions.find(
+						(candidate) => candidate.session_id === sessionId,
+					);
+					/*
+					 * The SAME precedence every other reader uses: the client's own fact first
+					 * (the press writes the store before it writes the wire), the row's value
+					 * second, and `undefined` - not `false` - when neither speaks, because
+					 * "not archived" and "unknown" are different answers to the question this
+					 * branch asks.
+					 */
+					const state =
+						store.archiveFacts[sessionId]?.archived ?? row?.archived;
+					if (!archiveEnabled) {
+						note(ARCHIVE_UNAVAILABLE_REASON, true);
+						return "consumed";
+					}
+					/*
+					 * A typed word that the palette would not have offered still has to be
+					 * refused WITH A REASON: the palette filters the two rows on the
+					 * conversation's state, and a user who types `/unarchive` on a live
+					 * conversation has to be told why nothing happened rather than watch the
+					 * command be swallowed. The rule is the palette's own
+					 * (`archiveDestinationApplies`), asked once more here.
+					 */
+					if (
+						!archiveDestinationApplies(spec.destination, state, archiveEnabled)
+					) {
+						note(
+							archived
+								? ARCHIVE_ALREADY_ARCHIVED_REASON
+								: ARCHIVE_NOT_ARCHIVED_REASON,
+							true,
+						);
+						return "consumed";
+					}
+					const title = row?.title ?? undefined;
+					const accepted = await store.setSessionArchived(
+						sessionId,
+						archived,
+						title,
+					);
+					/*
+					 * A REFUSED PRESS SAYS NOTHING HERE, deliberately: the store's
+					 * `archiveFailure` is already rendered as one sentence in the panel beside
+					 * the row that did not move, and repeating it as a system line in the
+					 * transcript would put the same sentence on two surfaces about one press.
+					 */
+					if (!accepted) return "consumed";
+					offerArchiveUndo({
+						sessionId,
+						title,
+						onUndo: () =>
+							void useCanonicalSessionsStore
+								.getState()
+								.setSessionArchived(sessionId, !archived, title),
+					});
+					return "consumed";
+				}
+				/*
+				 * DELETE, typed (`/delete`), and it deletes NOTHING: it stages the
+				 * conversation as a delete candidate, which is what the pane's one
+				 * confirmation dialog reads (`DeleteConversationDialog`). The wire requires
+				 * `confirmed: true` and only that dialog sends it, so a typed command can
+				 * never be the gesture that destroys a transcript - the rule the brief
+				 * states as "must never run immediately".
+				 */
+				if (entry.action === "request-delete") {
+					if (!sessionId) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
+					if (!deleteEnabled) {
+						note(DELETE_UNAVAILABLE_REASON, true);
+						return "consumed";
+					}
+					useCanonicalSessionsStore.getState().requestSessionDelete(sessionId);
+					return "consumed";
+				}
 				// exit: close the window through main (detach-only; the backend
 				// keeps every session's owner running). In the browser harness
 				// there is no window to close, and the note says so honestly.
@@ -861,6 +988,15 @@ export function useSlashDispatch({
 		},
 		[
 			commandsEnabled,
+			/*
+			 * The two archive capabilities are dependencies because the ANSWER decides what
+			 * happens to a typed word, not merely whether a request succeeds: with the
+			 * store absent the command is refused with a sentence, and a `dispatch` closed
+			 * over a stale `false` would report a backend problem on a backend that has the
+			 * route (or spend a round trip learning 404).
+			 */
+			archiveEnabled,
+			deleteEnabled,
 			commandsQuery.data,
 			sessionId,
 			note,

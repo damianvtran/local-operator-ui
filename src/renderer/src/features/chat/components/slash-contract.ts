@@ -220,18 +220,37 @@ export function extensionFor(
 }
 
 /**
+ * The command words this host treats as destructive whatever the registry says.
+ *
+ * A LIST rather than one string, because the reason below is about the WORD and
+ * not about a route: `/logout` revokes a stored credential, and `/delete` removes
+ * a conversation's transcript from the machine. Both are irreversible, and
+ * neither is derivable from the row - the registry's `alert` flag belongs to an
+ * ARGUMENT row (`{value, alert}`, built by `slash-argument-rows`), so a bare
+ * command with no arguments has no other way to say it.
+ */
+const DESTRUCTIVE_COMMANDS: ReadonlySet<string> = new Set(["logout", "delete"]);
+
+/**
  * Whether the active row's list is destructive IN THIS HOST.
  *
  * The row's own `alert` is one arm and the command word is the other, because
  * `session.credential` revokes a stored credential from `LogoutPicker` while
  * `argumentRows` never paints a destructive detail — so for `/logout` only the
  * command-word arm can fire (round 1 R1).
+ *
+ * The word arm is also what paints a BARE destructive command in the danger
+ * role (`commandRowContent` asks this function for its ink), which is its only
+ * channel there: a command row carries no `alert`.
  */
 export function slashDestructive(
 	argumentCommand: string | null,
 	alert: boolean | undefined,
 ): boolean {
-	return (argumentCommand ?? "").toLowerCase() === "logout" || alert === true;
+	return (
+		DESTRUCTIVE_COMMANDS.has((argumentCommand ?? "").toLowerCase()) ||
+		alert === true
+	);
 }
 
 /**

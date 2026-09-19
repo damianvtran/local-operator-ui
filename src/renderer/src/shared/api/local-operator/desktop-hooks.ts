@@ -327,7 +327,37 @@ export type DesktopFeature =
 	 * by a request that failed is a mark the user believes is gone while it is
 	 * still there.
 	 */
-	| "completion_ack_bulk";
+	| "completion_ack_bulk"
+	/**
+	 * Archived conversations: the `archived` flag on every catalogue row and search
+	 * hit, `include_archived` on both reads, and the `sessions.archive` write
+	 * (`POST /v1/desktop/sessions/{id}/archive`).
+	 *
+	 * Its OWN key rather than a bump of `session_catalogue`, on the rule
+	 * `session_search` states above: the catalogue surface is the WHOLE chats list,
+	 * which renders perfectly well against a backend whose archive store does not
+	 * exist, so gating the list on a newer catalogue version would hide a working
+	 * surface behind an update it does not need. A backend that predates archiving
+	 * advertises neither the key nor the row field, and the sidebar then mounts no
+	 * control, marks nothing and partitions nothing - see `visibleRows` in
+	 * `features/chat/chat-archived`, which is the ONE place that decision is
+	 * written down. Absent means the panel's DOM and class set stay byte-identical
+	 * to the panel that never knew about archiving.
+	 */
+	| "session_archive"
+	/**
+	 * Permanent deletion of one conversation (`DELETE /v1/desktop/sessions/{id}`).
+	 *
+	 * SEPARATE from `session_archive`, and the separation is the point rather than
+	 * bookkeeping: the two have different blast radii (one is recoverable, one is
+	 * not) and a backend can legitimately host the archive store without offering a
+	 * delete route. A shared key would mean an archive rollout that ships a delete
+	 * control against a route the daemon does not have - a danger dialog whose
+	 * confirm button 404s, which is worse than no dialog at all. Absent here means
+	 * no delete affordance is drawn anywhere, from the header menu or from a typed
+	 * `/delete`.
+	 */
+	| "session_delete";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

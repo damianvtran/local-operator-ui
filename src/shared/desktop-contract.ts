@@ -722,6 +722,20 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.list"),
 			limit: z.number().int().min(1).max(500).optional(),
+			/*
+			 * Whether ARCHIVED conversations belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, and that default is a compatibility promise rather
+			 * than a preference: a client that predates archiving sends no such field
+			 * and must keep the list it always had rather than acquiring rows it has no
+			 * way to mark, filter or restore. This app sends `true` and partitions the
+			 * archived rows out of every default list itself (see `fetchSessions` in the
+			 * canonical sessions store and `visibleRows` in `features/chat/chat-archived`),
+			 * which is what lets ONE fetch serve both the hidden list and the two
+			 * questions a list that hides them cannot answer: the open conversation's own
+			 * archived state, and an unarchive control on a row found by search.
+			 */
+			include_archived: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -740,6 +754,64 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// answer it would have to discard.
 			q: z.string().min(1).max(SESSION_SEARCH_MAX_CHARS),
 			limit: z.number().int().min(1).max(500).optional(),
+			/*
+			 * Whether the SCAN admits archived conversations, absent meaning `false`
+			 * (the same compatibility promise `sessions.list` states).
+			 *
+			 * The sidebar's "Include archived" control is the only writer, and the flag is
+			 * in the query's cache key on this side because the two answers to one query
+			 * are different questions: without that, toggling the control off would serve
+			 * the answer that carries the archived hits and the rows would linger - the
+			 * stale-row failure `chat-search.test.mjs` pins.
+			 */
+			include_archived: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * Archive or unarchive ONE conversation: `POST /v1/desktop/sessions/{id}/archive`.
+	 *
+	 * DESIRED STATE ON THE WIRE (`archived: true|false`), never a bare toggle, for
+	 * the reason the pin op states beside its own field: over HTTP a toggle is not
+	 * idempotent, and a request retried after a dropped response would flip the
+	 * conversation back. Idempotent by construction here rather than by a receipt:
+	 * re-archiving an archived conversation writes what is already there, so the op
+	 * carries no `requestId` (the same at-most-once trade `sessions.warm` makes for
+	 * a call that already is).
+	 *
+	 * Archiving is RECOVERABLE and therefore never confirmed: it hides the
+	 * conversation from the default lists and from search, and unarchiving restores
+	 * it. Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * a boolean and a 12-char id are not prose.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.archive"),
+			sessionId,
+			archived: z.boolean(),
+		})
+		.strict(),
+	/*
+	 * Delete ONE conversation PERMANENTLY: `DELETE /v1/desktop/sessions/{id}`.
+	 *
+	 * `confirmed: true` is required and is not a receipt: it is the wire's own echo
+	 * of the user's answer to a danger dialog, so a caller that has not asked cannot
+	 * express this request at all (a missing field is a 422 here, by name, rather
+	 * than a delete nobody confirmed). The route refuses the delete of a session
+	 * that is LIVE with a 409 and a sentence naming the guard - the one refusal this
+	 * surface renders inside the dialog that asked, which is why the op needs no
+	 * failure vocabulary of its own.
+	 *
+	 * It removes exactly the addressed conversation and NOT its subagent children;
+	 * a surface that has children to mention says so in its own copy rather than
+	 * implying a wider blast radius. No `requestId`: the delete is not retried by
+	 * this client, and a retry of a delete cannot be owed an answer - the second
+	 * call's honest answer is 404 and the outcome the user asked for either way.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.delete"),
+			sessionId,
+			confirmed: z.literal(true),
 		})
 		.strict(),
 	z
@@ -2672,7 +2744,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "sessions.list":
 			return {
-				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
+				// Omitted when false, for the reason `sessions.search`'s own query
+				// states: the pre-flag request is what an older backend must keep
+				// seeing, and `false` is the route's default anyway.
+				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
+					request.include_archived ? "&include_archived=true" : ""
+				}`,
 				method: "GET",
 			};
 		case "sessions.search": {
@@ -2683,11 +2760,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 				q: request.q,
 				limit: String(request.limit ?? SESSION_SEARCH_DEFAULT_LIMIT),
 			});
+			// Omitted when false rather than sent as `include_archived=false`: the
+			// default IS false on the route, so the request this app sends for the
+			// ordinary case stays byte-identical to the one it sent before the flag
+			// existed - which is what keeps the control a strict superset of the old
+			// behaviour against a backend that has not learned the flag yet.
+			if (request.include_archived) query.set("include_archived", "true");
 			return {
 				path: `/v1/desktop/sessions/search?${query}`,
 				method: "GET",
 			};
 		}
+		case "sessions.archive":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/archive`,
+				method: "POST",
+				// The desired state, never a toggle: see the op's own comment for why a
+				// retried toggle is the bug this shape exists to make impossible.
+				body: { archived: request.archived },
+			};
+		case "sessions.delete":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}`,
+				method: "DELETE",
+				// The user's own confirmation, echoed on the wire: the route requires
+				// it, so this op cannot be reached without a dialog having been
+				// answered (see the op's comment).
+				body: { confirmed: true },
+			};
 		case "sessions.create":
 			return {
 				path: "/v1/desktop/sessions",
