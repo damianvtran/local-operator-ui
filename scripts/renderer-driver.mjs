@@ -2012,11 +2012,19 @@ async function waitForPinned(cdp, label, timeoutMs = 6_000) {
  * | `pins-filter-<theme>` | a query applied: the section is `matching ∩ pinned` | `pins-populated` (unfiltered) |
  *
  * And, when the backend omits `session_pins` (a run against a daemon that predates
- * the pin store), the same scene takes `pins-withdrawn-<theme>` instead of all of
- * the above, asserting the two halves of fail-closed: NO control mounted anywhere,
- * and the row's own element unchanged (no wrapper, no reserved slot) — which is
- * what makes its frames comparable, byte for byte, with the same scene's frames
- * from the tree before this change.
+ * the pin store), the same scene takes `pins-withdrawn-<theme>` and
+ * `pins-withdrawn-selected-<theme>` instead of all of the above, asserting the two
+ * halves of fail-closed: NO control mounted anywhere, and the row rendered as MAIN'S
+ * OWN BOX around the button - which is what makes its frames comparable, byte for
+ * byte, with the same scene's frames from `origin/main`.
+ *
+ * Why there are two withdrawn frames and not one (design round 8, D1): the
+ * withdrawn path AT REST cannot fail, which is exactly how a row that had lost
+ * main's flex box survived this branch's nine folds - the button shrink-to-fit its
+ * words only where a selection or a ground made the difference visible. The
+ * second frame opens a conversation first, so the selected row's ground and the
+ * row's own click strip are on screen, and the pair's byte comparison covers the
+ * state the defect hid in.
  *
  * ## The cross-surface half (`--tui-python`)
  *
@@ -3749,6 +3757,14 @@ async function scenePins(cdp) {
 	const themes =
 		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
 	const frames = [];
+	/*
+	 * Whether THIS run met a backend with no pin store. The theme loop sets it, and the
+	 * cross-surface leg below reads it: with no control on this surface there is nothing to
+	 * write through and no pinned row for the terminal's own writer to move, so that leg's
+	 * object does not exist rather than failing (design round 8, D2 - it used to end every
+	 * withdrawn run with one FAIL for a round trip that cannot hold).
+	 */
+	let withdrawn = false;
 	for (const theme of themes) {
 		const applied = await verb(cdp, "setTheme", theme);
 		check(
@@ -3781,48 +3797,113 @@ async function scenePins(cdp) {
 
 		if (start.controls === 0) {
 			/*
-			 * THE FAIL-CLOSED HALF. No pin control anywhere, and the conversation row is
-			 * the PRE-CHANGE row: its own parent is the section, with no wrapper element
-			 * introduced between them and no reserved slot to find. Both are asserted
-			 * before the frame, because a frame of a withdrawn capability that still
-			 * moved the row by 28px would be a picture of the bug rather than of the
-			 * fallback - and the byte comparison against this same scene's frames from
-			 * the tree before this change is what closes the claim.
+			 * THE FAIL-CLOSED HALF. No pin control anywhere, and the conversation row is MAIN'S
+			 * ROW: main's own box around the button, with nothing else in it. This branch used to
+			 * render a bare button here, which stopped being main's row when main's `ce5fd9578`
+			 * gave the row its box - and a button with no flex parent to grow in shrink-to-fits
+			 * its words, which is what design round 8 (D1) measured at 138.3 / 210.7 / 179.0 /
+			 * 165.6px against main's 264px, with the row's click strip and the selected row's
+			 * ground shrinking to match.
+			 *
+			 * So one of the checks below is a CAUSE rather than a shape (`filled`: the button
+			 * fills the box it sits in), because a shape-only check is what passed while the row
+			 * was wrong - and the byte comparison against this same scene's frames from
+			 * `origin/main` is what closes the claim.
 			 */
+			withdrawn = true;
 			check(
 				"the backend advertises no pin store, so no control is mounted",
 				start.controls === 0,
 				JSON.stringify({ rows: start.rows.length, pins: start.controls }),
 			);
+			/*
+			 * WHAT THE SLOT COSTS, on the side that has none (design round 1, D5), read the same
+			 * way in both withdrawn states: the row's own box against the box it sits in, so the
+			 * cost is a subtraction between two numbers in this log rather than a claim.
+			 */
+			const withdrawnBoxes = () =>
+				cdp.evaluate(`(() => {
+					const row = document.querySelector('button[data-tour-tag="chat-session-row"]');
+					if (!row) return null;
+					const box = row.getBoundingClientRect();
+					const parent = row.parentElement;
+					const parentBox = parent ? parent.getBoundingClientRect() : box;
+					return {
+						parentTag: parent ? parent.tagName.toLowerCase() : null,
+						row: Math.round(parentBox.width),
+						button: Math.round(box.width),
+						filled: Math.abs(parentBox.width - box.width) <= 1,
+						current: row.getAttribute("aria-current"),
+					};
+				})()`);
+			const atRest = await withdrawnBoxes();
 			check(
-				"a conversation row is one button in its own section, as it was before this change",
+				"a conversation row is main's own box around the button - no slot, and nothing else in it",
 				start.rows.length > 0 &&
 					start.rows.every(
-						(row) => row.parentTag === "section" && row.pinSibling === 0,
+						(row) =>
+							row.parentTag === "div" &&
+							row.buttonsInParent === 1 &&
+							row.pinSibling === 0,
 					),
 				JSON.stringify(start.rows.slice(0, 3)),
 			);
-			/*
-			 * WHAT THE SLOT COSTS, on the side that has none (design round 1, D5): the same
-			 * measurement the capability-present branch prints, so the cost is a
-			 * subtraction between two numbers in this log rather than a claim.
-			 */
-			const withdrawnWidth = await cdp.evaluate(`(() => {
-				const row = document.querySelector('button[data-tour-tag="chat-session-row"]');
-				if (!row) return null;
-				const box = row.getBoundingClientRect();
-				const parent = row.parentElement;
-				return {
-					row: Math.round(parent ? parent.getBoundingClientRect().width : box.width),
-					button: Math.round(box.width),
-				};
-			})()`);
-			if (withdrawnWidth !== null) {
+			check(
+				"the conversation button FILLS the box around it (D1: a button narrower than its box is a button with no flex parent)",
+				atRest !== null && atRest.filled === true,
+				JSON.stringify(atRest),
+			);
+			if (atRest !== null) {
 				say(
-					`  [pins] reserved slot: withdrawn row ${withdrawnWidth.row}px, conversation button ${withdrawnWidth.button}px, pin none`,
+					`  [pins] reserved slot: withdrawn row ${atRest.row}px, conversation button ${atRest.button}px, pin none`,
 				);
 			}
 			frames.push(await captureSettled(cdp, `pins-withdrawn-${suffix}`));
+			/*
+			 * THE DISCRIMINATING STATE, and the reason there are two withdrawn frames rather
+			 * than one: AT REST this path cannot fail - which is exactly how a row that had lost
+			 * main's flex box survived nine folds, because it only shrink-to-fit where a
+			 * selection or a ground made the difference visible (a 138px button beside a 264px
+			 * box paints the same pixels as main's when nothing is selected). So the pair is also
+			 * taken with a conversation OPEN, through the panel's own row press - the instrument
+			 * the enabled path's `pins-selected` uses - and that is the frame the D1 comparison
+			 * turns on.
+			 */
+			await parkPointer(cdp);
+			const openRow = await rowBox(cdp, 0);
+			await pressPointer(cdp, openRow.x, openRow.y);
+			await waitForScene(
+				cdp,
+				`(() => {
+					const row = document.querySelector('button[data-tour-tag="chat-session-row"]');
+					return Boolean(row) && row.getAttribute("aria-current") === "page";
+				})()`,
+			);
+			const selectedWithdrawn = await readPins(cdp);
+			check(
+				"with a conversation OPEN, the withdrawn row is still main's box and carries the current-row ground",
+				selectedWithdrawn.rows.some(
+					(row) =>
+						row.ariaCurrent === "page" &&
+						row.parentTag === "div" &&
+						row.pinSibling === 0,
+				),
+				JSON.stringify(selectedWithdrawn.rows.slice(0, 3)),
+			);
+			const opened = await withdrawnBoxes();
+			check(
+				"the selected withdrawn row's button still fills its box",
+				opened !== null && opened.current === "page" && opened.filled === true,
+				JSON.stringify(opened),
+			);
+			if (opened !== null) {
+				say(
+					`  [pins] reserved slot: withdrawn row (conversation open) ${opened.row}px, conversation button ${opened.button}px, pin none`,
+				);
+			}
+			frames.push(
+				await captureSettled(cdp, `pins-withdrawn-selected-${suffix}`),
+			);
 			continue;
 		}
 
@@ -3910,6 +3991,64 @@ async function scenePins(cdp) {
 			JSON.stringify(hovered.pins.map((pin) => pin.opacity)),
 		);
 		frames.push(await captureSettled(cdp, `pins-hover-${suffix}`));
+
+		/*
+		 * AND FOCUS REVEALS IT - measured, because nothing had measured it (design round 8):
+		 * the pointer half is photographed above, and the keyboard half was only ever exercised
+		 * on an ALREADY-pinned row's glyph, where the control is at full opacity whatever the
+		 * caret does. The class list claims both (`group-hover:opacity-100` and
+		 * `group-focus-within:opacity-100`), and `group-focus-within` is what makes the control
+		 * reachable without a mouse - so the claim is worth a reading rather than a citation.
+		 *
+		 * The caret is put on an unpinned row's OWN BUTTON, with the pointer parked away, so what
+		 * the opacity answers is focus and not hover; and it is dropped again afterwards, because
+		 * a focus ring left in the frames that follow would be this check's residue rather than
+		 * the panel's state.
+		 */
+		await parkPointer(cdp);
+		const lastRow = (await readPins(cdp)).rows.length - 1;
+		const focusTarget = await rowBox(cdp, lastRow);
+		const caret = await cdp.evaluate(`(() => {
+			const rows = Array.from(document.querySelectorAll('button[data-tour-tag="chat-session-row"]'));
+			const row = rows[${lastRow}];
+			if (!row) return null;
+			row.focus();
+			return {
+				onRow: document.activeElement === row,
+				insideBox: row.parentElement ? row.parentElement.contains(document.activeElement) : false,
+			};
+		})()`);
+		await wait(260);
+		const focusedReveal = await readPins(cdp);
+		check(
+			"the caret in an unpinned row reveals ITS pin and no other (design round 8: the focus half of the reveal)",
+			caret !== null &&
+				caret.onRow === true &&
+				caret.insideBox === true &&
+				lastRow >= 0 &&
+				focusedReveal.pins.length === lastRow + 1 &&
+				focusedReveal.pins[lastRow]?.opacity === "1" &&
+				focusedReveal.pins.filter(
+					(pin, index) => index !== lastRow && pin.opacity === "1",
+				).length === 0,
+			JSON.stringify({
+				caret,
+				label: focusTarget ? focusTarget.label : null,
+				opacities: focusedReveal.pins.map((pin) => pin.opacity),
+			}),
+		);
+		await cdp.evaluate(
+			`(() => {
+				if (document.activeElement) document.activeElement.blur();
+			})()`,
+		);
+		/* Printed for the same reason the slot's cost is: a claim about what focus does is worth
+		   a reading in the log, not only a green check. */
+		say(
+			`  [pins] focus reveal: caret on ${focusTarget ? JSON.stringify(focusTarget.label) : "none"}; pin opacities ${JSON.stringify(focusedReveal.pins.map((pin) => pin.opacity))}`,
+		);
+		await parkPointer(cdp);
+		await wait(120);
 
 		/*
 		 * THE PRESS. A real button pair at the first row's control, and then the panel
@@ -4197,8 +4336,13 @@ async function scenePins(cdp) {
 		);
 	}
 
-	if (TUI_PYTHON !== null && TUI_CONFIG !== null) {
+	if (TUI_PYTHON !== null && TUI_CONFIG !== null && !withdrawn) {
 		await crossSurfacePin(cdp);
+	} else if (withdrawn) {
+		note(
+			"cross-surface pin",
+			"not driven: this backend advertises no `session_pins`, so this surface mounted no control to write through and has no pinned row for the terminal's own writer to move - the round trip's object does not exist here rather than failing (design round 8, D2)",
+		);
 	} else {
 		note(
 			"cross-surface pin",

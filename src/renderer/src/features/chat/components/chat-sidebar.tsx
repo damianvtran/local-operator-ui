@@ -38,7 +38,6 @@ import {
 	X,
 } from "lucide-react";
 import {
-	Fragment,
 	type KeyboardEvent,
 	type ReactNode,
 	type Ref,
@@ -75,6 +74,19 @@ type Props = {
 };
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+
+/*
+ * The conversation row's BOX - the element main's `ce5fd9578` put around the button,
+ * and the box both of this row's paths render.
+ *
+ * It is a named constant because the two paths must render THE SAME BOX and not merely
+ * similar ones: the button inside it is `min-w-0 grow`, so a path that rendered the
+ * button alone would leave it without a flex parent, shrink-to-fitting its words. That
+ * is exactly what design round 8 (D1) measured on the capability-withdrawn path -
+ * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
+ * how the two paths drifted when main's row changed shape under this branch's fold.
+ */
+const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
@@ -1331,17 +1343,31 @@ export function ChatSidebar({
 			</button>
 		);
 		/*
-		 * FAIL-CLOSED MEANS THE PRE-CHANGE PANEL, and that is a statement about the DOM
-		 * rather than only about a missing glyph: with no `session_pins` the row is a
-		 * bare button in its own section, exactly as it was before this feature existed
-		 * - no wrapper element, no reserved 24px slot, no hover group. A wrapper that
-		 * rendered anyway would leave the withdrawn panel a different panel to the one
-		 * the pre-change frames show, and "byte-identical" is the claim this branch
-		 * makes. (A `Fragment` and not a `<div>`: it is the key React needs on a mapped
-		 * element and renders nothing.)
+		 * FAIL-CLOSED MEANS MAIN'S OWN ROW, and this paragraph moved with the code beside it.
+		 * The withdrawn path used to return a bare button, because a bare button IS what this
+		 * branch's base rendered - and the frames the withdrawn pair compares against are that
+		 * tree's. main's `ce5fd9578` then made the row a flex wrapper whose button is
+		 * `min-w-0 grow`, so a path that still returned the button alone left it with no flex
+		 * parent to grow in: design round 8 measured the withdrawn row's button at 138.3 /
+		 * 210.7 / 179.0 / 165.6px against main's 264px, with the row's own click strip and the
+		 * selected row's ground shrinking to match (141.2px against 264px), and the frame
+		 * difference is 15,832px dark / 15,898px light.
+		 *
+		 * So the withdrawn path renders MAIN'S BOX: `rowBoxStyle`, the conversation button
+		 * inside it, and nothing else. No pin slot, no `group` - an absent control is the only
+		 * thing that reads one - and no `data-session-row`, which is this branch's hook for a
+		 * state only a pin can produce. "Byte-identical to the pre-change panel" is still the
+		 * claim this branch makes; what moved is which panel is the pre-change one.
 		 */
 		if (!pinsEnabled) {
-			return <Fragment key={row.session_id}>{rowButton}</Fragment>;
+			return (
+				<div
+					key={row.session_id}
+					className={cn(rowBoxStyle, current && rowCurrent)}
+				>
+					{rowButton}
+				</div>
+			);
 		}
 		return (
 			<div
@@ -1349,10 +1375,7 @@ export function ChatSidebar({
 				/* The row's own box, and the hook the current-row ground is asserted
 				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
 				data-session-row={row.session_id}
-				className={cn(
-					"group flex h-8 items-center gap-1 rounded-md",
-					current && rowCurrent,
-				)}
+				className={cn("group", rowBoxStyle, current && rowCurrent)}
 			>
 				{rowButton}
 				{/*

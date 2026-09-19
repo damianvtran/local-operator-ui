@@ -311,6 +311,7 @@ const literalOf = (file, name) => {
 const carriesGround = (classes) => classes.includes("bg-row-selected");
 
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
+const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
 
 /*
@@ -364,7 +365,7 @@ const CURRENT = [
 		// mention first.
 		expression: () =>
 			expressionAfter(SIDEBAR, "data-session-row={row.session_id}"),
-		stubs: { revealArmed: true, rowCurrent, current: true },
+		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
 		ground: true,
 	},
 	{

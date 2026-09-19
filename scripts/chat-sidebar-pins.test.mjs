@@ -255,36 +255,49 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		"the sidebar declares one session pin control",
 	);
 	/*
-	 * THE GATE IS A BRANCH AROUND THE WHOLE ROW, not a guard around the control.
-	 * With no `session_pins` the row is returned as the bare button it was before
-	 * this feature existed - no wrapper element, no reserved slot, no hover group -
-	 * which is what makes its DOM comparable with the pre-change frames. So the
-	 * assertions are positional: what the fail-closed branch returns, and that the
-	 * wrapper and the slot both come after it.
+	 * THE GATE IS A BRANCH AROUND THE WHOLE ROW, not a guard around the control, and the
+	 * branch renders MAIN'S BOX (design round 8, D1). With no `session_pins` the row is
+	 * main's wrapper around the conversation button and nothing else: no slot, no `group`
+	 * (an absent control is the only thing that reads one) and no `data-session-row` (this
+	 * branch's hook for a state only a pin can produce). It used to return a bare button,
+	 * which stopped being main's row when main's `ce5fd9578` gave the row its box - and a
+	 * button alone has no flex parent to grow in, so the withdrawn button shrink-to-fit
+	 * its words (138.3 / 210.7 / 179.0 / 165.6px against main's 264px, measured on the two
+	 * trees). The assertions are positional, and the one that matters is the identity: the
+	 * box the withdrawn branch renders is the SAME literal the enabled branch does.
 	 */
 	const withdrawnAt = source.indexOf("if (!pinsEnabled) {");
 	assert.ok(
 		withdrawnAt > 0,
 		"the session row has a fail-closed branch on `pinsEnabled`",
 	);
-	const fragmentAt = source.indexOf("return <Fragment", withdrawnAt);
+	// The branch's own closing brace at this indent, rather than the next `;`: the return
+	// carries `{row.session_id}` and `{rowButton}` in braces of their own.
+	const branchEnd = source.indexOf("\n\t\t}\n", withdrawnAt);
+	assert.ok(branchEnd > withdrawnAt, "the fail-closed branch is a block");
+	const withdrawnBranch = source.slice(withdrawnAt, branchEnd);
 	assert.ok(
-		fragmentAt > withdrawnAt,
-		"the withdrawn branch returns a keyed Fragment",
+		withdrawnBranch.includes("rowBoxStyle"),
+		"the withdrawn branch renders the row's box rather than the bare button: a button with no flex parent shrink-to-fits its words, which is D1",
 	);
-	// The `;` that closes the return, and not the next `}`: the Fragment line carries
-	// two of them (`{row.session_id}`, `{rowButton}`) and the first would cut the
-	// slice off before the thing it is here to check.
-	const branchEnd = source.indexOf(";", fragmentAt);
 	assert.ok(
-		source.slice(withdrawnAt, branchEnd).includes("{rowButton}"),
+		withdrawnBranch.includes("{rowButton}"),
 		"the withdrawn branch returns the conversation button itself",
 	);
 	assert.ok(
-		!source.slice(withdrawnAt, branchEnd).includes("data-session-pin"),
+		!withdrawnBranch.includes("data-session-pin"),
 		"the withdrawn branch mounts no pin at all",
 	);
+	assert.ok(
+		!withdrawnBranch.includes("group") &&
+			!withdrawnBranch.includes("data-session-row"),
+		"the withdrawn branch adds no hover group and no pin-state hook: with no control mounted, both would be hooks nothing reads",
+	);
 	const slotAt = source.indexOf("data-session-pin\n");
+	assert.ok(
+		source.slice(branchEnd, slotAt).includes("rowBoxStyle"),
+		"the enabled branch renders the SAME named box: the two paths share one literal so the withdrawn one cannot drift off main's row again",
+	);
 	assert.ok(
 		slotAt > branchEnd,
 		"the pin is mounted only in the branch the capability gate opens",
