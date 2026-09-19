@@ -134,6 +134,15 @@ const commandLineOf = (pid) => {
 	}
 };
 
+/**
+ * `ps -Ao command= -ww` as the app asks it, for an answer about a process the test
+ * has no pid for - a child that was killed before it could record one.
+ */
+const processList = () =>
+	execFileSync("/bin/ps", ["-Ao", "command=", "-ww"], { encoding: "utf8" })
+		.split("\n")
+		.filter((line) => line.length > 0);
+
 /** Kill a process by exact pid, and wait for the pid to actually be gone. */
 const reap = async (pid) => {
 	if (pid == null) return;
@@ -402,7 +411,7 @@ test("the installer's liveness is a pid and a command line, never a process name
 /**
  * The marker decides WHICH liveness signal an install has.
  *
- * `installRunningNow` is the pid-first rule the whole change turns on: a marker
+ * `installLivenessNow` is the pid-first rule the whole change turns on: a marker
  * that records an installer pid has no launchd job to ask about, and a marker
  * from the older path (or from the fallback) has no pid. Asking launchctl first
  * would be wrong rather than redundant on this machine, where the app's ShipIt
@@ -504,6 +513,45 @@ test("a marker's own installer pid wins over the install job", () => {
 			4242,
 		),
 		"the installer this app started (pid 4242) is still running",
+	);
+	/*
+	 * And the DEAD-pid case gets its own sentence, because this function is called for
+	 * every marker and not only for a live install (review R3-1). The false liveness
+	 * claim here was the defect the `elsewhere` arm was fixed for, one case further
+	 * out: `recovery`'s marker line runs BEFORE anything is classified, so the state
+	 * it describes most often - an install that finished, or failed, with the marker
+	 * still on disk at the next start - is exactly the pid that has gone. Pinned as
+	 * TEXT rather than as values, which is what let R3-1 through in round 2: the
+	 * values were asserted, and the sentence was not.
+	 */
+	const dead = {
+		installerRunning: false,
+		jobState: "unread",
+		decidedBy: "installer-pid",
+		installerSignal: null,
+	};
+	assert.equal(
+		installLivenessText(dead, 4242),
+		"the installer this app started (pid 4242) has gone",
+	);
+	assert.doesNotMatch(
+		installLivenessText(dead, 4242),
+		/still running/,
+		"a marker whose installer has gone was described as a live install",
+	);
+	// The same contrast, made directly: two readings that disagree about the
+	// machine's liveness must not share a sentence.
+	assert.notEqual(
+		installLivenessText(dead, 4242),
+		installLivenessText(
+			{
+				installerRunning: true,
+				jobState: "unread",
+				decidedBy: "installer-pid",
+				installerSignal: "elsewhere",
+			},
+			4242,
+		),
 	);
 	// The older path, and the fallback: no pid, so the job is the answer - and the
 	// listing is not read, because there is no pid to have lost.
@@ -1582,35 +1630,88 @@ test(
 			assert.equal(failed.ok, false);
 			assert.match(failed.reason, /ditto exited \d+/);
 
-			// 3. A process that never finishes is killed at the bound. The stand-in
-			//    records its own pid so the test can prove it is gone, which is the
-			//    whole assertion: a bound that leaves the child running leaks a
-			//    process holding a half-written staging tree.
+			// 3. A process that never finishes is killed at the bound, and the proof is
+			//    taken from outside it as well as from its own record: a bound that
+			//    leaves the child running leaks a process holding a half-written staging
+			//    tree, and the child's own `echo` cannot be the only way to see that (it
+			//    depends on the child having been scheduled far enough to write).
 			const stuck = join(dir, "stuck.sh");
 			const stuckPid = join(dir, "stuck.pid");
 			writeFileSync(stuck, `#!/bin/sh\necho $$ > "${stuckPid}"\nsleep 300\n`);
 			execFileSync("/bin/chmod", ["+x", stuck]);
 			const started = Date.now();
+			/*
+			 * The bound is seconds, not milliseconds, and that is the fix for the
+			 * flake rather than a loosening (review R3-2). The stand-in has to be
+			 * forked, exec'd and SCHEDULED as far as its second line before the bound
+			 * kills it, and none of that is bounded by anything this test controls: on
+			 * a box at load 200 with two dozen sessions on it, a process can sit
+			 * ready-but-unscheduled for seconds. Measured with the original 700 ms
+			 * bound: 4 identical runs, pass, pass, fail, fail, each failing in the read
+			 * below because the child had been killed before it reached its own
+			 * `echo`. What this case is about is that the bound ENDS the wait instead
+			 * of the shipped ten-minute default, and that is what the elapsed
+			 * assertion measures - the bound's smallness was never the claim.
+			 */
 			const wedged = await module.runExtraction(zipPath, join(dir, "wedged"), {
 				command: stuck,
-				timeoutMs: 700,
+				timeoutMs: 8000,
 			});
 			assert.equal(wedged.ok, false);
-			assert.match(wedged.reason, /still running after 700 ms/);
-			assert.ok(Date.now() - started < 5000, "the bound did not end the wait");
-			const pid = Number.parseInt(readFileSync(stuckPid, "utf8").trim(), 10);
+			assert.match(wedged.reason, /still running after 8000 ms/);
+			assert.ok(
+				Date.now() - started < 60000,
+				"the wait ended on the shipped default rather than on the bound",
+			);
 			/*
-			 * Bounded poll rather than an immediate read: the signal is delivered
-			 * synchronously but the child is reaped asynchronously, and a killed
-			 * process is still visible as a zombie for that moment - which is a fact
-			 * about process reaping, not about whether the bound holds.
+			 * The kill is asserted from OUTSIDE the child as well as from its own
+			 * record, because the record depends on the child having been scheduled far
+			 * enough to write it: nothing running the stand-in's own path may be left,
+			 * which is the claim the bound exists for (a half-written staging tree with
+			 * a live process inside it is worse than no staging tree). The path is this
+			 * run's own, so another session's processes cannot satisfy it - and it is
+			 * polled, because a process killed by signal is reaped asynchronously just
+			 * like the pid below.
 			 */
-			let gone = false;
-			for (let attempt = 0; attempt < 40 && !gone; attempt++) {
-				gone = !alive(pid);
-				if (!gone) await new Promise((resolve) => setTimeout(resolve, 50));
+			let survivors = processList().filter((line) => line.includes(stuck));
+			for (let attempt = 0; attempt < 80 && survivors.length > 0; attempt++) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				survivors = processList().filter((line) => line.includes(stuck));
 			}
-			assert.equal(gone, true, "the wedged extraction outlived its bound");
+			assert.deepEqual(
+				survivors,
+				[],
+				"the wedged extraction's process was still running after its bound",
+			);
+			/*
+			 * And the sharper reading, whenever the stand-in did record itself: the pid it
+			 * wrote must be gone. Polled rather than read once, because the signal is
+			 * delivered synchronously but the child is reaped asynchronously - a killed
+			 * process is still visible as a zombie for that moment, which is a fact about
+			 * reaping rather than about whether the bound holds.
+			 *
+			 * The file MAY legitimately be absent, and this does not pretend otherwise:
+			 * the child is killed at the bound whether or not it was ever scheduled as far
+			 * as its own first line, and on this box (load 200, two dozen sessions) that is
+			 * a real outcome rather than a bug in the bound. The listing above is then the
+			 * whole proof of the kill, and it is unconditional.
+			 */
+			let pidText = null;
+			for (let attempt = 0; attempt < 120 && pidText === null; attempt++) {
+				if (existsSync(stuckPid)) pidText = readFileSync(stuckPid, "utf8");
+				if (pidText === null) {
+					await new Promise((resolve) => setTimeout(resolve, 50));
+				}
+			}
+			if (pidText !== null) {
+				const pid = Number.parseInt(pidText.trim(), 10);
+				let gone = false;
+				for (let attempt = 0; attempt < 80 && !gone; attempt++) {
+					gone = !alive(pid);
+					if (!gone) await new Promise((resolve) => setTimeout(resolve, 50));
+				}
+				assert.equal(gone, true, "the wedged extraction outlived its bound");
+			}
 		});
 	},
 );
