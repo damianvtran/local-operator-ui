@@ -1218,6 +1218,10 @@ async function sceneAnyDaemon() {
 	 */
 	const governedRecord = JSON.parse(readFileSync(recordFile, "utf8"));
 	summary.scenes["any-daemon"] = {
+		// The build THIS run launched, on the entry itself (review round 4, D26): the
+		// combined file is rewritten by whichever run writes it last, and an identity
+		// that lives only at the top level is that run's, not this scene's.
+		bundle: BUNDLE,
 		/*
 		 * Spread first: the boot wrote this scene's own record (the address it was
 		 * configured for), and assigning a fresh object here used to drop it - which
@@ -1470,10 +1474,6 @@ async function sceneOtherPrincipal() {
 		 * carry the band copy ("Not connected to a Local Operator server.", "The Local
 		 * Operator server on this machine is already managed"). Shape: `first_lines`.
 		 */
-		if (page.pane?.sentence && page.pane.sentence === page.bandSentence)
-			throw new Error(
-				"other-principal: the pane field holds the BAND's sentence - the probe's lists are mixing surfaces again",
-			);
 		const rendered = JSON.stringify(page);
 		/*
 		 * THE GUARD ON THE DAEMON'S PROSE, AND ITS MEASURED LIMIT.
@@ -1513,8 +1513,20 @@ async function sceneOtherPrincipal() {
 			throw new Error(
 				"other-principal: no band copy was read from the frame's own lines, so this frame cannot show what the band says",
 			);
+		/*
+		 * AFTER the band's line is known, not before it (review round 4, D28): the guard
+		 * used to compare against `page.bandSentence`, which this probe never returned,
+		 * so it could not fire while the README claimed it did. A frame whose pane held
+		 * the band's sentence is the defect it names.
+		 */
+		if (page.pane?.sentence && page.pane.sentence === bandLines[0])
+			throw new Error(
+				"other-principal: the pane field holds the BAND's sentence - the probe's lists are mixing surfaces again",
+			);
 		summary.scenes["other-principal"] = {
 			...(summary.scenes["other-principal"] ?? {}),
+			// The build this run launched, on the entry itself (D26).
+			bundle: BUNDLE,
 			bandSentenceSource: "first_lines",
 			bandLines,
 			bandSentence: bandLines[0] ?? null,
@@ -1839,7 +1851,10 @@ try {
 		 * by the run that actually booted the app.
 		 */
 		for (const [name, value] of Object.entries(other.scenes ?? {}))
-			summary.scenes[name] = { bundle: other.bundle ?? BUNDLE, ...value };
+			summary.scenes[name] = {
+				...value,
+				bundle: value.bundle ?? other.bundle ?? BUNDLE,
+			};
 	}
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),

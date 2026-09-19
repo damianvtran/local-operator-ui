@@ -2,42 +2,48 @@
   "label": "narrow",
   "bundle": {
     "mainBytecode": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-      "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
-      "builtAt": "2026-09-19T06:18:30.944Z"
+      "file": "out/main/index.jsc",
+      "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+      "builtAt": "2026-09-19T15:59:16.452Z"
     },
     "rendererChunk": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
-      "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
-      "builtAt": "2026-09-19T06:19:17.534Z"
+      "file": "out/renderer/assets/index-CaQSxb2x.js",
+      "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+      "builtAt": "2026-09-19T16:01:15.786Z"
     },
     "newestSource": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
-      "at": "2026-09-19T06:08:52.483Z"
+      "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T15:58:10.438Z"
     }
   },
   "scenes": {
     "other-principal": {
-      "bundle": {
-        "mainBytecode": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-          "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
-          "builtAt": "2026-09-19T06:18:30.944Z"
-        },
-        "rendererChunk": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
-          "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
-          "builtAt": "2026-09-19T06:19:17.534Z"
-        },
-        "newestSource": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
-          "at": "2026-09-19T06:08:52.483Z"
-        }
-      },
       "configured": {
         "port": 46150,
         "url": "http://127.0.0.1:46150"
       },
+      "bundle": {
+        "mainBytecode": {
+          "file": "out/main/index.jsc",
+          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+          "builtAt": "2026-09-19T15:59:16.452Z"
+        },
+        "rendererChunk": {
+          "file": "out/renderer/assets/index-CaQSxb2x.js",
+          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+          "builtAt": "2026-09-19T16:01:15.786Z"
+        },
+        "newestSource": {
+          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+          "at": "2026-09-19T15:58:10.438Z"
+        }
+      },
+      "bandSentenceSource": "first_lines",
+      "bandLines": [
+        "Not connected to a Local Operator server.",
+        "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
+      ],
+      "bandSentence": "Not connected to a Local Operator server.",
       "page": {
         "viewport": "800x836",
         "dpr": 2,
@@ -198,11 +204,6 @@
           "⌘",
           "+",
           "K"
-        ],
-        "bandSentence": "Not connected to a Local Operator server.",
-        "bandLines": [
-          "Not connected to a Local Operator server.",
-          "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
         ]
       },
       "desktopRoutesServed": 0,

@@ -3,17 +3,17 @@
   "bundle": {
     "mainBytecode": {
       "file": "out/main/index.jsc",
-      "sha256": "ccfe65c7940da29321d91242ac0bd13f66b429ff0e44b79746e3ecbcb90faba7",
-      "builtAt": "2026-09-19T08:15:44.580Z"
+      "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+      "builtAt": "2026-09-19T15:59:16.452Z"
     },
     "rendererChunk": {
-      "file": "out/renderer/assets/index-CEO213-u.js",
-      "sha256": "5e4def147a91214ddc4275305561b2123cb353491ae1d30041b5cdb248714aed",
-      "builtAt": "2026-09-19T08:16:09.695Z"
+      "file": "out/renderer/assets/index-CaQSxb2x.js",
+      "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+      "builtAt": "2026-09-19T16:01:15.786Z"
     },
     "newestSource": {
-      "file": "src/renderer/src/shared/store/canonical-sessions-store.ts",
-      "at": "2026-09-19T07:53:11.555Z"
+      "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T15:58:10.438Z"
     }
   },
   "scenes": {
@@ -21,6 +21,22 @@
       "configured": {
         "port": 46150,
         "url": "http://127.0.0.1:46150"
+      },
+      "bundle": {
+        "mainBytecode": {
+          "file": "out/main/index.jsc",
+          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
+          "builtAt": "2026-09-19T15:59:16.452Z"
+        },
+        "rendererChunk": {
+          "file": "out/renderer/assets/index-CaQSxb2x.js",
+          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
+          "builtAt": "2026-09-19T16:01:15.786Z"
+        },
+        "newestSource": {
+          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
+          "at": "2026-09-19T15:58:10.438Z"
+        }
       },
       "bandSentenceSource": "first_lines",
       "bandLines": [
