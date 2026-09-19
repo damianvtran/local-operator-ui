@@ -1852,39 +1852,72 @@ test("no rig script asks the operating system for window focus", () => {
 	 * next author to obfuscate the pattern.
 	 */
 	const SELF = "window-mode.test.mjs";
+	/*
+	 * HTML IS NOT JAVASCRIPT, and blanking it as if it were is wrong in both
+	 * directions (review round 2, R2-1): an HTML comment that merely MENTIONS the
+	 * call became a finding, and a real call sharing a line with an unquoted `//`
+	 * — a URL in markup — was blanked away. HTML comments are stripped here with
+	 * line structure preserved, and the rest is read verbatim, so both the markup
+	 * and the inline script are seen without either artefact.
+	 */
+	const blankHtmlComments = (source) =>
+		source.replace(/<!--[\s\S]*?-->/g, (hit) => hit.replace(/[^\n]/g, " "));
 	const offSite = [];
 	const scanned = [];
+	/*
+	 * The name RELATIVE to its tree is what the recursion pin reads, and the count
+	 * is kept PER TREE so a walked root that silently vanished fails instead of
+	 * passing on the strength of the others (review round 2, R1-F4: the first
+	 * version pinned the `scanned` entries, which are `${root}/${file}` and
+	 * therefore contain a separator whether or not the walk descended, so a flat
+	 * readdir passed both pins).
+	 */
+	const relativeNames = [];
+	const perTree = new Map();
 	for (const tree of SCANNED_TREES) {
-		if (!existsSync(tree.root)) continue;
-		for (const file of readdirSync(tree.root, { recursive: true }).filter(
-			(name) => tree.extensions.test(name) && tree.include(name),
-		)) {
-			scanned.push(`${tree.root}/${file}`);
-			if (file.endsWith(SELF)) continue;
-			blankComments(readFileSync(join(tree.root, file), "utf8"))
-				.split("\n")
-				.forEach((line, index) => {
-					if (!LEAVES_THE_PAGE.test(line)) return;
-					offSite.push(`${tree.root}/${file}:${index + 1}: ${line.trim()}`);
-				});
+		let reached = 0;
+		if (existsSync(tree.root)) {
+			for (const file of readdirSync(tree.root, { recursive: true }).filter(
+				(name) => tree.extensions.test(name) && tree.include(name),
+			)) {
+				reached += 1;
+				scanned.push(`${tree.root}/${file}`);
+				relativeNames.push(file);
+				if (file.endsWith(SELF)) continue;
+				const source = readFileSync(join(tree.root, file), "utf8");
+				(file.endsWith(".html")
+					? blankHtmlComments(source)
+					: blankComments(source)
+				)
+					.split("\n")
+					.forEach((line, index) => {
+						if (!LEAVES_THE_PAGE.test(line)) return;
+						offSite.push(`${tree.root}/${file}:${index + 1}: ${line.trim()}`);
+					});
+			}
 		}
+		perTree.set(tree.root, reached);
 	}
 	assert.deepEqual(
 		offSite,
 		[],
 		"these lines ask the operating system to bring a window forward, which takes the operator's focus whatever window mode the run declared",
 	);
-	// Pins the width of the scan the same way the `src/main` scan does, and pins it
-	// twice because a count alone does not: every file the first filter matched was
-	// top-level, so `recursive: true` reached nothing and a regression to a flat
-	// readdir would have passed (review round 1, F4). The `sep` check is what fails
-	// when the walk stops descending.
+	// Pins the width of the scan the way its `src/main` sibling does, and pins the
+	// three ways it can silently narrow: too few files at all, a walk that stopped
+	// descending, and a tree that stopped contributing anything.
 	assert.ok(
 		scanned.length > 20,
 		`the scan reached the rig trees (scanned ${scanned.length} files)`,
 	);
 	assert.ok(
-		scanned.some((file) => file.includes(sep)),
-		"the scan descended into subdirectories",
+		relativeNames.some((name) => name.includes(sep)),
+		`the walk descended into subdirectories (${relativeNames.length} files scanned)`,
 	);
+	for (const tree of SCANNED_TREES) {
+		assert.ok(
+			(perTree.get(tree.root) ?? 0) > 0,
+			`the scan reached ${tree.root}`,
+		);
+	}
 });
