@@ -18,6 +18,22 @@ import type { ThemeDefinition } from "../palette-contract";
  *   from C792EA to D9B4F1 — all of it far LIGHTER than the ground — so unlike
  *   every other dark palette here, the label on a contained button cannot be
  *   the canvas colour and still clear 4.5:1 on the fill.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const palenight: ThemeDefinition = {
 	id: "palenight",
@@ -31,20 +47,44 @@ export const palenight: ThemeDefinition = {
 		elevated: "#353B4E",
 		sunken: "#232736",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.10 toward `accent`, then stepped 2.22 on the `L*` axis — branch H
-		 * of this port's selection rule, capped by this palette's OWN ink: `inkDim` reaches
-		 * its floor with the 0.15 of headroom at 2.25 `L*` here (4.70:1), so the band is paid
-		 * on the cast. Design round 3 (D2) found the first cut stopping at 0.73 `L*` with cap
-		 * to spare, so the step now runs to the cap: ΔE00 4.87 from `surface`, 4.85 from
-		 * `elevated`, 7.74 from `sunken`. The step is under the 3 `L*` floor and is pinned
-		 * against the cap, which the gate re-derives.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #3A373C  accent hue, C* 3.60, +1.58 L*, ΔE00 7.26 off `surface`,
+		 *                       `inkDim` 5.28:1 on the fill, hue 1.46° off `accent`.
+		 * rowSelected #423848  accent hue, C* 11.43, +3.17 L*, ΔE00 7.67 off
+		 *                       `surface` and 7.06 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 4.62:1 against it.
 		 */
-		highlight: "#383750",
+		rowHover: "#3A373C",
+		rowSelected: "#423848",
 
 		ink: "#EEFFFF",
-		inkMuted: "#BBC2E3",
-		inkDim: "#A0A5BE",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.87:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#C3CAEB",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A8ADC6",
 		inkDisabled: "#676E95",
 
 		hairline: "#43475B",
@@ -56,8 +96,29 @@ export const palenight: ThemeDefinition = {
 		// ΔE00 10.4 from `accent` and 7.6:1 on surface, where the accent is
 		// 5.1:1.
 		chartBarHover: "#EEB8FF",
+		tokenCommand: "#89DDFF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2F3145",
 		onAccent: "#252939",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#82aaff`, canonical blue), received unchanged because it
+		 * already clears every floor — ΔE00 20.98 from `accent`, 37.54 from its
+		 * nearest semantic (`danger`), 5.38:1 as text on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#82aaff",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.94 and C* 13.54, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -4.00 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 3.60 from
+		 * `accentWash` (the field floor is 2.0), 6.29:1 for `accentAlt` on it, and
+		 * 2.11 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#22293D",
 
 		success: "#C3E88D",
 		successWash: "#2D3240",

@@ -5,6 +5,12 @@
  * upload-to-hub dialogs.
  */
 
+// The selected row takes the app's one selected-row role rather than a wash of
+// its own: on 6 of the 41 dark themes the wash is a weaker mark than the hover
+// beside it, which is the state this roster was left in while the chat panel and
+// the settings rail moved on. Imported, not restated — a copy of a role is what
+// drifted twice (design rounds 3 and 4, D17/D19).
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
@@ -127,7 +133,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				className={cn(
 					"flex w-full items-center gap-2 rounded-sm py-1.5 pr-9 pl-2 text-left",
 					"transition-colors duration-fast ease-out-quart",
-					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
+					isSelected ? rowCurrent : "hover:bg-row-hover",
 				)}
 			>
 				<Avatar className="size-8 shrink-0">
@@ -225,9 +231,6 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	// Upload to Hub dialog state
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<
-		string[]
-	>([]);
 	const { isAuthenticated } = useRadientAuth();
 	const agentClient = useMemo(
 		() => createLocalOperatorClient(apiConfig.baseUrl),
@@ -338,40 +341,22 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
-	const getAgentUploadValidationIssues = useCallback(
-		(agent: AgentDetails | null): string[] => {
-			if (!agent) return ["No agent selected."];
-			const issues: string[] = [];
-			if (!agent.name || agent.name.trim() === "")
-				issues.push("Name is required.");
-			if (!agent.description || agent.description.trim() === "")
-				issues.push("Description is required.");
-			const hasCategory = agent.categories && agent.categories.length > 0;
-			if (!hasCategory) issues.push("At least one category is required.");
-			return issues;
-		},
-		[],
-	);
-
-	const handleOpenUploadDialog = useCallback(
-		(agent: AgentDetails) => {
-			setUploadAgent(agent);
-			setUploadValidationIssues(getAgentUploadValidationIssues(agent));
-			setIsUploadDialogOpen(true);
-		},
-		[getAgentUploadValidationIssues],
-	);
+	/*
+	 * Opening the dialog is the whole of this surface's job now. The dialog owns
+	 * the rules, the request and the refusal, which is what makes the row menu here
+	 * behave exactly like the header button on the agent page — until it did not:
+	 * this handler used to set a validation list and close the dialog on confirm,
+	 * so publishing from the agent list published NOTHING and said nothing.
+	 */
+	const handleOpenUploadDialog = useCallback((agent: AgentDetails) => {
+		setUploadAgent(agent);
+		setIsUploadDialogOpen(true);
+	}, []);
 
 	const handleCloseUploadDialog = useCallback(() => {
 		setIsUploadDialogOpen(false);
 		setUploadAgent(null);
-		setUploadValidationIssues([]);
 	}, []);
-
-	const handleConfirmUpload = useCallback(() => {
-		// Implement actual upload logic here if needed
-		handleCloseUploadDialog();
-	}, [handleCloseUploadDialog]);
 
 	const handleAgentCreated = useCallback(
 		async (agentId: string) => {
@@ -515,10 +500,8 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 			<UploadAgentDialog
 				open={isUploadDialogOpen}
 				onClose={handleCloseUploadDialog}
-				agentName={uploadAgent?.name || ""}
+				agent={uploadAgent}
 				isAuthenticated={isAuthenticated}
-				onConfirmUpload={handleConfirmUpload}
-				validationIssues={uploadValidationIssues}
 			/>
 		</div>
 	);

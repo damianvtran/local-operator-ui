@@ -655,6 +655,43 @@ export type AgentFavourite = {
 };
 
 /**
+ * One viewer's relationship to one agent, as the batched read reports it.
+ *
+ * Both halves are answered by the same op so a hub page can ask once for the
+ * whole grid instead of twice per card. An absent entry is NOT `false`: the
+ * read can fail as a whole (500, 401/403/429, a 422 for the op a backend does
+ * not know, a dead transport) and a 200 can carry fewer entries than ids, and
+ * both leave the ids they do not answer with no state at all. "Unknown" is
+ * therefore carried by the QUERY (`useAgentStatusesQuery`'s `isKnown`, plus the
+ * entry-level `isAgentStatusKnown`), never by this type: a card that rendered
+ * an absent entry as `liked: false` would state "you have not liked this" about
+ * every agent on the page on one failed request. See
+ * `hooks/use-agent-statuses-query.ts` for why the failure is safe as long as it
+ * is not stated as a fact.
+ */
+export type AgentViewerStatus = {
+	liked: boolean;
+	favourited: boolean;
+};
+
+/**
+ * What the like and favourite endpoints put in `APIResponse.result`.
+ *
+ * ADDITIVE and optional, the same shape of contract as `agents.statuses` and
+ * `profiles.install`'s `already_installed`: the upstream answers 200 with
+ * `already_liked: true` when the like was already there rather than 409, and a
+ * backend older than the flag answers 200 with no `result` at all. Absent
+ * reads as a like that landed — the reading the count delta beside the control
+ * is built on — and it is declared here rather than cast off `unknown` at the
+ * mutation, so a rename upstream fails a type check instead of silently
+ * re-enabling the delta on a no-op.
+ */
+export type AgentReactionResult = {
+	already_liked?: boolean;
+	already_favourited?: boolean;
+};
+
+/**
  * API response for generic success/failure.
  */
 export type APIResponse = {

@@ -141,7 +141,7 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 			data-scheduled-task-row={row.sessionId}
 			className={cn(
 				"group border-hairline border-b px-4 py-3 last:border-b-0",
-				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+				"transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 			)}
 		>
 			<div className={cn("flex items-start gap-3")}>

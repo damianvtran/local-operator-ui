@@ -155,6 +155,9 @@ line.
   them — which is what these frames caught on their first take and what the `admitted-send-*`
   frames would otherwise show — and its second half is the open row, found in review round 1
   (D1/Q-1) and made a membership test in round 2 (R2-1/D2-1).
+  **THE FOOTER ITSELF IS NOW GONE** — the gate below was a gate on a line that no longer
+  exists, and the section *The footer's removal* carries that report, the frames it moved and
+  why the gate could not survive it.
 - **And it states that time in the same words.** The footer line answers the same question a
   turn's stamp answers, so it renders the same component; it used to render the HOVER row's
   `MessageTimestamp`, which formats for a reader already looking at the message, and the two
@@ -177,6 +180,166 @@ The same change paints in four other surfaces, re-taken in their OWN theme sets 
 this one's: `chat-ask-options` (twelve palettes), `chat-notification-feed-states` (three),
 `chat-reconnect-gap` (twelve, and `restored-running` gained the ten it did not have rather
 than being left stale), and `chat-run-panel`'s reader states (two).
+
+## The footer's removal (the `fix/turn-stamp-scope` branch)
+
+The transcript's footer line is **removed**, not gated a third time. It stated when the last thing
+in the conversation happened, and the operator reported on 2026-09-17 that during a live turn it
+painted under the working line: "the time that shows up below messages also seems to be showing up
+below the thinking indicator, make sure that it doesn't, only beside user messages and in tool
+traces when expanded". Every gate the line had asked WHICH ROW came last, and the row that comes
+last during a turn is the working line — not a record, and not something the gate could name — so
+the fix is the removal of the line rather than a third condition on it.
+
+WHAT SURVIVES is exactly the two placements the operator named, and both are untouched:
+[`turn-timestamps`](turn-timestamps/) (the stamp under a user turn's bubble) and
+[`expanded-detail`](expanded-detail/) (the stamp at the foot of an open disclosure) are this pass's
+controls and are **not re-encoded at all**.
+
+### Which frames moved, and how they were found
+
+**60 stories across eight surfaces**, counted against the BASE this branch was folded onto rather
+than against `origin/main` — which is the correction review round 2's R2-1 asked for, because
+`origin/main` moves and the number does not. The eight are this one, `chat-canonical-notices`,
+`chat-canonical-quote`, `chat-notification-feed-states`, `chat-phantom-compose-rows`,
+`chat-reconnect-gap`, `chat-run-panel` and `chat-stale-seed-order`. Reproduce it with the diff
+itself, against the named base:
+
+```
+BASE=$(git merge-base origin/main HEAD)   # the commit this branch was folded onto; NOT origin/main, which keeps moving
+git diff --name-status $BASE -- docs/evidence \
+  | awk '$2 ~ /\.webp$/ {print $2}' | sed 's#/[^/]*$##' \
+  | grep -vE 'turn-(stamp-footer|answer-stamp)-before' \
+  | grep -vE 'chat-tool-rows/(answer-in-progress|prose-between-calls@(420|1024)|answer-then-statement)' \
+  | sed 's#@[0-9]*$##' | sort -u | wc -l   # 60 stories (61 directories before the width pair merges)
+```
+
+`chat-trace-order-while-live` is NOT in that list, and it was in the first spelling of this section:
+its frames are `main`'s own and nothing here moves them (`git diff --name-status $BASE --
+docs/evidence/chat-trace-order-while-live` prints nothing). Review round 2 caught it by running the
+command rather than reading it, which is the only way this kind of claim is ever checked — the 64/9
+this replaced was a measurement of a different base, not of this branch.
+
+The stories to re-take were chosen with a DOM query over the sweep's list, run against the capture
+BASE tree, because a pixel diff cannot answer that question on its own: several stories carry a live
+clock or a `Date.now()` fixture, so a capture of the UNCHANGED tree already moves them — the base tree
+re-captured against its own committed frames differs by 36,166px in
+`turn-boundary-and-working-line`'s light frame and 3,114px across the prose block of
+`prose-tool-alignment@1024`'s dark one. Those two are inside the affected set anyway; the point is
+that a diff alone would also have named frames nothing moved in.
+
+The query is `document.querySelectorAll('time[data-stamp]')`, and each pass narrowed it to its own
+carrier (`time[data-stamp="footer"]` for the removal, `time[data-stamp="answer"]` for the caption).
+It is a DERIVATION, not the affected set: the query names which stories to re-take, the tree names
+what moved, and only the second number is the one to hold these frames to. Review round 1's R2 found
+two documents quoting 34/6 and 53/8 for "the same query"; round 2 found the 64/9 that replaced them
+unreproducible for the same reason (a base nobody had named). This section and the manifest's
+`turn-stamp-footer-before` entry now state the same query string and the same tree-derived number,
+with the base in the command so neither can drift.
+
+Each affected story's directory was re-taken **in the themes it already carried** (twelve for this
+surface, three for `chat-notification-feed-states`, two for the rest), so this pass moves frames and
+adds none: the tree's added frames are the three new stories' 38 and the two before-halves' 14, which
+are the 52 the manifest's `supplementary` list declares.
+
+THE PAIR is [`../turn-stamp-footer-before/`](../turn-stamp-footer-before/), declared as its own
+supplementary set for the reason the previous pair is: a sweep captures the current tree and can
+never produce the base tree's frames.
+
+### The measurement, rather than "the footer is gone"
+
+- **The removed line, measured on a story with no clock in it.** `prose-tool-alignment`, both widths
+  and both brand themes: the whole difference between the two trees is the stamp's own box —
+  `138x26` at `+838+358` for `@1024` and at `+1046+358` for `@1440`, AE 2,721 / 2,165 (dark / light)
+  at 1024 and 2,673 / 2,431 at 1440. Nothing else in those frames moved, which is what makes the
+  pair checkable rather than asserted.
+- **The reported state.** `turn-boundary-and-working-line`, the stamp's own band (`300x30+700+320`):
+  **472 ink pixels before, 0 after** in `localOperatorDark`; in `localOperatorLight` the same band's
+  mean luminance moves off the ground the other way, 0.9293 to 0.9464. Read as a picture, the before
+  half ends `⠹ Measuring the row pitch 1s` with `Oct 9, 2025, 4:53 AM` under it, and the after half
+  ends at the working line.
+- **The two survivors, unmoved.** Neither control is in the re-encoded set, the probe finds no footer
+  in either on either tree, and the capture's own noise floor there is 0px on `expanded-detail`'s
+  light frame and 29px in an 8x8 box (a glyph edge) on its dark one.
+
+### What the removal costs, stated rather than found later
+
+A transcript ending on assistant prose, or on a settled tool row nobody opened, now shows no time at
+its foot. Both end on a row whose own affordance is the disclosure, and that is the trade the
+operator asked for; it is also why the render tests' footer assertions were **inverted rather than
+deleted** (`scripts/turn-timestamp.test.mjs`), the working line's own case among them.
+
+## The agent's answer gets a caption (the same day, the same branch)
+
+The operator reported the other half of the same surface hours later:
+
+> "The agent responses (just the final responses, not the in-progress tool intent/response) don't
+> have a time displayed on them — that would be helpful to show too. It should probably be on the
+> left under the agent message instead of on the right."
+
+So every SETTLED agent answer carries an always-visible stamp under it, left-aligned on the agent
+rail — the mirror of the user side's caption, with the same `TurnTimestamp`, the same caption roles
+and the same 4px of air. Two things about it are decisions rather than consequences:
+
+- **`streaming` is the discriminator, not "the last row" and not the stop reason.** A record still
+  arriving is the working line's job (§ 7's one liveness element per turn), and a stamp on it would
+  state a time for a message that has not finished being one. A settled answer in the MIDDLE of a
+  turn is still an answer the agent gave, so it keeps its caption; and a durable entry may carry a
+  null stop reason, which is why `stopReason === "toolUse"` is not the test either.
+- **It is a sibling of the answer's content box, not a line inside it.** `turnRef` is what the quote
+  toolkit reads, so a selection drag over an answer must not be able to sweep a clock into a quote.
+
+### The three frames that carry the claims
+
+| Story | What it shows |
+| --- | --- |
+| [`answer-in-progress`](answer-in-progress/) | The in-progress half of the operator's sentence, and this round it is stronger evidence than it was: a user turn with its caption, a SETTLED narration (`Reading the ledger first.`), the call it narrated, and an answer still arriving (`Four were late, and the oldest is 41 days`) — and **no caption on any row of the turn**, because the turn has not handed its answer over yet. The working line is the only liveness element (§ 7). |
+| [`prose-between-calls@1024`](prose-between-calls@1024/), [`@420`](prose-between-calls@420/) | The shape the caption's COUNT has to survive: three intermediate paragraphs interleaved with the calls they narrate, plus a closing answer. **One** caption in the turn, under the answer it ends on, at two widths (it was four before review round 1's D1). |
+| [`answer-then-statement`](answer-then-statement/) | A statement row between the answer and the next turn — a notice and a peer receipt — where the first gate painted **nothing at all** for the turn, because a statement carries no `<time>` of its own and has no disclosure to open (design round 2's D2-1). Both answers keep their caption now, and the statements below them stay unlabelled. **This frame is new for that reason:** the reviewer could not find a committed real-session frame showing the shape, so this PR owns one. |
+
+### The noise question, answered on the pixels rather than in prose
+
+`prose-between-calls` is in this set because the operator asked, in the same message that requested
+the caption, what that shape looks like — and the answer changed once the frame was judged rather
+than argued:
+
+- **Four captions in one turn, and in this fixture they read as noise** — that was this frame's first
+  state, and design round 1's D1 is the finding it produced. The four were literally the same string
+  (`Oct 9, 2025, 4:53 AM`), because the story's records share one `ts`; in a live turn they would
+  differ by the seconds between the paragraphs, which is a slightly different annoyance rather than a
+  smaller one. Between two of them sat a ledger row, so the turn read as
+  caption-line-caption-ledger-caption, a stamp between every paragraph at the same visual weight as
+  the durations it sits beside.
+- **The count is bounded by the content, not by the rows.** A record with nothing to say paints
+  nothing (`paintsSomething`), so a turn that goes quiet between calls adds no caption — the
+  `working`, `streaming-before-first-token` and `compacting-*` frames are that case. The noise is
+  therefore specific to a turn that TALKS between its calls, which is the shape a chatty agent
+  produces routinely and this fixture reproduces.
+- **What removed it, and HOW it was decided:** captioning only the answer a turn CLOSES on rather
+  than every settled prose row. That is implemented — `closingAnswerIds` in
+  `canonical/transcript-rows.ts`, whose docstring states the two conditions — and this frame is now the
+  ONE-caption state. The decision was made on pixels rather than argued from the sentence, which is
+  what the frame was for: the operator's request names the row ("the agent responses", plural) while
+  his in-progress exception is stated as a property of the record, so both readings were live until the
+  designer rendered this alternative from the same story (4 captions → 1, same left edge, same
+  ink/role). Design round 2 then found the one case the first version of THAT rule got wrong — a
+  statement row after the answer stripping a caption that had nothing to replace it
+  (`isStatementRow`, and the `answer-then-statement` frame in the table above).
+
+### Where the caption's left edge is, measured rather than assumed
+
+The caption shares the answer's left rail because it is a sibling inside the same `pl-10` box the
+prose starts at — structural, not a second measurement. The frame is what checks the structure:
+
+| Story | Prose ink's left edge | Caption ink's left edge |
+| --- | --- | --- |
+| `prose-tool-alignment@1024`, `localOperatorDark` | 103, at y 364..375 | 102, at y 388..394 |
+| `prose-between-calls@1024`, `localOperatorDark` | 103, at y 182..194 | 102, at y 210..218 |
+
+A one-pixel difference is the glyph's own side bearing at 12px versus 16px, not a rail: which is the
+point, since a caption placed by its own rule would be off by whatever the two rules disagreed about.
+(The rows above exclude the agent turn's 28px avatar, which sits at x 68..70 in the gutter those two
+edges are measured past — the measurement is the prose and the caption, not the icon.)
 
 ## Measured, not eyeballed
 
@@ -399,3 +562,27 @@ honest, but because nothing else would notice they had gone.
 | `spacing-uniformity` | the runs that preceded this change were driven by hand against the live app; there is no story for them |
 | `real-conversation-tool-rows` | a bespoke harness over a real `/history` page from a real `serve` backend, never committed — the one surface whose durations still predate the `<0.1s` spelling |
 | [`../tool-rows-baseline/`](../tool-rows-baseline/) | the before/after pair needs an older SOURCE TREE (unmodified `origin/main`), which a sweep of this tree cannot be |
+
+## The colour-application pass (18 September 2026), at head `4755b126c`
+
+`states/` IS RE-SHOT at this head across twenty-eight themes, and the change it
+photographs is the one the row's own docstring states: **identity is hueless and
+only the state carries colour**. The tool GLYPH and the tool NAME used to be two
+expressions — the glyph read `running ? accent : failed ? danger : ink-dim` while
+the name read a five-entry category map — which is what shipped `task`/`hub`/`todo`
+with an accent name beside a grey glyph, and grey glyphs on every settled row
+(the operator's own report: "the icon is not colored but the tool name is
+colored"). Both now read ONE expression, so this board's settled rows are all
+`ink-muted` whatever their category, `running` is `accent`, and `error`/`not-run`
+are `danger`. Category is carried by the glyph's SHAPE, which already differed per
+category; the category-to-hue table is deleted rather than extended.
+
+- **The before column is `origin/main`'s own committed frames** for the same
+  story and theme, not a re-shoot of this pass, and it exists at the sweep's
+  twelve-theme spine only — that is the set `main` committed for this directory.
+- **`contact-sheet/tool-row-states.png`** puts those two side by side over the
+  twelve, and **`tool-row-states-colour-themes.png`** carries the head alone over
+  the eighteen themes the brief's spread and `4755b126c`'s eleven re-solved
+  palettes share. Both are composed with `magick` from these frames (the rig has
+  no montage facility) with a fixed crop of the row band, so a column is a
+  like-for-like.

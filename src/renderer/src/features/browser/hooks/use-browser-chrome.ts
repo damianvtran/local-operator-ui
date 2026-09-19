@@ -1,5 +1,13 @@
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	browserBridge as bridge,
+	browserBridgeAvailable,
+	clearBrowserProjectionReadError,
+	refreshBrowserProjection,
+	useBrowserProjectionStore,
+} from "../model/browser-projection-store";
+import type { CloseTabsIntent } from "../model/tab-index-model";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -120,18 +128,11 @@ export interface ContentRect {
 	height: number;
 }
 
-/** What the preload exposes. Absent outside Electron (Storybook, the unit tests). */
-type BrowserBridge = NonNullable<typeof window.api>["browser"];
-
-function bridge(): BrowserBridge | null {
-	return window.api?.browser ?? null;
-}
-
-/** Whether the browser controls can work at all. A route rendered outside
- * Electron says so rather than throwing on the first click. */
-export function browserBridgeAvailable(): boolean {
-	return bridge() !== null;
-}
+/** What the preload exposes. Absent outside Electron (Storybook, the unit tests).
+ * The accessor itself lives in `browser-projection-store.ts`, next to the one
+ * subscription that uses it, so there is exactly one answer to "is the browser
+ * available" — this module keeps the name its callers already read. */
+export { browserBridgeAvailable };
 
 /**
  * Send one rectangle to main, unconditionally and without waiting.
@@ -170,8 +171,39 @@ export interface BrowserChrome {
 	dismissError: () => void;
 	available: boolean;
 	refresh: () => Promise<void>;
-	newTab: () => Promise<void>;
-	closeTab: (tabId: number) => Promise<void>;
+	/**
+	 * Open a tab, attributed to a conversation when the host has one (design R1).
+	 *
+	 * THE ARGUMENT AND NOT HOOK STATE, deliberately: the attribution target is the
+	 * HOST's conversation, so it is the host that knows it and there is one call site
+	 * per control. A hook that read a session id from state would need a second place
+	 * to decide which conversation a tab belongs to, which is the one thing this
+	 * change's design forbids.
+	 *
+	 * `null` is a real and common argument: the route, and the pane on a draft, open
+	 * tabs that belong to no conversation. It means the same thing to main as an
+	 * absent argument — an unattributed, user-owned tab.
+	 */
+	newTab: (sessionId?: string | null) => Promise<void>;
+	closeTab: (tabId: number) => Promise<boolean>;
+	/**
+	 * Close several tabs as ONE intent (design R5).
+	 *
+	 * WHY THE INTENT TRAVELS WHOLE rather than as a list of ids: "close all tabs in this
+	 * conversation" has to be resolved in MAIN, at execution time. The band stays open
+	 * while the user reads it, so a list this side computed seconds ago can miss a tab an
+	 * agent opened in that conversation in the meantime — and the user pressed something
+	 * that said all. Main also skips ids that are already gone, so a double press closes
+	 * the rest rather than failing the batch.
+	 *
+	 * THE RETURN IS THE OUTCOME, and only the strip's caret restore reads it (review
+	 * round 2, A-2): `false` means the invoke was refused. A refusal is the one close
+	 * result the caller cannot infer from the projection, because the re-read that
+	 * follows it still shows every tab — the same picture as a close that has not landed
+	 * yet, which is what left the strip waiting for a projection that could never come.
+	 * It is the fact, not the message: the message is `error`'s job.
+	 */
+	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
 	reload: () => Promise<void>;
@@ -233,52 +265,25 @@ export interface BrowserProjection {
  * header would put every tab control in a header that has one badge and no tab
  * strip. A hand-written second subscription — its own `api.state()`, its own two
  * event handlers — is the drift this repository refuses everywhere else, so the
- * read lives here once and `useBrowserChrome` adds the writes on top of it.
+ * read lives in `browser-projection-store.ts` once and every reader, including
+ * `useBrowserChrome`, selects from it.
+ *
+ * WHAT CHANGED, and why it had to (design 1.5): this used to own a `useState`
+ * pair, an initial read and two `ipcRenderer.on` subscriptions PER CALL. Two
+ * consumers made that correct; a mark on every conversation row turns it into
+ * forty subscriptions and forty full `/browser-state` reads per event. The store
+ * is now the only subscriber — `useSyncExternalStore` subscribes once per mounted
+ * consumer and the store refcounts them onto one bridge subscription — and THIS
+ * function is the three-line selector that keeps its callers' contract unchanged.
  */
 export function useBrowserProjection(): BrowserProjection {
-	const [state, setState] = useState<BrowserChromeState | null>(null);
-	const [readError, setReadError] = useState<string | null>(null);
-	const available = browserBridgeAvailable();
-
-	const refresh = useCallback(async (): Promise<BrowserChromeState | null> => {
-		const api = bridge();
-		if (!api) return null;
-		try {
-			const next = (await api.state()) as BrowserChromeState | null;
-			if (next && Array.isArray(next.tabs)) {
-				setState(next);
-				setReadError(null);
-				return next;
-			}
-			return null;
-		} catch (caught) {
-			setReadError(unwrapIpcErrorMessage(caught));
-			return null;
-		}
-	}, []);
-
-	useEffect(() => {
-		if (!available) return;
-		void refresh();
-		const api = window.api?.browser;
-		if (!api) return;
-		// Two subscriptions rather than one: main emits the consent event for the
-		// approval store's changes (which include the pending set) and the state
-		// event for the registry's. Both land on the same projection, and reading it
-		// twice is cheaper than two projections that can disagree.
-		const offState = api.onStateChanged(() => void refresh());
-		const offConsent = api.onConsentChanged(() => void refresh());
-		return () => {
-			offState();
-			offConsent();
-		};
-	}, [available, refresh]);
-
-	const clearReadError = useCallback((): void => {
-		setReadError(null);
-	}, []);
-
-	return { state, readError, refresh, clearReadError };
+	const { state, readError } = useBrowserProjectionStore();
+	return {
+		state,
+		readError,
+		refresh: refreshBrowserProjection,
+		clearReadError: clearBrowserProjectionReadError,
+	};
 }
 
 export function useBrowserChrome(): BrowserChrome {
@@ -323,7 +328,7 @@ export function useBrowserChrome(): BrowserChrome {
 	}, [readState]);
 
 	/**
-	 * Run one intent, then re-read.
+	 * Run one intent, then re-read, and report whether main ACCEPTED the invoke.
 	 *
 	 * Failures are reported in the band rather than swallowed: several of these
 	 * refusals are the intended behaviour (a `nav_failed` for a non-http URL, a
@@ -333,18 +338,34 @@ export function useBrowserChrome(): BrowserChrome {
 	 * The `await refresh()` is deliberately AFTER the error is recorded and cannot
 	 * clear it - see the two error slots above. Reading the projection is how the
 	 * band learns what main did; it is not an answer to what the action was told.
+	 *
+	 * THE RETURNED OUTCOME IS THAT SAME DISTINCTION, for the one caller that has to
+	 * act on it instead of reading it: the strip's caret restore has to know that a
+	 * close was refused, because a refusal and a close still in flight look identical
+	 * in the projection (review round 2, A-2). `false` is `action` rejecting; nothing
+	 * else here reports it, and the band's own message is unchanged.
 	 */
 	const run = useCallback(
-		async (action: () => Promise<unknown> | undefined): Promise<void> => {
+		async (action: () => Promise<unknown> | undefined): Promise<boolean> => {
+			let accepted = true;
 			try {
 				await action();
 				setActionError(null);
 			} catch (caught) {
+				accepted = false;
 				setActionError(unwrapIpcErrorMessage(caught));
 			}
 			await refresh();
+			return accepted;
 		},
 		[refresh],
+	);
+
+	/** `run`, for every call site that does not ask what the invoke answered. */
+	const runVoid = useCallback(
+		(action: () => Promise<unknown> | undefined): Promise<void> =>
+			run(action).then(() => undefined),
+		[run],
 	);
 
 	/** Clear the band's error. The one explicit dismissal, so a refusal the user
@@ -432,29 +453,30 @@ export function useBrowserChrome(): BrowserChrome {
 			dismissError,
 			available,
 			refresh,
-			newTab: () => run(() => api?.newTab()),
+			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
-			activateTab: (tabId) => run(() => api?.activateTab(tabId)),
+			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
+			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
 			navigate: (url) => {
 				// Recorded before the intent is sent: the reply may take a while (the tab
 				// has to load), and the point of the note is to cover exactly that window.
 				setPendingUrl(url);
-				return run(() => api?.navigate(url));
+				return runVoid(() => api?.navigate(url));
 			},
-			reload: () => run(() => api?.reload()),
-			stop: () => run(() => api?.stop()),
-			history: (direction) => run(() => api?.history(direction)),
+			reload: () => runVoid(() => api?.reload()),
+			stop: () => runVoid(() => api?.stop()),
+			history: (direction) => runVoid(() => api?.history(direction)),
 			setContentRect,
 			setViewVisible,
 			respondToConsent: (entryId, decision) =>
-				run(() => api?.respondToConsent(entryId, decision)),
+				runVoid(() => api?.respondToConsent(entryId, decision)),
 			handOver: (tabId, sessionId) =>
-				run(() => api?.handOver(tabId, sessionId)),
-			revokeHandOver: (tabId) => run(() => api?.revokeHandOver(tabId)),
-			revokeApproval: (origin) => run(() => api?.revokeApproval(origin)),
-			revokeAllApprovals: () => run(() => api?.revokeAllApprovals()),
-			forgetSite: (origin) => run(() => api?.forgetSite(origin)),
-			clearData: (what) => run(() => api?.clearData(what)),
+				runVoid(() => api?.handOver(tabId, sessionId)),
+			revokeHandOver: (tabId) => runVoid(() => api?.revokeHandOver(tabId)),
+			revokeApproval: (origin) => runVoid(() => api?.revokeApproval(origin)),
+			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
+			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
+			clearData: (what) => runVoid(() => api?.clearData(what)),
 		}),
 		[
 			state,
@@ -464,6 +486,7 @@ export function useBrowserChrome(): BrowserChrome {
 			available,
 			refresh,
 			run,
+			runVoid,
 			setContentRect,
 			setViewVisible,
 			api,

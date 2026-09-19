@@ -25,6 +25,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const nord: ThemeDefinition = {
 	id: "nord",
@@ -37,30 +53,43 @@ export const nord: ThemeDefinition = {
 		// A step between nord0 and nord1: nord2 434C5E sits above nord1 and a fifth ground
 		// would only cost every ink headroom.
 		surface: "#343B49",
-		elevated: "#3B4252",
+		elevated: "#3A4150",
 		// A step under nord0. Nord has no recessed tone of its own — nord2 is lighter than
 		// nord1 — so the well is derived, and nord3 4C566A is far too light to be a well.
 		sunken: "#272C36",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.19 toward `accent`, then stepped 1.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.83:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.35 from `surface`, 4.94 from `elevated` and 7.44 from
-		 * `sunken`; the step of 1.53 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #374042  accent hue, C* 4.04, +1.61 L*, ΔE00 7.81 off `surface`,
+		 *                       `inkDim` 5.32:1 on the fill, hue 6.52° off `accent`.
+		 * rowSelected #264750  accent hue, C* 12.99, +3.35 L*, ΔE00 11.46 off
+		 *                       `surface` and 7.63 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 5.00:1 against it.
 		 */
-		highlight: "#30404E",
+		rowHover: "#374042",
+		rowSelected: "#264750",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",
 		// The scheme's dim tier, lifted to the 4.5:1 corner on the binding ground and then
 		// stripped of a quarter of its chroma so it separates (ΔE00 8.2) from the Frost blue
 		// it sits beside in the editor, where the same hue at full chroma measured 6.9.
-		inkDim: "#A7AFBE",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.12:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#AFB8C7",
 		inkDisabled: "#616E88",
 
 		// Nord has no rule colour. This holds ΔE00 4.1 from every ground and 1.21-1.68:1
@@ -77,8 +106,29 @@ export const nord: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#B1EBFB",
+		tokenCommand: "#91B3D4",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.10), at a
+		// cost of ΔE00 2.86 from the signal itself; 5.14:1 on `surface`.
 		accentWash: "#2E3D40",
 		onAccent: "#272C36",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b48ead`,
+		 * canonical nord15), moved onto the floors: as received it read 3.97:1 as
+		 * text on `surface` and one more ground. The shortfall is paid on LIGHTNESS
+		 * at the source hue — L* 63.40 → 67.52 — which is what this port does to
+		 * every one of its own tokens. Measured: ΔE00 34.76 from `accent`, 15.08
+		 * from its nearest semantic (`danger`), 4.53:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#BF99B8",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 24.60 and C* 6.50, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 14.82 from `accentWash` (the field floor is
+		 * 2.0), 4.55:1 for `accentAlt` on it, and 8.54 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#41383F",
 
 		success: "#A3BE8C",
 		successWash: "#3E484C",
@@ -96,7 +146,15 @@ export const nord: ThemeDefinition = {
 
 		// Frost nord9 81A1C1 is 3.74:1 on the binding ground; lifted along the same blue to
 		// clear 4.5 on all four.
-		info: "#88A9C9",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#90B1D1",
 		infoWash: "#2B3B4E",
 		infoBorder: "#7191B1",
 

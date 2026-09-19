@@ -310,9 +310,16 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		wrapperAt,
 		source.indexOf("{rowButton}", wrapperAt),
 	);
+	/*
+	 * The predicate's NAME is the one main's row declares (`current`, read once and
+	 * shared by the wrapper and the button). The fold re-pointed this branch's pin
+	 * onto main's row body, so the wrapper here wears main's spelling rather than the
+	 * `isCurrent` this branch's own row used; the assertion is about the ground
+	 * reaching the slot, and it has to name whatever the shipped row calls it.
+	 */
 	assert.match(
 		wrapperClasses,
-		/isCurrent && rowCurrent/,
+		/current && rowCurrent/,
 		"the row's box wears the current-row ground, so it spans the pin slot",
 	);
 	/*

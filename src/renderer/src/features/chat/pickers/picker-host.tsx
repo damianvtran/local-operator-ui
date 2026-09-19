@@ -378,7 +378,9 @@ export function pickerPrimaryLabel(state: {
  * `isActive` is the keyboard's selection — what Enter picks. It takes `bg-
  * sunken`, because that is the only ground role that steps perceptibly away
  * from the dialog's own `bg-elevated` in every one of the palettes (measured
- * ΔE00 5.85-16.70 across all fifty-nine). The sibling composer popup's `bg-
+ * ΔE00 6.07-16.18 across all fifty-nine on the grounds this branch ships; the
+ * figure at the commit that chose the role was 5.85-16.70, taken before the
+ * legibility pass lifted the grounds). The sibling composer popup's `bg-
  * accent-wash` tint was the first choice and is a real step in the brand pair,
  * but `accent-wash` collapses onto `elevated` in obsidian (ΔE00 0.77, ratio
  * 1.01) and is under ΔE00 4 in thirteen of the fifty-nine palettes —

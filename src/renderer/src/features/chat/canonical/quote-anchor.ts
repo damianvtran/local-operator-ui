@@ -109,7 +109,44 @@ export type QuoteAnchorInput = {
 	size: { width: number; height: number };
 	/** Override for the 8px clearance; the tests pass 0 to keep arithmetic flat. */
 	gap?: number;
+	/**
+	 * The ROW the anchor lives in, for the callers that want the mid-row rule
+	 * below. Omit it and the placement is exactly what it has always been.
+	 */
+	row?: Box;
+	/**
+	 * Sit BELOW the anchor's last line whenever the anchor does not begin on its
+	 * row's first line, rather than 8px above it.
+	 *
+	 * The rule exists because the two callers' anchors are not the same shape. The
+	 * Quote control's anchor is a highlight, which begins where the reader's drag
+	 * began - and it wears the row's own padding when that is the row's first line,
+	 * so the 8px above it covers nothing. A LINK can be anywhere in a paragraph, so
+	 * an 8px-above placement covers the line before it: round 1 (design D2, UX U6)
+	 * measured the strip hiding 128px of the very path this change exists to make
+	 * usable, for as long as the pointer rested on a link further down the
+	 * paragraph.
+	 *
+	 * The unit is the anchor's OWN first-line height rather than a constant, so the
+	 * rule does not need a magic number: see `MID_ROW_LINES`.
+	 */
+	belowWhenOffFirstLine?: boolean;
 };
+
+/**
+ * How far below its row's top an anchor may sit and still count as ON the row's
+ * first line.
+ *
+ * Expressed as a fraction of the anchor's own first-line height, which is the
+ * only line-height the placement can see: a link one line further down sits a
+ * full line below the row's top, and a link on the first line sits at it or a
+ * few pixels under it (padding, a paragraph's own leading). Half a line is
+ * between those two and measurably clear of both - the assistant row this rule
+ * was built for measures 0px of paragraph margin above its first line, and a
+ * one-line step is 22px there (design round 1's own numbers), so the verdict
+ * has ~11px of margin on either side.
+ */
+const MID_ROW_LINES = 0.5;
 
 /** The overlap of two boxes, or `null` when they do not meet. */
 export function overlap(a: Box, b: Box): Box | null {
@@ -148,6 +185,8 @@ export function placeQuoteControl({
 	viewport,
 	size,
 	gap = QUOTE_CONTROL_GAP,
+	row,
+	belowWhenOffFirstLine = false,
 }: QuoteAnchorInput): QuotePlacement | null {
 	if (lines.length === 0) return null;
 	const limits = overlap(container, viewport);
@@ -161,7 +200,21 @@ export function placeQuoteControl({
 	 * with the visible box is partial even though the reader can see it.
 	 */
 	if (first.bottom <= limits.top || first.top >= limits.bottom) return null;
-	const above = first.top - gap - size.height >= limits.top;
+	const lineHeight = Math.max(first.bottom - first.top, 1);
+	const offFirstLine =
+		row !== undefined && first.top - row.top > lineHeight * MID_ROW_LINES;
+	const roomAbove = first.top - gap - size.height >= limits.top;
+	const roomBelow = last.bottom + gap + size.height <= limits.bottom;
+	/*
+	 * The mid-row rule asks for BELOW, and only when below is actually inside the
+	 * pane. A link near the pane's floor has no room under it, and taking the rule
+	 * literally there would put the clamp - not the rule - in charge of the
+	 * position, which is how a control ends up over the line it is about; falling
+	 * back to `above` keeps the documented trade (the clamp wins only when the
+	 * anchor is taller than the pane) intact.
+	 */
+	const belowByRule = belowWhenOffFirstLine && offFirstLine && roomBelow;
+	const above = roomAbove && !belowByRule;
 	/*
 	 * A degenerate limit - a pane shorter than the control - inverts the clamp
 	 * range, and `Math.max` last pins the control to the visible top instead of

@@ -18,14 +18,21 @@
  * a difference in the app. The one thing the label decides is where the run
  * record is written.
  *
- * ISOLATION, and it is not optional: a throwaway HOME, config dir, user-data
- * profile, backend and debug port, an allowlisted environment, and
+ * ISOLATION, and it is not optional: a throwaway HOME, config dir, log dir,
+ * user-data profile, backend and debug port, an allowlisted environment, and
  * `VITE_DISABLE_BACKEND_MANAGER=true` so this app can never spawn a backend of
  * its own on the operator's machine. Other Local Operator sessions run on this
  * host; the backend here serves a config dir under `/tmp` and nothing else. The
  * window is never shown (`LOCAL_OPERATOR_UI_WINDOW_MODE=headless`), the port is
  * 8080 because the renderer's own CSP names only 1111 and 8080 and anywhere else
  * the fetch is refused by policy with no request sent.
+ *
+ * The LOG directory is listed separately from HOME because it is the one the
+ * scratch HOME does not cover: the app's logger composes its default from
+ * Electron's `home`, the OS ACCOUNT's home rather than the `HOME` variable, so
+ * without `LOCAL_OPERATOR_LOG_DIR` this rig appended its lines to the
+ * operator's own `~/Library/Application Support/Local Operator/logs/*.log`. See
+ * `src/main/backend/log-dir.ts`.
  *
  * The app must have been BUILT against that same address -
  * `VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 pnpm build` - because the
@@ -103,8 +110,11 @@ const SCRATCH_PREFIX = "lop-ui-panels-evidence-";
 const ROOT = mkdtempSync(join(tmpdir(), SCRATCH_PREFIX));
 const CONFIG_DIR = join(ROOT, "config");
 const HOME = join(ROOT, "home");
+/** This run's app log files, through the app's own override. See the header. */
+const LOG_DIR = join(ROOT, "logs");
 mkdirSync(CONFIG_DIR, { recursive: true });
 mkdirSync(HOME, { recursive: true });
+mkdirSync(LOG_DIR, { recursive: true });
 mkdirSync(OUT, { recursive: true });
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -459,6 +469,9 @@ function appEnv() {
 		...baseEnv,
 		HOME,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		// The operator's own log files are the one path HOME does not move; see the
+		// header's isolation note.
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		LOCAL_OPERATOR_DESKTOP_TOKEN: TOKEN,
 		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",

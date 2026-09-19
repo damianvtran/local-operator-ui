@@ -55,6 +55,73 @@ const WATCHDOG_TICK_MS = 1_000;
 /** Relay frame cap, matching the backend's per-frame bound. */
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
+/**
+ * One line ending, in the three spellings the spec allows.
+ *
+ * ORDER IS LOAD BEARING: `\r\n` is tried first, so the CR of a CRLF pair is
+ * never read as a bare CR line ending of its own. Reversed, every `\r\n`
+ * becomes two endings and every ordinary record looks like it carries a blank
+ * line.
+ */
+const LINE_ENDING = /\r\n|\n|\r/;
+
+/**
+ * A blank line: two line endings in ANY combination, which is the only thing
+ * that terminates an SSE record.
+ *
+ * Six spellings are in play — `\n\n`, `\r\n\r\n`, `\r\r`, and the mixed `\n\r`,
+ * `\n\r\n`, `\r\n\r` — and the mixed three are the ones an earlier scanner here
+ * missed by looking for each spelling as a fixed pair. A relay that misses a
+ * terminator does not report the miss: it holds two records in one buffer and
+ * hands the renderer their concatenation, whose `JSON.parse` fails inside a
+ * `catch` that skips the frame, so the loss is invisible on screen.
+ */
+const BLANK_LINE = /(?:\r\n|\n|\r)(?:\r\n|\n|\r)/;
+
+/**
+ * Split one SSE record off the head of `buffer`, per the wire format.
+ *
+ * WHY THIS IS NOT AN `indexOf("\n\n")`. Four properties of the framing are load
+ * bearing here, and the previous one-liner had only the first:
+ *
+ *  - A record ends at a BLANK LINE, whose two newlines may each be `LF`, `CRLF`
+ *    or a bare `CR` — the spec's line endings, and a proxy between this app and
+ *    its backend is free to rewrite them. Any combination is legal, so the
+ *    blank line is found by splitting on the endings (`BLANK_LINE` below)
+ *    rather than by looking for one spelling: the three MIXED forms `\n\r`,
+ *    `\n\r\n` and `\r\n\r` are as much a terminator as `\n\n`, and a scan
+ *    that knew only the same-spelling pairs ran two records together into one
+ *    payload whose `JSON.parse` failed, dropping both in silence.
+ *  - The terminator may be SPLIT across two reads (`"\r"` then `"\n\r\n"`), so the
+ *    buffer is re-scanned on every chunk rather than trusted to contain one.
+ *  - A field's value may itself contain a bare `CR` inside a `data:` JSON payload;
+ *    the blank-line test is therefore applied to the buffer, and the record's own
+ *    lines are then split on the same three endings.
+ *  - `data:` is one field among several. `event:`, `id:`, `retry:` and comments
+ *    (`:`) are metadata this relay has no consumer for, and a record that carries
+ *    none of them still delivers its data.
+ *
+ * Returns `{ record, rest }` with the record's data fields already unfolded (SSE
+ * joins them with a newline), or `null` when no complete record is buffered yet.
+ * The remaining bytes are returned rather than mutated, so the caller keeps
+ * ownership of its own buffer.
+ */
+function nextRecord(buffer: string): { data: string[]; rest: string } | null {
+	// The earliest blank line, whatever the two endings are spelled. `match[0]`
+	// is the terminator itself, so the caller drops exactly the bytes it found
+	// and the rest of the buffer keeps its own framing.
+	const blank = BLANK_LINE.exec(buffer);
+	if (blank === null) return null;
+	const data: string[] = [];
+	for (const line of buffer.slice(0, blank.index).split(LINE_ENDING)) {
+		if (!line.startsWith("data:")) continue;
+		// Exactly ONE optional space after the colon is the field's own separator.
+		const value = line.slice(5);
+		data.push(value.startsWith(" ") ? value.slice(1) : value);
+	}
+	return { data, rest: buffer.slice(blank.index + blank[0].length) };
+}
+
 export type RelaySubscribeArgs = {
 	sessionId: string;
 	epoch?: string;
@@ -261,11 +328,16 @@ export class DesktopStreamRelay {
 					// sake.
 					lastActivity = Date.now();
 					buffer += decoder.decode(value, { stream: true });
-					// SSE records terminate on a blank line. Everything before it is
-					// flushed record-by-record; a partial record stays in the buffer.
+					// SSE records terminate on a blank line, and every line ending is legal:
+					// the spec's `CRLF`, `LF` or bare `CR`, in any combination, and the
+					// terminator may itself be split across two reads. What is NOT legal is
+					// guessing: this loop used to look for `"\n\n"` alone, so a proxy that
+					// rewrote line endings to CRLF produced a buffer that never matched —
+					// records piled up in memory and the stream died at the 8 MB cap
+					// instead of delivering a single frame.
 					for (;;) {
-						const boundary = buffer.indexOf("\n\n");
-						if (boundary < 0) {
+						const record = nextRecord(buffer);
+						if (record === null) {
 							if (buffer.length > MAX_FRAME_BYTES) {
 								emit({
 									streamId,
@@ -277,18 +349,17 @@ export class DesktopStreamRelay {
 							}
 							break;
 						}
-						const record = buffer.slice(0, boundary);
-						buffer = buffer.slice(boundary + 2);
-						for (const line of record.split("\n")) {
-							if (line.startsWith("data:")) {
-								const data = line.slice(5).replace(/^ /, "");
-								this.observer?.(sessionId, data);
-								emit({ streamId, kind: "data", data });
-							}
-							// Comments (heartbeats) and id:/event:/retry: lines are
-							// transport metadata; the backend's heartbeat records arrive as
-							// data frames and pass through like any other.
-						}
+						buffer = record.rest;
+						// One record is one event, and its `data:` fields are FOLDED into
+						// one payload: SSE joins a multi-line `data` field with "\n", and a
+						// relay that emitted each line as its own frame would hand the
+						// renderer a fragment it cannot parse. `event:`/`id:`/`retry:` and
+						// comments stay transport metadata; the backend's heartbeat records
+						// arrive as data frames and pass through like any other.
+						if (record.data.length === 0) continue;
+						const data = record.data.join("\n");
+						this.observer?.(sessionId, data);
+						emit({ streamId, kind: "data", data });
 					}
 				}
 			} finally {
@@ -314,6 +385,19 @@ export class DesktopStreamRelay {
 		if (!/^[a-f0-9]{32}$/.test(streamId)) return;
 		this.streams.get(streamId)?.abort();
 		this.streams.delete(streamId);
+	}
+
+	/**
+	 * How many session streams the renderer holds open right now.
+	 *
+	 * A VIEWS count rather than a turns count - a mounted conversation keeps its
+	 * subscription while it sits idle - which is exactly the limit the drift
+	 * restart's deferral is built on (see `backend-version-drift.ts`). It is read
+	 * rather than awaited, so a caller asking about the machine's quietness does not
+	 * have to be in the event path.
+	 */
+	openStreamCount(): number {
+		return this.streams.size;
 	}
 
 	dispose(): void {

@@ -59,6 +59,8 @@ const {
 	enterFooter,
 	extensionFor,
 	matchChoices,
+	lockedCommandNote,
+	lockedRunUndoCap,
 	NO_CONVERSATION_CLAUSE,
 	phaseLabel,
 	pickArmsCommand,
@@ -1979,5 +1981,68 @@ test("the staged note's promise is the destination's, and the pane's", () => {
 	);
 	assert.ok(
 		reassembledNote("/loop please run", false).endsWith(NO_CONVERSATION_CLAUSE),
+	);
+});
+
+/*
+ * The sentence a LOCKED run raises, and the two promises it may make (design round
+ * 1's D1/D2; UX round 2's U2/U3/U8/U9/U12; code review round 2's MINOR 3/MINOR 4).
+ *
+ * Pinned as text rather than as a shape, like its two siblings above, because what
+ * this note owes the user is exactly its words: what happened to the words after the
+ * token, that a command-line value is not stored, where the value belongs, and — only
+ * where there is something honest to hand back — the key that puts the words back.
+ * The four things it may never do are asserted with it: echo the value (the tail is a
+ * secret and this lands in the transcript), promise a dialog a pane cannot open,
+ * promise a key over a mask the app cannot restore, or restate the dispatcher's own
+ * refusal in a second vocabulary.
+ */
+test("the locked run's sentence says what happened and what it can give back", () => {
+	assert.equal(lockedRunUndoCap(true), "⌘Z");
+	assert.equal(lockedRunUndoCap(false), "Ctrl+Z");
+
+	// Both promises: the dialog opens, and the record holds the user's characters.
+	assert.equal(
+		lockedCommandNote("credential", { dialog: true, undo: true }, true),
+		"The words after /credential were taken as its argument, and a value written on a command line is not stored. Enter the secret in the dialog's Name and Value fields. Press ⌘Z in the composer to put the words back.",
+	);
+	// The key is named WITH ITS HOME, and that is the round-2 correction: the press
+	// leaves the keyboard in the dialog it opened, where the chord is the field's own
+	// (UX U9 / QA Q-2).
+	assert.match(
+		lockedCommandNote("credential", { dialog: true, undo: true }, true),
+		/in the composer to put the words back\.$/,
+	);
+
+	// No dialog (a pane with no conversation, or a word the catalogue cannot resolve):
+	// the words and the way back, and the dispatcher's own sentence explains the rest.
+	assert.equal(
+		lockedCommandNote("credential", { dialog: false, undo: true }, false),
+		"The words after /credential were taken as its argument, and a value written on a command line is not stored. Press Ctrl+Z in the composer to put the words back.",
+	);
+	assert.ok(
+		!/Name and Value fields/.test(
+			lockedCommandNote("credential", { dialog: false, undo: true }, true),
+		),
+		"a pane that cannot open the dialog is not promised one",
+	);
+
+	// A mask the app cannot restore (a restored draft's literal cells, whose value did
+	// not survive §6): the destination, and NO promise of the key (UX U8).
+	assert.equal(
+		lockedCommandNote("credential", { dialog: true, undo: false }, true),
+		"The words after /credential were taken as its argument, and a value written on a command line is not stored. Enter the secret in the dialog's Name and Value fields.",
+	);
+	// And with neither: the one true clause, which the dispatcher's own note follows.
+	assert.equal(
+		lockedCommandNote("cred", { dialog: false, undo: false }, true),
+		"The words after /cred were taken as its argument, and a value written on a command line is not stored.",
+	);
+
+	// Never the value: the sentence is a function of the word, the two facts and the
+	// platform, and of nothing else.
+	assert.equal(
+		lockedCommandNote("credential", { dialog: true, undo: true }, true),
+		lockedCommandNote("credential", { dialog: true, undo: true }, true),
 	);
 });

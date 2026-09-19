@@ -1,8 +1,9 @@
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
-import { useSyncExternalStore } from "react";
+import { screen } from "@storybook/test";
+import { type FC, useEffect, useState, useSyncExternalStore } from "react";
+import { unreadAckableCount, unreadMarkKind } from "../mark-all-read";
 import { ChatSidebar } from "./chat-sidebar";
 
 /*
@@ -65,6 +66,13 @@ type WireRow = {
 	status: { code: string; label: string };
 	status_revision: number;
 	status_epoch: string;
+	/**
+	 * The catalogue's own `attention` column, which is what a row's completion
+	 * mark is read from. It is a WIRE row's field (`sessions.list` publishes each
+	 * conversation's store state here), so a story that shows unread marks has to
+	 * seed them at the source rather than paint them into the store.
+	 */
+	attention?: Record<string, unknown>;
 };
 
 /** One row in `sessions.list`'s own wire field names, as the backend sends it. */
@@ -85,6 +93,14 @@ const wireRow = (
 		agent: null,
 		team: null,
 	},
+	attention?: Record<string, unknown>,
+	/*
+	 * The row's LIVE state, for the one story whose point is that it disagrees with
+	 * the mark the wire still carries. Every other roster leaves it at the default:
+	 * a row draws from `status`, and a fixture that needed a second field to say
+	 * what it is doing would be a fixture the client does not read.
+	 */
+	state: Partial<WireRow> = {},
 ): WireRow => ({
 	id,
 	name,
@@ -97,12 +113,56 @@ const wireRow = (
 	status,
 	status_revision: statusRevision,
 	status_epoch: FEED_EPOCH,
+	...(attention ? { attention } : {}),
+	...state,
 });
 
 const BUSY = { code: "busy", label: "Working" };
 const APPROVAL = { code: "approval", label: "Approval needed" };
+const WEDGED = { code: "wedged", label: "Not answering · process alive" };
 const IDLE = { code: "idle", label: "Recent" };
 const COMPLETE = { code: "complete", label: "Complete" };
+/*
+ * The two FAILURE pairs, and they are the reason this file needs its own rows for
+ * them: `status_code` publishes `error`/`interrupted` where the runtime's own mark
+ * wins, and the label it publishes then reads "Unseen error" / "Unseen
+ * interruption" (the runtime's `CatalogEntry.status`, the same sentence the row's
+ * tooltip and its accessible name carry). No other story in this file stages one,
+ * which left the only class the bulk count KEEPS without a frame (design D3).
+ */
+const FAILED = { code: "error", label: "Unseen error" };
+const STOPPED = { code: "interrupted", label: "Unseen interruption" };
+
+/**
+ * A conversation's completion token, shaped like the backend's own `RequestID`.
+ *
+ * Per conversation and deterministic, because a token NAMES one completion: a
+ * receipt that carried one row's token for another row's conversation is not a
+ * state the backend can produce, and a fixture that did that would photograph a
+ * wire the app can never see.
+ */
+const unseenToken = (sessionId: string) =>
+	`${sessionId.slice(0, 8)}-0000-4000-8000-${sessionId}`;
+
+/**
+ * A finished, UNREAD completion as a catalogue row carries it: the check the
+ * sidebar paints, with the token that makes it ackable.
+ */
+const unseenAt = (sessionId: string, published = 4) => ({
+	conversation_id: `session/${sessionId}`,
+	completion_token: unseenToken(sessionId),
+	anchor_id: "result-1",
+	kind: "complete",
+	unseen: true,
+	revision: [published, published - 1],
+});
+
+/** The same conversation, read: what the receipt's `read` bucket carries back. */
+const readAt = (sessionId: string, published = 4) => ({
+	...unseenAt(sessionId, published),
+	unseen: false,
+	revision: [published, published],
+});
 
 /* --------------------------------------------------------------- bridge */
 
@@ -199,6 +259,28 @@ let roster: WireRow[] = [];
  * this one would gain two sections and stop being the states they were shot in.
  */
 let entities: { agents: string[]; teams: string[] } | null = null;
+/*
+ * Per-story fixture state, reset by every story's `render` below.
+ *
+ * These live outside the story bodies because they are read by the transport
+ * stub at CALL time, which is what makes a story's frames a real request and
+ * answer rather than a pre-baked DOM state.
+ */
+/** The bulk receipt's capability, per story: an old backend does not have it. */
+let features: Record<string, number> = { completion_ack_bulk: 1 };
+/** What `attention.seen` answers with. */
+let ackReceipt: { read: unknown[]; superseded: string[]; unknown: string[] } = {
+	read: [],
+	superseded: [],
+	unknown: [],
+};
+/** How the catalogue read behaves: the loading and error states are its two. */
+let listState: "ready" | "pending" | "failed" = "ready";
+/**
+ * How `attention.seen` behaves, beyond its body: the in-flight and refused states
+ * are the two the control is otherwise never photographed in.
+ */
+let ackState: "answering" | "never" | "refusing" = "answering";
 
 if (typeof window !== "undefined") {
 	const page = window as unknown as {
@@ -233,6 +315,21 @@ if (typeof window !== "undefined") {
 	 * `team_catalogue` are answered ONLY while `entities` is set, so the five
 	 * stories that predate the entity one keep rendering exactly the panel they
 	 * were shot in while the sixth renders the region above it (round 1, R1).
+	 * Only the operations this surface reads, and anything else is refused BY
+	 * NAME - a story that starts issuing a third call fails loudly instead of
+	 * hanging on a promise nothing answers.
+	 *
+	 * `features.desktop_feed` is what gates the hook (`useDesktopFeed`), and
+	 * `session_catalogue` 2 is what gates the sidebar itself; `profile_catalogue`,
+	 * `team_catalogue` and `session_search` are deliberately absent, which is how
+	 * this fixture keeps the entity pickers and the conversation search out of a
+	 * frame about the row's status. `completion_ack_bulk` is the bulk read
+	 * receipt's own key, and it is per-story state below rather than a constant:
+	 * the whole point of one story here is a backend that does NOT advertise it.
+	 *
+	 * The two events this file is about are both present: a `sessions.list` read
+	 * that CAN be pending or failed (the states where the control has no subject),
+	 * and an `attention.seen` answer the story decides.
 	 */
 	desktop.request = async (request: { op: string }) => {
 		switch (request.op) {
@@ -244,10 +341,14 @@ if (typeof window !== "undefined") {
 					features: {
 						desktop_feed: 1,
 						session_catalogue: 2,
+						...features,
 						...(entities ? { profile_catalogue: 1, team_catalogue: 1 } : {}),
 					},
 				});
 			case "sessions.list":
+				if (listState === "pending") return new Promise(() => undefined);
+				if (listState === "failed")
+					throw new Error("the backend stopped answering");
 				return ok({ sessions: roster, truncated: false });
 			case "profiles.list":
 				return ok({
@@ -272,6 +373,17 @@ if (typeof window !== "undefined") {
 						members: [],
 					})),
 				});
+			case "attention.seen":
+				// The answer the story staged. Never generated from `roster`, because
+				// the interesting cases are the answers that do NOT match what was sent
+				// (a superseded token, a conversation the store never had) and the point
+				// of the frames is what the sidebar does with them.
+				if (ackState === "never") return new Promise(() => undefined);
+				// A transport failure, not a refusal: the real `desktopRequest` wraps a
+				// throw into the app's own "could not reach the backend process"
+				// sentence, which is what the failure receipt has to answer.
+				if (ackState === "refusing") throw new Error("Failed to fetch");
+				return ok(ackReceipt);
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -344,6 +456,63 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 	 * never read as a complete list it is not.
 	 */
 	const shown = rows === undefined ? sessions : sessions.slice(0, rows);
+	/*
+	 * The control, read off the DOM rather than re-derived from the same inputs the
+	 * component used.
+	 *
+	 * A caption that re-implemented the gate could agree with itself while
+	 * disagreeing with the screen, which is the one thing a caption in an evidence
+	 * frame may not do. This asks the document for the element the control stamps
+	 * itself with, so "absent" in a frame means the button is not there. It is
+	 * measured in an effect rather than during render because the sidebar commits
+	 * in the same pass: a render-time query would read the PREVIOUS document, and
+	 * on a capability-absent story it would read an empty one that is about to
+	 * have the sidebar in it.
+	 */
+	const [control, setControl] = useState("absent");
+	/*
+	 * The shed span's TREE MEMBERSHIP, which `textContent` cannot answer — the fact
+	 * agent review round 2's R2-1 turned on. `display: none` text still reads
+	 * through `textContent`, so a caption built on it reports the label present in a
+	 * frame where no assistive technology can see it, and it read exactly the same
+	 * before and after the shed became `sr-only`. This asks the sheet instead: the
+	 * span carrying the label is out of the accessibility tree precisely when the
+	 * document stops laying it out.
+	 */
+	const [labelTree, setLabelTree] = useState("no control");
+	/*
+	 * POLLED, not rendered-once. The sidebar's search field holds its query in its
+	 * own state, so typing into it commits a new document WITHOUT re-rendering
+	 * this sibling — and a readout that only re-measured when it rendered would
+	 * keep saying "present" over a frame that has no control in it. The interval
+	 * is the rig's, not the app's: nothing about the sidebar depends on it, and it
+	 * exists so the caption cannot outlive the document it describes.
+	 */
+	useEffect(() => {
+		const measure = () => {
+			const element = document.querySelector('[data-tour-tag="mark-all-read"]');
+			const next = element
+				? `present ("${(element.textContent ?? "").trim()}"${element.getAttribute("aria-disabled") === "true" ? ", in flight" : ""})`
+				: "absent";
+			setControl((previous) => (previous === next ? previous : next));
+			const label = element
+				? [...element.querySelectorAll("span")].find((span) =>
+						(span.textContent ?? "").startsWith("Mark all"),
+					)
+				: undefined;
+			const tree = !element
+				? "no control"
+				: !label
+					? "no label span"
+					: getComputedStyle(label).display === "none"
+						? "OUT of the accessibility tree (display:none)"
+						: "in the accessibility tree";
+			setLabelTree((previous) => (previous === tree ? previous : tree));
+		};
+		measure();
+		const timer = setInterval(measure, 200);
+		return () => clearInterval(timer);
+	}, []);
 	return (
 		<div className="w-[420px] shrink-0 space-y-3 border-l border-hairline p-4 text-meta text-ink-muted">
 			<p className="text-ink">Row status as the sidebar reads it</p>
@@ -353,7 +522,18 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 					{typeof row.status_revision === "number"
 						? ` · revision ${row.status_revision} · epoch ${row.status_epoch ?? "(none)"}`
 						: " · no feed stamp"}
-					{row.attention?.unseen ? " · unread" : ""}
+					{/*
+					 * `unread` means A MARK IS DRAWN, asked of the same predicate the row's
+					 * glyph and the control's count ask. A row can carry the unseen LEVEL
+					 * with nothing on screen to show for it — that is the state the
+					 * absence-of-control frame is about — and it says so in its own words
+					 * rather than leaving a reviewer to infer it from a missing mark.
+					 */}
+					{row.attention?.unseen
+						? unreadMarkKind(row) !== null
+							? " · unread"
+							: " · unseen, no mark drawn"
+						: ""}
 				</p>
 			))}
 			{rows !== undefined && sessions.length > shown.length && (
@@ -364,13 +544,31 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 			<p data-readout-frames className="pt-2">
 				Frames delivered: {frames.length ? frames : "none"}
 			</p>
+			<p data-readout-control>
+				Bulk read receipt: {control} · {unreadAckableCount(sessions)} unread
+				row(s) it would name
+			</p>
+			<p data-readout-label>Action label: {labelTree}</p>
 		</div>
 	);
 };
 
-const Page: FC<{ readoutRows?: number }> = ({ readoutRows }) => (
+const Page: FC<{ readoutRows?: number; sidebarWidth?: number }> = ({
+	readoutRows,
+	sidebarWidth = 360,
+}) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
-		<div className="w-[360px] shrink-0 border-r border-hairline">
+		{/*
+		 * The width is a parameter because the panel is resizable between the app's
+		 * own clamps (`chat-layout.tsx`), and the control's own shed fires on the
+		 * WIDTH OF ITS ROW: a set captured only at 360px — the clamp's maximum — is
+		 * structurally unable to photograph the state design round 1's blocker (D1)
+		 * is about.
+		 */}
+		<div
+			className="shrink-0 border-r border-hairline"
+			style={{ width: `${sidebarWidth}px` }}
+		>
 			<ChatSidebar
 				selectedConversation={undefined}
 				onSelectConversation={() => undefined}
@@ -548,6 +746,45 @@ const holdShutter = () => {
 };
 
 /** Let it go, once the frame is worth taking. */
+/* ------------------------------------------------------ mark all as read */
+
+/*
+ * The bulk read receipt, in the states a reviewer has to be able to tell apart.
+ *
+ * This is the same real tree the stories above drive — the real `ChatSidebar`,
+ * carrying the real `ChatSessionStatus` and the real store — and the only thing
+ * stubbed is the transport, so the control under test is the shipped one and its
+ * click is a real click on a real button.
+ *
+ * The pile the operator reported is `MarkAllReadPile`: rows whose turn finished
+ * while he was elsewhere, each with the green check the sidebar paints for an
+ * unacknowledged completion.
+ *
+ * `MarkAllReadPartlyRead` is the state the receipt exists for. The backend
+ * decides PER ITEM inside one transaction, and a conversation that completed
+ * again between the render and the click is `superseded`: refused, nothing
+ * written, still unread. A UI that cleared all three and said "all read" would
+ * have silently acknowledged a result nobody saw, so this frame pairs the one
+ * remaining check with the sentence that names it.
+ *
+ * `MarkAllReadCleared` is the pile with nothing left to clear, which is also the
+ * state in which the control is GONE — an action with no subject.
+ *
+ * The three negatives are the states the control must not offer itself in: a
+ * backend that does not advertise `completion_ack_bulk` (the pile is still
+ * there, and the app is exactly as capable as the backend lets it be), a
+ * catalogue read that failed, and an empty list. All three are ABSENCE frames,
+ * which is why each carries the readout line that says so in words.
+ *
+ * Holding the shutter: the two click-driven stories set
+ * `documentElement.dataset.capturePending` before the tree mounts and clear it
+ * once the receipt is on screen, exactly as `canvas.stories.tsx` does, because
+ * the capturer polls that flag. Without it a click-driven story is a race
+ * between a request, a store commit, a toast and the shutter, and a frame taken
+ * mid-flight is a picture of a state the user never sees (that file records both
+ * halves of that failure).
+ */
+
 const releaseShutter = () => {
 	delete document.documentElement.dataset.capturePending;
 };
@@ -1423,5 +1660,762 @@ export const CompletionCursorPartlyClipped: Story = {
 		deliver(catalogueFrame(2, 93));
 		await sleep(1200);
 		releaseShutter();
+	},
+};
+
+/* ----------------------------- a title long enough to reach the row's end */
+
+/**
+ * THE ROW'S TITLE BOX, ON A TITLE THAT ACTUALLY REACHES IT.
+ *
+ * The operator's reason for removing the per-row browser control was the space
+ * it held (`docs/evidence/chat-sidebar-browser-mark-baseline/README.md`), and the
+ * only artifact that ever stated that cost was the deleted
+ * `browser-conversation-mark--slot-cost` specimen: a caption reading "title 240px
+ * without the mark, 212px with it". The three states the baseline set re-captured
+ * cannot stand in for it - their titles end at x 180-207 while the slot begins at
+ * x 332, so the reserved 28px is invisible in them and the claim lived in prose
+ * (design round 1, D1).
+ *
+ * This state is that measurement in pixels: one row whose title is long enough to
+ * TRUNCATE at this panel's own width, so the `truncate` ellipsis sits where the
+ * box ends and the box's own edge is the thing the frame is about. Before/after
+ * are the same story on two trees (the before half is in
+ * `chat-sidebar-browser-mark-baseline/truncating-title/`, this half in the live
+ * set), which is the pair the deletion's width claim is judged on - and the
+ * difference between the two ellipsis positions IS the reclaimed width.
+ *
+ * It lives in THIS file because on the tree the before half is captured from,
+ * this is the only story file whose page passes the summary map the mark reads
+ * (`browserSummaries={markFixtures}`, an empty `Map` by default, which the base
+ * tree's `browserMarkFor` still draws a quiet Globe from). The other states here
+ * photograph the feed's transitions; this one photographs the row's geometry,
+ * and the two are the same component at the same width.
+ */
+const LEDGER_LONG = "5e6f708192a3";
+
+/** Long enough to truncate in BOTH halves, so what the frame compares is where
+    the ellipsis lands rather than whether there is one. */
+const LEDGER_LONG_TITLE =
+	"Reconcile the supplier ledger against the quarterly revenue model and the regional forecast";
+
+export const TruncatingTitle: Story = {
+	render: () => {
+		roster = [
+			wireRow(LEDGER_LONG, LEDGER_LONG_TITLE, 1_760_030_300, BUSY, 8),
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_030_200,
+				BUSY,
+				7,
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_030_100, IDLE, 1),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		/* The list is the subject, so the shutter waits only for it: no frame is
+		   delivered, and the rows keep the catalogue's own stamps. */
+		await catalogueSettled(3);
+		await sleep(300);
+	},
+};
+/**
+ * Wait for a condition on the real store, with the same budget the catalogue
+ * wait above uses: a fixed sleep is a bet on how busy the host is, and this file
+ * is run on a laptop alongside other agent sessions.
+ */
+const waitFor = async (
+	predicate: () => boolean,
+	timeoutMs = 4_000,
+): Promise<boolean> => {
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		if (predicate()) return true;
+		await sleep(50);
+	}
+	return predicate();
+};
+
+/** The rows this surface's pile is made of, newest first. */
+const PILE = [
+	["a1b2c3d4e5f6", "Reconcile the supplier ledger"],
+	["b2c3d4e5f6a7", "Quarterly revenue model"],
+	["c3d4e5f6a7b8", "Migrate the deploy script"],
+] as const;
+
+/**
+ * The operator's pile: three finished turns, none of them acknowledged.
+ *
+ * `COMPLETE` with `unseen` is the green check the report is about — the row's
+ * status is still "Complete" once the mark rests, which is why
+ * `ChatSessionStatus` keys its glyph on `complete && unseen` rather than on the
+ * code alone.
+ */
+const pileRoster = () =>
+	PILE.map(([id, name], index) =>
+		wireRow(
+			id,
+			name,
+			1_760_000_300 - index * 100,
+			COMPLETE,
+			2,
+			undefined,
+			unseenAt(id),
+		),
+	);
+
+/**
+ * The pile the operator described, deep enough to scroll — his own sidebar reads
+ * "Active chats 38", and the header row's reachability is a claim about a list
+ * longer than the box that holds it.
+ */
+const pileRows = Array.from({ length: 14 }, (_, index) => ({
+	id: `${(index + 1).toString(16).padStart(2, "0")}b2c3d4e5f6`,
+	name: `Finished turn ${index + 1}`,
+}));
+
+/** The control, as a real click on the real button. */
+const clickMarkAllRead = () => {
+	const control = document.querySelector<HTMLButtonElement>(
+		'[data-tour-tag="mark-all-read"]',
+	);
+	if (!control)
+		throw new Error("the mark-all-as-read control is not on screen");
+	control.click();
+};
+
+/** Reset every per-story fixture knob, so a page load cannot inherit one. */
+const fixtures = (
+	over: Partial<{
+		features: Record<string, number>;
+		receipt: { read: unknown[]; superseded: string[]; unknown: string[] };
+		list: "ready" | "pending" | "failed";
+		ack: "answering" | "never" | "refusing";
+	}> = {},
+) => {
+	features = over.features ?? { completion_ack_bulk: 1 };
+	ackReceipt = over.receipt ?? { read: [], superseded: [], unknown: [] };
+	listState = over.list ?? "ready";
+	ackState = over.ack ?? "answering";
+};
+
+export const MarkAllReadPile: Story = {
+	render: () => {
+		/*
+		 * A READ-FOR-ALL answer, so the frame a reviewer is most likely to click
+		 * behaves like the pile it depicts: the shipped fixture answered an empty
+		 * receipt, which produced the warning toast "Nothing was cleared." while the
+		 * three checks stayed green and read as a defect (UX round 1, N1). A frame is
+		 * not a printout only.
+		 */
+		fixtures({
+			receipt: {
+				read: [
+					readAt("a1b2c3d4e5f6"),
+					readAt("b2c3d4e5f6a7"),
+					readAt("c3d4e5f6a7b8"),
+				],
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		// The readout measures the DOM in an effect, so the frame is only honest
+		// once that effect has run and the rows have painted their checks.
+		await sleep(300);
+	},
+};
+
+/*
+ * THE REPORTED DEFECT, photographed: rows carrying `unseen` that draw NO mark.
+ *
+ * A session whose turn finished and is now waiting on its subagents, one parked
+ * on an approval, and one whose runtime stopped answering all still carry the
+ * completion LEVEL — `unseen` is cleared by an acknowledgement and by nothing
+ * else, and resuming a session does not acknowledge it — while the runtime
+ * publishes `busy` / `approval` / `wedged` for them, because a mark must never be
+ * painted over what a row is doing NOW.
+ *
+ * The claim in this frame is an ABSENCE, so the readout beside the sidebar states
+ * the control's own state in words: no control beside the group heading, and
+ * `0 unread row(s) it would name`, with each row's `unseen` printed next to the
+ * `no mark drawn` note that explains why the two disagree. Before this change the
+ * same roster offered `Mark all 3 read` over three rows with nothing to read —
+ * and a click acknowledged completions the reader was never shown, which no
+ * later state can undo, because an acknowledgement is the only thing that clears
+ * `unseen`.
+ */
+export const MarkAllReadUnseenWithoutMark: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow(
+				"b1c2d3e4f5a6",
+				"Reconcile the supplier ledger",
+				1_760_000_500,
+				BUSY,
+				3,
+				undefined,
+				unseenAt("b1c2d3e4f5a6"),
+				{ live_state: "busy" },
+			),
+			wireRow(
+				"c2d3e4f5a6b7",
+				"Migrate the deploy script",
+				1_760_000_400,
+				APPROVAL,
+				3,
+				undefined,
+				unseenAt("c2d3e4f5a6b7"),
+				{ pending: "approval" },
+			),
+			wireRow(
+				"d3e4f5a6b7c8",
+				"Quarterly revenue model",
+				1_760_000_300,
+				WEDGED,
+				3,
+				undefined,
+				unseenAt("d3e4f5a6b7c8"),
+				{ live_state: "wedged" },
+			),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		/*
+		 * The absence is ASSERTED rather than eyeballed. A frame of a sidebar with no
+		 * control beside it is evidence only if the control could have been there —
+		 * which is what this roster is: every row carries `unseen` AND a token, the
+		 * exact state the count used to read, so a predicate that had not changed
+		 * would draw the control here.
+		 */
+		const unseen = useCanonicalSessionsStore
+			.getState()
+			.sessions.filter((row) => row.attention?.unseen === true);
+		if (unseen.length !== 3)
+			throw new Error(
+				`the roster carries ${unseen.length} unseen rows, so the frame is about nothing`,
+			);
+		if (document.querySelector('[data-tour-tag="mark-all-read"]') !== null)
+			throw new Error(
+				"the bulk control is on screen over rows that draw no mark",
+			);
+		const stated = await waitFor(() =>
+			Boolean(
+				document
+					.querySelector("[data-readout-control]")
+					?.textContent?.includes("absent · 0 unread row(s) it would name"),
+			),
+		);
+		if (!stated)
+			throw new Error(
+				"the readout never reported the absent control and its zero count",
+			);
+		// The readout measures the DOM in an effect, so the frame is only honest
+		// once that effect has run and the rows have painted their spinners.
+		await sleep(300);
+	},
+};
+
+/*
+ * THE MARKS THE COUNT KEEPS, and the one class no other frame in this set shows.
+ *
+ * `unreadMarkKind` counts `complete`, `error` and `interrupted` — the three codes
+ * the runtime publishes while an unread completion stands — and the failure pair
+ * is the half a reader is least able to check afterwards: an `error` row draws the
+ * alert glyph and its danger ink whether it is unread or acknowledged, so clearing
+ * it moves no pixel OF THE ROW; what moves is the section it sits in (the wire's
+ * `active` is `pending || unseen || live_state`) and the label behind the tooltip
+ * ("Unseen error" -> "Error"). This frame is where that trade is visible, and it
+ * is why the story exists rather than the sentence alone (design D3): three rows
+ * drawing marks the control counts, and a busy row carrying the SAME unread state
+ * that it must not count.
+ */
+export const MarkAllReadMixedMarks: Story = {
+	render: () => {
+		fixtures({
+			/*
+			 * A READ-FOR-ALL answer, so the frame a reviewer is most likely to click
+			 * behaves like the state it depicts: the three marks the label names are the
+			 * three the receipt clears, and the busy row is neither counted nor sent.
+			 */
+			receipt: {
+				read: [readAt(RECONCILE), readAt(QUARTERLY), readAt(MIGRATE)],
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = [
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_001_400,
+				COMPLETE,
+				3,
+				undefined,
+				unseenAt(RECONCILE),
+			),
+			wireRow(
+				QUARTERLY,
+				"Quarterly revenue model",
+				1_760_001_300,
+				FAILED,
+				3,
+				undefined,
+				{ ...unseenAt(QUARTERLY), kind: "error" },
+			),
+			wireRow(
+				MIGRATE,
+				"Migrate the deploy script",
+				1_760_001_200,
+				STOPPED,
+				3,
+				undefined,
+				{ ...unseenAt(MIGRATE), kind: "interrupted" },
+			),
+			wireRow(
+				AUDIT,
+				"Audit the deploy script",
+				1_760_001_100,
+				BUSY,
+				3,
+				undefined,
+				unseenAt(AUDIT),
+				{ live_state: "busy" },
+			),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(4);
+		/*
+		 * The three claims the frame makes, asserted against the store rather than
+		 * described in a caption: the control counts exactly the three rows that draw a
+		 * mark, the busy row carries the unread state the state is ABOUT, and it is not
+		 * drawing a mark. A fixture that dropped the attention state would photograph
+		 * something much easier than this state.
+		 */
+		const sessions = useCanonicalSessionsStore.getState().sessions;
+		const counted = unreadAckableCount(sessions);
+		if (counted !== 3)
+			throw new Error(
+				`the control counts ${counted} rows, not the three that draw a mark`,
+			);
+		const busy = sessions.find((row) => row.session_id === AUDIT);
+		if (busy?.attention?.unseen !== true)
+			throw new Error(
+				"the busy row does not carry the unread state this frame is about",
+			);
+		if (unreadMarkKind(busy) !== null)
+			throw new Error(
+				"the busy row is drawing a mark, so the frame is not the exclusion it claims",
+			);
+		const stated = await waitFor(() =>
+			Boolean(
+				document
+					.querySelector("[data-readout-control]")
+					?.textContent?.includes('present ("Mark all 3 read")'),
+			),
+		);
+		if (!stated)
+			throw new Error(
+				"the readout never reported the control and the three rows it would name",
+			);
+		// The readout measures the DOM in an effect, so the frame is only honest once
+		// that effect has run and the rows have painted their marks.
+		await sleep(300);
+	},
+};
+
+/*
+ * The two widths the app's own clamps make reachable, and the state the click
+ * spends its time in.
+ *
+ * `chat-layout.tsx` clamps the chat list at 240/288/360 with 280 as the default
+ * preference, and the header row is 17px narrower than the panel
+ * (240/288/360 -> 223/271/343). The control's label sheds on the ROW's width, so
+ * these three are the whole shed story: full at 280 and 360, glyph-only at 240.
+ * The in-flight state is the one a click passes through on every use and the one
+ * an irreversible write most needs to be honest in.
+ */
+export const MarkAllReadScrolled: Story = {
+	render: () => {
+		/*
+		 * The operator's own shape: a pile deep enough to scroll, at the far end of
+		 * which the control used to be 632px ABOVE the marks it clears (design D2).
+		 * The header row is sticky inside the group's scroll box now, so the control
+		 * travels with the pile rather than waiting at the top of it — which is a
+		 * claim only a scrolled frame can make.
+		 */
+		holdShutter();
+		fixtures({
+			receipt: {
+				read: pileRows.map((row) => readAt(row.id)),
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = pileRows.map((row, index) =>
+			wireRow(
+				row.id,
+				row.name,
+				1_760_000_300 - index * 100,
+				COMPLETE,
+				2,
+				undefined,
+				unseenAt(row.id),
+			),
+		);
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(pileRows.length);
+			const scroller = document.querySelector<HTMLElement>(
+				"div.max-h-\\[45\\%\\]",
+			);
+			if (!scroller) throw new Error("the group scroll box is not on screen");
+			scroller.scrollTop = scroller.scrollHeight;
+			await sleep(300);
+			if (scroller.scrollTop === 0)
+				throw new Error("the pile did not scroll, so the frame proves nothing");
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadNarrowDefault: Story = {
+	render: () => {
+		fixtures();
+		roster = pileRoster();
+		return <Page sidebarWidth={280} />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		await sleep(300);
+	},
+};
+
+export const MarkAllReadNarrowMinimum: Story = {
+	render: () => {
+		fixtures();
+		roster = pileRoster();
+		return <Page sidebarWidth={240} />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		await sleep(300);
+	},
+};
+
+export const MarkAllReadFiltered: Story = {
+	render: () => {
+		/*
+		 * R4's case, photographed: a filter is typed, one unread row is left on
+		 * screen, and the control is ABSENT. The set it clears is the store's, so
+		 * under a filter it would move marks the reader cannot see — an irreversible
+		 * write whose extent is invisible is not offered at all.
+		 */
+		holdShutter();
+		fixtures();
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(PILE.length);
+			const field = document.querySelector<HTMLInputElement>(
+				'input[placeholder*="Search"]',
+			);
+			if (!field) throw new Error("the search field is not on screen");
+			/*
+			 * The value goes in through the prototype's own setter so React's own
+			 * change tracking sees it, which is the same route a real keystroke takes.
+			 */
+			const setValue = Object.getOwnPropertyDescriptor(
+				HTMLInputElement.prototype,
+				"value",
+			)?.set;
+			setValue?.call(field, "ledger");
+			field.dispatchEvent(new Event("input", { bubbles: true }));
+			await sleep(400);
+			if (document.querySelector('[data-tour-tag="mark-all-read"]') !== null)
+				throw new Error("the control is offered under a filter");
+			const rows = document.querySelectorAll("[data-chat-row]");
+			if (rows.length === 0) throw new Error("the filter left no rows");
+			/*
+			 * The frame's own caption has to agree with its pixels. A readout still saying
+			 * "present" would put a contradiction INSIDE the evidence, which is worse than
+			 * having no caption at all — so the story fails rather than shipping it.
+			 */
+			const agreed = await waitFor(() =>
+				(
+					document.querySelector("[data-readout-control]")?.textContent ?? ""
+				).includes("absent"),
+			);
+			if (!agreed)
+				throw new Error("the readout still claims the control is present");
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadInFlight: Story = {
+	render: () => {
+		/*
+		 * The answer never arrives. The shutter is held from the RENDER, as the
+		 * click-driven stories hold it, and released once the control has announced
+		 * itself unavailable — so the frame is the state between the click and the
+		 * receipt, which is a real request rather than a race.
+		 */
+		holdShutter();
+		fixtures({
+			ack: "never",
+			receipt: {
+				read: [
+					readAt("a1b2c3d4e5f6"),
+					readAt("b2c3d4e5f6a7"),
+					readAt("c3d4e5f6a7b8"),
+				],
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(PILE.length);
+			clickMarkAllRead();
+			// The announcement is the state: `aria-disabled` lands in the same commit
+			// as the spinner, and the promise behind it never settles by design.
+			await screen.findByRole(
+				"button",
+				{ name: /Mark all/ },
+				{ timeout: 4_000 },
+			);
+			const disabled = await waitFor(
+				() =>
+					document
+						.querySelector('[data-tour-tag="mark-all-read"]')
+						?.getAttribute("aria-disabled") === "true",
+			);
+			if (!disabled) throw new Error("the in-flight state was never entered");
+			// And the caption says so too, rather than describing the rest state.
+			const captioned = await waitFor(() =>
+				(
+					document.querySelector("[data-readout-control]")?.textContent ?? ""
+				).includes("in flight"),
+			);
+			if (!captioned)
+				throw new Error("the readout does not show the in-flight state");
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadRefused: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => {
+		/*
+		 * The transport fails: the app's own "could not reach the backend process"
+		 * sentence, and the second clause this change adds — that the unread marks
+		 * were NOT cleared. Both facts, because the reader's question after an
+		 * irreversible action is "did it happen?" rather than "what is the backend
+		 * doing?" (UX round 1, U5). Every check is still on screen behind the toast.
+		 */
+		holdShutter();
+		fixtures({ ack: "refusing" });
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(PILE.length);
+			clickMarkAllRead();
+			await screen.findByText(
+				"Desktop controls could not reach the backend process. The unread marks were not cleared.",
+				{},
+				{ timeout: 4_000 },
+			);
+			await waitFor(
+				() =>
+					document
+						.querySelector('[data-tour-tag="mark-all-read"]')
+						?.getAttribute("aria-disabled") !== "true",
+			);
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadPartlyRead: Story = {
+	// Hold the receipt for this story's lifetime: the sentence and the remaining
+	// check are the frame, and a toast that auto-closed mid-capture would leave a
+	// reviewer looking at the cleared half of a partial success.
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => {
+		holdShutter();
+		fixtures({
+			receipt: {
+				read: [readAt("a1b2c3d4e5f6"), readAt("b2c3d4e5f6a7")],
+				// A completion that landed after this client rendered: the token it
+				// holds is real but no longer current, so the row stays unread.
+				superseded: ["c3d4e5f6a7b8"],
+				unknown: [],
+			},
+		});
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(PILE.length);
+			clickMarkAllRead();
+			/*
+			 * The settlement is asserted, not slept through: the unread count falling
+			 * to one proves the answer was applied, and finding the sentence proves
+			 * the receipt was rendered. A story that photographed before both would be
+			 * the pile frame with a caption claiming a partial clear.
+			 */
+			await waitFor(
+				() =>
+					useCanonicalSessionsStore
+						.getState()
+						.sessions.filter((row) => row.attention?.unseen).length === 1,
+			);
+			await screen.findByText(
+				"Marked 2 chats as read. 1 has a newer result and stays unread.",
+				{},
+				{ timeout: 4_000 },
+			);
+		} catch (error) {
+			// A failed play must not hold the shutter: that turns any failure into a
+			// silent hang with no frame and no reason.
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadCleared: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => {
+		holdShutter();
+		fixtures({
+			receipt: {
+				read: [
+					readAt("a1b2c3d4e5f6"),
+					readAt("b2c3d4e5f6a7"),
+					readAt("c3d4e5f6a7b8"),
+				],
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		try {
+			await catalogueSettled(PILE.length);
+			clickMarkAllRead();
+			await waitFor(() =>
+				useCanonicalSessionsStore
+					.getState()
+					.sessions.every((row) => !row.attention?.unseen),
+			);
+			await screen.findByText(
+				"Marked 3 chats as read.",
+				{},
+				{ timeout: 4_000 },
+			);
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+export const MarkAllReadUnsupported: Story = {
+	render: () => {
+		/*
+		 * An older backend: the pile is real and the marks are real, and the key
+		 * that would let this client clear them is simply not advertised. The frame
+		 * is the ABSENCE — no control beside the group heading — because that is
+		 * what a renderer must do against a backend it cannot ask: offering the
+		 * button and answering the click with a 404 is the broken control this
+		 * gating exists to prevent.
+		 */
+		fixtures({ features: {} });
+		roster = pileRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		await sleep(300);
+	},
+};
+
+export const MarkAllReadLoading: Story = {
+	render: () => {
+		// The catalogue read never answers. Nothing is known about any row, so there
+		// is no count to act on and no control — the marks this story cannot know
+		// about are exactly what the control must not guess at.
+		fixtures({ list: "pending" });
+		roster = [];
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => useCanonicalSessionsStore.getState().loading);
+		await sleep(300);
+	},
+};
+
+export const MarkAllReadFailed: Story = {
+	render: () => {
+		fixtures({ list: "failed" });
+		roster = [];
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => Boolean(useCanonicalSessionsStore.getState().error));
+		await sleep(300);
+	},
+};
+
+export const MarkAllReadEmpty: Story = {
+	render: () => {
+		// No conversations at all. The sidebar says so; the control has no subject.
+		fixtures();
+		roster = [];
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => !useCanonicalSessionsStore.getState().loading);
+		await sleep(300);
 	},
 };

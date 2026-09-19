@@ -70,10 +70,12 @@ const PROBE = `
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
-	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeFromKey, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
@@ -94,6 +96,8 @@ const PROBE = `
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
 		BrowserTabStrip,
+		stateChips,
+		tabFloor,
 		BrowserPage,
 		BrowserPane,
 		PANE_SURFACE_ID,
@@ -112,6 +116,19 @@ const PROBE = `
 		tabsInScope,
 		waitingOrdinals,
 		RESOLVED_KEEP,
+		closeConversationIntent,
+		closeOthersIntent,
+		closeToTheRightIntent,
+		groupTabsBySession,
+		pooledTabs,
+		sessionDisplayName,
+		summariseConversations,
+		tabsBySession,
+		browserBridgeAvailable,
+		clearBrowserProjectionReadError,
+		readBrowserProjection,
+		refreshBrowserProjection,
+		subscribeBrowserProjection,
 		BrowserLoadFailure,
 		loadFailureSentence,
 		useCanonicalSessionsStore,
@@ -186,6 +203,8 @@ const {
 	BrowserApprovalsTray,
 	BrowserApprovalsDock,
 	BrowserTabStrip,
+	stateChips,
+	tabFloor,
 	BrowserPage,
 	BrowserPane,
 	PANE_SURFACE_ID,
@@ -204,6 +223,19 @@ const {
 	tabsInScope,
 	waitingOrdinals,
 	RESOLVED_KEEP,
+	closeConversationIntent,
+	closeOthersIntent,
+	closeToTheRightIntent,
+	groupTabsBySession,
+	pooledTabs,
+	sessionDisplayName,
+	summariseConversations,
+	tabsBySession,
+	browserBridgeAvailable,
+	clearBrowserProjectionReadError,
+	readBrowserProjection,
+	refreshBrowserProjection,
+	subscribeBrowserProjection,
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
@@ -1477,31 +1509,270 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		),
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
-	const refresh = source.slice(
+	// THE READ'S HALF MOVED WITH THE READ ITSELF (design R6-B). The projection — and
+	// with it the read error's slot — is now one module-level store shared by every
+	// consumer, so this pin reads the shipped STORE for the rule and the shipped HOOK
+	// for the separation between the two slots. The rule is unchanged; only its
+	// address is, and a revert that loses the separation still has to come here.
+	const store = shippedSource(
+		"src/renderer/src/features/browser/model/browser-projection-store.ts",
+	);
+	assert.ok(
+		/publish\(\{ state: next, readError: null \}\)/.test(store),
+		"a successful state read clears the READ error only",
+	);
+	assert.ok(
+		!store.includes("actionError"),
+		"and the store cannot touch the action's own refusal, which is the hook's",
+	);
+	assert.ok(
+		/const error = actionError \?\? readError;/.test(source),
+		"the band renders the two slots as one value while they stay two writers",
+	);
+	// `useBrowserProjection` is a selector over the store now, so what it must NOT
+	// contain is a second reader: its own state pair, or its own bridge subscription.
+	const projection = source.slice(
 		source.indexOf("export function useBrowserProjection"),
 		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
-		refresh.includes("setReadError(null)"),
-		"a successful state read clears the READ error only",
+		!projection.includes("useState") && !projection.includes("ipcRenderer"),
+		"the read is the store's, not a second subscription beside it",
 	);
-	assert.ok(
-		!refresh.includes("setActionError"),
-		"and it cannot touch the action's own refusal",
-	);
-	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
-	// the projection and its error slot, and `useBrowserChrome` composes it. The
-	// rule is unchanged, and it is still the SHIPPED source this reads.
 	assert.ok(
 		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
 	);
-	assert.ok(
-		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
-			source,
-		),
-		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
+});
+
+// ---- the projection is read once, however many consumers there are (R6-B) ---
+
+test("one event is one state read, however many consumers are mounted", async () => {
+	// The design's reason for the shared store (1.5): a mark on every conversation
+	// row makes this read per-consumer, and the sidebar renders every row in one
+	// scroll container with no virtualisation. The property is a READ COUNT, not a
+	// frame — which is why this drives the store directly rather than through a
+	// render, and why it is a test at all: nothing about the app's pixels would
+	// show the regression, only the main process's load would.
+	const reads = { count: 0, subscriptionCount: 0 };
+	let emitState = null;
+	let emitConsent = null;
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: {
+				state: async () => {
+					reads.count += 1;
+					return { tabs: [{ tabId: 1, sessionId: "alice" }] };
+				},
+				onStateChanged: (handler) => {
+					emitState = handler;
+					reads.subscriptionCount += 1;
+					return () => {
+						emitState = null;
+						reads.subscriptionCount -= 1;
+					};
+				},
+				onConsentChanged: (handler) => {
+					emitConsent = handler;
+					return () => {
+						emitConsent = null;
+					};
+				},
+			},
+		},
+	};
+	/** Let the read the store kicked off settle. */
+	const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+	const releases = [];
+	try {
+		assert.equal(
+			browserBridgeAvailable(),
+			true,
+			"the store asks the bridge, so a window carrying one is available",
+		);
+		// Three consumers: the pane, the chat header's badge, and one of the
+		// sidebar's rows. Forty rows would be thirty-eight more of the same.
+		for (let consumer = 0; consumer < 3; consumer += 1) {
+			releases.push(subscribeBrowserProjection(() => {}));
+		}
+		await settle();
+		assert.equal(
+			reads.count,
+			1,
+			"one initial read for the window, not one per consumer",
+		);
+		assert.equal(
+			reads.subscriptionCount,
+			1,
+			"and one subscription to main, not one per consumer",
+		);
+		assert.equal(
+			readBrowserProjection().state?.tabs[0].sessionId,
+			"alice",
+			"every consumer reads the one snapshot",
+		);
+
+		emitState();
+		await settle();
+		assert.equal(reads.count, 2, "one read per state event");
+		emitConsent();
+		await settle();
+		assert.equal(
+			reads.count,
+			3,
+			"the consent event lands on the same read: one projection, two triggers",
+		);
+
+		// A read that lands after a newer one must not publish: the shared snapshot
+		// is what makes the ordering observable, and an older projection winning
+		// would show a state main has already moved past.
+		let resolveSlow = null;
+		const slow = new Promise((resolve) => {
+			resolveSlow = resolve;
+		});
+		const originalState = globalThis.window.api.browser.state;
+		let firstRead = true;
+		globalThis.window.api.browser.state = async () => {
+			if (firstRead) {
+				firstRead = false;
+				await slow;
+				return { tabs: [{ tabId: 99, sessionId: "stale" }] };
+			}
+			return { tabs: [{ tabId: 1, sessionId: "alice" }] };
+		};
+		const stale = refreshBrowserProjection();
+		const fresh = refreshBrowserProjection();
+		await fresh;
+		resolveSlow();
+		await stale;
+		assert.equal(
+			readBrowserProjection().state?.tabs[0].sessionId,
+			"alice",
+			"the older read does not overwrite the newer one",
+		);
+		globalThis.window.api.browser.state = originalState;
+
+		for (const release of releases) release();
+		releases.length = 0;
+		assert.equal(
+			reads.subscriptionCount,
+			0,
+			"the last consumer to leave stops the window's subscription",
+		);
+		assert.equal(
+			readBrowserProjection().state,
+			null,
+			"and the snapshot goes with it, so a later mount cannot render a reading nobody is being told about",
+		);
+		const before = reads.count;
+		emitState?.();
+		await settle();
+		assert.equal(reads.count, before, "nothing reads on a stopped store");
+
+		// A fresh consumer reads again: a remount has no way to know what changed
+		// while nothing was listening.
+		subscribeBrowserProjection(() => {})();
+		await settle();
+		assert.equal(reads.count, before + 1, "a remount re-reads");
+	} finally {
+		for (const release of releases) release();
+		globalThis.window = previousWindow;
+	}
+});
+
+test("every in-order read publishes, so a transition detector cannot miss an intermediate state", async () => {
+	/*
+	 * THE DEFECT THIS PINS WAS MEASURED, not imagined: the first version of the store's
+	 * generation guard published only the NEWEST-STARTED read's result, and the built app
+	 * then failed `a withdrawn request is explained LIVE` in
+	 * `scripts/browser-chrome-proof.mjs` while the same check passed on the base commit.
+	 * The badge fell from 2 to 1 and the band explained nothing, because a request raised
+	 * and withdrawn while a read was in flight was never OBSERVED as live: the approval
+	 * memory reports entries that were live and are not (`reconcileResolved`), so an
+	 * intermediate state published away is a departure it cannot see.
+	 *
+	 * So the rule is "newer than the last PUBLISHED", not "the newest started": two reads
+	 * that land in order both publish, and only a result older than the newest published
+	 * one is discarded (which is what stops an older projection overwriting a newer one —
+	 * asserted by the superseded-read case in the earlier test).
+	 */
+	const previousWindow = globalThis.window;
+	let call = 0;
+	let releaseThird = null;
+	const tabs = (count) =>
+		Array.from({ length: count }, (_, index) => ({ tabId: index + 1 }));
+	globalThis.window = {
+		api: {
+			browser: {
+				state: () => {
+					call += 1;
+					// The subscription's own initial read, then the older read, then the
+					// newer one — released by hand, so the two are genuinely in flight
+					// together and the OLDER lands first.
+					if (call === 1) return Promise.resolve({ tabs: tabs(2) });
+					if (call === 2) return Promise.resolve({ tabs: tabs(3) });
+					return new Promise((resolve) => {
+						releaseThird = () => resolve({ tabs: tabs(1) });
+					});
+				},
+				onStateChanged: () => () => {},
+				onConsentChanged: () => () => {},
+			},
+		},
+	};
+	const seen = [];
+	const release = subscribeBrowserProjection(() =>
+		seen.push((readBrowserProjection().state?.tabs ?? []).length),
 	);
+	const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+	await settle();
+	const older = refreshBrowserProjection();
+	const newer = refreshBrowserProjection();
+	await older;
+	await settle();
+	if (!releaseThird) throw new Error("the newer read did not start");
+	releaseThird();
+	await newer;
+	await settle();
+	release();
+	globalThis.window = previousWindow;
+	assert.deepEqual(
+		seen,
+		[2, 3, 1],
+		"each ordered read published: the intermediate three-tab state was observable, so a withdrawal across it is detectable",
+	);
+});
+
+test("a failed state read is the READ slot's, and dismissing it clears only that", async () => {
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: {
+				state: async () => {
+					throw new Error(
+						"Error invoking remote method 'browser-state': the host is not running",
+					);
+				},
+				onStateChanged: () => () => {},
+				onConsentChanged: () => () => {},
+			},
+		},
+	};
+	const release = subscribeBrowserProjection(() => {});
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	try {
+		assert.equal(
+			readBrowserProjection().readError,
+			"the host is not running",
+			"the Electron prefix is unwrapped rather than shown to the user",
+		);
+		clearBrowserProjectionReadError();
+		assert.equal(readBrowserProjection().readError, null);
+	} finally {
+		release();
+		globalThis.window = previousWindow;
+	}
 });
 
 // ---- a banner click reaches the request it named (review round 1, R8) ------
@@ -2019,6 +2290,251 @@ test("the pane's tray sentence says which list its count is about", () => {
 	assert.equal(paneApprovalHeaderLabel(3), "3 approvals for this conversation");
 });
 
+test("the tab index groups a pool by conversation, unattributed last", () => {
+	// Design R3. The order rule is the whole of the "see all the tabs that
+	// conversation opened" claim: groups by their FIRST tab, tabs within a group in
+	// the order they arrived (the registry's creation order), and the unattributed
+	// run last, because conversations are the organising idea and the tail is the
+	// miscellaneous set (open question 8).
+	const tabs = [
+		{ tabId: 1, sessionId: "alice" },
+		{ tabId: 2, sessionId: null },
+		{ tabId: 3, sessionId: "bob" },
+		{ tabId: 4, sessionId: "alice" },
+		{ tabId: 5, sessionId: "bob" },
+	];
+	assert.deepEqual(
+		groupTabsBySession(tabs).map((group) => [
+			group.sessionId,
+			group.tabs.map((tab) => tab.tabId),
+		]),
+		[
+			["alice", [1, 4]],
+			["bob", [3, 5]],
+			[null, [2]],
+		],
+		"three interleaved conversations read A A B B, not A B A A B",
+	);
+	// THE POOL IS THE GROUPING FLATTENED, derived rather than compared again: the
+	// bulk close's "to the right" label counts tabs in this order, and the user
+	// counts them by looking at the strip.
+	assert.deepEqual(
+		pooledTabs(tabs).map((tab) => tab.tabId),
+		[1, 4, 3, 5, 2],
+		"the rendered order is the grouped order",
+	);
+	// A single-group pool stays ONE group: the strip renders no chips unless there
+	// are two conversations in the pool (design R3), which is what keeps the pane's
+	// own conversation scope byte-identical to what it rendered before this change.
+	assert.equal(
+		groupTabsBySession(tabs.filter((tab) => tab.sessionId === "alice")).length,
+		1,
+		"one conversation is one group, and gets no label",
+	);
+
+	// KEYED FROM THE TAB SIDE, and unattributed tabs are in NO entry: they are not
+	// any conversation's, which is the same rule `tabsInScope` applies.
+	assert.deepEqual([...tabsBySession(tabs).keys()], ["alice", "bob"]);
+	assert.deepEqual(
+		tabsBySession(tabs)
+			.get("bob")
+			?.map((tab) => tab.tabId),
+		[3, 5],
+	);
+	assert.equal(tabsBySession(tabs).has("null"), false);
+});
+
+test("a conversation's summary counts its tabs, and reuses its entry when nothing changed", () => {
+	// The identity-reuse half is not a micro-optimisation: the sidebar renders every
+	// row in one scroll container with no virtualisation, so a new Map of new objects
+	// per browser event re-renders all forty rows for a change that touched one.
+	const tabs = [
+		{ tabId: 1, sessionId: "alice", loading: true },
+		{ tabId: 2, sessionId: "alice", failed: true },
+		{ tabId: 3, sessionId: "bob" },
+		{ tabId: 4, sessionId: null },
+	];
+	const requests = [
+		// Expired at `now`, and main prunes nothing: counting it would put a badge on
+		// a row for an ask that is over, which is the defect `approval-queue-model.ts`
+		// exists to prevent.
+		{ entryId: "r1", requesterSessionId: "alice", expiresAt: 1_000 },
+		{ entryId: "r2", requesterSessionId: "alice", expiresAt: 9_000 },
+		// A non-session requester belongs to no conversation (spec 7.2).
+		{ entryId: "r3", requesterSessionId: null, expiresAt: 9_000 },
+		{ entryId: "r4", requesterSessionId: "bob", expiresAt: 9_000 },
+	];
+	const first = summariseConversations(tabs, requests, 2_000);
+	assert.deepEqual(first.get("alice"), {
+		tabCount: 2,
+		loadingCount: 1,
+		failedCount: 1,
+		pendingApprovals: 1,
+	});
+	assert.deepEqual(first.get("bob"), {
+		tabCount: 1,
+		loadingCount: 0,
+		failedCount: 0,
+		pendingApprovals: 1,
+	});
+	assert.equal(
+		first.has("null"),
+		false,
+		"no summary is keyed on the unattributed set: a null key is not a conversation",
+	);
+
+	const second = summariseConversations(tabs, requests, 2_000, first);
+	assert.equal(
+		second.get("alice"),
+		first.get("alice"),
+		"an unchanged conversation hands back the SAME object, which is what stops its row re-rendering",
+	);
+	assert.equal(second.get("bob"), first.get("bob"));
+
+	// A change to ONE conversation must not disturb another's identity, and must
+	// produce a new object for the one that changed.
+	const third = summariseConversations(
+		tabs.map((tab) => (tab.tabId === 1 ? { ...tab, loading: false } : tab)),
+		requests,
+		2_000,
+		first,
+	);
+	assert.notEqual(
+		third.get("alice"),
+		first.get("alice"),
+		"a changed count is a changed entry",
+	);
+	assert.equal(third.get("bob"), first.get("bob"));
+	assert.equal(third.get("alice")?.loadingCount, 0);
+
+	// A conversation with a live request and no tabs of its own is present with a
+	// zero tab count rather than absent: the mark has to say "an agent here is
+	// waiting on you" for a conversation whose tab the user has already closed.
+	const waiting = summariseConversations(
+		tabs.filter((tab) => tab.sessionId !== "carol"),
+		[
+			...requests,
+			{ entryId: "r5", requesterSessionId: "carol", expiresAt: 9_000 },
+		],
+		2_000,
+	);
+	assert.deepEqual(waiting.get("carol"), {
+		tabCount: 0,
+		loadingCount: 0,
+		failedCount: 0,
+		pendingApprovals: 1,
+	});
+});
+
+test("the bulk closes resolve to the tabs the labels name", () => {
+	// Design R5 as the round-2 ruling reads it: `others` means every OTHER tab in the
+	// list the caller hands in, which is the host's own visible list. In the pane scoped
+	// to two tabs of a pool of eight the label reads `Close 1 other tab` — the truth about
+	// what that press closes — and the six tabs the host is not showing are left alone.
+	const tabs = [
+		{ tabId: 1, sessionId: null },
+		{ tabId: 2, sessionId: "alice" },
+		{ tabId: 3, sessionId: null },
+		{ tabId: 4, sessionId: "alice" },
+	];
+	assert.deepEqual(
+		closeOthersIntent(tabs, 2),
+		{ mode: "ids", tabIds: [4, 1, 3] },
+		"`others` excludes exactly the kept tab, in the order the strip shows",
+	);
+	assert.equal(
+		closeOthersIntent([{ tabId: 2, sessionId: "alice" }], 2),
+		null,
+		"one tab has no others, so the item is not offered",
+	);
+	assert.equal(closeOthersIntent([], 7), null, "nothing to close is no item");
+
+	// `to the right` is about the RENDERED order, which is the grouped one.
+	const pooled = pooledTabs(tabs);
+	assert.deepEqual(
+		closeToTheRightIntent(pooled, 2),
+		{ mode: "ids", tabIds: [4, 1, 3] },
+		"the tabs after the anchor in the grouped order the user is looking at",
+	);
+	assert.equal(
+		closeToTheRightIntent(pooled, 3),
+		null,
+		"the last tab in the order shows no `to the right` item",
+	);
+	assert.equal(
+		closeToTheRightIntent(pooled, 99),
+		null,
+		"an anchor that is not in the list closes nothing",
+	);
+
+	assert.deepEqual(closeConversationIntent("alice"), {
+		mode: "conversation",
+		sessionId: "alice",
+	});
+});
+
+test("the strip feeds `close others` the list it is showing, and nothing wider (the U7 ruling)", () => {
+	/*
+	 * WHY THIS IS A SOURCE ASSERTION rather than an input to the model: the model takes
+	 * whatever list it is handed, so the contract is the CALL SITE's, and a frame cannot
+	 * catch a violation of it (the label is honest about whatever the press does). Review
+	 * round 1 (A3) read design R5 as "the whole pool" and this branch threaded a second,
+	 * WIDER list into the strip — a `poolTabs` prop the pane filled with every tab it had —
+	 * so the item could count tabs the host was not showing. The operator's round-2 ruling
+	 * (U7) settled it the other way, and the code moved rather than the expectation: the
+	 * count is the scoped list the strip passes, because a scoped host's band must not close
+	 * tabs the user cannot see. The second list is gone from the component, so there is one
+	 * list and no pair that can drift apart.
+	 */
+	const strip = shippedSource(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	assert.match(
+		strip,
+		/closeOthersIntent\(tabs, actionsTabId\)/,
+		"`Close N other tabs` must be built from the strip's own `tabs`: what it shows is what the label counts and what the press closes",
+	);
+	assert.ok(
+		!strip.includes("poolTabs"),
+		"and no second, wider list is threaded into the strip, which is what the U7 ruling withdrew",
+	);
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.ok(
+		!surface.includes("poolTabs"),
+		"the pane — the one host whose visible list is narrower than the pool — passes one list only",
+	);
+});
+
+test("a conversation is named by its title, or by its id when it has none", () => {
+	const sessions = [
+		{ session_id: "alice", title: "Reports" },
+		{ session_id: "bob", title: "   " },
+		{ session_id: "carol", title: null },
+	];
+	assert.equal(sessionDisplayName("alice", sessions), "Reports");
+	assert.equal(
+		sessionDisplayName("bob", sessions),
+		"bob",
+		"a whitespace title is not a name",
+	);
+	assert.equal(sessionDisplayName("carol", sessions), "carol");
+	assert.equal(
+		sessionDisplayName("dave", sessions),
+		"dave",
+		"a session the list does not know is its own id, the same fallback the hand-over dialog uses",
+	);
+	// The requester sentence is built on the SAME rule (one rule, two callers).
+	assert.equal(requesterLabel("alice", sessions), "The agent in 'Reports'");
+	assert.equal(
+		requesterLabel("bob", sessions),
+		"The agent in conversation bob",
+	);
+	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
+	assert.equal(requesterLabel(null, sessions), "An agent");
+});
+
 test("both hosts render the page area under the same spinner, so one selector holds in both", () => {
 	const previousWindow = globalThis.window;
 	// The bridge the hook asks for. No effects run in a static render, so the
@@ -2237,12 +2753,28 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 		"and not the tab count, which is what it was for a round",
 	);
 	assert.ok(
-		strip.includes("+{tabsOffScreen}"),
-		"the count of tabs that are not shown is the control's own text",
+		/\n\s*\{tabsOffScreen\}\n\s*<\/span>/.test(strip),
+		"the count of tabs that are not shown is the control's own text, and it is the NUMBER rather than a second `+N`: U5's ruling is that the two affordances must not differ only by a digit after a plus, so the count carries no plus at all",
+	);
+	// AND IT IS A CHIP RATHER THAN A BARE PLUS (design review round 2, U5, ruled), which is
+	// what stops it reading as the strip's `+` (new tab) control at a glance: the count
+	// carries the tab chips' own grammar, and the new-tab control is bounded by its edge.
+	assert.ok(
+		strip.includes(
+			'"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums"',
+		),
+		"the count is drawn in the chip grammar",
 	);
 	assert.ok(
-		strip.includes("aria-label={`All tabs, ${tabsOffScreen} not shown`}"),
-		"and it is in the accessible name, not only in the tooltip",
+		strip.includes('variant="outline"') &&
+			strip.includes(
+				'className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"',
+			),
+		"the new-tab control is a bounded control, and the strip's own rule separates it from the count when both are on screen",
+	);
+	assert.ok(
+		strip.includes("`All tabs, ${tabsOffScreen} not shown`"),
+		"and it is in the accessible name, not only in the tooltip, in the words D10 revised: the count is measured from the rows' boxes, so a row clipped at its right edge is counted, and `not shown` is true of it where `more tabs` was not",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),
@@ -2251,6 +2783,288 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 });
 
 // ---- a failed navigation says so (design round 1, D1) ----------------------
+
+test("the chip cap keeps the three states that carry information and counts the rest (R4, fix 1)", () => {
+	// THE CAP IS `stateChips`, so the test drives the shipped rule rather than
+	// restating it. The combinations are the ones the file's own enumeration calls
+	// REACHABLE from the registry: `handOver` sets `owner` and `handedTo` together,
+	// so `Shared` is implied by `Agent`; `restored` is set at creation and never
+	// cleared; and `failed` and a waiting `Request n` stack on either.
+	const view = (overrides) => ({
+		tabId: 1,
+		owner: "user",
+		handedOver: false,
+		restored: false,
+		failed: false,
+		...overrides,
+	});
+	const agent = { owner: "agent" };
+	const cases = [
+		{
+			name: "one state",
+			tab: view({ failed: true }),
+			waiting: undefined,
+			shown: ["failed"],
+			collapsed: [],
+		},
+		{
+			name: "the implied pair {Agent, Shared}",
+			tab: view({ owner: "agent", handedOver: true }),
+			waiting: undefined,
+			shown: ["agent", "shared"],
+			collapsed: [],
+		},
+		{
+			name: "{Agent, Failed, Request n} — three, so nothing is hidden",
+			tab: view({ ...agent, failed: true }),
+			waiting: 1,
+			shown: ["request", "agent", "failed"],
+			collapsed: [],
+		},
+		{
+			name: "{Agent, Shared, Restored, Failed} — four, so the lowest-value state yields",
+			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
+			waiting: undefined,
+			shown: ["agent", "failed", "shared"],
+			collapsed: ["restored"],
+		},
+		{
+			name: "the five-state row — an ask, ownership and the failure survive; Shared and Restored do not",
+			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
+			waiting: 2,
+			shown: ["request", "agent", "failed"],
+			collapsed: ["shared", "restored"],
+		},
+		{
+			name: "{Restored, Failed, Request n} — Restored survives when it is not the fifth state",
+			tab: view({ restored: true, failed: true }),
+			waiting: 3,
+			shown: ["request", "failed", "restored"],
+			collapsed: [],
+		},
+	];
+	for (const entry of cases) {
+		const { shown, collapsed } = stateChips(entry.tab, entry.waiting);
+		assert.deepEqual(
+			[...shown].sort(),
+			[...entry.shown].sort(),
+			`${entry.name}: which chips are drawn`,
+		);
+		assert.deepEqual(
+			collapsed,
+			entry.collapsed,
+			`${entry.name}: which are collapsed, in priority order`,
+		);
+		assert.ok(
+			shown.size + collapsed.length <= 5,
+			`${entry.name}: the states are conserved, never relabelled`,
+		);
+		assert.ok(
+			shown.size <= 3,
+			`${entry.name}: never more than three chips inline`,
+		);
+	}
+	// THE PRIORITY IS THE SURVIVAL ORDER, asserted from the other side: with all five
+	// present, dropping exactly one sub-state at a time, `request` outlives `agent`
+	// outlives `failed` outlives `shared` outlives `restored`.
+	const all = view({
+		...agent,
+		handedOver: true,
+		restored: true,
+		failed: true,
+	});
+	assert.deepEqual([...stateChips(all, 1).shown].sort(), [
+		"agent",
+		"failed",
+		"request",
+	]);
+	assert.deepEqual(stateChips(all, 1).collapsed, ["shared", "restored"]);
+	assert.deepEqual([...stateChips(all, undefined).shown].sort(), [
+		"agent",
+		"failed",
+		"shared",
+	]);
+});
+
+test("every floor rung leaves the title the width the strip promises (R4, fix 1)", () => {
+	// THE INVARIANT IS A PURE FUNCTION (design R4), and it is read off the SHIPPED
+	// rung rather than restated here: `tabFloor` returns the classes, this maps each
+	// tier's token to the pixel width the spacing scale gives it, and the assertion is
+	// the title that is left. A rung edited without redoing the arithmetic fails here
+	// rather than in a frame somebody has to notice.
+	const SPACING_PX = {
+		"min-w-30": 120,
+		"min-w-31": 124,
+		"min-w-33": 132,
+		"min-w-36": 144,
+		"min-w-44": 176,
+		"min-w-48": 192,
+		"min-w-50": 200,
+		"min-w-56": 224,
+		"min-w-60": 240,
+		"min-w-62": 248,
+		"min-w-65": 260,
+		"min-w-72": 288,
+		"min-w-74": 296,
+		"min-w-77": 308,
+		"min-w-80": 320,
+		"min-w-84": 336,
+		"min-w-91": 364,
+		"min-w-96": 384,
+		"min-w-101": 404,
+		"min-w-[26rem]": 416,
+	};
+	/** The three rungs a single `tabFloor` string carries, by tier. */
+	const rungs = (floor) => {
+		const out = {};
+		for (const token of floor.split(" ")) {
+			if (token.startsWith("@max-2xl:"))
+				out.narrow = SPACING_PX[token.slice("@max-2xl:".length)];
+			else if (token.startsWith("@2xl:@max-6xl:"))
+				out.middle = SPACING_PX[token.slice("@2xl:@max-6xl:".length)];
+			else out.base = SPACING_PX[token];
+		}
+		assert.ok(
+			typeof out.base === "number",
+			`the rung names a base spacing step this test knows: ${floor}`,
+		);
+		// A TIER WITH NO TOKEN OF ITS OWN INHERITS THE WIDER ONE, which is how the
+		// cascade works and why `min-w-96 @max-2xl:min-w-84` is a floor at BOTH the base
+		// and the middle tier.
+		out.middle ??= out.base;
+		out.narrow ??= out.middle;
+		return out;
+	};
+	// MEASURED PILL WIDTHS, the same table the component's comment carries.
+	//
+	// AND THE ASSUMPTION THE LADDER BELOW RESTS ON, stated here because it is invisible
+	// from this file (review round 1, A9): the widest TWO-pill set is `{Request, Agent}`
+	// (105px), not the wider `{Request, Failed}` (110px), only because `waitingOrdinals`
+	// gates the wait marker on `owner === "agent"` — a tab the user opened is never
+	// parked, which the case "a parked tab's Waiting chip carries the ordinal of the
+	// request its origin is on" pins above ("only on the agent's own tabs"). So a
+	// `Request` pill always sits on an agent tab. If a user tab could ever be parked, the
+	// middle tier's exactly-85px rung (`min-w-60`: 240 − 32 − 110 − 18 = 80) would be
+	// under the promise this file makes, and both this table and the rung would have to
+	// change.
+	const PILL = {
+		request: 62,
+		agent: 43,
+		failed: 48,
+		shared: 43,
+		restored: 48,
+		collapsed: 36,
+	};
+	/** The widest set of pills at each reachable count, in the cap's priority order:
+	 * the cap spends `request`, then `agent`, then `failed`, and the collapse is ONE
+	 * pill whatever it hides. */
+	const widestPills = [
+		0,
+		PILL.request,
+		PILL.request + PILL.agent,
+		PILL.request + PILL.agent + PILL.failed,
+		PILL.request + PILL.agent + PILL.failed + PILL.collapsed,
+	];
+	/** A row's title at a tier: the floor, less the row's 32px of padding, the pills, the
+	 * 6px gaps (`pills + 1` of them), and - at the base and middle tiers only - the
+	 * active row's 68px in-flow cluster. THE CLUSTER IS `absolute` BELOW `@max-2xl`
+	 * (design round 1, fix 3: it is what lets the narrow rungs be pixels rather than
+	 * declarations), so the narrow tier's promise is the same subtraction without it -
+	 * which is the arithmetic D1's ruling is written from. */
+	const title = (floorPx, pills, active, narrow = false) =>
+		floorPx -
+		32 -
+		widestPills[pills] -
+		6 * (pills + 1) -
+		(active && !narrow ? 68 : 0);
+
+	const rows = [];
+	for (const active of [false, true]) {
+		for (let pills = 0; pills <= 4; pills += 1) {
+			const { base, middle, narrow } = rungs(tabFloor(active, pills));
+			rows.push({ active, pills, base, middle, narrow });
+			for (const [tier, floorPx, isNarrow] of [
+				["base", base, false],
+				["middle", middle, false],
+				["narrow", narrow, true],
+			]) {
+				assert.ok(
+					title(floorPx, pills, active, isNarrow) >= 85,
+					`${active ? "active" : "inactive"} ${pills}-pill row at the ${tier} tier (${floorPx}px): title ${title(floorPx, pills, active, isNarrow)}px, and the file promises 85`,
+				);
+			}
+		}
+	}
+	// The two rows that used to yield, quantified: the cap gives them a wider title
+	// than the five-pill ladder did, at the same floor.
+	const PRE_CAP = { 4: 196, 5: 244 };
+	assert.equal(
+		PILL.request + PILL.agent + PILL.failed + PILL.shared,
+		PRE_CAP[4],
+	);
+	assert.equal(
+		PILL.request + PILL.agent + PILL.failed + PILL.shared + PILL.restored,
+		PRE_CAP[5],
+	);
+	for (const present of [4, 5]) {
+		const capped = rows.find((row) => row.pills === 4 && row.active === false);
+		assert.ok(
+			title(capped.base, 4, false) >
+				capped.base - 32 - PRE_CAP[present] - 6 * 5,
+			`a ${present}-state inactive row keeps a wider title than the five-pill ladder left it`,
+		);
+	}
+
+	// THE NARROW TIER IS HELD TO THE SAME PROMISE, AT EVERY REACHABLE COUNT (design
+	// review round 2, D1). What this replaced was a weaker obligation - "the rung a row
+	// gets is never larger than the one it had before the cap" - which is a comparison
+	// rather than a floor: a row could satisfy it at any width and still clip its title.
+	// D1's frame was exactly that (a 640px pane, the title reduced to one glyph), so the
+	// assertion is now the same one the other two tiers take, and the counts it walks are
+	// the reachable ones: 0-4 pills, the cap being what makes 4 the ceiling (three states
+	// plus one collapse chip).
+	//
+	// THE NARROW RUNGS ARE THE RULING'S NUMBERS, restated here so an edit to the ladder
+	// that keeps this test green has to be an edit to both: inactive 124/192/240/296/336
+	// and active 192/260/308/364/404 for 0-4 pills.
+	for (const [active, expected] of [
+		[false, [124, 192, 240, 296, 336]],
+		[true, [192, 260, 308, 364, 404]],
+	]) {
+		assert.deepEqual(
+			expected.map((_, pills) => rungs(tabFloor(active, pills)).narrow),
+			expected,
+			`the ${active ? "active" : "inactive"} narrow rungs are the ladder D1's ruling settled: ${expected.join("/")}px`,
+		);
+	}
+	// The two rows the raised ladder is priced by, in the pane's own 640px: the common
+	// chip-less ACTIVE row (120 -> 192px) and the worst capped row (248 -> 404px). The
+	// numbers are asserted rather than described, because the ruling's cost argument is
+	// these two differences and nothing else.
+	assert.equal(rungs(tabFloor(true, 0)).narrow, 192);
+	assert.equal(rungs(tabFloor(false, 4)).narrow, 336);
+	assert.equal(rungs(tabFloor(true, 4)).narrow, 404);
+	// THE ARBITRARY LENGTH IS SINGULAR, which is the design's own simplification: one
+	// step past the spacing scale survives (`min-w-[26rem]`) instead of two, and no rung
+	// at any count uses anything else outside the scale.
+	const arbitrary = new Set();
+	for (const active of [false, true]) {
+		for (let pills = 0; pills <= 4; pills += 1) {
+			for (const token of tabFloor(active, pills).split(" ")) {
+				// The class without its container variant: `@2xl:@max-6xl:min-w-80` is
+				// `min-w-80` at the middle tier.
+				const step = token.slice(token.lastIndexOf(":") + 1);
+				// A spacing step is `min-w-<n>`; anything else is a length somebody chose.
+				if (!/^min-w-\d+$/.test(step)) arbitrary.add(step);
+			}
+		}
+	}
+	assert.deepEqual(
+		[...arbitrary],
+		["min-w-[26rem]"],
+		"exactly one step past the spacing scale is left in the ladder",
+	);
+});
 
 test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
 	const retried = [];

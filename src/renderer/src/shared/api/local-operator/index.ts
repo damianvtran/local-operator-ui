@@ -27,7 +27,6 @@ export { SchedulesApi } from "./schedules-api";
 export { SpeechApi } from "./speech-api";
 export { StaticApi } from "./static-api";
 export { TranscriptionApi } from "./transcription-api";
-export { WebSocketApi } from "./websocket-api";
 
 // Export all types
 export type {

@@ -21,6 +21,20 @@ export const desktopKeys = {
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
+	/**
+	 * One session's stored credential NAMES, as the picker's list reads them.
+	 *
+	 * A factory rather than a constant because the key carries the session, and it
+	 * is here rather than at its readers because TWO of them exist now: the picker
+	 * that lists the names (`destination-pickers.tsx`) and the composer's store seam,
+	 * which has to invalidate this key after a store. QA round 1's Q-5 is what a
+	 * second copy of the string costs — the picker mounted over a list it had cached
+	 * five minutes earlier and rendered "No credentials stored yet." while the same
+	 * route answered with the name that had just been stored, so the row the user
+	 * came for was not on screen to click.
+	 */
+	credentials: (sessionId: string) =>
+		["desktop", "credentials", sessionId] as const,
 };
 
 /**
@@ -272,7 +286,48 @@ export type DesktopFeature =
 	 * user cannot get and a disabled pin reads as a feature they have not
 	 * unlocked (the `session_interrupt` precedent).
 	 */
-	| "session_pins";
+	| "session_pins"
+	/**
+	 * `references`: the harness expands a draft's `@path` tokens into file content
+	 * before the message reaches the model.
+	 *
+	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and it is the one gate in
+	 * this file whose key no backend advertises yet. That is the point of it rather
+	 * than an oversight: the expansion is a HARNESS behaviour, it is not released
+	 * (no tag through `v0.56.8` carries `local_operator/references.py`, and the half
+	 * that adds it is PR #1220, in review), and the harness publishes no route for
+	 * it — the whole feature is two Python modules, with no server surface at all.
+	 * So a composer that offered a picker and painted chips on today's install would
+	 * be promising an expansion nothing on the machine performs: the user picks a
+	 * file, gets a chip that says "this is a reference", and the model receives the
+	 * literal characters. `desktopFeatureEnabled` fails closed, so absent (or
+	 * absent `desktop_available`) means the picker never opens and no chip is ever
+	 * painted — the honest state, and the reason this key is here before its writer.
+	 *
+	 * WHAT HAS TO HAPPEN FOR THE AFFORDANCE TO APPEAR: the harness half adds
+	 * `"references": 1` to `features` in
+	 * `local_operator/server/routes/capabilities.py`. That is a one-line change on
+	 * the other side of this contract and it is NOT part of this repository. Named
+	 * where a reader will meet it (the PR body, the review finding) because it is
+	 * load-bearing for the release: until it lands, this feature ships dark by
+	 * design.
+	 */
+	| "references"
+	/**
+	 * `attention.seen`: marking MANY completions read in one gesture
+	 * (`POST /v1/desktop/attention/seen`), which the sidebar's "Mark all as read"
+	 * control rides.
+	 *
+	 * Its OWN key rather than a bump of `completion_ack`, on the rule
+	 * `session_search` and `draft_preview` state above: the per-session receipt is
+	 * an EXISTING surface that must keep working against a backend which has the
+	 * single route and not the batch one, and nothing else is gated on
+	 * `completion_ack`'s version. Absent here means the control is not rendered at
+	 * all — never a control that 404s when it is clicked, because a mark cleared
+	 * by a request that failed is a mark the user believes is gone while it is
+	 * still there.
+	 */
+	| "completion_ack_bulk";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

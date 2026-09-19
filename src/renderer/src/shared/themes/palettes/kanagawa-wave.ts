@@ -14,6 +14,22 @@ import type { ThemeDefinition } from "../palette-contract";
  *
  * Roles the scheme has no value for follow the derivation rules recorded in
  * `rose-pine.ts`.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const kanagawaWave: ThemeDefinition = {
 	id: "kanagawaWave",
@@ -22,21 +38,55 @@ export const kanagawaWave: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +4.98, elevated +10.65, sunken -4.59 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #1F1F28 -> #1F1F28 (L* 12.12 -> 12.12)
+		 * surface #2A2A37 -> #292936 (L* 17.57 -> 17.1)
+		 * elevated #363646 -> #313140 (L* 23.22 -> 20.90)
+		 * sunken #16161D -> #16161D (L* 7.53 -> 7.53)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
 		canvas: "#1F1F28",
-		surface: "#2A2A37",
-		elevated: "#363646",
+		surface: "#292936",
+		elevated: "#313140",
 		sunken: "#16161D",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.14 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.04 from `surface`, 2.66 from `elevated` and 10.56 from `sunken`;
-		 * the step is 4.34 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 5.08:1 the ink that binds it.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #242E40  accent hue, C* 12.78, +1.69 L*, ΔE00 4.91 off `surface`,
+		 *                       `inkDim` 5.68:1 on the fill, hue 0.91° off `accent`.
+		 * rowSelected #2F3540  accent hue, C* 7.72, +4.92 L*, ΔE00 5.37 off
+		 *                       `surface` and 4.18 off `rowHover`, `inkDim` 5.14:1, and the
+		 *                       2px `accent` bar at 5.46:1 against it.
+		 *
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 21.41, just past the
+		 * min(0.75 x C*(accent), 24) ceiling, and was one of the named exceptions -
+		 * the value only reached that chroma because the old 6.0 separation made the
+		 * fill chase it. The separation rides the `accent` bar and `font-medium`
+		 * now, so the ceiling holds with room to spare and the exception is gone.
 		 */
-		highlight: "#2F3445",
+		rowHover: "#242E40",
+		rowSelected: "#2F3540",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",
@@ -44,7 +94,17 @@ export const kanagawaWave: ThemeDefinition = {
 		inkMuted: "#C8C093",
 		// springViolet1 938AA9 is 3.64:1 on `elevated`, under the 4.5 floor;
 		// lifted on-hue.
-		inkDim: "#A9A3B8",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.15:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#ABA4BA",
 		// fujiGray, the scheme's own comment colour.
 		inkDisabled: "#727169",
 
@@ -62,8 +122,30 @@ export const kanagawaWave: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 9.6:1 on surface, where the accent is
 		// 6.3:1.
 		chartBarHover: "#BBD6FF",
+		tokenCommand: "#7DAAA1",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A2D3A",
 		onAccent: "#1F1F28",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#957FB8`,
+		 * canonical oniViolet), moved onto the floors: as received it read 4.10:1
+		 * as text on `surface`. The shortfall is paid on LIGHTNESS at the source
+		 * hue — L* 57.10 → 60.16 — which is what this port does to every one of its
+		 * own tokens. Measured: ΔE00 15.59 from `accent`, 29.18 from its nearest
+		 * semantic (`danger`), 4.55:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#9D87C0",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.69 and C* 8.99, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -1.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 4.61 from
+		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
+		 * 2.73 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#2D2835",
 
 		// springGreen.
 		success: "#98BB6C",

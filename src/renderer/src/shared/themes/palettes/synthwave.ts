@@ -30,9 +30,35 @@ import type { ThemeDefinition } from "../palette-contract";
  * `edge-hi` lifted to 3:1 on `elevated`; the shadow and scrim `canvas` at 40%,
  * so they carry this palette's cast rather than neutral black.
  *
- * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
- * here: this contract has no popover ground, no second label hue and no
- * selection tint, so the tints above are derived from the accent instead.
+ * `accentAlt`, from the same change, is this family's own `label` token — the one
+ * non-neutral hue the port dropped — taken unchanged where it already clears the
+ * floors and otherwise walked off its own hue, which each palette's note below
+ * says by how much; `accentAltWash` is that hue carrying `accentWash`'s own `L*`
+ * and `C*`, which is what "the same treatment" means once the two hues have
+ * different chroma available at that lightness. Both roles are decorative: no
+ * interaction, no selection ground and no semantic may take them — the divider
+ * is in `palette-contract.ts` and `docs/branding.md` § 2.
+ *
+ * The TUI's `overlay`, `string` and five `tint-*` tokens have no role here: this
+ * contract has no popover ground and no selection tint, so the tints above are
+ * derived from the accent instead. Its `label` token is the one that does land,
+ * as `accentAlt` above.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const synthwave: ThemeDefinition = {
 	id: "synthwave",
@@ -43,23 +69,40 @@ export const synthwave: ThemeDefinition = {
 
 		canvas: "#262335",
 		surface: "#2D2A41",
-		elevated: "#35314C",
+		elevated: "#332F4A",
 		sunken: "#1E1B2A",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule —
-		 * and stepped 3.27 on the `L*` axis, which is the whole of what the band needed:
-		 * ΔE00 4.02 from `surface` (4.52 before design round 3's D1 re-derivation), 2.43
-		 * from `elevated`, 9.24 from `sunken`, `inkDim` 4.65:1.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #362E33  accent hue, C* 5.06, +1.61 L*, ΔE00 9.06 off `surface`,
+		 *                       `inkDim` 5.46:1 on the fill, hue 1.09° off `accent`.
+		 * rowSelected #4A2D41  accent hue, C* 18.32, +4.36 L*, ΔE00 10.58 off
+		 *                       `surface` and 10.87 off `rowHover`, `inkDim` 5.00:1, and the
+		 *                       2px `accent` bar at 5.31:1 against it.
 		 */
-		highlight: "#392F4B",
+		rowHover: "#362E33",
+		rowSelected: "#4A2D41",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",
 		// The TUI `dim` 848BBD lifted in L* with hue held: it measured 4.22 on
 		// `surface` and 3.78 on `elevated`, and this app draws tertiary text on both.
-		inkDim: "#949BCD",
-		// The TUI `faint` 575071 lifted to 2.3:1 on `elevated`.
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `accentWash` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#9DA4D6",
+		// The TUI `faint` 575071 lifted to 2.37:1 on `elevated`.
 		inkDisabled: "#6D6688",
 
 		// The TUI `edge` 443F5E, already inside the hairline's 1.15-2.0:1 band and
@@ -75,10 +118,33 @@ export const synthwave: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.7 from
 		// `accent` and 8.17:1 on `surface`, where the accent measures 6.10:1.
 		chartBarHover: "#F9B0E8",
+		tokenCommand: "#36F9F6",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#422F4B",
 		// The canvas at 42% of its L*: this accent is far too light for a light label
 		// to clear 4.5:1 on it.
 		onAccent: "#151123",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b893ce`),
+		 * moved onto the floors: as received it sat ΔE00 13.89 from `accent`. That
+		 * is paid on HUE — the hue walked 14.5° off the source and L* 66.15 → 65.57
+		 * — because a value that bought the separation by darkening would be the
+		 * same hue at another weight. Measured: ΔE00 19.95 from `accent`, 31.78
+		 * from its nearest semantic (`danger`), 5.24:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#A397D6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 22.65 and C* 20.30, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -3.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 5.64 from
+		 * `accentWash` (the field floor is 2.0), 5.08:1 for `accentAlt` on it, and
+		 * 2.06 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#302B48",
 
 		// 72F1B8, published — the same value the TUI uses for `string`.
 		success: "#72F1B8",
@@ -95,7 +161,15 @@ export const synthwave: ThemeDefinition = {
 		// in L* with hue and chroma held to 4.61:1 — ΔE00 7.7 from the published red.
 		// Darkening `elevated` instead cannot work: the floor needs a ground darker
 		// than `canvas` itself, which would collapse the four-step ramp.
-		danger: "#FF7072",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		danger: "#FF7173",
 		dangerWash: "#422D3D",
 		dangerBorder: "#B36D76",
 

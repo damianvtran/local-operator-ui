@@ -22,6 +22,8 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
+	type DirectoryListing,
+	type FileActionOutcome,
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
@@ -59,13 +61,19 @@ import {
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
+	listDirectory,
+	outsideWorkspace,
+	realPathOrNull,
+	resolveUserPath as resolveUserPathWith,
+} from "./directory-listing";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
-import { UpdateService } from "./update-service";
+import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import {
@@ -75,6 +83,7 @@ import {
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
 	describeWindowLaunch,
+	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
 	windowIntentPayload,
@@ -87,12 +96,15 @@ import {
 	type SecondLaunchRequest,
 	applySecondLaunch,
 	canCreateWindowFor,
+	canRetargetWindow,
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
+	reportConversationReplaced,
 	reportParked,
 	reportParkedDelivered,
 	reportParkedEvicted,
+	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
 } from "./window-raise";
@@ -102,26 +114,19 @@ const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 /**
  * The ONE path-resolution rule for every local-file IPC handler.
  *
- * Four handlers used to spell it themselves (`read-file`, `save-file`,
- * `file-exists`, and `directory-exists` with a third variant that also accepted
- * a bare `~`), and a fifth spelling is exactly how the panel would end up
- * disagreeing with the editor about which file a path names. `~` is expanded
- * here because this is the only process that has `app.getPath("home")`; the
- * renderer deliberately never guesses a home directory.
+ * The RULE itself lives in `./directory-listing` and is executed from there by
+ * `scripts/directory-listing.test.mjs`, because this file boots Electron on
+ * import and so cannot be exercised by a test — and the rule is load-bearing for
+ * the composer's `@` picker as well as for the Files panel. What stays here is
+ * the one thing only this process can supply: `app.getPath("home")`.
  *
- * `cwd` is for the one caller that has one — `probe-files` — where a relative
- * candidate from a tool argument is resolvable against the session's working
- * directory. It is applied only to a relative path, so an absolute path is
- * always taken literally.
+ * `cwd` is for the two callers that have one — `probe-files` and
+ * `list-directory`, the pair a picker asks per keystroke — where a relative
+ * candidate is resolvable against the session's working directory. It is applied
+ * only to a relative path, so an absolute path is always taken literally.
  */
-const resolveUserPath = (filePath: string, cwd?: string): string => {
-	if (filePath === "~") return app.getPath("home");
-	if (filePath.startsWith("~/"))
-		return join(app.getPath("home"), filePath.slice(2));
-	if (cwd && !filePath.startsWith("/"))
-		return join(cwd.startsWith("~/") ? resolveUserPath(cwd) : cwd, filePath);
-	return filePath;
-};
+const resolveUserPath = (filePath: string, cwd?: string): string =>
+	resolveUserPathWith(filePath, cwd, app.getPath("home"));
 
 export type ReadFileResponse =
 	| { success: true; data: string }
@@ -296,6 +301,77 @@ function pickerFallbackDirectory(): string {
 	return app.getPath("home");
 }
 
+/**
+ * The copyright line, read from the app's own manifest.
+ *
+ * Why read it rather than repeat it here: `build.copyright` in package.json is
+ * the one place the project states this, and it is what electron-builder stamps
+ * into the packaged bundle's `NSHumanReadableCopyright`. A second copy in this
+ * file would drift from that silently; this cannot. The read is a few KB once at
+ * startup, and a failure omits the line rather than failing the launch - an About
+ * panel without a copyright is a cosmetic loss and a launch that dies is not.
+ */
+function bundledCopyright(): string | undefined {
+	try {
+		const manifest = JSON.parse(
+			readFileSync(join(app.getAppPath(), "package.json"), "utf8"),
+		) as { build?: { copyright?: unknown } };
+		const copyright = manifest.build?.copyright;
+		return typeof copyright === "string" && copyright.length > 0
+			? copyright
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * The About panel's own identity, for the launches that have no bundle of ours.
+ *
+ * macOS fills this panel from the APP BUNDLE, and an unpackaged launch - which is
+ * how every rig, QA harness and `npx electron .` boots this app - has no bundle
+ * of its own: the panel is Electron.app's, so it renders "Electron / Version
+ * 44.3.0 (44.3.0)" under Electron's icon while the app's real identity is
+ * `productName` "Local Operator". Registering the options explicitly is what
+ * makes the panel describe the app rather than the runtime hosting it, and it is
+ * done for every mode that may raise the panel at all, because the label must not
+ * depend on which mode asked for it.
+ *
+ * `applicationVersion` is the app's own version (`package.json`, the version
+ * source of truth). The parenthesised `version` is a BUILD string: macOS puts it
+ * in the second half of the version line, and left to itself it fills that half
+ * with the same number again, so "Version 0.26.11 (0.26.11)" is a line that tells
+ * a reader nothing about the run in front of them. Naming the desktop host, and
+ * whether the bundle is the shipped one, is what makes a panel from an agent run
+ * legible as one.
+ */
+function configureAboutPanel(): void {
+	if (process.platform !== "darwin") return;
+
+	const copyright = bundledCopyright();
+	app.setAboutPanelOptions({
+		/*
+		 * The name the panel must read. It is the app's own name, not a copy of the
+		 * bundle's: `app.name` resolves from `productName` in the app's package.json
+		 * - the same string electron-builder writes into a packaged bundle - so the
+		 * panel and the menu beside it cannot name the app differently.
+		 */
+		applicationName: app.name,
+		applicationVersion: app.getVersion(),
+		version: `Electron ${process.versions.electron}${app.isPackaged ? "" : ", unpackaged"}`,
+		// Omitted entirely when there is no line to read, rather than passed as
+		// undefined: the panel keeps the bundle's own for a packaged build, which is
+		// the same string.
+		...(copyright === undefined ? {} : { copyright }),
+	});
+}
+
+/**
+ * Create the application menu.
+ *
+ * macOS-only items are prepended below, and the About item carries a handler of
+ * its own rather than Electron's `about` role: see the comment on it.
+ */
 function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
@@ -431,7 +507,30 @@ function createApplicationMenu(): void {
 		template.unshift({
 			label: app.name,
 			submenu: [
-				{ role: "about" },
+				/*
+				 * The About action is a handler of its own rather than Electron's `about`
+				 * role, because a role's click goes straight to AppKit's panel and there is
+				 * nothing in between to gate: `headless` must raise no window at all
+				 * (`resolveAboutPanelAction`), and the panel's OWN identity is registered
+				 * once at startup (`configureAboutPanel`). The label keeps the role's
+				 * phrasing and takes the name from `app.name` the way the role did.
+				 */
+				{
+					label: `About ${app.name}`,
+					click: () => {
+						if (resolveAboutPanelAction(windowLaunch.mode) === "suppress") {
+							// A line rather than silence: an action that nothing reached and a
+							// panel that failed to appear are otherwise the same absence, to the
+							// operator and to a rig.
+							logger.info(
+								`[about-panel] suppressed by window mode ${windowLaunch.mode}: a ${windowLaunch.mode} run raises no window`,
+								LogFileType.BACKEND,
+							);
+							return;
+						}
+						app.showAboutPanel();
+					},
+				},
 				{ type: "separator" as const },
 				{ role: "services" },
 				{ type: "separator" as const },
@@ -806,7 +905,14 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
  * my focus whenever a chat completes" — was unanswerable in production because
  * nothing recorded who had just raised the window; this is what makes the next
  * one attributable. `never` raises nothing and logs nothing, so a headless run
- * still leaves no trace.
+ * still leaves no trace by raising.
+ *
+ * THE ONE LINE THIS LOG CARRIES THAT IS NOT A RAISE is
+ * `reportConversationReplaced`'s (`window-raise.ts`): under `never` a delivery
+ * reaches the renderer and reports nothing at all while the panel still re-keys on
+ * the session, so that line is the only account of a replacement having happened —
+ * which is why it is written for EVERY delivery that replaces a conversation rather
+ * than for the viewer's alone (UX round 1, U1/U2; round 2, U7).
  */
 const reportRaise: RaiseReport = (line) => {
 	logger.info(`[window-raise] ${line}`, LogFileType.BACKEND);
@@ -824,8 +930,12 @@ const reportRaise: RaiseReport = (line) => {
  *
  * The effect sentence is this process's OWN resolved mode, because that is the mode
  * it just handed over — and it stops short of promising anything now: a `headless`
- * request's conversation is delivered when a window is OPEN, not when the request
- * lands, which is what the mechanism can actually do (UX review round 2, U5).
+ * request's conversation is delivered when the app has a window to deliver it to, not
+ * when the request lands, which is what the mechanism can actually do (UX review
+ * round 2, U5). WHICH window that is, said exactly (UX review round 2, U6): the one
+ * already open, or — when that one is in use, and always when the app has none — the
+ * next window the app CREATES, because a parked request is drained by a window's
+ * creation and by nothing else.
  */
 function describeForwardedLaunch(
 	profile: string,
@@ -858,7 +968,7 @@ function describeForwardedLaunch(
 		windowLaunch.show === "never"
 			? named === null
 				? `${handed}, so nothing is waiting to be opened, and it will not raise a window in the meantime`
-				: `${handed}: the app will open it once a window is open, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
+				: `${handed}: the app will open it in the window it already has open, or in the next window it creates when that window is in use or there is none, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
 			: windowLaunch.show === "inactive"
 				? `${handed}; the app may order its window forward without activating it`
 				: `${handed}; the app will raise its window`;
@@ -1067,22 +1177,45 @@ const PARKED_LAUNCH_LIMIT = 16;
  * `request` is the raise plan of the launch that asked, so the eventual delivery
  * raises as far as THAT launch allowed rather than as far as this process's plan
  * does — the whole point of the queue.
+ *
+ * `why` names WHICH rule parked it, because the two are different promises and one
+ * line has to tell them apart: `unreachable` is a request that must not be shown
+ * arriving where there is nothing to show it on, and `in-use` is a delivery that
+ * would have taken the conversation the operator is working in. Both words go into
+ * the queue identically — the reason only decides the line, so a park cannot be
+ * half-applied. `reportParkedInUse` carries what the second one costs a caller.
+ *
+ * EVERY LINE ABOUT THIS ENTRY CARRIES THE ENTRY'S OWN PLAN (`request.show`), not
+ * the `never` an ordinary park usually is: a second launch parked before the app
+ * could answer it declared a mode for itself, and a log that prints `never` for a
+ * `focus`-class request is the same inaccuracy the in-use path was given its own
+ * plan argument to avoid (review round 1, MINOR-2).
  */
-function parkLaunch(session: string, request: RaiseRequest): void {
+function parkLaunch(
+	session: string,
+	request: RaiseRequest,
+	why: "unreachable" | "in-use" = "unreachable",
+): void {
 	parkedLaunches.push({ session, request });
-	reportParked(session, {
+	const parkLine = {
 		trigger: request.trigger,
 		requester: request.requester,
 		report: reportRaise,
-	});
+	};
+	if (why === "in-use") reportParkedInUse(session, request.show, parkLine);
+	else reportParked(session, parkLine, request.show);
 	if (parkedLaunches.length <= PARKED_LAUNCH_LIMIT) return;
 	const evicted = parkedLaunches.shift();
 	if (evicted) {
-		reportParkedEvicted(evicted.session, {
-			trigger: evicted.request.trigger,
-			requester: evicted.request.requester,
-			report: reportRaise,
-		});
+		reportParkedEvicted(
+			evicted.session,
+			{
+				trigger: evicted.request.trigger,
+				requester: evicted.request.requester,
+				report: reportRaise,
+			},
+			evicted.request.show,
+		);
 	}
 }
 
@@ -1094,8 +1227,8 @@ function parkLaunch(session: string, request: RaiseRequest): void {
  * previous form emptied the queue into a single `did-finish-load` callback, so a
  * window that was closed — or whose renderer died — before that event took EVERY
  * claimed conversation with it: no line, no re-park, nothing left to open, while
- * each losing launch had been told the conversation is delivered once a window is
- * open. The queue is the only place a conversation can wait for another window, so
+ * each losing launch had been told the conversation is delivered by the next window
+ * the app creates. The queue is the only place a conversation can wait for another window, so
  * an entry leaves it when the send happens and not when the window is created. If
  * the window dies first the entries are still in the queue and the log says so
  * (`reportParkedLeftWaiting`), so the operator's next window opens them.
@@ -1118,19 +1251,36 @@ function claimParkedFor(
 			const at = parkedLaunches.indexOf(queued);
 			if (at === -1) continue;
 			parkedLaunches.splice(at, 1);
-			reportParkedDelivered(queued.session, {
-				trigger: queued.request.trigger,
-				requester: queued.request.requester,
-				report: reportRaise,
-			});
 			/*
 			 * `painted` is the entry this window was CREATED for, and it is delivered
 			 * like every other one — but not by `send`: the renderer was launched with
 			 * it as its initial session, so this window's first frame IS the delivery,
 			 * and sending it as well would open the conversation twice.
 			 */
-			if (queued === painted) continue;
-			deliver(queued.session, queued.request);
+			if (queued !== painted) deliver(queued.session, queued.request);
+			/*
+			 * THE DELIVERED LINE FOLLOWS THE DELIVERY (QA round 1, Q-1 / review round 1,
+			 * MAJOR-2). It used to be reported BEFORE `deliver` ran, which was sound only
+			 * while `deliver` could not refuse: it can — the drain hands entries back to
+			 * the gated `openSessionInWindow` — and the log then asserted
+			 * `applied=delivered` for the same id it re-parked one line later with zero
+			 * sends, so a conversation could be reported as arrived while it waited for
+			 * yet another window. Reported after the send, the line is a statement about
+			 * something that happened.
+			 *
+			 * `queued.request.show` rather than the `never` default, for the reason
+			 * `parkLaunch` gives: one entry must not be described under two modes in one
+			 * log.
+			 */
+			reportParkedDelivered(
+				queued.session,
+				{
+					trigger: queued.request.trigger,
+					requester: queued.request.requester,
+					report: reportRaise,
+				},
+				queued.request.show,
+			);
 		}
 	});
 	window.once("closed", () => {
@@ -1141,11 +1291,17 @@ function claimParkedFor(
 		 */
 		for (const queued of claimed) {
 			if (!parkedLaunches.includes(queued)) continue;
-			reportParkedLeftWaiting([queued.session], {
-				trigger: queued.request.trigger,
-				requester: queued.request.requester,
-				report: reportRaise,
-			});
+			// `queued.request.show` for the reason `parkLaunch` gives: this entry's own
+			// plan, not the `never` an ordinary park usually is (review round 1, MINOR-2).
+			reportParkedLeftWaiting(
+				[queued.session],
+				{
+					trigger: queued.request.trigger,
+					requester: queued.request.requester,
+					report: reportRaise,
+				},
+				queued.request.show,
+			);
 		}
 	});
 	return claimed.length;
@@ -1454,6 +1610,60 @@ app
 			app.exit(0);
 			return;
 		}
+
+		/*
+		 * A launch that finds its own install still running gets out of the way.
+		 *
+		 * WHY IT IS THIS EARLY, AND WHAT IT SAVES. An install four minutes into its
+		 * work was aborted on 2026-09-18 (`Aborting update attempt because there are 1
+		 * running instances of the target app`, `SQRLInstallerErrorDomain Code=-9`)
+		 * because the app was open while it was installing: ShipIt asks whether any
+		 * instance of the target app is running as its LAST check before the swap, so
+		 * any instance at all spends the whole wait. Building a window and starting a
+		 * backend is what makes an instance; a process that only has to raise one
+		 * banner and quit is not one for the two seconds it lives, and nothing below
+		 * here is started for it - no menu, no backend, no browser host, no window.
+		 *
+		 * WHAT IT DOES NOT TOUCH. The marker, the install's launchd job and the
+		 * staging tree are left exactly as they are, because they are the install's
+		 * and its own watchdog is what completes it; a marker that is stale, or one
+		 * whose job is gone, is not this path at all and opens normally so recovery
+		 * can explain what happened; and the notice's promise that the app returns is
+		 * kept by the same watchdog ensure every other quit path uses, which happens
+		 * before this process stops being able to make it.
+		 *
+		 * The decision and its bounds are `holdLaunchForLiveInstall` in
+		 * `update-service.ts`; this is only the place in the launch that acts on it.
+		 */
+		if (
+			holdLaunchForLiveInstall({
+				log: (message) => logger.info(message, LogFileType.UPDATE_SERVICE),
+			})
+		) {
+			return;
+		}
+
+		/*
+		 * The app's own menu, installed BEFORE THIS HANDLER AWAITS ANYTHING.
+		 *
+		 * Why the position is load-bearing rather than tidy (code review round 1,
+		 * F1): until this runs, Electron's DEFAULT application menu is live, and its
+		 * first item is `About Electron` carrying Electron's own `about` role - a
+		 * click with no handler of ours in the path, so the window mode cannot
+		 * suppress it and a `headless` run has an un-gated About item for as long as
+		 * this install has not happened. It used to sit below the backend startup in
+		 * this handler, which is seconds of an agent-triggerable panel for every
+		 * launch that has to install or reach a backend.
+		 *
+		 * Nothing below is needed to build it: the template reads `app.name`,
+		 * `process.env.ELECTRON_RENDERER_URL` and the module-level `mainWindow`
+		 * (through handlers that check it at click time), all of which exist here.
+		 * It sits after the smoke-test branch above on purpose - that path exits the
+		 * process immediately and wants no menu - and still before any `await` in
+		 * this handler.
+		 */
+		configureAboutPanel();
+		createApplicationMenu();
 
 		/*
 		 * A headless run does not outlive the process that launched it.
@@ -1772,14 +1982,45 @@ app
 			});
 		}
 
-		// Add IPC handlers for opening files and URLs
-		ipcMain.handle("open-file", async (_, filePath) => {
-			try {
-				await shell.openPath(filePath);
-			} catch (error) {
-				console.error("Error opening file:", error);
-			}
-		});
+		/*
+		 * Opening a file, and revealing one, both go through `resolveUserPath`.
+		 *
+		 * They used to spell the path themselves, which is how a `~/…` target
+		 * failed: `shell.openPath` does not expand a tilde, so every path the
+		 * transcript now renders as a link - and every path the agent writes that
+		 * way, which is most of them - opened nothing at all. `read-file`,
+		 * `save-file` and `file-exists` already routed through the helper; these
+		 * two are the handlers that did not, and the ONE resolution rule is what
+		 * keeps them agreeing with the rest of the app about which file a path
+		 * names.
+		 *
+		 * Both answer with an OUTCOME rather than `void`, because both used to
+		 * discard the half that says whether anything happened: `shell.openPath`
+		 * RETURNS its error string (it does not throw), and `showItemInFolder`
+		 * returns nothing at all - and reveals the parent of a path that does not
+		 * exist without complaint. The transcript's link toolbar renders that
+		 * answer (`No file at …`) instead of a press that looks broken.
+		 */
+		ipcMain.handle(
+			"open-file",
+			async (_, filePath: string): Promise<FileActionOutcome> => {
+				const resolved = resolveUserPath(filePath);
+				try {
+					const failure = await shell.openPath(resolved);
+					if (failure) {
+						return { ok: false, resolved, error: failure };
+					}
+					return { ok: true, resolved };
+				} catch (error) {
+					console.error("Error opening file:", error);
+					return {
+						ok: false,
+						resolved,
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
+			},
+		);
 
 		ipcMain.handle(
 			"read-file",
@@ -1820,18 +2061,37 @@ app
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
+				/*
+				 * The workspace root the containment verdict is measured against, resolved
+				 * ONCE per batch: it is the same directory for every path asked about, and
+				 * `realpath` on it per path would pay for one answer sixty-four times.
+				 * `null` when no cwd was given, which is a caller that cannot get a
+				 * verdict rather than a caller that gets "inside".
+				 */
+				const realRoot = cwd ? realPathOrNull(resolveUserPath(cwd)) : null;
 				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
 					let resolved = input;
 					try {
 						resolved = resolveUserPath(input, cwd);
 						const stat = statSync(resolved, { throwIfNoEntry: false });
+						const exists = stat !== undefined;
 						return {
 							input,
 							resolved,
-							exists: stat !== undefined,
+							exists,
 							isFile: stat?.isFile() ?? false,
 							sizeBytes: stat?.isFile() ? stat.size : null,
 							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
+							/*
+							 * The containment verdict, and the reason it is asked ONLY of a path
+							 * that exists: the one caller that reads it (the composer's `@` chip)
+							 * asks the question about a candidate reference, so a path that is not
+							 * there costs no second syscall — and a miss is the common case on the
+							 * keystroke path this runs on.
+							 */
+							outsideWorkspace: exists
+								? outsideWorkspace(realPathOrNull(resolved), realRoot)
+								: undefined,
 						};
 					} catch (error) {
 						// A genuine fault - permission, a stale network mount - is not the
@@ -1848,6 +2108,38 @@ app
 						};
 					}
 				});
+			},
+		);
+
+		/*
+		 * One directory's listable entries, for a picker that offers rows from the
+		 * filesystem.
+		 *
+		 * WHY THIS EXISTS AT ALL: the renderer cannot read a directory and
+		 * `probe-files` answers existence, not membership, so a picker over the working
+		 * directory has nothing to offer without it. It is ONE level by construction:
+		 * a recursive walk on a keystroke path is the cost `scan_directory` in the
+		 * harness spends a module docstring refusing, and deepening is the caller's
+		 * business — it asks again for the directory the user typed a `/` into.
+		 *
+		 * The path goes through the SAME `resolveUserPath` as every other local-file
+		 * handler, so `~`, a relative path and an absolute path mean here exactly what
+		 * they mean to `probe-files` — the two calls a picker makes per keystroke
+		 * cannot disagree about which directory they are describing.
+		 */
+		ipcMain.handle(
+			"list-directory",
+			async (_, dir: unknown, cwd?: string): Promise<DirectoryListing> => {
+				const target = typeof dir === "string" && dir.length > 0 ? dir : ".";
+				/*
+				 * AWAITED, not returned bare, because this handler is on the ONE process
+				 * that serves every other IPC in the app. `listDirectory` reads the
+				 * directory asynchronously and bounds its own candidate list
+				 * (`DIRECTORY_SCAN_LIMIT`), which is what keeps a pathological directory
+				 * from stalling the window: a synchronous `readdir` of 200,000 entries
+				 * measured 236ms of blocked main thread on a 60ms-debounced keystroke path.
+				 */
+				return await listDirectory(resolveUserPath(target, cwd));
 			},
 		);
 
@@ -1932,13 +2224,38 @@ app
 			}
 		});
 
-		ipcMain.handle("show-item-in-folder", async (_, filePath) => {
-			try {
-				shell.showItemInFolder(filePath);
-			} catch (error) {
-				console.error("Error showing item in folder:", error);
-			}
-		});
+		ipcMain.handle(
+			"show-item-in-folder",
+			async (_, filePath: string): Promise<FileActionOutcome> => {
+				const resolved = resolveUserPath(filePath);
+				/*
+				 * The existence check is the handler's own, because
+				 * `showItemInFolder` has no answer to give: it returns nothing and
+				 * reveals the parent directory of a path that is not there, so
+				 * without this the reader watches Finder open somewhere they did
+				 * not ask for and reads that as the app being wrong about the path.
+				 *
+				 * `throwIfNoEntry: false` rather than a try/catch around the happy
+				 * path, the same way `directory-exists` does it: a missing path is an
+				 * ordinary `undefined`, and only a genuine fault (permission, a
+				 * broken mount) reaches the catch.
+				 */
+				if (statSync(resolved, { throwIfNoEntry: false }) === undefined) {
+					return { ok: false, resolved, error: `No file at ${resolved}` };
+				}
+				try {
+					shell.showItemInFolder(resolved);
+					return { ok: true, resolved };
+				} catch (error) {
+					console.error("Error showing item in folder:", error);
+					return {
+						ok: false,
+						resolved,
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
+			},
+		);
 
 		ipcMain.handle(
 			"save-file",
@@ -2263,9 +2580,6 @@ app
 			}
 		}
 
-		// Create custom application menu
-		createApplicationMenu();
-
 		// --- Helper to manage main window and update service lifecycle ---
 		let updateService: UpdateService | null = null;
 
@@ -2336,12 +2650,25 @@ app
 			 * is lost" true for the second and later requests as well (review round 2,
 			 * MAJOR-1).
 			 */
-			// The delivery is `openSessionInWindow`, which lives inside `whenReady`:
-			// handed in rather than reached for, so the claim's rules stay testable and
-			// the queue stays where the window lifecycle can see it.
+			/*
+			 * The delivery is `openSessionInWindow`, which lives inside `whenReady`:
+			 * handed in rather than reached for, so the claim's rules stay testable and
+			 * the queue stays where the window lifecycle can see it.
+			 *
+			 * AND IT IS NOT RE-GATED (`fromPark`). The entry being delivered is one this
+			 * app already refused — or could not show — and this window exists to honour
+			 * that promise, so asking the gate again lets the app refuse its own
+			 * delivery: measured (QA round 1, Q-1 / review round 1, MAJOR-2), a drained
+			 * entry against a window that was focused by the time it loaded produced
+			 * `applied=delivered` and then `applied=parked+in-use` for the same id, with
+			 * zero `desktop-open-conversation` sends and the entry back on the queue's
+			 * tail — so a parked conversation could need more than one window, which is
+			 * exactly what parking promises it will not.
+			 */
 			claimParkedFor(
 				mainWindow,
-				(session, request) => openSessionInWindow(session, request),
+				(session, request) =>
+					openSessionInWindow(session, request, { fromPark: true }),
 				parked,
 			);
 
@@ -2538,17 +2865,111 @@ app
 		 * second launch may only come forward as far as IT asked, while the banner
 		 * and viewer paths are requests from inside this process, where the launch
 		 * plan already is the caller's intent.
+		 *
+		 * THE TWO BRANCHES DO NOT ASK THE SAME QUESTION about a request that must not
+		 * be applied. With no window, the question is whether one may be CREATED
+		 * (`canCreateWindowFor`); with one, it is whether that window's conversation
+		 * may be REPLACED (`canRetargetWindow`) — which is refused for exactly one
+		 * delivery, the one that would leave no trace: a `second-instance` launch under
+		 * a `never` plan. A refused delivery parks on the same queue as the other. Both
+		 * rules live in `window-raise.ts` with the policy they belong to; the gate
+		 * itself is the existing-window branch below.
+		 *
+		 * `fromPark` IS THE ONE EXEMPTION, and it is not a bypass: it marks a delivery
+		 * the app is making because a request was ALREADY parked — the drain below,
+		 * honouring a promise this process made to the launch that asked. Asking the
+		 * gate a second time lets the app refuse its own delivery, which is what was
+		 * measured (QA round 1, Q-1 / review round 1, MAJOR-2): `applied=delivered`
+		 * then `applied=parked+in-use` for one id, zero sends, the entry back on the
+		 * queue's tail.
 		 */
 		function openSessionInWindow(
 			sessionId: string | null,
 			request: RaiseRequest,
+			{ fromPark = false }: { fromPark?: boolean } = {},
 		): void {
 			const window = mainWindow;
 			if (window && !window.isDestroyed()) {
+				/*
+				 * THE DELIVERY GATE — the only place a request may replace what an
+				 * EXISTING window is showing.
+				 *
+				 * WHY IT IS HERE AND NOWHERE ELSE. This is the one function that retargets a
+				 * window: a banner click, the viewer's `resume_session`, a second launch and
+				 * the parked-conversation drain all arrive through it (the create branch
+				 * below, and `secondInstanceRequest`, are the same request arriving where
+				 * there is no window yet). Putting the rule anywhere else — the renderer's
+				 * handler, the notifier, a per-caller check — is how the fourth requester
+				 * ends up outside it, and the rule then holds for three quarters of the
+				 * requests that can move this app's screen.
+				 *
+				 * WHAT IT COSTS WITHOUT THIS. A tool-spawned launch on the operator's own
+				 * profile — the driven shape, which resolves `headless` — can name a
+				 * conversation, find this window already up, and be applied to it. The
+				 * request raises as far as it asked, which for `never` is nowhere, so the
+				 * window does not move and `raiseWindow` reports NOTHING (silence is that
+				 * mode's documented promise). What does move is the conversation: the
+				 * renderer re-keys the panel on the session (`panelIdentityFor`), the
+				 * composer subtree unmounts, and the caret dies with it. The operator's only
+				 * symptom is a keystroke landing nowhere, in a window that never visibly
+				 * changed, with no line in the log to explain it.
+				 *
+				 * SO THE RULE IS NARROW, and deliberately so (UX round 1, U1-U3): only a
+				 * delivery that would LEAVE NO TRACE and is not the operator's own is PARKED
+				 * — `second-instance` under a `show === "never"` plan, against a window he is
+				 * using. `canRetargetWindow` carries the table and the residual (that one cell
+				 * rests on the losing launch's own `--window-mode`). A `viewer-resume` and a
+				 * `banner-click` are applied as they were before this gate existed, because
+				 * refusing either costs more than the caret it saves: the viewer verb is what
+				 * the operator's own notification click routes through, and the ladder reads
+				 * any ack as "displayed", so a refusal that still answers `showing <id>` turns
+				 * his own click into a silent no-op. A refused delivery still parks on the same
+				 * queue the create branch uses, so nothing is applied, nothing is raised and
+				 * nothing is dropped, and it opens in his next window (`reportParkedInUse`
+				 * says so); what is delivered rather than refused is LOGGED below
+				 * (`reportConversationReplaced`), for every delivery that replaces a conversation
+				 * rather than for the viewer's alone, so a caret lost to one is attributable rather
+				 * than invisible (UX round 2, U7).
+				 *
+				 * ONLY A NAMED conversation reaches the gate. `null` is the CATALOGUE, and
+				 * it is not someone's conversation being installed over the operator's: its
+				 * only source is a burst digest's banner click (`reopen(null)`), which is a
+				 * person clicking, and it arrives here only from the no-window path anyway.
+				 * Gating it would also mean parking an id to name — the queue is keyed by
+				 * conversation, and "the list" is not one.
+				 */
+				if (
+					!fromPark &&
+					sessionId !== null &&
+					!canRetargetWindow(request, window.isFocused())
+				) {
+					parkLaunch(sessionId, request, "in-use");
+					return;
+				}
 				// Send before raising: naming the conversation first means whatever
 				// comes forward is already correct, rather than showing the old one
 				// for as long as the switch takes (B3).
 				window.webContents.send("desktop-open-conversation", { sessionId });
+				/*
+				 * THE REPLACEMENT IS LOGGED, which is the other half of no longer refusing the
+				 * viewer's delivery (UX round 1, U1/U2) — and it is logged by the SEND rather
+				 * than by a `trigger` comparison (UX round 2, U7), because every delivery
+				 * that reaches here replaces the window's conversation. Two of them used to
+				 * leave no line at all: a `second-instance` request under `inactive` against
+				 * a window on screen, whose raise line records `applied=showInactive` and
+				 * nothing about the conversation, and one under `never` against a BLURRED
+				 * window, which this gate APPLIES — nothing is being typed into — and which
+				 * then reports nothing anywhere, since `never` raises and reports nothing.
+				 * `sessionId !== null` is the guard rather than a trigger: a CATALOGUE open
+				 * installs no conversation over one.
+				 */
+				if (sessionId !== null) {
+					reportConversationReplaced(sessionId, request.show, {
+						trigger: request.trigger,
+						requester: request.requester,
+						report: reportRaise,
+					});
+				}
 				raiseWindow(window, request.show, {
 					trigger: request.trigger,
 					requester: request.requester,
@@ -2849,9 +3270,10 @@ app.on("before-quit", async (event) => {
 	/*
 	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
 	 * NIT-3). The queue is in-memory, so a park still waiting here is gone for good
-	 * — and its losing launch was told it would be delivered once a window is open.
-	 * The line is the only place that promise can be seen to end, which is what makes
-	 * a park that never arrived distinguishable from one the log simply lost.
+	 * — and its losing launch was told it would be delivered by the next window the
+	 * app creates. The line is the only place that promise can be seen to end, which
+	 * is what makes a park that never arrived distinguishable from one the log
+	 * simply lost.
 	 *
 	 * It lives HERE rather than in `will-quit`, where it was first written, because
 	 * `scripts/owned-serve-lifecycle.test.mjs` slices and runs that handler on its

@@ -3500,6 +3500,119 @@ export function childStateLabel(row: SubagentRow): string {
 }
 
 /**
+ * A row's own `childCount` as the row says it — `2 children` — or `null`.
+ *
+ * Heir to `SubagentRow.childCount`, which was derived and rendered nowhere until
+ * the reader's own subagents section existed: on the page that lists a child's
+ * own subagents, the count is what tells a reader there is ANOTHER level below
+ * the row they are looking at (the row opens that child's page, where the level
+ * below is listed in turn).
+ *
+ * The word is the chrome bar's, deliberately: `N children` is what the pane says
+ * about the page's own child two rows above this list, so the same relation one
+ * level down reads as the same relation rather than as a second vocabulary.
+ * Hand-pluralised rather than through `plural`, which appends an `s` and would
+ * print `2 childs`.
+ *
+ * `null` at zero rather than `0 children`: absence is the model's own answer for
+ * a fact a row does not have (every figure in `NumberRun` is omitted rather than
+ * zeroed), and a mark on every leaf row would be the opposite of the signal the
+ * mark exists to be.
+ */
+export const childCountLabel = (row: SubagentRow): string | null =>
+	row.childCount > 0
+		? `${row.childCount} child${row.childCount === 1 ? "" : "ren"}`
+		: null;
+
+/**
+ * What the count mark costs a row's first line, and the label floor it may not
+ * spend (design review round 1, D1).
+ *
+ * The mark is the LAST segment on a line that has already spent most of its
+ * width on things which cannot shed: the pane's `px-3` both sides, the 16px
+ * state mark and its 8px gutter come to 48px before a character is drawn, and
+ * the numbers run behind the label is 122-172px across the pane's states
+ * (measured in the committed `reader-descendants` and `reader-deep-children`
+ * frames). `shrink-0` with no rule of its own therefore charged the whole mark
+ * to the label, which is the one segment on the line that says WHICH child this
+ * row is: at the pane's 320px floor the same rows held 7-11 characters behind
+ * the mark where they hold 15-19 without it, and below the width at which the
+ * label reaches zero the mark was the first thing the pane clipped off its own
+ * edge, because this pane clips rather than sheds (`reader-deep-floor`).
+ *
+ * The mark's own width is the count WORD's 36px (design round 1's measurement,
+ * x1232-1267 of `reader-descendants/localOperatorDark`) plus the 14px depth cue
+ * and its 4px gap that D2 added (`run-child-subagents.tsx`), and its gutter is
+ * the line's `gap-2` plus the mark's own 4px, i.e. the 12px which is wider than
+ * the ~11px the numbers run spends on its internal `·` seam.
+ */
+const CHILD_COUNT_MARK_PX = 14 + 4 + 36;
+/** The pane's `px-3` both sides, the row's state mark, and its gutter. */
+const CHILD_COUNT_CHROME_PX = 12 + 12 + 16 + 8;
+/** The line's own `gap-2` plus the mark's 4px lead-in. */
+const CHILD_COUNT_GAP_PX = 8 + 4;
+/**
+ * The WIDEST numbers run measured behind the mark, charged to every row.
+ *
+ * Deliberately the worst case rather than the row's own figures: the run is 122
+ * (`reader-deep-children`: `40s · 3% · $0.01`) to 172px (`reader-descendants`:
+ * `reviewer · 1m7s · 21% · $0.19`), and charging the ceiling is what makes the
+ * rule err SHORT — the direction `TALLY_CHAR_PX` errs in for the same reason. A
+ * row with a short run sheds the mark slightly before it has to; a row the rule
+ * guessed long would lose label characters for a mark it did not need.
+ */
+const CHILD_COUNT_NUMBERS_PX = 172;
+/**
+ * The fewest pixels a row's label is worth: 92px, 15-19 characters at the 6.2px
+ * advance `Re-total the unpaid rows by customer` measures (216px for 35
+ * characters) — the width these same rows hold at the pane's floor when the mark
+ * is NOT drawn, i.e. what the label already gets and may not be charged below.
+ */
+const CHILD_COUNT_LABEL_FLOOR_PX = 92;
+
+/**
+ * Whether a row's first line can host the count mark and still keep its label.
+ *
+ * A floor-and-shed rule of the pane's own kind, and the same shape as
+ * `tallyFitsInline`: the question is the PANE's width rather than the row's
+ * contents, because the numbers run varies row by row and a per-row answer would
+ * draw the mark on one row and not on its neighbour AT THE SAME WIDTH, which
+ * reads as an inconsistency rather than as a shed.
+ *
+ * Which wins at what width, in the numbers above. The line has `paneWidth - 48`
+ * for the label, the numbers run and the mark together, so the mark is drawn
+ * from `48 + 172 + 12 + 54 + 92` = **378px** and not below it. At the 320px floor
+ * the line holds 272px: the numbers run takes 172, the gutter and the mark 66,
+ * and the label 34px — far under its floor, so the MARK sheds whole (`§ 4.1`'s
+ * numbers rule, one element along: a value is dropped whole, never cut) and the
+ * label takes all 66px back, reaching 92-118px. At the 420px default the same
+ * arithmetic leaves the label 134px, so the mark stays, and 640px is wider
+ * still. The pane has exactly three sizes — 320/420/640 (`§ 8`) — so this shed is
+ * the floor's state and no other width's.
+ *
+ * A mark that is not drawn also cannot be clipped at the pane's edge: at the app's
+ * window floor with the rail expanded (79px pane) the line overflows for other
+ * reasons and this mark is already gone, which is the state D1 measured as the
+ * mark being the first thing cut off.
+ *
+ * A width that is not a usable number falls back to the design's default rather
+ * than propagating, for `tallyBudget`'s reason: `NaN` makes every comparison
+ * false, i.e. it would silently degrade to "shed nothing".
+ */
+export const childCountFitsInline = (paneWidth: number): boolean => {
+	const width =
+		Number.isFinite(paneWidth) && paneWidth > 0 ? paneWidth : FALLBACK_PANE_PX;
+	return (
+		width -
+			CHILD_COUNT_CHROME_PX -
+			CHILD_COUNT_NUMBERS_PX -
+			CHILD_COUNT_GAP_PX -
+			CHILD_COUNT_MARK_PX >=
+		CHILD_COUNT_LABEL_FLOOR_PX
+	);
+};
+
+/**
  * Whether a row has a conversation the reader could actually open.
  *
  * `childSessionId` is the READER's key — the transcript route is addressed by
@@ -3515,3 +3628,28 @@ export function childStateLabel(row: SubagentRow): string {
  */
 export const childOpenable = (row: SubagentRow): boolean =>
 	row.childSessionId !== null;
+
+/**
+ * The rows `row` launched, in the WIRE's own order.
+ *
+ * This is the LIST half of what `SubagentRow.childCount` is the count half of:
+ * one predicate — a candidate's `parentJobId` IS this row's id — which is why it
+ * lives here rather than beside either caller. Two callers need it and they need
+ * different halves of the same answer: the reader's chrome bar renders a count
+ * and descends into `children[0]`, and the reader's own subagents section renders
+ * the rows themselves. A second spelling of "which rows are my children" is how a
+ * count and the list printed under it come to disagree.
+ *
+ * DIRECT children only, and deliberately in the wire's order rather than the
+ * roster's priority slice: a grandchild is reached a level down (the row's own
+ * count says one exists) or by the peer stepper, and the stepper walks THIS
+ * order — a list sorted here would step through a different sequence than it
+ * draws, which is the oscillation `run-panel.tsx`'s `siblingsOf` rejects for the
+ * same reason (`app.py:24187-24215`).
+ */
+export function childrenOf(
+	lineage: readonly SubagentRow[],
+	row: SubagentRow,
+): SubagentRow[] {
+	return lineage.filter((candidate) => candidate.parentJobId === row.id);
+}

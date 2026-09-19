@@ -8,6 +8,7 @@
 import { AgentCard } from "@features/agent-hub/components/agent-card";
 import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
 import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
+import { pullRefusalMessage } from "@features/agents/utils/publication-failure";
 import type { Agent } from "@shared/api/radient/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
@@ -45,6 +46,19 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	// State to track agents added during this session
 	const [addedAgentIds, setAddedAgentIds] = useState<Set<string>>(new Set());
 	const [isAddingAll, setIsAddingAll] = useState(false);
+	/*
+	 * The batch's failures, which used to be `console.error` and nothing else.
+	 *
+	 * The download mutation no longer raises a toast — the surface that owns the
+	 * button owns the sentence, which is what this change set moved everywhere
+	 * else — and this step was the one caller left with no surface at all: its
+	 * per-card Get button is gone (`showActions={false}`), so "Add all four" is
+	 * the only control, and a failed batch returned the button to idle and told
+	 * the user nothing (agent review round 1, R2).
+	 */
+	const [failures, setFailures] = useState<{ name: string; error: unknown }[]>(
+		[],
+	);
 
 	// Fetch recommended public agents (top 8 by download count)
 	const {
@@ -97,6 +111,10 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	const handleAddRecommended = async () => {
 		if (isAddingAll || downloadAgentMutation.isPending) return;
 		setIsAddingAll(true);
+		setFailures([]);
+		// Collected locally and published once the batch finishes, so a partially
+		// failed run reports every name that failed rather than the last one.
+		const failed: { name: string; error: unknown }[] = [];
 		// Filter agents that are not already added locally or in the process of being added
 		const agentsToAdd = recommendedAgents.filter(
 			(agent) => !addedAgentIds.has(agent.id),
@@ -121,6 +139,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						setAddedAgentIds((prev) => new Set(prev).add(agent.id));
 					} catch (agentErr) {
 						console.error(`Failed to download agent ${agent.name}:`, agentErr);
+						failed.push({ name: agent.name, error: agentErr });
 						// One failed agent does not stop the rest
 					}
 				}
@@ -129,6 +148,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 			// This catch block might be less likely to be hit with individual try/catches
 			console.error("Failed to add all recommended agents:", err);
 		} finally {
+			setFailures(failed);
 			setIsAddingAll(false);
 		}
 	};
@@ -167,6 +187,46 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 					{isAddingAll ? "Adding" : allAdded ? "All added" : "Add all four"}
 				</Button>
 			</div>
+
+			{/*
+			 * The failure, beside the action that produced it, in the same shape the
+			 * hub card uses for the same download failure (a sentence and a way to try
+			 * again) — one error language for one action. `Try again` re-runs the
+			 * batch, which skips whatever landed on the first attempt, so the retry is
+			 * the failed remainder rather than a second copy of everything.
+			 */}
+			{failures.length > 0 && (
+				<output
+					aria-live="polite"
+					className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-danger"
+					data-testid="onboarding-add-error"
+				>
+					<span className="min-w-0 flex-1">
+						{/*
+						 * One sentence per failed agent, each naming its own reason, rather
+						 * than a count and a list of names. A batch can fail for different
+						 * causes at once - a listing the hub no longer has beside a hub that
+						 * stopped answering - so the count told the user nothing about why,
+						 * and the reason is the half that says whether retrying can work
+						 * (design round 3, D1). `pullRefusalMessage` is the pull's own
+						 * vocabulary: the local-server classifier this used to reach for
+						 * answers about the wrong process entirely.
+						 */}
+						{failures.map((failure, index) => (
+							<span key={`${failure.name}-${index}`} className="block">
+								{pullRefusalMessage(failure.error, failure.name)}
+							</span>
+						))}
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void handleAddRecommended()}
+					>
+						Try again
+					</Button>
+				</output>
+			)}
 
 			{isLoadingAgents && (
 				<div className="flex h-60 items-center justify-center">
@@ -217,6 +277,15 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 										onLikeToggle={() => {}}
 										onFavouriteToggle={() => {}}
 										showActions={false}
+										/*
+										 * The reactions here are hard-coded to "no", so the card does not KNOW this
+										 * viewer's state and must not say it does. Without this the default
+										 * (`true`) left an ENABLED heart and star labelled "Like agent" /
+										 * "Favourite agent" wired to the no-ops above, reachable exactly when the
+										 * viewer is signed in - the unread-state-as-stated inversion this branch
+										 * removed from the hub, on a caller it edits (review round 2, R2).
+										 */
+										viewerStateKnown={false}
 									/>
 									{isDownloading && (
 										<div className="absolute inset-0 flex items-center justify-center">

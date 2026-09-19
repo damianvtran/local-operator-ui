@@ -9,8 +9,13 @@
  * exactly the way a green suite cannot see.
  *
  * What it does: runs the BUILT app (`out/`, from `pnpm build`) with
- * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` against a live backend, in an
- * ISOLATED user-data-dir so the operator's own UI state is untouched. Then it
+ * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` against a live backend, on scratch
+ * `HOME`, config, log and user-data directories so nothing of the operator's is
+ * read or written - his UI state, his caches, and his own log files included.
+ * (The log directory is the piece a scratch HOME does not cover: the app's
+ * logger defaults to Electron's `home`, the OS account's home rather than the
+ * `HOME` variable, so this rig hands the app its own `LOCAL_OPERATOR_LOG_DIR`.
+ * See `src/main/backend/log-dir.ts`.) Then it
  * drives the app over raw CDP - no dependency, the built-in WebSocket is the
  * transport - navigates to a real session, opens the canvas, switches to the
  * Files view, reads what the panel contains, clicks the PDF tile, and reads the
@@ -63,15 +68,17 @@ const log = [];
 /*
  * The child environment, with the operator's own session variables REMOVED.
  *
- * Several agents run this harness at once, and an inherited `CMUX_*` variable
- * names the operator's real workspace: a headless run that keeps it can rename
- * or drive the windows somebody is using right now. Stripping them here is the
- * same rule the QA matrix follows, and it belongs in the spawn rather than in
- * whatever shell happened to launch this.
+ * Several agents run this harness at once, and an inherited `CMUX_*` or `LOP_*`
+ * variable names the operator's real workspace or this harness session: a headless
+ * run that keeps one can rename or drive the windows somebody is using right now,
+ * and an inherited `LOP_MOBILE_CHILD_PROVIDER`/`_MODEL` silently reroutes a cell.
+ * Stripping them here is the same rule the QA matrix follows - and the same pair
+ * every other rig in this directory strips - and it belongs in the spawn rather
+ * than in whatever shell happened to launch this.
  */
 const childEnv = { ...process.env };
 for (const key of Object.keys(childEnv)) {
-	if (key.startsWith("CMUX_")) delete childEnv[key];
+	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete childEnv[key];
 }
 /*
  * The kill switch goes on for the same reason the cmux variables come off — and
@@ -106,6 +113,22 @@ const ELECTRON_BIN = createRequire(join(process.cwd(), "package.json"))(
 );
 /* Spelled once: the spawn and the profile scan below must name the same profile. */
 const USER_DATA = join(OUT, "user-data");
+/*
+ * Scratch HOME, config and log directories, beside the profile.
+ *
+ * The profile alone covers the UI's own storage and the single-instance lock; it
+ * does not cover the cache and home-root paths that resolve from `HOME`, nor the
+ * app's log directory, which is composed from Electron's `home` and therefore
+ * ignores both `HOME` and `--user-data-dir`. Without the log override this rig
+ * appended its lines to the operator's own
+ * `~/Library/Application Support/Local Operator/logs/*.log`; see the header.
+ */
+const HOME_DIR = join(OUT, "home");
+const CONFIG_DIR = join(OUT, "config");
+const LOG_DIR = join(OUT, "logs");
+for (const dir of [HOME_DIR, CONFIG_DIR, LOG_DIR]) {
+	mkdirSync(dir, { recursive: true });
+}
 
 const app = spawn(
 	ELECTRON_BIN,
@@ -121,6 +144,9 @@ const app = spawn(
 	{
 		env: {
 			...childEnv,
+			HOME: HOME_DIR,
+			LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+			LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 			LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 			// The operator's backend is already live on :1111; this app must not
 			// try to manage or spawn one.
@@ -359,13 +385,34 @@ async function expectedPaths() {
 try {
 	const deadline = Date.now() + DEADLINE_MS;
 	let page = null;
+	/*
+	 * THE APP'S OWN PAGE, not the first `page` target to appear.
+	 *
+	 * Measured on this machine (2026-09-18): a boot of the built app publishes TWO
+	 * `about:blank` page targets BEFORE the window's own `out/renderer/index.html`,
+	 * because the browser feature opens its tabs early in startup. So
+	 * `find((target) => target.type === "page")` attached to a blank page, where
+	 * `window.api` is undefined - and the failure that produced was "the app is not
+	 * paired with the backend", three lines below, which blames the pairing model
+	 * for a wrong-target bug. The loop waits for the renderer URL instead, and names
+	 * what it saw when none arrives.
+	 */
 	while (Date.now() < deadline) {
-		page = (await targets()).find((target) => target.type === "page");
+		page = (await targets()).find(
+			(target) =>
+				target.type === "page" &&
+				String(target.url).includes("out/renderer/index.html"),
+		);
 		if (page) break;
 		await sleep(500);
 	}
 	if (!page) {
-		console.error(`no renderer target appeared; log:\n${log.join("")}`);
+		const seen = (await targets()).map(
+			(target) => `${target.type} ${target.url}`,
+		);
+		console.error(
+			`no renderer target appeared (saw: ${JSON.stringify(seen)}); log:\n${log.join("")}`,
+		);
 		// Stopped before exiting, the way every other exit in this file is: a boot
 		// that failed to come up is exactly when an app is left running, and the
 		// single-instance lock it holds is per profile, so this rig's own next run in
@@ -549,20 +596,131 @@ try {
 			}
 		: null;
 
-	// 5. What the grid actually renders, plus the 1380x900 geometry (U1's check).
+	/*
+	 * 5. What the panel actually renders, plus the geometry.
+	 *
+	 * TWO CLAIMS, and the second is why this block was extended.
+	 *
+	 * The HORIZONTAL read is the U1 check: nothing sticks out of the window's right
+	 * edge, and the column count is the shape's own answer (a grid's tracks, or one
+	 * for a list - which is what makes this half comparable across the two shapes
+	 * rather than re-invented for one of them).
+	 *
+	 * The VERTICAL read is the clipped-last-rows defect, which was invisible to
+	 * every other instrument here: the Files view's root was `h-full` inside a
+	 * column that also held the 40px chrome bar, so the panel overflowed its own
+	 * pane by exactly the bar's height and the dock's `overflow-hidden` cut that
+	 * band off. The defect is only visible at the END of the list - the scroller
+	 * reaches its own maximum with the last rows still under the clip and its own
+	 * bottom padding unreachable - so the read scrolls to maximum first, measures,
+	 * and puts the scroll position back where it found it.
+	 *
+	 * The reading is deliberately shape-agnostic: it walks the rows container's
+	 * children and asks each one's rect, so the SAME numbers exist for a grid of
+	 * tiles and a list of rows. That is what let the fix be measured against the
+	 * code that shipped, rather than against a description of it.
+	 */
 	report.filesGrid = await cdp.evaluate(`(() => {
 		const grid = document.querySelector('[data-tour-tag="files-grid"]');
 		const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
 		const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
+		const canvas = document.querySelector('[data-tour-tag="canvas-container"]');
 		const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
+		const inner = window.innerWidth;
+
+		/*
+		 * At MAXIMUM SCROLL, which is where the defect lives. Both readings happen
+		 * here rather than in two round trips: the horizontal positions do not move
+		 * with vertical scroll, and a second evaluate would be a second chance for
+		 * the page to change between them.
+		 */
+		/*
+		 * The root-cause box, too: the panel's own root and the height it computes
+		 * to. The defect was one class (h-full where the element is the rest of a
+		 * column), and these two numbers are the mechanism rather than the symptom:
+		 * 868px of a pane that has 828 to give, with a min-height of auto as the
+		 * floor that stopped flex from shrinking it.
+		 */
+		const viewerRoot = canvas ? (canvas.children[1] ?? null) : null;
+		const rootBox = (element) => {
+			if (!element) return null;
+			const rect = element.getBoundingClientRect();
+			return {
+				tag: element.tagName.toLowerCase(),
+				top: Math.round(rect.top * 100) / 100,
+				bottom: Math.round(rect.bottom * 100) / 100,
+				height: Math.round(rect.height * 100) / 100,
+			};
+		};
+
+		let vertical = null;
+		if (scroller && tiles.length > 0) {
+			const resting = scroller.scrollTop;
+			scroller.scrollTop = scroller.scrollHeight;
+			const style = window.getComputedStyle(scroller);
+			const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+			const scrollerRect = scroller.getBoundingClientRect();
+			const rowRects = tiles.map((tile) => tile.getBoundingClientRect());
+			const last = rowRects[rowRects.length - 1];
+			const pastEdge = rowRects.filter(
+				(rect) => rect.bottom > window.innerHeight + 0.5,
+			).length;
+			const visible = Math.max(
+				0,
+				Math.min(last.bottom, window.innerHeight) - Math.max(last.top, 0),
+			);
+			vertical = {
+				viewerRoot: rootBox(viewerRoot),
+				viewerRootHeight: viewerRoot
+					? window.getComputedStyle(viewerRoot).height
+					: null,
+				viewerRootMinHeight: viewerRoot
+					? window.getComputedStyle(viewerRoot).minHeight
+					: null,
+				scrollTop: Math.round(scroller.scrollTop),
+				maxScrollTop: scroller.scrollHeight - scroller.clientHeight,
+				reachedMax:
+					scroller.scrollTop + scroller.clientHeight >=
+					scroller.scrollHeight - 1,
+				/* The panel's own bottom against the window: the defect, in one number. */
+				scrollerBottomPastWindow:
+					Math.round((scrollerRect.bottom - window.innerHeight) * 100) / 100,
+				scrollerPaddingBottom: paddingBottom,
+				lastRowBottom: Math.round(last.bottom * 100) / 100,
+				lastRowVisibleFraction: Math.round((visible / last.height) * 100) / 100,
+				lastRowInsideWindow: last.bottom <= window.innerHeight + 0.5,
+				rowsPastWindowEdge: pastEdge,
+				rowsEntirelyPastWindowEdge: rowRects.filter(
+					(rect) => rect.top >= window.innerHeight - 0.5,
+				).length,
+				/* The panel's bottom against the dock it lives in, which is the same 40px. */
+				scrollerBottomToDockBottom: dock
+					? Math.round(
+							(dock.getBoundingClientRect().bottom - scrollerRect.bottom) * 100,
+						) / 100
+					: null,
+				/*
+				 * What sits below the last row INSIDE the panel's own box: its bottom
+				 * padding plus border, measured rather than assumed. At maximum scroll the
+				 * last row's bottom is the content's bottom, so this should equal the
+				 * scroller's computed bottom padding - and it is the number that says the
+				 * list does not end flush against the box.
+				 */
+				insetBelowLastRow:
+					Math.round((scrollerRect.bottom - last.bottom) * 100) / 100,
+			};
+			scroller.scrollTop = resting;
+		}
+
 		const rects = tiles
 			.map((tile) => tile.getBoundingClientRect())
 			.filter((rect) => rect.width > 0);
-		const inner = window.innerWidth;
 		const clipped = rects.filter((rect) => rect.right > inner + 0.5).length;
 		const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
 		return {
+			/* One child per file, in either shape: a grid's tiles or a list's rows. */
 			tileCount: tiles.length,
+			vertical,
 			windowInnerWidth: inner,
 			windowInnerHeight: window.innerHeight,
 			dock: dock
@@ -590,6 +748,39 @@ try {
 		};
 	})()`);
 
+	/*
+	 * The verdict, in the rig rather than in the reader's head.
+	 *
+	 * Each term is one half of the claim: nothing past the window's edge, the last
+	 * row whole inside it, the panel's own bottom inside the window (that is the
+	 * defect itself - the panel overflowed its pane by the chrome bar's height), and
+	 * the surface's own bottom padding sitting below the last row rather than the
+	 * list ending flush against it. The tolerances are sub-pixel: a rounded
+	 * half-pixel is not a clipped row.
+	 *
+	 * WHICH TERMS DISCRIMINATE, measured against the code that shipped: the padding
+	 * term is a sanity check rather than the defect. Before the fix the scroller's
+	 * bottom was 40px past the window with two rows past it and the last row's
+	 * visible fraction at 0.89 - and the padding below the last row was still 24.33px,
+	 * because a clipped panel does not change the gap INSIDE its own box. It is the
+	 * three window-relative terms that a revert breaks.
+	 */
+	const bottom = report.filesGrid?.vertical ?? null;
+	report.bottomClip = bottom
+		? {
+				rowsPastWindowEdge: bottom.rowsPastWindowEdge === 0,
+				lastRowInsideWindow: bottom.lastRowInsideWindow,
+				lastRowFullyVisible: bottom.lastRowVisibleFraction >= 0.999,
+				panelInsideWindow: bottom.scrollerBottomPastWindow <= 0.5,
+				bottomPaddingReachable:
+					bottom.insetBelowLastRow >= bottom.scrollerPaddingBottom - 1,
+				reachedMaxScroll: bottom.reachedMax,
+			}
+		: null;
+	report.bottomClipPass = report.bottomClip
+		? Object.values(report.bottomClip).every(Boolean)
+		: null;
+
 	report.focusabilityOrder = await cdp.evaluate(`(() => {
 		const card = document.querySelector('[data-tour-tag="files-grid"] > *');
 		if (!card) return null;
@@ -610,6 +801,41 @@ try {
 			JSON.stringify(report, null, 2),
 		);
 		console.log(JSON.stringify(report, null, 2));
+		/*
+		 * The vertical claim is an ASSERTION, so a run that measures the defect FAILS
+		 * rather than printing it: a number nobody reads is how the clipped band
+		 * survived in the first place. The horizontal read stays reported-only, as it
+		 * was - it measures a shape that changes, and the wrong edge there is a design
+		 * question rather than a defect with a boolean.
+		 */
+		if (report.bottomClipPass === false) {
+			console.error(
+				`geometry: the panel's last rows are not reachable - ${JSON.stringify(report.bottomClip)}`,
+			);
+			ws.close();
+			process.exit(await finish(1));
+		}
+		/*
+		 * A run that measured NOTHING is a failure too, not a pass by omission.
+		 *
+		 * There are two ways to end with no vertical read: `files-grid` never resolved
+		 * (the rows container moved, or the surface is in a state that renders none),
+		 * or the panel had no rows to measure (an empty list - a conversation with no
+		 * file mentions, or a view that never scanned). Both were silent zeros while
+		 * this block only tested `=== false`: the run printed a PASS-shaped report and
+		 * exited 0 having said nothing about the claim it exists to make, which is
+		 * exactly the state a change to this surface is most likely to produce. So the
+		 * only exit 0 here is a run that measured the verticals and found them good:
+		 * `bottomClipPass === true` is the whole of the pass condition, and everything
+		 * else names what it could not measure.
+		 */
+		if (report.bottomClipPass !== true) {
+			console.error(
+				`geometry: measured NOTHING to make the claim about - the vertical read is ${JSON.stringify(report.bottomClip)} (rows container: ${report.filesGrid?.grid ? "present" : "ABSENT"}, rows measured: ${report.filesGrid?.tileCount ?? 0}). A run without a positive read says nothing about the last rows; check that the Files view is showing a populated list and that the files-grid/files-scroller tour tags still exist.`,
+			);
+			ws.close();
+			process.exit(await finish(1));
+		}
 		ws.close();
 		process.exit(await finish(0));
 	}
@@ -623,7 +849,14 @@ try {
 	// 5. Click the PDF tile and read the frame the viewer created. This is the
 	//    "prove the producer fires AND the viewer opens it" half.
 	report.pdfTileClicked = await cdp.evaluate(`(() => {
-		const grid = document.querySelector(".grid");
+		/*
+		 * The tour tag, not `
+		.grid`: an unqualified class selector matches any other
+		 * `
+		.grid` on the page, and a selector that finds the wrong element reports a
+		 * click that never happened.
+		 */
+		const grid = document.querySelector('[data-tour-tag="files-grid"]');
 		if (!grid) return false;
 		const tile = [...grid.querySelectorAll("button")].find((button) =>
 			button.innerText.toLowerCase().includes(".pdf"),

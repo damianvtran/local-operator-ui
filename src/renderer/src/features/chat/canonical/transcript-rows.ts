@@ -44,8 +44,101 @@ export type Row = {
 	record: TranscriptRecord;
 	showAvatar: boolean;
 	/** Vertical tier before this row. */
-	gap: "turn" | "item" | "trace" | "first";
+	gap: "turn" | "item" | "trace" | "mark" | "first";
+	/**
+	 * Is this row the answer its turn was working towards? See
+	 * `closingAnswerIds` for what qualifies and why the caption is gated on it
+	 * rather than on `!record.streaming` alone.
+	 */
+	closesTurn: boolean;
 };
+
+/**
+ * The one row per turn that carries the answer caption.
+ *
+ * The caption used to be gated on `!record.streaming` alone, which is a fact
+ * about a RECORD and not about a turn — so a turn that narrates between calls
+ * ("Checking the ledger first.", a call, "Four were late.", a call, "Writing
+ * the summary.") painted one clock per paragraph, four identical stamps in a
+ * single turn, the worst shape being two clocks 56px apart with one sentence
+ * between them (round 1's D1/Q-2, measured on the frames). The operator's
+ * wording is narrower than that and is the rule here: "just the final
+ * responses, not the in-progress tool intent/response".
+ *
+ * So the caption belongs to the row the reader is being HANDED, and there are
+ * two conditions for it, both about the turn rather than the record:
+ *
+ * 1. the row is the turn's LAST row that paints anything the turn itself did — a
+ *    turn that ends on a ledger row has not handed the reader its answer yet, and
+ *    a turn ending on prose that is still streaming has not either, so neither is
+ *    captioned. A STATEMENT row at the end is not the turn's work at all, so the
+ *    answer before it still closes the turn and keeps its caption
+ *    (`isStatementRow`, design round 2's D2-1);
+ * 2. that row is a settled assistant record with text in it, which is
+ *    `paintsSomething` plus the liveness bit — an unfinished answer closes a turn
+ *    without being an answer.
+ *
+ * A turn is the records between two user records. The user turn itself is never
+ * a candidate: its bubble carries the caption on the other rail.
+ *
+ * It lives here rather than in the view for the reason this module exists — it
+ * is a rule with a right answer, asserted directly
+ * (`scripts/turn-timestamp.test.mjs`) instead of eyeballed in a frame.
+ */
+export function closingAnswerIds(
+	records: TranscriptRecord[],
+): ReadonlySet<string> {
+	const closing = new Set<string>();
+	/** The last record in the still-open turn that paints and is not a statement. */
+	let last: TranscriptRecord | null = null;
+	for (const record of records) {
+		if (record.kind === "user") {
+			if (last !== null && last.kind === "assistant" && !last.streaming) {
+				closing.add(last.id);
+			}
+			last = null;
+			continue;
+		}
+		if (paintsSomething(record) && !isStatementRow(record)) last = record;
+	}
+	if (last !== null && last.kind === "assistant" && !last.streaming) {
+		closing.add(last.id);
+	}
+	return closing;
+}
+
+/**
+ * Is this row a STATEMENT rather than a row of the turn's own work?
+ *
+ * These are the rows that report something ABOUT the conversation — a session
+ * incident, a model switch, a peer message's receipt, a wake delivery — and the
+ * closing answer is found past them rather than through them (design round 2,
+ * D2-1). The distinction matters because of the three ways a turn can end:
+ *
+ * - on a LEDGER row the agent is still working, and stripping the caption is
+ *   right: the answer it will end on has not been written yet;
+ * - on a STREAMING answer the answer has not settled, and stripping it is right
+ *   for the same reason;
+ * - on a STATEMENT the answer HAS been handed over, and the statement is not a
+ *   reason to take its time away — worse, the time becomes unrecoverable, because
+ *   a notice and a receipt paint no `<time>` of their own and have no disclosure
+ *   to open. Measured on the frames: `[user][answer][notice]` painted nothing at
+ *   all on screen.
+ *
+ * `tool` is deliberately NOT in this set, for the first reason above. `compaction` IS: a compaction
+ * receipt renders exactly like a notice - receipt line, no `<time>`, no disclosure to open - so
+ * `[user][answer][compaction]` had the same unrecoverable loss (design round 3, D3-1, measured by the
+ * designer: 0 captions before, 1 after, at left 102, with the four controls unchanged).
+ */
+export function isStatementRow(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "notice" ||
+		record.kind === "compaction" ||
+		record.kind === "custom" ||
+		record.kind === "peer" ||
+		record.kind === "wake"
+	);
+}
 
 /**
  * Does this record paint anything the reader can see?
@@ -103,17 +196,26 @@ export type Row = {
  *
  * The old `|| record.streaming` branch also covered a DESYNC: if a record said
  * it was streaming while the working line was suppressed, the "Writing" row was
- * the only thing left moving. That state is unreachable, and the reason is that
- * the two are not derived from the same thing by accident — the working line's
- * visibility keys on the SESSION-level `frontend.streaming` flag
- * (`chat-page.tsx` reads `canonical.frontend?.streaming` into `busy`, which
- * arrives here as `waiting` via `chat-content.tsx`), not on
+ * the only thing left moving. The two are not derived from the same thing by
+ * accident — the working line's visibility keys on the SESSION-level
+ * `frontend.streaming` flag (`chat-page.tsx` reads
+ * `canonical.frontend?.streaming` into `busy`, which arrives here as `waiting`
+ * via `chat-content.tsx`), not on
  * any record in the list, so it is live for the whole provider call regardless
- * of what the record list currently holds. `agent_end` settles the record and
- * that flag together, and `dropLiveRecords` clears live records on a gap, so
- * there is no ordering in the normal event path that leaves one true and the
- * other false (UX review round 1, U2: the state had to be forced by hand and
- * could not be reached by walking the app). If a future change derives
+ * of what the record list currently holds — and `agent_end` settles the record
+ * and that flag together. What USED to be offered as the second half of that
+ * argument no longer holds, and is restated here rather than left standing
+ * (code review round 1, R1-4): the claim was that `dropLiveRecords` cleared live
+ * records on every gap, so nothing could leave one true and the other false.
+ * A gap now KEEPS its streaming rows and marks them uncertain
+ * (`markLiveRecordsTruncated`), so "a row says it is streaming while the
+ * session-level flag says it is not" IS reachable by the normal event path: the
+ * gap drops `frontend` to `null` — which is what the pane's reconnecting state
+ * reads — while the row it was writing stays on screen, and it is the intended
+ * state rather than a desync (the row keeps the text this viewer received; the
+ * pane stops claiming a session state it cannot prove). The row is therefore NOT
+ * painted from a per-record liveness rule: it is a real row with real text, and
+ * the working line is suppressed independently of it. If a future change derives
  * `waiting` from the record list instead, this net has to come back with it.
  *
  * ### The 46.4px step at the first token, accepted deliberately
@@ -196,6 +298,7 @@ export function buildRows(
 ): Row[] {
 	const reusable = new Map(previousRows.map((row) => [row.record.id, row]));
 	const rows: Row[] = [];
+	const closingAnswers = closingAnswerIds(records);
 	// The last record that PAINTED, not the last record. An invisible record
 	// never becomes `previous`, so it can neither contribute a margin of its own
 	// nor downgrade the gap tier of the row after it.
@@ -211,14 +314,29 @@ export function buildRows(
 		if (!previous) gap = "first";
 		else if (record.kind === "user" || previous.kind === "user") gap = "turn";
 		else if (traceLike && previousTrace) gap = "trace";
+		/*
+		 * A row whose caption says its own text is not the whole answer takes a
+		 * between-components gap above it (design round 1, D1). The caption renders
+		 * INSIDE the row it describes, and at `item`/`trace` the space between the
+		 * row above and the caption is what the eye measures first: 8px (or 2px, after
+		 * a tool row) against the caption's own 4px to its chunk, which leaves the
+		 * line reading as a note on the paragraph above — a complete answer under it.
+		 * `turn` already clears the floor (24px, 16px small) and `first` has no row
+		 * above it at all, so neither is touched: the tier is raised, never lowered.
+		 */
+		const marked =
+			record.kind === "assistant" && record.truncated !== undefined;
+		if (marked && (gap === "item" || gap === "trace")) gap = "mark";
+		const closesTurn = closingAnswers.has(record.id);
 		const prior = reusable.get(record.id);
 		rows.push(
 			prior &&
 				prior.record === record &&
 				prior.showAvatar === showAvatar &&
-				prior.gap === gap
+				prior.gap === gap &&
+				prior.closesTurn === closesTurn
 				? prior
-				: { record, showAvatar, gap },
+				: { record, showAvatar, gap, closesTurn },
 		);
 		previous = record;
 	}
@@ -228,7 +346,7 @@ export function buildRows(
 /**
  * The vertical ladder, `[comfortable, small view]`.
  *
- * Four tiers, and the DISTANCE BETWEEN TIERS is the information: a reader tells
+ * Five tiers, and the DISTANCE BETWEEN TIERS is the information: a reader tells
  * "still the same run" from "a new turn started" by the size of the gap alone,
  * because nothing else on the surface marks a boundary (§ 2: remove a border
  * before you tighten the spacing — there are no borders left here to remove).
@@ -254,6 +372,18 @@ export function buildRows(
  *   24px against 4px. In the SMALL view that contrast is 16px against the same
  *   2px (`turn` is `mt-4` there), which is a smaller ratio but still an order of
  *   magnitude, and it is the narrower column's own doing rather than this tier's.
+ * - `mark` attaches a truncated row's own caption TO that row rather than to the
+ *   paragraph above it (design round 1, D1). Without it the caption's only
+ *   separation from the row above was the 8px `item` gap while its own margin to
+ *   the chunk is 4px — a 2:1 ratio between two values that both sit inside a
+ *   component's tier, so neither side read as a boundary and the line parsed as a
+ *   note on the paragraph above it, which is a COMPLETE answer under it. It takes
+ *   the ramp's between-components step, 12px, against the caption's 4px: 3:1, and
+ *   a boundary larger than anything inside a paragraph (the prose's own line
+ *   pitch is 24px, so the ratio is what has to carry it, not the absolute value).
+ *   It is the FIRST tier pinned across both views — 12px is the smallest honest
+ *   value and the small view's own `item` is 6px, so shrinking it would put the
+ *   caption back below its own floor.
  *
  * The hairline does NOT shrink in the small view, unlike every other tier — it
  * is the only TIER whose two values are equal in the table below (`first` also
@@ -272,4 +402,6 @@ export const GAP: Record<Row["gap"], [string, string]> = {
 	item: ["mt-2", "mt-1.5"],
 	// 2px on the 4px ramp, the same step `TraceGroup` composes its lines with.
 	trace: ["mt-0.5", "mt-0.5"],
+	// 12px, the ramp's between-components step, in both views: see `mark` above.
+	mark: ["mt-3", "mt-3"],
 };

@@ -105,6 +105,39 @@ export const COMPOSER_TIPS: readonly string[] = [
 	"ask for phone access to drive this session from your phone",
 ];
 
+/**
+ * The `@` entry — the second way to bring a file in, and the one nothing named.
+ *
+ * WHY IT IS A SEPARATE CONSTANT rather than an eleventh member of the pool above:
+ * it is only TRUE while the composer offers the affordance at all. The pool's own
+ * rule is that every entry names a move the user can make, and `desktop-hooks.ts`
+ * hides the whole `@` mechanism on a harness that does not expand a mention (and
+ * mid-turn, where a send is a steer). An entry teaching a key that does nothing is
+ * the same class of lie as a chip over a token the resolver ignores, so the
+ * capability gates the copy as well as the fills.
+ *
+ * It shares the pool's 62-character budget (asserted in
+ * `scripts/composer-suggestions.test.mjs`, which measures it in this row's own
+ * element), because the row's presence is a function of width alone.
+ *
+ * AND IT NAMES THE OTHER CONTROL'S HALF, deliberately: UX round 1's U4 found the
+ * paperclip entry occupying this slot and routing a reader to a different
+ * mechanism. That entry is the UPLOAD half of the pair and stays; this one is the
+ * REFERENCE half — point the agent at a path, rather than send the bytes.
+ */
+export const MENTION_TIP =
+	"type @ to point the agent at a file in this directory";
+
+/**
+ * The pool this composer may rotate, given whether it offers `@` at all.
+ *
+ * A function rather than a filtered constant at the call site so the gate cannot
+ * be forgotten: a caller that has not asked the question gets the pool WITHOUT the
+ * mention entry, which is the quiet direction on a harness that cannot expand one.
+ */
+export const composerTips = (mentionsEnabled: boolean): readonly string[] =>
+	mentionsEnabled ? [...COMPOSER_TIPS, MENTION_TIP] : COMPOSER_TIPS;
+
 /** Seconds one tip is held before the next takes its place. See the module comment. */
 export const TIP_ROTATE_INTERVAL_S = 12;
 

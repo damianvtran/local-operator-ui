@@ -22,6 +22,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * hue pulled toward `canvas` as far as it can go while still reading as an
  * edge. The TUI's `dim` and `edge-hi` move only as far as the floors require,
  * and the overlay tint is the theme's own well.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const arctic: ThemeDefinition = {
 	id: "arctic",
@@ -31,30 +47,55 @@ export const arctic: ThemeDefinition = {
 		mode: "dark",
 		canvas: "#1A2431",
 		surface: "#232E3D",
-		elevated: "#2C3949",
+		elevated: "#2A3747",
 		sunken: "#121A25",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.12 from `surface`, 2.01 from `elevated` and 9.87 from `sunken`;
-		 * the step is 4.7 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.82:1 the ink that binds it.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2C322E  accent hue, C* 3.93, +1.52 L*, ΔE00 11.52 off `surface`,
+		 *                       `inkDim` 5.72:1 on the fill, hue 2.46° off `accent`.
+		 * rowSelected #2A3C32  accent hue, C* 10.53, +4.94 L*, ΔE00 16.55 off
+		 *                       `surface` and 6.96 off `rowHover`, `inkDim` 5.12:1, and the
+		 *                       2px `accent` bar at 7.14:1 against it.
 		 */
-		highlight: "#2B3946",
+		rowHover: "#2C322E",
+		rowSelected: "#2A3C32",
 
 		ink: "#E3ECF4",
 
 		// The TUI's muted, lifted 4.0 L*: 6.75:1 on `elevated`, the ground that caps
 		// secondary text here.
-		inkMuted: "#B4C7D5",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.08:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#B8CBD9",
 
 		// The TUI's dim, lifted 9.5 L* to clear 4.5:1 on all four grounds — 4.79:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
 		// so a control and a reading stay two inks.
-		inkDim: "#90A9B9",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#95AFBF",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
@@ -82,6 +123,10 @@ export const arctic: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.27 from `accent` and 11.80:1 on surface, where the
 		// accent itself is 8.35:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#A8FFE0",
+		tokenCommand: "#7FBDE8",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
@@ -89,6 +134,21 @@ export const arctic: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 9.24:1 on all three accent fills.
 		onAccent: "#121A25",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#b0a3e6`), received unchanged because it already clears
+		 * every floor — ΔE00 42.11 from `accent`, 27.54 from its nearest semantic
+		 * (`danger`), 6.03:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#b0a3e6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.31 and C* 10.22, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 18.77 from `accentWash` (the field floor is
+		 * 2.0), 5.89:1 for `accentAlt` on it, and 7.48 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#302D3C",
 
 		// Upstream success, clearing 6.84:1 at its tightest ground.
 		success: "#6CC99B",
@@ -100,10 +160,20 @@ export const arctic: ThemeDefinition = {
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.35:1 at its tightest ground.
-		successBorder: "#4C8972",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.11:1.
+		 */
+		successBorder: "#4F8D75",
 		warning: "#DCB45E",
 		warningWash: "#3B3F41",
-		warningBorder: "#8E7A4C",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.11:1.
+		 */
+		warningBorder: "#937F50",
 		danger: "#F08D90",
 
 		// The TUI's own danger tint.
@@ -118,7 +188,12 @@ export const arctic: ThemeDefinition = {
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
 		infoWash: "#22344C",
-		infoBorder: "#5881A1",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.09:1.
+		 */
+		infoBorder: "#5D85A6",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(18 26 37 / 0.7)",

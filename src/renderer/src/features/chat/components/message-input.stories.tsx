@@ -1,7 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { screen, userEvent, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
@@ -268,6 +268,12 @@ const NONEMPTY: Message[] = [
 	{ id: "canonical", role: "system", timestamp: new Date(0) },
 ];
 
+/*
+ * `data-frame-label` is what lets a capture row correct this frame's caption when the
+ * row borrows a story for a state the story is not named for (design round 3, D11):
+ * the pixels of such a frame are right and the anchor was wrong, and only the caption
+ * tells a reader which state they are looking at.
+ */
 const Frame = ({
 	label,
 	children,
@@ -279,7 +285,12 @@ const Frame = ({
 		className={cn("flex flex-col gap-3 bg-canvas p-6")}
 		style={{ width: 1024 }}
 	>
-		<span className={cn("font-mono text-ink-dim text-mono-sm")}>{label}</span>
+		<span
+			data-frame-label=""
+			className={cn("font-mono text-ink-dim text-mono-sm")}
+		>
+			{label}
+		</span>
 		{children}
 	</div>
 );
@@ -752,6 +763,13 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
 const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+/*
+ * The cleared sentence as the copy authority writes it now: the key, the ordinal the
+ * chip's face carries, and the composer's own key as the way back (UX round 3, U15/U16).
+ * The ordinal is optional so this reads the same sentence whichever register raised it.
+ */
+const CLEARED_NOTICE =
+	/Removed LOP_SECRET_[A-Z0-9]+ \(credential #\d+\) from this message/;
 
 const holdShutter = () => {
 	document.documentElement.dataset.capturePending = "1";
@@ -810,6 +828,80 @@ const holdAndReset = (canvasElement: HTMLElement) => {
  * false evidence these stories exist to avoid.
  */
 const composerValue = (box: HTMLTextAreaElement) => box.value;
+
+/**
+ * The chip's box minus the marker run's, in the composer, read from the live DOM.
+ *
+ * THE SAME PAIR `scripts/credential-chip-geometry.mjs` PRINTS, evaluated here so
+ * that a state which cannot be photographed at rest can still be ASSERTED where
+ * it happens: the chips are measured, and the two failures that matter are both
+ * invisible in a picture of the resting composer — a chip that does not follow
+ * the field's scroll (UX round 1, U1, the round's blocker) and a chip that is
+ * never re-measured after a resize (code review round 1, R1-3). A story is a real
+ * browser, so the scroll case can be driven and measured in the play function
+ * rather than argued about.
+ *
+ * `null` when there is no run or no chip, which is itself a failure for the
+ * states that assert on it: a chip that vanished is not a chip in the right
+ * place.
+ */
+const chipDelta = (canvasElement: HTMLElement) => {
+	const layer = canvasElement.querySelector("[data-credential-chips]");
+	const run = canvasElement
+		.querySelector("div[aria-hidden='true'][class*='-z-10']")
+		?.querySelector("[data-credential-run]");
+	const chip = layer?.firstElementChild;
+	if (!run || !chip) return null;
+	const marker = run.getBoundingClientRect();
+	const painted = chip.getBoundingClientRect();
+	return {
+		left: painted.left - marker.left,
+		top: painted.top - marker.top,
+		width: painted.width - marker.width,
+		height: painted.height - marker.height,
+	};
+};
+
+/**
+ * The WCAG contrast ratio of two computed colours, for the states whose claim is
+ * a floor rather than a difference.
+ *
+ * The design round's D3 rejected the old hover step on measured numbers across the
+ * palettes, so the replacement's RESTING ink has to clear the text floor on the
+ * chip's own fill in whatever theme the capture is running — and the capture runs
+ * in twelve. A play function is the only place that can be checked against the
+ * real cascade (`rgb(...)` strings in, a ratio out), so it is checked here rather
+ * than inferred from the class list.
+ */
+const contrastRatio = (a: string, b: string) => {
+	const channels = (colour: string) => {
+		const parts = colour.match(/[\d.]+/g)?.map(Number) ?? [];
+		if (parts.length < 3) throw new Error(`unreadable colour: ${colour}`);
+		return parts.slice(0, 3);
+	};
+	const luminance = ([r, g, b]: number[]) => {
+		const linear = [r, g, b].map((raw) => {
+			const v = raw / 255;
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+	};
+	const [one, two] = [luminance(channels(a)), luminance(channels(b))];
+	return (Math.max(one, two) + 0.05) / (Math.min(one, two) + 0.05);
+};
+
+/** The chip's own fill, read from the element the control sits in. */
+const chipGround = (control: Element) => {
+	const chip = control.parentElement;
+	if (!chip) throw new Error("the clear control is not inside a chip");
+	return getComputedStyle(chip).backgroundColor;
+};
+
+/** Two paint frames, so a measurement reads the layout the browser settled on. */
+const settle = () =>
+	new Promise((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(resolve)),
+	);
 
 /**
  * The gesture ARMED and nothing masked yet: `/credential` has been typed and no
@@ -914,6 +1006,505 @@ export const CredentialPillMidProse: Story = {
 		}
 		if (value.includes(CREDENTIAL_CANARY)) {
 			throw new Error("the secret is in the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE CHIP'S CLEAR CONTROL, DRIVEN BY A REAL CLICK (operator report,
+ * 2026-09-17: "a real pill component — slick, less technical, with an x button
+ * to clear").
+ *
+ * This is the only place the control can be exercised end to end. The composer's
+ * jsdom suite cannot reach it: the chip is painted at a box MEASURED from the
+ * mirror, and jsdom has no layout engine, so `getClientRects()` reports nothing
+ * and no chip is mounted there. The pure half is pinned in
+ * `scripts/credential-capture.test.mjs` (`clearCitedCredential`: one edit, marker
+ * and its trailing space, caret where the marker was); what this frame adds is
+ * that the shipped control is reachable, that the click lands on it, and that the
+ * operator is TOLD what it cost.
+ *
+ * The sentence is chosen so the removal reads cleanly: the words that follow the
+ * reference are separated by punctuation the operator typed, so the marker's own
+ * trailing space — which goes with it, the mint's own rule — takes nothing else
+ * with it. A sentence whose grammar leans on that space ("deploy with <ref> to
+ * the box") reads differently afterwards, and that is the operator's edit to
+ * make: the app removes a reference, it does not rewrite a sentence.
+ */
+export const CredentialPillCleared: Story = {
+	render: () => (
+		<Frame label="cleared: the x on the chip took the reference out in one edit, and the composer says the value is gone">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`here is the new key /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, ", use it for the QA box");
+		if (!composerValue(box).includes("[Credential #1, 19 chars]")) {
+			throw new Error(`no chip was minted: ${composerValue(box)}`);
+		}
+		/*
+		 * The control's accessible name, which is the only handle it has: the chip is
+		 * painted over the marker's own characters, so a text query would find the
+		 * textarea's copy of the marker rather than this control.
+		 */
+		const clear = await within(canvasElement).findByLabelText(
+			"Remove credential #1",
+		);
+		await userEvent.click(clear);
+		/*
+		 * BOTH CHANNELS ARE THE CLAIM (UX round 1, U2): the sentence must not be
+		 * reachable only through a toast that retires in a few seconds, so the frame
+		 * shows the notice line — the composer's own, at the operator's focus —
+		 * carrying it, and the toast offering the undo beside it.
+		 */
+		const notice = canvasElement.querySelector("#composer-credential-notice");
+		if (!notice || !CLEARED_NOTICE.test(notice.textContent ?? "")) {
+			throw new Error(
+				`the notice line does not carry the cleared sentence: ${notice?.textContent ?? "(no notice line)"}`,
+			);
+		}
+		await screen.findByRole("button", { name: "Undo" });
+		const value = composerValue(box);
+		if (value.includes("[Credential #1")) {
+			throw new Error(`the marker survived the clear: ${value}`);
+		}
+		if (value.includes(CREDENTIAL_CANARY)) {
+			throw new Error("the secret is in the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE SCROLLED COMPOSER, WHICH IS WHERE THE CHIP USED TO COME OFF ITS RUN (UX
+ * round 1, U1 — the round's BLOCKER, and the reason this state exists at all).
+ *
+ * The measured layer converts a mirror span's VIEWPORT rect into its own
+ * coordinates, and it used to add the mirror's `scrollTop`/`scrollLeft` on top —
+ * re-applying the scroll the rect already accounted for. In any message long
+ * enough to scroll, the chip therefore sat exactly `fieldScrollTop` px from its
+ * marker (measured `deltaTop` 0 / 60 / 117 for `scrollTop` 0 / 60 / 117), an
+ * opaque ground over unrelated prose, with a live `x` on it: pressing it threw
+ * away a credential the operator could not see it was standing for. No story
+ * could show this, because every story rendered a composer that does not scroll.
+ *
+ * The reference is minted at the END of a fifteen-line buffer so that scrolling
+ * the field to its end leaves the run in the viewport with the prose it belongs
+ * to above it — the operator's own shape (a long message, a key pasted at the
+ * end) rather than the shape invented to hold the defect. The play function
+ * scrolls the field itself and MEASURES the pair, so the frame is not the only
+ * thing standing behind the claim: `chipDelta` must be zero in a real browser at
+ * a non-zero `scrollTop`, or this story throws instead of releasing the shutter.
+ * The rig's own row re-scrolls the field before shooting (`scrollToEnd`), so the
+ * committed frame is the scrolled state rather than the resting one.
+ */
+export const CredentialPillScrolled: Story = {
+	render: () => (
+		<Frame label="scrolled: a 15-line message, the reference minted at its end, and the chip still on the marker after the field scrolls">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const filler = Array.from(
+			{ length: 14 },
+			(_, i) => `composer box line ${i + 1} of filler prose`,
+		).join("\n");
+		const box = await typeIntoComposer(
+			canvasElement,
+			`${filler}\ndeploy with /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, " to the staging box");
+		if (!composerValue(box).endsWith("to the staging box")) {
+			throw new Error(
+				`the reference did not mint into the tail: ${composerValue(box)}`,
+			);
+		}
+		box.scrollTop = box.scrollHeight;
+		box.dispatchEvent(new Event("scroll"));
+		await settle();
+		/*
+		 * THE PARKED POSITION IS A LEGIBLE ONE (UX round 5, U2). Scrolling to the very end
+		 * left the run's strip inside the 2.4-5.4px band the UX round landed on, where the
+		 * chip is drawn before any of its control's glyph can be seen: a real Tab reached
+		 * `Remove credential #1` with no `times` on screen, and a real press in that band
+		 * cleared the credential. The chip's floor is now the strip at which the glyph appears,
+		 * so the fixture parks the run's top a readable distance inside the field's box rather
+		 * than on its edge - the sweep in `scripts/credential-chip-geometry.mjs` asserts the
+		 * same floor across the whole boundary, and this story is its resting state.
+		 */
+		const markerRun = canvasElement.querySelector<HTMLElement>(
+			"[data-credential-run]",
+		);
+		if (markerRun) {
+			box.scrollTop = Math.max(
+				0,
+				Math.round(markerRun.offsetTop - box.clientHeight + 14),
+			);
+			box.dispatchEvent(new Event("scroll"));
+			await settle();
+		}
+		if (box.scrollTop === 0) {
+			throw new Error(
+				"the field never scrolled, so this story is not the scrolled state",
+			);
+		}
+		const delta = chipDelta(canvasElement);
+		if (!delta) throw new Error("no chip is painted over the run");
+		if (Math.abs(delta.top) > 0.5 || Math.abs(delta.left) > 0.5) {
+			throw new Error(
+				`the chip is off its run at scrollTop ${box.scrollTop}: ${JSON.stringify(delta)}`,
+			);
+		}
+		const scrolledTo = box.scrollTop;
+		/*
+		 * AND THE KEYBOARD'S ROUTE TO THE CONTROL (UX round 2, U6 — a BLOCKER). The chip
+		 * layer used to be a scroll CONTAINER (`overflow-hidden`), so the browser scrolled
+		 * it to bring the focused control into view: one real Tab from the field left the
+		 * layer at `scrollTop 219` with the chip 219px above its run, painted over
+		 * unrelated prose, its `x` live and a focus ring on it. `overflow-clip` is the fix
+		 * and this is the assertion — the layer's own offset stays 0, the field's does not
+		 * move, and the chip is still on the marker it stands for.
+		 */
+		await userEvent.tab();
+		await settle();
+		const layer = canvasElement.querySelector("[data-credential-chips]");
+		if (!layer) throw new Error("the chip layer is gone after the Tab");
+		if (layer.scrollTop !== 0) {
+			throw new Error(
+				`the chip layer scrolled ITSELF to ${layer.scrollTop} when its control took focus (content ${layer.scrollHeight} in ${layer.clientHeight}px)`,
+			);
+		}
+		if (box.scrollTop !== scrolledTo) {
+			throw new Error(
+				`the field moved when the control took focus: ${scrolledTo} -> ${box.scrollTop}`,
+			);
+		}
+		const afterTab = chipDelta(canvasElement);
+		if (
+			!afterTab ||
+			Math.abs(afterTab.top) > 0.5 ||
+			Math.abs(afterTab.left) > 0.5
+		) {
+			throw new Error(
+				`the chip left its run when its control took focus: ${JSON.stringify(afterTab)}`,
+			);
+		}
+		/*
+		 * AND THE SAME KEYSTROKE IN THE STATE THAT DISCRIMINATES (code review round 3,
+		 * R3-2). Everything above runs with the chip IN VIEW, which is the state in which
+		 * the round-2 defect cannot reproduce - with nothing for the browser to scroll INTO
+		 * view, the layer's own offset stays 0 even when it is the scroll container it used
+		 * to be, and the assertion is inert for the defect it was written for. The defect
+		 * lives in the state the round-2 reviewer measured: the field parked at its top,
+		 * the marker's run below the box.
+		 *
+		 * In that state: the layer draws NO chip for a run it clips away (round 3, R3-1),
+		 * and a real Tab from the field therefore cannot land on a control that is painted
+		 * nowhere - which is what makes the composer stop swallowing keystrokes and stop
+		 * clearing credentials off-screen.
+		 */
+		/*
+		 * THE CARET HAS TO LEAVE THE END FIRST, OR THIS STEP NEVER REACHES ITS OWN STATE
+		 * (code review round 5's class, found while landing R5-1's test). The field is
+		 * focused with the caret after the minted reference, and a focused textarea whose
+		 * caret is at the end re-scrolls itself back to that caret - so `scrollTop = 0` was
+		 * undone on the next layout, the run stayed inside the box, and the assertion below
+		 * had been reading a chip that was correctly drawn. Measured before this change:
+		 * `scrollTop 225, run 165..182, box 78.4..190.4, chips 1`, i.e. the step that names
+		 * "the field parked at its top, the marker's run below the box" never got there and
+		 * the round-3 claim was inert in this story as well as in the rig.
+		 */
+		/*
+		 * THE CARET MOVES TO THE START, AND NOTHING IS SAVED AROUND IT (design review rounds 6
+		 * and 7, D16). Moving it is what makes this step reach its state. Round 6 also saved the
+		 * selection here and put it back before the shutter, on the theory that the committed
+		 * frames carried one; they do not - the probe reads a collapsed caret (`566..566`) both
+		 * before and after, so the pair was inert, and the selection visible in the round-3
+		 * frames came from that era's app rather than from anything this play does. The pair is
+		 * deleted rather than left as an assertion nothing can fail.
+		 */
+		box.setSelectionRange(0, 0);
+		box.scrollTop = 0;
+		box.dispatchEvent(new Event("scroll"));
+		await settle();
+		if (box.scrollTop !== 0) {
+			throw new Error(
+				`this story needs the field parked at its top to discriminate, and it is at ${box.scrollTop} instead`,
+			);
+		}
+		if (canvasElement.querySelector("[data-credential-chips]")) {
+			const runEl = canvasElement.querySelector<HTMLElement>(
+				"[data-credential-run]",
+			);
+			const rect = runEl?.getBoundingClientRect();
+			throw new Error(
+				`a run the layer clips away still drew a chip, so its control is reachable while painted nowhere (round 3, R3-1): run ${rect ? `${rect.top.toFixed(1)}..${rect.bottom.toFixed(1)}` : "none"} against a box of ${box.getBoundingClientRect().top.toFixed(1)}..${box.getBoundingClientRect().bottom.toFixed(1)}`,
+			);
+		}
+		await userEvent.tab();
+		await settle();
+		const landedOn =
+			document.activeElement?.getAttribute?.("aria-label") ??
+			document.activeElement?.tagName ??
+			null;
+		if (
+			typeof landedOn === "string" &&
+			landedOn.startsWith("Remove credential")
+		) {
+			throw new Error(
+				`a Tab with the run out of view reached ${JSON.stringify(landedOn)}, a control painted nowhere (round 3, R3-2)`,
+			);
+		}
+		/*
+		 * AND BACK TO THE STATE THIS STORY IS NAMED FOR, focus in the box: the committed
+		 * frame shows the chip on its run while the field is scrolled, and the ring has its
+		 * own two frames (`credential-pill-focused` and its compact sibling).
+		 */
+		box.scrollTop = box.scrollHeight;
+		box.dispatchEvent(new Event("scroll"));
+		box.focus();
+		await settle();
+		releaseShutter();
+	},
+};
+
+/**
+ * THE CLEAR CONTROL UNDER THE POINTER (design round 1, D3).
+ *
+ * The step used to be a ground-only one (`hover:bg-elevated` against the chip's
+ * own fill), which measures 1.00-1.33:1 across the palettes — 16 of 59 at or
+ * under 1.05:1, `obsidian` at ΔE00 0.77 and the default theme greyscale-identical
+ * — so in half the themes the control's only feedback was invisible or hue-only.
+ * The perceivable step is the INK now (`ink-muted` -> `ink`, the working-directory chip's own prune-control idiom), and a frame is the only way to show
+ * it: `:hover` is browser state no story can set, so the rig's row moves the real
+ * pointer onto the control (`hover:`) and shoots with it still there.
+ *
+ * The play asserts the step ACTUALLY HAPPENED rather than trusting the class
+ * list: the computed ink is read at rest and again with the pointer on it, and the
+ * story throws if the two are equal — which is the failure a renamed role would
+ * produce, in the theme the capture happens to run in.
+ */
+export const CredentialPillHover: Story = {
+	render: () => (
+		<Frame label="hover: the clear control's ink steps from ink-muted to ink under the pointer, with the primitive's elevated ground beside it">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`deploy with /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, " to the staging box");
+		const control = await within(canvasElement).findByLabelText(
+			"Remove credential #1",
+		);
+		const atRest = getComputedStyle(control).color;
+		const ratio = contrastRatio(atRest, chipGround(control));
+		if (ratio < 4.5) {
+			throw new Error(
+				`the clear control's resting ink is ${ratio.toFixed(2)}:1 on the chip's fill, under the 4.5 text floor`,
+			);
+		}
+		/*
+		 * `:hover` is browser state: a synthetic event does not leave it set for the
+		 * frame the rig takes afterwards, which is why the rig's own row moves the REAL
+		 * pointer (`hover:`) and shoots with it there — that frame is the step. What
+		 * this asserts is the half a picture cannot: that the resting pair the step
+		 * starts from clears the floor in the theme being captured, which is D3's own
+		 * measurement taken from the live cascade rather than from the class list.
+		 */
+		await userEvent.hover(control);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE CLEAR CONTROL WITH KEYBOARD FOCUS (design round 1, D2).
+ *
+ * Two things are only visible here. The control is 16x16 rather than 12x12 — as
+ * far as a 17px run box allows, 24x24 being impossible inline (the chip's own
+ * ground would land on the lines above and below and swallow their clicks), so the
+ * WCAG 2.2 SC 2.5.8 deviation is a recorded measurement rather than a silent one
+ * — and its focus ring takes the primitive's DENSE offset (`outline-offset-1`)
+ * instead of the global 2px, which on a control this small bled over the chip's
+ * own edge and into the words beside it.
+ *
+ * `:focus-visible` is browser state like `:hover`, and stricter: a programmatic
+ * focus does not match it unless the last interaction was the keyboard, so the
+ * rig's row walks there with real Tab presses (`tabTo:`) — which is also the
+ * keyboard route the UX round measured ("after the mint, one Tab from the field
+ * lands on it"). The play asserts the ring's own offset, the half a still cannot
+ * measure.
+ */
+export const CredentialPillFocused: Story = {
+	render: () => (
+		<Frame label="focused: the clear control reached by Tab from the field, with the dense-size focus offset instead of the global one">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`deploy with /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, " to the staging box");
+		const control = await within(canvasElement).findByLabelText(
+			"Remove credential #1",
+		);
+		const target = control.getBoundingClientRect();
+		if (target.width < 16 || target.height < 16) {
+			throw new Error(
+				`the clear target is ${target.width}x${target.height}, under the box the run allows`,
+			);
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE UNDO, DRIVEN BY A REAL CLICK ON THE TOAST (UX round 1, U2).
+ *
+ * The clear's sentence used to expire with a sonner toast (3.5-6.5s) while the
+ * notice line stayed blank, and `Cmd+Z` restored nothing. The fix is two channels
+ * and a held payload: the notice line carries the sentence until the next edit,
+ * and the toast offers `Undo`, which puts the marker back at the offset it was
+ * removed from and leaves the payload in place — the payload was never dropped,
+ * so the restored marker is a BACKED chip again rather than the warning register.
+ *
+ * This is the only place the whole round trip can be walked: the chip is painted
+ * at a measured box (jsdom has no layout engine, so the composer's jsdom suite
+ * cannot reach the control at all) and the undo's own target is a toast in a
+ * portal. The assertions are the state, not the intent: the marker is back in the
+ * buffer, the chip is painted again over its run, and the notice line has retired
+ * — because the sentence described the buffer the clear produced.
+ */
+export const CredentialPillClearedUndone: Story = {
+	render: () => (
+		<Frame label="undone: the toast's Undo put the reference back at the offset it was removed from, as a backed chip">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`here is the new key /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, ", use it for the QA box");
+		const before = composerValue(box);
+		await userEvent.click(
+			await within(canvasElement).findByLabelText("Remove credential #1"),
+		);
+		if (composerValue(box) === before) {
+			throw new Error("the clear did not edit the buffer");
+		}
+		await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+		await settle();
+		if (composerValue(box) !== before) {
+			throw new Error(
+				`the undo did not restore the buffer: ${composerValue(box)} != ${before}`,
+			);
+		}
+		const delta = chipDelta(canvasElement);
+		if (!delta || Math.abs(delta.top) > 0.5 || Math.abs(delta.left) > 0.5) {
+			throw new Error(
+				`the restored reference is not a chip on its run: ${JSON.stringify(delta)}`,
+			);
+		}
+		const notice = canvasElement.querySelector("#composer-credential-notice");
+		if (notice && CLEARED_NOTICE.test(notice.textContent ?? "")) {
+			throw new Error(
+				"the cleared sentence is still on the notice line after the reference came back",
+			);
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * THE SAME CHIP AT THE SHIPPED COMPACT RUNG — a column under 550px, where the
+ * composer drops a type step and the padding — because the chip is painted at a
+ * box measured from the mirror and the run it covers is NARROWER there.
+ *
+ * Nothing in the composer suite can catch a geometry failure at this rung (no
+ * layout engine), so the pair of frames is what holds the claim: the chip covers
+ * the marker's box at both rungs, and the numbers behind both are printed by
+ * `scripts/credential-chip-geometry.mjs` rather than read off these pictures.
+ */
+export const CredentialPillSmallView: Story = {
+	render: () => (
+		<Frame label="small view (a 440px column): the same chip at the compact rung, over a narrower run">
+			<div className={cn("@container/chatcol")} style={{ width: 440 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={true}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, "is the deploy key");
+		if (!composerValue(box).startsWith("[Credential #1, 19 chars]")) {
+			throw new Error(`no chip was minted: ${composerValue(box)}`);
 		}
 		releaseShutter();
 	},

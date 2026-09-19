@@ -16,13 +16,19 @@ import {
  * every failure it can produce - a refused socket, a reset, an expired budget,
  * and three refusals it makes BEFORE any byte leaves this process - so a
  * resolved promise says nothing about whether anything answered. The daemon
- * state machine needs precisely that distinction: `recordTransportSuccess()`
- * is the app's proof that the connection is ALIVE, and stamping it from a
- * request that was never sent is how a daemon that refused the socket came to
- * hold the state at `degraded` forever, with the user reading "refused the
- * connection (ECONNREFUSED) ... the daemon answered a request 0s ago" and the
- * app unable to reach `detached` and so unable to re-discover (review round 1,
- * F-1).
+ * state machine needs precisely that distinction: `recordTransportAnswer()` is
+ * the app's proof that the connection is ALIVE, and stamping it from a request
+ * that was never sent is how a daemon that refused the socket came to hold the
+ * state at `degraded` forever, with the user reading "refused the connection
+ * (ECONNREFUSED) ... the daemon answered a request 0s ago" and the app unable
+ * to reach `detached` and so unable to re-discover (review round 1, F-1).
+ *
+ * The same split answers a second question the state machine keeps apart from
+ * liveness, and {@link desktopAnswerProvesPairing} is where: an answer proves
+ * the connection is alive, while only an answer the plane ADMITTED proves this
+ * app is still PAIRED. A refusal is the first and never the second - see that
+ * function for what a daemon replaced under the app answers with, and what
+ * counting it as a pairing cost (measured 2026-09-18).
  *
  * `answered` is true exactly when `fetch` resolved - which is to say a process
  * wrote a status line for this request, whatever status it chose. A `401`, a
@@ -220,6 +226,81 @@ export async function requestDesktop(
 function deadlineExceeded(error: unknown): boolean {
 	const name = (error as { name?: unknown } | null)?.name;
 	return name === "TimeoutError" || name === "AbortError";
+}
+
+/**
+ * The path prefix of every route the daemon's desktop plane has to ADMIT.
+ *
+ * The daemon's own routing table puts `require_desktop` on the `/v1/desktop/`
+ * routers, so every route under this prefix refuses an unpaired caller with
+ * `401`/`403` - or with `503` while the plane is shut ("Desktop controls
+ * require a backend started by the desktop app"). Nothing OUTSIDE the prefix is
+ * a pairing signal this predicate can read, and the families outside it are
+ * gated unevenly - which is why the prefix, not the family, is what it keys on:
+ *
+ *  - `/v1/capabilities` admits nobody, by design, so a renderer can read the
+ *    plane's posture (the op this app polls every 15 s while the plane is shut);
+ *  - `/v1/auth/*` and `/v1/settings*` carry the dependency unconditionally, so
+ *    on a daemon nobody has claimed they answer `503`, not `200`;
+ *  - `/v1/agents`, `/v1/jobs`, `/v1/schedules`, `/v1/config`, `/v1/credentials`
+ *    and `/v1/models` are gated by the boundary middleware ONLY while the plane
+ *    is enabled, so the same `200` from one of them is either the daemon
+ *    admitting an enabled plane's caller or an unclaimed daemon's ordinary
+ *    reply - and the answer alone cannot say which.
+ *
+ * What follows from that is the predicate's error direction, and it is
+ * deliberate: a 2xx on one of the gated legacy families an enabled plane
+ * admitted is DISCARDED (a false NEGATIVE - evidence this predicate fails to
+ * count), and no answer that the plane did not admit can ever be counted (no
+ * false POSITIVE). The state machine is built to absorb the first, because the
+ * ops under this prefix keep arriving - the presence beat every 15 s next to
+ * every desktop read - and any one of their 2xx is the proof this predicate
+ * wants.
+ *
+ * `/v1/desktop/claim` is under this prefix and is deliberately NOT gated - it is
+ * the door the gate stands in front of - but no request op maps to it: a claim is
+ * sent by `claimDesktopPlane`, which does not go through this transport.
+ */
+const ADMITTED_PATH_PREFIX = "/v1/desktop/";
+
+/**
+ * Whether one desktop answer proves this app is still PAIRED with the daemon.
+ *
+ * The state machine asks two different questions of the same answer, and
+ * conflating them is what kept an unpaired app looking attached: "is the
+ * connection alive?" (any answer, whatever its status) and "does this app's
+ * credential still govern this daemon's plane?" (only an answer the plane let
+ * THROUGH). This answers the second one, and it is narrow on purpose:
+ *
+ *  - the route must be one the plane has to admit
+ *    ({@link ADMITTED_PATH_PREFIX}), so a `200` from the capability op - which
+ *    the renderer re-asks every 15 s while the plane is shut, exactly to notice
+ *    when it re-opens - can never stand in for a proven pairing;
+ *  - the status must be a 2xx. A `401`/`403` is the plane refusing THIS app's
+ *    bearer and a `503` is a plane that is shut, which is what a daemon REPLACED
+ *    under the app answers with until the app claims the new process's plane.
+ *    Counting one of those as a proven pairing is how a replaced daemon's
+ *    refusals kept the app `attached` to a pid that was gone, cleared the
+ *    identity-failure count on every pass, and left it reporting "not paired
+ *    with the running Local Operator server" for 28 minutes instead of
+ *    re-discovering and re-claiming (measured 2026-09-18).
+ *
+ * A request the schema refused, and one this app never sent (no token), prove
+ * nothing and answer `false`.
+ *
+ * `response` is read for its status alone rather than typed as
+ * `DesktopResponse`: this asks what the daemon DECIDED, not which body shape
+ * carried the decision, so any answer object with a status answers it.
+ */
+export function desktopAnswerProvesPairing(
+	input: unknown,
+	response: { status: number },
+): boolean {
+	const parsed = desktopRequestSchema.safeParse(input);
+	if (!parsed.success) return false;
+	if (!desktopEndpoint(parsed.data).path.startsWith(ADMITTED_PATH_PREFIX))
+		return false;
+	return response.status >= 200 && response.status < 300;
 }
 
 export function trustedDesktopFrame(actual: string, expected: string): boolean {

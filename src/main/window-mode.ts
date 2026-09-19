@@ -716,6 +716,42 @@ export function resolveSecondLaunchShow(input: {
 }
 
 /**
+ * What the macOS About action does under the launch's resolved window mode.
+ *
+ * Why this is a decision rather than a straight call to the panel. The About
+ * panel is AppKit's own window, and it is a window on the OPERATOR's screen:
+ * this app is driven by agents on that same screen, so an agent run must not be
+ * able to put one there. `headless` is the mode whose entire promise is that
+ * nothing appears, so the action is suppressed there and says so in the log - an
+ * action that silently did nothing and one that never ran are the same absence
+ * otherwise.
+ *
+ * `inactive` KEEPS the panel, and that half is a measurement rather than a hope.
+ * Measured on this host (macOS 25.6, Electron 44.3.0): `app.showAboutPanel()`
+ * orders the panel front - the window server lists it, `284x191` at the sizes
+ * these runs use, and `screencapture -l` renders it - WITHOUT making the app the
+ * active application; `app.isActive()` stays false and the frontmost pid never
+ * moves (0 of 30 samples in the run recorded in `docs/evidence/about-panel`).
+ * That census carries the panel `onscreen: false`, because it carries every window
+ * of that run false: the flag answers for the SCREEN, and the display was asleep,
+ * which is why the same run's on-screen set reads `(none)`. The distinction is the
+ * reason the rig differences over the FULL census rather than the on-screen set - a
+ * difference over the latter would read "the action created nothing" for the wrong
+ * reason - and not a claim that the panel was ever on a lit display. That is exactly
+ * the promise `inactive` makes, so the panel is allowed there. `normal` is the
+ * operator's own app and behaves as it always did.
+ *
+ * The identity the panel carries is registered separately, in `index.ts`: an
+ * unpackaged launch's panel is filled from Electron.app's bundle, and this
+ * decision is only about whether it may be raised at all.
+ */
+export type AboutPanelAction = "suppress" | "show";
+
+export function resolveAboutPanelAction(mode: WindowMode): AboutPanelAction {
+	return mode === "headless" ? "suppress" : "show";
+}
+
+/**
  * Which process ends this run, if any — the second half of the launch policy.
  *
  * Why this exists. A `headless` run is launched by a harness: the dev driver, a

@@ -46,6 +46,7 @@ const {
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_KEY_PATTERN,
+	CREDENTIAL_CLEAR_UNDO_LABEL,
 	CREDENTIAL_KEY_PREFIX,
 	CREDENTIAL_MARKER,
 	CREDENTIAL_TYPING_NOTICE,
@@ -57,8 +58,15 @@ const {
 	cancelTypedCredential,
 	capturePasted,
 	charsOf,
+	citationSegments,
 	citationSpan,
 	citedPayloads,
+	clearCitedCredential,
+	clearedNotice,
+	clearedNoticeLine,
+	clearedToastLine,
+	noticeLineFor,
+	clearControlLabel,
 	credentialCitation,
 	credentialMarker,
 	credentialNamesFrom,
@@ -68,10 +76,13 @@ const {
 	isArmed,
 	isStorableCredentialKey,
 	isTyping,
+	markerChip,
+	markerChipTitle,
 	maskEdit,
 	maskSpan,
 	mintTypedCredential,
 	paintPlan,
+	restoreClearedCredential,
 	relocateArm,
 	storedNotice,
 	substituteCredentials,
@@ -84,6 +95,85 @@ const {
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The render-only transform, bundled and imported the same way and for the same
+ * reason: the plugin is DRIVEN over real mdast trees rather than described. It is
+ * a second bundle because it is a second module — `credential-citation-remark.ts`
+ * reads no React and no DOM, which is exactly what makes it testable here.
+ */
+const remarkBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/components/credential-citation-remark";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	citationFromHref,
+	citationFromLink,
+	citationHref,
+	remarkCredentialCitations,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(remarkBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/*
+ * THE MATH DECISION, bundled beside the plugin that has to survive it (code review
+ * round 1, R1-1). A third bundle because it is a third module - `markdown-math.ts`
+ * reads no React either, and the defect it fixes is a property of the CONTENT and
+ * the plugin LIST rather than of any component.
+ *
+ * The pipeline below is the renderer's own: `remark-parse` + `remark-gfm`, then
+ * `remark-math` when the decision says the content is worth it, then the citation
+ * plugin. It is driven over source the app's own citation builder produced, which
+ * is the only kind of source that can exhibit the defect - a citation carries
+ * exactly one `$`, so two of them are what makes `containsLatex` see math.
+ */
+const mathBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/components/credential-capture";' +
+			'export * from "./src/renderer/src/features/chat/components/credential-citation-remark";' +
+			'export * from "./src/renderer/src/features/chat/components/markdown-math";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { containsRenderableMath, maskCitations } = await import(
+	`data:text/javascript;base64,${Buffer.from(mathBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/**
+ * The renderer's pipeline over one document, with the math plugin forced either
+ * way: `false` is what the decision produces for a citation-bearing document,
+ * `true` is the pipeline the defect shipped (and the negative control below, so a
+ * test that passes by never enabling math cannot pass).
+ */
+const drivePipeline = async (source, withMath) => {
+	const { unified } = await import("unified");
+	const { default: remarkParse } = await import("remark-parse");
+	const { default: remarkGfm } = await import("remark-gfm");
+	const { default: remarkMath } = await import("remark-math");
+	let processor = unified().use(remarkParse).use(remarkGfm);
+	if (withMath) processor = processor.use(remarkMath);
+	processor = processor.use(remarkCredentialCitations);
+	const tree = processor.runSync(processor.parse(source));
+	const counts = { link: 0, inlineMath: 0 };
+	const walk = (node) => {
+		if (counts[node.type] !== undefined) counts[node.type] += 1;
+		for (const child of node.children ?? []) walk(child);
+	};
+	walk(tree);
+	return counts;
+};
 
 /*
  * ---------------------------------------------------------------------------
@@ -680,9 +770,26 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	composer.type("hunter2");
 	composer.escape();
 	const { token } = composer.state.lastCancel;
+	/*
+	 * `restored` IS PART OF THE TOKEN NOW (review round 3, MINOR 1). The submit seam
+	 * has to know whether this cancel put characters back — an empty span restores
+	 * nothing, so the words written after it are the operator's own prose, while a
+	 * span that held characters leaves a secret in the box — and the record of the
+	 * gesture is where that fact belongs, because nothing later can tell the two
+	 * apart from the buffer.
+	 */
+	/*
+	 * `restoredText` moved with the count (UX round 6, U24): the composer needed the
+	 * characters themselves to answer "is the run still in this draft?", because a count
+	 * alone let a cleared box and a fresh sentence be read as the run's draft. Both
+	 * halves of this pair assert it — the characters here, and the empty string for the
+	 * span that put nothing back.
+	 */
 	assert.deepEqual(token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
+		restored: 7,
+		restoredText: "hunter2",
 	});
 	assert.ok(holdsCancelledToken(composer.state.buffer, token));
 	// Prose written AROUND the restored characters leaves it standing — this is
@@ -706,6 +813,8 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	assert.deepEqual(empty.state.lastCancel.token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
+		restored: 0,
+		restoredText: "",
 	});
 	assert.equal(empty.state.lastCancel.restored, 0);
 	// The characters the operator writes AFTER an empty-span cancel land after
@@ -1893,5 +2002,553 @@ test("the token regex is read with a fresh lastIndex, so two reads agree", () =>
 		CREDENTIAL_TOKEN.exec(draft),
 		null,
 		"an unreset second read is the trap the discipline exists for",
+	);
+});
+
+/* Hoisted for the reason the story file hoists its matchers: a regex built inside a
+   test body is rebuilt on every call, and `lint/performance/useTopLevelRegex` is
+   the rule that says so. */
+const CLEARED_KEY_NOTICE =
+	/Removed LOP_SECRET_4CE3Y48G \(credential #3\) from this message/;
+const CLEARED_REPASTE =
+	/press ⌘Z to put it back, or paste it again after \/credential/;
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CHIP'S OWN TWO QUESTIONS: what the transcript treats as a citation, and
+ * what the composer's x does to one
+ * ---------------------------------------------------------------------------
+ *
+ * Operator report, 2026-09-17: a message sent with a pasted secret reads in the
+ * transcript as a wall of technical text, and the composer's "pill" is a wash
+ * behind the marker's own square brackets rather than a chip. Part A of that
+ * change is RENDER-ONLY - the citation the model receives and the transcript
+ * stores does not change by one byte - so the only thing to pin on that side is
+ * what the renderer RECOGNISES, and the negatives are the load-bearing half: a
+ * hand-typed lookalike must stay prose, and the citation's own text inside a
+ * fenced block must stay exactly as the operator quoted it.
+ *
+ * Part B's clear control has a second half that cannot be photographed into
+ * proof: the VALUE and the PAYLOAD are gone, not just the marker text. The
+ * frames show the sentence with the reference removed; these cases show that no
+ * citation, no marker and no secret survives the click.
+ */
+
+/** A payload as the mint builds one, with its marker built the same way. */
+const chipPayload = (index, value) => ({
+	index,
+	key: `LOP_SECRET_4CE3Y48${index}`,
+	value,
+	marker: credentialMarker(index, value),
+});
+
+test("every citation the app writes comes back as ONE citation segment", () => {
+	const payload = chipPayload(1, "s".repeat(73));
+	const sentence = credentialCitation(payload);
+	assert.deepEqual(citationSegments(sentence), [
+		{ kind: "stored", text: sentence, key: payload.key, chars: 73 },
+	]);
+	for (const reason of ["unreachable", "rejected-key", "lost"]) {
+		const unstored = describeUnstored(reason);
+		assert.deepEqual(
+			citationSegments(unstored),
+			[{ kind: "unstored", text: unstored }],
+			reason,
+		);
+	}
+});
+
+test("a citation mid-sentence stays inside its paragraph, and two of them are two chips", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const text = `here is the key ${sentence} — and the same one again ${sentence}`;
+	const segments = citationSegments(text);
+	assert.deepEqual(
+		segments.map((segment) => segment.kind),
+		["text", "stored", "text", "stored"],
+	);
+	assert.equal(segments[0].text, "here is the key ");
+	assert.equal(segments[2].text, " — and the same one again ");
+	// The split is a PROJECTION: joining the pieces gives the document back, so a
+	// chip can only ever be a re-drawing of text the transcript already held.
+	assert.equal(segments.map((segment) => segment.text).join(""), text);
+});
+
+test("a lookalike is prose: only the whole sentence, with its two names agreeing", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const cases = [
+		// the second name edited by hand: the case a permissive scan would chip
+		sentence.replace("$LOP_SECRET_4CE3Y481", "$LOP_SECRET_OTHER000"),
+		// the sentence's own tail missing
+		"[credential LOP_SECRET_4CE3Y481 (73 chars) — available to bash and eval as $LOP_SECRET_4CE3Y481]",
+		// the MARKER grammar, which never reaches the transcript and is not a citation
+		"[Credential #1, 73 chars]",
+		// a bracket that is not a citation at all
+		"[credential]",
+	];
+	for (const text of cases) {
+		assert.deepEqual(
+			citationSegments(text).map((segment) => segment.kind),
+			["text"],
+			text,
+		);
+	}
+});
+
+test("the fenced and inline-code cases are left byte-identical, and prose beside them is not", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const tree = {
+		type: "root",
+		children: [
+			{
+				type: "paragraph",
+				children: [{ type: "text", value: "what you sent:" }],
+			},
+			{ type: "code", lang: "text", value: sentence },
+			{
+				type: "paragraph",
+				children: [
+					{ type: "text", value: "and again " },
+					{ type: "text", value: sentence },
+				],
+			},
+			{
+				type: "paragraph",
+				children: [{ type: "inlineCode", value: sentence }],
+			},
+		],
+	};
+	remarkCredentialCitations()(tree);
+	const fenced = tree.children[1];
+	assert.equal(fenced.value, sentence, "a fenced block is untouched");
+	assert.equal(fenced.children, undefined, "and nothing was hung on it");
+	const inline = tree.children[3].children[0];
+	assert.equal(inline.type, "inlineCode");
+	assert.equal(inline.value, sentence);
+	// Prose beside the fence is chipped, and the text around it survives unchanged.
+	const prose = tree.children[2].children;
+	assert.deepEqual(
+		prose.map((node) => node.type),
+		["text", "link"],
+	);
+	assert.equal(prose[0].value, "and again ");
+	assert.equal(
+		prose[1].children[0].value,
+		sentence,
+		"the node still carries the sentence",
+	);
+	assert.equal(prose[1].title, sentence);
+});
+
+test("the chip's URL round-trips, and a URL this app did not write is not a citation", () => {
+	const href = citationHref({
+		kind: "stored",
+		key: "LOP_SECRET_4CE3Y48G",
+		chars: 73,
+	});
+	assert.equal(href, "#lo-credential/LOP_SECRET_4CE3Y48G/73");
+	assert.deepEqual(citationFromHref(href), {
+		kind: "stored",
+		key: "LOP_SECRET_4CE3Y48G",
+		chars: 73,
+	});
+	assert.deepEqual(citationFromHref(citationHref({ kind: "unstored" })), {
+		kind: "unstored",
+	});
+	for (const other of [
+		"https://example.com/x",
+		"#lo-credential",
+		"#lo-credential/not a key/73",
+		"#lo-credential/LOP_SECRET_4CE3Y48G/seven",
+		undefined,
+	]) {
+		assert.equal(citationFromHref(other), null, String(other));
+	}
+});
+
+test("the marker's chip label is the index, and the count is the marker's own", () => {
+	assert.deepEqual(markerChip(credentialMarker(1, "x".repeat(19))), {
+		index: 1,
+		label: "#1",
+		chars: 19,
+	});
+	assert.deepEqual(markerChip(credentialMarker(12, "x")), {
+		index: 12,
+		label: "#12",
+		chars: 1,
+	});
+	assert.equal(markerChip("deploy with"), null);
+	assert.equal(
+		markerChip(`${credentialMarker(1, "x")} and more`),
+		null,
+		"a span that merely contains the grammar is not a run of its own",
+	);
+});
+
+test("the x takes the marker and its trailing space in ONE edit, and stops citing the value", () => {
+	const payload = chipPayload(1, "s".repeat(19));
+	const buffer = `deploy with ${payload.marker} to the staging box`;
+	const cleared = clearCitedCredential({ buffer, payload });
+	assert.equal(cleared.cleared, true);
+	assert.equal(cleared.buffer, "deploy with to the staging box");
+	assert.equal(cleared.caret, "deploy with ".length);
+	// THE VALUE/PAYLOAD OUTCOME, which is the half a frame cannot show: nothing
+	// cites the payload any more, so the submit seam has nothing to stamp, and the
+	// splice leaves neither the marker's text nor the secret in the buffer.
+	assert.equal(citedPayloads(cleared.buffer, [payload]).length, 0);
+	assert.equal(
+		substituteCredentials(cleared.buffer, [payload]),
+		cleared.buffer,
+	);
+	assert.ok(!cleared.buffer.includes("[Credential"));
+	assert.ok(!cleared.buffer.includes(payload.value));
+});
+
+test("a marker at the end of the buffer goes without eating a character", () => {
+	const payload = chipPayload(1, "abc");
+	const cleared = clearCitedCredential({
+		buffer: `use ${payload.marker}`,
+		payload,
+	});
+	assert.equal(cleared.cleared, true);
+	// The blank BEFORE the marker is the operator's and stays; there is no trailing
+	// blank to take with it, which is the half this case exists for.
+	assert.equal(cleared.buffer, "use ");
+	assert.equal(cleared.caret, 4);
+});
+
+test("the x is refused, not guessed, when the marker it would remove has moved on", () => {
+	const payload = chipPayload(1, "abc");
+	const gone = "no reference here";
+	assert.deepEqual(clearCitedCredential({ buffer: gone, payload }), {
+		cleared: false,
+		buffer: gone,
+		caret: gone.length,
+		// Nothing left, so there is nothing for an undo to put back: the `removed`
+		// half is what `restoreClearedCredential` refuses on (UX round 1, U2).
+		removed: "",
+	});
+	// The index half: a payload whose marker names a DIFFERENT index is not this
+	// payload's citation, which is what a hand-edited marker tail produces.
+	const edited = { ...payload, marker: credentialMarker(2, payload.value) };
+	const kept = clearCitedCredential({
+		buffer: `x ${payload.marker} y`,
+		payload: edited,
+	});
+	assert.equal(kept.cleared, false);
+	assert.equal(kept.buffer, `x ${payload.marker} y`);
+});
+
+test("the cleared notice names the key and says who can supply the value again", () => {
+	const notice = clearedNotice("LOP_SECRET_4CE3Y48G", 3, "⌘Z");
+	assert.match(notice, CLEARED_KEY_NOTICE);
+	assert.match(notice, CLEARED_REPASTE);
+});
+
+/* ---------------------------------------------------------------------------
+ * ROUND 1's REMEDIATION: the pipeline the defect lived in, the link provenance
+ * the QA round found, the undo, and the copy the two reviews asked for.
+ * ------------------------------------------------------------------------- */
+
+test("two citations on one line are two chips, and the math pipeline must not eat them", async () => {
+	/*
+	 * R1-1's own shape, over the renderer's real plugin list. Every citation the
+	 * app writes carries exactly ONE `$` (`... available to bash and eval as
+	 * $KEY ...`), so one alone never matches `INLINE_MATH_REGEX` - and TWO of them
+	 * always do. That made `containsLatex` answer true, enabled `remark-math`,
+	 * and micromark paired the two citations' `$`s at PARSE time, before the
+	 * citation plugin could run: the operator's own sentence was typeset as a
+	 * formula and neither reference was chipped.
+	 */
+	const first = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const second = credentialCitation(chipPayload(2, "s".repeat(19)));
+	const source = `here is ${first} and also ${second} ok`;
+	assert.equal(
+		containsRenderableMath(source),
+		false,
+		"a document whose only `$`s are two citations' is not a math document",
+	);
+	assert.deepEqual(
+		await drivePipeline(source, false),
+		{ link: 2, inlineMath: 0 },
+		"both citations must be chipped",
+	);
+	/*
+	 * THE NEGATIVE CONTROL, and it is the whole reason this test can fail: with the
+	 * math pass forced on - the pipeline that shipped - the citations are split and
+	 * NOTHING is chipped, and the words between the two `$`s become one inline
+	 * formula. A test that only ran the fixed pipeline could pass with the plugin
+	 * deleted.
+	 */
+	assert.deepEqual(
+		await drivePipeline(source, true),
+		{ link: 0, inlineMath: 1 },
+		"the defect, reproduced on the pipeline that shipped it",
+	);
+	assert.equal(maskCitations(source)?.includes("$"), false);
+});
+
+test("a citation plus a `$VAR` on the same line resolves in the citation's favour", async () => {
+	const citation = credentialCitation(chipPayload(1, "s".repeat(19)));
+	const source = `export ${"$"}TOKEN before this ${citation} ok`;
+	assert.equal(containsRenderableMath(source), false);
+	assert.deepEqual(await drivePipeline(source, false), {
+		link: 1,
+		inlineMath: 0,
+	});
+});
+
+test("a citation plus a PRICE still resolves in the citation's favour (code review round 2, R2-1)", async () => {
+	/*
+	 * THE DOOR ROUND 1'S FIX LEFT OPEN. The veto counted "pairable" dollars, and
+	 * `PAIRABLE_DOLLAR` refuses to count a `$` a digit follows - while micromark's
+	 * inline-math CLOSER has no such exclusion, so one citation plus `$5` still
+	 * paired. The reviewer measured the consequence on the shipped tree: the same
+	 * document went `{link:0, inlineMath:1}`, i.e. no chip and the app's own
+	 * sentence typeset as a formula. The rule is now "the MASKED document holds no
+	 * `$` at all" (`containsRenderableMath`), and these are the shapes that tell the
+	 * two rules apart.
+	 */
+	const citation = credentialCitation(chipPayload(1, "s".repeat(19)));
+	for (const price of ["$5", "$5.00", "$1,000", "us$5", "\\$5"]) {
+		const source = `deploy with ${citation} it costs ${price} a month`;
+		assert.equal(containsRenderableMath(source), false, price);
+		assert.deepEqual(
+			await drivePipeline(source, false),
+			{ link: 1, inlineMath: 0 },
+			`the citation pass alone must chip it (${price})`,
+		);
+		// The negative control: the same document through the shipped pipeline with
+		// math enabled loses the chip, which is the defect the veto exists to prevent.
+		assert.deepEqual(
+			await drivePipeline(source, true),
+			{ link: 0, inlineMath: 1 },
+			`math enabled still eats it, which is why the veto must hold (${price})`,
+		);
+	}
+});
+
+test("a citation alone does not disable math, and math without a citation is untouched", async () => {
+	const citation = credentialCitation(chipPayload(1, "s".repeat(19)));
+	// One citation is one `$`: no pair, so `containsLatex` was never true for it and
+	// this document never had math to lose.
+	assert.equal(containsRenderableMath(citation), false);
+	assert.deepEqual(await drivePipeline(citation, false), {
+		link: 1,
+		inlineMath: 0,
+	});
+	// No citation: the rule is the old `containsLatex`, unchanged, so every render
+	// that never opted in behaves exactly as it did.
+	assert.equal(containsRenderableMath("solve $x^2$ for me"), true);
+	assert.equal(containsRenderableMath("it costs $5 and $10"), false);
+	assert.equal(containsRenderableMath("prices are $5"), false);
+	assert.equal(containsRenderableMath("no dollars here"), false);
+	// THE RECORDED TRADE, in one assertion: a document that cites a credential AND
+	// carries a formula shows the formula as its own source, because a citation
+	// that silently fails to chip is the defect this whole change exists to remove.
+	assert.equal(
+		containsRenderableMath(`solve $x^2$ then use ${citation}`),
+		false,
+	);
+});
+
+test("the notice line's precedence puts the actionable sentence first (UX round 2, U10)", () => {
+	/*
+	 * Round 1 ordered the line `unredacted > cleared > armed`, and the armed step did
+	 * not hold: arm the capture at the end of the buffer, clear a chip, and the line
+	 * stopped saying the capture was armed while it still was. The rule is the one
+	 * the first step already argued - the sentence that knows what the NEXT keystroke
+	 * will do outranks the one reporting the last edit - so armed now wins over
+	 * cleared, and the cleared sentence keeps the line whenever nothing actionable
+	 * wants it.
+	 */
+	const cleared = { key: "LOP_SECRET_4CE3Y48G", index: 3, stale: false };
+	const undoCap = "⌘Z";
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: true, cleared, undoCap }),
+		CREDENTIAL_ARMED_NOTICE,
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: false, cleared, undoCap }),
+		clearedNoticeLine(cleared.key, cleared.index, undoCap),
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: true, cleared: null, undoCap }),
+		CREDENTIAL_ARMED_NOTICE,
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: false, cleared: null, undoCap }),
+		null,
+	);
+	// The disclosure still outranks both, for the reason its own comment gives.
+	assert.equal(
+		noticeLineFor({
+			unredacted: "Enter will expose them",
+			armed: true,
+			cleared,
+			undoCap,
+		}),
+		"Enter will expose them",
+	);
+	/*
+	 * AND THE CLEARED REGISTER HAS ONE SENTENCE, NOT TWO (code review round 5, R5-2).
+	 * The refusal copy left the module with the state that could reach it: `restoreClear`
+	 * refuses on the same predicate the withdrawal effect retires a slot on, so a buffer
+	 * the clear no longer describes is a slot that is already gone. Pinned here rather
+	 * than described, because the row that used to sit in this place asserted a sentence
+	 * the app could no longer show.
+	 */
+	assert.equal(
+		noticeLineFor({
+			unredacted: null,
+			armed: false,
+			cleared: { key: cleared.key, index: cleared.index },
+			undoCap,
+		}),
+		clearedNoticeLine(cleared.key, cleared.index, undoCap),
+	);
+});
+
+test("the toast says only what the toast can do (UX round 2, U9)", () => {
+	/*
+	 * U9: the two channels printed the same 110 characters, and the toast's `Undo`
+	 * sat beside "its value is gone" - a claim the button contradicts for as long as
+	 * the button exists. The durable channel keeps the fact; the transient one names
+	 * the reference and offers the undo.
+	 */
+	assert.equal(clearedToastLine(2), "Credential #2 removed");
+	assert.notEqual(
+		clearedToastLine(2),
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+	);
+	assert.ok(!clearedToastLine(2).includes("gone"));
+	/*
+	 * AND THE DURABLE LINE NAMES BOTH THE WAY BACK AND WHICH ONE WENT (UX round 3,
+	 * U15/U16). It said only "paste it again" while the cheap path the same round added
+	 * is the composer's own key, and it named only the KEY - which appears on no chip on
+	 * screen (the chip's face is `#N`), so a reader could not correlate the two channels.
+	 */
+	const durable = clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z");
+	assert.ok(durable.includes("⌘Z"), durable);
+	assert.ok(durable.includes("credential #3"), durable);
+	assert.ok(durable.includes("paste it again"), durable);
+	// The key named is the handler's own label, so the sentence cannot promise a key
+	// the composer does not listen for: the same helper, the other platform's spelling.
+	assert.ok(clearedNoticeLine("K", 1, "Ctrl+Z").includes("Ctrl+Z"));
+});
+
+test("only a link whose visible text IS the citation is chipped", () => {
+	/*
+	 * QA round 1, Q1: `citationFromHref` validates a URL's SHAPE, and a hand-typed
+	 * markdown link to the private scheme satisfies it - so the transcript drew the
+	 * app's own receipt for a reference the app never wrote. The criterion is
+	 * provenance, and the pair the plugin builds (URL and visible text from one
+	 * segment) is what proves it.
+	 */
+	const payload = chipPayload(1, "s".repeat(19));
+	const sentence = credentialCitation(payload);
+	const href = citationHref({ kind: "stored", key: payload.key, chars: 19 });
+	assert.deepEqual(citationFromLink(href, sentence), {
+		kind: "stored",
+		key: payload.key,
+		chars: 19,
+	});
+	for (const [why, url, text] of [
+		[
+			"the hand-typed link the QA round reproduced",
+			"#lo-credential/LOP_SECRET_ZZZZZZZZ/19",
+			"sneaky",
+		],
+		["a link whose words are not a citation", href, "the deploy key"],
+		[
+			"a citation sentence pointing at another key's URL",
+			citationHref({ kind: "stored", key: "LOP_SECRET_OTHERKEY", chars: 19 }),
+			sentence,
+		],
+		[
+			"a URL with no count to carry",
+			`#lo-credential/${payload.key}/`,
+			sentence,
+		],
+		[
+			"a key that is not a store key",
+			citationHref({ kind: "stored", key: "not a key", chars: 19 }),
+			sentence,
+		],
+		["an ordinary link", "https://example.com/x", sentence],
+		["no URL at all", undefined, sentence],
+	]) {
+		assert.equal(citationFromLink(url, text), null, why);
+	}
+	// The not-stored register is a citation too, and its URL carries no count.
+	const unstored = describeUnstored("lost");
+	assert.deepEqual(
+		citationFromLink(citationHref({ kind: "unstored" }), unstored),
+		{
+			kind: "unstored",
+		},
+	);
+});
+
+test("the undo puts the marker back at the offset, and refuses once the buffer moved", () => {
+	/*
+	 * UX round 1, U2: the payload is held until the toast retires, so what the undo
+	 * has to restore is the TEXT. `restoreClearedCredential` is the pure half of
+	 * that, and its refusal is the guard that makes the recorded offset safe.
+	 */
+	const payload = chipPayload(1, "s".repeat(19));
+	const buffer = `deploy with ${payload.marker} to the staging box`;
+	const cleared = clearCitedCredential({ buffer, payload });
+	assert.equal(cleared.removed, `${payload.marker} `);
+	const restored = restoreClearedCredential({
+		buffer: cleared.buffer,
+		cleared,
+	});
+	assert.equal(restored.buffer, buffer);
+	assert.equal(restored.caret, cleared.caret + cleared.removed.length);
+	assert.ok(!restored.buffer.includes(payload.value));
+	// The buffer moved on: the recorded offset no longer names the place the
+	// reference sat, and an insert there would corrupt the operator's prose.
+	assert.equal(
+		restoreClearedCredential({
+			buffer: `${cleared.buffer} and I typed more`,
+			cleared,
+		}),
+		null,
+	);
+	// A clear that spliced nothing has nothing to restore.
+	const refused = clearCitedCredential({ buffer: "no reference", payload });
+	assert.equal(
+		restoreClearedCredential({ buffer: refused.buffer, cleared: refused }),
+		null,
+	);
+});
+
+test("the clear control's name and the composer chip's title are per-reference copy", () => {
+	/*
+	 * D4 and U3, pinned because both are strings a reader meets: the control's name
+	 * has to distinguish two chips in a screen reader's list, and the composer's
+	 * chip - which names an INDEX, not a key - has to explain itself on hover. Both
+	 * live in `credential-capture.ts` with the rest of this feature's copy.
+	 */
+	assert.equal(clearControlLabel(1), "Remove credential #1");
+	assert.equal(clearControlLabel(12), "Remove credential #12");
+	assert.equal(
+		markerChipTitle(1, 19),
+		"Credential #1, 19 chars — held in this message; its value cannot be read",
+	);
+	assert.equal(CREDENTIAL_CLEAR_UNDO_LABEL, "Undo");
+	// U9's own rule, kept: the notice LINE and the durable sentence are one authority.
+	// The TOAST stopped sharing it in round 2 (it says `Credential #N removed` beside
+	// the `Undo`), which is why the pair compared here is the line and the sentence it
+	// is built from rather than the pair of channels.
+	assert.equal(
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		clearedNotice("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		"the notice line and its own sentence come from one authority",
+	);
+	assert.notEqual(
+		clearedToastLine(3),
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		"the transient channel must not repeat the durable one (U9)",
 	);
 });

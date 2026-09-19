@@ -32,13 +32,26 @@ import type {
 	DesktopResponse,
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
+import {
+	type ServingInstallReadings,
+	type ServingOwnership,
+	type ServingWorkState,
+	serveRecord,
+	servingInstallIsAppOwned,
+	servingInstallReadings,
+	servingWorkStateFromSessions,
+} from "../backend-version-drift";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
 	requestDesktopMediaOutcome,
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
-import { requestDesktop, requestDesktopOutcome } from "../desktop-transport";
+import {
+	desktopAnswerProvesPairing,
+	requestDesktop,
+	requestDesktopOutcome,
+} from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import {
 	readInstallIdentity,
@@ -53,8 +66,8 @@ import {
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
 } from "./daemon-status";
+import type { DiscoveredDaemon, ServeRecord } from "./discovery";
 import {
-	type DiscoveredDaemon,
 	HEALTH_PATH,
 	OWNED_RECORD_WINDOW_MS,
 	OWNED_REGISTRATION_WINDOW_MS,
@@ -77,7 +90,7 @@ import { launchEnv } from "./launch-env";
 import { LogFileType, logger } from "./logger";
 import { isLegacyManagedCommand } from "./managed-python";
 import { resolveNotificationLaunch } from "./notification-launch";
-import { managedVenvPath } from "./venv-paths";
+import { managedEnvironmentRoots, managedVenvPath } from "./venv-paths";
 
 import {
 	consoleInterpreter,
@@ -571,7 +584,8 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 		).then(({ response, answered }) => {
-			if (answered) this.noteTransportAnswer();
+			if (answered)
+				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
 			return response;
 		});
 	}
@@ -586,7 +600,23 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 		).then(({ response, answered }) => {
-			if (answered) this.noteTransportAnswer();
+			// A media answer is recorded as LIVENESS and nothing else, and the
+			// reason is structural rather than provisional: `desktopAnswerProvesPairing`
+			// parses its request against the JSON contract's op vocabulary, and the
+			// media vocabulary is outside it (`speech.create`, `agent.export`,
+			// `sessions.attachment`, ... - see `../desktop-media`'s own schema), so the
+			// predicate refuses the INPUT before it ever reads a path or a status. Its
+			// answer here could only be `false`, which would record a decision this
+			// relay is not able to make rather than the honest "an answer arrived".
+			//
+			// Nothing is lost by that: the two media ops whose paths are under the
+			// admitted prefix (`sessions.attachment`, `subagents.attachment`) are reads
+			// issued alongside the contract ops this app already sends - the presence
+			// beat every 15 s among them - and THOSE are what supply the pairing
+			// evidence, through the predicate written for them. If a media op ever
+			// needs to prove a pairing on its own, it needs its own predicate rather
+			// than a widened `input` type here.
+			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
 	}
@@ -602,19 +632,29 @@ export class BackendServiceManager {
 	 * `degraded` - which is not a state `checkBackendHealth` recovers from, so a
 	 * genuinely gone daemon could never be reported as gone.
 	 *
-	 * WHY this still counts EVERY answer, including a gated route's `401`/`403`:
-	 * the capability rules elsewhere in this file say a refusal is not a LIVENESS
-	 * signal, and that is about not calling it "connected". Turned around, a
-	 * refusal is the strongest liveness evidence this app has - a process read the
-	 * request and wrote a status line - which is exactly what a probe that ran out
-	 * of its 2 s budget failed to establish. Without this, one long agent turn was
-	 * enough to detach the connection and disable every read the daemon was still
-	 * answering.
+	 * `admitted` is the second, narrower question and the two are deliberately
+	 * separate calls rather than one boolean: an answer of ANY status is liveness
+	 * evidence (a `401`, a `403` or a `503` is a process that read the request and
+	 * wrote a status line, which is exactly what a probe that ran out of its 2 s
+	 * budget failed to establish - without that, one long agent turn was enough to
+	 * detach the connection and disable every read the daemon was still answering),
+	 * while only an answer the plane ADMITTED proves the pairing still holds.
+	 * Collapsing the two is the defect this split fixes, measured 2026-09-18: a
+	 * replaced daemon's refusals - plus the capability poll the renderer runs every
+	 * 15 s while the plane is shut, which the plane serves without admitting
+	 * anyone - each cleared the identity-failure count, so the app never detached,
+	 * never re-discovered and never re-claimed, and reported "not paired with the
+	 * running Local Operator server" until it was restarted (see
+	 * `daemon-status.ts`'s `recordTransportAnswer`/`recordTransportSuccess`).
 	 *
 	 * Only a state that actually moves pushes a snapshot: this runs on every
 	 * desktop call, and one IPC wake-up per request would be worse than the bug.
 	 */
-	private noteTransportAnswer(): void {
+	private noteTransportAnswer(admitted: boolean): void {
+		if (!admitted) {
+			this.daemonState.recordTransportAnswer();
+			return;
+		}
 		if (this.daemonState.recordTransportSuccess()) this.notifyStatus();
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
@@ -2220,6 +2260,17 @@ export class BackendServiceManager {
 		};
 		this.ownedServe = generation;
 		this.process = child;
+		/*
+		 * An adopted daemon's record stops describing the daemon serving this app the
+		 * moment this process holds its own child (review round 2, T2). Left in place it
+		 * outlived the adoption, and the reads that take a record - the drift's boot
+		 * reading, and the post-restart one that is re-read from the same document -
+		 * answered with the OLDER process's numbers, so a skew could be reported against
+		 * a daemon that is not serving and a restart that did move the reading could be
+		 * recorded as "did not take". The adoption arms set this field themselves
+		 * (`attachTo`, the fixed-port adopt), so clearing it here loses nothing.
+		 */
+		this.attachedRecord = null;
 		const exited = (code?: number | null) => {
 			if (generation.exited) return;
 			generation.exited = true;
@@ -2637,18 +2688,27 @@ export class BackendServiceManager {
 				return probe.identity.pid === this.daemonState.snapshot().pid
 					? { kind: "identified" }
 					: {
-							kind: "failed",
+							kind: "contradicted",
 							detail:
 								"The answering daemon's PID no longer matches the attachment.",
 						};
 			case "identity-mismatch":
+				/*
+				 * An ANSWERED contradiction, not a `failed` probe: the address answered and
+				 * named a different process, which is what a daemon REPLACED under this app
+				 * looks like (a `lop` build swap is the ordinary cause on a developer box).
+				 * The successor refuses this app's credential until the app claims its
+				 * plane, so those refusals arrive as answers too - and if they were allowed
+				 * to excuse this observation, the count would never reach three and the app
+				 * would never re-discover or re-claim (see `daemon-status.ts`).
+				 */
 				return {
-					kind: "failed",
+					kind: "contradicted",
 					detail: `Another process is answering at ${this.backendUrl} (${probe.detail})`,
 				};
 			case "not-a-daemon":
 				return {
-					kind: "failed",
+					kind: "contradicted",
 					detail: `${this.backendUrl} answered but is not a Local Operator daemon (${probe.detail})`,
 				};
 			case "unreachable":
@@ -2856,7 +2916,34 @@ export class BackendServiceManager {
 				}
 				// A process that is still there is not ours to replace on a failed
 				// probe: paced and retried, never spawned over.
-				if (!processGone) return;
+				//
+				// A CONTRADICTION is the exception, and it is what the exception is
+				// for. The pid is alive, and it is still the process this app attached
+				// to - but it is demonstrably no longer the process ANSWERING this
+				// address, which is exactly what a `lop` build swap leaves behind: a
+				// successor holding the port while the process it replaced is still
+				// winding down. Discovery is the half that recovers from that, and it
+				// is a CLAIM on the successor the operator's own tooling started, not a
+				// spawn - spawning stays behind every guard below (`isExternalBackend`
+				// for an adopted daemon, and the owned-child guard), and this app may
+				// not replace a live process it did not start. Measured on the
+				// 2026-09-18 report: without this, an app that correctly detached on
+				// three answered contradictions still could not re-pair while the
+				// replaced process lingered, so the operator's only route back was the
+				// restart the banner asked for.
+				//
+				// WHERE this exception sits is load-bearing: it is ABOVE the live
+				// owned-child guard directly below, and that guard still returns before
+				// `discoverAndAttach()`. So an app-OWNED child - a daemon this app
+				// SPAWNED - does NOT recover this way, and is not meant to: an owned
+				// child is governed by the environment this app spawned it with, so a
+				// successor contradicting its own record is not the reported shape
+				// there (that one is an adopted daemon, which does recover). Loosening
+				// the guard to let discovery run first would let `discoverAndAttach()`
+				// answer `false` and fall through to `start({ quiet: true })` below - a
+				// second daemon spawned over a live child, which is the one outcome
+				// that guard exists to prevent.
+				if (!processGone && observation.kind !== "contradicted") return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
 			// is not ours to kill just because HTTP timed out.
@@ -2899,6 +2986,153 @@ export class BackendServiceManager {
 	 */
 	getOwnedPid(): number | null {
 		return this.process?.pid ?? null;
+	}
+
+	/**
+	 * The install SERVING this app, read from the serving process's own record.
+	 *
+	 * WHAT THIS IS NOT, and the mistake it exists to prevent: the `version` of a
+	 * `/health` payload or of a status snapshot is what the daemon computes from the
+	 * metadata installed ON DISK when it answers, so a process running old code out
+	 * of memory reports the NEWER version and the skew disappears exactly when a
+	 * reader needs to see it. The serve record (`server/registry.py`) is written
+	 * once at process start and never re-read, so its `version` is the build the
+	 * running process actually loaded, and its fields beside it (`prefix`,
+	 * `install_kind`, and the claim handshake's own `desktop`/`claim_key` pair) are
+	 * what the drift decision resolves WHICH INSTALL and WHOSE PROCESS against.
+	 *
+	 * Two arms, because the record is reached two ways: a daemon discovery ADOPTED
+	 * keeps its parsed record on this manager, while one this app SPAWNED is keyed
+	 * by its own pid in the record directory. Both are the same document.
+	 *
+	 * A missing record, a torn read and a record that carries no version (an install
+	 * predating the field) are all absences - reported by the decision, never
+	 * papered over by a reading that cannot see a stale process.
+	 *
+	 * NOTHING HERE ANSWERS "MAY THE APP MOVE IT": that is `owned`, and it is asked of
+	 * the generation this process holds rather than of the record, because a record is
+	 * something the app can read about any daemon on the machine and a restart is only
+	 * legal for one it holds (QA round 1, Q1). `readings.prefix` and the ownership
+	 * rule's own environment roots are still read here, because the refusal sentence
+	 * turns on them - see `ServingOwnership.startedByEarlierAppRun`.
+	 */
+	servingInstall(): {
+		readings: ServingInstallReadings;
+		owned: ServingOwnership;
+	} {
+		const readings = servingInstallReadings(this.servingRecord());
+		return {
+			readings,
+			owned: servingInstallIsAppOwned({
+				/*
+				 * "Does this app run HOLD the process" - the exact question `stop()` acts
+				 * on, and therefore the exact ground the drift repair may fire on. A
+				 * looser answer is what QA's Q1 caught: the record- and
+				 * environment-derived grounds read as permission while `restart()` had
+				 * nothing to stop, so the app logged a restart it never performed.
+				 */
+				spawnedByThisProcess: this.holdsServingGeneration(),
+				readings,
+				managedEnvironmentRoots: this.managedEnvironmentRoots(),
+			}),
+		};
+	}
+
+	/**
+	 * Whether this manager holds a serve generation, i.e. a process `stop()` can end.
+	 *
+	 * Deliberately not `getOwnedPid() !== null`: that answers "which pid do I hold",
+	 * which is the quit path's question, while this answers "is there a generation here
+	 * to terminate". `stop()` acts on `ownedServe` (a generation whose spawn failed has
+	 * one and may have no pid yet), so this is the invariant the drift repair is
+	 * asking about, and anything else - an adopted daemon, a record read from the run
+	 * directory - is a process this app can READ but not MOVE.
+	 */
+	holdsServingGeneration(): boolean {
+		return this.ownedServe !== null;
+	}
+
+	/**
+	 * The record of the daemon serving this app, from the arm that reaches it.
+	 *
+	 * `null` for a daemon with no record at all - a legacy fixed-port adoption, or
+	 * a build that predates the record format. The caller reports that absence
+	 * rather than substituting another reading for it.
+	 *
+	 * THE GENERATION THIS APP HOLDS WINS (review round 2, T2). The adopted record was
+	 * returned first unconditionally, so a manager that had adopted a daemon and then
+	 * spawned its own would read every drift reading off the OLDER process's record -
+	 * a phantom skew against a process that is not serving, and the successor re-read
+	 * from the same document afterwards. A pid is only ever read for a generation this
+	 * process holds (`this.process`), which is the same invariant `stop()` acts on, so
+	 * the two arms cannot be confused: while a generation is held, its own record is
+	 * the answer even when that read fails or is not written yet - an absence the
+	 * decision reports as `no-boot-reading` rather than papering over with another
+	 * process's numbers.
+	 */
+	private servingRecord(): ServeRecord | null {
+		if (this.process)
+			return serveRecord(this.process.pid ?? null, serveRunDir());
+		return this.attachedRecord?.record ?? null;
+	}
+
+	/**
+	 * The directories a daemon this app started can have booted from.
+	 *
+	 * The one part of the ownership question that is a fact about this instance
+	 * rather than about the record, so it lives with the layout it names
+	 * (`venv-paths.ts`) and is passed in. Empty on a platform whose managed
+	 * environment that module does not claim - the record's own answer and this
+	 * app's own child still answer there.
+	 */
+	private managedEnvironmentRoots(): string[] {
+		return managedEnvironmentRoots({
+			platform: process.platform,
+			home: app.getPath("home"),
+			packaged: app.isPackaged,
+			venvPath: this.venvPath,
+		});
+	}
+
+	/**
+	 * Whether the renderer holds any session stream open right now.
+	 *
+	 * A COUNT OF VIEWS, not of turns: a mounted chat keeps its subscription while
+	 * it sits idle, and a turn in a conversation nobody has open sends nothing. It
+	 * is therefore a courtesy signal for the drift restart - "somebody is looking,
+	 * wait a cycle" - and never the safety gate; the daemon's own work state is
+	 * (`servingWorkState`).
+	 */
+	hasOpenSessionStreams(): boolean {
+		return (this.streamRelay?.openStreamCount() ?? 0) > 0;
+	}
+
+	/**
+	 * Whether the daemon serving this app is running a turn, from its own roster.
+	 *
+	 * WHY THIS IS ASKED OF THE DAEMON: main has no turn-in-flight signal of its own,
+	 * and a restart is `stop(true)` - SIGTERM, ten seconds, SIGKILL - which the
+	 * daemon's own `retire.py` refuses precisely because its shutdown cancels work
+	 * it owns. The roster's `live_state` is the daemon's own answer about a running
+	 * turn (`servingWorkStateFromSessions` states the signal and its limits).
+	 *
+	 * A transport that does not answer, and a non-200, are both `unknown` - which
+	 * the decision treats as a reason to WAIT. A read that could not be taken is
+	 * not evidence that the machine is quiet.
+	 */
+	async servingWorkState(): Promise<ServingWorkState> {
+		try {
+			const response = await this.requestDesktop({
+				op: "sessions.list",
+				// The route's own maximum: a busy turn the reader cannot see in the
+				// first page is still work in flight, so the read asks for the lot.
+				limit: 500,
+			});
+			if (response.status !== 200) return "unknown";
+			return servingWorkStateFromSessions(response.body);
+		} catch {
+			return "unknown";
+		}
 	}
 
 	/**
