@@ -40,9 +40,10 @@ import type {
  * construction, and at the app's minimum window the consequence at the END of that
  * sentence is the first thing `truncate` eats. So the note carries the RULE and its
  * numbers, and this component writes the human sentence from them: the name and the
- * rule are the parts allowed to elide — the name yielding first, and the rule only
- * past its `24ch` floor, so the reason survives the narrowest window (review round
- * 3, D14) — and the consequence is `shrink-0` so it never does. What must not happen is paraphrase — every clause below is the host's
+ * rule are the parts allowed to elide — the name yielding first, and the sentence
+ * breaking to a second line where one line cannot hold its clauses, so the rule takes
+ * its own measure there (review rounds 3 D14 and 4 D16) — and the consequence is
+ * `shrink-0` so it never does. What must not happen is paraphrase — every clause below is the host's
  * own rule in the host's own words, minus the `refused:` prefix and the backticks
  * the tool result carries (deviation 5).
  *
@@ -197,7 +198,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// minimum window, so it rides the row's own `title` — the same fact, stated
 				// where the row can afford it.
 				<p
-					className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted"
+					className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink-muted"
 					title={transfers.dir ?? undefined}
 				>
 					<span className="shrink-0">Downloading</span>
@@ -225,33 +226,47 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// own was an ABSOLUTE one: `max-w-[32ch] shrink-0` measured 237.5 logical px at
 				// BOTH the specimen's width and the app's default window, so every px of
 				// narrowing was taken by the rule span — 168 px down to 22 px, reading `is …`.
-				// The rule is the only statement of WHY, so the reason is the protected half
-				// now, in the specimen design round 3 measured: `min(24ch,50%)` floors it at
-				// 194.8 px there — more than the 180 px clause it renders — while the name
-				// yields (it carries `shrink`, and it yields FIRST rather than not at all: its
-				// own `min(6ch,20%)` floor is what stops a squeezed row from dropping the name
-				// to zero width, which is a state that reads as a layout bug rather than as a
-				// clip). The whole rule rides the span's own `title` (the vehicle D17 is about;
-				// it is stated here because a clipped rule is otherwise unrecoverable).
+				// The name carries `shrink` and a proportional cap now, so it yields FIRST
+				// rather than not at all; its own `min(6ch,20%)` floor is what stops a squeezed
+				// row from dropping it to zero width, which is a state that reads as a layout
+				// bug rather than as a clip.
 				//
-				// WHY BOTH SHARES ARE PROPORTIONAL RATHER THAN `32ch`/`24ch` ALONE (measured on
-				// the app at its minimum window, `G8c`). The specimen is not the tightest case
-				// this row has to survive: the app's own 800 px window spends ~248 px of it on
-				// the navigation rail, so the strip's paragraph there measures a fraction of the
-				// specimen's — the rig read it at 269 px, where the label (`Download refused —`,
-				// 125 px), the consequence (`Nothing was saved.`, 118 px) and the age (58 px)
-				// already exceed it between them, so no division of the name and the rule can
-				// put that sentence on one line there. An absolute floor would paint the reason
-				// further past the row's own controls; a proportional one keeps the reason at
-				// least as much room as the name at every width, and leaves the rest to the
-				// layout problem that state actually has (a sentence too long for the row, which
-				// is the design round's to rearrange, not this flex row's).
-				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink">
+				// NO DIVISION OF THESE TWO SPANS CAN FIX THE MINIMUM WINDOW, WHICH IS WHY THE
+				// SENTENCE WRAPS (design rounds 3 D14 and 4 D16, review round 4 R4-1). At the
+				// app's 800 px window the strip's paragraph is 268.7 px, and this row's
+				// NON-ELIDABLE clauses alone — the label (124.7 px), the consequence (118.0),
+				// the age (57.8) and four gaps (16) — need 316.5 px before the name and the
+				// rule get a pixel; with a floor on each span the children needed 494.1 px in
+				// that box, so four runs painted into the same columns and the `Open folder`
+				// label was struck through by the age (design round 4 measured it glyph for
+				// glyph on frame `09`). The deficit is the width, not the rank.
+				//
+				// `flex-wrap` breaks the line BETWEEN clauses instead of painting them over
+				// each other, which is the one arrangement in which both D3 ("the consequence
+				// never elides") and D14 ("the rule stays legible") hold at that width: at
+				// 800 px the label and the name take the first line, the reason takes its own
+				// measure on the second (168 px of clause in a 268.7 px box, uncut — `G8c`
+				// asserts exactly that), and the consequence and the age share the third.
+				// Nothing moves at the app's default window, where the parts fit one line and
+				// a break only happens between parts that cannot share one.
+				//
+				// AND THE RULE'S OWN FLOOR IS GONE, which is the other half of that finding.
+				// `min-w-[min(24ch,50%)]` resolved to 196.5 px at the default window while
+				// the clause it protected renders 168 px, so it held a 26.5 px HOLE in the
+				// middle of a sentence that had room to spare (design round 4, D17: the
+				// consequence started at 820.5 px where it had started at 794.0). A floor is
+				// the wrong instrument once the sentence can wrap: on a line it cannot share,
+				// the rule takes its own measure and needs no floor, and on a line it can
+				// share, a floor wider than the clause is only that hole again. `min-w-0`
+				// with `truncate` still keeps it from overflowing a paragraph narrower than
+				// the clause, and the whole clause rides the span's own `title`, because a
+				// rule clipped by such a width is otherwise unrecoverable.
+				<p className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink">
 					<span className="shrink-0">Download refused —</span>
 					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
 						{name}
 					</span>
-					<span className="min-w-[min(24ch,50%)] truncate" title={rule}>
+					<span className="min-w-0 truncate" title={rule}>
 						{rule}
 					</span>
 					{latest && (
@@ -276,13 +291,18 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					)}
 				</p>
 			) : (
-				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted">
-					{/* THE NAME KEEPS ITS OWN SPACE HERE, which is the one place this row's
-					    layout differs from the refusal's: a DECIDED transfer is one quiet line
-					    (branding § 7) and the file's name is what the reader is looking for, so
-					    the path — which is long by nature — is the part that gives way. The
-					    refusal's sentence is a different problem (D3) and is handled below. */}
-					<span className="max-w-[32ch] shrink-0 truncate font-mono text-mono-sm">
+				<p className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink-muted">
+					{/* THE PATH IS THE PART THAT GIVES WAY HERE, which is where this row's layout
+					    differs from the refusal's: a DECIDED transfer is one quiet line (§7 of
+					    the branding notes) and the file's name is what the reader is looking
+					    for, so the path — long by nature — takes the room that is left. The
+					    refusal's sentence is a different problem (D3) and is handled below.
+					    WHAT IS NOT DIFFERENT IS THE SHAPE, since design round 4 measured this
+					    branch colliding at the app's minimum window for the same reason the
+					    refusal did: an absolute `max-w-[32ch] shrink-0` holds 237.5 px there and
+					    leaves the sentence no way to break, so the name takes the refusal's
+					    proportional cap and floor, and this paragraph wraps like its sibling. */}
+					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
 						{name}
 					</span>
 					{sending && (latest?.count ?? 1) > 1 && (

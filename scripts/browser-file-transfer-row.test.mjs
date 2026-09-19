@@ -377,14 +377,23 @@ test("the refusal's NAME is the span that yields and its RULE keeps its room (re
 	// 237.5 px at every width, so at the app's 800 px minimum the rule gave up every px
 	// of the narrowing and read `is …` — a fragment again, by the other span's hand.
 	//
-	// What both rounds want is a RANK rather than a fixed width: the name is capped so
-	// it cannot eat the line at the app's default window, it yields FIRST when the row
-	// narrows, and the rule is floored so it cannot be reduced below a readable clause.
+	// Round 4 (D16 / R4-1) found the limit of that fix: at the app's 800 px minimum
+	// window the paragraph is 268.7 px while the row's NON-ELIDABLE clauses alone need
+	// 316.5 px, so no division of the two spans can put the sentence on one line — with
+	// both floored, four runs painted into the same columns there.
 	//
-	// jsdom has no layout engine, so this pins the RANK (which span shrinks, which span
-	// is floored) and that the rule is recoverable in full from its own `title`. The
-	// geometry is `G8b`/`G8c` against the built app.
-	const refused = await open(t, {
+	// What three rounds settled on is a RANK and a BREAK rather than a fixed width: the
+	// name is capped so it cannot eat the line at the app's default window and yields
+	// FIRST when the row narrows; the rule carries no floor at all (one wider than the
+	// clause is a 26.5 px hole mid-sentence where the row has room — D17); and the
+	// sentence WRAPS when one line cannot hold its clauses, which is what lets the rule
+	// take its own measure — uncut — at the width where round 3 measured `is …` at 22 px.
+	//
+	// jsdom has no layout engine, so this pins the RANK and the BREAK (which span
+	// shrinks, which span carries no floor, which container wraps) and that the rule is
+	// recoverable in full from its own `title`. The geometry — rectangles that do not
+	// intersect, at both widths, on BOTH branches — is `G8c` against the built app.
+	const { container, spans: refusedSpans } = await open(t, {
 		transfers: activity([
 			note({
 				name: "quarterly-financial-statements-and-notes-2026-q3-final-v7.pdf",
@@ -395,9 +404,9 @@ test("the refusal's NAME is the span that yields and its RULE keeps its room (re
 			}),
 		]),
 	});
-	const name = refused
-		.spans()
-		.find((span) => span.text.startsWith("quarterly-financial"));
+	const name = refusedSpans().find((span) =>
+		span.text.startsWith("quarterly-financial"),
+	);
 	assert.ok(name, "the name is its own span");
 	assert.match(
 		name.className,
@@ -413,14 +422,18 @@ test("the refusal's NAME is the span that yields and its RULE keeps its room (re
 		!/shrink-0/.test(name.className),
 		"and the name YIELDS: an absolute cap is what took every px of the narrowing from the rule (D14)",
 	);
-	const rule = refused
-		.spans()
-		.find((span) => span.text.startsWith("is an executable"));
+	const rule = refusedSpans().find((span) =>
+		span.text.startsWith("is an executable"),
+	);
 	assert.ok(rule, "the rule is its own span");
+	assert.ok(
+		!/min-w-\[min\(24ch/.test(rule.className),
+		"the rule carries NO `ch` floor: one wider than the clause it protects is the 26.5 px hole design round 4 measured mid-sentence at the default window (D17), and one narrower does not save the clause at 800 px either — the wrap is what protects it there",
+	);
 	assert.match(
 		rule.className,
-		/min-w-\[min\(24ch,50%\)\]/,
-		"the rule keeps a floor, so the reason cannot be clipped to a fragment (D14)",
+		/min-w-0/,
+		"it keeps `min-w-0` instead, so a paragraph narrower than the clause clips it rather than painting it over the row's controls",
 	);
 	assert.match(
 		rule.className,
@@ -431,6 +444,50 @@ test("the refusal's NAME is the span that yields and its RULE keeps its room (re
 		rule.title,
 		"is an executable/script type.",
 		"the full rule rides the span's own title, so a clipped clause is still recoverable",
+	);
+	assert.match(
+		container.querySelector("p").className,
+		/flex-wrap/,
+		"and the sentence WRAPS: at the app's minimum window the clauses take their own lines instead of sharing columns (design round 4, D16)",
+	);
+});
+
+test("the DECIDED branch's name takes the refusal's cap, and its sentence wraps too (design round 4, D16)", async (t) => {
+	// DESIGN ROUND 4'S UNPHOTOGRAPHED OBSERVATION, pinned where it can fail without a
+	// rig run. This branch kept the old absolute shape — `max-w-[32ch] shrink-0` — while
+	// the refusal's became proportional in round 3, so at the app's 800 px minimum window
+	// (268.7 px of paragraph) its own sentence collided exactly as the refusal's had:
+	// ~237.5 px of name, plus `was saved to`, plus the age cannot share that line, and
+	// `shrink-0` left the row no way to give either of them room. Same shape as the
+	// refusal's now — proportional cap, a floor so the name cannot vanish, `shrink` so it
+	// yields, and a wrapping sentence — and `G8c` photographs BOTH branches at that width.
+	const { container, spans } = await open(t, {
+		transfers: activity([
+			note({ name: "quarterly-accounts-and-notes-2026-q3-final-v7.pdf" }),
+		]),
+	});
+	const name = spans().find((span) =>
+		span.text.startsWith("quarterly-accounts-and-notes"),
+	);
+	assert.ok(name, "the saved row's name is its own span");
+	assert.match(
+		name.className,
+		/max-w-\[min\(32ch,45%\)\]/,
+		"the decided row's name is capped PROPORTIONALLY, like the refusal's, rather than at an absolute 237.5 px",
+	);
+	assert.match(
+		name.className,
+		/min-w-\[min\(6ch,20%\)\]/,
+		"and its floor keeps the name from vanishing when it yields",
+	);
+	assert.ok(
+		!/shrink-0/.test(name.className),
+		"and it YIELDS: `shrink-0` is what left this branch with nothing to give at the app's minimum window",
+	);
+	assert.match(
+		container.querySelector("p").className,
+		/flex-wrap/,
+		"and the decided sentence wraps as well, so its clauses share no columns at 800 px",
 	);
 });
 
