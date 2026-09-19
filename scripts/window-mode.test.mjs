@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { blankComments } from "./chrome-keychain.mjs";
 
 /**
  * Contract checks for the launch-window policy.
@@ -1808,16 +1809,42 @@ test("no rig script asks the operating system for window focus", () => {
 	const LEAVES_THE_PAGE =
 		/window\.focus\(\)|Page\.bringToFront|Target\.activateTarget/;
 	/*
-	 * COMMENTS ARE NOT CALL SITES. The first version of this scan read prose as
-	 * well as code and failed on the paragraph documenting the ban — in this file's
-	 * sibling, the one that says the line it removed is not a page call. Skipping
-	 * comment lines is the honest fix: the guard is about what a rig DOES, and a
-	 * comment neither orders a window nor activates an app. The alternative —
-	 * writing the ban in prose the scan cannot see, or splitting the call to dodge
-	 * the pattern — hides the rule from the person reading the file, which is the
-	 * worse failure of the two.
+	 * COMMENTS ARE BLANKED, NOT FILTERED BY PREFIX (review round 1, F2). The first
+	 * version skipped any line whose leading characters looked like a comment, and
+	 * that also skipped a real call that followed one: a line whose leading
+	 * characters were a block-comment opener and closer and then the CDP call, a
+	 * line led by a comment terminator, and a line led by a bare asterisk all left
+	 * this suite green while carrying the call. `blankComments` is this repository's own helper (scripts/chrome-keychain.mjs,
+	 * the one the keychain rigs use): it preserves line structure, so a finding
+	 * still reports the line it came from, and it copies template CONTENT through
+	 * rather than blanking it, so a call inside a template literal — the shape
+	 * these rigs actually use — is still seen.
 	 */
-	const COMMENT = /^\s*(\/\/|\/\*|\*|\*\/)/;
+	const SCANNED_TREES = [
+		{
+			/*
+			 * Every executable a driver in this tree is written in today: `.mjs` and
+			 * `.js` for the proofs, `.cjs` for the Electron scenario driver, `.ts` for
+			 * the vite plugins, `.tsx` for the evidence components that speak CDP,
+			 * `.html` for the viewports whose inline scripts click and focus. The
+			 * `.mjs`-only filter let four real driver shapes through (round 1, F3).
+			 */
+			root: "scripts",
+			extensions: /\.(mjs|js|cjs|ts|tsx|html)$/,
+			include: () => true,
+		},
+		{
+			/*
+			 * The CDP harnesses that live beside the evidence they produced. They are
+			 * the other half of "a rig" in this repository, and leaving them out is
+			 * how the ban would hold for the proofs and not for the harnesses (F3).
+			 */
+			root: "docs/evidence",
+			extensions: /\.(mjs|js|cjs)$/,
+			include: (name) => name.split(sep).includes("harness"),
+		},
+		{ root: "bin", extensions: /\.(mjs|js|cjs)$/, include: () => true },
+	];
 	/*
 	 * This file is skipped, the same way the scan above skips `window-raise.ts`:
 	 * its subject matter is these three call sites, so it necessarily contains
@@ -1827,29 +1854,37 @@ test("no rig script asks the operating system for window focus", () => {
 	const SELF = "window-mode.test.mjs";
 	const offSite = [];
 	const scanned = [];
-	for (const file of readdirSync("scripts", { recursive: true }).filter(
-		(name) => name.endsWith(".mjs") || name.endsWith(".js"),
-	)) {
-		scanned.push(file);
-		if (file.endsWith(SELF)) continue;
-		readFileSync(join("scripts", file), "utf8")
-			.split("\n")
-			.forEach((line, index) => {
-				if (COMMENT.test(line)) return;
-				if (!LEAVES_THE_PAGE.test(line)) return;
-				offSite.push(`scripts/${file}:${index + 1}: ${line.trim()}`);
-			});
+	for (const tree of SCANNED_TREES) {
+		if (!existsSync(tree.root)) continue;
+		for (const file of readdirSync(tree.root, { recursive: true }).filter(
+			(name) => tree.extensions.test(name) && tree.include(name),
+		)) {
+			scanned.push(`${tree.root}/${file}`);
+			if (file.endsWith(SELF)) continue;
+			blankComments(readFileSync(join(tree.root, file), "utf8"))
+				.split("\n")
+				.forEach((line, index) => {
+					if (!LEAVES_THE_PAGE.test(line)) return;
+					offSite.push(`${tree.root}/${file}:${index + 1}: ${line.trim()}`);
+				});
+		}
 	}
 	assert.deepEqual(
 		offSite,
 		[],
 		"these lines ask the operating system to bring a window forward, which takes the operator's focus whatever window mode the run declared",
 	);
-	// Pins the width of the scan the same way the `src/main` scan does: the rig
-	// scripts are the surface this guard exists for, so a scan that silently
-	// reached a handful of files would pass while proving nothing about the tree.
+	// Pins the width of the scan the same way the `src/main` scan does, and pins it
+	// twice because a count alone does not: every file the first filter matched was
+	// top-level, so `recursive: true` reached nothing and a regression to a flat
+	// readdir would have passed (review round 1, F4). The `sep` check is what fails
+	// when the walk stops descending.
 	assert.ok(
 		scanned.length > 20,
-		`the scan reached the scripts tree (scanned ${scanned.length} files)`,
+		`the scan reached the rig trees (scanned ${scanned.length} files)`,
+	);
+	assert.ok(
+		scanned.some((file) => file.includes(sep)),
+		"the scan descended into subdirectories",
 	);
 });

@@ -989,9 +989,11 @@ try {
 	 * here: this run is `headless` (the window is never shown and is
 	 * unfocusable), and `Emulation.setFocusEmulationEnabled` above is what makes
 	 * a page that is not on screen read as focused, which is what the composer
-	 * and the Escape rows below actually read. `document.body.focus()` stays
-	 * because it takes the caret out of the composer's own field, and it stays
-	 * inside the page.
+	 * and the Escape rows below actually read. `document.body.focus()` is kept
+	 * because it is a page call and this change is about the OS-facing half only:
+	 * nothing below reads `activeElement` or `hasFocus`, and the keystrokes the
+	 * interrupt rows send reach the composer whether the body or the field holds
+	 * the caret.
 	 */
 	await cdp.evaluate("document.body.focus(); true");
 
