@@ -61,7 +61,7 @@ const AMBER_CLASS: [string, string, string][] = [
 export const AmberClass: Story = {
 	args: { row: { session_id: "specimen" } },
 	render: () => (
-		<div className="bg-surface text-ink flex w-[380px] flex-col gap-3 p-6">
+		<div className="bg-surface text-ink flex w-[430px] flex-col gap-3 p-6">
 			{AMBER_CLASS.map(([code, label, note]) => (
 				<div className="flex items-center gap-2" key={code}>
 					<ChatSessionStatus
@@ -73,7 +73,14 @@ export const AmberClass: Story = {
 						}
 					/>
 					<div className="flex min-w-0 flex-col">
-						<span className="truncate">{label}</span>
+						{/*
+						 * NO `truncate`: this column's whole point is that the longest label in the
+						 * app is readable in the frame (design round 2's D7 — the first version
+						 * clipped it to "…(last heartbeat …", hiding the half the sentence exists
+						 * for). The column is wide enough for the sentence now; what the line must
+						 * not do is quietly re-clip it, so it is left to wrap rather than clipped.
+						 */}
+						<span>{label}</span>
 						<span className="text-ink-muted text-meta">{note}</span>
 					</div>
 				</div>
