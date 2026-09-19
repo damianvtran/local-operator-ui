@@ -3909,7 +3909,7 @@ export class UpdateService {
 	 *
 	 * Returns the pid, which is the app's own answer to "is an install in flight"
 	 * from this moment on (`installerPid` in the marker, `install_live` in the
-	 * watchdog's script, `installRunningNow` in recovery): the process is `exec`d
+	 * watchdog's script, `installLivenessNow` in recovery): the process is `exec`d
 	 * into ShipIt, so this one pid covers the wait and the whole install.
 	 */
 	private startInstaller(handoff: InstallerHandoff): number | null {
