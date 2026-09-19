@@ -15,7 +15,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * This component only provides the button UI and triggers the update check process.
  * It also displays confirmation and error notifications for manual update checks.
  */
-export const CheckForUpdatesButton = () => {
+export const CheckForUpdatesButton = ({
+	appVersion = null,
+}: {
+	/**
+	 * The version NOW running, as the card's own "Application version" row reads it.
+	 *
+	 * WHY IT IS A PROP RATHER THAN THE RECORD'S `runningVersion` (design D1): the
+	 * record's field is the version that was running when the failure was WRITTEN,
+	 * and the retention rule compares its TARGET against the live `app.getVersion()`
+	 * - so a record kept because its target is still ahead would print "Version
+	 * 0.29.2 is running" two rows under a row reading 0.29.5. That is the same
+	 * class of untrue statement this change exists to remove, in a narrower window.
+	 * The live reading comes from the section that already holds it (`AppUpdatesSection`
+	 * reads it for its own row), so one source answers both places and neither can
+	 * print a version the other contradicts. Null while it is unknown: the sentence
+	 * then names the target and claims nothing about what is running.
+	 */
+	appVersion?: string | null;
+}) => {
 	/** Where a user gets a copy that installs by hand. */
 	const DOWNLOAD_PAGE = "https://local-operator.com/download";
 	const [checking, setChecking] = useState(false);
@@ -55,6 +73,12 @@ export const CheckForUpdatesButton = () => {
 		detail: string;
 		attempts: number;
 	} | null>(null);
+	/*
+	 * The version the sentence is allowed to name: the card's own live reading, trimmed
+	 * to null when it is absent or empty - a blank value would otherwise print "Version
+	 *  is running".
+	 */
+	const liveVersion = appVersion?.trim() ? appVersion.trim() : null;
 
 	/**
 	 * Whether the check in flight is one the user asked for.
@@ -432,7 +456,14 @@ export const CheckForUpdatesButton = () => {
 						{lastAttempt.attempts > 1
 							? ` (${lastAttempt.attempts} attempts)`
 							: ""}
-						. Version {lastAttempt.runningVersion} is running.
+						.{/*
+						 * THE LIVE READING, never the record's captured `runningVersion` (design D1):
+						 * the record is kept precisely while its target is still ahead, so a machine
+						 * that has since gained a version by any other route would be told a version
+						 * that is not the one running - the sentence below the card's own row
+						 * contradicting it. Unknown prints no clause rather than a stale one.
+						 */}
+						{liveVersion ? ` Version ${liveVersion} is running.` : null}
 					</p>
 					<p className="mt-1 text-meta text-ink-dim">
 						Detected{" "}

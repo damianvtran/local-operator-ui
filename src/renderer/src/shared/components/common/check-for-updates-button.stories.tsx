@@ -504,9 +504,6 @@ export const ButtonErrorState: Story = {
  * Shows the notification when in development mode.
  */
 export const DevMode: Story = {
-	args: {
-		autoCheck: false,
-	},
 	render: () => {
 		// Create a component that directly renders the dev mode state
 		const DevModeComponent = () => {
@@ -562,9 +559,6 @@ export const DevMode: Story = {
  * Shows the notification when an NPX update is available.
  */
 export const NpxUpdateAvailable: Story = {
-	args: {
-		autoCheck: false,
-	},
 	render: () => {
 		// Create a component that directly renders the NPX update available state
 		const NpxUpdateComponent = () => {
@@ -653,9 +647,6 @@ export const NpxUpdateAvailable: Story = {
  * Shows the notification when a backend update is available.
  */
 export const BackendUpdateAvailable: Story = {
-	args: {
-		autoCheck: false,
-	},
 	render: () => {
 		// Create a component that directly renders the backend update available state
 		const BackendUpdateComponent = () => {
@@ -765,9 +756,6 @@ export const BackendUpdateAvailable: Story = {
  * Shows the notification when a backend update has completed.
  */
 export const BackendUpdateCompleted: Story = {
-	args: {
-		autoCheck: false,
-	},
 	render: () => {
 		// Create a component that directly renders the backend update completed state
 		const BackendUpdateCompletedComponent = () => {
