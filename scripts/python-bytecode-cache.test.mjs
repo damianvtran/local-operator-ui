@@ -1429,15 +1429,32 @@ test("every python-running runCommand call site in the update service passes the
 	// and the update path's own `python -m venv` are the ones that run python, beside
 	// `codesign` and the installer list probe below.
 	/*
-	 * FIVE, not six: the global install's update child LEFT this inventory when this
-	 * branch moved it to `runInOwnProcessGroup` - the group stop is that module's
-	 * whole point - so it is asserted by name below, where this scan cannot see it.
+	 * EIGHT since the staged-artifact signature probe: two `unzip` calls (the
+	 * archive's listing and the one member it extracts) and the `codesign -d` that
+	 * reads that member's entitlements. None of the three runs python — they are the
+	 * same kind of macOS tool this file already spawns for the seal probe — so they
+	 * carry no guard, and they are asserted by name below rather than left to hide
+	 * inside a total that grew by three.
 	 */
 	assert.equal(
 		calls.length,
-		5,
-		`expected the file's five runCommand call sites, found ${calls.length}`,
+		8,
+		`expected the file's eight runCommand call sites, found ${calls.length}`,
 	);
+	const stagedSignatureCalls = calls.filter(({ text }) =>
+		/STAGED_SIGNATURE_PROBE_TIMEOUT_MS/.test(text),
+	);
+	assert.equal(
+		stagedSignatureCalls.length,
+		3,
+		`expected the staged-artifact probe's three runCommand call sites, found ${stagedSignatureCalls.length}`,
+	);
+	for (const call of stagedSignatureCalls)
+		assert.doesNotMatch(
+			call.text,
+			/env:/,
+			`the archive and signature probes spawn macOS tools rather than python, so they inherit the environment: ${call.text.replace(/\s+/g, " ")}`,
+		);
 	/*
 	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
 	 * are python programs - but its command is a PARAMETER, so the text test above
