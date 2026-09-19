@@ -71,9 +71,27 @@ a trailing 28px the row reserves with its own `pr-8`, so revealing it covers
 nothing — and it comes AFTER the row's button in DOM order, which is the tile
 grid's own keyboard fix kept: the row's first Tab stop is the file, not a menu.
 
+THE GUTTER IS THE ROW'S, AND THE HEAD BORROWS IT — 32px, and 8px of it is the
+scroller's own scrollbar. `pr-8` on the row reserves the 28px `⋯` box plus the
+4px gap beside it; the head's trailing count and its stopped-scan action take the
+same `pr-8`, so both are right-ragged on that column rather than on the panel's
+edge (design round 1 D3, round 2 D2). QA measured what is left while the list
+SCROLLS: the count's ink ends at 1340 against the rows' 1332, because the scroller
+reserves its scrollbar inside its own box (`offsetWidth 659` vs `clientWidth 651`),
+and on a list that does not scroll the two are flush. That residual 8px is the
+scrollbar's width, not a missing gutter, and it is accepted rather than closed: a
+stable `scrollbar-gutter` would narrow every row on every surface in the app, and
+cost this set its whole frame sweep, for a right-edge offset that exists only
+while the pointer is on the list. Recorded here so the next round reads the
+measurement as a decision rather than rediscovering it as a defect (QA round 2,
+Q-1).
+
 The current file (open in the Documents view) takes the shared current-row role,
 imported from the chat panel rather than re-spelled; its `hover:` half is what
-stops the row's hover step repainting a row the user is IN.
+stops the row's own `hover:bg-row-hover` repainting a row the user is IN. The
+ground lives on the ROW rather than on the button inside it, so the `⋯` — the
+button's sibling, and the reason it must be — cannot un-highlight the row it
+belongs to (design round 2, D11).
 
 ### What the tile grid established, and survives
 
