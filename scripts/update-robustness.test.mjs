@@ -1438,6 +1438,37 @@ test("a failure after an install was in flight names the relaunch as the cause",
  * the one fixture this case did not cover, and it had drifted (design review
  * round 2, D2).
  */
+/**
+ * The facts the failure fixture stands for, in one place so the sentence and the
+ * output under it cannot be composed from different ones.
+ *
+ * The diagnosis is the same value the composer turns into its pointer clause and
+ * the producer sends as `installerOutput` (`update-service.ts`), which is what makes
+ * the pairing below a property rather than two independent strings.
+ */
+const SERVER_UPDATE_FAILURE_SENTENCE_INPUTS = (() => {
+	const diagnosis = [
+		"uv tool upgrade local-operator",
+		"Resolved 55 packages in 1.02s",
+		"Installed 1 package in 12ms",
+		" + local-operator==0.55.10",
+	].join("\n");
+	return {
+		diagnosis,
+		sentence: serverUpdateFailureSentence({
+			rebuildRoute: false,
+			ran: true,
+			exitCode: 0,
+			groupSurvived: false,
+			diagnosis,
+			target: "0.55.10",
+			after: "0.55.9",
+			before: "0.55.9",
+			updateCommand: "lop update",
+		}),
+	};
+})();
+
 test("the story fixtures carry the payload strings verbatim", () => {
 	const stories = readFileSync(
 		join(
@@ -1477,27 +1508,15 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		["the start-up refusal heading", startup.heading],
 		["the start-up refusal dismiss label", startup.dismissLabel],
 		/*
-		 * THE SERVER-UPDATE FAILURE SENTENCE, which this list never covered and
-		 * which is why it drifted: the fixture stood for a payload whose sentence no
-		 * arm of `serverUpdateFailureSentence` emits, so the one committed frame for
-		 * "a genuine failure still reads as a failure" was a picture of wording the
-		 * app cannot produce (design review round 2, D2).
+		 * THE SERVER-UPDATE FAILURE SENTENCE AND THE OUTPUT IT POINTS AT, which
+		 * this list never covered and which is why it drifted: the fixture stood for
+		 * a payload whose sentence no arm of `serverUpdateFailureSentence` emits, and
+		 * then for a pairing no shipped path composes - the "output is below" pointer
+		 * with no output (design review round 2, D2; round 3, R3-1 = D4).
 		 */
 		[
 			"the server-update failure message",
-			serverUpdateFailureSentence({
-				rebuildRoute: false,
-				ran: true,
-				exitCode: 0,
-				groupSurvived: false,
-				// Present, so the sentence points at the output block the panel
-				// renders under it - the arm the fixture's own frame shows.
-				diagnosis: "the installer's own output",
-				target: "0.55.10",
-				after: "0.55.9",
-				before: "0.55.9",
-				updateCommand: "lop update",
-			}),
+			SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence,
 		],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
@@ -1516,6 +1535,53 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// app is what an unhealed break leads to, not something this pass can assert
 	// about a bundle it has only just measured (review R2).
 	assert.doesNotMatch(startup.message, /will refuse/);
+
+	/*
+	 * The installer output is a shell transcript in the fixture - an array joined
+	 * with "\n" - so it is matched line by line rather than as one literal, which is
+	 * also what makes a line dropped from the transcript a failure rather than a
+	 * still-passing substring.
+	 */
+	for (const line of SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.diagnosis.split(
+		"\n",
+	)) {
+		assert.ok(
+			stories.includes(line),
+			`the installer output line ${JSON.stringify(line)} is not in the story fixture - the block the sentence points at must carry the producer's own words`,
+		);
+	}
+
+	/*
+	 * THE PAIRING THE SENTENCE PROMISES (review round 3, R3-1 = design D4). The
+	 * composer emits the "output is below" pointer only for a non-empty diagnosis,
+	 * and the producer sends that same value as `installerOutput` - so a payload
+	 * carrying that sentence without the output is a report the app cannot build,
+	 * and the frame it renders promises a block nothing paints. The two are asserted
+	 * together here, in the payload the frame is captured from.
+	 */
+	const sentence = SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence;
+	assert.match(
+		sentence,
+		/The installer's own output is below\.$/,
+		"this fixture stands for the arm whose pointer names the block beside it",
+	);
+	const failurePayload = stories.slice(
+		stories.indexOf("if (window.triggerBackendUpdateError)"),
+	);
+	const payloadBody = failurePayload.slice(
+		0,
+		failurePayload.indexOf("return false;"),
+	);
+	assert.match(
+		payloadBody,
+		/message:\s*SERVER_UPDATE_FAILURE_MESSAGE/,
+		"the failure listener must send the pinned sentence",
+	);
+	assert.match(
+		payloadBody,
+		/installerOutput:\s*SERVER_UPDATE_FAILURE_OUTPUT/,
+		"the frame must carry the installer output its sentence points at - a pointer with no block is a pairing no shipped payload composes (R3-1)",
+	);
 	assert.doesNotMatch(startup.message, /the next time you start it/);
 	// The remedy is stated ONCE, by the remedy line. D1: the message used to end
 	// with the same instruction, 7px above the line that repeats it - measured, so
