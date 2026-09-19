@@ -2141,19 +2141,38 @@ async function scrollRowIntoView(cdp, id) {
  * Both themes run the same sequence and each pass unpins everything it pinned at the
  * end, so the light frames are a picture of the same state as the dark ones.
  */
+/**
+ * Every UNPINNED row whose box intersects the region's own window, in document order.
+ *
+ * Module-level because two panel scenes need the same answer from the same reading: the scrolled
+ * pair picks its press target with it, and `scenePins` picks both the row it lands the caret on and
+ * the row it presses - a press aimed at a row the region has scrolled out of view lands on nothing
+ * (QA round 9, Q9-1).
+ */
+function visibleUnpinnedRows(list) {
+	return list.rows.filter(
+		(row) =>
+			row.pinned === false &&
+			row.pin !== null &&
+			row.box.bottom > list.listBox.top && // intersects the region's window
+			row.box.top < list.listBox.bottom,
+	);
+}
+
+/**
+ * Whether a row's own box is WHOLLY inside the region's window.
+ *
+ * The difference between this and `visibleUnpinnedRows` is a partially visible row: focusing or
+ * hovering one of those makes the browser scroll it the rest of the way in, which moves the list
+ * under whatever the next step is holding. `scenePins` picks its caret row and its press row with
+ * both predicates for that reason (QA round 9, Q9-1).
+ */
+const whollyInside = (list, row) =>
+	row.box.top >= list.listBox.top && row.box.bottom <= list.listBox.bottom;
+
 async function scenePinsScrolled(cdp) {
 	const frames = [];
-	const themes =
-		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
-	/** Every unpinned row whose box is wholly inside the region, in document order. */
-	const visibleUnpinned = (list) =>
-		list.rows.filter(
-			(row) =>
-				row.pinned === false &&
-				row.pin !== null &&
-				row.box.bottom > list.listBox.top && // intersects the region's window
-				row.box.top < list.listBox.bottom,
-		);
+
 	/**
 	 * Bring a row into the region's window by SCROLLING THE REGION.
 	 *
@@ -2209,7 +2228,8 @@ async function scenePinsScrolled(cdp) {
 			`the pin of ${id} never came under the pointer: ${JSON.stringify({ atPoint: over ? over.atPoint : null })}`,
 		);
 	};
-
+	const themes =
+		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
 	for (const theme of themes) {
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await verb(cdp, "setTheme", theme);
@@ -2382,7 +2402,7 @@ async function scenePinsScrolled(cdp) {
 				list: scrolled.listBox,
 			}),
 		);
-		const candidates = visibleUnpinned(scrolled);
+		const candidates = visibleUnpinnedRows(scrolled);
 		say(
 			`  [pins] scrolled state: scrollTop ${scrolled.scrollTop} of ${scrolled.scrollHeight - scrolled.clientHeight}, region ${Math.round(scrolled.listBox.top)}..${Math.round(scrolled.listBox.bottom)}, rows ${JSON.stringify(scrolled.rows.map((row) => [row.id.slice(0, 4), Math.round(row.box.top), row.pinned]))}`,
 		);
@@ -2756,7 +2776,7 @@ async function scenePinsScrolled(cdp) {
 		);
 
 		/* ---- CASE B: the KEYBOARD (U2) ---------------------------------- */
-		const forKeyboard = visibleUnpinned(await readList(cdp));
+		const forKeyboard = visibleUnpinnedRows(await readList(cdp));
 		require("an unpinned row is visible for the keyboard case", forKeyboard.length >=
 			1, JSON.stringify(forKeyboard.map((row) => row.label)));
 		const targetB = forKeyboard[forKeyboard.length - 1];
@@ -2829,7 +2849,7 @@ async function scenePinsScrolled(cdp) {
 		await scrollRegionToRow(anyUnpinned.id);
 		await wait(240);
 		const deepScrolled = await readList(cdp);
-		const deepCandidates = visibleUnpinned(deepScrolled);
+		const deepCandidates = visibleUnpinnedRows(deepScrolled);
 		const deepView = deepScrolled.rows;
 		const targetC = deepCandidates[Math.floor(deepCandidates.length / 2)];
 		require("the deep state has an unpinned row to press", targetC, JSON.stringify(
@@ -4000,53 +4020,109 @@ async function scenePins(cdp) {
 		 * `group-focus-within:opacity-100`), and `group-focus-within` is what makes the control
 		 * reachable without a mouse - so the claim is worth a reading rather than a citation.
 		 *
-		 * The caret is put on an unpinned row's OWN BUTTON, with the pointer parked away, so what
-		 * the opacity answers is focus and not hover; and it is dropped again afterwards, because
-		 * a focus ring left in the frames that follow would be this check's residue rather than
-		 * the panel's state.
+		 * THE CARET'S OWN PIN, AND NO SCROLL OF ITS OWN (QA round 9, Q9-1). The first version of
+		 * this block focused the LAST row and read its pin BY INDEX. Focusing a row the browser has
+		 * to reach SCROLLS the region - measured at `scrollTop 1075` on a 40-conversation store -
+		 * and the press below then aimed at a stored box 416 px above the viewport: the point
+		 * hit-tested to nothing, no write reached the backend, and the scene failed four checks for
+		 * a reason of its own making. So the row is taken from those ALREADY inside the region's
+		 * window (the predicate the scrolled pair presses with), which makes this a caret move and
+		 * not a scroll; the focus is VERIFIED before a key is sent, because a row that re-renders
+		 * under the caret loses it; the caret is moved by a REAL Tab from the row's own button,
+		 * which is the path a keyboard reader takes; and the pin that is read is the one the CARET
+		 * holds rather than the one at an index. The region is then read back, because a scene that
+		 * moves the panel to take a reading owns the state it leaves behind.
 		 */
 		await parkPointer(cdp);
-		const lastRow = (await readPins(cdp)).rows.length - 1;
-		const focusTarget = await rowBox(cdp, lastRow);
+		const beforeFocus = await readList(cdp);
+		const focusRow =
+			visibleUnpinnedRows(beforeFocus)
+				.filter((row) => whollyInside(beforeFocus, row))
+				.at(-1) ?? null;
+		require("there is an unpinned row inside the region to land the caret on", focusRow, JSON.stringify(
+			beforeFocus.rows.slice(-2),
+		));
+		let caretOnRow = null;
+		for (let attempt = 0; attempt < 4; attempt += 1) {
+			caretOnRow = await cdp.evaluate(`(() => {
+				// The BUTTON, not the row: data-session-row is on the wrapper, and a div with no
+				// tabindex cannot take the caret, so focusing it is a silent no-op (measured here).
+				const row = document.querySelector('[data-session-row="${focusRow.id}"]');
+				const button = row ? row.querySelector("button[data-chat-row]") : null;
+				if (!button) return null;
+				button.focus();
+				return {
+					onButton: document.activeElement === button,
+					inRow: row.contains(document.activeElement),
+				};
+			})()`);
+			if (caretOnRow?.onButton === true) break;
+			await wait(220);
+		}
+		require("the caret can be put on the row's own button", caretOnRow?.onButton ===
+			true, JSON.stringify(caretOnRow));
+		/* A REAL key, not a `.focus()` on the pin: the reveal under test is `group-focus-within`, and
+		   what a keyboard reader actually does to reach the control is Tab from the row's button. */
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(260);
 		const caret = await cdp.evaluate(`(() => {
-			const rows = Array.from(document.querySelectorAll('button[data-tour-tag="chat-session-row"]'));
-			const row = rows[${lastRow}];
-			if (!row) return null;
-			row.focus();
+			const active = document.activeElement;
+			const pin = active && active.closest ? active.closest("[data-session-pin]") : null;
+			const row = active && active.closest ? active.closest("[data-session-row]") : null;
 			return {
-				onRow: document.activeElement === row,
-				insideBox: row.parentElement ? row.parentElement.contains(document.activeElement) : false,
+				onPin: pin !== null,
+				subject: pin ? pin.getAttribute("aria-label") : null,
+				row: row ? row.getAttribute("data-session-row") : null,
 			};
 		})()`);
-		await wait(260);
-		const focusedReveal = await readPins(cdp);
+		const focusedReveal = await readList(cdp);
+		const caretRow = focusedReveal.rows.findIndex(
+			(row) => row.id === (caret?.row ?? focusRow.id),
+		);
 		check(
-			"the caret in an unpinned row reveals ITS pin and no other (design round 8: the focus half of the reveal)",
-			caret !== null &&
-				caret.onRow === true &&
-				caret.insideBox === true &&
-				lastRow >= 0 &&
-				focusedReveal.pins.length === lastRow + 1 &&
-				focusedReveal.pins[lastRow]?.opacity === "1" &&
-				focusedReveal.pins.filter(
-					(pin, index) => index !== lastRow && pin.opacity === "1",
+			"the caret on an unpinned row reveals ITS pin and no other (design round 8: the focus half of the reveal)",
+			caretOnRow?.onButton === true &&
+				caret !== null &&
+				caret.onPin === true &&
+				caret.row === focusRow.id &&
+				caretRow >= 0 &&
+				focusedReveal.rows[caretRow]?.pinOpacity === "1" &&
+				focusedReveal.rows.filter(
+					(row, index) => index !== caretRow && row.pinOpacity === "1",
 				).length === 0,
 			JSON.stringify({
+				caretOnRow,
 				caret,
-				label: focusTarget ? focusTarget.label : null,
-				opacities: focusedReveal.pins.map((pin) => pin.opacity),
+				label: focusRow.label,
+				opacities: focusedReveal.rows.map((row) => row.pinOpacity),
 			}),
 		);
+		/* Printed for the same reason the slot's cost is: a claim about what focus does is worth
+		   a reading in the log, not only a green check. */
+		say(
+			`  [pins] focus reveal: caret ${JSON.stringify(focusRow.label)} -> ${JSON.stringify(caret ? caret.subject : null)}; pin opacities ${JSON.stringify(focusedReveal.rows.map((row) => row.pinOpacity))}`,
+		);
+		/*
+		 * THE CARET GOES, AND THE REGION IS READ BACK. A focus ring left in the frames that follow
+		 * would be this check's residue rather than the panel's state - and the region must be where
+		 * the check found it, which is the property the first version of this block broke.
+		 */
 		await cdp.evaluate(
 			`(() => {
 				if (document.activeElement) document.activeElement.blur();
 			})()`,
 		);
-		/* Printed for the same reason the slot's cost is: a claim about what focus does is worth
-		   a reading in the log, not only a green check. */
-		say(
-			`  [pins] focus reveal: caret on ${focusTarget ? JSON.stringify(focusTarget.label) : "none"}; pin opacities ${JSON.stringify(focusedReveal.pins.map((pin) => pin.opacity))}`,
+		const afterFocus = await readList(cdp);
+		check(
+			"the focus reading left the region where it found it (Q9-1: a scene that moves the list owns what it leaves)",
+			afterFocus.scrollTop === beforeFocus.scrollTop,
+			JSON.stringify({
+				before: beforeFocus.scrollTop,
+				after: afterFocus.scrollTop,
+			}),
 		);
+		await parkPointer(cdp);
+		await wait(120);
 		await parkPointer(cdp);
 		await wait(120);
 
@@ -4055,10 +4131,33 @@ async function scenePins(cdp) {
 		 * itself: the conversation must move into a `Pinned chats` section whose
 		 * heading sits ABOVE the `All chats` row and the sections under it - the
 		 * operator's "above Active Chats", read as a position in the panel.
+		 *
+		 * AND THE ROW IS CHOSEN FROM WHAT IS ON SCREEN, WITH THE POINT HIT-TESTED FIRST (QA round 9,
+		 * Q9-1). The row comes from those inside the region's window, and what a press at its pin's
+		 * centre would ACT on is read back before the press - the instrument QA round 1's U3
+		 * introduced, which is what makes a missed press name itself instead of looking like a
+		 * backend that ignored it. The earlier code pressed `pins[0]`'s STORED box blind, which is
+		 * only correct while nothing scrolls: QA round 9 measured that box 416 px above the viewport
+		 * on a 40-conversation store, with the press landing on nothing.
 		 */
-		const pressRow = await rowBox(cdp, 0);
-		const target = await readPins(cdp);
-		await pressPointer(cdp, target.pins[0].x, target.pins[0].y);
+		await parkPointer(cdp);
+		const pressView = await readList(cdp);
+		const pressRow =
+			visibleUnpinnedRows(pressView).find((row) =>
+				whollyInside(pressView, row),
+			) ?? null;
+		require("the panel has an unpinned row inside the region to press", pressRow, JSON.stringify(
+			pressView.rows.slice(0, 3),
+		));
+		await movePointer(cdp, pressRow.pin.x, pressRow.pin.y);
+		await wait(240);
+		const pressAt = await readList(cdp, {
+			x: pressRow.pin.x,
+			y: pressRow.pin.y,
+		});
+		require("the pin the press will act on is the one under the pointer", pressAt
+			?.atPoint?.pin === true, JSON.stringify(pressAt?.atPoint ?? null));
+		await pressPointer(cdp, pressRow.pin.x, pressRow.pin.y);
 		const pinned = await waitForPinned(cdp, pressRow.label);
 		check(
 			"pressing the pin moves the conversation into a Pinned chats section above the rest",

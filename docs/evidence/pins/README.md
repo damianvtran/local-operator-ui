@@ -99,11 +99,16 @@ Two things are worth reading off the file set rather than per frame:
   minute-resolution timestamps are what the panel draws. This is the claim the design states
   as "the row is byte-identical to the pre-change frame", and it is a measurement rather than an
   assertion.
-* **`pins-withdrawn-dark.png` is also byte-identical to `pins-unpinned-dark.png`**, which
-  is a second, independent statement: with the capability present and nothing pinned, the
-  panel paints exactly what it paints with the capability absent. The reserved 24px slot
-  and the hover wrapper cost no pixel at rest, which is what makes the reveal unable to
-  reflow a row.
+* **`pins-withdrawn-dark.png` is also byte-identical to `pins-unpinned-dark.png` — as a measurement
+  on ONE rig, which is where it was taken, and NOT as a property of the two committed files.** With
+  the capability present and nothing pinned, the panel paints exactly what it paints with the
+  capability absent: the reserved 24px slot and the hover wrapper cost no pixel at rest, which is
+  what makes the reveal unable to reflow a row, and the reading was re-taken on this head's rig
+  (QA round 9, Q9-2). The two COMMITTED files no longer compare, and did before the last round's
+  re-shoot: the withdrawn stage was re-taken on a freshly seeded store while these frames were not
+  (`176,542` against `161,230` bytes), so they differ by their store rather than by their state.
+  Nothing in this file's D1 claim rests on that pair — the four withdrawn/`main` pairs above are the
+  comparison that does, and they are `cmp`-silent.
 
 ## How these were taken
 
@@ -141,20 +146,32 @@ main (`0e287be0`) for every pins frame, and `6ac627b39` for the withdrawn ones.
 
 The `VITE_GOOGLE_*`/`VITE_MICROSOFT_*` values are inert build fixtures
 (`pins-build-only-not-a-credential`); no credential file was read and no sign-in is claimed. The
-scene prints `[PASS]`/`[FAIL]` for every assertion it makes; the counts below are this head's own
-runs on the rig this section names:
+scene prints `[PASS]`/`[FAIL]` for every assertion it makes (and its `require` guards count in the
+run's tally), and the counts below are this head's own runs on the rig this section names. **Each
+line says which launch shape it is**, because the shapes are not interchangeable:
 
 ```
-45 checks passed, 0 failed   --scene pins, the pins daemon (dark, with both terminal legs)
-17 checks passed, 0 failed   --scene pins, the withdrawn daemon (dark)
-17 checks passed, 0 failed   --scene pins, the withdrawn daemon (light)
+50 checks passed, 0 failed   --scene pins --theme <one theme>   (pins daemon, 4-conversation store)
+84 checks passed, 0 failed   --scene pins                       (BOTH themes in one launch, same store)
+84 checks passed, 0 failed   --scene pins                       (BOTH themes, 40-conversation store)
+85 checks passed, 0 failed   --scene pins-scroll                (BOTH themes, 40-conversation store)
+69 checks passed, 0 failed   --scene pins-search                (BOTH themes, 600-conversation store)
+23 checks passed, 0 failed   --scene pins                       (BOTH themes, withdrawn daemon)
+17 checks passed, 0 failed   --scene pins --theme <one theme>   (withdrawn daemon)
 ```
 
-The withdrawn count reads **17** rather than the 15 this paragraph quoted before design round 8: that
-round replaced one check with two and added two more - the box the row renders, the width of its
-button, and both again with a conversation open. The `--scene pins` count is unchanged at 45: the
-focus-reveal check added this round runs before the press, and the press branch re-reads its own
-state rather than resting on anything that check touched.
+`--scene pins-search` needs a store BIGGER THAN ONE PAGE, because the row it asserts is one the page
+cannot carry; that is why its store is named beside its number.
+
+The withdrawn count reads **17** per theme rather than the 15 this paragraph quoted before design
+round 8, for the reason the reviewer's round-8 arithmetic gives: that round replaced one check with
+two and added two more (the box the row renders, the width of its button, and both again with a
+conversation open) while the terminal leg stopped being driven there. The `--scene pins` count is
+**50 per theme**, not the 45 this paragraph carried before this round — the focus-reveal block adds
+two checks and three `require` guards to that path, which is five in this shape — and the 45 it
+replaced was itself read off a different driver revision. Hence the rule this file now follows: a
+number is published with the shape and the store it was measured in, and "a run" is never one
+figure.
 
 It refuses to run at all without `--backend`, because a run with no catalogue has no row to pin and
 every frame it could write would be a picture of an empty panel. The pins run also asks the daemon's
@@ -166,7 +183,12 @@ The withdrawn pair is the same scene against a daemon checked out at `feat/deskt
 this feature, rather than a client told to pretend. TWO states are taken there, at rest and with a
 conversation open, and when `--tui-python`/`--tui-config` are passed the scene reports that leg as NOT
 DRIVEN rather than passing or failing it: with no control mounted there is no round trip to make, and a
-FAIL there was the shape design round 8 (D2) removed.
+FAIL there was the shape design round 8 (D2) removed. **And that skip is keyed on what the APP
+observed** (QA round 9, Q9-4): `controls === 0` is read from the running surface, so an app-side
+mis-mount against a *pins-capable* backend would take this branch as well and the terminal leg would
+read "not driven" rather than failing. Recorded as the design's residual rather than as a defect —
+the withdrawn branch's own box assertions would likely catch such a regression first — because the
+only way to exercise it is to ship a broken tree on purpose.
 
 **The two things that moved in the re-shot stage, named rather than left to be noticed.** (1) The
 frames were re-taken on a freshly seeded store, so the seeded transcript's timestamps read differently
@@ -178,6 +200,15 @@ claim about it. Measured rather than asserted: re-running the two withdrawn runs
 frames byte for byte, and the opened ones down to the composer's caret - 66 pixels in one `2x33` box at
 `1098,1531`, the blink phase of a 2 px bar, in a frame whose halves differ by 15,832 pixels when the
 row has lost its box.
+
+**What QA round 9's fix to the scene does NOT move** (measured, because a scene change can move the
+pixels it photographs): the pre-fix scene at `9699654ff` and the fixed one were both run against the
+same daemon and the same 4-conversation store, and of the **13** frames `--scene pins` writes, **12
+are byte-identical**. The thirteenth, `pins-selected-dark.png`, differs by **66 pixels in one `2x33`
+box at `1098,1531`** — the composer's caret, blinking — which is the same box and the same size the
+`reproducibility` field already records for a re-run of the withdrawn stage. So the enabled frames
+here are not re-shot for this round: what changed is where the caret is put and which row is pressed,
+and on a store that does not scroll the pressed row is the same first row either way.
 
 ## Reproducible until the clock moves, and that is measured
 
@@ -339,8 +370,9 @@ run: the clamped case cannot be mistaken for the passing one.
 | Recorded, not fixed: UX U12 | the 6 px slop is deliberate rather than accidental: a 3 px and a 6 px repeat are dropped, 7 px acts, so the guard narrows the DROP set rather than widening the ACT set, and U9's silent swallow is gone. Named here so the next reader does not re-derive it from the constant |
 | Recorded, not fixed: UX U13 | the caret is restored one render behind the remount in the follow-the-row case; no reader-visible repro was found, and the correction itself is asserted |
 | Design round 2 (D6-D10) | the nav rows move 44 CSS px on a press (recorded, below); the scrolled frames refuted their own claim; `pins-hover` had the pointer on the row, not the glyph; the gate table was a pre-B1 snapshot; the slot's cost was argued | fourteen pins and an assertion that the set is taller than the window, the pointer on the glyph, the refreshed table, and the D9 claim narrowed to what the frames carry |
-| QA round 2 (Qr2-1, Qr2-2, Qr2-3) | a pin on a search-only conversation could not be undone from its own row; the gate table; a missing light link | 
-| Design round 8 (D1, D2) | **D1**: after the fold, the capability-withdrawn path no longer rendered main's row box, so its conversation button had no flex parent and shrink-to-fit its words - 138.3 / 210.7 / 179.0 / 165.6 px against `origin/main`'s **264**, with the row's own click strip and the selected row's ground shrinking to match (141.2 px against 264) and the frame difference 15,832 px dark / 15,898 px light. **D2**: a `--scene pins --tui-python` run against a withdrawn backend ended with one FAIL on the terminal round trip, which cannot hold where no control exists | the withdrawn pair is re-shot **with a conversation open** as well as at rest, in both themes, and `cmp` is silent against the same scene's frames from `origin/main` (below); the row's box is a named constant BOTH paths render, so the withdrawn path cannot drift off main's row again; the cross-surface leg reports itself as not driven where its object does not exist |the store now holds the row the press acts on (both directions proven in `pins-search-*`), and the table is refreshed |
+| QA round 2 (Qr2-1, Qr2-2, Qr2-3) | a pin on a search-only conversation could not be undone from its own row; the gate table; a missing light link | the store now holds the row the press acts on (both directions proven in `pins-search-*`), and the table is refreshed |
+| Design round 8 (D1, D2) | **D1**: after the fold, the capability-withdrawn path no longer rendered main's row box, so its conversation button had no flex parent and shrink-to-fit its words - 138.3 / 210.7 / 179.0 / 165.6 px against `origin/main`'s **264**, with the row's own click strip and the selected row's ground shrinking to match (141.2 px against 264) and the frame difference 15,832 px dark / 15,898 px light. **D2**: a `--scene pins --tui-python` run against a withdrawn backend ended with one FAIL on the terminal round trip, which cannot hold where no control exists | the withdrawn pair is re-shot **with a conversation open** as well as at rest, in both themes, and `cmp` is silent against the same scene's frames from `origin/main` (below); the row's box is a named constant BOTH paths render, so the withdrawn path cannot drift off main's row again; the cross-surface leg reports itself as not driven where its object does not exist |
+| QA round 9 (Q9-1, Q9-2, Q9-3) | **Q9-1**: the focus-reveal step added in round 8 focused the LAST row, which scrolled the region (`scrollTop 1075` on a 40-conversation store), and the press that followed aimed at a stored box 416px above the viewport — `elementFromPoint` answered nothing, no write reached the backend, and the scene failed four checks for a reason of its own making. **Q9-2**: the notes claimed the withdrawn and unpinned frames are byte-identical, which the re-shoot's fresh store made false. **Q9-3**: the counts in the PR body and this file disagreed with each other and with the runs. | the caret is taken from the rows ALREADY inside the region's window and moved by a real Tab, the pin read is the one the caret holds, and the region is read back and asserted unchanged; the press takes its row from the same window and hit-tests the point before pressing; the byte-identity claim is narrowed to the rig it was measured on; every count is published with its launch shape and store |
 
 **The motion a press still costs (design round 2, D6), measured.** The anchor keeps the pressed
 row's neighbourhood still, and a region scroll moves everything: the two nav rows at the top of
