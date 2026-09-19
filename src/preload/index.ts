@@ -538,6 +538,40 @@ const api = {
 				ipcRenderer.removeListener("update-install-in-flight", handler);
 			};
 		},
+		/**
+		 * The step an install is on, while it runs before the app quits.
+		 *
+		 * The wait the person actually sits through: the pre-flight hashes the
+		 * artifact and runs `codesign` over the installed bundle, and the staging
+		 * extracts it and probes the result. Three phases rather than a percentage,
+		 * because each step is one indivisible call the app gets no progress out of.
+		 */
+		onUpdateInstallProgress: (
+			callback: (info: {
+				phase: "verifying" | "staging" | "starting";
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-progress", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-progress", handler);
+			};
+		},
+		/**
+		 * An install that landed, reported once on the launch after it.
+		 *
+		 * The fast path's window is seconds, so the app coming back is no longer the
+		 * report that the update went in - this is.
+		 */
+		onUpdateInstallSucceeded: (
+			callback: (info: { version: string }) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-succeeded", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-succeeded", handler);
+			};
+		},
 		onBeforeQuitForUpdate: (callback: () => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("before-quit-for-update", handler);
