@@ -144,7 +144,25 @@ export const nightfox: ThemeDefinition = {
 		 * tokens. Measured: ΔE00 17.73 from `accent`, 23.00 from its nearest
 		 * semantic (`danger`), 4.52:1 on the tightest ground (`surface`).
 		 */
-		accentAlt: "#A581DF",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.09:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue held at 307 deg, L* 60.81 -> 64.02, C* 54.19 -> 55.37):
+		 * 4.55:1 on `elevated`, 5.02:1 on `surface`, 6.30:1 on `sunken`,
+		 * 5.71:1 on `canvas` - ΔE00 36.30 from `info` (the 8 floor intact),
+		 * 16.57 from `accent`, 25.59 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.06:1.
+		 */
+		accentAlt: "#AE89EA",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 19.70 and C* 18.26, with the hue moved to

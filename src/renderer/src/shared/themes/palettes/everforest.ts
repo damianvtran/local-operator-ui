@@ -165,7 +165,25 @@ export const everforest: ThemeDefinition = {
 		 * from `accent`, 15.56 from its nearest semantic (`danger`), 4.76:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#CE9DC3",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.14:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 332.95 -> 332.04 deg, L* 70.30 -> 73.42, C* 27.41 -> 31.58):
+		 * 4.55:1 on `elevated`, 5.24:1 on `surface`, 7.05:1 on `sunken`,
+		 * 6.03:1 on `canvas` - ΔE00 32.67 from `info` (the 8 floor intact),
+		 * 49.60 from `accent`, 31.70 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.00:1.
+		 */
+		accentAlt: "#DBA3D0",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 32.37 and C* 5.11, with the hue moved to

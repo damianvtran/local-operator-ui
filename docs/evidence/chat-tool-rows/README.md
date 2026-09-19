@@ -101,6 +101,56 @@ Both brand themes for each. The 12-theme sweep was **not** regenerated — see
 `STORIES` in `scripts/capture-evidence.mjs`, so the next full recapture covers
 them.
 
+## The category inks, and this set's re-capture on the `fix/trace-category-ink-rebased` branch
+
+**Why the frames in this set were re-shot (PR #391, round-1 remediation).** The
+branch gives the settled row its CATEGORY ink back — `read` -> `info`, `meta` ->
+`accentAlt`, the rest the neutral ramp — and the set a reader opened still showed
+the ink it replaced, so the operator's own report was reproducing in the
+repository's own evidence. Every frame below was re-captured from the branch's
+own static Storybook build at `2fe1f8e982`, which is the tree that ships this.
+
+**WHICH SETS CARRY THE TWO INKS, so a reader knows where to look.** The ledger's
+category ink is visible in these, and they are the ones a round about the ink
+needs:
+
+| Set | What it shows of the ink |
+| --- | --- |
+| [`states`](states/) | the whole vocabulary in one column: a settled `read` (`info`), `bash`/`write`/`edit` neutral, an error on the wash ground, an interrupted `grep` (`info`, hueless mark), a running `web_fetch` (`accent`, live clock), and a never-run `hub` (`danger`) |
+| [`names-and-fallbacks`](names-and-fallbacks/) | `read_variable`/`list_variables` in `info` beside `mcp__*` and unknown tools on the neutral — the ink at the right end of the name column |
+| [`receipt-rows`](receipt-rows/) | the two RECEIPTS: `peer` and `wake`, which both take the neutral because a receipt is not a call (`_category_element` has one caller in the TUI, `ToolCard`) |
+| [`operator-spacing-cases`](operator-spacing-cases/) | settled `hub`/`send` rows — the `accentAlt` identity ink at its own pitch, which no other story in this set carries |
+| [`operator-spacing-cases-hovered`](operator-spacing-cases-hovered/) | the SAME story with the pointer parked on the first `hub` row: the identity ink on the row's own HOVER ground (`elevated`), the one pair no site of this role had painted before PR #391 |
+| [`screenshots`, `screenshots-two`](screenshots/) | the composed run the operator's report came from |
+
+`narrow` and `mixed-run` are re-shot alongside them and are the width and the
+mixed-run cases for the same inks.
+
+**The hovered pair, measured rather than argued.** `operator-spacing-cases-hovered`
+parks the pointer on row `b1` and photographs what a reader's pointer meets: the
+row's ground and its name. Read back from the frames, the band's modal colour
+reproduces the palette's own `elevated` token in both themes checked —
+`localOperatorDark` `#322D21` against the token `#322D22`, `monokai` `#38372F`
+against `#39382F` — and the name's chromatic pixels are `accentAlt`'s, so the pair
+the gate asserts (4.5:1 on that ground) is the pair in the frame. The floor itself
+is asserted on the TOKENS, not eyeballed from the frame: a name is a few
+antialiased strokes, so every pixel sample of it is a partial blend of ink and
+ground and a ratio read from them would understate it.
+
+**A frame whose story does not carry a settled `meta` row cannot show
+`accentAlt` at all**, and most of this set's stories do not: `states`' only
+`hub` row is never-run (so it takes `danger`) and `names-and-fallbacks` has no
+`meta` tool. `operator-spacing-cases` is the one that does, which is why it is
+named above rather than left to be found.
+
+**What this re-capture does NOT carry.** The set's other directories were not
+re-shot in that pass — the host was at load 90-295 for the window it ran in and
+`capture-evidence.mjs` allows Chrome 30 s to report its debug port, which a cold
+start on this machine missed repeatedly. `docs/evidence/manifest.json`'s
+`partialCapture` names the directories that WERE refreshed, so read a frame's
+provenance there rather than from this note; a directory not named in it still
+carries the previous tree's ink.
+
 ## The turn stamps (the `feat/transcript-timestamps` branch)
 
 Two frames are NEW in this set, and the rest of it was re-taken because the same change
