@@ -137,7 +137,6 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
  * 6. a directory, so the toolbar's own directory rule is on screen;
  * 7. a path that does not exist, so the "no file" state is on screen;
  * 8. a path long enough to wrap, which is the case that puts the tooltip below the
-<<<<<<< HEAD
  *    link rather than over the text beside it;
  * 9. the report the operator FILED, in their own words - with a slash COMMAND in
  *    prose and a second one in backticks, neither of which is a file, in the
