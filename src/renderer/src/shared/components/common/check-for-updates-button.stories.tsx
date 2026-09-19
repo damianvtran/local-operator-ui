@@ -74,6 +74,8 @@ const createEmptyUpdaterMethods = () => {
 			onUpdateInstallBlocked: () => () => {},
 			onUpdateInstallFailed: () => () => {},
 			onUpdateInstallInFlight: () => () => {},
+			onUpdateInstallProgress: () => () => {},
+			onUpdateInstallSucceeded: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -250,6 +252,12 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onUpdateInstallInFlight: () => {
+			return () => {};
+		},
+		onUpdateInstallProgress: () => {
+			return () => {};
+		},
+		onUpdateInstallSucceeded: () => {
 			return () => {};
 		},
 		onBackendUpdateProgress: () => () => {},

@@ -90,6 +90,7 @@ const {
 	installLaunchHoldNotice,
 	installStartedText,
 	installedBundleSealBlock,
+	installLivenessNow,
 	isInstallInFlight,
 	isPythonBytecodePath,
 	isSourceBuildRef,
@@ -1815,9 +1816,20 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// deadline path falls through to it (review Q1), and the decision it waits on
 	// is made of the job going AND the swap landing on disk (review R11).
 	assert.match(plan.script, /deadline=\$\(\( \$\(now\) \+ 600 \)\)/);
+	/*
+	 * The activation at the end, and what now stands in front of it (UX U7): a
+	 * landed swap is the installer's to bring back - ShipIt relaunches the app
+	 * itself - so the script must not front a window the user already has. The
+	 * order is asserted, not just the presence, because "open -a anyway" is the
+	 * defect: the swap check has to come first, and the old-pid check after it.
+	 */
 	assert.match(
 		plan.script,
-		/if app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/,
+		/if swap_landed; then\n\tif \[ -n "\$NAME" \] && \[ -x "\$BUNDLE\/Contents\/MacOS\/\$NAME" \]; then\n\t\topen -g -a "\$BUNDLE"/,
+	);
+	assert.match(
+		plan.script,
+		/\nfi\nif app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/,
 	);
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
@@ -1901,12 +1913,14 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// signal the job here, exactly as it was before this field existed.
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_INSTALLER_PID, "");
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_TARGET_VERSION, "0.18.0");
-	// And with no label the appear window is skipped rather than spent pretending
-	// to observe a job it cannot see, which used to end in a relaunch carrying no
-	// evidence about the install at all (review R14).
+	// And the appear window is only for an install that has not STARTED yet, which
+	// is a question only the launchd path asks (review R14, UX U6): with no label
+	// there is nothing to appear, and an installer this app spawned itself exists
+	// before the quit, so "nothing there" is already an answer for it rather than
+	// ${appearSeconds}s of pretending that ends in a relaunch with no evidence.
 	assert.match(
 		bounded.script,
-		/if \[ "\$signal_known" -eq 1 \]; then\n\tappear_deadline=/,
+		/if \[ "\$signal_known" -eq 1 \] && \[ -z "\$INSTALLER_PID" \]; then\n\tappear_deadline=/,
 	);
 
 	assert.equal(
@@ -2598,18 +2612,26 @@ test("an unanswerable job probe holds rather than starting the app into the inst
  * not happen, or a non-zero exit the app's log would report as a failed watch.
  * The shim fails every call here (a missing notifier is the same case, since the
  * script drops the status either way) and the relaunch still happens.
+ *
+ * The install has to be LIVE at the moment of the announcement for this case to
+ * mean anything, which is why the plan carries an installer pid here: since UX U1
+ * the notice is raised only while an install is genuinely running, so a scenario
+ * with nothing installing is a scenario in which no notifier is called at all -
+ * and the assertion below would pass vacuously. The installer is killed mid-wait,
+ * which is also what ends the wait: the pid going IS the install being over.
  */
 test("a failed notification does not change the watchdog's decision or its exit status", async () => {
 	const dir = tempDir("lo-watchdog-notify-");
 	const fixture = makeWatchdogFixture(dir);
-	// No job: the first path, where the app is started as soon as it is gone.
 	fixture.setNotifierExit(1);
 	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
 	const plan = buildWatchdogPlan({
 		appBundlePath: fixture.bundle,
 		executableName: "Fixture",
 		appPid: app.pid,
 		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
@@ -2621,13 +2643,22 @@ test("a failed notification does not change the watchdog's decision or its exit 
 	const before = fixture.launches().length;
 	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
 	app.kill();
-	const result = await watchdog.exit;
-	assert.equal(result.code, 0);
-	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	// Past the announcement, and past the poll that follows it: the failing
+	// notifier has been called by now, and nothing has been decided by it.
+	await new Promise((resolve) => setTimeout(resolve, 2500));
 	assert.ok(
 		fixture.notifications().length > 0,
 		"the failing notifier was never called, so this proves nothing",
 	);
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"a failed notification turned into a launch into a live install",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
 });
 
 /**
@@ -11596,10 +11627,40 @@ test("a launch is held only for an install that is live, and never past the watc
 
 	const running = "0.19.4";
 
+	/*
+	 * The two facts the installer's identity check matches on, spelled the way the
+	 * app spells them: its OWN ShipIt, resolved from the running bundle rather than
+	 * from a constant, and its own staging root. Both are required together, which is
+	 * what keeps another application's ShipIt from being read as this one's.
+	 */
+	const SHIPIT_IN_BUNDLE =
+		"/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/Current/Resources/ShipIt";
+	const STAGING_ROOT =
+		"/Users/someone/Library/Application Support/Local Operator/update-staging";
+
+	/*
+	 * The machine's two liveness answers, gathered the way production gathers them
+	 * (`installLivenessNow`, management MAJOR-1): a case states the facts it is
+	 * about - the marker's own installer pid, its command line, whether some other
+	 * process is this app's installer, and what launchd says - and the classifier
+	 * decides what they mean. Stating them here rather than inside the classifier is
+	 * what makes the two paths assertable side by side.
+	 */
+	const livenessFor = (input) =>
+		installLivenessNow({
+			marker: input.marker ?? null,
+			installerCommandLine: () => input.commandLine ?? null,
+			installerElsewhere: () => input.elsewhere === true,
+			shipItPath: SHIPIT_IN_BUNDLE,
+			stagingRoot: STAGING_ROOT,
+			jobState: () => input.jobState ?? "unread",
+		});
+	const liveness = (input) => livenessFor(input);
+
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: null,
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: running,
 			now,
 		}),
@@ -11610,7 +11671,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "absent",
+			liveness: liveness({ jobState: "absent" }),
 			runningVersion: running,
 			now,
 		}),
@@ -11621,7 +11682,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: { ...marker(""), startedAt: "" },
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: running,
 			now,
 		}),
@@ -11631,7 +11692,72 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(pastHold),
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+
+	/*
+	 * THE SEAM WITH AN INSTALL THIS APP STARTED (management MAJOR-1, UX U2). Such an
+	 * install has NO launchd job, so before this the hold read `jobState: "absent"`
+	 * and opened the app straight into the swap - the 2026-09-18 cancellation, made
+	 * likelier by a window that is now seconds long rather than minutes. The marker
+	 * names the installer it spawned instead, and that pid is what holds the launch.
+	 */
+	const directMarker = { ...marker(fresh), installerPid: 998877 };
+	const pidLine = `${SHIPIT_IN_BUNDLE} ${STAGING_ROOT}/0.19.5-abc/state.plist`;
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({
+				marker: directMarker,
+				commandLine: pidLine,
+				// The job is not consulted for this marker at all, so a leftover
+				// registration is stated here precisely to prove it cannot decide.
+				jobState: "registered",
+			}),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "hold", marker: directMarker },
+	);
+	// The same install with its installer gone: nothing is installing, so the
+	// launch opens and recovery explains what happened.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({ marker: directMarker, jobState: "registered" }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// A pid that stopped being the installer while an install it started is still
+	// running: `installerElsewhere` finds it by the ShipIt path AND this staging
+	// root, and the launch is held (review MINOR-3).
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({ marker: directMarker, elsewhere: true }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "hold", marker: directMarker },
+	);
+	// A COMPLETED direct install: the target is the running version, so the pid
+	// that is still winding down must not hold anything - the app has to open so
+	// recovery can clear the marker. This is the rule that made the app unreachable
+	// after every successful update, kept intact through the pid (management
+	// MAJOR-1).
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: { ...directMarker, targetVersion: running },
+			liveness: livenessFor({
+				marker: { ...directMarker, targetVersion: running },
+				commandLine: pidLine,
+			}),
 			runningVersion: running,
 			now,
 		}),
@@ -11646,7 +11772,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: "0.19.5",
 			now,
 		}),
@@ -11663,7 +11789,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 2000).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -11673,7 +11799,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 6430).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -11683,7 +11809,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 13320).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -11693,7 +11819,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -11707,7 +11833,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 280_000).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: "0.19.5",
 			now,
 		}).kind,
@@ -11716,7 +11842,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	// And a live install, which is the case this exists for.
 	const held = evaluateLaunchDuringInstall({
 		marker: marker(fresh),
-		jobState: "running",
+		liveness: liveness({ jobState: "running" }),
 		runningVersion: running,
 		now,
 	});
@@ -11724,7 +11850,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(held.marker.targetVersion, "0.19.5");
 	const heldLate = evaluateLaunchDuringInstall({
 		marker: marker(withinHold),
-		jobState: "running",
+		liveness: liveness({ jobState: "running" }),
 		runningVersion: running,
 		now,
 	});

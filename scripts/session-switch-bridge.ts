@@ -393,6 +393,8 @@ function installPreloadStubs() {
 		onUpdateInstallFailed: unsub,
 		onUpdateInstallInFlight: unsub,
 		onBeforeQuitForUpdate: unsub,
+onUpdateInstallProgress: unsub,
+		onUpdateInstallSucceeded: unsub,
 		onBackendUpdateAvailable: unsub,
 		onBackendUpdateDevMode: unsub,
 		onBackendUpdateNotAvailable: unsub,

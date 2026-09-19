@@ -513,6 +513,14 @@ updater.onBackendUpdateManualRequired = updater.on(
 updater.onUpdateInstallFailed = updater.on("update-install-failed");
 updater.onUpdateInstallBlocked = updater.on("update-install-blocked");
 updater.onUpdateInstallInFlight = updater.on("update-install-in-flight");
+/*
+ * The two halves of the pre-quit wait and its outcome (UX U4, U5): which step the
+ * install the user just started is on, and the one line the launch after a
+ * successful install owes them. Both are ordinary subscriptions, so a case that
+ * wants to drive them emits on their channels like any other.
+ */
+updater.onUpdateInstallProgress = updater.on("update-install-progress");
+updater.onUpdateInstallSucceeded = updater.on("update-install-succeeded");
 
 globalThis.window = {
 	api: {
