@@ -38,6 +38,8 @@ import type {
 } from "../draft-selection";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
+import { documentsForCanvas } from "./canvas/document-buffers";
+import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import {
@@ -790,9 +792,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				setOpenTabs(conversationId, newTabs);
 				setFiles(conversationId, newFiles);
 				if (selectedTabId === docId) {
+					/*
+					 * THE NEIGHBOUR, NOT THE OLDEST TAB (design review round 1, D1). This
+					 * used to select `newTabs[0]`, so every close of a selected tab dropped
+					 * the reader on the first document they ever opened - which breaks the
+					 * repeated gesture the close is, and, because the strip scrolls the
+					 * selection into view, slides the whole row back to the left under the
+					 * pointer. The rule - following tab, or the preceding one when it was last
+					 * - is `tabFollowingClose`, shared with the pane's own handler and with the
+					 * strip's focus move so the three cannot disagree.
+					 *
+					 * Read off `files` rather than `openTabs` on purpose: `files` is the list
+					 * the strip and the pane are drawn from, so its order - not `openTabs`' -
+					 * is the one the reader sees and the one "neighbour" means.
+					 */
 					setSelectedTab(
 						conversationId,
-						newTabs.length > 0 ? newTabs[0].id : null,
+						tabFollowingClose(files, docId)?.id ?? null,
 					);
 				}
 			},
@@ -1209,7 +1225,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
-								initialDocuments={files}
+								/*
+								 * THE BUFFER OWNER'S WORDS, WHERE IT STILL HAS SOME (this change's fix for
+								 * the close). `files` is the list of OPEN documents and stays that list -
+								 * this is a projection over it, not a second one: a document whose buffer
+								 * holds words the write gate refused (the file moved on disk under the
+								 * reader) is handed to the canvas as those words, at the mtime they were
+								 * read, instead of as the file's bytes. Without it a close would drop them:
+								 * closing a tab takes the document out of `files`, opening it again goes
+								 * through the files grid and re-reads the FILE, and the editor mounts from
+								 * whatever document it is handed. See `documentsForCanvas` for the promise
+								 * (in-session, and why).
+								 */
+								initialDocuments={documentsForCanvas(files)}
 								conversationId={conversationId}
 								agentId={agentId}
 								sessionId={sessionId}

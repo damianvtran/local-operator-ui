@@ -31,6 +31,7 @@ import {
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
 import { DocumentFreshnessBar } from "./document-freshness-bar";
+import { tabFollowingClose } from "./tab-selection";
 
 type CanvasProps = {
 	/**
@@ -481,11 +482,16 @@ const CanvasComponent: FC<CanvasProps> = ({
 			onCloseDocument(documentId);
 			removeManager(documentId);
 
-			// If we're closing the active document, set the active document to the first remaining document
+			/*
+			 * If we're closing the active document, the selection moves to the tab that
+			 * takes its place - the following one, or the preceding one when the closed
+			 * tab was last (design review round 1, D1; the same rule the ✕ handler in
+			 * `chat-content.tsx` applies, from the same module, so the pane and the strip
+			 * cannot land on two different documents).
+			 */
 			if (activeDocumentId === documentId) {
-				const remainingDocs = documents.filter((doc) => doc.id !== documentId);
 				const newActiveId =
-					remainingDocs.length > 0 ? remainingDocs[0].id : null;
+					tabFollowingClose(documents, documentId)?.id ?? null;
 
 				if (externalChangeActiveDocument) {
 					externalChangeActiveDocument(newActiveId as string);
