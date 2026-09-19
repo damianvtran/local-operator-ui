@@ -1,4 +1,6 @@
 import { type Session, session } from "electron";
+import type { DownloadDecision } from "./downloads";
+import type { DownloadItemLike } from "./electron-types";
 
 /**
  * The persistent browsing profile, and the session-level handlers that go with
@@ -109,14 +111,40 @@ export interface BrowserSessionHooks {
 		origin: string;
 		permission: string;
 	}) => void;
-	/** A download was attempted. Cancelled; the extension treats downloads as a
-	 * non-goal and a download UI is a separate feature with its own surface. */
-	onDownloadAttempted?: (details: {
-		webContentsId: number;
-		url: string;
-	}) => void;
+	/**
+	 * Decide one download attempt, for EVERY download on this session.
+	 *
+	 * WHY THE WHOLE DECISION AND NOT A NOTIFICATION (design §8): `will-download` is
+	 * session-level (Electron's split — one browser session, N views), so the one
+	 * handler Electron will call cannot know which tab a download belongs to unless
+	 * this module asks the thing that does know which view the WebContents is. The
+	 * hook therefore receives the item AND the id of the WebContents that started
+	 * it, and answers whether the attempt may proceed and where it must be written.
+	 *
+	 * WHY THE DEFAULT IS A REFUSAL. Before the file-transfer feature this handler
+	 * called `preventDefault()` unconditionally, on the reasoning recorded at the
+	 * call site below. That remains the behaviour for a download the app was not
+	 * asked to make — an ABSENT hook (a test that installs handlers alone, the
+	 * cookie jar's own session) must never quietly save files.
+	 */
+	onDownload?: (
+		item: DownloadItemLike,
+		webContentsId: number,
+	) => DownloadDecision;
+	/** What was decided, for the app log and the chrome's download row. */
+	onDownloadDecided?: (outcome: DownloadOutcome) => void;
 	/** A line worth putting in the app log. */
 	log?: (message: string) => void;
+}
+
+/** One attempt and what the host decided about it (never model-facing). */
+export interface DownloadOutcome {
+	webContentsId: number;
+	url: string;
+	filename: string;
+	/** Where it was written, or null when the attempt was cancelled. */
+	savePath: string | null;
+	reason: string;
 }
 
 /**
@@ -191,18 +219,35 @@ export function installBrowserSessionHandlers(
 		},
 	);
 
-	// Downloads are cancelled rather than silently saved: a download the user did
-	// not ask for, landing in their Downloads folder, is a worse outcome than a
-	// message saying the app does not do that yet.
-	browserSession.on("will-download", (event, item) => {
-		event.preventDefault();
-		hooks.onDownloadAttempted?.({
-			webContentsId: -1,
+	// Downloads. THE PRE-FEATURE RULE IS STILL THE DEFAULT — a download the app was
+	// not asked to make is cancelled, because one landing in the user's own
+	// Downloads folder under a page-chosen name is a worse outcome than a message
+	// saying so. What changed is that a tab with an ARMED `download` call answers
+	// instead: the harness composes the directory, the host writes the file there
+	// under a sanitised name, and Python decides about the bytes afterwards
+	// (design §5, §10). The decision itself lives in `downloads.ts`; this handler
+	// owns only the two Electron facts it cannot get for itself — the item, and the
+	// WebContents that started it.
+	browserSession.on("will-download", (event, item, webContents) => {
+		const webContentsId = webContents?.id ?? -1;
+		const decision = hooks.onDownload?.(item, webContentsId) ?? {
+			cancel: true,
+			reason: "background downloads are not supported",
+		};
+		if (decision.cancel) event.preventDefault();
+		const outcome: DownloadOutcome = {
+			webContentsId,
 			url: item.getURL(),
-		});
-		hooks.log?.(
-			`[browser] cancelled a download from ${item.getURL()}: background downloads are not supported`,
-		);
+			filename: item.getFilename(),
+			savePath: decision.cancel ? null : item.getSavePath(),
+			reason: decision.reason,
+		};
+		if (decision.cancel) {
+			hooks.log?.(
+				`[browser] cancelled a download from ${outcome.url}: ${decision.reason}`,
+			);
+		}
+		hooks.onDownloadDecided?.(outcome);
 	});
 }
 

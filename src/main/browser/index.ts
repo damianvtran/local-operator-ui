@@ -5,6 +5,7 @@ import {
 	WebContentsView,
 	type WebFrameMain,
 	app,
+	shell,
 	webContents,
 } from "electron";
 import { startConsoleHost } from "../console";
@@ -19,6 +20,7 @@ import {
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
+import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
 import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
@@ -191,6 +193,31 @@ export async function startBrowserHost(
 	// "one jar shared by every tab" is Chromium's mechanism rather than this
 	// host's bookkeeping (design 5.1).
 	const browserSession = resolveBrowserSession();
+	/**
+	 * The per-tab download arm (§8), created BEFORE the session handlers because the
+	 * `will-download` hook installed with them must have somewhere to ask from the
+	 * first download this process sees.
+	 *
+	 * Its view of the registry is a DEFERRED lookup rather than a reference: the
+	 * registry is built a few lines below, and the lookup only ever runs inside a
+	 * download, which cannot happen before a tab exists. The alternative — moving
+	 * the session handlers after the registry — would break the ordering rule those
+	 * handlers exist for (the user agent must be set before any view exists).
+	 */
+	let registryForDownloads: TabRegistry | null = null;
+	const downloads = new DownloadArmer({
+		tabForWebContents: (webContentsId) =>
+			registryForDownloads?.byWebContents(webContentsId)?.tabId ?? null,
+		log,
+		onActivity: () => {
+			// The project is the ONE projection: `chromeState` carries the activity and
+			// the strip re-reads on the same event a tab change uses, which is the rule
+			// `browser-projection-store.ts` states for the consent band — one event, one
+			// read, no second projection that can disagree.
+			if (options.window.isDestroyed()) return;
+			options.window.webContents.send("browser-state-changed");
+		},
+	});
 	// Set before the first view: Electron documents that `setUserAgent` "doesn't
 	// affect existing WebContents", so a later call would leave the first tab
 	// presenting the default Electron UA.
@@ -202,8 +229,16 @@ export async function startBrowserHost(
 				`[browser] denied a ${details.permission} permission request from ${details.origin || "(unknown origin)"}`,
 			);
 		},
-		onDownloadAttempted: (details) => {
-			log(`[browser] refused a download from ${details.url}`);
+		onDownload: (item, webContentsId) => downloads.decide(item, webContentsId),
+		onDownloadDecided: (outcome) => {
+			// ONE line per decision, and only the ACCEPTED half here: a cancelled
+			// download's line is written where the cancellation happened (`profile.ts`),
+			// which is where its reason is read from.
+			if (outcome.savePath) {
+				log(
+					`[browser] saved a download from ${outcome.url} to ${outcome.savePath}`,
+				);
+			}
 		},
 		log,
 	});
@@ -426,6 +461,7 @@ export async function startBrowserHost(
 		releaseTab,
 		notifyChanged,
 	);
+	registryForDownloads = registry;
 
 	/**
 	 * Release everything one tab holds: its child view, its debugger session and
@@ -442,6 +478,10 @@ export async function startBrowserHost(
 	function releaseTab(tabId: number, webContentsId: number): void {
 		const view = views.get(tabId);
 		views.delete(tabId);
+		// A CLOSED TAB MUST NOT STAY ARMED: the capture writes into a directory the
+		// harness composed for a call that is now over, and the arm exists only as long
+		// as the tab it belongs to (see `DownloadArmer`'s one-arm-per-tab rule).
+		downloads.forget(tabId);
 		void cdp.detach(webContentsId).finally(() => {
 			releaseView(options.window, view);
 		});
@@ -502,6 +542,7 @@ export async function startBrowserHost(
 		cdp,
 		approvals,
 		ownership,
+		downloads,
 		log,
 		onChanged: notifyChanged,
 		facts: () => facts,
@@ -596,6 +637,17 @@ export async function startBrowserHost(
 		host: () => host,
 		webauthn: () => webauthn,
 		clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
+		// THE REVEAL TAKES NO PATH FROM THE RENDERER (§16.4): it opens the directory the
+		// host is actually writing into, so the one place a page-derived string could
+		// have become a path stays out of the IPC surface as well. `shell.openPath`
+		// answers "" on success and a message on failure, which is returned rather than
+		// thrown: a reveal that fails is a Finder problem, not a fault in the agent's
+		// download.
+		revealDownloads: async () => {
+			const dir = downloads.activity().dir;
+			if (!dir) return "no download directory yet";
+			return shell.openPath(dir);
+		},
 		log,
 	});
 

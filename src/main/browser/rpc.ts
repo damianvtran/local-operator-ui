@@ -8,6 +8,7 @@ import { BrowserHostError, errorData } from "./errors";
 import {
 	ERROR_CODES,
 	type ErrorCode,
+	HOST_CAPABILITIES,
 	type HealthBody,
 	PROTO_VERSION,
 	type Response,
@@ -295,6 +296,11 @@ async function handle(
 				// second probe (design 10.1). `false` when nobody reported a
 				// capability, which is the honest answer for a host that has none.
 				console: options.capabilities?.().console ?? false,
+				// Additive, and the SECOND reader of the same fact (§6.3): a session that
+				// finds a record it cannot trust asks here, and an old reader ignores the
+				// key. It names what this build SERVES, which is what makes a typed
+				// `capability_unsupported` possible without opening a socket.
+				capabilities: [...HOST_CAPABILITIES],
 			};
 			send(res, 200, body);
 			return;
