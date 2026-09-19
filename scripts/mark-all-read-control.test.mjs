@@ -104,6 +104,23 @@ const unread = (sessionId, over = {}) => ({
 });
 
 /**
+ * The derived status pair every wire row carries for a finished, unread turn
+ * (`CatalogEntry.status_code`). It is part of the row rather than decoration:
+ * `unreadMarkKind` reads it to decide what a row is DRAWING, so a fixture
+ * without one is a row the backend cannot produce.
+ */
+const COMPLETE = { code: "complete", label: "Unseen completion" };
+
+/**
+ * The two derived pairs a row that is NOT drawing a mark carries here, spelled the
+ * way `CatalogEntry.status_code` publishes them: live state and a parked gate each
+ * outrank an unread completion, so a row that is busy or waiting on the reader never
+ * carries `complete`, however unread it is.
+ */
+const BUSY = { code: "busy", label: "Working" };
+const APPROVAL = { code: "approval", label: "Approval needed" };
+
+/**
  * The receipts each case stages, plus the request log the assertions read.
  *
  * `held` is a promise the case resolves by hand, which is how the in-flight
@@ -360,12 +377,14 @@ const PILE = [
 		session_id: SESSION,
 		title: "Reconcile the supplier ledger",
 		active: true,
+		status: COMPLETE,
 		attention: unread(SESSION),
 	},
 	{
 		session_id: OTHER,
 		title: "Quarterly revenue model",
 		active: true,
+		status: COMPLETE,
 		attention: unread(OTHER),
 	},
 ];
@@ -599,6 +618,84 @@ test("a foreground refusal reads as a refusal, not as an unreachable backend", a
 	} finally {
 		await act(async () => toastRoot.unmount());
 		toastHost.remove();
+		await harness.unmount();
+	}
+});
+
+test("the row tooltip's `, unread` tail follows the mark the row draws, not `unseen`", async () => {
+	/*
+	 * THE THIRD VISIBLE SURFACE, and the one no frame photographs: the row's `title`.
+	 * `chat-sidebar.tsx` composes its tail from `unreadMarkKind`, so a row that is
+	 * busy or parked on a gate — carrying `unseen` and a token, with nothing drawn —
+	 * must no longer claim ", unread". That is a REMOVAL of copy from the channel the
+	 * operator's own report reaches by hovering, which is exactly the kind of edit a
+	 * reviewer should be able to run rather than take on trust (design D2).
+	 *
+	 * One roster, three rows, the same attention state, differing only in the derived
+	 * pair the backend published: the pair is what decides, so the mark row and the
+	 * two no-mark rows are asserted together.
+	 */
+	const NESTED = "c3d4e5f6a7b8";
+	/*
+	 * THE ROSTER IS STAGED THROUGH THE APP'S OWN READ as well as the store. The
+	 * sidebar issues a `sessions.list` on mount, and the stub answers EVERY op with
+	 * the bulk receipt by default — so a case that only calls `mount` gets its roster
+	 * REPLACED by one junk row (measured: `session_id null`, `title null`) before a
+	 * title can be read. Answering the read with the same rows is what every other
+	 * case here that reads rendered row text does.
+	 */
+	const rows = [
+		{
+			session_id: SESSION,
+			title: "Reconcile the supplier ledger",
+			active: true,
+			status: COMPLETE,
+			attention: unread(SESSION),
+		},
+		{
+			session_id: OTHER,
+			title: "Quarterly revenue model",
+			active: true,
+			status: BUSY,
+			attention: unread(OTHER),
+		},
+		{
+			session_id: NESTED,
+			title: "Migrate the deploy script",
+			active: true,
+			status: APPROVAL,
+			attention: unread(NESTED),
+		},
+	];
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	try {
+		const titleOf = (name) =>
+			harness
+				.ring()
+				.find((row) => row.textContent?.includes(name))
+				?.getAttribute("title");
+		// The mark: the level is named, because the row is drawing it.
+		assert.equal(
+			titleOf("Reconcile the supplier ledger"),
+			"Reconcile the supplier ledger: Unseen completion, unread",
+		);
+		// The spinner and the gate: `unseen` is true on both, and neither says it.
+		assert.equal(
+			titleOf("Quarterly revenue model"),
+			"Quarterly revenue model: Working",
+		);
+		assert.equal(
+			titleOf("Migrate the deploy script"),
+			"Migrate the deploy script: Approval needed",
+		);
+	} finally {
 		await harness.unmount();
 	}
 });

@@ -1470,8 +1470,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * three, and happens only in the one row where none of them is true.
 	 *
 	 * `records` rather than `rows` because a record that renders to no row is still
-	 * nothing to scroll. The legacy twin (`MessagesView`) already does this with its
-	 * `collapsed` branch; the two paths change together so neither keeps the defect.
+	 * nothing to scroll. (The legacy twin this sentence was written against,
+	 * `MessagesView`, has since been deleted with the socket transport, so the
+	 * "the two paths change together" it used to bind no longer applies to
+	 * anything.)
 
 	 * AND A SEND THIS PANE HAS ADMITTED, which is the case this change exists for
 	 * and the one row of the matrix the record list cannot express: the reader has

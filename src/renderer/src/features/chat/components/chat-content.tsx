@@ -1,10 +1,6 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
-import type {
-	AgentDetails,
-	AgentExecutionRecord,
-	JobStatus,
-} from "@shared/api/local-operator/types";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
@@ -57,7 +53,6 @@ import {
 	MessageInput,
 	type MessageInputHandle,
 } from "./message-input";
-import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
@@ -81,13 +76,9 @@ type ChatContentProps = {
 	messages: Message[];
 	isLoading: boolean;
 	isLoadingMessages: boolean;
-	isFetchingMore: boolean;
 	isFarFromBottom: boolean;
 	hasNewActivity?: boolean;
-	jobStatus?: JobStatus | null;
-	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: React.RefObject<HTMLDivElement>;
-	messagesEndRef: React.RefObject<HTMLDivElement>;
 	scrollToBottom: () => void;
 	rawInfoContent: string;
 	onSendMessage: (
@@ -112,7 +103,6 @@ type ChatContentProps = {
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
-	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
 	/**
 	 * The user has begun composing. Forwarded verbatim to the composer, which
@@ -207,11 +197,12 @@ type ChatContentProps = {
 	 */
 	onSlashNote?: (text: string) => void;
 	/**
-	 * Present when the conversation is a canonical backend session: the
-	 * transcript is painted from the canonical stream and the legacy
-	 * job/message list is not mounted. Absent on an old backend.
+	 * The canonical session this pane paints from. Required, not optional: the
+	 * legacy job/message list went with the socket transport, so there is no
+	 * second transcript a pane could fall back to. `chat-page.tsx` supplies it
+	 * for every mount, live conversation or draft alike.
 	 */
-	canonical?: {
+	canonical: {
 		view: CanonicalSessionHandle;
 		busy: boolean;
 		admitting?: boolean;
@@ -438,13 +429,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		messages,
 		isLoading,
 		isLoadingMessages,
-		isFetchingMore,
 		isFarFromBottom,
 		hasNewActivity = false,
-		jobStatus,
-		currentExecution,
 		messagesContainerRef,
-		messagesEndRef,
 		scrollToBottom,
 		rawInfoContent,
 		onSendMessage,
@@ -452,7 +439,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onCancelJob,
 		onComposerInput,
 		agentData,
-		refetch,
 		messageInputRef,
 		cwd,
 		sessionId,
@@ -933,80 +919,64 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						{!showTabs || activeTab === "chat"
 							? asTabPanel(
 									"chat",
-									/* Messages container */
-									canonical ? (
-										<CanonicalTranscript
-											frontend={canonical.view.frontend}
-											transcript={canonical.view.transcript}
-											gate={canonical.view.frontend?.pending_gate ?? null}
-											waiting={canonical.busy}
-											starting={canonical.starting === true}
-											startingAfterId={canonical.startingAfterId ?? null}
-											loadingOlder={canonical.view.loadingOlder}
-											onLoadOlder={canonical.view.loadOlder}
-											containerRef={messagesContainerRef}
-											isSmallView={isSmallView}
-											status={canonical.view.status}
-											failure={canonical.view.failure}
-											/*
-											 * The reader's own question, and the same value the band
-											 * below reads as `isHydrating`: the pane's hold and the
-											 * band's claim are one decision with two readers, so
-											 * they are handed one value rather than deriving it
-											 * twice. `hydrated` is deliberately NOT that value: it
-											 * answers "has a page been applied", which is false
-											 * forever for a session-less draft - the pane held
-											 * `Loading conversation…` over the splash that way.
-											 */
-											awaitingHydration={canonical.view.awaitingHydration}
-											/*
-											 * The identity the composer BELOW is given as its
-											 * `conversationId`, and deliberately the same local
-											 * const rather than a second spelling of it: the
-											 * conversation input store files a staged quote under
-											 * this key and the composer reads its replies back out
-											 * of it, so two derivations of "which conversation is
-											 * this" is how a Quote press becomes a no-op that looks
-											 * like a broken button (see the transcript's own note).
-											 * That is why the composer's own `conversationId` and
-											 * this one are both this const and not `agentId`
-											 * written twice - they are equal today, and the point
-											 * is that they cannot drift apart.
-											 */
-											conversationId={conversationId}
-											onReconnect={canonical.view.retry}
-											onAnswer={canonical.onAnswer}
-											// The composer's own in-flight flag, reused: one
-											// answer per question, whichever surface starts it.
-											answering={Boolean(canonical.admitting)}
-											// This panel's own record of the gate it pressed, so the
-											// card holds itself disabled after an answer instead of
-											// coming back live against a gate the owner already took.
-											answer={canonical.answer ?? null}
-											// The two states a notification click paints before the
-											// owner answers: the rows may be this window's memory of
-											// the conversation rather than the owner's, or the
-											// conversation may not be on this machine at all.
-											stale={canonical.view.stale}
-											missing={canonical.view.missing}
-										/>
-									) : (
-										<MessagesView
-											messages={messages}
-											isLoading={isLoading}
-											isLoadingMessages={isLoadingMessages}
-											isFetchingMore={isFetchingMore}
-											jobStatus={jobStatus}
-											agentName={agentName}
-											currentExecution={currentExecution}
-											messagesContainerRef={messagesContainerRef}
-											messagesEndRef={messagesEndRef}
-											scrollToBottom={scrollToBottom}
-											refetch={refetch}
-											conversationId={agentId}
-											isSmallView={isSmallView}
-										/>
-									),
+									/* Messages container: the canonical transcript is the only
+									 * one there is. The legacy job/message list was reachable only
+									 * through the socket transport, and the transport is gone. */
+									<CanonicalTranscript
+										frontend={canonical.view.frontend}
+										transcript={canonical.view.transcript}
+										gate={canonical.view.frontend?.pending_gate ?? null}
+										waiting={canonical.busy}
+										starting={canonical.starting === true}
+										startingAfterId={canonical.startingAfterId ?? null}
+										loadingOlder={canonical.view.loadingOlder}
+										onLoadOlder={canonical.view.loadOlder}
+										containerRef={messagesContainerRef}
+										isSmallView={isSmallView}
+										status={canonical.view.status}
+										failure={canonical.view.failure}
+										/*
+										 * The reader's own question, and the same value the band
+										 * below reads as `isHydrating`: the pane's hold and the
+										 * band's claim are one decision with two readers, so
+										 * they are handed one value rather than deriving it
+										 * twice. `hydrated` is deliberately NOT that value: it
+										 * answers "has a page been applied", which is false
+										 * forever for a session-less draft - the pane held
+										 * `Loading conversation…` over the splash that way.
+										 */
+										awaitingHydration={canonical.view.awaitingHydration}
+										/*
+										 * The identity the composer BELOW is given as its
+										 * `conversationId`, and deliberately the same local
+										 * const rather than a second spelling of it: the
+										 * conversation input store files a staged quote under
+										 * this key and the composer reads its replies back out
+										 * of it, so two derivations of "which conversation is
+										 * this" is how a Quote press becomes a no-op that looks
+										 * like a broken button (see the transcript's own note).
+										 * That is why the composer's own `conversationId` and
+										 * this one are both this const and not `agentId`
+										 * written twice - they are equal today, and the point
+										 * is that they cannot drift apart.
+										 */
+										conversationId={conversationId}
+										onReconnect={canonical.view.retry}
+										onAnswer={canonical.onAnswer}
+										// The composer's own in-flight flag, reused: one
+										// answer per question, whichever surface starts it.
+										answering={Boolean(canonical.admitting)}
+										// This panel's own record of the gate it pressed, so the
+										// card holds itself disabled after an answer instead of
+										// coming back live against a gate the owner already took.
+										answer={canonical.answer ?? null}
+										// The two states a notification click paints before the
+										// owner answers: the rows may be this window's memory of
+										// the conversation rather than the owner's, or the
+										// conversation may not be on this machine at all.
+										stale={canonical.view.stale}
+										missing={canonical.view.missing}
+									/>,
 								)
 							: asTabPanel(
 									"raw",

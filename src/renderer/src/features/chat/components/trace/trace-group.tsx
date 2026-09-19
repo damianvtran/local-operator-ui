@@ -17,11 +17,11 @@
  * That agreement is between THESE TWO and is not a claim about the repository.
  * A third definition of the same tier lives in `utils/message-grouping.ts`
  * (`boundarySpacing`: `trace` ⇒ `mt-1`, 4px, in the comfortable view). It is not
- * dead code, but it is not on a live conversation either: the legacy
- * `messages-view.tsx` that reads it is UNREACHABLE in a shipped state —
- * `chat-content.tsx` chooses it only when no canonical session exists, and every
- * mount site passes a freshly built `canonical` object (`chat-page.tsx`), which
- * `message-item/index.tsx` records at length. What still renders through it is
+ * dead code, but it is not on a live conversation either: the legacy message
+ * list that read it was unreachable in a shipped state — `chat-content.tsx`
+ * chose it only when no canonical session existed, and every mount site passed a
+ * freshly built `canonical` object (`chat-page.tsx`) — and that list has since
+ * been deleted with the socket transport. What still renders through it is
  * the swept `chat-trace--conversation*` stories, so `docs/evidence/chat-trace/`
  * and `docs/evidence/chat-tool-rows/` genuinely show two different distances
  * side by side. That is a real inconsistency and it is deliberately NOT resolved

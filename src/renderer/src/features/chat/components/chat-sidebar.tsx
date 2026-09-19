@@ -59,7 +59,11 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
-import { markAllReadCopy, markAllReadReceipt } from "../mark-all-read";
+import {
+	markAllReadCopy,
+	markAllReadReceipt,
+	unreadMarkKind,
+} from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 
@@ -980,8 +984,13 @@ export function ChatSidebar({
 			   MARK'S words, which is the only statement it withholds. The binding
 			   and ", not sent yet" are appended in every case, so on a row that
 			   draws one of those the tooltip repeats it rather than omitting it
-			   (review round 6, R33). */
-					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
+			   (review round 6, R33). The ", unread" tail is read from the SAME
+			   predicate the glyph, the accessible name and the bulk count read
+			   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
+			   busy or gated row's tooltip claim a mark its own spinner and gate were
+			   nowhere drawing — the reported defect, in the channel a reader reaches
+			   by hovering, and the row that most needs the tooltip to be true. */
+					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
 					onClick={() => onSelectConversation(row.session_id)}
 				>
 					<ChatSessionStatus row={row} />
