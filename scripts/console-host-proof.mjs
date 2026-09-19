@@ -571,6 +571,20 @@ async function readUntil(state, surface, needle, timeoutMs = 20_000) {
 
 /* ------------------------------------------------------- the renderer, CDP */
 
+/*
+ * WHAT THE RENDERER IS USED FOR, and what it is deliberately NOT used for: every
+ * console operation is DISPATCHED and read back from the record, and the renderer is
+ * reached only for the two things that are genuinely its own — reporting a pane's
+ * content rect, and opening/closing the pane. No cell clicks the app's interface,
+ * drags it, or synthesizes a keystroke into a real window.
+ *
+ * That is not only about flakiness. A peer measured a rig that pulled the operator's
+ * real browser to the front by clicking a browser's own UI through System Events/AX;
+ * the console's equivalent would be driving a terminal by clicking it instead of
+ * dispatching into the surface. A pty has no need for that — its bytes go through
+ * the record — so the trap is named here, where the next author would reach for it.
+ */
+
 async function rendererEvaluate(expression) {
 	const list = await (
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
