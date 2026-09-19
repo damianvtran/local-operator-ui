@@ -402,13 +402,20 @@ const CURRENT = [
 		 * `!current` guard is what keeps the pointer from replacing the mark that says
 		 * where the reader is.
 		 *
-		 * Resolved from the anchor rather than from the label, because the label is a
-		 * computed string (`archiveControlLabel`) this instrument would have to stub
-		 * twice - forward for the archived state and backward for the live one.
+		 * Resolved FORWARD from the control's own `aria-label`, and NOT from a
+		 * `data-session-archived` anchor: that attribute's first occurrence in the file
+		 * is the row BUTTON's archived flag (the control's sibling), so a forward search
+		 * from it lands on the row's own class expression - which is how this entry
+		 * first reported `ReferenceError: rowStyle is not defined` instead of the
+		 * control's classes.
 		 */
 		what: "the session row's archive control",
 		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-archive"),
+		expression: () =>
+			expressionAfter(
+				SIDEBAR,
+				"aria-label={archiveControlLabel(label, archived)}",
+			),
 		stubs: { current: true },
 		ground: false,
 		notCurrent: { current: false },

@@ -474,6 +474,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{deleteEnabled && (
 								<DropdownMenuItem
 									/*
+									 * The anchor a driver scene presses to ASK for the delete: the
+									 * item's own label is a sentence, and a scene that selected it by
+									 * text would break on a copy edit that changed nothing else.
+									 */
+									data-session-delete
+									/*
 									 * `text-danger`, the ink the app paints a destructive row in (the
 									 * command palette's own destructive items use it). The action does
 									 * NOT delete: it opens the confirmation, because the wire requires a

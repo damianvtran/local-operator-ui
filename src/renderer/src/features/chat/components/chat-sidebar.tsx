@@ -1078,6 +1078,20 @@ export function ChatSidebar({
 				   carries, and it is inert outside a driver run. */
 					data-tour-tag="chat-session-row"
 					data-child={nested || undefined}
+					/*
+					 * The row's archived state as an ATTRIBUTE, absent when the conversation is
+					 * live.
+					 *
+					 * It is here rather than on the wrapper because this is the element a reader
+					 * already means by "the row" (`data-chat-row` is what the arrow ring collects
+					 * and what the driver's `measure` verb finds), and a second anchor for the
+					 * same row would be a second place a scene has to know about. It carries no
+					 * pixels: the visible mark is the glyph below, and this is what lets a scene
+					 * assert that the archived conversation is ABSENT from the list before the
+					 * search control is on and PRESENT after it, rather than comparing two stills
+					 * and hoping the difference is the row.
+					 */
+					data-session-archived={archived ? "true" : undefined}
 					className={cn(
 						rowStyle,
 						// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
