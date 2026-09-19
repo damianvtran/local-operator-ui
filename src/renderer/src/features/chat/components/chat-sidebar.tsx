@@ -164,10 +164,13 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * `catppuccinMacchiato` 0.80, then tokyoNight 1.05), and on **6 of 41** dark
  * themes it is a WEAKER mark than the hover beside it — `obsidian` 2.02 against
  * 3.42, `tokyoNight` 2.04 against 3.41 — which is the exact arrangement the
- * retired role existed to fix. The wash is not broken everywhere — the app rail
- * paints it on `sunken`, where it measures 9.6 — which is why this is a call-site
- * ground and NOT a wash: strengthening `accentWash` for the panels that draw it
- * on `surface` would make every hover tint in the app louder. (The SETTINGS rail
+ * retired role existed to fix. The wash is not broken everywhere — on the rail's
+ * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
+ * and NOT a wash: strengthening `accentWash` for the panels that draw it on
+ * `surface` would make every hover tint in the app louder. (The rail no longer
+ * paints a ground of its own at all: it is `surface` with a `border-r
+ * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
  * declaration below.)

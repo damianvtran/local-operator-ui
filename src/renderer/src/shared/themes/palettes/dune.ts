@@ -84,7 +84,7 @@ export const dune: ThemeDefinition = {
 		 *                       +2.85 L*, ΔE00 2.05 off `surface`, `inkDim` 5.25:1.
 		 * rowSelected #393029  panel hue, C* 6.57,
 		 *                       the panel's cast + 4.0, floored at 5.0; +4.17 L*,
-		 *                       ΔE00 4.35 off `surface` and 3.48 off
+		 *                       ΔE00 4.35 off `surface` and 3.84 off
 		 *                       `rowHover`; the pair ranks 1.33 `L*` and 4.2 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 *
