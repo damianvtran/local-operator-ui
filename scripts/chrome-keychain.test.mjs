@@ -243,10 +243,22 @@ const CHROME_LAUNCH_SITES = [
 		"the Storybook sweep across all twelve themes, which is the rig behind the committed frames",
 	),
 	guarded(
+		"scripts/hub-round-trips.mjs",
+		"spawn",
+		1,
+		"reads the hub's own request ledger out of the rendered page, so it boots the same private headless Chrome the frame rig does",
+	),
+	guarded(
 		"scripts/composer-band-geometry.mjs",
 		"spawn",
 		1,
 		"measures the composer band's empty-chat geometry, chips and tip row from the live DOM (this branch's rig)",
+	),
+	guarded(
+		"scripts/credential-chip-geometry.mjs",
+		"spawn",
+		1,
+		"measures the composer's credential chip against the marker run it covers - the run box, the chip box and the four deltas, at both rungs and scrolled - from the live DOM",
 	),
 	guarded(
 		"scripts/backend-settings-geometry.mjs",

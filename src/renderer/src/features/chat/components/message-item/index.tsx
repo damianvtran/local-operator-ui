@@ -61,12 +61,11 @@ export type MessageItemProps = {
 	message: Message;
 	conversationId: string;
 	currentExecution?: AgentExecutionRecord | null;
-	onMessageComplete?: () => void;
 	isLastMessage: boolean;
 	isSmallView?: boolean;
 	/**
 	 * The row opens an agent turn and carries the avatar. Computed by the
-	 * grouping pass in `messages-view` so a hidden record never takes it.
+	 * grouping pass in `utils/message-grouping` so a hidden record never takes it.
 	 */
 	isTurnStart?: boolean;
 };
@@ -169,7 +168,6 @@ const getAttachmentUrl = (
 export const MessageItem: FC<MessageItemProps> = memo(
 	({
 		message,
-		onMessageComplete,
 		isLastMessage,
 		conversationId,
 		currentExecution,
@@ -184,11 +182,13 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		 * There used to be an effect here that mapped `message.files` into
 		 * `addMentionedFilesBatch`. It could never run: `ChatContent` is mounted
 		 * only by `SessionPanel`, which passes `canonical` unconditionally, so
-		 * the `MessagesView` branch that renders this component is unreachable —
+		 * the legacy message list that rendered this component was unreachable —
 		 * and an old backend reaches the "Update the backend" panel instead. It
 		 * was a live writer until the canonical cutover orphaned it (the
 		 * `addMentionedFilesBatch` action arrived in 0b6b13c11, the canonical
-		 * transcript in #83).
+		 * transcript in #83). That list has since been deleted outright with the
+		 * socket transport, so this component's remaining readers are the swept
+		 * `chat-trace--*` and `chat-run-panel--*` stories.
 		 *
 		 * Deleted rather than left in place, because a dead writer that looks
 		 * live is what someone "fixes" next time the panel comes up empty. Its
@@ -336,7 +336,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={false}
 						content={message.message}
 						message={message}
-						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
 						agentId={conversationId}
@@ -351,8 +350,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 		// ---------------------------------------------------------- 3 (5).
 		// A completed action is one line. Adjacent trace rows are pulled to the
-		// 4px tier by the grouping pass in `messages-view`, so a run of actions
-		// reads as one quiet block rather than as spaced entries.
+		// 4px tier by the grouping pass in `utils/message-grouping`, so a run of
+		// actions reads as one quiet block rather than as spaced entries.
 		if (isTrace) {
 			const stdout = currentExecution?.stdout ?? message.stdout;
 			const stderr = currentExecution?.stderr ?? message.stderr;
@@ -511,19 +510,19 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					isUser={isUser}
 					content={message.message}
 					message={message}
-					onMessageComplete={onMessageComplete}
 					isLastMessage={isLastMessage ?? false}
 					isJobRunning={!!currentExecution}
 					agentId={conversationId}
 					isSmallView={isSmallView}
 				>
 					{renderMedia}
-					{/* Render message content only once it is not mid-stream; the
-					 * streaming component shows the arriving text instead. */}
-					{message.message &&
-						!(message.is_streamable && !message.is_complete) && (
-							<MessageContent content={message.message} isUser={isUser} />
-						)}
+					{/* The whole message text always paints. It used to be withheld while a
+					 * row was mid-stream so the streaming component could show the arriving
+					 * text instead; that component and its transport are gone, so withholding
+					 * it now would only hide text nothing else would draw. */}
+					{message.message && (
+						<MessageContent content={message.message} isUser={isUser} />
+					)}
 					{!isUser && hasTechnicalBlocks && (
 						<Disclosure
 							className="mt-2"

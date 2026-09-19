@@ -8,6 +8,8 @@ import type {
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
+	DirectoryListing,
+	FileActionOutcome,
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
@@ -39,8 +41,13 @@ declare global {
 			 */
 			browser: {
 				state: () => Promise<unknown>;
-				newTab: () => Promise<unknown>;
+				/** `sessionId` attributes the new tab to the conversation it was opened
+				 * from; `null` (and absent) mean it belongs to no conversation. */
+				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
+				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
+				 * sessionId }` which main resolves against the live registry. */
+				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
 				navigate: (url: string) => Promise<unknown>;
 				reload: () => Promise<unknown>;
@@ -88,7 +95,13 @@ declare global {
 					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;
 			};
-			openFile: (filePath: string) => Promise<void>;
+			/**
+			 * Open a path in the OS's own application. Answers with an outcome rather
+			 * than `void`: `shell.openPath` RETURNS its failure as a string rather
+			 * than throwing, so a caller that ignores the answer cannot tell an
+			 * opened file from one that opened nothing.
+			 */
+			openFile: (filePath: string) => Promise<FileActionOutcome>;
 			readFile: (
 				filePath: string,
 				encoding?: BufferEncoding,
@@ -107,8 +120,18 @@ declare global {
 			 * maps to. That resolved path is the Files panel's identity for a file.
 			 */
 			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
+			/**
+			 * One directory's listable entries, sorted by name, at most
+			 * `DIRECTORY_ENTRY_LIMIT` of them per call.
+			 */
+			listDirectory: (dir: string, cwd?: string) => Promise<DirectoryListing>;
 			openExternal: (url: string) => Promise<void>;
-			showItemInFolder: (filePath: string) => Promise<void>;
+			/**
+			 * Reveal a path in the OS file manager. The main process stats the path
+			 * first, because `showItemInFolder` returns nothing and will happily
+			 * reveal the parent of a path that does not exist.
+			 */
+			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
 				getPlatformInfo: () => Promise<{
@@ -213,6 +236,16 @@ declare global {
 						 * build until it restarts on its own, and nothing in flight is dropped.
 						 */
 						restartable?: boolean;
+						/**
+						 * Whether the environment `update-backend` would move is the app's own.
+						 *
+						 * The second ownership reading (design D5): `restartable` answers who
+						 * started the DAEMON, which is also true in GLOBAL_INSTALL mode, while
+						 * this answers whose INSTALL the press would move - so it is what lets
+						 * the skew panel offer its restart control only where that press is the
+						 * restart the label promises.
+						 */
+						appOwnedEnvironment?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
@@ -233,6 +266,24 @@ declare global {
 						runningVersion?: string | null;
 						/** Whether the app may restart the daemon that is behind. */
 						restartable?: boolean;
+						/**
+						 * Whether the check that sent this pair READ the published release.
+						 *
+						 * False is the network-unavailable pass (QA round 3, Q3-1): the
+						 * install/running pair is measured locally, so an offline machine can
+						 * still be told its daemon trails the install - but nothing on that
+						 * pass compared the install against a release, so the renderer's
+						 * sentence may not call it current. Absent means it was read.
+						 */
+						releaseRead?: boolean;
+						/**
+						 * Whether the INSTALL this check read is the app's own environment.
+						 *
+						 * Carried on this state too because it is where the skew panel actually
+						 * appears (install current, daemon behind) - the panel's control takes
+						 * both ownership readings (design D5).
+						 */
+						appOwnedEnvironment?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (
@@ -245,7 +296,11 @@ declare global {
 				 * cold cache they are ~47 s and ~15 s of it (UX U4).
 				 */
 				onBackendUpdateProgress: (
-					callback: (progress: { phase: "installing" | "restarting" }) => void,
+					callback: (progress: {
+						phase: "installing" | "restarting";
+						/** True when the run is the checkout REBUILD rather than the release path. */
+						sourceRebuild?: boolean;
+					}) => void,
 				) => () => void;
 				/**
 				 * A server update that failed: the reason from the main process, and the

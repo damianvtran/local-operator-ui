@@ -13,6 +13,15 @@
 # An earlier version of this file isolated the two LOCAL_OPERATOR_* variables
 # only, while this header claimed otherwise (QA round 2, Q3).
 #
+# LOCAL_OPERATOR_LOG_DIR is under /tmp too, and it is the one directory HOME
+# cannot move: the app's logger composes its default from Electron's `home`, the
+# OS ACCOUNT's home rather than the `HOME` variable, so a run without the
+# override appends its lines to the operator's own
+# ~/Library/Application Support/Local Operator/logs/*.log and interleaves them
+# with his app's. BOTH launches below set it - the second one is a launch of the
+# same app, and it logs in the same place before it loses the single-instance
+# lock. See `src/main/backend/log-dir.ts`.
+#
 # While the app runs it samples the OS for one fact: WHICH process is frontmost.
 # That is the fact the change is about, and it is measured with pids rather than
 # names, because other agents run Electron instances on the same machine and
@@ -121,6 +130,7 @@ ELECTRON_BIN="${ELECTRON_BIN:-npx electron}"
   LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
   LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
   LOCAL_OPERATOR_HOME="$SCRATCH/home" \
+  LOCAL_OPERATOR_LOG_DIR="$SCRATCH/logs" \
   HOME="$SCRATCH/home" \
   LOCAL_OPERATOR_UI_WINDOW_MODE="$MODE" \
     nohup $ELECTRON_BIN "$TREE" --remote-debugging-port="$CDP_PORT" \
@@ -164,8 +174,19 @@ node "${DRIVE_SCRIPT:-$HARNESS/drive.mjs}" "$CDP_PORT" "$SCRATCH" "$ROUTE" | tee
 # hands it to this process as `second-instance`, which is the other path that can
 # raise a window — the one a rig hits when it starts a run twice. The second
 # process quits on the lock.
+#
+# It carries the same scratch isolation as the launch above, because it IS a
+# launch of the app: with an inherited HOME and log directory it resolves the
+# OPERATOR'S identity and log files, which is both the defect this harness's
+# isolation exists to prevent and the opposite of the launch the sampler is
+# meant to watch. The window mode is deliberately NOT named here — the mode this
+# launch resolves on its own is part of what the run measures.
 ( cd "$SCRATCH"
-  nohup "$ELECTRON_BIN" "$TREE" "--user-data-dir=$SCRATCH/profile" \
+  LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
+  LOCAL_OPERATOR_HOME="$SCRATCH/home" \
+  LOCAL_OPERATOR_LOG_DIR="$SCRATCH/logs" \
+  HOME="$SCRATCH/home" \
+    nohup "$ELECTRON_BIN" "$TREE" "--user-data-dir=$SCRATCH/profile" \
     >"$SCRATCH/electron-second.log" 2>&1 & )
 sleep 5
 

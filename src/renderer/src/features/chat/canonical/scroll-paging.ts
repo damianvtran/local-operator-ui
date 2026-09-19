@@ -32,11 +32,21 @@
  *    events; it is one request for older messages. While a page is in flight a
  *    further gesture retains exactly one follow-up demand, and a downward
  *    gesture cancels it — the reader turned around, so the debt is void.
- * 3. SPEND ONLY WHEN THE MOTION HAS SETTLED. A demand is spent after
- *    `SETTLE_MS` of input silence, or at the hard top where the content has
- *    stopped moving because it cannot move further. Dispatching mid-fling is
- *    what makes paging feel like a stutter: rows mount while the viewport is
- *    travelling and every correction lands a frame late.
+ * 3. SPEND WHEN THE MOTION HAS SETTLED, OR WHEN THE READER IS ABOUT TO RUN
+ *    OUT OF ROOM. A demand is spent after `SETTLE_MS` of input silence, or at
+ *    the hard top where the content has stopped moving because it cannot move
+ *    further. A pixel distance is a stopping threshold, though, not a lead: on
+ *    a 489px viewport the zone below is 13ms of travel at a measured 25px/ms
+ *    while a reveal needs ~100ms, so a MOVING reader is also spent for inside
+ *    the LEAD window — the distance they will cover in `LEAD_TIME_MS` at the
+ *    speed they are actually travelling, floored at the zone so a slow reader's
+ *    WINDOW is unchanged (the trigger inside it moves to their input cadence —
+ *    see the note on `decide`'s lead), and capped at `LEAD_MAX_VIEWPORTS` so one
+ *    spiky sample cannot arm a page from screens away. Dispatching mid-fling
+ *    is what makes paging feel like a stutter: rows mount while the viewport
+ *    is travelling and every correction lands a frame late — which is why the
+ *    lead is the size of the reveal's own budget, and why clause E's anchor
+ *    hold is what the lead spends against.
  * 4. THE LATCH DOES NOT RE-ARM UNDER A CLAMPED GESTURE. A held scrollbar or a
  *    trackpad resting at the top emits input indefinitely while the content is
  *    already as far up as it goes. That is one act, not a thousand, so after a
@@ -49,6 +59,13 @@
  *    Revealing both for one gesture would show the reader two reveals stacked,
  *    so the window is widened first and the network is only reached once the
  *    window holds everything it has.
+ * 6. A LANDED DURABLE PAGE OWES THE WIDEN THAT MAKES IT VISIBLE. A page can
+ *    land with its rows still held back by the render window — measured: rows
+ *    200 -> 200 with `hiddenRows` 0 -> 60 — which is a reveal the reader cannot
+ *    see while the slot tells them to scroll up for it. Exactly one widen is
+ *    authorised per landed page, and only while that page's rows are actually
+ *    held back, so the chain bound rule 5's history needed is untouched: the
+ *    one widen a page needs to be seen at all is not a chain.
  */
 
 /**
@@ -92,6 +109,70 @@ export const GESTURE_GAP_MS = 400;
 export const ZONE_FRACTION = 0.5;
 export const ZONE_MIN_PX = 320;
 export const ZONE_MAX_PX = 900;
+
+/**
+ * How far ahead of the wall a MOVING reader must be for a spend to be worth it,
+ * expressed as the time a reveal takes to appear.
+ *
+ * The zone above asks "is the reader close enough to need more content"; this
+ * asks "will the content arrive before they get there", which is the only
+ * question that decides whether paging feels continuous or as a dead stop at
+ * the top. Measured on the 260-row fixture: a local widen became visible 96ms
+ * after the spend, a durable page 85ms, and the backend's own handler answers
+ * in 9-39ms (curl) — so ~100ms is what a page costs a moving reader. 180ms is
+ * roughly twice the worst measured budget, so the common case is revealed
+ * before arrival and a tail case degrades to the wall path below rather than
+ * to a wrong decision.
+ */
+export const LEAD_TIME_MS = 180;
+
+/**
+ * Ceiling on how far ahead a velocity may arm a spend, in viewports.
+ *
+ * The fastest travel measured in the run was 25px/ms (400px in 16ms), which
+ * projects 4500px — nine viewports — so this clips the fastest gestures and
+ * buys back the risk of a spiky sample arming a page while the reader is still
+ * screens away. A clipped projection costs latency, never correctness: the
+ * demand is still spent, just closer to the wall.
+ */
+export const LEAD_MAX_VIEWPORTS = 4;
+
+/**
+ * Below this the reader is not moving and there is no lead to compute.
+ *
+ * The stationary reader keeps the 320px zone and the settle debounce
+ * unchanged, which is what makes the lead inert for anyone scrolling
+ * deliberately: the lead window is EXACTLY the zone until the reader is faster
+ * than `zone / LEAD_TIME_MS` (about 1.8px/ms, or 750px/s).
+ */
+export const MIN_LEAD_VELOCITY_PX_PER_MS = 0.25;
+
+/**
+ * Weight of the newest sample in the speed estimate, and how long that estimate
+ * stays usable.
+ *
+ * One spike must not lead a page: halving each sample means a single notch of
+ * 4px/ms leaves an estimate of 2px/ms — 360px of projection, which cannot arm a
+ * page from 500px away — while a train converges on the real speed within three
+ * notches. The estimate expires by TIME rather than by count, because a reader
+ * who has stopped must not have a velocity at all: two samples 400ms apart are
+ * not a speed.
+ */
+export const VELOCITY_EMA = 0.5;
+export const VELOCITY_TTL_MS = 200;
+
+/**
+ * Movement of the reader's OWN notches since the latch was set, above which the
+ * gesture is travelling rather than resting.
+ *
+ * 64px sits above the 24px clamp-follow the browser performs when a landing
+ * grows the extent under a pinned reader (measured: `scrollHeight` +24px with
+ * `scrollTop` -24px and no input at all) and below the 80px a real travelling
+ * notch moves at the wall. What it guards is rule 4's memory bound: a resting
+ * finger's notches move the content by ZERO (measured: 62 consecutive clamped
+ * notches, `scrollTop` constant), so they can never clear the latch.
+ */
+export const TRAVEL_MIN_PX = 64;
 
 /**
  * Distance from the top edge within which the content counts as clamped.
@@ -174,6 +255,31 @@ export type PagingState = {
 	/** A demand has been spent at the hard top; see rule 4. */
 	clampLatched: boolean;
 	/**
+	 * Speed toward the top, in px/ms, EMA-smoothed and expired by
+	 * `VELOCITY_TTL_MS`. Written by `noteInput` from what the DOM half measured
+	 * at input time, and only ever for the reader's own motion (clause A);
+	 * `decide` turns it into the lead window below.
+	 */
+	velocity: number;
+	/**
+	 * The reader's own notches have moved since the CURRENT latch was set.
+	 *
+	 * Movement, not position — and a record rather than a decision: the swallow
+	 * branch of `noteInput` uses it to release the latch exactly once per ACT, so
+	 * the arrival a travelling reader makes at the wall is a fresh arrival rather
+	 * than a swallowed one, while a finger resting on the top edge (whose notches
+	 * move the content by nothing) can never earn the release at all. Cleared when
+	 * a notch opens a new act and when the reader turns around — one release per
+	 * act is the same unit every other bound in this file is expressed in, and it
+	 * is what a held gesture's 200 notches are measured against.
+	 */
+	travelledSinceLatch: boolean;
+	/**
+	 * A durable page landed with rows still held back, and owes exactly one
+	 * widen so the reader can see what they just fetched. See rule 6.
+	 */
+	pageWidenOwed: boolean;
+	/**
 	 * The reader turned around while a reveal was in flight.
 	 *
 	 * Distinct from simply clearing `retained`, because the reveal still has to
@@ -204,6 +310,21 @@ export type PagingInput = {
 	deliberate: boolean;
 	/** Whether the content was already against its top edge when this arrived. */
 	atHardTop: boolean;
+	/**
+	 * Speed toward the top since the previous input, in px/ms, as measured by
+	 * the DOM half from the scroller's OWN offsets — never from `deltaY`, which
+	 * is device-scaled on a wheel and a lie on a trackpad. 0 when the reader is
+	 * not moving toward the top. The policy smooths it into
+	 * `PagingState.velocity`; it is never inferred from geometry (clause A).
+	 */
+	travelVelocityPxPerMs: number;
+	/**
+	 * How far the reader's own notches moved the content since the previous
+	 * input, in px, with the browser's clamp-follow already subtracted by the
+	 * DOM half: a landing that grows the extent under a pinned reader moves
+	 * `scrollTop` by the growth, and that is the layout moving, not the reader.
+	 */
+	travelledPx: number;
 	at: number;
 };
 
@@ -227,6 +348,9 @@ export const initialPagingState = (): PagingState => ({
 	busy: false,
 	continuation: false,
 	clampLatched: false,
+	velocity: 0,
+	travelledSinceLatch: false,
+	pageWidenOwed: false,
 	turnedAround: false,
 	// Not `Date.now()`: a state created at mount would otherwise hold the settle
 	// debounce closed for its first 120ms, which is exactly the window the
@@ -266,16 +390,65 @@ export const noteInput = (
 			retained: false,
 			continuation: false,
 			clampLatched: false,
+			// The travel the release below is earned by belongs to the latch, and
+			// the reader has just left the wall: there is nothing left to release.
+			travelledSinceLatch: false,
+			// The reader turned around. A page that landed with rows held back is
+			// still holding them back, but a reader scrolling AWAY from it is not
+			// waiting to see it, and spending a widen on their behalf would grow
+			// the content under the direction they are travelling.
+			pageWidenOwed: false,
 			turnedAround: state.busy,
 			chainFetch: 0,
 			chainWiden: 0,
 			lastInputAt: input.at,
 		};
 	}
+	/*
+	 * Where an ACT ends, and why that is a separate question from settling.
+	 *
+	 * `GESTURE_GAP_MS` is the quiet period that separates two acts. It is longer
+	 * than `SETTLE_MS` on purpose: settling decides when a demand may be SPENT
+	 * (the motion has stopped), while this decides when a new demand may be
+	 * ARMED (the reader has let go and pushed again). A trackpad's momentum
+	 * phase emits for a few hundred ms after the fingers lift, so anything
+	 * shorter would split one flick into several acts.
+	 *
+	 * Without this the latch was a position bound rather than a gesture bound:
+	 * once it had been set at the hard top it refused every later notch from the
+	 * same position forever, so a reader parked at the top of a partially-loaded
+	 * conversation could flick as often as they liked and never get another page
+	 * (measured: four separate gestures, 0 pages, the slot stuck on "Load
+	 * earlier messages"). Under round 1's design the continuation chain hid this
+	 * by mounting everything up front; with one reveal per act the latch had to
+	 * learn where an act ends.
+	 */
+	const gestureEnded = input.at - state.lastInputAt >= GESTURE_GAP_MS;
+	/*
+	 * Rule 3's lead, folded in here rather than in `decide` so the estimate is a
+	 * function of the state it is handed and the DOM half stays a measurement
+	 * layer. Two properties, both load-bearing:
+	 *
+	 * - the EMA halves every sample, so ONE spike cannot lead a page (a single
+	 *   notch at 4px/ms leaves 2px/ms, which projects 360px and cannot arm a page
+	 *   from 500px away) while a train converges on the real speed in three
+	 *   notches;
+	 * - expiry is by TIME and lives in `decide`, which is the only half given
+	 *   `now`, so a reader who has stopped loses their velocity rather than
+	 *   keeping an estimate from an old notch forever.
+	 */
+	const velocity =
+		VELOCITY_EMA * Math.max(0, input.travelVelocityPxPerMs) +
+		(1 - VELOCITY_EMA) * state.velocity;
 	// A fresh upward gesture is a fresh budget: the chain counters exist to bound
 	// what happens WITHOUT input, so input clears them.
 	const base: PagingState = {
 		...state,
+		velocity,
+		// The travel record belongs to the latch's own act; a notch that opens a
+		// new act starts a new question, and the release it guards is one per
+		// latch rather than one per reader.
+		travelledSinceLatch: gestureEnded ? false : state.travelledSinceLatch,
 		continuation: false,
 		turnedAround: false,
 		chainFetch: 0,
@@ -295,23 +468,7 @@ export const noteInput = (
 		};
 	}
 	// A gesture ENDS when input stops; the next notch after that is a new act.
-	//
-	// Without this the latch was a position bound rather than a gesture bound:
-	// once it had been set at the hard top it refused every later notch from the
-	// same position forever, so a reader parked at the top of a partially-loaded
-	// conversation could flick as often as they liked and never get another page
-	// (measured: four separate gestures, 0 pages, the slot stuck on "Load
-	// earlier messages"). Under round 1's design the continuation chain hid this
-	// by mounting everything up front; with one reveal per act the latch had to
-	// learn where an act ends.
-	//
-	// `GESTURE_GAP_MS` is the quiet period that separates two acts. It is longer
-	// than `SETTLE_MS` on purpose: settling decides when a demand may be SPENT
-	// (the motion has stopped), while this decides when a new demand may be
-	// ARMED (the reader has let go and pushed again). A trackpad's momentum
-	// phase emits for a few hundred ms after the fingers lift, so anything
-	// shorter would split one flick into several acts.
-	const gestureEnded = input.at - state.lastInputAt >= GESTURE_GAP_MS;
+	// See the note on `gestureEnded` above.
 	if (
 		input.atHardTop &&
 		input.continuous &&
@@ -330,7 +487,36 @@ export const noteInput = (
 		// chain no longer consults the latch) would never reach their limit.
 		// The test that caught this drives 200 clamped notches and asserts zero
 		// pages.
-		return { ...state, lastInputAt: input.at };
+		//
+		// `armed` travels through this branch UNTOUCHED, by the spread rather
+		// than by intent - and that is load-bearing. A reader who leaves the wall,
+		// re-arms on the way, and arrives back at it has their arrival notch
+		// swallowed here (it is clamped and in-act), yet the demand it is beside
+		// survives and `decide` spends it on the same frame. Written as
+		// `{ ...base, lastInputAt }` this branch would drop that demand and the
+		// reader would be refused the reveal their travel earned. It has its own
+		// case now rather than being a property of a spread a refactor can delete.
+		//
+		// The one way OUT of this branch is A4's travel record: a notch that
+		// PROVABLY moved the reader (>= TRAVEL_MIN_PX of their own motion, with the
+		// browser's clamp-follow already subtracted) is a reader arriving at the
+		// wall, not a finger resting on it, so the latch is released once and this
+		// arrival becomes a fresh one. `travelledSinceLatch` bounds that to a
+		// single release per latch: a resting finger's notches move the content by
+		// zero, so they can never take this exit at all.
+		if (input.travelledPx >= TRAVEL_MIN_PX && !state.travelledSinceLatch) {
+			return {
+				...base,
+				armed: true,
+				clampLatched: false,
+				travelledSinceLatch: true,
+			};
+		}
+		return {
+			...state,
+			lastInputAt: input.at,
+			velocity,
+		};
 	}
 	if (state.busy) return { ...base, retained: true };
 	return { ...base, armed: true };
@@ -363,10 +549,73 @@ const spend = (
 		clampLatched:
 			state.clampLatched ||
 			(state.armed && geo.distanceFromTopPx <= HARD_TOP_PX),
+		// Note the asymmetry this creates, and why it is the point of A1/A2
+		// rather than an oversight: a demand spent from inside the LEAD window is
+		// spent while the reader is still MOVING, so `distanceFromTopPx` is not
+		// <= HARD_TOP_PX and no latch is set. The reader's arrival at the wall is
+		// then a fresh, unlatched demand, which buys the local widen that makes the
+		// page they are waiting for visible -- one reveal for the page, one for the
+		// widen, and progress on screen instead of a dead stop. The latch keeps
+		// meaning exactly what rule 4 says it means: input repeating against an
+		// edge that cannot move.
+		//
+		// A4's travel record is NOT reset here. `spend` opens a new latch, but the
+		// release the record guards is bounded per ACT rather than per latch — see
+		// `travelledSinceLatch` — and an act that has already been released once
+		// must not be released again by the next arrival inside it.
+		//
+		// A WIDEN is the only spend that settles the rule-6 debt, because a widen is
+		// the only action that puts the page's held-back rows on screen: a widen
+		// therefore clears `pageWidenOwed` whether it was the debt itself or an
+		// ordinary armed widen. A `fetch` cannot reach here with the flag set —
+		// `decide` only offers `fetch` when `hiddenRows === 0`, and the flag is set
+		// only when rows are held back — so this expression's effect on a fetch is
+		// unreachable rather than meaningful, which is what the comment here used to
+		// get the wrong way round (review round 1, R1-8).
+		pageWidenOwed: state.pageWidenOwed && action !== "widen",
 		chainWiden: action === "widen" ? state.chainWiden + 1 : state.chainWiden,
 		chainFetch: action === "fetch" ? state.chainFetch + 1 : state.chainFetch,
 	},
 });
+
+/**
+ * The two windows the policy spends an armed demand from, right now.
+ *
+ * Exported because the DOM half has to answer the same question for the top
+ * row's paint and cannot answer it by re-deriving it. `use-scroll-paging`
+ * mirrored `state.armed` into the slot unconditionally, so any armed demand
+ * painted "Loading earlier messages" at a reader following the tail — a demand
+ * `decide` refuses there (the `followingTail` guard returns before the armed
+ * branch) and keeps refusing until they travel closer. That is a false
+ * statement, and a false `aria-live` announcement, in the one surface this
+ * change exists to stop lying in (review round 2, R2-3a).
+ *
+ * `inZone` is the stopping threshold the settle debounce works against;
+ * `inLead` is the same window projected forward by the reader's own speed. A
+ * demand inside either is one the policy is about to spend. Outside both it is
+ * a demand waiting for the reader to come back, and the row must say so rather
+ * than claim a load.
+ */
+export function spendWindows(
+	geo: PagingGeometry,
+	state: PagingState,
+	now: number,
+	zonePx = prefetchZonePx(geo.clientHeight),
+): { inZone: boolean; inLead: boolean; leadPx: number } {
+	const velocity =
+		now - state.lastInputAt > VELOCITY_TTL_MS ? 0 : state.velocity;
+	const leadPx = Math.min(
+		Math.max(velocity * LEAD_TIME_MS, zonePx),
+		LEAD_MAX_VIEWPORTS * geo.clientHeight,
+	);
+	return {
+		inZone: geo.distanceFromTopPx <= zonePx,
+		inLead:
+			geo.distanceFromTopPx <= leadPx &&
+			velocity >= MIN_LEAD_VELOCITY_PX_PER_MS,
+		leadPx,
+	};
+}
 
 /**
  * Decide whether to spend a demand now, and on what.
@@ -416,10 +665,91 @@ export const decide = (
 	// whole thing at once, including its first row.
 	if (geo.followingTail && geo.scrollable) return { action: "none", state };
 
-	const inZone = geo.distanceFromTopPx <= prefetchZonePx(geo.clientHeight);
+	const zonePx = prefetchZonePx(geo.clientHeight);
+	/*
+	 * The lead, and the reason a moving reader is no longer served only at the
+	 * wall.
+	 *
+	 * `zonePx` is a STOPPING threshold: it answers "is the reader close enough to
+	 * need more content". It cannot answer "will the content arrive before they
+	 * get there", because it is a distance and the question is about time. At the
+	 * measured top speed in this surface (25px/ms) the whole 320px zone is 13ms
+	 * of travel while a reveal needs 85-100ms, so the only trigger left for a
+	 * fast approach is the hard top itself - and by then the reader has stopped
+	 * moving, which is exactly the dead stop this lead removes.
+	 *
+	 * The floor bounds the WINDOW, not the trigger, and the difference is worth
+	 * stating because the first cut of this comment claimed otherwise: below
+	 * `MIN_LEAD_VELOCITY_PX_PER_MS`, and whenever `velocity * LEAD_TIME_MS` is
+	 * smaller than the zone, `leadPx === zonePx`, so a slow reader's window is the
+	 * same 320px it always was — but a reader who is INSIDE that window while
+	 * still moving has their demand spent at their input cadence rather than at
+	 * the settle debounce.
+	 *
+	 * That is deliberate, and it is what the operator asked for: "load in a page
+	 * each time I'm reaching a threshold ... check that we detect the scroll motion
+	 * and momentum ... to keep the loading going before we get stuck". Measured on
+	 * the real surface, a slow approach (0.3px/ms) that enters the zone has ~1s of
+	 * travel left before the wall while a reveal costs 85-100ms, so the spend
+	 * lands with the reader still moving and long before they arrive — it removes
+	 * the dead stop at the wall instead of moving it somewhere else. The claim
+	 * this replaces ("bit-for-bit today's behaviour for a deliberate or slow
+	 * scroll") was false for the trigger, and the reviewer was right to call it:
+	 * the behaviour is the fix, the sentence was the defect. `transcript-paging
+	 * .test.mjs`'s `a slow approach inside the zone is spent at its input cadence,
+	 * not at the settle debounce` pins it, and fails if the trigger is changed.
+	 *
+	 * The ceiling bounds a spike: 4 viewports is where a fast flick's projection is
+	 * cut, so a spiky sample can buy latency but never a spend from screens away.
+	 */
+	// ONE computation of the windows, shared with the DOM half's paint (see
+	// `spendWindows`): a second copy over there is how the slot came to claim a
+	// load the policy had already refused.
+	const { inZone, inLead } = spendWindows(geo, state, now, zonePx);
 	const settled =
 		now - state.lastInputAt >= SETTLE_MS ||
 		geo.distanceFromTopPx <= HARD_TOP_PX;
+
+	/*
+	 * Rule 6's debt is paid FIRST, ahead of every prediction about where the
+	 * reader is, because it is not a prediction: the rows exist, the slot has told
+	 * the reader they are there, and the only open question is whether they can see
+	 * them.
+	 *
+	 * Asked anywhere later it does not get asked at all, and that is measured
+	 * rather than argued. A page that lands while the reader is still pushing
+	 * leaves `armed` set (their retained demand), and the landing itself moves them
+	 * clear of the windows — measured on the real surface, `distanceFromTopPx`
+	 * 0 -> 1905px on the frame the page arrived, because the rows that make the
+	 * page visible are the rows the window is holding back. The armed branch below
+	 * then disarms ("the gesture landed without needing a page") and returns, so
+	 * the debt was thrown away on the same frame it was owed: the reader sat at
+	 * `hiddenRows: 100` with 62 further notches producing nothing, which is the
+	 * stuck-then-jiggle report in its original form.
+	 *
+	 * The bound is the chain bound rule 5 has always used: one widen, counted
+	 * against `chainWiden`. `armed` and `retained` are cleared with it, because
+	 * this widen IS the answer to whatever the reader asked — rule 2's one reveal
+	 * per act, delivered late rather than never.
+	 */
+	if (
+		state.pageWidenOwed &&
+		growth === "widen" &&
+		state.chainWiden < MAX_CHAIN_WIDEN
+	) {
+		return spend(
+			{
+				...state,
+				pageWidenOwed: false,
+				continuation: false,
+				armed: false,
+				retained: false,
+				deliberate: false,
+			},
+			growth,
+			geo,
+		);
+	}
 
 	if (state.armed) {
 		if (state.deliberate) return spend(state, growth, geo);
@@ -428,14 +758,24 @@ export const decide = (
 			// refuses the automatic path.
 			return { action: "none", state: { ...state, armed: false } };
 		}
-		if (!inZone) {
+		if (!inZone && !inLead) {
 			// The gesture landed without needing a page. Leaving it armed would let
 			// an unrelated later resize or clamp spend stale input — the same
 			// reasoning as the terminal UI's `_resume_in_zone = False` early out.
+			//
+			// This is the clause that made a CONTINUOUS approach spend nothing at
+			// all: measured on the real surface, two acts of 800px and 1200px that
+			// never settled inside the 320px zone and never reached the wall issued
+			// zero requests and zero reveals, and the demand was discarded rather
+			// than held. The lead is the same window the spend uses, so a fast
+			// approach is no longer thrown away mid-gesture.
 			return { action: "none", state: { ...state, armed: false } };
 		}
-		// Rule 3. Still armed: the caller re-pumps when the debounce expires.
-		if (!settled) return { action: "none", state };
+		// Rule 3, extended: inside the lead, a reader who has NOT settled is still
+		// a reader this spend is for — the lead exists precisely for the approach
+		// that will not settle before the wall. Outside it, the caller re-pumps
+		// when the debounce expires.
+		if (!settled && !inLead) return { action: "none", state };
 		return spend(state, growth, geo);
 	}
 
@@ -470,16 +810,42 @@ export const decide = (
 		 * is the only route to their history, and it stops the moment the content
 		 * becomes scrollable and hands control back to them.
 		 */
-		if (geo.scrollable) {
-			return { action: "none", state: { ...state, continuation: false } };
+		/*
+		 * Rule 6 is the one door this refusal leaves open, and it is narrow on
+		 * purpose. A durable page that landed with its rows still held back is a
+		 * reveal the reader has been told about (the slot says "N earlier messages
+		 * above - scroll up to load") and cannot see: measured, a page landed at
+		 * `rows 200 -> 200, hiddenRows 0 -> 60` and then 62 further clamped notches
+		 * produced nothing at all, because the widen that would show those rows
+		 * needed an armed demand and the latch refuses to arm one from a clamped
+		 * notch. Exactly ONE widen is authorised per landed page, and only while
+		 * that page's rows are actually held back (`growth === "widen"`): a page
+		 * with nothing hidden owes nothing, so the round-1 chain cannot re-enter
+		 * through this door and the chain's own counters below still bound
+		 * everything else.
+		 */
+		if (geo.scrollable && !(state.pageWidenOwed && growth === "widen")) {
+			return {
+				action: "none",
+				state: { ...state, continuation: false, pageWidenOwed: false },
+			};
 		}
 		const bound =
 			growth === "widen"
 				? state.chainWiden < MAX_CHAIN_WIDEN
 				: state.chainFetch < MAX_CHAIN_FETCH &&
 					state.failures < MAX_AUTO_ATTEMPTS;
-		if (bound) return spend(state, growth, geo);
-		return { action: "none", state: { ...state, continuation: false } };
+		if (bound) {
+			return spend(
+				{ ...state, pageWidenOwed: false, continuation: false },
+				growth,
+				geo,
+			);
+		}
+		return {
+			action: "none",
+			state: { ...state, continuation: false, pageWidenOwed: false },
+		};
 	}
 
 	return { action: "none", state };
@@ -491,13 +857,27 @@ export const decide = (
  */
 export const noteSettled = (
 	state: PagingState,
-	/**
-	 * Whether the reveal that settled reached the NETWORK. A widen is purely
-	 * local, so it is no evidence that a failing backend has recovered —
-	 * clearing the budget on one let a reader with a dead backend buy three
-	 * fresh fetch attempts per local widen.
-	 */
-	{ network = true }: { network?: boolean } = {},
+	{
+		/**
+		 * Whether the reveal that settled reached the NETWORK. A widen is purely
+		 * local, so it is no evidence that a failing backend has recovered —
+		 * clearing the budget on one let a reader with a dead backend buy three
+		 * fresh fetch attempts per local widen.
+		 */
+		network = true,
+		/**
+		 * Rows the render window was still holding back when the reveal was
+		 * OBSERVED on screen, read by the DOM half.
+		 *
+		 * Rule 6's whole input, and the reason it is passed rather than inferred: a
+		 * page can land successfully and mount nothing (the window already held the
+		 * rows in front of it), which is invisible on screen and must not read as a
+		 * reveal. Only a DURABLE page can owe the widen, and only when the number is
+		 * positive; a widen that settles with the same field set owes nothing, so
+		 * the two growth paths cannot ping each other.
+		 */
+		hiddenRowsAfter = 0,
+	}: { network?: boolean; hiddenRowsAfter?: number } = {},
 ): PagingState => ({
 	...state,
 	busy: false,
@@ -506,7 +886,27 @@ export const noteSettled = (
 	deliberate: state.retained ? state.deliberate : false,
 	retained: false,
 	turnedAround: false,
-	continuation: !state.retained && !state.turnedAround,
+	pageWidenOwed: network && hiddenRowsAfter > 0,
+	/*
+	 * Rule 6 needs the CONTINUATION, not just the flag, and this is the half the
+	 * first cut got wrong — measured on the real surface, not reasoned: a page
+	 * that lands while the reader is still pushing retains a demand
+	 * (`state.retained`), and the line below used to refuse the continuation for
+	 * exactly that reason. So the page landed with rows held back, the reader sat
+	 * pinned at the hard top with those rows one widen away, the slot told them to
+	 * scroll up for content a widen would show, and the widen never came until
+	 * their NEXT act re-armed a demand — which is the stuck-then-jiggle report.
+	 *
+	 * A landed page that owes a widen therefore earns the continuation whatever
+	 * the reader was doing while it was in flight. The bound is unchanged where it
+	 * matters: `continuation` is spent by that one widen, the door in `decide`
+	 * closes with it, and a page with nothing hidden (`hiddenRowsAfter === 0`)
+	 * still gets the old rule — so the 200-clamped-notches bound and the round-1
+	 * chain it was written against both stand.
+	 */
+	continuation:
+		(network && hiddenRowsAfter > 0) ||
+		(!state.retained && !state.turnedAround),
 });
 
 /**
@@ -523,6 +923,9 @@ export const noteFailed = (state: PagingState): PagingState => ({
 	retained: false,
 	turnedAround: false,
 	continuation: false,
+	// Nothing landed, so nothing is owed. A rule-6 widen here would spend the
+	// reader's trust on rows the failure did not produce.
+	pageWidenOwed: false,
 });
 
 /** Whether the automatic path has given up and only an explicit ask remains. */

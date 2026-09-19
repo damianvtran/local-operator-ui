@@ -30,6 +30,7 @@ import {
 } from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
+import { DocumentFreshnessBar } from "./document-freshness-bar";
 
 type CanvasProps = {
 	/**
@@ -215,6 +216,13 @@ const ViewSwitcher: FC<{
  * An empty state that only reports emptiness is a dead end, so this one takes
  * the actions that would resolve it. The copy names what the user does next
  * rather than what is absent.
+ *
+ * The description's measure is `max-w-80` (320px) rather than `max-w-72`. It was
+ * 288px, which broke the documents view's two-line sentence into three with an
+ * orphaned word at the dock's default width, and the difference is safe for the
+ * other two states this component renders: 320px of text plus this box's `p-6` is
+ * 368px, inside the 400px minimum dock, so no canvas empty state can overflow the
+ * panel it sits in.
  */
 const EmptyState: FC<{
 	title: string;
@@ -227,9 +235,28 @@ const EmptyState: FC<{
 		)}
 	>
 		<h3 className={cn("text-heading text-ink")}>{title}</h3>
-		<p className={cn("max-w-72 text-body-sm text-ink-muted")}>{description}</p>
+		<p className={cn("max-w-80 text-body-sm text-ink-muted")}>{description}</p>
 		{children ? (
-			<div className={cn("mt-2 flex items-center gap-2")}>{children}</div>
+			/*
+			 * `w-full flex-wrap justify-center`: the actions WRAP rather than paint into
+			 * this box's own `p-6`.
+			 *
+			 * At the dock's 400px floor the canvas empty states' three buttons measure
+			 * 374px in a 351px content box, so the row was 13px and 12px from the pane's
+			 * edges where the padding asks for 24 and 24 - the labels sitting on the
+			 * padding, inside a `nowrap` row in an `overflow: hidden` pane, with 9px a
+			 * side left at `Browse files (341)` and 4px at `Browse files (1,204)`. Full
+			 * width and wrapping means the row gives something up (a second line) before
+			 * the padding does, which is what every other panel in this dock does (UX
+			 * round 1, U3).
+			 */
+			<div
+				className={cn(
+					"mt-2 flex w-full flex-wrap items-center justify-center gap-2",
+				)}
+			>
+				{children}
+			</div>
 		) : null}
 	</div>
 );
@@ -395,6 +422,13 @@ const CanvasComponent: FC<CanvasProps> = ({
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
 	const currentView = canvasState?.viewMode ?? "documents";
+	/*
+	 * The count the empty state's Files action carries, and the weight it earns.
+	 * `fileCount` is optional because the panel is also rendered without a store
+	 * (stories, a draft), where there is nothing to count.
+	 */
+	const fileCountValue = fileCount ?? 0;
+	const hasFiles = fileCountValue > 0;
 
 	const setCurrentView = useCallback(
 		(viewMode: CanvasViewMode) => {
@@ -519,11 +553,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 							<FilePlus aria-hidden="true" />
 						</Button>
 					</Tooltip>
-					<Tooltip content={`Open file (${modifierKey} + O)`}>
+					<Tooltip content={`Open file from disk (${modifierKey} + O)`}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`Open file (${modifierKey} + O)`}
+							aria-label={`Open file from disk (${modifierKey} + O)`}
 							onClick={handleOpenFile}
 						>
 							<FileUp aria-hidden="true" />
@@ -569,7 +603,32 @@ const CanvasComponent: FC<CanvasProps> = ({
 							id={CANVAS_DOCUMENT_PANEL_ID}
 							labelledBy={CANVAS_SELECTED_TAB_ID}
 						>
+							{/*
+							 * The document's own line: the file's last modification, and the
+							 * control that reads it again. Inside the panel, so it travels
+							 * with the `aria-controls` relationship the strip already establishes,
+							 * and OUTSIDE `CanvasContent` so every viewer gets it - including
+							 * the ones with no chrome bar of their own.
+							 */}
+							<DocumentFreshnessBar
+								document={activeDocument}
+								conversationId={conversationId}
+							/>
+							{/*
+							 * KEYED BY THE DOCUMENT'S OWN IDENTITY (round 5). The viewers keep
+							 * local state - a buffer, a dirty flag, an original content ref -
+							 * and React reuses a component instance when the same type sits at
+							 * the same position, which is exactly what a tab switch is: the
+							 * prop changes and the state stays. A scene run caught the
+							 * consequence with the file's own bytes: open `ts-a.py`, type,
+							 * open `ts-b.py`, type, and `ts-b.py` came back holding A's
+							 * content with B's new keystrokes appended. The key makes a
+							 * switch a fresh mount, which is what every viewer already
+							 * assumes (its effects seed from `document` and it registers with
+							 * the buffer owner on mount).
+							 */}
 							<CanvasContent
+								key={activeDocument.id}
 								document={activeDocument}
 								conversationId={conversationId}
 								agentId={agentId}
@@ -583,6 +642,37 @@ const CanvasComponent: FC<CanvasProps> = ({
 							title="Nothing open yet"
 							description="Open a file to read or edit it here. Files the agent mentions in the conversation open here too."
 						>
+							{/*
+							 * Three actions, and ALWAYS these three in this order: browse what the
+							 * conversation already touched, open something from disk, or start an
+							 * empty file. The order is fixed because an action that moves between
+							 * conversations is the same defect as a row that re-sorts itself - only
+							 * its weight varies with state.
+							 *
+							 * The weight is the state: with files to browse the Files action is the
+							 * panel's one `primary`, because when the conversation has files and none
+							 * is open the useful next step is to see them. With none it is a
+							 * `secondary` like its siblings - the accent is not spent on a
+							 * destination that is empty, and the label's own lack of a count says so.
+							 *
+							 * The count is the third and last place the file count belongs (the
+							 * switcher segment's accessible name and the panel head are the other
+							 * two): at the point of decision. It is not repeated as a badge in the
+							 * switcher, where a number inside a 24px icon button either clips or
+							 * pushes the row apart.
+							 */}
+							<Button
+								variant={hasFiles ? "primary" : "secondary"}
+								size="sm"
+								onClick={() => setCurrentView("files")}
+							>
+								<FolderOpen aria-hidden="true" />
+								{hasFiles ? `Browse files (${fileCountValue})` : "Browse files"}
+							</Button>
+							<Button variant="secondary" size="sm" onClick={handleOpenFile}>
+								<FileUp aria-hidden="true" />
+								Open file from disk
+							</Button>
 							<Button
 								variant="secondary"
 								size="sm"
@@ -591,17 +681,32 @@ const CanvasComponent: FC<CanvasProps> = ({
 								<FilePlus aria-hidden="true" />
 								New file
 							</Button>
-							<Button variant="secondary" size="sm" onClick={handleOpenFile}>
-								<FileUp aria-hidden="true" />
-								Open file
-							</Button>
 						</EmptyState>
 					)}
 				</>
 			)}
 
 			{currentView === "files" && conversationId && (
+				/*
+				 * `key` on the CONVERSATION, so a switch to another conversation starts the
+				 * panel with no query and no filter.
+				 *
+				 * The query and the kind filter are component state (the canvas store is
+				 * persisted, and a stored query would re-open the panel narrowed with no
+				 * visible cause), which means they live and die with this instance. Nothing
+				 * in the mount chain is keyed by conversation, so without this the same
+				 * instance carried one conversation's query into the next one's list - the
+				 * failure component state was chosen to avoid, just at a longer interval.
+				 * A key is a remount by construction; an effect that resets two pieces of
+				 * state is the same behaviour with a render in between and a dependency to
+				 * keep in step.
+				 *
+				 * A switch between VIEWS (files to variables and back) already resets both,
+				 * because the panel unmounts; that one is recorded in
+				 * `docs/design/canvas-files-list.md` as deliberate.
+				 */
 				<CanvasFileViewer
+					key={conversationId}
 					conversationId={conversationId}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 					scan={scan}

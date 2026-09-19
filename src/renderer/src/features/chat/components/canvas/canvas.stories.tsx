@@ -146,6 +146,21 @@ def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
  * the panel's behaviour - which is why the design's PDF and image frames come
  * from the real app rather than from the storybook sweep.
  */
+/*
+ * The instant every fixture's file was last written, and the one the canvas's
+ * freshness line renders. Fixed rather than `Date.now()`: a frame has to be the
+ * same frame on the next capture, and a stamp seeded from the wall clock would
+ * print a different minute in every set. The LINE renders it in the capturing
+ * machine's own timezone - that is the feature, so a frame taken in another
+ * zone reads differently and that is not a diff to chase.
+ *
+ * `readMtimeMs` is the baseline the freshness check compares a probe against
+ * (`file-freshness.ts`). A fixture with no bridge to probe (Storybook) still has
+ * one, so the bar shows what a reader sees in the app rather than its
+ * never-yet-read state.
+ */
+const MODIFIED_AT = 1_760_000_000_000;
+
 const DOCUMENTS: CanvasDocument[] = [
 	{
 		id: "/Users/dana/work/reports/march-invoice-review.md",
@@ -153,6 +168,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/march-invoice-review.md",
 		content: MARKDOWN,
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/invoices/march.csv",
@@ -160,6 +176,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/invoices/march.csv",
 		content: CSV,
 		type: "spreadsheet",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/scripts/reconcile.py",
@@ -167,6 +184,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/scripts/reconcile.py",
 		content: PYTHON,
 		type: "code",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/scripts/ledger-import-and-normalise.py",
@@ -174,6 +192,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/scripts/ledger-import-and-normalise.py",
 		content: "# a long file name, to exercise tab truncation\n",
 		type: "code",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/notes.md",
@@ -181,6 +200,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/notes.md",
 		content: "Call Northwind on Tuesday.\n",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/reports/q1-summary.md",
@@ -188,6 +208,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/q1-summary.md",
 		content: "# Q1 summary\n",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/reports/summary.md",
@@ -195,7 +216,92 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/summary.md",
 		content: "",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/archive/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/archive/summary.md",
+		content: "",
+		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/invoices/february.csv",
+		title: "february.csv",
+		path: "/Users/dana/work/invoices/february.csv",
+		content: "",
+		type: "spreadsheet",
+		readMtimeMs: MODIFIED_AT,
+		availability: "missing",
+	},
+	{
+		id: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		title: "q1-invoice-review.pdf",
+		path: "/Users/dana/work/reports/q1-invoice-review.pdf",
+		content: "",
+		type: "pdf",
+		readMtimeMs: MODIFIED_AT,
+		availability: "present",
+		sizeBytes: 348_512,
+	},
+	{
+		id: "/Users/dana/work/shots/dashboard.png",
+		title: "dashboard.png",
+		path: "/Users/dana/work/shots/dashboard.png",
+		content: "",
+		type: "image",
+		readMtimeMs: MODIFIED_AT,
+		availability: "present",
+		sizeBytes: 96_204,
+	},
+	{
+		id: "/Users/dana/work/notes/todo.txt",
+		title: "todo.txt",
+		path: "/Users/dana/work/notes/todo.txt",
+		content: "",
+		type: "text",
+		readMtimeMs: MODIFIED_AT,
+		availability: "present",
+	},
+];
+
+/**
+ * A conversation that touched more files than the panel can show at once.
+ *
+ * The states that only exist when the list is LONGER than its panel - the render
+ * cost of every row, and the END of the list, where the clipped-rows defect lived
+ * - cannot be photographed from a fixture that fits, so this roster is generated:
+ * deterministic, numbered and plausible, forty-eight rows against a panel that
+ * holds about twenty. Its last three rows carry the states a long list's end can
+ * hold, because those are the rows a frame of the bottom shows: two files sharing
+ * a basename, and one that is gone.
+ */
+const manyDocument = (index: number): CanvasDocument => {
+	const name = `day-${String(index + 1).padStart(2, "0")}-ledger.md`;
+	return {
+		id: `/Users/dana/work/ledgers/${name}`,
+		title: name,
+		path: `/Users/dana/work/ledgers/${name}`,
+		content: "",
+		type: "markdown",
+		availability: "present",
+		sizeBytes: 3_072 * (index + 1),
+	};
+};
+
+const MANY_DOCUMENTS: CanvasDocument[] = [
+	...Array.from({ length: 44 }, (_, index) => manyDocument(index)),
+	{
+		id: "/Users/dana/work/reports/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/reports/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+		sizeBytes: 2_048,
 	},
 	{
 		id: "/Users/dana/work/archive/summary.md",
@@ -206,40 +312,61 @@ const DOCUMENTS: CanvasDocument[] = [
 		availability: "present",
 	},
 	{
-		id: "/Users/dana/work/invoices/february.csv",
-		title: "february.csv",
-		path: "/Users/dana/work/invoices/february.csv",
+		id: "/Users/dana/work/ledgers/february-ledger.csv",
+		title: "february-ledger.csv",
+		path: "/Users/dana/work/ledgers/february-ledger.csv",
 		content: "",
 		type: "spreadsheet",
 		availability: "missing",
 	},
+];
+
+/**
+ * The two leading visuals a media row can have, one of them resolvable.
+ *
+ * `dashboard.png` in `DOCUMENTS` cannot load here: its path is a real one and
+ * Storybook has no file bridge, so every frame in this set has drawn that row as
+ * the browser's broken-image icon - which left the "a real thumbnail for media"
+ * claim asserted in prose and photographed nowhere (design round 1, D7). The first
+ * row's path is an inline `data:` PNG, which `getUrl` returns unchanged, so the
+ * frame shows the thumbnail path actually painting.
+ *
+ * The third row is the other half of the rule: an image whose file is GONE shows
+ * the type glyph and no `bg-sunken` box at all, because a thumbnail request for a
+ * path that no longer resolves can only come back empty (or as the browser's own
+ * broken-frame icon) on every render.
+ */
+const MEDIA_DOCUMENTS: CanvasDocument[] = [
 	{
-		id: "/Users/dana/work/reports/q1-invoice-review.pdf",
-		title: "q1-invoice-review.pdf",
-		path: "/Users/dana/work/reports/q1-invoice-review.pdf",
-		content: "",
-		type: "pdf",
-		availability: "present",
-		sizeBytes: 348_512,
-	},
-	{
-		id: "/Users/dana/work/shots/dashboard.png",
-		title: "dashboard.png",
-		path: "/Users/dana/work/shots/dashboard.png",
+		id: "inline-thumbnail",
+		title: "site-screenshot.png",
+		path: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAbElEQVR42u2VwQkAIRADU+dVYiVWdKVcISoI4rE+hJ1fIL+VmZeJvreEeUoNc/teKL2fhNIDQS79L0inbwKCvgQQfQo4+hCg9KMg8fcJpQeC9OYQSt8EUOsJpU8B2tjyHngPvAfeA++B96CnAe59EGprIux0AAAAAElFTkSuQmCC",
 		content: "",
 		type: "image",
 		availability: "present",
-		sizeBytes: 96_204,
+		sizeBytes: 24_576,
 	},
 	{
-		id: "/Users/dana/work/notes/todo.txt",
-		title: "todo.txt",
-		path: "/Users/dana/work/notes/todo.txt",
+		id: "/Users/dana/work/reports/gone-screenshot.png",
+		title: "gone-screenshot.png",
+		path: "/Users/dana/work/reports/gone-screenshot.png",
 		content: "",
-		type: "text",
+		type: "image",
+		availability: "missing",
+	},
+	{
+		id: "/Users/dana/work/notes/async-standup.md",
+		title: "async-standup.md",
+		path: "/Users/dana/work/notes/async-standup.md",
+		content: "",
+		type: "markdown",
 		availability: "present",
+		sizeBytes: 4_096,
 	},
 ];
+
+/** Let a driven state paint before the frame is taken. */
+const settle = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
  * A session's namespace as the backend renders it.
@@ -658,11 +785,16 @@ const CanvasFrame = ({
 	width = 720,
 	scan = null,
 	mentionedFiles = DOCUMENTS,
+	documents = DOCUMENTS,
 	variables,
 	sessionId = STORY_SESSION_ID,
 }: {
 	view: "documents" | "files" | "variables";
-	activeId: string;
+	/**
+	 * The document the panel has open, or `null` for the documents view with
+	 * nothing open - which is the state the empty canvas is.
+	 */
+	activeId: string | null;
 	width?: number;
 	/**
 	 * What this frame's desktop ops answer, replaced per frame.
@@ -695,6 +827,13 @@ const CanvasFrame = ({
 	 * (`canvas-file-viewer`'s empty-state guard, round 2 R2-1).
 	 */
 	mentionedFiles?: CanvasDocument[];
+	/**
+	 * What the DOCUMENTS view has open, as its tabs. Separate from
+	 * `mentionedFiles` because a conversation can have touched files while nothing
+	 * is open - which is exactly the state the empty canvas's Files action is for,
+	 * and the count it carries comes from `mentionedFiles`.
+	 */
+	documents?: CanvasDocument[];
 }) => {
 	// The story's backend state, installed before anything can ask for it.
 	useMemo(() => {
@@ -708,16 +847,16 @@ const CanvasFrame = ({
 				...state.conversations,
 				[CONVERSATION_ID]: {
 					isOpen: true,
-					files: DOCUMENTS,
+					files: documents,
 					mentionedFiles,
-					openTabs: DOCUMENTS.map((doc) => ({ id: doc.id, title: doc.title })),
+					openTabs: documents.map((doc) => ({ id: doc.id, title: doc.title })),
 					selectedTabId: activeId,
 					viewMode: view,
 					spreadsheetData: {},
 				},
 			},
 		}));
-	}, [view, activeId, mentionedFiles]);
+	}, [view, activeId, mentionedFiles, documents]);
 
 	return (
 		<SplitFrame>
@@ -727,11 +866,12 @@ const CanvasFrame = ({
 				className="h-full overflow-hidden border-l border-hairline"
 			>
 				<Canvas
-					activeDocumentId={activeId}
-					initialDocuments={DOCUMENTS}
+					activeDocumentId={activeId ?? undefined}
+					initialDocuments={documents}
 					conversationId={CONVERSATION_ID}
 					agentId="story-agent"
 					sessionId={sessionId ?? undefined}
+					fileCount={mentionedFiles.length}
 					scan={scan}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
@@ -811,7 +951,14 @@ const FocusedCanvasFrame = () => {
 	}, []);
 	return <CanvasFrame view="documents" activeId={DOCUMENTS[2].id} />;
 };
-/** Files view: the attachment grid. */
+/**
+ * Files view: the list, at the width the dock opens at.
+ *
+ * Twelve rows, one per file, with the three states that are about ROWS rather than
+ * about the scan: two files sharing a basename (both show their directory, so the
+ * pair is distinguishable at any width), one file gone from disk (the receipt takes
+ * the row's right-hand slot), and one row that is purely an image.
+ */
 export const Files: Story = {
 	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
 };
@@ -1661,6 +1808,7 @@ const viewerDocument = (
 	availability: "present",
 	sizeBytes,
 	lastAgentModified: 1_760_000_000_000,
+	readMtimeMs: MODIFIED_AT,
 });
 
 const PDF_DOCUMENT = viewerDocument(
@@ -1847,5 +1995,319 @@ export const FilesScanStoppedEmpty: Story = {
 				resume: () => {},
 			}}
 		/>
+	),
+};
+
+/**
+ * The list at the dock's NARROWEST end (400px), which is where the directory-line
+ * decision was taken.
+ *
+ * The two `summary.md` rows still show their directory - including here, at the
+ * width where there is least room, because that is the one thing telling them
+ * apart - while every other row spends the whole line on its name. The design
+ * pass's comparison frames drew an always-on directory line at this width and two
+ * of seven names truncated to make room for a line most rows did not need.
+ */
+export const FilesNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={DOCUMENTS[0].id} width={400} />
+	),
+};
+
+/**
+ * A query, typed into the real field, and the count that states what it hides.
+ *
+ * Driven rather than faked: the play types into the panel's own search field, so
+ * what is photographed is the path a user takes. The query reaches the DIRECTORY
+ * as well as the name, which is why three rows match - the third is found by the
+ * `summary` in `q1-summary.md`'s name and the first two by the paths that tell
+ * them apart.
+ */
+export const FilesFiltered: Story = {
+	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			const field = await canvas.findByLabelText(
+				"Search files by name or folder",
+			);
+			await userEvent.type(field, "summary");
+			await settle();
+		} catch (error) {
+			/*
+			 * The shutter is released before the error leaves: the sweep's readiness
+			 * probe waits on `capturePending`, so a play that threw with the shutter
+			 * still held would take the whole run down with it and every story after
+			 * this one would ship a stale frame.
+			 */
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * A query nothing matches: the escape hatch, in the body.
+ *
+ * The state that may never borrow the scan's copy. "No files yet" is a claim about
+ * the conversation and this list is empty because of a query, so the body names
+ * what the search matches, states how many files it is hiding, and offers the way
+ * out where the empty list is rather than only at the field - the query may have
+ * been typed before the view was switched.
+ */
+export const FilesNoMatches: Story = {
+	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			const field = await canvas.findByLabelText(
+				"Search files by name or folder",
+			);
+			await userEvent.type(field, "budget");
+			await settle();
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The END of a long list, at maximum scroll - the frame the operator's report is
+ * about.
+ *
+ * Before the fix the last rows sat in a band the dock clipped: no amount of
+ * scrolling revealed them and the scroller's own bottom padding was inside that
+ * band. The play drives the scroll and THROWS if the list did not move - a
+ * bottom-aligned frame of a list that never scrolled would prove nothing - then
+ * asserts the geometry in the frame itself: the last row's bottom is inside the
+ * window and the scroller's own padding is below it. The app-level number is
+ * asserted by `scripts/mentioned-files-app-proof.mjs --geometry`, against the
+ * running application and a real transcript.
+ */
+export const FilesScrolled: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			mentionedFiles={MANY_DOCUMENTS}
+		/>
+	),
+	play: async () => {
+		holdShutter();
+		try {
+			const scroller = document.querySelector<HTMLElement>(
+				'[data-tour-tag="files-scroller"]',
+			);
+			if (!scroller) throw new Error("the files scroller is not on screen");
+			scroller.scrollTop = scroller.scrollHeight;
+			await settle();
+			if (scroller.scrollTop === 0)
+				throw new Error("the list did not scroll, so the frame proves nothing");
+			const lastRow = scroller.querySelector("ul > li:last-child");
+			if (!lastRow) throw new Error("the list has no rows to measure");
+			const rowBottom = lastRow.getBoundingClientRect().bottom;
+			if (rowBottom > window.innerHeight)
+				throw new Error(
+					`the last row's bottom is ${Math.round(rowBottom - window.innerHeight)}px past the window`,
+				);
+			const inset = scroller.getBoundingClientRect().bottom - rowBottom;
+			if (inset < 4)
+				throw new Error(
+					`the scroller's bottom padding is not below the last row (${Math.round(inset)}px)`,
+				);
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The blank canvas, and the way into the files the conversation already touched.
+ *
+ * Nothing is open and the conversation has twelve files, so the Files action is
+ * the panel's one `primary` and carries the count at the point of decision. The
+ * three actions keep this order in every state: an action that moves between
+ * conversations is the same defect as a row that re-sorts itself.
+ */
+export const NothingOpen: Story = {
+	render: () => <CanvasFrame view="documents" activeId={null} documents={[]} />,
+};
+
+/**
+ * A list of ordinary rows, for the rig to put a pointer and the keyboard on.
+ *
+ * The row's hover ground, its `:focus-visible` ring and its revealed `⋯` are
+ * BROWSER state rather than class state: `:hover` is only set by real pointer
+ * input, and a ring is only drawn for a real keyboard interaction - the sidebar's
+ * own focus story records measuring a programmatic `.focus()` coming back with the
+ * ground and no ring at all. So this story supplies the rows and the captures are
+ * rig entries with `{ hover }` and `{ tabTo }` in `scripts/capture-evidence.mjs`,
+ * which drive CDP input rather than dispatching synthetic events a browser will
+ * not honour (design round 1, D1).
+ */
+export const FilesRowStates: Story = {
+	render: () => <CanvasFrame view="files" activeId={null} documents={[]} />,
+};
+
+/**
+ * The same rows at the dock's narrow end, where a hovered row's trailing gutter is
+ * a smaller share of the row and the revealed `⋯` has less room to sit in.
+ */
+export const FilesRowStatesNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={null} documents={[]} width={400} />
+	),
+};
+
+/**
+ * The dock's OWN default width, which is 450px (`chat-content.tsx`), photographed
+ * because the set jumped 400 -> 720 and the frame that claimed to be the default
+ * was the story's own 720.
+ *
+ * What 450 shows is NOT a second threshold: this surface has exactly ONE container
+ * query, `@max-[34rem]/fileslist:hidden` on the size slot (544px, `file-row.tsx`),
+ * and the directory line is clash-gated rather than width-gated — it appears
+ * wherever two rows share a basename at any width, because that is the only thing
+ * that tells `~/work/reports/summary.md` from `~/work/archive/summary.md`. A
+ * comment here once taught a 416px directory threshold alongside the 544: no such
+ * width exists in the code, and the story is worth its own frame because 450 is
+ * where the panel OPENS, with the size column already hidden and the clash
+ * directories still shown (design round 2, D10).
+ */
+export const FilesDockDefault: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={null} documents={[]} width={450} />
+	),
+};
+
+/**
+ * A media row's leading visual, both ways it can go.
+ *
+ * See `MEDIA_DOCUMENTS`: a resolvable thumbnail on the first row, and an image
+ * whose file is gone on the second, which must show the type glyph rather than an
+ * empty `bg-sunken` box (design round 1, D7).
+ */
+export const FilesMedia: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={MEDIA_DOCUMENTS}
+		/>
+	),
+};
+
+/**
+ * The shortest list the panel can hold: one row, and a count that says "1 file"
+ * rather than "1 files".
+ */
+export const FilesSingle: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={DOCUMENTS.slice(0, 1)}
+		/>
+	),
+};
+
+/**
+ * A filter that hides every row - the one body copy on this surface no round had
+ * ever seen rendered.
+ *
+ * Driven through the real menu, because the state is a selected kind and not a
+ * prop. `Archives` is the group no `DOCUMENTS` fixture carries, so selecting it
+ * empties the list without touching the twelve files the other frames show.
+ */
+export const FilesFilteredEmpty: Story = {
+	render: () => <CanvasFrame view="files" activeId={null} documents={[]} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			await userEvent.click(
+				await canvas.findByLabelText("Filter by file type"),
+			);
+			/*
+			 * `screen`, not the canvas: Radix renders the menu through a portal at the
+			 * document root, where the canvas element cannot see it.
+			 */
+			const archives = await screen.findByRole("menuitemcheckbox", {
+				name: "Archives",
+			});
+			await userEvent.click(archives);
+			await settle();
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * No files yet, and no scan running: the static body.
+ *
+ * The one state whose body is a `h-full` block, and the one the design review
+ * asked for a frame of: it is reachable only from a conversation whose transcript
+ * has been read and which mentions nothing, so no other state in this set renders
+ * it (design round 1, D4).
+ */
+export const FilesNoFiles: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={[]}
+		/>
+	),
+};
+
+/**
+ * The blank canvas with nothing to browse: the hierarchy's other branch.
+ *
+ * With no files the Files action is a `secondary` beside its siblings rather than
+ * the panel's one `primary`, and it drops the count rather than printing
+ * `(0)` - the case `nothing-open` cannot show, because it shoots the state with
+ * twelve files in the conversation.
+ */
+export const NothingOpenEmpty: Story = {
+	render: () => (
+		<CanvasFrame
+			view="documents"
+			activeId={null}
+			documents={[]}
+			mentionedFiles={[]}
+		/>
+	),
+};
+
+/**
+ * The blank canvas at the dock's 400px FLOOR, which is the state the action row
+ * was fixed for and the one NO frame held: `nothing-open` and
+ * `nothing-open-empty` render at the `CanvasFrame` default, 720px (the row box
+ * measures 718px inside it), where the row has room and `flex-wrap` never fires
+ * (design round 2, D9).
+ *
+ * With files, because that is the wrapping case: `Browse files (12)` is the widest
+ * of the three actions, and it is the measurement that failed at this width before
+ * the fix - the three buttons measured 374px inside a 351px content box and
+ * painted into their own `p-6` padding, 13px and 12px from the pane's edges where
+ * the padding asks for 24 and 24. The frame to read is that row: two lines inside
+ * the content box rather than one line across the padding.
+ */
+export const NothingOpenNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="documents" activeId={null} documents={[]} width={400} />
 	),
 };

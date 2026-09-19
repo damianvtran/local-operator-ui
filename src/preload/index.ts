@@ -16,6 +16,7 @@ import type {
 	DesktopMediaRequest,
 	DesktopRequest,
 	DesktopStreamEvent,
+	FileActionOutcome,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -176,7 +177,8 @@ const api = {
 		},
 	},
 	// Add methods to open files and URLs
-	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
+	openFile: (filePath: string): Promise<FileActionOutcome> =>
+		ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
 		ipcRenderer.invoke("read-file", filePath, encoding),
 	/**
@@ -191,9 +193,16 @@ const api = {
 	 */
 	probeFiles: (paths: string[], cwd?: string) =>
 		ipcRenderer.invoke("probe-files", paths, cwd),
+	/**
+	 * One directory's listable entries, for a picker that offers rows from the
+	 * filesystem. One level per call; deepening is the caller asking again for the
+	 * directory the user typed a `/` into.
+	 */
+	listDirectory: (dir: string, cwd?: string) =>
+		ipcRenderer.invoke("list-directory", dir, cwd),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-	showItemInFolder: (filePath: string) =>
+	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
 	// System information
@@ -326,6 +335,21 @@ const api = {
 				version: string;
 				runningVersion?: string | null;
 				restartable?: boolean;
+				/**
+				 * False when the check that sent this pair never READ the published release, so
+				 * the notice may state the two readings without calling the install current.
+				 * Absent means the release was read. Only the network-unavailable pass sends
+				 * false (QA round 3, Q3-1).
+				 */
+				releaseRead?: boolean;
+				/**
+				 * Whether the INSTALL this check read is the app's own environment.
+				 *
+				 * The second ownership reading, and the one the skew panel's control needs:
+				 * `restartable` is true on a global install too, where the press behind that
+				 * control runs the install's own updater rather than a restart (design D5).
+				 */
+				appOwnedEnvironment?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
@@ -351,7 +375,20 @@ const api = {
 			};
 		},
 		onBackendUpdateProgress: (
-			callback: (progress: { phase: "installing" | "restarting" }) => void,
+			callback: (progress: {
+				phase: "installing" | "restarting";
+				/**
+				 * True when the running attempt is the checkout REBUILD rather than the
+				 * release path. The two promise different things while they run - the
+				 * release path installs under generations, a rebuild rewrites the install
+				 * in place - so the panel cannot write one sentence for both (review
+				 * round 3, U3). It rides the phase rather than a second channel because
+				 * it is a property of the run the phase describes, and it must not be
+				 * guessed from the offer, which has been dismissed by the time the run is
+				 * minutes old.
+				 */
+				sourceRebuild?: boolean;
+			}) => void,
 		) => {
 			const handler = (_event, progress) => callback(progress);
 			ipcRenderer.on("backend-update-progress", handler);
@@ -520,9 +557,19 @@ const api = {
 	 */
 	browser: {
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
-		newTab: (): Promise<unknown> => ipcRenderer.invoke("browser-new-tab"),
+		/** `sessionId` attributes the tab to the conversation it was opened from
+		 * (design R1); `null` is a tab that belongs to no conversation, which is what
+		 * the route and a draft pane open. Main validates it rather than trusting it. */
+		newTab: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
+		/** A bulk close: `{ mode: "ids", tabIds }` for tabs the user could see, or
+		 * `{ mode: "conversation", sessionId }` which MAIN resolves at execution time
+		 * (design R5 — a list computed in the renderer would miss a tab an agent opened
+		 * while the band was open). Main validates the shape rather than trusting it. */
+		closeTabs: (intent: unknown): Promise<unknown> =>
+			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>

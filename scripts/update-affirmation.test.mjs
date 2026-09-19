@@ -882,6 +882,22 @@ function dangerToasts(handle) {
 	return visible(handle).filter((alert) => alert.variant === "danger");
 }
 
+/** Every success toast on screen right now (the completion sentence's carrier). */
+function successToasts(handle) {
+	return visible(handle).filter((alert) => alert.variant === "success");
+}
+
+/**
+ * Every button in the rendered tree, in document order.
+ *
+ * The skew panel's footer order is a finding in its own right (design D4), and
+ * order is a property no per-control lookup can express: `control()` finds one
+ * button wherever it is.
+ */
+function buttons(handle) {
+	return walk(handle.tree).filter((node) => node.type === Button);
+}
+
 /**
  * The sentence the FAILURE PANEL is carrying, or null when none is up.
  *
@@ -1376,6 +1392,7 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		version: "0.56.2",
 		runningVersion: "0.56.0",
 		restartable: true,
+		appOwnedEnvironment: true,
 	});
 	handle.render();
 	const copy = allCopy(handle);
@@ -1391,10 +1408,445 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		copy.some((text) => /is still running 0\.56\.0/.test(text)),
 		JSON.stringify(copy),
 	);
-	// And it tells the reader what to do about it, for a daemon the app owns.
+	/*
+	 * AND IT OFFERS THE ACTION RATHER THAN ONLY DESCRIBING IT (UX U2, which is what
+	 * this assertion used to be about). It pinned "Restart Local Operator and the
+	 * server comes back on the new build" - a true fact with nothing to press, so the
+	 * panel's only control was `Understood` and a reader who wanted the new build had
+	 * to work out for themselves that quitting the app was the step. The sentence now
+	 * names the action and the control performs it, on the arm where the app owns the
+	 * daemon it is talking about.
+	 */
 	assert.ok(
-		copy.some((text) => /Restart Local Operator/.test(text)),
+		copy.some((text) => /can restart it onto the new build now/.test(text)),
 		JSON.stringify(copy),
+	);
+	/*
+	 * WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used to be the
+	 * one commit control in the component with no cost line above it: the price - the
+	 * server going down and in-flight work being dropped - was stated only in the
+	 * in-flight panel, one batch later, when it could no longer be withdrawn. The
+	 * sentence is asserted as the same one the restart phase uses, so the two cannot
+	 * drift apart.
+	 */
+	assert.ok(
+		copy.some(
+			(text) =>
+				/offline while it comes back - usually a few seconds, up to half a minute/.test(
+					text,
+				) && /drops anything that is in flight/.test(text),
+		),
+		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
+	);
+	/*
+	 * DISMISS FIRST, COMMIT LAST (design D4), which is this component's own rule and
+	 * the order of every sibling footer in the release. The row used to be the
+	 * inverse, and the cost was not cosmetic: `Understood` writes the reading into
+	 * `dismissedSkewRef`, so a habit-trained press on the rightmost button buried the
+	 * only surface that states the skew for that pair. Asserted as ORDER, because
+	 * that is the whole of the finding - both controls were always present.
+	 */
+	assert.deepEqual(
+		buttons(handle).map((button) => button.props.children),
+		["Understood", "Restart the server"],
+		"the committing control is last, as it is in every other footer here",
+	);
+
+	control(handle, "Restart the server").props.onClick();
+	assert.equal(
+		updater.backendUpdates.length,
+		1,
+		"the press must reach the main process's own update attempt",
+	);
+	assert.equal(
+		updater.backendUpdates[0].targetVersion,
+		"0.56.2",
+		"and it must carry the INSTALL's own version rather than an offer's: this panel has no offer behind it to read a target from, and the restart has to land on what is published",
+	);
+	updater.backendUpdates[0].resolve(true);
+	handle.render();
+
+	/*
+	 * THE OTHER ARM SAYS SO PLAINLY INSTEAD. When the daemon serving this app is one
+	 * the app did not start, there is no action to give - and the copy may not imply
+	 * one, because an app that restarted somebody's server is the same class of
+	 * overreach as an app that installs into somebody's tree.
+	 */
+	const foreign = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: false,
+		appOwnedEnvironment: true,
+	});
+	foreign.render();
+	const foreignCopy = allCopy(foreign).join(" ");
+	assert.match(
+		foreignCopy,
+		/does not restart a server it did not start/,
+		foreignCopy,
+	);
+	assert.ok(
+		!foreignCopy.includes("Restart the server"),
+		`the panel must not offer a restart it may not perform: ${foreignCopy}`,
+	);
+});
+
+/**
+ * AND THE OFFLINE CHECK MAY NOT CALL THE INSTALL CURRENT (QA round 3, Q3-1).
+ *
+ * The pair this notice is built from is measured locally, so an offline machine can
+ * still be told its daemon trails the install - that is the half the main process now
+ * sends from the network-unavailable path. This is the other half, and it is the reason
+ * the payload carries `releaseRead`: nothing on that pass compared the install against
+ * a published release, so "This machine's install is up to date" would be a claim the
+ * check never made, shown beside an app channel that has just said it could not reach
+ * the release at all. The notice states the two readings it did take, and the reader's
+ * next step.
+ */
+test("an offline check states the readings without calling the install current", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.11",
+		runningVersion: "0.56.2",
+		restartable: false,
+		releaseRead: false,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.ok(
+		copy.some((text) => /older build than the install/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /is still running 0\.56\.2/.test(text)),
+		JSON.stringify(copy),
+	);
+	/*
+	 * The reading it DID take is still named - the sentence is about the same two
+	 * versions, minus the clause the check cannot support.
+	 */
+	assert.ok(
+		copy.some((text) => /This machine's install is 0\.56\.11,/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.equal(
+		copy.some((text) => /up to date/.test(text)),
+		false,
+		`an unread release was called current: ${JSON.stringify(copy)}`,
+	);
+	// And the arm that names the reader's own step for a daemon this app cannot move.
+	assert.ok(
+		copy.some((text) => /stop it and start Local Operator again/.test(text)),
+		JSON.stringify(copy),
+	);
+});
+
+/**
+ * AND ONLY WHEN THE SERVER IS THE OLDER SIDE (review round 2, T1's back half).
+ *
+ * The producer sends the serving PROCESS's own reading now rather than
+ * `/health`'s, so this funnel can be handed a pair whose daemon is AHEAD of the
+ * install - a build newer than what is on disk (a downgrade, or a leftover record
+ * from a newer build). The producer's own decision leaves that state alone
+ * (`backend-version-drift.ts`: `running-ahead` - "restarting there would replace a
+ * newer serving process with an older install"), and every sentence under this
+ * heading is about a server BEHIND the install. Inequality alone is not a skew, so
+ * the falsity the equal-pair guard removes would otherwise come back one-sided:
+ * the panel would head a machine running 0.56.3 with "The server is on an older
+ * build than the install (0.56.2)".
+ */
+test("a daemon ahead of the install raises no skew notice", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.3",
+		restartable: true,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.equal(
+		copy.some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+	assert.equal(
+		copy.some((text) => /is still running 0\.56\.3/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+});
+
+/**
+ * D5: the daemon the app started is not the install the app owns.
+ *
+ * `restartable` answers "did the app start the daemon serving this app?", and the
+ * answer is yes in GLOBAL_INSTALL mode too - the app spawns a daemon whose install
+ * is a uv tool or pipx one. So a panel gated on that reading alone offered "Restart
+ * the server" on a machine where the press behind it is `update-backend` on a
+ * GLOBAL_INSTALL: the install's own updater (an install, not a restart) or, on a
+ * legacy layout, the by-hand panel. That is the "action that cannot act as labelled"
+ * class this line of work exists to remove, so the control takes the second reading
+ * and the sentence stops claiming an environment it never measured.
+ *
+ * Both panels below are given the same two numbers and differ in ONE field.
+ */
+test("the restart control needs the app's own environment as well as its own daemon", () => {
+	const owned = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.ok(
+		ownedCopy.includes("Restart the server"),
+		`the app-owned arm must offer the action: ${ownedCopy}`,
+	);
+	/*
+	 * The sentence claims only the environment the app has: with the same daemon
+	 * ownership and NO app-owned environment, the old copy asserted "Local Operator's
+	 * own environment is already updated" about an environment that may not exist on
+	 * that machine at all.
+	 */
+	assert.ok(
+		!ownedCopy.includes("Local Operator's own environment is already updated"),
+		ownedCopy,
+	);
+
+	const global = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+		appOwnedEnvironment: false,
+	});
+	global.render();
+	const globalCopy = allCopy(global).join(" ");
+	assert.ok(
+		!globalCopy.includes("Restart the server"),
+		`a global install's press is not the restart the label names: ${globalCopy}`,
+	);
+	assert.ok(
+		!globalCopy.includes("Local Operator's own environment is already updated"),
+		globalCopy,
+	);
+	assert.ok(
+		!globalCopy.includes("This app started that server, so it can restart it"),
+		`and it may not claim the app restarts that environment: ${globalCopy}`,
+	);
+	assert.ok(
+		/Restart Local Operator and the server comes back on the new build/.test(
+			globalCopy,
+		),
+		`and the arm names what actually moves it, in main's own words: ${globalCopy}`,
+	);
+	// The control is absent, not hidden behind a disabled state: this tree has one
+	// button here and it is the dismissal.
+	assert.deepEqual(
+		buttons(global).map((button) => button.props.children),
+		["Understood"],
+	);
+});
+
+/**
+ * U1: a restart that does not bring the server back is never a success.
+ *
+ * The state the app-owned arm reports when `backend.restart()` fails or the health
+ * probe after it never answers (`update-service.ts`), and the one outcome the whole
+ * line of work exists to stop the app claiming: the install moved, the server is
+ * not running, and the surface said "Server update completed successfully" - because
+ * the renderer's own funnel declined for want of a reading (correctly, by its rule)
+ * and the completion listener then fell through to its toast.
+ *
+ * The missing reading IS the news here, and it is the app's own action that produced
+ * it, so the panel states what it knows and offers the one step left.
+ */
+test("a restart that leaves the server down is a failure surface, not a success toast", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: null,
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+		serverDidNotComeBack: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.ok(
+		/^The server did not come back after the restart/.test(copy) ||
+			copy.includes("The server did not come back after the restart"),
+		`the heading must state the outcome: ${copy}`,
+	);
+	assert.ok(
+		/the server serving this app did not answer after it was restarted/.test(
+			copy,
+		),
+		`and the sentence must say what was observed: ${copy}`,
+	);
+	assert.equal(
+		showsText(handle, "Server update completed successfully"),
+		false,
+		"the success toast is a claim about the server, and this server is not running",
+	);
+	assert.equal(
+		successToasts(handle).length,
+		0,
+		JSON.stringify(visible(handle)),
+	);
+	// The step that can still fix it, and its cost, on the panel rather than in a
+	// sentence about a restart that already failed.
+	control(handle, "Restart the server");
+	control(handle, "Understood");
+	assert.deepEqual(
+		buttons(handle).map((button) => button.props.children),
+		["Understood", "Restart the server"],
+	);
+});
+
+/**
+ * R7: the renderer's guard against repainting a FULFILLED state as the dead-server
+ * one, and the input that actually exercises it.
+ *
+ * `serverDidNotComeBack` is the producer's own statement, and the renderer reads it
+ * only when the running reading is MISSING (`!readableVersion(completion.runningVersion)`).
+ * Review round 2 found that the guard had no discriminating case: dropping it left
+ * all 40 cases green, including the positive control above, because that control's
+ * readings are EQUAL and the funnel declines on equality regardless of `kind` (the
+ * funnel's rule, not this guard).
+ *
+ * The input that discriminates is the field set with a readable reading that
+ * DIFFERS - the shape that reaches the ordinary skew arm:
+ *
+ *   with the guard    -> `kind: "landed"`, heading "The server is on an older build
+ *                        than the install", paragraph 1 naming both readings.
+ *   without it        -> `kind: "restart-failed"`, heading "The server did not come
+ *                        back after the restart" over a server that JUST ANSWERED
+ *                        0.56.8 - the app claiming a dead server it has read.
+ *
+ * That pair is what makes the case load-bearing: it is asserted red by removing the
+ * `&& !readableVersion(...)` half and green with it, and the assertions below are
+ * written so the WITHOUT case fails on the first of them.
+ */
+test("a completion that says the server did not come back may not overrule a reading it did", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		// Readable AND different: the daemon answered, on the old build. This is the
+		// only shape in which the two kind-choices are distinguishable.
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+		serverDidNotComeBack: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.equal(
+		showsText(handle, "The server did not come back after the restart"),
+		false,
+		`the daemon answered 0.56.8, so the dead-server heading is a claim the app may not make: ${copy}`,
+	);
+	assert.ok(
+		copy.includes("The server is on an older build than the install"),
+		`it is the ordinary skew, and it must say so: ${copy}`,
+	);
+	assert.ok(
+		/still running 0\.56\.8/.test(copy),
+		`with the reading it did take: ${copy}`,
+	);
+	assert.equal(
+		showsText(handle, "Server update completed successfully"),
+		false,
+		`and not a success either - the readings differ: ${copy}`,
+	);
+});
+
+/**
+ * D1: one panel may not hold two opposite claims about who started the daemon.
+ *
+ * The failed-restart arm for a daemon that is still ANSWERING. The panel said
+ * "the server serving this app was started outside Local Operator, so it was left
+ * running on 0.56.8" one paragraph above "This app started that server" - and the
+ * first sentence was simply false on the arm this PR's own button leads into,
+ * because `restartable: true` is true by construction there.
+ *
+ * The fix is the two readings the app actually has, and the assertions below are
+ * the pair: the sentences that must be there, and the one that must not.
+ */
+test("a failed restart names the readings, not a daemon started somewhere else", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.ok(
+		/The install is now at 0\.56\.12, but the server serving this app is still running 0\.56\.8/.test(
+			copy,
+		),
+		`both readings, on the arm the app's own restart produces: ${copy}`,
+	);
+	assert.ok(
+		!copy.includes("started outside Local Operator"),
+		`the app started that daemon, so the panel may not say otherwise: ${copy}`,
+	);
+	// And the mirror, so the clause was MOVED rather than deleted: an adopted daemon
+	// is the arm it was written for, and it still carries it.
+	const adopted = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: false,
+		appOwnedEnvironment: false,
+	});
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.ok(
+		/started outside Local Operator/.test(adoptedCopy),
+		`the adopted daemon is the arm that sentence is true for: ${adoptedCopy}`,
+	);
+});
+
+/**
+ * The positive control for U1: a completion whose readings agree is NOT a failure.
+ *
+ * The app ran the restart, the daemon answered, and it answered the build that was
+ * just published - so there is no skew, no server down, and nothing to report but
+ * the success the press earned. Without this case the restarted-failed arm could be
+ * widened until every completion raised a panel.
+ */
+test("a restart that came back on the new build is still the success toast", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		runningVersion: "0.56.12",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+	});
+	handle.render();
+
+	assert.equal(
+		showsText(handle, "The server did not come back after the restart"),
+		false,
+		JSON.stringify(visible(handle)),
+	);
+	assert.ok(
+		successToasts(handle).length > 0 ||
+			showsText(handle, "Server update completed successfully"),
+		JSON.stringify(visible(handle)),
 	);
 });
 

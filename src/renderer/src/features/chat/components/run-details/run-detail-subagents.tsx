@@ -23,11 +23,16 @@
  *
  * Every rule that decides WHAT is on a row lives in `run-detail-model.ts`; this
  * file decides only how it is painted.
+ *
+ * It exports `SubagentRowView` — the row as a CONTROL — because the reader's own
+ * subagents section (`run-child-subagents.tsx`) is a second list of the same rows
+ * on a child's page, and the wrapper is where a row's focus ring, hover ground
+ * and unlit branch live.
  */
 
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import {
 	type RunDetails,
 	type SubagentRow,
@@ -37,55 +42,29 @@ import {
 	tallyBudget,
 	tallyFitsInline,
 } from "./run-detail-model";
-import { SubagentRowBody } from "./run-detail-row-parts";
+import { DetailLine, SubagentRowBody } from "./run-detail-row-parts";
 
 /**
- * The row's second line (`§4.1`), which is one of two different kinds of text.
- * *
- * Both variants take `ink-muted`, where the activity line used to take
- * `ink-dim`: at 12px on the panel ground `dim` measures ≈4.7:1 — the tightest
- * text on the surface — and it is the ink the TUI deliberately moved AWAY from
- * for this same field (`subagent_panel.py:1069-1071`).
+ * One row, as a control: the row's content from `run-detail-row-parts.tsx` plus
+ * the `li` the list owns and the full-width button inside it.
  *
- * `errorLine` is MACHINE VOICE: `font-mono`, matching every other exception the
- * app prints, kept VERBATIM — a fabricated translation of an exception is a
- * claim nobody can check — and wrapped to at most two lines so the identifier
- * survives.
+ * Exported because the reader's own subagents section is a second list of the
+ * same rows, and it is the WRAPPER rather than the content that carries the rules
+ * a reader would notice if the two drifted: the app's `outline` focus ring, the
+ * `bg-elevated` hover ground, the accessible name being the row's own text, and
+ * the unlit branch below. A second wrapper is a second chance for a row to become
+ * mouse-only or to lose its height (`§ 6`, `§5`).
  */
-const DetailLine = ({ row }: { row: SubagentRow }) => {
-	if (row.errorLine) {
-		return (
-			<span
-				className={cn(
-					"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
-				)}
-				title={row.errorLine}
-			>
-				{row.errorLine}
-			</span>
-		);
-	}
-	if (row.activity) {
-		return (
-			<span
-				className={cn("truncate text-ink-muted text-meta leading-4")}
-				title={row.activity}
-			>
-				{row.activity}
-			</span>
-		);
-	}
-	return null;
-};
-
-const SubagentRowView = ({
+export const SubagentRowView = ({
 	row,
 	interactive,
 	onOpen,
+	trailing = null,
+	rowHook = "data-run-panel-row",
 }: {
 	row: SubagentRow;
 	/**
-	 * Whether the SECTION's children can be opened at all.
+	 * Whether the LIST's rows can be opened at all.
 	 *
 	 * FALSE against a backend that does not advertise `subagent_transcript`
 	 * (`§ 10.2`): the roster still renders — it is `frontend.jobs`, which predates
@@ -100,6 +79,25 @@ const SubagentRowView = ({
 	 */
 	interactive: boolean;
 	onOpen: (id: string) => void;
+	/**
+	 * A last segment on the row's first line, threaded through to
+	 * `SubagentRowBody` — see that prop for why the slot exists at all. The roster
+	 * passes nothing: a member's own children are the chrome bar's `N children`
+	 * control's subject, one level up.
+	 */
+	trailing?: ReactNode;
+	/**
+	 * The `data-` hook the `li` carries, and the reason it is a parameter at all.
+	 *
+	 * `data-run-panel-row` is the ROSTER's hook: it is what the pane's own "the
+	 * reader replaces the roster" measurement counts
+	 * (`scripts/run-panel-navigation.test.mjs` asserts that count is zero with a
+	 * reader open) and what `leaveReader` walks to land focus. The reader's list of
+	 * a child's children is a list of the same rows but is NOT the roster — it is
+	 * the reader's own page content — so it carries its own hook rather than
+	 * making those two readings answer for a list they are not about.
+	 */
+	rowHook?: string;
 }) => {
 	/*
 	 * The row's content, shared verbatim by both branches so the interactive and
@@ -108,7 +106,20 @@ const SubagentRowView = ({
 	 * section's row, so the three lists that draw a row draw ONE row
 	 * (`run-detail-row-parts.tsx`).
 	 */
-	const body = <SubagentRowBody row={row} detail={<DetailLine row={row} />} />;
+	const body = (
+		<SubagentRowBody
+			row={row}
+			detail={<DetailLine row={row} />}
+			trailing={trailing}
+		/>
+	);
+
+	/*
+	 * The row's `data-` hook, as a computed key: JSX has no syntax for a dynamic
+	 * attribute NAME, and which hook the row carries is the caller's (see
+	 * `rowHook`).
+	 */
+	const hook = { [rowHook]: row.id };
 
 	/*
 	 * `py-1.5` with the two pinned line-heights below is what makes the row
@@ -124,16 +135,13 @@ const SubagentRowView = ({
 	 */
 	if (!interactive || !childOpenable(row)) {
 		return (
-			<li
-				data-run-panel-row={row.id}
-				className={cn("flex items-start gap-2 px-3 py-1.5")}
-			>
+			<li {...hook} className={cn("flex items-start gap-2 px-3 py-1.5")}>
 				{body}
 			</li>
 		);
 	}
 	return (
-		<li data-run-panel-row={row.id} className={cn("flex flex-col")}>
+		<li {...hook} className={cn("flex flex-col")}>
 			{/*
 			 * A full-width BUTTON inside the `li`, not a clickable `li`: the row is
 			 * a control that must be a tab stop with an accessible name and the

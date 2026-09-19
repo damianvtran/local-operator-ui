@@ -8,6 +8,7 @@ import {
 	realpathSync,
 	renameSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -132,6 +133,84 @@ export const PENDING_INSTALL_RECENCY_MARGIN_SECONDS = 300;
  */
 export const PENDING_INSTALL_RECENCY_SECONDS =
 	WATCHDOG_HARD_TIMEOUT_SECONDS + PENDING_INSTALL_RECENCY_MARGIN_SECONDS;
+
+/**
+ * How much before the watchdog's hard bound a launch stops being held for an
+ * install.
+ *
+ * The hard bound is where the watchdog deliberately stops holding and starts the
+ * app INTO a live install, because a user with no app at all is worse than one
+ * whose stuck install the app it just opened may cancel (see
+ * `WATCHDOG_HARD_TIMEOUT_SECONDS`). That launch has to open normally, and this
+ * margin is what keeps the hold from swallowing it.
+ *
+ * It is needed because the two clocks are not the same clock: the watchdog is
+ * spawned a few milliseconds BEFORE the marker the hold reads is written, so at
+ * the watchdog's hard bound the marker is a hair YOUNGER than 1800 s. A hold
+ * that read the hard bound itself would therefore hold the very launch the
+ * watchdog had just made - and the hold ensures a watchdog on its way out, so
+ * that watchdog would wait out another hard bound and start the app again, and
+ * the user would end up with neither an install nor an app. The last minute of
+ * the wait belongs to the watchdog's decision, which is the one taken with the
+ * machine's state in front of it.
+ */
+export const LAUNCH_HOLD_END_MARGIN_SECONDS = 60;
+
+/**
+ * The marker age at which a launch stops being held out of an install's way.
+ *
+ * See `LAUNCH_HOLD_END_MARGIN_SECONDS` for why this is not simply the watchdog's
+ * hard bound, and `evaluateLaunchDuringInstall` for what is decided with it.
+ */
+export const PENDING_INSTALL_LAUNCH_HOLD_SECONDS =
+	WATCHDOG_HARD_TIMEOUT_SECONDS - LAUNCH_HOLD_END_MARGIN_SECONDS;
+
+/**
+ * How long after its own write a marker's install may still be arriving.
+ *
+ * WHY THIS EXISTS (review R6, and it is the last hole in the class this whole path
+ * closes). launchd reports the job's `"PID" = n;` field only once ShipIt is
+ * EXECUTING, and until then the job reads `registered` with no pid - so a gate that
+ * calls a registration "the install is over" opens a window into a live install
+ * for the length of that gap.
+ *
+ * THE CLOCK IS THE MARKER'S OWN WRITE TIME, AND THE INTERVAL IS NOT SHORT (review
+ * R11). The gap is not the submission-to-exec split, which is tenths of a second
+ * (the app's `app quit for the in-flight install` at 11:59:00.520 to ShipIt's first
+ * line at 11:59:00.991; 256 ms and 380 ms on the two installs of 2026-09-18
+ * measured the same way). It opens when the MARKER is written, because the app
+ * writes the marker and only then does Squirrel pull the staged artifact through
+ * the app's own local proxy before it submits anything. Read off the app's two logs
+ * across the fourteen installs of 2026-09-16..18, that hand-off is **1.92 s to
+ * 13.32 s** - the worst at 09-16 15:23:38.674 (+13.315 s), 6.429 s on 09-18 16:32,
+ * 1.981 s on 09-17 08:30 - with three more inside 0.4 s of the five-second bound
+ * this replaces. A launch landing anywhere in it read `registered` and opened INTO
+ * the install: the `Code=-9 App Still Running Error` cancellation this path exists
+ * to prevent.
+ *
+ * THIRTY SECONDS, so the bound is a multiple of the worst hand-off measured rather
+ * than of the sliver it was first sized from, and because both ways of being wrong
+ * are bounded: a launch held a few seconds too long only means the person clicks
+ * again (the watchdog still opens the app), while a launch that opens into a live
+ * install is a four-minute wait thrown away. The app's own boot is inside the age
+ * this reads - no decision is made before the app has started, measured at
+ * 1.95-13.55 s on this machine - so a shorter bound would still open into installs
+ * whose proxy hand-off outlasted the boot.
+ *
+ * WHAT IT MUST NOT DO is bring back the review-U1 blocker, and it cannot: a
+ * COMPLETED install's marker is minutes old, never seconds - the one that made the
+ * app unreachable for half an hour was 280 s - so a registration past this hand-off
+ * is still read as "not an install", which is what the U1 and U2 fixes are built on.
+ *
+ * THE EXACT INSTRUMENT, for whoever measures a hand-off longer than this bound: the
+ * app can observe the hand-off itself rather than bound its worst case - either the
+ * moment Squirrel took the artifact (`nativeUpdater.update-downloaded` is the app's
+ * own event, 1.92-12.79 s after the marker) or the lifetime of the relaunch watchdog
+ * the marker already records (`watchdogPid`, whose liveness `reapWatchdog`'s ps-probe
+ * already answers, and whose life is exactly "an install of this marker is in
+ * flight"). Neither is in this change; this is a bound, and it says so.
+ */
+export const PENDING_INSTALL_HANDOFF_SECONDS = 30;
 
 /**
  * How long the watchdog's on-disk version read may take before it is killed.
@@ -1009,6 +1088,41 @@ export type PendingServerUpdateMarker = {
 	target: string | null;
 	/** ISO timestamp of the attempt. */
 	startedAt: string;
+	/**
+	 * When the attempt's own budget expires, ISO, or null when the writer could not
+	 * date it.
+	 *
+	 * It is what BOUNDS the record: a marker whose budget passed long ago is not
+	 * evidence that anything is still running, and treating it as if it were is how
+	 * a record survives its run for ever (QA round 2's finding on the withdrawn
+	 * model: 8.5 hours past the deadline, every later update on every later launch
+	 * refused).
+	 */
+	deadlineAt: string | null;
+	/** The updater's process-group leader, written once it exists. */
+	groupPid: number | null;
+	/**
+	 * The start stamp the kernel reports for that leader, taken while it is certainly
+	 * alive - see `readProcessStartStamp` for why liveness alone is not identity.
+	 */
+	groupStartedAt: string | null;
+	/**
+	 * The console script the attempt RAN - the install whose version this record's
+	 * `before` reading describes, and the one a later reader must ask about.
+	 *
+	 * WHY IT IS HERE rather than re-resolved by whoever reads the record: a record is
+	 * read on a LATER launch, when the app has no memory of what the press resolved,
+	 * and re-resolving gives the shim - which on a host where the shim and the serving
+	 * install differ is a different tree. Four rounds found this seam one site at a
+	 * time (the press against the check, the two evidence reads, then the unattended
+	 * reconciliation here), because each site was free to resolve its own install. The
+	 * record now carries the install, so a reader has nothing to resolve.
+	 *
+	 * Optional because a record written by an older build does not have it; a reader
+	 * that finds none falls back to the shim and SAYS SO, rather than pretending the
+	 * reading is about the attempt's install.
+	 */
+	installPath?: string | null;
 };
 
 export function pendingServerUpdateMarkerPath(dir: string): string {
@@ -1056,6 +1170,24 @@ export function parsePendingServerUpdateMarker(
 			before: typeof parsed.before === "string" ? parsed.before : null,
 			target: typeof parsed.target === "string" ? parsed.target : null,
 			startedAt: parsed.startedAt,
+			// The three identity fields are additive: a record written before they
+			// existed parses as "no evidence", which is exactly what the evaluator
+			// bounds by the deadline rather than by a pid.
+			deadlineAt:
+				typeof parsed.deadlineAt === "string" ? parsed.deadlineAt : null,
+			groupPid: typeof parsed.groupPid === "number" ? parsed.groupPid : null,
+			groupStartedAt:
+				typeof parsed.groupStartedAt === "string"
+					? parsed.groupStartedAt
+					: null,
+			/*
+			 * The install the attempt ran, and the reason it is parsed rather than dropped:
+			 * the reader has no press in scope, so the record is the ONLY thing that can tell
+			 * it which tree to ask about. A record without it is an older build's, and the
+			 * reader says so and falls back rather than guessing silently.
+			 */
+			installPath:
+				typeof parsed.installPath === "string" ? parsed.installPath : null,
 		};
 	} catch {
 		return null;
@@ -1079,6 +1211,110 @@ export function clearPendingServerUpdateMarker(dir: string): boolean {
 	if (!existsSync(path)) return false;
 	rmSync(path, { force: true });
 	return true;
+}
+
+/** What a pending-update marker means for a NEW attempt asking to run. */
+export type PendingServerUpdateOutcome =
+	| { kind: "none" }
+	| {
+			kind: "running";
+			marker: PendingServerUpdateMarker;
+			reason: "owned" | "unproven";
+	  }
+	| {
+			kind: "expired";
+			marker: PendingServerUpdateMarker;
+			/**
+			 * `unproven` is the reason for a record that never held a pid: it expires
+			 * like the others, but the log line must not claim a process is gone when
+			 * no process was ever named (review round 3, N1).
+			 */
+			reason: "gone" | "foreign-pid" | "expired" | "unproven";
+	  };
+
+/**
+ * How long past a run's own budget a record with no identity evidence may still be
+ * called running.
+ *
+ * Not zero, because the last minutes of a run are exactly when a crash leaves the
+ * record behind and the updater carries on unwatched - the case the record exists
+ * for. Not unlimited, because that is the permanent refusal QA measured on the
+ * withdrawn model: a record whose pid was recycled held every later update for
+ * ever.
+ */
+export const PENDING_SERVER_UPDATE_GRACE_MS = 10 * 60_000;
+
+/**
+ * Read a pending-update record against what can be known about its process group.
+ *
+ * THE DECISION TABLE, in order, because the failure mode of getting it wrong is a
+ * permanent refusal rather than a wrong sentence:
+ *
+ * 1. no group alive -> `expired/gone`. The pid is the fact the record was written
+ *    from, and it is not there any more.
+ * 2. the group is alive AND the stamp the record carries still matches the stamp
+ *    the kernel reports for that pid -> `running/owned`. This is the only case
+ *    allowed to claim a run is going without an age bound, because it is the only
+ *    one with evidence the process is the one this app started: the app's own
+ *    budget stops it WAITING, but nothing stops a detached updater from finishing
+ *    after its app died.
+ * 3. the group is alive and the stamps DIFFER -> `expired/foreign-pid`. Some
+ *    process is running under that pid and it is not our updater; the number was
+ *    recycled. Reported as expired so the record expires with it.
+ * 4. the group is alive and there is no evidence either way - a record written
+ *    before the identity fields existed, or a pid `ps` will not report ->
+ *    `running` only while the record's own deadline plus `graceMs` has not
+ *    passed, and `expired/expired` after it. `EPERM` counts as alive in
+ *    `isInstallGroupAlive`, deliberately (a group this app may not signal is still
+ *    a group), which is the other half of why the age bound has to exist.
+ *
+ * `now` is an input rather than `Date.now()` so the expiry is a case in a test
+ * rather than a sleep.
+ */
+export function evaluatePendingServerUpdateMarker(input: {
+	marker: PendingServerUpdateMarker | null;
+	groupAlive: boolean;
+	/** What `readProcessStartStamp` answers for the record's pid now, or null. */
+	liveGroupStamp?: string | null;
+	now?: number;
+	graceMs?: number;
+}): PendingServerUpdateOutcome {
+	const marker = input.marker;
+	if (!marker) return { kind: "none" };
+	/*
+	 * A RECORD WITH NO GROUP IS UNPROVEN, AND EXPIRES AS ONE (review round 3, N1).
+	 *
+	 * It expires because the marker is REWRITTEN with the group's pid the moment the
+	 * spawn reports one, so a record still carrying `groupPid: null` means the app died
+	 * between writing the record and starting anything - nothing of ours is running, and
+	 * treating it as live would wedge every later update behind a run that never began
+	 * (Q-3's shape, from the other side).
+	 *
+	 * `unproven` rather than `gone` because that is what the record knows: no process
+	 * was ever NAMED in it, so "gone" is a claim about a pid this record never held.
+	 * The kind is what callers act on; the reason is what the log line tells the next
+	 * reader, and it must not invent evidence.
+	 */
+	if (marker.groupPid === null) {
+		return { kind: "expired", marker, reason: "unproven" };
+	}
+	if (!input.groupAlive) {
+		return { kind: "expired", marker, reason: "gone" };
+	}
+	const recorded = marker.groupStartedAt;
+	const live = input.liveGroupStamp ?? null;
+	if (recorded && live) {
+		return recorded === live
+			? { kind: "running", marker, reason: "owned" }
+			: { kind: "expired", marker, reason: "foreign-pid" };
+	}
+	const deadline = Date.parse(marker.deadlineAt ?? "");
+	const now = input.now ?? Date.now();
+	const grace = input.graceMs ?? PENDING_SERVER_UPDATE_GRACE_MS;
+	if (Number.isFinite(deadline) && now > deadline + grace) {
+		return { kind: "expired", marker, reason: "expired" };
+	}
+	return { kind: "running", marker, reason: "unproven" };
 }
 
 /**
@@ -1297,7 +1533,7 @@ export function pendingInstallAgeSeconds(
 }
 
 /**
- * Whether a loaded ShipIt job plus this marker describe a live install.
+ * Whether a RUNNING ShipIt job plus this marker describe a live install.
  *
  * All three facts are needed and each one alone is wrong. The job alone is not
  * an answer: a failed install never unloads it (0.17.0: `runs=3114`, still
@@ -1309,47 +1545,222 @@ export function pendingInstallAgeSeconds(
  * the watchdog starts at its hard bound cannot read the same install as a
  * failure before it has drawn a panel.
  *
+ * WHY THE JOB HAS TO BE RUNNING AND NOT MERELY REGISTERED (2026-09-18, review
+ * U1). Measured on this machine: `launchctl list com.local-operator.ShipIt` exits
+ * 0 with `state = not running` for as long as any install has EVER run here -
+ * and so do other applications' ShipIt jobs in the same domain, with no install
+ * outstanding. The job is submitted with a fixed label and unloaded when Apple
+ * unloads it, not when the install ends, so a registration answers "has an
+ * install ever started", not "is one alive". Reading it as liveness turned the
+ * recency window into the whole test: right after a SUCCESSFUL install (marker
+ * present and 280 s old, job registered, running version already at the marker's
+ * target) a launch was held, so the app the watchdog had just reopened showed a
+ * banner and quit, and every click for the next ~29 minutes did the same. The
+ * app's own version check cannot catch that case alone either - it is asked
+ * before recovery has had a chance to clear a succeeded marker - so both facts
+ * are needed and this one is the machine's own statement that ShipIt's process
+ * is executing now: `launchctl list` carries the job's `"PID" = <n>;` field
+ * while it runs and drops the field when it stops.
+ *
  * A marker with no readable `startedAt` is NOT current: the honest reading of
  * an undated marker is that nothing can say it is live, and the failure path -
  * which reports rather than hides, and still carries the remedy - is the safe
  * direction to be wrong in.
+ *
+ * A REGISTERED job is the third case, and it means two things that a boolean cannot
+ * tell apart: launchd has the job and its program is not executing, which is what a
+ * finished or failed install leaves behind - and also what the submission-to-exec gap
+ * looks like for a few hundred milliseconds of every install's life
+ * (`PENDING_INSTALL_HANDOFF_SECONDS`, review R6). The marker's age is what tells
+ * them apart, and it is the same age this function already reads.
  */
 export function isInstallInFlight(input: {
 	marker: PendingInstallMarker | null;
-	/** The answer the caller got from the launchd job probe. */
-	jobLoaded: boolean;
+	/**
+	 * What the machine says the install's job is doing (`installJobState`). The state
+	 * rather than a boolean, because `registered` and `absent` are different facts and
+	 * only one of them can be an install launchd has just been handed.
+	 */
+	jobState: InstallJobState;
 	now?: number;
 }): boolean {
-	if (!input.marker || !input.jobLoaded) return false;
+	if (!input.marker) return false;
 	const age = pendingInstallAgeSeconds(input.marker, input.now);
 	if (age === null) return false;
-	return age >= 0 && age <= PENDING_INSTALL_RECENCY_SECONDS;
+	if (age < 0 || age > PENDING_INSTALL_RECENCY_SECONDS) return false;
+	if (input.jobState === "running") return true;
+	return (
+		input.jobState === "registered" && age <= PENDING_INSTALL_HANDOFF_SECONDS
+	);
 }
 
 /**
- * Whether a launchd job is loaded, from a probe the caller supplies.
+ * What a process starting up has to do about an install that may still be
+ * running.
  *
- * `launchctl list <label>` exits 0 while the job is loaded and 113 when it is
- * not, and that is the whole question - so the probe reports the command's exit
- * status and nothing else. It is an argument rather than a `spawnSync` here for
- * the same reason `reapFailedInstall` takes its collaborators: the contract
- * tests drive this without a launchd domain, and the only caller in production
- * is the app's own.
+ * The 2026-09-18 incident this decides: an install four minutes into its work
+ * was aborted - `Aborting update attempt because there are 1 running instances
+ * of the target app`, `SQRLInstallerErrorDomain Code=-9` - because the app was
+ * started while it was installing. ShipIt asks whether any instance of the
+ * target app is running ONCE, as its last check before the swap, so a launch
+ * that settles into a normal run answers yes and throws the whole wait away; the
+ * app's own window was the only thing left that could make that happen once the
+ * quit paths were covered (UX U1, U2). A launch that finds a LIVE install
+ * therefore must not become that instance - it tells the user why nothing opened
+ * and leaves (`holdLaunchForLiveInstall`), which is an exposure measured in
+ * hundreds of milliseconds rather than in the minutes a person takes to read a
+ * window and act on it.
+ *
+ * Three answers are deliberately the same "open", and none of them is an
+ * accident:
+ *
+ * - no marker, and a marker whose install job is absent, are `isInstallInFlight`'s
+ *   own answers, and they are what keeps a FINISHED install's leftover registration
+ *   (0.17.0: `runs=3114`, loaded for hours) from holding every later launch forever;
+ * - a marker whose job is RUNNING, or registered inside
+ *   `PENDING_INSTALL_HANDOFF_SECONDS`, is the install this path stands down for:
+ *   the first is ShipIt executing, the second is the window in which launchd has
+ *   the job but ShipIt has no pid yet (review R6, R11);
+ * - a marker the running version has reached or moved past opens, because that
+ *   is `evaluatePendingInstall`'s `succeeded` / `stale` and recovery acts on it:
+ *   this is the state every SUCCESSFUL install leaves behind on this machine
+ *   (marker present, job still registered), and holding it made the app
+ *   unreachable for ~29 minutes after every update - the case review U1 walked;
+ * - a marker past `PENDING_INSTALL_LAUNCH_HOLD_SECONDS` is the watchdog's own
+ *   hard-bound launch, which exists so the user is never left with no app and
+ *   must open normally (see that constant);
+ * - an undated marker opens too, because nothing can say it is live, and opening
+ *   normally REPORTS the install rather than hiding it behind a notice.
+ *
+ * The classification is `evaluatePendingInstall`'s rather than a second copy of
+ * it (review U1): one place decides what a marker plus a running version mean,
+ * so the launch hold and the recovery that runs seconds later cannot disagree
+ * about the same install - the failure panel review U2 walked is reachable
+ * precisely because both now read the same three facts the same way.
+ */
+export function evaluateLaunchDuringInstall(input: {
+	marker: PendingInstallMarker | null;
+	/** See `isInstallInFlight` - the state, so `registered` can mean two things. */
+	jobState: InstallJobState;
+	/** `app.getVersion()`, so a completed install is recognised as one. */
+	runningVersion: string;
+	now?: number;
+}): { kind: "open" } | { kind: "hold"; marker: PendingInstallMarker } {
+	const { marker } = input;
+	if (!marker) return { kind: "open" };
+	const outcome = evaluatePendingInstall({
+		marker,
+		runningVersion: input.runningVersion,
+		installInFlight: isInstallInFlight({
+			marker,
+			jobState: input.jobState,
+			now: input.now,
+		}),
+	});
+	if (outcome.kind !== "in-flight") return { kind: "open" };
+	const age = pendingInstallAgeSeconds(marker, input.now);
+	if (age === null || age > PENDING_INSTALL_LAUNCH_HOLD_SECONDS) {
+		return { kind: "open" };
+	}
+	return { kind: "hold", marker };
+}
+
+/**
+ * What one `launchctl list <label>` said.
+ *
+ * Both halves travel together because the machine answers two different questions
+ * in one call, and the difference between them is what review U1 turned on: the
+ * exit STATUS says whether launchd has a job of that name at all (0) or nothing
+ * by that name (113), while the OUTPUT carries the job's own `"PID" = <n>;`
+ * field, which is present only while its program is executing. A registration
+ * outlives the install that submitted it - measured here, on this app's job and
+ * on other applications' ShipIt jobs in the same domain, all of them sitting at
+ * status 0 with no pid for hours.
+ */
+export type LaunchdJobReading = {
+	/** The command's exit status, or null when it could not be run at all. */
+	status: number | null;
+	/** The command's stdout. */
+	output: string;
+};
+
+/**
+ * A `launchctl list <label>` reading, from a probe the caller supplies.
+ *
+ * It is an argument rather than a `spawnSync` here for the same reason
+ * `reapFailedInstall` takes its collaborators: the contract tests drive this
+ * without a launchd domain, and the only caller in production is the app's own.
  *
  * A probe that could not run at all (`null`) is not an answer, and it must not
- * read as one: "cannot ask" is reported as not loaded, which is the direction
- * that lets recovery proceed, because the alternative - refusing to act on a
- * machine whose launchd is unreachable - would strand the user with a marker
- * and a job nobody ever clears.
+ * read as one: "cannot ask" is reported as `unread`, which is neither loaded nor
+ * running, and that is the direction that lets recovery proceed - the
+ * alternative, refusing to act on a machine whose launchd is unreachable, would
+ * strand the user with a marker and a job nobody ever clears.
  */
-export type LaunchdJobProbe = (label: string) => number | null;
+export type LaunchdJobProbe = (label: string) => LaunchdJobReading | null;
 
-export function launchdJobLoaded(
+/**
+ * The process id launchd reports for a job, or null when nothing of that label is
+ * running.
+ *
+ * This is the machine's own answer to "is the installer executing right now",
+ * and it is what `isInstallInFlight` is built on. Two output shapes are parsed
+ * because `launchctl` prints both on this machine (macOS 25, measured):
+ *
+ *     "PID" = 55322;                          # `launchctl list <label>`
+ *     55934	0	com.local-operator.ShipIt     # `launchctl list`, the table form
+ *
+ * The table form writes `-` in the pid column for a job it is not running, and
+ * both shapes answer null there. Anything unrecognised answers null too: the
+ * honest reading of output this cannot parse is "not running", because the
+ * direction that opens the app is the one that REPORTS an install rather than
+ * hiding it behind a notice.
+ */
+export function launchdJobPid(output: string): number | null {
+	const dictionary = /"PID"\s*=\s*(\d+)\s*;/.exec(output);
+	if (dictionary) {
+		const pid = Number.parseInt(dictionary[1], 10);
+		return pid > 0 ? pid : null;
+	}
+	for (const line of output.split("\n")) {
+		const columns = line.trim().split(/\s+/);
+		if (columns.length < 3) continue;
+		// pid, exit status, label - the table form's three columns. `-` in the pid
+		// column is a registered job that is not running, and is not a number, so
+		// the line is skipped rather than misread as pid 0.
+		if (!/^\d+$/.test(columns[0]) || !/^\d+$/.test(columns[1])) continue;
+		const pid = Number.parseInt(columns[0], 10);
+		return pid > 0 ? pid : null;
+	}
+	return null;
+}
+
+/**
+ * What the machine says about this install's job, in the four states a caller can
+ * be in.
+ *
+ * `running` is a live install; `registered` is a job launchd still holds whose
+ * program has stopped - the state a FINISHED or failed install leaves behind, and
+ * the one whose misreading as "live" made the app unreachable after every
+ * successful update (review U1); `absent` is no job at all; `unread` is a probe
+ * that could not answer, which is reported as neither.
+ *
+ * The distinction between the first two is carried all the way to the log rather
+ * than collapsed into a boolean, because it is the fact a person reading
+ * `update-service.log` after a slow or stuck update needs: "registered but not
+ * running" says the install is over and only its job was left behind.
+ */
+export type InstallJobState = "running" | "registered" | "absent" | "unread";
+
+export function installJobState(
 	jobLabel: string | null,
 	probe: LaunchdJobProbe,
-): boolean {
-	if (!jobLabel) return false;
-	return probe(jobLabel) === 0;
+): InstallJobState {
+	if (!jobLabel) return "unread";
+	const reading = probe(jobLabel);
+	if (reading == null || reading.status == null) return "unread";
+	if (reading.status !== 0) return "absent";
+	return launchdJobPid(reading.output) == null ? "registered" : "running";
 }
 
 export type InstallFailurePayload = {
@@ -1495,6 +1906,51 @@ export function installInFlightPayload(
 	};
 }
 
+/**
+ * What a launch that stands down for a live install tells the user.
+ *
+ * A banner rather than a panel, because the window IS the problem: this process
+ * exists only long enough to explain itself and leave (see
+ * `evaluateLaunchDuringInstall`). So the two facts a user needs travel in the
+ * notification itself - nothing has failed and nothing is broken, and they do
+ * not have to do anything - because there is no panel left to carry them.
+ *
+ * The target version is named for the same reason `installInFlightPayload` names
+ * it: "an update" with no number is a thing a user cannot tell from the one that
+ * was already there. Three things this copy carries deliberately (review U4, U5,
+ * U7):
+ *
+ * - the DURATION, in the same words the watchdog's own notice uses ("this can
+ *   take a few minutes"), because the install already told the user that and a
+ *   second message about one wait should not be silent on the only question it
+ *   answers - how long am I waiting;
+ * - the roofline for the click. macOS activates the app when its notification is
+ *   clicked, and on this path that lands in another hold and another notice
+ *   seconds later, so the copy SAYS a click will not open the app sooner rather
+ *   than leaving a control whose outcome nobody can guess;
+ * - the relaunch, stated as what actually happened. `ensureRelaunchWatchdog` can
+ *   fail to arrange one (the branch that tells the log "the app will need
+ *   starting by hand"); the banner used to promise the relaunch unconditionally,
+ *   so that case told the user to do nothing while the log said they must start
+ *   the app themselves. `relaunchEnsured: false` is that case, and it is the
+ *   caller's fact to pass because only the caller knows the answer.
+ */
+export type InstallLaunchHoldNotice = { title: string; body: string };
+
+export function installLaunchHoldNotice(
+	marker: PendingInstallMarker,
+	options: { relaunchEnsured?: boolean } = {},
+): InstallLaunchHoldNotice {
+	const relaunch =
+		options.relaunchEnsured === false
+			? "No relaunch could be arranged for this install, so start Local Operator by hand when it finishes."
+			: "Local Operator will open by itself when the install finishes.";
+	return {
+		title: "Local Operator is still updating",
+		body: `The update to version ${marker.targetVersion} is still installing — this can take a few minutes, and opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Relaunch watchdog
 // ---------------------------------------------------------------------------
@@ -1503,13 +1959,23 @@ export function installInFlightPayload(
  * The launchd job Squirrel's ShipIt runs an install under.
  *
  * Squirrel builds this label as `<bundle id>.ShipIt` (`shipItJobLabel` in
- * SQRLShipItLauncher) and the job is submitted as part of the app's quit and
- * unloaded when the install is over. Its presence in the user's launchd domain
- * is therefore the machine's own answer to "is an install still in flight" -
- * and the answer for a *hung* install, which is the case that left the operator
- * with no app. The watchdog used to ask `pgrep -f ShipIt` instead, which matched
- * any process whose command line merely contains that word (a reviewer's
- * sampling loop held it open past the deadline; review R7).
+ * SQRLShipItLauncher) and submits the job as part of the app's quit. What it does
+ * NOT do is unload the job when the install ends: measured on this machine
+ * (2026-09-18), the registration is still there 72 minutes after a successful
+ * install - `state = not running`, no pid - and so are other applications' ShipIt
+ * jobs in the same launchd domain, indefinitely. A registration therefore says
+ * "an install has run here and its job has not been reaped", never "an install is
+ * running now": `installJobState` is what tells those apart, and
+ * `isInstallInFlight` needs the running one.
+ *
+ * The WATCHDOG still asks the registered question, deliberately. Its job is to
+ * keep the app from opening back into its own install, and a registration that
+ * outlives the install is the conservative direction there: it waits out its own
+ * bounds and opens the app anyway. A LAUNCH must not be held for an install that
+ * is over, and holding one is exactly what made the app unreachable after every
+ * successful update (review U1). The watchdog used to ask `pgrep -f ShipIt`
+ * instead, which matched any process whose command line merely contains that word
+ * (a reviewer's sampling loop held it open past the deadline; review R7).
  */
 export function shipItJobLabel(bundleId: string): string {
 	return `${bundleId}.ShipIt`;
@@ -2285,6 +2751,37 @@ export type BackendPlan = {
 	 * the closing sentence both say so instead.
 	 */
 	sourceBuild: boolean;
+	/**
+	 * WHICH managed route the app runs, when `canManageUpdate` is true.
+	 *
+	 * `entry-point` is the install's own front end, `<resolved console script>
+	 * update`, which is the only route for a host on the generation layout: it
+	 * detects the kind, writes the `.lop-source` marker runtimes converge on, and
+	 * lands the install in a tree no running process is reading.
+	 *
+	 * `source-build` is `lop-update` - the checkout rebuild - and it exists because
+	 * a uv tool BUILT FROM THIS MACHINE's checkout is a different audience. The
+	 * entry point installs the PUBLISHED WHEEL over such an install (the harness
+	 * prints the same notice), which is the right answer for a released install and
+	 * the wrong one for the operator's own: their `.lop-source` names a git sha and
+	 * `lop-update` is the tool that maintains it, so refusing to run anything left
+	 * the panel instructing them to paste the command themselves. This route runs
+	 * that same tool, and only that tool: with `lop-update` absent from the machine
+	 * the arm falls back to the refusal and the command, unchanged.
+	 *
+	 * null for every refusal, which is what the surfaces read.
+	 */
+	managedRoute: "entry-point" | "source-build" | null;
+	/**
+	 * The install tree the managed route rewrites, when it may rewrite one.
+	 *
+	 * It is where that route's EVIDENCE lives, and the two routes read different
+	 * evidence on purpose: the entry point moves the install's VERSION, while a
+	 * rebuild of the checkout usually keeps the version (the checkout's
+	 * `pyproject.toml` names the last release) and moves `.lop-source`'s ref - so a
+	 * version comparison would report a successful rebuild as a failure.
+	 */
+	installPrefix: string | null;
 };
 
 /**
@@ -2448,6 +2945,158 @@ export function readSourceRef(prefix: string): string | null {
 		// and not a failure worth propagating out of a version check.
 		return null;
 	}
+}
+
+/**
+ * What `<prefix>/.lop-source` says, and when it last said it.
+ *
+ * THE EVIDENCE A REBUILD MOVES, and the two fields are there because neither alone
+ * is enough. The REF is the identity of the commit that was installed - it is what
+ * makes an update that landed distinguishable from one that did not, where the
+ * VERSION cannot be: a checkout's `pyproject.toml` names the last release, so a
+ * successful rebuild of `main` usually reports the same `0.56.x` it reported
+ * before, and comparing versions would call that a failure. The MTIME is the
+ * fallback for the case the ref cannot answer - a marker written by an older
+ * tool, or a rebuild that landed the same commit again after a `reset` - and it is
+ * read from the same stat call, so a caller never has to decide which to ask for.
+ *
+ * `prefix` is a parameter and null is an answer, not an error: the caller resolves
+ * the install's prefix freshly on every read rather than holding the one its check
+ * saw, because the generations swap moves the tree the prefix names.
+ */
+export type SourceMarkerState = {
+	ref: string | null;
+	mtimeMs: number | null;
+};
+
+export function readSourceMarkerState(
+	prefix: string | null,
+): SourceMarkerState {
+	if (!prefix) return { ref: null, mtimeMs: null };
+	const marker = join(prefix, ".lop-source");
+	try {
+		const stat = statSync(marker);
+		return { ref: readSourceRef(prefix), mtimeMs: stat.mtimeMs };
+	} catch {
+		return { ref: null, mtimeMs: null };
+	}
+}
+
+/**
+ * Whether a rebuild of the checkout landed, judged by the marker rather than by a
+ * version.
+ *
+ * The rule, in the order it is applied: a changed REF is a landed rebuild, whatever
+ * the versions say; when either reading has no ref to compare, an ADVANCED mtime
+ * is; and a marker that was ABSENT before and present now is one too, because that
+ * is what the first rebuild of an editable-style prefix looks like. Everything else
+ * is not-landed - including the case where the after reading is absent entirely,
+ * which means the tool removed the marker or the prefix could not be read, and a
+ * failure is the honest answer to both.
+ */
+export function didSourceRebuildLand(input: {
+	before: SourceMarkerState;
+	after: SourceMarkerState;
+}): boolean {
+	const { before, after } = input;
+	const hadMarker = before.ref !== null || before.mtimeMs !== null;
+	const hasMarker = after.ref !== null || after.mtimeMs !== null;
+	if (!hasMarker) return false;
+	if (!hadMarker) return true;
+	if (before.ref !== null && after.ref !== null) {
+		return before.ref !== after.ref;
+	}
+	if (before.mtimeMs !== null && after.mtimeMs !== null) {
+		return after.mtimeMs > before.mtimeMs;
+	}
+	return false;
+}
+
+/**
+ * A line that tells the reader to go around a guard the installer just applied.
+ *
+ * `lop-update` refuses a ref that is behind or diverged FROM ITS OWN GATE and then
+ * closes its message with how to bypass that gate (`--skip-remote-check`, and the
+ * same spelling for `--allow-downgrade` and any `--force`). That line is the LAST
+ * line of its output and it is the one thing this module must never put in front of
+ * the user as their remedy: it recommends disabling the check that just protected
+ * them (review round 2, U7 - measured on the operator's own refusal, 18 lines whose
+ * head carries the diagnosis and whose tail carries the bypass).
+ */
+const GUARD_BYPASS_ADVICE =
+	/--skip-[a-z-]+|--allow-downgrade|--force\b|--no-verify|--ignore-checks/i;
+
+/**
+ * A line that is an instruction to run something in a terminal.
+ *
+ * The refusal's body is addressed to a person at a shell - `git -C ... fetch`,
+ * `lop-update <ref>` - and those belong to the by-hand path the panel already
+ * offers, not to the diagnosis. They also nest a `lop-update` line inside a message
+ * ABOUT a `lop-update` run, which reads as the app telling itself what to do.
+ *
+ * AN INSTALLER'S OWN DIAGNOSTICS ARE NOT INSTRUCTIONS, and the lookahead is what
+ * draws that line: `lop-update: REFUSING to release a stale ref.` is the tool
+ * SPEAKING (and the one line this function exists to keep), while `lop-update main
+ * --skip-remote-check` is the tool being RUN. Without it the first message line
+ * would end the head at the warning above it and the verdict would be lost.
+ */
+const TERMINAL_INSTRUCTION =
+	/^(?!\S+:\s)(?:git|lop-update|uv|pip|pipx|python\d?|sudo)\b/i;
+
+/**
+ * The installer's own diagnosis, chosen by where the diagnosis IS rather than by
+ * where its output ended.
+ *
+ * WHY NOT A TAIL (`stderrTail`). An installer's last line is its exit reason for a
+ * crash - `installer exited 127`, `error: Failed to install` - which is why the pip
+ * path takes the tail. A REFUSAL is the opposite shape: the verdict, the refs and
+ * the consequence are the FIRST paragraph, and what follows is the by-hand
+ * instructions and then how to bypass the guard. Selecting by tail hands the reader
+ * the bypass as their remedy, which is what this function exists to prevent.
+ *
+ * The rules, in order: drop guard-bypass lines entirely - and if that empties the
+ * output, return nothing rather than the lines just dropped; take the head up to the
+ * first terminal instruction (so the verdict and its evidence survive and the
+ * by-hand recipe does not); and cap at `maxLines`. There is no tail fallback: a short
+ * unexplained one-liner (`installer exited 127`) survives the filter and the head takes
+ * it, and the arm that claimed to fall back could not run (review round 4, N1). The
+ * result is bounded, because it lands in a panel sentence whose full streams are in the
+ * update service log.
+ */
+export function installDiagnosisLines(text: string, maxLines = 6): string {
+	const lines = text
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	if (lines.length === 0) return "";
+	const allowed = lines.filter((line) => !GUARD_BYPASS_ADVICE.test(line));
+	/*
+	 * NO FALLBACK TO THE UNFILTERED LINES. An earlier draft fell back to `lines`
+	 * when the filter emptied the pool, which re-admitted exactly the lines the
+	 * filter exists to drop: a one-line refusal whose only line is the bypass
+	 * advice came back as that advice, and the panel handed the reader the
+	 * disable-the-guard instruction as their remedy - the class this function was
+	 * written to keep out. There is no useful remainder in that case; the panel
+	 * then shows the app's own sentence and the log path instead (review round 3,
+	 * MINOR-1). A crash's one-liner ("installer exited 127") is unaffected: it does
+	 * not match the bypass advice, so it survives the filter.
+	 */
+	if (allowed.length === 0) return "";
+	const head: string[] = [];
+	for (const line of allowed) {
+		if (head.length >= maxLines) break;
+		if (head.length > 0 && TERMINAL_INSTRUCTION.test(line)) break;
+		head.push(line);
+	}
+	/*
+	 * NO TAIL BRANCH HERE. There used to be `head.length > 0 ? head : allowed.slice(-maxLines)`,
+	 * which could only fire with `maxLines <= 0`: the filter above returns early on an
+	 * empty pool and the first iteration always pushes, so the fallback was dead code
+	 * dressed as a safety net. `maxLines` is a literal budget at every call site, and a
+	 * branch a comment calls live while it cannot run is the shape this suite exists to
+	 * catch elsewhere (review round 4, N1).
+	 */
+	return head.join("\n").slice(0, 800);
 }
 
 /** `local_operator-0.56.0.dist-info`, in either separator spelling. */
@@ -3019,6 +3668,27 @@ export function classifyGlobalInstall(
 }
 
 /**
+ * The tree an install lives in, from what the identity itself carries.
+ *
+ * The `pyvenv.cfg`'s own prefix when the install has one - it is EVIDENCE, a file
+ * read from the tree - and otherwise the prefix the resolved script sits in
+ * (`<prefix>/bin/<name>`, which is uv's and pipx's layout for every kind this
+ * function classifies). Both are needed: a uv tool install seen through a
+ * `generations/<id>` symlink carries the generation's own `pyvenv.cfg`, while a
+ * fixture or a half-installed tree can have the script without the config file.
+ * Null when there is no resolved path at all.
+ *
+ * This is the plan's `installPrefix`, which is where a managed route's EVIDENCE
+ * lives: an answer that named the wrong tree would make a landed rebuild read as
+ * one that did not.
+ */
+function installPrefixOf(identity: InstallIdentity): string | null {
+	if (identity.venvPrefix) return identity.venvPrefix;
+	const script = identity.realPath ?? identity.path;
+	return script ? dirname(dirname(script)) : null;
+}
+
+/**
  * Resolve what a global (GLOBAL_INSTALL) backend can be told to do.
  *
  * `canManageUpdate` is false in every case: the installer that owns the
@@ -3035,8 +3705,18 @@ export function classifyGlobalInstall(
  */
 export function resolveGlobalInstallPlan(input: {
 	identity: InstallIdentity;
+	/**
+	 * The `lop-update` this machine resolves, or null when it has none.
+	 *
+	 * An INPUT rather than a lookup in here, because this function is the statement
+	 * that has to be testable without a machine: the caller resolves the tool the
+	 * same way it resolves everything else, and the plan says what that licence is
+	 * worth. Null means what it says - the app has no rebuild route here.
+	 */
+	sourceRebuild?: string | null;
 }): BackendPlan {
 	const kind = classifyGlobalInstall(input.identity);
+	const installPrefix = installPrefixOf(input.identity);
 	// A uv tool built from a git snapshot and the checkout itself both report the
 	// CHECKOUT's version after they are updated, so neither can be promised the
 	// version the app offered (review U12). Which of the two it is now comes from
@@ -3071,6 +3751,8 @@ export function resolveGlobalInstallPlan(input: {
 				"The server is running from a source checkout on this machine rather than an installed copy, so update it with lop-update after your change is merged.",
 			detail,
 			sourceBuild: true,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	if (kind === "uv-tool") {
@@ -3096,12 +3778,26 @@ export function resolveGlobalInstallPlan(input: {
 		 * from then on.
 		 */
 		const managed = generationInstallRoot(input.identity) !== null;
+		/*
+		 * THE SOURCE-BUILD ROUTE, and why it is NOT gated on the generation layout the
+		 * way the entry point is. That gate exists because `<console path> update`
+		 * installs the published wheel: on a legacy layout it rewrites `site-packages`
+		 * under every live runtime, which is the 2026-09-15 incident. `lop-update`
+		 * rebuilds and reinstalls THE CHECKOUT this install already came from - the
+		 * exact command the panel has been telling this audience to paste, and the only
+		 * one that keeps their build rather than replacing it with a release wheel.
+		 * Running it for them changes who types it, not what happens; and it is the
+		 * case the report asked for, because the operator's install is a uv-tool build
+		 * of their own checkout and a refusal left them a copy/paste instruction.
+		 */
+		const sourceRebuildRoute =
+			!managed && sourceBuild && (input.sourceRebuild ?? null) !== null;
 		const provenance = sourceBuild
-			? " Built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice."
+			? " source build of this machine's checkout; `lop update` would install the published release over it."
 			: "";
 		return {
-			canManageUpdate: managed,
-			updateCommand: "lop update",
+			canManageUpdate: managed || sourceRebuildRoute,
+			updateCommand: sourceRebuildRoute ? "lop-update" : "lop update",
 			/*
 			 * The remedy is the sentence above the command well in the by-hand panel
 			 * and the consequence line in the managed offer, and each arm says the
@@ -3114,6 +3810,10 @@ export function resolveGlobalInstallPlan(input: {
 			 * destructive thing this path does, so it is stated here rather than in
 			 * the in-flight panel the user reaches only after pressing.
 			 *
+			 * Source build - the same disclosure with the one difference that matters:
+			 * what is rebuilt is THEIR checkout, and the version they end up on is the
+			 * checkout's rather than the release the app offered.
+			 *
 			 * Legacy - WHY the app will not press the button, which is what the user
 			 * is choosing between (reviews U8, N1). It lived only in the mono Details
 			 * line, trailing a resolved path and a classification.
@@ -3124,9 +3824,23 @@ export function resolveGlobalInstallPlan(input: {
 			 */
 			remedy: managed
 				? "The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two."
-				: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
-			detail: `${detail}${provenance}`,
+				: sourceRebuildRoute
+					? "Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
+					: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
+			detail: `${detail}${
+				managed
+					? provenance
+					: sourceRebuildRoute
+						? " source build of this machine's checkout; an in-place rebuild."
+						: provenance
+			}`,
 			sourceBuild,
+			managedRoute: managed
+				? "entry-point"
+				: sourceRebuildRoute
+					? "source-build"
+					: null,
+			installPrefix,
 		};
 	}
 	if (kind === "pipx") {
@@ -3136,6 +3850,8 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: "The server is a pipx install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	if (kind === "pip") {
@@ -3145,6 +3861,8 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: "The server is a pip install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	return {
@@ -3154,6 +3872,8 @@ export function resolveGlobalInstallPlan(input: {
 			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip",
 		detail,
 		sourceBuild: false,
+		managedRoute: null,
+		installPrefix,
 	};
 }
 

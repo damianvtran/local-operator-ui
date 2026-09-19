@@ -17,12 +17,19 @@
        real app window: under the previous policy a blob <img> was BLOCKED while
        an identical data: URI loaded.
 
+       `connect-src` carries no `ws://`/`wss://` entry any more: the renderer's
+       WebSocket client (the chat plane's socket transport and the SSE-to-socket
+       fallback router that could reach it) was deleted, so nothing in this app
+       opens a socket and the origin is no longer advertised to one. Re-adding a
+       `ws://` entry ahead of a client that needs it is the order that matters:
+       the policy is what makes an accidental socket fail loudly.
+
        `installer.html` deliberately keeps the narrower policy. It renders no
        transcript and fetches no attachments, so widening it there would buy
        nothing and cost the tighter default. -->
 
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 ws://localhost:1111 ws://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com; script-src 'self' https://us-assets.i.posthog.com https://accounts.google.com https://login.microsoftonline.com; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' blob: http://localhost:1111 http://127.0.0.1:1111; font-src 'self' data:; frame-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111 https://accounts.google.com https://login.microsoftonline.com" />
+    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com; script-src 'self' https://us-assets.i.posthog.com https://accounts.google.com https://login.microsoftonline.com; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' blob: http://localhost:1111 http://127.0.0.1:1111; font-src 'self' data:; frame-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111 https://accounts.google.com https://login.microsoftonline.com" />
   <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
 </head>
 

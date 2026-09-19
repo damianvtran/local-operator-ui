@@ -85,6 +85,35 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  */
 const ONLY = flag("only");
 
+/**
+ * `--dirs=a,b` narrows the sweep to the STATES a set writes, by their directory.
+ *
+ * `--only=` matches a story id, and a set's states all live on ONE story - 21
+ * entries of `chat-canonical-links--detected-targets` write 21 different
+ * directories - so a per-state narrowing is not expressible with a prefix. That
+ * matters for a reason beyond tidiness (2026-09-17): a long run on a loaded
+ * machine died silently three times, and a run that is narrowed to one or two
+ * states costs minutes when that happens instead of the whole set. The directory
+ * an entry writes is the one the run itself computes (`entryOptions?.dir ??
+ * <story leaf>`), so this reads the same expression rather than a second opinion
+ * about what an entry is called.
+ */
+const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
+
+/**
+ * The keys this rig can press, and the codes Chromium's bindings require beside
+ * the key NAME.
+ *
+ * `windowsVirtualKeyCode`/`nativeVirtualKeyCode` are not optional: a
+ * `dispatchKeyEvent` without them is rejected at the bindings layer, and a rig
+ * that ignored the rejection would file a resting frame under a key its claim
+ * says was pressed - the same trap the mouse options in this file document.
+ */
+const KEY_CODES = {
+	Escape: { code: "Escape", keyCode: 27 },
+	Tab: { code: "Tab", keyCode: 9 },
+};
+
 /*
  * Selectors the round-1 image-expand tuples drive, named once because two of them
  * are the same button seen from a pointer and from the keyboard.
@@ -92,7 +121,7 @@ const ONLY = flag("only");
 const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
-const PARTIAL = Boolean(ONLY || THEME_FILTER);
+const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
 /** Every palette id the registry has, read the one way the gates read them. */
 const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
@@ -147,26 +176,34 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * what makes a frame comparable with the ones committed before it, and they
  * span both modes and the two brand ramps. The registry now carries
  * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
- * **4,925** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
- * and `git ls-files docs/evidence | grep -c '\.webp$'`, both 4,925 at this head —
- * holding **196 MB** on disk — `du -sh docs/evidence`, the filesystem figure
- * rather than the 133.9 MiB the files' own bytes sum to — of which **4,184**
- * stand outside the 64 declared supplementary sets, to roughly **24,000 frames
- * and ~950 MB**. A run goes from about half an hour to several — on a box that
- * several other worktrees are working in at the same time.
+ * **6,832** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
+ * and `git ls-files --cached --others --exclude-standard docs/evidence | grep -c
+ * '\.webp$'`, both 6,832 at this head —
+ * holding **262 MB** on disk — `du -sh docs/evidence`, the filesystem figure
+ * rather than the 189.8 MiB the files' own bytes sum to — of which **5,697**
+ * stand outside the 78 declared supplementary sets, to roughly **33,000 frames
+ * and ~1.3 GB**. A run goes from about half an hour to several — on a box that
+ * several other worktrees are working in at the same time, and this note's own
+ * arithmetic was measured wrong by that margin on 2026-09-18: a full set projected
+ * at half an hour took 7-33 s per frame under load averages above 400 with seven
+ * to eleven sibling capture rigs running, i.e. 11-52 hours. Treat the projection
+ * as a function of the box, not of the rig.
  *
  * Re-derive those three numbers from the tree this note ships in rather than
- * carrying them forward, and name the commands. Two earlier revisions of this
+ * carrying them forward, and name the commands. Three earlier revisions of this
  * note got that wrong in the same way, one fold apart: 4,379 / 167 MB / 3,762 and
  * a projection of ~21,000 (review round 1, M-2; QA round 1, Q-1 — the same
  * defect, found twice), then 4,851 / 195 MB / 4,110, which was the second fold's
  * triple and, worse, attributed 4,110 to `manifest.json`'s own `frames` while the
- * manifest carried 4,184 (round 2, M-1). The rule that keeps it right is not
- * "update the number" but "update the number AND the record it points at, from
- * the tree you are committing": 4,184 is the manifest's `frames` at this head,
- * 4,925 is what both count commands return, and the 741 difference is the frames
- * inside the declared sets. The conclusion survives all three corrections: a full
- * sweep is roughly five times this set and close to a gigabyte of WebP. The
+ * manifest carried 4,184 (round 2, M-1), and then 4,925 / 196 MB / 4,184 against a
+ * tree carrying 6,832 / 262 MB / 5,697 (re-derived 2026-09-18, the theme-legibility
+ * pass, by the commands above — main's own evidence work had grown the set by a
+ * third and nobody re-ran the step the note asks for). The rule that keeps it right
+ * is not "update the number" but "update the number AND the record it points at,
+ * from the tree you are committing": 5,697 is the manifest's `frames` at this
+ * head, 6,832 is what both count commands return, and the 1,135 difference is the
+ * frames inside the declared sets. The conclusion survives all four corrections: a
+ * full sweep is five to six times this set and over a gigabyte of WebP. The
  * twelve stay the spine because the
  * forty-seven they do not cover are covered where it matters rather than
  * silently dropped:
@@ -256,6 +293,36 @@ export const STORIES = [
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
+
+	/*
+	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
+	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
+	 * but not whole, and the mark is the whole change on screen. `before-join` is
+	 * the pre-fix fold spelled out in the story (one chunk painted as the answer),
+	 * so the pair is a difference in what the row says rather than two descriptions
+	 * of it; `after-join-settled` is the same turn once `message_end` states the
+	 * whole text, which is what clears the mark. 900 is the harness default and
+	 * the story pins its own pane height (685, the transcript's measured
+	 * `clientHeight`), so the pane is what a reader has rather than a capture.
+	 */
+	["chat-mid-turn-join--before-join", 1280, 900],
+	["chat-mid-turn-join--after-join", 1280, 900],
+	["chat-mid-turn-join--after-join-settled", 1280, 900],
+	/*
+	 * The three surfaces the round-1 review rounds asked for by name, added beside
+	 * the pair above rather than replacing it:
+	 *  - `after-join-unrelated` is D1's "one frame whose row above is an unrelated
+	 *    complete answer", the fixture in which a caption that attaches upward is
+	 *    visibly a claim about somebody else's paragraph (the original fixture's row
+	 *    above is the same sentence's first half, which reads correctly either way).
+	 *  - `after-seed-withheld` and `after-gap` are D2's two states that had no frame
+	 *    at all: a row that kept its text across a reconnect and had a delta withheld,
+	 *    and a row a receipt gap marked uncertain. Both hold their OWN earlier text on
+	 *    screen, which is exactly what the old single sentence denied.
+	 */
+	["chat-mid-turn-join--after-join-unrelated", 1280, 900],
+	["chat-mid-turn-join--after-seed-withheld", 1280, 900],
+	["chat-mid-turn-join--after-gap", 1280, 900],
 
 	/* Session incidents on their own rows — the operator's report that an error
 	  row read only `session incident` with the message behind a chevron. The
@@ -492,6 +559,16 @@ export const STORIES = [
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
 	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
+	   the send (operator report, 2026-09-17). Three stories at the user-card
+	   measure's own 1024x620 pane, so they read beside the rows above: the reported
+	   shape (a citation mid-sentence), the same shape in the warning register for a
+	   value that did not survive, and the citation quoted inside a fenced block -
+	   the state the transform is required to leave ALONE, which is why it is a
+	   frame rather than a unit test alone. */
+	["chat-canonical-credential-citation--citation-mid-sentence", 1024, 620],
+	["chat-canonical-credential-citation--citation-not-stored", 1024, 620],
+	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
@@ -563,6 +640,34 @@ export const STORIES = [
 	   photograph a state no user can be in. */
 	["chat-message-input--conversation-gone", 1024, 300],
 
+	/* Mermaid's categorical fills, which are where the app spends a decorative hue
+	   on content rather than on chrome.
+
+	   WHY THIS STORY EXISTS NOW. `fillType0..7` (`mermaid-diagram.tsx`'s
+	   `WASH_CYCLE`) used to start on `infoWash`, so a diagram's second category
+	   was painted the colour that everywhere else means "here is a fact"; the
+	   second accent now sits at index 1. That change is two lines of source and
+	   has no other evidence anywhere: before this entry there was no frame under
+	   `docs/evidence` whose path contained `mermaid` at all, so the one site the
+	   accent change MOVES PIXELS ON was also the site with no picture.
+
+	   A JOURNEY DIAGRAM, because the ramp has to be legible in the frame to be
+	   evidence: the journey type spends `fillType0..7` per section, and its six
+	   sections therefore show all six entries of the cycle including the new one.
+	   It is also the type closest to what this app renders in practice.
+
+	   1280x900 is the transcript's own width, so the diagram is met at the size
+	   the chat column gives it. The story holds `capturePending` until the SVG is
+	   in the DOM — the module is a 3.6 MB dynamic import and the render is
+	   asynchronous, so a frame taken on the readiness poll alone would be the
+	   "Loading diagram..." placeholder in whichever themes lost the race, once per
+	   theme.
+
+	   Cost: +12 frames, one per sweep theme. A `--themes=` run covers the 47 the
+	   sweep does not, which is how a palette-specific concern (this ramp's
+	   index-2 adjacency) is checked where it matters rather than everywhere. */
+	["chat-mermaid-diagram--categorical-fills", 1280, 900],
+
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
 	   reach: the chrome band is ordinary DOM, while the native page view under it
@@ -614,7 +719,35 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 180],
+	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
+	   R5). `pinned-list` is declared taller by the list's own bounded height
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
+	   height the other expanded band uses. */
+	["browser-tab-strip--actions-expanded-batch", 1280, 360],
+	/*
+	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
+	 * column now, one item per row, so the batch's seven rows are 196px of buttons
+	 * plus the hairline and the heading row - 241px of band where the wrapping row
+	 * took 28. The declared heights are sized to the band the story actually draws, so
+	 * `Copy URL` (the last item) is inside the frame rather than below it, which is the
+	 * item D7 is about.
+	 */
+	/* THE GROUPING AND THE CHIP CAP (design R3, R4 - the conversation-browser
+	   change). `grouped` is three conversations plus the unattributed run at the
+	   route's own 1280; `grouped-overflow` is 20 tabs over 6 conversations at
+	   1160px, which is the scale R3's arithmetic is about and the state open
+	   question 3 says to revisit if the labels start crowding the tabs;
+	   `chips-collapsed` is the five-state row at the PANE's 640, where the cap is
+	   what stands between a legible title and a clipped one - the pane's width
+	   rather than the route's, because that is the tier the cap was argued for. */
+	["browser-tab-strip--grouped", 1280, 140],
+	["browser-tab-strip--grouped-overflow", 1280, 140],
+	["browser-tab-strip--chips-collapsed", 640, 140],
+	/* The pinned control's list, open, in the band: the frame §12.1 asked for, where the
+	   question is whether a page behind it can occlude it. Captured at the pane's 640
+	   for the same reason `chips-collapsed` is - that is where the control appears. */
+	["browser-tab-strip--overflow-list", 640, 280],
 	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
 	   so the declared height is the panel's; `narrow` is captured in a 560px
 	   viewport because the dock's own width classes are the product's (`w-80` below
@@ -625,6 +758,20 @@ export const STORIES = [
 	["browser-approvals-dock--denied", 1280, 720],
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
+	/*
+	 * THE SIDEBAR'S PER-ROW BROWSER MARK WAS CAPTURED HERE, through TWELVE rows, and they
+	 * are gone with the control (operator ask, 2026-09-18): ELEVEN
+	 * `browser-conversation-mark--*` rows, which are the eleven stories the deleted
+	 * `browser-conversation-mark.stories.tsx` exported and which wrote
+	 * `docs/evidence/browser-conversation-mark/`, plus the `chat-sidebar-status-feed--browser-marks`
+	 * row whose fixture fed the mark's count-and-badge cascade into a real sidebar row.
+	 * That set is deleted, and a STORIES row naming a story that no longer exists is the
+	 * drift this table's own count is checked against (review round 1, R4: this comment
+	 * said "nine states", the PR body said thirteen and the manifest said twelve rows - the
+	 * counts are now 11 + 1 above). The rows that reach the sidebar's conversation rows -
+	 * the `chat-sidebar-status-feed--*` states - are what remains, and they are where a
+	 * row's own layout is photographed now.
+	 */
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
@@ -932,6 +1079,22 @@ export const STORIES = [
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
+	/* The nesting change's own three states (`§ 5`): a mid-level page that LISTS
+	   its child's subagents, a grandchild's page whose row carries its own count,
+	   and the leaf whose page has no section at all — the absence is the state a
+	   reader has to be able to tell from "not loaded yet". */
+	["chat-run-panel--reader-descendants", 1280, 900],
+	["chat-run-panel--reader-deep-children", 1280, 900],
+	["chat-run-panel--reader-childless", 1280, 900],
+	/* The same three states with the pane at its 320px floor, which is the width
+	   the row mark's shed rule exists for (design round 1, D1): at the default
+	   420px the mark is drawn, at the floor it is dropped whole so the label keeps
+	   the characters it would have spent. 800x700 for `narrow-800`'s reason — the
+	   pane plus the chat column's own floor — and the pane is pinned to 320px by
+	   the story itself, the way `reader-deep-floor` pins it. */
+	["chat-run-panel--reader-descendants-floor", 800, 700],
+	["chat-run-panel--reader-deep-children-floor", 800, 700],
+	["chat-run-panel--reader-childless-floor", 800, 700],
 	/* A member's page whose child count is ONE: the descend control's singular
 	   label and its accessible name, in the only state that can show either
 	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */
@@ -1429,6 +1592,81 @@ export const STORIES = [
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
 	/*
+	 * A ROW'S TITLE BOX, ON A TITLE THAT REACHES IT (design round 1, D1 of the
+	 * per-row mark's removal). The other states in this set have titles short
+	 * enough that the 28px the deleted mark reserved is invisible in them: the
+	 * width claim had no frame, and the only artifact that ever stated it - the
+	 * deleted `browser-conversation-mark--slot-cost` specimen - went with the
+	 * control. This state is one row whose title truncates at this panel's own
+	 * width, so the box's own edge is what the frame is about; its before half is
+	 * `chat-sidebar-browser-mark-baseline/truncating-title/`, the same story on
+	 * unmodified `origin/main` at `10926b782`, where the same title truncates 28px
+	 * earlier because the mark's slot sat between the title and the row's end.
+	 */
+	["chat-sidebar-status-feed--truncating-title", 780, 560],
+	/*
+	 * The bulk read receipt, on the same real tree: the pile of unacknowledged
+	 * completions the operator reported, the PARTIAL clear (the backend refuses a
+	 * superseded token per item, and the receipt names the row that stays unread),
+	 * and the fully cleared pile with the control gone.
+	 *
+	 * The five negatives are the states the control must NOT appear in: an older
+	 * backend that does not advertise `completion_ack_bulk`, a catalogue read
+	 * that never answers, one that failed, an empty list, and the operator's own
+	 * report — rows still carrying `unseen` whose live state (busy, a parked gate,
+	 * not answering) has taken the row over, so nothing on screen is drawing a
+	 * mark and there is nothing for the control to clear. Each is an absence
+	 * claim, which is why each frame carries the readout line that states it in
+	 * words beside the panel.
+	 *
+	 * Sized at 600 rather than the siblings' 560: the readout below the panel
+	 * carries two more lines (the frame tally and the control's own state), and a
+	 * clipped caption is a claim a reviewer cannot read.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-pile", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-unseen-without-mark", 780, 600],
+	/*
+	 * The other half of the count: the marks it KEEPS. Sized with its siblings so the
+	 * two are readable side by side, and registered here because a story with no entry
+	 * is a story no sweep visits (design D3).
+	 */
+	["chat-sidebar-status-feed--mark-all-read-mixed-marks", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-partly-read", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-cleared", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-unsupported", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-loading", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-failed", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-empty", 780, 600],
+	/*
+	 * The states a single 360px width cannot photograph, all three asked for by
+	 * design round 1: the header row at the app's own clamps (`chat-layout.tsx`
+	 * allows 240-360, 280 is the default preference), where the action's label
+	 * sheds so the group's own name never breaks (D1, the round's blocker); and
+	 * the interval between the click and the receipt, which is the only progress
+	 * cue an irreversible write has (D4).
+	 *
+	 * 280 and 240 are the panel widths, so the frame is the panel plus the 420px
+	 * readout beside it — 720 and 680 — and the header row inside them measures
+	 * 271px and 223px.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-narrow-default", 720, 600],
+	["chat-sidebar-status-feed--mark-all-read-narrow-minimum", 680, 600],
+	/*
+	 * The pile scrolled to the bottom of its own box: the frame that proves the
+	 * header row is STICKY, since at rest a sticky row and a static one are the
+	 * same pixels and the defect design D2 found (the control 632px above the
+	 * marks it clears) exists only past the first screenful.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-scrolled", 780, 600],
+	/*
+	 * The filter case (agent review R4): one unread mark on screen, the store's
+	 * forty behind it, and no control — the frame that shows the scope being
+	 * withheld rather than silently narrowed.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-filtered", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-in-flight", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-refused", 780, 600],
+	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *
 	 * Two surfaces, and both are the row the reader is on: a conversation row
@@ -1468,14 +1706,21 @@ export const STORIES = [
 	 * pipeline (`hover`, the option the trigger-hover frames already use) and
 	 * shuts the shutter with the pointer still there.
 	 *
-	 * `data-chat-row:has(+ [data-chat-row][aria-current="page"])` is the row
-	 * immediately BEFORE the current one — the story's roster is newest-first and
-	 * its third row is the selected conversation, so this lands on "Migrate the
-	 * deploy script" while "Quarterly revenue model" is current. That is the pair
-	 * design round 1's D1 is measured on and the one a reader needs to judge the
-	 * hierarchy: the current row paints `highlight` and the row under the pointer
-	 * paints `elevated`, and whether the persistent mark still outranks the
-	 * transient one is a fact about two grounds side by side in one frame.
+	 * `data-chat-row` marks the ROW'S BUTTON, and since design R2 (folded in from
+	 * `main`) that button sits inside the row's own wrapper beside the browser mark,
+	 * so the wrapper is the element with a sibling row and the button is taken
+	 * inside it. The previous spelling —
+	 * `[data-chat-row]:has(+ [data-chat-row][aria-current="page"])` — described the
+	 * pre-R2 flat list and matched NOTHING at this head, which the rig reports
+	 * rather than photographing the resting state; it is written down here because a
+	 * hover frame's provenance is the selector that found it. The row above the
+	 * current one is still "Migrate the deploy script" while "Quarterly revenue
+	 * model" is current: the story's roster is newest-first and its third row is the
+	 * selected conversation. That is the pair design round 1's D1 is measured on and
+	 * the one a reader needs to judge the hierarchy: the current row paints
+	 * `highlight` and the row under the pointer paints `elevated`, and whether the
+	 * persistent mark still outranks the transient one is a fact about two grounds
+	 * side by side in one frame.
 	 *
 	 * An entry of its own with a `dir` rather than a second plain tuple: a plain
 	 * tuple for this story would write into `selected-row/` and overwrite the
@@ -1489,7 +1734,8 @@ export const STORIES = [
 		560,
 		{
 			dir: "selected-row-neighbour-hovered",
-			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
+			hover:
+				'div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]',
 		},
 	],
 	/*
@@ -1810,6 +2056,24 @@ export const STORIES = [
 	["chat-tool-rows--turn-timestamps", 1024, 760],
 	["chat-tool-rows--turn-timestamps-narrow", 420, 500],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The agent-side caption, added the same day as the report that "the agent
+	   responses (just the final responses, not the in-progress tool
+	   intent/response) don't have a time displayed on them". `answer-in-progress`
+	   is the frame that separates the two halves of that sentence: a settled
+	   answer with its caption, and the answer still arriving with none, under one
+	   working line. `prose-between-calls` is the shape the caption's COUNT has to
+	   survive - three intermediate paragraphs interleaved with the calls they
+	   narrate, plus a closing answer - which was four captions in one turn under
+	   the first gate (design round 1's D1) and is one under the rule that replaced
+	   it, on the answer the turn ends on. `answer-then-statement` is the shape that
+	   lost the time entirely: a notice and a peer receipt painting after the
+	   answer, neither of which carries a `<time>` of its own nor a disclosure to
+	   open, which is design round 2's D2-1. Sized to their content, for the reason
+	   the turn-stamp pair is. */
+	["chat-tool-rows--answer-in-progress", 1024, 340],
+	["chat-tool-rows--prose-between-calls", 1024, 520],
+	["chat-tool-rows--prose-between-calls", 420, 700],
+	["chat-tool-rows--answer-then-statement", 1024, 470],
 	/* The cold engage: a send the app has admitted and the owner has not answered
 	   yet - the operator's "I hit send and nothing happens for three seconds".
 	   Captured as a PAIR with its baseline, because the claim is a difference:
@@ -1885,6 +2149,100 @@ export const STORIES = [
 	   read beside the states above. */
 	["chat-message-input--credential-masked-session-pane", 1024, 300],
 	["chat-message-input--credential-masked-small-view", 440, 300],
+	/* THE CHIP'S TWO NEW STATES (operator report, 2026-09-17: "the pill must look
+	   like a real pill component ... with an x button to clear"). `pill-small-view`
+	   is the SAME minted reference at the shipped compact rung, because the chip is
+	   painted at a box MEASURED from the mirror: a rung that drops a type step and a
+	   padding step moves that box, and no frame before this one paired the mint with
+	   `isSmallView`. `pill-cleared` is the control's own state, driven by a real
+	   `userEvent.click` on the chip's `x`; the frame shows the sentence with the
+	   reference gone and the composer's sentence about what that cost. The numbers
+	   behind both are printed by `scripts/credential-chip-geometry.mjs` rather than
+	   read off these pictures. */
+	["chat-message-input--credential-pill-small-view", 440, 300],
+	["chat-message-input--credential-pill-cleared", 1024, 300],
+	/*
+	 * THE FOUR STATES ROUND 1 HAD NO FRAME FOR (each finding's own frame, as the
+	 * review asked for).
+	 *
+	 * `scrolled` is UX round 1's blocker: the chip's measurement added the mirror's
+	 * own scroll to a viewport-relative rect, so in any message long enough to
+	 * scroll the chip sat exactly `fieldScrollTop` px off its run - an opaque ground
+	 * and a live `x` over unrelated prose. The row scrolls the field itself
+	 * (`scrollToEnd` sets the textarea's own `scrollTop` and FAILS if nothing
+	 * scrolled), and the story's play measures the pair in a real browser at that
+	 * offset as well, so the frame and the number agree.
+	 *
+	 * `hover` and `focused` are the control's own states (design round 1, D2/D3):
+	 * `:hover` and `:focus-visible` are browser state no story can set, so the rig
+	 * puts the real pointer on the control and walks to it with real Tab presses -
+	 * and a selector that matches nothing throws rather than photographing the
+	 * resting state under a name that claims otherwise.
+	 *
+	 * `cleared-undone` is UX round 1, U2's second channel: the toast's own `Undo`
+	 * pressed, through a real click on the toast, with the play function asserting
+	 * the marker and the payload are back.
+	 */
+	[
+		"chat-message-input--credential-pill-scrolled",
+		1024,
+		300,
+		{ scrollToEnd: "textarea" },
+	],
+	[
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{ hover: 'button[aria-label^="Remove credential"]' },
+	],
+	[
+		"chat-message-input--credential-pill-focused",
+		1024,
+		300,
+		{ tabTo: 'button[aria-label^="Remove credential"]' },
+	],
+	[
+		/* The pressed control (design round 2, D7). Same story as the hover row, a HELD
+		   press rather than a click, so the frame carries `:active`'s `bg-sunken` beside
+		   the hover's ink step - the one state this component gained that no frame
+		   showed. */
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{
+			dir: "credential-pill-pressed",
+			press: 'button[aria-label^="Remove credential"]',
+			hold: true,
+			label:
+				"pressed: the clear control held down - the ink step plus the primitive's sunken ground, no ring",
+		},
+	],
+	[
+		/* And the same two control states at the COMPACT rung, where the control fills the
+		   run box exactly (16x16 in a 16px box): the hover ground lands inside the chip
+		   and only the ring leaves it, which is arithmetic until it is a frame (D7). */
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-hover-small-view",
+			hover: 'button[aria-label^="Remove credential"]',
+			label:
+				"hover at the compact rung: the control under the pointer, its ground inside the chip and only the ring leaving it",
+		},
+	],
+	[
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-focused-small-view",
+			tabTo: 'button[aria-label^="Remove credential"]',
+			label:
+				"focus at the compact rung: the dense-size ring, offset inside the chip's own edge",
+		},
+	],
+	["chat-message-input--credential-pill-cleared-undone", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
 	   that the first fix left a standing gap) at both rungs, the two shorter notice
@@ -2162,6 +2520,128 @@ export const STORIES = [
 	["canvas-workspace--files-scanning", 1280, 900],
 	["canvas-workspace--files-scan-stopped", 1280, 900],
 	["canvas-workspace--files-scan-stopped-empty", 1280, 900],
+	/*
+	 * The states the LIST introduced, one frame each, because each is a claim a
+	 * picture carries better than a sentence:
+	 *
+	 * - `files-narrow` is the dock's 400px end, which is the width the directory
+	 *   line's decision was taken at: the two clashing rows keep their directory
+	 *   there and every other row spends the line on its name.
+	 * - `files-filtered` and `files-no-matches` are the query's two outcomes. Both
+	 *   are driven through the panel's own field by their story's play function -
+	 *   the count line under a query (`3 of 12 files`) and the escape hatch in the
+	 *   body of an empty one are the two things a prop cannot photograph.
+	 * - `files-scrolled` is the END of a forty-eight-row list at maximum scroll,
+	 *   which is the operator's own report: before the fix the last rows sat in a
+	 *   band the dock clipped and the scroller's padding was inside it. The story
+	 *   throws if the list did not scroll and if the last row's bottom is past the
+	 *   window, so a frame that arrives is a frame that measured its own claim; the
+	 *   app-level number is asserted by `mentioned-files-app-proof.mjs --geometry`.
+	 */
+	["canvas-workspace--files-narrow", 1280, 900],
+	["canvas-workspace--files-filtered", 1280, 900],
+	["canvas-workspace--files-no-matches", 1280, 900],
+	["canvas-workspace--files-scrolled", 1280, 900],
+	/*
+	 * THE STATES THE SET HAD NO PICTURE OF, one entry each (design round 1, D1 and
+	 * D4). They are not decoration: the dock's own default width is 450px, the
+	 * hierarchy's no-files branch had never been rendered, and the filter's empty
+	 * body was the one copy on this surface no round had seen.
+	 */
+	["canvas-workspace--files-dock-default", 1280, 900],
+	["canvas-workspace--files-media", 1280, 900],
+	["canvas-workspace--files-single", 1280, 900],
+	["canvas-workspace--files-filtered-empty", 1280, 900],
+	["canvas-workspace--files-no-files", 1280, 900],
+	["canvas-workspace--nothing-open-empty", 1280, 900],
+	/*
+	 * THE BLANK CANVAS AT THE DOCK'S 400px FLOOR (design round 2, D9). The two
+	 * `nothing-open*` frames above render at the `CanvasFrame` default - 720px, with
+	 * the row box measuring 718px inside it - where the action row has room and its
+	 * `flex-wrap` never fires, so the state the row was fixed FOR had no picture and
+	 * the round-1 record claimed one. This entry is that state: the three actions,
+	 * with files, inside a 351px content box.
+	 */
+	["canvas-workspace--nothing-open-narrow", 1280, 900],
+	/*
+	 * THE ROW'S INTERACTIVE STATES (design round 1, D1), each driven by the rig
+	 * rather than by a story's play function - because `:hover` is set only by real
+	 * pointer input and a `:focus-visible` ring only by a real keyboard
+	 * interaction, so a story that dispatched its own events would photograph the
+	 * resting row and file it under a hover. `chat-sidebar-current-row` measured
+	 * exactly that: its programmatic `.focus()` came back with the ground and no
+	 * ring.
+	 *
+	 * Six entries over two stories, three states each at the dock's 720 and two at
+	 * its 400px floor, plus the field's own clear control - which only exists while
+	 * a query does, so it hangs off the query story rather than off these. The
+	 * pointer frames wait for the reveal's transition (`hoverSettleMs`) instead of
+	 * trusting that it landed.
+	 */
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-hover",
+			hover: '[data-tour-tag="file-row"]:nth-child(3) > button',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-focused",
+			tabTo: '[data-tour-tag="file-row"]:nth-child(3) > button',
+		},
+	],
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-actions-hover",
+			hover:
+				'[data-tour-tag="file-row"]:nth-child(3) [aria-label="File actions"]',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states-narrow",
+		1280,
+		900,
+		{
+			dir: "files-row-hover-narrow",
+			hover: '[data-tour-tag="file-row"]:nth-child(3) > button',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states-narrow",
+		1280,
+		900,
+		{
+			dir: "files-row-focused-narrow",
+			tabTo: '[data-tour-tag="file-row"]:nth-child(3) > button',
+		},
+	],
+	[
+		"canvas-workspace--files-filtered",
+		1280,
+		900,
+		{
+			dir: "files-filtered-clear-hover",
+			hover: '[aria-label="Clear search"]',
+			hoverSettleMs: 400,
+		},
+	],
+	/*
+	 * The blank canvas, with the conversation's own file count on its Files action.
+	 * The third way out of the dead end this state used to be.
+	 */
+	["canvas-workspace--nothing-open", 1280, 900],
 	["canvas-workspace--pdf-viewer", 1280, 900],
 	["canvas-workspace--image-viewer", 1280, 900],
 	["canvas-workspace--audio-viewer", 1280, 900],
@@ -2201,6 +2681,86 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+	/*
+	 * The rest of the hub's states, and why the sweep grew with this change.
+	 * `grid` alone photographed one of the six things the surface can look like,
+	 * so "the hub is empty", "the hub is loading" and "the hub refused" had no
+	 * frames at all - and two of the three are unreachable by hand on a working
+	 * machine, which is what a story is for.
+	 */
+	["agent-hub-page--signed-in", 1280, 900],
+	["agent-hub-page--loading", 1280, 900],
+	["agent-hub-page--empty", 1280, 900],
+	["agent-hub-page--load-failed", 1280, 900],
+	["agent-hub-page--empty-category", 1280, 900],
+	["agent-hub-page--page-change-keeps-the-grid", 1280, 900],
+	/*
+	 * The states design round 1 asked for by name (D8) plus the width D5 is
+	 * about: the search miss, the scope switched to description, a non-default
+	 * sort, the focused control, and the grid at 920px — which is where the
+	 * page's own `minmax(17.5rem,1fr)` lands on two columns beside the rail, with
+	 * counts in the six- and seven-character range.
+	 */
+	["agent-hub-page--viewer-state-unknown", 1280, 900],
+	["agent-hub-page--search-miss", 1280, 900],
+	["agent-hub-page--scope-switched", 1280, 900],
+	["agent-hub-page--sorted-by-name", 1280, 900],
+	["agent-hub-page--focused-search", 1280, 900],
+	["agent-hub-page--narrow-columns", 920, 900],
+	/*
+	 * The chat sidebar's Agents section, at the width that column actually is:
+	 * the frame is the 360px panel inside a little ground, because the section is
+	 * three rows and an action, and a 1280px frame of it would be a picture of the
+	 * app's empty right-hand side.
+	 */
+	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
+	["chat-sidebar-agents--installed-with-builtins", 420, 760],
+	["chat-sidebar-agents--all-installed", 420, 760],
+	["chat-sidebar-agents--installing", 420, 760],
+	/*
+	 * The mid-run frame: a bar with a fill in it, which is the state the
+	 * determinate treatment exists for and the one the set could not show.
+	 */
+	["chat-sidebar-agents--installing-mid-run", 420, 760],
+	["chat-sidebar-agents--install-summary", 420, 760],
+
+	/*
+	 * The publish dialog, in every state its rewrite introduced (agent-hub
+	 * contract §6.2/§6.3): the consent copy that now says what is published, the
+	 * blocked-field list that disables submit, and each refusal with its own
+	 * headline, action and register. Six of the ten are reached by PRESSING the
+	 * consent box and Publish — a treatment rendered from a prop would not be
+	 * evidence that the flow reaches it.
+	 *
+	 * 980x860: the dialog at its own `sm` step (max-w-xl) plus the page it is
+	 * centred in. Declared rather than measured for the reason every entry here
+	 * is — a frame whose height depends on which refusal is showing is a frame a
+	 * reviewer cannot diff against the next round's.
+	 */
+	["agents-publish-dialog--default", 980, 860],
+	["agents-publish-dialog--pre-validation-blocked", 980, 860],
+	["agents-publish-dialog--name-taken", 980, 860],
+	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--name-claim-in-flight", 980, 860],
+	["agents-publish-dialog--reserved-builtin", 980, 860],
+	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
+	["agents-publish-dialog--moderation-rejected", 980, 860],
+	["agents-publish-dialog--moderation-unavailable", 980, 860],
+	["agents-publish-dialog--published", 980, 860],
+	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The pull's four outcomes, each one real toast from the real hook against a
+	 * stubbed transport, held open with `toastDuration: Infinity` because an
+	 * auto-closed toast is a frame that cannot be reproduced. Sized tight to the
+	 * caption plus the toast: a taller viewport is mostly ground, which
+	 * `check-evidence` rejects as a story that painted nothing.
+	 */
+	["agents-pull-outcomes--downloaded", 980, 420],
+	["agents-pull-outcomes--adjusted-name", 980, 420],
+	["agents-pull-outcomes--already-held", 980, 420],
+	["agents-pull-outcomes--refused", 980, 420],
+	["agents-pull-outcomes--refused-prose", 980, 420],
 	/*
 	 * The Schedules page, re-shot whole when the page was harmonized onto the
 	 * wake primitive: its rows are conversations-with-wakes now, so every
@@ -2321,7 +2881,82 @@ export const STORIES = [
 	 * is their before-half.
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	/*
+	 * THE TWO PHASE PANELS, which the frame above is NOT (UX U6). `-in-flight` opens
+	 * on a press whose phase has not arrived, so it renders the phase-null fallback;
+	 * these two carry `installing` and `restarting`, which is what a reader watches
+	 * for the ~85 s of a publish and the seconds of the restart. They are declared so
+	 * a SWEEP produces them too: an undeclared story would leave its frames as an
+	 * unexplained directory on disk, which is the failure the sweep's own count
+	 * exists to prevent.
+	 */
+	["common-updatenotification--backend-update-installing", 1280, 900],
+	["common-updatenotification--backend-update-restarting", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
+	 * is the published release, the daemon SERVING this app is the previous build,
+	 * and the app may restart it because it started it itself. `restartable` is the
+	 * reading that decides the panel's ending, so the story carries both numbers and
+	 * the flag - a frame whose subject is the control has to be the state that has
+	 * the control.
+	 *
+	 * Captured twice on purpose, and this entry is the second half: the same story on
+	 * the tree BEFORE the change states the fact and offers only "Understood", and
+	 * `docs/evidence/server-behind-app-owned-before/README.md` carries that arm's frame
+	 * and how it was taken. The difference between the two frames is renderer copy
+	 * and one control, so unlike a payload-only pair there is a real pre-change tree
+	 * to photograph - which is what makes this pair evidence rather than an
+	 * illustration.
+	 */
+	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	/*
+	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
+	 * frame on any branch, and neither is reachable from a trigger flag: both exist
+	 * only as a COMPLETION the producer sends after a restart that did not take, so
+	 * the stories drive that payload. They are the two states this round's blocker
+	 * findings are about - the panel that contradicted itself, and the toast that
+	 * called a stopped server a success - and a finding about what a reader SEES
+	 * cannot be closed without the frame it is seen in.
+	 */
+	[
+		"common-updatenotification--server-behind-app-owned-restart-failed",
+		1280,
+		900,
+	],
+	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
+	/*
+	 * THE UPDATE PANEL'S OWN STATES, each carrying the sentence it is evidence for. The flags
+	 * and payloads behind them are this branch's; the harness they render through is this
+	 * file's.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-source-build",
+		1280,
+		900,
+		{ expectSentence: "Rebuilds this checkout with `lop-update`" },
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		1280,
+		900,
+		{ expectSentence: "The app updates this install itself" },
+	],
+	[
+		"common-updatenotification--backend-update-failed-orphan",
+		1280,
+		900,
+		{
+			expectSentence: "Resolved 55 packages in 1.25s",
+		},
+	],
+	[
+		"common-updatenotification--backend-manual-required-app-owned",
+		1280,
+		900,
+		{ expectSentence: "cannot update this server" },
+	],
+
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only
@@ -2444,6 +3079,29 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
+	   not cover: its fixture is a finished turn (`streaming: false`), where a
+	   clockless frame that would create a row is refused. With a turn in flight
+	   the fold this change replaces painted it at the reader's arrival instead, and
+	   the operator's report is that state — opening session `c1c7072b735c` mid-turn
+	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
+	   running `wait`, each showing its output's first line where the command
+	   belongs. The `After` frames are built by the SHIPPED reducer from the real
+	   journal and the real snapshot seed of that session (`scripts/fixtures/
+	   trace-order.json`, harvested by `scripts/harvest-trace-order-fixture.mjs`);
+	   the `Before` frames by a story-local re-implementation of the pre-fix fold,
+	   because the state they are evidence about no longer exists in the shipped
+	   code and a pair shot from two trees cannot be re-captured once the base
+	   moves. `Report` folds the eight calls the report proves — the page at that
+	   moment names none of them (`page_names_ghosts: []`) — over the in-flight
+	   frame; `Live` folds the unmodified harvest — 100 retained ends, 59 of them
+	   naming a call the page cannot label. The pane is pinned here for the same
+	   reason as the pair above, and the arrival stamp is derived from the
+	   snapshot's own in-flight call so the frames do not move between captures. */
+	["chat-trace-order-while-live--before-report", 1280, 800],
+	["chat-trace-order-while-live--after-report", 1280, 800],
+	["chat-trace-order-while-live--before-live", 1280, 800],
+	["chat-trace-order-while-live--after-live", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
@@ -2457,6 +3115,86 @@ export const STORIES = [
 	   entry is a 330px composer, which is what the `@container/slash` query
 	   answers. A frame taken at 1280 would photograph a layout no composer has
 	   and hide the one rule this set exists to show. */
+	/*
+	 * THE COMPOSER'S `@` MENTION LAYER: the chip drawn behind the sentence, and the
+	 * picker over it.
+	 *
+	 * A narrowed surface of its own rather than entries appended to a neighbouring
+	 * set, because the claim is new rather than a re-take of an old one. The band's
+	 * own measure is the app's default window (1380x872), so every chip frame is
+	 * read at the width the app ships; `wrapped-mention` narrows the COLUMN to
+	 * 420px inside that viewport, which is the frame the fill's per-line-fragment
+	 * behaviour is read from, and `picker-rows` is captured TWICE because the row
+	 * budget is a claim about two frames: 1380x768 for the ceiling and 768x520 for
+	 * the floor, where the region must show fewer rows rather than push the shell
+	 * off the bottom.
+	 *
+	 * `quoted-mention` is design round 1's D2 and review round 2's own note: the
+	 * quoted form `@"my file.txt"` paints ONE fill over a space, which is the shape a
+	 * merged pair used to have, so it is the pair to `adjacent-mentions` and the last
+	 * state on this surface that was argued rather than photographed.
+	 *
+	 * `before-no-mentions` is the pair's other half on purpose: it is the same
+	 * sentence with the same file named as prose, which is what `origin/main` paints
+	 * for it, so a reader can compare the feature rather than two of its states.
+	 */
+	["chat-mention-chips--before-no-mentions", 1380, 872],
+	["chat-mention-chips--mention-at-rest", 1380, 872],
+	["chat-mention-chips--mentions-at-the-edges", 1380, 872],
+	["chat-mention-chips--adjacent-mentions", 1380, 872],
+	["chat-mention-chips--quoted-mention", 1380, 872],
+	["chat-mention-chips--unresolved-stays-prose", 1380, 872],
+	["chat-mention-chips--chip-needs-approval", 1380, 872],
+	["chat-mention-chips--caret-inside-token", 1380, 872],
+	["chat-mention-chips--wrapped-mention", 1380, 872],
+	/*
+	 * The four surfaces this remediation added, each a state a finding named:
+	 * `harness-cannot-expand` is the state every release carries today (no
+	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
+	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
+	 * chip promise that is not a drawing.
+	 */
+	["chat-mention-chips--harness-cannot-expand", 1380, 872],
+	["chat-mention-chips--small-view-mention", 1380, 872],
+	["chat-mention-chips--scrolled-draft", 1380, 872],
+	["chat-mention-chips--atomic-delete", 1380, 872],
+	["chat-mention-chips--no-rows-enter", 1380, 768],
+	["chat-mention-chips--picker-open", 1380, 768],
+	["chat-mention-chips--picker-drilled", 1380, 768],
+	["chat-mention-chips--picker-descend", 1380, 768],
+	["chat-mention-chips--picker-no-match", 1380, 768],
+	["chat-mention-chips--picker-empty-folder", 1380, 768],
+	["chat-mention-chips--picker-unreadable", 1380, 768],
+	["chat-mention-chips--picker-many-rows", 1380, 768],
+	/*
+	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
+	 * top edge must be inside the column and the row count must have FALLEN rather
+	 * than the shell being pushed off the bottom. The same story twice is the
+	 * comparison — the budget is a claim about two frames, not about the formula.
+	 */
+	["chat-mention-chips--picker-many-rows", 800, 600, { dir: "budget-800x600" }],
+	/*
+	 * And the ceiling, at the band's own window: the budget's other end. The
+	 * formula clamps at eight rows whatever the room, so a frame at 1380x872 is
+	 * what shows the ceiling rather than the room — three frames of one story, for
+	 * the three answers 4, 7 and 8.
+	 */
+	[
+		"chat-mention-chips--picker-many-rows",
+		1380,
+		872,
+		{ dir: "ceiling-1380x872" },
+	],
+	/*
+	 * And the FLOOR the design's open item 3 names, which no frame had shown
+	 * (design round 1, D7): at this window the room above the anchor buys exactly the
+	 * three rows `atRowBudget` clamps at — a taller window is four or more and a
+	 * shorter one overflows the window's own top edge, because the floor holds the
+	 * region at three rows whatever the room — so a reader can see the clamp bind,
+	 * rather than read it as a branch in a pure function.
+	 */
+	["chat-mention-chips--picker-many-rows", 768, 520, { dir: "floor-768x520" }],
 	["chat-slash-completion--command-phase", 768, 460],
 	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
 	["chat-slash-completion--command-phase-narrowed", 768, 220],
@@ -2931,6 +3669,409 @@ export const STORIES = [
 	   be told from a story that never mounted (the trap `attached` documents), so
 	   the rule is pinned by its own cases instead. */
 	["common-connectivity-banner--internet-offline-confirmed", 1024, 420],
+
+	/*
+	 * The transcript's LINK affordances (`link-targets.stories.tsx`), and the two
+	 * pointer states among them are the ones nothing else can photograph.
+	 *
+	 * The REVEALED toolbar is browser state: a story `play` cannot produce a real
+	 * pointer, so these entries pass the rig's own `{ hover }` - CDP
+	 * `Input.dispatchMouseEvent` through the input pipeline, the same mechanism the
+	 * trigger-hover frames use - and the toolbar is raised by the shipped
+	 * `pointerover` handler reacting to it.
+	 *
+	 * `DetectedTargets` is the resting half and carries the eight admission shapes
+	 * in one frame (a `~` path, the operator's own report; a backticked path; a
+	 * `file://` URL; a bare https URL that remark-gfm already linked, which must not
+	 * be linked twice; a path in a table cell; a directory; a path that is not
+	 * there; and one long enough to wrap). There is NO `main`-side before half for it,
+	 * and there cannot be: the story file is ADDED by this branch, so no frame of it
+	 * exists on `main` at all. What the set does have is the story's own RESTING
+	 * state - the same text with no pointer on it and no highlight in it - and the
+	 * change it is the "before" of is "the previous behaviour was no anchor at
+	 * all", which round 1 (review M5) corrected in this file and in the design doc.
+	 *
+	 * `hover-file` is the file case (Copy, Open, Open folder); `hover-url` is the
+	 * URL case, which is the already-captured-by-markdown case and offers no Open
+	 * folder; `hover-directory` is the matrix's one deliberate omission; and
+	 * `hover-missing` is the state that replaced a press which silently did
+	 * nothing, so what it shows is a SENTENCE rather than a disabled button.
+	 *
+	 * The narrow pass is its own entry rather than a second width of the same one:
+	 * a long path in a 420px column wraps, and where the toolbar lands for a
+	 * wrapped link is exactly what it is for.
+	 */
+	["chat-canonical-links--detected-targets", 1024, 720],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			dir: "hover-file",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="url"]',
+			hoverSettleMs: 400,
+			dir: "hover-url",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover:
+				'[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			hoverSettleMs: 400,
+			dir: "hover-directory",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target^="/tmp/lo-link-missing/"]',
+			hoverSettleMs: 400,
+			dir: "hover-missing",
+		},
+	],
+	["chat-canonical-links--detected-targets-narrow", 420, 900],
+	/*
+	 * The states round 1's design round had to take with its OWN rig, committed here
+	 * through this one so they are swept, re-checkable and ASSERTED rather than
+	 * described (design D3). Each pairs its frame with the claim that produced it,
+	 * because each is a claim a still cannot carry on its own:
+	 *
+	 *  - `hover-prose` is the pointer on the turn's PROSE, in a paragraph that also
+	 *    holds links: nothing is raised at all (the turn's Quote control is raised by
+	 *    a highlight and nothing else), and a selector on the paragraph could not
+	 *    express that, so the pointer is aimed at a text RUN.
+	 *  - `hover-same-turn-second-link` is design D1 itself: two links in ONE turn,
+	 *    the second hovered while the strip is already up. `expectAnchored` requires
+	 *    the strip to sit 8px from the SECOND link's own box and to name it, which is
+	 *    the assertion that fails on the pre-remediation tree (the rect stayed on the
+	 *    first link's line while the contents followed the second).
+	 *  - `hover-toolbar-button` and `copy-pressed` are the strip's own states: its
+	 *    button under the pointer (one colour step, no transform) and its `Copy`
+	 *    after a real press (`Copied`). Both need a pointer that ARRIVES at a control
+	 *    which does not exist until a link has been hovered, which is what the chain
+	 *    is for.
+	 *  - `escape-dismisses` is UX U2 in a real browser: a hover-raised strip, focus
+	 *    wherever the reader left it, one real Escape - and the strip must be GONE.
+	 *  - `selection-link-and-prose` and `selection-two-links` are the two spanning
+	 *    highlights, and their gesture is STATEMENT rather than a drag: both have an
+	 *    endpoint inside a link, and a headless Chromium drag whose endpoint is inside
+	 *    an anchor produces no highlight at all (measured in round 1, UX U4 - and
+	 *    still true on this branch with `draggable={false}`). Their stories build a
+	 *    real `Selection` through the DOM's own API, which is the same instrument the
+	 *    committed `selection-in-link` frames use, and the claim here is about the
+	 *    RESULT: the turn's control is the only one raised, and no link toolbar
+	 *    mounts. The drag-versus-script limit is stated in the set's README.
+	 *  - `hover-narrow` lands the strip for a WRAPPED link in the narrow column.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverText: "is gone, and",
+			hoverSettleMs: 500,
+			dir: "hover-prose",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverChain: [
+				'[data-record-id="a1"] a[data-lo-target^="/tmp/lo-link-missing/"]',
+				'[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			],
+			hoverChainSettleMs: 500,
+			dir: "hover-same-turn-second-link",
+			expectAnchored: {
+				on: '[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			},
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverChain: [
+				'[data-record-id="a1"] a[data-lo-kind="file"]',
+				'[data-lo-link-toolbar] button[aria-label="Open"]',
+			],
+			hoverChainSettleMs: 900,
+			dir: "hover-toolbar-button",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverChain: [
+				'[data-record-id="a1"] a[data-lo-kind="file"]',
+				'[data-lo-link-toolbar] button[aria-label="Copy path"]',
+			],
+			hoverChainSettleMs: 500,
+			press: '[data-lo-link-toolbar] button[aria-label="Copy path"]',
+			pressSettleMs: 400,
+			dir: "copy-pressed",
+			expectAttribute: {
+				selector: '[data-lo-link-toolbar] button[aria-label="Copied"]',
+				name: "aria-label",
+				equals: "Copied",
+			},
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 500,
+			keys: [{ key: "Escape", settleMs: 300 }],
+			dir: "escape-dismisses",
+			expectGone: "[data-lo-link-toolbar]",
+		},
+	],
+	[
+		"chat-canonical-links--selection-spanning",
+		1024,
+		720,
+		{
+			dir: "selection-link-and-prose",
+			expectPresent: "[data-lo-quote-toolkit]",
+			expectGone: "[data-lo-link-toolbar]",
+		},
+	],
+	[
+		"chat-canonical-links--selection-across-links",
+		1024,
+		720,
+		{
+			dir: "selection-two-links",
+			expectPresent: "[data-lo-quote-toolkit]",
+			expectGone: "[data-lo-link-toolbar]",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets-narrow",
+		420,
+		900,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target$="with-annotations.xlsx"]',
+			hoverSettleMs: 500,
+			dir: "hover-narrow",
+		},
+	],
+	/*
+	 * THE PATH A MOUSE ACTUALLY MAKES (round 2, design D1 - the BLOCKER).
+	 *
+	 * Every entry above moves the pointer by TELEPORT: one `mouseMoved` at an
+	 * element's centre. A deliberate move delivers a stream of positions, and the
+	 * intermediate ones cross the 8px clearance between the link's own box and the
+	 * toolbar's - which belongs to the row's WRAPPER, so the old `pointerover`
+	 * handler cleared the subject there and the strip unmounted before the pointer
+	 * could reach a button. The committed `hover-toolbar-button` and `copy-pressed`
+	 * frames were therefore showing a state under a gesture the reader could not
+	 * make. These four entries are that gesture, and each one is an ASSERTION rather
+	 * than a scene: `hoverPath`'s `expectKept` fails on a tree where the corridor is
+	 * missing.
+	 *
+	 *  - `hover-gap-crossing`: the pointer crosses from the anchor ONTO its first
+	 *    button in two samples 16ms apart and BACK onto the anchor - both steps a
+	 *    mouse makes, and the one that was lost at step 1 on the pre-remediation
+	 *    tree (design D1's own measurement).
+	 *  - `hover-gap-long`: the same arrival in four samples, which is the spacing a
+	 *    slower hand produces and the case that was lost at step 2.
+	 *  - `hover-gap-fine`: a sample every PIXEL at 8ms, from a link placed BELOW its
+	 *    toolbar (the mid-paragraph directory link), so both placements are covered:
+	 *    this is the path that was lost on the first pixel off the anchor's own box.
+	 *  - `hover-gap-leave`: the same arrival, and then the pointer moving on out to
+	 *    the prose beside the link - where the strip must go. That is the other half
+	 *    of the claim, and without it "keep the subject" could be satisfied by never
+	 *    dismissing at all.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Copy path"]',
+						samples: 2,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+					{
+						to: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						samples: 2,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-crossing",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						samples: 4,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-long",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover:
+				'[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+				stepSettleMs: 8,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						stepPx: 1,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-fine",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Copy path"]',
+						samples: 3,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+					{
+						text: "is gone, and",
+						samples: 3,
+						expectKept: false,
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-leave",
+		},
+	],
+	/*
+	 * A TABLE-CELL anchor (round 2, design D4): the same-line and wrapped cases are
+	 * above, and neither shows what the placement does inside a bounded container.
+	 * Measured at this head: the cell link's box is `[255,544,612,561]`, the table
+	 * ends at 573, and the strip (`[255,569,353,601]`) therefore hangs 28px out of
+	 * the table over the paragraph below. § 5 records that cost beside the rule;
+	 * this frame is the picture it is recorded from.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target$="summary.pdf"]',
+			hoverSettleMs: 500,
+			dir: "hover-cell",
+		},
+	],
+	/*
+	 * THE SCRIPTED-HIGHLIGHT STATES, and the gesture behind each one is stated rather
+	 * than implied - because it is NOT a gesture a reader can make (round 2, UX U4).
+	 *
+	 * Round 1 believed `draggable={false}` had made "a highlight wholly inside a
+	 * link" reachable with a mouse. It did not: measured in a windowed build with
+	 * focus emulated, and re-measured on the story surface at this head, a drag, a
+	 * double-click, a triple-click and a click+Shift+click that begin and end inside
+	 * one anchor all leave `getSelection()` empty and fire no `selectstart` - while
+	 * the same instrument selects in the prose beside it, and selects THROUGH the
+	 * link from the prose. What `draggable={false}` removes is the browser's own
+	 * LINK DRAG; it does not make the link's own text selectable, and no page-side
+	 * code can.
+	 *
+	 * So these frames are built by the story through the DOM's `Selection` API
+	 * (`highlightLink`), which is a legitimate instrument for photographing a state
+	 * the COMPONENT must handle - the toolbar's `Quote`-leading layout, and what a
+	 * press on it stages - but not evidence that a reader can produce that state.
+	 * The set's README says so in the same words, and the design doc's § 5 states
+	 * the consequence: `Quote` is offered on the HOVER state too, so the affordance
+	 * does not depend on a selection the browser will not make.
+	 */
+	["chat-canonical-links--selection-in-link", 1024, 720],
+	/* The press that follows, with the composer in frame: what the toolbar stages is
+	   the link's own text, on the same `conversationId` the chip reads. Also a
+	   scripted `Selection`, and also not reachable with a pointer. */
+	["chat-canonical-links--selection-in-link-staged", 1024, 820],
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 240],
+	["chat-slash-highlight--seeded-name-instruction", 900, 330],
+	["chat-slash-highlight--name-instruction-multiline", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	["chat-slash-highlight--clipped-boundary", 900, 240],
+	["chat-slash-highlight--geometry", 1000, 2600],
+	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 ];
 
 /**
@@ -3140,6 +4281,66 @@ const teardown = () => {
 	}
 };
 
+/*
+ * The largest pid `process.kill` accepts. No real `process.pid` exceeds it, so
+ * a suffix above it is not a profile this script could have created.
+ */
+const MAX_PID = 2_147_483_647;
+
+/*
+ * The whole shape of the name this script gives its Chrome profile in the shared
+ * temp directory. Hoisted out of `profileOwnerPid` for the same reason
+ * `DEBUG_PORT_LINE` is hoisted out of its handler, and so the rule the sweep
+ * matches on has one place to be read from.
+ */
+const PROFILE_DIR_NAME = /^lo-evidence-(\d+)$/;
+
+/**
+ * The pid a Chrome profile directory name belongs to, or `null` if `name` is
+ * not one of our profiles.
+ *
+ * A profile is only ever named by this script's own creation site -
+ * `join(tmpdir(), `lo-evidence-${process.pid}`)`, in `main` below - so the
+ * whole of the shape is that literal, a decimal pid and nothing else. Every
+ * other name in the shared temp directory belongs to somebody else, and the
+ * point of returning `null` rather than a pid is that "not ours" then has to
+ * be stated by the name itself: there is no way to sweep a directory by
+ * forgetting a check.
+ *
+ * The range check is NOT redundant with the `\d+` above, and this is the half of
+ * the rule that is easiest to drop as belt-and-braces. A suffix long enough to
+ * overflow a double is still all digits, so `\d+` alone admits it, and
+ * `process.kill` answers a pid that is not an integer in range with a throw
+ * instead of a signal - measured on node 26.5.0:
+ *
+ *     process.kill(NaN, 0)           -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(1e20, 0)          -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(2147483648, 0)    -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(2_147_483_647, 0) -> Error ESRCH
+ *     process.kill(0, 0)             -> no throw, and it tests no process
+ *
+ * Every one of the first three was reaching the bare `catch` in the sweep below
+ * and being read as "no such process", which is the deletion this rule exists to
+ * stop. `MAX_PID` is exactly where node stops accepting a pid, so
+ * `lo-evidence-2147483648` - all digits, and above any pid a kernel hands out -
+ * is refused before the `kill` rather than answering a `TypeError` that reads as
+ * a death certificate.
+ *
+ * `pid > 0` is load-bearing for the same reason, and its job is smaller than it
+ * looks: `kill(0, 0)` does not throw, because to POSIX pid 0 means "the whole
+ * process group" rather than "no such process", so a `lo-evidence-0` directory
+ * would otherwise be read as a profile that is still in use. It is kept either
+ * way - the sweep would `continue` on it - and what the guard buys is the honest
+ * answer ("not ours") instead of a false one ("in use"), which is the whole
+ * claim this predicate makes.
+ */
+export const profileOwnerPid = (name) => {
+	const match = PROFILE_DIR_NAME.exec(name);
+	if (match === null) return null;
+	const pid = Number(match[1]);
+	return Number.isInteger(pid) && pid > 0 && pid <= MAX_PID ? pid : null;
+};
+
 /**
  * Remove Chrome profiles left by runs that never reached `teardown`.
  *
@@ -3152,12 +4353,67 @@ const teardown = () => {
  *
  * Own directories are skipped by pid, so concurrent runs do not delete each
  * other's profile out from under them.
+ *
+ * The candidate test is `profileOwnerPid`, and that is a correction rather
+ * than a flourish: this loop used to take any name starting with
+ * `lo-evidence-`. That prefix is not specific enough to be a profile.
+ * `evidence-manifest.test.mjs` USED TO build its synthetic evidence tree in the
+ * same shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
+ * - named deliberately, so that a leaked one is identifiable - which starts
+ * with exactly that prefix.
+ * `Number("manifest-XXXXXX")` is `NaN`, `process.kill(NaN, 0)` throws a
+ * `TypeError`, and the bare `catch` below read a throw that was never about a
+ * process as "no such process, so the profile is abandoned" and deleted a LIVE
+ * tree out from under a test that was walking it. It presented as flakiness
+ * rather than as a deletion - that file's six `countsMean` cells share one
+ * module-scope scratch root, and the five of them that walk it fail together
+ * with an `ENOENT` on it while the sixth returns early without touching the
+ * tree (review round 1, F1) - which is the worst shape a bug in here can take
+ * on a machine running several lanes at once.
+ *
+ * THE OTHER HALF OF THAT REPAIR IS ON THE FIXTURE'S SIDE, and it is why this
+ * rule is no longer the only thing standing between that sweep and a live tree.
+ * The fixture now lives under `lop-evidence-manifest-`, outside this prefix
+ * entirely, and each of its cells builds and removes its own rather than
+ * sharing one module-scope root. The reason it had to move rather than rely on
+ * the rule below: a name rule protects a tree only from a deleter that CARRIES
+ * it, and a machine running several checkouts has lanes whose `scripts/`
+ * predates it - which is the shape the flake was measured in.
+ *
+ * What this does NOT close, in the same breath (review round 1): the `catch`
+ * below still reads ANY throw from `kill` as "abandoned", so this narrows the
+ * class of names that can reach it rather than making the throw unambiguous.
+ * For a name that is now well-formed, only two throws are left: `ESRCH`, which
+ * is the intended "gone, reap it", and `EPERM`, the decoded pid being alive and
+ * owned by somebody else - and `EPERM` still converges on the deletion. That
+ * second one is out of reach here for a structural reason rather than a lucky
+ * one: `os.tmpdir()` is per-user, this loop walks only its own temp directory,
+ * and a name in it was written by a process of this user, so the profile being
+ * deleted cannot be a live one this user does not own. On a host with a SHARED
+ * `/tmp` and a second user running this script it could be, and
+ * `lo-evidence-1` is the measured demonstration that `EPERM` is an answer this
+ * code path currently reads as a death certificate.
+ *
+ * The follow-up that would close it - reap only on `e.code === "ESRCH"`, and
+ * warn or rethrow on anything else - is deliberately not bundled here: it
+ * changes what a capture does with a live-but-unreadable profile, which is a
+ * different decision from this fix and would want its own review rather than a
+ * ride on this one.
+ *
+ * Exported for the same reason `clearSweptFrames` is: the name-to-pid rule and
+ * the reap have to be exercisable against a synthetic temp root, without a
+ * capture and without Chrome.
  */
-const sweepStaleProfiles = () => {
+export const sweepStaleProfiles = () => {
 	const mine = `lo-evidence-${process.pid}`;
 	for (const name of readdirSync(tmpdir())) {
-		if (!name.startsWith("lo-evidence-") || name === mine) continue;
-		const pid = Number(name.slice("lo-evidence-".length));
+		/*
+		 * Only a name that decodes to the pid this script names its own profile
+		 * after is a candidate for reaping. A name that does not decode is not a
+		 * profile, so it is not this sweep's to delete.
+		 */
+		const pid = name === mine ? null : profileOwnerPid(name);
+		if (pid === null) continue;
 		try {
 			// Signal 0 tests for the process without touching it.
 			process.kill(pid, 0);
@@ -3340,8 +4596,32 @@ const main = async () => {
 	 * a fixture filename rather than the story's own title) and this is what
 	 * that cost. Checking the manifest first names the bad id directly.
 	 */
-	const stories = ONLY ? STORIES.filter(([id]) => id.includes(ONLY)) : STORIES;
-	if (stories.length === 0) throw new Error(`--only=${ONLY} matched no story`);
+	/*
+	 * The directory an entry writes, read the same way the manifest's own
+	 * `refreshedStories` list reads it: the entry's `dir`, or the story's leaf.
+	 */
+	const dirOf = ([id, , , entryOptions]) => {
+		const cut = id.indexOf("--");
+		return entryOptions?.dir ?? (cut === -1 ? id : id.slice(cut + 2));
+	};
+	const stories = STORIES.filter(
+		(entry) =>
+			(!ONLY || entry[0].includes(ONLY)) &&
+			(!DIR_FILTER || DIR_FILTER.includes(dirOf(entry))),
+	);
+	if (stories.length === 0) {
+		throw new Error(
+			`--only=${ONLY ?? ""} --dirs=${DIR_FILTER?.join(",") ?? ""} matched no story`,
+		);
+	}
+	const wanted = DIR_FILTER ? new Set(DIR_FILTER) : null;
+	if (wanted) {
+		const matched = new Set(stories.map(dirOf));
+		const missing = [...wanted].filter((dir) => !matched.has(dir));
+		if (missing.length > 0) {
+			throw new Error(`--dirs matched no entry for: ${missing.join(", ")}`);
+		}
+	}
 	/*
 	 * A narrowed run may reach past the sweep's list (see the flag block at the
 	 * top of this file) — and then the ids have to be real ones, because the id
@@ -3378,6 +4658,32 @@ const main = async () => {
 				`Check ${ORIGIN}/index.json for the real ids.`,
 		);
 	}
+	/*
+	 * A FULL SWEEP WIPES BEFORE IT CAPTURES, and the run that dies mid-flight takes
+	 * the committed set with it. Measured on 2026-09-18 in this worktree, not
+	 * inferred, because the trap is invisible from the flags:
+	 *
+	 *   - this call is in the NON-partial branch and runs BEFORE the story loop, and
+	 *     it spares only paths under a declared supplementary set;
+	 *   - there is exactly one try/catch, the top-level one at the foot of this
+	 *     file, and no per-story catch - so a throw anywhere ends the run with the
+	 *     wiped tree left on disk;
+	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
+	 *     `documentElement.dataset.capturePending` and clears it only when the
+	 *     settings page renders the Appearance switch, which the offline page never
+	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
+	 *     there. The repository's own measurement of that state is in
+	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
+	 *     `{"drawn":false,"counted":88,"pending":true}`.
+	 *
+	 * So a bare `node scripts/capture-evidence.mjs` at this head deletes the frames
+	 * of the 245 rows after that one and exits with NO manifest written - which
+	 * leaves `frames` on disk disagreeing with the manifest and takes
+	 * `pnpm check-evidence` down for every session on the machine, not only for the
+	 * branch that ran it. Narrow the run instead: `--only=<surface>--` once per
+	 * surface is append mode, nothing is deleted, and it reaches every row except
+	 * that one and the row behind it (whose every substring it shares).
+	 */
 	// A narrowed run refreshes named frames in place and must not wipe the
 	// rest of the tree. A full sweep still must not take the supplementary
 	// sets with it — those are live-app captures this script cannot re-derive
@@ -3665,10 +4971,19 @@ const main = async () => {
 				}
 			};
 			if (!options?.liveMotion) {
+				/*
+				 * `*:not(textarea)` on the caret, and the exception is the whole point of
+				 * the composer's frames: the field there keeps its OWN caret so the
+				 * capture can read it, which is how the highlight's caret guard is
+				 * measured at all (the mirror paints over a transparent textarea, so
+				 * "the caret is still the app's" is a claim about a colour that a
+				 * blanket `caret-color: transparent` would have answered for us).
+				 * A field that cannot be typed into is not what these frames are of.
+				 */
 				await cdp.send("Runtime.evaluate", {
 					expression: `(() => {
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
@@ -3754,6 +5069,270 @@ const main = async () => {
 			 * stories' own `data-capture-pending` latch is what holds the shutter until
 			 * the overlay's picture has decoded, which is a different job.
 			 */
+			/**
+			 * One pointer move, through the same input pipeline the hover above uses.
+			 *
+			 * Hoisted because two options below need it more than once - the chain and
+			 * the press - so a second copy of the dispatch (with its own opinion about
+			 * `modifiers`/`buttons`) cannot drift from this one.
+			 */
+			/**
+			 * Evaluate until the expression answers something, or fail after a bounded wait.
+			 *
+			 * WHY A WAIT AND NOT A THROW. `press` has always retried (`for (let i = 0; i
+			 * < 100 && !target.value; i++)`); the moves did not, so a story that had not
+			 * finished painting - which is the normal shape on a loaded machine - ended
+			 * the whole sweep with "the selector matched nothing". Measured 2026-09-17 at
+			 * load ~200: `hover-same-turn-second-link` failed on a selector that four
+			 * earlier entries in the SAME run had already matched, i.e. the story was
+			 * simply not painted yet. A frame that cannot be taken is worth ten seconds
+			 * before it is worth a failed sweep, and the message still names the
+			 * selector when the wait runs out.
+			 */
+			const evaluateUntil = async (expression, what) => {
+				for (let attempt = 0; attempt < 50; attempt++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression,
+					});
+					if (result.value) return result.value;
+					await sleep(200);
+				}
+				throw new Error(
+					`${story} @ ${theme}: ${what} matched nothing after 10s`,
+				);
+			};
+
+			const movePointerTo = async (selector, what) => {
+				const target = {
+					value: await evaluateUntil(
+						`(() => {
+						const el = document.querySelector(${JSON.stringify(selector)});
+						if (!el) return null;
+						const r = el.getBoundingClientRect();
+						return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+					})()`,
+						`the ${what} selector \`${selector}\``,
+					),
+				};
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				return target.value;
+			};
+
+			/*
+			 * A POINTER ON A TEXT RUN, for the frame whose claim is the turn's own
+			 * PROSE rather than a link inside it.
+			 *
+			 * No selector can name a text node, and the paragraph holding the run holds
+			 * links too - so hovering the paragraph's own centre would photograph a
+			 * link's toolbar under a name that says prose. `hoverText` finds the FIRST
+			 * text node containing the substring that is not inside an anchor or a
+			 * button, builds a `Range` over it and hovers the middle of its first line
+			 * box, which is what a reader's pointer does. A substring that matches
+			 * nothing outside a link THROWS rather than photographing the resting state
+			 * under a hovered name.
+			 */
+			if (options?.hoverText) {
+				const target = {
+					value: await evaluateUntil(
+						`(() => {
+						const wanted = ${JSON.stringify(options.hoverText)};
+						const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+						for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+							const at = node.data.indexOf(wanted);
+							if (at === -1) continue;
+							if (node.parentElement?.closest("a,button")) continue;
+							const range = document.createRange();
+							range.setStart(node, at);
+							range.setEnd(node, at + wanted.length);
+							const rect = range.getClientRects()[0];
+							if (!rect) continue;
+							return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+						}
+						return null;
+					})()`,
+						`no text run matching ${JSON.stringify(options.hoverText)} outside a link or a button`,
+					),
+				};
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
+			}
+
+			/*
+			 * A CHAIN OF POINTER MOVES, for the states whose claim is what happens when
+			 * the subject CHANGES under an already-mounted control.
+			 *
+			 * The strip is rendered at a stable position inside its row, so pointing at
+			 * a second link in the SAME turn re-renders it rather than re-mounting it,
+			 * and nothing fires the measure on its own. Round 1 measured the result
+			 * (design D1): contents and accessible name followed the second link while
+			 * the RECT stayed where the first link's had been, so the strip floated over
+			 * a target it was not about. A single `hover` cannot reach that state - it
+			 * moves the pointer once, from wherever it was - which is why this is its own
+			 * option.
+			 *
+			 * The steps are real `mouseMoved` dispatches, so the browser sees a pointer
+			 * ARRIVING at each element and the `pointerout`/`pointerover` pair a reader
+			 * would produce. `hoverChainSettleMs` is the dwell between steps: the reveal
+			 * has a deliberate delay of its own, so a chain that skipped the wait would
+			 * photograph the state before the strip moved and file it under the state
+			 * after.
+			 */
+			if (options?.hoverChain) {
+				for (const [index, selector] of options.hoverChain.entries()) {
+					await movePointerTo(selector, `hoverChain[${index}]`);
+					await sleep(options.hoverChainSettleMs ?? 400);
+				}
+			}
+
+			/*
+			 * A POINTER PATH WITH INTERMEDIATE SAMPLES, which is the ONE gesture the
+			 * options above cannot make.
+			 *
+			 * `movePointerTo` dispatches a single `mouseMoved` at an element's centre, so
+			 * every entry above moves the pointer by TELEPORT: one boundary crossing,
+			 * no sample in between. A reader's mouse does not - a deliberate move
+			 * delivers a stream of positions, and it is exactly those positions that
+			 * round 2 (design D1, the BLOCKER) found the strip cannot survive: the
+			 * toolbar sits 8px clear of the anchor's box, that clearance belongs to the
+			 * row's WRAPPER rather than to the turn, and a pointerover on the wrapper
+			 * cleared the subject - so `Copy`/`Open`/`Open folder` were reachable only
+			 * by a gesture no mouse makes, and the `hover-toolbar-button`/
+			 * `copy-pressed` frames showed a state a reader could not produce.
+			 *
+			 * `legs` is a list of moves, each starting from where the last one ended:
+			 * `to` is a selector, or `text` for a run of prose outside any link (the
+			 * same search `hoverText` does), and the samples between here and there are
+			 * spaced by the GREATER of `samples` equal steps and `stepPx`, so a path can
+			 * be stated the way a reader's move is ("1px at a time") or the way a test
+			 * is ("four steps"). `expectKept` turns the leg into a CLAIM rather than a
+			 * scene: the raised strip must still be up afterwards, and must name the
+			 * target of `expectKept.on` when that is given - which is false on the
+			 * pre-remediation tree for every path whose samples cross the gap, so the
+			 * entry is a regression test and not a photograph.
+			 */
+			if (options?.hoverPath) {
+				const { legs, stepSettleMs = 16 } = options.hoverPath;
+				const pointFor = async (leg, index) => {
+					if (leg.text) {
+						return evaluateUntil(
+							`(() => {
+								const wanted = ${JSON.stringify(leg.text)};
+								const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+								for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+									const at = node.data.indexOf(wanted);
+									if (at === -1) continue;
+									if (node.parentElement?.closest("a,button")) continue;
+									const range = document.createRange();
+									range.setStart(node, at);
+									range.setEnd(node, at + wanted.length);
+									const rect = range.getClientRects()[0];
+									if (!rect) continue;
+									return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+								}
+								return null;
+							})()`,
+							`hoverPath leg ${index} matches no prose run`,
+						);
+					}
+					return evaluateUntil(
+						`(() => {
+							const el = document.querySelector(${JSON.stringify(leg.to)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+						`hoverPath leg ${index} selector \`${leg.to}\``,
+					);
+				};
+				const move = async (x, y) => {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: Math.round(x),
+						y: Math.round(y),
+						button: "none",
+						buttons: 0,
+						clickCount: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(stepSettleMs);
+				};
+				const from = await movePointerTo(
+					options.hoverPath.from,
+					"hoverPath.from",
+				);
+				let at = from;
+				for (const [index, leg] of legs.entries()) {
+					const to = await pointFor(leg, index);
+					const distance = Math.hypot(to.x - at.x, to.y - at.y);
+					const count = Math.max(
+						leg.samples ?? 1,
+						leg.stepPx ? Math.ceil(distance / leg.stepPx) : 1,
+					);
+					for (let step = 1; step <= count; step++) {
+						await move(
+							at.x + ((to.x - at.x) * step) / count,
+							at.y + ((to.y - at.y) * step) / count,
+						);
+					}
+					at = to;
+					if (leg.expectKept === undefined) continue;
+					const { result: seen } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const strip = document.querySelector("[data-lo-link-toolbar]");
+							const on = ${JSON.stringify(leg.expectKept.on ?? null)};
+							const anchor = on ? document.querySelector(on) : null;
+							return {
+								strip: strip ? strip.getAttribute("aria-label") : null,
+								target: anchor ? anchor.getAttribute("data-lo-target") : null,
+							};
+						})()`,
+					});
+					if (leg.expectKept && !seen.value.strip) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} (${count} samples to ${leg.to ?? leg.text}) lost the strip - a pointer path a mouse can make must reach the buttons (design D1)`,
+						);
+					}
+					if (!leg.expectKept && seen.value.strip) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} left \`${seen.value.strip}\` up after the pointer moved onto ${JSON.stringify(leg.text ?? leg.to)} - leaving the link must dismiss`,
+						);
+					}
+					const named = String(seen.value.target ?? "")
+						.split("/")
+						.pop();
+					if (
+						leg.expectKept &&
+						named &&
+						!String(seen.value.strip).includes(named)
+					) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} kept a strip for \`${seen.value.strip}\`, not ${named}`,
+						);
+					}
+				}
+			}
+
 			if (options?.press) {
 				let target = { value: null };
 				for (let i = 0; i < 100 && !target.value; i++) {
@@ -3795,17 +5374,56 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
-				await cdp.send("Input.dispatchMouseEvent", {
-					type: "mouseReleased",
-					x: target.value.x,
-					y: target.value.y,
-					button: "left",
-					buttons: 0,
-					clickCount: 1,
-					modifiers: 0,
-					pointerType: "mouse",
-				});
+				/*
+				 * `hold` LEAVES THE BUTTON DOWN, which is the only way a committed frame can
+				 * carry `:active` (design round 2, D7): the compound state is the browser's,
+				 * no play function can set it, and a full click photographs the state AFTER
+				 * the press, which is the resting one again. A held button cannot leak past
+				 * this story: every capture navigates for its theme and each navigation is
+				 * preceded by `about:blank`, so no page inherits Chromium's input state.
+				 */
+				if (!options?.hold) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 0,
+						clickCount: 1,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
+
+			/*
+			 * A ROW MAY CORRECT THE CAPTION IT BORROWED (design round 3, D11). Some states
+			 * are reached by a row that reuses another story's surface - the `:active`
+			 * frame is the hover story, the compact hover and focus frames are the compact
+			 * story - and each then carries that story's own `Frame label`, so the frame is
+			 * anchored to a state it does not hold and a reader can only tell the three
+			 * apart by measuring. The override rewrites the story's own label handle
+			 * (`data-frame-label`); it FAILS when the handle is absent rather than shooting
+			 * the old caption under a new name, which is the defect class this exists for.
+			 */
+			if (options?.label) {
+				const written = (
+					await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector("[data-frame-label]");
+							if (!el) return null;
+							el.textContent = ${JSON.stringify(options.label)};
+							return el.textContent;
+						})()`,
+					})
+				).result.value;
+				if (written !== options.label) {
+					throw new Error(
+						`${story} @ ${theme}: the caption override could not be written (\`[data-frame-label]\` is missing) - a frame captioned with a state it does not hold is worse than no frame`,
+					);
+				}
 			}
 			// `let`, and biome must not be allowed to talk you out of it: line
 			// 620 reassigns this. A formatter once rewrote it to `const` while
@@ -4848,10 +6466,11 @@ const main = async () => {
 						 * branch needs, and the one the blanket override could not
 						 * express. A transition in flight is a difference between the
 						 * two shutters that the hold does not pin and no document
-						 * declares; the caret is the same argument as above.
+						 * declares; the caret is the same argument as above, including
+						 * its :not(textarea) scope (no backticks in here: this block is inside a template literal).
 						 */
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
@@ -4916,6 +6535,160 @@ const main = async () => {
 					`${story} @ ${theme}: the story's play function THREW — ${playFailure.split("\n")[0].slice(0, 200)}. The story's own assertions rejected the state this frame would have photographed, so the frame is not taken and the sweep stops here. Run the story in Storybook to see it fail.`,
 				);
 			}
+			/*
+			 * KEYS through the input pipeline, for the claims that are a KEYBOARD
+			 * interaction rather than a visual state - `keys: [{ key: "Escape" }]`.
+			 */
+			if (options?.keys) {
+				for (const spec of options.keys) {
+					const codes = KEY_CODES[spec.key];
+					if (!codes) {
+						throw new Error(`${story} @ ${theme}: no keyCode for ${spec.key}`);
+					}
+					for (const type of ["keyDown", "keyUp"]) {
+						await cdp.send("Input.dispatchKeyEvent", {
+							type,
+							key: spec.key,
+							code: codes.code,
+							windowsVirtualKeyCode: codes.keyCode,
+							nativeVirtualKeyCode: codes.keyCode,
+							modifiers: spec.shiftKey ? 8 : 0,
+						});
+					}
+					await sleep(spec.settleMs ?? 120);
+				}
+			}
+			/*
+			 * WHAT THE GESTURES ABOVE MUST HAVE PRODUCED, asserted rather than
+			 * photographed.
+			 *
+			 * The frame is what a design round LOOKS at; these are what make the entry
+			 * FALSIFIABLE in a sweep, which is the difference between evidence and a
+			 * picture. All three are the shape round 1's findings needed and no still
+			 * could settle on its own:
+			 *
+			 *   `expectAnchored: { on, gap? }` - the raised link toolbar's box must sit
+			 *   `gap` (default 8) px from the box of THAT selector, on whichever side the
+			 *   placement chose, and its accessible name must name that element's own
+			 *   target. This is design D1's regression: hovering one link and then another
+			 *   in the SAME turn must leave the strip anchored to the SECOND.
+			 *
+			 *   `expectGone` / `expectPresent` - selectors that must match nothing / must
+			 *   match something. This is UX U2 (`escape-dismisses`: one real Escape and
+			 *   the strip is gone) and the spanning-highlight rule (`selection-*`: the
+			 *   TURN's control is the only one raised).
+			 *
+			 *   `expectAttribute: { selector, name, equals? | includes? }` - the press
+			 *   produced the state the frame is named for (`copy-pressed` -> `Copied`).
+			 */
+			if (options?.expectAnchored) {
+				const claim = options.expectAnchored;
+				const { result: measured } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const strip = document.querySelector("[data-lo-link-toolbar]");
+						const anchor = document.querySelector(${JSON.stringify(claim.on)});
+						if (!strip || !anchor) return { strip: Boolean(strip), anchor: Boolean(anchor) };
+						const s = strip.getBoundingClientRect();
+						const a = anchor.getBoundingClientRect();
+						return {
+							strip: true,
+							anchor: true,
+							target: anchor.getAttribute("data-lo-target"),
+							label: strip.getAttribute("aria-label"),
+							above: Math.round(a.top - s.bottom),
+							below: Math.round(s.top - a.bottom),
+						};
+					})()`,
+				});
+				const seen = measured.value;
+				const gap = claim.gap ?? 8;
+				if (!seen?.strip || !seen?.anchor) {
+					throw new Error(
+						`${story} @ ${theme}: expectAnchored needs a raised strip and \`${claim.on}\` on screen; saw ${JSON.stringify(seen)}`,
+					);
+				}
+				if (seen.above !== gap && seen.below !== gap) {
+					throw new Error(
+						`${story} @ ${theme}: the strip is ${seen.above}px above / ${seen.below}px below \`${claim.on}\`, not ${gap}px - the placement did not follow its subject (design D1)`,
+					);
+				}
+				const name = String(seen.target ?? "")
+					.split("/")
+					.pop();
+				if (name && !String(seen.label ?? "").includes(name)) {
+					throw new Error(
+						`${story} @ ${theme}: the strip is anchored to \`${claim.on}\` but names \`${seen.label}\`, not ${name}`,
+					);
+				}
+			}
+
+			if (options?.expectGone || options?.expectPresent) {
+				const gone = [options.expectGone].flat().filter(Boolean);
+				const present = [options.expectPresent].flat().filter(Boolean);
+				const { result: seen } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => ({
+						gone: ${JSON.stringify(gone)}.filter((s) => document.querySelector(s) !== null),
+						missing: ${JSON.stringify(present)}.filter((s) => document.querySelector(s) === null),
+					}))()`,
+				});
+				if (seen.value?.gone?.length) {
+					throw new Error(
+						`${story} @ ${theme}: ${seen.value.gone.join(", ")} is still on screen - this frame claims it is not`,
+					);
+				}
+				if (seen.value?.missing?.length) {
+					throw new Error(
+						`${story} @ ${theme}: ${seen.value.missing.join(", ")} is not on screen - this frame claims it is`,
+					);
+				}
+			}
+
+			if (options?.expectAttribute) {
+				const claim = options.expectAttribute;
+				const { result: read } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `document.querySelector(${JSON.stringify(claim.selector)})?.getAttribute(${JSON.stringify(claim.name)}) ?? null`,
+				});
+				const value = String(read.value ?? "");
+				const ok =
+					claim.equals !== undefined
+						? value === claim.equals
+						: value.includes(claim.includes ?? "");
+				if (!ok) {
+					throw new Error(
+						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
+					);
+				}
+			}
+
+			/*
+			 * THE SENTENCE CLAIM, at the last moment before the shutter: a state whose whole point
+			 * is a sentence has to be photographed WITH that sentence on screen. The control that
+			 * makes this worth having is `backend-update-in-flight-source-build`, which was once
+			 * committed as evidence for copy no reader could see - the stories' mock registered no
+			 * listener, the panel painted the fallback, and the frame was byte-identical to the
+			 * release route's in all twelve themes. `storyDrew` counts elements and the attribute
+			 * checks ask about controls; neither can tell two sentences apart.
+			 *
+			 * A DISTINCT OPTION from the `select.expectText` above, which asserts a text SELECTION
+			 * and not a sentence the reader is meant to read: one name for two meanings is how a
+			 * guard stops guarding.
+			 */
+			if (options?.expectSentence) {
+				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
+					expression: "document.body.innerText || ''",
+					returnByValue: true,
+				});
+				const painted = String(claimRead?.value ?? "");
+				if (!painted.includes(options.expectSentence)) {
+					throw new Error(
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
+					);
+				}
+			}
+
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,
@@ -5089,6 +6862,18 @@ const main = async () => {
 	 *      are the UNION of the two sides' entries or values, because the merged
 	 *      tree carries both and either side's list alone would claim a pass that
 	 *      did not run in it.
+	 *   2b. EVERY TOP-LEVEL FIELD THIS BRANCH CARRIES THAT MAIN DOES NOT IS
+	 *      KEPT, and main's own keys this branch lacks are dropped rather than
+	 *      carried (group 5). The union is taken at the TOP level as well as
+	 *      inside it: a resolver that starts from main's schema loses this
+	 *      branch's own records without a word, which is what the twelfth fold
+	 *      onto `c69f78b92` did to seven of them
+	 *      (`browserMarkRemovalPass`, `roundOneRemediationNote`,
+	 *      `roundTwoCaptureNote`, `roundThreeCaptureNote`, `roundFourRePortNote`,
+	 *      `chatSlashHighlightEvidence`, `themeLegibilityCapture`) while every
+	 *      other group was honoured. `scripts/evidence-manifest.test.mjs` binds
+	 *      this clause now, so the next resolver finds it by failing rather than
+	 *      by reading this far.
 	 *   3. INSIDE a `supplementary` entry that exists on both sides, this pass's
 	 *      AUTHORED keys - `why`, `capturedAt`, `capturedAtHead` and any note -
 	 *      are KEPT and only the listings are unioned. An entry is a record this

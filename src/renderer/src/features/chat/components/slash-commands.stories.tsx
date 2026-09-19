@@ -361,6 +361,9 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	valueArgumentCommands: new Set(),
 	argumentCommands: new Set(),
 	nameListCommands: new Set(),
+	// No roster in a hand-built state: a story that wants a NAME run painted passes
+	// the names it checks (`slash-highlight.stories.tsx` is where that lives).
+	nameChoices: new Set(),
 	argumentWords: [],
 	enabled: true,
 	...over,

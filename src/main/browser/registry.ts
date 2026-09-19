@@ -43,6 +43,25 @@ export interface TabRecord {
 	owner: TabOwner;
 	/** Which lop session owns it, when `owner === "agent"`. */
 	sessionId: string | null;
+	/**
+	 * The conversation the tab was OPENED IN, which a hand-over does not move and a
+	 * revocation restores (design §5.1 row 6 / open question 2(b); review round 1, Q2).
+	 *
+	 * WHY ITS OWN FIELD rather than reading `handedTo` before nulling it: `sessionId`
+	 * is a SCOPING field — `tabsInScope`, the `tabs` listing's ownership check and
+	 * `mayDrive` all read it — so a revocation that set it to null deleted the fact that
+	 * the tab belongs to a conversation, and the user's tab left `This conversation`
+	 * and reappeared under `No conversation` for no reason the user could see. The home
+	 * is set once at `create` (the session id the host was created with, or null for the
+	 * route and a draft, which have no conversation) and is never rewritten: a
+	 * hand-over makes a tab an agent's without changing where it lives, so revoking it is
+	 * a true inverse.
+	 *
+	 * A restored tab's home is null for the same reason its `sessionId` is (`restored`
+	 * below): a tab that comes back from `session.json` is the user's full stop, and the
+	 * file carries no conversation for it (design 7.3).
+	 */
+	homeSessionId: string | null;
 	/** The capability. Null for a user tab that was never handed over, and null
 	 * for EVERY restored tab (design 7.3: a nonce is never re-issued across a
 	 * restart). */
@@ -229,6 +248,10 @@ export class TabRegistry {
 			// silently reclaim the tab it owned in a previous app run.
 			owner: restored ? "user" : options.owner,
 			sessionId: restored ? null : (options.sessionId ?? null),
+			// The same value `sessionId` gets at creation, kept because a hand-over
+			// overwrites `sessionId` and a revocation has to put the conversation back
+			// (see the field's own note).
+			homeSessionId: restored ? null : (options.sessionId ?? null),
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
 			restored,
@@ -368,6 +391,10 @@ export class TabRegistry {
 		// for the one action that does not add one.
 		if (record.owner !== "agent") this.assertAgentCapacity();
 		record.owner = "agent";
+		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
+		// NOT, and deliberately: a hand-over changes who may drive a tab, not the
+		// conversation the user opened it in — which is what `revokeHandOver` restores
+		// (review round 1, Q2).
 		record.sessionId = sessionId;
 		record.handedTo = sessionId;
 		record.nonce = mintNonce();
@@ -377,13 +404,23 @@ export class TabRegistry {
 	}
 
 	/** Revoke a hand-over: nulls the nonce, so the session's next action on that
-	 * handle gets the ordinary `tab_closed` refusal. */
+	 * handle gets the ordinary `tab_closed` refusal, and puts the tab back in the
+	 * conversation the user opened it in.
+	 *
+	 * THE ATTRIBUTION COMES BACK, NOT JUST THE OWNERSHIP (review round 1, Q2): the
+	 * revocation used to null `sessionId` outright, which took the tab out of the
+	 * conversation it was opened in (`tabsInScope` reads that field, and so does the
+	 * conversation's own tab count) — so revoking a hand-over silently lost the
+	 * conversation, and the design's §5.1 row 6 says a revoke is a true inverse. The
+	 * ownership and the capability still go, and `mayDrive` still refuses without the
+	 * nonce. A tab with no home (the route, a draft, a restored tab) still lands on
+	 * `null`, which is the behaviour it always had. */
 	revokeHandOver(tabId: number): void {
 		const record = this.tabs.get(tabId);
 		if (!record) return;
 		record.nonce = null;
 		record.owner = "user";
-		record.sessionId = null;
+		record.sessionId = record.homeSessionId;
 		record.handedTo = null;
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
@@ -505,14 +542,16 @@ export class TabRegistry {
 	// ---- removal -------------------------------------------------------------
 
 	/**
-	 * Drop a tab and hand its webContents id to `onRemove`, which is where the
-	 * debugger session, the log buffer and the child view are released.
+	 * Drop one tab's record WITHOUT notifying: the registry-local half of every removal.
 	 *
-	 * `forget` is the registry-local half, used by the fail-closed handle check
-	 * where the caller has no cleanup work to do (the webContents is already
-	 * destroyed) and by `destroy` below.
+	 * EXTRACTED FROM `forget` FOR `destroyMany` (design R5), and the split is what makes a
+	 * batch one change rather than N: `destroyMany` drops every record first, then runs
+	 * ONE `applyLayout()` and ONE `onChanged()`, and the notify-free half is the only way
+	 * to do that without N full state builds, N IPC broadcasts and N `session.json`
+	 * writes — which is what N sequential closes cost today (`host.closeTab` →
+	 * `registry.destroy` → `onChanged` per tab).
 	 */
-	forget(tabId: number): TabRecord | undefined {
+	private drop(tabId: number): TabRecord | undefined {
 		const record = this.tabs.get(tabId);
 		if (!record) return undefined;
 		this.tabs.delete(tabId);
@@ -531,9 +570,74 @@ export class TabRegistry {
 					.filter((candidate) => candidate.owner === "user")
 					.at(-1)?.tabId ?? null;
 		}
+		return record;
+	}
+
+	/**
+	 * Drop a tab and hand its webContents id to `onRemove`, which is where the
+	 * debugger session, the log buffer and the child view are released.
+	 *
+	 * `forget` is the registry-local half PLUS the notification: `drop` above removes the
+	 * record, and this runs the one `applyLayout()`/`onChanged()` pair every single-tab
+	 * removal has always run. It is what `destroy` below and the fail-closed handle check
+	 * use (where the caller has no cleanup work to do — the webContents is already
+	 * destroyed), while `destroyMany` uses `drop` for the same reason one level down: it
+	 * wants N removals under ONE notification rather than N of each.
+	 *
+	 * WHAT IT IS NOT, because this file is where a reader learns which removal path
+	 * notifies and it used to say the opposite of `drop`'s note (review round 1, A8):
+	 * `forget` is NOT the registry-local half — `drop` above is — and a caller that wants
+	 * the removal without the notification wants `drop`.
+	 */
+	forget(tabId: number): TabRecord | undefined {
+		const record = this.drop(tabId);
+		if (!record) return undefined;
 		this.applyLayout();
 		this.onChanged();
 		return record;
+	}
+
+	/**
+	 * Close SEVERAL tabs as one change: the registry half of the renderer's bulk closes
+	 * (design R5).
+	 *
+	 * WHY ONE INTENT RATHER THAN N `destroy` CALLS, in the order the design weighs it:
+	 *
+	 * 1. "Close all tabs in this conversation" cannot be expressed as a list without
+	 *    racing. A list computed from a projection the renderer read up to seconds ago
+	 *    misses a tab an agent opened in that conversation in the meantime, and the user
+	 *    pressed something that said ALL. (The renderer resolves that mode HERE, at
+	 *    execution time, for exactly this reason.)
+	 * 2. N round trips are N full `chromeState()` builds, N IPC broadcasts and N
+	 *    `session.json` writes, each of which re-renders the strip. A batch is one of
+	 *    each.
+	 * 3. `destroy` is synchronous and the chrome's closes do not take the per-tab lane
+	 *    (`registry.lane` is the dispatcher's), so there is no interleaving to reason
+	 *    about within one intent — and N separate intents are N separate windows in which
+	 *    an agent can create a tab. One intent, one window, one decision.
+	 *
+	 * IDS THAT ARE ALREADY GONE ARE SKIPPED RATHER THAN REFUSED: the user's intent was
+	 * that they be closed, and they are. Refusing the batch because one tab was closed
+	 * twice — by a second press, or by an agent's own `close` — would leave the other
+	 * tabs open, which is the one outcome nobody asked for.
+	 *
+	 * `onRemove` STILL RUNS PER RECORD and after the single notification, so the
+	 * webContents/debugger/log release path stays the single one it has always been
+	 * (design 11.1: with `WebContentsView`, nothing destroys the webContents for you).
+	 */
+	destroyMany(tabIds: readonly number[]): number {
+		const removed: TabRecord[] = [];
+		for (const tabId of tabIds) {
+			const record = this.drop(tabId);
+			if (record) removed.push(record);
+		}
+		if (removed.length === 0) return 0;
+		this.applyLayout();
+		this.onChanged();
+		for (const record of removed) {
+			this.onRemove(record.tabId, record.view.webContents.id);
+		}
+		return removed.length;
 	}
 
 	/** Destroy a tab: forget it, then release its resources. `onRemove` is

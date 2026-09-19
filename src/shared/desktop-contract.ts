@@ -317,6 +317,362 @@ const configUpdate = z
 	})
 	.strict();
 
+/*
+ * Instruction-set publication (agent-hub contract §1.3/§1.4/§1.5/§3.1).
+ *
+ * An agent is primarily its instruction set, so the unit of publication is a
+ * DOCUMENT and not an archive: `POST`/`PUT /v1/agents/{id}/publish` carry the
+ * content fields below, and the local backend fills in the ones it owns (the
+ * instruction body lives in the agent's `system_prompt.md`) while the renderer
+ * overrides only what the dialog actually edits. That is why there is no
+ * `model`, no `hosting` and no `current_working_directory` in this vocabulary:
+ * nothing outside a content field has a shape to travel in.
+ *
+ * The bounds and the rule SENTENCES below mirror the hub's validator — the same
+ * numbers and the same words as `local_operator/clients/radient.py`'s
+ * `_name_rule` and `build_instruction_set_document` — for two reasons the brief
+ * calls out. A client bound stricter than the server's is a bug report (it
+ * refuses a document the hub would have accepted, with no way for the author to
+ * tell which side refused), and a client that explains one rule in its own words
+ * puts two sentences in front of the user for the same refusal. So the schema
+ * below REFINES ON these functions rather than restating their rules: what this
+ * renderer would send and what it would refuse cannot disagree with the field
+ * sentence the publish dialog renders.
+ *
+ * ONE RULE IS DELEGATED RATHER THAN MIRRORED, and it is named here so nobody
+ * reads the claim above as covering it: the hub bans no whitespace in a
+ * published name, because it is mid-relaxation on exactly that rule. See
+ * `publicationNameRule`.
+ */
+
+/** 128 after `trim`, the same bound the desktop profiles route already uses. */
+export const PUBLICATION_NAME_MAX_CHARS = 128;
+export const PUBLICATION_DESCRIPTION_MAX_CHARS = 2000;
+export const PUBLICATION_INSTRUCTIONS_MAX_CHARS = 8000;
+export const PUBLICATION_TOOL_MAX_CHARS = 64;
+export const PUBLICATION_TOOLS_MAX_ITEMS = 64;
+
+/**
+ * Length in CODE POINTS, the unit every cap here counts.
+ *
+ * Not `String.prototype.length`, which counts UTF-16 units: an instruction body
+ * of 8000 emoji is 8000 characters to the hub and 16,000 to a naive check, so
+ * counting units would refuse at half the ceiling the server enforces — the
+ * client-stricter-than-the-server direction the contract forbids.
+ */
+const publicationCharCount = (value: string): number => [...value].length;
+
+/*
+ * The character classes a name is checked against, written as predicates over
+ * CODE POINTS rather than as character-class literals.
+ *
+ * Two reasons, and the second is why this is the form rather than a taste.
+ * These sets are statements about code points — "a name may not contain a
+ * control character" is a claim about the character, not about the byte — so
+ * the code says code points. And a class literal has to CONTAIN the characters
+ * it refuses, which this repository's linter rejects
+ * (`lint/suspicious/noControlCharactersInRegex`) for exactly this kind of rule;
+ * the same reasoning is recorded at `src/main/window-mode.ts`'s `breaksALine`.
+ */
+
+/**
+ * Python's `str.isspace()`: the White_Space property, plus `U+001C`-`U+001F`.
+ *
+ * Those four are not White_Space and Python's `isspace()` says they are, which
+ * is why this is a set rather than a property lookup.
+ *
+ * It is used for `strip`, for the collapse `name_key` folds with, and for
+ * nothing else — NOT for the name rule, because the hub deliberately bans no
+ * whitespace in a published name (see `publicationNameRule`). The whitespace the
+ * rule does refuse is the narrower set below.
+ *
+ * `U+FEFF` is deliberately absent here too, for a different reason: JavaScript's
+ * `\s` matches it and Python's `isspace()` does not, so trimming it would take a
+ * character off a name the hub keeps.
+ */
+const isPublicationWhiteSpace = (point: number): boolean =>
+	(point >= 0x09 && point <= 0x0d) ||
+	(point >= 0x1c && point <= 0x20) ||
+	point === 0x85 ||
+	point === 0xa0 ||
+	point === 0x1680 ||
+	(point >= 0x2000 && point <= 0x200a) ||
+	point === 0x2028 ||
+	point === 0x2029 ||
+	point === 0x202f ||
+	point === 0x205f ||
+	point === 0x3000;
+
+/**
+ * The whitespace that is ALSO a control character: the transport's
+ * `_CONTROL_WHITESPACE` (`local_operator/clients/radient.py`), which is one notch
+ * stricter than the hub's own validator.
+ *
+ * The one whitespace refusal the mirror keeps, and the reason the rule cannot
+ * simply drop its whitespace arm: no legitimate name contains a tab, a vertical
+ * tab, a form feed, a line control or NEL, and the transport reports those as
+ * whitespace rather than as control characters — so dropping the check would put
+ * a different `details.rule` on the same input than the side that refuses it.
+ *
+ * Spelled out rather than written as an intersection with the set above, because
+ * Python's `str.isspace()` additionally calls `U+001C`-`U+001F` whitespace while
+ * the hub's own list reports those as control characters, and a client that
+ * disagrees with the hub about WHICH rule a name broke is what this mirror
+ * exists to prevent.
+ */
+const isPublicationControlWhitespace = (point: number): boolean =>
+	point === 0x09 ||
+	point === 0x0a ||
+	point === 0x0b ||
+	point === 0x0c ||
+	point === 0x0d ||
+	point === 0x85;
+
+/** Python's `unicodedata.category(c) == "Cc"`, which is what the hub checks. */
+const isPublicationControl = (point: number): boolean =>
+	point <= 0x1f || (point >= 0x7f && point <= 0x9f);
+
+/**
+ * Python's `unicodedata.category(c) == "Cf"` — the format characters.
+ *
+ * A property escape rather than a range set like the three beside it, because
+ * `Cf` is a live category — `U+13430`-`U+1343F` and the tag characters arrived
+ * in recent Unicode versions — and a hand-copied range list is how a mirror
+ * drifts from the tables it claims to be. `\p{Cf}` IS the category, so it moves
+ * with the engine's.
+ *
+ * The class is not decoration: a format character renders as nothing, so
+ * `reviewer` with a U+200B in it and `reviewer` draw identically while being two
+ * different keys — the shadowing an exact local name lookup cannot see.
+ */
+const isPublicationFormat = (point: number): boolean =>
+	/\p{Cf}/u.test(String.fromCodePoint(point));
+
+/** The bidi overrides a rendered name would use to differ from its bytes. */
+const isPublicationBidiOverride = (point: number): boolean =>
+	(point >= 0x202a && point <= 0x202e) || (point >= 0x2066 && point <= 0x2069);
+
+/** Whether any code point of `value` satisfies `predicate`. */
+const publicationHasCodePoint = (
+	value: string,
+	predicate: (point: number) => boolean,
+): boolean => {
+	for (const character of value) {
+		if (predicate(character.codePointAt(0) ?? 0)) return true;
+	}
+	return false;
+};
+
+/**
+ * Python's `str.strip()`, over the set above.
+ *
+ * Not `String.prototype.trim()`, which strips the ECMAScript WhiteSpace set:
+ * the four `U+001C`-`U+001F` characters the set above includes are exactly the
+ * ones JS leaves alone, so a name trailing one of them would be trimmed by the
+ * hub and not here — two different names out of one string.
+ */
+const publicationTrim = (value: string): string => {
+	const characters = [...value];
+	let start = 0;
+	let end = characters.length;
+	while (
+		start < end &&
+		isPublicationWhiteSpace(characters[start].codePointAt(0) ?? 0)
+	)
+		start++;
+	while (
+		end > start &&
+		isPublicationWhiteSpace(characters[end - 1].codePointAt(0) ?? 0)
+	)
+		end--;
+	return characters.slice(start, end).join("");
+};
+
+/** Every run of the whitespace set collapsed to a single `U+0020` (contract §3.1). */
+const publicationCollapseWhiteSpace = (value: string): string => {
+	let result = "";
+	let pendingSeparation = false;
+	for (const character of value) {
+		if (isPublicationWhiteSpace(character.codePointAt(0) ?? 0)) {
+			pendingSeparation = result.length > 0;
+			continue;
+		}
+		if (pendingSeparation) {
+			result += " ";
+			pendingSeparation = false;
+		}
+		result += character;
+	}
+	return result;
+};
+
+/**
+ * The rule a published NAME breaks, or `null` when it is publishable.
+ *
+ * Rule text included, because it is what the dialog shows and what the hub's
+ * `details.rule` carries — one sentence whichever side refused — and in the
+ * HUB'S ORDER, because the order decides which sentence a name that breaks two
+ * rules gets: `code\u202ere viewer` is a bidi override first and a space second,
+ * and a client that reported the other one would send its author looking for a
+ * character that is not the problem.
+ *
+ * THE WHITESPACE BAN IS DELIBERATELY ABSENT, and this is the one place the
+ * function is not a mirror. The transport is mid-relaxation on exactly that
+ * rule: the live marketplace is already spelled with ordinary spaces, so
+ * agent-server's rule is moving to "collapse every run of Unicode whitespace to
+ * one U+0020 and trim the ends". A client cannot mirror a rule that is moving —
+ * refusing an ordinary space here would refuse a name the other side accepts, and
+ * only after the change would the same release behave differently against two
+ * versions. So whitespace that is not a control character travels as the author
+ * wrote it and the far side decides. Until that relaxation lands, a space is
+ * refused by the LOCAL write path (`local_operator`'s `write_profile`), not by the
+ * hub's own `ValidateAgentName` — a distinction worth keeping straight, because a
+ * reader who assigns the refusal to the hub draws the wrong conclusion about
+ * which side has to change. `name_key` still folds whitespace, so the local
+ * duplicate and reservation checks keep asking the hub's own question.
+ *
+ * The sentences and the order are `local_operator/clients/radient.py`'s
+ * `_name_rule`, which is the function to keep this in step with.
+ */
+export function publicationNameRule(name: string): string | null {
+	const trimmed = publicationTrim(name);
+	if (!trimmed) return "must not be empty";
+	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
+		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
+	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
+		return "must not contain Unicode bidirectional override characters";
+	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
+		return "must not contain whitespace";
+	if (publicationHasCodePoint(trimmed, isPublicationControl))
+		return "must not contain control characters";
+	if (publicationHasCodePoint(trimmed, isPublicationFormat))
+		return "must not contain invisible Unicode formatting characters";
+	const characters = [...trimmed];
+	if (
+		"-.".includes(characters[0]) ||
+		"-.".includes(characters[characters.length - 1])
+	)
+		return 'must not begin or end with "-" or "."';
+	return null;
+}
+
+/**
+ * The hub's `name_key`: `normalize(lowercase(NFKC(trim(name))))`.
+ *
+ * The identity a name is unique BY (contract §3.1) and not the name itself — the
+ * stored name keeps the author's case. The publish dialog asks this of a name
+ * the user is about to claim, and the pull path asks it of a name it is about to
+ * land beside, so both use it from here rather than each normalising its own
+ * way: two normalisations in one app is how a duplicate check passes where the
+ * resolver then picks one row arbitrarily.
+ *
+ * Known divergence, recorded rather than hidden: `toLowerCase()` is the JS
+ * case mapping, which differs from Go's `strings.ToLower` for a handful of
+ * characters (Turkish dotted I, Cherokee). A name that differs only in one of
+ * those is refused by the hub as taken and reported as available here — the
+ * safer of the two directions, since the server's answer is the one that
+ * decides and the dialog's check is a courtesy.
+ */
+export function publicationNameKey(name: string): string {
+	return publicationCollapseWhiteSpace(
+		publicationTrim(name).normalize("NFKC").toLowerCase(),
+	);
+}
+
+/** The rule a publication description breaks, or `null` (1..2000 characters). */
+export function publicationDescriptionRule(description: string): string | null {
+	if (!description.trim()) return "must not be empty";
+	if (publicationCharCount(description) > PUBLICATION_DESCRIPTION_MAX_CHARS)
+		return `must be at most ${PUBLICATION_DESCRIPTION_MAX_CHARS} characters`;
+	return null;
+}
+
+/** The rule an instruction body breaks, or `null` (1..8000 characters). */
+export function publicationInstructionsRule(
+	instructions: string,
+): string | null {
+	if (!instructions.trim()) return "must not be empty";
+	if (publicationCharCount(instructions) > PUBLICATION_INSTRUCTIONS_MAX_CHARS)
+		return `must be at most ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters`;
+	return null;
+}
+
+/** The rule a tool list breaks, or `null` (<=64 items of 1..64 characters). */
+export function publicationToolsRule(tools: readonly string[]): string | null {
+	if (tools.length > PUBLICATION_TOOLS_MAX_ITEMS)
+		return `must hold at most ${PUBLICATION_TOOLS_MAX_ITEMS} items`;
+	for (const tool of tools) {
+		if (!tool.trim() || publicationCharCount(tool) > PUBLICATION_TOOL_MAX_CHARS)
+			return `must hold items of 1 to ${PUBLICATION_TOOL_MAX_CHARS} characters`;
+	}
+	return null;
+}
+
+/** Whether this renderer's contract would let a publish for `name` leave at all. */
+export const isPublishableName = (name: string): boolean =>
+	publicationNameRule(name) === null;
+
+/**
+ * A publishable name, asked of the rule above rather than restated.
+ *
+ * A name the schema refuses never reaches the backend, so the dialog checks it
+ * first and says which rule broke: the schema's own refusal is "Invalid desktop
+ * operation.", which names neither field nor rule and cannot be told apart from
+ * a bug.
+ */
+const publicationName = z.string().refine(isPublishableName, {
+	message: "That is not a name the hub can publish.",
+});
+
+const publicationInstructions = z
+	.string()
+	.refine(
+		(instructions) => publicationInstructionsRule(instructions) === null,
+		{ message: "That instruction body cannot be published." },
+	);
+
+const publicationDescription = z
+	.string()
+	.refine((description) => publicationDescriptionRule(description) === null, {
+		message: "That description cannot be published.",
+	});
+
+const publicationTools = z
+	.array(z.string())
+	.refine((tools) => publicationToolsRule(tools) === null, {
+		message: "That tool list cannot be published.",
+	});
+
+/**
+ * The fields a renderer may override, which are exactly a version-1 document's
+ * CONTENT fields.
+ *
+ * `document_type`/`document_version` are absent on purpose: they are
+ * client-owned and the hub refuses an override of either, so a schema that
+ * admitted them would let the renderer send a value the server must reject.
+ * Every field is optional because an override is a partial: a field the dialog
+ * does not edit is read from the local agent row, which is where the instruction
+ * body actually lives. A field this renderer does not send is a field whose
+ * local value is the one the author wrote.
+ */
+const publicationDocument = z
+	.object({
+		name: publicationName,
+		description: publicationDescription,
+		instructions: publicationInstructions,
+		kind: z.enum(["role", "specialist"]),
+		when_to_use: z.string(),
+		tools: publicationTools,
+		effort: z.string(),
+		delegate: z.boolean(),
+		version: z.string(),
+		categories: z.array(z.string()),
+		tags: z.array(z.string()),
+	})
+	.partial()
+	.strict();
+
 // This vocabulary is the security boundary, not a generic authenticated fetch.
 // The renderer selects an operation; it never supplies a URL, method or headers.
 export const desktopRequestSchema = z.discriminatedUnion("op", [
@@ -537,6 +893,54 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			completionToken: z.string().uuid(),
 		})
 		.strict(),
+	/*
+	 * Bulk acknowledgement: mark many completions read in ONE user gesture
+	 * (`POST /v1/desktop/attention/seen`).
+	 *
+	 * Its OWN op rather than a loop over `sessions.seen`, for two reasons that are
+	 * both about what the receipt MEANS. The backend writes the whole batch in one
+	 * `BEGIN IMMEDIATE`, so an observer sees the pre-batch or the post-batch receipt
+	 * set and never a prefix; N round trips would expose a partial batch to every
+	 * poller, and a failure half way would leave the user unable to tell which
+	 * marks went. And the items are TOKEN-bound on purpose: the batch names exactly
+	 * the completions the client has RENDERED, so a completion published between
+	 * the render and the click is not in it and stays unread. A watermark sweep
+	 * ("acknowledge everything now") would clear exactly that result instead, which
+	 * is the hazard the per-session receipt exists to prevent — so this op never
+	 * carries a time, a count or a "all" flag, only the pairs the client observed.
+	 *
+	 * `items` is 1..500: 500 is the catalogue's own maximum page, so every row the
+	 * sidebar can hold is sendable in one call and `markAllRead` never has to
+	 * chunk (chunking would break "one gesture, one request").
+	 */
+	z
+		.object({
+			op: z.literal("attention.seen"),
+			items: z
+				.array(
+					z
+						.object({
+							sessionId,
+							// A REAL uuid, like `sessions.seen`: a token that is not one cannot
+							// name a completion, so it is refused here rather than round-tripped
+							// to answer `unknown` for an item the client should not have sent.
+							completionToken: z.string().uuid(),
+						})
+						/*
+						 * `.strict()` on the ITEM as well as on the arm, because the
+						 * sibling repository's input model is `extra="forbid"`: without
+						 * it an item carrying a third field is stripped here while the
+						 * request is answered 422 on the far side — and in the other
+						 * direction a future caller's extra field would be silently
+						 * dropped rather than refused. The two frozen surfaces now
+						 * refuse the same (agent review round 1, R5).
+						 */
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
 	// Cross-surface delivery claim, NOT a read receipt. `claim_delivery`
 	// serialises the observers that can see one completion (a TUI, this app) so
 	// exactly one of them toasts it. It deliberately never advances the read
@@ -739,6 +1143,45 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({ op: z.literal("auth.probe"), provider: id })
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.upload"), agentId: id }).strict(),
+	/*
+	 * Publication, beside the legacy zip upload it replaces for this surface.
+	 *
+	 * `legacy.agent.upload` stays exactly as it is — it is how an agent published
+	 * under the old standard is still updated, and an older desktop build still
+	 * pushes through it — but the app's own publish action moves onto the document
+	 * ops below, which carry the instruction set instead of a zip of the agent
+	 * directory.
+	 */
+	z
+		.object({
+			op: z.literal("agent.publish"),
+			agentId: id,
+			document: publicationDocument.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent.republish"),
+			agentId: id,
+			// The HUB listing to update. Required rather than inferred: the local
+			// registry keeps no link to the listing a row was published as, so a
+			// republish that did not name one would have to guess which public row to
+			// overwrite — and guessing here overwrites somebody's listing.
+			hubAgentId: id,
+			document: publicationDocument.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent.nameAvailability"),
+			// Deliberately looser than `publicationName`: this op asks whether a name
+			// is publishable, and a name that breaks the rules is a question the
+			// dialog does not ask (it shows the rule locally instead). The route is
+			// public, so the only thing this bound has to keep out is a query the
+			// backend can make no sense of.
+			name: z.string().min(1).max(PUBLICATION_NAME_MAX_CHARS),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("legacy.agents.list"),
@@ -1159,6 +1602,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"agents.favourited",
 						"agents.favourite_count",
 						"agents.download_count",
+						/*
+						 * The viewer's own like/favourite state for a whole page of agents. The
+						 * closed vocabulary has to name it here as well as in
+						 * `shared/api/radient/proxy.ts`, because this schema is what validates
+						 * the request the renderer actually sends.
+						 */
+						"agents.statuses",
 						"comments.list",
 						"comments.create",
 						"comments.update",
@@ -1544,6 +1994,49 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
  * again rather than catching a class.
  */
 export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
+
+/**
+ * The refusal main answers a READ RECEIPT with when the window is not in the
+ * foreground, and the sentence the user reads for it.
+ *
+ * ONE sentence rather than a machine register translated into copy, unlike the
+ * stream details in `shared/desktop-stream-notice.ts`: this refusal is already
+ * addressed to the reader ("View these completions in the foreground..."), and
+ * user copy is the register that names the true condition in the reader's own
+ * terms. A second sentence for the same fact would be a second authority.
+ *
+ * THE SENTENCE SPEAKS IN THE SET'S TERMS AND NAMES NO COUNT, and both halves are
+ * deliberate (UX round 4, U4-1). The control the reader just clicked says
+ * `Mark all 2 read` over its own count, so a refusal answering in the singular
+ * ("this completion ... it") disagreed with the gesture it was answering at
+ * every count above one — measured with one row and with two. Nothing here names
+ * a number, so nothing here can disagree at any count: the count is the
+ * control's, and on success the receipt's, which pluralises by count the way
+ * `markAllReadReceipt` does ("1 has a newer result and stays unread" against
+ * "2 have newer results and stay unread"). Pluralising THIS sentence by count
+ * would instead need main to build it per request, and that is incompatible with
+ * the property the next paragraph relies on: ONE constant, produced by main and
+ * matched by the renderer across a boundary that carries only text.
+ *
+ * Declared here, and as a STRING, for the deadline code's reason above — it has
+ * to survive IPC and a re-throw — with one consequence specific to it:
+ * `ipcRenderer.invoke` rebuilds main's rejection as a plain `Error` and keeps
+ * only the message, so the renderer's transport has no typed field to read and
+ * must recognise the refusal by the words main sent. That makes this constant
+ * the ONE authority for both halves: the producer (`src/main/desktop-ipc.ts`)
+ * refuses with it, and the classifier (`desktop-api.ts`, `isForegroundRequired`)
+ * reads it. A test pins the two together
+ * (`scripts/attention-seen.test.mjs`), because a reworded producer against an
+ * unchanged classifier is how a deliberate refusal would quietly go back to
+ * being reported as an unreachable backend.
+ *
+ * It is NOT the sentence for a transport failure, and the two must stay
+ * distinguishable in the renderer: a refusal means the backend was never asked,
+ * and a retry against a focused window is the reader's own next move.
+ */
+export const DESKTOP_FOREGROUND_REQUIRED_CODE = "foreground_required";
+export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
+	"View these completions in the foreground before marking them read.";
 
 /**
  * Ops that change nothing on the server, and so may be told "nothing was read".
@@ -2282,6 +2775,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: { completion_token: request.completionToken },
 			};
+		case "attention.seen":
+			return {
+				/*
+				 * A path with no `{session_id}` in it, deliberately: the batch spans
+				 * sessions, and `/v1/desktop/attention/seen` cannot be shadowed by the
+				 * per-session route at any registration order. The body is snake_case
+				 * like every other route in that module, and the conversation identity
+				 * is NEVER taken from the client — the backend derives `session/<id>`
+				 * from the validated session id, the rule `/seen` already follows.
+				 */
+				path: "/v1/desktop/attention/seen",
+				method: "POST",
+				body: {
+					items: request.items.map((item) => ({
+						session_id: item.sessionId,
+						completion_token: item.completionToken,
+					})),
+				},
+			};
 		case "sessions.notified":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/notified`,
@@ -2406,6 +2918,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
+		case "agent.publish":
+			return {
+				path: `/v1/agents/${request.agentId}/publish`,
+				method: "POST",
+				// The route's own body shape: a partial override of the document the
+				// backend builds from the local row. `{}` rather than `undefined` when
+				// there is no override, because the route's input model forbids extras
+				// and still wants a JSON OBJECT — an omitted body makes a legal call
+				// answer 422.
+				body: { document: request.document ?? {} },
+			};
+		case "agent.republish":
+			return {
+				path: `/v1/agents/${request.agentId}/publish`,
+				method: "PUT",
+				body: {
+					hub_agent_id: request.hubAgentId,
+					document: request.document ?? {},
+				},
+			};
+		case "agent.nameAvailability": {
+			// `name` travel as the user typed it: the hub is the one that trims and
+			// normalises, and a client that pre-normalised would be answering a
+			// different question than the one it asked.
+			const query = new URLSearchParams({ name: request.name });
+			return { path: `/v1/agent-name-availability?${query}`, method: "GET" };
+		}
 		case "legacy.agents.list": {
 			const query = new URLSearchParams({
 				page: String(request.page ?? 1),
@@ -2750,12 +3289,13 @@ export function desktopEndpoint(request: DesktopRequest): {
  * The local-file bridge, shared by main, the preload and the renderer.
  *
  * These are NOT `DesktopRequest`s. Every op in the union above travels to the
- * backend over HTTP and is validated by a zod schema there; these four handlers
- * (`read-file`, `save-file`, `probe-files`, `read-file-bytes`) never leave the
- * machine, and two of them return bytes that a zod schema would only get in the
- * way of. They are declared here anyway because this module is the one place
- * the three processes already agree on a shape, and a type that lives beside
- * `ReadFileResponse` in a `.d.ts` is a type main cannot import.
+ * backend over HTTP and is validated by a zod schema there; the local-file
+ * handlers (`read-file`, `save-file`, `probe-files`, `read-file-bytes`,
+ * `list-directory`) never leave the machine, and two of them return bytes that a
+ * zod schema would only get in the way of. They are declared here anyway because
+ * this module is the one place the three processes already agree on a shape, and
+ * a type that lives beside `ReadFileResponse` in a `.d.ts` is a type main cannot
+ * import.
  */
 
 /**
@@ -2771,6 +3311,48 @@ export function desktopEndpoint(request: DesktopRequest): {
  * which is what made the tail of a long conversation unreachable).
  */
 export const MAX_PROBE_PATHS = 64;
+
+/**
+ * Entries one `list-directory` call may return.
+ *
+ * 200, which is the harness's own `_DIRECTORY_ENTRY_LIMIT` for the directory
+ * element of a reference block — the same number, so a directory the two
+ * surfaces describe has the same length. A bound exists at all because the
+ * listing crosses IPC on a keystroke path and is rendered as rows; the answer
+ * reports the truncation rather than silently dropping the tail.
+ */
+export const DIRECTORY_ENTRY_LIMIT = 200;
+
+/** One entry of a `list-directory` answer. */
+export type DirectoryEntry = {
+	name: string;
+	/**
+	 * Whether the entry is a directory, with SYMLINKS FOLLOWED — the harness's
+	 * `DirEntry.is_dir()` does the same, so a link to a directory is a directory
+	 * row on both surfaces.
+	 */
+	directory: boolean;
+};
+
+/**
+ * One directory, as a picker's list of rows.
+ *
+ * `dir` is the path after the path rule resolved it, which is what lets a caller
+ * place the rows relative to the working directory without doing path
+ * arithmetic of its own.
+ */
+export type DirectoryListing = {
+	dir: string;
+	entries: DirectoryEntry[];
+	/** True when `DIRECTORY_ENTRY_LIMIT` hid entries. */
+	truncated: boolean;
+	/**
+	 * Present only when the directory could not be read at all. "Unreadable" and
+	 * "empty" are different facts and the caller says so, rather than painting an
+	 * empty folder for a permission wall.
+	 */
+	error?: string;
+};
 
 /**
  * The largest file `read-file-bytes` will return, in bytes.
@@ -2801,6 +3383,41 @@ export type ProbedFile = {
 	 * which one happened, because "deleted" and "cannot look" deserve different
 	 * words in a bug report.
 	 */
+	error?: string;
+	/**
+	 * Whether the target's FULLY RESOLVED path lies outside the fully resolved
+	 * workspace root passed as `cwd` — symlinks followed on both sides, which is
+	 * the harness's own containment rule (`builtin.py:_resolve_workspace_path`)
+	 * and the fact a caller paints "this will ask for approval" from.
+	 *
+	 * Absent rather than `false` when the question cannot be asked: no `cwd`
+	 * argument, or a target that will not resolve. A caller that needs a verdict
+	 * for its own decision (`outsideWorkspace` in `src/main/directory-listing.ts`)
+	 * treats the unresolvable case as outside; a caller that only DECORATES is
+	 * told nothing rather than told "inside".
+	 */
+	outsideWorkspace?: boolean;
+};
+
+/**
+ * What `open-file` and `show-item-in-folder` answer with.
+ *
+ * Both used to answer `void`, and both dropped the half of the answer that
+ * matters. `shell.openPath` RETURNS its failure as a string (it does not throw),
+ * so the old `open-file` reported success for a path that opened nothing; and
+ * `shell.showItemInFolder` returns nothing at all, so a path that does not exist
+ * revealed whichever folder happened to be in front of it. A press that fails
+ * silently is the failure this carries the answer out for - the transcript's
+ * link toolbar says `No file at …` instead of looking broken.
+ *
+ * `resolved` is the path the main process actually acted on, after `~`
+ * expansion: the renderer spells a path the way the agent wrote it, and the
+ * resolved form is the only one that names the same file for both of them.
+ */
+export type FileActionOutcome = {
+	ok: boolean;
+	resolved: string;
+	/** Why it failed, for the toast; absent when `ok`. */
 	error?: string;
 };
 

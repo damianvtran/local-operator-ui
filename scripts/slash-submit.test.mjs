@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -985,4 +986,576 @@ test("a command that declares an argument keeps its whole-draft form", () => {
 	 */
 	assert.equal(plan("/compact hello", 14).kind, "send");
 	assert.equal(plan("fix this /login openai", 21).kind, "send");
+});
+
+/*
+ * THE COMMAND-LOCKED WORD, and it is the one place in this file where a typed
+ * word is a command WITHOUT being the draft or opening it.
+ *
+ * The defect it closes is not a planning preference. `/credential` and its alias
+ * take a SECRET as their argument: the dispatcher strips that argument before
+ * command text is built (`slash-dispatch.ts`, `args: ""`) and the endpoint refuses
+ * it with 422 for every other client. The same word mid-sentence planned as prose,
+ * so the draft went to the model as message text and the secret was in the
+ * transcript. The two directions do not cost the same, which is why this is a rule
+ * rather than a caret's opinion — a refused command is visible and undoable, a
+ * leaked secret is neither.
+ *
+ * `commandLockedWords` is the caller's set and is EMPTY by default: the words are
+ * `credential-capture.ts`'s (`CREDENTIAL_WORDS`), handed over by the composer, so
+ * a host that knows nothing about credentials cannot acquire the behaviour by
+ * omission. What the composer's own handoff is worth is pinned in
+ * `credential-composer.test.mjs`, where deleting it is observable — the planner's
+ * cases below cannot see it, because they write the set themselves.
+ */
+const LOCKED_WORDS = new Set(["credential", "cred"]);
+/*
+ * The vocabulary the composer's registry-derived set actually carries: `cred` is
+ * a real ALIAS of the command (`local_operator/slash_commands.py`, `aliases=("cred",)`,
+ * and `slash-commands.tsx` adds primaries and aliases alike), and this suite's
+ * `COMMAND_NAMES` above leaves the aliases of `/team`, `/agent` and `/credential`
+ * out because none of its other cases needed one. A word the catalogue does not
+ * advertise keeps the spelling the user typed — asserted below — so the alias has
+ * to be declared here for the alias case to mean anything.
+ */
+const LOCKED_NAMES = new Set([...COMMAND_NAMES, "cred"]);
+const locked = (draft, caret, over = {}) =>
+	plan(draft, caret, {
+		commandNames: LOCKED_NAMES,
+		commandLockedWords: LOCKED_WORDS,
+		...over,
+	});
+/** A value that cannot be mistaken for prose or for a real credential. */
+const CANARY = "LOP_TYPED_LEAK_CANARY_4417";
+
+test("a locked word plans as the command at every caret, column 0 included", () => {
+	/*
+	 * THE PLACEMENT CASE, and the whole of the difficulty. `slashTokenSpan` claims
+	 * the token at the CARET, so a check that asked it — or that sat below its early
+	 * return — answered `send` for a caret that is not on the token, column 0 above
+	 * all. That is the hole a previous attempt left open at every caret but the
+	 * token's own, so each shape is driven at ALL THREE positions and the third of
+	 * them is the one that fails when the check is moved back down: at caret 0 there
+	 * is no token at the caret at all.
+	 *
+	 * The CARET the plan hands back is the user's own, clamped into what survives
+	 * (design round 1, D5): the removal cannot preserve a caret it swallowed, and it
+	 * has no business moving one it did not.
+	 */
+	for (const [draft, name, survivor, insideToken] of [
+		[`please /credential ${CANARY}`, "credential", "please", 15],
+		[`please /cred ${CANARY}`, "cred", "please", 15],
+		[
+			`please store this key for me /credential ${CANARY}`,
+			"credential",
+			"please store this key for me",
+			35,
+		],
+	]) {
+		const start = draft.indexOf("/cred");
+		for (const [caret, expectedCaret] of [
+			[0, 0],
+			[insideToken, survivor.length],
+			[draft.length, survivor.length],
+		]) {
+			assert.deepEqual(
+				locked(draft, caret),
+				{
+					kind: "splice",
+					start,
+					end: draft.length,
+					command: { name, args: CANARY },
+					text: survivor,
+					caret: expectedCaret,
+					locked: true,
+				},
+				`${JSON.stringify(draft)} at caret ${caret}: the command, the sentence that survives it, and a caret that does not jump`,
+			);
+		}
+	}
+
+	/*
+	 * The last shape IS "the token moved to the END of the buffer": its own line
+	 * ends where the draft does, so the prefix typed in front of it is what
+	 * survives.
+	 */
+	const moved = `please store this key for me /credential ${CANARY}`;
+	assert.equal(
+		locked(moved, moved.length).text,
+		"please store this key for me",
+	);
+
+	/*
+	 * A CARET THE REMOVAL DID NOT SWALLOW MOVES BY WHAT IT TOOK AND NO FURTHER (code
+	 * review round 2, MINOR 2). The rule is arithmetic rather than a clamp: the survivor
+	 * is the draft minus ONE contiguous run, so a caret past that run shifts back by its
+	 * length while a caret inside it collapses onto the splice point. The first version
+	 * clamped everything past the token, which on a MULTI-LINE draft dropped a caret
+	 * sitting on a surviving line back to line 1 — the reviewer measured
+	 * `please /credential C\r\nand then ship it` at the end answering 6 — and this pins
+	 * the same shapes.
+	 */
+	const multi = `please /credential ${CANARY}\nand then ship it`;
+	const survivorText = "please\nand then ship it";
+	const splice = locked(multi, 0);
+	assert.equal(
+		splice.text,
+		survivorText,
+		"the run's own line goes, the line below stays",
+	);
+	const removed = multi.length - survivorText.length;
+	for (const [caret, expected] of [
+		[0, 0], // before the splice point: untouched
+		[8, 6], // inside the token: collapsed onto the splice point
+		[multi.length, multi.length - removed], // the end: shifted by what was taken
+		[
+			// On the SURVIVING line, which is the case the clamp got wrong: the offset
+			// of "and" in the draft maps to its own offset in the survivor, not to the
+			// splice point on line 1.
+			multi.indexOf("and then"),
+			survivorText.indexOf("and then"),
+		],
+	]) {
+		assert.equal(
+			locked(multi, caret).caret,
+			expected,
+			`caret ${caret} in ${JSON.stringify(multi)}`,
+		);
+	}
+});
+
+test("the record is what lifts the slash's left boundary, and only the record (QA round 4 Q-1 / UX round 5 U19)", () => {
+	/*
+	 * TWO ROUNDS MET HERE, and the rule that satisfies both is the RECORD's.
+	 *
+	 * QA round 4: `/credential <value>` -> the app's own Escape -> Home -> one character
+	 * in front of the slash. The tokenizer's boundary rule — which exists so a `/` inside
+	 * a word is punctuation — claimed no token, so this rule found no locked word, the
+	 * draft no longer started with `/` so the leading-slash refusal had no part of it,
+	 * and the press put the value into a message record and a provider request body.
+	 *
+	 * QA and UX round 5: the first fix for that dropped the boundary for EVERY draft,
+	 * and a sentence — `the docs/credential rotation policy is stale` — became a
+	 * credential dialog and an unsendable line. So the boundary is back for every draft
+	 * BUT the one the composer's cancel record says it put characters back into
+	 * (`unmaskedRunWord`), which is the only thing that can tell look-alike prose from
+	 * the material this app un-masked. Both halves are driven below.
+	 *
+	 * THE CARET IS NOT PART OF THE QUESTION: the rule reads the draft alone, so every
+	 * caret answers the same, and the first of them — column 0 — is where a caret-led
+	 * check has nothing at all to claim.
+	 */
+	for (const [draft, name, survivor] of [
+		[`x/credential ${CANARY}`, "credential", "x"],
+		[`x/cred ${CANARY}`, "cred", "x"],
+		[`see /credential ${CANARY}`, "credential", "see"],
+		[`please /credential ${CANARY}`, "credential", "please"],
+	]) {
+		const start = draft.indexOf("/cred");
+		for (const caret of [0, 1, start + 5, draft.length]) {
+			const { caret: _caret, ...substance } = locked(draft, caret, {
+				unmaskedRunWord: name,
+			});
+			assert.deepEqual(
+				substance,
+				{
+					kind: "splice",
+					start,
+					end: draft.length,
+					command: { name, args: CANARY },
+					text: survivor,
+					locked: true,
+				},
+				`${JSON.stringify(draft)} at caret ${caret}: the locked word is the command and its tail is its argument`,
+			);
+		}
+	}
+	/*
+	 * THE OTHER HALF, and it is the whole of UX round 5: the SAME drafts, without the
+	 * record, are prose — prose that a user can actually send. The in-word slash is
+	 * punctuation again, a path is a path, and a URL is a URL.
+	 */
+	for (const draft of [
+		`x/credential ${CANARY}`,
+		"the docs/credential rotation policy is stale",
+		"see scripts/cred for the rotation policy",
+		"https://example.com/credential/rotation",
+	]) {
+		assert.deepEqual(
+			plan(draft, draft.length, {
+				commandNames: LOCKED_NAMES,
+				commandLockedWords: LOCKED_WORDS,
+			}),
+			{ kind: "send" },
+			`${JSON.stringify(draft)}: without the record this is the operator's own prose and it sends`,
+		);
+	}
+	assert.deepEqual(
+		plan(`x/credential ${CANARY}`, 1),
+		{ kind: "send" },
+		"no locked words and no record: the default is untouched",
+	);
+});
+
+test("a word an edit has broken still hands the run over, when the record says so (QA round 5, Q-1)", () => {
+	/*
+	 * QA ROUND 5's BLOCKER, at the three positions the word's own spelling cannot cover:
+	 * a character INSIDE the word, one immediately AFTER it, and a Backspace inside it.
+	 * Every one of them leaves the draft holding the characters the Escape un-masked,
+	 * with no token this vocabulary can see and — for the inside cases — nothing the
+	 * composer's own `recordWord` can see either, so the press degraded to prose and the
+	 * canary reached a message record and a provider body on this head, on the pre-fold
+	 * head and on `main` alike.
+	 *
+	 * The record is the fact a spelling cannot be: it names the WORD that was holding
+	 * characters here, so the draft's first slash token is taken as that word's run —
+	 * the same span, the same `locked: true`, the same receipt and undo as the intact
+	 * case above, and the dispatcher refuses the tail as command-line text rather than
+	 * sending it.
+	 */
+	for (const [draft, survivor] of [
+		[`please /credxential ${CANARY}`, "please"],
+		[`please /credentialx ${CANARY}`, "please"],
+		[`please /creential ${CANARY}`, "please"],
+		[`see /credxential ${CANARY}`, "see"],
+		[`/credxential ${CANARY}`, ""],
+	]) {
+		const start = draft.indexOf("/");
+		for (const caret of [0, start + 5, draft.length]) {
+			const { caret: _caret, ...substance } = locked(draft, caret, {
+				unmaskedRunWord: "credential",
+			});
+			assert.deepEqual(
+				substance,
+				start === 0 && survivor === ""
+					? {
+							kind: "whole",
+							command: { name: "credential", args: CANARY },
+							locked: true,
+						}
+					: {
+							kind: "splice",
+							start,
+							end: draft.length,
+							command: { name: "credential", args: CANARY },
+							text: survivor,
+							locked: true,
+						},
+				`${JSON.stringify(draft)} at caret ${caret}: the run is the recorded word's argument, whatever the word now spells`,
+			);
+		}
+	}
+	/*
+	 * AND THE RESIDUAL, stated rather than implied (the PR body carries it too): a FRESH
+	 * draft that misspells the word and was never cancelled stays prose, because nothing
+	 * but the user knows the word was meant as a command. The same on `main`.
+	 */
+	assert.deepEqual(
+		plan(`please /credxential ${CANARY}`, 5, {
+			commandNames: LOCKED_NAMES,
+			commandLockedWords: LOCKED_WORDS,
+		}),
+		{ kind: "send" },
+		"a misspelt word with no record is prose, exactly as it is on main",
+	);
+});
+
+test("the whole-draft locked form is the command, whatever the catalogue says", () => {
+	/*
+	 * UX round 1's U1, at the planner: the whole-draft form is the shape whose
+	 * premise the round-1 PR body got wrong. It IS `whole` on a full catalogue —
+	 * `credential` declares `arguments: optional`, so the arm below reads its tail
+	 * as its argument — but that arm asks the CATALOGUE, and a catalogue that is
+	 * empty (the list query in flight, a backend that does not answer it, or a
+	 * runtime that renamed the alias) read the tail as a sentence and answered
+	 * `send`: the secret to the model on the one shape the body claimed was safe.
+	 * A locked word's tail is its argument BY DEFINITION, so this rule answers it
+	 * without asking what the catalogue thinks arguments are.
+	 *
+	 * An unadvertised word is `unrecognised`, not `whole`: the dispatcher notes
+	 * "Unknown command /…" and the composer keeps the draft, so a catalogue that
+	 * cannot resolve the word cannot destroy the user's whole draft either.
+	 */
+	assert.deepEqual(locked(`/credential ${CANARY}`, CANARY.length + 12), {
+		kind: "whole",
+		command: { name: "credential", args: CANARY },
+		locked: true,
+	});
+	assert.deepEqual(locked(`/cred ${CANARY}`, CANARY.length + 6), {
+		kind: "whole",
+		command: { name: "cred", args: CANARY },
+		locked: true,
+	});
+	// The same proof the other way: this is what the caret-led arm answers when the
+	// catalogue is the one that decides.
+	assert.equal(
+		plan(`/credential ${CANARY}`, CANARY.length + 12, {
+			commandNames: new Set(),
+		}).kind,
+		"unrecognised",
+	);
+	const empty = plan(`/credential ${CANARY}`, 0, {
+		commandNames: new Set(),
+		commandLockedWords: LOCKED_WORDS,
+	});
+	assert.equal(empty.kind, "unrecognised", "no catalogue, no `whole`");
+	assert.equal(
+		empty.command.name,
+		"credential",
+		"and the word is still reported",
+	);
+});
+
+test("the catalogue cannot disarm the lock (review F1)", () => {
+	/*
+	 * The fail-open the reviewer measured: `commandNames` comes from the
+	 * command-LIST query while the capability flag comes from `capabilities`, so
+	 * between boot and the list's arrival — and on any backend that does not answer
+	 * it — the catalogue is empty and the flag is on. Requiring membership then
+	 * disarmed this rule exactly where it matters, which the reviewer demonstrated
+	 * at the planner: `word not in catalogue → send`, `alias not in catalogue →
+	 * send`.
+	 *
+	 * Nothing is required of the catalogue now, and the direction is safe in both
+	 * halves: a word the host knows runs; a word it does not reaches the
+	 * dispatcher's `!spec` branch, which notes "Unknown command /…" and returns
+	 * `consumed`, so the tail is deleted and never sent.
+	 */
+	for (const caret of [0, 15, `please /credential ${CANARY}`.length]) {
+		const planned = plan(`please /credential ${CANARY}`, caret, {
+			commandNames: new Set(),
+			commandLockedWords: LOCKED_WORDS,
+		});
+		assert.equal(planned.kind, "splice", `caret ${caret}`);
+		assert.equal(
+			planned.command.name,
+			"credential",
+			"the spelling the user typed",
+		);
+		assert.equal(planned.command.args, CANARY);
+		assert.equal(planned.locked, true);
+	}
+	// The alias too, for the same reason: the runtime's own alias list is the other
+	// copy of the vocabulary, and a change there must not disarm this silently.
+	assert.equal(
+		plan(`please /cred ${CANARY}`, 0, {
+			commandNames: new Set(),
+			commandLockedWords: LOCKED_WORDS,
+		}).kind,
+		"splice",
+	);
+});
+
+test("the capability flag does not disarm the lock (review F2)", () => {
+	/*
+	 * The same fail-open one gate higher. `enabled` is the CAPABILITY flag, which is
+	 * off for the first moments of every boot and on every host that does not publish
+	 * the feature — so asking it first left the leak standing on precisely the drafts
+	 * this rule exists for. The lock is asked first and fails CLOSED: the plan cannot
+	 * run, the words stay in the box (the dispatcher restores a draft it cannot
+	 * address, and no dispatcher at all leaves the box untouched), and nothing is
+	 * sent. The direction is the one the rule's own asymmetry argues for — a plan that
+	 * cannot run is recoverable, a `send` is not.
+	 *
+	 * Every OTHER word keeps the old order, which is what the suite's own
+	 * "capabilities flag turns the planner off completely" case pins.
+	 */
+	assert.equal(
+		locked(`please /credential ${CANARY}`, 0, { enabled: false }).kind,
+		"splice",
+	);
+	assert.equal(
+		locked(`please /credential ${CANARY}`, 0, { enabled: false }).locked,
+		true,
+	);
+	assert.equal(
+		locked(`/credential ${CANARY}`, 0, { enabled: false }).kind,
+		"whole",
+	);
+	assert.deepEqual(plan("fix this /usage", 14, { enabled: false }), {
+		kind: "send",
+	});
+	assert.deepEqual(plan("fix this /usage", 14, {}), { kind: "send" });
+});
+
+test("a locked run hands the dispatcher the catalogue's own spelling", () => {
+	/*
+	 * Review F3: this rule case-folds and the dispatcher does not
+	 * (`slash-dispatch.ts` resolves `command.name === word` then
+	 * `aliases.includes(word)`), so `/Cred <secret>` planned a run whose word the
+	 * dispatcher could not resolve: it answered "Unknown command /Cred" over a draft
+	 * whose tail it had already taken. Safe, and untrue about the user's own
+	 * sentence. The catalogue's spellings are lower-cased, so the folded word IS the
+	 * catalogue's spelling, and that is what a locked run hands over.
+	 *
+	 * The general rule is untouched: a word this rule does NOT own still reaches the
+	 * dispatcher as typed, which is why every other case in this file is unchanged.
+	 */
+	for (const [draft, name] of [
+		[`please /CREDENTIAL ${CANARY}`, "credential"],
+		[`please /Cred ${CANARY}`, "cred"],
+	]) {
+		const planned = locked(draft, 0);
+		assert.equal(planned.kind, "splice", draft);
+		assert.equal(planned.command.name, name, draft);
+		assert.equal(planned.command.args, CANARY, draft);
+	}
+	// A word the catalogue does not advertise keeps the spelling the user typed,
+	// which is what the dispatcher's "Unknown command /…" note quotes back.
+	assert.equal(
+		plan(`please /Cred ${CANARY}`, 0, {
+			commandNames: new Set(),
+			commandLockedWords: LOCKED_WORDS,
+		}).command.name,
+		"Cred",
+	);
+});
+
+test("the locked vocabulary is case-folded on both sides (review F6)", () => {
+	/*
+	 * The set used to be folded only where the word was READ, while the alternation
+	 * that FINDS the token was built from it as given — so a caller who spelled a
+	 * word with a capital got a rule that matched the token and then refused it, i.e.
+	 * a silent no-op. The set is folded once, and both questions ask the folded one.
+	 */
+	assert.deepEqual(
+		plan(`please /Credential ${CANARY}`, 0, {
+			commandLockedWords: new Set(["Credential"]),
+		}),
+		locked(`please /Credential ${CANARY}`, 0),
+	);
+});
+
+test("the locked rule moves nothing but a locked word's own line", () => {
+	// A bare token is the composer's own arming gesture (`/credential ` + a paste),
+	// and the capture owns it: with no tail there is no argument to plan, and this
+	// rule must not turn a mention of the command into a run.
+	assert.equal(locked("please /credential ", 18).kind, "send");
+	assert.equal(locked("please /credential", 17).kind, "send");
+	// `/credentials` is not the token, exactly as the arming matcher draws it.
+	assert.equal(locked(`please /credentials ${CANARY}`, 0).kind, "send");
+	// A word the caller did not lock is not this rule's, whatever it carries.
+	assert.equal(plan(`please /frobnicate ${CANARY}`, 0).kind, "send");
+	// A tab separates like any other whitespace, and a CRLF paste leaves no `\r`
+	// on the argument.
+	assert.deepEqual(
+		locked(`please /credential\t${CANARY}`, 0),
+		locked(`please /credential ${CANARY}`, 0),
+	);
+	assert.equal(
+		locked(`please /credential ${CANARY}\r\nand then ship it`, 0).command.args,
+		CANARY,
+	);
+	/*
+	 * A locked word behind another command's word is STILL this rule's, and that
+	 * is deliberate: the tokenizer hands the rest of that line back as `/team`'s
+	 * argument, so the caret-led path plans `send` for this draft and the secret
+	 * travels with it. A claim is a rule about editing a line; this rule is about
+	 * what the line contains.
+	 */
+	assert.deepEqual(locked(`please /team ops /credential ${CANARY}`, 0), {
+		kind: "splice",
+		start: 17,
+		end: 55,
+		command: { name: "credential", args: CANARY },
+		text: "please /team ops",
+		caret: 0,
+		locked: true,
+	});
+	// The rest of the draft survives a run, its own lines included.
+	assert.equal(
+		locked(`please /credential ${CANARY}\nand then ship it`, 0).text,
+		"please\nand then ship it",
+	);
+	/*
+	 * A caller's word is a LITERAL, not a pattern: without the escape the set's
+	 * `a.b` would match a draft spelling `aXb` and pull a command out of prose.
+	 */
+	const dotted = { commandNames: new Set([...COMMAND_NAMES, "a.b"]) };
+	assert.equal(
+		plan("please /aXb secret", 0, {
+			...dotted,
+			commandLockedWords: new Set(["a.b"]),
+		}).kind,
+		"send",
+	);
+	assert.equal(
+		plan("please /a.b secret", 0, {
+			...dotted,
+			commandLockedWords: new Set(["a.b"]),
+		}).kind,
+		"splice",
+	);
+	// An empty vocabulary is the default in disguise, and an empty WORD cannot
+	// build an alternation that matches everything.
+	assert.equal(
+		locked(`please /credential ${CANARY}`, 0, {
+			commandLockedWords: new Set([""]),
+		}).kind,
+		"send",
+	);
+});
+
+test("the locked scan costs one pass, not one call per slash", () => {
+	/*
+	 * The claim is a RATIO between arms measured in ONE interleaved loop, on the
+	 * same draft, on the same machine — the pattern `submit-latency.test.mjs` argues
+	 * for: a ratio survives a slower box, an absolute millisecond figure does not.
+	 * The control arm is the same plan with the lock set EMPTY, so the difference
+	 * between them IS the scan.
+	 *
+	 * THE ARMS MATCH TOO (review F5). An unmatched scan over a slash-dense draft is
+	 * the first claim — "a draft full of `/`s costs what a draft with none costs" —
+	 * and the reviewer's number for the shape it replaced (one tokenizer call per
+	 * boundary slash, which is what an `indexOf` walk into `slashTokenSpan` costs,
+	 * `activeSlash` rebuilding the line's boundary-slash list every call) was
+	 * 745-2204 ms against 0.42-0.51 ms for the whole plan: three orders of magnitude.
+	 * The third arm is a MATCH, which is the arithmetic the source comment promises —
+	 * and it is the faster one, because the splice returns before the rest of the
+	 * planner runs.
+	 */
+	const draft = "x /abc ".repeat(4096).slice(0, 32 * 1024);
+	const RATIO_MAX = 6;
+	const rounds = 25;
+	const median = (samples) => {
+		samples.sort((a, b) => a - b);
+		return samples[Math.floor(samples.length / 2)];
+	};
+	const timed = (over, text = draft) => {
+		const start = performance.now();
+		plan(text, text.length, over);
+		return performance.now() - start;
+	};
+	// Warm EVERY arm first, so none pays for another's JIT in the loop below.
+	for (let i = 0; i < 10; i++) {
+		timed({});
+		timed({ commandLockedWords: LOCKED_WORDS });
+		timed(
+			{ commandLockedWords: LOCKED_WORDS },
+			`${draft} please /credential X`,
+		);
+	}
+	const empty = [];
+	const withWords = [];
+	const matching = [];
+	for (let i = 0; i < rounds; i++) {
+		empty.push(timed({}));
+		withWords.push(timed({ commandLockedWords: LOCKED_WORDS }));
+		matching.push(
+			timed(
+				{ commandLockedWords: LOCKED_WORDS },
+				`${draft} please /credential X`,
+			),
+		);
+	}
+	const ratio = median(withWords) / Math.max(median(empty), 1e-6);
+	assert.ok(
+		ratio < RATIO_MAX,
+		`the locked scan must cost about what not running it costs: ${ratio.toFixed(2)}x (non-empty ${median(withWords).toFixed(4)} ms vs empty ${median(empty).toFixed(4)} ms, need <${RATIO_MAX}x)`,
+	);
+	// The matching arm cannot be the expensive one: it returns at the token.
+	assert.ok(
+		median(matching) <= Math.max(median(withWords) * RATIO_MAX, 1),
+		`a match must not cost more than the scan that finds it: ${median(matching).toFixed(4)} ms against ${median(withWords).toFixed(4)} ms`,
+	);
 });

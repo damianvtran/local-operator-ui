@@ -57,7 +57,18 @@
  * for `node --test` without a browser.
  */
 
-import { KNOWN_EXTENSIONS, extensionOf } from "@features/chat/utils/file-kind";
+import { KNOWN_EXTENSIONS } from "@features/chat/utils/file-kind";
+import {
+	API_PATH_PREFIXES,
+	ELLIPSIS_SEGMENT,
+	MAX_CANDIDATE_LENGTH,
+	MENTION_POLICY,
+	PLACEHOLDER_MARKERS,
+	TRAILING_PUNCTUATION,
+	WHITESPACE,
+	normalizeCandidate,
+	targetsIn,
+} from "@features/chat/utils/link-grammar";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /** Where a mention was found. Strongest first; the first find wins. */
@@ -105,159 +116,6 @@ const PATH_KEYS = new Set([
 ]);
 
 /**
- * Characters that make a candidate a shell glob or a placeholder, not a path.
- *
- * `$PID`, `*.log`, `{a,b}.ts` and `<name>` are text a transcript legitimately
- * contains — a prompt documenting a command, a heredoc placeholder — and every
- * one of them used to reach the panel as a tile that could never open. The
- * number is known rather than guessed: the real-payload audit counted the
- * metacharacter share of admitted paths, and the QA walk found `qa-res-$PID.pdf`
- * and `<name` on screen. A path on disk may technically contain `$`, but the
- * trade is explicit: a placeholder tile is a click that fails, and the file is
- * still reachable through the structured tiers when an agent really touches it.
- */
-const SHELL_METACHARACTERS = /[$*?{}<>]/;
-
-/**
- * A `?`'s tail, when that tail reads as a query rather than as the rest of a
- * filename.
- *
- * `new URL` cannot tell a glob from a query — both are `search` to it — and both
- * spellings really arrive: `file:///tmp/agent-out/a?.log` is a glob whose match
- * is a URL only because `?` happens to be a legal query delimiter, while
- * `file:///…/popup.html?state=pending&pin=86` is a real cache-busted local file
- * the operator's transcripts name. The distinguishing property is the query's
- * SHAPE — a `key=value` parameter list, `&`-joined — and that shape was counted
- * rather than assumed, over this machine's own store (1,956 session
- * directories, 91 distinct `?`-carrying `file://` tokens): 40 tails are that
- * list, 15 are a V8 stack frame's `:line:col`, 18 have nothing after the `?` at
- * all, 16 are neither — the glob and flag spellings the rule exists to reject
- * (`.log`, `x`) — and 2 carry their `?` only inside a fragment. No tail in the
- * store that reads as a query is anything but one.
- *
- * A flag with no `=` (`?debug`), and a `?` with nothing after it at all, are
- * therefore rejected along with the globs. That is the fail-safe direction this
- * module trades in throughout: a missing tile, never a tile for a path no file
- * has. (A bare trailing `?` is also how a sentence asks about a URL, and the
- * module already declines that spelling rather than guessing.)
- */
-const URL_QUERY = /^[^&#]+=[^&#]*(?:&[^&#]+=[^&#]*)*$/;
-
-/**
- * An editor line reference: `/a/run.mjs:59` and `/a/run.mjs:59:12`.
- *
- * Only the file-url tier needs the trim. Prose already rejects such a token
- * because its extension reads `ts:59`, while a `file://` URL is admitted on the
- * URL alone and would carry the suffix into the panel as a path that does not
- * exist. Found by running the extractor over real histories
- * (`scripts/mentioned-files-real-payload.mjs`): one of the first fifty paths was
- * `…/drive-model-picker.mjs:59`, quoted from an editor line reference.
- */
-const LINE_REFERENCE = /:[0-9]+(?::[0-9]+)?$/;
-
-/** Where a prose path token ends: whitespace, a quote, or sentence punctuation. */
-const PROSE_TOKEN_END = /[\s"'`()\[\]{}<>,;*|]/;
-
-/** An http(s) URL, removed before prose is scanned (it contains a path). */
-const HTTP_URL = /https?:\/\/\S+/g;
-
-/** A line break, which is what tells a continuation from a new line. */
-const LINE_BREAK = /[\n\r]/;
-
-/** Any whitespace. A path never contains it, so a value that does is prose. */
-const WHITESPACE = /\s/;
-
-/**
- * The characters `FILE_URL`'s class stops at that are also shell
- * metacharacters, so a URL whose match ends on one of them was cut short by a
- * token that continued the path (`…/a*.log`, `…/{a,b}.ts`). `>`, `*` and `}`
- * are the overlap between that class and `SHELL_METACHARACTERS`.
- */
-const URL_TRUNCATION = new Set(["*", "}", ">"]);
-
-/**
- * A `file://` URL, one capture group holding the path.
- *
- * `localhost` is allowed because the app writes both spellings (`file:///…` and
- * `file://localhost/…`). The character class stops at whitespace and at the
- * punctuation that usually terminates a URL in a sentence — a JSON string's
- * `"`, a bullet's `*`, an inline-code backtick.
- *
- * `(`, `)`, `[`, `]`, `{` and `<` ARE allowed, and that is the difference
- * between a rule and a guess. macOS names screenshots
- * `Screenshot … (1).png`, so excluding `(` recorded a truncated
- * `/Users/x/Downloads/screen(1` for a file that plainly exists; the square
- * bracket is the same truncation through the other pair, and the store's own
- * transcripts spell it their own way (`…/run-details/[eval1` — node's eval
- * frame — and `/tmp/x/notes[1`), where excluding `]` recorded `…/a[1` instead of
- * the token's own path (round 4, Q3-2). A placeholder like
- * `file:///tmp/out/<name>.` must be captured whole so the metacharacter rule
- * can REJECT it, rather than being cut short into a tile for the directory that
- * happens to precede it — and a bracket that CLOSES a sentence is trimmed by
- * `TRAILING_PUNCTUATION` below, which is what makes admitting it safe.
- *
- * The whole match is used, not a capture group: the path is parsed out of the
- * URL with `new URL` (`normalizeFileUrl`), which is the only way to tell a
- * bracket inside a name from a bracket that closes a sentence.
- *
- * The class still stops at `*`, `}` and `>`, and that stopping is a TRUNCATION
- * the class cannot see on its own — `scanFileUrls` reads the character after the
- * match for it (`URL_TRUNCATION`).
- *
- * `?` is NOT excluded, and cannot be: it is the URL's own query delimiter, so
- * the parser below is where a glob has to be told from a query (`URL_QUERY`).
- */
-const FILE_URL = /file:\/\/(?:localhost)?\/[^\s"'`>*,;}]+/g;
-
-/**
- * A bare absolute or `~`-relative path token.
- *
- * Requires the token to start at `/` or `~/` — which is the whole reason
- * relative paths cannot match — and to contain no whitespace, quote or unquoted
- * bracket. The leading `/` is captured as part of the token so the
- * preceding-character check in `scanProse` can tell an absolute path apart from
- * the tail of a relative one (`src/foo.py` must not match at its `/`).
- */
-const PROSE_PATH = /(?:~\/|\/)[^\s"'`()\[\]{}<>,;*|]+/g;
-
-/** Trimmed from the END of a candidate before the extension test. */
-const TRAILING_PUNCTUATION = /[.,;:)\]}"'`]+$/;
-
-/** Characters a path may legally follow in prose. */
-const ALLOWED_PREFIX = new Set([
-	"\n",
-	"\t",
-	" ",
-	"`",
-	'"',
-	"'",
-	"(",
-	"[",
-	"{",
-	"<",
-	">",
-	"=",
-	",",
-	";",
-	":",
-	"|",
-	"*",
-	"\u2014",
-]);
-
-/** Anything longer is not a path; it is a paste that happens to contain a slash. */
-const MAX_CANDIDATE_LENGTH = 4096;
-
-/**
- * Paths the backend owns rather than the disk.
- *
- * `/v1/…` is the API's own namespace: `{"path": "/v1/static/images?path=/a.png"}`
- * appears in this app's own source, and admitting it would put a URL where a
- * file belongs. `/api/` is the same idea for any future mounted prefix.
- */
-const API_PATH_PREFIXES = ["/v1/", "/api/"];
-
-/**
  * Memo, keyed by the record object the reducer guarantees is stable, and
  * separated per cwd.
  *
@@ -283,98 +141,6 @@ function cacheFor(cwd: string | undefined) {
 }
 
 /**
- * Canonicalise one raw candidate, or reject it.
- *
- * Exported because the rejection rules are the interesting half of this module
- * and the tests assert them one at a time.
- */
-export function normalizeCandidate(raw: string): string | null {
-	const candidate = raw.trim().replace(TRAILING_PUNCTUATION, "");
-	if (!candidate) return null;
-	if (candidate.length > MAX_CANDIDATE_LENGTH) return null;
-	// A scheme other than `file:` is a URL, not a path. `file://` has already
-	// been stripped by the caller.
-	if (candidate.includes("://")) return null;
-	// `//host/share` is a network location, not an absolute path on this machine.
-	if (candidate.startsWith("//")) return null;
-	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
-		return null;
-	if (!candidate.startsWith("/") && !candidate.startsWith("~/")) return null;
-	// A path token never contains whitespace: the scanners split on it, so a
-	// candidate that still has some came from a value that was prose rather than
-	// a path, and admitting it would put a phrase in the panel.
-	if (WHITESPACE.test(candidate)) return null;
-	// A glob or a placeholder is not a file. See `SHELL_METACHARACTERS`.
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
-	return candidate;
-}
-
-/**
- * Strip a `file://` prefix and canonicalise, for candidates that arrived as a
- * URL and therefore do not need the absolute-path test.
- */
-function normalizeFileUrl(raw: string): string | null {
-	/*
-	 * Parsed as a URL, not string-stripped.
-	 *
-	 * Slicing `file://` off the front cannot see a path that contains the very
-	 * characters a name may legally contain: a screenshot called `screen(1).png`
-	 * was captured as `/Users/x/Downloads/screen(1` because the scanner's
-	 * character class had to stop at `(` to avoid swallowing a markdown link's
-	 * closing bracket. `new URL` separates the two questions — where the URL
-	 * ends and what the path is — and percent-decodes the result, so a URL that
-	 * reached the transcript as `My%20Docs` names the file on disk.
-	 *
-	 * The metacharacter rule runs on the PARSED PATHNAME, not on the raw text.
-	 * Where a metacharacter survives parsing (`a*.log`, `qa-res-$PID.pdf`) the
-	 * pathname is the thing that carries it, and that is where the rule looks.
-	 * Where it does not survive — `?` — the parser has turned a glob into a
-	 * query, and the query's SHAPE is what tells the two apart (`URL_QUERY`):
-	 * `a?.log` is rejected because `.log` is not a query, and
-	 * `popup.html?state=pending&pin=86` keeps its path because it is one. The
-	 * check reads the RAW text (up to any `#`, since a fragment is not a path
-	 * either and may itself contain a `?`) rather than `parsed.search`, because
-	 * `new URL` reports an empty query as no query at all — `file:///a.pdf?`
-	 * would slip through as `/a.pdf`.
-	 *
-	 * Running the rule on the raw match instead (round 2, Q2-1 to round 4) closed
-	 * the glob hole by rejecting every `?`, which also threw away that real,
-	 * cache-busted local file — the module's own asymmetry, since a missed
-	 * mention is the bug this change exists to fix (round 4, R4-3).
-	 */
-	const rawPath = raw.split("#", 1)[0] ?? raw;
-	const queryAt = rawPath.indexOf("?");
-	if (queryAt !== -1 && !URL_QUERY.test(rawPath.slice(queryAt + 1)))
-		return null;
-	let candidate: string;
-	try {
-		const parsed = new URL(raw);
-		if (parsed.protocol !== "file:") return null;
-		// `file://other-host/share` names another machine's share, not a local
-		// file. Only the empty host and the app's own `localhost` spelling are
-		// accepted; both are already written by the canvas.
-		if (parsed.host && parsed.host !== "localhost") return null;
-		candidate = parsed.pathname;
-		try {
-			candidate = decodeURIComponent(candidate);
-		} catch {
-			// A malformed escape is not a reason to drop the path: the encoded
-			// form is what the transcript wrote, and it is still a path.
-		}
-	} catch {
-		return null;
-	}
-	candidate = candidate.replace(TRAILING_PUNCTUATION, "");
-	if (!candidate || candidate.length > MAX_CANDIDATE_LENGTH) return null;
-	candidate = candidate.replace(LINE_REFERENCE, "");
-	if (!candidate) return null;
-	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
-		return null;
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
-	return candidate.startsWith("/") ? candidate : null;
-}
-
-/**
  * `file://` URLs in one string, in order.
  *
  * A match that stops at a space whose next token continues the path was
@@ -388,44 +154,9 @@ function normalizeFileUrl(raw: string): string | null {
  * lets a plain path list keep its `file://` entry.
  */
 function scanFileUrls(text: string): string[] {
-	const found: string[] = [];
-	for (const match of text.matchAll(FILE_URL)) {
-		const end = (match.index ?? 0) + match[0].length;
-		const rest = text.slice(end);
-		const trimmed = rest.trimStart();
-		// The gap between the URL and the next token, and whether that token is on
-		// the SAME line. A newline is a new line, never a continuation: a plain
-		// path list (`file:///…/AGENTS.md\n~/…/AGENTS.md`) used to lose the URL
-		// entry because the line below happened to start with a path.
-		const gap = rest.slice(0, rest.length - trimmed.length);
-		const continues = (token: string) =>
-			token.includes("/") || token.includes(".");
-		if (gap !== "" && !LINE_BREAK.test(gap)) {
-			const token = trimmed.split(PROSE_TOKEN_END, 1)[0] ?? "";
-			// More path after the space: the URL contained a space and the match
-			// is a fragment of it. Returning a fragment would put a path in the
-			// panel that no file has.
-			if (continues(token)) continue;
-		}
-		/*
-		 * The class stops at `*`, `}` and `>`, so a match that ends on one of them
-		 * is a fragment of a longer token — `file:///tmp/agent-out/a*.log` for a
-		 * log glob, `file:///tmp/out/{a,b}.ts` for a brace expansion — and the
-		 * fragment before it is a path no file has. Same guard shape as the space
-		 * check above, and for the same reason: only a token that CONTINUES A PATH
-		 * means truncation rather than markup, so `**file:///…/a.pdf**` keeps its
-		 * tile (nothing path-like follows the marker) while the glob does not
-		 * (round 2, Q2-1).
-		 */
-		const next = rest[0];
-		if (next !== undefined && URL_TRUNCATION.has(next)) {
-			const token = rest.slice(1).split(PROSE_TOKEN_END, 1)[0] ?? "";
-			if (continues(token)) continue;
-		}
-		const candidate = normalizeFileUrl(match[0]);
-		if (candidate) found.push(candidate);
-	}
-	return found;
+	return targetsIn(text, MENTION_POLICY)
+		.filter((found) => found.kind === "file-url")
+		.map((found) => found.target);
 }
 
 /**
@@ -436,22 +167,9 @@ function scanFileUrls(text: string): string[] {
  * `https://example.com/a/b.png` as `/a/b.png`.
  */
 function scanProse(text: string): string[] {
-	const stripped = text.replace(HTTP_URL, " ");
-	const found: string[] = [];
-	for (const match of stripped.matchAll(PROSE_PATH)) {
-		const index = match.index ?? 0;
-		const previous = index > 0 ? stripped[index - 1] : undefined;
-		if (previous !== undefined && !ALLOWED_PREFIX.has(previous)) continue;
-		const candidate = normalizeCandidate(match[0]);
-		if (!candidate) continue;
-		// The extension test, after the trim, so `saved to /tmp/a.pdf.` matches.
-		// `~` paths carry their extension after the last dot exactly like
-		// absolute ones.
-		const extension = extensionOf(candidate);
-		if (!extension || !KNOWN_EXTENSIONS.has(extension)) continue;
-		found.push(candidate);
-	}
-	return found;
+	return targetsIn(text, MENTION_POLICY)
+		.filter((found) => found.kind === "path")
+		.map((found) => found.target);
 }
 
 /**
@@ -477,8 +195,10 @@ function normalizePathValue(raw: string): string | null {
 	// command, a sentence), and treating a sentence as a path is how a panel
 	// fills with junk. The prose scanner handles those values instead.
 	if (WHITESPACE.test(candidate)) return null;
-	// A glob or a placeholder under a path key is still not a file.
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
+	// A glob, a placeholder or an abbreviation under a path key is still not a
+	// file.
+	if (PLACEHOLDER_MARKERS.test(candidate)) return null;
+	if (ELLIPSIS_SEGMENT.test(candidate)) return null;
 	return candidate;
 }
 
@@ -650,3 +370,14 @@ export function extractMentionedPaths(
 
 /** Re-exported so a caller deciding "is this a file?" asks the same set. */
 export { KNOWN_EXTENSIONS };
+
+/**
+ * The grammar's own canonicaliser, re-exported rather than copied.
+ *
+ * It moved to `link-grammar.ts` with the rest of the token grammar, and the
+ * tests that pin its rejection rules one at a time still import it from here
+ * (`scripts/mentioned-files.test.mjs`) - so a reader who came for the panel
+ * finds the rule where the panel's own answer is decided instead of following a
+ * second definition. There is one implementation; this is a name for it.
+ */
+export { normalizeCandidate };

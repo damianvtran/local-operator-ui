@@ -1,11 +1,4 @@
-import {
-	Button,
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-	Tooltip,
-} from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	Bot,
@@ -13,14 +6,30 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Globe,
+	MessagesSquare,
 	MoreHorizontal,
 	Plus,
 	RotateCw,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+	Fragment,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
+import {
+	type CloseTabsIntent,
+	closeConversationIntent,
+	closeOthersIntent,
+	closeToTheRightIntent,
+	groupTabsBySession,
+	sessionDisplayName,
+} from "../model/tab-index-model";
 
 /**
  * The tab strip. Design: docs/design/ui-browser-tab.md 6.1 (the controls), 6.2
@@ -82,7 +91,26 @@ import type { BrowserTabView } from "../hooks/use-browser-chrome";
  */
 
 export interface BrowserTabStripProps {
+	/** The host's OWN list — the pane's strip is scoped to a conversation, the route's is
+	 * everything — and it is the list every count in the band is taken from (design R5 as
+	 * the operator ruled it in review round 2, settling U7 against round 1's A3).
+	 *
+	 * THE ALTERNATIVE WAS A SECOND, WIDER LIST ON THIS COMPONENT (`poolTabs`, which A3
+	 * added so `Close N other tabs` could count the whole pool), and it was withdrawn:
+	 * a scoped host's band must not close tabs the user cannot see, the label is truthful
+	 * either way because it counts what the press closes, and one list means no host can
+	 * hand this component two lists that can drift apart. The model's `closeOthersIntent`
+	 * takes whatever list it is given, so the contract lives in its docstring. */
 	tabs: BrowserTabView[];
+	/** The conversation list, for a group chip's name.
+	 *
+	 * PASSED IN RATHER THAN READ HERE, the same choice the hand-over dialog and the
+	 * consent card make: the grid renders a projection and leaves store reads to the
+	 * host that owns the layout, and the strip has three hosts to serve. An empty
+	 * list is a real state (a route with no conversations loaded) and degrades to
+	 * `sessionDisplayName`'s own fallback — the session id — rather than to a blank
+	 * label. */
+	sessions?: ReadonlyArray<{ session_id: string; title?: string | null }>;
 	activeTabId: number | null;
 	/** tabId -> the ordinal of the live approval request its origin is parked on.
 	 * Built from the same numbered rows as the tray (`approval-queue-model.ts`), so
@@ -90,11 +118,53 @@ export interface BrowserTabStripProps {
 	 * (§5.2). */
 	waiting: Record<number, number>;
 	onActivate: (tabId: number) => void;
-	onClose: (tabId: number) => void;
+	/** Close one tab, and report whether the host's invoke was ACCEPTED (`false` is a
+	 * refusal). Only the caret restore reads the value — see the pending-close block.
+	 * `undefined` is the host saying it reports nothing, which the bounded wait's
+	 * expiry then ends; a host that does not care answers `true`. */
+	onClose: (tabId: number) => Promise<boolean> | undefined;
+	/** Close several tabs as ONE intent (design R5). The counts in the labels are the
+	 * disclosure, so the strip builds the intent and the host sends it.
+	 *
+	 * The promise is the close's own OUTCOME, and it is what bounds the caret restore
+	 * (review round 2, A-2): `false` means the invoke was refused, so the projection
+	 * this side is waiting for can never arrive and the wait has to end. `undefined` is
+	 * the same allowance `onClose` makes, and a host that hands back nothing leaves the
+	 * bounded wait's expiry to end it. */
+	onCloseTabs: (intent: CloseTabsIntent) => Promise<boolean> | undefined;
 	onNewTab: () => void;
+	/** What the `+` calls itself. The host's own sentence, because only the host
+	 * knows whether a tab opened here is attributed to a conversation (design R1):
+	 * a `+` labelled `New tab` in both hosts would leave the difference to be
+	 * discovered by switching the scope and finding the tab gone. Defaulted so a
+	 * story or a test that does not care passes nothing. */
+	newTabLabel?: string;
 	onHandOver: (tab: BrowserTabView) => void;
 	onRevokeHandOver: (tabId: number) => void;
 }
+
+/**
+ * How long a close's caret restore may stay armed, in milliseconds.
+ *
+ * A BACKSTOP, not the mechanism: when the host reports the close's outcome the record
+ * settles on that answer within one projection, and this only ends the wait for a host
+ * that hands back nothing (a story, a test harness) or a projection that never arrives
+ * at all. The number is the app's own worst measured landing — the QA round that filed
+ * the caret defect read `<body>` at 300ms, 1.3s and 2.8s after the press, the last of
+ * which is a projection still arriving almost three seconds later — so a merely slow
+ * close is still honoured, and past that the caret is left wherever the user has put it
+ * rather than being taken back into the strip.
+ */
+const CLOSE_FOCUS_SETTLE_MS = 4000;
+
+/** One close's claim on the caret. See the pending-close block in the component: `ids`
+ * is what the close named, `parked` records that the caret has already been moved into
+ * the strip for it, and `decided` records that the close's own promise has settled. */
+type CloseFocusPending = {
+	ids: number[];
+	parked: boolean;
+	decided: boolean;
+};
 
 /** The favicon-equivalent: a per-tab state glyph at 16px.
  *
@@ -137,6 +207,140 @@ const tabLabel = (title: string): string => {
 };
 
 /**
+ * The state chips a row can carry, IN SURVIVAL ORDER — the order the cap spends.
+ *
+ * WHY THE ORDER IS THIS ONE, most load-bearing first (design R4, fix 1; open
+ * question 9):
+ *
+ * 1. `Request n` is an ASK, and its number is the tie to the tray's chip and the
+ *    dock's row (§5.2) — dropping it hides the one chip that asks the user for
+ *    something.
+ * 2. `Agent` is the only thing that distinguishes an agent tab from the user's own,
+ *    and QA asserts on it.
+ * 3. `Failed` is a background tab's only signal: a refused main-frame load leaves
+ *    Chromium's blank surface in the view, so without the chip there is nothing on
+ *    screen that says the tab failed.
+ * 4. `Shared` is implied by `Agent` today (`registry.ts:369-372` sets `owner` and
+ *    `handedTo` together), so it is real information at the lowest value of the four.
+ * 5. `Restored` is useful once — "why am I signed out" — and recoverable from the
+ *    tab's own tooltip, so it yields first.
+ */
+const CHIP_PRIORITY = [
+	"request",
+	"agent",
+	"failed",
+	"shared",
+	"restored",
+] as const;
+
+type StateChip = (typeof CHIP_PRIORITY)[number];
+
+/** Each chip's own word, for the collapsed chip's tooltip and for the sentence
+ * assistive technology reads. The same words the chips render. */
+const CHIP_WORD: Record<StateChip, string> = {
+	request: "Request",
+	agent: "Agent",
+	failed: "Failed",
+	shared: "Shared",
+	restored: "Restored",
+};
+
+/**
+ * HOW MANY STATE CHIPS A ROW SHOWS BEFORE IT COLLAPSES THE REST.
+ *
+ * WHY A CAP AT ALL (design R4, fix 1). The width policy pays the strips's floors
+ * from a budget: `title = floor − 32 − chips − 6 x (pills + 1)`, and five chips are
+ * 244px of a 384px floor, which leaves the title 72px — the committed `worst-case`
+ * frame reads `Check...`. The two ways out were rejected: paying the floors at five
+ * chips needs a 465px floor (one pathological row taking that much scroll order
+ * ahead of every ordinary tab), and dropping a chip hides a state the design round
+ * approved. So the row keeps the three that matter most and says how many it hid.
+ *
+ * THREE, because that is the count at which the floor arithmetic clears the 85px
+ * this file promises at every reachable row (the invariant is asserted in
+ * `scripts/browser-chrome.test.mjs`, not asserted here).
+ */
+const MAX_INLINE_CHIPS = 3;
+
+/**
+ * Which chips a row shows and which it collapses.
+ *
+ * A `Set` rather than the surviving array, because the only thing the render needs
+ * is "does this chip appear" — and the chips render in the strip's own long-standing
+ * order (marker, then state) rather than in survival order, which is a separate
+ * decision the design round made and this cap does not touch.
+ */
+export function stateChips(
+	tab: BrowserTabView,
+	waitingOrdinal: number | undefined,
+): { shown: Set<StateChip>; collapsed: StateChip[] } {
+	const present = {
+		request: waitingOrdinal !== undefined,
+		agent: tab.owner === "agent",
+		failed: tab.failed,
+		shared: tab.handedOver,
+		restored: tab.restored,
+	};
+	const ordered = CHIP_PRIORITY.filter((chip) => present[chip]);
+	return {
+		shown: new Set(ordered.slice(0, MAX_INLINE_CHIPS)),
+		collapsed: ordered.slice(MAX_INLINE_CHIPS),
+	};
+}
+
+/** The schemes a `Copy URL` press may copy: what can be pasted somewhere useful. */
+const HTTP_URL = /^https?:\/\//;
+
+/**
+ * A group's name, for the strip's chip and the band list's headings.
+ *
+ * ONE RULE FOR BOTH, and the unattributed run's own sentence lives here rather than
+ * at two call sites: `sessionDisplayName` resolves a conversation, and `null` is not
+ * a conversation but the user's own tabs, which the design names `No conversation`
+ * (open question 8).
+ */
+function groupLabelName(
+	group: { sessionId: string | null },
+	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
+): string {
+	return group.sessionId === null
+		? "No conversation"
+		: sessionDisplayName(group.sessionId, sessions);
+}
+
+/**
+ * The floor rung for a row: the Tailwind width classes, per tier.
+ *
+ * EXTRACTED AS A FUNCTION RATHER THAN INLINED IN THE ROW so the invariant behind it
+ * can be TESTED rather than read (design R4: "the invariant is a pure function and
+ * belongs in `browser-chrome.test.mjs`"). The test takes this function's own answer,
+ * maps each tier's token to the pixel width the spacing scale gives it, and asserts
+ * the title each rung leaves - so a rung edited without redoing the arithmetic fails
+ * the test rather than a frame.
+ *
+ * THE TIERS ARE RANGES, not two stacked `max-` variants: the narrow one is
+ * everything under 672px (42rem), the middle one 672..1152, and the bare `min-w-*`
+ * takes the rest. They are read in that order by `@container/strip` on the strip's
+ * ROW - not on the scroller, whose width changes when the pinned control appears,
+ * which is the feedback loop that once made the strip oscillate (see the scroller's
+ * own note).
+ */
+export function tabFloor(active: boolean, pills: number): string {
+	if (active) {
+		if (pills >= 4) return "min-w-[26rem] @max-2xl:min-w-101";
+		if (pills === 3) return "min-w-96 @max-2xl:min-w-91";
+		if (pills === 2) return "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-77";
+		if (pills === 1) return "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-65";
+		return "min-w-56 @max-2xl:min-w-48";
+	}
+	if (pills >= 4) return "min-w-96 @max-2xl:min-w-84";
+	if (pills === 3) return "min-w-80 @max-2xl:min-w-74";
+	if (pills === 2) return "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-60";
+	if (pills === 1) return "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-48";
+	return "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-31";
+}
+
+/**
  * Reveal-on-hover-or-focus, the treatment a row's chrome gets when the strip has
  * no room to keep it in flow. Literal class names rather than a template string,
  * because Tailwind's scanner reads the source text.
@@ -159,10 +363,13 @@ const NARROW_REVEAL =
 
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
+	sessions = [],
 	activeTabId,
 	waiting,
+	newTabLabel = "New tab",
 	onActivate,
 	onClose,
+	onCloseTabs,
 	onNewTab,
 	onHandOver,
 	onRevokeHandOver,
@@ -170,7 +377,19 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** Which tab's actions are expanded in the band, if any. Local view state: the
 	 * expansion is not a fact about a tab, and main has no opinion about it. */
 	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
+	/** Whether the pinned control's list of every tab is open, in the band. Local view
+	 * state for the same reason the actions row's is: it is not a fact about a tab. */
+	const [overflowOpen, setOverflowOpen] = useState(false);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
+	/** The pinned control's own element, so dismissing the list hands focus back to the
+	 * control that opened it — the same contract the actions row has with its trigger
+	 * (UX round 2, U9). */
+	const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/** The list itself, so opening it can move focus INTO the band (D4's rule, applied
+	 * to the second band row rather than re-derived for it). */
+	const overflowRowRef = useRef<HTMLDivElement | null>(null);
+	/** The list's own scroller, for the reveal below. */
+	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
 	/** One ref per tab's actions trigger, so dismissing the row can hand focus back
 	 * to the tab it belonged to (UX round 2, U9: both dismissal paths unmount the
@@ -203,6 +422,217 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		// focused element after an unrelated click in the dock was this row).
 		actionsRowRef.current?.focus();
 	}, [actionsTabId]);
+
+	/**
+	 * Dismiss the pinned list and put the caret back where it came from.
+	 *
+	 * THE RETURN IS THE WHOLE REASON THE TRIGGER HAS A REF: every dismissal path
+	 * unmounts the element that had focus, which drops a keyboard user to `<body>` and
+	 * out of the strip entirely — the class of defect the actions row's own note
+	 * records from UX round 2 (U9). The band's rows are all reachable by keyboard, so
+	 * this one has to be right rather than merely survivable.
+	 */
+	const closeOverflow = useCallback((): void => {
+		setOverflowOpen(false);
+		overflowTriggerRef.current?.focus();
+	}, []);
+
+	useEffect(() => {
+		if (!overflowOpen) return;
+		overflowRowRef.current?.focus();
+		/*
+		 * AND THE ROW THAT SAYS "you are here" IS REVEALED (review round 1, U2). The
+		 * control exists to reach a tab the strip has pushed off screen, and it opened at
+		 * `scrollTop: 0` — so with the newest tab active (the usual case) the current tab
+		 * sat below the fold of the list that was opened to show it, and the frame showed
+		 * the last row clipped at the box's edge. The strip itself already scrolls its
+		 * active tab into view, so this is the list catching up with the row above it
+		 * rather than a second rule.
+		 *
+		 * MANUAL, NOT `scrollIntoView`: that walks every scrollable ancestor, and this
+		 * list sits inside the app's own scroller and the sidebar — centring one row would
+		 * move the sidebar and the chat behind the band. The arithmetic moves the list's
+		 * own `scrollTop` by the overlap it measured, and nothing else.
+		 */
+		const scroller = overflowScrollerRef.current;
+		if (activeTabId === null || !scroller) return;
+		const row = scroller.querySelector<HTMLElement>(
+			`[data-tab-id="${activeTabId}"]`,
+		);
+		if (!row) return;
+		const rowBox = row.getBoundingClientRect();
+		const box = scroller.getBoundingClientRect();
+		if (rowBox.bottom > box.bottom)
+			scroller.scrollTop += rowBox.bottom - box.bottom;
+		else if (rowBox.top < box.top) scroller.scrollTop -= box.top - rowBox.top;
+	}, [overflowOpen, activeTabId]);
+
+	/**
+	 * Where a close that takes its own trigger with it leaves the caret, and why it needs its
+	 * own path, its own record and its own expiry.
+	 *
+	 * A dismissal that does NOT remove the tab (`closeActions`, used by Watch, hand-over,
+	 * revoke and Copy URL) hands focus back to the tab its trigger belonged to. A close
+	 * can't: the band's own element is inside the row that is about to be gone, so the
+	 * caret has nowhere to return to and would fall to `<body>` — dropping a keyboard user
+	 * out of the strip entirely (the UX round 2 U9 class of defect).
+	 *
+	 * SO THE CLOSE NAMES ITS OWN TARGETS. `ids` is what the batch asked for: the ids it
+	 * sent (`mode: "ids"`) or the conversation's own tabs as the strip last saw them
+	 * (`mode: "conversation"`, which main resolves against the live registry so a tab an
+	 * agent opens meanwhile is closed too — the ids here are only the ones this side can
+	 * wait for). While any of them is still in `tabs` THE CLOSE HAS NOT LANDED.
+	 *
+	 * WHY THE RECORD HAS TO SURVIVE THE FIRST RENDER (review round 1, A2 — one bug, three
+	 * reports): `setActionsTabId(null)` renders BEFORE `chrome.closeTabs`'s IPC round trip
+	 * lands, so the first run of this effect after a press still sees every pre-close tab.
+	 * Resolving the selection there focuses the tab that is being removed, which unmounts
+	 * milliseconds later and drops the caret to `<body>` with the flag already spent —
+	 * measured in the app (QA Q4, UX U1: `<body>` at 300ms/1.3s/2.8s) and reproduced in a
+	 * jsdom probe against this component (reviewer, A2). Neither `activeTabId` nor the
+	 * props carry "the close has landed", so the ids do.
+	 *
+	 * AND WHY THE WAIT IS BOUNDED (review round 2, A-2 — the flag had no failure exit). The
+	 * projection that removes the ids is a thing that may NEVER come: an invoke main refuses
+	 * drops nothing, and neither does an id main did not take, because the test above asks
+	 * whether ALL of them are gone. An unbounded wait is not a wait but an armed tripwire —
+	 * this effect re-runs on every `tabs` change, including the `refresh()` a failed `run()`
+	 * performs — so the next tab that arrived took the caret back into the strip, away from
+	 * wherever the user had put it (reproduced in jsdom by the reviewer, whose control case
+	 * shows the caret left alone). THREE RULES BOUND IT, and each covers a different way the
+	 * projection can fail to arrive:
+	 *
+	 *  1. IT PARKS ONCE (`parked`). The caret is moved out of the row that is about to
+	 *     disappear by the first run after the press and by no later one: after that, only
+	 *     the landing below or the expiry may move it.
+	 *  2. THE CLOSE'S OWN OUTCOME DECIDES IT (`settleCloseFocus`). `run` in
+	 *     `use-browser-chrome.ts` awaits its re-read before it resolves, so a settled
+	 *     promise means main has published the projection that answers THIS close: `false`
+	 *     (the invoke was refused) drops the record at once, and `true` marks it decided —
+	 *     the next `tabs` change is then the verdict, and ids still present after it are ids
+	 *     this close did not take, so the record is dropped rather than left armed.
+	 *  3. IT EXPIRES (`CLOSE_FOCUS_SETTLE_MS`). For a host that reports nothing and a
+	 *     projection that never arrives, the record ends on its own either way.
+	 *
+	 * THE TWO PLACEMENTS, in order: while the close is in flight the caret sits on the
+	 * scroller — the one element in the strip that survives every close, which is exactly
+	 * why it is focusable — and once the projection lands, on the new active tab's
+	 * `[role="tab"]`, or the scroller again when there is no tab left to hold it. A refused
+	 * or expired close moves NOTHING: the caret is left where the user has since put it.
+	 */
+	const closeFocus = useRef<CloseFocusPending | null>(null);
+	const closeFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	/** Drop the record and its timer. Nothing here touches focus: every caller has already
+	 * decided that this close will not move the caret (a refusal, a landing, an expiry). */
+	const clearCloseFocus = useCallback((): void => {
+		if (closeFocusTimer.current !== null) {
+			clearTimeout(closeFocusTimer.current);
+			closeFocusTimer.current = null;
+		}
+		closeFocus.current = null;
+	}, []);
+	/** An unmount ends the wait too, so a strip that goes away does not leave a timer behind. */
+	useEffect(() => clearCloseFocus, [clearCloseFocus]);
+
+	/** Arm the wait for ONE close, and return its record so that close's own promise settles
+	 * THAT record rather than whatever a later press armed. */
+	const armCloseFocus = useCallback(
+		(ids: number[]): CloseFocusPending => {
+			if (closeFocusTimer.current !== null)
+				clearTimeout(closeFocusTimer.current);
+			const pending: CloseFocusPending = {
+				ids,
+				parked: false,
+				decided: false,
+			};
+			closeFocus.current = pending;
+			closeFocusTimer.current = setTimeout(() => {
+				if (closeFocus.current === pending) clearCloseFocus();
+			}, CLOSE_FOCUS_SETTLE_MS);
+			return pending;
+		},
+		[clearCloseFocus],
+	);
+
+	/** Let the close's own outcome settle the record when the host reports one. */
+	const settleCloseFocus = useCallback(
+		(
+			pending: CloseFocusPending,
+			settled: Promise<boolean> | undefined,
+		): void => {
+			if (!settled) return;
+			void settled.then((accepted) => {
+				if (closeFocus.current !== pending) return;
+				if (!accepted) {
+					clearCloseFocus();
+					return;
+				}
+				pending.decided = true;
+			});
+		},
+		[clearCloseFocus],
+	);
+
+	useEffect(() => {
+		const pending = closeFocus.current;
+		if (!pending || actionsTabId !== null) return;
+		const landed = !pending.ids.some((tabId) =>
+			tabs.some((tab) => tab.tabId === tabId),
+		);
+		if (!landed) {
+			// THE CLOSE WAS DECIDED AND THESE IDS SURVIVED IT: nothing is coming, so stop
+			// waiting rather than leaving the record armed for the next projection.
+			if (pending.decided) {
+				clearCloseFocus();
+				return;
+			}
+			// PARK ONCE, and never take the caret back from where the user has since put it:
+			// only the landing below may move it again.
+			if (pending.parked) return;
+			pending.parked = true;
+			scrollerRef.current?.focus();
+			return;
+		}
+		clearCloseFocus();
+		const next =
+			activeTabId === null
+				? null
+				: scrollerRef.current?.querySelector<HTMLElement>(
+						`[data-tab-id="${activeTabId}"] [role="tab"]`,
+					);
+		(next ?? scrollerRef.current)?.focus();
+	}, [actionsTabId, activeTabId, tabs, clearCloseFocus]);
+
+	/** One batch close, whatever it closes: drop the row, name what it will take, ask for
+	 * the intent, and leave the caret to the effect above — which the close's own outcome
+	 * settles when the host reports it. */
+	const runBatchClose = useCallback(
+		(intent: CloseTabsIntent): void => {
+			const pending = armCloseFocus(
+				intent.mode === "ids"
+					? [...intent.tabIds]
+					: tabs
+							.filter((tab) => tab.sessionId === intent.sessionId)
+							.map((tab) => tab.tabId),
+			);
+			setActionsTabId(null);
+			settleCloseFocus(pending, onCloseTabs(intent));
+		},
+		[armCloseFocus, onCloseTabs, settleCloseFocus, tabs],
+	);
+
+	/** A single close from the band takes the same path, for the same reason the batch
+	 * does: `closeActions` returns the caret to the closing tab's own trigger, which is
+	 * inside the row being removed (review round 1, A2's "while in here"). */
+	const runClose = useCallback(
+		(tabId: number): void => {
+			const pending = armCloseFocus([tabId]);
+			setActionsTabId(null);
+			settleCloseFocus(pending, onClose(tabId));
+		},
+		[armCloseFocus, onClose, settleCloseFocus],
+	);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
 	// policy kept, a long strip scrolls, and a tab activated from the dock or by an
@@ -241,7 +671,77 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * case the count exists for.
 	 */
 	const [tabsOffScreen, setTabsOffScreen] = useState(0);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when `tabs` changes even though the body never reads it.
+	/*
+	 * THE POOL, GROUPED BY CONVERSATION, AND THE ONE PLACE THE RENDERED ORDER IS
+	 * DECIDED (design R3).
+	 *
+	 * Grouping is a PRESENTATION of the pool, so it lives here rather than in the
+	 * registry: `registry.snapshot()` sorts by `tabId` and the host-proof harnesses
+	 * assert on `state.tabs[0]`, so the registry's order is left exactly where it is.
+	 *
+	 * WHY BLOCKS RATHER THAN CONTIGUOUS RUNS, and why the unattributed run is LAST:
+	 * `groupTabsBySession`'s own doc carries both arguments. The one thing worth
+	 * repeating here is the constraint this component imposes on the rule - a
+	 * hand-over can move a tab between groups, and the `Shared` chip on the moved tab
+	 * is what announces it.
+	 *
+	 * THE ORDER IS DECIDED ONCE. `ordered` is the grouping flattened rather than a
+	 * second pass with its own comparison, so "the order shown" and "the order the
+	 * groups are in" cannot drift; and `groupLeads` gives the row loop the four
+	 * things a chip needs without turning the loop into nested maps, which keeps the
+	 * per-row measurement, the divider rule and the tab-id lookup below untouched.
+	 */
+	const groups = useMemo(() => groupTabsBySession(tabs), [tabs]);
+	const ordered = useMemo(
+		() => groups.flatMap((group) => group.tabs),
+		[groups],
+	);
+	const groupLeads = useMemo(() => {
+		const leads = new Map<
+			number,
+			{ sessionId: string | null; count: number }
+		>();
+		for (const group of groups) {
+			const first = group.tabs[0];
+			if (first)
+				leads.set(first.tabId, {
+					sessionId: group.sessionId,
+					count: group.tabs.length,
+				});
+		}
+		return leads;
+	}, [groups]);
+	/**
+	 * A chip is rendered only when the pool holds MORE THAN ONE conversation, and
+	 * that is what keeps every existing surface visually unchanged: the pane's own
+	 * scope is a single group by construction, so its strip carries no labels at all
+	 * (design R3). A pool of two conversations gets the labels because there the
+	 * labels are the only thing that says which tab is whose.
+	 */
+	const showGroupLabels = groups.length > 1;
+	/**
+	 * The two BULK CLOSES whose labels carry a count, and they agree about which list
+	 * that count comes from because they are the SAME list: the one this host is showing
+	 * (`tabs`) — the pane's is a conversation's, the route's is everything. Review round 2
+	 * settled this (the operator's U7 ruling), withdrawing round 1's A3, which had fed
+	 * `others` a second, wider `poolTabs` list so the item could count beyond what the pane
+	 * displays: a band that closes tabs the user cannot see is a scope overreach, and the
+	 * label stays honest either way because it counts what the press closes. `null` means
+	 * "do not offer the item", which is the design's rule for a press that would close
+	 * nothing.
+	 */
+	const closeOthers =
+		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
+	const closeRight =
+		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
+	/** How many tabs a conversation holds, for the group item's count and its `>= 2`
+	 * gate: closing "all" of a conversation's single tab is `Close "X"` under a longer
+	 * label. Read from the visible list, and that is the same number the pool would give:
+	 * the pane's list IS that conversation's tabs when the lens is on it, and the
+	 * conversation's tabs are a subset of the list when the lens is on everything. */
+	const conversationTabCount = (sessionId: string): number =>
+		tabs.filter((tab) => tab.sessionId === sessionId).length;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;
 		if (!strip) return;
@@ -266,7 +766,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			strip.removeEventListener("scroll", measure);
 			observer.disconnect();
 		};
-	}, [tabs]);
+	}, [ordered]);
 
 	return (
 		<div
@@ -307,6 +807,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			>
 				<div
 					ref={scrollerRef}
+					// Focusable so a batch close has somewhere to leave the caret when the
+					// tab it would have returned to is one of the tabs it closed.
+					tabIndex={-1}
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
 					// strip's bottom rule, so the active tab's notch can paint ON that rule
 					// rather than being clipped by the scroll container one pixel above it.
@@ -330,160 +833,190 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
 					)}
 				>
-					{tabs.map((tab, index) => {
+					{ordered.map((tab, index) => {
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
-						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES, AND FOR THE
-						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW (review rounds 5 and 6).
+						 * THE ROW'S PILLS, AND THE CAP THAT BOUNDS THEM (design R4, fix 1).
 						 *
-						 * THE COMBINATIONS ARE ENUMERATED FROM THE REGISTRY, NOT FROM THE STORY.
-						 * Round 4 assumed the five markers were mutually exclusive; `Shared` is not
-						 * exclusive with `Agent`, it is IMPLIED by it - `handOver` sets
-						 * `owner = "agent"` AND `handedTo = sessionId` (`registry.ts:369-372`),
-						 * `host.ts:549` projects `handedOver`, and the two chips render on
-						 * independent conditions, so every handed-over tab carries both.
-						 * `revokeHandOver` clears both together; `restored` is set only at creation,
-						 * for a tab that is always user-owned, and is never cleared - so
-						 * `Shared => Agent` and `Agent AND Restored => Shared`, and `failed` and a
-						 * waiting `Request n` stack on either. Reachable, by count:
+						 * `stateChips` (module scope) is the one place the cap is applied: at most
+						 * THREE state chips are drawn inline, in survival order, and the rest
+						 * collapse into one `+n` chip. So a row carries 0-4 pills, and that bound is
+						 * what lets the ladder below be a short one.
 						 *
-						 *   1-2 chips  Agent, Shared, Restored, Failed, Request n, and the pairs
-						 *              those implications allow
-						 *   3 chips    Agent + Shared + (Failed | Request n),
-						 *              Agent + Shared + Restored,
-						 *              Agent + Failed + Request n,
-						 *              Restored + Failed + Request n
-						 *   4 chips    Agent + Shared + Failed + Request n,
-						 *              Agent + Shared + Restored + Failed,
-						 *              Agent + Shared + Restored + Request n
-						 *   5 chips    Restored + Agent + Shared + Failed + Request n
+						 * WHY A CAP RATHER THAN A BIGGER FLOOR, and the choice was made from this
+						 * file's own committed evidence: five chips are 244px, and at the 384px floor
+						 * that leaves the title 72px - the `worst-case` frame reads `Check...`. Paying
+						 * the floors at five chips needs a 465px floor, which hands one pathological
+						 * row (restored, handed over, failed AND waiting, and NOT the tab being read)
+						 * that much scroll order ahead of every ordinary tab. Dropping a chip was the
+						 * other option and it hides a state the design round approved. A number is the
+						 * honest third: nothing is hidden, the count says how much is collapsed on its
+						 * face, and the three that survive are the three that carry information.
+						 */
+						const { shown: shownChips, collapsed: collapsedChips } = stateChips(
+							tab,
+							waitingOrdinal,
+						);
+						const pills = shownChips.size + (collapsedChips.length ? 1 : 0);
+						/*
+						 * THE FLOOR IS SIZED FOR THE PILLS THE ROW ACTUALLY CARRIES, AND FOR THE
+						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW.
 						 *
-						 * MEASURED CHIP WIDTHS (`px-1` pills): Agent 43, Shared 43, Restored 48,
-						 * Failed 48, Request n 62. The widest set at each count is therefore 62,
-						 * 105, 158, 196, 244. `px-2` is 16px TOTAL, the mark is 16px, and each of
-						 * the chips+1 gaps is 6px, so a row's title is
-						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` and the active row pays a
-						 * further 68px for the cluster in flow plus the gap before it:
+						 * MEASURED PILL WIDTHS (`px-1` pills): Agent 43, Shared 43, Restored 48,
+						 * Failed 48, Request n 62, and the collapsed `+n` 36. The widest set at each
+						 * reachable count is therefore 0, 62, 105, 153, 189 - the last being three
+						 * chips plus the collapse chip, and it is the same 189 whether one state was
+						 * collapsed or two, because the collapse is ONE pill whatever it hides.
+						 * `px-2` is 16px TOTAL, the mark is 16px, and each of the gaps is 6px, so a
+						 * row's title is `floor - 32 - pills - 6 x (pills + 1)` and the active row
+						 * pays a further 68px for the cluster in flow plus the gap before it:
 						 *
-						 *   inactive   0:176->144  1:224->118  2:288->133  3:320->106
-						 *              4:384->126  5:384->72   (the five-chip title yields)
-						 *   active     0:224->124  1:320->146  2:384->161  3:384->102
-						 *              4:416->90   5:480->100
+						 *   inactive   0:176->138  1:224->118  2:288->133  3:320->111  4:384->133
+						 *   active     0:224->124  1:320->146  2:384->161  3:384->107  4:416->97
+						 *   narrow     inactive 0-4:124/192/240/296/336->86/86/85/87/85
+						 *              active   0-4:192/260/308/364/404->154/154/153/155/153
 						 *
-						 * EVERY ACTIVE ROW CLEARS THE 85px THIS FILE PROMISES, at every count, and
-						 * the active rows are the ones that take steps past the spacing scale:
-						 * `{Agent, Shared, Failed, Request n}` is the tab a user clicks precisely
-						 * BECAUSE it needs approval, and at the standard `min-w-96` its title was
-						 * 58px - under the 60px floor the harness itself asserts - so it is
-						 * `min-w-[26rem]`, and the widest row the projection can produce, active, is
-						 * `min-w-[30rem]` for 100px of title. Named as steps past the scale rather
-						 * than pretending a standard step fits. Round 6, MAJOR 2.
+						 * EVERY ROW AT EVERY RUNG OF EVERY TIER CLEARS THE 85px THIS FILE PROMISES, and
+						 * that is the whole point of the cap: before it, the five-chip inactive row
+						 * yielded to 72px. The invariant is `title >= 85` at every reachable count,
+						 * asserted where a pure function belongs (`scripts/browser-chrome.test.mjs`)
+						 * rather than read off a frame.
 						 *
-						 * THE INACTIVE FIVE-CHIP ROW IS WHERE THE TITLE YIELDS, and that is the
-						 * deliberate half. Fitting 244px of chips plus the mark and the gaps at 85px
-						 * of title needs a 465px floor, and handing one pathological state -
-						 * restored, handed over, failed AND waiting at once, and NOT the tab the user
-						 * is looking at - that much of the strip's scroll order, ahead of every
-						 * ordinary tab, is a worse trade than the title yielding: the
-						 * `browser-tab-strip--worst-case` frame is that row at 72px, reading
-						 * `Check...`. Dropping a chip was the other option and it hides a state the
-						 * design round approved. Its chips stay whole - 312px of content inside
-						 * 384px - and the BUTTON clips at its own edge (above) as the backstop that
-						 * keeps a chip from ever painting over the neighbouring tab, the
-						 * `bg-canvas`-over-`bg-canvas` defect design round 3 filed as MAJOR. At the
-						 * widths measured here that clip cannot fire: the widest reachable content
-						 * is 380px against a 416px floor, so it is a backstop for a sixth marker or
-						 * a wider chip, NOT the evidence for the sizes above - the sizes are the
-						 * evidence (review round 6, MINOR 2).
+						 * THE NARROW TIER CARRIES THE SAME PROMISE NOW, AND THE COST IS THE ARITHMETIC
+						 * RATHER THAN A PREFERENCE (design review round 2, D1, settled as option 1 of the
+						 * two that finding priced). Below `@max-2xl` the active row's cluster is
+						 * `absolute`, so it costs no width and the promise there is
+						 * `floor - 32 - pills - 6 x (pills + 1) >= 85`: the raised rungs are inactive
+						 * 124/192/240/296/336px and active 192/260/308/364/404px for 0-4 pills, which
+						 * leave 86/86/85/87/85 and 154/154/153/155/153px of title. What that buys is the
+						 * guarantee the operator asked for - no title is ever squeezed below the floor,
+						 * at any count, at any width the pane renders - and what it costs is two numbers
+						 * in a 640px pane: the common CHIP-LESS active row goes 120 -> 192px, and the
+						 * worst 4-pill row 248 -> 404px. Accepted knowingly, because the tabs that no
+						 * longer fit are still REACHABLE - the pinned control is the strip's own overflow
+						 * list, moved in-band by this change so nothing occludes it - and because the
+						 * narrowing tool is the pane's own scope switch, which shows one conversation's
+						 * tabs on request rather than all of them by default.
+						 *
+						 * THE ACTIVE ROW STILL TAKES ONE STEP PAST THE SPACING SCALE, and it is named
+						 * rather than hidden: `min-w-[26rem]` is the only arbitrary length left, for
+						 * the widest active row (three chips plus the collapse chip, 97px of title),
+						 * because the tab a user clicks BECAUSE it needs approval is exactly that
+						 * row. Before the cap there were two such steps (`min-w-[26rem]` and
+						 * `min-w-[30rem]`); the cap is what collapsed them into one.
+						 *
+						 * THE BUTTON STILL CLIPS AT ITS OWN EDGE (review round 6, MAJOR 1), and it
+						 * remains a backstop rather than the evidence for these sizes: at the widths
+						 * above the widest reachable content is 189 + 32 + 30 = 251px against a 384px
+						 * floor, so the clip cannot fire. It is there for a sixth marker or a wider
+						 * chip, not as the reason any number here is what it is (review round 6,
+						 * MINOR 2).
+						 *
+						 * PAST TWO PILLS THE MIDDLE TIER INHERITS THE BASE RUNG rather than stepping
+						 * down again, and the invariant decides the rung rather than an aesthetic: at the
+						 * middle tier's old `min-w-72` a three-pill row had 79px of title, under the promise
+						 * this file makes. Two pills at `min-w-60` is exactly 85px, which is where the
+						 * ladder stops stepping down.
 						 *
 						 * Roles rather than computed pixels: the contract's spacing steps are the
 						 * vocabulary here, and the one arbitrary length is called out above.
 						 */
-						const chips = [
-							tab.owner === "agent",
-							tab.handedOver,
-							tab.restored,
-							tab.failed,
-							waitingOrdinal !== undefined,
-						].filter(Boolean).length;
-						/*
-						 * THE SAME LADDER, ONE STEP DOWN, WHEN THE STRIP ITSELF IS NARROW
-						 * (design round 1, D1; QA round 1, Q2; the designer's round-1
-						 * remainder). The rungs above are sized for the route's 1240px, where
-						 * the agent tab's `min-w-80` is 26% of the strip; in the pane's own
-						 * default 640 it is 50%, so a WHOLE TAB was off-screen with nothing on
-						 * screen saying so - the state the pane exists to show.
-						 *
-						 * THREE TIERS, EACH ONE A RANGE, OVER A CONTAINER THAT CANNOT MOVE:
-						 * the narrow one is everything under 672px (42rem), the middle one is
-						 * 672..1152, and the base rungs take the rest. Ranges rather than
-						 * stacked `max-` variants because both would claim the pane and the
-						 * winner would be whichever Tailwind sorted last; a container on the
-						 * strip ROW rather than on the scroller because the scroller's width
-						 * changes when the pinned control appears - and the control's own
-						 * presence is decided by the floors the tier sets, so measured on the
-						 * scroller the two fed each other and the strip oscillated between
-						 * fitting four tabs and not fitting them (caught in a frame: a `+2`
-						 * control over a strip whose four rows did fit).
-						 *
-						 * WHAT THE NARROW RUNGS BUY, by chip count, from the same
-						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` arithmetic as the comment
-						 * above and with the pane's own room (640 strip, about 546px of scroller
-						 * once the control and the new-tab button have taken theirs):
-						 *   no chips 120 -> 82px of title   four rows = 480  (room to spare)
-						 *   1 chip   132 -> 45px of title   four rows = 528  (FOUR FIT, which is
-						 *                                    the case D1 filed and the case the
-						 *                                    pane's default width exists for)
-						 *   2 chips  200 -> 45px of title   three fit, the rest are counted
-						 * A 45px title is FIVE OR SIX CHARACTERS, not the 85px this file promises
-						 * at the route's width, and that is the trade this tier makes out loud:
-						 * the row keeps its mark, every one of its chips and the hover/focus
-						 * chrome, the whole name is in the native `title` and in the pinned
-						 * control's menu, and the pane's own divider is how a user buys the
-						 * measure back. A tier that kept the 85px promise would show three rows
-						 * and cut the fourth, which is the defect D1 filed; at 480, or with six
-						 * tabs, even this tier runs out and the control's COUNT is what says so.
-						 * The two halves are one answer: the floors decide how many fit, and the
-						 * control says how many did not.
-						 *
-						 * THE NARROW TIER HAS NO ACTIVE/INACTIVE SPLIT, because the active row's
-						 * chrome is overlaid there rather than in flow (see the cluster below):
-						 * its 68px of permanent controls is exactly what stopped four rows
-						 * fitting.
-						 *
-						 * Literal class names rather than a template string, because Tailwind's
-						 * scanner reads the source text: a class assembled at runtime is a class
-						 * it cannot see.
+						const floor = tabFloor(active, pills);
+						const previous = index > 0 ? ordered[index - 1] : null;
+						/**
+						 * The chip this tab leads, when it starts a group and the pool has more than
+						 * one conversation. The name is resolved by the ONE rule for it
+						 * (`sessionDisplayName`, extracted from `requesterLabel`), so a conversation
+						 * reads the same here, in the hand-over dialog and in the consent card; the
+						 * unattributed run is the fixed sentence the design names.
 						 */
-						const floor = active
-							? chips >= 5
-								? "min-w-[30rem] @max-2xl:min-w-[17rem]"
-								: chips === 4
-									? "min-w-[26rem] @max-2xl:min-w-62"
-									: chips === 3
-										? "min-w-96 @max-2xl:min-w-56"
-										: chips === 2
-											? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-50"
-											: chips === 1
-												? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-33"
-												: "min-w-56 @max-2xl:min-w-30"
-							: chips >= 4
-								? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-62"
-								: chips === 3
-									? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-56"
-									: chips === 2
-										? "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-50"
-										: chips === 1
-											? "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33"
-											: "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
-						const previous = index > 0 ? tabs[index - 1] : null;
+						const group = showGroupLabels
+							? groupLeads.get(tab.tabId)
+							: undefined;
+						const groupLabel = group
+							? { ...group, name: groupLabelName(group, sessions) }
+							: null;
 						// The divider belongs to the gap between two inactive tabs: the active
-						// one is continuous with the page, so no rule may run into it.
+						// one is continuous with the page, so no rule may run into it — and a tab
+						// that opens a group already has the chip's own rule in front of it, so
+						// two rules in a row would read as a heavier boundary than a group's.
 						const showDivider =
-							previous !== null && !active && previous.tabId !== activeTabId;
+							previous !== null &&
+							!active &&
+							previous.tabId !== activeTabId &&
+							groupLabel === null;
 						return (
 							<Fragment key={tab.tabId}>
+								{groupLabel && (
+									/*
+									 * THE GROUP CHIP, INSIDE THE SCROLLER, IMMEDIATELY BEFORE THE RUN IT NAMES.
+									 *
+									 * INSIDE, and the placement is load-bearing (design R3): the tiers are
+									 * measured against `@container/strip` on the strip's ROW, and putting a
+									 * label that comes and goes outside the scroller would change that
+									 * container's width - which is the documented cause of the historic
+									 * oscillation ("four tabs fitted at the narrow tier, overflowed again at
+									 * the middle one"). Inside, a label can never move a tier, and it scrolls
+									 * with the run it names, which is what makes it read as a heading rather
+									 * than as a fixed column. It also means the active tab's reveal brings
+									 * its group's label with it for free: the strip already scrolls the active
+									 * tab into view, and the chip is the element before it.
+									 *
+									 * NO FILL, because the grammar here says an inactive tab is TEXT IN THE
+									 * WELL (spec 6) and a label is not a control at all: a filled chip beside
+									 * unfilled tabs would read as the most important thing in the strip.
+									 * The 1px rule after it is the same `bg-hairline` divider the tabs use,
+									 * which is what makes the label look like it belongs to the run rather
+									 * than to the row.
+									 *
+									 * THE COUNT DOES NOT REPLACE THE BAND'S OWN (review round 1, U3/Q3): it used
+									 * to be the reason `Close all tabs in this conversation` carried no number,
+									 * and the chip is drawn only when the pool holds TWO conversations — so in
+									 * the host this feature adds (the pane opened from a sidebar mark, one
+									 * conversation in the pool) the band named no size at all and its most
+									 * destructive item was the only uncounted one. The chip still states the
+									 * run's size where it is drawn; the band counts its own items.
+									 */
+									<div
+										data-tour-tag="browser-tab-group"
+										data-group-id={groupLabel.sessionId ?? ""}
+										className="flex shrink-0 items-center gap-1.5 self-stretch"
+									>
+										<MessagesSquare
+											aria-hidden
+											className="size-3.5 shrink-0 text-ink-dim"
+										/>
+										<span
+											className={cn(
+												"shrink-0 text-meta text-ink-dim",
+												/*
+												 * THE ONE LABEL THAT IS A CONSTANT IS THE ONE THAT IS NOT CAPPED (review
+												 * round 1, D6). `max-w-24` is a budget for USER DATA — a session id or a
+												 * title can be any length and truncating one is honest, which is what the
+												 * `title` attribute beside it is for. `"No conversation"` is this file's
+												 * own string: a fixed label that clips to `No conv…` at every width the
+												 * strip has looks like a broken chip rather than a shortened one, and
+												 * nothing about it is unpredictable. So the unattributed run's chip is
+												 * sized by its text, and every named run keeps the cap.
+												 */
+												groupLabel.sessionId === null
+													? "whitespace-nowrap"
+													: "max-w-24 truncate",
+											)}
+											title={groupLabel.name}
+										>
+											{groupLabel.name}
+										</span>
+										<span className="shrink-0 tabular-nums text-meta text-ink-dim">
+											{groupLabel.count}
+										</span>
+										<span
+											aria-hidden
+											className="my-2 w-px shrink-0 self-stretch bg-hairline"
+										/>
+									</div>
+								)}
 								{showDivider && (
 									<span
 										aria-hidden
@@ -508,7 +1041,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										floor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
-											: "text-ink-muted hover:bg-elevated hover:text-ink",
+											: "text-ink-muted hover:bg-row-hover hover:text-ink",
 										// The tab whose actions row is open keeps a visible selected treatment:
 										// the row is a band under the whole strip, and the only other tie to its
 										// owner was a `:focus-visible` ring, which a mouse click does not paint
@@ -537,7 +1070,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										data-tour-tag="browser-tab"
 									>
 										<TabMark tab={tab} />
-										{tab.owner === "agent" && (
+										{shownChips.has("agent") && (
 											// Sentence case, informational, and the element a QA pass
 											// asserts on: the marker is the ONLY thing that distinguishes
 											// an agent tab from a user tab in the strip.
@@ -548,7 +1081,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Agent
 											</span>
 										)}
-										{tab.handedOver && (
+										{shownChips.has("shared") && (
 											// One pill shape for every state marker, differing by role only
 											// (design round 2, D11): `Restored` used to be bare dim text with no
 											// frame at all, which read as a caption beside the four framed
@@ -557,7 +1090,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Shared
 											</span>
 										)}
-										{tab.restored && (
+										{shownChips.has("restored") && (
 											// Restored tabs are worth marking, because a restored tab is a
 											// FRESH navigation to the same URL (design 7.3): a page that
 											// logged out since shows logged out, and saying "restored"
@@ -566,7 +1099,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Restored
 											</span>
 										)}
-										{tab.failed && (
+										{shownChips.has("failed") && (
 											// Marked per tab, not only on the active one: a background tab whose
 											// load was refused shows a blank page and nothing else, and the
 											// failure panel belongs to whichever tab the user is looking at
@@ -578,7 +1111,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Failed
 											</span>
 										)}
-										{waitingOrdinal !== undefined && (
+										{shownChips.has("request") && (
 											// The tab is parked on an origin the agent has not been approved
 											// for. Marked on the TAB rather than only in the band, because with
 											// several tabs open the band's sentence names an origin and the user
@@ -599,6 +1132,34 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												 * inferred.
 												 */}
 												Request {waitingOrdinal}
+											</span>
+										)}
+										{collapsedChips.length > 0 && (
+											/*
+											 * THE COLLAPSE CHIP (design R4, fix 1). It is HONEST ABOUT WHAT IT HIDES, and
+											 * in three places rather than one: the visible `+n` is the count, its `title`
+											 * names the states, and an `sr-only` span inside the button carries the words
+											 * so assistive technology reads `, 2 more: Restored, Shared` rather than a bare
+											 * number. The tab's own `title` and the actions band name the full state
+											 * too, so nothing is unrecoverable.
+											 *
+											 * THE RESTORED/SHARED TRIPLE, not a new one (`border-control`, `ink-dim`), so
+											 * a pill that says "some states are hidden" is drawn in the same grammar as the
+											 * states it hides and needs no new `CONTROLS` row in the contrast contract.
+											 */
+											<span
+												title={collapsedChips
+													.map((chip) => CHIP_WORD[chip])
+													.join(", ")}
+												className="shrink-0 rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums"
+												data-tour-tag="browser-tab-chips-collapsed"
+											>
+												+{collapsedChips.length}
+												<span className="sr-only">
+													{`, ${collapsedChips.length} more: ${collapsedChips
+														.map((chip) => CHIP_WORD[chip])
+														.join(", ")}`}
+												</span>
 											</span>
 										)}
 										{/*
@@ -768,86 +1329,254 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				</div>
 				{tabsOffScreen > 0 && (
 					/*
-					 * THE PINNED WAY TO REACH ANY TAB, which is the canvas's own answer to
-					 * the same problem (`canvas-tabs.tsx`: "scrolling sideways to find a file
-					 * is a fallback, not the only route"): one control in a fixed place
-					 * listing every tab, with the active one ticked. It sits OUTSIDE the
-					 * scroller, so it cannot itself be scrolled out of reach.
+					 * THE COUNT IS A CHIP, AND IT NAMES ITSELF (design review round 2, U5, ruled):
+					 * this control and the strip's `+` (new tab) used to be two bare plus signs
+					 * distinguished only by whether a digit followed one of them. The count now
+					 * carries the chip grammar the tab chips use (`border-control`, `text-ink-dim`,
+					 * `tabular-nums`) so it reads as a COUNT, it carries no plus of its own (see
+					 * its own note below), and its words are in both channels the ruling names: the
+					 * control's accessible name and its tooltip.
 					 *
-					 * IT APPEARS ONLY WHEN SOMETHING IS MISSING, AND IT COUNTS (QA round 1,
-					 * Q2): the count is the control's own text, its label and its tooltip say
-					 * what the count means, and a strip that fits draws no control at all.
-					 * That is also why the gate is `tabsOffScreen` rather than
-					 * `tabs.length > 1`, which is what it was for one round.
-					 *
-					 * IT EXISTS BECAUSE OF D1: at the pane's default width a strip of four
-					 * tabs still overflows after the floors step down (the narrow tier holds
-					 * four 1-chip rows; anything wider, or a 480px pane, runs out), and a
-					 * mouse has no horizontal wheel to scroll with. The two halves are one
-					 * answer - the floors decide how many fit, and this says how many did not.
+					 * THE WORDS ARE `N not shown`, AND THAT IS D10 (design review round 2). They were
+					 * `N more tabs`, and the reviewer's reading of the pane's own four-tab frame is why
+					 * they changed: THREE titles are readable there while the chip reads `2`, because
+					 * the third row is clipped at its right edge and this count is measured from the
+					 * rows' own boxes — so a tab lying half outside is counted as not shown, which is
+					 * what the measurement above has always meant and what the count exists to
+					 * disclose (the width cost D1's ruling accepted). The SENTENCE therefore gives way
+					 * to the measure rather than the measure to the sentence: "not shown" is exactly
+					 * true of a clipped row and of a hidden one, it is the same sentence the pinned
+					 * list's own heading already carries, and the two channels a reader can compare can
+					 * no longer disagree. What the chip must not do is read as a count of tabs with no
+					 * visible trace, which is what `more tabs` invited beside three readable titles.
 					 */
-					<DropdownMenu>
-						<Tooltip
-							content={
-								tabsOffScreen === 1
-									? "All tabs — 1 not shown"
-									: `All tabs — ${tabsOffScreen} not shown`
-							}
-						>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									aria-label={`All tabs, ${tabsOffScreen} not shown`}
-									data-tour-tag="browser-tab-overflow"
-									className={cn("shrink-0 gap-0.5 self-center px-1")}
-								>
-									<ChevronDown aria-hidden="true" />
-									{/* The count itself, at the chip's own step and tabular so two
-									    digits do not shift the row it sits in. */}
-									<span
-										aria-hidden="true"
-										className={cn("text-meta tabular-nums")}
-									>
-										+{tabsOffScreen}
-									</span>
-								</Button>
-							</DropdownMenuTrigger>
-						</Tooltip>
-						<DropdownMenuContent align="end" className={cn("max-w-80")}>
-							{tabs.map((tab) => (
-								<DropdownMenuItem
-									key={tab.tabId}
-									onSelect={() => onActivate(tab.tabId)}
-								>
-									<Check
-										aria-hidden="true"
-										className={cn(tab.tabId !== activeTabId && "invisible")}
-									/>
-									<span className={cn("truncate")}>{tabLabel(tab.title)}</span>
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				)}
-				{tabs.length > 0 && (
-					/* Not drawn when the strip is empty (design round 1, N3): the page area
-					   already offers `New tab` under the same label, and two controls 270px
-					   apart that do the same thing is the duplication the empty state's own
-					   comment forbids. */
-					<Tooltip content="New tab">
+					<Tooltip
+						content={
+							tabsOffScreen === 1
+								? "All tabs — 1 not shown"
+								: `All tabs — ${tabsOffScreen} not shown`
+						}
+					>
 						<Button
+							ref={overflowTriggerRef}
 							variant="ghost"
 							size="icon-sm"
-							aria-label="New tab"
-							onClick={onNewTab}
-							data-tour-tag="browser-new-tab"
+							aria-label={
+								tabsOffScreen === 1
+									? "All tabs, 1 not shown"
+									: `All tabs, ${tabsOffScreen} not shown`
+							}
+							aria-expanded={overflowOpen}
+							onClick={() => setOverflowOpen((open) => !open)}
+							data-tour-tag="browser-tab-overflow"
+							className={cn("shrink-0 gap-1 self-center px-1")}
 						>
-							<Plus aria-hidden className="size-4" />
+							<ChevronDown aria-hidden="true" />
+							{/*
+							 * THE COUNT IS THE NUMBER, WITHOUT A PLUS, and that is the ruling's point
+							 * rather than a flourish: with `+4` beside the new-tab control's `+`, the
+							 * two still differed by whether a digit followed the plus — one glyph
+							 * apart, which is the sentence U5 is written from. The chip keeps its
+							 * grammar (`border-control`, `ink-dim`, tabular) and keeps its count; what
+							 * it loses is the one character that made it a second plus sign, so the
+							 * only `+` in this corner is the control that opens one more tab. The
+							 * words are still in both read channels, and they are the pinned list's own
+							 * sentence (`All tabs, N not shown`, D10): the control says it in its
+							 * accessible name and in its tooltip, and the list's heading says it above
+							 * the rows it is counting.
+							 */}
+							<span
+								aria-hidden="true"
+								className={cn(
+									"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums",
+								)}
+							>
+								{tabsOffScreen}
+							</span>
 						</Button>
 					</Tooltip>
 				)}
+				{tabs.length > 0 && (
+					<>
+						{/*
+						 * THE NEW-TAB CONTROL IS A BOUNDED CONTROL, NOT A SECOND PLUS (design review
+						 * round 2, U5, ruled). `variant="outline"` is what separates it from the count
+						 * chip beside it at a glance: a chip carries a number in the chip grammar, a
+						 * control carries a 1px `border-control` edge around its own glyph, so the two
+						 * are no longer told apart by whether a digit follows the plus. Its tooltip is
+						 * its own (`newTabLabel`, "New tab in this conversation" in the pane and
+						 * "New tab" on the route) and it is drawn as an icon button either way.
+						 *
+						 * The RULE BETWEEN THEM comes from the strip's own vocabulary (`bg-hairline`,
+						 * the same role its tab dividers use) and is drawn only when the count chip is
+						 * actually on screen, which is the state U5's frame shows.
+						 *
+						 * Not drawn when the strip is empty (design round 1, N3): the page area already
+						 * offers `New tab` under the same label, and two controls 270px apart that do
+						 * the same thing is the duplication the empty state's own comment forbids.
+						 */}
+						{tabsOffScreen > 0 && (
+							<span
+								aria-hidden={true}
+								className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"
+							/>
+						)}
+						<Tooltip content={newTabLabel}>
+							<Button
+								variant="outline"
+								size="icon-sm"
+								aria-label={newTabLabel}
+								onClick={onNewTab}
+								data-tour-tag="browser-new-tab"
+							>
+								<Plus aria-hidden className="size-4" />
+							</Button>
+						</Tooltip>
+					</>
+				)}
 			</div>
+			{overflowOpen && (
+				/*
+				 * THE BAND ROW THE PINNED CONTROL OPENS, and the reason it is a row and not
+				 * a menu: a Radix menu anchored in the band paints DOWNWARD into the content
+				 * rect, where the native view wins — `browser-view-policy.ts:34-38`
+				 * deliberately does not register menus in the band, and no z-index beats a
+				 * native sibling view. This row is outside that rectangle, so nothing here can
+				 * be occluded and nothing needs suppressing; the strip grows by its height and
+				 * the page's own rectangle shrinks by exactly the same amount, because the
+				 * content element is measured by a `ResizeObserver` and the host re-bounds the
+				 * view. The SAME trade the actions row below makes, and the reason the dock
+				 * narrows rather than hides.
+				 *
+				 * BOUNDED, and that is not cosmetic: 20 tabs of sections would otherwise push
+				 * the page off screen, which is the failure the dock's design exists to avoid
+				 * (design risk 7). `max-h-36` plus the row's own scroll keeps the band a band.
+				 *
+				 * FOCUS MOVES IN ON OPEN AND BACK TO THE TRIGGER ON CLOSE (the effects above),
+				 * so a keyboard user is not dropped to `<body>` by either path — the UX round
+				 * 2 (U9) class of defect, which the actions row was fixed for.
+				 */
+				<div
+					ref={overflowRowRef}
+					tabIndex={-1}
+					onKeyDown={(event) => {
+						if (event.key === "Escape") {
+							event.stopPropagation();
+							closeOverflow();
+						}
+					}}
+					className="relative flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
+					data-tour-tag="browser-tab-overflow-list"
+				>
+					{/* THE HEADING IS TEXT ONLY, AND THE DISMISS COMES LAST (review round 1, U4):
+					    in DOM order the dismiss used to precede every row, so the first Tab a
+					    keyboard user pressed after opening the list reached the control that
+					    CLOSES it rather than the first tab — and the whole point of the control is
+					    to reach the tabs. It keeps the top-right geometry it had (`absolute`) so
+					    the band's pixels do not move, and it keeps its own place in the tab order
+					    by being the last thing the band renders. */}
+					<div className="flex h-7 items-center px-2">
+						<span className="text-meta text-ink-dim">
+							{tabsOffScreen === 1
+								? "All tabs, 1 not shown"
+								: `All tabs, ${tabsOffScreen} not shown`}
+						</span>
+					</div>
+					<div ref={overflowScrollerRef} className="max-h-36 overflow-y-auto">
+						{groups.map((group) => (
+							<div
+								key={group.sessionId ?? "unattributed"}
+								data-tour-tag="browser-tab-overflow-section"
+							>
+								{/* A section's heading is drawn under the same rule as the strip's
+								    chips: two conversations need naming, one does not. */}
+								{showGroupLabels && (
+									<div className="flex items-center gap-1.5 px-2 pt-1 text-meta text-ink-dim">
+										<MessagesSquare aria-hidden className="size-3.5" />
+										<span
+											className="truncate"
+											title={groupLabelName(group, sessions)}
+										>
+											{groupLabelName(group, sessions)}
+										</span>
+										<span className="tabular-nums">{group.tabs.length}</span>
+									</div>
+								)}
+								{group.tabs.map((tab) => (
+									<button
+										type="button"
+										key={tab.tabId}
+										onClick={() => {
+											closeOverflow();
+											onActivate(tab.tabId);
+										}}
+										aria-current={tab.tabId === activeTabId}
+										data-tab-id={tab.tabId}
+										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+										data-tour-tag="browser-tab-overflow-row"
+									>
+										<Check
+											aria-hidden
+											className={cn(
+												"size-3.5 shrink-0",
+												tab.tabId !== activeTabId && "invisible",
+											)}
+										/>
+										<TabMark tab={tab} />
+										<span className="min-w-0 grow truncate" title={tab.title}>
+											{tab.title}
+										</span>
+									</button>
+								))}
+							</div>
+						))}
+					</div>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Hide all tabs"
+						onClick={closeOverflow}
+						className="absolute top-1 right-2"
+						data-tour-tag="browser-tab-overflow-dismiss"
+					>
+						{/* The same chevron the actions row uses to close itself: one shape for
+						    "this band row goes away", on both rows. */}
+						<ChevronUp aria-hidden className="size-3.5" />
+					</Button>
+				</div>
+			)}
+			{/*
+			 * THE PINNED WAY TO REACH ANY TAB, IN THE BAND (design R4, fix 2).
+			 *
+			 * IT WAS A RADIX DROPDOWN, AND THE MENU WAS THE BUG. A dropdown anchored
+			 * in the band paints DOWNWARD into the content rect, and the native view
+			 * wins there: `browser-view-policy.ts:34-38` deliberately does not
+			 * register menus in the band and no z-index beats a native sibling view.
+			 * The row's actions were moved into the band for exactly this reason; the
+			 * pinned control was not, and it is the token "the user can always reach
+			 * any tab" is spent on — so the one control that exists for tabs you
+			 * cannot see could not be seen either, at precisely the scale it is for.
+			 *
+			 * SO IT IS A BAND ROW NOW, the same shape and the same dismissal contract
+			 * as the actions row: the strip grows by its height, the page's rect
+			 * shrinks by the same amount (`ResizeObserver` in `browser-surface.tsx`),
+			 * and NOTHING IS OCCLUDED AND NOTHING IS SUPPRESSED. That is the trade the
+			 * dock's design already makes, and the reason the page narrows rather than
+			 * hides.
+			 *
+			 * IT IS THE CANVAS'S OWN ANSWER to the same problem (`canvas-tabs.tsx`:
+			 * "scrolling sideways to find a file is a fallback, not the only route"), and
+			 * it sits OUTSIDE the scroller so it cannot itself be scrolled out of reach.
+			 * IT APPEARS ONLY WHEN SOMETHING IS MISSING, AND IT COUNTS (QA round 1, Q2):
+			 * the count is its own text, and a strip that fits draws no control at all -
+			 * which is why the gate is `tabsOffScreen` and not `tabs.length > 1`.
+			 *
+			 * SECTIONED BY CONVERSATION, because at the scale this control exists for
+			 * — 20 tabs over six conversations — a flat list of 20 names is the same
+			 * problem as the strip, one level up. The sections come from the SAME
+			 * grouping the strip renders (`groups`, above), so a tab cannot be in one
+			 * conversation's section here and another's run there.
+			 */}
 			{actionsTab && (
 				// IN THE BAND, which is the whole point: this row is outside the native
 				// view's rectangle, so it is visible. The strip grows by this row's height
@@ -873,78 +1602,240 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							closeActions();
 						}
 					}}
-					className="flex flex-wrap items-center gap-2 border-control border-t bg-surface px-2 py-1 focus:outline-none"
+					className="relative flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
 					data-tour-tag="browser-tab-actions"
 				>
-					<span className="shrink-0 text-meta text-ink-dim">
-						Actions for "{tabLabel(actionsTab.title)}"
-					</span>
-					{!actionsTab.active && (
-						// §8.3's "one click to watch": activation is the USER's click, which is
-						// what design 11.4 permits — the app never activates a tab on the agent's
-						// behalf. This replaces the old menu's "Switch to this tab" for a
-						// non-active tab, because it is the same action and the one the operator's
-						// report needs a name for.
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								onActivate(actionsTab.tabId);
-							}}
-							data-tour-tag="browser-tab-watch"
-						>
-							Watch "{tabLabel(actionsTab.title)}"
-						</Button>
-					)}
 					{/*
-					 * The hand-over affordances live here rather than in the band
-					 * because a hand-over is a statement about ONE tab, and the strip
-					 * is where tabs are named (design 6.3).
+					 * THE HEADING ROW SITS OUTSIDE THE SCROLLER, which is the shape the pinned tab list
+					 * below already uses: the band's own name and its dismiss control cannot scroll
+					 * away from the items they belong to.
 					 */}
-					{actionsTab.owner === "user" && !actionsTab.handedOver && (
+					<div className="flex h-7 shrink-0 items-center px-2">
+						<span className="truncate text-meta text-ink-dim">
+							Actions for "{tabLabel(actionsTab.title)}"
+						</span>
+					</div>
+					{/*
+					 * ONE ITEM PER ROW, AT EVERY WIDTH (design review round 2, D7, ruled). The band was
+					 * a flex ROW that wrapped, so `Copy URL` orphaned onto a line of its own once the
+					 * four bulk closes were present at the 1280px fixture - a failure class a wrap at
+					 * one fixture width hides and a wider band only postpones. A column of full-width
+					 * rows is the same in-band shape the pinned tab list uses, and it removes the
+					 * orphan rather than trading it for a wrap elsewhere.
+					 *
+					 * BOUNDED, WITH THE HEADING OUTSIDE IT, and the bound is a GUARD RATHER THAN A
+					 * FOLD at today's counts: SEVEN rows is the most this band can hold (watch,
+					 * hand-over OR revoke — mutually exclusive, so never both — `Close "X"`, the three
+					 * bulk items and `Copy URL`), which is 7 x 28px of buttons plus the TWO 9px rules
+					 * (D12's, before the closes, and D7's, before `Copy URL`) = 214px against
+					 * `max-h-60`'s 240px — so every item is visible without scrolling, `Copy URL`
+					 * included, and an eighth row would scroll rather than push the page down by
+					 * another row. (The round-2 comment here counted eight rows and one rule, 233px;
+					 * the row count was one wider than the component can draw and the rule count is
+					 * two now, which is why the arithmetic is re-derived rather than incremented.)
+					 * `max-h-36`, the pinned list's own bound, would have been too mean here: it holds
+					 * five rows, so it would have hidden exactly the item D7 is about.
+					 */}
+					<div className="max-h-60 overflow-y-auto">
+						{!actionsTab.active && (
+							// §8.3's "one click to watch": activation is the USER's click, which is
+							// what design 11.4 permits — the app never activates a tab on the agent's
+							// behalf. This replaces the old menu's "Switch to this tab" for a
+							// non-active tab, because it is the same action and the one the operator's
+							// report needs a name for.
+							//
+							// A GHOST ROW RATHER THAN AN OUTLINED ONE (design review round 2, D11): the
+							// `outline` box made the one BENIGN item in this band the loudest thing in
+							// it — a full-width boundary on the row that takes nothing away — while the
+							// closes below it were bare text. The band has ONE row grammar
+							// (`size="sm"`, `w-full justify-start`), and the variant is what carries a
+							// row's weight: `danger` for what closes a tab, `ghost` for what does not.
+							// Watch is a `ghost` here for the same reason `Copy URL` is one.
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									onActivate(actionsTab.tabId);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-watch"
+							>
+								Watch "{tabLabel(actionsTab.title)}"
+							</Button>
+						)}
+						{/*
+						 * The hand-over affordances live here rather than in the band
+						 * because a hand-over is a statement about ONE tab, and the strip
+						 * is where tabs are named (design 6.3).
+						 */}
+						{actionsTab.owner === "user" && !actionsTab.handedOver && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									onHandOver(actionsTab);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-hand-over"
+							>
+								Let an agent use "{tabLabel(actionsTab.title)}"…
+							</Button>
+						)}
+						{(actionsTab.handedOver || actionsTab.owner === "agent") && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									onRevokeHandOver(actionsTab.tabId);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-revoke-hand-over"
+							>
+								Stop letting the agent use "{tabLabel(actionsTab.title)}"
+							</Button>
+						)}
+						{/*
+						 * THE DESTRUCTIVE FAMILY WEARS THE DANGER VARIANT, AND IT STARTS HERE BEHIND A RULE
+						 * (design review round 2, D11 and D12).
+						 *
+						 * D11: before this round the four closes were bare `ghost` text while `Watch`'s
+						 * benign row drew an outlined full-width box, so the band's hierarchy read
+						 * backwards — the loudest element on the one item that removes nothing. `danger`
+						 * is the design system's own variant for a control that destroys something
+						 * (`border-danger-border text-danger`, `hover:bg-danger-wash`), and reusing it
+						 * owes no new `CONTROLS` row: `scripts/contrast-contract.mjs`'s `danger callout`
+						 * entry already asserts `dangerBorder` + `danger` ink over `canvas`/`surface`
+						 * — this band's own ground — and `danger` is in that file's `AS_TEXT` list, so
+						 * its text floor on `surface` is asserted too.
+						 *
+						 * D12: the spec's item table IS two groups — the unnumbered rows that take
+						 * nothing away (`Watch`, hand-over/revoke) and the numbered closes, which R5's
+						 * own paragraph calls destructive with no undo — and D7's ruling is that "the
+						 * destructive family reads as one block". One block needs one edge, so the
+						 * family opens at `Close "X"` behind this rule, exactly as it closes before
+						 * `Copy URL` behind the other one.
+						 */}
+						<span
+							aria-hidden={true}
+							className="my-1 block h-px w-full bg-hairline"
+						/>
 						<Button
-							variant="ghost"
+							variant="danger"
 							size="sm"
-							onClick={() => {
-								closeActions();
-								onHandOver(actionsTab);
-							}}
-							data-tour-tag="browser-tab-hand-over"
+							onClick={() => runClose(actionsTab.tabId)}
+							className="w-full justify-start"
+							data-tour-tag="browser-tab-actions-close"
 						>
-							Let an agent use "{tabLabel(actionsTab.title)}"…
+							Close "{tabLabel(actionsTab.title)}"
 						</Button>
-					)}
-					{(actionsTab.handedOver || actionsTab.owner === "agent") && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								onRevokeHandOver(actionsTab.tabId);
-							}}
-							data-tour-tag="browser-tab-revoke-hand-over"
-						>
-							Stop letting the agent use "{tabLabel(actionsTab.title)}"
-						</Button>
-					)}
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							closeActions();
-							onClose(actionsTab.tabId);
-						}}
-						data-tour-tag="browser-tab-actions-close"
-					>
-						Close "{tabLabel(actionsTab.title)}"
-					</Button>
-					<div className="grow" />
+						{/*
+						 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
+						 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
+						 * recoverable, because the session file records the current set rather than a
+						 * history — so the number is what tells the user how much one press takes.
+						 * EVERY COUNT COMES FROM THE LIST THIS HOST IS SHOWING (the operator's U7
+						 * ruling, review round 2; round 1's A3 had fed `others` a second, wider pool
+						 * list and that is withdrawn): in the pane, scoped to 2 tabs of a pool of 8,
+						 * the item reads `Close 1 other tab`, which is exactly what the press closes.
+						 * That is `paneApprovalHeaderLabel`'s sibling rule rather than a weakening of
+						 * it — the words have to agree with the scope — and a band that closed tabs
+						 * the host is not showing would be the words agreeing with the registry
+						 * instead of with the screen. No dialog, and that is the design's ruling: the
+						 * count is the disclosure, and a single close has no undo either.
+						 */}
+						{closeOthers !== null && (
+							<Button
+								variant="danger"
+								size="sm"
+								onClick={() => runBatchClose(closeOthers)}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-close-others"
+							>
+								Close {closeOthers.tabIds.length} other
+								{closeOthers.tabIds.length === 1 ? " tab" : " tabs"}
+							</Button>
+						)}
+						{closeRight !== null && (
+							// "To the right" is the RENDERED order — the grouped one — because that is
+							// the only order in which the words are true for a grouped strip. A tab an
+							// agent creates after the press is not to the right of anything the user
+							// saw and survives, which the strip then shows honestly.
+							<Button
+								variant="danger"
+								size="sm"
+								onClick={() => runBatchClose(closeRight)}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-close-right"
+							>
+								Close {closeRight.tabIds.length} tab
+								{closeRight.tabIds.length === 1 ? "" : "s"} to the right
+							</Button>
+						)}
+						{actionsTab.sessionId !== null &&
+							conversationTabCount(actionsTab.sessionId) >= 2 && (
+								// THE COUNT IS ON THIS ONE TOO (review round 1, U3, Q3). It used to rely
+								// on the group chip stating the size, and the band's own arithmetic says
+								// otherwise: the chip is drawn only when the pool holds more than one
+								// conversation (`showGroupLabels`), and the host this feature adds — the
+								// pane opened from a sidebar mark — is the single-conversation case. So
+								// beside `Close 5 other tabs` the most destructive item on the row carried
+								// no number and nothing on screen said the group's size. Three counted
+								// items, one grammar.
+								<Button
+									variant="danger"
+									size="sm"
+									onClick={() =>
+										runBatchClose(
+											closeConversationIntent(actionsTab.sessionId as string),
+										)
+									}
+									className="w-full justify-start"
+									data-tour-tag="browser-tab-close-conversation"
+								>
+									Close all {conversationTabCount(actionsTab.sessionId)} tabs in
+									this conversation
+								</Button>
+							)}
+						{/*
+						 * THE HAIRLINE IS THE BAND'S OWN RULE, SEPARATING THE CLOSES FROM THE ONE ITEM THAT
+						 * CLOSES NOTHING (D7's ruling): `Copy URL` is last among the actions because it is
+						 * the only one here that leaves every tab on screen, so the destructive family
+						 * reads as one block and nothing destructive sits below the divider.
+						 */}
+						<span
+							aria-hidden={true}
+							className="my-1 block h-px w-full bg-hairline"
+						/>
+						{HTTP_URL.test(actionsTab.url) && (
+							/* COPY URL NEEDS NO INTENT, which is why it is the one action here that
+						   does not go through `useBrowserChrome`: the URL is already in the
+						   projection, the clipboard is the renderer's, and inventing a channel to
+						   main for it would be a round trip to copy a string the user is looking
+						   at. The guard is the scheme — `about:blank`, `file:` and `data:` are not
+						   things to paste into a chat. */
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									void navigator.clipboard?.writeText(actionsTab.url);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-copy-url"
+							>
+								Copy URL
+							</Button>
+						)}
+					</div>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Hide tab actions"
 						onClick={closeActions}
+						className="absolute top-1 right-2"
 						data-tour-tag="browser-tab-actions-dismiss"
 					>
 						{/* A chevron, not an `×`: the row already ends near the tab-close

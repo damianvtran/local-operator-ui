@@ -20,6 +20,7 @@ import { persist } from "zustand/middleware";
 import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
+	type CompletionAttentionAckReceipt,
 	type SessionBinding,
 	type SessionCatalogueStatus,
 	mergeCompletionAttention,
@@ -1425,6 +1426,51 @@ type CanonicalSessionsState = {
 	 */
 	applyAttention: (sessionId: string, attention: CompletionAttention) => void;
 	/**
+	 * Merge MANY attention states in one commit, for the bulk receipt.
+	 *
+	 * The session id comes from each state's own `conversation_id`
+	 * (`session/<id>`) rather than from a caller argument, because a bulk answer
+	 * carries nothing else that names the row: the buckets are `superseded`/`unknown`
+	 * ids and post-write states, and pairing them positionally with the request
+	 * would make the response's order part of the contract, which it is not. A
+	 * state whose conversation is not in the catalogue is DROPPED, on the same
+	 * membership rule `applyAttention` above documents, and a state that merges to
+	 * what the row already holds is identity-equal and re-renders nothing.
+	 *
+	 * One `set`, so a batch of N acknowledgements is ONE commit and one repaint:
+	 * N separate `applyAttention` calls would re-render the 500-row sidebar N
+	 * times for one user gesture.
+	 */
+	applyAttentionMany: (states: CompletionAttention[]) => void;
+	/**
+	 * Clear the unread marks THIS CLIENT holds, in one call.
+	 *
+	 * The set is enumerated from the store's own rows and is TOKEN-bound: a row
+	 * is sent only when it is DRAWING an outstanding completion mark
+	 * (`unreadMarkKind`) AND carries a `completion_token`, so the batch names
+	 * exactly the completions this client rendered — a completion published after
+	 * the render is not in it and stays unread, a mark with no token (which names
+	 * no completion) is neither sent nor counted, and a row whose live state has
+	 * taken it over (busy, wedged, a parked gate) is not in the batch at all:
+	 * acknowledging a completion the reader was never shown would clear a mark
+	 * that could then never appear, because an acknowledgement is the only thing
+	 * that clears `unseen`.
+	 *
+	 * NOTHING IS WRITTEN LOCALLY UNTIL THE ANSWER ARRIVES. There is no optimistic
+	 * clear at any point, which is what makes a failed request leave nothing to
+	 * roll back, and the answer's `read` bucket is the only thing applied — a
+	 * `superseded` or `unknown` row stays unread, because the backend refused it
+	 * and the user's marks must not disagree with the store that owns them. The
+	 * counters are returned rather than toasted here so the SURFACE decides the
+	 * copy, and it can name the remainder instead of claiming everything cleared.
+	 */
+	markAllRead: () => Promise<{
+		attempted: number;
+		cleared: number;
+		superseded: number;
+		unknown: number;
+	}>;
+	/**
 	 * Apply one `session_status` frame to its row, and retire a dead epoch's stamps.
 	 *
 	 * This is the STATUS's arrival path, the counterpart of `applyAttention`
@@ -1531,6 +1577,121 @@ function mergeRow(
 		),
 	};
 }
+
+/**
+ * The kind of completion mark a row is DRAWING, or null when it draws none.
+ *
+ * THE ONE DECISION behind every "unread" word and number on the sidebar: the
+ * glyph and its ink, the accessible name's `, unread`, the row's tooltip, and
+ * the bulk control's count all ask this function. Two derivations of one fact
+ * is precisely how the reported defect happened — the count read
+ * `attention.unseen` alone while the glyph read a code as well, so a session
+ * that finished a turn and then started another was counted under a control
+ * whose row was drawing a spinner, and clicking it acknowledged a completion
+ * nobody was ever shown (an acknowledgement is the only thing that clears
+ * `unseen`, so that mark could never appear afterwards).
+ *
+ * IT READS `status.code`, and that is the point rather than a detail. The
+ * runtime's `CatalogEntry.shows_completion_mark` (`local_operator/session/
+ * catalog.py`) is the single arbiter of "does an unread completion win the
+ * glyph, or does live state", and `status_code` is its stable transport
+ * spelling: a parked gate publishes `approval`/`answer`, `wedged` and `busy`
+ * publish themselves, and the unseen completion publishes `complete` / `error`
+ * / `interrupted` only where the mark wins. A row's `status.code` therefore IS
+ * that precedence, already decided by the side that owns it — re-deciding it
+ * here from `live_state`/`pending`/`unseen` would be a SECOND derivation of one
+ * fact, which is the drift this function exists to remove.
+ *
+ * `unseen` is still read, and it is not redundant: it is a LEVEL, not an edge —
+ * true from the moment a turn completes until somebody READS that session,
+ * because resuming does not acknowledge it — so the code alone cannot say
+ * whether the mark still stands. On its own it is not enough either: that is
+ * the defect.
+ *
+ * `error` and `interrupted` draw marks. They are the "error X indicators" a
+ * reader counts, the runtime ranks them as outstanding completions
+ * (`session/creation.py::session_category`), and it labels them "Unseen error"
+ * / "Unseen interruption" — so they belong on the counted side even though the
+ * glyph they carry is their own code's. A code this build does not know draws
+ * no mark, and neither does an ABSENT status (a locally created row carries
+ * none until the next catalogue read): unknown is not unread.
+ */
+export type UnreadMarkKind = "complete" | "error" | "interrupted";
+
+export const unreadMarkKind = (
+	row: CanonicalSessionRow,
+): UnreadMarkKind | null => {
+	if (row.attention?.unseen !== true) return null;
+	const code = row.status?.code;
+	return code === "complete" || code === "error" || code === "interrupted"
+		? code
+		: null;
+};
+
+/**
+ * The rows a bulk acknowledgement can NAME, in the store's own terms.
+ *
+ * The single home of this predicate, and it lives here rather than in the
+ * feature module that consumes it because the STORE'S action is the other half
+ * of the fact: DESIGN §3.3 pins that "the count the control shows and the set
+ * `markAllRead` sends are the same fact", and two hand-written literals are how
+ * one fact becomes two — silently, and in the direction that costs the user,
+ * because the number on screen would stop being the set the request carries.
+ * `features/chat/mark-all-read.ts` re-exports it for the surface.
+ *
+ * A DRAWN MARK AND a `completion_token`, the mark half being `unreadMarkKind`:
+ * the control's number is then exactly the rows a reader can see a mark on,
+ * which is the property the report that produced this fix asked for — "the
+ * mark as read function always reflects indicators that people are actually
+ * seeing in the UI". Counting `unseen` alone reached rows whose live state had
+ * taken the row over, and a mark with no token names no completion at all, so
+ * the backend has nothing to match it against and would answer `unknown` for
+ * it: sending that would only inflate the batch, and counting it would put a
+ * number in the label that no click can honour.
+ */
+export const unreadAckableRows = (
+	rows: CanonicalSessionRow[],
+): CanonicalSessionRow[] =>
+	rows.filter((row) => {
+		if (unreadMarkKind(row) === null) return false;
+		const token = row.attention?.completion_token;
+		return typeof token === "string" && token.length > 0;
+	});
+
+/** How many rows a click would name; zero hides the control entirely. */
+export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
+	unreadAckableRows(rows).length;
+
+/**
+ * Merge one attention state into the row it names, in one commit.
+ *
+ * Shared by the single-frame path (`applyAttention`) and the bulk receipt
+ * (`applyAttentionMany`) so the three rules that decide whether a write happens
+ * at all cannot drift between them: a state for a session the catalogue does not
+ * hold is DROPPED rather than inserted (insertion would make a sidebar row with
+ * no title and no binding, and membership is the catalogue's question — the rule
+ * `applySessionStatus` states at length), the merge goes through the same
+ * revision guard, and an UNCHANGED merge returns the SAME array so a beat that
+ * carried nothing new re-renders nothing.
+ *
+ * Returning the array rather than a whole state keeps the caller's `set`
+ * responsible for the state object, which is what lets the bulk path fold N rows
+ * into ONE repaint instead of N.
+ */
+const mergeAttentionInto = (
+	sessions: CanonicalSessionRow[],
+	sessionId: string,
+	attention: CompletionAttention,
+): CanonicalSessionRow[] => {
+	const index = sessions.findIndex((row) => row.session_id === sessionId);
+	if (index < 0) return sessions;
+	const row = sessions[index];
+	const merged = mergeCompletionAttention(row.attention, attention, sessionId);
+	if (merged === row.attention) return sessions;
+	const next = sessions.slice();
+	next[index] = { ...row, attention: merged };
+	return next;
+};
 
 /**
  * The stamp the merged row carries, as a PAIR or not at all.
@@ -1904,25 +2065,80 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			applyAttention: (sessionId, attention) => {
 				set((state) => {
-					const index = state.sessions.findIndex(
-						(row) => row.session_id === sessionId,
-					);
-					if (index < 0) return state;
-					const row = state.sessions[index];
-					// The same revision guard the catalogue merge uses, so a frame that
-					// arrives out of order can never un-read a row the user has seen.
-					const merged = mergeCompletionAttention(
-						row.attention,
-						attention,
+					const sessions = mergeAttentionInto(
+						state.sessions,
 						sessionId,
+						attention,
 					);
 					// Identity, not equality: an unchanged merge must not re-render every
 					// row of a 500-row sidebar for a beat that carried nothing new.
-					if (merged === row.attention) return state;
-					const sessions = state.sessions.slice();
-					sessions[index] = { ...row, attention: merged };
-					return { ...state, sessions };
+					return sessions === state.sessions ? state : { ...state, sessions };
 				});
+			},
+			applyAttentionMany: (states) => {
+				set((state) => {
+					let sessions = state.sessions;
+					for (const attention of states) {
+						/*
+						 * The identity is DERIVED from the state's own namespaced
+						 * `conversation_id`, never taken from the caller: the bulk answer's
+						 * buckets name conversations rather than positions, so pairing
+						 * them with the request positionally would make the response's order
+						 * part of the contract. A state whose id is not a `session/<id>`
+						 * conversation, or whose session left the catalogue, is dropped by
+						 * `mergeAttentionInto` — it returns the same array, and the loop
+						 * carries on without a write.
+						 */
+						const conversationId = attention?.conversation_id;
+						// The namespace is the backend's own (`session/<id>`), written as the
+						// literal the rest of this tree compares against rather than
+						// invented as a second constant.
+						if (
+							typeof conversationId !== "string" ||
+							!conversationId.startsWith("session/")
+						)
+							continue;
+						sessions = mergeAttentionInto(
+							sessions,
+							conversationId.slice("session/".length),
+							attention,
+						);
+					}
+					return sessions === state.sessions ? state : { ...state, sessions };
+				});
+			},
+			markAllRead: async () => {
+				/*
+				 * Enumerated from the STORE rather than from the rendered list, which is
+				 * what makes the control's own count and this batch the same fact: a
+				 * search filter over the sidebar cannot make a visible count disagree
+				 * with the set that is sent. The predicate itself is `unreadAckableRows`
+				 * — the ONE home of that rule, so the surface's label and this request
+				 * cannot drift apart.
+				 */
+				const items = unreadAckableRows(get().sessions).map((row) => ({
+					sessionId: row.session_id,
+					completionToken: row.attention?.completion_token as string,
+				}));
+				/*
+				 * Nothing unread is not an empty request: `items` has a 1-item floor on
+				 * the wire, and a batch of zero would clear nothing while still costing
+				 * a round trip and a store write. Resolving without a request is also
+				 * what keeps the caller's receipt honest — zero attempted, zero cleared.
+				 */
+				if (items.length === 0)
+					return { attempted: 0, cleared: 0, superseded: 0, unknown: 0 };
+				const receipt = await desktopResult<CompletionAttentionAckReceipt>({
+					op: "attention.seen",
+					items,
+				});
+				get().applyAttentionMany(receipt.read);
+				return {
+					attempted: items.length,
+					cleared: receipt.read.length,
+					superseded: receipt.superseded.length,
+					unknown: receipt.unknown.length,
+				};
 			},
 			applySessionStatus: (sessionId, status, revision, epoch) => {
 				set((state) => {

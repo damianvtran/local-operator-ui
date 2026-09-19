@@ -219,7 +219,6 @@ function SessionPanel({
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
-	const end = useRef<HTMLDivElement>(null);
 	const draftIdentity = draftIdentityFor(draftKey, sessionId);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
@@ -470,6 +469,50 @@ function SessionPanel({
 		capabilities.data,
 		"subagent_transcript",
 	);
+	/*
+	 * Whether the composer may offer `@` at all, folded from the TWO facts that
+	 * decide it and computed HERE because this is where each of them already is:
+	 *
+	 *   1. the connected harness advertises that it expands a mention
+	 *      (`desktop-hooks.ts`'s `references` key). No released harness does — the
+	 *      expansion is `local_operator/references.py`, which is not in any tag
+	 *      through v0.56.8, and the half that adds it is PR #1220. So the composer
+	 *      offers the picker and paints the chips only on a backend that says it can
+	 *      carry them, and on today's installs the `@` is plain text, which is what
+	 *      the harness does with it.
+	 *   2. the send this draft would make is a PROMPT rather than a mid-turn STEER.
+	 *      `busy` is the same expression the send path reads one screen down
+	 *      (`mode: busy ? "steer" : "prompt"`), and a steer bypasses
+	 *      `Session.prompt`, so an `@path` in one is left as inert prose. A chip
+	 *      there would assert an expansion the harness will not perform, so the
+	 *      affordance is withheld for the length of the turn instead.
+	 *
+	 * Both halves fail closed, and the fallback is not a lesser feature: the text is
+	 * sent as written, which is exactly what the harness would do with it.
+	 */
+	const mentionsEnabled =
+		desktopFeatureEnabled(capabilities.data, "references") && !busy;
+	/*
+	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
+	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
+	 * flight over a backend that CAN expand a mention, and the composer's sentence
+	 * for this state ("this backend cannot carry file references") would be a lie
+	 * there — so only this page, which owns the capability answer, can hand down the
+	 * half that names the harness.
+	 *
+	 * `isSuccess` AND `desktop_available` ARE BOTH LOAD-BEARING, and both are there
+	 * to stop a FALSE claim rather than a missing one: `desktopFeatureEnabled` fails
+	 * closed, so a capabilities read that is still in flight, errored or answered by
+	 * nothing would otherwise be reported to the user as "this backend cannot carry
+	 * file references" — a statement about the backend made on the strength of an
+	 * answer the app never received. An answer that arrived and says the harness is
+	 * available without the key is the only evidence the sentence may rest on, and it
+	 * is exactly the state every released install is in today.
+	 */
+	const mentionsUnsupported =
+		capabilities.isSuccess &&
+		Boolean(capabilities.data?.desktop_available) &&
+		!desktopFeatureEnabled(capabilities.data, "references");
 	/*
 	 * Moving a LIVE session's directory, which is the one composer control whose
 	 * write path is a lifecycle operation rather than a draft field.
@@ -1867,10 +1910,8 @@ function SessionPanel({
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}
-					isFetchingMore={canonical.loadingOlder}
 					isFarFromBottom={isFarFromBottom}
 					messagesContainerRef={container}
-					messagesEndRef={end}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
@@ -1985,6 +2026,8 @@ function SessionPanel({
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
+					mentionsEnabled={mentionsEnabled}
+					mentionsUnsupported={mentionsUnsupported}
 					pulses={canonical.subagentPulses}
 					canonical={{
 						view,

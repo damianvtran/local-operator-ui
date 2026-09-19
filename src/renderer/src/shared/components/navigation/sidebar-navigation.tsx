@@ -1,3 +1,9 @@
+// One decision, one spelling: the row the reader is ON is painted by the
+// sidebar's own role string rather than by a second copy of it here. A copy is
+// what drifted twice (design rounds 3 and 4, D17/D19) and both drifts landed at
+// an ELEMENT while the copied string above it stayed verbatim — so this rail
+// imports the role exactly as the settings rail does.
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
@@ -179,14 +185,23 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
 					expanded ? "justify-start gap-2 px-3" : "justify-center",
 					/*
-					 * The wash is the state and the mark is the accent; the label
-					 * stays `ink`. Tinting ground, mark and text is three signals for
-					 * one fact, and it leaves the destination you are already on as
-					 * the loudest text on the rail.
+					 * THE DESTINATION YOU ARE ON IS A ROW STATE, not the wash. It was
+					 * `bg-accent-wash`, and on 6 of the 41 dark themes the wash is a
+					 * WEAKER mark than the hover beside it — `obsidian` 2.02 against
+					 * 3.42 is this rail, in the screenshot the operator reported — so
+					 * the row he was on was quieter than the row he was merely pointing
+					 * at. `rowCurrent` brings the role's ground, its `font-medium` and
+					 * its 2px accent bar; the wash stays the transient idiom (pointer
+					 * hover, and a keyboard-focused option in a list that is open).
+					 *
+					 * The mark is still the accent, and the label still stays `ink`:
+					 * tinting ground, mark and text is three signals for one fact, and
+					 * it leaves the destination you are already on as the loudest text
+					 * on the rail.
 					 */
 					item.isActive
-						? "bg-accent-wash font-medium text-ink"
-						: "text-ink-muted hover:bg-elevated hover:text-ink",
+						? rowCurrent
+						: "text-ink-muted hover:bg-row-hover hover:text-ink",
 				)}
 			>
 				<item.icon
@@ -252,7 +267,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			className={cn(
 				"flex h-8 w-full items-center gap-2 rounded-sm px-3 text-body-sm text-ink-muted",
 				"transition-colors duration-fast ease-out-quart",
-				"hover:bg-elevated hover:text-ink",
+				"hover:bg-row-hover hover:text-ink",
 			)}
 		>
 			<Search size={16} aria-hidden="true" className="shrink-0" />
@@ -283,7 +298,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				className={cn(
 					"flex h-8 w-full items-center justify-center rounded-sm text-ink-muted",
 					"transition-colors duration-fast ease-out-quart",
-					"hover:bg-elevated hover:text-ink",
+					"hover:bg-row-hover hover:text-ink",
 				)}
 			>
 				<Search size={16} aria-hidden="true" />

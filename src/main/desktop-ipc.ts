@@ -5,13 +5,31 @@ import {
 	shell,
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
-import { SUBSCRIPTION_ID_PATTERN } from "../shared/desktop-contract";
+import {
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	SUBSCRIPTION_ID_PATTERN,
+} from "../shared/desktop-contract";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
+
+/**
+ * The ops that owe a VISIBLE, FOCUSED window before they may be sent.
+ *
+ * A set rather than two chained comparisons, because the match is by op NAME
+ * and the failure mode of a name-based gate is an op that is simply not
+ * mentioned here: `attention.seen` shipped after `sessions.seen` and would
+ * otherwise have been the one way to clear a pile of marks from a window the
+ * user cannot see. Named individually rather than matched by prefix, since a
+ * prefix would silently cover ops nobody decided to gate.
+ */
+const FOREGROUND_RECEIPT_OPS: ReadonlySet<string> = new Set([
+	"sessions.seen",
+	"attention.seen",
+]);
 
 /**
  * Wrap a desktop request sender so a read receipt requires native foreground.
@@ -23,12 +41,21 @@ const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
  * `sessions.watch` and `sessions.notified`, but it is exactly how a future
  * main-process caller would acquire an ungated `sessions.seen`.
  *
- * The guard is deliberately scoped to `sessions.seen` alone. `sessions.notified`
- * must NOT be gated on it: it claims cross-surface DELIVERY of a notification,
- * which by definition fires when the window is not in the foreground, so a
- * foreground requirement there would refuse every legitimate claim. The two
- * watermarks are separate on purpose — a delivery claim never marks anything
- * read (docs/design/descriptive-notifications.md 7.2).
+ * The guard is scoped to the READ-RECEIPT ops and names them individually:
+ * `sessions.seen`, and `attention.seen` beside it. The bulk op rides the same
+ * gate for the same reason the single one does — a receipt is a claim that a
+ * human saw a result, and a hidden, occluded or minimised window has shown
+ * nobody anything — and it has to be listed HERE rather than trusted to a
+ * prefix or a loop, because the match is by op NAME: an op this function does
+ * not name is an op that bypasses it, and the bulk op would otherwise be the
+ * one way to clear a pile of marks from a window the user cannot see.
+ *
+ * `sessions.notified` must keep NOT being gated on it: it claims cross-surface
+ * DELIVERY of a notification, which by definition fires when the window is not
+ * in the foreground, so a foreground requirement there would refuse every
+ * legitimate claim. The two watermarks are separate on purpose — a delivery
+ * claim never marks anything read (docs/design/descriptive-notifications.md
+ * 7.2).
  *
  * The renderer's own visibility test cannot establish this: an occluded,
  * hidden or minimized window still reports `visibilityState === "visible"` and
@@ -43,7 +70,8 @@ export function guardForegroundReceipts(
 			input !== null &&
 			typeof input === "object" &&
 			"op" in input &&
-			input.op === "sessions.seen"
+			typeof input.op === "string" &&
+			FOREGROUND_RECEIPT_OPS.has(input.op)
 		) {
 			const owner = window();
 			if (
@@ -53,13 +81,16 @@ export function guardForegroundReceipts(
 				owner.isMinimized() ||
 				!owner.isFocused()
 			) {
-				// Not user-facing copy: the renderer treats a refusal as "not read
-				// yet" and retries, so this text only ever reaches a log.
-				return Promise.reject(
-					new Error(
-						"View this completion in the foreground before marking it read.",
-					),
-				);
+				/*
+				 * The refusal IS the reader's copy, and it is declared once in the shared
+				 * contract rather than written here. Only a rejection's MESSAGE survives
+				 * IPC, so the renderer's transport recognises the refusal by these words
+				 * (`desktop-api.ts`, `isForegroundRequired`) and shows them instead of its
+				 * unreachable-backend sentence — a rewrite here against an unchanged
+				 * classifier is how a reachable backend goes back to being reported as
+				 * unreachable (QA round 1, Q2).
+				 */
+				return Promise.reject(new Error(DESKTOP_FOREGROUND_REQUIRED_MESSAGE));
 			}
 		}
 		return send(input);

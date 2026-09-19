@@ -19,8 +19,13 @@
  * Isolation, and why each piece is here (the same discipline as
  * `scripts/browser-host-proof.mjs`, whose launch/kill plumbing this mirrors
  * deliberately rather than inventing a second way):
- *   - HOME, LOCAL_OPERATOR_CONFIG_DIR and the Electron `--user-data-dir` are all
- *     redirected to scratch.
+ *   - HOME, LOCAL_OPERATOR_CONFIG_DIR, LOCAL_OPERATOR_LOG_DIR and the Electron
+ *     `--user-data-dir` are all redirected to scratch. The log directory is the one
+ *     of the four that HOME cannot move: the app's logger defaults to Electron's
+ *     `home` — the OS ACCOUNT's home, not the `HOME` variable — so a run without
+ *     the override appends to the operator's own log files. See
+ *     `src/main/backend/log-dir.ts`, and the same note in
+ *     `scripts/browser-host-proof.mjs`.
  *   - `<scratch home>/Library/Keychains` is a SYMLINK to the real keychain, and
  *     that one link is load-bearing: `safeStorage` reports itself unavailable
  *     under a bare scratch home (measured), which would make this run exercise
@@ -58,6 +63,8 @@ const SCRATCH = join(tmpdir(), `lo-session-cookie-proof-${process.pid}`);
 const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
+/** This run's app log files, through the app's own override. See the header. */
+const LOG_DIR = join(SCRATCH, "logs");
 
 const transcript = [];
 let failures = 0;
@@ -183,6 +190,9 @@ async function launch(siteOrigin) {
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		// The operator's own log files are the one path HOME does not move; see the
+		// header's isolation note.
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		// The app would otherwise try to install and start a Local Operator backend
 		// in this scratch HOME — a pip install and a dialog that have nothing to do
@@ -454,6 +464,7 @@ const cookieRows = () => {
 async function main() {
 	mkdirSync(HOME_DIR, { recursive: true });
 	mkdirSync(CONFIG_DIR, { recursive: true });
+	mkdirSync(LOG_DIR, { recursive: true });
 	// The one shared resource: a keychain read. Without this link `safeStorage`
 	// reports itself unavailable (measured) and this whole run would test the
 	// fail-closed path instead of the feature.

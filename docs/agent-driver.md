@@ -63,6 +63,16 @@ default would leave the renderer talking to the operator's own backend while mai
 talked to the run's. The run asserts which URL the renderer was built with and
 fails by name if it is not the one `--backend` named.
 
+**And the port has to be one the PAGE allows.** `src/renderer/index.html` pins
+`connect-src` to `1111`, `8080` and three vendor origins, and nothing computes it
+at runtime, so the renderer refuses — by its own policy, before any of this run's
+logic — a fetch to a backend on any other loopback port. `--backend` on such a
+port still boots and main still talks to it, which is what makes the failure read
+as a missing composer rather than a refused fetch; the app's own log carries
+`Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
+Content Security Policy`, and `--scene mentions` names the port in its refusal
+(QA round 3, Q-6). Run the rig's proxy on `8080` or `1111`.
+
 **The run refuses before its first boot if the tree is not on the Electron this
 branch pins** (`package.json` `optionalDependencies.electron`, the version
 `pnpm install --frozen-lockfile` gives and `build.electronVersion` moves with).
@@ -244,6 +254,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
 | `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
+| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to |
 | `facts()` | From main: window mode, window vs content size, visible/focused/minimized, app version |
 | `capture(label)` | `webContents.capturePage()` → `<out>/<label>.png`, reporting pixels and the CSS viewport |
 
@@ -258,7 +269,7 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
-There are three scenes, and the second and third are the worked examples of that
+There are several scenes, and the ones below are the worked examples of that
 rule:
 
 - **`states`** — the before/after pair of one screen plus a real control press;
@@ -286,6 +297,40 @@ rule:
   six-step wizard is a modal over the window. It asserts both halves of the
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
+
+- **`canvas-freshness`** — the canvas document kept current with the file on
+  disk. The scene writes the file ITSELF, from outside the app, which is the only
+  way to produce the event the feature exists for, and it sets the mtime to a
+  FIXED epoch rather than to the clock, so every claim in it is exact rather than
+  phase-dependent and a re-take is byte-comparable: a write with a new mtime must
+  appear with no interaction, and a write with the SAME mtime must not — then the
+  refresh control must apply it anyway, and the preview of an HTML document must
+  be re-FETCHED rather than left showing the bytes it had.
+
+  Its two claims about TIME are counted, and the counter lives in MAIN. The
+  renderer cannot be counted from the page: `window.api` is a `contextBridge`
+  object, so a wrapper assigned over one of its properties is silently ignored
+  (measured — this scene's first version installed one and read zero for a run in
+  which probes demonstrably happened), and what replaced it at the time was the
+  app's own `canvas-store` entry, which proves non-APPLICATION rather than
+  non-probing. Main has no such problem, so the scene launches with
+  `--inspect=<port>` and installs a counter over the `fs` calls `probe-files`
+  itself makes, limited to this run's scratch root, and it PROVES the counter
+  before measuring anything: a probe issued from the renderer through the app's
+  own bridge must appear in the log, so a later zero is a measurement rather than
+  a broken wrapper. That is what makes "3 probes in 6 seconds on screen, 0 for the
+  tab that is off screen, 0 while the panel is closed" assertable, and what
+  replaced the latency lower bound the scene used to assert (a free-running poll
+  makes latency uniform in (0, interval], so the lower bound failed on roughly
+  half of runs — QA round 1, Q2).
+
+  This is also the scene that needed a new verb (`openCanvasDocument`), because a
+  driver run has no other way to put a file in the canvas: the tiles come from a
+  transcript, ⌘O is an OS dialog, and the create-file dialog needs an agent id
+  that only a session supplies. What it cannot show is a window that is genuinely
+  `hidden`, or a real user's typing — the run's renderer reports `visible`, and
+  the dirty-suppression half is covered against the shipped module by
+  `scripts/canvas-file-freshness.test.mjs`.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
@@ -367,15 +412,22 @@ rule:
   is therefore covered by reading the two halves of its wiring, never by pressing
   it here; proving the runtime half needs a human in a visible window, and saying
   otherwise would be claiming coverage this harness cannot have.
-- **And a key injected through CDP stops at the app's handlers.**
-  `Input.dispatchKeyEvent` reaches a `keydown` listener — which is what makes the
-  guards around one measurable, `defaultPrevented` being the tell — but it does
-  not drive Chromium's EDITING pipeline: measured while giving the palette's
-  caret its modifier arrows back, the caret stayed at 8 whatever modifier arrived,
-  and the plain arrow moved the list while leaving the caret where it was. So a
-  property about what a keystroke then does to a selection or a caret is not
-  yours to assert here; assert the one this harness can see (whether the app
-  consumed the key) and say which half you left to a real keystroke.
+- **And a key injected through CDP reaches the app's handlers, and this build's
+  EDITING pipeline too — but not every pipeline.** `Input.dispatchKeyEvent`
+  reaches a `keydown` listener, which is what makes the guards around one
+  measurable (`defaultPrevented` being the tell). **Corrected in review round 1 of
+  #297, measured while walking the composer's `@` flow:** this paragraph used to
+  state flatly that the injected key does not drive Chromium's editing pipeline,
+  and on the built app (Electron 44.3.0) it does — `Input.insertText('abcdef')`
+  followed by three `ArrowLeft` moved the field's own `selectionStart` 6 → 3. What
+  is still NOT reachable is a MODIFIER-based selection (`⌘A`, `⇧arrows`: a caret
+  asked for its modifier arrows back stayed at 8 whatever modifier arrived), and a
+  range set from OUTSIDE the page does not reliably reach React's own caret state
+  — the composer's caret is React state fed by real keystrokes, and a select-all
+  plus one Backspace was measured taking the app's atomic-delete path against a
+  stale caret. So: caret movement and typed text can be driven here with plain
+  keys, a modifier selection cannot, and a state that lives in React rather than in
+  the DOM still needs a real keystroke — say in the row which of the two you used.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the

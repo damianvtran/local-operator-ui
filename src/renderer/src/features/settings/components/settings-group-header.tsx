@@ -95,7 +95,7 @@ export const SettingsGroupHeader = ({
 			 * because the primitive would otherwise step a heading DOWN in ink on
 			 * hover.
 			 */
-			triggerClassName="text-ink hover:bg-elevated hover:text-ink"
+			triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
 			/*
 			 * The chevron is this surface's only affordance, so it is the one mark
 			 * that must clear the 3:1 non-text floor: the primitive paints the slot

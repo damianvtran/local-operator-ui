@@ -25,6 +25,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over the page at the strongest alpha that keeps its own ink at 4.5:1; a semantic
  * border walks its hue toward the ground to just above the 3:1 edge floor; the shadow and the
  * scrim are the ink tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const oneLight: ThemeDefinition = {
 	id: "oneLight",
@@ -41,26 +57,50 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` and stepped 3.18 on the `L*` axis — branch H
-		 * of this port's selection rule. The cast is not decoration here: this palette's
-		 * `accentWash` (the app's active-row tint, `bg-accent-wash`) sits close enough to its
-		 * panel that a ground carrying only the band was ΔE00 **0.70** from the wash — the
-		 * same mark as the app's other selected row — so the row ground has to separate from
-		 * it by the contract's field floor: measured 2.92 here. ΔE00 4.03 from `surface`,
-		 * 5.44 from `elevated`, 4.62 from `sunken`, `inkDim` 5.09:1.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #F0EEFA  accent hue, C* 6.22, +1.63 L*, ΔE00 6.11 off `surface`,
+		 *                       `inkDim` 5.80:1 on the fill, hue 1.12° off `accent`.
+		 * rowSelected #E6E3FE  accent hue, C* 14.05, +4.99 L*, ΔE00 11.92 off
+		 *                       `surface` and 6.07 off `rowHover`, `inkDim` 5.32:1, and the
+		 *                       2px `accent` bar at 4.83:1 against it.
 		 */
-		highlight: "#E5ECF1",
+		rowHover: "#F0EEFA",
+		rowSelected: "#E6E3FE",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same
 		// neutral, and then seated deeper again so the readout rung below it clears the
 		// ΔE00 8 ink step (mono-3 measured 1.6 from it).
-		inkMuted: "#494B55",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 7.24:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#43454F",
 		// Canonical mono-3 A0A1A7 is 1.96:1 on `sunken`, far under the 4.5 floor for a
 		// tertiary weight. Darkened along its own neutral, and kept a distinct rung from
 		// `inkMuted` above rather than collapsing the two.
-		inkDim: "#616269",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.05:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#5B5C63",
 		inkDisabled: "#A0A1A7",
 
 		hairline: "#CECED1",
@@ -76,8 +116,28 @@ export const oneLight: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#0039B6",
+		tokenCommand: "#006996",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#E5E6EA",
 		onAccent: "#EAEAEA",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#a626a4`, canonical hue-3 purple — 5.86:1, untouched),
+		 * received unchanged because it already clears every floor — ΔE00 24.22
+		 * from `accent`, 35.23 from its nearest semantic (`danger`), 4.64:1 as text
+		 * on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#a626a4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.32 and C* 2.09, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.39 from `accentWash` (the field floor is
+		 * 2.0), 4.90:1 for `accentAlt` on it, and 2.71 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#E9E5E8",
 
 		// Canonical hue-4 green 50A14F is 2.43:1 on `sunken` (< 4.5). Darkened along the
 		// same green.

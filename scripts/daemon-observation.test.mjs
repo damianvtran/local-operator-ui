@@ -245,6 +245,18 @@ async function daemonScene({
 	mkdirSync(runDir, { recursive: true });
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = root;
 
+	/*
+	 * What the daemon at this port answers RIGHT NOW, as a value a case can change.
+	 *
+	 * The parameters above are the daemon this app adopts; `replaceUnderApp` below
+	 * is the same address after a `lop` build swap, which is the shape the
+	 * 2026-09-18 report had. Mutable state rather than a second scene because the
+	 * ADDRESS and the process answering it are the same throughout - only the
+	 * identity, the plane and the credential change, and those are exactly what a
+	 * successor swaps.
+	 */
+	const live = { instanceId, acceptedBearer, healthStatus, sessionsStatus };
+
 	const child = spawn(
 		process.execPath,
 		["-e", "setInterval(() => {}, 1000);"],
@@ -261,11 +273,11 @@ async function daemonScene({
 			res.end(JSON.stringify(body));
 		};
 		if (path === "/health") {
-			if (healthStatus !== 200) {
+			if (live.healthStatus !== 200) {
 				// No identity: the real daemon answers a status without one while it is
 				// not ready, which is exactly what makes this case invisible to an
 				// identity check.
-				json(healthStatus, { detail: "not ready" });
+				json(live.healthStatus, { detail: "not ready" });
 				return;
 			}
 			json(200, {
@@ -273,7 +285,7 @@ async function daemonScene({
 				message: "ok",
 				result: {
 					version,
-					instance_id: instanceId,
+					instance_id: live.instanceId,
 					pid: child.pid,
 					prefix: "/tmp/observation-prefix",
 					install_kind: "uv-tool",
@@ -294,16 +306,26 @@ async function daemonScene({
 				"Bearer ",
 				"",
 			);
+			/*
+			 * The PLANE first, the credential second - the order the daemon's own
+			 * `require_desktop` decides them in, and the order that separates the two
+			 * refusals a case here has to tell apart: a `503` says the plane is shut
+			 * (nothing is admitted, whatever is presented), while a `401` says the plane
+			 * is open and this credential is not the one it accepts.
+			 */
+			if (live.sessionsStatus !== 200) {
+				json(live.sessionsStatus, {
+					detail:
+						"Desktop controls require a backend started by the desktop app.",
+				});
+				return;
+			}
 			// The bearer this daemon accepts: the record's own claim key for a
 			// key-governed daemon, and the token its spawner passed in the environment
 			// for one governed that way (`claim_key: ""`). A 200 here is what makes
 			// this daemon adoptable at all (an unauthenticated 200 is not).
-			if (presented !== acceptedBearer) {
+			if (presented !== live.acceptedBearer) {
 				json(401, { detail: "Unauthorized" });
-				return;
-			}
-			if (sessionsStatus !== 200) {
-				json(sessionsStatus, { detail: "session store unreadable" });
 				return;
 			}
 			json(200, { result: { sessions: [], truncated: false, limit: 1 } });
@@ -320,7 +342,6 @@ async function daemonScene({
 	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 	const port = server.address().port;
 
-	const now = Date.now() / 1000;
 	/*
 	 * `publishRecord: false` is the operator's own 09:17 shape: a daemon is
 	 * serving the configured address, and the record directory holds nothing
@@ -328,25 +349,30 @@ async function daemonScene({
 	 * therefore reports "nothing to attach to", which is exactly the answer that
 	 * used to be read as "the port is free".
 	 */
-	if (publishRecord)
+	const publishRecordFile = (recordInstanceId, recordClaimKey) => {
+		// The record the daemon itself publishes: staged-once, 0600, keyed by pid, with
+		// the heartbeat the reader's liveness classification is made from.
+		const now = Date.now() / 1000;
 		writeFileSync(
 			join(runDir, `${child.pid}.json`),
 			JSON.stringify({
 				pid: child.pid,
 				host: "127.0.0.1",
 				port,
-				instance_id: instanceId,
+				instance_id: recordInstanceId,
 				version,
 				source_ref: "",
 				prefix: "/tmp/observation-prefix",
 				install_kind: "uv-tool",
 				desktop: false,
-				claim_key: claimKey,
+				claim_key: recordClaimKey,
 				started_at: now - 10,
-				heartbeat_at: now - 1,
+				heartbeat_at: now,
 			}),
 			{ mode: 0o600 },
 		);
+	};
+	if (publishRecord) publishRecordFile(instanceId, claimKey);
 
 	const stopChild = async () => {
 		if (child.exitCode !== null || child.signalCode !== null) return;
@@ -387,6 +413,23 @@ async function daemonScene({
 		async die() {
 			await closeServer();
 			await stopChild();
+		},
+		async replaceUnderApp({
+			instanceId: nextInstanceId,
+			acceptedBearer: nextBearer = live.acceptedBearer,
+			sessionsStatus: nextSessions = live.sessionsStatus,
+			/**
+			 * Whether the successor has published ITS record yet. False models the
+			 * seconds between the new process binding the port and its own record
+			 * landing: `/health` already names it while the record directory still
+			 * describes the process it replaced.
+			 */
+			publishRecord: publishSuccessorRecord = true,
+		}) {
+			live.instanceId = nextInstanceId;
+			live.acceptedBearer = nextBearer;
+			live.sessionsStatus = nextSessions;
+			if (publishSuccessorRecord) publishRecordFile(nextInstanceId, nextBearer);
 		},
 		async dispose() {
 			await closeServer();
@@ -1007,5 +1050,128 @@ test("the install is named without a shell, and the decision agrees with the spa
 		process.env.HOME = savedHome;
 		rmSync(binDir, { recursive: true, force: true });
 		await manager.stop(false).catch(() => {});
+	}
+});
+
+/**
+ * The report of 2026-09-18, end to end: a daemon replaced under a running app.
+ *
+ * `lop`'s build swap starts a successor on the SAME port with a fresh claim key
+ * and a desktop plane that is shut until an app claims it. The app, which was
+ * paired with the process that just went away, holds the credential of a process
+ * that no longer exists - so every gated call it makes is refused, while
+ * `/health` and the public capability op keep answering. That traffic was the
+ * trap: each refusal was stamped as a successful request, which cleared the
+ * identity-failure count, so the app never detached, never re-discovered and
+ * never re-claimed, and it reported "This app is not paired with the running
+ * Local Operator server" until the app itself was restarted. The state machine's
+ * own guards are `daemon-health-state.test.mjs`'s; these two drive the CALL SITE
+ * - the manager, against real HTTP - because that is where the refusal was
+ * counted as a pairing.
+ */
+test("a daemon replaced under the app is re-paired without a restart (2026-09-18)", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-0.59.0",
+		acceptedBearer: "old-claim-key",
+		claimKey: "old-claim-key",
+	});
+	try {
+		const { manager } = await adoptAtStartup(scene);
+		const attached = manager.getStatusSnapshot();
+		assert.equal(attached.state, "attached");
+		assert.equal(attached.instanceId, "instance-0.59.0");
+
+		// The successor: same address, new identity, its own record and claim key,
+		// and a plane that refuses the credential this app is still holding.
+		await scene.replaceUnderApp({
+			instanceId: "instance-0.59.4",
+			acceptedBearer: "successor-claim-key",
+		});
+
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			const refused = await manager.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			assert.equal(
+				refused.status,
+				401,
+				"the successor refuses the credential this app holds for the process it replaced",
+			);
+			// and the renderer's capability poll, which the plane answers without
+			// admitting anyone - liveness, never a pairing
+			const capabilities = await manager.requestDesktop({ op: "capabilities" });
+			assert.equal(capabilities.status, 200);
+			await manager.checkBackendHealth();
+		}
+
+		const healed = await waitFor(() => {
+			const snapshot = manager.getStatusSnapshot();
+			return snapshot.state === "attached" &&
+				snapshot.instanceId === "instance-0.59.4"
+				? snapshot
+				: null;
+		}, "the app to re-discover the successor, claim its plane and re-attach");
+		assert.equal(healed.pid, scene.pid);
+		assert.ok(
+			scene.seen.some((request) => request.path === "/v1/desktop/claim"),
+			"re-pairing IS the claim handshake, so the successor must have been asked for it - before this fix the app never detached, so it never asked",
+		);
+		await manager.stop(false);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("a successor whose plane is SHUT detaches the app rather than holding it attached", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-0.59.0",
+		acceptedBearer: "old-claim-key",
+		claimKey: "old-claim-key",
+	});
+	try {
+		const { manager } = await adoptAtStartup(scene);
+		assert.equal(manager.getStatusSnapshot().state, "attached");
+		/*
+		 * The same swap, caught in the window before the successor's own record
+		 * lands (`publishRecord: false`), so discovery has nothing it may attach
+		 * to yet and the app's only correct answer is `detached` - the state that
+		 * re-discovers. What it may NOT do is stay `attached` to a pid that is gone
+		 * on the strength of the refusals it keeps collecting.
+		 */
+		await scene.replaceUnderApp({
+			instanceId: "instance-0.59.4",
+			acceptedBearer: "successor-claim-key",
+			sessionsStatus: 503,
+			publishRecord: false,
+		});
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			const refused = await manager.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			assert.equal(
+				refused.status,
+				503,
+				"a shut plane refuses every gated route, whatever credential is presented",
+			);
+			await manager.requestDesktop({ op: "capabilities" });
+			await manager.checkBackendHealth();
+		}
+		const settled = manager.getStatusSnapshot();
+		assert.equal(
+			settled.state,
+			"detached",
+			"three answered contradictions detach, which is what re-discovery and a fresh claim are reached from",
+		);
+		assert.equal(settled.failures, DEGRADED_AFTER_FAILURES);
+		assert.doesNotMatch(
+			settled.detail,
+			RE_CONNECTED_TO_THE_DAEMON,
+			"and the row may no longer describe the replaced process as the daemon this app is connected to",
+		);
+		await manager.stop(false);
+	} finally {
+		await scene.dispose();
 	}
 });

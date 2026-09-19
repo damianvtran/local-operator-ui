@@ -1,7 +1,4 @@
-import type {
-	CanvasDocument,
-	CanvasDocumentType,
-} from "@features/chat/types/canvas";
+import type { CanvasDocument } from "@features/chat/types/canvas";
 import {
 	canvasDocumentForPath,
 	stripFileUrl,
@@ -16,28 +13,34 @@ import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
-import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
-import { Button, Card, Tooltip } from "@shared/components/ui";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Input,
+} from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import {
-	Archive,
-	AudioLines,
-	Code,
-	File,
-	FileImage,
-	FileSpreadsheet,
-	FileText,
-	FileVideo,
-	Presentation,
-	ScrollText,
-} from "lucide-react";
+import { Funnel, Search, X } from "lucide-react";
 import type { FC } from "react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
-import { buildFileTiles } from "./file-tiles";
+import { clearSearch } from "../../clear-search";
+import { FileRowItem } from "./file-row";
+import {
+	FILE_KIND_GROUPS,
+	type FileKindGroup,
+	buildFileRows,
+	countLabel,
+	filterAndSearchRows,
+} from "./file-rows";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
@@ -55,15 +58,90 @@ type CanvasFileViewerProps = {
 };
 
 const defaultFiles: CanvasDocument[] = [];
+const defaultKinds: FileKindGroup[] = [];
 
 /**
- * Thumbnail band height, shared by the image, video and icon tiles.
+ * The kind filter: ONE control over the nine file groups.
  *
- * Was 140px, which in a three-column 720px panel made each tile taller than it
- * was wide and pushed the file name — the only thing anyone reads here — below
- * the fold of the first row. 96px is enough to recognise an image by.
+ * One trigger rather than a row of chips, because the dock is 400px wide at its
+ * narrow end and nine chips are not: a menu states the choice without spending
+ * the row, and the primitive brings its own focus trap, Escape-to-close and
+ * `aria-expanded`. The groups are derived from the document type in the view
+ * model, so no call site re-decides what "code" means.
+ *
+ * The trigger reads `Filter` at rest and the first selected group plus `+N` when
+ * narrowed (`Images +1`), while its ACCESSIBLE name always names every selected
+ * group (`Filter: Images, Documents`): a visible label may be short, a name read
+ * aloud may not be. An applied filter is an ACTIVE state, so the trigger keeps
+ * its `outline` boundary and takes the accent wash — the accent the app spends
+ * on an active state, low-chroma by construction and not a fill a user is meant
+ * to press. The count beside it is the second, legible statement that rows are
+ * hidden.
  */
-const THUMBNAIL = "h-24 w-full";
+const KindFilterMenu: FC<{
+	kinds: FileKindGroup[];
+	onChange: (kinds: FileKindGroup[]) => void;
+}> = ({ kinds, onChange }) => {
+	const toggle = (id: FileKindGroup, next: boolean) => {
+		onChange(
+			next
+				? FILE_KIND_GROUPS.map((group) => group.id).filter(
+						(group) => group === id || kinds.includes(group),
+					)
+				: kinds.filter((group) => group !== id),
+		);
+	};
+
+	const selected = FILE_KIND_GROUPS.filter((group) =>
+		kinds.includes(group.id),
+	).map((group) => group.label);
+	const narrowed = selected.length > 0;
+	const triggerLabel = narrowed
+		? `${selected[0]}${selected.length > 1 ? ` +${selected.length - 1}` : ""}`
+		: "Filter";
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="outline"
+					size="sm"
+					aria-label={
+						narrowed ? `Filter: ${selected.join(", ")}` : "Filter by file type"
+					}
+					className={cn(narrowed && "bg-accent-wash")}
+				>
+					<Funnel aria-hidden="true" />
+					{triggerLabel}
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<DropdownMenuLabel>File types</DropdownMenuLabel>
+				{FILE_KIND_GROUPS.map((group) => (
+					<DropdownMenuCheckboxItem
+						key={group.id}
+						checked={kinds.includes(group.id)}
+						onCheckedChange={(next) => toggle(group.id, next === true)}
+					>
+						{group.label}
+					</DropdownMenuCheckboxItem>
+				))}
+				<DropdownMenuSeparator />
+				{/*
+				 * `disabled` rather than hidden: the item states what "no filter" is, and a
+				 * menu whose last row appears and disappears is a menu that changes height
+				 * under the pointer.
+				 */}
+				<DropdownMenuItem
+					disabled={!narrowed}
+					onSelect={() => onChange(defaultKinds)}
+				>
+					Clear filter
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+};
 
 /**
  * Checks if a file is an image based on its extension.
@@ -119,35 +197,6 @@ const getAttachmentUrl = (
 	return path;
 };
 
-const getIconForFileType = (type?: CanvasDocumentType) => {
-	switch (type) {
-		case "image":
-			return FileImage;
-		case "video":
-			return FileVideo;
-		case "pdf":
-			return ScrollText;
-		case "markdown":
-		case "text": // Grouping text-like types
-			return FileText;
-		case "html":
-		case "code": // Grouping code-like types
-			return Code;
-		case "archive":
-			return Archive;
-		case "document": // Word, ODT etc.
-			return FileText;
-		case "spreadsheet": // Excel, ODS etc.
-			return FileSpreadsheet;
-		case "presentation": // PowerPoint, ODP etc.
-			return Presentation;
-		case "audio":
-			return AudioLines;
-		default:
-			return File; // Generic file icon
-	}
-};
-
 const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	conversationId,
 	onSwitchToDocumentView,
@@ -165,12 +214,52 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	const setViewMode = useCanvasStore((s) => s.setViewMode);
 
-	// The grid's view model: order, the basename-collision line, and which tiles
-	// are known to be gone. `buildFileTiles` is a pure function of this list, so
-	// the rules are testable without React - they used to live in this file's own
-	// `useMemo`, where the only way to ask what two `report.pdf`s look like was to
-	// render the panel.
-	const tiles = useMemo(() => buildFileTiles(files), [files]);
+	/*
+	 * Which file is already open, so the list can say so: the row for a document the
+	 * Documents view is showing takes the current-row ground. Read from the store
+	 * rather than from the tab strip, because the two views never render at once.
+	 */
+	const selectedTabId = useCanvasStore(
+		(state) => state.conversations[conversationId]?.selectedTabId ?? null,
+	);
+
+	/*
+	 * The list's view model: order, the basename-collision line, which rows are
+	 * known to be gone, their size and their search text. `buildFileRows` is a pure
+	 * function of this list, so the rules are testable without React - they used to
+	 * live in this file's own `useMemo`, where the only way to ask what two
+	 * `report.pdf`s look like was to render the panel.
+	 */
+	const rows = useMemo(() => buildFileRows(files), [files]);
+
+	/*
+	 * THE QUERY AND THE FILTER ARE COMPONENT STATE, NOT STORE STATE, and that is
+	 * the load-bearing half of the decision. The canvas store is persisted to
+	 * localStorage, so a stored query would re-open this panel filtered on the next
+	 * launch with no visible cause, and a query stored per conversation would
+	 * silently change what the panel shows when the user switches sessions. The
+	 * repo's own doctrine for exactly this is *a mode of a pane is not a
+	 * preference* (`ui-preferences-store.ts`, quoting `docs/run-sidebar.md` § 3.5).
+	 *
+	 * The cost, stated plainly rather than hidden: switching views unmounts this
+	 * component, so the query resets. That is honest and cheap to re-type, where a
+	 * stale filter is not - and while either control is narrowing the list, the head
+	 * states both numbers, so the hidden rows are never a silent omission.
+	 */
+	const [query, setQuery] = useState("");
+	const [kinds, setKinds] = useState<FileKindGroup[]>(defaultKinds);
+	const visibleRows = useMemo(
+		() => filterAndSearchRows(rows, { query, kinds }),
+		[rows, query, kinds],
+	);
+
+	const searchRef = useRef<HTMLInputElement>(null);
+	/*
+	 * The row the keyboard is handed to when the search field lets go of focus:
+	 * `Escape` on an empty field, and `ArrowDown` from the field. Set on the first
+	 * row only.
+	 */
+	const firstRowRef = useRef<HTMLButtonElement>(null);
 
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
@@ -270,30 +359,42 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 *
 			 * The two checks were in the other order, and that turned a click on a
 			 * missing file whose type has no viewer into nothing at all: `kind ===
-			 * null` handed it to the OS first, so a missing tile that said `Open
+			 * null` handed it to the OS first, so a missing row that said `Open
 			 * in default app` to nobody swallowed the click. A click must always
 			 * produce something - a viewer, the OS, or a sentence.
 			 *
-			 * One re-probe first, because the interval between the probe and the click
-			 * is exactly when an agent writes the file. A tile can already know its
-			 * file is gone, and it must not be handed to the OS, which would either do
-			 * nothing or open the wrong thing.
+			 * The probe is unconditional now, where it used to run only for a row
+			 * that already knew its file was gone, and the extra `stat` buys three
+			 * facts the document it opens needs: the mtime its bytes are being read
+			 * at (both the freshness baseline the canvas checks against later and
+			 * the blob cache's key), the size the viewers state "too large" from,
+			 * and `availability`. The document's own copy of those is a reading
+			 * taken when the mention was scanned, and the interval between that and
+			 * this click is exactly when an agent writes the file.
 			 */
 			const normalizedPath = stripFileUrl(fileDoc.path);
-			if (fileDoc.availability === "missing") {
-				const [probe] = await window.api.probeFiles([normalizedPath]);
-				if (!probe || !probe.exists || !probe.isFile) {
-					showErrorToast(
-						`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
-						{
-							// What to do next, not only what happened: the path alone leaves
-							// the reader with a three-line wrap and nowhere to go.
-							description:
-								"Copy its path from the tile's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
-						},
-					);
-					return;
-				}
+			/*
+			 * The bridge is absent in a browser build, and a click must still open what
+			 * it can there: no probe answer is "nothing is known", which leaves the
+			 * document without a freshness baseline rather than failing the click. The
+			 * same shape `use-mentioned-files` asks its own probes with.
+			 */
+			const probe =
+				typeof window.api?.probeFiles === "function"
+					? ((await window.api.probeFiles([normalizedPath]))[0] ?? null)
+					: null;
+			const onDisk = Boolean(probe?.exists && probe.isFile);
+			if (fileDoc.availability === "missing" && !onDisk) {
+				showErrorToast(
+					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+					{
+						// What to do next, not only what happened: the path alone leaves
+						// the reader with a three-line wrap and nowhere to go.
+						description:
+							"Copy its path from the row's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+					},
+				);
+				return;
 			}
 
 			if (kind === null) return fallbackAction();
@@ -313,8 +414,16 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			const carried = {
 				title,
 				type: getFileTypeFromPath(normalizedPath),
-				lastAgentModified: fileDoc.lastAgentModified,
-				sizeBytes: fileDoc.sizeBytes,
+				lastAgentModified: probe?.mtimeMs ?? fileDoc.lastAgentModified,
+				/*
+				 * The freshness baseline: the mtime these bytes are being read at. Only
+				 * ever a probe answer - never `fileDoc.lastAgentModified`, which is
+				 * also set to `Date.now()` by the attachment path, and a baseline in
+				 * the future is a file that never looks new.
+				 */
+				readMtimeMs: probe?.mtimeMs ?? undefined,
+				availability: onDisk ? ("present" as const) : undefined,
+				sizeBytes: probe?.sizeBytes ?? fileDoc.sizeBytes,
 			};
 
 			const encoding = READ_ENCODING[kind];
@@ -391,16 +500,23 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		);
 	}
 
-	const countLabel = `${tiles.length} ${tiles.length === 1 ? "file" : "files"}`;
+	const total = rows.length;
 	/*
-	 * The two things an empty grid can be, in the panel's own words.
+	 * The count, whose two numbers are the anti-silence mechanism: see
+	 * `countLabel`. With neither control active nothing is hidden and one number is
+	 * the honest one.
+	 */
+	const narrowing = query.trim().length > 0 || kinds.length > 0;
+	const count = countLabel(visibleRows.length, total, narrowing);
+	/*
+	 * The two things an empty list can be, in the panel's own words.
 	 *
-	 * An empty grid under a STOPPED scan is not a scan in progress, so it cannot
+	 * An empty list under a STOPPED scan is not a scan in progress, so it cannot
 	 * borrow the line that says one is: the head above already states which
 	 * messages were searched, and this body states the finding instead of a search
 	 * that is no longer running.
 	 */
-	const emptyGrid = scan?.stopped
+	const emptyList = scan?.stopped
 		? {
 				title: "No files in the messages searched",
 				detail:
@@ -412,9 +528,55 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					"Files named before the part of the conversation already loaded appear here as they are read.",
 			};
 	/*
+	 * NOTHING FOUND BY A QUERY is a third state, and it may borrow NEITHER of the
+	 * two above: "there are no files" is a claim about the conversation, and the
+	 * query is what emptied this list. The copy names what the search matches and
+	 * states how many files it is hiding, and the way out sits in the BODY as
+	 * well as at the field, because the body is where the absence is read: an
+	 * empty panel with a field, a count and nothing else leaves the reader to
+	 * work out that emptying the field is the way back, and the head's three
+	 * controls do not say so in words.
+	 *
+	 * The two sentences the spec fixes verbatim are the query's; the type-filter
+	 * sentence is written here to match them, because a filter can empty the list on
+	 * its own and the honest statement of what is hiding the rows is the part that
+	 * must not be missing. A round can re-word it; it cannot be absent.
+	 */
+	const queryText = query.trim();
+	const clearNarrowing = () => {
+		setQuery("");
+		setKinds(defaultKinds);
+		/*
+		 * Back to the field, not to nothing: the clear control unmounts in the same
+		 * commit that empties the query, and the browser drops focus to `<body>` when
+		 * the focused element leaves the DOM (`clearSearch`'s own note). The list may
+		 * also have gained rows, so leaving the caret in the field is where the next
+		 * keystroke goes.
+		 */
+		searchRef.current?.focus();
+	};
+	const noMatch = queryText
+		? kinds.length > 0
+			? {
+					title: `No files match “${queryText}”`,
+					detail: `Files are matched on their name and folder, and the type filter is hiding the rest. Clear both to see all ${total} ${total === 1 ? "file" : "files"}.`,
+					action: "Clear search and filter",
+				}
+			: {
+					title: `No files match “${queryText}”`,
+					detail: `Files are matched on their name and folder. Clear the search to see all ${total} ${total === 1 ? "file" : "files"}.`,
+					action: "Clear search",
+				}
+		: {
+				title: "No files of those types",
+				detail: `The type filter is hiding every file. Clear the filter to see all ${total} ${total === 1 ? "file" : "files"}.`,
+				action: "Clear filter",
+			};
+
+	/*
 	 * The panel head, and why it is not optional chrome.
 	 *
-	 * The grid is only as complete as the transcript the producer has read, and the
+	 * The list is only as complete as the transcript the producer has read, and the
 	 * transcript is paged. A list without a count and without a word about what has
 	 * been searched is a list that cannot be trusted: a reader has no way to tell a
 	 * two-file conversation from a two-hundred-file one whose earlier messages have
@@ -422,19 +584,133 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * while one is, and - when the scan stopped short - states exactly which
 	 * messages were searched and offers the action that searches the rest. Nothing
 	 * here is ever a silent omission.
+	 *
+	 * IT RENDERS ON `files.length > 0`, NOT ON THE VISIBLE ROW COUNT. That is what
+	 * keeps the search field on screen in the one state that most needs an exit: a
+	 * query that matches nothing would otherwise take away the field that typed it,
+	 * leaving the user with an empty panel and no way back. The scan lines keep their
+	 * own condition, so a stopped scan still reaches its action with nothing found.
+	 *
+	 * One register for all three statements: the count, the paging sentence and the
+	 * stop sentence are `text-meta text-ink-dim`. They were two registers for three
+	 * statements about one list, which reads as two severities where there is one
+	 * subject.
 	 */
 	return (
-		<div className={cn("flex h-full flex-col")}>
-			{(tiles.length > 0 || scan?.paging || scan?.stopped) && (
+		/*
+		 * THE ROOT IS `min-h-0 flex-1`, NOT `h-full`, and this class is the fix for the
+		 * clipped last rows.
+		 *
+		 * The box is a sibling of the 40px chrome bar inside the canvas section's
+		 * `flex h-full flex-col`, so `h-full` made it 100% of the pane PLUS the bar -
+		 * 40px taller than the space it has - and the dock's `overflow-hidden` cut that
+		 * strip off. The scroller inside therefore had a viewport 40px taller than what
+		 * the user could see, reached its own maximum scroll with the last rows still
+		 * under the clip, and left its own bottom padding unreachable. `flex-1` states
+		 * what this element is (the rest of the column, not all of a box that also
+		 * holds the bar) and `min-h-0` removes the floor that `h-full`'s specified size
+		 * was imposing through the content-based minimum (CSS Flexbox § 4.5). Measured
+		 * in the running app at 1380x900 before the change: the scroller's bottom 40px
+		 * past the window edge, 2 rows clipped, the last row's bottom 15.67px past it;
+		 * after: 0, 0, and inside.
+		 */
+		<div className={cn("flex min-h-0 flex-1 flex-col")}>
+			{(files.length > 0 || scan?.paging || scan?.stopped) && (
 				<div
 					data-tour-tag="files-scanner-head"
 					className={cn(
-						"flex min-h-8 shrink-0 flex-wrap items-center gap-x-3 gap-y-1",
-						"border-hairline border-b bg-surface px-6 py-2",
+						"flex shrink-0 flex-col gap-2",
+						"border-hairline border-b bg-surface px-2 py-2",
 					)}
 				>
-					{tiles.length > 0 && (
-						<span className={cn("text-body-sm text-ink")}>{countLabel}</span>
+					{files.length > 0 && (
+						<div className={cn("flex items-center gap-2")}>
+							{/*
+							 * `type="text"` and not `type="search"`: the UA cancel button cannot
+							 * be themed, and it would be the only unthemed control on the surface.
+							 * The search LANDMARK is therefore the `search` element rather than a
+							 * hand-spelled `role="search"` on this box: same role, none of the ARIA
+							 * to keep in sync, and the repo's lint refuses the hand-spelled form.
+							 */}
+							<search className={cn("relative min-w-0 flex-1")}>
+								<Search
+									className={cn(
+										"-translate-y-1/2 pointer-events-none absolute top-1/2 left-2 size-3.5 text-ink-dim",
+									)}
+									aria-hidden="true"
+								/>
+								<Input
+									ref={searchRef}
+									inputSize="sm"
+									type="text"
+									aria-label="Search files by name or folder"
+									placeholder="Search files by name or folder"
+									value={query}
+									onChange={(event) => setQuery(event.target.value)}
+									onKeyDown={(event) => {
+										/*
+										 * Escape: a non-empty query clears and the field keeps the caret,
+										 * because the field is the thing the user will retype into; an
+										 * empty query lets focus go to the first row, which is the way out
+										 * of the field. ArrowDown is the same hand-off, one key earlier.
+										 * The canvas's own Escape binding is not in the way: it acts
+										 * only in the documents view.
+										 */
+										if (event.key === "Escape") {
+											if (query) {
+												event.preventDefault();
+												clearSearch(searchRef.current, setQuery);
+											} else {
+												firstRowRef.current?.focus();
+											}
+											return;
+										}
+										if (event.key === "ArrowDown") {
+											event.preventDefault();
+											firstRowRef.current?.focus();
+										}
+									}}
+									className={cn("pl-7", query ? "pr-8" : undefined)}
+									autoComplete="off"
+									spellCheck={false}
+								/>
+								{query ? (
+									/*
+									 * `clearSearch` rather than two statements, because the pairing is
+									 * the whole contract: this control unmounts in the same commit
+									 * that empties the query, and the browser drops focus to `<body>`
+									 * when the focused element leaves the DOM rather than handing it to
+									 * a sibling. The inset ring is the one the sidebar's field needed
+									 * for the same reason: `icon-sm`'s own 2px offset needs 3px of
+									 * clearance inside a 1px-bordered field and there is only 2px.
+									 */
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label="Clear search"
+										className={cn(
+											"-translate-y-1/2 absolute top-1/2 right-0.5 focus-visible:outline-offset-[-2px]!",
+										)}
+										onClick={() => clearSearch(searchRef.current, setQuery)}
+									>
+										<X aria-hidden="true" />
+									</Button>
+								) : null}
+							</search>
+							<KindFilterMenu kinds={kinds} onChange={setKinds} />
+							{/*
+							 * `pr-8` is the row's own trailing gutter, and it is what makes the count
+							 * sit over the column it counts: a row reserves 28px for its `⋯`
+							 * (`file-row.tsx`), so the size and receipt inks end 32px short of the row's
+							 * right edge. Without it the head's two right-ragged text columns sat 32px
+							 * apart, and the offset only explains itself while a row happens to be
+							 * hovered. The count is directly above the sizes it summarises (design
+							 * round 1, D3).
+							 */}
+							<span className={cn("shrink-0 pr-8 text-meta text-ink-dim")}>
+								{count}
+							</span>
+						</div>
 					)}
 					{scan?.paging && (
 						<span className={cn("text-meta text-ink-dim")}>
@@ -450,7 +726,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					 * this state offers was marked as a control by contrast alone; it is
 					 * `outline` now, which carries the same `border-control` a control
 					 * boundary is, at rest. And its POSITION was chosen by whether the count
-					 * happened to leave room: with tiles the pair wrapped to a second line
+					 * happened to leave room: with rows the pair wrapped to a second line
 					 * starting at the head's content edge, with nothing found it sat at the
 					 * end of the sentence instead. Wrapping the pair in a `w-full` row puts
 					 * it on its own line in both states, so the panel's one action is in one
@@ -459,211 +735,113 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					{scan?.stopped && (
 						<div
 							className={cn(
-								"flex w-full flex-wrap items-center gap-x-3 gap-y-1",
+								// `pr-8` is the head's trailing gutter, the same one the count takes
+								// below: the row's `⋯` reserves 28px (see `file-row.tsx`), so the two
+								// right-ragged statements in this head have to give up the same 32px
+								// or the head has TWO right edges in one state - the count ending at
+								// 1238 and this action at 1271, 33px apart, which is what design
+								// round 2's D2 measured (design D2/D3).
+								"flex w-full flex-wrap items-center gap-x-3 gap-y-1 pr-8",
 							)}
 						>
-							<span className={cn("text-meta text-ink-dim")}>
+							{/*
+							 * `min-w-0 flex-1` on the sentence and `ml-auto` on the button, so the
+							 * head has ONE trailing edge in both stop states. As plain flow items the
+							 * button's x was set by the sentence's width, which is set by the digit
+							 * count of `scan.scanned` - the panel's only action moved whenever the
+							 * number it describes gained a digit, which is the same class of movement
+							 * the row above it was fixed for (design round 1, D2).
+							 */}
+							<span className={cn("min-w-0 flex-1 text-meta text-ink-dim")}>
 								Searched the most recent {scan.scanned} messages; earlier
 								messages are not searched yet.
 							</span>
-							<Button variant="outline" size="sm" onClick={scan.resume}>
+							<Button
+								variant="outline"
+								size="sm"
+								className={cn("ml-auto")}
+								onClick={scan.resume}
+							>
 								Search earlier messages
 							</Button>
 						</div>
 					)}
 				</div>
 			)}
-			{tiles.length === 0 ? (
+			{visibleRows.length > 0 ? (
+				/*
+				 * The scroller is the panel's ONLY scroll container, and it is also the
+				 * container the rows query: `@container/fileslist` names the box whose
+				 * width decides whether a row can carry its size beside its name. A
+				 * container query rather than a viewport breakpoint because the dock
+				 * resizes 400–1200px inside a window that does not — `sm:` was once true
+				 * at a 1440px window while this panel was 400px wide.
+				 *
+				 * `p-2`, so the row's hover ground starts 8px in and a row's text lands
+				 * 16px from the dock edge — the same left edge the chrome bar's switcher
+				 * already uses. The grid's `p-6` spent 12% of a 400px dock on margin.
+				 */
 				<div
 					className={cn(
-						"flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center",
+						"@container/fileslist min-h-0 flex-1 overflow-y-auto p-2",
 					)}
-				>
-					{/* The finding, per `emptyGrid` above: this is an empty grid, not a scan in flight. */}
-					<h2 className={cn("text-heading text-ink")}>{emptyGrid.title}</h2>
-					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-						{emptyGrid.detail}
-					</p>
-				</div>
-			) : (
-				<div
-					className={cn("min-h-0 flex-1 overflow-y-auto p-6")}
 					data-tour-tag="files-scroller"
 				>
 					{/*
-					 * `auto-fill` rather than `sm:grid-cols-3`. A viewport breakpoint is
-					 * meaningless inside a resizable dock: `sm:` was true at a 1440px
-					 * window while the panel itself was 400px wide, so the grid drew three
-					 * 120px columns. Tracks sized against the panel cannot lie.
+					 * The rows' container keeps the `files-grid` name deliberately: the
+					 * geometry probe and the scratchpad harness both address "the rows'
+					 * container" by it, and what they read about it — its rect, its children
+					 * in order, its first focusable control — is a property of the container
+					 * and not of a grid. A rename would lose that coverage silently.
 					 *
-					 * `data-tour-tag` so the geometry probe
-					 * (`scripts/mentioned-files-app-proof.mjs --geometry`) measures this box
-					 * rather than guessing at `.grid`.
+					 * `ul`/`li` with a button per row and no `role="listbox"`: there is no
+					 * selection model here (the row's action is "open this file"), and a
+					 * listbox without one is a lie to a screen reader. The row's accessible
+					 * name is its own text, which is what makes a clashing basename
+					 * distinguishable by ear and a missing file announce its receipt.
 					 */}
-					<div
-						data-tour-tag="files-grid"
-						className={cn(
-							"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
-						)}
-					>
-						{tiles.map((tile) => {
-							const fileDoc = tile.document;
-							const IconComponent = getIconForFileType(fileDoc.type);
-							const isLocalFile =
-								!fileDoc.path.startsWith("data:") &&
-								!fileDoc.path.startsWith("http");
-							const normalizedPath = stripFileUrl(fileDoc.path);
-							/*
-							 * The tile's tooltip carries the FULL PATH, not the name. The name is
-							 * already on the tile, and where two tiles share one the path is the
-							 * only thing that tells them apart — so the tooltip has to be the
-							 * thing that resolves the collision rather than a second copy of the
-							 * name (design round 1, D1). A `data:` document has no path to show,
-							 * and pasting a whole data URI into a tooltip would be worse than
-							 * useless, so it keeps its name.
-							 */
-							const tooltip = fileDoc.path.startsWith("data:")
-								? fileDoc.title
-								: fileDoc.path;
-							return (
-								<Card
-									key={fileDoc.id}
-									variant="surface"
-									padding="none"
-									className={cn(
-										"group relative overflow-hidden",
-										"transition-colors duration-fast ease-out-quart hover:border-control",
-									)}
-								>
-									<Tooltip content={tooltip}>
-										<button
-											type="button"
-											onClick={() => handleFileClick(fileDoc)}
-											className={cn(
-												"flex w-full flex-1 flex-col text-left",
-												"transition-colors duration-fast ease-out-quart",
-												"hover:bg-elevated",
-											)}
-										>
-											{fileDoc.type === "image" ? (
-												<img
-													src={getUrl(fileDoc.path)}
-													alt={fileDoc.title}
-													className={cn(THUMBNAIL, "bg-sunken object-contain")}
-												/>
-											) : fileDoc.type === "video" ? (
-												// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
-												<video
-													src={getUrl(fileDoc.path)}
-													controls={true}
-													preload="metadata"
-													className={cn(THUMBNAIL, "bg-sunken object-contain")}
-												/>
-											) : (
-												<span
-													className={cn(
-														THUMBNAIL,
-														"flex items-center justify-center text-ink-muted",
-													)}
-												>
-													<IconComponent size={26} />
-												</span>
-											)}
-											{/*
-											 * The file name is the content of the tile, so it is
-											 * `ink` at the body step, not a caption. The lines
-											 * beneath it exist only when they say something the name
-											 * does not: a directory that disambiguates a basename
-											 * two tiles share, or the receipt for a file that is
-											 * gone. A second line on every tile would be chrome
-											 * (branding.md: "a completed action is one line, not a
-											 * card").
-											 */}
-											<span
-												className={cn(
-													"block w-full border-hairline border-t px-2.5 pt-2",
-													tile.showParent || tile.missing ? "pb-1" : "pb-2",
-												)}
-											>
-												<span
-													className={cn(
-														"block w-full truncate text-body-sm text-ink",
-													)}
-												>
-													{tile.name}
-												</span>
-												{/*
-												 * Monospace is machine voice, and a path is the one
-												 * thing this line is. The FULL directory rather than
-												 * the immediate parent's name: two clashing
-												 * `report.pdf` under `~/work/reports` and
-												 * `~/archive/reports` would be as indistinguishable
-												 * as they were before the line existed. It truncates
-												 * like the name does.
-												 */}
-												{tile.showParent && (
-													<span
-														className={cn(
-															"block w-full truncate text-mono-sm text-ink-dim",
-														)}
-													>
-														{tile.parent}
-													</span>
-												)}
-												{/*
-												 * Missing files stay in the grid, in place, with a
-												 * muted receipt: the panel's job is to say what the
-												 * agent touched, and a file the user deleted after
-												 * the fact was still touched. Hiding it would
-												 * recreate the original complaint from the other
-												 * side. Copy path keeps working; the click explains
-												 * instead of opening nothing.
-												 */}
-												{tile.missing && (
-													<span
-														className={cn(
-															"block w-full text-meta text-ink-dim",
-														)}
-													>
-														No longer on disk
-													</span>
-												)}
-											</span>
-										</button>
-									</Tooltip>
-									{/*
-									 * The overflow menu comes AFTER the tile in DOM order, and that is
-									 * the whole of the keyboard fix: the card's first Tab stop used to be
-									 * this `⋯`, so a keyboard user who tabbed into the grid and pressed
-									 * Enter got a menu instead of the file. Absolute positioning means
-									 * the visual order is unchanged; only the focus order moves, and it
-									 * moves onto the control the tile is for.
-									 */}
-									{isLocalFile && (
-										<div
-											className={cn(
-												"absolute top-1 right-1 z-10",
-												// Revealed on hover or keyboard focus, like every
-												// other row/tile action in the app. Nine permanent
-												// "…" glyphs over nine thumbnails was chrome
-												// competing with the content it sat on.
-												"pointer-events-none opacity-0",
-												"group-hover:pointer-events-auto group-hover:opacity-100",
-												"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
-											)}
-										>
-											<FileActionsMenu
-												filePath={normalizedPath}
-												tooltip="File actions"
-												aria-label="File actions"
-												onShowInCanvas={() => handleFileClick(fileDoc)}
-											/>
-										</div>
-									)}
-								</Card>
-							);
-						})}
-					</div>
+					<ul className={cn("flex flex-col")} data-tour-tag="files-grid">
+						{visibleRows.map((row, index) => (
+							<FileRowItem
+								key={row.document.id}
+								row={row}
+								getUrl={getUrl}
+								current={row.document.id === selectedTabId}
+								onOpen={handleFileClick}
+								buttonRef={index === 0 ? firstRowRef : undefined}
+							/>
+						))}
+					</ul>
+				</div>
+			) : (
+				<div
+					className={cn(
+						"flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center",
+					)}
+				>
+					{/*
+					 * A query or a filter emptied this list, so the body says so and offers the
+					 * way out; otherwise it is a genuinely empty list and states the finding
+					 * (`emptyList` above — an empty LIST, not a scan in flight).
+					 */}
+					{narrowing ? (
+						<>
+							<h2 className={cn("text-heading text-ink")}>{noMatch.title}</h2>
+							<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+								{noMatch.detail}
+							</p>
+							<Button variant="outline" size="sm" onClick={clearNarrowing}>
+								{noMatch.action}
+							</Button>
+						</>
+					) : (
+						<>
+							<h2 className={cn("text-heading text-ink")}>{emptyList.title}</h2>
+							<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+								{emptyList.detail}
+							</p>
+						</>
+					)}
 				</div>
 			)}
 		</div>

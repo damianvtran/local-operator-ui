@@ -101,7 +101,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			title={`Schedule ID: ${schedule.id}`}
 			className={cn(
 				"group flex items-start gap-3 border-hairline border-b px-4 py-3 last:border-b-0",
-				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+				"transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 			)}
 		>
 			<div className={cn("flex min-w-0 flex-1 flex-col gap-1")}>

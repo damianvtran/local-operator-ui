@@ -92,6 +92,12 @@ ground where it does not.
   that tree's pre-existing backlog is burnt down as files are touched; widening
   `pnpm lint` to name `scripts/` outright is the follow-up once it is gone. See
   `scripts/check-scripts-lint.mjs`.
+- Change scope, and the local equivalent of the whole CI job set:
+  `pnpm check-changed`. It runs `scripts/ci-scope.mjs`, the same module the
+  `Change Scope` job in `ci.yml` runs, so a developer's run and the workflow
+  cannot drift into two opinions about which jobs apply — the same ethos as
+  `pnpm lint:scripts` above, and the same reason this repository states it. See
+  *Change scope* below.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
@@ -264,6 +270,18 @@ treated the same way; a value the app cannot parse is a *typo*, keeps its
 `normal` fallback, and is reported, because a caller who reached for the mode is
 asking to be told rather than defaulted at.
 
+The `packaged` half cuts the other way for a RIG, and the shape rule is the part
+it blinds. A launch of a **staged `.app`** — an artifact smoke test, a signature
+or update rehearsal, anything that boots a built bundle out of `/tmp` — is
+`packaged === true`, which is the half that keeps a double-clicked app out of the
+assumption, so shape alone resolves it `normal` **however it is piped**. The
+switch signal is packaging-blind and still applies: a scratch `--user-data-dir`
+or a `--remote-debugging-port` resolves `headless` for a bundled launch exactly as
+it does for a checkout. So a staged-bundle rig passes one of those, or names the
+mode — `headless` for a run, `inactive` for the one capture that cannot render
+hidden (*Capturing the frame*) — and the bundle was staged to exercise the
+artifact, not to put it in front of the operator.
+
 The shape signal is read on **macOS and Linux only**. Windows is deliberately
 outside it: a Windows GUI-subsystem process takes its stdio through
 `AttachConsole` rather than an inherited handle, so `isTTY` there is not the
@@ -369,8 +387,13 @@ for the process's own plan instead.
 
 A `headless` request that NAMES A CONVERSATION against an app that already HAS a
 window delivers the conversation to that window and raises nothing, which is the
-mode's promise; against an app with NO window it creates nothing and parks the
-conversation instead, and the operator's next window opens it. An invisible window
+mode's promise — with ONE exception, the refusal below: when that window is the one
+the operator is USING, a `second-instance` delivery is PARKED rather than applied
+(`applied=parked+in-use`), because installing it re-keys the panel and costs him the
+caret he was typing into. Against an app with NO window it creates nothing and parks
+the conversation instead, and the NEXT WINDOW THE APP CREATES opens it — a park is
+drained by a window's creation, not by a window being open, which is why a park can
+be waiting while the app has a window up. An invisible window
 is not a harmless one: macOS keeps the app alive with the renderer warm, so the
 Dock icon would activate an app showing nothing while a conversation sat in a
 screen nobody could reach. Nothing appears and nothing is raised — and a park is
@@ -392,7 +415,15 @@ that one conversation while every other entry survived (review round 4, MAJOR-1)
 window closed before its renderer finishes loading therefore leaves the conversation
 queued (`applied=left+waiting`, one line PER entry, each with its own requester) for
 the next window rather than taking it away silently, and anything still waiting when
-the process quits is written as `trigger=app-quit ... applied=dropped+quit`. All of
+the process quits is written as `trigger=app-quit ... applied=dropped+quit`. A park
+that was a REFUSAL is written as `applied=parked+in-use` rather than
+`applied=parked`, and that token is the only one here that means somebody tried to
+take the screen the operator was working on: the delivery it names leaves no other
+trace, because the one plan a refusal applies to is `never`, which is silent by
+design. A delivery that REPLACES the conversation an existing window was showing
+says so, whatever verb it arrived on
+(`delivered=<id> applied=conversation+replaced` — logged by the send rather than by
+the trigger, because under `never` nothing else is written for one). All of
 those names come from the app's own `[window-raise]` line, and
 `scripts/window-mode.test.mjs` holds the shapes.
 
@@ -421,8 +452,10 @@ open is the instance answering (profile: <path>), and this launch's window mode
 (<mode>) was handed to it — <what the running app will do>. Quit that app to start
 a fresh instance. Exiting.` The profile path is the proof a rig needs and the app-is-
 already-open fact is what a person can act on; the effect names what the mode can
-actually do (a `headless` request's conversation is delivered once a window is open,
-not when the request lands). It does NOT print the `[window-mode]` line, which
+actually do (a `headless` request's conversation is delivered when the app has a
+window to deliver it to — the one already open, or the next one it creates when that
+window is in use — and not when the request lands). It does NOT print the
+`[window-mode]` line, which
 describes the window this process never creates.
 
 An `inactive` request orders a window that is already on screen and never
@@ -452,7 +485,12 @@ into one. `mode` is the mode token a reader greps for; `requested` is the show
 policy it produced; `pid`/`cwd` are printed only when the requester declared them
 across the single-instance boundary, and their absence means this process asked
 itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
-its log included.
+its log included. The one line near this that is not a raise is
+`reportConversationReplaced`'s (`delivered=<id> applied=conversation+replaced`),
+which records a delivery that installed a conversation over the one an existing
+window was showing — written for EVERY such delivery rather than for the viewer's
+only, because under `never` it moves the window nowhere and reports nothing, so that
+line is the only account of it.
 
 ### An agent-driven run does not banner either
 
@@ -787,6 +825,54 @@ writing a new rig — and read its limitations section before you present a fram
 from it as evidence for anything it cannot see (focus-dependent rendering, an
 embedded browser page, and backend-gated screens among them).
 
+When the thing being captured genuinely cannot render hidden — a native macOS
+panel or sheet, a compositor effect, a frame that exists only while a window is
+ordered front — `inactive` is the mode for it, as it is for a run somebody means
+to watch or click into and for focus-dependent rendering (*`headless` is a
+full-fidelity rendering path, not a degraded one* **above**). In every one of
+those cases it is **one self-contained command**: launch, capture, reap by exact
+pid before it returns. A visible window held across the steps of a run is
+indistinguishable, to the person whose screen it is on, from the leak this section
+exists to prevent — and the run's own `[window-mode]` line, which names the mode
+it resolved (`window mode inactive`), is not what they see.
+
+### Probes and carrier scripts are not the app
+
+A scratch script that boots Electron and constructs its own `BrowserWindow` — a
+mechanism probe, a carrier hosting a fragment of the app, a one-file reproduction
+— inherits **none** of the above. The mode is resolved by this app's main process,
+so a probe that never loads it has no guard to inherit, and a `show: true` in such
+a script is a window on the operator's screen with nothing in the app to stop it.
+This is not hypothetical. On 2026-09-18 a probe of this class swept five
+visibility configurations as **five processes** — each one launching Electron
+once, calling `showInactive()` once, and exiting — and left a window titled after
+the mechanism itself in front of the operator for the length of the sweep. Every
+launch was, in isolation, exactly the "one launch" this repository asks for; what
+made it noise was the MATRIX, and the app-side guard on `main` could not see any
+of it, because that is the one surface it does not reach.
+
+The rule for the class is therefore about the sweep as much as the launch:
+
+- **Measure hidden.** `win.isVisible()`, `BrowserWindow.getFocusedWindow()` and
+  `capturePage()` answer visibility questions without a window on screen — and for
+  a carrier that DOES load this app, so does its `[window-mode]` line, which a
+  bare probe has no equivalent of and must not be told to read. Do NOT reach for
+  `win.isFocused()` as the proof of anything — the measured warning under
+  *`headless` is a full-fidelity rendering path, not a degraded one* applies to
+  probes too.
+- **A sweep of N configurations is not N launches.** A matrix whose every cell
+  shows a window is the incident above. Bound the question to one launch where it
+  allows it; where a shown window is genuinely required per configuration, use
+  `showInactive()` rather than `show()`, reap by exact pid in the same command as
+  its capture, and **announce the count before you start** — a sweep that will put
+  up five windows is five windows on somebody's screen, not a detail discovered by
+  watching.
+- **Never sweep `show()`/`focus()` variants to find the one that reproduces.**
+  Visibility that is only announced and reaped is one thing; the focus-taking half
+  is another, and a matrix of THOSE is never acceptable whatever it measures,
+  because the interruption is the measurement's side effect rather than its
+  subject. If the question genuinely needs focus, measure it once.
+
 ### What already opens no window, so a rebase does not re-introduce one
 
 `pnpm test:desktop` bundles modules in process; the CI npx smoke test prints its
@@ -936,10 +1022,83 @@ retried and then allowed to proceed — "we could not ask" is not "the bundle is
 exists); this section and the files it names are authoritative for anything about
 where the interpreter lives or how it is updated.
 
+### A launch during a live install stands down
+
+Squirrel's ShipIt asks whether any instance of the target app is running ONCE, as its
+last check before it swaps the bundle, and abandons the install when one is (`App Still
+Running Error`, `SQRLInstallerErrorDomain Code=-9`). So a launch that finds a LIVE
+install does not open a window: `holdLaunchForLiveInstall`
+(`src/main/update-service.ts`) reads the pending marker, asks launchd what the install's
+job is doing, tells the user and quits - inside `whenReady`, before the menu, the backend
+or a window exists. Measured on this machine against a packaged bundle by
+`scripts/hold-lifetime-rig.mjs`: 0.79 s, 2.29 s and 2.48 s of process, exit 0, no window
+and no `Update service initialized` line (QA measured 4.03 s and 5.98 s on a host at load
+165-190, so quote the bound rather than the small number). The facts that decide it: 
+
+- **A RUNNING job plus a current marker is an install in flight** (`isInstallInFlight`),
+  and the launch is held. NOT a merely registered one, and this is the part that was
+  wrong first: launchd keeps the job registered after the install ends - measured here,
+  the app's job is still listed 72 minutes after a successful install with
+  `state = not running`, and so are other applications' ShipIt jobs, indefinitely. Read
+  as liveness, a registration turned the gate into "a marker younger than ~29 minutes",
+  so the launch the watchdog made after a SUCCESSFUL update showed a banner and quit and
+  every click for the next half hour did the same, with no way to open the app at all.
+  `installJobState` separates `running` from `registered` (`launchctl list` carries the
+  job's `"PID" = n;` field only while its program executes), and the same reading decides
+  recovery: a marker the running version has REACHED is `succeeded` and a job that is not
+  running is not an install, so the app opens, clears the marker, and - when the install
+  really did fail - draws the "the last update didn't finish" panel a person goes looking
+  for. A marker past `PENDING_INSTALL_LAUNCH_HOLD_SECONDS` opens too; the marker, the
+  install's job and its staging tree are never touched by the hold.
+- **The hold ends before the watchdog's hard bound** (`LAUNCH_HOLD_END_MARGIN_SECONDS`).
+  That bound is where the relaunch watchdog deliberately starts the app into a live
+  install rather than leave a user with no app; a hold that swallowed it would ensure a
+  watchdog on its way out and repeat forever. The WATCHDOG still asks the registered
+  question deliberately - its job is to keep the app from opening back into its own
+  install, and a registration that outlives an install is the conservative direction - so
+  the two readings differ by design, and `shipItJobLabel` says why.
+- **The notice is bounded, the caller bounds it again, and the quit is bounded twice.**
+  The app's own banner gets `LAUNCH_HOLD_NOTICE_DEADLINE_MS`, then the notice falls back
+  to the channel the install's own messages use (`osascript`, the same one the relaunch
+  watchdog notifies through) when the banner does not report itself shown, and the whole
+  notice budget is also armed by the caller (`LAUNCH_HOLD_NOTICE_BUDGET_MS`) so a notice
+  that wedges costs the message and never the quit; a quit that wedges is forced
+  (`LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS`). The delivered channel is written to
+  `update-service.log` before the quit, and `LOCAL_OPERATOR_NO_NOTIFICATIONS` silences it,
+  because a rig that switches notifications off must not put a banner on the operator's
+  screen. The relaunch promise holds here too, and it is stated only when
+  `ensureRelaunchWatchdog` actually arranged one - the watchdog is ensured BEFORE the
+  quit, which is the rule every other quit path follows.
+
+`scripts/update-window-report.mjs` measures the closed window this is about (read-only,
+with the baselines in its header, and it names a running installer's own `ps` facts), and
+`scripts/sec-check.c` times the call the install blocks in:
+`pnpm sec-check --via-launchd <path>` measures it from an ordinary process and as a job
+submitted to launchd, and `--background` under `taskpolicy -b` - seconds against minutes
+on identical content, with under a second of CPU. **What that difference IS, stated no
+further than the measurement goes (review R1):** the same validation costs 0.25-3.85 s
+from a shell (eight runs), 33.3 s when submitted as a launchd job on the same bundle in
+the same minute, and 331-777 s under the background class, while the 11:59 install spent
+4 min 27 s inside it at 4.3% of a core. Which part of that context costs the time -
+launchd's scheduling, the Security framework's own worker threads, or this machine's
+contention - is NOT established, and the installer's own job carries `nice = -1` with no
+background process type, so an earlier "it is the scheduling class" reading does not
+survive the machine. What IS established is that the cost belongs to the context, not to
+this app's bundle: file count is refuted as the lever (a `ditto` of the full 1808-file
+bundle produced 19-21 Gatekeeper scans; the same write with the Python seed removed, 269
+files, produced 32 and 17). `scripts/hold-lifetime-rig.mjs` measures the launch side of
+this against a packaged build with the machine's own launchd (`--job running|registered|
+absent`), so the numbers above can be re-derived rather than quoted; it says so in its
+header, including what it does NOT show (a headless run cannot prove a window's absence).
+
 ## Which pnpm may install and package
 
-Every workflow pins pnpm to **10.29.2** (the `version:` input on
-`pnpm/action-setup`), and that pin is load-bearing rather than a preference:
+Every workflow that INSTALLS pnpm pins it to **10.29.2** (the `version:` input
+on `pnpm/action-setup`) — `ci.yml`'s `changes` and `runtime-deps` are the two
+jobs that install nothing at all, the first because the change-scope classifier
+is node builtins plus two sibling files and must not go red for a dependency
+reason (see *Change scope*), the second because its check reads `package.json`
+and nothing else — and that pin is load-bearing rather than a preference:
 **pnpm 10.29.3 through at least 10.34.x drops dependency edges from
 `pnpm list --prod --json --depth Infinity`**, which is the command
 electron-builder runs to decide what goes inside `app.asar`
@@ -1000,6 +1159,45 @@ LOCAL_OPERATOR_UI_SMOKE_TEST=true LOCAL_OPERATOR_UI_WINDOW_MODE=headless \
   "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
 ```
 
+## Change scope
+
+CI used to run its whole job set on every pull request: a one-line `docs/` edit
+paid for a typecheck, a build, the 108-file desktop suite and a two-runner pack
+and launch. Each job is now gated on a **change-scope classifier**,
+`scripts/ci-scope.mjs` — the SAME module `pnpm check-changed` runs locally, so
+the local gate and CI cannot drift into two opinions.
+
+What that means when you read a check list:
+
+- **A skipped job is a CLAIM, not a pass.** The `Change Scope` job writes the diff
+  base and its SHA, every changed path with the category it got, every flag with
+  its reason and the resulting run/skip job list into that run's step summary, and
+  into the job's own log. Read it before treating a green PR as evidence, and treat
+  a skip you cannot justify as a finding. Two checks on a diff that only touched
+  prose is the design working, not a truncated run.
+- **The inert set is `docs/**` (minus `docs/evidence/**`) and root `*.md`.**
+  `docs/evidence/**` is committed test INPUT — several `test:desktop` files read it
+  at runtime — so it keeps the desktop suite. Anything unrecognised counts as live.
+- **Some diffs run everything on purpose.** Any `.github/**` path (the gating
+  itself), anything that is not a `pull_request` event (`main` is the safety net
+  for the narrowed pull-request matrix), and every fail-open path: an unresolvable
+  diff base or a failed `git diff` sets every flag true and prints a `::warning::`
+  rather than guessing.
+- **No gate can be skipped silently.** Every job reads `<flag> != 'false'` and
+  never `== 'true'`, because an output that was never written is empty — so a
+  classifier that died runs the jobs rather than skipping them.
+- **A version-only `package.json` bump runs nothing in `ci.yml`**, so on a release
+  bump the PR-side evidence is the version guard plus the classifier that decided
+  so. See *PRs do not bump the version; merging is not releasing*.
+
+`pnpm check-changed` is the local equivalent of the whole job set: it classifies
+the index, the working tree and untracked files against the merge base with
+`origin/main`, then runs the selected jobs' own commands. It prints each job it
+does not run locally and why — `audit` would red for findings CI deliberately
+tolerates and needs the npm registry, and the pack and launch legs need the four
+`VITE_*` build secrets and a macOS runner. A green `pnpm check-changed` means
+"the gates CI will run on this diff passed", never "everything passed".
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
@@ -1039,6 +1237,13 @@ pull request whose diff changes the `version` line fails unless its title starts
 with `chore(release):`. Dependency and metadata edits to `package.json` are
 unaffected — the guard reads the version line, not the file.
 
+**On a release-bump PR that guard is the only check.** A version-only
+`package.json` diff is classified as a release bump, so every job in `ci.yml` is
+a deliberate skip and that pull request's whole PR-side evidence is
+`Version Bump Guard` plus the `Change Scope` job that decided so (see *Change
+scope*). Do not read those two green checks as a matrix: the review round on the
+one-line diff is the rest of the assurance.
+
 It makes the violation loud; it does not make it impossible. This repository's
 `main` configures **no required status checks**, so an `--admin` merge lands over
 a red guard. Treat a failing `version-bump-guard` as a stop signal rather than an
@@ -1071,6 +1276,13 @@ look is a rule that fails on the day someone does not.
 **The owner of a PR merges it the moment its review rounds are clean and fresh
 and CI is green** — no release queue, no waiting for a predecessor, no handing
 the "next number" to whoever is behind you.
+
+**Green means the jobs that ran passed, so read the classification.** CI runs only
+the jobs a diff can affect (see *Change scope*), which makes the `Change Scope`
+job's step summary part of the merge decision rather than a curiosity: it names
+the diff base, every changed path with its category, every flag with its reason and
+every job as run or skipped. **A skipped job is a claim, not a pass** — the owner
+justifies each skip before merging, and a skip they cannot justify is a finding.
 
 The failure this prevents is measured, not theoretical. The backend repository
 used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions
@@ -1133,13 +1345,18 @@ git fetch origin --tags && git switch -c chore/release-X.Y.Z origin/main
 git log --first-parent --oneline v<PREV>..origin/main
 gh pr list --state merged --limit 60 --json number,title,mergedAt,mergeCommit
 
-#    BEFORE landing the bump, prove nothing already spent this version:
-#    a non-empty diff means a merged PR carried its own bump and consumed a
-#    number nobody published. This check is the whole of that guarantee now.
-git diff v<PREV>..origin/main -- package.json
+#    BEFORE landing the bump, prove nothing already spent this version: the two
+#    version entries must be identical. A moved version line means a merged PR
+#    carried its own bump and consumed a number nobody published; a diff that
+#    touches only other fields (`scripts`) is expected. This check is the whole of
+#    that guarantee now.
+git diff v<PREV>..origin/main -- package.json | grep '^[-+].*"version"'
 
 # 2. The bump PR: package.json only, one line, title `chore(release): bump version
 #    to X.Y.Z`, independent review round on that diff, and green CI. Then merge it.
+#    Green CI here is ONE guard plus the classifier: a version-only package.json
+#    diff is a release bump, so every other job in ci.yml is a deliberate skip
+#    (see *Change scope*). The one-line diff's review round is the rest.
 MERGE_SHA=$(gh pr view <n> --json mergeCommit --jq .mergeCommit.oid)
 
 # 3. Tag and Release in ONE step on that SHA, notes hand-written from the template.
@@ -1234,9 +1451,18 @@ derivation to guard. What remains:
   `package.json` at that commit and the resolved SHA together, so a tag cannot name
   a tree whose version disagrees with it;
 - **at window level**, the owner's
-  `git diff <last-tag>..origin/main -- package.json` check above, which is now the
-  only thing standing between a stray bump and a skipped release — run it every
-  window, and treat a non-empty diff as a stop rather than a detail.
+  `git diff <last-tag>..origin/main -- package.json | grep '^[-+].*"version"'` check
+  above, which is now the only thing standing between a stray bump and a skipped
+  release — run it every window, and read it against the right field. The stop is
+  on the **version** entry: compare `git show <last-tag>:package.json | grep
+  '"version"'` against `git show origin/main:package.json | grep '"version"'`, and
+  stop only if those disagree. The `^[-+]` in the diff form is load-bearing rather
+  than decoration: `git diff` prints an unchanged line as context when it falls
+  inside a hunk, and `"version"` sits on line 3, so an unanchored grep cannot tell
+  an unmoved version line from a moved one. A non-empty diff that touches only
+  other fields is expected rather than alarming — a feature PR adding a `scripts`
+  entry makes the diff non-empty most windows, and an owner who reads the diff's
+  non-emptiness as the signal stalls a window that is perfectly legitimate.
 
 ### Invariants a future agent must not break
 
@@ -1270,16 +1496,22 @@ derivation to guard. What remains:
 - **A version bump on a feature branch is still a defect.** There is no longer a
   derivation to refuse over it, which makes it *easier* to miss rather than safer:
   `main` advertising a version nobody released is now caught by the owner's
-  `git diff <last-tag>..origin/main -- package.json` check in the procedure above and
-  by nothing else. A branch that ships its own bump consumes a number the next
-  window has to skip, and the tag that finally lands carries code nobody reviewed
-  under that number.
+  `git diff <last-tag>..origin/main -- package.json | grep '^[-+].*"version"'` check
+  in the procedure above and by nothing else. A branch that ships its own bump
+  consumes a number the next window has to skip, and the tag that finally lands
+  carries code nobody reviewed under that number.
 - **A `DIRTY` branch gets no CI at all, so a green head is not evidence on its
   own.** GitHub does not run workflows on a merge commit it cannot create: a PR with
   a conflict keeps the *older* green run and acquires no new one. Check
   `gh pr view <n> --json mergeStateStatus` (or `gh pr checks <n>`) before you rely
   on green, and re-check after any rebase. The same trap in a different costume is
   reviewing a SHA that is no longer the head.
+- **A classified-inert head is the second way a green check list can mean little.**
+  A diff that only touches prose deliberately runs `Change Scope` and
+  `Version Bump Guard` and nothing else, so two green checks on such a PR are the
+  whole of what CI has to say about it — not a matrix that happened to be short.
+  Read the classification summary (see *Change scope*) before treating either
+  shape as evidence.
 - **Never force-push, and never merge on a red required job.** `main` has no
   ruleset requiring checks, so nothing makes a violation impossible — the
   `version-bump-guard` and CI make it *loud*, and the merge is still the agent's to
@@ -1306,8 +1538,10 @@ derivation to guard. What remains:
 ## Notes for Future Agents
 
 - **Merging is not releasing, and implementing is not releasing.** Land the PR as
-  soon as its review rounds are clean and fresh and CI is green; nothing is
-  published by a merge. Do not bump the version on your branch —
+  soon as its review rounds are clean and fresh and CI is green (having read the
+  run's classification summary — a skipped job is a claim, not a pass; see
+  *Change scope*). Nothing is published by a merge. Do not bump the version on
+  your branch —
   `version-bump-guard` fails that on a PR, and a bump that reaches `main` without a
   Release consumes a number the next window has to skip (there is no longer a
   derivation to refuse it; see *Invariants*).
@@ -1362,8 +1596,9 @@ a *comment* is what says the PR is waiting on them.
 When the agent is **acting for the owner** — the operator, running on their
 machine and under their account, which is the normal case here — the standing
 agent review gate is what authorizes the merge. A clean, fresh, independent
-agent review round plus green CI is sufficient; do not wait for a second human
-to click approve. Nothing here is permission to merge on a *weaker* basis than
+agent review round plus green CI (with the run's classification summary read —
+a skipped job is a claim, not a pass; see *Change scope*) is sufficient; do not
+wait for a second human to click approve. Nothing here is permission to merge on a *weaker* basis than
 that just because the forge would allow it: with no ruleset in the way, the
 agent review round is the only real control this repository has.
 

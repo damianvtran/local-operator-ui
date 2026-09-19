@@ -4,8 +4,8 @@ import {
 } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentFavouriteCountKeys } from "./use-agent-favourite-count-query";
-import { agentFavouriteKeys } from "./use-agent-favourite-query";
+import { patchAgentStatus } from "./use-agent-statuses-query";
+import { patchPublicAgentCount } from "./use-public-agent-counts";
 
 type UseAgentFavouriteMutationParams = {
 	agentId: string;
@@ -13,19 +13,21 @@ type UseAgentFavouriteMutationParams = {
 };
 
 /**
- * React Query hook for favouriting or unfavouriting an agent.
- * Handles invalidating relevant queries on success.
+ * Favourite or unfavourite one agent.
  *
- * @returns Mutation object for favouriting/unfavouriting an agent.
+ * Patches the batched status map and the list record's count instead of
+ * invalidating per-card queries, which is the other half of the fan-out this
+ * change removes; see `use-agent-like-mutation` for why `already_favourited` is
+ * read rather than assumed.
  */
 export const useAgentFavouriteMutation = () => {
 	const queryClient = useQueryClient();
 	const { isAuthenticated } = useRadientAuth();
 
 	const mutation = useMutation<
-		unknown, // Type of data returned by mutationFn
-		Error, // Type of error
-		UseAgentFavouriteMutationParams // Type of variables passed to mutationFn
+		{ favourited: boolean; changed: boolean },
+		Error,
+		UseAgentFavouriteMutationParams
 	>({
 		mutationFn: async ({ agentId, isCurrentlyFavourited }) => {
 			if (!isAuthenticated) {
@@ -38,27 +40,26 @@ export const useAgentFavouriteMutation = () => {
 			}
 
 			if (isCurrentlyFavourited) {
-				// If currently favourited, perform unfavourite action
-				return unfavouriteAgent(agentId);
+				await unfavouriteAgent(agentId);
+				return { favourited: false, changed: true };
 			}
-			// If not currently favourited, perform favourite action
-			return favouriteAgent(agentId);
+			const response = await favouriteAgent(agentId);
+			// Same reading as the like half: only an explicit `true` means the
+			// favourite was already there (`use-agent-like-mutation`).
+			return {
+				favourited: true,
+				changed: response.result?.already_favourited !== true,
+			};
 		},
-		onSuccess: (_, variables) => {
-			// Invalidate the specific agent's favourite status query
-			queryClient.invalidateQueries({
-				queryKey: agentFavouriteKeys.detail(variables.agentId),
-			});
-			// Invalidate the agent's favourite count query
-			queryClient.invalidateQueries({
-				queryKey: agentFavouriteCountKeys.count(variables.agentId), // Use 'count' key
-			});
-			// Optionally, could invalidate the list of favourited agents if such a query exists
-		},
-		onError: (error) => {
-			// Handle or log error
-			console.error("Failed to toggle favourite status:", error);
-			// Consider adding user feedback here
+		onSuccess: ({ favourited, changed }, variables) => {
+			patchAgentStatus(queryClient, variables.agentId, { favourited });
+			if (changed) {
+				patchPublicAgentCount(queryClient, {
+					agentId: variables.agentId,
+					field: "favourite_count",
+					delta: favourited ? 1 : -1,
+				});
+			}
 		},
 	});
 

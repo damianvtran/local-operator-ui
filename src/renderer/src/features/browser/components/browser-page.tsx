@@ -18,6 +18,11 @@ import { BrowserSurface } from "./browser-surface";
  * say which host it drove. The route answers both of the surface's questions the
  * same way because it IS the whole application surface: every tab, every request
  * (spec 7.2 - `"all"` for the tabs and for the requester alike).
+ * `hostSessionId` is `null` for the same reason and it is NOT the same as
+ * `tabScope`: the scope is the lens over the pool, and this is the origin. The route
+ * is nobody's conversation, so a tab opened from it belongs to none — which is what
+ * keeps `New tab` here honest while the pane's own reads `New tab in this
+ * conversation` (design R1).
  * The route stays because it is what the rail points at and the only host that can
  * give the page a full window (§7.5); the pane is an additional entry point, never
  * a replacement.
@@ -26,6 +31,7 @@ export const BrowserPage: FC = () => (
 	<BrowserSurface
 		tabScope="all"
 		requestScope="all"
+		hostSessionId={null}
 		surfaceTag="browser-route"
 		dockSurfaceTag="browser-approvals-dock"
 	/>
