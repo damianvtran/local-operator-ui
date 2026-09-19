@@ -95,10 +95,11 @@ export interface BrowserUrlBarProps {
 	 * for a host that predates the feature is no control at all.
 	 */
 	downloadsDir: string | null;
-	/** The newest save into that directory, and how many the strip still remembers
-	 * (review round 2, U12). Rides the same projection as `downloadsDir` so the
-	 * control cannot describe a save the row does not have; `null` when nothing has
-	 * been saved yet, which leaves the label as it was. */
+	/** The newest save into that directory, and how many have been saved in this app
+	 * run (review round 2, U12; the count's premise corrected in round 3, M-1). Rides
+	 * the same projection as `downloadsDir` so the control cannot describe a save the
+	 * row does not have; `null` when nothing has been saved yet, which leaves the label
+	 * as it was. */
 	downloadsRecent?: { name: string; count: number } | null;
 	/** Open that directory. Takes no path — main decides which one. */
 	onOpenDownloads: () => void;
@@ -261,15 +262,19 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				// answers "where do downloads go" and nothing else, so a user who was in Chat
 				// when the transfer happened had no way in the app to learn that anything
 				// arrived — the row is the only account of it and the row retires. The label
-				// now names the newest file and how many the strip still holds, on HOVER and on
+				// now names the newest file and how many this session has saved, on HOVER and on
 				// FOCUS (the same tooltip mechanism the rest of the toolbar uses, so a keyboard
 				// user reaches it by tabbing). It is still not a per-file list (§16.4) and it
 				// still opens the same directory: the sentence is the row's own facts, moved to
 				// the one surface that outlives it.
 				//
-				// "recently" rather than "this session" is deliberate: the count is bounded by
-				// the host's own note window, so a word that promised a total would be a lie the
-				// first time five files landed.
+				// AND THE COUNT IS THE SESSION TOTAL, not the note window this first draft of
+				// the sentence was worded for (review round 3, M-1). The host keeps its summary
+				// for the life of the process and writes it from the same call that writes the
+				// note (`downloads.ts`, the `note` writer), so the tooltip can promise "this
+				// session" and does — `downloadsLabel` below states the same premise. The
+				// draft's "recently rather than this session" rationale was left behind when the
+				// count moved, and it contradicted the copy the user reads.
 				<Tooltip content={downloadsLabel(downloadsRecent ?? null)}>
 					<Button
 						variant="ghost"
