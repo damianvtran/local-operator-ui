@@ -1681,8 +1681,27 @@ export const STORIES = [
 	 * every code twice at one size, where `chat-sidebar-status-feed--*` below shows
 	 * three of them in their own rows, which is what a transition needs and not what
 	 * a vocabulary needs.
+	 *
+	 * TALLER THAN IT WAS, because the story now opens with the `error`/`wedged`
+	 * PAIR above the matrix: the marking change is a separation, and a separation
+	 * is not visible in the fixed state it produced — the two rows have to be in
+	 * the frame together. 120px is the pair's own two rows plus its rule and the
+	 * gap the matrix below them keeps.
 	 */
-	["chat-session-status--neighbours", 860, 600],
+	["chat-session-status--neighbours", 860, 720],
+	/*
+	 * The region a slow open shows, which had NO committed frame before this
+	 * change: the story existed, the capture set did not name it, so the second
+	 * half of the operator's report ("you click in and it takes forever to load")
+	 * had no picture anywhere in the review set. Two states rather than one:
+	 * `hydrating` is the unknown case whose words are UNCHANGED by this branch and
+	 * is therefore the regression half of the pair, and `reasons` carries all four
+	 * of the codes the read path can publish, so the token-to-sentence mapping is
+	 * checked in one frame instead of in four. Both are the same viewport, which is
+	 * what makes the first a comparison rather than an illustration.
+	 */
+	["chat-hydration-placeholder--hydrating", 760, 600],
+	["chat-hydration-placeholder--reasons", 760, 600],
 	/*
 	 * The conversation sidebar's row status, delivered by the machine-wide feed
 	 * rather than by a catalogue read. THREE frames, and the pair they are half of
@@ -1698,6 +1717,15 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-answered", 780, 560],
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
+	/*
+	 * The state the operator reported, in the sidebar that draws it, with the
+	 * failed row directly under it: `wedged` and `error` used to share one mark in
+	 * one ink, and this frame is where the separation is visible. 600px rather than
+	 * the 560 the states above take, because the readout now prints the rows'
+	 * COMPOSED tooltips - the remedy clause lives only in a native `title`, which
+	 * is not photographable - and the caption is a line taller for it.
+	 */
+	["chat-sidebar-status-feed--wedged-owner", 780, 600],
 	/*
 	 * A row re-filing INSIDE its section (local-operator #1224's renderer half).
 	 * Five states rather than five transitions: the same four-row roster once with

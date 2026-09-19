@@ -266,7 +266,12 @@ test("the note's separator is non-breaking on both sides", () => {
 		subagents_reporting: 1,
 	});
 	const note = fact(section, "runtimes").note;
-	assert.equal(note, "1 live\u00a0·\u00a01 wedged");
+	/*
+	 * The WORD is the person's too (`not answering`, the terminal's own spelling for
+	 * this count — design D5), so the separator assertion below is checking the
+	 * separator rather than a token that happens to sit on both sides of it.
+	 */
+	assert.equal(note, "1 live\u00a0·\u00a01 not answering");
 	assert.match(note, NON_BREAKING_SEPARATOR);
 	assert.doesNotMatch(note, BREAKABLE_SEPARATOR);
 });
@@ -303,11 +308,11 @@ test("a wedged runtime still counts, and its counts are dated", () => {
 	);
 	assert.deepEqual(fact(section, "runtimes"), {
 		value: "2",
-		note: `1 live${SEP}1 wedged`,
+		note: `1 live${SEP}1 not answering`,
 	});
 	// The possessives inflect with the subject, exactly as the verbs above do.
 	assert.deepEqual(section.caveats, [
-		"1 session is wedged; its counts are as of its last heartbeat.",
+		"1 session is not answering; its counts are as of its last heartbeat.",
 	]);
 });
 
@@ -318,9 +323,12 @@ test("the wedged caveat pluralises both halves of its sentence", () => {
 		total: 2,
 		subagents_reporting: 0,
 	});
-	assert.deepEqual(fact(section, "runtimes").note, `0 live${SEP}2 wedged`);
+	assert.deepEqual(
+		fact(section, "runtimes").note,
+		`0 live${SEP}2 not answering`,
+	);
 	assert.deepEqual(section.caveats, [
-		"2 sessions are wedged; their counts are as of their last heartbeat.",
+		"2 sessions are not answering; their counts are as of their last heartbeat.",
 	]);
 });
 

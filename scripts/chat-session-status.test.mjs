@@ -105,7 +105,13 @@ for (const [code, icon, ink] of [
  * ink cannot show it in.
  */
 for (const [code, icon, ink] of [
-	["wedged", "circle-alert", "danger"],
+	/*
+	 * `wedged` WEARS A MARK OF ITS OWN AND NOT `error`'S, which is the change this
+	 * file exists to pin. It used to read `["wedged", "circle-alert", "danger"]`
+	 * — byte-identical to the `error` row two cases above — so an owner that had
+	 * merely stopped reporting was drawn exactly like a turn that had failed.
+	 */
+	["wedged", "equal-approximately", "warning"],
 	["busy", "loader-circle", "accent"],
 	["answer", "circle-alert", "warning"],
 	["approval", "circle-alert", "warning"],
@@ -123,6 +129,61 @@ for (const [code, icon, ink] of [
 		assert.match(after, new RegExp(`text-${ink}`));
 	});
 }
+
+/*
+ * The separation itself, asserted as a RELATION between two rows.
+ *
+ * A table row proves what `wedged` draws; it cannot prove that what it draws is
+ * different from `error`, and sameness is exactly what the defect was. So this
+ * case renders the pair and compares them, on both channels that carry the mark:
+ * the glyph and the ink. The ink half is checked as inequality rather than as two
+ * literals because this product's own measurement records the two inks CONVERGING
+ * under deuteranopia — the silhouettes have to differ on their own, and a test
+ * that only pinned the two class names would pass with two identical marks in two
+ * colours.
+ */
+test("a not-answering row is not drawn like a failed one", () => {
+	const failed = render("error", false);
+	const silent = render("wedged", false);
+	assert.notEqual(silent, failed);
+	assert.match(silent, /lucide-equal-approximately/);
+	assert.doesNotMatch(silent, /lucide-circle-alert/);
+	assert.match(silent, /text-warning/);
+	assert.doesNotMatch(silent, /text-danger/);
+	assert.match(failed, /lucide-circle-alert/);
+	assert.match(failed, /text-danger/);
+});
+
+/*
+ * THE WORDS STAY ON THE WIRE. The state's sentence is the backend's
+ * (`session/catalog.py`'s `status`) and the renderer must read it rather than
+ * re-author it — so a row carrying a DIFFERENT label has to render that label,
+ * in both channels that show it (the `sr-only` name and the tooltip). The
+ * assertion is deliberately made with a label no other code in this repo
+ * contains, so a hard-coded `"Not answering · process alive"` fails here.
+ */
+test("the wedged row renders the backend's sentence, not one of its own", () => {
+	const label = "Not answering · process alive (last heartbeat 4m ago)";
+	const markup = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "fixture",
+				status: { code: "wedged", label },
+			},
+		}),
+	);
+	// `includes` rather than a RegExp: the label carries parentheses and a `·`,
+	// and a pattern built from it would be testing the escaping rather than the
+	// string. The literal below is the one the catalogue publishes.
+	assert.ok(
+		markup.includes(`sr-only">${label}`),
+		"the accessible name lost the backend's sentence",
+	);
+	assert.ok(
+		markup.includes(`title="${label}"`),
+		"the tooltip lost the backend's sentence",
+	);
+});
 
 /*
  * ------------------------------------------------------------ the row the

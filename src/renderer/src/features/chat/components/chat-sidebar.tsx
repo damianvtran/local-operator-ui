@@ -333,6 +333,30 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
 
+/**
+ * THE REMEDY FOR A ROW THAT IS NOT ANSWERING, appended to its own sentence.
+ *
+ * A wedged row asks something different of a reader than a failed or a working
+ * one — a session whose owner has stopped reporting is one to STOP, not one to
+ * reopen, and the operator's report said so in one breath with the mark — and
+ * the row is where their attention already is, so the hint belongs here rather
+ * than only in `/info` two steps away.
+ *
+ * THE REMEDY IS CLIENT-OWNED AND THE STATE'S WORDS ARE NOT, which is the whole
+ * division: `row.status.label` comes off the wire and is read, never re-written
+ * (the contract forbids a client deriving status — `SessionCatalogueRow.status`
+ * in `desktop-session-contract.ts`), while `/stop` is an affordance only this
+ * client has. That is not drift: drift would be two spellings of the STATE.
+ *
+ * ONLY ON `wedged`, deliberately: an `error` row is one to reopen and a busy row
+ * one to wait for, so a remedy printed on each of them would be advice about the
+ * wrong state. And deliberately NOT in the accessible name
+ * (`chat-session-status.tsx`'s `sr-only` span): that span carries the state's
+ * words, and a clause a reader hears on every arrow-key stop through the list is
+ * noise the hover channel can carry on its own.
+ */
+const SILENT_REMEDY = " · /stop if it stays silent";
+
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
  * because "Eleven built-in agents" is a figure the eye has to translate back.
@@ -1267,7 +1291,7 @@ export function ChatSidebar({
 				   busy or gated row's tooltip claim a mark its own spinner and gate were
 				   nowhere drawing — the reported defect, in the channel a reader reaches
 				   by hovering, and the row that most needs the tooltip to be true. */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${row.status?.code === "wedged" ? SILENT_REMEDY : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
 				onClick={(event) => {
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the

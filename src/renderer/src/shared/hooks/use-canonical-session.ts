@@ -61,6 +61,7 @@ import {
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
+	DesktopColdReason,
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../../../shared/desktop-session-contract";
@@ -97,6 +98,31 @@ export type CanonicalSessionView = {
 	pendingModel: CanonicalModel | null;
 	history: DesktopHistoryPage | null;
 	cold: boolean;
+	/**
+	 * WHY this session's state came back cold, as the read path measured it — the
+	 * honest answer to "why is opening this taking so long", which used to be a
+	 * skeleton and nothing else.
+	 *
+	 * `cold` alone cannot answer it: it is one boolean over three different facts
+	 * (no pid holds the lease, one holds it and did not deliver state, or the
+	 * record is finishing a turn first), and a reader told only "cold" still does
+	 * not know whether to wait or to stop it. The token is the wire's
+	 * (`DesktopColdReason`); the SENTENCE is the surface's, and the one place that
+	 * renders it is the transcript placeholder.
+	 *
+	 * Written by the same two frames that write `cold` — the opening snapshot and
+	 * the `frontend.replace` rollover — so the reason and the boolean can never
+	 * disagree about which read they describe.
+	 */
+	coldReason: DesktopColdReason | null;
+	/**
+	 * An authenticated dial is retained and its canonical state has not arrived.
+	 *
+	 * A different fact from `cold` and not a shade of it: the reads are answering
+	 * from disk in the meantime, which is exactly why the wait it describes is
+	 * worth naming rather than leaving as a bare spinner.
+	 */
+	attaching: boolean;
 	subscriptionId: string | null;
 	/**
 	 * Whether this session's durable history has been PROVEN loaded.
@@ -752,6 +778,8 @@ export function useCanonicalSessionStream(
 			pendingModel: null,
 			history: null,
 			cold: false,
+			coldReason: null,
+			attaching: false,
 			subscriptionId: null,
 			ownerEpoch: null,
 			receipt: null,
@@ -1312,6 +1340,13 @@ export function useCanonicalSessionStream(
 								},
 								history: snapshot.history,
 								cold: snapshot.cold,
+								/*
+								 * The REASON travels with the boolean it belongs to, in the same commit
+								 * as the rows: a wait state that named a cause the accompanying state
+								 * had already left would be worse than no sentence at all.
+								 */
+								coldReason: snapshot.cold_reason ?? null,
+								attaching: snapshot.attaching === true,
 								ownerEpoch: snapshot.frontend.epoch,
 								failure: null,
 								// A page that was APPLIED is proof, and its absence is not: with
@@ -1437,6 +1472,11 @@ export function useCanonicalSessionStream(
 								},
 								ownerEpoch: replaced.epoch,
 								cold: frame.payload.cold,
+								// The rollover that clears a cold wait clears its reason and its
+								// retained dial with it — the owner is answering again, so a stale
+								// sentence here would be a claim about a state that has ended.
+								coldReason: frame.payload.cold_reason ?? null,
+								attaching: frame.payload.attaching === true,
 							};
 						}
 						continue;
