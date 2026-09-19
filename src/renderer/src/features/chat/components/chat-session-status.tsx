@@ -8,6 +8,7 @@ import {
 	Circle,
 	CircleAlert,
 	Clock,
+	EqualApproximately,
 	HelpCircle,
 	LoaderCircle,
 	MessageSquare,
@@ -35,31 +36,57 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 	const Icon =
 		code === "busy"
 			? LoaderCircle
-			: code === "approval" ||
-					code === "answer" ||
-					code === "wedged" ||
-					code === "error"
+			: code === "approval" || code === "answer" || code === "error"
 				? CircleAlert
-				: code === "interrupted" || code === "dormant"
-					? Pause
-					: code === "complete"
-						? unseenCompletion
-							? Check
-							: Circle
-						: code === "scheduled"
-							? Clock
-							: code === "attached"
-								? MessageSquare
-								: // `idle`/`recent` are ordinary resting states and keep the plain
-									// ring. Anything else is a code this build does not know, so it
-									// must not be normalised into looking like "Recent" — a backend
-									// newer than the UI would silently misreport state. An ABSENT
-									// status is a different case: a locally created row carries none
-									// until the next fetch, and the label already reads "Recent", so
-									// treating it as unknown made the icon contradict the label.
-									KNOWN_RESTING.has(code ?? "recent")
-									? Circle
-									: HelpCircle;
+				: /*
+					 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
+					 * flourish. It used to share `CircleAlert` with `error`, so an owner that
+					 * had merely stopped reporting and a turn that had actually broken drew
+					 * byte-identical output — and the two ask opposite things of a reader
+					 * (reopen the failed one; do not expect a message to land in the silent
+					 * one). Colour cannot carry the difference either: this app and the TUI
+					 * share one brand ramp, and the measurement recorded for the same
+					 * `warning`/`danger` pair collapses the two inks under deuteranopia
+					 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
+					 * a silhouette that shares no stroke with the alert ring — two
+					 * horizontal waves, which is this app's `EqualApproximately` and the
+					 * TUI's `≈` for the same state.
+					 *
+					 * WHY NOT THE NEAR MISSES: `WifiOff` belongs to the app's
+					 * daemon-connection vocabulary for a different fact with a different
+					 * remedy (`shared/backend-status.ts`); `HelpCircle` already means "a code
+					 * this build does not know" two branches below; and
+					 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
+					 * class beside `approval`/`answer`, which is the grouping failure the
+					 * TUI's marker register warns about.
+					 *
+					 * IT STAYS STATIC while `busy` spins. Nothing about this state is
+					 * turning: the runtime's beat stopped landing, and an animation here
+					 * would both borrow the busy reading and assert an activity the stale
+					 * heartbeat cannot support.
+					 */
+					code === "wedged"
+					? EqualApproximately
+					: code === "interrupted" || code === "dormant"
+						? Pause
+						: code === "complete"
+							? unseenCompletion
+								? Check
+								: Circle
+							: code === "scheduled"
+								? Clock
+								: code === "attached"
+									? MessageSquare
+									: // `idle`/`recent` are ordinary resting states and keep the plain
+										// ring. Anything else is a code this build does not know, so it
+										// must not be normalised into looking like "Recent" — a backend
+										// newer than the UI would silently misreport state. An ABSENT
+										// status is a different case: a locally created row carries none
+										// until the next fetch, and the label already reads "Recent", so
+										// treating it as unknown made the icon contradict the label.
+										KNOWN_RESTING.has(code ?? "recent")
+										? Circle
+										: HelpCircle;
 	const ink =
 		code === "busy"
 			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
@@ -68,13 +95,33 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 				// sites that own it. Motion still carries the state on its own; the
 				// accent is the second channel, not the only one.
 				"text-accent motion-safe:animate-spin"
-			: code === "error" || code === "wedged"
-				? "text-danger"
-				: code === "approval" || code === "answer" || code === "interrupted"
-					? "text-warning"
-					: unseenCompletion
-						? "text-success"
-						: "text-ink-dim";
+			: code === "wedged"
+				? /*
+					 * `warning`, not `danger`, and the product already agreed with itself
+					 * about this everywhere except here: `warning` is the role reserved
+					 * for "read this, nothing has broken" — the same reading that moved
+					 * `interrupted` off danger — and it is what the `/info` badge
+					 * (`pickers/panels/info-panel.tsx`) and the connectivity banner
+					 * already render for this state. The row was the outlier.
+					 *
+					 * NO NEW TOKEN, so no palette edit, no `gen-themes` run and no row in
+					 * `scripts/contrast-contract.mjs`: `warning` is an existing semantic
+					 * with a measured 4.5:1 text floor (docs/branding.md § 3), and this is
+					 * an ink on an icon rather than a component fill/border triple.
+					 *
+					 * NOT `text-ink-dim`: the state changes what the user can expect of
+					 * the row — their next message may silently not land — so it stays
+					 * louder than a resting row, which is also why it must not be quieter
+					 * than `busy`.
+					 */
+					"text-warning"
+				: code === "error"
+					? "text-danger"
+					: code === "approval" || code === "answer" || code === "interrupted"
+						? "text-warning"
+						: unseenCompletion
+							? "text-success"
+							: "text-ink-dim";
 	return (
 		<span
 			className="flex size-4 shrink-0"

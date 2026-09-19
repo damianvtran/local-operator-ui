@@ -46,6 +46,7 @@ import type {
 	CanonicalFrontendSync,
 	CanonicalModel,
 	DesktopHistoryPage,
+	SessionCatalogueStatus,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { credentialNamesFrom } from "../components/credential-capture";
@@ -1519,6 +1520,18 @@ export type SessionRow = {
 	mtime: number;
 	live_state?: string;
 	pending?: unknown;
+	/**
+	 * The backend's own SENTENCE for this row's state, straight off
+	 * `sessions.list`.
+	 *
+	 * Declared here although this type is hand-written around the wire's row
+	 * (`SessionCatalogueRow` in `desktop-session-contract.ts`, which carries
+	 * `status` as a required field): the catalogue read that fills this cache entry
+	 * is the same `sessions.list` the sidebar's store reads, and the backend ships
+	 * `status` on every row of it. Optional rather than required because this
+	 * client cannot make an older backend publish one.
+	 */
+	status?: SessionCatalogueStatus;
 };
 
 /**
@@ -1559,6 +1572,35 @@ function sessionLabel(row: SessionRow) {
 	return row.name?.trim() || `Untitled ${row.id}`;
 }
 
+/**
+ * WHAT A SESSION ROW SAYS UNDER ITS NAME.
+ *
+ * One function for both pickers because they ask one question over one cache
+ * entry — the same reason `useSessionRows` above is shared (round 2's M3) — and
+ * because the answer is a RULE rather than a string: the row's own sentence.
+ *
+ * THE TOKEN WAS THE DEFECT. `live: wedged` is the machine's spelling, and the
+ * Stop picker is where a not-answering row SENDS a person — so the one surface
+ * that acts on the state was the one naming it in a word no other surface uses
+ * (every other one says "not answering"). The row already carries the backend's
+ * sentence (`status.label`, the same value the sidebar's tooltip and its
+ * accessible name carry), and the contract is explicit that a client must not
+ * re-derive status, so the label is READ and never rebuilt here.
+ *
+ * AN ABSENT LABEL RENDERS NO LINE, deliberately. The alternative — falling back
+ * to the raw `live_state` — is the defect, and inventing words for a state this
+ * client cannot name is re-deriving status, which the contract forbids. It is
+ * also not a state a working backend can reach: `sessions.list` ships `status`
+ * on every row, and the sidebar's own store reads the same field — a backend
+ * without it is already misdrawing every row in the list.
+ *
+ * The two `cold` sentences are NOT the same case and are left to the caller
+ * verbatim: they are prose this client owns about an absence, where a cold row's
+ * own label ("Recent") would say less than they do.
+ */
+const sessionActivity = (row: SessionRow, cold: string): string | undefined =>
+	row.live_state ? row.status?.label : cold;
+
 export const StopPicker: FC<PickerContext> = ({
 	sessionId,
 	onClose,
@@ -1576,9 +1618,7 @@ export const StopPicker: FC<PickerContext> = ({
 			(rows.data ?? []).map((row) => ({
 				value: row.id,
 				label: sessionLabel(row),
-				description: row.live_state
-					? `live: ${row.live_state}`
-					: "cold (no owner running)",
+				description: sessionActivity(row, "cold (no owner running)"),
 				meta: row.id,
 				current: targets.has(row.id) || all,
 			})),
@@ -1771,9 +1811,10 @@ export const ResumePicker: FC<PickerContext> = ({
 				.map((row) => ({
 					value: row.id,
 					label: sessionLabel(row),
-					description: row.live_state
-						? `live: ${row.live_state}`
-						: "cold, reopens on the next message",
+					description: sessionActivity(
+						row,
+						"cold, reopens on the next message",
+					),
 					meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
 					current: row.id === sessionId,
 					keywords: [row.id],

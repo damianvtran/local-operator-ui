@@ -1188,3 +1188,50 @@ test("the picker is wired to the shared predicate, not to a copy of the read", (
 		"unresolved must be tested before the capability claim",
 	);
 });
+
+test("both pickers describe a row in the backend's words, not the live_state token", () => {
+	/*
+	 * Design D6. The Stop picker is where a not-answering row SENDS a person, and it
+	 * described that row as `live: wedged` — the wire's spelling, on the one surface
+	 * that acts on the state, while every other surface says "not answering". The
+	 * row already carries the backend's own sentence (`status.label`, the same value
+	 * the sidebar's tooltip and its accessible name carry), and the contract forbids
+	 * a client re-deriving status, so the sentence is read.
+	 *
+	 * Asserted against the source text, for the reason the test above gives: bundling
+	 * this module pulls React and the whole picker surface in, and there is no story
+	 * for either picker in the capture set, so a frame is not available either. What
+	 * this can and does establish is the PAIRING — one rule, called by both pickers —
+	 * and the absence of the exact expression the defect was.
+	 */
+	const picker = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+		),
+		"utf8",
+	);
+	// The rule: the row's own label where the row has one, the caller's prose for a
+	// row with no owner, and NOTHING when the backend published no sentence.
+	assert.match(
+		picker,
+		/row\.live_state \? row\.status\?\.label : cold/,
+		"the activity line must read the backend's label",
+	);
+	// Both consumers of the shared read use the same rule. Spelled separately per
+	// string so that deleting either call site is a failure rather than a comment.
+	assert.match(picker, /sessionActivity\(row, "cold \(no owner running\)"\)/);
+	assert.match(
+		picker,
+		// Whitespace-tolerant: the formatter wraps a call whose arguments overrun the
+		// line, and what is being asserted is the call rather than its layout.
+		/sessionActivity\(\s*row,\s*"cold, reopens on the next message",?\s*\)/,
+	);
+	// And the exact expression the finding named is gone — `row.live_state` may
+	// still be asked WHICH branch to take, but it may not be printed.
+	assert.doesNotMatch(picker, /\$\{row\.live_state\}/);
+	assert.doesNotMatch(picker, /live: \$/);
+	// The field the rule reads has to be declared on the row this file's own read
+	// produces, or the label would be `undefined` on every row in the app.
+	assert.match(picker, /status\?: SessionCatalogueStatus;/);
+});
