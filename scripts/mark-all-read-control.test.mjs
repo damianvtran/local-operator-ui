@@ -723,8 +723,7 @@ test("the store composes the refusal's own sentence instead of storing the serve
 				 * session." is not a refusal), so a plain Error here would test the wrong
 				 * branch.
 				 */
-				request: () =>
-					Promise.reject(new DesktopControlError(503, prose)),
+				request: () => Promise.reject(new DesktopControlError(503, prose)),
 			},
 		};
 		await store.getState().fetchSessions({ silent: true });
@@ -736,6 +735,15 @@ test("the store composes the refusal's own sentence instead of storing the serve
 			"the server's own sentence about itself is not this app's diagnosis",
 		);
 		assert.doesNotMatch(String(stored), /503|request failed/);
+		/*
+		 * THE OTHER HALF LIVES IN `session-switch`, and deliberately: a rejection at
+		 * the BRIDGE is turned into a transport error by the client before the store
+		 * ever sees it, so a domain error cannot be produced from here. What proves
+		 * the distinction is the pair of suites together - a `DesktopControlError`
+		 * composed into our sentence here, and a domain error keeping its own
+		 * ("Unknown session.") in `session-switch`'s three cases, which failed when
+		 * `storeErrorMessage` was not there.
+		 */
 	} finally {
 		window.api = undefined;
 	}

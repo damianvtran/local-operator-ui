@@ -3,17 +3,17 @@
   "bundle": {
     "mainBytecode": {
       "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-      "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
-      "builtAt": "2026-09-19T06:18:30.944Z"
+      "sha256": "4d2d7d2b1b550cb3efac8d4254c5e4c815221580cf9900b02fb2954ea982d4df",
+      "builtAt": "2026-09-19T06:27:14.595Z"
     },
     "rendererChunk": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
-      "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
-      "builtAt": "2026-09-19T06:19:17.534Z"
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-DhkfQ4qv.js",
+      "sha256": "d53b5733cfedeaba3e75a709cc5630d2e21a6c5d799777923ae9a65dbeec5ad2",
+      "builtAt": "2026-09-19T06:28:10.981Z"
     },
     "newestSource": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
-      "at": "2026-09-19T06:08:52.483Z"
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T06:26:54.573Z"
     }
   },
   "scenes": {
@@ -22,6 +22,12 @@
         "port": 46150,
         "url": "http://127.0.0.1:46150"
       },
+      "bandSentenceSource": "first_lines",
+      "bandLines": [
+        "Not connected to a Local Operator server.",
+        "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
+      ],
+      "bandSentence": "Not connected to a Local Operator server.",
       "page": {
         "viewport": "1380x868",
         "dpr": 2,
@@ -182,11 +188,6 @@
           "⌘",
           "+",
           "K"
-        ],
-        "bandSentence": "Not connected to a Local Operator server.",
-        "bandLines": [
-          "Not connected to a Local Operator server.",
-          "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
         ]
       },
       "desktopRoutesServed": 0,
