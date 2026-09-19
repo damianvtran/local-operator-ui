@@ -89,8 +89,11 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
+ *   --gate-state <label>   (with --scene settings-gate) what this run's backend
+ *                          state is called in the frames and the log, so two
+ *                          runs against two backends can be told apart
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -6697,50 +6700,6 @@ async function readSettingsFields(cdp) {
  * are in the live-app evidence instead.
  */
 /**
- * When a `settings-gate` run reads the screen, in milliseconds after the
- * navigation. Chosen against what the page can legitimately cost rather than
- * against a guess: the config read answers in single-digit milliseconds on a
- * live daemon, the account read is one desktop control with at most two React
- * Query retries behind it, and the transport's own op deadline is 25s. So 0.5s
- * is "before any of that has settled", 5s is "after the account read's last
- * retry could have landed", and 30s is "past the deadline, so a spinner still
- * here is NOT waiting for a request to answer".
- */
-/**
- * Watch who asks the backend for the Radient account, and from where.
- *
- * WHY A WRAPPER AND NOT A COUNT. The proxy's own log says HOW MANY account
- * reads arrived and when; it cannot say who asked, because every desktop
- * control leaves the renderer through the same bridge. A read that repeats once
- * a second for as long as the screen is open is either React Query's own retry
- * or something invalidating the key, and those are different defects with
- * different fixes - so the caller's stack is the reading that decides it.
- *
- * Wrapping the bridge is a READ of the shipped path: the original function is
- * still what answers every request.
- */
-function watchAccountCalls(cdp) {
-	return cdp.evaluate(`(() => {
-		const bridge = window.api?.desktop;
-		if (!bridge || bridge.__gateWatched) return false;
-		const original = bridge.request.bind(bridge);
-		const calls = [];
-		window.__gateCalls = calls;
-		bridge.request = (request) => {
-			if (request?.control?.operation === "account") {
-				calls.push({
-					at: Date.now(),
-					stack: (new Error().stack || "").split("\\n").slice(1, 9).join(" | "),
-				});
-			}
-			return original(request);
-		};
-		bridge.__gateWatched = true;
-		return true;
-	})()`);
-}
-
-/**
  * Sample the gate's inputs at 100ms for the whole scene, in the page.
  *
  * WHY AT THIS RATE. A read that repeats once a second can be React Query's own
@@ -6797,6 +6756,16 @@ function startGateSampler(cdp) {
 	})()`);
 }
 
+/**
+ * When a `settings-gate` run reads the screen, in milliseconds after the
+ * navigation. Chosen against what the page can legitimately cost rather than
+ * against a guess: the config read answers in single-digit milliseconds on a
+ * live daemon, the account read is one desktop control with at most two React
+ * Query retries behind it, and the transport's own op deadline is 25s. So 0.5s
+ * is "before any of that has settled", 5s is "after the account read's last
+ * retry could have landed", and 30s is "past the deadline, so a spinner still
+ * here is NOT waiting for a request to answer".
+ */
 const GATE_SAMPLES_MS = [500, 5000, 30000];
 
 /**
@@ -6912,8 +6881,16 @@ function readDaemonSnapshot(cdp) {
 async function sceneSettingsGate(cdp) {
 	const label = argValue("--gate-state", "unlabelled");
 	const started = Date.now();
-	const watching = await watchAccountCalls(cdp);
-	note("account-read forensics armed", String(watching));
+	/*
+	 * Armed BEFORE the navigation, because the reads this instrument exists to
+	 * name begin at the route's mount. The verb starts a fetch of its own through
+	 * the patched path, so `validated` here is the difference between a reading
+	 * and a claim: the first version of this scene wrapped the bridge, was
+	 * silently ignored by it, and printed "0 reads from 0 caller(s)" beside an
+	 * "armed true" note that could not fail.
+	 */
+	const armed = await verb(cdp, "queryFetches", { arm: true });
+	note("account-read trap armed", JSON.stringify(armed));
 	await startGateSampler(cdp);
 	await verb(cdp, "navigate", "/settings");
 
@@ -6950,27 +6927,28 @@ async function sceneSettingsGate(cdp) {
 	 * The callers, deduplicated by their own stack: one entry per distinct call
 	 * site, with how many reads it made and the wall-clock span they covered.
 	 */
-	const calls = await cdp.evaluate(
-		`(() => {
-			const calls = window.__gateCalls || [];
-			const byStack = new Map();
-			for (const call of calls) {
-				const seen = byStack.get(call.stack) || { count: 0, first: call.at, last: call.at };
-				seen.count += 1;
-				seen.last = call.at;
-				byStack.set(call.stack, seen);
-			}
-			return { total: calls.length, callers: Array.from(byStack.entries()).map(([stack, seen]) => ({ stack, ...seen })) };
-		})()`,
-	);
+	/*
+	 * WHO asks, from the app's own query layer: one entry per distinct call site
+	 * with the number of fetches it started. This is the reading the proxy's log
+	 * cannot give (every desktop control leaves through one bridge) and the one a
+	 * page-side wrapper over `window.api` silently failed to record - so a
+	 * repeated read can finally be attributed to a mount, an invalidation or
+	 * React Query's own retry rather than guessed at.
+	 */
+	const fetches = await verb(cdp, "queryFetches", { key: "radient-user" });
 	say(
-		`  [gate ${label}] account reads in this run: ${calls.total} from ${calls.callers.length} distinct caller(s)`,
+		`  [gate ${label}] radient-user fetches this run: ${fetches.total} from ${fetches.callers.length} distinct call site(s) (trap armed=${fetches.armed} validation records=${fetches.probeRecords})`,
 	);
-	for (const caller of calls.callers) {
+	for (const caller of fetches.callers) {
 		say(
-			`    x${caller.count} span=${caller.last - caller.first}ms ${caller.stack}`,
+			`    x${caller.count} span=${caller.lastAt - caller.firstAt}ms key=${caller.key} ${caller.stack}`,
 		);
 	}
+	check(
+		`the account-read trap was armed and validated itself (${label})`,
+		fetches.armed === true && fetches.probeRecords > 0,
+		`armed=${fetches.armed} validation-records=${fetches.probeRecords}`,
+	);
 	/*
 	 * The transitions, in order, from inside the page: this is the record that
 	 * says whether the screen was held by a query that kept FAILING and
