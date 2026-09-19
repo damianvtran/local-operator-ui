@@ -744,13 +744,21 @@ test("the connectivity band offers its Retry only where a re-pairing act exists"
 		});
 	for (const cause of ["governed-elsewhere", "pre-handshake"]) {
 		const copy = late(cause);
-		assert.equal(copy.retry, false, `${cause}: the late arm must withhold the Retry`);
+		assert.equal(
+			copy.retry,
+			false,
+			`${cause}: the late arm must withhold the Retry`,
+		);
 		/*
 		 * And it may not assert a stop it cannot know: main's own detail beside it
 		 * says a daemon may still be running, which for these two causes is the
 		 * truth - the process is fine and this app may not attach (UX round 3, U10).
 		 */
-		assert.doesNotMatch(copy.title, /stopped/i, `${cause}: no stop is established`);
+		assert.doesNotMatch(
+			copy.title,
+			/stopped/i,
+			`${cause}: no stop is established`,
+		);
 	}
 	const lateRepairable = late("successor");
 	assert.equal(lateRepairable.retry, true);
