@@ -27,10 +27,10 @@ import {
 } from "react";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
+import { closeDocumentBuffer } from "./close-report";
 import { diffHighlight } from "./code-editor-diff";
 import {
 	adoptBuffer,
-	closeBuffer,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
@@ -217,15 +217,32 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		});
 	}, [conversationId, document]);
 	/*
-	 * The unmount is one call. The owner flushes a write that should happen, commits
-	 * the buffer through the port above so a close is a pause rather than a loss, and
+	 * The unmount is one call. The owner flushes a write that should happen, hands the
+	 * buffer's words to the store's copy of this document through the port above, and
 	 * KEEPS the dirty flag while the document is held (code review round 4, R4-1) -
 	 * which is why this editor no longer clears the registry itself, and why a held
 	 * document's next activation cannot apply the file's version over the reader's
-	 * words.
+	 * words. When the document is CLOSED the store no longer holds a copy to update,
+	 * and the words stay in the owner for the screen to ask for again
+	 * (`documentsForCanvas`).
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
-	useEffect(() => () => closeBuffer(document.id), [document.id]);
+	/*
+	 * THE CLOSE'S REPORT (UX round 1, U1): the cleanup's own outcome is what the
+	 * reader is told when a close could not write their words - see
+	 * `close-report.ts`, which also decides whether this unmount was a close at all.
+	 *
+	 * Keyed on the document's identity FIELDS rather than on the document object:
+	 * the store hands this component a new object whenever the document changes
+	 * (every keystroke that reaches the store, every freshness apply), and an
+	 * effect keyed on the object would run its cleanup on each of those - closing,
+	 * and reporting, a document that is still open.
+	 */
+	const documentId = document.id;
+	const documentTitle = document.title;
+	useEffect(
+		() => () => closeDocumentBuffer({ id: documentId, title: documentTitle }),
+		[documentId, documentTitle],
+	);
 
 	/*
 	 * THE DEBOUNCE ONLY TRIGGERS; IT CARRIES NO TEXT (round 4). This used to hand
