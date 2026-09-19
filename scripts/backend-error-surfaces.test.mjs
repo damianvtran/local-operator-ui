@@ -678,9 +678,21 @@ test("settings renders the classifier's sentence rather than its own", async () 
 		"src/renderer/src/features/settings/components/backend-settings-section.tsx",
 	]) {
 		const source = await readFile(path, "utf8");
+		/*
+		 * UPDATED DELIBERATELY (review round 5, Q-6): the sentence and the control now come
+		 * from `pairingCardCopy`, which is the shared classifier plus the pairing table -
+		 * the load-error card had its own copy of both and drifted, printing "not answering"
+		 * over a daemon that was answering, with a Retry that could not change it. A surface
+		 * must still route through a shared authority, and must NOT compose its own fallback
+		 * beside it, which is now the stricter half of this guard.
+		 */
 		assert.ok(
-			source.includes("backendLoadErrorMessage("),
+			source.includes("pairingCardCopy("),
 			`${path} no longer routes its error copy through the shared classifier`,
+		);
+		assert.ok(
+			!source.includes("backendLoadErrorMessage("),
+			`${path} composes its own load-error sentence beside the shared pairing authority`,
 		);
 		// Comments quote the removed strings to explain why they went, so this
 		// looks at rendered JSX text rather than at the whole file.
