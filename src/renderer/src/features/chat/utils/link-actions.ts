@@ -61,6 +61,11 @@
  */
 
 import { normalizeFileUrl } from "./link-grammar";
+import {
+	MAX_EAGER_READ_BYTES,
+	READ_ENCODING,
+	viewerFor,
+} from "./viewer-routing";
 
 export type LinkKind = "url" | "file" | "other";
 
@@ -584,10 +589,19 @@ export function linkToolbarModel(input: {
 	 * wanted.
 	 */
 	const fileActions = actionListFor({
+		target,
 		isDirectory,
 		probe,
 		canOpenInCanvas,
 	});
+	/*
+	 * A file the canvas can show but the press will refuse for its size gets the
+	 * honest alternative and the sentence that explains it (round 3, U8a): the
+	 * no-canvas action shape, plus the same note slot the missing path uses. Without
+	 * it the strip offers `Open in canvas` and the press does something else.
+	 */
+	const overCeiling =
+		!isDirectory && overEagerReadCeiling(target, probe?.sizeBytes);
 	return {
 		actions: [
 			...leading,
@@ -595,14 +609,53 @@ export function linkToolbarModel(input: {
 			...fileActions,
 			...trailing,
 		],
-		note: null,
-		noteTitle: null,
+		note: overCeiling ? TOO_LARGE_NOTE : null,
+		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
 		label: `Actions for ${name}`,
 	};
 }
 
 /**
- * Whether this target's toolbar leads with the CANVAS rather than the OS.
+ * The sentence a strip shows when the canvas is on offer for the TYPE but a press
+ * would refuse this FILE.
+ *
+ * The note slot is the missing-path one's, and the reason it is reused rather than
+ * a button being dropped silently is the reader's own expectation: the operator's
+ * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
+ * button reads as a bug unless the strip says why. Sentence case, and short enough
+ * to sit in the strip's own line, because it renders beside the buttons.
+ */
+const TOO_LARGE_NOTE = "Too large for the canvas preview";
+const TOO_LARGE_TITLE =
+	"Too large for the canvas preview, so Open uses the default app";
+
+/**
+ * Whether the press on this path would REFUSE it for the read ceiling.
+ *
+ * The press reads the eagerly-read kinds itself (`open-in-canvas.ts`, bounded by
+ * `MAX_EAGER_READ_BYTES` because the store persists document contents to
+ * `localStorage`) and refuses above the number, so a strip that still offered
+ * `Open in canvas` would be promising a destination the press will not reach -
+ * and round 3's UX pass measured exactly that: a button that reads "Open in
+ * canvas" handing the file to the OS.
+ *
+ * The kind test comes from `READ_ENCODING` rather than from a list of extensions,
+ * because "which kinds a press reads itself" is that table's own answer: the
+ * `bytes`/`range` kinds (pdf, image, audio, video) read their own bytes and are
+ * never capped, so a 40 MB PDF keeps its canvas action.
+ */
+export function overEagerReadCeiling(
+	path: string,
+	sizeBytes: number | null | undefined,
+): boolean {
+	const kind = viewerFor(path);
+	if (kind === null) return false;
+	const encoding = READ_ENCODING[kind];
+	if (encoding !== "utf-8" && encoding !== "base64") return false;
+	return (sizeBytes ?? 0) > MAX_EAGER_READ_BYTES;
+}
+
+/**
  *
  * One rule with two readers, which is why it is a function: the matrix above asks
  * it to choose between `Open in canvas`/`Open in default app` and a lone `Open`,
@@ -615,17 +668,25 @@ export function linkToolbarModel(input: {
  * there" is worse than the OS attempt's own sentence).
  */
 export function canvasActionFor(input: {
+	target: string;
 	isDirectory: boolean;
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;
 }): boolean {
 	if (!input.canOpenInCanvas) return false;
 	if (input.isDirectory) return false;
-	return input.probe?.exists !== false;
+	if (input.probe?.exists === false) return false;
+	/*
+	 * And the ceiling is the last of the same kind of veto: the type has a viewer,
+	 * the path is there, and the press would still refuse it for its size, so the
+	 * strip offers the OS and the note says why (round 3, U8a).
+	 */
+	return !overEagerReadCeiling(input.target, input.probe?.sizeBytes);
 }
 
 /** The non-copy actions a local target offers, in visual order. */
 function actionListFor(input: {
+	target: string;
 	isDirectory: boolean;
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;

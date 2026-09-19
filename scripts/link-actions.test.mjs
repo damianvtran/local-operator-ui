@@ -363,6 +363,56 @@ test("a missing path offers no canvas action, whatever the caller claims", () =>
 	assert.equal(model.note, "No file at …/x/gone.xlsx");
 });
 
+test("a file above the read ceiling keeps the OS shape and says why (round 3, U8a)", () => {
+	/*
+	 * The strip must not promise a destination the press refuses. The press reads
+	 * the eagerly-read kinds itself and returns `false` above `MAX_EAGER_READ_BYTES`
+	 * (the store persists document contents), so this file's toolbar loses the canvas
+	 * button and keeps the OS one - the same shape a `.zip` has - with the note slot
+	 * explaining the absence, because the reader's expectation (set by the operator's
+	 * own rule for supported types) is that a `.csv` HAS a canvas.
+	 */
+	const overCeiling = canvasModelFor({
+		kind: "file",
+		target: "~/x/enormous.csv",
+		probe: { exists: true, isFile: true, sizeBytes: 9_411_130 },
+	});
+	assert.deepEqual(
+		overCeiling.actions.map((entry) => entry.id),
+		["copy", "open", "open-folder", "quote"],
+		"no canvas action, because the press would refuse this file",
+	);
+	assert.equal(overCeiling.actions[1].label, "Open");
+	assert.equal(overCeiling.note, "Too large for the canvas preview");
+
+	/*
+	 * The bytes/range kinds read their own bytes, so the ceiling is not theirs: a
+	 * 40 MB PDF is exactly what the canvas is for and keeps its action.
+	 */
+	const pdf = canvasModelFor({
+		kind: "file",
+		target: "~/x/annual-report.pdf",
+		probe: { exists: true, isFile: true, sizeBytes: 40 * 1024 * 1024 },
+	});
+	assert.deepEqual(
+		pdf.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.equal(pdf.note, null);
+
+	/* And an eagerly-read file BELOW the ceiling is untouched. */
+	const small = canvasModelFor({
+		kind: "file",
+		target: "~/x/quarterly.csv",
+		probe: { exists: true, isFile: true, sizeBytes: 623_918 },
+	});
+	assert.deepEqual(
+		small.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.equal(small.note, null);
+});
+
 test("the canvas action is one predicate, asked by the matrix and the icon map alike", () => {
 	/*
 	 * `canvasActionFor` is what keeps the fifth button and the icon that marks it
@@ -372,14 +422,16 @@ test("the canvas action is one predicate, asked by the matrix and the icon map a
 	 */
 	assert.equal(
 		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
 			isDirectory: false,
-			probe: { exists: true, isFile: true },
+			probe: { exists: true, isFile: true, sizeBytes: 37_000 },
 			canOpenInCanvas: true,
 		}),
 		true,
 	);
 	assert.equal(
 		canvasActionFor({
+			target: "/tmp/x/notes.md",
 			isDirectory: true,
 			probe: { exists: true, isFile: false },
 			canOpenInCanvas: true,
@@ -388,6 +440,7 @@ test("the canvas action is one predicate, asked by the matrix and the icon map a
 	);
 	assert.equal(
 		canvasActionFor({
+			target: "/tmp/x/gone.txt",
 			isDirectory: false,
 			probe: { exists: false, isFile: false },
 			canOpenInCanvas: true,
@@ -395,16 +448,49 @@ test("the canvas action is one predicate, asked by the matrix and the icon map a
 		false,
 	);
 	/*
+	 * And the ceiling, which is the fourth of the same kind of veto (round 3,
+	 * U8a). What the strip must not do is offer `Open in canvas` for a path the
+	 * press will refuse, so the predicate answers `false` for an eagerly-read kind
+	 * above `MAX_EAGER_READ_BYTES` - and `true` for the kinds that read their own
+	 * bytes at any size, which is what keeps a 40 MB PDF's canvas action.
+	 */
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/enormous.csv",
+			isDirectory: false,
+			probe: { exists: true, isFile: true, sizeBytes: 9_411_130 },
+			canOpenInCanvas: true,
+		}),
+		false,
+		"an eagerly-read file above the ceiling must not be offered the canvas",
+	);
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/enormous.pdf",
+			isDirectory: false,
+			probe: { exists: true, isFile: true, sizeBytes: 40_000_000 },
+			canOpenInCanvas: true,
+		}),
+		true,
+		"a bytes/range kind is never capped, whatever its size",
+	);
+	/*
 	 * Nothing known is the OPTIMISTIC case, the same direction `probeTarget`
 	 * documents: with no answer to stat through, the app has no grounds to withhold
 	 * the canvas, and a wrong guess costs one press that reports itself.
 	 */
 	assert.equal(
-		canvasActionFor({ isDirectory: false, probe: null, canOpenInCanvas: true }),
+		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
+			isDirectory: false,
+			probe: null,
+			canOpenInCanvas: true,
+		}),
 		true,
 	);
 	assert.equal(
 		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
 			isDirectory: false,
 			probe: { exists: true, isFile: true },
 			canOpenInCanvas: false,

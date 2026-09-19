@@ -122,12 +122,34 @@ hand-off it always was.
 | `http(s)://…` | unchanged: `target="_blank"` → `setWindowOpenHandler` → `shell.openExternal` | `Copy link` · `Open in browser` · `Quote` |
 | a local path with a canvas viewer, in a pane | the CANVAS: `openPathInCanvas` → the document, the right-hand slot, the tab | `Copy path` · `Open in canvas` · `Open in default app` · `Open folder` · `Quote` |
 | the same path where there is no pane (no provider) | `openFile` (main expands `~`) — the press it had before this change | the four-action strip (`Open`, `Open folder`) |
+| the same path ABOVE `MAX_EAGER_READ_BYTES`, for a kind the press reads itself (`utf-8`/`base64`: markdown, html, code, spreadsheet) | `openFile` — the press REFUSES above the ceiling, so the OS hand-off and its sentence are what happens | `Copy path` · `Open` · `Open folder` · `Quote`, plus the note `Too large for the canvas preview` |
+| the same path above the ceiling for a kind that reads its own bytes (`pdf`, image, audio, video) | the CANVAS, unchanged: the ceiling is the eagerly-read kinds' rule, not a size rule | the five-action strip above |
 | `file://…` | decoded path → as the row above | as the row above |
 | `~/…`, `/abs…` with no viewer (`.zip`, `.dmg`, unknown) | `openFile` | `Copy path` · `Open` · `Open folder` · `Quote` |
 | a directory | `openFile` | `Copy path`, `Open` (no `Open folder`) |
 | a path that is not there | the canvas is SKIPPED (the probe's cached answer already says so) → `openFile` fails → error toast | `Copy path`, plus the reason `No file at …` |
 | bare relative `notes.md` | unchanged (an anchor, `target="_blank"`) | not a target: no toolbar |
 | `ftp://`, `mailto:`, unknown schemes | unchanged | not a target: no toolbar |
+
+**The ceiling the strip has to know about (round 3, U8a).** The press reads
+`utf-8`/`base64` kinds itself, and it refuses above `MAX_EAGER_READ_BYTES` — a
+document whose `content` cannot be persisted is worse than no document (round 2's
+blocker: an empty sheet, an empty editor, and `Workbook is empty` throwing the
+window into its error boundary). A strip that still offered `Open in canvas` for
+such a file would be promising a destination the press deliberately does not reach,
+which is the state round 3's UX pass measured: a button reading "Open in canvas"
+handing the file to the OS. So the toolbar asks the same question the press does —
+one exported constant, one predicate (`canvasActionFor`), so the button and the
+press cannot drift — and where the answer is "the press will refuse", the strip
+falls back to the OS shape and says why in the note slot it already has for a
+missing path. The kinds that read their own bytes are never capped: a 40 MB PDF
+keeps its canvas button, which is the case the canvas exists for.
+
+**An open document wins over the ceiling.** The Files panel's own click reads
+uncapped, so a 9 MB spreadsheet can already be sitting in the pane; a press on its
+link SELECTS it (the store keeps the entry it has, so the panel's bytes and the
+reader's own edits survive) rather than refusing on a size rule that only ever
+governed building a new document.
 
 **Two presses, one meaning each.** The id `open` means THE CANVAS wherever the
 app can show the path, and the OS's application gets an id of its own
@@ -249,10 +271,10 @@ the two states that are ABOUT a canvas-openable file grew a button while
 `hover-directory`, `hover-url` and `hover-missing` did not (their matrices are
 untouched, which is why three of these five rows are the previous round's
 numbers unchanged). The ink numbers were re-measured at this head by the same
-reading: pixels of the resting frame more than 30 away from the strip's own
-surface, counted inside that row's own rect. `hover-file` stays at 0 px, and the
-one that moves in kind is `hover-cell` — the fifth button hangs over the paragraph
-below the table, 28px below the table's own edge, so its cost is **483 → 587**
+reading: pixels of the resting frame more than 30 away from the CANVAS, counted
+inside that row's own rect. `hover-file` stays at 0 px, and the one that moves in
+kind is `hover-cell` — the fifth button hangs over the paragraph below the table,
+26px below the table's last painted rule, so its cost is **483 → 587**
 (+104 px, **+21.5%**) of prose rather than a glyph top. That is the price of showing
 both destinations, and it is recorded here at the size it actually is rather than
 as "+30px".
@@ -261,8 +283,11 @@ as "+30px".
 from one registration to mean anything: the `hover-file` and `hover-cell` rects in
 the table above are this head's five-button capture, and `hover-directory`,
 `hover-url` and `hover-missing` carry round 3's rects — 4 px lower in `y` at the
-same width — because those three matrices are untouched by this change and their
-frames were not re-taken. Comparing an ink number across two registrations is
+same width — because those three matrices are untouched by this change: the pass
+re-took ALL 23 states of the set (a set capture cannot refresh a subset), so those
+three frames ARE new — what did not move is their content, and the numbers in those
+three rows are the previous capture's because an ink figure only compares inside one
+registration. Their committed frames are the new ones. Comparing an ink number across two registrations is
 exactly how round 1's `671 → 776` pair came about (671 was measured on the round-3
 capture's taller rect), so the rule is: **a pair must be measured inside one
 registration, and a row that says UNCHANGED keeps the capture it came from.**
@@ -292,8 +317,9 @@ and the cost is recorded here, with both sides photographed (`hover-file` above,
 `hover-directory`/`hover-url` below) rather than asserted away.
 
 **The strip may leave its container, and does.** In a table, the cell link's box
-is `[255,544,612,561]`, the table ends at 573, and the strip lands at
-`[256,565,411,594]` — 28px of it below the table, over the paragraph that follows
+is `[255,544,612,561]`, the table's last painted rule is at y=568, and the strip
+lands at `[256,565,411,594]` — 26px of it below the table, over the paragraph that
+follows
 (`hover-cell`, 587 ink px of that paragraph at this head's five-button width, the
 number this round's fifth button moved from 483 at the same registration). The
 placement clamps to the pane

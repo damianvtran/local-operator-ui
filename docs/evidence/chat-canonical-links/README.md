@@ -63,7 +63,7 @@ backend was answering, not that one was used.
 | `hover-gap-long/` | `--detected-targets` | pointer path, 4 samples @16ms | The same arrival at a slower hand's spacing — the case lost at step 2. |
 | `hover-gap-fine/` | `--detected-targets` | pointer path, 1 sample per PIXEL @8ms | A mid-paragraph link, whose strip is placed BELOW it: the other placement, sampled every pixel, which is the path lost on the first pixel off the anchor's own box. |
 | `hover-gap-leave/` | `--detected-targets` | pointer path onto the button, then out to the prose | The dismissal half of the same claim: the strip survives the arrival and is GONE once the pointer moves onto the words beside the link (`expectKept: false`). Without this frame "keep the subject" could be satisfied by never dismissing. |
-| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[256,565,411,594]`, the live five-button width — see § 5) hangs 28px out of the table over the paragraph below, covering 587 ink px of it at this head's five-button width (483 at the same registration's 126 px width) — the cost § 5 records beside the rule. |
+| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table's last painted rule is at y=568, so the strip (`[256,565,411,594]`, the live five-button width — see § 5) hangs 26px out of the table over the paragraph below, covering 587 ink px of it at this head's five-button width (483 at the same registration's 126 px width) — the cost § 5 records beside the rule. |
 | `escape-dismisses/` | `--detected-targets` | `mouseMoved` + a real `Escape` | The strip raised by the POINTER, then one Escape with focus wherever the reader left it: the strip is gone, which the entry asserts (`expectGone`). |
 | `selection-in-link/` | `--selection-in-link` | story `Selection` (NOT a drag — see the limits) | A highlight inside a link: the LINK's toolbar, with `Quote` leading. |
 | `selection-in-link-staged/` | `--selection-in-link-staged` | story `Selection` + a press | The same highlight and then the toolbar's own `Quote` pressed, with the composer in frame: the chip carries the link's own text. |
@@ -157,3 +157,17 @@ between evidence and a picture:
   as the positive control. Giving this fixture's URL an extension would move the
   strip's own column position in ~20 states, so the fixture stays as it is and the
   limit is stated rather than paid for.
+
+- **No frame shows the above-ceiling strip, and none can.** The story's probe stub
+  answers one size for the fixture's paths, so the state round 3 fixed - a
+  canvas-openable FILE whose press would refuse it for `MAX_EAGER_READ_BYTES`, which
+  drops `Open in canvas` and shows the note `Too large for the canvas preview` - is
+  not reachable from this story without a second fixture and a >1 MiB file behind
+  it. It is covered where it can be driven instead:
+  `scripts/link-actions.test.mjs`'s "a file above the read ceiling keeps the OS shape
+  and says why" (the matrix, beside the two neighbours that must NOT change: a 40 MB
+  PDF keeps its canvas action and a small CSV is untouched) and
+  `scripts/chat-link-affordances.test.mjs`'s "above the read ceiling the strip loses
+  the canvas and says why" (the mounted strip). Adding the state to the story and
+  re-shooting the set is a real change of the set's own scope and is not part of this
+  round.

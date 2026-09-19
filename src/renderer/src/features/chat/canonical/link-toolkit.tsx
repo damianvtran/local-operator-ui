@@ -234,6 +234,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	 */
 	const canOpenInCanvas = kind === "file" && opensInCanvas(pane, target);
 	const canvasAction = canvasActionFor({
+		target,
 		isDirectory: probe?.exists === true && !probe.isFile,
 		probe,
 		canOpenInCanvas,
