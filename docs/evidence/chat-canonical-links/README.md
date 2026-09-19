@@ -97,19 +97,24 @@ between evidence and a picture:
 
 ## Honest limits of this set
 
-- **The frames come from TWO capture heads, and the majority of them are kept
-  from the earlier one.** Round 2's narrow fold re-took only the two states the
-  fold could reach (`selection-in-link-staged`, whose surface is the real
-  composer, and `hover-gap-crossing` as the control); the other nineteen are the
-  frames taken on the previous folded head, kept because the control came back
-  with nothing moved. `docs/evidence/manifest.json`'s `countsMean.frames` and
-  `partialCapture` carry the arithmetic and the per-theme comparison. The
-  retained frames are identical to a fresh re-take **apart from sub-perceptual
-  rasterisation jitter** — not byte-identical, which is what an earlier draft of
-  that paragraph claimed and what two independent re-takes disproved: 34/36 and
-  11/12-per-state under antialiasing deltas of at most 17/255, with no element
-  appearing, disappearing or moving. Readers comparing a frame here against a
-  fresh capture should expect that, not a hash match.
+- **The whole set describes THIS branch's tree: the pass re-took every frame in
+  one run.** The frames commit's own diff over this directory is **252 modified +
+  24 added** (`git diff --name-status <frames-commit>^ <frames-commit> --
+  docs/evidence/chat-canonical-links`), the 24 being the two new states × 12
+  themes — so all 23 states × 12 themes = **276 frames** were painted on this
+  branch's tree by one run of the rig, not carried from an earlier head. What an
+  earlier head still supplies is NUMBERS, not pixels: § 5's ink column keeps the
+  previous capture's figures for the three matrices whose registration differs by
+  the 4 px offset § 5 records, because an ink pair only compares inside one
+  registration. `docs/evidence/manifest.json`'s `countsMean`/`partialCapture`
+  carry the arithmetic.
+
+  Frames are still frames, though: rasterisation is not a hash match, and an
+  earlier draft of this bullet claimed byte-identity where two independent
+  re-takes found sub-perceptual jitter instead (34/36 and 11/12 per state, at
+  antialiasing deltas of at most 17/255, with no element appearing, disappearing
+  or moving). A reader comparing a frame here against a fresh capture should
+  expect that, not an equality.
 
 - **The two `selection-in-link*` states, and the two spanning ones, are built by a
   scripted `Selection`, not by a drag — and round 2 settled WHICH side of that
