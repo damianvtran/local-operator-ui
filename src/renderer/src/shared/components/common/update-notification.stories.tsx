@@ -611,6 +611,28 @@ const mockUpdaterApi = () => {
 						"/Applications/Local Operator.app: errSecCSBadBundleFormat: a sealed resource is missing or invalid",
 				});
 			}
+			// The 0.29.6 class: the artifact the updater downloaded carries a restricted
+			// entitlement (`keychain-access-groups`) with no provisioning profile to
+			// authorize it, so macOS refuses to spawn it and installing it would leave
+			// the user with no app at all. Production builds this one in
+			// `stagedSignatureBlock` (`src/main/update-install.ts`), and the drift guard in
+			// `scripts/update-robustness.test.mjs` asserts both strings below equal that
+			// builder's own - a frame captured from this fixture has to show the copy
+			// the app would really send.
+			if (window.triggerUpdateInstallBlockedCannotLaunch) {
+				callback({
+					code: "artifact-cannot-launch",
+					version: "0.29.6",
+					message:
+						"The update to version 0.29.6 can't be launched by macOS, so it wasn't installed.",
+					remedy: {
+						text: "Download a fresh copy from the website and replace the app in Applications.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"local-operator-ui-0.29.6-arm64.zip claims keychain-access-groups in its signature and carries no Contents/embedded.provisionprofile: macOS requires a profile to authorize a restricted entitlement (Apple TN3125) and refuses to launch the app without one.",
+				});
+			}
 			return () => {};
 		},
 		onUpdateInstallFailed: (
@@ -817,6 +839,7 @@ declare global {
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
+		triggerUpdateInstallBlockedCannotLaunch?: boolean;
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
@@ -858,6 +881,8 @@ const meta = {
 					context.parameters.triggerUpdateInstallBlocked;
 				window.triggerUpdateInstallBlockedAtStartup =
 					context.parameters.triggerUpdateInstallBlockedAtStartup;
+				window.triggerUpdateInstallBlockedCannotLaunch =
+					context.parameters.triggerUpdateInstallBlockedCannotLaunch;
 				window.triggerUpdateInstallFailed =
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
@@ -874,6 +899,7 @@ const meta = {
 				context.parameters.triggerUpdateProgress,
 				context.parameters.triggerUpdateInstallBlocked,
 				context.parameters.triggerUpdateInstallBlockedAtStartup,
+				context.parameters.triggerUpdateInstallBlockedCannotLaunch,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
@@ -1292,6 +1318,7 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallBlockedAtStartup"
+	| "triggerUpdateInstallBlockedCannotLaunch"
 	| "triggerUpdateInstallFailed"
 	| "triggerUpdateInstallFailedCancelledByRelaunch"
 	| "triggerUpdateInstallInFlight"
@@ -1347,6 +1374,22 @@ export const InstallBlockedAtStartup: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallBlockedAtStartup: true },
 	render: () => <Triggered flag="triggerUpdateInstallBlockedAtStartup" />,
+};
+
+/**
+ * The other refusal, and not a seal question at all: the update the app
+ * downloaded would not launch once installed. macOS refuses to spawn a bundle
+ * whose signature claims a restricted entitlement with no provisioning profile
+ * behind it, and it does so at exec - so `codesign --verify`, `spctl` and the
+ * notarization staple all pass on the artifact while the app never comes back.
+ * The panel is deliberately the same shape as the seal refusal: the subject is
+ * the same (an update that will not be installed), the remedy is the same (a
+ * fresh copy), and only the mechanism differs - which is the detail line's job.
+ */
+export const InstallBlockedCannotLaunch: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedCannotLaunch: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedCannotLaunch" />,
 };
 
 /**
