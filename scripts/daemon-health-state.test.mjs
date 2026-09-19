@@ -19,13 +19,14 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/backend/daemon-status"; export { isServerReachable, serverBannerCopy } from "./src/shared/backend-status";',
+			'export * from "./src/main/backend/daemon-status"; export { isServerReachable, serverBannerCopy, pairingHasRemedy, relayNeedsRebuild } from "./src/shared/backend-status";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -42,6 +43,8 @@ const {
 	REATTACH_BACKOFF_MS,
 	REATTACH_BACKOFF_CEILING_MS,
 	isServerReachable,
+	pairingHasRemedy,
+	relayNeedsRebuild,
 	serverBannerCopy,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -337,7 +340,7 @@ test("a replacement this app started is an owned attachment, and reachable", () 
 
 test("desktop availability is reported beside the state, not through it", () => {
 	const machine = attached();
-	machine.setDesktopAvailable(false);
+	machine.setPairing({ available: false, cause: "credential-refused" });
 	assert.equal(machine.snapshot().desktopAvailable, false);
 	assert.equal(machine.getState(), "attached");
 	machine.observe({ kind: "identified" });
@@ -346,6 +349,57 @@ test("desktop availability is reported beside the state, not through it", () => 
 		false,
 		"a probe does not invent a capability",
 	);
+});
+
+/*
+ * The pairing record itself, which is what the renderer words its sentences from:
+ *
+ *  - the derived boolean and the record are ONE fact, so a producer cannot leave
+ *    them disagreeing;
+ *  - a FAILURE sets it, not only a success. The value it replaces was written
+ *    `true` at three sites and `false` at none, and `attach()` did not reset it,
+ *    so after a `lop` build swap the app went on reporting a pairing a successor
+ *    had already destroyed (design § 1.4);
+ *  - `attach()` RESETS it, so a cause cannot outlive the pairing it described and
+ *    keep a banner up over a working app (design § 10.3).
+ */
+test("the pairing record is written on failure too, and cleared by an attach", () => {
+	const machine = attached();
+	assert.deepEqual(
+		machine.snapshot().pairing,
+		{ available: true, cause: null },
+		"attaching to a daemon this app proved it may drive is a pairing",
+	);
+
+	machine.setPairing({ available: false, cause: "successor" });
+	assert.deepEqual(machine.snapshot().pairing, {
+		available: false,
+		cause: "successor",
+	});
+	assert.equal(
+		machine.snapshot().desktopAvailable,
+		false,
+		"the boolean is the record's projection, not a second value",
+	);
+	assert.equal(machine.getState(), "attached");
+
+	machine.attach(
+		{
+			url: "http://127.0.0.1:55002",
+			instanceId: "b".repeat(43),
+			pid: 4243,
+			version: "0.55.6",
+			prefix: "/tmp/prefix",
+			installKind: "uv-tool",
+		},
+		{ owned: false },
+	);
+	assert.deepEqual(
+		machine.snapshot().pairing,
+		{ available: true, cause: null },
+		"a fresh attach clears the cause, so a stale one cannot keep a banner up",
+	);
+	assert.equal(machine.snapshot().desktopAvailable, true);
 });
 
 /*
@@ -616,5 +670,167 @@ test("an ADMITTED request still clears the count, which is what a pairing is", (
 		machine.observe({ kind: "contradicted", detail: "another process" }),
 		"degraded",
 		"and the count really was cleared: one contradiction is again the FIRST of three, not the third",
+	);
+});
+
+/*
+ * The two bands answer ONE question the same way, and the record is what answers
+ * it (design round 1, D2; UX round 1, U3).
+ *
+ * The compatibility band withholds its control for exactly the causes where
+ * re-pairing cannot help; the connectivity band sits a line above it on the same
+ * screen and offered its Retry regardless, so the screen carried the verb the
+ * band below had already declared inert. These cases pin the shared rule and the
+ * promise that goes with it.
+ */
+test("the connectivity band offers its Retry only where a re-pairing act exists", () => {
+	const detached = (cause, owned = false) => ({
+		state: "detached",
+		reconnecting: true,
+		detail: "The daemon did not answer.",
+		pairing: { available: false, cause },
+		owned,
+	});
+
+	assert.equal(pairingHasRemedy("governed-elsewhere"), false);
+	assert.equal(pairingHasRemedy("pre-handshake"), false);
+	for (const cause of ["successor", "credential-refused", "unpaired", null])
+		assert.equal(
+			pairingHasRemedy(cause),
+			true,
+			`${cause} is the app's to repair`,
+		);
+
+	const governed = serverBannerCopy(detached("governed-elsewhere"));
+	assert.equal(
+		governed.retry,
+		false,
+		"another principal's plane will not be re-claimed by trying again",
+	);
+	assert.doesNotMatch(
+		governed.title,
+		/reconnects to it on its own/,
+		"and the band does not promise a reconnection it cannot make",
+	);
+	const successor = serverBannerCopy(detached("successor"));
+	assert.equal(successor.retry, true);
+	assert.match(successor.title, /reconnects to it on its own/);
+	/*
+	 * A snapshot from a build that predates the pairing record answers
+	 * permissively: a surface may not withhold a control on the strength of a
+	 * field it never read.
+	 */
+	const legacy = serverBannerCopy({
+		state: "detached",
+		reconnecting: true,
+		detail: null,
+	});
+	assert.equal(legacy.retry, true);
+
+	/*
+	 * AND THE LATE ARM, which the cases above did not reach: every one of them
+	 * built `reconnecting: true`, so this arm's control was pinned by nothing and
+	 * passed before the round-2 change (review round 3). `reconnecting: false` is
+	 * what main publishes past its 90 s boundary, and it is exactly where UX round
+	 * 2 measured a Retry that asks `/health` and `/v1/capabilities` only.
+	 */
+	const late = (cause) =>
+		serverBannerCopy({
+			state: "detached",
+			reconnecting: false,
+			detail: "A local daemon may still be running, but could not be attached.",
+			pairing: { available: false, cause },
+			owned: false,
+		});
+	for (const cause of ["governed-elsewhere", "pre-handshake"]) {
+		const copy = late(cause);
+		assert.equal(
+			copy.retry,
+			false,
+			`${cause}: the late arm must withhold the Retry`,
+		);
+		/*
+		 * And it may not assert a stop it cannot know: main's own detail beside it
+		 * says a daemon may still be running, which for these two causes is the
+		 * truth - the process is fine and this app may not attach (UX round 3, U10).
+		 */
+		assert.doesNotMatch(
+			copy.title,
+			/stopped/i,
+			`${cause}: no stop is established`,
+		);
+	}
+	const lateRepairable = late("successor");
+	assert.equal(lateRepairable.retry, true);
+	assert.match(lateRepairable.title, /stopped/i);
+});
+
+/*
+ * A RELAY IS BOUND TO A CREDENTIAL, NOT ONLY TO AN ADDRESS.
+ *
+ * The defect this pins was measured, not imagined: after a build swap the app
+ * re-paired with the successor on the same port, and the sidebar went on saying
+ * "Not connected to the backend - showing the last known state." because the
+ * feed relay had been rebuilt on the URL rule alone and kept the retired claim
+ * key, so every attempt was refused and no state transition could ever clear the
+ * line (QA round 1 Q-2, design round 1 D3).
+ */
+test("a relay is rebuilt when the CREDENTIAL changes under a stable address", () => {
+	const url = "http://127.0.0.1:46140";
+	assert.equal(
+		relayNeedsRebuild({ url, token: "key-a" }, { url, token: "key-a" }),
+		false,
+		"an unchanged pair keeps the relay, and its socket",
+	);
+	assert.equal(
+		relayNeedsRebuild({ url, token: "key-a" }, { url, token: "key-b" }),
+		true,
+		"a re-pair on the same port must rebuild: the old bearer is refused forever",
+	);
+	assert.equal(
+		relayNeedsRebuild(
+			{ url, token: "key-a" },
+			{ url: "http://127.0.0.1:46141", token: "key-a" },
+		),
+		true,
+		"and so must a moved address",
+	);
+	assert.equal(
+		relayNeedsRebuild({ url, token: null }, { url, token: "key-a" }),
+		true,
+		"a relay built before the credential existed is not reusable once it does",
+	);
+});
+
+/*
+ * THE CALL SITE, PINNED BESIDE THE RULE.
+ *
+ * `relayNeedsRebuild` can be perfect and unused: a revert of the one line that
+ * consults it is what the round-1 defect WAS, and the rule's own cases cannot see
+ * that revert (review round 2). `backend-service.ts` cannot be bundled into this
+ * harness - it pulls in Electron and the whole main process - so the call site is
+ * asserted as source, and the behaviour is asserted by the cases above. A revert
+ * has to survive both.
+ */
+test("the feed relay's rebuild consults the rule, for the credential as well as the address", () => {
+	const source = readFileSync("src/main/backend/backend-service.ts", "utf8");
+	const feed = source.slice(
+		source.indexOf("getDesktopFeedRelay()"),
+		source.indexOf("getDesktopFeedRelay()") + 2_500,
+	);
+	assert.match(
+		feed,
+		/relayNeedsRebuild\(/,
+		"the feed relay must answer the rebuild question with the shared rule",
+	);
+	assert.match(
+		feed,
+		/feedRelayToken = this\.desktopToken/,
+		"and it must record the credential it rebuilt with, or the rule cannot fire twice",
+	);
+	assert.doesNotMatch(
+		feed,
+		/feedRelayUrl !== this\.backendUrl/,
+		"the URL-only test is the defect: the credential is the half a re-pair changes",
 	);
 });

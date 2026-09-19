@@ -31,6 +31,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Alert, AlertDescription, Button } from "@shared/components/ui";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import {
 	serverUpdateFailureReason,
 	updateMessageOf,
@@ -55,11 +56,54 @@ const BACKEND_UPDATE_UNEXPLAINED =
 export const BackendCompatibilityBanner = () => {
 	const capabilities = useDesktopCapabilities();
 	const queryClient = useQueryClient();
+	const { data: serverHealth } = useServerHealth();
 	const [updating, setUpdating] = useState(false);
 	const [updateError, setUpdateError] = useState<string | null>(null);
 
-	const retry = useCallback(() => {
-		void queryClient.invalidateQueries({ queryKey: desktopKeys.capabilities });
+	/*
+	 * The pairing cause comes from MAIN, not from the capability answer.
+	 *
+	 * `/v1/capabilities` admits nobody by design, so the same answer arrives before
+	 * and after this app claims a plane - which is why a surface reading only that
+	 * payload cannot tell "the server is old" from "this app holds no credential"
+	 * (the operator's chat pane said the first about the second). Main is the
+	 * process that knows: it holds the bearer, it claims the plane, and it is the
+	 * only one that can see the answering process is not the one it attached to
+	 * (design § 2, § 5.2).
+	 */
+	const snapshot = serverHealth?.snapshot ?? null;
+	const cause =
+		snapshot && !snapshot.pairing.available
+			? (snapshot.pairing.cause ?? "unpaired")
+			: null;
+	/*
+	 * Whether THIS app holds the install serving it, from main's own answer.
+	 *
+	 * The banner may not infer it: `installKind` and the serve record describe ANY
+	 * daemon on the machine, and offering to update a `lop` the user installed for
+	 * themselves - one this app may read but not move - is the failure § 10.1 warns
+	 * about. `owned` is main's "this app spawned the daemon, and is the only process
+	 * that may stop it", i.e. exactly the permission an update-then-restart needs.
+	 */
+	const servedByThisApp = snapshot?.owned === true;
+
+	/**
+	 * The banner's Retry, wired to the verb that can change the condition.
+	 *
+	 * `invalidateQueries` alone was INERT in the states that offer this control:
+	 * the capability route is public, so it answers identically before and after a
+	 * refetch, and nothing about the pairing moves (design § 0(a)).
+	 * `BACKEND_RECONNECT_CHANNEL` clears main's recovery pacing and runs the claim
+	 * path - the one act that can re-pair - and it is the same IPC the connectivity
+	 * banner's Retry already uses, so the two controls cannot mean different things.
+	 * The invalidation stays BESIDE it: the verb answers with a snapshot and the
+	 * push subscription follows, but this banner reads the capability query, and a
+	 * control that changes the state without the surface re-reading it would leave
+	 * the sentence it just acted on on screen.
+	 */
+	const retry = useCallback(async () => {
+		await window.api?.backend?.reconnect?.();
+		await queryClient.invalidateQueries({ queryKey: desktopKeys.capabilities });
 	}, [queryClient]);
 
 	const update = useCallback(async () => {
@@ -131,7 +175,7 @@ export const BackendCompatibilityBanner = () => {
 		? REQUIRED_FEATURES.filter((feature) => (data.features?.[feature] ?? 0) < 1)
 		: [...REQUIRED_FEATURES];
 	const unpaired = Boolean(data) && !data?.desktop_available;
-	if (!compatibilityBannerShown(data)) return null;
+	if (!compatibilityBannerShown(data, cause)) return null;
 
 	// The probe's HTTP status is what separates "old" from "not running" from
 	// "cannot authenticate", and the providers grid reads the same field to reach
@@ -147,11 +191,26 @@ export const BackendCompatibilityBanner = () => {
 		unpaired,
 		missing,
 		answered,
+		cause,
 	});
-	// Offered only where it is the actual remedy. A backend that is down or
-	// refusing this app's bearer is not fixed by installing a newer one.
+	// Offered only where it is the actual remedy, and for a pairing cause the answer
+	// depends on WHO holds the install: S3 can be repaired by an install this app
+	// owns, and every other pairing cause cannot be repaired by one at all.
 	const offerUpdate =
-		canUpdate && backendUpdateIsRemedy({ kind, unpaired, answered });
+		canUpdate &&
+		backendUpdateIsRemedy({ kind, unpaired, answered, cause, servedByThisApp });
+	/*
+	 * NO CONTROL WHERE NO REMEDY EXISTS (design § 2 S2/S3, § 10.2).
+	 *
+	 * S2 is another program's plane - the daemon refuses a second claim even with
+	 * the correct key, so a Retry would be a button that provably cannot work. S3
+	 * is a daemon that predates the handshake, where the only act that helps is the
+	 * update, and only for an install this app holds. A refused control is worse
+	 * than none: it spends the user's attention on the app's own failure. Every
+	 * other state keeps Retry, because re-claiming is what can change it.
+	 */
+	const offerRetry =
+		cause !== "governed-elsewhere" && cause !== "pre-handshake";
 
 	return (
 		/*
@@ -186,9 +245,15 @@ export const BackendCompatibilityBanner = () => {
 								{updating ? "Updating" : "Update backend"}
 							</Button>
 						)}
-						<Button variant="secondary" size="sm" onClick={retry}>
-							Retry
-						</Button>
+						{offerRetry && (
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={() => void retry()}
+							>
+								Retry
+							</Button>
+						)}
 					</div>
 				</div>
 			</Alert>

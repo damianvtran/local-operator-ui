@@ -1,0 +1,545 @@
+{
+  "label": "after",
+  "bundle": {
+    "mainBytecode": {
+      "file": "out/main/index.jsc",
+      "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+      "builtAt": "2026-09-19T20:29:48.563Z"
+    },
+    "rendererChunk": {
+      "file": "out/renderer/assets/index-DnAsAjdv.js",
+      "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+      "builtAt": "2026-09-19T20:30:26.569Z"
+    },
+    "newestSource": {
+      "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+      "at": "2026-09-19T20:29:06.567Z"
+    }
+  },
+  "scenes": {
+    "any-daemon": {
+      "bundle": {
+        "mainBytecode": {
+          "file": "out/main/index.jsc",
+          "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+          "builtAt": "2026-09-19T20:29:48.563Z"
+        },
+        "rendererChunk": {
+          "file": "out/renderer/assets/index-DnAsAjdv.js",
+          "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+          "builtAt": "2026-09-19T20:30:26.569Z"
+        },
+        "newestSource": {
+          "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+          "at": "2026-09-19T20:29:06.567Z"
+        }
+      },
+      "configured": {
+        "port": 46140,
+        "url": "http://127.0.0.1:46140"
+      },
+      "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
+      "recordAfterClaim": {
+        "desktop": true,
+        "claim_key": "lFvyw_UfQAuQ3kNXAORv7Hip-nO5JUVW3EAZKksNUZY",
+        "instance_id": "HOUCYvs3yi3kca1Jb1S2eHoRwZVGXMAPRjs9L59EAeM",
+        "version": "0.59.9",
+        "pid": 14218
+      },
+      "claimInDaemonLog": true,
+      "page": {
+        "viewport": "1380x868",
+        "dpr": 2,
+        "banner": null,
+        "seeded_row_visible": true,
+        "composer_present": false,
+        "snapshot": {
+          "state": "attached",
+          "url": "http://127.0.0.1:46140",
+          "pid": 14218,
+          "owned": false,
+          "unanswered": 0,
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 14218, v0.59.9).",
+          "pairing": {
+            "available": true,
+            "cause": null
+          }
+        },
+        "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back…",
+        "pane": {
+          "sentence": "Choose an agent or team",
+          "chain": [
+            {
+              "tag": "p",
+              "cls": "mt-2 text-body text-ink-muted",
+              "w": 832,
+              "h": 22,
+              "y": 58,
+              "display": "block",
+              "overflow": "visible",
+              "height": "21.6953px",
+              "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "p-6",
+              "w": 880,
+              "h": 159,
+              "y": 0,
+              "display": "block",
+              "overflow": "visible",
+              "height": "159.391px",
+              "minHeight": "auto",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "flex h-full min-h-0 flex-col",
+              "w": 880,
+              "h": 868,
+              "y": 0,
+              "display": "flex",
+              "overflow": "visible",
+              "height": "868px",
+              "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "h-full grow overflow-hidden",
+              "w": 880,
+              "h": 868,
+              "y": 0,
+              "display": "block",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "auto",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "flex h-full w-full overflow-hidden",
+              "w": 1160,
+              "h": 868,
+              "y": 0,
+              "display": "flex",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "auto",
+              "visible": true
+            },
+            {
+              "tag": "main",
+              "cls": "flex grow flex-col overflow-hidden",
+              "w": 1160,
+              "h": 868,
+              "y": 0,
+              "display": "flex",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "auto",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "flex min-h-0 flex-1 overflow-hidden",
+              "w": 1380,
+              "h": 868,
+              "y": 0,
+              "display": "flex",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "relative flex h-screen flex-col overflow-hidden",
+              "w": 1380,
+              "h": 868,
+              "y": 0,
+              "display": "flex",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "",
+              "w": 1380,
+              "h": 868,
+              "y": 0,
+              "display": "block",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "body",
+              "cls": "",
+              "w": 1380,
+              "h": 868,
+              "y": 0,
+              "display": "block",
+              "overflow": "hidden",
+              "height": "868px",
+              "minHeight": "0px",
+              "visible": true
+            }
+          ]
+        },
+        "band": null,
+        "first_lines": [
+          "Local Operator",
+          "Chat",
+          "My agents",
+          "Agent hub",
+          "Schedules",
+          "Browser",
+          "Settings",
+          "Search",
+          "⌘",
+          "+",
+          "K",
+          "U",
+          "User",
+          "Chats"
+        ]
+      },
+      "swap": {
+        "successorClaimKeyIsFresh": true,
+        "claims": [
+          "Claimed the desktop plane on http://127.0.0.1:46140.",
+          "Claimed the desktop plane on http://127.0.0.1:46140."
+        ],
+        "during": {
+          "viewport": "1380x868",
+          "dpr": 2,
+          "banner": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. The daemon's process is gone. Retry",
+          "seeded_row_visible": true,
+          "composer_present": false,
+          "snapshot": {
+            "state": "detached",
+            "url": "http://127.0.0.1:46140",
+            "pid": 14218,
+            "owned": false,
+            "unanswered": 0,
+            "detail": "The daemon's process is gone.",
+            "pairing": {
+              "available": true,
+              "cause": null
+            }
+          },
+          "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back… Not connected to the backend — showing the last known state.",
+          "pane": {
+            "sentence": "Choose an agent or team",
+            "chain": [
+              {
+                "tag": "p",
+                "cls": "mt-2 text-body text-ink-muted",
+                "w": 832,
+                "h": 22,
+                "y": 126,
+                "display": "block",
+                "overflow": "visible",
+                "height": "21.6953px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "p-6",
+                "w": 880,
+                "h": 159,
+                "y": 68,
+                "display": "block",
+                "overflow": "visible",
+                "height": "159.391px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex h-full min-h-0 flex-col",
+                "w": 880,
+                "h": 800,
+                "y": 68,
+                "display": "flex",
+                "overflow": "visible",
+                "height": "800px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "h-full grow overflow-hidden",
+                "w": 880,
+                "h": 800,
+                "y": 68,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "800px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex h-full w-full overflow-hidden",
+                "w": 1160,
+                "h": 800,
+                "y": 68,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "800px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "main",
+                "cls": "flex grow flex-col overflow-hidden",
+                "w": 1160,
+                "h": 800,
+                "y": 68,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "800px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex min-h-0 flex-1 overflow-hidden",
+                "w": 1380,
+                "h": 800,
+                "y": 68,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "800px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "relative flex h-screen flex-col overflow-hidden",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "body",
+                "cls": "",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              }
+            ]
+          },
+          "band": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. The daemon's process is gone. Retry",
+          "first_lines": [
+            "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own.",
+            "The daemon's process is gone.",
+            "Retry",
+            "Local Operator",
+            "Chat",
+            "My agents",
+            "Agent hub",
+            "Schedules",
+            "Browser",
+            "Settings",
+            "Search",
+            "⌘",
+            "+",
+            "K"
+          ]
+        },
+        "after": {
+          "viewport": "1380x868",
+          "dpr": 2,
+          "banner": null,
+          "seeded_row_visible": true,
+          "composer_present": false,
+          "snapshot": {
+            "state": "attached",
+            "url": "http://127.0.0.1:46140",
+            "pid": 14587,
+            "owned": false,
+            "unanswered": 0,
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 14587, v0.59.9).",
+            "pairing": {
+              "available": true,
+              "cause": null
+            }
+          },
+          "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back…",
+          "pane": {
+            "sentence": "Choose an agent or team",
+            "chain": [
+              {
+                "tag": "p",
+                "cls": "mt-2 text-body text-ink-muted",
+                "w": 832,
+                "h": 22,
+                "y": 58,
+                "display": "block",
+                "overflow": "visible",
+                "height": "21.6953px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "p-6",
+                "w": 880,
+                "h": 159,
+                "y": 0,
+                "display": "block",
+                "overflow": "visible",
+                "height": "159.391px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex h-full min-h-0 flex-col",
+                "w": 880,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "visible",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "h-full grow overflow-hidden",
+                "w": 880,
+                "h": 868,
+                "y": 0,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex h-full w-full overflow-hidden",
+                "w": 1160,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "main",
+                "cls": "flex grow flex-col overflow-hidden",
+                "w": 1160,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "auto",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "flex min-h-0 flex-1 overflow-hidden",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "relative flex h-screen flex-col overflow-hidden",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "flex",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "div",
+                "cls": "",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              },
+              {
+                "tag": "body",
+                "cls": "",
+                "w": 1380,
+                "h": 868,
+                "y": 0,
+                "display": "block",
+                "overflow": "hidden",
+                "height": "868px",
+                "minHeight": "0px",
+                "visible": true
+              }
+            ]
+          },
+          "band": null,
+          "first_lines": [
+            "Local Operator",
+            "Chat",
+            "My agents",
+            "Agent hub",
+            "Schedules",
+            "Browser",
+            "Settings",
+            "Search",
+            "⌘",
+            "+",
+            "K",
+            "U",
+            "User",
+            "Chats"
+          ]
+        }
+      }
+    }
+  }
+}

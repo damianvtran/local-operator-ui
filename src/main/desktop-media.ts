@@ -13,6 +13,12 @@
  */
 
 import { z } from "zod";
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	type DesktopRefusalCode,
+	desktopRefusalCodeForStatus,
+} from "../shared/desktop-contract";
 
 const id = z
 	.string()
@@ -96,7 +102,20 @@ export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
 	| { status: number; kind: "json"; body: unknown }
-	| { status: number; kind: "error"; detail: string };
+	| {
+			status: number;
+			kind: "error";
+			detail: string;
+			/**
+			 * The pairing-family refusal this was, when it was one (`shared/desktop-contract`).
+			 *
+			 * The media transport answers a DIFFERENT shape from its JSON twin, so the
+			 * code is carried here rather than in a `detail` envelope - and it is carried
+			 * at all for the same reason: a media refusal the plane wrote must not be
+			 * rendered as this app's own sentence (design § 3.5, § 5.1).
+			 */
+			code?: DesktopRefusalCode;
+	  };
 
 function endpoint(request: DesktopMediaRequest): {
 	path: string;
@@ -161,12 +180,14 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	if (!token) {
-		// Never sent: this app has no credential to send.
+		// Never sent: this app has no credential to send. Coded, so the renderer can
+		// say THIS fact (a pairing condition) rather than echoing the machine sentence.
 		return {
 			response: {
 				status: 503,
 				kind: "error",
-				detail: "Restart with a desktop-managed backend to use these controls.",
+				detail: DESKTOP_MACHINE_DETAIL.noCredential,
+				code: DESKTOP_REFUSAL_CODE.noCredential,
 			},
 			answered: false,
 		};
@@ -253,7 +274,15 @@ export async function requestDesktopMediaOutcome(
 				}
 			}
 			return {
-				response: { status: response.status, kind: "error", detail },
+				response: {
+					status: response.status,
+					kind: "error",
+					detail,
+					// Only a path the plane has to ADMIT makes the status a pairing fact:
+					// `speech.create` and `agent.export` are outside `/v1/desktop/`, where a
+					// 503 is that route's own failure and not this app's pairing.
+					code: desktopRefusalCodeForStatus(target.path, response.status),
+				},
 				answered: true,
 			};
 		}
@@ -293,8 +322,8 @@ export async function requestDesktopMediaOutcome(
 			response: {
 				status: 503,
 				kind: "error",
-				detail:
-					"The backend could not complete this request. Check its connection and try again.",
+				detail: DESKTOP_MACHINE_DETAIL.transportFailed,
+				code: DESKTOP_REFUSAL_CODE.transportFailed,
 			},
 			/*
 			 * Survives the catch for the same reason as its JSON twin, and with the same
