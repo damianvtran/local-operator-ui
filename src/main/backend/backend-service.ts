@@ -33,9 +33,11 @@ import type {
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import {
+	type FleetRosterRow,
 	type ServingInstallReadings,
 	type ServingOwnership,
 	type ServingWorkState,
+	fleetRosterFromSessions,
 	serveRecord,
 	servingInstallIsAppOwned,
 	servingInstallReadings,
@@ -659,6 +661,19 @@ export class BackendServiceManager {
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
+	/**
+	 * WHY the fleet roster last came back unreadable, when the server answered.
+	 *
+	 * A dead socket and a 401 look the same to `servingWorkState` - both are not
+	 * evidence about work, so both are `unknown` and both hold a restart - but they
+	 * are different next steps for a READER, and the update path's refusal says
+	 * which happened (QA round 1, observation b). The transport is the only party
+	 * that knows, so it records the answer here and the refusal reads it back;
+	 * guessing it from the verdict is how the two would come to disagree. Reset on
+	 * every read, so it always describes the most recent one.
+	 */
+	private fleetReadFailure: "unreachable" | "refused-credentials" =
+		"unreachable";
 	private shutdownTimeoutMs = { ...SHUTDOWN_TIMEOUT_DEFAULTS }; // Configurable timeouts for different shutdown scenarios
 
 	/**
@@ -3119,6 +3134,10 @@ export class BackendServiceManager {
 	 * A transport that does not answer, and a non-200, are both `unknown` - which
 	 * the decision treats as a reason to WAIT. A read that could not be taken is
 	 * not evidence that the machine is quiet.
+	 *
+	 * A LISTING whose own liveness read failed is `unknown` for the same reason and
+	 * by the same route: `fleetRosterFromSessions` declines a degraded roster and
+	 * answers null, which this reduces to `unknown` (review round 1, B1 = QA Q-1).
 	 */
 	async servingWorkState(): Promise<ServingWorkState> {
 		try {
@@ -3128,10 +3147,65 @@ export class BackendServiceManager {
 				// first page is still work in flight, so the read asks for the lot.
 				limit: 500,
 			});
+			this.noteFleetReadAnswer(response.status);
 			if (response.status !== 200) return "unknown";
 			return servingWorkStateFromSessions(response.body);
 		} catch {
+			this.fleetReadFailure = "unreachable";
 			return "unknown";
+		}
+	}
+
+	/**
+	 * Record what a `sessions.list` answer says about the app's own access.
+	 *
+	 * 401/403 is the one non-200 that is about the CREDENTIAL rather than about the
+	 * fleet: the server is up and answering, and it is refusing this app's token.
+	 * Everything else - another status, or no answer at all - is `unreachable`,
+	 * which is the arm whose remedy (try again once the server answers) is true.
+	 */
+	private noteFleetReadAnswer(status: number): void {
+		this.fleetReadFailure =
+			status === 401 || status === 403 ? "refused-credentials" : "unreachable";
+	}
+
+	/**
+	 * Why the last fleet read could not be taken: `servingWorkState`'s own reason.
+	 *
+	 * Read by the update path only when a refusal is being composed, and only on
+	 * the `unknown` arm - see `FleetDrainOutcome.credentialsRefused`.
+	 */
+	fleetReadFailureReason(): "unreachable" | "refused-credentials" {
+		return this.fleetReadFailure;
+	}
+
+	/**
+	 * The session roster itself: the same read as `servingWorkState`, with the
+	 * rows kept rather than reduced to one verdict.
+	 *
+	 * The update path's fleet gate needs the rows for two jobs a verdict cannot
+	 * do: naming the sessions it waited for in a refusal, and taking the before
+	 * and after snapshots that tell it which runtimes a restart displaced
+	 * (`backend/fleet-drain.ts`). Both callers read ONE route, and the row shape
+	 * and the busy spelling come from the same module, so there is no second
+	 * reading of what "busy" means.
+	 *
+	 * Null rather than an empty array when the route did not answer: an empty
+	 * roster is a machine with no sessions, which is a different fact from a read
+	 * that could not be taken.
+	 */
+	async servingSessionFleet(): Promise<FleetRosterRow[] | null> {
+		try {
+			const response = await this.requestDesktop({
+				op: "sessions.list",
+				limit: 500,
+			});
+			this.noteFleetReadAnswer(response.status);
+			if (response.status !== 200) return null;
+			return fleetRosterFromSessions(response.body);
+		} catch {
+			this.fleetReadFailure = "unreachable";
+			return null;
 		}
 	}
 

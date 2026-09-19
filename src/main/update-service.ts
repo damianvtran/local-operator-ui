@@ -44,8 +44,21 @@ import {
 	stripErrorPrefixes,
 	transientTransportCode,
 } from "../shared/transport-failure";
+import type { FleetRosterRow } from "./backend-version-drift";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig, launchEnv } from "./backend/config";
+import {
+	FLEET_DRAIN_BUDGET_MS,
+	FLEET_DRAIN_POLL_MS,
+	FLEET_RETIRE_GRACE_MS,
+	FLEET_RETIRE_SETTLE_MS,
+	type FleetDrainOutcome,
+	fleetDrainRefusalSentence,
+	reengageDisplacedSessions,
+	sessionHasRuntime,
+	unionFleetSnapshots,
+	waitForFleetIdle,
+} from "./backend/fleet-drain";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	type ManagedUpdateOutcome,
@@ -55,6 +68,12 @@ import {
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
 import { NOTIFICATIONS_ENV } from "./backend/notification-launch";
+import {
+	SESSION_ENGAGE_BEAT_MS,
+	SESSION_ENGAGE_HOLD_MS,
+	SESSION_ENGAGE_OPEN_MS,
+	engageSessionThroughStream,
+} from "./backend/session-engage";
 import { setupFailureCause } from "./backend/setup-failure-causes";
 import {
 	legacyEnvironmentReport,
@@ -711,6 +730,39 @@ export type BackendUpdateErrorReport = {
 	 * both, so the producer says which is which and no heuristic decides it.
 	 */
 	installerOutput?: string;
+	/**
+	 * Set when this report is a REFUSAL rather than a failure: the fleet did not
+	 * drain and the app chose not to update the server (review round 1, D1).
+	 *
+	 * The panel is the same surface either way - both are `phase: "update"` and
+	 * both leave the app on the old build - but they are not the same event, and
+	 * painting a deliberate, bounded decision in the failure panel's clothes (red
+	 * triangle, "didn't finish", `Try again` emphasized) told a reader their
+	 * update had broken when the app had just declined to cut off their work. The
+	 * flag lets the renderer paint it as the wait it was; the fields beside it are
+	 * what the reader can act on, which the sentence alone buried mid-paragraph in
+	 * muted ink.
+	 */
+	refusal?: {
+		/** `busy` is a measured busy fleet; `unknown` a read that could not be taken. */
+		because: "busy" | "unknown";
+		/** How long the app waited before it stopped waiting. */
+		waitedMs: number;
+		/** The by-hand command, when the plan named one; rendered as a code block. */
+		command: string | null;
+		/** The server answered and refused this app's credentials. */
+		credentialsRefused: boolean;
+		/**
+		 * Whether the install this press was asked for had already landed.
+		 *
+		 * The three refusal sites are two different events (design round 2, D6): the
+		 * install leg's refusal left nothing on disk, while both restart-leg refusals
+		 * happen after the build landed and only the bounce was held back. The panel
+		 * keys its heading on this rather than saying "the update did not start" over
+		 * a panel whose own body says the install has landed.
+		 */
+		installLanded: boolean;
+	};
 };
 
 /**
@@ -753,6 +805,19 @@ export type BackendUpdateInfo = {
 	 * build until it restarts on its own, and no turn in flight is dropped.
 	 */
 	restartable?: boolean;
+	/**
+	 * Whether THIS PRESS restarts the server, which `restartable` does not answer.
+	 *
+	 * `restartable` says the daemon serving this app is one the app STARTED, and
+	 * every sentence that promised a restart used it as the predicate - true on a
+	 * generation install too, where the press no longer restarts anything: the new
+	 * build lands in a tree no running process is reading and the server adopts it
+	 * at its own next idle. The two readings differ exactly there, so the offer
+	 * carries the second one rather than leaving the panel to infer a bounce from
+	 * ownership. Absent means an older main process, and `serverRestartsWithInstall`
+	 * falls back to the old rule for it.
+	 */
+	restartsServer?: boolean;
 	/**
 	 * Whether the environment `update-backend` would move is the app's OWN one.
 	 *
@@ -1695,6 +1760,57 @@ export class UpdateService {
 	 * the handler).
 	 */
 	private installPreflightInFlight = false;
+
+	/**
+	 * How long an update press may hold back for the fleet, and how often it
+	 * re-reads it.
+	 *
+	 * FIELDS rather than the module's constants read in place, because both halves
+	 * are waited on inside one press and the harness has to be able to drive a wait
+	 * in milliseconds instead of ten minutes (`scripts/update-robustness.test.mjs`,
+	 * the same lever `waitForBackendVersion` and the install budgets already are).
+	 * The values they start at are the host tool's own, in
+	 * `backend/fleet-drain.ts`, where the reasoning for the ten minutes lives.
+	 */
+	public fleetDrainBudgetMs = FLEET_DRAIN_BUDGET_MS;
+	public fleetDrainPollMs = FLEET_DRAIN_POLL_MS;
+
+	/**
+	 * How long a displaced runtime gets to retire on its own before the app puts
+	 * its successor back, and how long the pre-swap live set must hold still first.
+	 *
+	 * Fields for the reason the pair above are: a service-level case has to drive
+	 * the wait in milliseconds instead of the harness's real convergence window
+	 * (30 s of settle inside a 60 s grace), and the numbers themselves - with the
+	 * harness constants they come from - are argued in `backend/fleet-drain.ts`.
+	 */
+	public fleetRetireGraceMs = FLEET_RETIRE_GRACE_MS;
+	public fleetRetireSettleMs = FLEET_RETIRE_SETTLE_MS;
+
+	/**
+	 * The engage's own three bounds: how long the session's events stream may take
+	 * to announce its subscription, how often the held lease is renewed, and how
+	 * long the stream is held while the runtime comes up.
+	 *
+	 * Fields for the reason the four above are - a service-level case drives them in
+	 * milliseconds rather than paying twenty seconds per session - and the numbers
+	 * themselves, with the harness constants they come from, are argued in
+	 * `backend/session-engage.ts`.
+	 */
+	public sessionEngageOpenMs = SESSION_ENGAGE_OPEN_MS;
+	public sessionEngageBeatMs = SESSION_ENGAGE_BEAT_MS;
+	public sessionEngageHoldMs = SESSION_ENGAGE_HOLD_MS;
+
+	/**
+	 * How long the press IN FLIGHT has already spent waiting for the fleet.
+	 *
+	 * The budget above is the press's, not each drain's (review round 1, m2): a
+	 * rebuild press drains twice - once before the install and once before the
+	 * restart - so a per-drain budget let one press hold the button for twenty
+	 * minutes while the panel promised ten. Reset at the top of every press, in
+	 * `updateBackend`, because the guarantee is about one press.
+	 */
+	private fleetDrainSpentMs = 0;
 
 	/**
 	 * Initialize the update service
@@ -4834,9 +4950,15 @@ export class UpdateService {
 			 * reader is talking to) was missing on the only arm whose press now
 			 * publishes a generation and restarts a daemon. It is the managed global
 			 * arm's own wording, aimed at this arm's mechanism.
+			 *
+			 * AND IT NO LONGER PROMISES A DROPPED TURN. It did, because it described
+			 * what the press used to do; the press now waits for the running turns to
+			 * finish before it moves the server (`drainFleetForUpdate`), so the honest
+			 * consequence is the wait and the sequence, with the cost stated as the
+			 * time it takes rather than as work it destroys.
 			 */
 			remedy:
-				"The app publishes a new server environment and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two.",
+				"The app publishes the new build beside the one the server is using, waits for the turns already running on this machine to finish, and then moves the server onto it, so nothing in flight is cut off. This can take a minute or two.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
 			/*
@@ -5407,6 +5529,31 @@ export class UpdateService {
 					 */
 					restartable: this.backendIsAppOwned(),
 					/*
+					 * WHETHER THIS PRESS MOVES THE SERVER AT ALL, which is not the same
+					 * question as `restartable` above and is not answerable from it.
+					 * `restartable` says the daemon reading this app is one the app STARTED;
+					 * this says the press would RESTART it. On the harness's generation
+					 * layout the install lands in a tree no running process is reading, so
+					 * the app installs and announces and the server adopts the new build at
+					 * its own next idle - the cost sentence and the install phase's clause
+					 * both promised a bounce, and a promise the press does not keep is the
+					 * class of copy defect this panel has been reviewed for three times.
+					 *
+					 * THREE FACTS, and every one of them is already on this panel: the press
+					 * runs the app's own publish-and-restart only where the install it would
+					 * move is the app's OWN (`appOwnsInstall`, the reading below it); the
+					 * global `lop update` route does not bounce anything when its install is
+					 * a harness generation (`managedRoute`), and does when the route is the
+					 * in-place checkout rebuild; and a daemon this app did not start is never
+					 * the app's to move at all. The single case that restarts on a generation
+					 * install is a press with nothing left to install - the skew panel's own
+					 * control - which is a different offer entirely.
+					 */
+					restartsServer:
+						this.backendIsAppOwned() &&
+						(this.appOwnsInstall(startupMode, serving) ||
+							plan.managedRoute !== "entry-point"),
+					/*
 					 * AND WHOSE INSTALL A PRESS WOULD MOVE (design D5), which is the other
 					 * ownership reading: `restartable` is true here on a global install too,
 					 * where the app supervises a daemon it did not install. The mode alone
@@ -5905,6 +6052,324 @@ export class UpdateService {
 	 */
 	private backendIsAppOwned(): boolean {
 		return this.backendService?.servingInstall().owned.owned ?? false;
+	}
+
+	/**
+	 * Wait for the fleet this app can see to go idle, or refuse the update.
+	 *
+	 * THE ONE GATE EVERY RESTART AND EVERY IN-PLACE INSTALL GOES THROUGH. A
+	 * restart of the server serving this app is `stop(true)` - SIGTERM, ten
+	 * seconds, SIGKILL - and the daemon's own `retire.py` declines that exit for
+	 * exactly this reason: its shutdown cancels work it owns. The operator's rule
+	 * is that nothing kills runtimes en masse, so the app waits for the fleet to
+	 * drain before it touches anything, and REFUSES with a remedy at the end of
+	 * its budget rather than cutting off a turn on a timer.
+	 *
+	 * WHY THE MANAGER'S OWN READERS. `servingWorkState` is the app's existing
+	 * busy signal (see `servingWorkStateFromSessions`) and `servingSessionFleet`
+	 * is the same route with the rows kept; this method adds the WAIT and the
+	 * refusal, not a second notion of what is running.
+	 *
+	 * A REFUSAL, NOT A FAILURE: it answers the press with the sentence that says
+	 * what the app was waiting for, on the same channel the other refusals use
+	 * (`backend-update-error`), and the install it guarded does not happen.
+	 *
+	 * @returns true when the fleet drained (or nothing is running in it), false
+	 *   when the update was refused and the caller must not proceed
+	 */
+	private async drainFleetForUpdate(input: {
+		backend: BackendServiceManager;
+		/** The command a reader could run by hand instead, when the plan names one. */
+		command: string | null;
+		what: "install" | "restart";
+		/**
+		 * Whether the install this press was asked for has already landed. It changes
+		 * only the sentence: a refused restart after a landed install must say so,
+		 * or the reader is told an update did not happen when it did.
+		 */
+		installLanded?: boolean;
+	}): Promise<boolean> {
+		const { backend, what } = input;
+		/*
+		 * ONE BUDGET PER PRESS, not one per drain (review round 1, m2). A rebuild
+		 * press has TWO drains - the install leg's and the restart leg's - so a
+		 * budget applied to each let a single press wait twice the ten minutes the
+		 * panel promises. What is spent here is subtracted from what the next
+		 * drain may wait, which keeps the promise the copy makes while leaving a
+		 * turn that STARTS during the install exactly as protected as one that was
+		 * running when the press began: the wait is bounded, not skipped.
+		 */
+		const spentMs = this.fleetDrainSpentMs;
+		const remainingMs = Math.max(0, this.fleetDrainBudgetMs - spentMs);
+		const outcome: FleetDrainOutcome = await waitForFleetIdle({
+			readWorkState: () => backend.servingWorkState(),
+			readRoster: () => backend.servingSessionFleet(),
+			// The transport's own reading of WHY an unreadable roster was
+			// unreadable, read only if a refusal is composed from one.
+			readUnreadableReason: () => backend.fleetReadFailureReason(),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+			now: () => Date.now(),
+			budgetMs: remainingMs,
+			pollMs: this.fleetDrainPollMs,
+			/*
+			 * The panel is told the update is WAITING, and it is told before the
+			 * first poll rather than after the tenth: a press that means to install
+			 * and instead sits still for minutes is the silence this panel's copy
+			 * exists to remove. The ELAPSED reading travels with it (design D3): a
+			 * ten-minute wait with nothing moving on the frame is indistinguishable
+			 * from a hung app, and `waitedMs` is the one number the app already has.
+			 */
+			onWait: (elapsedMs) => {
+				this.sendToRenderer("backend-update-progress", {
+					phase: "draining",
+					waitedMs: spentMs + elapsedMs,
+				});
+				logger.info(
+					`Update waiting for the fleet to drain before it may ${what} (${Math.round(elapsedMs / 1000)}s so far)`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			},
+		});
+		this.fleetDrainSpentMs = spentMs + outcome.waitedMs;
+		if (outcome.kind === "drained") {
+			logger.info(
+				`The fleet is idle (${outcome.fleet} session(s) on the roster, ${outcome.waitedMs}ms waited); the update may ${what}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return true;
+		}
+		const message = fleetDrainRefusalSentence(
+			outcome,
+			input.installLanded === true,
+		);
+		/*
+		 * THE COMMAND IS ITS OWN FIELD (design D2). It used to be a clause inside the
+		 * sentence, printed with literal backticks, so the one panel that TELLS the
+		 * reader to run something was the one that did not offer the copy affordance
+		 * its sibling manual panel has had all along. The sentence stays the log's
+		 * line; the panel renders this as a code block.
+		 */
+		const command = input.command ?? null;
+		/*
+		 * THE PRESS'S TOTAL, NOT THIS LEG'S (review round 2, R2-m1 = design D9). The
+		 * ledger above is one budget for the whole press (round 1, m2), so a rebuild
+		 * can spend minutes in the install leg and reach this refusal with a leg of
+		 * ~0 - and the panel the reader is looking at has been showing the PRESS's
+		 * total all along (`draining`'s `spentMs + elapsedMs`). Reporting the leg made
+		 * the app say "waited 1 minute" after a ten-minute press, about the same wait
+		 * it had just counted to 9m 30s on screen.
+		 */
+		const pressWaitedMs = spentMs + outcome.waitedMs;
+		logger.warn(
+			`Refusing to ${what}: the fleet did not drain in ${pressWaitedMs}ms (${outcome.because}, ${outcome.busy.length} mid-turn, this leg spent ${outcome.waitedMs}ms). ${message}${command ? ` By hand: ${command}` : ""}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-error", {
+			message,
+			phase: "update",
+			logPath: serverUpdateLogPath(),
+			/*
+			 * WHAT WAS WAITED FOR, and the choice made instead of forcing: this is
+			 * what lets the panel paint a HELD-BACK update rather than a failed one
+			 * (review round 1, D1) and put the sessions it waited for, and the
+			 * command that skips the wait, where a reader can act on them.
+			 */
+			refusal: {
+				because: outcome.because,
+				waitedMs: pressWaitedMs,
+				command,
+				credentialsRefused: outcome.credentialsRefused === true,
+				/*
+				 * WHICH REFUSAL THIS IS (design round 2, D6). The heading is the reader's
+				 * takeaway from a panel they have been looking at for ten minutes, and the
+				 * three refusal sites are not the same event: the install leg's refusal left
+				 * nothing on disk, while the two restart-leg refusals happen AFTER the build
+				 * landed. "The update didn't start" is false on the second pair - the
+				 * producer's own doc for `installLanded` says so - so the fact travels with
+				 * the report and the panel keys its heading on it.
+				 */
+				installLanded: input.installLanded === true,
+			},
+		});
+		return false;
+	}
+
+	/**
+	 * Put back the runtimes a restart displaced, and say what came back.
+	 *
+	 * Step 5 of the host tool's own order (`~/tools/lop-fleet-update`): the app
+	 * snapshots the fleet, drains it, moves the server, and then re-engages what
+	 * the move displaced - the unwatched `daemon`-kind sessions in particular,
+	 * which nothing else revives. `reengageDisplacedSessions` owns the retire wait
+	 * and the ordering rules.
+	 *
+	 * BEST EFFORT AND NEVER A BLOCKER: this runs after the server is healthy and
+	 * the update has already been reported, so a displace list that will not come
+	 * back is a logged fact rather than a failed update. That is deliberate - a
+	 * `warm` the daemon refuses must not turn a landed update into an error panel.
+	 */
+	private async reengageFleetAfterRestart(
+		backend: BackendServiceManager,
+		before: readonly FleetRosterRow[],
+	): Promise<void> {
+		try {
+			const result = await reengageDisplacedSessions({
+				before,
+				readRoster: () => backend.servingSessionFleet(),
+				engage: (row) => this.engageSessionRuntime(backend, row),
+				sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+				now: () => Date.now(),
+				graceMs: this.fleetRetireGraceMs,
+				settleMs: this.fleetRetireSettleMs,
+				retirePollMs: this.fleetDrainPollMs,
+				log: (line) => logger.info(line, LogFileType.UPDATE_SERVICE),
+			});
+			if (result.displaced.length === 0) {
+				/*
+				 * NOTHING WAS DISPLACED is not the same statement as NOTHING LEFT TO DO
+				 * (review round 2, R2-M2). A pre-swap runtime that declined to retire
+				 * because it had work - the idle-gated arm, which no clock in this wait can
+				 * bound - is still resident at every read, so it is never "displaced" and
+				 * never engaged; it leaves when its turn ends, which is after this app has
+				 * stopped watching. Saying so is the difference between a log that records
+				 * what the app saw and one that claims the fleet was intact.
+				 */
+				if (result.stillResident.length > 0) {
+					logger.info(
+						`Nothing was displaced after the restart; ${result.stillResident.length} pre-swap runtime(s) were still resident when the wait ended (${result.stillResident
+							.map((row) => row.sessionId)
+							.join(", ")}) and will go cold on their own schedule`,
+						LogFileType.UPDATE_SERVICE,
+					);
+				}
+				return;
+			}
+			if (result.failed.length > 0) {
+				logger.warn(
+					`${result.failed.length} displaced session(s) did not come back after the restart: ${result.failed
+						.map((row) => `${row.sessionId} (${row.reason})`)
+						.join(", ")}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+		} catch (error) {
+			logger.warn(
+				`Could not re-engage the sessions a restart displaced: ${error instanceof Error ? error.message : String(error)}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+	}
+
+	/**
+	 * Start one session's runtime again, without submitting anything to it.
+	 *
+	 * THE APP'S OWN PATH FOR OPENING A SESSION (review round 2, R2-M1, which is the
+	 * finding that this call was a no-op against the shipped daemon). What this used
+	 * to do - post `sessions.watch` with a freshly generated subscription id and then
+	 * post `sessions.warm` - breaks BOTH preconditions the two routes carry:
+	 *
+	 * - **The lease must name a subscription the bridge KNOWS.** The id is minted
+	 *   server-side by an events subscription (`DesktopSessionBridge.subscribe`) and
+	 *   `watch` looks it up in that table, raising `KeyError` for one it has never
+	 *   seen - which the route ladder answers as a **404**, one request before the
+	 *   warm. A random id therefore never leased anything, and the engage reported
+	 *   "did not answer" about a call it could have known would fail.
+	 * - **A warm only survives while something else holds the bridge.** The bridge is
+	 *   reference-counted by IN-FLIGHT REQUESTS; a warm issued while nothing holds it
+	 *   is cancelled the moment its own request returns (`routes/desktop_sessions.py`'s
+	 *   `warm` docstring, pinned by
+	 *   `tests/unit/server/test_desktop_sessions.py::test_a_warm_survives_its_own_request_while_a_subscriber_holds_the_bridge`).
+	 *   The renderer's panel path works because a mounted `SessionPanel` holds an
+	 *   EVENTS STREAM for its whole life; a one-shot warm from main held nothing, so
+	 *   the 200 said the call was admitted, not that a runtime exists.
+	 *
+	 * So the engage is what CLICKING THE SESSION does, through the app's own relay:
+	 * hold the session's events stream, take the subscription id its `open` frame
+	 * carries, lease that id as a VISIBLE watch (a live visible lease is what CREATES
+	 * residency for a cold session - `DesktopSessionBridge.refresh_watch`), warm it,
+	 * and keep holding until the roster says the runtime is there.
+	 * `session-engage.ts` owns that rule and the evidence each leg rests on.
+	 *
+	 * AND THE BOOLEAN IS A CLAIM ABOUT THE MACHINE, not about a status code: every
+	 * route on this path answers 200 to a call it will not act on, so what decides the
+	 * outcome is the same roster read the fleet gate uses (`sessionHasRuntime`). The
+	 * caller's "re-engaged N of M" log line is worth exactly that much.
+	 *
+	 * `visible: true` IS ONLY SAFE WHERE A PRESENCE RECORD EXISTS. The runtime prefers
+	 * this app's machine-wide presence record and falls back to exactly this
+	 * per-connection flag (`session/runtime/server.py::_desktop_visible`), so on a
+	 * machine with no record the app is telling a session's runtime that somebody is
+	 * looking at a session nobody has open - which can suppress a banner for it
+	 * (`_visible_attach_surfaces`). It is kept because the lease-driven warm requires
+	 * a VISIBLE lease (`_lease_warm_loop`), and it is the flag the renderer's own beat
+	 * sends for a session it really is showing.
+	 *
+	 * NOT `sessions.message`, deliberately: a message would admit a turn in every
+	 * conversation this machine holds, which is work and spend the user did not ask
+	 * for, and the drain that ran before the restart is what makes a notice about
+	 * interrupted work unnecessary - by construction nothing was mid-turn when the
+	 * server moved.
+	 */
+	private async engageSessionRuntime(
+		backend: BackendServiceManager,
+		row: FleetRosterRow,
+	): Promise<boolean> {
+		const relay = backend.getStreamRelay();
+		return await engageSessionThroughStream({
+			sessionId: row.sessionId,
+			subscribe: (sessionId, emit) =>
+				relay.subscribe({ sessionId }, (event) => {
+					if (event.kind === "data") {
+						emit({ kind: "data", data: event.data });
+						return;
+					}
+					if (event.kind === "error") {
+						emit({ kind: "error", detail: event.detail });
+						return;
+					}
+					emit({ kind: "end" });
+				}),
+			unsubscribe: (streamId) => relay.unsubscribe(streamId),
+			watch: (subscriptionId) =>
+				backend.requestDesktop({
+					op: "sessions.watch",
+					sessionId: row.sessionId,
+					subscriptionId,
+					visible: true,
+					canNotify: false,
+				}),
+			warm: (sessionId) =>
+				backend.requestDesktop({ op: "sessions.warm", sessionId }),
+			hasRuntime: async () =>
+				sessionHasRuntime(await backend.servingSessionFleet(), row.sessionId),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+			now: () => Date.now(),
+			openMs: this.sessionEngageOpenMs,
+			beatMs: this.sessionEngageBeatMs,
+			holdMs: this.sessionEngageHoldMs,
+			log: (line) => logger.info(line, LogFileType.UPDATE_SERVICE),
+		}).then((outcome) => {
+			if (!outcome.engaged) {
+				logger.warn(
+					`The re-engage of ${row.sessionId} did not start a runtime: ${outcome.reason ?? "no reason given"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+			return outcome.engaged;
+		});
+	}
+
+	/**
+	 * The fleet as it is now, for the before/after pair a restart is judged on.
+	 *
+	 * Null is a roster that could not be read, and every caller treats it as "no
+	 * snapshot": a re-engage with no `before` has nothing to put back, and
+	 * inventing one would re-engage sessions that were never displaced.
+	 */
+	private async readFleetSnapshot(
+		backend: BackendServiceManager,
+	): Promise<FleetRosterRow[] | null> {
+		return backend.servingSessionFleet();
 	}
 
 	/**
@@ -6525,6 +6990,30 @@ export class UpdateService {
 			? this.readRebuildMarkerState(installPath)
 			: null;
 		/*
+		 * THE INSTALL LEG'S OWN SNAPSHOT, and the REBUILD route is the only arm that
+		 * needs one: `lop update` on the generation layout lands beside every running
+		 * process, while a rebuild reinstalls THIS MACHINE'S CHECKOUT in place - the
+		 * 2026-09-15 shape, where 36 sessions went with no exit record - so a runtime
+		 * it kills is a runtime this pass has to put back. It is NOT the snapshot the
+		 * re-engage compares against (review round 1, M2): on this route the install
+		 * can be half an hour, and a pre-install reading used as the before-side of a
+		 * restart diff re-engages sessions that retired legitimately in between and
+		 * misses every session created after it.
+		 */
+		const fleetBeforeInstall = rebuildRoute
+			? await this.readFleetSnapshot(backend)
+			: null;
+		if (
+			rebuildRoute &&
+			!(await this.drainFleetForUpdate({
+				backend,
+				command: freshPlan.updateCommand ?? null,
+				what: "install",
+			}))
+		) {
+			return false;
+		}
+		/*
 		 * The phase is announced BEFORE the child starts, because on a realistic cold
 		 * cache the install is ~47 s and the restart ~15 s of one unchanging panel:
 		 * the bar animated and nothing else moved, so a user could not tell a working
@@ -6675,8 +7164,29 @@ export class UpdateService {
 		 * the app reports the skew and leaves the process alone. A supervised daemon
 		 * has already been refreshed by `lop update` itself
 		 * (`refresh_daemons_after_upgrade`), and the existing probe loop re-attaches.
+		 *
+		 * THE GENERATION RULE, and it is what makes this route non-disruptive. On the
+		 * generation layout the install landed in a tree no running process is
+		 * reading and the pointer moved, so the daemon serving this app keeps serving
+		 * correctly on the generation it booted from; a running backend on an older
+		 * generation is an accepted steady state, and its runtime adopts the new
+		 * build at its own next idle. A restart here would spend a bounce - and drop
+		 * whatever is in flight - to buy nothing, so the app reports the skew and
+		 * leaves the process alone.
+		 *
+		 * THE ONE PRESS THAT STILL MOVES IT is one with nothing left to install:
+		 * the skew panel's own "restart the server onto the new build" control
+		 * reaches this method with the install already current, and there the restart
+		 * IS the work the reader asked for. It goes through the same drain, and its
+		 * sessions are re-engaged afterwards like any other restart's.
 		 */
-		if (backend.isUsingExternalBackend()) {
+		const generationInstall = freshPlan.managedRoute === "entry-point";
+		const installAlreadyCurrent =
+			!rebuildRoute && before !== null && after !== null && before === after;
+		if (
+			backend.isUsingExternalBackend() ||
+			(generationInstall && !installAlreadyCurrent)
+		) {
 			const health = await this.getInstalledBackendVersion();
 			/*
 			 * The reading that travels is the PROCESS's own, not `/health`'s (round 2,
@@ -6716,16 +7226,55 @@ export class UpdateService {
 		}
 
 		// The app owns this daemon, so it is the one process that has to move onto
-		// the new build - and the same tail the bundled path runs: restart, health,
-		// hold the reported version to the target, then announce.
+		// the new build - and the same tail the bundled path runs: wait for the
+		// fleet, restart, health, hold the reported version to the target, then
+		// announce and put back what the move displaced.
+		if (
+			!(await this.drainFleetForUpdate({
+				backend,
+				command: freshPlan.updateCommand ?? null,
+				what: "restart",
+				/*
+				 * A press with nothing left to install has no install to report as
+				 * landed, and saying one was would be the one false thing in the
+				 * refusal.
+				 */
+				installLanded: !installAlreadyCurrent,
+			}))
+		) {
+			/*
+			 * The install HAS landed and is not undone: a generation install that is
+			 * already current, or a rebuild whose child finished, is on disk and stays
+			 * there. What the refusal holds back is the Bounce - so the next launch (or
+			 * the next idle) moves the daemon onto it, which is the same steady state
+			 * the generation rule above accepts.
+			 */
+			logger.info(
+				installAlreadyCurrent
+					? "Nothing was left to install; the restart was refused because the fleet did not drain. The daemon keeps serving the build it loaded."
+					: "The install landed; the restart was refused because the fleet did not drain. The daemon keeps serving the build it loaded.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			return false;
+		}
 		logger.info(
 			"Restarting backend service onto the updated install...",
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.sendToRenderer("backend-update-progress", { phase: "restarting" });
-		backend.setAutoUpdating(true);
+		/*
+		 * THE SNAPSHOT IS TAKEN AT THE MOMENT THE RESTART ACTS (review round 1, M2).
+		 * Everything before this line is waiting - a drain of up to ten minutes, and
+		 * on the rebuild route an install of up to half an hour before that - and a
+		 * snapshot from the far side of that wait is a diff over the wrong interval:
+		 * it re-engages sessions that had already retired when the restart began, and
+		 * it cannot see one created while the app was waiting. Taken here, after the
+		 * drain and reading the daemon the restart is about to bounce, the diff is
+		 * exactly "this session had a runtime when the restart began and does not
+		 * now".
+		 */
+		const fleetBeforeRestart = await this.readFleetSnapshot(backend);
 		const restartSuccess = await backend.restart();
-		backend.setAutoUpdating(false);
 		if (!restartSuccess) {
 			logger.error(
 				"Backend service restart failed after the global install update",
@@ -6780,6 +7329,22 @@ export class UpdateService {
 			`Backend reports version ${reported} after the global install update`,
 			LogFileType.UPDATE_SERVICE,
 		);
+		/*
+		 * WHAT THE SWAP DISPLACED COMES BACK (the host tool's step 5), and it runs
+		 * AFTER the server is healthy and BEFORE the panel says the update is done:
+		 * a restart that leaves a runtime gone is the half nothing else repairs, and
+		 * the unwatched `daemon`-kind sessions in particular have no viewer to
+		 * re-engage them. Before the completion, because a "finished" that outranks
+		 * the repair would be the wrong claim - and the wait this adds (the harness's
+		 * own convergence) is why the phase above says minutes, not seconds.
+		 */
+		const reengageSnapshot = unionFleetSnapshots(
+			fleetBeforeInstall,
+			fleetBeforeRestart,
+		);
+		if (reengageSnapshot !== null) {
+			await this.reengageFleetAfterRestart(backend, reengageSnapshot);
+		}
 		this.sendToRenderer("backend-update-completed", {
 			installVersion: after,
 			runningVersion: reported,
@@ -6914,6 +7479,40 @@ export class UpdateService {
 
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
+		/*
+		 * THE UPDATE-IN-FLIGHT HOLD COVERS THE WHOLE PRESS, NOT JUST THE RESTART
+		 * (review round 1, m1). `isAutoUpdating` is what the periodic drift check
+		 * reads as its `update-in-flight` hold (`driftRestartDecision`), and it used
+		 * to be raised around `backend.restart()` alone - so during a drain of up to
+		 * ten minutes the drift check could find the pair stale, the fleet idle the
+		 * moment the drain cleared, and bounce the daemon ITSELF: under the press,
+		 * with no snapshot of its own and no re-engage, which is exactly the
+		 * unguarded restart the fleet gate exists to remove.
+		 *
+		 * It also covers the press for the two readers inside the manager: a
+		 * deliberate stop is not an "exited unexpectedly" dialog, and recovery does
+		 * not race a restart that is already scheduled (`recoverFromDetachment`).
+		 *
+		 * WHAT THIS DOES NOT DO IS CLEAR A HOLD IT DID NOT TAKE: a second press
+		 * reaches here too - the surfaces that ask for an update hold per-surface
+		 * flags - and it is answered by the install group guard below, so clearing
+		 * unconditionally on its way out would drop the flag under the first press.
+		 * The same reading guards the drain ledger: only the press that opened the
+		 * window may start its ten minutes.
+		 */
+		const backend = this.backendService;
+		/*
+		 * READ FROM THE MANAGER, and read OPTIONALLY: some callers of this method
+		 * hand it a facade with only the two flags the old code touched
+		 * (`scripts/update-robustness.test.mjs` and the QA rigs behind #371), and a
+		 * hard call would break every one of them for a reading whose absence means
+		 * exactly what the old code assumed - that the flag is ours to take.
+		 */
+		const heldElsewhere = backend?.checkIsAutoUpdating?.() === true;
+		if (!heldElsewhere) {
+			this.fleetDrainSpentMs = 0;
+			backend?.setAutoUpdating(true);
+		}
 
 		try {
 			// Check if we have a backend service and get its startup mode
@@ -7161,6 +7760,8 @@ export class UpdateService {
 			}
 
 			return false;
+		} finally {
+			if (!heldElsewhere) backend?.setAutoUpdating(false);
 		}
 	}
 
@@ -7443,6 +8044,52 @@ export class UpdateService {
 			});
 			return true;
 		}
+		/*
+		 * THE FLEET GATE, and this is the arm where it bites: the environment above
+		 * is the app's OWN, so this app is the only thing in the machine that can
+		 * wait for the move to be safe. The publish lands a generation beside the
+		 * running one and touches nothing a live process is reading, while the
+		 * restart below is `stop(true)`: SIGTERM, ten seconds, SIGKILL - so the
+		 * snapshot the re-engage compares against is taken AFTER the drain and
+		 * immediately before the restart, not here (review round 1, M2).
+		 *
+		 * A REFUSAL LEAVES THE INSTALL IN PLACE. The pointer has already flipped, so
+		 * the next launch moves onto it; what is held back is the bounce, and the
+		 * refusal says exactly that to a reader who asked for an update and did get
+		 * one on disk.
+		 */
+		/*
+		 * THE BEFORE-SIDE IS TAKEN HERE, BETWEEN THE PUBLISH AND THE DRAIN (review
+		 * round 2, R2-M3).
+		 *
+		 * The restart-leg snapshot below is the right reading for the interval the
+		 * RESTART covers, but it is the only read the release path had, and the
+		 * publish happens minutes earlier in the same method. A publish moves the
+		 * install under the runtimes serving this machine, so an idle runtime retires
+		 * on its own build check (5 s cadence, once the marker is 10 s old, spread
+		 * over a 20 s stagger) - and the drain between here and the restart can last
+		 * ten minutes when another session is mid-turn, which is exactly the press
+		 * this gate exists for. Those sessions are gone before the only read that
+		 * could name them, so they were never re-engaged: the idle members of a fleet
+		 * were the ones the app silently lost.
+		 *
+		 * This is the reading the REBUILD route already keeps for its own install leg
+		 * (`fleetBeforeInstall`, taken before its drain and unioned below), and the
+		 * union's stated trade is the right side here too: re-engaging a session that
+		 * retired on its own is cheaper than leaving a lost one, and the two readings
+		 * together are still "what actually vanished".
+		 */
+		const fleetAfterPublish = await this.readFleetSnapshot(backend);
+		if (
+			!(await this.drainFleetForUpdate({
+				backend,
+				command: null,
+				what: "restart",
+				installLanded: outcome.replaced,
+			}))
+		) {
+			return false;
+		}
 		logger.info(
 			"Restarting backend service onto the published environment...",
 			LogFileType.UPDATE_SERVICE,
@@ -7457,9 +8104,14 @@ export class UpdateService {
 		if (willPublish) {
 			this.sendToRenderer("backend-update-progress", { phase: "restarting" });
 		}
-		backend.setAutoUpdating(true);
+		/*
+		 * The snapshot the re-engage compares against is taken HERE - after the
+		 * drain, at the moment of the bounce - for the reason the global route's own
+		 * comment gives (review round 1, M2): a reading from before a ten-minute
+		 * drain diffs the wrong interval.
+		 */
+		const fleetBeforeRestart = await this.readFleetSnapshot(backend);
 		const restarted = await backend.restart();
-		backend.setAutoUpdating(false);
 		const healthy = restarted ? await this.checkBackendHealth() : false;
 		if (!restarted || !healthy) {
 			/*
@@ -7557,6 +8209,30 @@ export class UpdateService {
 			`The server serving this app reports ${running} after the app-managed environment update`,
 			LogFileType.UPDATE_SERVICE,
 		);
+		/*
+		 * WHAT THE RESTART DISPLACED COMES BACK (the host tool's step 5). The app
+		 * owns this daemon, so no harness supervisor is watching the sessions it
+		 * started: a runtime that did not survive the bounce has nothing else to
+		 * revive it, and the unwatched `daemon`-kind sessions in particular have no
+		 * viewer to re-subscribe. Runs before the completion because it is part of
+		 * the update being finished - the restart is not "done" until what it
+		 * displaced is back - and is best effort by design: a session that will not
+		 * come back is logged, never a failed update.
+		 *
+		 * THE SNAPSHOT IS THE UNION OF THE PUBLISH-SIDE AND PRE-RESTART READS (review
+		 * round 2, R2-M3), which is the reading the rebuild route already takes: the
+		 * publish retires idle runtimes on the build skew and the drain between the two
+		 * reads can be ten minutes long, so a diff taken only across the restart cannot
+		 * see what the publish itself took away. Deduplicated by session id, so no
+		 * session is engaged twice.
+		 */
+		const reengageSnapshot = unionFleetSnapshots(
+			fleetAfterPublish,
+			fleetBeforeRestart,
+		);
+		if (reengageSnapshot !== null) {
+			await this.reengageFleetAfterRestart(backend, reengageSnapshot);
+		}
 		this.sendToRenderer("backend-update-completed", {
 			installVersion,
 			runningVersion: running,
