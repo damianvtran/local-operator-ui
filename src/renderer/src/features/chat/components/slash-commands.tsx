@@ -40,6 +40,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { archiveDestinationApplies } from "../chat-archived";
 import { useEntities } from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
@@ -406,6 +408,27 @@ export function useSlashCompletion({
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
+	/*
+	 * Whether this backend can archive at all, and what THIS conversation's archive
+	 * state is - the two inputs `archiveDestinationApplies` needs when the command
+	 * rows are built below.
+	 *
+	 * Read here rather than passed in as a flag because the two rows it filters are
+	 * the palette's own: the composer knows the draft, the store knows the
+	 * conversation, and this hook already reaches for the capability for `enabled`.
+	 * `undefined` (no row for this id) is a real answer and means UNKNOWN - see the
+	 * rule for why `/archive` survives it and `/unarchive` does not.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	const openArchived = useCanonicalSessionsStore((state) =>
+		sessionId
+			? (state.archiveFacts[sessionId]?.archived ??
+				state.sessions.find((row) => row.session_id === sessionId)?.archived)
+			: undefined,
+	);
 	const listId = useId();
 	const query = useQuery({
 		queryKey: desktopKeys.commands,
@@ -582,11 +605,30 @@ export function useSlashCompletion({
 		 * the matcher cannot answer `/` or `/m` differently (round 1 R3).
 		 */
 		const ranked = commandSuggestions(commandContext.query, registry);
-		return ranked.map(
-			({ name, command }) =>
-				({ kind: "command", command, label: name }) as CompletionRow,
-		);
-	}, [commandContext, registry]);
+		/*
+		 * THE ARCHIVE PAIR IS FILTERED ON THE OPEN CONVERSATION'S OWN STATE, and this
+		 * is the only place a catalogue row is filtered at all. The catalogue is
+		 * STATIC - the backend advertises `/archive` and `/unarchive` for every
+		 * conversation because it does not know which one this pane has open - so
+		 * offering both would show a pair of opposites for one state, one of which
+		 * does nothing. `archiveDestinationApplies` is the one rule (state plus
+		 * capability); a typed word the filter hides still reaches the dispatcher and
+		 * is refused WITH A REASON there, which is why this filter is a preference
+		 * about what to offer rather than the enforcement point.
+		 */
+		return ranked
+			.filter(({ command }) =>
+				archiveDestinationApplies(
+					command.destination,
+					openArchived,
+					archiveEnabled,
+				),
+			)
+			.map(
+				({ name, command }) =>
+					({ kind: "command", command, label: name }) as CompletionRow,
+			);
+	}, [commandContext, registry, openArchived, archiveEnabled]);
 
 	const argumentList = useArgumentRows(
 		inline?.source,
@@ -1082,9 +1124,25 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 
 function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 	const { command, label } = row;
+	/*
+	 * THE DANGER ROLE ON THE COMMAND'S OWN WORD, which is the ink `/delete` is
+	 * marked with in this host: a bare command row carries no argument row and
+	 * therefore no `alert`, so `slashDestructive`'s command-word arm (the arm that
+	 * already makes `/logout`'s pick deliberate) is also what paints it. Asked once
+	 * here so the palette and the run gate cannot disagree about which words are
+	 * destructive - the same reason the function exists at all.
+	 */
+	const destructive = slashDestructive(command.name, undefined);
 	return (
 		<>
-			<span className="shrink-0 font-mono text-body-sm text-ink">/{label}</span>
+			<span
+				className={cn(
+					"shrink-0 font-mono text-body-sm",
+					destructive ? "text-danger" : "text-ink",
+				)}
+			>
+				/{label}
+			</span>
 			{command.aliases.length > 0 && (
 				<span className="shrink-0 text-meta text-ink-dim">
 					{command.aliases

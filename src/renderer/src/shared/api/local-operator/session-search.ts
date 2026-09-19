@@ -31,6 +31,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
  *   on anything else is how an over-limit query reached the wire while the box
  *   read as legal (review round 7, R37).
  */
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SESSION_SEARCH_DEFAULT_LIMIT } from "../../../../../shared/desktop-contract";
 import type { SessionSearchResult } from "../../../../../shared/desktop-session-contract";
@@ -48,12 +49,24 @@ import { desktopResult } from "./desktop-api";
  */
 export const CHAT_SEARCH_DEBOUNCE_MS = 150;
 
-/** One cache entry per query string, so a repeated query is not re-asked. */
-export function chatSearchKey(query: string) {
-	return ["desktop", "sessions", "search", query] as const;
+/**
+ * One cache entry per question, so a repeated question is not re-asked.
+ *
+ * `includeArchived` is PART of the question and therefore part of the key, which
+ * is the whole reason the sidebar's control can be a control: the two answers to
+ * one query text are answers to two different questions, and a cache keyed on the
+ * text alone would serve the answer that carries the archived hits to a panel
+ * whose control says they are hidden - rows that then survive their own removal.
+ */
+export function chatSearchKey(query: string, includeArchived = false) {
+	return ["desktop", "sessions", "search", query, includeArchived] as const;
 }
 
-export function useChatSearch(query: string, enabled: boolean) {
+export function useChatSearch(
+	query: string,
+	enabled: boolean,
+	includeArchived = false,
+) {
 	// The DEBOUNCED query is what is asked for and what keys the cache; the raw
 	// box value stays with the caller so the list can still narrow on a local
 	// match while the request is in flight.
@@ -74,14 +87,33 @@ export function useChatSearch(query: string, enabled: boolean) {
 	 */
 	const refused = searchQueryExceedsLimit(asked);
 	const result = useQuery({
-		queryKey: chatSearchKey(asked),
+		queryKey: chatSearchKey(asked, includeArchived),
 		enabled: enabled && asked.length > 0 && !refused,
-		queryFn: () =>
-			desktopResult<SessionSearchResult>({
+		queryFn: async () => {
+			/*
+			 * THE ANSWER'S CURRENCY, taken here rather than where the answer is read. The
+			 * sequence describes the moment this request STARTS, so an answer that was in
+			 * flight across an archive press cannot supersede the press it predates - and
+			 * an answer requested after a press does supersede it, which is what makes an
+			 * unarchive made in the terminal stop reading archived here.
+			 */
+			const seq = useCanonicalSessionsStore.getState().beginAnswer();
+			const answer = await desktopResult<SessionSearchResult>({
 				op: "sessions.search",
 				q: asked,
 				limit: SESSION_SEARCH_DEFAULT_LIMIT,
-			}),
+				/*
+				 * Omitted when false rather than sent as `false`: the route's default IS
+				 * false, so the ordinary search keeps the request it always sent, and a
+				 * backend that has not learned the flag keeps answering it.
+				 */
+				...(includeArchived ? { include_archived: true } : {}),
+			});
+			useCanonicalSessionsStore
+				.getState()
+				.applySearchAnswer(seq, answer.sessions ?? []);
+			return answer;
+		},
 		// Long enough that re-typing the same query during a session is free,
 		// short enough that a conversation finished a moment ago appears when its
 		// name is typed without waiting for a refetch.
