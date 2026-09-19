@@ -62,7 +62,10 @@ const install = await import(
 );
 const {
 	INSTALL_DISK_SLACK_BYTES,
+	LAUNCH_HOLD_END_MARGIN_SECONDS,
 	PLIST_READ_TIMEOUT_SECONDS,
+	PENDING_INSTALL_HANDOFF_SECONDS,
+	PENDING_INSTALL_LAUNCH_HOLD_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
 	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
 	PENDING_INSTALL_RECENCY_SECONDS,
@@ -76,18 +79,21 @@ const {
 	compareVersions,
 	didUpgradeLand,
 	evaluateBundleSeal,
+	evaluateLaunchDuringInstall,
 	evaluatePendingInstall,
 	generationInstallRoot,
 	healPythonBytecode,
 	installFailurePayload,
 	installInFlightPayload,
+	installLaunchHoldNotice,
 	installStartedText,
 	installedBundleSealBlock,
 	isInstallInFlight,
 	isPythonBytecodePath,
 	isSourceBuildRef,
 	lastInstallAttemptPath,
-	launchdJobLoaded,
+	launchdJobPid,
+	installJobState,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
@@ -1012,7 +1018,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
 	const now = Date.parse(started) + 280 * 1000;
 
-	assert.equal(isInstallInFlight({ marker, jobLoaded: true, now }), true);
+	assert.equal(isInstallInFlight({ marker, jobState: "running", now }), true);
 	assert.equal(
 		evaluatePendingInstall({
 			marker,
@@ -1026,10 +1032,10 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
 	// runs=3114) are all decided by the version: that is a failure.
 	assert.equal(
-		isInstallInFlight({ marker: null, jobLoaded: true, now }),
+		isInstallInFlight({ marker: null, jobState: "running", now }),
 		false,
 	);
-	assert.equal(isInstallInFlight({ marker, jobLoaded: false, now }), false);
+	assert.equal(isInstallInFlight({ marker, jobState: "absent", now }), false);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
@@ -1061,7 +1067,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobState: "running",
 			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
 		}),
 		true,
@@ -1069,7 +1075,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobState: "running",
 			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
 		}),
 		true,
@@ -1077,7 +1083,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobState: "running",
 			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
 		}),
 		false,
@@ -1092,9 +1098,76 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker: { ...marker, startedAt: "" },
-			jobLoaded: true,
+			jobState: "running",
 			now,
 		}),
+		false,
+	);
+
+	/*
+	 * Review R6/R11, the hand-off: launchd reports the job's pid only once ShipIt is
+	 * EXECUTING, and until then the job reads `registered` with no pid. The interval
+	 * is NOT the submission-to-exec split - that is tenths of a second (the app's
+	 * `app quit for the in-flight install` at 11:59:00.520 to ShipIt's first line at
+	 * 11:59:00.991, and 256 ms and 380 ms on the two installs of 2026-09-18 measured
+	 * the same way). It opens when the MARKER is written, because the app writes the
+	 * marker and only then does Squirrel pull the staged artifact through the app's
+	 * own local proxy before submitting anything. Measured across the fourteen
+	 * installs of 2026-09-16..18 it runs 1.92 s to 13.32 s, and every age below is one
+	 * of those installs rather than a round number:
+	 *
+	 *   2 s     09-17 08:30 v0.26.4,  hand-off 1.981 s  (the shortest measured)
+	 *   6.43 s  09-18 16:32 v0.29.0,  hand-off 6.429 s  (past the five-second bound
+	 *                                                    this test was first written
+	 *                                                    against - review R11)
+	 *   13.32 s 09-16 15:23 v0.25.14, hand-off 13.315 s (the longest measured)
+	 */
+	const aged = (seconds) => ({
+		...marker,
+		startedAt: new Date(now - seconds * 1000).toISOString(),
+	});
+	assert.equal(
+		isInstallInFlight({ marker: aged(2), jobState: "registered", now }),
+		true,
+		"the shortest measured hand-off (09-17 08:30) is still the install",
+	);
+	assert.equal(
+		isInstallInFlight({ marker: aged(6.43), jobState: "registered", now }),
+		true,
+		"the 09-18 16:32 hand-off outlasted five seconds and is still the install",
+	);
+	assert.equal(
+		isInstallInFlight({ marker: aged(13.32), jobState: "registered", now }),
+		true,
+		"the longest measured hand-off (09-16 15:23) is still the install",
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker: aged(PENDING_INSTALL_HANDOFF_SECONDS),
+			jobState: "registered",
+			now,
+		}),
+		true,
+		"the bound is inclusive: at its own edge the hand-off may still be open",
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker: aged(PENDING_INSTALL_HANDOFF_SECONDS + 1),
+			jobState: "registered",
+			now,
+		}),
+		false,
+		"one second past the bound, a registration is the leftover it usually is",
+	);
+	// And the U1 case the bound must not resurrect: a COMPLETED install's marker is
+	// minutes old, so its registration still opens the app.
+	assert.equal(
+		isInstallInFlight({ marker: aged(280), jobState: "registered", now }),
+		false,
+	);
+	// An ABSENT job is not an install at any age - there is nothing to be handed.
+	assert.equal(
+		isInstallInFlight({ marker: aged(1), jobState: "absent", now }),
 		false,
 	);
 
@@ -1149,26 +1222,61 @@ test("an install still in flight is not a failure, and a loaded job alone is not
  * on a machine whose launchd is unreachable would strand the marker and the job
  * nobody ever clears.
  */
-test("the install job probe reads launchd's exit status, and cannot run reads as not loaded", () => {
+test("the install job probe separates a running installer from a registration left behind", () => {
 	const asked = [];
 	const probe = (label) => {
 		asked.push(label);
-		return 0;
+		return { status: 0, output: `"PID" = 55322;` };
 	};
-	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", probe), true);
+	assert.equal(installJobState("com.local-operator.ShipIt", probe), "running");
 	assert.deepEqual(asked, ["com.local-operator.ShipIt"]);
+	// Registered, not running: the state a FINISHED install leaves behind on this
+	// machine (measured 2026-09-18: launchd still lists the app's job 72 minutes
+	// after a successful install, with no pid) - and the reading that, taken as
+	// liveness, held every launch for ~29 minutes after an update.
 	assert.equal(
-		launchdJobLoaded("com.local-operator.ShipIt", () => 113),
-		false,
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: `\t"Label" = "com.local-operator.ShipIt";\n\t"OnDemand" = false;`,
+		})),
+		"registered",
+	);
+	// launchd's other output shape for the same fact: the table form, where a job
+	// it is not running has `-` in the pid column.
+	assert.equal(launchdJobPid("55934\t0\tcom.local-operator.ShipIt"), 55934);
+	assert.equal(launchdJobPid("-\t0\tcom.local-operator.ShipIt"), null);
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: "-\t0\tcom.local-operator.ShipIt",
+		})),
+		"registered",
+	);
+	// 113 is launchd's "no job of that name".
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 113,
+			output: "",
+		})),
+		"absent",
+	);
+	// A probe that could not run is neither loaded nor running, and output this
+	// cannot parse is not a licence to hold: the app opens and reports instead.
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => null),
+		"unread",
 	);
 	assert.equal(
-		launchdJobLoaded("com.local-operator.ShipIt", () => null),
-		false,
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: "something this code has never seen",
+		})),
+		"registered",
 	);
 	// No job label means nothing to ask, which is not the same as asking.
 	assert.equal(
-		launchdJobLoaded(null, () => 0),
-		false,
+		installJobState(null, () => ({ status: 0, output: "" })),
+		"unread",
 	);
 });
 
@@ -10350,16 +10458,17 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		return updateService;
 	};
 	const intervals = [];
-	const withService = (jobLoaded) => {
+	const withService = (jobState) => {
 		const updateService = buildService();
 		intervals.push(updateService.updateCheckInterval);
-		updateService.installJobLoadedProbe = () => jobLoaded;
+		updateService.installJobStateProbe = () => jobState;
 		return updateService;
 	};
-	const idle = withService(true);
-	const live = withService(true);
-	const leftover = withService(false);
-	const aged = withService(true);
+	const idle = withService("running");
+	const live = withService("running");
+	const leftoverJob = withService("absent");
+	const freshRegistration = withService("registered");
+	const aged = withService("running");
 	const writeMarker = (startedAt) =>
 		writePendingInstallMarker(userData, {
 			targetVersion: "0.19.5",
@@ -10385,10 +10494,30 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		// the install that is still running.
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
 
-		// A marker the job probe answers no for is not an install. A FAILED install
-		// leaves its launchd job loaded for hours (0.17.0: runs=3114), which is the
-		// leftover the probe and the recency rule exist to tell apart.
-		assert.equal(leftover.quitForInFlightInstall("last window closed"), false);
+		// A marker whose install job is GONE is not an install. A FAILED install
+		// leaves its launchd job REGISTERED for hours (0.17.0: runs=3114), which is
+		// the leftover the probe and the recency rule exist to tell apart from a live
+		// install - and the state this one asserts is the other one, no job at all.
+		writeMarker(new Date().toISOString());
+		assert.equal(
+			leftoverJob.quitForInFlightInstall("last window closed"),
+			false,
+		);
+
+		// A REGISTERED job under a marker inside the hand-off is still THIS install
+		// rather than a leftover (review R6/R11): launchd has the job before ShipIt has
+		// a pid, and a quit inside those seconds is taken over - that close, left
+		// alone, would put a window-less instance into the install's running-instance
+		// check. The marker is re-written HERE, two seconds old (the shortest hand-off
+		// this machine's own installs show), because this path takes no `now`: an
+		// assertion made against a marker written earlier in the test would be an
+		// assertion about how fast the test ran rather than about the state it names
+		// (review R13).
+		writeMarker(new Date(Date.now() - 2000).toISOString());
+		assert.equal(
+			freshRegistration.quitForInFlightInstall("last window closed"),
+			true,
+		);
 
 		// And a marker older than the recency bound is a failure's leftover too, so
 		// the ordinary close behaviour stands there.
@@ -10465,7 +10594,7 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		);
 		intervals.push(updateService.updateCheckInterval);
 		updateService.backendUrl = "http://127.0.0.1:9";
-		updateService.installJobLoadedProbe = () => true;
+		updateService.installJobStateProbe = () => "running";
 		/*
 		 * The seam is `launchWatchdog`, substituted rather than run for real.
 		 *
@@ -10519,7 +10648,7 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		);
 		intervals.push(fromWindowClose.updateCheckInterval);
 		fromWindowClose.backendUrl = "http://127.0.0.1:9";
-		fromWindowClose.installJobLoadedProbe = () => true;
+		fromWindowClose.installJobStateProbe = () => "running";
 		const windowEnsures = [];
 		fromWindowClose.launchWatchdog = (targetVersion) => {
 			windowEnsures.push(targetVersion);
@@ -10547,6 +10676,432 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
 	}
+});
+
+// ---------------------------------------------------------------------------
+// The launch that finds its own install still running
+
+/**
+ * A launch FOR an install that is still running, against a launch that is not.
+ *
+ * WHY THIS IS THE DECISION AND NOT THE COPY: every part of this path is about one
+ * question - is an instance of this app going to exist while ShipIt takes its
+ * final check? - and the three ways of answering "open" are each a rule from an
+ * earlier incident: no marker and a dead job are what keep a failed install's
+ * leftover job (0.17.0: `runs=3114`) from holding every later launch forever, and
+ * a marker past the hold bound is the relaunch watchdog's own hard-bound launch,
+ * which exists so a user is never left with no app at all. A hold that swallowed
+ * that last case would ensure a watchdog on its way out, wait out another hard
+ * bound and do it again.
+ *
+ * The 2026-09-18 incident, verbatim from `ShipIt_stderr.log`: an install four
+ * minutes in was aborted with `Aborting update attempt because there are 1 running
+ * instances of the target app`, and the app's own log shows it had come back at
+ * 09:37:33. The app being open is what that check answers on, so the launch that
+ * comes back has to leave.
+ */
+test("a launch is held only for an install that is live, and never past the watchdog's hard bound", () => {
+	const now = Date.now();
+	const fresh = new Date(now - 60_000).toISOString();
+	const withinHold = new Date(
+		now - (PENDING_INSTALL_LAUNCH_HOLD_SECONDS - 60) * 1000,
+	).toISOString();
+	const pastHold = new Date(
+		now - (PENDING_INSTALL_LAUNCH_HOLD_SECONDS + 60) * 1000,
+	).toISOString();
+	const marker = (startedAt) => ({
+		targetVersion: "0.19.5",
+		artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+		startedAt,
+		watchdogPid: null,
+	});
+
+	// The bound is the watchdog's own, minus the margin the two clocks need: the
+	// watchdog is spawned a few milliseconds before the marker is written, so a
+	// hold that read the hard bound itself would hold the launch the watchdog
+	// makes at it.
+	assert.equal(
+		PENDING_INSTALL_LAUNCH_HOLD_SECONDS + LAUNCH_HOLD_END_MARGIN_SECONDS,
+		WATCHDOG_HARD_TIMEOUT_SECONDS,
+	);
+
+	const running = "0.19.4";
+
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: null,
+			jobState: "running",
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// A marker with no job: a failed install's leftover, which must never hold a
+	// launch (the app has to be able to start to report the failure).
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: marker(fresh),
+			jobState: "absent",
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// An undated marker: nothing can say it is live, and opening normally reports
+	// the install rather than hiding it behind a notice.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: { ...marker(""), startedAt: "" },
+			jobState: "running",
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// The watchdog's own hard-bound launch, which must open normally.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: marker(pastHold),
+			jobState: "running",
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// Review U1's case, and the one a person meets after EVERY successful update:
+	// the install landed, so the running version has reached the marker's target
+	// while the job launchd holds is still there - `evaluatePendingInstall` calls
+	// that `succeeded`, and this launch has to open so recovery can clear the
+	// marker and report the install. Holding it left the app unreachable for ~29
+	// minutes behind a banner promising it would come back by itself.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: marker(fresh),
+			jobState: "running",
+			runningVersion: "0.19.5",
+			now,
+		}),
+		{ kind: "open" },
+	);
+	/*
+	 * Review R6/R11 at the decision, which is where the window it closes lives: the
+	 * same REGISTERED job read at the ages the machine's own fourteen installs span
+	 * (see the in-flight test above for the install behind each number). Two of them
+	 * outlasted the five-second bound this predicate first had, and a launch landing
+	 * there opened into a live install; `fresh` is a minute old, which is an install
+	 * that is over and must open so recovery reports it - the U2 case QA walked.
+	 */
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 2000).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"the shortest measured hand-off is a live install",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 6430).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"the 09-18 16:32 hand-off (6.429 s) is a live install, and the old bound opened it",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 13320).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"the longest measured hand-off (09-16 15:23, 13.315 s) is a live install",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(fresh),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"open",
+		"and a minute past the bound the same registration is the leftover a finished install leaves",
+	);
+	// U1's own state, in the shape it was when it held the operator's app for half an
+	// hour: a 280 s marker whose target the running version has ALREADY reached, with
+	// the job still registered. `evaluatePendingInstall` answers `succeeded` before it
+	// reads the job at all, so this opens at any age.
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 280_000).toISOString()),
+			jobState: "registered",
+			runningVersion: "0.19.5",
+			now,
+		}).kind,
+		"open",
+	);
+	// And a live install, which is the case this exists for.
+	const held = evaluateLaunchDuringInstall({
+		marker: marker(fresh),
+		jobState: "running",
+		runningVersion: running,
+		now,
+	});
+	assert.equal(held.kind, "hold");
+	assert.equal(held.marker.targetVersion, "0.19.5");
+	const heldLate = evaluateLaunchDuringInstall({
+		marker: marker(withinHold),
+		jobState: "running",
+		runningVersion: running,
+		now,
+	});
+	assert.equal(heldLate.kind, "hold");
+});
+
+/**
+ * What the user is told when the launch they just made leaves again.
+ *
+ * A banner is the whole channel on this path - the process exits before a window
+ * could render anything - so the sentence has to carry both facts the in-flight
+ * PANEL used to carry over minutes of the user's attention: nothing is broken,
+ * and they do not have to do anything. That second one is asserted as an absence:
+ * the panel's copy told the user to quit the app, and this launch is doing the
+ * quitting itself, so a "quit" in this body would be asking for an act the user
+ * cannot perform on a window that never appears.
+ */
+test("the hold's notice names the version and the wait, states the click, and asks for nothing", () => {
+	const marker = {
+		targetVersion: "0.19.5",
+		artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
+		startedAt: new Date().toISOString(),
+		watchdogPid: null,
+	};
+	const notice = installLaunchHoldNotice(marker);
+	assert.match(notice.title, /still updating/);
+	assert.ok(notice.body.includes("0.19.5"), notice.body);
+	assert.match(notice.body, /will open by itself when the install finishes/);
+	// The duration, in the words the install's own notice already used (review U4):
+	// one wait, one expectation.
+	assert.match(notice.body, /this can take a few minutes/);
+	// What a click does (review U5): macOS activates the app, which is held again,
+	// so the copy says so rather than leaving a control with no readable outcome.
+	assert.match(notice.body, /Clicking this notice will not open it any sooner/);
+	assert.doesNotMatch(notice.body, /[Qq]uit/);
+
+	// And the branch that could not arrange a relaunch does not promise one
+	// (review R2): the log says the app needs starting by hand, and the banner used
+	// to say "do nothing" over it.
+	const noRelaunch = installLaunchHoldNotice(marker, {
+		relaunchEnsured: false,
+	});
+	assert.match(noRelaunch.body, /start Local Operator by hand/);
+	assert.doesNotMatch(noRelaunch.body, /will open by itself/);
+});
+
+/**
+ * The whole hold, driven through the shipped service module.
+ *
+ * WHAT IS REAL HERE: `holdLaunchForLiveInstall` itself, its reading of the marker
+ * on disk and of `app.isPackaged`, `evaluateLaunchDuringInstall`, the notice
+ * builder, `ensureRelaunchWatchdog`'s rule about a watchdog that is already ours,
+ * and both of its deadlines. SUBSTITUTED: the launchd probe, the watchdog spawn
+ * and the quit, because a test must not ask the operator's launchd about a job,
+ * leave a detached watchdog on their machine, or quit a process that is not this
+ * app. Those are the seams the other cases in this file use for the same reason.
+ */
+const holdLaunch = async ({
+	marker = null,
+	jobState = "running",
+	runningVersion = "0.28.4",
+	packaged = true,
+	showNotice,
+} = {}) => {
+	const home = mkdtempSync(join(tmpdir(), "lo-launch-hold-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-launch-hold-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	globalThis.__loTestAppIsPackaged = packaged;
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const events = {
+		order: [],
+		notices: [],
+		watchdogs: [],
+		quits: 0,
+		forceQuits: 0,
+		logs: [],
+	};
+	try {
+		if (marker) writePendingInstallMarker(userData, marker);
+		const held = service.holdLaunchForLiveInstall({
+			log: (message) => events.logs.push(message),
+			jobState: () => jobState,
+			runningVersion,
+			startWatchdog: (targetVersion) => {
+				events.order.push("watchdog");
+				events.watchdogs.push(targetVersion);
+				return 4242;
+			},
+			showNotice:
+				showNotice ??
+				((notice) => {
+					events.order.push("notice");
+					events.notices.push(notice);
+					return Promise.resolve("raised by the test's own stub");
+				}),
+			quit: () => {
+				events.order.push("quit");
+				events.quits += 1;
+			},
+			forceQuit: () => {
+				events.forceQuits += 1;
+			},
+		});
+		return { held, events, markerDir: userData };
+	} finally {
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: same, for the packaged-app switch the fixture reads with `?? true`.
+		delete globalThis.__loTestAppIsPackaged;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+};
+
+const liveMarker = () => ({
+	targetVersion: "0.28.5",
+	artifactPath: "/tmp/local-operator-ui-0.28.5-universal.zip",
+	startedAt: new Date(Date.now() - 45_000).toISOString(),
+	watchdogPid: null,
+});
+
+test("a launch that finds a live install tells the user, ensures the relaunch and quits", async () => {
+	const { held, events } = await holdLaunch({ marker: liveMarker() });
+	// The quit is held back by the flush grace, which is a real timer: the answer is
+	// "the launch is held", and the quit follows a few hundred milliseconds later
+	// so that the record of what the user was told lands first.
+	assert.equal(events.quits, 0);
+	await new Promise((resolve) => setTimeout(resolve, 600));
+
+	assert.equal(held, true);
+	assert.deepEqual(events.notices, [
+		installLaunchHoldNotice(liveMarker(), { relaunchEnsured: true }),
+	]);
+	assert.equal(events.quits, 1);
+	assert.equal(events.forceQuits, 0);
+	// The promise comes before the quit, and the watchdog before both: the notice
+	// says the app comes back, and the only thing that can keep that promise is a
+	// watchdog already running when this process goes.
+	assert.deepEqual(events.order, ["watchdog", "notice", "quit"]);
+	assert.deepEqual(events.watchdogs, ["0.28.5"]);
+	assert.ok(
+		events.logs.some((line) => line.includes("Holding this launch")),
+		JSON.stringify(events.logs),
+	);
+	// And the record review U3 asked for: what the system did with the notice, in
+	// the same log, before the quit that ends the process which could write it.
+	assert.ok(
+		events.logs.some(
+			(line) =>
+				line.includes("The notice for the install of version 0.28.5") &&
+				line.includes("raised by the test's own stub"),
+		),
+		JSON.stringify(events.logs),
+	);
+});
+
+test("nothing is started, shown or quit for a launch that is not held", async () => {
+	// No marker at all: the ordinary launch.
+	const idle = await holdLaunch();
+	assert.equal(idle.held, false);
+	// A stale marker whose job is gone: a failed install's leftover, which has to
+	// open so recovery can explain what happened.
+	const deadJob = await holdLaunch({
+		marker: liveMarker(),
+		jobState: "registered",
+	});
+	assert.equal(deadJob.held, false);
+	// A live marker, but this process is not the bundle an install replaces - the
+	// state is the packaged app's and a worktree launch may not act on it.
+	const unpackaged = await holdLaunch({
+		marker: liveMarker(),
+		packaged: false,
+	});
+	assert.equal(unpackaged.held, false);
+	// A marker the watchdog's own hard bound has passed.
+	const pastBound = await holdLaunch({
+		marker: {
+			...liveMarker(),
+			startedAt: new Date(
+				Date.now() - (WATCHDOG_HARD_TIMEOUT_SECONDS + 60) * 1000,
+			).toISOString(),
+		},
+	});
+	assert.equal(pastBound.held, false);
+
+	for (const result of [idle, deadJob, unpackaged, pastBound]) {
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.deepEqual(result.events.notices, [], JSON.stringify(result.events));
+		assert.deepEqual(result.events.watchdogs, []);
+		assert.equal(result.events.quits, 0);
+		assert.deepEqual(result.events.logs, []);
+	}
+});
+
+/**
+ * A notice the system never reports must not be what keeps the app open.
+ *
+ * The notice is a convenience; the quit is the point. So the hold's first bound is
+ * the notice's own budget (the app's banner, then the install's own channel, then
+ * the flush grace) and the second is the quit's own force deadline at 10 s, and
+ * this case drives the first one: a system that never fires `show` - a muted
+ * Notification Center, a policy that blocks the banner, no notifier at all - costs
+ * the user the notice, not the install. Measured here rather than described,
+ * because a timer nothing waits for is indistinguishable from one that never
+ * fires. The substituted notice never settles at all, which is a harder case than
+ * a system that never reports: the caller's own bound has to be what closes it.
+ */
+test("a notice that never reports itself does not hold the app open", async () => {
+	const started = Date.now();
+	const { held, events } = await holdLaunch({
+		marker: liveMarker(),
+		showNotice: () => new Promise(() => {}),
+	});
+	assert.equal(held, true);
+	assert.equal(events.quits, 0, "the quit must wait for its bound, not a tick");
+	const deadline = 9_000;
+	const settled = await new Promise((resolve) => {
+		const poll = setInterval(() => {
+			if (events.quits > 0) {
+				clearInterval(poll);
+				resolve(Date.now() - started);
+			}
+		}, 25);
+		setTimeout(() => {
+			clearInterval(poll);
+			resolve(null);
+		}, deadline);
+	});
+	assert.ok(
+		settled !== null,
+		`no quit within ${deadline}ms of a notice that never settled`,
+	);
+	// The notice's budget rather than the quit's own force deadline: a quit that
+	// arrived at 10 s would mean the caller's bound never fired at all, and the
+	// force deadline is the backstop for a wedged QUIT rather than a wedged notice.
+	assert.equal(
+		events.forceQuits,
+		0,
+		"the force deadline closed this, not the notice bound",
+	);
 });
 
 // ---------------------------------------------------------------------------
