@@ -170,6 +170,38 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// The WebAuthn entitlement renderer: the refusal a release job must fail on
+			// rather than render a plist without the group. This case pins the first
+			// check (a missing destination), which happens before any secret is read,
+			// so it needs no environment and reaches no keychain.
+			script: "render-mac-entitlements.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /--out <path> is required/,
+		},
+		{
+			// And the render itself, over the COMMITTED plist: it needs no signing
+			// identity and no secret, which is why this is the half a test can drive.
+			// The destination is inside the throwaway root, so the two spellings of the
+			// invocation cannot collide.
+			script: "render-mac-entitlements.mjs",
+			args: [
+				"--out",
+				join(plain, "rendered-entitlements.plist"),
+				"--team-id",
+				"AB12CD34EF",
+			],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout:
+				/^render-mac-entitlements: wrote \d+ entitlements, including one keychain access group, to /m,
+			stderr: /^$/,
+		},
+		{
 			script: "release-baseline.mjs",
 			args: ["--json"],
 			cwd: plain,

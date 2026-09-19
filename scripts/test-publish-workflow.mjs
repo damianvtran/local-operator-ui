@@ -574,6 +574,49 @@ test("mac signing uses imported keychain without CSC_LINK, keeps notarization", 
 	for (const job of ["build-windows", "build-linux"])
 		assert.ok(!JSON.stringify(jobs[job]).includes("forceCodeSigning"));
 });
+test("the macOS app is codesigned with a RENDERED entitlements plist carrying the WebAuthn access group", () => {
+	// The group is `<TEAM_ID>.<BUNDLE_ID>.webauthn` and the team id is a secret, so
+	// the committed plist cannot carry it: the render step is what puts it in, and
+	// the build has to consume the rendered file for both the app and the helpers
+	// it inherits (`entitlementsInherit`).
+	const macSteps = steps("build-macos").map((s) => s.name);
+	const render = step("build-macos", "Render the macOS entitlements plist");
+	assert.ok(render, "the entitlements render step exists");
+	assert.ok(
+		macSteps.indexOf("Render the macOS entitlements plist") <
+			macSteps.indexOf("Build macOS app"),
+		"the plist is rendered before the build that consumes it",
+	);
+	assert.deepEqual(
+		render.env,
+		{ APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID }}" },
+		"the team id comes from the secret and from nothing else",
+	);
+	assert.match(
+		render.run,
+		/node scripts\/render-mac-entitlements\.mjs --out "\$RUNNER_TEMP\/entitlements\.mac\.plist"/,
+	);
+	assert.match(
+		render.run,
+		/echo "ENTITLEMENTS_PLIST=\$RUNNER_TEMP\/entitlements\.mac\.plist" >> "\$GITHUB_ENV"/,
+	);
+	const build = step("build-macos", "Build macOS app");
+	assert.match(build.run, /-c\.mac\.entitlements="\$ENTITLEMENTS_PLIST"/);
+	assert.match(
+		build.run,
+		/-c\.mac\.entitlementsInherit="\$ENTITLEMENTS_PLIST"/,
+	);
+	// The committed plist stays secret-free and carries no group: every local build
+	// signs with it, and a group there would be a team id in the repository plus a
+	// signature no developer's identity can honour.
+	const committed = readFileSync(
+		new URL("../build/entitlements.mac.plist", import.meta.url),
+		"utf8",
+	);
+	assert.doesNotMatch(committed, /keychain-access-groups/);
+	for (const job of ["build-windows", "build-linux"])
+		assert.ok(!JSON.stringify(jobs[job]).includes("ENTITLEMENTS_PLIST"));
+});
 test("keychain password is generated per job, masked, and never a repository dependency", () => {
 	assert.ok(!("KEYCHAIN_PASSWORD" in preflight.env));
 	assert.doesNotMatch(preflight.run, /KEYCHAIN_PASSWORD/);
