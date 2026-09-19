@@ -4373,6 +4373,15 @@ const CANVAS_FRESHNESS_POLL_MS = 2000;
  * torn read of a store mid-write is not what this scene is about, and `null` for
  * "nothing holds this path yet" rather than an empty object, so a caller can tell
  * "not there" from "there and empty".
+ *
+ * THREE FIELDS PER CONVERSATION, and the second two are what agent review round 1
+ * (M1) added: the caption claimed a closed document left "no document **and no
+ * tab**" in the store while this projection read `files` alone. `openTabs` is a
+ * real state - every attachment click consults it to decide a file is already
+ * open (`file-attachment.tsx`) - so a scene that says a tab is gone has to read
+ * the list a tab lives in. `selectedTabId` is here for the close's own landing
+ * claim (design review round 1, D1): where the reader lands is a fact about the
+ * store as well as about the pixels.
  */
 const CANVAS_STORE_DOCS_EXPR = `(() => {
 	try {
@@ -4381,12 +4390,16 @@ const CANVAS_STORE_DOCS_EXPR = `(() => {
 		const conversations = JSON.parse(raw)?.state?.conversations ?? {};
 		const out = {};
 		for (const [key, value] of Object.entries(conversations)) {
-			out[key] = (value?.files ?? []).map((file) => ({
-				id: file.id,
-				content: file.content ?? "",
-				readMtimeMs: file.readMtimeMs ?? null,
-				lastAgentModified: file.lastAgentModified ?? null,
-			}));
+			out[key] = {
+				files: (value?.files ?? []).map((file) => ({
+					id: file.id,
+					content: file.content ?? "",
+					readMtimeMs: file.readMtimeMs ?? null,
+					lastAgentModified: file.lastAgentModified ?? null,
+				})),
+				openTabs: (value?.openTabs ?? []).map((tab) => tab.id),
+				selectedTabId: value?.selectedTabId ?? null,
+			};
 		}
 		return out;
 	} catch (error) {
@@ -4405,13 +4418,152 @@ const CANVAS_STORE_DOCS_EXPR = `(() => {
 async function storedDocument(cdp, path) {
 	const conversations = await cdp.evaluate(CANVAS_STORE_DOCS_EXPR);
 	if (!conversations || conversations.error) return null;
-	for (const files of Object.values(conversations)) {
-		for (const file of files) {
+	for (const conversation of Object.values(conversations)) {
+		for (const file of conversation.files) {
 			if (file.id === path || file.id === decodeURI(path)) return file;
 		}
 	}
 	return null;
 }
+
+/** The store's TAB for one path - the `openTabs` list, read the same way (M1). */
+async function storedTab(cdp, path) {
+	const conversations = await cdp.evaluate(CANVAS_STORE_DOCS_EXPR);
+	if (!conversations || conversations.error) return null;
+	for (const conversation of Object.values(conversations)) {
+		const tab = conversation.openTabs.find(
+			(id) => id === path || id === decodeURI(path),
+		);
+		if (tab) return tab;
+	}
+	return null;
+}
+
+/**
+ * The conversation's selected tab, whichever conversation the scene is driving.
+ *
+ * `null` for "none selected", which is a real state - the empty strip - and not
+ * the same reading as "no store at all" (`undefined`), so a caller can tell a
+ * close that emptied the strip from a store that was never written.
+ */
+async function storedSelectedTab(cdp) {
+	const conversations = await cdp.evaluate(CANVAS_STORE_DOCS_EXPR);
+	if (!conversations || conversations.error) return undefined;
+	for (const conversation of Object.values(conversations)) {
+		if (conversation.selectedTabId !== null) return conversation.selectedTabId;
+	}
+	return null;
+}
+
+/**
+ * THE STORE'S OWN WRITE LOG, and why a settled read is not enough (QA round 1, Q1).
+ *
+ * The close's harm is a WRITE ORDER, not a state: on the pre-fix tree the ✕ removes
+ * the document and the viewer's unmount commit puts it straight back (`[...files,
+ * document]`), so a read taken at the press and a read taken 4.2s later are BOTH
+ * correct on that tree - and the branch's own close phase, which takes exactly those
+ * two readings, could not fail on the tree the fix is for. QA reproduced the
+ * resurrection only with the app's store as the instrument: `+851ms files=[a,b]`,
+ * `+851ms files=[b]` (the close), `+855ms files=[b,a]` (the unmount's upsert), then
+ * `+1827ms files=[b]` - the re-listing is undone about a second later, so the window
+ * is ~1s wide and no still frame can be its witness.
+ *
+ * So the phase records every write of the `canvas-store` key, with each write's
+ * `files` and `openTabs` IDs and its selected tab, and asserts the two halves the
+ * mechanism has: that the close reaches the store as a write that DROPS the
+ * document, and that no later write in the phase puts it back. On the pre-fix tree
+ * the second half fails on the unmount commit's own write, which is the point.
+ *
+ * Installed in the PAGE, wrapping `Storage.prototype.setItem` - the app's persisted
+ * store writes through it, and the wrapper is consulted per call, so this catches
+ * every later write from the app's own store module. It is PROVED before it is
+ * trusted: the phase performs a store write the app certainly makes (opening a
+ * document) and requires it in the log, so a later empty log is a measurement rather
+ * than a broken wrapper. The IDs are full paths, so the row a human reads is
+ * basenamed by `canvasStoreWriteRows` while the assertions compare the real IDs.
+ */
+const CANVAS_STORE_WRITE_LOG_INSTALL_EXPR = `(() => {
+	if (window.__canvasStoreWrites) return "already-installed";
+	const writes = [];
+	window.__canvasStoreWrites = writes;
+	const original = Storage.prototype.setItem;
+	Storage.prototype.setItem = function (key, value) {
+		if (key === "canvas-store") {
+			try {
+				const conversations = JSON.parse(value)?.state?.conversations ?? {};
+				const shape = {};
+				for (const [id, conversation] of Object.entries(conversations)) {
+					shape[id] = {
+						files: (conversation?.files ?? []).map((file) => file.id),
+						openTabs: (conversation?.openTabs ?? []).map((tab) => tab.id),
+						selectedTabId: conversation?.selectedTabId ?? null,
+					};
+				}
+				writes.push({ at: Math.round(performance.now()), shape });
+			} catch (error) {
+				writes.push({ at: Math.round(performance.now()), error: String(error) });
+			}
+		}
+		return original.apply(this, arguments);
+	};
+	return "installed";
+})()`;
+
+/** Drop every recorded write, so the next one recorded is the one under test. */
+const CANVAS_STORE_WRITE_LOG_CLEAR_EXPR = `(() => {
+	if (!window.__canvasStoreWrites) return "not-installed";
+	window.__canvasStoreWrites.length = 0;
+	return "cleared";
+})()`;
+
+const CANVAS_STORE_WRITE_LOG_EXPR =
+	"(() => window.__canvasStoreWrites ?? null)()";
+
+const installCanvasStoreWriteLog = (cdp) =>
+	cdp.evaluate(CANVAS_STORE_WRITE_LOG_INSTALL_EXPR);
+const clearCanvasStoreWriteLog = (cdp) =>
+	cdp.evaluate(CANVAS_STORE_WRITE_LOG_CLEAR_EXPR);
+const canvasStoreWrites = (cdp) => cdp.evaluate(CANVAS_STORE_WRITE_LOG_EXPR);
+
+/** A path as the basename a human reads; the assertions keep the full ID. */
+const baseName = (id) => String(id).split("/").pop();
+
+/**
+ * The log as the rows the pull request quotes: one line per write, in order.
+ *
+ * Basenamed because a canvas path is 60 characters of scratch tree, and the row
+ * exists to be read beside the assertion that names the document.
+ */
+function canvasStoreWriteRows(writes) {
+	if (!Array.isArray(writes))
+		return [`write log unavailable (${JSON.stringify(writes)})`];
+	return writes.map((write) => {
+		if (write.error) return `+${write.at}ms unparsed (${write.error})`;
+		const parts = Object.values(write.shape).map(
+			(conversation) =>
+				`files=[${conversation.files.map(baseName).join(", ")}] ` +
+				`tabs=[${conversation.openTabs.map(baseName).join(", ")}] ` +
+				`sel=${conversation.selectedTabId ? baseName(conversation.selectedTabId) : "none"}`,
+		);
+		return `+${write.at}ms ${parts.join(" | ")}`;
+	});
+}
+
+/** Every file ID any recorded write listed for a conversation, in order. */
+const writesListing = (writes, id) =>
+	(Array.isArray(writes) ? writes : []).filter((write) =>
+		Object.values(write.shape ?? {}).some((conversation) =>
+			conversation.files.includes(id),
+		),
+	);
+
+/**
+ * The row's hold sentence, as a module-level constant rather than an inline
+ * literal (agent review round 1, N1): a regex inside a function body is a new one
+ * per call and biome's `useTopLevelRegex` says so, which is 12 warnings this file
+ * did not need to grow by one for a test that reads the same sentence five times.
+ */
+const CHANGED_ON_DISK_RE = /changed on disk/i;
 
 /**
  * The editor's own text, whichever of the two document surfaces is mounted.
@@ -4438,6 +4590,37 @@ const CANVAS_DOCUMENT_TEXT_EXPR = `(() => {
 /** The canvas's own tab strip, named by its own accessible label. */
 const CANVAS_TAB_SELECTOR =
 	'[role="tablist"][aria-label="Open documents"] [role="tab"]';
+
+/**
+ * The tab the strip has selected, as the strip's own DOM reports it.
+ *
+ * The selected tab is the one carrying `aria-selected="true"`, and its `title` is
+ * the document's path - so this is the reader's own answer to "which document am I
+ * on", independent of the store, which is why the close's landing claim (design
+ * review round 1, D1) is asserted against both: a selection the pane makes and a
+ * selection the strip does not paint is the same defect one render later.
+ */
+const CANVAS_SELECTED_TAB_EXPR = `(() => {
+	const tab = document.querySelector(${JSON.stringify(`${CANVAS_TAB_SELECTOR}[aria-selected="true"]`)});
+	return tab ? tab.getAttribute("title") : null;
+})()`;
+
+/**
+ * Where the FOCUS is (design review round 1, D3), and it says which of the three
+ * places it landed rather than only whether a tab has it: a close that leaves focus
+ * on the document body, or on the ✕ that is about to be unmounted, is not the same
+ * reading as one that moved it to the tab the reader is now on - and `body` is what
+ * the draft HTML reports when nothing is focused at all, so "no element" has to be
+ * reportable rather than an empty string.
+ */
+const CANVAS_FOCUSED_TAB_EXPR = `(() => {
+	const active = document.activeElement;
+	if (!active || active === document.body) return { in: "body", label: null };
+	const tab = active.closest('[role="tab"]');
+	if (tab) return { in: "tab", label: tab.getAttribute("title") };
+	const label = active.getAttribute("aria-label") ?? active.textContent?.trim() ?? null;
+	return { in: "control", label: label ? label.slice(0, 60) : null };
+})()`;
 
 /** The document on screen, as its own editor renders it. */
 function canvasDocumentText(cdp) {
@@ -5993,9 +6176,29 @@ async function sceneCanvasFreshness(cdp, app) {
 		JSON.stringify(await stripTabs()),
 	);
 
+	/*
+	 * THE STORE'S WRITE LOG, INSTALLED BEFORE THE SUBJECTS ARE OPENED (QA round 1,
+	 * Q1), and PROVED on those opens before it is asked about the close. A settled
+	 * read cannot fail on the pre-fix tree - the re-listing is undone about a second
+	 * later - so the scene's instrument for "the tab came back" has to be the store's
+	 * own writes, and an instrument that is never shown to work is a zero that could
+	 * mean anything. See `CANVAS_STORE_WRITE_LOG_INSTALL_EXPR`.
+	 */
+	const writeLogInstalled = await installCanvasStoreWriteLog(cdp);
+	note("the canvas store's write log", writeLogInstalled);
+
 	/* The two subjects, the clean one opened last so its ✕ is the revealed one. */
 	await verb(cdp, "openCanvasDocument", { path: closeHeld });
 	await verb(cdp, "openCanvasDocument", { path: closeClean });
+	const openedWrites = await canvasStoreWrites(cdp);
+	check(
+		"the store write log is proved before it measures: the two opens are in it",
+		writeLogInstalled === "installed" &&
+			Array.isArray(openedWrites) &&
+			openedWrites.length >= 2 &&
+			writesListing(openedWrites, closeClean).length > 0,
+		JSON.stringify(canvasStoreWriteRows(openedWrites ?? [])),
+	);
 	const stripOpened = await waitForCondition(
 		cdp,
 		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 2`,
@@ -6013,6 +6216,13 @@ async function sceneCanvasFreshness(cdp, app) {
 		"canvas-freshness-close-clean",
 	);
 
+	/*
+	 * THE WINDOW UNDER TEST opens here, at the clear: every write from the ✕ to the
+	 * settle is in the log, and no earlier one is. On the pre-fix tree this window
+	 * contains the unmount commit's re-listing write; on this head it should contain
+	 * the close and nothing that lists the document again.
+	 */
+	await clearCanvasStoreWriteLog(cdp);
 	const cleanPressed = await verb(cdp, "press", {
 		selector: closeControlFor("close-clean.md"),
 	});
@@ -6047,6 +6257,26 @@ async function sceneCanvasFreshness(cdp, app) {
 		cleanStored === null,
 		JSON.stringify(cleanStored),
 	);
+	/*
+	 * The other two halves of the caption's claim, asserted rather than implied
+	 * (agent review round 1, M1): `openTabs` is a real list - every attachment
+	 * click reads it to decide a file is already open - and the ✕ is rendered
+	 * inside the tab it closes, so "it is gone from the DOM" is checkable.
+	 */
+	const cleanStoredTab = await storedTab(cdp, closeClean);
+	check(
+		"and no tab for it either: the store's `openTabs` does not list it",
+		cleanStoredTab === null,
+		JSON.stringify(cleanStoredTab),
+	);
+	const cleanControlAfterClose = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(closeControlFor("close-clean.md"))}) === null`,
+	);
+	check(
+		"and its ✕ is out of the DOM, not merely unpainted",
+		cleanControlAfterClose === true,
+		JSON.stringify(cleanControlAfterClose),
+	);
 
 	/*
 	 * THE DUST SETTLING, which is the half of the bug the press cannot show. The
@@ -6058,10 +6288,50 @@ async function sceneCanvasFreshness(cdp, app) {
 	await wait(4200);
 	const stripSettled = await stripTabs();
 	const cleanStoredAfterSettle = await storedDocument(cdp, closeClean);
+	const cleanTabAfterSettle = await storedTab(cdp, closeClean);
 	check(
 		"the closed tab is still closed once the unmount, the debounce and the polls have run",
-		!stripSettled.includes("close-clean.md") && cleanStoredAfterSettle === null,
-		`strip=${JSON.stringify(stripSettled)} store=${JSON.stringify(cleanStoredAfterSettle)}`,
+		!stripSettled.includes("close-clean.md") &&
+			cleanStoredAfterSettle === null &&
+			cleanTabAfterSettle === null,
+		`strip=${JSON.stringify(stripSettled)} store=${JSON.stringify(cleanStoredAfterSettle)} tab=${JSON.stringify(cleanTabAfterSettle)}`,
+	);
+	/*
+	 * THE RESURRECTION, AND ITS ABSENCE (QA round 1, Q1). Read as the store's own
+	 * writes rather than as a state, because the state heals: on the pre-fix tree the
+	 * unmount commit writes the document back into `files` a few milliseconds after
+	 * the close, and the same write that re-listed it is undone about a second later,
+	 * so both of the readings above are correct pre-fix. What is NOT correct pre-fix
+	 * is this: no write AFTER the close lists the document again.
+	 */
+	const cleanWrites = await canvasStoreWrites(cdp);
+	const cleanWriteRows = canvasStoreWriteRows(cleanWrites ?? []);
+	note(
+		"the store's writes from the ✕ to the settle",
+		JSON.stringify(cleanWriteRows),
+	);
+	const cleanDropWrite = (cleanWrites ?? []).some((write) =>
+		Object.values(write.shape ?? {}).some(
+			(conversation) =>
+				conversation.files.length === 1 &&
+				conversation.files[0] === closeHeld &&
+				conversation.openTabs.length === 1 &&
+				conversation.openTabs[0] === closeHeld &&
+				conversation.selectedTabId === closeHeld,
+		),
+	);
+	check(
+		"the ✕ reaches the store as a write that drops it from `files`, from `openTabs` and from the selection",
+		cleanDropWrite,
+		JSON.stringify(cleanWriteRows),
+	);
+	const cleanRelisted = writesListing(cleanWrites, closeClean);
+	check(
+		"and NO later write re-lists it - the flicker the reader reported, as a write that does not happen",
+		Array.isArray(cleanWrites) &&
+			cleanWrites.length > 0 &&
+			cleanRelisted.length === 0,
+		JSON.stringify(cleanWriteRows),
 	);
 	const closeSettledFrame = await captureSettled(
 		cdp,
@@ -6121,6 +6391,8 @@ async function sceneCanvasFreshness(cdp, app) {
 		"canvas-freshness-close-held",
 	);
 
+	/* The same write window as the clean close: the ✕'s writes, and nothing before them. */
+	await clearCanvasStoreWriteLog(cdp);
 	const heldPressed = await verb(cdp, "press", {
 		selector: closeControlFor("close-held.md"),
 	});
@@ -6143,10 +6415,24 @@ async function sceneCanvasFreshness(cdp, app) {
 		`gone=${heldGone.ok} after=${closeHeldHashAfter} external=${closeHeldExternalHash}`,
 	);
 	const heldStored = await storedDocument(cdp, closeHeld);
+	const heldStoredTab = await storedTab(cdp, closeHeld);
 	check(
 		"the held document is out of the store, so nothing re-listed it either",
-		heldStored === null,
-		JSON.stringify(heldStored),
+		heldStored === null && heldStoredTab === null,
+		`store=${JSON.stringify(heldStored)} tab=${JSON.stringify(heldStoredTab)}`,
+	);
+	const heldWrites = await canvasStoreWrites(cdp);
+	const heldWriteRows = canvasStoreWriteRows(heldWrites ?? []);
+	note(
+		"the store's writes from the held ✕ to the settle",
+		JSON.stringify(heldWriteRows),
+	);
+	check(
+		"and the held close's own writes never re-list it either, on the dirty arm",
+		Array.isArray(heldWrites) &&
+			heldWrites.length > 0 &&
+			writesListing(heldWrites, closeHeld).length === 0,
+		JSON.stringify(heldWriteRows),
 	);
 	const closeHeldAfterFrame = await captureSettled(
 		cdp,
@@ -6177,7 +6463,7 @@ async function sceneCanvasFreshness(cdp, app) {
 	);
 	check(
 		"and the row still says the file moved on, because the words on screen did",
-		/changed on disk/i.test(closeHeldNote ?? ""),
+		CHANGED_ON_DISK_RE.test(closeHeldNote ?? ""),
 		JSON.stringify(closeHeldNote),
 	);
 	const closeHeldStoredAfterReopen = await storedDocument(cdp, closeHeld);
@@ -6191,12 +6477,144 @@ async function sceneCanvasFreshness(cdp, app) {
 		"canvas-freshness-close-reopen",
 	);
 
+	/*
+	 * WHERE A CLOSE LEAVES THE READER (design review round 1, D1 and D3).
+	 *
+	 * WHY IT NEEDS FOUR DOCUMENTS OF ITS OWN. The two closes above cannot see this
+	 * defect: with two tabs, "the first remaining tab" and "the tab that takes the
+	 * closed one's place" are the SAME tab, so a strip that picks `[0]` looks correct
+	 * in every frame this branch had. With four, the two rules part company - and it
+	 * is the reader with five or six documents open who reported the flicker, the
+	 * reader whose strip scrolls, where the wrong destination also drags the row back
+	 * to the left under the pointer (the strip scrolls its selection into view).
+	 *
+	 * Both arms of the rule, because it has two: the FOLLOWING tab is selected when
+	 * there is one, and the PRECEDING tab when the closed tab was last. D3 rides on
+	 * the same press - the ✕ that held focus is unmounted by it, so focus has to move
+	 * with the selection or it falls to the document body.
+	 */
+	const neighbourSubjects = [
+		["neighbour-a.md", "neighbour-a\n"],
+		["neighbour-b.md", "neighbour-b\n"],
+		["neighbour-c.md", "neighbour-c\n"],
+		["neighbour-d.md", "neighbour-d\n"],
+	].map(([name, body], index) => {
+		const path = join(dir, name);
+		writeFileSync(path, body);
+		setExactMtime(path, BASE_SECOND - 380 + index * 20);
+		return path;
+	});
+	for (const path of neighbourSubjects)
+		await verb(cdp, "openCanvasDocument", { path });
+	const [neighbourA, neighbourB, neighbourC, neighbourD] = neighbourSubjects;
+	const neighbourOpened = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 4`,
+		10_000,
+	);
+	check(
+		"the neighbour phase's four documents are open before anything is pressed",
+		neighbourOpened.ok,
+		JSON.stringify(await stripTabs()),
+	);
+
+	/* The tab strip's own tab for one path, addressed the way the reader's eye does. */
+	const tabFor = (path) =>
+		`${CANVAS_TAB_SELECTOR}[title=${JSON.stringify(path)}]`;
+
+	/* Select the SECOND of the four, so the ✕ about to be pressed is a selected tab's. */
+	await verb(cdp, "press", { selector: tabFor(neighbourB) });
+	const secondSelected = await waitForCondition(
+		cdp,
+		`(${CANVAS_SELECTED_TAB_EXPR}) === ${JSON.stringify(neighbourB)}`,
+		5_000,
+	);
+	check(
+		"the second of the four is the document on screen, so the close starts from the middle",
+		secondSelected.ok,
+		JSON.stringify(await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR)),
+	);
+
+	const middlePressed = await verb(cdp, "press", {
+		selector: closeControlFor("neighbour-b.md"),
+	});
+	note("the ✕ press on the middle tab", JSON.stringify(middlePressed));
+	const middleClosed = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 3`,
+		5_000,
+	);
+	const neighbourSelectedInDom = await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR);
+	const neighbourSelectedInStore = await storedSelectedTab(cdp);
+	check(
+		"closing the middle tab selects the tab that took its place - NOT the oldest one",
+		middleClosed.ok &&
+			middlePressed.hitTest === true &&
+			neighbourSelectedInDom === neighbourC &&
+			neighbourSelectedInStore === neighbourC,
+		`hitTest=${middlePressed.hitTest} dom=${JSON.stringify(neighbourSelectedInDom)} store=${JSON.stringify(neighbourSelectedInStore)} strip=${JSON.stringify(await stripTabs())}`,
+	);
+	const focusAfterClose = await cdp.evaluate(CANVAS_FOCUSED_TAB_EXPR);
+	check(
+		"and FOCUS lands on that tab, rather than falling to the document body with the ✕",
+		focusAfterClose?.in === "tab" && focusAfterClose?.label === neighbourC,
+		JSON.stringify(focusAfterClose),
+	);
+	const neighbourFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-neighbour",
+	);
+
+	/* And the other arm: closing the LAST tab selects the one before it. */
+	await verb(cdp, "press", { selector: tabFor(neighbourD) });
+	const lastSelected = await waitForCondition(
+		cdp,
+		`(${CANVAS_SELECTED_TAB_EXPR}) === ${JSON.stringify(neighbourD)}`,
+		5_000,
+	);
+	const lastPressed = await verb(cdp, "press", {
+		selector: closeControlFor("neighbour-d.md"),
+	});
+	const lastClosed = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 2`,
+		5_000,
+	);
+	const precedingSelected = await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR);
+	check(
+		"closing the LAST tab selects the one before it, which is the rule's other arm",
+		lastSelected.ok &&
+			lastClosed.ok &&
+			lastPressed.hitTest === true &&
+			precedingSelected === neighbourC,
+		`hitTest=${lastPressed.hitTest} dom=${JSON.stringify(precedingSelected)} strip=${JSON.stringify(await stripTabs())}`,
+	);
+	const precedingFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-preceding",
+	);
+	/*
+	 * The first of the four is left open on purpose rather than tidied away: the
+	 * frames above have to show a strip with documents in it, and `neighbour-a.md`
+	 * is the tab neither arm of the rule may select.
+	 */
+	const neighbourLeftover = await stripTabs();
+	check(
+		"the oldest tab is still open and is NOT the one either close selected",
+		neighbourLeftover.length === 2 &&
+			precedingSelected !== neighbourA &&
+			neighbourSelectedInDom !== neighbourA,
+		JSON.stringify(neighbourLeftover),
+	);
+
 	const closeFrames = [
 		closeCleanFrame,
 		closeSettledFrame,
 		closeHeldFrame,
 		closeHeldAfterFrame,
 		closeReopenFrame,
+		neighbourFrame,
+		precedingFrame,
 	];
 	note("the close phase's frames", JSON.stringify(closeFrames));
 	check(
