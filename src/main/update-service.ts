@@ -98,6 +98,7 @@ import {
 	buildPipUpgradeCommand,
 	buildWatchdogPlan,
 	classifyGlobalInstall,
+	clearLastInstallAttempt,
 	clearPendingInstallMarker,
 	clearPendingServerUpdateMarker,
 	compareVersions,
@@ -108,6 +109,7 @@ import {
 	evaluatePendingInstall,
 	evaluatePendingServerUpdateMarker,
 	healPythonBytecode,
+	installAttemptSupersededBy,
 	installDiagnosisLines,
 	installFailurePayload,
 	installInFlightPayload,
@@ -1991,6 +1993,9 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
+				// An install this machine reached is the end of the failure record too: it named
+				// the version that would not land, and this is the launch that proves it did.
+				this.retireSupersededInstallRecord();
 				return;
 			case "stale":
 				// A marker from an install this machine has already moved past. It is
@@ -2002,6 +2007,9 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
+				// Superseded is the same fact about the record: whatever it named, the version
+				// running now is past it, so the sentence it drives is no longer true.
+				this.retireSupersededInstallRecord();
 				return;
 			case "in-flight": {
 				this.installWasInFlight = true;
@@ -3298,9 +3306,39 @@ export class UpdateService {
 	 * can find out what happened, which is what made Dismiss an information loss
 	 * (reviews U1, D3).
 	 *
+	 * AND IT RETIRES ONCE THE MACHINE HAS ARRIVED, which is the other half of that
+	 * promise: a record that survives a dismiss must not survive the state it
+	 * describes, or "Version 0.28.2 is running" is printed to a user on 0.29.1 for
+	 * ever (the operator's report, 2026-09-18 - a 0.28.3 record against a running
+	 * 0.29.1). The test is read-time because the fact becomes true without this
+	 * process doing anything: the installer ran, the user relaunched, and the app
+	 * that comes up is the one that answers every reader.
 	 */
 	public lastInstallAttempt(): LastInstallAttempt | null {
-		return readLastInstallAttempt(this.markerDir());
+		return this.retireSupersededInstallRecord();
+	}
+
+	/**
+	 * The record, retired first when the version now running has reached its target.
+	 *
+	 * One function rather than the same test written at each site, because there are two
+	 * moments the fact becomes true - the launch that reads the record, and a start-up
+	 * that observes an install having succeeded or been superseded - and two spellings of
+	 * one rule is how the arms drift apart. The predicate keeps a record whose versions
+	 * cannot be ordered, so nothing is dropped on a guess (`installAttemptSupersededBy`).
+	 */
+	private retireSupersededInstallRecord(): LastInstallAttempt | null {
+		const record = readLastInstallAttempt(this.markerDir());
+		if (!record) return null;
+		const running = app.getVersion();
+		if (!installAttemptSupersededBy(record, running)) return record;
+		if (clearLastInstallAttempt(this.markerDir())) {
+			logger.info(
+				`Retired the recorded install failure for ${record.targetVersion}: this app is running ${running}, so the target has been reached and the record describes a state the machine has left`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		return null;
 	}
 
 	/**
