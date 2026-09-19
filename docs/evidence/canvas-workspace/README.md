@@ -18,9 +18,11 @@ each — the twelve sweep themes (`manifest.json`'s `THEMES`).
 | `files-media/` | a media row's leading visual both ways — a resolvable thumbnail, and an image that is gone (the glyph, no box) |
 | `files-scrolled/` | forty-eight rows at maximum scroll: the last row whole, with the scroller's own padding below it |
 | `files-scanning/`, `files-scan-stopped/`, `files-scan-stopped-empty/` | the scan's three states, including the one that used to read "No files yet" over unread messages |
-| `files-row-hover/`, `files-row-actions-hover/`, `files-row-hover-narrow/` | a row under a real pointer, with its `⋯` revealed |
+| `files-row-hover/`, `files-row-hover-narrow/` | the pointer over a plain row: the row's own `row-hover` ground, with its `⋯` revealed in the trailing 28px it reserves |
+| `files-row-actions-hover/` | the pointer on the `⋯` ITSELF: the control carries its own ground and the row's stays with it, because the ground is the row's rather than the button's (design round 2, D11 — before it, this frame showed the row un-highlighted under its own menu button) |
 | `files-row-focused/`, `files-row-focused-narrow/` | a row under the keyboard's ring |
-| `nothing-open/`, `nothing-open-empty/` | the blank canvas with files to browse, and with none |
+| `nothing-open/`, `nothing-open-empty/` | the blank canvas with files to browse, and with none — both at the story default 718px |
+| `nothing-open-narrow/` | the blank canvas at the dock's 400px FLOOR, with files: the width where its three actions wrap inside the 351px content box instead of painting into their own `p-6` padding (design round 2, D9) |
 | `variables*/` | the variables panel beside it, unchanged by this work |
 
 The six `files-row-*` and `files-filtered-clear-hover` states are driven by the
