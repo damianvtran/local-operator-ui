@@ -756,13 +756,21 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	// what the spawn site has to correct rather than merely fill.
 	process.env.PYTHONPYCACHEPREFIX = INSIDE_BUNDLE_PREFIX;
 	/*
-	 * An empty config root, so discovery cannot decide this test's branch.
-	 * `start()` runs discovery before it spawns, and discovery reads serve
-	 * records - on this machine the operator's own daemon publishes one, and a
-	 * live record this app may not attach to is exactly the state that makes
-	 * `start()` refuse to spawn a second daemon. That guard is right, and it is
-	 * not what this test is about: the subject here is the spawn ENVIRONMENT.
-	 * Redirecting the root rather than stubbing the method keeps discovery real.
+	 * A config root with nothing in it. The RECORD-backed half of discovery is
+	 * isolated in this test by the `checkExistingBackend` stub below, NOT by this
+	 * redirect: with that stub in place the class method never runs, so changing
+	 * this value changes nothing about this test's execution - measured by
+	 * deleting the line and re-running, which still passes. It is kept because the
+	 * redirect, not a stub, is what keeps discovery real for any path that does
+	 * reach it, and because it is how the record path was RULED OUT as this
+	 * test's cause: with it set, `discoverDaemons()` reports `noRecordsAtAll:
+	 * true, blocksSpawn: false` on a machine that publishes a live serve record,
+	 * so a refusal could only have come from a gate that is not record-based.
+	 *
+	 * It did. The occupancy probe against the app's configured address is that
+	 * gate, it is isolated below, and it is the measured reason this test went
+	 * 34 pass / 1 fail for three runs of three on the operator's machine while
+	 * passing in CI.
 	 */
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = join(PATHS.home, "config");
 
@@ -790,6 +798,29 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			manager.checkLocalOperatorExists = async () => globalInstall;
 			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
 			manager.checkHealth = async () => true;
+			/*
+			 * The spawn gate's OTHER source of truth, and the measured reason this
+			 * test was red on the operator's machine while green in CI. `start()`
+			 * asks two independent questions before it may spawn: the record-backed
+			 * discovery the redirect above isolates, and
+			 * `configuredOriginOccupancy()` - a real `/health` probe against
+			 * `this.backendUrl`. The constructor derives that URL from
+			 * `backendConfig.VITE_LOCAL_OPERATOR_API_URL`, a module-level singleton
+			 * `backend/config.ts` evaluates at first import, so it stays
+			 * `http://127.0.0.1:1111` whatever a test body writes into
+			 * `process.env` afterwards. The operator's own `lop serve` daemon serves
+			 * exactly that address, so the probe finds an occupant, the gate declines
+			 * rather than spawning onto a bound port, and `start()` returns false
+			 * without ever reaching a spawn. No config ROOT can isolate that: it is
+			 * an address, not a record.
+			 *
+			 * Stubbed with the rest of this synthetic machine, for the reason the
+			 * stubs above are: what answers on that address is a fact about the host,
+			 * not about the code path under test. Nothing this test exists for is
+			 * lost - both spawn sites below are still reached, and the spawn
+			 * environment is still asserted at the spawn, unchanged.
+			 */
+			manager.configuredOriginOccupancy = async () => null;
 
 			assert.equal(
 				manager.shellEnv.PYTHONPYCACHEPREFIX,
