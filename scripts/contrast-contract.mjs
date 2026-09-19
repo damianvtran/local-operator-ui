@@ -2884,7 +2884,9 @@ const ROW_STATE_HUE_LIMIT = 12;
  *
  * These are SLACK, not floors: a state that desaturates past the floor by more
  * than the grid can (the probe in the round's tests takes one to zero) still
- * fails, and the peer round's 60-77% desaturations fail by an order of magnitude.
+ * fails, and the desaturations this round exists to fix - 60-77% below the panel's
+ * own cast, measured across 39 of the 59 themes before it - fail by an order of
+ * magnitude.
  */
 const ROW_STATE_CHROMA_FLOOR_SLACK = 0.45;
 const ROW_STATE_CHROMA_CAP_SLACK = 0.75;
@@ -3282,7 +3284,7 @@ for (const { id, palette: p } of palettes) {
 			}
 		} else if (chroma < castFloor - ROW_STATE_CHROMA_FLOOR_SLACK) {
 			fail(
-				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, under the cast floor ${r2(castFloor)} — a row state has to carry the cast of the panel it sits on, and a fill quieter than its own backdrop reads as a grey wash of that backdrop. This is the defect that was reachable because the two \`ROW_*_CHROMA_FLOOR\` constants were declared and asserted NOWHERE, and the peer round's evidence was a hover at C* 4.79 on a panel of 13.44. Author the value at the panel's own hue, at the cast the rule names and the step the inks allow`,
+				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, under the cast floor ${r2(castFloor)} — a row state has to carry the cast of the panel it sits on, and a fill quieter than its own backdrop reads as a grey wash of that backdrop. This is the defect that was reachable because the two \`ROW_*_CHROMA_FLOOR\` constants were declared and asserted NOWHERE, and the measurement that found it was a hover at C* 4.79 on a panel of 13.44. Author the value at the panel's own hue, at the cast the rule names and the step the inks allow`,
 			);
 		}
 
