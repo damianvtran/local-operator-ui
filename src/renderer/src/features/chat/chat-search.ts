@@ -101,6 +101,15 @@ export function searchChats(
 	rows: CanonicalSessionRow[],
 	query: string,
 	hits: SessionSearchHit[] | null,
+	/*
+	 * The pin state THIS CLIENT holds for conversations it may not list, keyed by
+	 * session id (the store's `pinFacts`). It is an argument rather than a lookup
+	 * because this module is pure, and it is consulted only where the row would
+	 * otherwise be rebuilt from a wire answer that can be older than the last
+	 * press: a hit's own `pinned` is what the search last saw, and after a press
+	 * the client knows better (QA round 2, Qr2-1).
+	 */
+	pinFacts: Record<string, boolean> = {},
 ): ChatSearchOutcome {
 	const needle = query.trim();
 	if (!needle) {
@@ -154,10 +163,31 @@ export function searchChats(
 	for (const hit of hits ?? []) {
 		if (seen.has(hit.id)) continue;
 		synthesized.add(hit.id);
+		/*
+		 * The client's own fact first, the hit's own second, and NOTHING when
+		 * neither exists.
+		 *
+		 * The order is the fix for Qr2-1: a search hit is a row this panel rebuilds
+		 * from the cached answer on every render, so a press on it writes the
+		 * backend and then reads back the state the search last saw - the control
+		 * cannot invert what it cannot see, and the row never follows its own press.
+		 * A fact this window wrote and the backend confirmed outranks the answer,
+		 * which may predate it.
+		 *
+		 * The absent case is unchanged and load-bearing: `pinned: undefined` would be
+		 * a claim this client cannot make, and the sidebar reads the absence as
+		 * "unknown" and withholds the control rather than mounting one that cannot
+		 * repair the row it is drawn on (QA round 1, Q1; review round 1, m1).
+		 */
+		const clientPinned = pinFacts[hit.id];
 		const row: CanonicalSessionRow = {
 			session_id: hit.id,
 			title: hit.name,
 			updated_at: hit.mtime,
+			...(() => {
+				const known = clientPinned ?? hit.pinned;
+				return typeof known === "boolean" ? { pinned: known } : {};
+			})(),
 		};
 		if (hit.body_match) conversationMatches.add(hit.id);
 		admitted.push({ row, rank: hit.rank });

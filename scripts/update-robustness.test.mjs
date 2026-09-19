@@ -47,7 +47,8 @@ import { build } from "esbuild";
  */
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/main/update-install";',
+		contents:
+			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -98,6 +99,7 @@ const {
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
+	serverUpdateFailureSentence,
 	parseSealViolations,
 	pendingInstallAgeSeconds,
 	pendingInstallMarkerPath,
@@ -1431,8 +1433,42 @@ test("a failure after an install was in flight names the relaunch as the cause",
  * the three committed frames rendered a sentence the app does not ship (reviews
  * R6 and D9; R1 for the same drift in the in-flight fixture). The frames cannot
  * be checked against the payload by a test because they are pixels - the
- * fixtures can, and the frames are a function of them.
+ * fixtures can, and the frames are a function of them. The server-update failure
+ * sentence is the newest entry in the list below for exactly that reason: it was
+ * the one fixture this case did not cover, and it had drifted (design review
+ * round 2, D2).
  */
+/**
+ * The facts the failure fixture stands for, in one place so the sentence and the
+ * output under it cannot be composed from different ones.
+ *
+ * The diagnosis is the same value the composer turns into its pointer clause and
+ * the producer sends as `installerOutput` (`update-service.ts`), which is what makes
+ * the pairing below a property rather than two independent strings.
+ */
+const SERVER_UPDATE_FAILURE_SENTENCE_INPUTS = (() => {
+	const diagnosis = [
+		"uv tool upgrade local-operator",
+		"Resolved 55 packages in 1.02s",
+		"Installed 1 package in 12ms",
+		" + local-operator==0.55.10",
+	].join("\n");
+	return {
+		diagnosis,
+		sentence: serverUpdateFailureSentence({
+			rebuildRoute: false,
+			ran: true,
+			exitCode: 0,
+			groupSurvived: false,
+			diagnosis,
+			target: "0.55.10",
+			after: "0.55.9",
+			before: "0.55.9",
+			updateCommand: "lop update",
+		}),
+	};
+})();
+
 test("the story fixtures carry the payload strings verbatim", () => {
 	const stories = readFileSync(
 		join(
@@ -1471,6 +1507,17 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		["the start-up refusal message", startup.message],
 		["the start-up refusal heading", startup.heading],
 		["the start-up refusal dismiss label", startup.dismissLabel],
+		/*
+		 * THE SERVER-UPDATE FAILURE SENTENCE AND THE OUTPUT IT POINTS AT, which
+		 * this list never covered and which is why it drifted: the fixture stood for
+		 * a payload whose sentence no arm of `serverUpdateFailureSentence` emits, and
+		 * then for a pairing no shipped path composes - the "output is below" pointer
+		 * with no output (design review round 2, D2; round 3, R3-1 = D4).
+		 */
+		[
+			"the server-update failure message",
+			SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence,
+		],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
@@ -1488,6 +1535,53 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// app is what an unhealed break leads to, not something this pass can assert
 	// about a bundle it has only just measured (review R2).
 	assert.doesNotMatch(startup.message, /will refuse/);
+
+	/*
+	 * The installer output is a shell transcript in the fixture - an array joined
+	 * with "\n" - so it is matched line by line rather than as one literal, which is
+	 * also what makes a line dropped from the transcript a failure rather than a
+	 * still-passing substring.
+	 */
+	for (const line of SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.diagnosis.split(
+		"\n",
+	)) {
+		assert.ok(
+			stories.includes(line),
+			`the installer output line ${JSON.stringify(line)} is not in the story fixture - the block the sentence points at must carry the producer's own words`,
+		);
+	}
+
+	/*
+	 * THE PAIRING THE SENTENCE PROMISES (review round 3, R3-1 = design D4). The
+	 * composer emits the "output is below" pointer only for a non-empty diagnosis,
+	 * and the producer sends that same value as `installerOutput` - so a payload
+	 * carrying that sentence without the output is a report the app cannot build,
+	 * and the frame it renders promises a block nothing paints. The two are asserted
+	 * together here, in the payload the frame is captured from.
+	 */
+	const sentence = SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence;
+	assert.match(
+		sentence,
+		/The installer's own output is below\.$/,
+		"this fixture stands for the arm whose pointer names the block beside it",
+	);
+	const failurePayload = stories.slice(
+		stories.indexOf("if (window.triggerBackendUpdateError)"),
+	);
+	const payloadBody = failurePayload.slice(
+		0,
+		failurePayload.indexOf("return false;"),
+	);
+	assert.match(
+		payloadBody,
+		/message:\s*SERVER_UPDATE_FAILURE_MESSAGE/,
+		"the failure listener must send the pinned sentence",
+	);
+	assert.match(
+		payloadBody,
+		/installerOutput:\s*SERVER_UPDATE_FAILURE_OUTPUT/,
+		"the frame must carry the installer output its sentence points at - a pointer with no block is a pairing no shipped payload composes (R3-1)",
+	);
 	assert.doesNotMatch(startup.message, /the next time you start it/);
 	// The remedy is stated ONCE, by the remedy line. D1: the message used to end
 	// with the same instruction, 7px above the line that repeats it - measured, so
@@ -3477,7 +3571,17 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	const checks = artifactChecks({ appPath: APP, dmgPath: DMG });
 	assert.deepEqual(
 		checks.map((check) => check.id),
-		["app-codesign", "app-spctl", "app-stapler", "dmg-spctl", "dmg-stapler"],
+		[
+			"app-codesign",
+			"app-spctl",
+			"app-stapler",
+			// The passkey entitlement, asserted on the SIGNED bundle: every failure
+			// downstream of it is silent by design, so the release gate reads it off
+			// the artifact rather than trusting the build (review round 1, finding 6).
+			"app-webauthn-entitlement",
+			"dmg-spctl",
+			"dmg-stapler",
+		],
 	);
 
 	const codesign = checks.find((check) => check.id === "app-codesign");
@@ -3557,15 +3661,31 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
 		failing.failures.map((result) => result.id),
-		["dmg-spctl", "dmg-stapler"],
+		// The app's own WebAuthn entitlement is the first thing wrong here: 0.17.0's
+		// signature carries no keychain access group, and the release gate reads that
+		// off the artifact rather than trusting the build (review round 1, finding 6).
+		["app-webauthn-entitlement", "dmg-spctl", "dmg-stapler"],
 	);
-	assert.match(failing.failures[0].output, /no usable signature/);
+	assert.match(
+		failing.failures.find((result) => result.id === "dmg-spctl").output,
+		/no usable signature/,
+	);
 
 	// The same artifacts after the fix: image signed, notarized and stapled.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
 		if (joined.includes("stapler validate")) {
 			return { status: 0, stdout: "The validate action worked!", stderr: "" };
+		}
+		if (joined.includes("--entitlements")) {
+			// The signed, entitled app: the group the release renderer writes into the
+			// build's entitlements plist, read back off the artifact.
+			return {
+				status: 0,
+				stdout:
+					"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+				stderr: "",
+			};
 		}
 		if (command === "/usr/bin/codesign") {
 			return { status: 0, stdout: "", stderr: "" };
@@ -4944,7 +5064,11 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 										return globalThis.__loTestAppIsPackaged ?? true;
 									},
 									getPath: (name) => paths[name] ?? paths.userData,
-									getVersion: () => "0.0.0-test",
+									// A getter rather than a literal, so a case that is about the
+									// version the app REPORTS (the retire rule's own input) can
+									// set it; the default is unchanged for every other case.
+									getVersion: () =>
+										globalThis.__loTestAppVersion ?? "0.0.0-test",
 									getName: () => "Local Operator",
 									getAppPath: () => process.cwd(),
 									whenReady: async () => {},
@@ -12320,6 +12444,7 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 			},
 		},
 	];
+
 	for (const route of routes) {
 		const sentence = producer.serverUpdateFailureSentence(route.input);
 		/*
@@ -12744,4 +12869,438 @@ test("no attempt-scoped evidence read resolves an install of its own", async () 
 		1,
 		"exactly one caller may fall back to the shim: a record an older build wrote",
 	);
+});
+
+/**
+ * A GENERATION INSTALL CANNOT MOVE UNDER AN EVIDENCE READ, SO THE READ FOLLOWS THE POINTER.
+ *
+ * The operator's report of 2026-09-18: the press ran the serving install's own updater,
+ * that updater created `generations/20260918T233919Z-0.59.7` and flipped `<stable>/current`
+ * to it, and the app then told the user "The server update to 0.59.7 did not take effect:
+ * the install still reports 0.59.6" - while Settings, reading the same install through the
+ * shim one second later, printed 0.59.7.
+ *
+ * The mechanism was the layout's own point: the tree `/health` reports as the install root
+ * is the generation the DAEMON started from, an install lands beside it and never touches
+ * it, so `before` and `after` were two photographs of one frozen tree. `installPointerPath`
+ * names the same install through `<stable>/current`, which is the one spelling that moves.
+ *
+ * These cases drive the SHIPPED press against a real generation layout (`realEvidenceReads`,
+ * so the verdict comes from dist-info on disk and not from a scripted reading) and flip the
+ * pointer from inside the run, which is exactly what `lop update` does.
+ */
+
+/** One generation of the install layout: the venv under `tools/local-operator`, and its own `bin`. */
+const generationInstall = (stable, id, version) => {
+	const root = join(stable, "generations", id);
+	const venv = join(root, "tools", "local-operator");
+	mkdirSync(join(venv, "bin"), { recursive: true });
+	writeFileSync(join(venv, "bin", "local-operator"), "#!/bin/sh\nexit 0\n", {
+		mode: 0o755,
+	});
+	writeFileSync(join(venv, "pyvenv.cfg"), "home = /usr/bin\n");
+	writeFileSync(
+		join(venv, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+	);
+	writeFileSync(join(venv, ".lop-source"), `pypi ${version}\n`, "utf8");
+	const site = join(venv, "lib", "python3.13", "site-packages");
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	// The generation's console script is a symlink into its own venv (the layout's
+	// § 2), so `<generation>/bin/local-operator` and the venv's script are one file.
+	mkdirSync(join(root, "bin"), { recursive: true });
+	symlinkSync(
+		join("..", "tools", "local-operator", "bin", "local-operator"),
+		join(root, "bin", "local-operator"),
+	);
+	return { root, venv, script: join(venv, "bin", "local-operator") };
+};
+
+/** Point `<stable>/current` at a generation, staged-then-renamed as `lop update` does. */
+const flipPointer = (stable, root) => {
+	const staged = join(stable, `current.tmp-${process.pid}`);
+	symlinkSync(root, staged);
+	renameSync(staged, join(stable, "current"));
+};
+
+test("a landed install behind a generation pointer is not reported as a failed update", async () => {
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-stable-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const after = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	let markerDuring = null;
+	const run = await driveGlobalUpdate({
+		before: "0.59.6",
+		after: "0.59.7",
+		target: "0.59.7",
+		// The install root `/health` reports: the generation the daemon came from.
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+		runGate: ({ markerPath }) => {
+			// What the installer does while the app waits: build beside, then flip.
+			markerDuring = JSON.parse(readFileSync(markerPath, "utf8"));
+			flipPointer(stable, after.root);
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.59.7"), true);
+		assert.deepEqual(
+			backendErrors(run.sent),
+			[],
+			"an install that landed must not be reported as one that did not",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		/*
+		 * The record the reconciliation reads later carries the POINTER spelling: a
+		 * generation this attempt superseded is unreferenced and therefore prunable
+		 * (`design-install-generations.md` § 3.3), and a record naming a pruned tree
+		 * would read as "nothing moved" for an install that landed.
+		 */
+		assert.equal(
+			markerDuring?.installPath,
+			join(
+				stable,
+				"current",
+				"tools",
+				"local-operator",
+				"bin",
+				"local-operator",
+			),
+		);
+	} finally {
+		run.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+test("the unattended reconciliation follows the pointer a record names", async () => {
+	/*
+	 * The same seam on the launch-time path, where there is no press in scope. The
+	 * record this case writes carries the CONCRETE generation path, deliberately: that
+	 * is the spelling every record written before this fix holds, so the case is about
+	 * a marker an older build left as much as about one this build writes.
+	 */
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-record-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const landed = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	const drive = await driveGlobalUpdate({
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+	});
+	try {
+		// The install landed with nothing watching: the new generation exists and the
+		// pointer names it, and the record was written before the flip.
+		flipPointer(stable, landed.root);
+		writeFileSync(
+			drive.markerPath,
+			JSON.stringify({
+				before: "0.59.6",
+				target: "0.59.7",
+				startedAt: new Date().toISOString(),
+				deadlineAt: new Date(Date.now() - 60_000).toISOString(),
+				groupPid: null,
+				groupStartedAt: null,
+				installPath: before.script,
+			}),
+		);
+		await drive.updateService.reportUnattendedServerUpdate();
+		const completed = backendCompletion(drive.sent);
+		assert.ok(
+			completed,
+			`a landed unattended update must be reported: ${JSON.stringify(drive.sent.map((c) => c.channel))}`,
+		);
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		assert.equal(completed.payload.unattended, true);
+		assert.equal(existsSync(drive.markerPath), false);
+	} finally {
+		drive.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+/**
+ * THE RECORDED INSTALL FAILURE RETIRES ONCE THE MACHINE HAS ARRIVED.
+ *
+ * `last-update-install.json` outlives the notice by design (a dismissal must not be an
+ * information loss), and nothing retired it when the install it complained about was
+ * later reached: on 2026-09-18 the app ran 0.29.1 while the record still named a 0.28.3
+ * install, so Settings printed "The last update to version 0.28.3 didn't finish. Version
+ * 0.28.2 is running." - two versions stale, about a state the machine had left hours
+ * earlier. The operator's rule is the rule here: cleared whenever the UI updates to a
+ * newer version, successfully.
+ */
+test("the recorded install failure retires when the running version has reached its target", async () => {
+	const recordFor = (targetVersion) => ({
+		targetVersion,
+		runningVersion: "0.28.2",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail:
+			"Install started. Squirrel cancels an install when an instance runs.",
+		attempts: 1,
+	});
+
+	const at = async (appVersion, targetVersion) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-last-install-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const markerDir = userData;
+		writeFileSync(
+			join(markerDir, "last-update-install.json"),
+			`${JSON.stringify(recordFor(targetVersion), null, 2)}\n`,
+		);
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		return {
+			updateService,
+			path: join(markerDir, "last-update-install.json"),
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The operator's own state: a 0.28.3 record on a 0.29.1 app. Retired at the read,
+	// and the FILE goes with it - a later launch, a `cat` and the panel agree.
+	const stale = await at("0.29.1", "0.28.3");
+	try {
+		assert.equal(stale.updateService.lastInstallAttempt(), null);
+		assert.equal(
+			existsSync(stale.path),
+			false,
+			"the retirement is a removal, not a read-time mask",
+		);
+	} finally {
+		stale.dispose();
+	}
+
+	// An install that reached its target exactly is the same fact: the record describes
+	// a version this app is running.
+	const exact = await at("0.29.0", "0.29.0");
+	try {
+		assert.equal(exact.updateService.lastInstallAttempt(), null);
+	} finally {
+		exact.dispose();
+	}
+
+	// The record still has something to say: the target is AHEAD of what is running, so
+	// the failure it names is the state of this machine and the attempts count stands.
+	const live = await at("0.29.1", "0.30.0");
+	try {
+		const record = live.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.attempts, 1);
+		assert.equal(existsSync(live.path), true);
+	} finally {
+		live.dispose();
+	}
+
+	/*
+	 * AND THE PRE-RELEASE PAIR STAYS (review round 1, R1-2). `compareVersions` reads
+	 * TRIPLES, so a target `0.1.2` against a running `0.1.2-beta.9` orders EQUAL -
+	 * and the first spelling of the retire rule treated `order <= 0` as arrival, so
+	 * the launch that had just written "the install of 0.1.2 didn't finish" deleted
+	 * its own record on the way out, while the marker rule called that same pair a
+	 * failure. The stand-in app version here IS the shape: this repository has shipped
+	 * a `-beta.N` stamp, so it is a pair the update flow really produces.
+	 */
+	const prerelease = await at("0.1.2-beta.9", "0.1.2");
+	try {
+		const record = prerelease.updateService.lastInstallAttempt();
+		assert.equal(
+			record?.targetVersion,
+			"0.1.2",
+			"a machine reporting 0.1.2-beta.9 is not running 0.1.2, so the record must stay",
+		);
+		assert.equal(existsSync(prerelease.path), true);
+	} finally {
+		prerelease.dispose();
+	}
+
+	/*
+	 * And nothing is dropped on a guess: a target the module cannot order is not
+	 * evidence that the install landed, which is the direction `evaluatePendingInstall`
+	 * takes for a marker it cannot order either.
+	 */
+	const unorderable = await at("0.29.1", "nightly");
+	try {
+		assert.equal(
+			unorderable.updateService.lastInstallAttempt()?.targetVersion,
+			"nightly",
+		);
+		assert.equal(existsSync(unorderable.path), true);
+	} finally {
+		unorderable.dispose();
+	}
+});
+
+test("a start-up that observes an install arrived retires the record, and a failed one keeps it", async () => {
+	/*
+	 * The event-driven half of the same rule: the launch that observes the install
+	 * having succeeded (or being superseded) is the moment the fact becomes true, and
+	 * the two arms that report it are where the record is cleared. The arms that do
+	 * NOT report arrival - an install still in flight, and one that failed - must leave
+	 * it alone, or the record loses its only purpose.
+	 */
+	/*
+	 * THE FILES ARE SEEDED AFTER THE SERVICE IS CONSTRUCTED, on purpose (QA Q-1).
+	 * `UpdateService`'s own constructor calls `recoverPendingInstall()`, so a
+	 * record written first would be retired by CONSTRUCTION and the case would
+	 * assert about the constructor rather than about the call it narrates. Seeded
+	 * after, the arms below are pinned by the explicit call, and each case asserts
+	 * the record is still on disk before that call - which is what fails if the
+	 * seeding order is ever reversed again.
+	 */
+	const scenario = async ({ markerTarget, appVersion, recordTarget }) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-recover-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const recordPath = join(userData, "last-update-install.json");
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		/*
+		 * The seam that decides "is this target's install still running" is
+		 * `installJobStateProbe` (the four-state probe `installJobState` answers);
+		 * `absent` is a launchd with no job for this app, which is what lets the
+		 * marker be judged by version alone. The stub this case used to install -
+		 * `shipItInstallJobLoaded` - is not a member of the class at all, so it
+		 * armed nothing (QA Q-1, measured).
+		 */
+		updateService.installJobStateProbe = () => "absent";
+		writeFileSync(
+			recordPath,
+			JSON.stringify({
+				targetVersion: recordTarget,
+				runningVersion: "0.28.2",
+				startedAt: "2026-09-18T13:37:09.507Z",
+				detectedAt: "2026-09-18T14:12:16.975Z",
+				detail:
+					"Install started. Squirrel cancels an install when an instance runs.",
+				attempts: 1,
+			}),
+		);
+		writeFileSync(
+			join(userData, "pending-update-install.json"),
+			JSON.stringify({
+				targetVersion: markerTarget,
+				artifactPath: join(userData, "staged.zip"),
+				startedAt: new Date().toISOString(),
+				watchdogPid: null,
+			}),
+		);
+		return {
+			updateService,
+			recordPath,
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The install arrived: the marker's target is what this app is running.
+	const arrived = await scenario({
+		markerTarget: "0.29.0",
+		appVersion: "0.29.0",
+		recordTarget: "0.29.0",
+	});
+	try {
+		// The record is there BEFORE the call: construction alone must not have
+		// touched it, or the assertion below would be about the constructor.
+		assert.match(
+			readFileSync(arrived.recordPath, "utf8"),
+			/"targetVersion":"0.29.0"/,
+			"the constructor's own recovery may not retire a record written after it",
+		);
+		arrived.updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(arrived.recordPath),
+			false,
+			"the launch that observed the install arrive is the end of the record",
+		);
+	} finally {
+		arrived.dispose();
+	}
+
+	// And a failure is still a failure: the record it writes survives its own report,
+	// with the attempts count the panel reads. The arm REPLACES the record with this
+	// attempt's (that is what the count is for) - what it may not do is remove it,
+	// which is the clearing the two arms above perform and this one must not.
+	const failed = await scenario({
+		markerTarget: "0.30.0",
+		appVersion: "0.29.1",
+		recordTarget: "0.28.3",
+	});
+	try {
+		assert.equal(existsSync(failed.recordPath), true);
+		failed.updateService.recoverPendingInstall();
+		const record = failed.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.runningVersion, "0.29.1");
+	} finally {
+		failed.dispose();
+	}
 });

@@ -41,20 +41,24 @@ export const duskfox: ThemeDefinition = {
 		sunken: "#191726",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2A3235  accent hue, C* 4.02, +1.61 L*, ΔE00 15.21 off `surface`,
-		 *                       `inkDim` 5.96:1 on the fill, hue 3.21° off `accent`.
-		 * rowSelected #233B45  accent hue, C* 10.96, +4.83 L*, ΔE00 17.45 off
-		 *                       `surface` and 6.16 off `rowHover`, `inkDim` 5.37:1, and the
-		 *                       2px `accent` bar at 4.86:1 against it.
+		 * rowHover    #353243  panel hue, C* 11.55,
+		 *                       the rule's 0.60 x the panel's 18.65; +3.18 L*,
+		 *                       ΔE00 4.98 off `surface`, `inkDim` 5.67:1.
+		 * rowSelected #383456  panel hue, C* 22.71,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.01 L*,
+		 *                       ΔE00 4.13 off `surface` and 6.75 off
+		 *                       `rowHover`; the pair ranks 1.83 `L*` and 11.2 `C*`,
+		 *                       `inkDim` 5.33:1.
 		 */
-		rowHover: "#2A3235",
-		rowSelected: "#233B45",
+		rowHover: "#353243",
+		rowSelected: "#383456",
 
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",

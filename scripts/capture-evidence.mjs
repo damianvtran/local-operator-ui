@@ -51,8 +51,8 @@ import { loadPalettes } from "./palette-source.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
 const ARGS = process.argv.slice(2);
-const flag = (name) => {
-	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
+const flag = (name, args = ARGS) => {
+	const hit = args.find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3) : null;
 };
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
@@ -134,6 +134,107 @@ const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
  * It is opt-in per run, and it never applies to a full sweep.
  */
 const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
+
+/*
+ * How long the theme guard waits for the story's decorator to apply the
+ * palette it was navigated with, before it gives up and fails the run.
+ *
+ * The guard POLLS `document.documentElement.dataset.theme` rather than
+ * sleeping once, for the reason its own comment gives at the call site: the
+ * wait is paid only by the story that needs it instead of by all 372 frames.
+ * 10 s is a correct budget on an idle machine.
+ *
+ * IT IS TOO SHORT ON A LOADED ONE, and that is a measurement rather than a
+ * guess (2026-09-18, this host, load averages 144-233): driving the rig's own
+ * story over CDP, `chat-canonical-links--detected-targets` reaches
+ * `tokyoNight` at **72.1 s**, and even the default `localOperatorDark` at
+ * 30-66 s, while this window is 40 x 250 ms plus the 900 ms post-navigation
+ * settle, ~10.9 s - a 3-7x shortfall. The rig could not take a SINGLE frame at
+ * that load: three runs died at the set's first entry with `document carries
+ * theme "" after 10s`.
+ *
+ * So the budget is a knob. IT DEFAULTS TO THE VALUE THE RIG USES TODAY, so the
+ * gate's determinism, the committed frames and every existing capture are
+ * unaffected; a run on a busy box raises it and says so. Opt in with
+ * `--theme-settle-ms=<ms>` or `LOCAL_OPERATOR_UI_THEME_SETTLE_MS` in the
+ * environment (the flag wins). A MALFORMED VALUE IS REFUSED rather than
+ * silently replaced by the default: a run that quietly reverted to 10 s would
+ * reproduce exactly the failure this knob exists to avoid, on a machine where
+ * it is already known not to fit. The space-separated spelling
+ * (`--theme-settle-ms 300000`) is refused BY NAME rather than falling through to
+ * the default, because the file's own `flag()` shape matches only the `=` form
+ * (round 5, R5-8). The flag is not restricted to narrow runs, but a full sweep
+ * should keep the shipped budget.
+ *
+ * THIS KNOB IS THE THEME GUARD'S ALONE, and the guard next door keeps its own
+ * fixed ~10 s (`evaluateUntil`'s 50 x 200 ms) deliberately rather than by
+ * oversight: that wait is for a selector or a text aim inside a story that has
+ * already settled its theme, it is bounded by the same 10 s the theme window
+ * always had, and the round-3 and round-4 passes both fitted inside it. A
+ * reader raising this number does not thereby raise that one - if a future pass
+ * finds a box where the aim times out, the honest fix is a budget for that
+ * wait, measured the way this one was.
+ */
+/*
+ * A whole number of milliseconds, for `resolveThemeSettleMs`'s validation.
+ *
+ * At the top level rather than inline because that is the rule this file is
+ * held to (`lint/performance/useTopLevelRegex`, the same one `DEBUG_PORT_LINE`
+ * below is hoisted for): a literal inside a function is re-created on every
+ * call. It must also sit ABOVE the resolver's own module-scope call, which is
+ * why it is here rather than beside `API_URL_LINE` where the rest of the flag
+ * parsing lives: a `const` used before its declaration in that path throws a
+ * `ReferenceError` from the temporal dead zone, which reads as a load failure
+ * rather than as the refusal the caller wrote.
+ */
+const WHOLE_MILLISECONDS = /^\d+$/;
+
+export const THEME_SETTLE_DEFAULT_MS = 10_000;
+/** The guard's poll interval, which is what turns the budget into attempts. */
+export const THEME_SETTLE_POLL_MS = 250;
+export const THEME_SETTLE_ENV = "LOCAL_OPERATOR_UI_THEME_SETTLE_MS";
+
+/**
+ * The theme guard's budget, resolved from argv then the environment.
+ *
+ * Read as a function of its inputs rather than straight off `process` so the
+ * three properties that matter are testable without a capture: the flag is
+ * honoured, the default is the shipped 10 s, and a value that is not a
+ * positive whole number of milliseconds THROWS. Failing closed is the point -
+ * see the constant's note above for what a silent default costs here.
+ */
+export const resolveThemeSettleMs = (args = ARGS, env = process.env) => {
+	/*
+	 * The value is read through this file's own `flag()`, so the knob cannot
+	 * drift from the shape every other flag here has - and that shape's one trap
+	 * is refused BY NAME rather than left to fall through: a space-separated
+	 * `--theme-settle-ms 300000` matches no `--theme-settle-ms=`, so the run
+	 * would quietly take the 10 s default on the machine that has already shown
+	 * 10 s does not fit, which is the one outcome the constant's note says must
+	 * not happen silently (round 5, R5-8).
+	 */
+	if (args.includes("--theme-settle-ms")) {
+		throw new Error(
+			`--theme-settle-ms takes its value joined with '=': write --theme-settle-ms=<ms>, not "--theme-settle-ms <ms>"`,
+		);
+	}
+	const raw = flag("theme-settle-ms", args) ?? env[THEME_SETTLE_ENV];
+	if (raw === undefined) return THEME_SETTLE_DEFAULT_MS;
+	const text = String(raw).trim();
+	const value = Number(text);
+	if (
+		!WHOLE_MILLISECONDS.test(text) ||
+		!Number.isSafeInteger(value) ||
+		value <= 0
+	) {
+		throw new Error(
+			`--theme-settle-ms / ${THEME_SETTLE_ENV} must be a positive whole number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	}
+	return value;
+};
+
+const THEME_SETTLE_MS = resolveThemeSettleMs();
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
@@ -775,6 +876,30 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+
+	/*
+	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
+	 * artifact anywhere: the design round had to build one from an untracked file,
+	 * and this table had no row for it, so the surface could not be re-shot and a
+	 * regression in its copy or its rows had no frame to show up in.
+	 *
+	 * Sized per state rather than at 900 for the reason `/usage`'s states are: the
+	 * chooser is content-sized, so four rows in a 900-tall frame is mostly ground
+	 * (`check-evidence`'s uniformity ceiling is what notices), while the twelve-
+	 * account state genuinely needs the height to show that the list scrolls and
+	 * that the Touch ID sentence stays pinned under it.
+	 */
+	["browser-webauthn-dialog--several-named", 1024, 620],
+	// The Answering state is the one state the app-side rig cannot hold (the preload
+	// object refuses the patch, and holding it from main would freeze the process
+	// that serves the screenshot), so the dimming rule design round 2 found broken
+	// is captured here — disabled rows and the pinned cue — against the enabled
+	// state above it.
+	["browser-webauthn-dialog--answering", 1024, 620],
+	["browser-webauthn-dialog--nameless", 1024, 660],
+	["browser-webauthn-dialog--long-names", 1024, 620],
+	["browser-webauthn-dialog--many-accounts", 1024, 900],
+	["browser-webauthn-dialog--expired", 1024, 480],
 
 	/*
 	 * The conversation-scoped pane (`docs/design/browser-approval-ux.md` §7),
@@ -2458,6 +2583,17 @@ export const STORIES = [
 	["settings-app-updates-section--all-current", 900, 572],
 
 	/*
+	 * THE STATE THE RECORD IS KEPT IN (design review round 1, D1), and the one
+	 * whose sentence this round's fix changes: the record's target (0.30.0) is
+	 * still AHEAD of the app, so the record stays - correctly - and the sentence
+	 * must print the version that IS running (0.29.5, the card's own live reading)
+	 * rather than the version captured when the failure was written (0.29.2). The
+	 * two differ on this frame on purpose: a fixture whose record agreed with the
+	 * machine could not tell the two readings apart, which is the whole defect.
+	 */
+	["settings-app-updates-section--record-kept-while-target-ahead", 900, 572],
+
+	/*
 	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
 	 * app-managed server three releases behind its published release, reported as
 	 * up to date.
@@ -3680,22 +3816,31 @@ export const STORIES = [
 	 * trigger-hover frames use - and the toolbar is raised by the shipped
 	 * `pointerover` handler reacting to it.
 	 *
-	 * `DetectedTargets` is the resting half and carries the eight admission shapes
+	 * `DetectedTargets` is the resting half and carries the nine admission shapes
 	 * in one frame (a `~` path, the operator's own report; a backticked path; a
 	 * `file://` URL; a bare https URL that remark-gfm already linked, which must not
 	 * be linked twice; a path in a table cell; a directory; a path that is not
-	 * there; and one long enough to wrap). There is NO `main`-side before half for it,
-	 * and there cannot be: the story file is ADDED by this branch, so no frame of it
-	 * exists on `main` at all. What the set does have is the story's own RESTING
-	 * state - the same text with no pointer on it and no highlight in it - and the
-	 * change it is the "before" of is "the previous behaviour was no anchor at
-	 * all", which round 1 (review M5) corrected in this file and in the design doc.
+	 * there; one long enough to wrap; and the ninth, the operator's own report of
+	 * this defect - a slash command in prose and a second one in backticks, neither
+	 * a file, beside an extensionless token that is a real directory). There is NO
+	 * `main`-side before half for it, and there cannot be: the story file is ADDED
+	 * by this branch, so no frame of it exists on `main` at all. What the set does
+	 * have is the story's own RESTING state - the same text with no pointer on it
+	 * and no highlight in it - and the change it is the "before" of is "the previous
+	 * behaviour was no anchor at all", which round 1 (review M5) corrected in this
+	 * file and in the design doc.
 	 *
-	 * `hover-file` is the file case (Copy, Open, Open folder); `hover-url` is the
-	 * URL case, which is the already-captured-by-markdown case and offers no Open
-	 * folder; `hover-directory` is the matrix's one deliberate omission; and
-	 * `hover-missing` is the state that replaced a press which silently did
-	 * nothing, so what it shows is a SENTENCE rather than a disabled button.
+	 * `hover-file` is the file case (Copy, Open in canvas, Open in default app, Open
+	 * folder), which is the operator's ask in one frame: a canvas-openable file
+	 * reaches the app's own viewer from the strip, and the OS's application is the
+	 * press BESIDE it rather than the one it replaced. `hover-url` is the URL case,
+	 * which is the already-captured-by-markdown case and offers no Open folder;
+	 * `hover-directory` is the matrix's one deliberate omission; and `hover-missing`
+	 * is the state that replaced a press which silently did nothing, so what it shows
+	 * is a SENTENCE rather than a disabled button. `hover-no-viewer` is the other
+	 * side of the routing rule - a `.zip` and a `.dmg` keep the single `Open` that
+	 * hands them to the OS - and it is its own story because this fixture is what
+	 * every frame above photographs.
 	 *
 	 * The narrow pass is its own entry rather than a second width of the same one:
 	 * a long path in a 420px column wraps, and where the toolbar lands for a
@@ -3760,10 +3905,11 @@ export const STORIES = [
 	 *    the assertion that fails on the pre-remediation tree (the rect stayed on the
 	 *    first link's line while the contents followed the second).
 	 *  - `hover-toolbar-button` and `copy-pressed` are the strip's own states: its
-	 *    button under the pointer (one colour step, no transform) and its `Copy`
-	 *    after a real press (`Copied`). Both need a pointer that ARRIVES at a control
-	 *    which does not exist until a link has been hovered, which is what the chain
-	 *    is for.
+	 *    button under the pointer (one colour step, no transform; the button is
+	 *    `Open in canvas`, so the tooltip the frame carries is the operator's own
+	 *    label) and its `Copy` after a real press (`Copied`). Both need a pointer
+	 *    that ARRIVES at a control which does not exist until a link has been
+	 *    hovered, which is what the chain is for.
 	 *  - `escape-dismisses` is UX U2 in a real browser: a hover-raised strip, focus
 	 *    wherever the reader left it, one real Escape - and the strip must be GONE.
 	 *  - `selection-link-and-prose` and `selection-two-links` are the two spanning
@@ -3785,6 +3931,31 @@ export const STORIES = [
 			hoverText: "is gone, and",
 			hoverSettleMs: 500,
 			dir: "hover-prose",
+		},
+	],
+	/*
+	 * THE AFTER HALF'S CENTRAL CLAIM, as an assertion rather than a picture
+	 * (design D2): a slash command raises NO strip. `hoverText` is the instrument
+	 * because the token is prose - no selector can name a text node - and
+	 * `expectGone` is what makes the frame falsifiable: a still of an absent
+	 * toolbar is otherwise indistinguishable from one of the resting state.
+	 *
+	 * SELF-ASSERTING ACROSS THE TWO HEADS, which is why it is not filed as a resting
+	 * frame under a hover name: on the BEFORE head (`3b625b4a2`, the story-fixture-
+	 * only commit whose frames are the `chat-canonical-links-before` set) EVERY
+	 * `/new` run in this paragraph is inside an anchor, so the aim throws with
+	 * `no text run matching "/new" outside a link or a button` - measured by design
+	 * round 1 on that head - and this entry cannot produce a frame there at all.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverText: "/new",
+			hoverSettleMs: 500,
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-command-prose",
 		},
 	],
 	[
@@ -3810,7 +3981,7 @@ export const STORIES = [
 		{
 			hoverChain: [
 				'[data-record-id="a1"] a[data-lo-kind="file"]',
-				'[data-lo-link-toolbar] button[aria-label="Open"]',
+				'[data-lo-link-toolbar] button[aria-label="Open in canvas"]',
 			],
 			hoverChainSettleMs: 900,
 			dir: "hover-toolbar-button",
@@ -3876,6 +4047,26 @@ export const STORIES = [
 			hover: '[data-record-id="a1"] a[data-lo-target$="with-annotations.xlsx"]',
 			hoverSettleMs: 500,
 			dir: "hover-narrow",
+		},
+	],
+	/*
+	 * The UNCHANGED half of the routing rule, and a story of its own so that adding
+	 * it moved no link in the fixture above: `bundle.zip` and `local-operator-0.28.4.dmg`
+	 * are local existing files with no viewer, so their toolbar keeps the single
+	 * `Open` that hands them to the OS, and the `.xlsx` one paragraph down shows the
+	 * five-action strip beside them. Read as a pair, the two frames are the claim:
+	 * the new default is about files this app can SHOW, not about every path an
+	 * agent writes.
+	 */
+	["chat-canonical-links--no-viewer-targets", 1024, 360],
+	[
+		"chat-canonical-links--no-viewer-targets",
+		1024,
+		360,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target$="bundle.zip"]',
+			hoverSettleMs: 500,
+			dir: "hover-no-viewer",
 		},
 	],
 	/*
@@ -3949,7 +4140,7 @@ export const STORIES = [
 				stepSettleMs: 16,
 				legs: [
 					{
-						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						to: '[data-lo-link-toolbar] button[aria-label="Open in canvas"]',
 						samples: 4,
 						expectKept: {
 							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
@@ -4863,20 +5054,25 @@ const main = async () => {
 			   CodeMirror - can still be mounting when a single read lands. A
 			   fixed sleep long enough for the slowest story would be paid by
 			   all 372 frames, so wait for the condition instead of for a
-			   duration. The throw still fires if it never becomes true. */
+			   duration. The throw still fires if it never becomes true.
+
+			   The budget is THEME_SETTLE_MS (10 s shipped, `--theme-settle-ms`
+			   or its env var to raise it on a loaded machine - see that
+			   constant for the 72.1 s measurement that made it a knob). */
 			let applied = "";
-			for (let attempt = 0; attempt < 40; attempt++) {
+			const settleAttempts = Math.ceil(THEME_SETTLE_MS / THEME_SETTLE_POLL_MS);
+			for (let attempt = 0; attempt < settleAttempts; attempt++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: "document.documentElement.dataset.theme || ''",
 				});
 				applied = result.value;
 				if (applied === theme) break;
-				await sleep(250);
+				await sleep(THEME_SETTLE_POLL_MS);
 			}
 			if (applied !== theme) {
 				throw new Error(
-					`${story} @ ${theme}: document carries theme "${applied}" after 10s`,
+					`${story} @ ${theme}: document carries theme "${applied}" after ${THEME_SETTLE_MS / 1000}s`,
 				);
 			}
 

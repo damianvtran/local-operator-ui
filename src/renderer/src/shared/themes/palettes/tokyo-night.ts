@@ -66,20 +66,24 @@ export const tokyoNight: ThemeDefinition = {
 		sunken: "#23232A",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #363940  accent hue, C* 4.79, +1.72 L*, ΔE00 7.05 off `surface`,
-		 *                       `inkDim` 5.59:1 on the fill, hue 5.93° off `accent`.
-		 * rowSelected #333F5F  accent hue, C* 21.05, +4.75 L*, ΔE00 5.98 off
-		 *                       `surface` and 10.76 off `rowHover`, `inkDim` 5.03:1, and the
-		 *                       2px `accent` bar at 4.23:1 against it.
+		 * rowHover    #3A3B48  panel hue, C* 8.56,
+		 *                       the rule's 0.60 x the panel's 13.44; +3.03 L*,
+		 *                       ΔE00 4.01 off `surface`, `inkDim` 5.35:1.
+		 * rowSelected #3A3E59  panel hue, C* 17.61,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.70 L*,
+		 *                       ΔE00 4.26 off `surface` and 6.01 off
+		 *                       `rowHover`; the pair ranks 1.68 `L*` and 9.1 `C*`,
+		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#363940",
-		rowSelected: "#333F5F",
+		rowHover: "#3A3B48",
+		rowSelected: "#3A3E59",
 
 		/*
 		 * Register re-solve: `ink`

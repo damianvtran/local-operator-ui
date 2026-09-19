@@ -104,6 +104,7 @@ import {
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { LinkToolkit } from "./link-toolkit";
@@ -1999,17 +2000,35 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
 				    no state to reconcile to. */}
-					{!missing &&
-						visible.map((row) => (
-							<TranscriptRow
-								key={row.record.id}
-								row={row}
-								isSmallView={isSmallView}
-								nameColumn={nameColumn}
-								scope={mediaScope}
-								conversationId={conversationId}
-							/>
-						))}
+					{!missing && (
+						/*
+						 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
+						 * whole row list rather than threaded through the rows: the anchor that
+						 * a press lands on is inside `MarkdownRenderer` (which every markdown
+						 * surface in the app renders and which has no pane of its own) and the
+						 * toolbar that offers the same open is a sibling of it, so a prop would
+						 * have to reach both from here anyway. `conversationId` is exactly the
+						 * canvas store's key for this pane, and it is the SAME value the rows
+						 * already receive for their quotes and the canvas dock below is given as
+						 * its `conversationId` - one identity, one source.
+						 *
+						 * Absent (stories, the run panel's child reader) the provider still
+						 * mounts and answers `null`, so those surfaces keep the OS hand-off
+						 * they had and nothing about their tree changes shape.
+						 */
+						<CanvasPaneProvider conversationId={conversationId}>
+							{visible.map((row) => (
+								<TranscriptRow
+									key={row.record.id}
+									row={row}
+									isSmallView={isSmallView}
+									nameColumn={nameColumn}
+									scope={mediaScope}
+									conversationId={conversationId}
+								/>
+							))}
+						</CanvasPaneProvider>
+					)}
 
 					{working && (
 						// On the `item` tier, not a tier of its own: the working line is

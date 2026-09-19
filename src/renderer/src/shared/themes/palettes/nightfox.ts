@@ -74,26 +74,24 @@ export const nightfox: ThemeDefinition = {
 		sunken: "#131A24",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2C3035  accent hue, C* 3.80, +1.60 L*, ΔE00 6.50 off `surface`,
-		 *                       `inkDim` 5.67:1 on the fill, hue 5.94° off `accent`.
-		 * rowSelected #303743  accent hue, C* 8.42, +4.82 L*, ΔE00 4.40 off
-		 *                       `surface` and 4.41 off `rowHover`, `inkDim` 5.11:1, and the
-		 *                       2px `accent` bar at 5.43:1 against it.
-		 *
-		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 20.54, past the
-		 * min(0.75 x C*(accent), 24) ceiling, and carried two named exceptions (the
-		 * band and the ceiling) - both of which existed only because the old 6.0
-		 * separation made the fill chase chroma. The band is the hover's own 4.0 now
-		 * and the ceiling holds; both exceptions are gone.
+		 * rowHover    #2D343E  panel hue, C* 7.26,
+		 *                       the rule's 0.60 x the panel's 12.50; +3.38 L*,
+		 *                       ΔE00 4.32 off `surface`, `inkDim` 5.36:1.
+		 * rowSelected #25384F  panel hue, C* 16.39,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.89 L*,
+		 *                       ΔE00 4.15 off `surface` and 6.04 off
+		 *                       `rowHover`; the pair ranks 1.51 `L*` and 9.1 `C*`,
+		 *                       `inkDim` 5.10:1.
 		 */
-		rowHover: "#2C3035",
-		rowSelected: "#303743",
+		rowHover: "#2D343E",
+		rowSelected: "#25384F",
 
 		ink: "#CDCECF",
 		/*

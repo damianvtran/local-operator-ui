@@ -64,6 +64,18 @@ const SettingsPage = lazy(() =>
 		default: m.SettingsPage,
 	})),
 );
+/*
+ * The passkey chooser is NOT route-lazily loaded, and deliberately not a route
+ * component either: a passkey request arrives while the user may be anywhere, and
+ * a request that only exists on one route is the defect this component was moved
+ * out of the surface to fix (agent review round 1, finding 1). It is small, and
+ * the shell mounts it once.
+ */
+const BrowserWebauthnPrompt = lazy(() =>
+	import("@features/browser/components/browser-webauthn-prompt").then((m) => ({
+		default: m.BrowserWebauthnPrompt,
+	})),
+);
 
 /**
  * Main application component
@@ -378,6 +390,19 @@ const App: FC = () => {
 					<OnboardingModal open={isOnboardingActive} />
 
 					<UpdateNotification />
+
+					{/*
+					 * A `navigator.credentials.get()` matching several passkeys has to be
+					 * answerable from ANY route: the request arrives without the user's
+					 * action, it expires in a minute, and the previous version rendered its
+					 * chooser inside `BrowserSurface` — which is exactly the component that
+					 * is NOT mounted when the user is somewhere else (agent review round 1,
+					 * finding 1; UX round 1, U2). The consent band's attention handler above
+					 * is the same decision made for the same reason.
+					 */}
+					<Suspense fallback={null}>
+						<BrowserWebauthnPrompt />
+					</Suspense>
 
 					<LowCreditsDialog
 						open={isLowCreditsDialogOpen}

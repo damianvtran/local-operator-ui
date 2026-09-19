@@ -59,20 +59,24 @@ export const nord: ThemeDefinition = {
 		sunken: "#272C36",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #374042  accent hue, C* 4.04, +1.61 L*, ΔE00 7.81 off `surface`,
-		 *                       `inkDim` 5.32:1 on the fill, hue 6.52° off `accent`.
-		 * rowSelected #264750  accent hue, C* 12.99, +3.35 L*, ΔE00 11.46 off
-		 *                       `surface` and 7.63 off `rowHover`, `inkDim` 5.00:1, and the
-		 *                       2px `accent` bar at 5.00:1 against it.
+		 * rowHover    #3C3F48  panel hue, C* 5.97,
+		 *                       the rule's 0.60 x the panel's 9.57; +1.93 L*,
+		 *                       ΔE00 3.09 off `surface`, `inkDim` 5.26:1.
+		 * rowSelected #384257  panel hue, C* 13.97,
+		 *                       the panel's cast + 4.0, floored at 5.0; +3.15 L*,
+		 *                       ΔE00 3.76 off `surface` and 5.64 off
+		 *                       `rowHover`; the pair ranks 1.23 `L*` and 8.0 `C*`,
+		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#374042",
-		rowSelected: "#264750",
+		rowHover: "#3C3F48",
+		rowSelected: "#384257",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",

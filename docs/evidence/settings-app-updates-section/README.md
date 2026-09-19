@@ -15,9 +15,18 @@ one trailing channel produced an offer and an affirmation together.
 
 ## The frames
 
-Sixty frames: five states of the same press, each in all twelve themes, every
-one at **900x572** - the app's own minimum window (`WINDOW_MIN_HEIGHT = 600` less
-the 28px of chrome the renderer does not own).
+Seventy-two frames: six states, each in all twelve themes, every one at
+**900x572** - the app's own minimum window (`WINDOW_MIN_HEIGHT = 600` less the
+28px of chrome the renderer does not own).
+
+Five of the six are states of the same press. The sixth,
+`record-kept-while-target-ahead/`, is deliberately **not** pressed: its subject is
+the sentence the card already carries when a retained failure record is on screen,
+and in a production build the press raises the "Server update available" panel
+over the card's top-right - including the tail of that banner's meta line - so the
+frame is taken without one and its shutter waits for the sentence instead (design
+review round 2, D3). The five press-driven states are the sixty frames the earlier
+rounds describe; adding the sixth is why this document says seventy-two.
 
 One height for the whole surface is the point of the round-1 remediation. The
 set used to be captured at two: the two states below at 900x460, and the three
@@ -53,6 +62,14 @@ the card over them. One height at the supported worst case makes both possible
 - `serving-server-behind-install/` is one step later - the environment has moved
   to the published release and the process serving this app has not - which is
   the state the new `restart-required` status exists for.
+- `record-kept-while-target-ahead/` is the one state with **no press**: a failure
+  record whose target (0.30.0) is still ahead of the app (0.29.5), so the record is
+  correctly kept, and the sentence beside the card's own "Application version" row
+  must name the version that IS running rather than the one captured when the
+  failure was written. It is here because that sentence was printing the captured
+  version two rows under a row reading the live one (design review round 1, D1),
+  and because the two readings are deliberately different on this frame a fixture
+  that agreed with the machine could not show the defect at all.
 
 ### What `before-the-fix/` is, exactly
 
@@ -84,9 +101,13 @@ nice -n 19 node scripts/capture-evidence.mjs http://127.0.0.1:6157 \
   --only=settings-app-updates-section --allow-backend
 ```
 
-`--only` matches all five story ids, so one pass writes the whole surface - sixty
-frames - and the run re-stamps `head`, `frames` and the `partialCapture` record
-itself. Why a production build rather than the dev server, and why the port is a
+`--only` matches all six story ids, so one pass writes the whole surface -
+seventy-two frames - and the run re-stamps `head`, `frames` and the
+`partialCapture` record itself. (This line said five ids and sixty frames until
+review round 4 (D6); the sixth state, `record-kept-while-target-ahead/`, is the
+pressless one this branch added, and the count is the rig's own: measured,
+`--only=settings-app-updates-section --themes=localOperatorDark` prints
+`Captured 6 frames`, so the ids are six and a twelve-theme pass writes 72.) Why a production build rather than the dev server, and why the port is a
 private one, are unchanged from the original capture below.
 
 This section records that original capture, not a command to repeat during

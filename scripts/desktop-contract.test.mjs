@@ -1704,7 +1704,7 @@ test("sessions.interrupt reaches the interrupt route with request_id only", asyn
 const rendererBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1720,6 +1720,9 @@ const {
 	isWritableVariableKey,
 	desktopRequestSchema,
 	desktopEndpoint: rendererDesktopEndpoint,
+	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
+	// the test asks the shipped predicate rather than a restatement of it.
+	desktopFeatureEnabled,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2237,6 +2240,97 @@ test("a ledger read outlives the old control budget and still answers", async ()
 	}
 });
 
+test("a pin press sends the desired state to the session's own route", async () => {
+	const sessionId = "123456abcdef";
+	const count = seen.length;
+	const response = await requestDesktop(
+		{ op: "sessions.pin", sessionId, pinned: true },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(seen.length, count + 1, "one press is one request");
+	assert.equal(seen.at(-1).path, `/v1/desktop/sessions/${sessionId}/pin`);
+	assert.equal(seen.at(-1).method, "POST");
+	/*
+	 * The DESIRED STATE is the body, and that is the whole point of the op: there
+	 * is no `toggle` verb whose retry flips the pin back. The route makes a repeat
+	 * a no-op rather than putting the call on the receipt ladder, which is why a
+	 * retried press here is harmless by construction.
+	 */
+	assert.deepEqual(JSON.parse(seen.at(-1).body), { pinned: true });
+	assert.deepEqual(
+		rendererDesktopEndpoint({
+			op: "sessions.pin",
+			sessionId,
+			pinned: false,
+		}),
+		{
+			path: `/v1/desktop/sessions/${sessionId}/pin`,
+			method: "POST",
+			body: { pinned: false },
+		},
+	);
+	/*
+	 * `pinned` is required, not defaulted. A schema that let it default would make
+	 * a malformed press silently mean one of the two directions - and the direction
+	 * it guessed would be the one nobody was told about.
+	 */
+	for (const bad of [
+		{ op: "sessions.pin", sessionId },
+		{ op: "sessions.pin", sessionId, pinned: "true" },
+		{ op: "sessions.pin", sessionId, pinned: true, reorder: true },
+		{ op: "sessions.pin", sessionId: "../../etc", pinned: true },
+		{ op: "sessions.pin", sessionId: "zzzzzzzzzzzz", pinned: true },
+	]) {
+		const refused = await requestDesktop(bad, url, token);
+		assert.equal(
+			refused.status,
+			422,
+			`${JSON.stringify(bad)} must not reach HTTP`,
+		);
+	}
+	assert.equal(seen.length, count + 1, "no malformed pin reached the network");
+});
+
+test("session_pins is its own feature key, and its absence closes the feature", () => {
+	/*
+	 * Its own key rather than a bump of `session_catalogue`, on the rule that file
+	 * states: the catalogue is a surface that works perfectly well without pins, so
+	 * gating the LIST on the pin store's version would hide a working list behind an
+	 * update it does not need.
+	 */
+	assert.equal(
+		desktopFeatureEnabled(
+			{
+				desktop_available: true,
+				features: { session_catalogue: 3, session_pins: 1 },
+			},
+			"session_pins",
+		),
+		true,
+	);
+	/*
+	 * ...and absent means CLOSED, which the renderer reads as "mount no pin at all"
+	 * rather than "mount a disabled one": a reserved slot with nothing behind it
+	 * advertises a feature the user cannot get.
+	 */
+	assert.equal(
+		desktopFeatureEnabled(
+			{ desktop_available: true, features: { session_catalogue: 3 } },
+			"session_pins",
+		),
+		false,
+	);
+	assert.equal(
+		desktopFeatureEnabled(
+			{ desktop_available: false, features: { session_pins: 1 } },
+			"session_pins",
+		),
+		false,
+	);
+	assert.equal(desktopFeatureEnabled(undefined, "session_pins"), false);
+});
 /**
  * The pairing question, asked of one answer.
  *
