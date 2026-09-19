@@ -36,6 +36,12 @@ import { build } from "esbuild";
  *   path is opened in this session - (c), (c2);
  * - an unmount that is NOT a close (a tab switch) still keeps the store's copy of
  *   the open document current - (b2), the case R4-7 named;
+ * - the tab the close LEAVES THE READER ON is the neighbour - the following tab, or
+ *   the preceding one when the closed tab was last, and unchanged when a background
+ *   tab is closed - (a3), on the shipped `tabFollowingClose` rule that all three
+ *   sites call (design review round 1, D1);
+ * - the projection is a stable identity between changes, so the memoised canvas
+ *   subtree is not re-rendered by every keystroke - (c4), agent review round 1, M2;
  * - the projection builds nothing while a component renders: a grid's workbook is
  *   materialised at the write and handed back from there - (c3);
  * - and the boundary of the promise, stated rather than implied: a restart is not
@@ -72,6 +78,7 @@ const bundle = await build({
 				setBufferPorts,
 			} from "./src/renderer/src/features/chat/components/canvas/document-buffers";
 			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
+			export { tabFollowingClose } from "./src/renderer/src/features/chat/components/canvas/tab-selection";
 			export {
 				createFreshnessRunner,
 				clearDocumentDirty,
@@ -109,6 +116,7 @@ const {
 	resetBuffers,
 	setBufferPorts,
 	canvasDocumentForPath,
+	tabFollowingClose,
 	createFreshnessRunner,
 	clearDocumentDirty,
 	isDocumentDirty,
@@ -201,7 +209,11 @@ function mountEditor(document) {
 
 /**
  * `handleCloseDocument` in `chat-content.tsx`, in its own order: both lists lose
- * the document, and the selection moves to a tab that still exists.
+ * the document, and the selection moves to the tab that takes its place.
+ *
+ * The selection rule is NOT transcribed: it is `tabFollowingClose`, the module the
+ * shipped handler and the pane's own handler both call (design review round 1, D1),
+ * so what this file asserts about the reader's landing place is the shipped rule.
  */
 function closeTab(documentId) {
 	const state = useCanvasStore.getState();
@@ -213,7 +225,7 @@ function closeTab(documentId) {
 	if (conversation.selectedTabId === documentId) {
 		state.setSelectedTab(
 			CONVERSATION,
-			newTabs.length > 0 ? newTabs[0].id : null,
+			tabFollowingClose(conversation.files, documentId)?.id ?? null,
 		);
 	}
 }
@@ -275,6 +287,82 @@ test("(a2) a second tab closed by the same strip leaves the first one closed", a
 		[open().files.length, open().openTabs.length],
 		[0, 0],
 		"and the second close that followed it stuck too",
+	);
+});
+
+// ---------------------------------------- (a3) where a close leaves the reader
+
+test("(a3) a close lands the reader on the neighbour, never on the oldest tab", async () => {
+	const paths = ["/tmp/land-a.md", "/tmp/land-b.md", "/tmp/land-c.md"];
+	openCase(paths[0], "a\n");
+	for (const path of paths.slice(1))
+		io.files.set(path, { text: "x\n", mtimeMs: 100 });
+	const docs = paths.map((path) => openedDocument(path, "x\n", 100));
+	const [a, b, c] = docs;
+	for (const document of docs)
+		useCanvasStore.getState().addFileAndSelect(CONVERSATION, document);
+
+	/*
+	 * The rule itself, asserted on the shipped module rather than on a copy of it.
+	 * "Following, else preceding, else nothing" is the APG's rule for a deleted tab
+	 * and the one Chrome, VS Code and Safari use; the sites this PR fixes used to
+	 * take `[0]`, which in the reader's usual five-document strip is the tab they
+	 * opened FIRST.
+	 */
+	assert.equal(
+		tabFollowingClose([a, b, c], b.id)?.id,
+		c.id,
+		"the tab following the closed one",
+	);
+	assert.equal(
+		tabFollowingClose([a, b, c], c.id)?.id,
+		b.id,
+		"or the one before it, when the closed tab was last",
+	);
+	assert.equal(
+		tabFollowingClose([a], a.id),
+		null,
+		"and nothing at all when that was the only tab",
+	);
+	assert.equal(
+		tabFollowingClose([a, b, c], "/tmp/never-open.md"),
+		null,
+		"a document that was never open moves the reader nowhere",
+	);
+
+	/*
+	 * And through the handler's own order, on the store: the middle document is
+	 * selected, its ✕ pressed, and the reader must be on the THIRD tab - not on the
+	 * first, which is what the pre-fix sites picked and what the strip's own
+	 * `scrollIntoView` would then slide the whole row to show.
+	 */
+	useCanvasStore.getState().setSelectedTab(CONVERSATION, b.id);
+	closeTab(b.id);
+	assert.equal(
+		open().selectedTabId,
+		c.id,
+		"closing the selected middle tab selects the neighbour that took its place",
+	);
+
+	/* Closing the last remaining tab falls back to the one before it, not to `[0]`. */
+	closeTab(c.id);
+	assert.equal(
+		open().selectedTabId,
+		a.id,
+		"closing the last tab selects the preceding one",
+	);
+
+	/*
+	 * A ✕ on a tab the reader is NOT reading moves the selection nowhere: the pane
+	 * must not swap the document under them because a background tab went away.
+	 */
+	useCanvasStore.getState().addFileAndSelect(CONVERSATION, b);
+	useCanvasStore.getState().setSelectedTab(CONVERSATION, a.id);
+	closeTab(b.id);
+	assert.equal(
+		open().selectedTabId,
+		a.id,
+		"closing a background tab leaves the reader's own document selected",
 	);
 });
 
@@ -479,6 +567,86 @@ test("(c3) the projection materialises nothing: a grid's bytes are built at the 
 		"and the projection hands those words back",
 	);
 	assert.equal(builds, afterClose, "without building them again");
+});
+
+// ------------------------------------- (c4) the projection's identity is stable
+
+test("(c4) the projection's identity changes when a buffer changes, and only then", async () => {
+	const path = "/tmp/close-identity.md";
+	openCase(path, "one\n");
+	const document = openedDocument(path, "one\n", 100);
+	useCanvasStore.getState().addFileAndSelect(CONVERSATION, document);
+	const files = open().files;
+
+	/*
+	 * WHAT THIS IS FOR (agent review round 1, M2). `documentsForCanvas` runs inside
+	 * `ChatContent`'s render, and its result is a prop of four memoised consumers. A
+	 * fresh array and fresh document objects per CALL - which is what it returned
+	 * whenever any open buffer held un-written words, i.e. while the reader was
+	 * typing - re-rendered all four on every parent render. The property that fixes
+	 * it is identity: the same input array and no change in the buffer registries
+	 * must give back the very same output array.
+	 */
+	assert.equal(
+		documentsForCanvas(files),
+		files,
+		"nothing un-written: the store's own array, by identity",
+	);
+	assert.equal(
+		documentsForCanvas(files),
+		documentsForCanvas(files),
+		"and a repeat call is the same array",
+	);
+
+	mountEditor(document);
+	proposeBuffer(document.id, "typed once");
+	const dirty = documentsForCanvas(files);
+	assert.notEqual(
+		dirty,
+		files,
+		"un-written words are projected as their own array",
+	);
+	assert.equal(
+		documentsForCanvas(files),
+		dirty,
+		"stable across every render between changes, which is what the memos need",
+	);
+
+	proposeBuffer(document.id, "typed twice");
+	const next = documentsForCanvas(files);
+	assert.notEqual(next, dirty, "a change to the words is a new identity");
+	assert.equal(
+		documentsForCanvas(files),
+		next,
+		"and then it is stable again until the next change",
+	);
+
+	/*
+	 * The other half of the input is the store's array, which every writer replaces
+	 * rather than mutates - so a cache keyed on it can never answer a store write
+	 * from the previous entry.
+	 */
+	useCanvasStore.getState().updateOneFile(CONVERSATION, {
+		...open().files[0],
+		lastAgentModified: 200,
+	});
+	assert.notEqual(
+		documentsForCanvas(open().files),
+		next,
+		"a store write is a new input array and is projected anew",
+	);
+
+	/* And when the words reach the file, the projection stops projecting at all. */
+	assert.equal(
+		(await saveBuffer(document.id)).status,
+		"written",
+		"the save lands",
+	);
+	assert.equal(
+		documentsForCanvas(open().files),
+		open().files,
+		"a clean document goes back to being handed over as the store's own array",
+	);
 });
 
 // ------------------------------------------------- (d) the promise's boundary
