@@ -155,23 +155,30 @@ const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 		: "The server update did not complete.";
 
 /**
- * How long the press has been waiting for the fleet, in the shortest honest form.
+ * How long the press has been waiting for the fleet, in words.
  *
  * THE READING IS THE POINT, not its typography (design D3): the draining phase can
  * run to ten minutes with no other pixel on the frame moving, and the number the
  * main process already logs (`waitedMs` on the progress event) is what tells a
- * reader the app is working rather than wedged. Seconds below a minute, then
- * minutes and seconds - the same reading the update log carries, so a reader
- * comparing the two is not converting between two spellings of one wait.
+ * reader the app is working rather than wedged.
+ *
+ * WORDS RATHER THAN `12s` / `2m 10s` (design round 2, N1). The abbreviation was the
+ * only one on a panel whose every other duration is spelled out - "up to ten
+ * minutes" in the sentence directly above it, "a few seconds, up to half a minute"
+ * in the family's restarting arm - so the one line a person reads under a wait was
+ * speaking the log's shorthand beside copy that does not. The log keeps the short
+ * spelling: this is the reader's line, that is the machine's.
  */
 const waitElapsedLabel = (waitedMs: number): string => {
 	const seconds = Math.max(1, Math.round(waitedMs / 1000));
-	if (seconds < 60) return `Waiting ${seconds}s so far`;
+	const unit = (value: number, name: string) =>
+		`${value} ${name}${value === 1 ? "" : "s"}`;
+	if (seconds < 60) return `Waiting ${unit(seconds, "second")} so far`;
 	const rest = seconds % 60;
 	const minutes = Math.floor(seconds / 60);
 	return rest === 0
-		? `Waiting ${minutes}m so far`
-		: `Waiting ${minutes}m ${rest}s so far`;
+		? `Waiting ${unit(minutes, "minute")} so far`
+		: `Waiting ${unit(minutes, "minute")} ${unit(rest, "second")} so far`;
 };
 
 type BackendUpdateInfo = {
@@ -894,9 +901,23 @@ export const UpdateNotification = ({
 		 */
 		refusal?: {
 			because: "busy" | "unknown";
+			/**
+			 * How long the PRESS waited before it stopped - the same number the reading
+			 * showed while it waited, not the leg's own share of it (design round 2, D9).
+			 */
 			waitedMs: number;
 			command: string | null;
 			credentialsRefused: boolean;
+			/**
+			 * Whether the install had already landed when the refusal was composed.
+			 *
+			 * The restart-leg refusals happen after the build is on disk and only the
+			 * bounce was held back, so the heading keys on this rather than claiming the
+			 * update never started (design round 2, D6). Optional, so an older producer's
+			 * report still renders - as the install-less arm, which is the arm whose
+			 * sentence an absent field has always accompanied.
+			 */
+			installLanded?: boolean;
 		};
 	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
@@ -2260,7 +2281,18 @@ export const UpdateNotification = ({
 											: ""
 									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
-								? "The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute."
+								? /*
+									 * THE SENTENCE COVERS THE WHOLE restarting PHASE, WHICH IS LONGER THAN
+									 * THE BOUNCE (review round 2, R2-m3 = the copy half of round 1's n1).
+									 * This phase is on screen across the re-engage too - the app waits
+									 * for the pre-swap runtimes to retire and then starts a runtime for
+									 * each session they left behind, one at a time - so a promise of
+									 * "a few seconds" was the frame's own claim, contradicted by a wait
+									 * of up to a minute that the frame itself was in. The bounce keeps
+									 * its number; the repair says it is running, which is what the reader
+									 * watching a static panel needs to know.
+									 */
+									"The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
 								: backendUpdatePhase === "draining"
 									? /*
 										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
@@ -2281,10 +2313,15 @@ export const UpdateNotification = ({
 				 * hung app are the same pixels, and the main process has the number already
 				 * (it logs it). Rendered only for the phase that carries one - a `restarting`
 				 * frame showing a stale count is the drift this panel keeps removing.
+				 *
+				 * AT `text-ink-muted`, level with the sentence it qualifies (design round 2,
+				 * N2). It was `text-ink-dim`, the dimmest ink on the card - legible, and the
+				 * wrong hierarchy for the one element that proves a ten-minute wait is alive:
+				 * D3's whole argument is that a working wait must not look like a hung app.
 				 */}
 				{backendUpdatePhase === "draining" &&
 					backendUpdateWaitedMs !== null && (
-						<p className="mt-1 text-body-sm text-ink-dim tabular-nums">
+						<p className="mt-1 text-body-sm text-ink-muted tabular-nums">
 							{waitElapsedLabel(backendUpdateWaitedMs)}
 						</p>
 					)}
@@ -2668,7 +2705,19 @@ export const UpdateNotification = ({
 		if (refusal) {
 			return withErrorToast(
 				<UpdateContainer>
-					<UpdateHeading>The update did not start</UpdateHeading>
+					{/*
+					 * THE HEADING SAYS WHICH REFUSAL THIS IS (design round 2, D6). Two of the
+					 * three refusal sites happen AFTER the build landed - the restart was held
+					 * back, the install was not - and the sentence under this heading says so in
+					 * its own words, so a fixed "The update did not start" made the frame
+					 * contradict itself in one paragraph. The producer knows which arm it is and
+					 * travels the fact as a field rather than leaving the renderer to infer it.
+					 */}
+					<UpdateHeading>
+						{refusal.installLanded
+							? "The update did not finish restarting"
+							: "The update did not start"}
+					</UpdateHeading>
 					{/*
 					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
 					 * still working, and which. It used to sit in parentheses halfway down a
@@ -2712,20 +2761,29 @@ export const UpdateNotification = ({
 							</Button>
 						</div>
 					)}
+					{/*
+					 * DISMISS FIRST, COMMIT LAST - the order every other footer in this release
+					 * uses, and the slot a hand learns as the committing one (design round 2,
+					 * D7). Round 1 asked for the FILL to move to `Update later`; this commit
+					 * moved the fill and the position, which put the only control that costs
+					 * anything (`Try again` re-enters the ten-minute wait) in the slot that reads
+					 * as "go". Both signals now agree on the safe action: the outline demoted to
+					 * the left, the fill on the right.
+					 */}
 					<UpdateActions>
-						<Button
-							variant="primary"
-							size="sm"
-							onClick={handleDismissBackendUpdateFailure}
-						>
-							Update later
-						</Button>
 						<Button
 							variant="outline"
 							size="sm"
 							onClick={() => void updateBackend()}
 						>
 							Try again
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={handleDismissBackendUpdateFailure}
+						>
+							Update later
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>,
