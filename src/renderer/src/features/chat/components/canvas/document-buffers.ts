@@ -193,7 +193,47 @@ export function commitCanvasDocument(
 const dirtyOf = (entry: BufferEntry): boolean =>
 	entry.token !== entry.writtenToken;
 
+/**
+ * THE PROJECTION'S VERSION, and why the projection needs one (agent review round
+ * 1, M2).
+ *
+ * `documentsForCanvas` is called from `ChatContent`'s render, so it runs on every
+ * render of the chat column - and while any open document holds un-written words
+ * (the ordinary state of typing, not a rare one) it used to build a new array and
+ * new document objects on every call. Those identities are props: the canvas, the
+ * strip, the pane and the mounted editor are all memoised on them, so every
+ * parent render re-rendered four surfaces at once, precisely while the reader was
+ * typing. Measured before the fix: identities stable on a clean store, unstable
+ * after one `proposeBuffer`.
+ *
+ * So the projection is CACHED, and this counter is its only invalidator. It is
+ * bumped by every mutation that can change what the projection hands out: the
+ * buffer's own words (`token`), whether they differ from the file's (`publishDirty`
+ * covers every write of either), the bytes materialised for those words, and the
+ * entry's existence in the map at all. Between two such changes the same input
+ * array returns the SAME output array by identity, however many renders happen in
+ * between - which is the property the memoised consumers need, and the property
+ * that made this worth fixing rather than merely noting.
+ *
+ * The input-array identity is checked too, because the store's documents are the
+ * other half of the projection's input: a store write produces a new array
+ * (`updateOneFile` maps inside `set`), so a fresh input can never be answered from
+ * a stale cache. Nothing here mutates the input or the cache: the cached entry
+ * holds the last input by reference, which is one array and its documents.
+ */
+let projectionRevision = 0;
+let cachedProjection: {
+	documents: CanvasDocument[];
+	revision: number;
+	projected: CanvasDocument[];
+} | null = null;
+
+/** Every change to a buffer, whatever it changes, invalidates the projection. */
+function projectionChanged(): void {
+	projectionRevision += 1;
+}
 function publishDirty(entry: BufferEntry): void {
+	projectionChanged();
 	setDocumentDirty(entry.documentId, dirtyOf(entry));
 }
 
@@ -357,6 +397,29 @@ export function bufferText(documentId: string): string | null {
 export function documentsForCanvas(
 	documents: CanvasDocument[],
 ): CanvasDocument[] {
+	/*
+	 * SAME INPUTS, SAME ARRAY (agent review round 1, M2). Without this the memoised
+	 * canvas subtree was handed fresh identities on every parent render while any
+	 * document was dirty; see `projectionRevision` above for why that is worth a
+	 * cache rather than a note. Both halves are checked: the input array's identity,
+	 * because the store's documents are the other half of the input, and the
+	 * registry's revision, because the buffers are the half the store cannot see.
+	 */
+	if (
+		cachedProjection &&
+		cachedProjection.documents === documents &&
+		cachedProjection.revision === projectionRevision
+	) {
+		return cachedProjection.projected;
+	}
+	const projected = projectDocumentsForCanvas(documents);
+	cachedProjection = { documents, revision: projectionRevision, projected };
+	return projected;
+}
+
+function projectDocumentsForCanvas(
+	documents: CanvasDocument[],
+): CanvasDocument[] {
 	let projected: CanvasDocument[] | null = null;
 	documents.forEach((document, index) => {
 		const entry = buffers.get(document.id);
@@ -432,6 +495,9 @@ export async function saveBuffer(
 	 * from, so a keystroke that lands during the awaits below invalidates the cache
 	 * rather than mislabelling it. */
 	entry.materialised = { token: sent, text };
+	/* The bytes the projection will hand out just changed, without a dirty-state
+	 * change of their own (the caller publishes that separately). */
+	projectionChanged();
 	const path = entry.path;
 
 	const before = await ports.probe(path);
@@ -558,6 +624,7 @@ export function closeBuffer(documentId: string): void {
 	/* The close materialises the bytes anyway, so they are cached for the projection
 	 * (the words a refused write leaves on screen are handed back from here). */
 	entry.materialised = { token: entry.token, text: committed };
+	projectionChanged();
 	if (dirtyOf(entry)) {
 		void saveBuffer(documentId)
 			.catch(() => {
@@ -577,6 +644,7 @@ export function closeBuffer(documentId: string): void {
  */
 export function resetBuffers(): void {
 	buffers.clear();
+	projectionChanged();
 }
 
 /** Drop the entry entirely: the panel is gone and nothing is pending. */
@@ -585,4 +653,5 @@ export function forgetBuffer(documentId: string): void {
 	if (!entry) return;
 	if (dirtyOf(entry)) return;
 	buffers.delete(documentId);
+	projectionChanged();
 }

@@ -10,6 +10,7 @@ import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, X } from "lucide-react";
 import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { tabFollowingClose } from "./tab-selection";
 
 type CanvasTabsProps = {
 	/**
@@ -143,8 +144,27 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 		(e: React.MouseEvent, documentId: string) => {
 			e.stopPropagation(); // Prevent tab selection when closing
 			onCloseDocument(documentId);
+			/*
+			 * THE TAB THAT TAKES ITS PLACE, FOCUSED (design review round 1, D3).
+			 *
+			 * The ✕ is inside the tab it closes, so the press unmounts the element that
+			 * held focus and the browser drops it to the document body - the next Tab
+			 * then starts again from the top of the window, and nothing announces where
+			 * the close left the reader. The ARIA tabs pattern's rule for a close is
+			 * focus on the FOLLOWING tab, or the PRECEDING one when the closed tab was
+			 * last, which is the same tab the pane is about to select - one rule, from
+			 * `tabFollowingClose`, so focus and selection cannot land apart.
+			 *
+			 * Focused synchronously, before the re-render that removes the ✕: the tab
+			 * this targets is still mounted, and moving focus first means a keyboard
+			 * reader never sees focus fall to `body` at all. When the close empties the
+			 * strip there is no tab to move to and this is a no-op: `null` is the empty
+			 * state, which the pane paints (see the deferral on D3 in the review thread).
+			 */
+			const nextTab = tabFollowingClose(documents, documentId);
+			if (nextTab) tabRefs.current.get(nextTab.id)?.focus();
 		},
-		[onCloseDocument],
+		[documents, onCloseDocument],
 	);
 
 	const handleKeyDown = useCallback(
