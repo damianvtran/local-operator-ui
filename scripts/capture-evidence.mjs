@@ -3887,7 +3887,7 @@ export const STORIES = [
 	],
 	/*
 	 * The UNCHANGED half of the routing rule, and a story of its own so that adding
-	 * it moved no link in the fixture above: `bundle.zip` and `Local Operator.dmg`
+	 * it moved no link in the fixture above: `bundle.zip` and `local-operator-0.28.4.dmg`
 	 * are local existing files with no viewer, so their toolbar keeps the single
 	 * `Open` that hands them to the OS, and the `.xlsx` one paragraph down shows the
 	 * five-action strip beside them. Read as a pair, the two frames are the claim:

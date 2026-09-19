@@ -207,13 +207,45 @@ export function clickDecision(input: {
 	return input.canOpenInCanvas ? "canvas" : "open";
 }
 
-/** The probe's answer for one path, or `null` when nothing is known yet. */
-export type ProbedTarget = { exists: boolean; isFile: boolean } | null;
+/**
+ * The probe's answer for one path, or `null` when nothing is known yet.
+ *
+ * THE RESOLVED PATH IS PART OF THE ANSWER rather than a convenience, because it
+ * is this app's document IDENTITY: `canvas-document.ts` states the rule (the
+ * store dedupes by `id`) and the Files panel's own tile is rewritten to
+ * `result.resolved` for exactly that reason (`use-mentioned-files.ts`). A press
+ * that opened `~/workspace/x/report.xlsx` while the tile for the same file was
+ * `/Users/…/x/report.xlsx` would put two tabs on one file, so the press needs
+ * the resolved string - and the answer already carries it, where asking again
+ * would cost a second round trip on the one path the reader is waiting on.
+ *
+ * `sizeBytes`/`mtimeMs` come from the same answer and are what make a document
+ * the probe knows about a STATABLE document rather than a pointer: the size is
+ * what stops an eager read from putting a multi-megabyte string into a
+ * `localStorage`-persisted store, and the mtime is the freshness baseline the
+ * canvas compares a later probe against.
+ */
+export type ProbedTarget = {
+	exists: boolean;
+	isFile: boolean;
+	/** The path this spelling resolved to: the document's `id` and `path`. */
+	resolved: string;
+	/** Size in bytes, `null` when the probe could not stat a file. */
+	sizeBytes: number | null;
+	/** mtime in ms since epoch, `null` likewise. */
+	mtimeMs: number | null;
+} | null;
 
 /** `window.api.probeFiles`, narrowed to what this module needs. */
-export type ProbeFunction = (
-	paths: string[],
-) => Promise<readonly { exists: boolean; isFile: boolean }[]>;
+export type ProbeFunction = (paths: string[]) => Promise<
+	readonly {
+		exists: boolean;
+		isFile: boolean;
+		resolved?: string;
+		sizeBytes?: number | null;
+		mtimeMs?: number | null;
+	}[]
+>;
 
 /*
  * The session's answers. A negative is cached too (the file may be created
@@ -267,7 +299,19 @@ export async function probeTarget(
 	try {
 		const [answer] = await ask([target]);
 		if (!answer) return;
-		probeCache.set(target, { exists: answer.exists, isFile: answer.isFile });
+		probeCache.set(target, {
+			exists: answer.exists,
+			isFile: answer.isFile,
+			/*
+			 * `?? target`: the resolution is the ANSWER's when it has one, and this
+			 * spelling when it does not. A stub that answers only existence (the
+			 * story fixture's first shape) then still yields a usable identity
+			 * rather than an `undefined` document path.
+			 */
+			resolved: answer.resolved ?? target,
+			sizeBytes: answer.sizeBytes ?? null,
+			mtimeMs: answer.mtimeMs ?? null,
+		});
 	} catch (error) {
 		console.warn("probe-files failed:", error);
 	}

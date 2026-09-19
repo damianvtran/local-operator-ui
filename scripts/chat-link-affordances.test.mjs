@@ -314,8 +314,20 @@ function mountDom() {
 
 /* ------------------------------------------------------------------ fixtures */
 
+const HOME = "/Users/someone";
+/*
+ * What the main process's `resolveUserPath` does to the spelling a link wrote.
+ * The suite needs it because the app's own probe answers with the RESOLVED path
+ * and that string is the document's identity - a stub that answers
+ * `resolved: input` makes every identity assertion below true for the wrong
+ * reason (review round 1, M1).
+ */
+const resolveUserPath = (path) =>
+	path.startsWith("~/") ? `${HOME}/${path.slice(2)}` : path;
 const REPORT =
 	"~/workspace/opoint-renewal-2026-09-17/opoint_adverse_media_query_failures_2026-09-17.xlsx";
+/** The same file, as the probe and the Files panel's tile spell it. */
+const RESOLVED_REPORT = resolveUserPath(REPORT);
 const SHOTS = "/Users/someone/Downloads/Screenshot 2026-09-17 at 10.14.02.png";
 /** The same URL as the story fixture writes it: percent-encoded, as prose. */
 const FILE_URL = `file://${SHOTS.replace(/ /g, "%20")}`;
@@ -359,16 +371,16 @@ const TRANSCRIPT = {
  * Installed per test rather than once, because the missing-path case is the
  * interesting one and the honest default (no bridge) is optimistic.
  */
-function stubApi(window, { exists = true } = {}) {
+function stubApi(window, { exists = true, sizeBytes = 37_000 } = {}) {
 	window.api = {
 		...window.api,
 		probeFiles: async (paths) =>
 			paths.map((input) => ({
 				input,
-				resolved: input,
+				resolved: resolveUserPath(input),
 				exists: exists && !input.startsWith(MISSING_MARKER),
 				isFile: true,
-				sizeBytes: 37_000,
+				sizeBytes,
 				mtimeMs: 1_760_000_000_000,
 			})),
 	};
@@ -1035,8 +1047,11 @@ function resetCanvasStores() {
  * encoding it was asked for, so a document's content is evidence about WHICH read
  * the press made rather than a constant.
  */
-async function renderInPane(content, { pane = PANE } = {}) {
+async function renderInPane(content, { pane = PANE, probeFiles } = {}) {
 	stubApi(frame.window);
+	/* A caller that needs its own answers (a gone file, a huge one) replaces the
+	 * default stub rather than layering on it. */
+	if (probeFiles) frame.window.api.probeFiles = probeFiles;
 	const opened = [];
 	frame.window.api.openFile = async (target) => {
 		opened.push(target);
@@ -1083,8 +1098,8 @@ test("a press inside a pane opens the file in the CANVAS, and never asks the OS"
 	assert.ok(state, "the pane must have canvas state");
 	assert.equal(
 		state.selectedTabId,
-		REPORT,
-		"the file must be the selected tab",
+		RESOLVED_REPORT,
+		"the tab is the RESOLVED path's document, which is the identity the Files panel's tile for this file carries",
 	);
 	assert.equal(
 		state.viewMode,
@@ -1093,10 +1108,16 @@ test("a press inside a pane opens the file in the CANVAS, and never asks the OS"
 	);
 	assert.deepEqual(
 		state.openTabs.map((tab) => tab.id),
-		[REPORT],
+		[RESOLVED_REPORT],
+		"one file, one tab: the transcript's `~/` spelling and the panel's `/Users/...` spelling are the same document",
 	);
 	const document = state.files.at(-1);
-	assert.equal(document.path, REPORT, "the resolved path is the document's id");
+	assert.equal(
+		document.id,
+		RESOLVED_REPORT,
+		"the document's id is the probe's RESOLVED path, not the spelling the transcript wrote",
+	);
+	assert.equal(document.path, RESOLVED_REPORT);
 	assert.equal(
 		document.title,
 		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
@@ -1107,6 +1128,8 @@ test("a press inside a pane opens the file in the CANVAS, and never asks the OS"
 	 * the kind: an `.xlsx` is a spreadsheet, so base64 - and a document that
 	 * carried no content would be a viewer waiting on a read that never happens.
 	 */
+	/* The read is asked for the spelling the reader pressed; `read-file` resolves
+	 * `~/` itself, so the bytes come back either way. */
 	assert.equal(document.content, `${REPORT}|base64`);
 	assert.equal(
 		useUiPreferencesStore.getState().isCanvasOpen,
@@ -1197,6 +1220,107 @@ test("a path the probe already knows is GONE gets no canvas tab", async () => {
 	resetProbeCache();
 });
 
+test("a press with nothing cached ASKS, and refuses a path the probe says is gone", async () => {
+	/*
+	 * Review round 1, Q1. The hover normally warms the probe cache, and the kinds
+	 * that read their own bytes (`bytes`, `range`) read nothing at the press - so
+	 * without a press-time question a PDF that vanished between the reveal and the
+	 * press opened a tab onto nothing, where a text file correctly refused and
+	 * handed the path to the OS.
+	 *
+	 * Nothing is cached here on purpose (`resetProbeCache`), which is also the
+	 * keyboard/touch shape: a press can arrive on a link that was never hovered.
+	 */
+	resetProbeCache();
+	const pdf = "/tmp/x/vanishing.pdf";
+	const asked = [];
+	const { opened, anchor } = await renderInPane(`The report is at ${pdf}.`, {
+		probeFiles: async (paths) => {
+			asked.push(...paths);
+			return paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: false,
+				isFile: false,
+				sizeBytes: null,
+				mtimeMs: null,
+			}));
+		},
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.ok(
+		asked.includes(pdf),
+		"the press must ask about the path it is about to open, not trust a hover that may not have happened",
+	);
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"a path the probe says is gone gets no tab, for a file kind that would never have read it",
+	);
+	assert.deepEqual(opened, [pdf], "and the OS attempt and its sentence are what is left");
+});
+
+test("a file above the read ceiling opens as a POINTER: no bytes, size carried", async () => {
+	/*
+	 * Review round 1, m3. `canvas-store` persists to `localStorage` with no
+	 * `partialize`, so a document's `content` is a persisted string and base64
+	 * inflates it by a third. Above `MAX_EAGER_READ_BYTES` the document is opened
+	 * the way every Files-panel mention is - a pointer with `sizeBytes` - and the
+	 * viewer reads for itself when the reader looks at it.
+	 */
+	const huge = "/tmp/x/enormous.csv";
+	const { read, anchor } = await renderInPane(`The export is ${huge}.`, {
+		probeFiles: async (paths) =>
+			paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: true,
+				isFile: true,
+				sizeBytes: 8 * 1024 * 1024,
+				mtimeMs: 1_760_000_000_000,
+			})),
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	const document = canvasStateFor(PANE).files.at(-1);
+	assert.deepEqual(read, [], "above the ceiling nothing is read into the persisted store");
+	assert.equal(
+		document.content,
+		"",
+		"a pointer carries no bytes - the empty string `canvasDocumentForPath` defaults to",
+	);
+	assert.equal(document.sizeBytes, 8 * 1024 * 1024);
+	assert.equal(
+		document.readMtimeMs,
+		undefined,
+		"a pointer has no read baseline - the reader that reads it owns that",
+	);
+});
+
+test("a second press on an open document does not read it again", async () => {
+	/*
+	 * Review round 1, n2. `addFileAndSelect` keeps the entry it already has, so a
+	 * re-read would be bytes nobody looks at - and the read is the expensive half
+	 * of the press.
+	 */
+	resetProbeCache();
+	const { read, anchor } = await renderInPane(`Saved it to ${REPORT}.`);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.equal(
+		read.length,
+		1,
+		"the file is read once, however many presses it takes to open it",
+	);
+	assert.deepEqual(
+		canvasStateFor(PANE).openTabs.map((tab) => tab.id),
+		[RESOLVED_REPORT],
+	);
+});
+
 test("the strip offers both opens, and each press does its own thing", async () => {
 	/*
 	 * The operator's second half: the toolbar's `Open` becomes `Open in canvas` and
@@ -1243,7 +1367,7 @@ test("the strip offers both opens, and each press does its own thing", async () 
 		[],
 		"Open in canvas must not reach the OS's application",
 	);
-	assert.equal(canvasStateFor("links-test").selectedTabId, REPORT);
+	assert.equal(canvasStateFor("links-test").selectedTabId, RESOLVED_REPORT);
 	/* And the OS press still does, from the same strip, on the same path. */
 	await frame.dispatch(button("Open in default app"), "click");
 	await act(async () => {});

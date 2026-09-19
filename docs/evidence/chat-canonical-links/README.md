@@ -1,6 +1,6 @@
 # Chat link affordances: the transcript's detected links, in twelve themes
 
-Twenty-one states × twelve themes = **252 frames**, of the canonical transcript's
+Twenty-three states × twelve themes = **276 frames**, of the canonical transcript's
 link affordances: a path the agent wrote, rendered as a link you can press, the
 toolbar a hover raises on it, the pointer paths that reach its buttons, and what
 happens to a highlight that starts inside it. The set's own entry in
@@ -51,7 +51,7 @@ backend was answering, not that one was used.
 | Directory | Story | Gesture | What the picture shows |
 | --- | --- | --- | --- |
 | `detected-targets/` | `--detected-targets` | none (resting) | The eight admission shapes at rest: the operator's own report path, a backticked path, a `file://` URL, a bare `https://` URL (already a link, not doubled), a path in a table cell, a directory, a path that is not there, and one long enough to wrap. |
-| `hover-file/` | `--detected-targets` | CDP `mouseMoved` | The file matrix: `Copy path · Open · Open folder · Quote`, 8px above the link's own box. The link is on the row's FIRST line, which is why the strip is above it (see `hover-directory/` for the other side of that rule). |
+| `hover-file/` | `--detected-targets` | CDP `mouseMoved` | The file matrix, five actions since this branch's pass: `Copy path · Open in canvas · Open in default app · Open folder · Quote` (`[175,334,330,363]`, 156px wide, 30px tall — § 5 of the design doc), 8px above the link's own box. The link is on the row's FIRST line, which is why the strip is above it (see `hover-directory/` for the other side of that rule). |
 | `hover-url/` | `--detected-targets` | `mouseMoved` | The URL matrix: `Copy link · Open in browser · Quote`, no `Open folder`. |
 | `hover-directory/` | `--detected-targets` | `mouseMoved` | The matrix's deliberate omission: `Copy path · Open · Quote`, no `Open folder` (a Finder reveal of a directory selects its parent). Mid-paragraph, so the strip sits BELOW its anchor — the D2 rule in pixels. |
 | `hover-missing/` | `--detected-targets` | `mouseMoved` | The state that replaced a press which silently did nothing: `Copy path · Quote` plus the reason, naming the FILE (`No file at report-2026-09-17.pdf`). |
@@ -63,7 +63,7 @@ backend was answering, not that one was used.
 | `hover-gap-long/` | `--detected-targets` | pointer path, 4 samples @16ms | The same arrival at a slower hand's spacing — the case lost at step 2. |
 | `hover-gap-fine/` | `--detected-targets` | pointer path, 1 sample per PIXEL @8ms | A mid-paragraph link, whose strip is placed BELOW it: the other placement, sampled every pixel, which is the path lost on the first pixel off the anchor's own box. |
 | `hover-gap-leave/` | `--detected-targets` | pointer path onto the button, then out to the prose | The dismissal half of the same claim: the strip survives the arrival and is GONE once the pointer moves onto the words beside the link (`expectKept: false`). Without this frame "keep the subject" could be satisfied by never dismissing. |
-| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[255,569,383,601]`, the live four-button width — see § 5) hangs 28px out of the table over the paragraph below, covering 671 ink px of it — the cost § 5 records beside the rule, re-measured in round 3. |
+| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[256,565,411,594]`, the live five-button width — see § 5) hangs 28px out of the table over the paragraph below, covering 776 ink px of it — the cost § 5 records beside the rule, re-measured at this head when the fifth button widened the strip from 126 to 156px. |
 | `escape-dismisses/` | `--detected-targets` | `mouseMoved` + a real `Escape` | The strip raised by the POINTER, then one Escape with focus wherever the reader left it: the strip is gone, which the entry asserts (`expectGone`). |
 | `selection-in-link/` | `--selection-in-link` | story `Selection` (NOT a drag — see the limits) | A highlight inside a link: the LINK's toolbar, with `Quote` leading. |
 | `selection-in-link-staged/` | `--selection-in-link-staged` | story `Selection` + a press | The same highlight and then the toolbar's own `Quote` pressed, with the composer in frame: the chip carries the link's own text. |
@@ -71,6 +71,8 @@ backend was answering, not that one was used.
 | `selection-two-links/` | `--selection-across-links` | story `Selection` | A highlight across two links in one turn: the same answer, and the same assertion. |
 | `detected-targets-narrow/` | `--detected-targets-narrow` | none (resting) | The same shapes in a 420px column, where the long path wraps. |
 | `hover-narrow/` | `--detected-targets-narrow` | `mouseMoved` | The strip for a WRAPPED link: 8px BELOW its last line, inside the pane, clear of the timestamp. (Round 2, design D3: this row described the pre-remediation placement.) |
+| `no-viewer-targets/` | `--no-viewer-targets` | none (resting) | This branch's second story: `bundle.zip` and `local-operator-0.28.4.dmg` are local, existing files with NO viewer, and the same paragraph ends on the `.xlsx` that does open here — so the paragraph itself is the routing rule. Resting, because the matrix is what the row below hovers. |
+| `hover-no-viewer/` | `--no-viewer-targets` | `mouseMoved` | The other half of the claim in one frame: the `.zip` link's FOUR-action strip (`Copy path · Open · Open folder · Quote`, 126px, `Open` still the OS) above the sentence whose `.xlsx` carries five. Read beside `hover-file/`, the pair is the rule — the new default is about files this app can SHOW, not about every path an agent writes. |
 
 ## Claims the rig asserts
 
