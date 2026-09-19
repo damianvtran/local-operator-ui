@@ -86,7 +86,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
@@ -1118,6 +1118,10 @@ const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
 const FILE_ROW =
 	"src/renderer/src/features/chat/components/canvas/file-row.tsx";
+const SCHEDULE_ROW =
+	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
+const BROWSER_TABS =
+	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
 
 /** The comment-stripped source of a file, cached the way the two above are. */
 /*
@@ -1363,6 +1367,397 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 		plate.includes("border-control"),
 		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
 	);
+});
+
+/*
+ * THE CLASS RATHER THAN THE CALL SITE: EVERY OBJECT A ROW STATE CAN PAINT OVER
+ * KEEPS ITS OWN EDGE.
+ *
+ * The rule the two fixes state, in the design owner's words for the document: a
+ * row is a state, and **an object inside a state keeps its own edge**. It is a
+ * rule about a CLASS because the collision is a property of the roles rather than
+ * of any one element — a row state is authored as a step of the panel it sits on,
+ * so on some palette a state lands on whatever rung an object inside the row
+ * wears. The rail's account plate (`elevated`, ΔE00 0.00 on `arcade`) and the
+ * agents sidebar's avatar (`sunken`, 0.44 on `alucard`) are two instances of that
+ * one fact, and shipping one fixed while the other stays live is incoherent.
+ *
+ * SO THE SET IS DISCOVERED FROM THE TREE, not listed by hand. The scan below
+ * walks every `.tsx`, keeps the ones that name a row state AND carry a ground,
+ * and resolves each element's own `className` through `esbuild`'s classic JSX
+ * transform — the same declared dependency the `cn` bundle above uses — asking
+ * whether a ground-carrying element sits INSIDE an element whose own class names
+ * a row role. A new one therefore FAILS here until it is named below, which is
+ * the property a per-call-site assertion cannot have.
+ *
+ * WHAT IT CANNOT SEE, stated rather than implied, because a guard read as broader
+ * than it is is worse than a narrow one: a ground carried by a component whose
+ * default lives in another file is recognised only for the primitives in
+ * `CARRIED_GROUNDS`, and each of those is read from that component's own class
+ * expression in the test below — a NEW primitive with a default ground, or a
+ * carrier behind any other component boundary, is review's business rather than
+ * this scan's, the way `scripts/chrome-keychain.test.mjs` states the roots its
+ * own scan does not reach.
+ *
+ * FOUR OF THE SEVEN CARRIERS ARE EXEMPT, and each exemption carries the FACT it
+ * rests on so the record cannot rot into a sentence:
+ *   - the canvas file row's `img`/`video` thumbnail: its `sunken` is the ground
+ *     BEHIND real content (`object-cover` fills the box), so what the reader sees
+ *     is the picture; the loading placeholder is the only state in which the fill
+ *     shows, and a ring here would box every thumbnail in every row;
+ *   - the browser tab strip's chrome cluster: an overlay BAND whose ground exists
+ *     so the title's tail is not read through it (its own comment earned that
+ *     ground, review round 3) — a cover, not a mark, and the two controls it
+ *     holds keep their own ink over the row's fill;
+ *   - the tab's notch: a 1px line (`-bottom-px h-px`) painted on the ACTIVE tab,
+ *     whose own fill is the role it paints, so it is not an object over a row
+ *     state at all — the host names `hover:bg-row-hover` for the INACTIVE branch.
+ */
+const ROW_STATE_TOKENS = [
+	"rowCurrent",
+	"bg-row-selected",
+	"hover:bg-row-hover",
+	"hover:bg-row-selected",
+];
+const GROUND_ROLES = ["bg-elevated", "bg-sunken", "bg-surface", "bg-canvas"];
+
+/*
+ * The primitives that carry a ground by DEFAULT, so a call site with no
+ * `className` is still an object over its row: an `<AvatarFallback>` with no
+ * override paints the primitive's `sunken`. Read from the component's own class
+ * expression by the test below rather than trusted here.
+ */
+const CARRIED_GROUNDS = {
+	AvatarFallback: {
+		ground: "bg-sunken",
+		file: "src/renderer/src/shared/components/ui/avatar.tsx",
+		anchor: "<AvatarPrimitive.Fallback",
+	},
+	Switch: {
+		ground: "bg-sunken",
+		file: "src/renderer/src/shared/components/ui/switch.tsx",
+		anchor: "<SwitchPrimitive.Root",
+	},
+};
+
+/* A `/` STARTS A REGEX when the last meaningful character before it cannot end an
+   expression; the transform keeps the source's own literals, and the scanner has
+   to walk past them rather than through them. */
+const REGEX_AFTER = new Set([
+	"(",
+	",",
+	"{",
+	"}",
+	"[",
+	";",
+	":",
+	"=",
+	"!",
+	"&",
+	"|",
+	"?",
+	"+",
+	"-",
+	"*",
+	"%",
+	"^",
+	"<",
+	">",
+	"~",
+]);
+const regexAllowedAt = (text, i) => {
+	let j = i - 1;
+	while (j >= 0 && /\s/.test(text[j])) j -= 1;
+	if (j < 0) return true;
+	if (REGEX_AFTER.has(text[j])) return true;
+	const word = /([A-Za-z_$][\w$]*)\s*$/.exec(text.slice(0, j + 1));
+	return (
+		word !== null &&
+		/\b(return|typeof|case|in|of|new|delete|void|instanceof|do|else|yield|await)$/.test(
+			word[1],
+		)
+	);
+};
+
+/** The index just past the atomic token at `i`: a string, a comment, or a regex. */
+const jsSkip = (text, i) => {
+	const char = text[i];
+	const next = text[i + 1];
+	if (char === '"' || char === "'" || char === "`") {
+		let k = i + 1;
+		while (k < text.length && text[k] !== char) k += text[k] === "\\" ? 2 : 1;
+		return k + 1;
+	}
+	if (char === "/" && next === "/") {
+		let k = i;
+		while (k < text.length && text[k] !== "\n") k += 1;
+		return k;
+	}
+	if (char === "/" && next === "*") {
+		let k = i + 2;
+		while (k < text.length && !(text[k] === "*" && text[k + 1] === "/")) k += 1;
+		return k + 2;
+	}
+	if (char === "/" && regexAllowedAt(text, i)) {
+		let k = i + 1;
+		let inClass = false;
+		while (k < text.length) {
+			const at = text[k];
+			if (at === "\\") {
+				k += 2;
+				continue;
+			}
+			if (at === "[") inClass = true;
+			else if (at === "]") inClass = false;
+			else if (at === "/" && !inClass) return k + 1;
+			else if (at === "\n") return k;
+			k += 1;
+		}
+		return k;
+	}
+	return i + 1;
+};
+
+/** The same JS with every comment removed, so a note can answer for no class. */
+const withoutComments = (text) => {
+	let out = "";
+	for (let i = 0; i < text.length; ) {
+		if (text[i] === "/" && (text[i + 1] === "/" || text[i + 1] === "*")) {
+			i = jsSkip(text, i);
+			continue;
+		}
+		const next = jsSkip(text, i);
+		out += text.slice(i, next);
+		i = next;
+	}
+	return out;
+};
+
+/** The index of the `)` closing the `(` at `open`. */
+const jsMatchParen = (text, open) => {
+	let depth = 0;
+	for (let i = open; i < text.length; ) {
+		if (text[i] === "(") depth += 1;
+		else if (text[i] === ")") {
+			depth -= 1;
+			if (depth === 0) return i;
+		}
+		i = jsSkip(text, i);
+	}
+	return -1;
+};
+
+/** An argument list split at its own top-level commas. */
+const jsTopLevel = (text) => {
+	const parts = [];
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i < text.length; ) {
+		const char = text[i];
+		if ("([{".includes(char)) depth += 1;
+		else if (")]}".includes(char)) depth -= 1;
+		else if (char === "," && depth === 0) {
+			parts.push(text.slice(start, i));
+			start = i + 1;
+		}
+		i = jsSkip(text, i);
+	}
+	parts.push(text.slice(start));
+	return parts;
+};
+
+/** The `className` value expression inside an element's props object text. */
+const jsClassName = (props) => {
+	const at = /(?:^|[,{\s])className\s*:/.exec(props);
+	if (!at) return null;
+	return jsTopLevel(props.slice(at.index + at[0].length))[0].trim();
+};
+
+/*
+ * Every element in the tree that carries a ground of its own INSIDE an element
+ * whose own class names a row state. Each hit is `{ file, element, host,
+ * grounds, classes }`, and `classes` is the element's own class text — the call
+ * site's when it has one, and the carrying primitive's for the two primitives in
+ * `CARRIED_GROUNDS`, so a reviewer reads the same string the `cn` resolution
+ * would produce.
+ */
+const carriersInsideRowStates = async () => {
+	const candidates = [];
+	for (const { file } of sourcesIn("src")) {
+		if (!/\.tsx$/.test(file)) continue;
+		const source = read(file);
+		if (!ROW_STATE_TOKENS.some((token) => source.includes(token))) continue;
+		if (
+			!GROUND_ROLES.some((role) => source.includes(role)) &&
+			!Object.keys(CARRIED_GROUNDS).some((name) => source.includes(`<${name}`))
+		)
+			continue;
+		candidates.push({ file, source });
+	}
+	const found = [];
+	for (const { file, source } of candidates) {
+		const { code } = await transform(source, {
+			loader: "tsx",
+			jsx: "transform",
+			format: "esm",
+		});
+		const js = withoutComments(code);
+		/* An element nested inside TWO row-state hosts is one object, and is
+		   recorded once; two elements of the same kind in one file are two, and
+		   both have to be named. */
+		const seen = new Set();
+		const calls = [];
+		for (const match of js.matchAll(/React\.createElement\(/g)) {
+			const open = match.index + match[0].length - 1;
+			calls.push([match.index, open, jsMatchParen(js, open)]);
+		}
+		for (const outer of calls) {
+			if (outer[2] === -1) continue;
+			const outerArgs = jsTopLevel(js.slice(outer[1] + 1, outer[2]));
+			const host = outerArgs[0].trim().replace(/^"|"$/g, "");
+			const hostProps =
+				outerArgs.length > 1 && outerArgs[1].trim().startsWith("{")
+					? outerArgs[1]
+					: null;
+			const hostClass = hostProps ? jsClassName(hostProps) : null;
+			if (
+				!hostClass ||
+				!ROW_STATE_TOKENS.some((token) => hostClass.includes(token))
+			)
+				continue;
+			for (const inner of calls) {
+				if (!(inner[0] > outer[0] && inner[2] !== -1 && inner[2] < outer[2]))
+					continue;
+				if (seen.has(inner[0])) continue;
+				const args = jsTopLevel(js.slice(inner[1] + 1, inner[2]));
+				const element = args[0].trim().replace(/^"|"$/g, "");
+				const props =
+					args.length > 1 && args[1].trim().startsWith("{") ? args[1] : null;
+				const own = props ? jsClassName(props) : null;
+				if (own !== null) {
+					const tokens = own.split(/["'\s]+/).filter(Boolean);
+					const grounds = GROUND_ROLES.filter((role) => tokens.includes(role));
+					if (grounds.length === 0) continue;
+					seen.add(inner[0]);
+					found.push({ file, element, host, grounds, classes: own });
+					continue;
+				}
+				const carried = CARRIED_GROUNDS[element];
+				if (!carried) continue;
+				seen.add(inner[0]);
+				found.push({
+					file,
+					element,
+					host,
+					grounds: [carried.ground],
+					classes: expressionAfter(carried.file, carried.anchor),
+				});
+			}
+		}
+	}
+	return found;
+};
+
+/*
+ * THE SET, and the one assertion each entry carries. `edge` entries must wear
+ * `border-control` in their own class text; the exempted ones must still carry
+ * the fact their reason rests on. The mirror of this table is the palette half in
+ * `scripts/contrast-contract.mjs`, which measures the two plates' fills and edges
+ * per palette, and the design record (§ 9.2) states the rule both halves assert.
+ */
+const PLATES_INSIDE_ROW_STATES = [
+	{
+		what: "the rail's account plate",
+		file: ACCOUNT_ROW,
+		element: "AvatarFallback",
+		edge: true,
+	},
+	{
+		what: "the agents sidebar's avatar",
+		file: AGENTS_SIDEBAR,
+		element: "AvatarFallback",
+		edge: true,
+	},
+	{
+		what: "the schedules list's switch",
+		file: SCHEDULE_ROW,
+		element: "Switch",
+		edge: true,
+	},
+	{
+		what: "the canvas file row's image thumbnail",
+		file: FILE_ROW,
+		element: "img",
+		edge: false,
+		fact: "object-cover",
+	},
+	{
+		what: "the canvas file row's video thumbnail",
+		file: FILE_ROW,
+		element: "video",
+		edge: false,
+		fact: "object-cover",
+	},
+	{
+		what: "the browser tab strip's chrome cluster",
+		file: BROWSER_TABS,
+		element: "div",
+		edge: false,
+		fact: "absolute",
+	},
+	{
+		what: "the browser tab strip's notch",
+		file: BROWSER_TABS,
+		element: "span",
+		edge: false,
+		fact: "-bottom-px",
+	},
+];
+
+test("every object a row state can paint over keeps an edge, or records why it need not", async () => {
+	/*
+	 * The map first, because everything below is measured through it: the two
+	 * primitives have to carry the ground they are read for, or this test is
+	 * asking about a `sunken` that moved.
+	 */
+	for (const [name, carried] of Object.entries(CARRIED_GROUNDS)) {
+		const tokens = expressionAfter(carried.file, carried.anchor)
+			.split(/["'\s]+/)
+			.filter(Boolean);
+		assert.ok(
+			tokens.includes(carried.ground),
+			`<${name}> no longer paints \`${carried.ground}\` in its own class expression (${carried.file}, ${carried.anchor}), so a call site with no \`className\` is no longer an object over its row and \`CARRIED_GROUNDS\` is stale. Got: ${JSON.stringify(tokens.filter((t) => t.startsWith("bg-")))}`,
+		);
+	}
+
+	const found = await carriersInsideRowStates();
+	const key = (entry) => `${entry.file}#${entry.element}`;
+	assert.deepEqual(
+		found.map(key).sort(),
+		PLATES_INSIDE_ROW_STATES.map(key).sort(),
+		`${found.length} object(s) inside a row state carry a ground of their own and ${PLATES_INSIDE_ROW_STATES.length} are named in \`PLATES_INSIDE_ROW_STATES\`. The rule is that an object inside a row state keeps its own edge — a row state is a step of the panel it sits on, so on some palette it lands on the object's own rung and the object disappears into the row (measured: \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\`, \`sunken\` against \`rowSelected\` 0.44 on \`alucard\`). Either give the new object \`border-control\` and name it here, or name it with the fact that makes an edge unnecessary: ${JSON.stringify(found.map(key))} vs ${JSON.stringify(PLATES_INSIDE_ROW_STATES.map(key))}`,
+	);
+
+	for (const entry of PLATES_INSIDE_ROW_STATES) {
+		const hit = found.find((candidate) => key(candidate) === key(entry));
+		assert.notEqual(
+			hit,
+			undefined,
+			`${entry.what} is named in PLATES_INSIDE_ROW_STATES but the scan no longer finds it — the entry is stale: ${JSON.stringify(entry)}`,
+		);
+		const tokens = (hit.classes ?? "").split(/["'\s]+/).filter(Boolean);
+		if (entry.edge) {
+			assert.ok(
+				tokens.includes("border-control"),
+				`${entry.what} is an object inside a row state and wears no \`border-control\`: it reads ${JSON.stringify(hit.classes)} on \`${hit.host}\`. \`${hit.grounds.join("`, `")}\` is a rung of the ladder, so the row's own state lands on it — the palette half of the pair is in \`scripts/contrast-contract.mjs\`, and the rule is that the object inside the state keeps its OWN edge`,
+			);
+		} else {
+			assert.ok(
+				tokens.includes(entry.fact),
+				`${entry.what} is exempted because it carries \`${entry.fact}\`, and its class text no longer does: it reads ${JSON.stringify(hit.classes)}. Re-read the reason in the block above before removing this entry — an exemption whose fact has moved is a plate that needs an edge`,
+			);
+		}
+	}
 });
 
 /*
