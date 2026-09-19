@@ -4798,8 +4798,14 @@ test("an EXISTING directory is not re-moded by an arm", () => {
 	rmSync(parent, { recursive: true, force: true });
 });
 
-test("the row is scoped to ONE tab, so a strip cannot narrate another tab's decision", () => {
-	// Review round 1, D2.
+test("the row keeps every decision and names the tab it belongs to", () => {
+	// Review round 1, D2 - and this is the SECOND shape of that fix. Filtering the notes
+	// to the active tab is what "scope it to the tab whose decision it was" sounds like,
+	// and it hides the case the feature exists for: an agent tab is created INACTIVE by
+	// design (`tabs.ts`), so an agent's own download would leave nothing on screen at
+	// all. What the finding needs is that the strip must not APPEAR to be about the page
+	// on screen, so every note carries its `tabId`, the projection carries `activeTabId`,
+	// and the row labels a decision whose tab is not the one in front of the user.
 	const dir = tempDir("scope");
 	const armer = new DownloadArmer({
 		tabForWebContents: (id) => id,
@@ -4815,16 +4821,19 @@ test("the row is scoped to ONE tab, so a strip cannot narrate another tab's deci
 	armer.decide(two, 2);
 	writeFileSync(two.savePath, "second");
 	two.finish("completed");
+
+	const onTabOne = armer.activityFor(1);
 	assert.deepEqual(
-		armer.activityFor(1).notes.map((note) => note.name),
-		["one.pdf"],
+		onTabOne.notes.map((note) => [note.name, note.tabId]),
+		[
+			["two.pdf", 2],
+			["one.pdf", 1],
+		],
+		"newest first, each carrying the tab whose decision it was",
 	);
-	assert.deepEqual(
-		armer.activityFor(2).notes.map((note) => note.name),
-		["two.pdf"],
-	);
-	assert.deepEqual(armer.activityFor(null).notes, []);
-	// The reveal is about the FOLDER, so it is host-wide: the newest arm's directory.
+	assert.equal(onTabOne.activeTabId, 1);
+	assert.equal(armer.activityFor(null).activeTabId, null);
+	// The reveal is about the FOLDER, so it is host-wide: the newest directory.
 	assert.equal(armer.downloadDir(), dir);
 	rmSync(dir, { recursive: true, force: true });
 });

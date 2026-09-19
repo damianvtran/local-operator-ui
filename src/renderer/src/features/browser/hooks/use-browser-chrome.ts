@@ -161,6 +161,9 @@ export interface TransferNoteView {
 	direction: "download" | "upload";
 	/** The site an upload went to. */
 	site: string;
+	/** The tab whose decision this was. The row renders the decision either way and
+	 * LABELS it when it belongs to another tab (see `TransferActivityView`). */
+	tabId: number;
 	/** Which rule refused it, and the numbers the row's sentence needs. */
 	refusal: TransferRefusalView | null;
 }
@@ -181,14 +184,24 @@ export interface ActiveTransferView {
 	name: string;
 	received: number;
 	total: number;
+	/** The tab it belongs to, so a row beside another tab can say so. */
+	tabId: number;
 }
 
-/** What the transfer row renders, for ONE tab: the transfer in flight, the folder
- * the host writes into, and the last few decisions newest-first. */
+/** What the transfer row renders: the transfer in flight, the folder the host
+ * writes into, the last few decisions newest-first, and WHICH TAB's chrome this
+ * is.
+ *
+ * `notes` are host-wide and each carries its `tabId` (review round 1, D2). Filtering
+ * them to the active tab was this change's first attempt and it broke the case the
+ * feature exists for — an agent tab is created INACTIVE (`tabs.ts`), so the agent's
+ * own downloads would have left no trace at all. What the row must not do is appear
+ * to describe the page on screen, which is what `activeTabId` is for. */
 export interface TransferActivityView {
 	active: ActiveTransferView | null;
 	dir: string | null;
 	notes: TransferNoteView[];
+	activeTabId: number | null;
 }
 
 export type ConsentDecision = "once" | "session" | "site" | "domain" | "deny";

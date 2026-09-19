@@ -541,6 +541,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			<BrowserFileTransferRow
 				transfers={chrome.state?.transfers}
 				onReveal={() => void chrome.revealDownloads()}
+				// The tab list lives here, so the WORDS for a decision taken elsewhere do too
+				// (review round 1, D2). An agent's tab is created inactive, so the row keeps
+				// showing the decision and names whose it is rather than dropping it.
+				tabLabel={(tabId) =>
+					state?.tabs.find((tab) => tab.tabId === tabId)?.owner === "agent"
+						? "· on the agent's tab"
+						: "· on another tab"
+				}
 			/>
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
