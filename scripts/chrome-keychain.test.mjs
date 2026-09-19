@@ -291,6 +291,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the composer's alert region at a narrow width; its first spawn is the vite server that serves the page",
 	),
 	guarded(
+		"scripts/toast-close-geometry.mjs",
+		"spawn",
+		2,
+		"measures a toast's close button against the toast's own box - the four deltas, the corner distances and the button's containment in the viewport - in two toast shapes and three themes; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/store-refusal-evidence.mjs",
 		"spawn",
 		2,

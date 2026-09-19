@@ -40,9 +40,28 @@ const TOAST_THEME: CSSProperties = {
 	boxShadow: "var(--shadow-overlay)",
 	fontSize: "var(--text-meta)",
 	padding: "12px 16px",
-	// Keep the close button on the right of the toast, which is where it was;
-	// its colours come from the --gray* variables above.
-	"--toast-close-button-start": "unset",
+	/*
+	 * The close button sits on the toast's top-RIGHT corner, straddling it: its
+	 * right edge 35% of its own width outside the toast's, its top edge the same
+	 * distance above it. That is the mirror image of sonner's own LTR placement,
+	 * which is why the transform below is the one sonner ships for RTL.
+	 *
+	 * `auto` rather than `unset`, and that value is the whole of the constraint.
+	 * Sonner declares these two properties on `html[dir='ltr']` and on
+	 * `[data-sonner-toaster][dir='ltr']` (`--toast-close-button-start: 0`,
+	 * `--toast-close-button-end: unset`) and consumes them on the close button as
+	 * `left: var(--toast-close-button-start); right: var(--toast-close-button-end);
+	 * top: 0`, so what is written here overrides an INHERITED value — and a custom
+	 * property is inherited by default, where `unset` means `inherit`. So `unset`
+	 * here did not clear the inherited `0`, it re-stated it: both insets resolved
+	 * to a length, and a 20px box with `width` set is the over-constrained case
+	 * where the browser keeps `left` and drops `right` in LTR. The button then sat
+	 * on the toast's LEFT edge and the RTL transform carried it 7px inward instead
+	 * of outward. `auto` is the value that governs nothing, which leaves
+	 * `right: 0px` as the single inset that does. Its colours come from the
+	 * `--gray*` variables above.
+	 */
+	"--toast-close-button-start": "auto",
 	"--toast-close-button-end": "0px",
 	"--toast-close-button-transform": "translate(35%, -35%)",
 } as CSSProperties;
