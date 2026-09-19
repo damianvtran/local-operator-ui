@@ -916,6 +916,14 @@ const ROW_SURFACES = [
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx",
 	"src/renderer/src/features/schedules/components/wake-conversation-row.tsx",
 	"src/renderer/src/features/chat/components/canvas/canvas-tabs.tsx",
+	/*
+	 * The canvas Files list's rows. They were absent from this list until design
+	 * round 2 (D11) found `hover:bg-elevated` on them - the guard passed because a
+	 * new surface is not enumerated by default, which is the silent exemption this
+	 * list exists to prevent. The row now takes `hover:bg-row-hover`, and it names
+	 * `rowCurrent` by import (the sibling test above), so it belongs here.
+	 */
+	"src/renderer/src/features/chat/components/canvas/file-row.tsx",
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
 	"src/renderer/src/features/providers/provider-grid.tsx",
 ];
