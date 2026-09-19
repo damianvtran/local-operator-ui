@@ -959,11 +959,16 @@ export const UpdateNotification = ({
 	 * Which step the pressed install is on, and what just landed.
 	 *
 	 * The pre-quit work is the longest wait this surface ever shows (a `codesign`
-	 * over the installed bundle, a full extraction and a seal probe), so the phase
-	 * replaces the button's single "Preparing to install..." with the work actually
-	 * happening (UX U5). The affirmation is the other half of the same change: a
-	 * fast install's window is seconds, so the app coming back no longer tells the
-	 * user their update went in (UX U4).
+	 * over the installed bundle, a full extraction and a seal probe), so this line -
+	 * not the button - is what says which of those is happening (UX U5, U8). The
+	 * affirmation is the other half of the same change: a fast install's window is
+	 * seconds, so the app coming back no longer tells the user their update went in
+	 * (UX U4).
+	 *
+	 * Reset at the start of every attempt (see `installUpdate`): this state outlives
+	 * a refused attempt, and a second press that rendered the previous attempt's
+	 * last step until the first event arrived would be naming a step nobody asked
+	 * about - the same rule the copy module states for an unknown phase.
 	 */
 	const [installPhase, setInstallPhase] = useState<
 		"verifying" | "staging" | "starting" | null
@@ -1153,6 +1158,9 @@ export const UpdateNotification = ({
 	const installUpdate = useCallback(async () => {
 		setInstalling(true);
 		setError(null);
+		// The previous attempt's last step, if it had one: a phase is a fact about ONE
+		// attempt, and this state survives a refusal (UX U8).
+		setInstallPhase(null);
 		try {
 			const started = await window.api.updater.quitAndInstall();
 			if (!started) {
@@ -2418,10 +2426,11 @@ export const UpdateNotification = ({
 					reopen it until it starts by itself. Opening it while the update is
 					installing cancels the install.
 				</p>
-				{/* What the wait actually is, from the main process's own phases rather
-				    than from a timer guessing at them (UX U5). It replaces the button's
-				    generic label for the seconds the pre-flight runs, where the only
-				    feedback used to be two disabled buttons. */}
+				{/* The one line that says what is happening, from the main process's own
+				    phases rather than from a timer guessing at them (UX U5). It is the ONLY
+				    carrier of that state: the button below keeps its own label while it is
+				    disabled, so the person reads one sentence naming the current step
+				    instead of that sentence beside a second, generic copy of it (UX U8). */}
 				{installing ? (
 					/* `<output>` rather than a `<p role="status">`: it is the element the
 					   platform already treats as a live region for the result of an
@@ -2440,15 +2449,18 @@ export const UpdateNotification = ({
 					>
 						Update later
 					</Button>
-					{/* One click, then a panel that says it heard: the pre-flight behind this
-						    button can take seconds over a 1 GiB bundle. */}
+					{/* One click, then the line above says it heard: the pre-flight behind this
+					    button can take seconds over a 1 GiB bundle. The label does not change
+					    while it runs - the status line is what reports progress, and a button
+					    that renamed itself would say the same generic thing twice (UX U8) and
+					    widen at the instant of the press (UX U12). */}
 					<Button
 						variant="primary"
 						size="sm"
 						onClick={() => void installUpdate()}
 						disabled={installing}
 					>
-						{installing ? "Preparing to install..." : "Install now"}
+						Install now
 					</Button>
 				</UpdateActions>
 			</UpdateContainer>,
