@@ -29,10 +29,15 @@ discriminate, and "a grep of the bundle finds no occurrence of X" was vacuously 
 of 72 bytes (review round 3, D18). What changes between builds is what is recorded
 now:
 
-- `out/renderer/assets/index-CaQSxb2x.js`, sha256 `3b0871e091e4caaf…`, built `2026-09-19T16:01:15.786Z`;
-- `out/main/index.jsc`, sha256 `dadcbbcff3a20a4f…`;
-- newest source at capture: `backend-settings-section.tsx`, `2026-09-19T15:58:10.438Z`,
+- `out/renderer/assets/index-DnAsAjdv.js`, sha256 `9a2343b26064e249…`, built `2026-09-19T20:30:26.569Z`;
+- `out/main/index.jsc`, sha256 `cf8b6b6d8f5d8bf6…`;
+- newest source at capture: `backend-error.ts`, `2026-09-19T20:29:06.567Z`,
   against the build above.
+
+THE BUILD'S PROVENANCE: the shot was taken with the worktree at `7ccf5a72a`
+(src tree `effe20063`), which is what each record's `capturedAtHead` names and what
+`capturedAtSrcTree` repeats as the tree hash - so a reader can tell the artifact and the
+commit agree instead of taking it on trust (QA round 5, Q-11).
 
 EVERY SCENE IN THIS SET NAMES THAT ONE BUILD, and each scene carries it on its own
 entry rather than inheriting it from whichever run wrote the combined file (review
@@ -74,9 +79,12 @@ A daemon this app may not drive: the stub publishes the governed record
 `pairing: {available: false, cause: "governed-elsewhere"}`.
 
 **Both surfaces are read, each from its own vocabulary** (review round 3, D19; guard
-made live in round 4, D28). The record's `bandSentence` is read from the frame's own
+made live in round 4, D28, whose predicate is narrow and must be described as such,
+review round 5's R5-2). The record's `bandSentence` is read from the frame's own
 recorded lines and says so (`bandSentenceSource: "first_lines"`), and the scene fails
-if `page.pane.sentence` equals that line: the round-2 version of this probe had one
+if `page.pane.sentence` equals that line. In this scene the guard cannot fire - the
+pane answers `cannot be read here`, which is not a band phrase, so the two vocabularies
+are disjoint - and it exists for the frame where they are not: the round-2 version of this probe had one
 mixed list and took the last DOM match, so this scene's `page.pane` held the band's
 sentence with the band's geometry (`text-body-sm`, w1062, y80) while the pane was
 really saying something else. The guard used to compare against a field the probe
@@ -93,7 +101,7 @@ reached the app and was suppressed (a round-1 draft published
 `daemonProseReachedApp: true`, which had no field behind it; review rounds 2–3,
 D4/D15).
 
-`after-other-principal-narrow.png` (`--label narrow`, 800×868) is the same state at a
+`narrow-other-principal-triple.png` (`--label narrow`, 800×868) is the same state at a
 narrow viewport, which round 1 deferred and round 3 measured to be one env var away.
 The frame is 800 wide because that is the app's own floor: the earlier 760 request was
 clamped by the window manager (`760x868 clamped to 800x868 (floor 800x600)`, in the
