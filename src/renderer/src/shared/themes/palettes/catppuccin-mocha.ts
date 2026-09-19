@@ -202,11 +202,18 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * one axis this cannot avoid. The CHROMA comes up with it, and that is the part
 		 * worth being exact about, because this is the one palette in the fleet's ten
 		 * that spends it: the register re-solve above seated the value 2.68 degrees off
-		 * `info`, so a pure-`L*` lift walks it INTO `info` — measured at `L*` 66.4 it
-		 * reads ΔE00 6.00 from `info`, below the 8 this role has held since the port —
+		 * `info`, so a pure-`L*` lift walks it INTO `info` — measured at the crossing the
+		 * row's own text floor sets (`L*` 66.03 at the held hue 272.6 and `C*` 33.97,
+		 * i.e. the hex `#7AA3DD`, where the value first clears 4.5:1 on `elevated`) it
+		 * reads ΔE00 6.08 from `info`, below the 8 this role has held since the port —
 		 * while every value that clears both at the authored chroma does so by
 		 * darkening, which is the same hue at another weight rather than a colour a
-		 * reader can tell from `info`'s. Raising the chroma at the held hue is what
+		 * reader can tell from `info`'s. (An earlier revision of this record carried
+		 * 6.00, which is that crossing read one stop too far — `L*` 66.4, the SHIPPED
+		 * value's own lightness — and `contrast-contract.mjs` carried 6.24, the same
+		 * crossing read on unquantized `Lab` values; 6.08 is the figure both records
+		 * state, and it is what this file's own `deltaE` returns on the hex.) Raising
+		 * the chroma at the held hue is what
 		 * buys the ground WITHOUT giving up the separation, which is why this value is
 		 * recorded in `contrast-contract.mjs`'s move-set carve-out rather than passing
 		 * the walk's "lightness only" clause: it is a second pass on a role the first
