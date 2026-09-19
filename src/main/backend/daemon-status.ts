@@ -246,7 +246,6 @@ export class DaemonStateMachine {
 		this.updatedAt = this.now();
 	}
 
-
 	/**
 	 * Fold one probe's observation into the state.
 	 *

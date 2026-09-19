@@ -38,8 +38,8 @@
  * the operator touching the window.
  */
 
-import type { DaemonPairingCause } from "../../../../shared/backend-status";
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import type { DaemonPairingCause } from "../../../../shared/backend-status";
 /*
  * The sentence table is imported by RELATIVE path, not by the `@shared` alias.
  *
@@ -196,7 +196,7 @@ export function catalogueGate({
 		notice:
 			withdrawn && !storeFailed && !coveredByCompatibilityBanner
 				? (backendPairingSentence(state, cause) ??
-						`Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`)
+					`Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`)
 				: null,
 	};
 }

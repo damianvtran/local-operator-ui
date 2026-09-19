@@ -216,12 +216,52 @@ export function isServerReachable(state: DaemonConnectionState): boolean {
  * the detail says which of the paths into it was taken (a refused credential, a
  * probe answered by another process, a spawn this app is not allowed to make).
  */
+/**
+ * Whether a long-lived relay must be rebuilt for the backend it is about to
+ * serve.
+ *
+ * The ADDRESS is the obvious half and the CREDENTIAL is the half that was
+ * missing. A relay takes its bearer once, at construction, and a re-pair leaves
+ * the address identical while replacing the credential - the same port, a new
+ * claim key - so a rebuild keyed on the URL alone keeps a relay that is refused
+ * on every attempt: measured after the successor swap, the app was attached and
+ * paired with the replacement while the sidebar still rendered "Not connected to
+ * the backend - showing the last known state." more than a minute later, and it
+ * never cleared (QA round 1 Q-2, design round 1 D3). The stream relay already
+ * compared both; this is the same rule, stated once where both can read it.
+ */
+export function relayNeedsRebuild(
+	current: { url: string; token: string | null },
+	next: { url: string; token: string | null },
+): boolean {
+	return current.url !== next.url || current.token !== next.token;
+}
+
+/**
+ * Whether pressing a re-pairing control could change this state at all.
+ *
+ * The compatibility band withholds its control for exactly these causes ("a
+ * Retry would be a button that provably cannot work"), and the connectivity band
+ * sits directly above it on the same screen - so it has to answer the same
+ * question the same way, or one screen offers the verb the other has just
+ * declared inert (design round 1, D2; UX round 1, U3).
+ *
+ * `governed-elsewhere` is the plane's own contract: a second claim is refused
+ * even when it presents the correct key. `pre-handshake` is a route that does
+ * not exist on that install.
+ */
+export function pairingHasRemedy(
+	cause: DaemonPairingCause | null | undefined,
+): boolean {
+	return cause !== "governed-elsewhere" && cause !== "pre-handshake";
+}
+
 export function serverBannerCopy(
 	snapshot: Pick<
 		DaemonStatusSnapshot,
-		"state" | "reconnecting" | "detail"
+		"state" | "reconnecting" | "detail" | "pairing"
 	> | null,
-): { title: string; detail: string | null } | null {
+): { title: string; detail: string | null; retry: boolean } | null {
 	/*
 	 * No snapshot at all: this host has no desktop bridge (Storybook, a plain
 	 * browser dev server), so the renderer probed `/health` itself. That answer is
@@ -229,9 +269,20 @@ export function serverBannerCopy(
 	 * "not connected" is the whole of what it can honestly support.
 	 */
 	if (!snapshot) {
-		return { title: "Not connected to a Local Operator server.", detail: null };
+		return {
+			title: "Not connected to a Local Operator server.",
+			detail: null,
+			retry: true,
+		};
 	}
 	const detail = snapshot.detail?.trim() ? snapshot.detail.trim() : null;
+	/*
+	 * The cause, and whether an act exists that could change it. `pairing` is
+	 * absent on a snapshot from a build that predates the record, which is why the
+	 * answer defaults to the permissive one: a surface may not withhold a control
+	 * on the strength of a field it never read.
+	 */
+	const remedy = pairingHasRemedy(snapshot.pairing?.cause ?? null);
 	/*
 	 * WHAT the title may claim, and what it may not.
 	 *
@@ -249,18 +300,27 @@ export function serverBannerCopy(
 				title:
 					"A Local Operator server is running on this machine and this app is not attached to it.",
 				detail,
+				retry: remedy,
 			};
 		case "detached":
 			return snapshot.reconnecting
 				? {
-						title:
-							"Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own.",
+						/*
+						 * The promise is withheld where it cannot be kept: a plane another
+						 * program governs, or an install older than the handshake, is not a
+						 * server this app will reconnect to by waiting.
+						 */
+						title: remedy
+							? "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own."
+							: "Not connected to a Local Operator server.",
 						detail,
+						retry: remedy,
 					}
 				: {
 						title:
 							"The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears.",
 						detail,
+						retry: true,
 					};
 		default:
 			// attached / degraded / replaced / connecting: no banner. A missing probe

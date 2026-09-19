@@ -1690,12 +1690,6 @@ export const DESKTOP_REFUSAL_CODE = {
 	 */
 	planeClosed: "pairing.plane-closed",
 	/**
-	 * The plane governs under a record or key that is not this app's, so the
-	 * credential it holds is stale. DECLARED by the answer rather than read off a
-	 * status: see {@link desktopRefusalCodeForStatus} for why 409 cannot name it.
-	 */
-	stale: "pairing.stale",
-	/**
 	 * Main could not complete the request at all (a refused socket, a reset). NOT a
 	 * pairing condition - nothing was established about the daemon's plane - and it
 	 * carries its own authored sentence.
@@ -1715,6 +1709,15 @@ export type DesktopRefusalCode =
  * the app's own business to re-establish (design § 3.1, § 4's falsifiable
  * prediction). The two that can only be repaired by re-claiming say so; the two
  * that cannot be repaired from here state the fact and stop.
+ *
+ * ONE CONDITION, ONE TABLE, and this one is deliberately the narrower: it holds
+ * the TRANSPORT classes - a plane nobody has claimed, a credential this app does
+ * not hold, a request main could not complete - and it does not restate the
+ * causes the pairing table owns. A `pairing.stale` code used to live here for the
+ * successor condition and nothing ever emitted it: the daemon refuses with bare
+ * prose, so no producer existed, while its sentence restated the successor cause
+ * verbatim. Removing it is what keeps "which table words this condition" a
+ * question with one answer (review round 1, MINOR-3; design round 1, D4).
  */
 export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
 	[DESKTOP_REFUSAL_CODE.noCredential]:
@@ -1723,8 +1726,6 @@ export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
 		"This app's credential for the running Local Operator server was refused, so this control is unavailable.",
 	[DESKTOP_REFUSAL_CODE.planeClosed]:
 		"The running Local Operator server does not accept this app's desktop controls.",
-	[DESKTOP_REFUSAL_CODE.stale]:
-		"The running Local Operator server is not the one this app paired with.",
 	[DESKTOP_REFUSAL_CODE.transportFailed]:
 		"The Local Operator server did not answer this request.",
 };
@@ -1739,8 +1740,17 @@ export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
  * `detail.message` and rendered only by {@link DESKTOP_REFUSAL_SENTENCE}.
  */
 export const DESKTOP_MACHINE_DETAIL = {
-	noCredential:
-		"Restart with a desktop-managed backend to use these controls.",
+	/*
+	 * NOTE for whoever greps for the ownership instruction this change removed:
+	 * `noCredential` still READS like that sentence, and deliberately. The code is
+	 * what `userFacingMessage` keys on, so this string is never rendered; it exists
+	 * because the development proxy forwards a refusal body without declaring one,
+	 * and `mcp-failure.ts` has to recognise main's own 503 by its text there. It is
+	 * a machine vocabulary, not copy - which is why the sentence a user reads comes
+	 * from `userFacingMessage` and this one is only ever compared (review round 1,
+	 * NIT-5).
+	 */
+	noCredential: "Restart with a desktop-managed backend to use these controls.",
 	transportFailed:
 		"The backend could not complete this request. Check its connection and try again.",
 } as const;
