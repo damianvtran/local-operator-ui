@@ -95,7 +95,7 @@ const updaterStub = () => ({
 	onUpdateProgress: () => () => {},
 	onUpdateInstallInFlight: () => () => {},
 	onBeforeQuitForUpdate: () => () => {},
-onUpdateInstallProgress: () => () => {},
+	onUpdateInstallProgress: () => () => {},
 	onUpdateInstallSucceeded: () => () => {},
 });
 
