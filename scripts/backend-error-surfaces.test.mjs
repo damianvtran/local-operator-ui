@@ -167,6 +167,15 @@ globalThis.window = {
 			onUpdateInstallBlocked: () => () => undefined,
 			onUpdateInstallFailed: () => () => undefined,
 			onUpdateInstallInFlight: () => () => undefined,
+			/*
+			 * The two this branch's own preload adds (`update-install-progress` and
+			 * `update-install-succeeded`, UX U4/U5). Main's banner fixture arrived after
+			 * them and carries the surface as it was on main, so without these two lines
+			 * the sweep below fails: a fixture is complete or it is not, and "complete"
+			 * now includes the install phases and the affirmation.
+			 */
+			onUpdateInstallProgress: () => () => undefined,
+			onUpdateInstallSucceeded: () => () => undefined,
 			onUpdateNotAvailable: () => () => undefined,
 			onUpdateNpxAvailable: () => () => undefined,
 			onUpdateProgress: () => () => undefined,
