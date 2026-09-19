@@ -100,7 +100,7 @@ Two things are worth reading off the file set rather than per frame:
   byte-for-byte at this head (`fd0ada779841` / `d8fe9972a77d`, unchanged). The pair is also the
   reason a full re-shoot is not free: the opened state contains the composer, whose caret
   blinks, so one capture in three lands on the other phase - 66 px in one `2x33` box at
-  `1098,1531` - and the committed pair is the two attempts that agree.
+  `1098,1531` - and the committed pair is the two attempts that agree. Measured again after the second fold (onto `origin/main` = `374d76db9`, the toast lane): the at-rest pair reproduces byte-for-byte, and a re-run of the opened pair differs from these files by exactly that same 66 px caret box in both themes — so the fold did not move these frames and no re-shoot was needed for it.
 * **`pins-withdrawn-dark.png` is also byte-identical to `pins-unpinned-dark.png` — as a measurement
   on ONE rig, which is where it was taken, and NOT as a property of the two committed files.** With
   the capability present and nothing pinned, the panel paints exactly what it paints with the
