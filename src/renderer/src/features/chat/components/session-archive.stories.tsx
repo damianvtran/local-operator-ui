@@ -14,6 +14,20 @@
  * `ChatHeader` with its own props. Only the wire underneath is a fixture, and
  * `docs/evidence/session-archive/README.md` says per frame which half that is.
  *
+ * ## These stories are NOT in the sweep's story list, deliberately
+ *
+ * `scripts/capture-evidence.mjs` says to add a new story file to `STORIES`,
+ * and this one is an exception with a measured reason: the sweep sets the theme
+ * through a decorator effect and waits 10 s for `documentElement.dataset.theme`,
+ * and on this machine - with two other Storybook servers running for other
+ * sessions - that wait expired on every attempt while these frames were being
+ * prepared. `at-rest` DID render correctly through the sweep once (the sidebar
+ * with its three conversations, no archive chrome), so the plumbing below is
+ * sound; what could not be completed is the sweep itself. The evidence for this
+ * feature is therefore the DRIVER set in `docs/evidence/session-archive/`, which
+ * asserts the states it photographs, and this file is the review surface a design
+ * round can sweep - and register in `STORIES` - on a quiet machine.
+ *
  * ## What is stubbed, and what is not
  *
  * `window.api.desktop.request` is replaced with a bridge that answers the ops
@@ -240,6 +254,26 @@ const resetStore = () => {
 	});
 };
 
+/**
+ * The bridge, installed FROM `render`, synchronously, before the panel mounts.
+ *
+ * WHY NOT A MOUNT EFFECT, and why not a loader either - both measured on this
+ * surface. An effect loses the race: a parent's effects run AFTER its children's,
+ * so the panel's first capability read happens before the transport exists. A
+ * LIBOADER is early enough but not sufficient on its own, because the transport
+ * has to be replaced on EVERY render of the story (Storybook reuses the page
+ * across stories, and a capability answer cached from the previous story would
+ * otherwise be the one this frame is built from) - which is exactly what the
+ * sibling `chat-sidebar-agents.stories.tsx` does, and the reason its frames are
+ * of the section rather than of this banner. Both wrong versions photographed
+ * "Desktop controls need a compatible backend connection", and the sweep's hover
+ * entry then reported that `[data-chat-row]` matched nothing at all.
+ */
+const prepare = (options?: BridgeOptions) => {
+	resetStore();
+	installBridge(options);
+};
+
 /* --------------------------------------------------------------- surfaces */
 
 /**
@@ -250,13 +284,8 @@ const resetStore = () => {
  * reserved 24px slot this feature adds is a cost in TITLE WIDTH, and a frame of a
  * width the app does not have would price it against a sidebar nobody uses.
  */
-const Sidebar = ({ options }: { options?: BridgeOptions }) => {
-	useEffect(() => {
-		resetStore();
-	}, []);
-	useEffect(() => {
-		installBridge(options);
-	}, [options]);
+const Sidebar = ({ options }: { options?: BridgeOptions } = {}) => {
+	prepare(options);
 	return (
 		<div className={cn("flex h-[560px] w-[320px] shrink-0 bg-surface")}>
 			<ChatSidebar
@@ -341,7 +370,7 @@ export const SearchLiveOnly: Story = {
 	play: async () => {
 		const box = await screen.findByLabelText(SEARCH_LABEL);
 		await userEvent.type(box, "notes");
-		await screen.findByText("Nightly notes on the release");
+		await screen.findByText("Release notes for 0.29");
 	},
 };
 
@@ -354,7 +383,7 @@ export const SearchIncludeArchived: Story = {
 	play: async () => {
 		const box = await screen.findByLabelText(SEARCH_LABEL);
 		await userEvent.type(box, "notes");
-		await screen.findByText("Nightly notes on the release");
+		await screen.findByText("Release notes for 0.29");
 		await userEvent.click(await screen.findByLabelText(INCLUDE_ARCHIVED_LABEL));
 		await screen.findByText("Old onboarding notes");
 	},
@@ -375,8 +404,8 @@ export const CapabilityWithdrawn: Story = {
  * `/delete` stage it.
  */
 export const DeleteDialog: Story = {
-	render: () => {
-		useEffect(() => {
+	loaders: [
+		async () => {
 			resetStore();
 			useCanonicalSessionsStore.setState({
 				sessions: [
@@ -388,16 +417,17 @@ export const DeleteDialog: Story = {
 				],
 			});
 			useCanonicalSessionsStore.getState().requestSessionDelete("2d5ad5da0025");
-		}, []);
-		return (
-			<div className={cn("flex h-[560px] w-[560px] bg-canvas")}>
-				<DeleteConversationDialog
-					title="Invoice reconciliation"
-					hasSubagentRuns
-				/>
-			</div>
-		);
-	},
+			return {};
+		},
+	],
+	render: () => (
+		<div className={cn("flex h-[560px] w-[560px] bg-canvas")}>
+			<DeleteConversationDialog
+				title="Invoice reconciliation"
+				hasSubagentRuns
+			/>
+		</div>
+	),
 };
 
 /** The open conversation is archived: the header states it, and can restore it. */
