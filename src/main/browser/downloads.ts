@@ -394,6 +394,16 @@ export class DownloadArmer {
 			capture.files.length + capture.pending >=
 			CAPS.downloadMaxFilesPerCall
 		) {
+			// WHAT THIS CAP IS AND IS NOT WORTH, stated because QA round 1 measured the
+			// difference (Q2): Chromium's own per-page download limiter sits IN FRONT of
+			// `will-download`, so a page that issues 28 clicks in four waves reaches this
+			// branch with at most ~17 items and the refusal is not reachable from a
+			// browser alone. It fails SAFE (fewer files, never more) and it is not dead:
+			// the harness dispatches nothing that bypasses this point, a page's downloads
+			// can be staggered across calls, and the sentence is the one the model reads
+			// when it does fire. It is kept as a bound on what ONE call can be told it
+			// landed, which is the thing the result's own honesty depends on, rather than
+			// described as the bound on what a page can start.
 			return this.refuse(
 				capture,
 				clean,
