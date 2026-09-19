@@ -1,10 +1,10 @@
 {
-	"head": "a7aa1116292ae94e684240c9697133505ad8f433",
+	"head": "e686ce97ef9fed122f0b1400472bcfcc7a2c69e3",
 	"headNote": "FOLDED TWICE, both as real merges: onto `origin/main` = `a17a6b3ba` (#363 etc.) and then onto `origin/main` = the commit named by the merge that carries this stamp; the only conflict both times was this file, resolved as upstream's stamps with this branch's own `any-daemon-attach` set restored and every tree stamp re-derived from the MERGED committed tree. Both folds also carried this branch's own frames: the set was re-shot after the first fold and re-stamped after the second, and the bundle it depicts is recorded in the set's README.",
 	"srcTree": "7928bf3af4b60b41e5125ddbfcd99b2a96064ec7",
-	"scriptsTree": "94eacd784db27aa6579280de79b51c10ec829342",
+	"scriptsTree": "99e2b9c00096a2cb25e5bbb220598c9b80bc2102",
 	"dirtyWorkingTree": true,
-	"capturedAt": "2026-09-19T00:47:44-04:00",
+	"capturedAt": "2026-09-19T00:48:45-04:00",
 	"frames": 8048,
 	"surfaces": 787,
 	"themes": 12,
