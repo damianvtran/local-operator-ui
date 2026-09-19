@@ -264,7 +264,7 @@ const scriptedUpdater = ({
 		onUpdateInstallFailed: noop,
 		onUpdateInstallInFlight: noop,
 		onBeforeQuitForUpdate: noop,
-onUpdateInstallProgress: noop,
+		onUpdateInstallProgress: noop,
 		onUpdateInstallSucceeded: noop,
 		/*
 		 * Not part of the real bridge: the story below waits for the panel's own
