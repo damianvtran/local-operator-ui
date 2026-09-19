@@ -98,6 +98,7 @@ import {
 	buildPipUpgradeCommand,
 	buildWatchdogPlan,
 	classifyGlobalInstall,
+	clearLastInstallAttempt,
 	clearPendingInstallMarker,
 	clearPendingServerUpdateMarker,
 	compareVersions,
@@ -108,11 +109,13 @@ import {
 	evaluatePendingInstall,
 	evaluatePendingServerUpdateMarker,
 	healPythonBytecode,
+	installAttemptSupersededBy,
 	installDiagnosisLines,
 	installFailurePayload,
 	installInFlightPayload,
 	installJobState,
 	installLaunchHoldNotice,
+	installPointerPath,
 	installedBundleSealBlock,
 	installerSearchPath,
 	isInstallInFlight,
@@ -1990,6 +1993,9 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
+				// An install this machine reached is the end of the failure record too: it named
+				// the version that would not land, and this is the launch that proves it did.
+				this.retireSupersededInstallRecord();
 				return;
 			case "stale":
 				// A marker from an install this machine has already moved past. It is
@@ -2001,6 +2007,9 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				clearPendingInstallMarker(this.markerDir());
+				// Superseded is the same fact about the record: whatever it named, the version
+				// running now is past it, so the sentence it drives is no longer true.
+				this.retireSupersededInstallRecord();
 				return;
 			case "in-flight": {
 				this.installWasInFlight = true;
@@ -3296,9 +3305,40 @@ export class UpdateService {
 	 * a dismiss: the panel that reports a failure is not the only place the user
 	 * can find out what happened, which is what made Dismiss an information loss
 	 * (reviews U1, D3).
+	 *
+	 * AND IT RETIRES ONCE THE MACHINE HAS ARRIVED, which is the other half of that
+	 * promise: a record that survives a dismiss must not survive the state it
+	 * describes, or "Version 0.28.2 is running" is printed to a user on 0.29.1 for
+	 * ever (the operator's report, 2026-09-18 - a 0.28.3 record against a running
+	 * 0.29.1). The test is read-time because the fact becomes true without this
+	 * process doing anything: the installer ran, the user relaunched, and the app
+	 * that comes up is the one that answers every reader.
 	 */
 	public lastInstallAttempt(): LastInstallAttempt | null {
-		return readLastInstallAttempt(this.markerDir());
+		return this.retireSupersededInstallRecord();
+	}
+
+	/**
+	 * The record, retired first when the version now running has reached its target.
+	 *
+	 * One function rather than the same test written at each site, because there are two
+	 * moments the fact becomes true - the launch that reads the record, and a start-up
+	 * that observes an install having succeeded or been superseded - and two spellings of
+	 * one rule is how the arms drift apart. The predicate keeps a record whose versions
+	 * cannot be ordered, so nothing is dropped on a guess (`installAttemptSupersededBy`).
+	 */
+	private retireSupersededInstallRecord(): LastInstallAttempt | null {
+		const record = readLastInstallAttempt(this.markerDir());
+		if (!record) return null;
+		const running = app.getVersion();
+		if (!installAttemptSupersededBy(record, running)) return record;
+		if (clearLastInstallAttempt(this.markerDir())) {
+			logger.info(
+				`Retired the recorded install failure for ${record.targetVersion}: this app is running ${running}, so the target has been reached and the record describes a state the machine has left`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		return null;
 	}
 
 	/**
@@ -4684,11 +4724,17 @@ export class UpdateService {
 	 * uv tool root), so a prefix held from minutes ago can name a tree nothing is
 	 * using any more. The reading is what `didSourceRebuildLand` compares, in both
 	 * directions.
+	 *
+	 * Read through the install's own pointer for the same reason the version is (see
+	 * `readInstallVersionAt`): a rebuild keeps `pyproject.toml`'s version and moves the
+	 * `.lop-source` ref, so the marker is the ONLY evidence of that move on this route -
+	 * and a marker read from the frozen `generations/<id>` the daemon started from cannot
+	 * show it any more than the version could.
 	 */
 	private readRebuildMarkerState(
 		installPath: string | null,
 	): SourceMarkerState {
-		const identity = readInstallIdentity(installPath);
+		const identity = readInstallIdentity(installPointerPath(installPath));
 		return readSourceMarkerState(identity.venvPrefix ?? null);
 	}
 
@@ -5935,9 +5981,18 @@ export class UpdateService {
 	 * than into a plausible number. The one caller with a record and no path - the
 	 * reconciliation reading a marker an older build wrote - names its fallback explicitly
 	 * and logs it.
+	 *
+	 * AND THE INSTALL IS READ THROUGH ITS OWN POINTER, because on a generation layout the
+	 * install it names cannot move under it: the tree `/health` reports as the install root
+	 * is `generations/<id>`, an install lands BESIDE it, and only `<stable>/current` moves.
+	 * Reading the concrete path here is what produced the false "did not take effect" verdict
+	 * of 2026-09-18; `installPointerPath` is the same install named so the flip is visible,
+	 * and it is a no-op on every other layout.
 	 */
 	private readInstallVersionAt(installPath: string | null): string | null {
-		return readInstallIdentity(installPath)?.version ?? null;
+		return (
+			readInstallIdentity(installPointerPath(installPath))?.version ?? null
+		);
 	}
 
 	/**
@@ -6353,8 +6408,17 @@ export class UpdateService {
 			 * The install this attempt runs, recorded so a later launch does not have to resolve
 			 * one of its own: the reconciliation reads this, and a marker without it (an older
 			 * build's) is the only case that falls back.
+			 *
+			 * RECORDED THROUGH ITS OWN POINTER where the layout has one, so the record outlives
+			 * the tree it names: on a generation install the flip an install performs is visible
+			 * only through `<stable>/current`, and the generation this attempt started from is
+			 * unreferenced the moment it is superseded - which makes it prunable, and a record
+			 * naming a pruned tree reads as "nothing moved" for an install that landed. A record
+			 * an older build wrote carries the concrete generation path instead, which the reader
+			 * resolves through the same pointer (`installPointerPath` is idempotent, so both
+			 * spellings land in the same place).
 			 */
-			installPath,
+			installPath: installPointerPath(installPath),
 		};
 		writePendingServerUpdateMarker(this.markerDir(), marker);
 		const run = await this.runGlobalUpdate(
@@ -6383,7 +6447,7 @@ export class UpdateService {
 					deadlineAt: marker.deadlineAt,
 					groupPid: pid,
 					groupStartedAt: readProcessStartStamp(pid),
-					installPath,
+					installPath: installPointerPath(installPath),
 				});
 			},
 		);

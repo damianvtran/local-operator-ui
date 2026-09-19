@@ -3,6 +3,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	realpathSync,
+	renameSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
@@ -54,7 +55,11 @@ const install = await import(
 const {
 	classifyGlobalInstall,
 	didUpgradeLand,
+	evaluatePendingInstall,
 	generationInstallRoot,
+	installAttemptSupersededBy,
+	installPointerPath,
+	targetStanding,
 	installerSearchPath,
 	isSourceBuildRef,
 	readInstallIdentity,
@@ -658,4 +663,213 @@ test("`lop update` exiting 0 is not evidence that the install moved", () => {
 		didUpgradeLand({ before: null, after: "0.55.10", target: "0.56.0" }),
 		false,
 	);
+});
+
+// ---------------------------------------------------------------------------
+// Evidence reads follow the install's own pointer
+// ---------------------------------------------------------------------------
+
+/**
+ * One generation of the layout `lop update` installs into: the venv under
+ * `tools/local-operator`, the generation's own console script a relative symlink
+ * into it, and `<stable>/current` naming the generation.
+ */
+const generationInstall = (stable, id, version) => {
+	const root = join(stable, "generations", id);
+	const venv = uvToolEnv(join(root, "tools", "local-operator"), {
+		version,
+		sourceRef: `pypi ${version}`,
+	});
+	mkdirSync(join(root, "bin"), { recursive: true });
+	symlinkSync(
+		join("..", "tools", "local-operator", "bin", "local-operator"),
+		join(root, "bin", "local-operator"),
+	);
+	return { root, venv };
+};
+
+/** Point `<stable>/current` at a generation: staged sibling, then an atomic rename. */
+const flipPointer = (stable, root) => {
+	const staged = join(stable, `current.tmp-${process.pid}`);
+	symlinkSync(root, staged);
+	renameSync(staged, join(stable, "current"));
+};
+
+test("an evidence read of a generation install follows the install's own pointer", () => {
+	/*
+	 * THE DEFECT, at the reader. A generation install never moves the tree a process
+	 * was launched from: an install lands BESIDE it and flips `<stable>/current`
+	 * (`docs/design-install-generations.md` § 2/§ 3.2). The install root `/health`
+	 * reports is that generation, so a reader handed it saw the same version before
+	 * and after - and on 2026-09-18 the app told the operator "The server update to
+	 * 0.59.7 did not take effect: the install still reports 0.59.6" for an install
+	 * that had landed, while Settings read 0.59.7 through the shim.
+	 *
+	 * `installPointerPath` is the same install named through the one spelling that
+	 * moves. Both halves are asserted here, because a fix that made the frozen path
+	 * work would be a different bug: the concrete generation must STAY put.
+	 */
+	const root = tempRoot("pointer-evidence");
+	const stable = join(root, "lop");
+	const first = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, first.root);
+	const script = join(first.venv, "bin", "local-operator");
+
+	assert.equal(readInstallIdentity(script).version, "0.59.6");
+	const pointer = installPointerPath(script);
+	assert.equal(
+		pointer,
+		join(stable, "current", "tools", "local-operator", "bin", "local-operator"),
+	);
+	assert.equal(readInstallIdentity(pointer).version, "0.59.6");
+	// Idempotent: the pointer spelling resolves to itself, which is what makes it safe
+	// on a record this build wrote and on one an older build wrote with a concrete path.
+	assert.equal(installPointerPath(pointer), pointer);
+	// The generation's own `bin` script and the launcher in `~/.local/bin` are the same
+	// install, so both spell to the same pointer path.
+	assert.equal(
+		installPointerPath(join(first.root, "bin", "local-operator")),
+		pointer,
+	);
+
+	// The install lands: a new generation beside it, and the flip.
+	const second = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	flipPointer(stable, second.root);
+
+	// The tree the daemon came from cannot move - that is the layout's whole point, and
+	// the reason a verdict read from it was frozen rather than merely stale.
+	assert.equal(readInstallIdentity(script).version, "0.59.6");
+	// And the pointer follows the flip.
+	assert.equal(readInstallIdentity(pointer).version, "0.59.7");
+
+	/*
+	 * The edges. Every other layout answers the caller's own path, because there is no
+	 * pointer to follow on an install that rewrites itself in place - and null stays
+	 * null so a caller may pass its subject straight through.
+	 */
+	const legacy = legacyInstall(root, { version: "0.55.10" });
+	const legacyScript = join(legacy, "bin", "local-operator");
+	assert.equal(installPointerPath(legacyScript), legacyScript);
+	assert.equal(installPointerPath(null), null);
+
+	// A `generations/` directory with no pointer is not the layout in use, so there is
+	// nothing to resolve through: the read stands as the caller spelled it.
+	const unpointed = join(root, "lop-no-current", "generations", "id");
+	uvToolEnv(unpointed, { version: "0.55.10" });
+	assert.equal(
+		installPointerPath(join(unpointed, "bin", "local-operator")),
+		join(unpointed, "bin", "local-operator"),
+	);
+});
+
+// ---------------------------------------------------------------------------
+// One arrival rule, two callers
+// ---------------------------------------------------------------------------
+
+test("a pair the marker rule calls a failure is never a retirement", () => {
+	/*
+	 * THE ANTI-DRIFT CASE (review round 1, R1-2). Two predicates answer "has this
+	 * machine arrived at that target" about the same two strings: `evaluatePendingInstall`
+	 * decides whether a launch has a failure to report, and `installAttemptSupersededBy`
+	 * decides whether the record that failure writes may be retired. They disagreed on
+	 * the pre-release pair - `compareVersions` is triple-only, so `0.1.2` against
+	 * `0.1.2-beta.9` orders EQUAL, the marker rule called it `failed`, and the retire
+	 * rule answered `order <= 0` and deleted the record for it - so the launch that
+	 * reported "the install of 0.1.2 didn't finish" retired it on the first read.
+	 *
+	 * The property is stated over the whole space rather than over one pair, so a
+	 * future edit to either predicate has to keep the two agreeing: every pair the
+	 * marker rule calls a failure must be one the record may not retire, and every
+	 * arrival it reports must be one the record may retire.
+	 */
+	const marker = (targetVersion) => ({
+		targetVersion,
+		artifactPath: "/synthetic/staged.zip",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		watchdogPid: null,
+	});
+	const record = (targetVersion) => ({
+		targetVersion,
+		runningVersion: "0.28.2",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail: "synthetic",
+		attempts: 1,
+	});
+
+	/*
+	 * The third element is the PROBE's answer, and it is a column rather than a
+	 * constant for a reason: this loop used to hand every pair
+	 * `installInFlight: false`, so `evaluatePendingInstall` could never answer
+	 * `in-flight` and the assertion below for that arm was dead - the case checked
+	 * two of the three relations it named (review round 2, R2-1). The two `0.30.0`
+	 * rows are otherwise identical, so the only thing that separates them is the
+	 * probe.
+	 */
+	const kindsSeen = new Set();
+	for (const [target, running, installInFlight] of [
+		// The pre-release pair: the same triple, a different spelling.
+		["0.1.2", "0.1.2-beta.9", false],
+		["0.1.2-beta.9", "0.1.2", false],
+		// The operator's own case, and the exact arrival.
+		["0.28.3", "0.29.2", false],
+		["0.29.0", "0.29.0", false],
+		// Not reached: once with the probe saying an install of this target is
+		// running, once with it knowing of none.
+		["0.30.0", "0.29.1", true],
+		["0.30.0", "0.29.1", false],
+		// And not orderable on either side.
+		["nightly", "0.29.1", false],
+		["0.29.1", "unknown", false],
+	]) {
+		const kind = evaluatePendingInstall({
+			marker: marker(target),
+			runningVersion: running,
+			installInFlight,
+		}).kind;
+		kindsSeen.add(kind);
+		const retires = installAttemptSupersededBy(record(target), running);
+		if (kind === "failed") {
+			assert.equal(
+				retires,
+				false,
+				`${target} against ${running}: the marker rule reports a failure, so the record may not be retired`,
+			);
+		}
+		if (kind === "succeeded" || kind === "stale") {
+			assert.equal(
+				retires,
+				true,
+				`${target} against ${running}: the marker rule reports an arrival, so the record retires`,
+			);
+		}
+		if (kind === "in-flight") {
+			assert.equal(
+				retires,
+				false,
+				`${target} against ${running}: a target still installing has not been reached`,
+			);
+		}
+	}
+
+	/*
+	 * The loop has to have exercised all three relations it asserts about, or the
+	 * dead-assertion shape comes straight back.
+	 */
+	assert.ok(
+		kindsSeen.has("failed") &&
+			kindsSeen.has("in-flight") &&
+			(kindsSeen.has("succeeded") || kindsSeen.has("stale")),
+		`the pairs must cover the failure, the in-flight probe and an arrival; saw ${[...kindsSeen].join(", ")}`,
+	);
+
+	/*
+	 * And the standing itself, named, so the pre-release pair cannot be read as an
+	 * arrival by a future caller that goes to `targetStanding` directly.
+	 */
+	assert.equal(targetStanding("0.1.2", "0.1.2-beta.9"), "same-triple");
+	assert.equal(targetStanding("0.29.0", "0.29.0"), "reached");
+	assert.equal(targetStanding("0.28.3", "0.29.2"), "passed");
+	assert.equal(targetStanding("0.30.0", "0.29.1"), "ahead");
+	assert.equal(targetStanding("nightly", "0.29.1"), "unorderable");
 });

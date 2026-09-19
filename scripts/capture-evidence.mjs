@@ -2583,6 +2583,17 @@ export const STORIES = [
 	["settings-app-updates-section--all-current", 900, 572],
 
 	/*
+	 * THE STATE THE RECORD IS KEPT IN (design review round 1, D1), and the one
+	 * whose sentence this round's fix changes: the record's target (0.30.0) is
+	 * still AHEAD of the app, so the record stays - correctly - and the sentence
+	 * must print the version that IS running (0.29.5, the card's own live reading)
+	 * rather than the version captured when the failure was written (0.29.2). The
+	 * two differ on this frame on purpose: a fixture whose record agreed with the
+	 * machine could not tell the two readings apart, which is the whole defect.
+	 */
+	["settings-app-updates-section--record-kept-while-target-ahead", 900, 572],
+
+	/*
 	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
 	 * app-managed server three releases behind its published release, reported as
 	 * up to date.

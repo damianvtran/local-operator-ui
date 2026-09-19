@@ -119,8 +119,48 @@ const APP_OWNED_REMEDY =
 const APP_OWNED_DETAIL =
 	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
 
+/*
+ * THE SENTENCE MAIN COMPOSES FOR THIS STATE, not a paraphrase of it (design
+ * review round 2, D2).
+ *
+ * WHY IT CHANGED. This fixture is a stand-in for the payload `backend-update-error`
+ * carries, and the story is the only committed frame for "a genuine failure still
+ * reads as a failure". It used to read "...the server is still on 0.55.9. See the
+ * update service log for pip's output, then try again.", which NO arm of
+ * `serverUpdateFailureSentence` can produce - so the frame a reviewer would cite
+ * for that claim was a picture of wording this build cannot emit, the class the
+ * alert's own comment names ("a fixture drifts from the component it stands for").
+ *
+ * It is now the composer's own non-rebuild, ran-true, exit-0 arm at these two
+ * versions, and `scripts/update-robustness.test.mjs` composes the same facts
+ * through the real module and fails if this literal drifts from it again - the
+ * composer lives in the main process, so the story cannot import it and a test is
+ * what holds the two together.
+ */
 const SERVER_UPDATE_FAILURE_MESSAGE =
-	"The server update to 0.55.10 did not take effect: the server is still on 0.55.9. See the update service log for pip's output, then try again.";
+	"The server update to 0.55.10 did not take effect: the install still reports 0.55.9. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
+
+/*
+ * THE INSTALLER'S OWN WORDS FOR THAT ATTEMPT, and they are not decoration: the
+ * sentence above points at them.
+ *
+ * WHY THEY HAVE TO BE HERE (review round 3, R3-1 = design D4). The composer picks
+ * the "output is below" pointer only when the diagnosis is non-empty
+ * (`server-update-copy.ts`), and the producer sends `installerOutput: diagnosis ||
+ * undefined` from that same value (`update-service.ts`), while the panel renders
+ * the block only when the payload carries it (`update-notification.tsx`). A
+ * payload with that sentence and no output is therefore a pairing no shipped path
+ * composes - and the twelve committed frames showed exactly that: "The installer's
+ * own output is below." over nothing, on the one frame for "a genuine failure still
+ * reads as a failure". The pin in `scripts/update-robustness.test.mjs` now asserts
+ * the pairing, so the sentence and the block cannot part company again.
+ */
+const SERVER_UPDATE_FAILURE_OUTPUT = [
+	"uv tool upgrade local-operator",
+	"Resolved 55 packages in 1.02s",
+	"Installed 1 package in 12ms",
+	" + local-operator==0.55.10",
+].join("\n");
 
 /**
  * The listeners `onBackendUpdateError` has registered for the current story.
@@ -196,7 +236,15 @@ const mockUpdaterApi = () => {
 			}
 			if (window.triggerBackendUpdateError) {
 				for (const listener of [...backendUpdateErrorListeners]) {
-					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
+					listener({
+						message: SERVER_UPDATE_FAILURE_MESSAGE,
+						// The diagnosis the sentence above points at, from the same value
+						// the producer derives both from (review round 3, R3-1 = D4).
+						installerOutput: SERVER_UPDATE_FAILURE_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
 				}
 				return false;
 			}
