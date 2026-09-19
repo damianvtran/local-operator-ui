@@ -76,7 +76,9 @@ test("the archive control is a SIBLING of the row's button, never a child", () =
 	 * line ~1094) and every assertion below then describes the row's box instead of
 	 * the control's.
 	 */
-	const control = rows.indexOf("aria-label={archiveControlLabel(label, archived)}");
+	const control = rows.indexOf(
+		"aria-label={archiveControlLabel(label, archived)}",
+	);
 	assert.notEqual(rowButtonEnd, -1, "the row's button no longer closes");
 	assert.notEqual(control, -1, "the row no longer mounts an archive control");
 	assert.ok(
