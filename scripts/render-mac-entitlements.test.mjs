@@ -9,12 +9,22 @@
  *
  * The CLI cases run the script as the workflow does, with a synthetic team id, so
  * the assertion covers the argument handling and the exit status a release job
- * reads rather than only the pure function behind them.
+ * reads rather than only the pure function behind them. The profile-PRESENT
+ * branch is driven with a synthetic profile dump (`profileKeychainGroups` takes
+ * its reader), because a real Developer ID profile exists only on the release
+ * runner; the branch is exercised again by the release gate, which reads the
+ * profile off the built artifact.
  */
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -22,6 +32,7 @@ import {
 	assertBundleId,
 	assertTeamId,
 	bundleIdFromPackage,
+	profileKeychainGroups,
 	renderEntitlementsPlist,
 	webauthnKeychainAccessGroup,
 } from "./render-mac-entitlements.mjs";
@@ -95,32 +106,41 @@ test("rendering refuses inputs that would ship a group nothing can match", () =>
 	assert.equal(bundleIdFromPackage(), "com.local-operator");
 });
 
-test("the workflow command renders a lint-clean plist without printing the team id", () => {
+test("the renderer writes the committed plist unchanged when no profile is given", () => {
+	/*
+	 * No profile, no claim — the shipped default since the 0.29.6 incident.
+	 *
+	 * This case is the whole shape of the release path while no provisioning
+	 * profile exists: the plist that reaches codesign carries no restricted
+	 * entitlement, so macOS spawns the bundle, and the app is inert for passkeys
+	 * by design rather than unlaunchable. The team id is no longer needed at all on
+	 * this path, which is why the case passes one in and still expects no group.
+	 */
 	const dir = mkdtempSync(join(tmpdir(), "render-entitlements-"));
 	try {
 		const out = join(dir, "nested", "entitlements.mac.plist");
 		const result = spawnSync(
 			process.execPath,
-			["scripts/render-mac-entitlements.mjs", "--out", out],
-			{
-				env: { ...process.env, APPLE_TEAM_ID: TEAM_ID },
-				encoding: "utf8",
-			},
+			[
+				"scripts/render-mac-entitlements.mjs",
+				"--out",
+				out,
+				"--team-id",
+				TEAM_ID,
+			],
+			{ encoding: "utf8" },
 		);
 		assert.equal(result.status, 0, result.stderr);
-		// The destination directory is created when it does not exist: $RUNNER_TEMP
-		// exists on a runner, but a caller naming a fresh path must not fail.
 		assert.ok(existsSync(out), "the plist was written");
 		const rendered = readFileSync(out, "utf8");
-		assert.match(
+		assert.equal(
 			rendered,
-			/<string>AB12CD34EF\.com\.local-operator\.webauthn<\/string>/,
+			COMMITTED,
+			"the committed plist is written verbatim",
 		);
-		// SECRET HYGIENE: the script's output is a CI log, and the team id is a CI
-		// secret. The group is written to the file and never to stdout.
+		assert.doesNotMatch(rendered, /keychain-access-groups/);
 		assert.doesNotMatch(result.stdout, new RegExp(TEAM_ID));
-		assert.doesNotMatch(result.stderr, new RegExp(TEAM_ID));
-		assert.match(result.stdout, /wrote \d+ entitlements/);
+		assert.match(result.stdout, /passkeys stay inert/);
 		if (process.platform === "darwin") {
 			// The check that matters for codesign: it has to be a real plist.
 			const lint = spawnSync("/usr/bin/plutil", ["-lint", out], {
@@ -128,21 +148,100 @@ test("the workflow command renders a lint-clean plist without printing the team 
 			});
 			assert.equal(lint.status, 0, `${lint.stdout}${lint.stderr}`);
 		}
-		// A missing secret fails the step rather than rendering a plist without the
-		// group: a release whose signature lacks the entitlement is a release whose
-		// passkeys silently do nothing.
-		const missing = spawnSync(
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a profile-less group is unreachable: the renderer refuses every half-open door", () => {
+	const dir = mkdtempSync(join(tmpdir(), "render-entitlements-"));
+	try {
+		// A profile path that does not exist: there is nothing to authorize the
+		// claim, so the build stops rather than signing one.
+		const missingProfile = spawnSync(
 			process.execPath,
 			[
 				"scripts/render-mac-entitlements.mjs",
 				"--out",
 				join(dir, "never.plist"),
+				"--team-id",
+				TEAM_ID,
+				"--profile",
+				join(dir, "absent.provisionprofile"),
+			],
+			{ encoding: "utf8" },
+		);
+		assert.notEqual(missingProfile.status, 0);
+		assert.match(
+			missingProfile.stderr,
+			/does not name a readable provisioning profile/,
+		);
+		assert.ok(!existsSync(join(dir, "never.plist")));
+
+		// A team id is still required on the profile path, so a mistyped secret
+		// cannot render a group nothing can match.
+		const noTeam = spawnSync(
+			process.execPath,
+			[
+				"scripts/render-mac-entitlements.mjs",
+				"--out",
+				join(dir, "never2.plist"),
+				"--profile",
+				join(dir, "absent.provisionprofile"),
 			],
 			{ env: { ...process.env, APPLE_TEAM_ID: "" }, encoding: "utf8" },
 		);
-		assert.notEqual(missing.status, 0);
-		assert.match(missing.stderr, /APPLE_TEAM_ID is missing/);
-		assert.ok(!existsSync(join(dir, "never.plist")));
+		assert.notEqual(noTeam.status, 0);
+		assert.match(noTeam.stderr, /APPLE_TEAM_ID is missing/);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the profile's allowlist decides, and a disagreement is a refusal", () => {
+	/*
+	 * The profile-present half of the contract, driven with a synthetic dump
+	 * because a real Developer ID profile exists only on the release runner. What
+	 * is being asserted is the agreement between the value that would be signed in
+	 * and the value the profile authorizes: a mismatch is refused at spawn on the
+	 * user's machine and looks identical in the build log.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "render-entitlements-"));
+	try {
+		const profile = join(dir, "embedded.provisionprofile");
+		writeFileSync(profile, "synthetic CMS container\n");
+		const group = webauthnKeychainAccessGroup(TEAM_ID, "com.local-operator");
+		const dump = (groups) => () => ({
+			status: 0,
+			stdout: `<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array>${groups
+				.map((value) => `<string>${value}</string>`)
+				.join("")}</array></dict></dict></plist>`,
+			stderr: "",
+		});
+		assert.deepEqual(profileKeychainGroups(profile, dump([group])), [group]);
+		assert.deepEqual(
+			profileKeychainGroups(profile, dump([group, "OTHER.thing.shared"])),
+			[group, "OTHER.thing.shared"],
+		);
+		assert.deepEqual(profileKeychainGroups(profile, dump([])), []);
+		assert.deepEqual(
+			profileKeychainGroups(
+				profile,
+				dump([`${TEAM_ID}.com.somebody-else.webauthn`]),
+			),
+			[`${TEAM_ID}.com.somebody-else.webauthn`],
+		);
+		// "We could not ask" is not "the profile authorizes nothing": a profile
+		// that cannot be unwrapped stops the build rather than rendering blindly.
+		assert.throws(
+			() =>
+				profileKeychainGroups(profile, () => ({
+					status: 1,
+					stdout: "",
+					stderr: "SecPolicyCreateBasicX509: unable to decode",
+				})),
+			/security cms -D could not read/,
+		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

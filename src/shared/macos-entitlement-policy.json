@@ -1,0 +1,20 @@
+{
+	"embeddedProvisioningProfilePath": "Contents/embedded.provisionprofile",
+	"unrestrictedEntitlementKeys": [
+		"com.apple.security.app-sandbox",
+		"com.apple.security.application-groups",
+		"com.apple.security.get-task-allow",
+		"com.apple.security.inherit",
+		"com.apple.security.print",
+		"com.apple.security.smartcard"
+	],
+	"unrestrictedEntitlementPrefixes": [
+		"com.apple.security.cs.",
+		"com.apple.security.network.",
+		"com.apple.security.files.",
+		"com.apple.security.device.",
+		"com.apple.security.personal-information.",
+		"com.apple.security.assets.",
+		"com.apple.security.automation."
+	]
+}
