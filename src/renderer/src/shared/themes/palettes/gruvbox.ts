@@ -128,7 +128,25 @@ export const gruvbox: ThemeDefinition = {
 		 * from its nearest semantic (`danger`), 4.78:1 as text on the tightest
 		 * ground (`surface`).
 		 */
-		accentAlt: "#d3869b",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.23:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue held at 2 deg, L* 64.38 -> 66.95, C* 32.30 -> 32.06):
+		 * 4.59:1 on `elevated`, 5.20:1 on `surface`, 6.49:1 on `sunken`,
+		 * 5.84:1 on `canvas` - ΔE00 42.01 from `info` (the 8 floor intact),
+		 * 43.46 from `accent`, 34.70 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.15:1.
+		 */
+		accentAlt: "#DA8DA2",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 20.22 and C* 14.63, with the hue moved to

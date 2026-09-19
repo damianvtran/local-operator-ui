@@ -1131,6 +1131,29 @@ export const STORIES = [
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
 	   where the hierarchy that must SURVIVE the tightening is judged. */
 	["chat-tool-rows--operator-spacing-cases", 1024, 860],
+	/*
+	 * The HOVERED frame, and the pair it exists for.
+	 *
+	 * A settled row's identity ink is painted on the row's own hover ground
+	 * (`tool-row.tsx`'s `hover:bg-elevated`), and that pair — `accentAlt` as 12px
+	 * text on `elevated` — was the one nothing measured until PR #391's round 1:
+	 * the role's text floor was asserted on `canvas`/`surface`/`sunken` only,
+	 * because neither of its two sites had ever painted a state ground, and ten
+	 * palettes sat under 4.5:1 there. The design round could not photograph it —
+	 * a synthetic click leaves the capture on the plain canvas ground — so the
+	 * pair was argued from tokens.
+	 *
+	 * `b1` is a settled `hub` row (the `(b)` frame of this story), which is the
+	 * ink's own category on the ink's own ground. It is a `hover`-only entry, one
+	 * frame per theme, and the coordinate the pointer lands on is the ROW — the
+	 * same element a reader's pointer meets, not a parent of it.
+	 */
+	[
+		"chat-tool-rows--operator-spacing-cases",
+		1024,
+		860,
+		{ hover: '[data-record-id="b1"]', dir: "operator-spacing-cases-hovered" },
+	],
 	["chat-tool-rows--turn-boundary-and-working-line", 1024, 700],
 	/* Where the 2px `trace` hairline applies and where it does not: a lone call,
 	   a notice inside a run, and a run that opens a turn. `operator-spacing-cases`

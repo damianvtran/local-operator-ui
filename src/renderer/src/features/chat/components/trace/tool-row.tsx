@@ -250,9 +250,26 @@ export type ToolRowProps = {
  * `accentAlt` is the token the port sourced from the TUI's own `label` — the
  * role `tool.row.name_meta` derives from — and `index.css` declares it for
  * exactly this use: "identity and category, never interaction or selection".
- * The palette contract separately holds it ΔE00 >= 15 from `accent` and >= 8
- * from `info` on all 59 palettes, so the two routes are not interchangeable and
- * this one is the one that cannot be mistaken for liveness.
+ * The palette contract separately holds it ΔE00 >= 15 from `accent` on all 59
+ * palettes, so the two routes are not interchangeable and this one is the one
+ * that cannot be mistaken for liveness.
+ *
+ * ## The other identity ink, and the pair the two make
+ *
+ * `read` is `info`, so THIS row's two hues are the ones a reader has to tell
+ * apart — the settled ledger's whole colour vocabulary. That pair is asserted
+ * at the palette gate's `IDENTITY_PAIR_FLOOR` (15) rather than at the reduced 8
+ * the role's decorative sites take, because two ~12px inks a line apart in one
+ * column is the side-by-side case the 15 is for. Five palettes cannot reach it
+ * and are pinned there with their refusing constraint named; the run's
+ * `Identity pairs:` line prints the tightest pair the fleet actually holds, from
+ * the gate's own `deltaE`, so no figure in this comment can drift from it.
+ *
+ * The `read` side of that pair has a second bound, on the ink `info` must NOT be
+ * confused with: a RUNNING row's `accent` (`LIVENESS_PAIR_FLOOR`, 8). On four
+ * palettes `info` IS `accent` — that is those themes' whole design — and they
+ * are pinned rather than moved, because the running row still says "live" three
+ * other ways (its raised ground, its live clock, its absent outcome mark).
  *
  * ## What is deliberately NOT a hue
  *
@@ -282,17 +299,17 @@ const CATEGORY_INK: Record<ToolCategory, string> = {
  * `task`/`hub`/`todo` shipped an accent name beside a grey glyph. One call, two
  * spans, and the TUI does the same thing in the same place — `_build_row`
  * assigns `icon_style = ... if running else name_style` after deriving
- * `name_style` from the category (tool_card.py:3404-3406).
+ * `name_style` from the category (tool_card.py:3411).
  *
- * ## Liveness outranks identity
+ * ## Liveness outranks identity, and a RECEIPT is neither
  *
  * State is checked FIRST and a settled row is the only row whose category is
  * consulted, because a row cannot report "what kind of thing it was" and "what
  * is happening now" in one ink: `running` is `accent`, `error` and `not-run` are
- * `danger`, and everything else — success, `interrupted`, `receipt` — falls
- * through to identity. Two signals on one span would mean the ledger said both
- * things in the same place, which is how the outcome column lost its own meaning
- * before D12 was narrowed.
+ * `danger`, and everything else — success, `interrupted` — falls through to
+ * identity. Two signals on one span would mean the ledger said both things in
+ * the same place, which is how the outcome column lost its own meaning before
+ * D12 was narrowed.
  *
  * `interrupted` is NOT an exception to that, and it is worth being exact about
  * because an earlier round recorded the opposite: it has no ink OF ITS OWN —
@@ -307,13 +324,31 @@ const rowInk = (outcome: ToolRowOutcome, toolName: string): string => {
 	if (outcome === "running") return "text-accent";
 	if (outcome === "error" || outcome === "not-run") return "text-danger";
 	/*
-	 * `receipt` needs no branch of its own. A receipt is settled, so it takes the
-	 * identity ink — which is what it always chose for itself, and which is now
-	 * derived the same way for a receipt as for a call. A `peer` row is
-	 * unclassified in the TUI's table as well (it is a glyph, not a tool), so it
-	 * lands on the neutral fallback; a `wake` receipt is `meta` there, so it takes
-	 * the meta ink. That is the map's answer rather than a special case here.
+	 * A RECEIPT takes the neutral, and it takes it WITHOUT consulting the map.
+	 *
+	 * A receipt is not a call. `peer` and `wake` are the transcript's receipts — a
+	 * cross-session message arriving, a scheduled wake firing — and the TUI draws
+	 * both as BLOCKS that never ask the category table for anything:
+	 * `PeerMessageBlock` and `WakeBlock` each paint the icon `dim` and the name
+	 * `muted` (transcript.py:2836-2837 and :2152-2153), and `_category_element`
+	 * has exactly ONE caller in the whole TUI — `tool_card.py:3240`, inside
+	 * `ToolCard`. `wake`'s entry in `_TOOL_CATEGORY` is real, and it is for a
+	 * `wake` TOOL CARD (the agent invoking the tool), not for the delivery block.
+	 *
+	 * So consulting the map here made the wake RECEIPT the one row in the ledger
+	 * wearing an identity ink it had not earned — `meta`'s `accentAlt`, a colour
+	 * no other receipt takes — and the receipt that was meant to be quiet became
+	 * the loudest row on a settled screen. It is also the row the ink is least
+	 * affordable on: no receipt carries a tool glyph's identity because no receipt
+	 * IS a tool call. Both receipts now read the same ink, which is what their two
+	 * TUI analogues do.
+	 *
+	 * The rule the map keeps: a settled row that came from a CLASSIFIED CALL takes
+	 * its tool's category ink. The rule this keeps: a receipt is settled too, and
+	 * its ink is the neutral name column's, because there is no category for it to
+	 * take.
 	 */
+	if (outcome === "receipt") return CATEGORY_INK.plain;
 	return CATEGORY_INK[toolCategory(toolName)];
 };
 

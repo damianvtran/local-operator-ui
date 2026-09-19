@@ -2296,6 +2296,195 @@ const findPerceptibleException = (theme, role, ground, got) => {
 };
 
 /*
+ * THE TOOL ROW'S TWO IDENTITY PAIRS, and why each is asked where it is.
+ *
+ * The trace's settled ledger draws TWO inks as text in ONE column: the tool's
+ * CATEGORY ink (`read` -> `info`, `meta` -> `accentAlt`) and, on a running row,
+ * the LIVENESS ink (`accent`). Both pairs are new SITES for roles whose floors
+ * were written for other ones, and each pair is named with the bound its own
+ * site needs.
+ *
+ * 1. `accentAlt` vs `info`, at 15 and not the reduced 8 the pair was previously
+ *    asserted at. The 8 was argued for the sites the role HAD - a 1px bar in a
+ *    40px miniature, a 6px mark in a diagram - where recall at a size too small
+ *    to resolve is the question. This site is the opposite one: two ~12px inks a
+ *    line apart in one column, which is the "difference of category, not of
+ *    shade" case the 15 exists for. A reader scanning the ledger has to tell
+ *    "this call read" from "this call was meta", and at 8 the two take the same
+ *    name.
+ *
+ *    FIVE PALETTES CANNOT REACH IT, and they are RECORDED rather than silently
+ *    exempted, with the constraint that refuses each named on the pin. Re-seating
+ *    was measured first and refused: on `catppuccinMocha` - the binding value,
+ *    and the palette whose second hue sits 2.68 degrees off `info`'s - the
+ *    cheapest value that clears 15 at the role's own hue also drops BELOW the 8
+ *    it already held against `info` (measured 6.24), and every value that clears
+ *    both is drained to the chroma floor (C* 15 at L* 89-90), which is the one
+ *    way `ALT_ACCENT_CHROMA_FLOOR`'s own comment says the role stops being a hue.
+ *    So the palette cannot move and the assertion keeps its bound; the five are
+ *    pinned at their measured ΔE00 with the reason.
+ *
+ * 2. `info` vs `accent`, at 8: the settled `read` ink against the ink a RUNNING
+ *    row wears. The bound is the file's "reliably take different names rather
+ *    than scraping the side-by-side threshold" floor and not the 15, because this
+ *    pair is NOT the ledger's side-by-side comparison - the two inks are never in
+ *    one row, and the state they disagree about is carried three other ways at
+ *    once (the running row's raised ground, its live clock where a settled row
+ *    has its outcome mark, and the mark's own shape). What it catches is the
+ *    direction the palette file already recorded in prose: `info` IS `accent` in
+ *    `dune`, `neon`, `radient` and `obsidian`, so a settled `read` row and a
+ *    running row wore the same ink. Pinned for the same reason as above: on those
+ *    palettes the second hue IS the role, and moving `info` there is a different
+ *    change - `info` is also what the port mapped the TUI's `signal` onto.
+ *
+ * Both are declared HERE rather than beside the constants they equal, because
+ * `const` does not hoist and `PAIR_PINS` below is written against them; the
+ * check that they still ARE those constants is at the foot of the run, beside the
+ * fleet figure, so a change to either canonical floor cannot leave these two
+ * behind.
+ */
+const IDENTITY_PAIR_FLOOR = 15; /* == SEPARATION_FLOOR */
+const LIVENESS_PAIR_FLOOR = 8; /* == SYNTAX_COMMENT_FLOOR */
+
+/**
+ * Identity PAIRS accepted below their floor, pinned to their measured ΔE00.
+ *
+ * The same instrument as `PERCEPTIBLE_EXCEPTIONS` one table up and the same
+ * contract: a pin is a DECISION with a measurement attached, not a mute. The
+ * palette moving makes the recorded ΔE00 stop matching and the gate fails until
+ * a human re-approves it, and an entry the walk never reaches is itself a failure
+ * (the staleness check at the foot of the run), so a palette that stops needing
+ * its pin cannot leave a hole behind.
+ *
+ * BOTH ENTRY FAMILIES LIVE HERE because they are the same question asked of two
+ * pairs the tool row newly draws as TEXT: the category ink against its sibling
+ * category (`accentAlt` vs `info`, floor `IDENTITY_PAIR_FLOOR`) and the settled
+ * category ink against the LIVENESS ink (`info` vs `accent`, floor
+ * `LIVENESS_PAIR_FLOOR`). See the floors' own comment for why each bound is what
+ * it is. `a`/`b` are palette roles, `got` is the measured ΔE00, and `why` names
+ * the constraint that REFUSES the palette rather than restating the number.
+ *
+ * @type {{theme: string, a: string, b: string, floor: number, got: number, why: string}[]}
+ */
+const PAIR_PINS = [
+	/*
+	 * The five palettes whose second hue IS the `info` family. Every one of the
+	 * three `catppuccin*` palettes took its `accentAlt` from the TUI's `label`
+	 * token, and on those the scheme's lavender and its blue are two steps of one
+	 * ramp: the shipped values sit 2.68, 19.42 and 17.02 degrees off `info`'s hue.
+	 * `localOperatorDark` and `ayuLight` have no `label` token to port - they are
+	 * desktop-only, and their second hue is a rotation of their own `accent` - so
+	 * the rotation lands where the floors put it, which is beside `info`.
+	 */
+	{
+		theme: "catppuccinMocha",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.58,
+		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - the cheapest value clearing 15 at this hue drops to ΔE00 6.24 from `info` (below the 8 it already held) and every value clearing both is at C* 15, the chroma floor that makes the role a second grey",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.58,
+		why: "the second hue sits 19.42 degrees off `info`'s, in its own family by construction",
+	},
+	{
+		theme: "catppuccinFrappe",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.6,
+		why: "the second hue sits 17.02 degrees off `info`'s, in its own family by construction",
+	},
+	{
+		theme: "localOperatorDark",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 12.57,
+		why: "desktop-only palette with no `label` to port: its second hue is a rotation of `accent`, and the rotation that clears every other floor lands 12.57 from `info`",
+	},
+	{
+		theme: "ayuLight",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 13.57,
+		why: "desktop-only palette with no `label` to port; the rotation lands 13.57 from `info`",
+	},
+	/*
+	 * And the four palettes whose `info` IS their `accent`, plus the light one whose
+	 * two Primer blues are 5.87 apart. Three of the four are already recorded in
+	 * this file's prose (`COMMAND_TOKEN`'s note: "`info` is the accent's twin in
+	 * dune, neon and radient (0.0) and the ink's twin in obsidian (0.0)"); what
+	 * changes here is that the recording is now ASSERTED, so a palette edit that
+	 * moves either role re-litigates the pin instead of quietly re-opening the
+	 * state confusion. Pinned rather than re-authored because on these palettes the
+	 * second hue IS the role: moving `info` there is a different change, and `info`
+	 * is the TUI's `signal` mapping on top of that.
+	 */
+	{
+		theme: "dune",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#FF8C38`), the palette's single warm hue; a settled `read` row and a running row separate by their ground, their mark and their clock",
+	},
+	{
+		theme: "neon",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#00EFFF`), the palette's single cyan",
+	},
+	{
+		theme: "obsidian",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "the app's recorded MONOCHROME palette: `info` IS `ink` IS `accent` (`#FAFAFA`), which `code-mirror-theme.ts` and the command-token pins already state; hue is not the channel here and never was",
+	},
+	{
+		theme: "radient",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#91B7E9`), the palette's single steel blue",
+	},
+	{
+		theme: "githubLight",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 5.87,
+		why: "two Primer blues: `accent` is 0969DA deepened to clear its own text floor and `info` is 0550AE kept as the scheme's factual chrome tone, so the two sit one shade apart by construction; separating them means re-authoring one of them, which is a palette round and not this change",
+	},
+];
+
+/** `PAIR_PINS` entries consulted during the run, for the same staleness guard. */
+const pairPinSeen = new Set();
+
+const findPairPin = (theme, a, b, got) => {
+	const hit = PAIR_PINS.find(
+		(e) =>
+			e.theme === theme &&
+			e.a === a &&
+			e.b === b &&
+			Math.abs(e.got - got) < 0.01,
+	);
+	if (hit) pairPinSeen.add(hit);
+	return hit;
+};
+
+/*
  * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
  *
  * A session's row has always put live chips (`inkMuted`) beside inert readings
@@ -2460,6 +2649,38 @@ const assertPair = (theme, p, fg, bg, floor, label) => {
 	if (findException(theme, fg, bg, got)) return;
 	fail(
 		`${theme}: ${label} — ${fg} ${a} on ${bg} ${b} = ${got}:1, need ${floor}:1`,
+	);
+};
+
+/**
+ * Two ROLES that must be told apart, rather than an ink on a ground.
+ *
+ * The other instrument, and the one the pair floors need: `ratio` is
+ * luminance-only, so two roles can be equally legible on every ground and still
+ * be the same colour to a reader — which is the whole of the tool row's
+ * defect. `label` comes from the floors' own constants, so a pin records the
+ * FLOOR it was granted under and not just a number: a pin whose floor no longer
+ * matches the assertion reaching it fails here rather than quietly relaxing a
+ * bound that was raised since it was written.
+ */
+const assertIdentityPair = (theme, p, a, b, floor, label) => {
+	const va = p[a];
+	const vb = p[b];
+	if (!isHex(va) || !isHex(vb)) return;
+	assertions++;
+	const got = r2(deltaE(va, vb));
+	if (got >= floor) return;
+	const pin = findPairPin(theme, a, b, got);
+	if (pin) {
+		if (pin.floor !== floor) {
+			fail(
+				`${theme}: \`${a}\`/\`${b}\` is pinned at floor ${pin.floor} but this assertion asks for ${floor} — a pin records the bound it was granted under, so the pin and the floor have to be raised together`,
+			);
+		}
+		return;
+	}
+	fail(
+		`${theme}: ${label} — \`${a}\` ${va} and \`${b}\` ${vb} are ΔE00 ${got} apart (need ${floor}) — two roles a reader has to tell apart at this site cannot be one colour at two weights; move the palette value, or pin the palette in \`PAIR_PINS\` with the constraint that refuses it`,
 	);
 };
 
@@ -2657,6 +2878,13 @@ const SEPARATION_FLOOR = 15;
  * its ΔE00 on the wrong axis - so the axis is asserted, not just the distance.
  */
 const ALT_ACCENT_CHROMA_FLOOR = 15;
+
+/*
+ * `IDENTITY_PAIR_FLOOR` and `LIVENESS_PAIR_FLOOR` are declared beside
+ * `PAIR_PINS`, above, because `const` does not hoist; the check that they are
+ * still this file's `SEPARATION_FLOOR` and `SYNTAX_COMMENT_FLOOR` sits at the
+ * foot of the run.
+ */
 /* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
    the same number and for why five palettes are recorded below it instead of
    being moved. Declared here rather than beside the list because `const` does
@@ -3806,30 +4034,47 @@ for (const { id, palette: p } of palettes) {
 	 *   legitimate pair in the tree is `dune`'s `danger`/`info` at 18.4, and a new
 	 *   role asked to clear more than the semantics clear against each other is a
 	 *   gate that fails by design.
-	 * - `info` is EXCLUDED from that family and given the reduced
-	 *   `SYNTAX_COMMENT_FLOOR` (8) instead, because `info` is the cool
-	 *   counterweight the port mapped the TUI's `signal` onto: on the palettes
-	 *   whose second hue is in that family the two are the same colour by
-	 *   construction, and 15 would fail them for being what they are rather than for
-	 *   a defect. Measured on the values this branch ships, the five that need the
-	 *   lower floor are `catppuccinMocha` 8.01 (the binding one),
-	 *   `catppuccinMacchiato` 8.58, `catppuccinFrappe` 8.60, `localOperatorDark`
-	 *   12.57 and `ayuLight` 13.57, and on the three `catppuccin*` the cause is
-	 *   legible from the hues (`catppuccinMocha`'s second hue sits 2.68 degrees off
-	 *   `info`'s, `catppuccinFrappe` 17.02, `catppuccinMacchiato` 19.42). The two
-	 *   palettes this line used to name, `catppuccinLatte` and `radient`, measure
-	 *   25.48 and 15.09 and are not near the floor.
+	 * - `info` is treated as its own family rather than as a semantic: the floors
+	 *   this role holds against it are argued at the two SITES that draw the two
+	 *   together, and they are different bounds for different jobs.
+	 *
+	 *   As the ledger's two CATEGORY inks - `accentAlt` is the settled `meta` row's
+	 *   identity and `info` is `read`'s, one line apart in one column - the pair is
+	 *   asked at `SEPARATION_FLOOR` (15) below, the contract's own "difference of
+	 *   category, not of shade". Five palettes cannot reach it and are pinned in
+	 *   `PAIR_PINS` with the constraint that refuses each: the three `catppuccin*`
+	 *   palettes, whose second hue sits in `info`'s own family (2.68, 17.02 and
+	 *   19.42 degrees off it), and the two desktop-only palettes whose second hue is
+	 *   a rotation of their accent rather than a `label` token to port
+	 *   (`localOperatorDark` 12.57, `ayuLight` 13.57).
+	 *
+	 *   At the role's DECORATIVE sites - a 1px bar in the 40px miniature, a 6px mark
+	 *   in a diagram - the same pair takes the reduced `SYNTAX_COMMENT_FLOOR` (8),
+	 *   because recall at a size too small to resolve is the question there.
+	 *
+	 *   NO FIGURE IS TYPED INTO THIS COMMENT, deliberately. The number that ran in
+	 *   three places and disagreed in three ways is this pair's: the contract
+	 *   carried 8.01, which was its value BEFORE the register re-solve moved both of
+	 *   its values (measured on the pre-values `#719AD4`/`#89B4FA`, which is what
+	 *   8.01 is), a PR body carried 8.19, and a reviewer's independent computation
+	 *   carried 8.70. The run now PRINTS the fleet's tightest pair from the same
+	 *   `deltaE` the assertion uses - the `Identity pairs:` line, beside the pin
+	 *   count - so there is one number and one source, and a reader who wants it
+	 *   reads the run rather than a document that cannot go red.
 	 * - `ALT_ACCENT_CHROMA_FLOOR` (15) asserts the AXIS: all three floors above
 	 *   can be satisfied by draining the hue toward the ink, which turns the second
 	 *   accent into a second grey. See the constant.
 	 *
-	 * The text floor is asserted below, on the three grounds its sites paint it on.
-	 * It is NOT the `AS_TEXT` loop's six: the alt hue is never drawn on a dialog's
-	 * `elevated`, on the selection wash or on the current row, and asserting it
-	 * there would demand 28 palette values this change does not need - measured,
-	 * `monokai`'s alt reads 3.95:1 on `accentWash` and `oneDark`'s 3.78:1 on
-	 * `elevated`. The rule that keeps it honest is the role's own: no text is
-	 * painted on `accentAlt`, and none of those pairs can arise.
+	 * The text floor is asserted below, on the three grounds its own decorative sites
+	 * paint it on PLUS the row's state ground (`elevated`), which the trace row
+	 * added. It is NOT the `AS_TEXT` loop's six: the alt hue is never drawn on a
+	 * dialog's `elevated`, on the selection wash or on the current row, and the
+	 * ledger's settled-row hover is the ONE state ground it reaches — asserting the
+	 * `rowHover`/`rowSelected` fills here would demand palette values for a pair no
+	 * site paints (they are a sibling pass's roles; if the trace row's hover moves
+	 * to `rowHover`, this pair moves with it, which is why the comment above the
+	 * call says so). The rule that keeps the list honest is the role's own: no text
+	 * is painted on `accentAlt`, and none of those pairs can arise.
 	 */
 	if (isHex(p.accentAlt)) {
 		if (isHex(p.accent)) {
@@ -3853,6 +4098,13 @@ for (const { id, palette: p } of palettes) {
 		}
 		if (isHex(p.info)) {
 			assertions++;
+			/*
+			 * The DECORATIVE-site floor, and the ledger's own pair is asserted
+			 * separately below (`assertIdentityPair`) at 15: this one is the 1px bar in
+			 * the miniature and the 6px mark in the diagram, where recall at a size too
+			 * small to resolve is the question. The comment above the block carries the
+			 * argument for the two bounds and for why no figure is typed into it.
+			 */
 			const got = deltaE(p.accentAlt, p.info);
 			if (got < SYNTAX_COMMENT_FLOOR) {
 				fail(
@@ -3872,7 +4124,72 @@ for (const { id, palette: p } of palettes) {
 		for (const g of ["canvas", "surface", "sunken"]) {
 			assertPair(id, p, "accentAlt", g, FLOOR.text, "second accent as text");
 		}
+		/*
+		 * AND THE FOURTH, which is the one the tool row added and the reason this
+		 * block grew a ground at all.
+		 *
+		 * `accentAlt` is the settled `meta` row's identity ink (`tool-row.tsx`'s
+		 * `CATEGORY_INK`), and a settled row's hover paints `bg-elevated`
+		 * (`tool-row.tsx:633`) — so hovering a `hub`/`task`/`todo` row draws this
+		 * role as 12px TEXT on `elevated`. Neither prior site did: the theme picker's
+		 * miniature is 1px-2.5px bars and mermaid's categorical fill carries `ink`
+		 * labels, so the role's text floor was asserted on the three grounds a CHIP
+		 * paints it on and no state ground was ever measured. That is exactly the
+		 * scope gap this asserts shut, and it is asserted rather than pinned: 4.5:1
+		 * on text is the floor the whole file is for, and ten palettes were below it
+		 * before the palette pass beside this assertion (worst `kanagawaWave`
+		 * 4.05:1).
+		 *
+		 * The `meta` ink's own re-seat is recorded in the palettes: where the role was
+		 * seated at its floor on `surface` (catppuccinMocha 4.51:1) an added ground
+		 * had no headroom to spend, so those ten values were re-seated at their own
+		 * hue — measured, `elevated` 4.05-4.23:1 -> 4.55-4.60:1 — which is the
+		 * palette moving rather than the floor.
+		 *
+		 * COORDINATION, stated because the ground is not this change's to own:
+		 * `rowHover`/`rowSelected` are a sibling pass's roles (PR #386) and a row's
+		 * hover is heading for `rowHover` there. This asserts the ground the row
+		 * RESOLVES TO today — `elevated`, the class in `tool-row.tsx` — so if that
+		 * class moves, this pair moves with it and re-measures against the new fill
+		 * rather than silently asserting a ground nothing paints any more.
+		 */
+		assertPair(
+			id,
+			p,
+			"accentAlt",
+			"elevated",
+			FLOOR.text,
+			"second accent as text on a row's state ground",
+		);
 	}
+
+	/*
+	 * ------------------------------------------------------------------
+	 * THE TOOL ROW'S TWO IDENTITY PAIRS, as text in one column.
+	 *
+	 * Both are new SITES for roles whose floors were written for other ones, and
+	 * both are asserted here rather than left to the prose that already described
+	 * the failure. See the two floors' own comment for the bound each pair takes
+	 * and the argument for it; the shape below is the same for both: measure, and
+	 * accept a below-floor pair ONLY through a `PAIR_PINS` entry whose recorded
+	 * value still matches and whose reason names the refusing constraint.
+	 */
+	assertIdentityPair(
+		id,
+		p,
+		"accentAlt",
+		"info",
+		IDENTITY_PAIR_FLOOR,
+		"the tool row's two category inks",
+	);
+	assertIdentityPair(
+		id,
+		p,
+		"info",
+		"accent",
+		LIVENESS_PAIR_FLOOR,
+		"the settled read ink against the liveness ink",
+	);
 
 	/*
 	 * And the two washes may sit adjacent in one ramp.
@@ -4464,13 +4781,13 @@ const FLEET_NEAR_NEUTRAL_PAIRS_CEILING = 9;
  * the 1 degree term only ever adds strictness below the chroma where the lattice
  * allows less than a degree; and the chroma clause is exercised by no shipped value
  * either, because the move set's single spend is `tokyoNight.ink` at 0.800 x - and
- * that role has no in-gamut re-solve, so it takes the `GAMUT_EDGE_MOVES` branch
+ * that role has no in-gamut re-solve, so it takes the `MOVED_BEYOND_LIGHTNESS` branch
  * before the clause is reached. The channel step is the clause that decides, and the
  * two clauses beside it are kept for the spec's sake rather than as coverage.
  *
  * Where the pure-L* re-solve is outside sRGB there is no candidate to compare, so
  * the role is named with its reason instead of being waved through - the two
- * entries in `GAMUT_EDGE_MOVES` are the whole set, asserted in both directions.
+ * entries it did not have to walk past are asserted in both directions, so an entry nothing needs fails rather than sitting there.
  *
  * WHAT THIS RULE COVERS, because an unasserted coverage claim is how the last
  * version of it passed review while holding 44 of the 168 values (review round 2,
@@ -4750,12 +5067,16 @@ const REGISTER_MOVES = [
  * neither could be looked up and the rule held 44 of the 168 moved values while its
  * comment claimed the whole set.
  */
-const GAMUT_EDGE_MOVES = new Set([
-	"tokyoNight.ink", // C* 22.95 -> 18.36: at L* 88.23 this hue sustains C* 18.37
-	"tokyoNight.chartBarHover",
+const MOVED_BEYOND_LIGHTNESS = new Set([
+	"tokyoNight.ink", // no in-gamut re-solve: C* 22.95 -> 18.36, as at L* 88.23 this hue sustains C* 18.37
+	"tokyoNight.chartBarHover", // no in-gamut re-solve, same cast
+	// A SECOND PASS, not a gamut edge: the tool row's state ground re-solved
+	// `accentAlt` on the chroma axis, because the pure-L* re-solve exists and is
+	// refused by a floor the same role holds (measured below).
+	"catppuccinMocha.accentAlt",
 ]);
 /** The entries above that the walk consults; a dead exemption fails the check below. */
-const gamutEdgeSeen = new Set();
+const movedBeyondLightnessSeen = new Set();
 
 /** Hue in degrees, in `[0, 360)`, from a Lab triple. */
 const hueDeg = ([, a, b]) => {
@@ -5030,21 +5351,36 @@ for (const move of REGISTER_MOVES) {
 		 */
 		if (!reSolved) {
 			assertions++;
-			if (!GAMUT_EDGE_MOVES.has(role)) {
+			if (!MOVED_BEYOND_LIGHTNESS.has(role)) {
 				fail(
-					`the fleet: \`${role}\` ${post} has no in-gamut pure-L* re-solve at L* ${r2(postL)} on ${pre}'s cast, and it is not named in \`GAMUT_EDGE_MOVES\` - name it with its reason or re-author the value`,
+					`the fleet: \`${role}\` ${post} has no in-gamut pure-L* re-solve at L* ${r2(postL)} on ${pre}'s cast, and it is not named in \`MOVED_BEYOND_LIGHTNESS\` - name it with its reason or re-author the value`,
 				);
 			} else {
-				gamutEdgeSeen.add(role);
+				movedBeyondLightnessSeen.add(role);
 			}
 			continue;
 		}
 		const step = channelStep(post, reSolved);
 		assertions++;
+		/*
+		 * The table is consulted HERE as well as in the no-re-solve branch above,
+		 * because "the move is not a single pure-L* re-solve" has two causes and the
+		 * walk can only see the second one by measurement: the re-solve may not EXIST
+		 * in sRGB (`tokyoNight`), or it may exist and be REFUSED by another floor the
+		 * role holds (`catppuccinMocha.accentAlt`, whose pure-`L*` lift toward the
+		 * tool row's state ground drops it below the ΔE00 8 it holds against `info`,
+		 * so the second pass spent chroma instead). Both are decisions with a reason,
+		 * and the floors are asserted either way - what the entry buys is that the
+		 * reason is written down rather than the clause being loosened.
+		 */
 		if (step > MOVED_CHANNEL_STEP_TOLERANCE) {
-			fail(
-				`the fleet: \`${role}\` ${pre} -> ${post} sits ${step} 8-bit channel step(s) from its pure-L* re-solve ${reSolved} (max ${MOVED_CHANNEL_STEP_TOLERANCE}) - the role's own file says only lightness moved, so a value past one step has been re-authored in hue or chroma as well`,
-			);
+			if (MOVED_BEYOND_LIGHTNESS.has(role)) {
+				movedBeyondLightnessSeen.add(role);
+			} else {
+				fail(
+					`the fleet: \`${role}\` ${pre} -> ${post} sits ${step} 8-bit channel step(s) from its pure-L* re-solve ${reSolved} (max ${MOVED_CHANNEL_STEP_TOLERANCE}) - the role's own file says only lightness moved, so a value past one step has been re-authored in hue or chroma as well`,
+				);
+			}
 		}
 
 		/* Chroma may be scaled by quantisation, but it may not be spent. */
@@ -5063,12 +5399,12 @@ for (const move of REGISTER_MOVES) {
  * a re-solve that is back inside sRGB, or a role that is no longer a moved value,
  * and either way it is coverage the run cannot claim (review round 2, MAJOR).
  */
-const staleGamutEdge = [...GAMUT_EDGE_MOVES].filter(
-	(r) => !gamutEdgeSeen.has(r),
+const staleBeyondLightness = [...MOVED_BEYOND_LIGHTNESS].filter(
+	(r) => !movedBeyondLightnessSeen.has(r),
 );
-if (staleGamutEdge.length > 0) {
+if (staleBeyondLightness.length > 0) {
 	fail(
-		`the fleet: \`GAMUT_EDGE_MOVES\` names ${staleGamutEdge.join(", ")} and the walk never consulted ${staleGamutEdge.length === 1 ? "it" : "them"} - the pure-L* re-solve is back inside sRGB, or the role is no longer a moved value; delete the entry rather than carrying an exemption nothing needs`,
+		`the fleet: \`MOVED_BEYOND_LIGHTNESS\` names ${staleBeyondLightness.join(", ")} and the walk never consulted ${staleBeyondLightness.length === 1 ? "it" : "them"} - the pure-L* re-solve is back inside sRGB, or the role is no longer a moved value; delete the entry rather than carrying an exemption nothing needs`,
 	);
 }
 
@@ -5220,8 +5556,83 @@ if (stalePerceptible.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * The same guard for the identity pairs: a pin the walk never asked about is a
+ * pair that clears its floor on its own now, and leaving it would keep a hole in
+ * the table that the next reader would read as a live defect.
+ */
+const stalePairPins = PAIR_PINS.filter((e) => !pairPinSeen.has(e));
+if (stalePairPins.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${stalePairPins.length} identity-pair pin(s) were not needed (${stalePairPins.map((e) => `${e.theme} ${e.a}/${e.b}`).join(", ")}) - the pair clears its floor now; delete the pin.`,
+	);
+	process.exit(1);
+}
+
+if (
+	IDENTITY_PAIR_FLOOR !== SEPARATION_FLOOR ||
+	LIVENESS_PAIR_FLOOR !== SYNTAX_COMMENT_FLOOR
+) {
+	fail(
+		`the fleet: the pair floors are declared beside \`PAIR_PINS\` (\`IDENTITY_PAIR_FLOOR\` ${IDENTITY_PAIR_FLOOR}, \`LIVENESS_PAIR_FLOOR\` ${LIVENESS_PAIR_FLOOR}) and have to equal \`SEPARATION_FLOOR\` ${SEPARATION_FLOOR} and \`SYNTAX_COMMENT_FLOOR\` ${SYNTAX_COMMENT_FLOOR}; raise them together, or the pins stop describing the bound they were granted under`,
+	);
+}
+
+/*
+ * AND THE NUMBER THE PROSE QUOTES, computed here rather than typed there.
+ *
+ * The figure that ran in three places and disagreed in three ways is this one:
+ * the `accentAlt`/`info` separation the tool row's two identity inks live with.
+ * The README's 8.19, the contract's 8.01 and a reviewer's independent 8.70 were
+ * three instruments' answers to one question, and nothing in the run could tell
+ * which one the fleet actually holds. So the number is not restated in prose any
+ * more: this line IS the figure, printed from the same `deltaE` the assertion
+ * above uses, and the two documents that quote it quote this line.
+ *
+ * The count is asserted against `PAIR_PINS` in the same breath, because a table
+ * of pins is a CLAIM about the fleet: if a palette drifts under the floor with no
+ * pin, or a pin survives a palette that no longer needs it, the two numbers stop
+ * agreeing and the run says so rather than printing a figure nobody checks.
+ */
+const altInfoPairs = palettes
+	.filter(({ palette }) => isHex(palette.accentAlt) && isHex(palette.info))
+	.map(({ id, palette }) => ({
+		id,
+		d: r2(deltaE(palette.accentAlt, palette.info)),
+	}))
+	.sort((a, b) => a.d - b.d);
+const identityFloorPins = PAIR_PINS.filter(
+	(e) => e.floor === IDENTITY_PAIR_FLOOR,
+);
+const belowIdentityFloor = altInfoPairs.filter(
+	(e) => e.d < IDENTITY_PAIR_FLOOR,
+);
+if (belowIdentityFloor.length !== identityFloorPins.length) {
+	fail(
+		`the fleet: ${belowIdentityFloor.length} palette(s) sit under the ${IDENTITY_PAIR_FLOOR} identity floor (${belowIdentityFloor.map((e) => `${e.id} ${e.d}`).join(", ") || "none"}) while \`PAIR_PINS\` records ${identityFloorPins.length} - the pinned set and the measured set are the same claim and have to agree`,
+	);
+}
+const infoAccentPairs = palettes
+	.filter(({ palette }) => isHex(palette.info) && isHex(palette.accent))
+	.map(({ id, palette }) => ({
+		id,
+		d: r2(deltaE(palette.info, palette.accent)),
+	}))
+	.sort((a, b) => a.d - b.d);
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepPinSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s).`,
+	`Identity pairs: tightest \`accentAlt\`/\`info\` (the tool row's two identity inks, floor ${IDENTITY_PAIR_FLOOR}) is ${altInfoPairs[0].d} in ${altInfoPairs[0].id}, then ${altInfoPairs
+		.slice(1, 5)
+		.map((e) => `${e.id} ${e.d}`)
+		.join(
+			", ",
+		)}; ${identityFloorPins.length} palette(s) pinned below it. Tightest \`info\`/\`accent\` (settled read ink vs liveness ink, floor ${LIVENESS_PAIR_FLOOR}) is ${infoAccentPairs[0].d} in ${infoAccentPairs[0].id}, then ${infoAccentPairs
+		.slice(1, 5)
+		.map((e) => `${e.id} ${e.d}`)
+		.join(", ")}.`,
+);
+
+console.log(
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepPinSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s), ${pairPinSeen.size} pinned identity pair(s).`,
 );
 /*
  * And the FLEET's own line, because these are the numbers that ran in prose and a

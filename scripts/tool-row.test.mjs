@@ -2797,6 +2797,36 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	]) {
 		assert.equal(toolCategory(name), "plain", `${name} is unfiled`);
 	}
+
+	// AND THE PROTOTYPE KEYS, which are the one family of name a bare subscript
+	// gets wrong. `CATEGORIES[key] ?? "plain"` read the object's INHERITED
+	// properties, so `constructor` answered `Object`, `toString` answered a
+	// function and `__proto__` answered an object — none of them a `ToolCategory`,
+	// so the row rendered with NO ink class at all rather than the neutral every
+	// unclassified tool is promised. The names are model-controlled, so a provider
+	// naming a tool `constructor` is reachable; the TUI's `dict.get` has no chain
+	// to read and answered `plain` for all of them. Asserted as a GROUP, because
+	// the fix is a property of the lookup (own-property, not subscript) and the
+	// next prototype key nobody thought of is the one that would slip through a
+	// single-name test.
+	for (const name of [
+		"constructor",
+		"toString",
+		"hasOwnProperty",
+		"valueOf",
+		"__proto__",
+		"__defineGetter__",
+		// Through the same trim/lowercase path: `  Constructor  ` must not be able
+		// to reach the inherited property the bare key reached.
+		"  Constructor  ",
+		"ToString",
+	]) {
+		assert.equal(
+			toolCategory(name),
+			"plain",
+			`${name} is an inherited property, not a filed tool`,
+		);
+	}
 });
 
 test("the glyph and the name take ONE ink, and it is the category's", () => {
@@ -2817,9 +2847,16 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 		// Unclassified, and a receipt whose name is not a tool: the neutral.
 		["mcp__linear_create_issue", "success", "text-ink-muted"],
 		["peer", "receipt", "text-ink-muted"],
-		// A wake receipt is `meta`, so it takes the meta ink — the map's answer
-		// for that name rather than an exception for receipts.
-		["wake", "receipt", "text-accent-alt"],
+		// A `wake` RECEIPT is the neutral too, and NOT the meta ink its name would
+		// earn as a tool card. A receipt is not a call: the TUI's receipt blocks
+		// (`WakeBlock`, `PeerMessageBlock`) paint icon `dim` / name `muted` and ask
+		// the category table nothing, and `_category_element` has exactly one
+		// caller, `ToolCard`. So both receipts read the same, which is the pair the
+		// docstring names.
+		["wake", "receipt", "text-ink-muted"],
+		// …while the same name as a CALL still takes the map's answer, which is what
+		// keeps this from being "`wake` is neutral":
+		["wake", "success", "text-accent-alt"],
 		// STATE OUTRANKS IDENTITY. A running `read` is not blue and a failed `task`
 		// is not violet.
 		["read", "running", "text-accent"],
