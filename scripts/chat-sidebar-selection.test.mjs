@@ -1394,7 +1394,7 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
  * broader than it is is worse than a narrow one: **this scan reads class text
  * that is WRITTEN, as a string or template literal, where the element is.** It
  * tokenises the `className` expression the JSX transform hands it, so a class
- * token it is asked about has to be a literal in that expression. Five shapes
+ * token it is asked about has to be a literal in that expression. Seven shapes
  * therefore pass it silently, and a future author must not write them expecting
  * this file to notice — each is a blind spot, not a bug in the scan:
  *   1. a class assembled with a substitution — `` `bg-${rung}` ``. The tripwire
@@ -1414,7 +1414,25 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
  *      ground off it cannot be a state collision — a state lands on a rung. It
  *      is outside the rule's REASON rather than its reach, so it stays out of the
  *      table and is named here instead: this file asserts the rule about the
- *      palettes' rungs, and an off-ladder ground is a different question.
+ *      palettes' rungs, and an off-ladder ground is a different question;
+ *   6. a ground that arrives by SPREAD — `<span {...plate} />` with the class in
+ *      the spread object. There is no `className` in the props to read, so the
+ *      element looks like a carrier with no class of its own and the scan moves
+ *      on. Named by QA's round-4 discovery probes, which found it passing;
+ *   7. a ROW STATE that arrives by variable on the HOST — `className={qaRole}`.
+ *      The host test asks whether the host's class text names a role, and a
+ *      variable names nothing, so the scan never enters that subtree and neither
+ *      does anything the row state can paint over. The one arm that still speaks
+ *      is the stale-entry assertion below, and only for a carrier that was
+ *      ALREADY named: a plate that stops being discovered because its host's role
+ *      moved into a variable fails there. A brand-new variable-hosted row state
+ *      is invisible.
+ *
+ * The first four of QA's round-4 discovery probes are answered by 2, 1, 3 and 6
+ * respectively — the two it found passing that this file did not name (`bg-sunken!`
+ * and the template literal) are closed by the token reader and the tripwire, and
+ * the two that remain (`className={qaGround}`, `{...spread}`) are the shapes 2 and
+ * 6 above, declared rather than implied.
  *
  * WHAT IT CANNOT SEE THROUGH A BOUNDARY is a second limit: a ground carried by a
  * component whose default lives in another file is recognised only for the
