@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 /**
  * Render the macOS entitlements plist a SIGNED build is codesigned with, by
  * injecting the WebAuthn keychain access group from the CI team id.
@@ -22,22 +23,40 @@
  * expansion in that path — a `${…}` in the plist would ship literally — so the
  * value has to be rendered before the build starts.
  *
- * WHAT A LOCAL BUILD GETS: nothing. This script is only run by `publish.yml`,
- * which is the only place `APPLE_TEAM_ID` exists; `pnpm dist:mac` on a developer
- * machine keeps using the committed `build/entitlements.mac.plist`, stays
- * ad-hoc signed, and the app stays inert for passkeys (it logs the reason).
+ * WHAT PREVENTS THE 0.29.6 BRICK. `keychain-access-groups` is a RESTRICTED
+ * entitlement: Apple's TN3125 says it must be authorized by a provisioning
+ * profile embedded in the bundle, and without one amfid refuses to spawn every
+ * Mach-O that claims it (`-413 "No matching profile found"`) while `codesign
+ * --verify`, `spctl` and `stapler validate` all still pass. 0.29.6 rendered this
+ * plist and embedded no profile, so the app could not be launched at all and the
+ * ShipIt that should have relaunched it was refused too. This script therefore
+ * refuses to emit the group unless it is given the profile that authorizes it
+ * (`--profile`), and refuses a profile that does not list the exact group being
+ * rendered — the door to passkeys is one secret wide, and it cannot be opened
+ * half way.
+ *
+ * WHAT A LOCAL BUILD GETS: nothing. `pnpm dist:mac` on a developer machine keeps
+ * using the committed `build/entitlements.mac.plist` (no group), stays ad-hoc
+ * signed, and the app stays inert for passkeys (it logs the reason).
+ *
+ * `publish.yml` does not call this at all while no profile exists: see the
+ * comment above its Build macOS app step for the three steps that turn passkeys
+ * back on.
  *
  * Usage:
  *   node scripts/render-mac-entitlements.mjs --out <path> \
- *     [--source build/entitlements.mac.plist] [--team-id <id>] [--bundle-id <id>]
+ *     [--source build/entitlements.mac.plist] [--team-id <id>] [--bundle-id <id>] \
+ *     [--profile <embedded.provisionprofile>]
  *
  * `--team-id` defaults to $APPLE_TEAM_ID and `--bundle-id` to `build.appId` in
- * package.json, so a pipeline only has to name the output path.
+ * package.json, so a pipeline only has to name the output path. Without
+ * `--profile` the output is the committed plist unchanged: the app ships with no
+ * restricted claim, and passkeys are inert rather than a brick.
  *
  * The rendered group is NEVER printed: the team id is a secret, and this script's
  * output is a CI log. What it prints is the count and the destination.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
@@ -122,6 +141,55 @@ export function assertBundleId(bundleId) {
 	return bundleId;
 }
 
+/**
+ * The keychain access groups a provisioning profile authorizes.
+ *
+ * Why the profile is read rather than trusted: the profile's allowlist and the
+ * signature's claim have to agree EXACTLY, and when they disagree the outcome is
+ * either a refusal at spawn or a feature that silently never works — both are
+ * invisible in a build log. `security cms -D` is the OS's own way to unwrap the
+ * CMS container, and the group is looked up in the same bounded
+ * `keychain-access-groups` array a signature carries.
+ *
+ * Throws rather than returning an empty list when the profile cannot be read:
+ * "we could not ask" must not be reported as "the profile authorizes nothing",
+ * because only one of those is a reason to stop the build.
+ */
+export function profileKeychainGroups(profilePath, run = defaultProfileReader) {
+	if (!profilePath || !existsSync(profilePath)) {
+		throw new Error(
+			`--profile ${profilePath ?? "(missing)"} does not name a readable provisioning profile; refusing to render a restricted entitlement no profile can authorize`,
+		);
+	}
+	const dump = run(profilePath);
+	if (dump.status !== 0) {
+		throw new Error(
+			`security cms -D could not read ${profilePath}: ${(dump.stderr ?? "").trim() || "no output"}`,
+		);
+	}
+	const text = dump.stdout ?? "";
+	const key = text.indexOf(`<key>${KEYCHAIN_ACCESS_GROUPS_KEY}</key>`);
+	if (key === -1) return [];
+	const after = text.slice(key);
+	const start = after.indexOf("<array>");
+	const end = after.indexOf("</array>", start + 1);
+	if (start === -1 || end === -1) return [];
+	return [
+		...after
+			.slice(start + "<array>".length, end)
+			.matchAll(/<string>([^<]*)<\/string>/g),
+	].map(([, value]) => value.trim());
+}
+
+/** Runs `security cms -D -i <path>`; injectable so the profile-side contract can
+ * be tested with a synthetic dump on a machine that has no Developer ID profile
+ * (which is every machine that is not the release runner). */
+export function defaultProfileReader(profilePath) {
+	return spawnSync("/usr/bin/security", ["cms", "-D", "-i", profilePath], {
+		encoding: "utf8",
+	});
+}
+
 function argValue(argv, name) {
 	const index = argv.indexOf(name);
 	return index === -1 ? null : (argv[index + 1] ?? null);
@@ -146,6 +214,29 @@ async function main() {
 		ROOT,
 		argValue(argv, "--source") ?? "build/entitlements.mac.plist",
 	);
+	const plist = readFileSync(source, "utf8");
+	const destination = resolve(out);
+	mkdirSync(dirname(destination), { recursive: true });
+
+	/*
+	 * No profile, no claim — the shipped default.
+	 *
+	 * The plist is written as committed and the run says what that means: the
+	 * signature carries no restricted entitlement, so macOS spawns the app, and
+	 * Electron's touchID authenticator is inert (`decideWebauthnGate` logs one
+	 * line and never calls configureWebAuthn). Writing the group here without a
+	 * profile is the arrangement that bricked 0.29.6, so there is no path in this
+	 * script that does it.
+	 */
+	const profile = argValue(argv, "--profile");
+	if (!profile) {
+		writeFileSync(destination, plist);
+		console.log(
+			`render-mac-entitlements: wrote the committed entitlements (no keychain access group, no provisioning profile) to ${destination}; the app ships launchable and passkeys stay inert`,
+		);
+		return;
+	}
+
 	const teamId = assertTeamId(
 		argValue(argv, "--team-id") ?? process.env.APPLE_TEAM_ID,
 	);
@@ -153,16 +244,22 @@ async function main() {
 		argValue(argv, "--bundle-id") ?? bundleIdFromPackage(),
 	);
 	const group = webauthnKeychainAccessGroup(teamId, bundleId);
-	const plist = readFileSync(source, "utf8");
+	// The profile has to authorize the EXACT group before the group is signed in:
+	// a signature and an allowlist that disagree is refused at spawn, and the build
+	// log would look the same either way.
+	const authorized = profileKeychainGroups(resolve(profile));
+	if (!authorized.includes(group)) {
+		throw new Error(
+			`the provisioning profile at ${profile} authorizes ${authorized.length} keychain access group(s) and not the one this build would sign in; refusing to render a restricted entitlement the profile does not cover`,
+		);
+	}
 	const rendered = renderEntitlementsPlist(plist, [group]);
-	const destination = resolve(out);
-	mkdirSync(dirname(destination), { recursive: true });
 	writeFileSync(destination, rendered);
 	// The GROUP is not printed: it embeds the team id. The destination and the
 	// count are what a reader needs to see that this ran.
 	const entitlementCount = (rendered.match(/<key>/g) ?? []).length;
 	console.log(
-		`render-mac-entitlements: wrote ${entitlementCount} entitlements, including one keychain access group, to ${destination}`,
+		`render-mac-entitlements: wrote ${entitlementCount} entitlements, including one keychain access group authorized by ${profile}, to ${destination}`,
 	);
 }
 

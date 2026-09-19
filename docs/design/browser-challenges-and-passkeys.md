@@ -466,23 +466,64 @@ path (`out/mac/MacTargetHelper.js`) and hands the **file** to `@electron/osx-sig
 which reads it as a plist and passes it to codesign — **no macro expansion**. A
 `${…}` in the committed plist would ship literally.
 
-So `scripts/render-mac-entitlements.mjs` renders the plist from the committed
-`build/entitlements.mac.plist` plus `APPLE_TEAM_ID` (bundle id read from
-`build.appId`, so the group and the signature cannot describe different apps), and
-`publish.yml` renders it into `$RUNNER_TEMP` and hands it to the build as
-`-c.mac.entitlements` / `-c.mac.entitlementsInherit`. The script refuses to render
-without a well-formed team id — a release whose signature silently lacks the group
-is a release whose passkeys silently do nothing — and never prints the group: the
-team id is a secret and the script's stdout is a CI log.
+**`keychain-access-groups` IS A RESTRICTED ENTITLEMENT, and v0.29.6 shipped it
+with nothing to authorize it.** Apple's TN3125 divides entitlements in two: the
+*unrestricted* ones (the App Sandbox, the hardened runtime, `get-task-allow`,
+`application-groups`) may be claimed by any signed app, and everything else must
+be authorized by a **provisioning profile embedded in the bundle**. The group is
+on the restricted side. v0.29.6 rendered it into every executable of the bundle
+and embedded no profile, so amfid refused every Mach-O at exec
+(`AppleMobileFileIntegrityError Code=-413 "No matching profile found"`): the app
+could not be launched at all, and neither could the ShipIt that was supposed to
+relaunch it — while `codesign --verify --deep --strict`, `spctl -a -vvv -t exec`
+and `stapler validate` all passed on the same bundle, because none of them asks
+whether a claimed entitlement is authorized.
+
+So until a profile exists, **the release path ships no group at all**:
+
+- `publish.yml` builds with the committed, group-free
+  `build/entitlements.mac.plist` and passes no entitlements override, so the group
+  cannot reach the app *or the helpers it inherits*.
+- Passkeys are inert in that build by design, not by accident: the gate reports
+  the entitlement absent, `src/main/webauthn.ts` logs one line and never calls
+  `configureWebAuthn`, and a site that feature-detects simply never offers a
+  passkey. Nothing is shown to the user (§3.1).
+- `scripts/render-mac-entitlements.mjs` is the door back, and it cannot be opened
+  half way: without `--profile` it writes the committed plist unchanged, and with
+  one it refuses unless the profile's own `keychain-access-groups` contains the
+  exact group being signed in. Enabling passkeys is one secret wide — a Developer
+  ID profile with Keychain Sharing on the App ID — and the three steps are written
+  at the Build macOS app step in `publish.yml`. The group must go on
+  `-c.mac.entitlements` **only**, never `entitlementsInherit`: Chromium reads the
+  *main executable's* entitlement and osx-sign embeds the profile in the main
+  bundle only, so a helper or ShipIt carrying the group holds a claim no profile
+  authorizes — which is exactly how this incident took the relaunch leg down with
+  it.
 
 A local build renders nothing: `pnpm dist:mac` keeps the committed plist, stays
 ad-hoc signed, and the app stays inert, logging `unpackaged`. That is the intended
 behaviour and the reason the OS sheet cannot be verified here (§4).
 
-`scripts/test-publish-workflow.mjs` asserts the shape: the render step exists,
-runs before the build, binds the team id to the secret and nothing else, and the
-build consumes `$ENTITLEMENTS_PLIST`; the committed plist carries no
+`scripts/test-publish-workflow.mjs` asserts that shape: no render step, no
+`ENTITLEMENTS_PLIST`, no entitlements override, `provisioningProfile` **absent**
+(documented rather than wired), and the committed plist carries no
 `keychain-access-groups` at all.
+
+**The gate asserts two things about a built artifact, and one of them is a spawn.**
+`app-spawn` executes the bundle's own `Contents/MacOS/<CFBundleExecutable>` in
+Electron's node mode (`ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`, so no
+window, no display, no user-data directory) and fails on a non-zero status, a
+terminating signal, or a child that never exits within the bound. That is the
+question the pipeline could not ask and the one the OS actually answers: measured
+against the real 0.29.6 bundle it exits 137 (SIGKILL, no output), against the same
+bundle re-signed without the group it exits 0, and against the 0.29.5 install on
+this machine it exits 0. `app-profile-authorization` names the *cause* rather than
+the symptom — every profile-backed entitlement the signature claims must appear in
+an embedded profile's own `Entitlements` — and `app-webauthn-entitlement` is
+bidirectional: absent is the shipped default, and present is only acceptable when
+the profile authorizes that exact group for that bundle id. `app-spawn` is
+deliberately absent from `SIGNATURE_CHECK_IDS` in `scripts/verify-signed-update.mjs`:
+a failure there is a defect in the artifact, not a capability the runner lacks.
 
 **The release-side check is bound to the app it is checking** (review round 2,
 R4). It reads the plist back off the signed bundle and requires a `<string>` whose
@@ -650,12 +691,16 @@ frames and the numbers are in `docs/evidence/browser-webauthn/README.md`.
   prompt string renders as intended, or that a created credential is retrievable.
   The chooser itself is exercised only through a synthetic emit (§4.3), because
   the OS path that fires the real event needs that same signed bundle.
-- **The entitlement on a signed build has never been READ.** The render script and
-  the workflow wiring are asserted by tests over the YAML and the plist, the gate's
-  comparison is unit-tested, and the release gate now asserts the entitlement on
-  the built artifact (§3.4) — but no build in this repository has yet produced a
-  signature carrying `keychain-access-groups`, so that check has never run against
-  a real signature.
+- **The entitlement on a signed build has never been READ, and the profile path
+  has never run.** The render script and the workflow wiring are asserted by tests
+  over the YAML and the plist, the gate's comparisons are unit-tested with the real
+  0.29.6 signature as the negative fixture, and `app-spawn` runs for real against
+  every artifact a release builds — but no build in this repository has produced a
+  signature carrying `keychain-access-groups` with a profile behind it, because no
+  Developer ID provisioning profile exists yet. The passkey-enabled arrangement
+  therefore remains entirely unexercised end to end: what is verified is that the
+  group cannot be signed in without one, and that the group-free build launches
+  (measured on this machine, §3.4).
 - **The 1Password / Apple Passwords sheet cannot work at all** (§3.5), and no
   amount of testing here would change that; it needs a native addon.
 - **Two keyboard surfaces are unmeasured, and QA round 2 says so rather than
