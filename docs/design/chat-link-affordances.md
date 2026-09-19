@@ -241,7 +241,7 @@ more than 30 — and found two states where what is covered is text a reader wan
 | `hover-directory` | `[584,612,682,644]` | 42 px | the glyph tops of the line below, grazed by the strip's last two rows. UNCHANGED by this round: a directory still gets `Copy path · Open · Quote` |
 | `hover-url` | `[245,486,343,518]` | **169 px** | the table's own column header, the word `path`. UNCHANGED: a URL still gets `Copy link · Open in browser · Quote` |
 | `hover-missing` | `[217,612,475,644]` | 82 px | the tail of the sentence's wrapped continuation. UNCHANGED: a path that is not there still gets `Copy path · Quote` |
-| `hover-cell` | `[256,565,411,594]` | **776 px** | the paragraph below the table (see the container paragraph under this table). 776 against 671 before this round: the added 30px band covers 133 px of that paragraph, +21% |
+| `hover-cell` | `[256,565,411,594]` | **587 px** | the paragraph below the table (see the container paragraph under this table). 587 at this head's five-button width against **483** at the same registration's 126 px width: the added 30px band covers 104 px of that paragraph, **+21.5%** |
 
 THE `hover-file` / `hover-cell` RECTS MOVED AGAIN, by 30px, and the ink column
 with them — this is the round that put the operator's own ask on the strip, so
@@ -250,11 +250,22 @@ the two states that are ABOUT a canvas-openable file grew a button while
 untouched, which is why three of these five rows are the previous round's
 numbers unchanged). The ink numbers were re-measured at this head by the same
 reading: pixels of the resting frame more than 30 away from the strip's own
-surface. `hover-file` stays at 0 px, and the one that moves in kind is
-`hover-cell` — the fifth button hangs over the paragraph below the table, 28px
-below the table's own edge, so its cost is 133 px of prose rather than a glyph
-top. That is the price of showing both destinations, and it is recorded here at
-the size it actually is rather than as "+30px".
+surface, counted inside that row's own rect. `hover-file` stays at 0 px, and the
+one that moves in kind is `hover-cell` — the fifth button hangs over the paragraph
+below the table, 28px below the table's own edge, so its cost is **483 → 587**
+(+104 px, **+21.5%**) of prose rather than a glyph top. That is the price of showing
+both destinations, and it is recorded here at the size it actually is rather than
+as "+30px".
+
+**Which capture each rect belongs to**, since the two ends of that delta must come
+from one registration to mean anything: the `hover-file` and `hover-cell` rects in
+the table above are this head's five-button capture, and `hover-directory`,
+`hover-url` and `hover-missing` carry round 3's rects — 4 px lower in `y` at the
+same width — because those three matrices are untouched by this change and their
+frames were not re-taken. Comparing an ink number across two registrations is
+exactly how round 1's `671 → 776` pair came about (671 was measured on the round-3
+capture's taller rect), so the rule is: **a pair must be measured inside one
+registration, and a row that says UNCHANGED keeps the capture it came from.**
 
 EVERY RECT IN THIS TABLE IS 31px WIDER THAN THE ONE ROUND 2 PUBLISHED, and
 that is the round-3 correction (design round 3, D2): the earlier column was
@@ -283,8 +294,9 @@ and the cost is recorded here, with both sides photographed (`hover-file` above,
 **The strip may leave its container, and does.** In a table, the cell link's box
 is `[255,544,612,561]`, the table ends at 573, and the strip lands at
 `[256,565,411,594]` — 28px of it below the table, over the paragraph that follows
-(`hover-cell`, 776 ink px of that paragraph, the number this round's fifth button
-moved from 671). The placement clamps to the pane
+(`hover-cell`, 587 ink px of that paragraph at this head's five-button width, the
+number this round's fifth button moved from 483 at the same registration). The
+placement clamps to the pane
 (`quote-anchor.ts`), not to the
 anchor's own ancestors, and deliberately: a link can sit in a table cell, a list
 item, a blockquote or a paragraph, and a container-aware rule would need an
@@ -637,13 +649,18 @@ Three bounds are deliberate and are stated in that module rather than here:
   (`use-mentioned-files.ts` rewrites every tile to `result.resolved`); without it
   the transcript's `~/` spelling and the panel's `/Users/...` spelling became two
   tabs on one file (review round 1, M1). `availability`, `sizeBytes` and
-  `lastAgentModified` come from the same answer, the eager read is capped at
+  `lastAgentModified` come from the same answer, and the eager read is capped at
   `MAX_EAGER_READ_BYTES` (1 MiB) because the store persists its documents to
-  `localStorage`, and above that cap the document is opened as a POINTER — the
-  shape every Files-panel mention has — with the viewer reading on demand.
-  `readMtimeMs` is set only when bytes were actually read, so a pointer leaves the
-  freshness baseline to whoever reads it. (The Files panel's own click still reads
-  uncapped; that is its own change, not this one's.)
+  `localStorage`. ABOVE THAT CAP THE PRESS REFUSES - the same `return false` a
+  `.zip` gets, so the caller's OS hand-off and its sentence are what the reader
+  meets. The rounded version of this, in round 1, handed over a POINTER document
+  (no bytes, `sizeBytes` set) on the theory that a viewer would read on demand;
+  it does not - the kinds the cap covers render `document.content` - and round 2
+  measured what the reader got instead: an empty sheet, an empty editor, and, on
+  leaving a spreadsheet, `Workbook is empty` thrown from the sheet viewer with the
+  ErrorBoundary over the whole window. `readMtimeMs` is set only when bytes were
+  actually read. (The Files panel's own click still reads uncapped; that is its own
+  change, not this one's.)
 
 **`utils/canvas-pane.tsx` is how the pane reaches the two components that need it.**
 The anchor is `MarkdownRenderer`'s (`MarkdownAnchor`), which every markdown surface
@@ -659,15 +676,16 @@ its value is the OPENER bound to that conversation, not the id:
 - the value is memoised on the id, because a transcript re-renders per streaming
   delta and a fresh context value would re-render every anchor in every row;
 - an absent `conversationId` provides `null` rather than skipping the provider, so
-the surfaces that render markdown OUTSIDE the chat pane - the run panel's child
-reader, which passes no id at all, plus the legacy `message-item` rows and the
-trace rows of § 8 - get the same "no pane in reach" answer and the same
-behaviour they had before this module existed. That press is ASSERTED rather
-than photographed, and the difference is stated here because review round 1 (U4)
-found the earlier wording claiming a story got the null answer: the story file
-passes a `conversationId` on purpose, so its frames show the five-action canvas
-strip, and therefore NO frame in `docs/evidence/chat-canonical-links/` is a
-pane-less press. What covers it is
+  the surfaces that render markdown OUTSIDE the chat pane — the run panel's child
+  reader, which passes no id at all, plus the legacy `message-item` rows and the
+  trace rows of § 8 — get the same "no pane in reach" answer and the same
+  behaviour they had before this module existed.
+
+That press is ASSERTED rather than photographed, and the difference is stated here
+because review round 1 (U4) found the earlier wording claiming a story got the null
+answer: the story file passes a `conversationId` on purpose, so its frames show the
+five-action canvas strip, and therefore NO frame in
+`docs/evidence/chat-canonical-links/` is a pane-less press. What covers it is
 `scripts/chat-link-affordances.test.mjs`'s "a press with NO pane is exactly the
 press of before: the OS", which drives a real anchor with no provider and reads
 the OS call back off the bridge. (`hover-no-viewer` is the OTHER half - a path
