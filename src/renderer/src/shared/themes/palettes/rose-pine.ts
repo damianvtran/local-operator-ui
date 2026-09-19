@@ -68,20 +68,24 @@ export const rosePine: ThemeDefinition = {
 		elevated: "#37334b",
 		sunken: "#24232d",
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #3d3232  accent hue, C* 5.27, +1.50 L*, ΔE00 10.37 off `surface`,
-		 *                       `inkDim` 5.27:1 on the fill, hue 3.71° off `accent`.
-		 * rowSelected #4a3131  accent hue, C* 12.27, +2.79 L*, ΔE00 13.27 off
-		 *                       `surface` and 6.44 off `rowHover`, `inkDim` 5.05:1, and the
-		 *                       2px `accent` bar at 7.01:1 against it.
+		 * rowHover    #36333F  panel hue, C* 8.20,
+		 *                       the rule's 0.60 x the panel's 13.00; +1.53 L*,
+		 *                       ΔE00 3.62 off `surface`, `inkDim` 5.26:1.
+		 * rowSelected #38344E  panel hue, C* 17.47,
+		 *                       the panel's cast + 4.0, floored at 5.0; +2.70 L*,
+		 *                       ΔE00 3.41 off `surface` and 6.31 off
+		 *                       `rowHover`; the pair ranks 1.17 `L*` and 9.3 `C*`,
+		 *                       `inkDim` 5.06:1.
 		 */
-		rowHover: "#3d3232",
-		rowSelected: "#4a3131",
+		rowHover: "#36333F",
+		rowSelected: "#38344E",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert

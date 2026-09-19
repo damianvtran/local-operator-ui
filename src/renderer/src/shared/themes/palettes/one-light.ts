@@ -57,20 +57,25 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 0.00) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #F0EEFA  accent hue, C* 6.22, +1.63 L*, ΔE00 6.11 off `surface`,
-		 *                       `inkDim` 5.80:1 on the fill, hue 1.12° off `accent`.
-		 * rowSelected #E6E3FE  accent hue, C* 14.05, +4.99 L*, ΔE00 11.92 off
-		 *                       `surface` and 6.07 off `rowHover`, `inkDim` 5.32:1, and the
-		 *                       2px `accent` bar at 4.83:1 against it.
+		 * rowHover    #EBEAEF  `accent` hue, C* 2.61,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.29 L*,
+		 *                       ΔE00 3.40 off `surface`, `inkDim` 5.56:1.
+		 * rowSelected #E6E5EE  `accent` hue, C* 4.68,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.94 L*,
+		 *                       ΔE00 5.51 off `surface` and 2.15 off
+		 *                       `rowHover`; the pair ranks 1.65 `L*` and 2.1 `C*`,
+		 *                       `inkDim` 5.33:1.
 		 */
-		rowHover: "#F0EEFA",
-		rowSelected: "#E6E3FE",
+		rowHover: "#EBEAEF",
+		rowSelected: "#E6E5EE",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

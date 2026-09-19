@@ -34,6 +34,15 @@ type AgentCategoriesSidebarProps = {
  * moved off the wash, and on 6 of the 41 dark themes the wash is a weaker mark
  * than the hover beside it. The hover takes the other row role, `rowHover`; it is
  * a colour step, never a lift.
+ *
+ * THE GROUND IS CARRIED BY THE COLUMN, not by this row: it is
+ * `agent-hub-page.tsx`'s `[data-tour-tag="agent-hub-sidebar-container"]` div, and
+ * it wears `bg-surface` because both row roles are authored as steps of the
+ * palette's own `surface` (docs/design/row-states-refinement.md § 4). Painted on
+ * the page's `canvas` — which is what these rows were painted on until the
+ * refinement round — the current row's fill measured ΔE00 0.83 off its own
+ * backdrop on `kanagawaLotus`. `scripts/chat-sidebar-selection.test.mjs` asserts
+ * that ancestor for every call site in the tree that paints a row state.
  */
 const CategoryItem: FC<{
 	selected: boolean;
@@ -95,9 +104,14 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 	);
 
 	return (
-		/* A rail, not a card. The grid beside it is already eight bordered
-			   panels; a ninth box around the filter list added a boundary that
-			   carried no information. */
+		/* A rail, not a card — and it is a PANEL now, because it paints row states.
+			   The reasoning this element used to carry (the grid beside it is already
+			   eight bordered panels, so a ninth box around the filter list added a
+			   boundary that carried no information) is superseded rather than deleted:
+			   the `bg-surface` belongs to the COLUMN in `agent-hub-page.tsx`, which is
+			   a ground rather than a border, and it is the ground the two row roles are
+			   authored against. See the `CategoryItem` docstring above for the
+			   measurement that moved it. */
 		<div className="flex h-full flex-col overflow-y-auto">
 			<h2 className="mb-2 px-3 font-medium text-ink-dim text-meta">
 				Categories

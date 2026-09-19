@@ -57,20 +57,24 @@ export const oneDark: ThemeDefinition = {
 		sunken: "#21252B",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #293948  accent hue, C* 11.46, +1.65 L*, ΔE00 4.63 off `surface`,
-		 *                       `inkDim` 5.71:1 on the fill, hue 1.85° off `accent`.
-		 * rowSelected #1A425F  accent hue, C* 21.54, +5.00 L*, ΔE00 10.75 off
-		 *                       `surface` and 6.27 off `rowHover`, `inkDim` 5.09:1, and the
-		 *                       2px `accent` bar at 4.57:1 against it.
+		 * rowHover    #383B41  panel hue, C* 4.14,
+		 *                       the rule's 0.60 x the panel's 6.36; +3.23 L*,
+		 *                       ΔE00 2.93 off `surface`, `inkDim` 5.41:1.
+		 * rowSelected #363F4E  panel hue, C* 10.30,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.85 L*,
+		 *                       ΔE00 4.53 off `surface` and 4.81 off
+		 *                       `rowHover`; the pair ranks 1.62 `L*` and 6.2 `C*`,
+		 *                       `inkDim` 5.11:1.
 		 */
-		rowHover: "#293948",
-		rowSelected: "#1A425F",
+		rowHover: "#383B41",
+		rowSelected: "#363F4E",
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.

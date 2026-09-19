@@ -386,8 +386,26 @@ export const AgentHubPage: React.FC = () => {
 			<div className="flex min-h-0 flex-1 flex-row overflow-hidden">
 				{/* The category rail is hidden below the first grid breakpoint,
 				    where the cards are already full-width. */}
+				{/*
+				 * A RAIL, NOT A CARD — and it is a PANEL now, because it paints row states.
+				 *
+				 * The selected category carries `rowCurrent` and its neighbours take
+				 * `hover:bg-row-hover`, and both roles are steps of the palette's own
+				 * `surface` (docs/design/row-states-refinement.md § 4). Painted on the
+				 * page's `canvas` — which is what this column left them on — the current
+				 * row's fill measured ΔE00 0.83 on `kanagawaLotus`, and 7 of the 59
+				 * palettes sat under the file's own 2.0 field floor.
+				 *
+				 * That is a REVISION of the reasoning this element carried, and the
+				 * revision is the ground rather than the border: a ninth bordered box
+				 * around the filter list was refused because it carried no information,
+				 * and this is not that — it IS the information the row state is drawn
+				 * against. No border (the cards beside it own those), and `p-2` insets the
+				 * rows the way the app rail's own list does, so the two rails read as the
+				 * same construction.
+				 */}
 				<div
-					className="mr-6 hidden w-60 shrink-0 md:block"
+					className="mr-6 hidden w-60 shrink-0 rounded-md bg-surface p-2 md:block"
 					data-tour-tag="agent-hub-sidebar-container"
 				>
 					{/*
