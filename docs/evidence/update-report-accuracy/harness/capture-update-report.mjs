@@ -436,6 +436,11 @@ const encode = async (pngPath, webpPath) => {
 };
 
 const frames = [];
+/*
+ * The last frame the probe loop took, whatever it showed, so a scenario whose
+ * subject is an ABSENCE still has a frame to commit (review round 1, R1-1).
+ */
+let lastProbeFrame = null;
 let cdp = null;
 
 try {
@@ -558,6 +563,7 @@ try {
 			const present = Boolean(text) && /server update/i.test(text);
 			const png = join(OUT, `probe-${String(i).padStart(2, "0")}.png`);
 			await cdp.frame(png);
+			lastProbeFrame = png;
 			if (present) {
 				if (!sawNotice) {
 					sawNotice = true;
@@ -599,10 +605,23 @@ try {
 	if (survivors.length > 0)
 		note("the app's own window-mode line", survivors[0]);
 
-	// The frames are committed as `<theme>.webp`, which is what the evidence gate
-	// reads a frame's theme from. The probe PNGs stay in the scratch tree so a
-	// reviewer can see what the window looked like around the kept frame.
-	const keep = frames.filter(Boolean).slice(-1)[0] ?? null;
+	/*
+	 * The frames are committed as `<theme>.webp`, which is what the evidence gate
+	 * reads a frame's theme from. The probe PNGs stay in the scratch tree so a
+	 * reviewer can see what the window looked like around the kept frame.
+	 *
+	 * THE LAST CANDIDATE, AND THE LAST PROBE WHEN THERE IS NONE (review round 1,
+	 * R1-1). The loop above makes a frame a candidate only when it carries the
+	 * notice, so a run whose subject is the notice's ABSENCE produced no candidate
+	 * - and the before half of this pair, whose whole point is that no notice
+	 * appears, committed nothing at all. Every re-take then re-encoded the after
+	 * half and silently kept the before half's older bytes while the README and the
+	 * manifest said both halves had been re-taken, which is exactly the stale-pair
+	 * failure the manifest's `capturedAtNote` exists to catch. A no-notice run
+	 * commits the last frame of its window instead: the frame that shows the
+	 * absence, taken by the same run that judged it absent.
+	 */
+	const keep = frames.filter(Boolean).slice(-1)[0] ?? lastProbeFrame;
 	if (keep) {
 		const webp = join(OUT, `${THEME}.webp`);
 		await encode(keep, webp);

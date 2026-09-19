@@ -13040,6 +13040,28 @@ test("the recorded install failure retires when the running version has reached 
 	}
 
 	/*
+	 * AND THE PRE-RELEASE PAIR STAYS (review round 1, R1-2). `compareVersions` reads
+	 * TRIPLES, so a target `0.1.2` against a running `0.1.2-beta.9` orders EQUAL -
+	 * and the first spelling of the retire rule treated `order <= 0` as arrival, so
+	 * the launch that had just written "the install of 0.1.2 didn't finish" deleted
+	 * its own record on the way out, while the marker rule called that same pair a
+	 * failure. The stand-in app version here IS the shape: this repository has shipped
+	 * a `-beta.N` stamp, so it is a pair the update flow really produces.
+	 */
+	const prerelease = await at("0.1.2-beta.9", "0.1.2");
+	try {
+		const record = prerelease.updateService.lastInstallAttempt();
+		assert.equal(
+			record?.targetVersion,
+			"0.1.2",
+			"a machine reporting 0.1.2-beta.9 is not running 0.1.2, so the record must stay",
+		);
+		assert.equal(existsSync(prerelease.path), true);
+	} finally {
+		prerelease.dispose();
+	}
+
+	/*
 	 * And nothing is dropped on a guess: a target the module cannot order is not
 	 * evidence that the install landed, which is the direction `evaluatePendingInstall`
 	 * takes for a marker it cannot order either.
@@ -13064,6 +13086,15 @@ test("a start-up that observes an install arrived retires the record, and a fail
 	 * NOT report arrival - an install still in flight, and one that failed - must leave
 	 * it alone, or the record loses its only purpose.
 	 */
+	/*
+	 * THE FILES ARE SEEDED AFTER THE SERVICE IS CONSTRUCTED, on purpose (QA Q-1).
+	 * `UpdateService`'s own constructor calls `recoverPendingInstall()`, so a
+	 * record written first would be retired by CONSTRUCTION and the case would
+	 * assert about the constructor rather than about the call it narrates. Seeded
+	 * after, the arms below are pinned by the explicit call, and each case asserts
+	 * the record is still on disk before that call - which is what fails if the
+	 * seeding order is ever reversed again.
+	 */
 	const scenario = async ({ markerTarget, appVersion, recordTarget }) => {
 		const userData = mkdtempSync(join(tmpdir(), "lo-recover-userdata-"));
 		globalThis.__loTestPaths = {
@@ -13075,6 +13106,31 @@ test("a start-up that observes an install arrived retires the record, and a fail
 		globalThis.__loTestAppVersion = appVersion;
 		const { service, serviceDir } = await loadUpdateServiceModule();
 		const recordPath = join(userData, "last-update-install.json");
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		/*
+		 * The seam that decides "is this target's install still running" is
+		 * `installJobStateProbe` (the four-state probe `installJobState` answers);
+		 * `absent` is a launchd with no job for this app, which is what lets the
+		 * marker be judged by version alone. The stub this case used to install -
+		 * `shipItInstallJobLoaded` - is not a member of the class at all, so it
+		 * armed nothing (QA Q-1, measured).
+		 */
+		updateService.installJobStateProbe = () => "absent";
 		writeFileSync(
 			recordPath,
 			JSON.stringify({
@@ -13096,23 +13152,6 @@ test("a start-up that observes an install arrived retires the record, and a fail
 				watchdogPid: null,
 			}),
 		);
-		const updateService = new service.UpdateService(
-			{
-				isDestroyed: () => false,
-				webContents: {
-					send: () => {},
-					isDestroyed: () => false,
-					// The launch-time recovery schedules the failure notice against the
-					// load event, so the stub window carries the registration surface it
-					// reaches for rather than a send-only object.
-					once: () => {},
-					on: () => {},
-					removeListener: () => {},
-				},
-			},
-			null,
-		);
-		updateService.shipItInstallJobLoaded = () => false;
 		return {
 			updateService,
 			recordPath,
@@ -13134,6 +13173,13 @@ test("a start-up that observes an install arrived retires the record, and a fail
 		recordTarget: "0.29.0",
 	});
 	try {
+		// The record is there BEFORE the call: construction alone must not have
+		// touched it, or the assertion below would be about the constructor.
+		assert.match(
+			readFileSync(arrived.recordPath, "utf8"),
+			/"targetVersion":"0.29.0"/,
+			"the constructor's own recovery may not retire a record written after it",
+		);
 		arrived.updateService.recoverPendingInstall();
 		assert.equal(
 			existsSync(arrived.recordPath),
@@ -13154,6 +13200,7 @@ test("a start-up that observes an install arrived retires the record, and a fail
 		recordTarget: "0.28.3",
 	});
 	try {
+		assert.equal(existsSync(failed.recordPath), true);
 		failed.updateService.recoverPendingInstall();
 		const record = failed.updateService.lastInstallAttempt();
 		assert.equal(record?.targetVersion, "0.30.0");
