@@ -75,7 +75,7 @@ frames are the app photographing itself with `webContents.capturePage()`.
 **Both passes** - the six freshness frames and the nine close frames - came from the
 same command, the same scene and the same isolation; the close phase is simply the
 scene's last, so one run produces the whole set. The run quoted on the pull request
-reported `ALL CHECKS PASSED` over 108 checks with all fifteen frames captured:
+reported `ALL CHECKS PASSED` over 109 checks with all fifteen frames captured:
 
 `scripts/renderer-driver.mjs --scene canvas-freshness`, against a live, isolated
 `lop serve` this run owns. The renderer has to have been built against that
