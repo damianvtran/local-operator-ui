@@ -163,6 +163,15 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	initialFilter = "",
 }) => {
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * AT THE TOP, unconditionally (review round 4, R4-1): this used to be called
+	 * inside the `if (loadError || !settings)` branch, so the ordinary
+	 * loading→error transition rendered MORE hooks than the previous render and
+	 * threw "Rendered more hooks than during the previous render" - in exactly the
+	 * state the sentence below exists for. The hook is one bridge read; it costs
+	 * nothing to run on the loaded path and it must run on every path.
+	 */
+	const pairingCause = usePairingCause();
 	const enabled = desktopFeatureEnabled(capabilities.data, "settings");
 	const [filter, setFilter] = useState(initialFilter);
 	const [showAdvanced, setShowAdvanced] = useState(false);
@@ -752,7 +761,6 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		 * control is withheld where no act exists, by the same predicate the banner
 		 * and the pane use.
 		 */
-		const pairingCause = usePairingCause();
 		const pairingSentence = pairingCause
 			? BACKEND_PAIRING_SENTENCE[pairingCause]
 			: null;
