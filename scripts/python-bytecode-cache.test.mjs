@@ -756,19 +756,21 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	// what the spawn site has to correct rather than merely fill.
 	process.env.PYTHONPYCACHEPREFIX = INSIDE_BUNDLE_PREFIX;
 	/*
-	 * A config root with nothing in it, so the RECORD-backed half of discovery
-	 * cannot decide this test's branch. `start()` runs discovery before it
-	 * spawns, and discovery reads `<config root>/run/serve/<pid>.json` - on this
-	 * machine the operator's own daemon publishes one, and a live record this app
-	 * may not attach to is one of the states that makes `start()` refuse to spawn
-	 * a second daemon. That guard is right, and it is not what this test is
-	 * about: the subject here is the spawn ENVIRONMENT. Redirecting the root
-	 * rather than stubbing the method keeps discovery real.
+	 * A config root with nothing in it. The RECORD-backed half of discovery is
+	 * isolated in this test by the `checkExistingBackend` stub below, NOT by this
+	 * redirect: with that stub in place the class method never runs, so changing
+	 * this value changes nothing about this test's execution - measured by
+	 * deleting the line and re-running, which still passes. It is kept because the
+	 * redirect, not a stub, is what keeps discovery real for any path that does
+	 * reach it, and because it is how the record path was RULED OUT as this
+	 * test's cause: with it set, `discoverDaemons()` reports `noRecordsAtAll:
+	 * true, blocksSpawn: false` on a machine that publishes a live serve record,
+	 * so a refusal could only have come from a gate that is not record-based.
 	 *
-	 * It is not the only gate `start()` consults, though, which is why the
-	 * occupancy probe below is isolated too - and measured, the reason this test
-	 * went 34 pass / 1 fail for three runs of three on the operator's machine
-	 * while passing in CI.
+	 * It did. The occupancy probe against the app's configured address is that
+	 * gate, it is isolated below, and it is the measured reason this test went
+	 * 34 pass / 1 fail for three runs of three on the operator's machine while
+	 * passing in CI.
 	 */
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = join(PATHS.home, "config");
 
