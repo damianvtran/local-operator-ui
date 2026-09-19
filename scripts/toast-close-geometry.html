@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Rendered-geometry harness for a toast's close button (a measurement surface,
+  not part of the app).
+
+  Why this page rather than the live app. The defect is a claim about two edges
+  of one 20px box relative to the toast it sits on, and a screenshot cannot
+  settle it: a button 8px inside the toast's left edge and one sitting on the
+  right corner are both small circles in a still, and a reviewer has no way to
+  check the paragraph describing them. The app can also not be put in this state
+  on demand — the reported toast needs a backend holding seven unread chats and
+  a click on the sidebar's bulk receipt.
+
+  So this page renders the SHIPPED components and nothing else: the shipped
+  `ThemedToastContainer` with the props `main.tsx` gives it, and the shipped
+  receipt copy for the operator's own toast, fired through the shipped toast
+  manager. `scripts/toast-close-geometry.mjs` measures it and asserts the rule.
+
+  `<html>` carries no `dir` attribute, deliberately, because the app's own
+  `src/renderer/index.html` carries none either: sonner then derives the
+  direction from the document's computed style and publishes it on the toaster
+  element, which is the selector branch that decides which set of close-button
+  custom properties is declared. Adding `dir="ltr"` here would move the bug on
+  to a different selector arm than the one the operator's app uses.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Toast close-button geometry — the corner it belongs in</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./toast-close-geometry.tsx"></script>
+	</body>
+</html>
