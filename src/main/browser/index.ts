@@ -205,6 +205,12 @@ export async function startBrowserHost(
 	const downloads = new DownloadArmer({
 		tabForWebContents: (webContentsId) =>
 			registryForDownloads?.byWebContents(webContentsId)?.tabId ?? null,
+		// WHO OWNED THE TAB, recorded on the decision (review round 2, U10). Read from
+		// the registry at the moment the note is written, because the row may render it
+		// after the tab is closed — and "· on another tab" about a tab that no longer
+		// exists is a marker pointing at nothing. `null` when the lookup cannot answer
+		// (a tab already gone), which the row renders the old way rather than guessing.
+		ownerKindFor: (tabId) => registryForDownloads?.get(tabId)?.owner ?? null,
 		log,
 		onActivity: () => {
 			// The project is the ONE projection: `chromeState` carries the activity and
