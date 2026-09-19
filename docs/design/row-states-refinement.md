@@ -164,6 +164,17 @@ there, and § 8.3 says why 6px is the right radius rather than a larger one.
 
 ## 4. The rule, as a procedure
 
+**THE GROUND THE RULE ASSUMES, stated here because every step below reads
+`surface`: a surface that paints `rowCurrent` or `hover:bg-row-hover` wears
+`surface`.** Both roles are authored as steps OF the panel's own colour, so the
+panel they are painted on has to be the panel they were authored against: on a
+rung (`sunken`, `canvas`, `elevated`) a state lands inside the ladder instead of
+out of the panel — measured, ΔE00 **0.44** on `alucard`, a fill the reader cannot
+see. It is asserted per call site in `scripts/chat-sidebar-selection.test.mjs`,
+which resolves each one's painted ancestor and fails a `rowCurrent` surface on a
+rung; § 9.2 records the premise this replaced and why re-asserting the roles
+against the rungs instead was measured and refused.
+
 Per palette, in this order. Every constant is named; § 5 gives each one its
 reason and § 6 its measured consequence.
 
@@ -421,34 +432,43 @@ goes from C\* 11.8 at the accent's h278 to C\* 24.0 at the panel's h102;
 Ten palettes: the two brand ramps, the neutral class, the two worst hue rotations
 by the brief's own list, the highest panel cast, and a light palette with a
 strong cast. `H` is the available headroom; the bands are ΔE00 off `surface`;
-`inkDim(s)` is the ratio on the selected fill. All after-column values are from
-the rule as stated in § 4.
+`inkDim(s)` is the ratio on the selected fill.
 
-**These are the RULE'S OWN targets, and the hex that ships is the hex the triple
-rounds to** — the two differ by the 8-bit round trip, and it is the shipped hex
-that `contrast-contract.mjs` measures and that the appendix tabulates. Read a
-number here as "what the rule asks for" and the appendix as "what landed". `dune`
-is the one row whose RULE-TARGET this document no longer states: the remediation
-round lifted its hover step off the rule's `0.65 × step_selected` to the lowest
-rung that clears the 2.0 field floor, and the row shows the shipped value.
+**THE AFTER COLUMN IS WHAT SHIPPED, NOT WHAT THE RULE ASKS FOR, AND THIS IS A
+CORRECTION TO HOW THE TABLE READ.** Every after-cell is ONE VALUE read three
+ways — the hex from `themes.generated.css` and that hex's own cast, hue and `L*`
+step measured from it — so a cell here and its row in the appendix are the same
+numbers, and `contrast-contract.mjs` measures the same quantity. The rule's own
+targets are § 4's, and they sit within the 8-bit round trip of these rather than
+beside them: the round trip moves the cast by up to 0.6 (`synth`'s selection target
+24.0 resolves at 23.4), the step by up to 0.19 (`tokyoNightStorm`'s selection 4.44 →
+4.25), and the hue by up to 11 degrees (`dune`'s hover, authored at the panel's 66
+and resolved at 55, inside the rule's own 12-degree bound). An earlier revision of
+this table read the step and cast from the RULE while the hex in the same cell was
+the SHIPPED one, which is how one hex came to carry two different steps across § 6
+and the appendix. `dune` is also the one row whose rule-TARGET the document no
+longer states at all: the remediation round lifted its hover step off the rule's
+`0.65 × step_selected` to the lowest rung that clears the 2.0 field floor.
 
 | palette | mode | panel | H | hover: before → after | selected: before → after | band h/s | pair | rank | inkDim(s) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `localOperatorDark` | dark | `#2b2721` L\*15.9 C\*4.7 h83 | 4.4 | `#272C28` h150 +1.52 (band 5.91) → **`#302D29` C\*2.8 h81 +2.72** | `#1F3624` C\*16.2 h148 +4.40 (15.40) → **`#372F24` C\*8.7 h80 +4.18** | 2.30 / 4.16 | 4.49 | 1.28 | 5.05 |
-| `localOperatorLight` | light | `#f7f5ee` L\*96.5 C\*3.6 h99 | 5.4 | `#E4F5E8` h151 +1.51 (8.68) → **`#EDECE7` C\*2.5 h102 +3.25** | `#CFEFD7` C\*17.0 h151 +4.87 (14.46) → **`#EBE7D8` C\*7.6 h99 +5.00** | 2.11 / 4.52 | 4.44 | 1.77 | 5.04 |
-| `obsidian` | dark | `#2A2A2D` L\*17.2 C\*2.1 h291 | 5.7 | `#353535` C\*0 h338 +4.99 (4.05) → **`#313135` C\*2.5 h291 +3.25** | `#37363B` C\*3.4 h299 +5.72 (4.22) → **`#34343D` C\*6.1 h292 +5.00** | 2.34 / 4.91 | 3.18 | 1.56 | 5.16 |
-| `synth` | dark | `#2E1D42` L\*14.7 C\*26.8 h310 | 5.9 | `#2F2628` C\*4.6 h3 +1.53 (15.48) → **`#32273E` C\*16.1 h310 +3.25** | `#3F2A2E` C\*10.6 h7 +4.98 (14.36) → **`#39294A` C\*24.0 h311 +5.00** | 5.81 / 3.84 | 4.06 | 2.03 | 5.13 |
-| `outrun` | dark | `#232543` L\*15.9 C\*21.0 h294 | 4.0 | `#312929` C\*3.9 h20 +1.52 (14.68) → **`#2C2C3E` C\*12.6 h293 +2.73** | `#402B2D` C\*10.4 h14 +4.14 (15.69) → **`#2B2D51` C\*24.0 h294 +4.20** | 5.46 / 3.23 | 6.88 | 1.25 | 5.02 |
-| `tokyoNightStorm` | dark | `#2B3048` L\*20.4 C\*16.3 h287 | 4.3 | `#253455` C\*22.4 h282 +1.54 (4.27) → **`#353745` C\*9.8 h287 +2.89** | `#373A46` C\*8.0 h283 +4.16 (6.44) → **`#323958` C\*20.3 h287 +4.44** | 5.03 / 3.81 | 6.92 | 1.27 | 5.04 |
-| `cyberpunk` | dark | `#282332` L\*14.9 C\*10.9 h305 | 3.9 | `#2A2923` C\*4.2 h102 +1.64 (14.55) → **`#2C2932` C\*6.5 h304 +2.35** | `#312E1C` C\*12.3 h100 +3.90 (21.23) → **`#302A3F` C\*14.9 h303 +3.62** | 3.97 / 3.59 | 6.26 | 1.32 | 5.03 |
-| `kanagawaLotus` | light | `#E9E2B6` L\*89.4 C\*22.9 h102 | 8.3 | `#DADCE4` C\*4.2 h281 +1.62 (20.42) → **`#DDD8BE` C\*13.7 h101 +3.25** | `#CBD3E9` C\*11.8 h278 +4.87 (27.51) → **`#DBD4A6` C\*24.0 h102 +5.00** | 5.52 / 3.29 | 5.82 | 1.67 | 5.51 |
-| `dune` | dark | `#2C2825` L\*16.4 C\*2.9 h66 | 4.4 | `#342A23` C\*7.1 h62 +1.51 (4.00) → **`#322E2C` C\*2.4 h66 +2.85** | `#462C1C` C\*18.2 h57 +4.34 (12.07) → **`#393029` C\*6.6 h66 +4.17** | 2.05 / 4.35 | 3.84 | 1.33 | 5.03 |
-| `iceberg` | light | `#F2F3F6` L\*95.8 C\*1.6 h277 | 8.9 | `#EDEEFA` C\*6.2 h287 +1.51 (4.33) → **`#E9E9EE` C\*2.5 h290 +3.25** | `#E2E4F4` C\*8.3 h286 +4.98 (6.56) → **`#E3E4EF` C\*5.6 h287 +5.00** | 2.39 / 4.91 | 2.91 | 1.67 | 5.55 |
-| `tokyoNight` | dark | `#313448` L\*22.2 C\*13.4 h288 | 4.8 | `#363940` C\*4.8 h276 +1.72 (7.05) → **`#3A3B48` C\*8.1 h288 +3.16** | `#333F5F` C\*21.1 h283 +4.76 (5.98) → **`#3A3E59` C\*17.4 h288 +4.86** | 4.01 / 4.26 | 6.01 | 1.68 | 5.04 |
+| `localOperatorDark` | dark | `#2b2721` L\*15.9 C\*4.7 h83 | 4.4 | `#272C28` h150 +1.52 (band 5.91) → **`#302D29` C\*3.1 h81 +2.78** | `#1F3624` C\*16.2 h148 +4.40 (15.40) → **`#372F24` C\*8.6 h80 +4.06** | 2.30 / 4.16 | 4.49 | 1.28 | 5.05 |
+| `localOperatorLight` | light | `#f7f5ee` L\*96.5 C\*3.6 h99 | 5.4 | `#E4F5E8` h151 +1.51 (8.68) → **`#EDECE7` C\*2.6 h102 +3.17** | `#CFEFD7` C\*17.0 h151 +4.87 (14.46) → **`#EBE7D8` C\*7.9 h99 +4.93** | 2.11 / 4.52 | 4.44 | 1.77 | 5.04 |
+| `obsidian` | dark | `#2A2A2D` L\*17.2 C\*2.1 h291 | 5.7 | `#353535` C\*0 h338 +4.99 (4.05) → **`#313135` C\*2.7 h291 +3.30** | `#37363B` C\*3.4 h299 +5.72 (4.22) → **`#34343D` C\*6.0 h292 +4.86** | 2.34 / 4.91 | 3.18 | 1.56 | 5.16 |
+| `synth` | dark | `#2E1D42` L\*14.7 C\*26.8 h310 | 5.9 | `#2F2628` C\*4.6 h3 +1.53 (15.48) → **`#32273E` C\*16.6 h310 +3.12** | `#3F2A2E` C\*10.6 h7 +4.98 (14.36) → **`#39294A` C\*23.4 h311 +5.15** | 5.81 / 3.84 | 4.06 | 2.03 | 5.13 |
+| `outrun` | dark | `#232543` L\*15.9 C\*21.0 h294 | 4.0 | `#312929` C\*3.9 h20 +1.52 (14.68) → **`#2C2C3E` C\*12.4 h293 +2.80** | `#402B2D` C\*10.4 h14 +4.14 (15.69) → **`#2B2D51` C\*24.5 h294 +4.05** | 5.46 / 3.23 | 6.88 | 1.25 | 5.02 |
+| `tokyoNightStorm` | dark | `#2B3048` L\*20.4 C\*16.3 h287 | 4.3 | `#253455` C\*22.4 h282 +1.54 (4.27) → **`#353745` C\*9.3 h287 +2.98** | `#373A46` C\*8.0 h283 +4.16 (6.44) → **`#323958` C\*20.5 h287 +4.25** | 5.03 / 3.81 | 6.92 | 1.27 | 5.04 |
+| `cyberpunk` | dark | `#282332` L\*14.9 C\*10.9 h305 | 3.9 | `#2A2923` C\*4.2 h102 +1.64 (14.55) → **`#2C2932` C\*6.4 h304 +2.37** | `#312E1C` C\*12.3 h100 +3.90 (21.23) → **`#302A3F` C\*14.7 h303 +3.69** | 3.97 / 3.59 | 6.26 | 1.32 | 5.03 |
+| `kanagawaLotus` | light | `#E9E2B6` L\*89.4 C\*22.9 h102 | 8.3 | `#DADCE4` C\*4.2 h281 +1.62 (20.42) → **`#DDD8BE` C\*13.7 h101 +3.33** | `#CBD3E9` C\*11.8 h278 +4.87 (27.51) → **`#DBD4A6` C\*24.2 h102 +5.00** | 5.52 / 3.29 | 5.82 | 1.67 | 5.51 |
+| `dune` | dark | `#2C2825` L\*16.4 C\*2.9 h66 | 4.4 | `#342A23` C\*7.1 h62 +1.51 (4.00) → **`#322E2C` C\*2.4 h55 +2.85** | `#462C1C` C\*18.2 h57 +4.34 (12.07) → **`#393029` C\*6.6 h66 +4.17** | 2.05 / 4.35 | 3.84 | 1.33 | 5.03 |
+| `iceberg` | light | `#F2F3F6` L\*95.8 C\*1.6 h277 | 8.9 | `#EDEEFA` C\*6.2 h287 +1.51 (4.33) → **`#E9E9EE` C\*2.6 h290 +3.37** | `#E2E4F4` C\*8.3 h286 +4.98 (6.56) → **`#E3E4EF` C\*5.7 h287 +5.04** | 2.39 / 4.91 | 2.91 | 1.67 | 5.55 |
+| `tokyoNight` | dark | `#313448` L\*22.2 C\*13.4 h288 | 4.8 | `#363940` C\*4.8 h276 +1.72 (7.05) → **`#3A3B48` C\*8.6 h289 +3.03** | `#333F5F` C\*21.1 h283 +4.76 (5.98) → **`#3A3E59` C\*17.6 h289 +4.70** | 4.01 / 4.26 | 6.01 | 1.68 | 5.04 |
 
 Read the hue column: every "after" hue is the panel's (`localOperatorDark` 81/80
 against a panel at 83; `synth` 310/311 against 310; `cyberpunk` 304/303 against
 305; `kanagawaLotus` 101/102 against 102), and every "before" hue is the accent's.
+The one after-hue that reads as a gap is the round trip's: `dune`'s hover is
+authored at its panel's 66 and the hex resolves at 55.
 Read the `tokyoNightStorm` row: its hover was 6.1 chroma **louder** than the
 panel and is now 6.5 quieter, and its selection was quieter than its panel and is
 now 4 louder — the two roles swap which side of the backdrop's cast they sit on,

@@ -290,6 +290,16 @@ export type ThemePalette = {
 	 * `tokyoNightStorm` hover sat at C* 22.4 on a panel of 16.3 - 1.4x its own
 	 * backdrop's cast).
 	 *
+	 * A STEP THE RULE ASKS FOR IS NOT ALWAYS A HEX THAT EXISTS, which is why the
+	 * authored value is the rung and not the target: two 0.02 steps apart can
+	 * resolve to the same 8-bit colour, and a target between two rungs is on
+	 * neither. `ayuLight` is the fleet's one case — the direction asked a hover
+	 * step of 3.88 at that panel's hue and chroma, and the rungs either side of it
+	 * are 3.86 and 3.91, where 3.91 is over the window's top
+	 * (`step_selected - 1.15` = 3.89). So 3.86 is the largest achievable step and
+	 * 2.36 is the band that goes with it, which is the value the file carries and
+	 * the QA round measured independently.
+	 *
 	 * ## FLOORS, and what is not one
 	 *
 	 * Asserted: the `L*` step's DIRECTION, its 1.5 floor and its SHARE of the

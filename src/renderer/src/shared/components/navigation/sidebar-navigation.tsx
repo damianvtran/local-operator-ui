@@ -95,8 +95,10 @@ type NavItem = {
  * and a list that is `surface` are two panels rather than one slab. The rule is
  * doing real work on the light fleet, where `surface` and `canvas` are closest:
  * this rail's pair with the content beside it measures ΔE00 2.32 on
- * `localOperatorLight` and 2.60 on `alucard`, the fleet's two tightest
- * chrome/content pairs, and on those it is the only boundary there is.
+ * `localOperatorLight` and 2.60 on `alucard` — the two tightest of the four rail
+ * palettes the evidence set renders, though NOT the fleet's tightest pairs
+ * (`sage` 2.05, `catppuccinMacchiato` 2.08 and `oneLight` 2.10 are, and none of
+ * the three carries a rail frame) — and on those it is the only boundary there is.
  *
  * The chat route is the same rule one plane to the right: its list panel is
  * `surface` and the column it opens is `canvas`, so the pair never repeats the

@@ -21,7 +21,15 @@ render.
 | --- | --- | --- |
 | `before/` | `origin/main` at **`a17a6b3ba`**, checked out as a worktree at `/tmp/rs-before-tree` | `pnpm exec storybook build` on that tree, then the harness below against it |
 | `defect/` | this branch's own **pre-remediation head** at **`f249a6604`** (the rebased `ffd05dec1`), worktree `/tmp/rs-defect-tree` | the same build, the same harness |
-| `after/` | this branch at the remediation head | the same build, the same harness, the same stories, the same viewports |
+| `after/` | this branch at the **remediation head** `76e880af7` (the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry) | the same build, the same harness, the same stories, the same viewports |
+
+Each half is a picture of ONE tree, and the manifest names the `after/` one in
+its `capturedAtHead` because that is the field that pairs with the pass's own
+tree stamps: `before/` is `origin/main` at `a17a6b3ba`, `defect/` is this branch's
+pre-remediation head `f249a6604` (now the head of neither half's record), and
+`after/` is the remediation head `76e880af7`. The frames were taken from the
+working tree that became `76e880af7`, before the commit existed, which is why the
+SHA is a name for the tree and not a claim about capture order.
 
 Both `before/` and `after/` are the **real component through the real cascade**.
 Nothing is injected at the DOM in either: the difference between them is the
@@ -73,11 +81,12 @@ named), plus the two the remediation round added — **`rosePineDawn`** (the
 fleet's minimum band, § 11.5) and **`ayuLight`** (the second of the three the
 field floor used to refuse, and one of the two the round lifted).
 
-**Four rail palettes**: `alucard` (the fleet's tightest chrome/content pair on the
-app rail, and the 0.44), `localOperatorLight` (the 1.19, and the second-tightest),
-`localOperatorDark` (the control — the change there is a step between two
-near-black grounds and reads as almost nothing), and `kanagawaLotus` (0.83 on the
-categories rail).
+**Four rail palettes**: `alucard` (the tightest of the rail's four palettes' pairs
+- the fleet's own tightest `surface`|`canvas` pair is `sage` 2.05, which this set
+does not render - and the 0.44), `localOperatorLight` (the 1.19, and the
+second-tightest of the four), `localOperatorDark` (the control — the change there
+is a step between two near-black grounds and reads as almost nothing), and
+`kanagawaLotus` (0.83 on the categories rail).
 
 ## The DOM readback, which is how these grounds are asserted
 
@@ -119,10 +128,17 @@ it carries **0px** — so the seam is one rule, not two, which is the case the
 design round asked to have checked. The `defect` half reads 0px on both sides,
 which is the same seam before the rule was drawn.
 
-The rail's chrome/content pairs are the fleet's two tightest — `surface` against
-the `canvas` beside it is ΔE00 **2.32** on `localOperatorLight` and **2.60** on
-`alucard` — which is why the hairline is doing real work on those two and is the
-reason the boundary was drawn rather than left to the tonal step.
+The rail's chrome/content pairs are the two tightest of the FOUR RAIL PALETTES
+this set renders — `surface` against the `canvas` beside it is ΔE00 **2.32** on
+`localOperatorLight` and **2.60** on `alucard` — which is why the hairline is
+doing real work on those two and is the reason the boundary was drawn rather than
+left to the tonal step. They are not the fleet's tightest pairs, and an earlier
+revision of this sentence said they were: `surface` against `canvas` measures
+**2.05** on `sage`, 2.08 on `catppuccinMacchiato` and 2.10 on `oneLight`
+(`localOperatorLight` is ninth, `alucard` twenty-third), and none of the three is
+in this set. The design round's own `sage` frame is the check the sentence was
+reaching for, and it passes; the fleet-wide discipline is
+`scripts/contrast-contract.mjs`'s.
 
 ### The key cap is fill-less
 
@@ -151,13 +167,17 @@ assumed here because the comment that argued from it has been rewritten.
 ## The sweep, which has still not run on these frames
 
 `pnpm check-evidence` admits **one sweep per machine**, and it has deferred at
-**75** on every attempt this branch has made — this round's included, where the
-holder is identified rather than assumed: a peer session's own sweep
-(`scripts/check-evidence.mjs`, pid 46106, worktree
-`~/local-operator-ui/.worktrees/wedged-status`) was in flight when the attempt was
-made. **No frame in this set has been content-checked by the sweep.** The
-manifest's `rowStatesRefinedPass.checkEvidence` records the same deferral with the
-same holder, so it is stated in both places rather than left silent. What HAS run
+**75** on every attempt this branch has made — the closing round's included, at
+2026-09-19T04:28Z, where the holder is identified rather than assumed: a peer
+session's own sweep (`scripts/check-evidence.mjs`, pid **26555**, started
+00:13:25 local) driving a QA rig against **PR #384**
+(`~/qa384-r2/head/scripts/check-evidence.mjs`, its image child pid 26565, which is
+the pid the lock file records). The holder this README used to name — pid 46106,
+worktree `~/local-operator-ui/.worktrees/wedged-status` — is **gone**; the record
+is corrected rather than left to send the next reader hunting for a dead pid.
+**No frame in this set has been content-checked by the sweep.** The manifest's
+`rowStatesRefinedPass.checkEvidence` records the same deferral with the same
+holder, so it is stated in both places rather than left silent. What HAS run
 against these frames is `scripts/evidence-manifest.test.mjs` (the stamps, the
 citation ancestry and the `countsMean` arithmetic, all green) and
 `scripts/chrome-keychain.test.mjs`, which scans this set's harness for the

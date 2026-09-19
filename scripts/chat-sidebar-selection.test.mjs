@@ -1090,9 +1090,14 @@ test("every selected row in the tree takes the role by import, not by copy", () 
  *
  * THE RAIL'S TWO TIGHTEST PAIRS, for the reader who wonders whether `surface` is
  * still chrome on the light fleet: this rail's ground against the `canvas` beside
- * it measures ΔE00 2.32 on `localOperatorLight` and 2.60 on `alucard`, the
- * fleet's two tightest chrome/content pairs, and the hairline is the only
- * boundary on both. The rail's ⌘K cap is FILL-LESS (it carries no fill and no
+ * it measures ΔE00 2.32 on `localOperatorLight` and 2.60 on `alucard` — the two
+ * tightest of the FOUR RAIL PALETTES this evidence set renders — and the hairline
+ * is the only boundary on both. They are not the fleet's tightest pairs, and the
+ * sentence that said so was wrong: `surface` against `canvas` measures 2.05 on
+ * `sage`, 2.08 on `catppuccinMacchiato` and 2.10 on `oneLight` (`localOperatorLight`
+ * is ninth at 2.32, `alucard` twenty-third at 2.60), and none of those three
+ * carries a rail frame. The fleet-wide discipline is asserted in
+ * `scripts/contrast-contract.mjs`; this pair is the worst case the frames can show. The rail's ⌘K cap is FILL-LESS (it carries no fill and no
  * border by construction — `shared/components/common/keyboard-shortcut.tsx`,
  * `CAP`), so the re-grounding cannot collapse a key into it; the evidence README
  * records that as a DOM readback beside the rail's frames rather than as a claim.
@@ -1300,6 +1305,64 @@ test("every call site that paints a row state is painted on `surface`", () => {
 			`${entry.what}: no ground file named`,
 		);
 	}
+});
+
+/*
+ * THE PLATE INSIDE A ROW, AND THE HALF THE PALETTE GATE CANNOT SEE.
+ *
+ * The rail's account row is a row state's host (`hover:bg-row-hover`) and it
+ * contains an element with a ground of its own — the avatar plate. That plate
+ * was chosen when the rail was `sunken`, and re-grounding the rail to `surface`
+ * did not touch it, which left a shape this file's own tables do not cover: an
+ * element INSIDE a row, on a rung, with the row painting a fill underneath it.
+ *
+ * The pair under the pointer collapses on the shipped values: `elevated` against
+ * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field floor
+ * on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90 — hover the row at any
+ * of the four and the plate is a disc of the row's own hover colour. That is not a
+ * value to re-solve: a row state is authored as a STEP of the panel it sits on, so
+ * some palette's state will always land on some rung (16 of the 59 already land
+ * within ΔE00 2.0 of `elevated` on `rowSelected`, which is why no fill role is
+ * collision-free). So the plate carries `border-control` — this system's role for
+ * an edge that IS the boundary of a thing, floored at 3:1 against every ground —
+ * and THAT is what this test pins, because it is the half a colour gate cannot see.
+ *
+ * The colour half is `scripts/contrast-contract.mjs`'s, per palette: `elevated`
+ * against `rowHover` at the field floor OR `border-control` against `rowHover` at
+ * the non-text floor. On exactly the four palettes the fill fails, the edge clears
+ * (3.18 `arcade`, 3.13 `gruvbox`, 3.27 `obsidian`, 3.10 `everforest`), so neither
+ * half is decoration and neither file can make the other's assertion — the same
+ * split `ROW_STATE_GROUNDS` above records for the grounds.
+ *
+ * The pair is `rowHover` and NOT `rowSelected`, and that scope is asserted below
+ * rather than implied: the account row is not a destination, so it never paints
+ * `rowCurrent` and the plate can never be painted over a selection. If it ever
+ * does, the pair in the palette gate has to grow, and it does not clear today.
+ */
+const ACCOUNT_ROW =
+	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+
+test("the account row's plate carries an edge a row state cannot overrun", () => {
+	const row = sourceOf(ACCOUNT_ROW);
+	assert.ok(
+		row.includes("hover:bg-row-hover"),
+		`${ACCOUNT_ROW} no longer takes \`rowHover\` under the pointer, so the pair \`scripts/contrast-contract.mjs\` asserts for its plate no longer describes this row. Re-derive that pair before removing this one`,
+	);
+	assert.ok(
+		!row.includes("rowCurrent"),
+		`${ACCOUNT_ROW} now paints or names \`rowCurrent\`, so the account row IS a destination and its plate can be painted over a selection as well as a hover — the pair in \`scripts/contrast-contract.mjs\` has to gain \`rowSelected\`, which it is not satisfiable against today (16 of the 59 palettes sit inside ΔE00 2.0 of \`elevated\` on \`rowSelected\`)`,
+	);
+	const plate = literalClassAt(ACCOUNT_ROW, "<AvatarFallback", "after")
+		.split(/\s+/)
+		.filter((c) => c.length > 0);
+	assert.ok(
+		plate.includes("bg-elevated"),
+		`the account row's plate no longer paints \`bg-elevated\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` asserts the plate's fill as \`elevated\` against \`rowHover\`, so a re-role here has to move there too`,
+	);
+	assert.ok(
+		plate.includes("border-control"),
+		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
+	);
 });
 
 /*

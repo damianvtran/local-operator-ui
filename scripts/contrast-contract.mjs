@@ -3006,7 +3006,7 @@ const ROW_STATE_MEASURED_SHORTFALL = [
 		bound: "band",
 		measured: 1.67,
 		reason:
-			"the fleet's minimum band, and it is the light family's compression at its worst: C* 2.7 puts the fill at the rule's own floor of 2.5, and at L* 94 the S_l term divides the 2.79 L* step down to 1.67. ITS CEILING IS 1.88, measured on this rule's own window: with the casts held at the panel's own (the rule's 2.5 floor on this palette), the hover's step is bounded by the pair's rank at 3.14 - one grid rung, 1.88 - and raising the selection to the largest step its inks allow (4.14, where `inkDim` is 5.02) does not widen it, because the 8-bit rung is the same. Clearing the 2.0 field floor here needs the hover's cast PAST the ceiling the rule names (C* 3.23 at step 2.99 measures ΔE00 2.03, 0.53 over that ceiling - inside this file's cap slack, which is the hex round trip's error and not a licence to sit over the bound). So the class's floor on this palette is 1.9 and not 2.0, and if 2.0 is to hold here what changes is the floor's statement, not the value. The band's frame is committed and the disposition is a look judgement: at 1.67 it still reads as a mark",
+			"the fleet's minimum band, and it is the light family's compression at its worst: C* 2.7 puts the fill at the rule's own floor of 2.5, and at L* 94 the S_l term divides the 2.79 L* step down to 1.67. ITS CEILING IS 1.88, measured on this rule's own window: with the hover's cast held at the panel's own (C* 2.70, the rule's 2.5 floor), the largest hover the rule can author is bounded by its own clamp (`step_selected - 1.15` = 2.99 at the shipped selection step of 4.14, where `inkDim` is 5.02), and both that target and the looser rank bound above it (`step_selected - 1.0` = 3.14) resolve to the SAME 8-bit rung, `#F0EBE7` - a measured step of 3.14 and ΔE00 1.880 off `surface`. Raising the selection does not widen it either, because this palette's largest ink-legal step and the whole 4.10-4.30 band below it also resolve to one hex, `#F3E7DD`. Clearing the 2.0 field floor here needs the hover's cast OUTSIDE the window the rule names, and that is reachable at EITHER end, which is why this row's cause is not the ceiling alone: past it (C* 3.23 at step 2.99 measures ΔE00 2.03, 0.53 over the ceiling) or under its floor (C* 2.31 at step 2.94 is `#EFECE8`, ΔE00 2.01, 0.19 under the 2.5 floor) - both inside the slack the cap carries, which is the hex round trip's error and not a licence to sit outside the bound. So the class's floor on this palette is 1.9 and not 2.0, and if 2.0 is to hold here what changes is the floor's statement, not the value. The band's frame is committed and the disposition is a look judgement: at 1.67 it still reads as a mark",
 	},
 	{
 		id: "gruvboxLight",
@@ -3444,6 +3444,49 @@ for (const { id, palette: p } of palettes) {
 		if (apart < apartFloor - 1e-9) {
 			fail(
 				`${id}: \`rowHover\` ${p.rowHover} and \`rowSelected\` ${p.rowSelected} are ΔE00 ${r2(apart)} apart (need ${apartFloor}) — the reader sees two marks and cannot rank them. This was the second half of the operator's report: on \`neon\` the shipped pair sat 1.80 ΔE apart while each was ~6.2 ΔE off the panel. The ranking is the fill's now, so a palette that misses this is missing because the two fills are the SAME MARK — give the selection more step or more cast than the hover`,
+			);
+		}
+	}
+
+	/*
+	 * THE PLATE INSIDE A ROW, and the half of its guard a class cannot carry.
+	 *
+	 * The rail's account row hovers on `rowHover` and contains an element with a
+	 * ground of its own: the avatar plate, `bg-elevated` with a `border-control`
+	 * edge (`shared/components/navigation/user-profile-sidebar.tsx`). The pair
+	 * under the pointer collapses on the shipped values - `elevated` against
+	 * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field
+	 * floor on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90, so hovering
+	 * the row turns the plate into a disc of the row's own hover colour - and it is
+	 * not a value to re-solve, because a row state IS a step of the panel it sits
+	 * on and some palette's state will always land on some rung.
+	 *
+	 * So the plate is legal the way a control here is: ONE OF ITS TWO EDGES
+	 * PERCEIVABLE, fill or boundary. The arms are different instruments and are
+	 * measured as such - the fill as a FIELD at `FIELD_SEPARATION_FLOOR` (the same
+	 * floor every other "is this fill distinguishable" pair in this file uses) and
+	 * the 1px boundary as a LINE at the non-text floor, because ΔE00 credits
+	 * chroma that a one-pixel edge cannot spend (the argument beside
+	 * `HAIRLINE_RATIO_FLOOR`). Either arm clearing is enough, and on exactly the
+	 * four palettes the fill fails the boundary is what clears: `borderControl` on
+	 * `rowHover` measures 3.18 (`arcade`), 3.13 (`gruvbox`), 3.27 (`obsidian`) and
+	 * 3.10 (`everforest`).
+	 *
+	 * The class half of this - that the plate still wears `border-control` rather
+	 * than a fill alone - is asserted in `scripts/chat-sidebar-selection.test.mjs`,
+	 * because a palette gate cannot see which class an element paints. The pair is
+	 * `rowHover` and not `rowSelected`: the account row is not a destination, so it
+	 * never paints `rowCurrent` (that file asserts it), which is also why
+	 * `rowSelected` may stay inside 2.0 of `elevated` on 16 palettes here without
+	 * this block saying anything about them.
+	 */
+	if (isHex(p.elevated) && isHex(p.rowHover) && isHex(p.borderControl)) {
+		assertions++;
+		const plateField = deltaE(p.elevated, p.rowHover);
+		const plateEdge = ratio(p.borderControl, p.rowHover);
+		if (plateField < FIELD_SEPARATION_FLOOR && plateEdge < FLOOR.nonText) {
+			fail(
+				`${id}: the account row's plate has no perceivable edge under the pointer — \`elevated\` ${p.elevated} is ΔE00 ${r2(plateField)} from \`rowHover\` ${p.rowHover} (need ${FIELD_SEPARATION_FLOOR}) and its \`borderControl\` edge ${p.borderControl} is ${r2(plateEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the plate the pointer reveals is a disc of the row's own hover colour. Give the plate an edge the row's fill cannot overrun, or a fill the row's own step cannot land on`,
 			);
 		}
 	}
