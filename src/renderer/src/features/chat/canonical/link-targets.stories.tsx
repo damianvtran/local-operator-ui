@@ -19,7 +19,7 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
  * must not) and about what the toolbar offers for each kind of target. Both are
  * properties of the components rather than of one session's data: a live run
  * proves them too, but only on whatever transcript that run happened to open,
- * while this fixture holds the eight shapes at once, in every palette, from the
+ * while this fixture holds the nine shapes at once, in every palette, from the
  * diff alone.
  *
  * WHAT A `play` FUNCTION CAN AND CANNOT DRIVE HERE. `play` cannot produce a real
@@ -59,6 +59,19 @@ const FILE_URL = `file://${SHOTS.replace(/ /g, "%20")}`;
 
 const MISSING_MARKER = "/tmp/lo-link-missing/";
 
+/**
+ * The slash-shaped tokens this fixture writes that name NOTHING on disk.
+ *
+ * The stub below stands in for the operator's machine, so it has to answer the
+ * one question the story's new ninth shape turns on: `/new` is a slash command,
+ * not a file, and this is what the disk says about it. It is a literal here for
+ * the same reason every other path in this file is one - the fixture and the
+ * stub disagreeing is a frame that photographs the wrong state while looking
+ * perfectly normal - and NOT a command vocabulary the components consult: the
+ * grammar asks the disk and nothing else.
+ */
+const ABSENT_ON_DISK = ["/new"];
+
 /*
  * Installed at module scope rather than in a `play`, for the reason the composer's
  * electron shim is a module: the toolbar asks on REVEAL, which happens in a later
@@ -73,7 +86,8 @@ if (typeof window !== "undefined") {
 			paths.map((input) => ({
 				input,
 				resolved: input,
-				exists: !input.startsWith(MISSING_MARKER),
+				exists:
+					!input.startsWith(MISSING_MARKER) && !ABSENT_ON_DISK.includes(input),
 				isFile: input !== PROJECT,
 				sizeBytes: 37_000,
 				mtimeMs: 1_760_000_000_000,
@@ -107,7 +121,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 }
 
 /**
- * The motivating turn, and seven more shapes beside it.
+ * The motivating turn, and eight more shapes beside it.
  *
  * Each paragraph is one case, and every one of them is a string this app's own
  * transcripts contain:
@@ -123,14 +137,31 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
  * 6. a directory, so the toolbar's own directory rule is on screen;
  * 7. a path that does not exist, so the "no file" state is on screen;
  * 8. a path long enough to wrap, which is the case that puts the tooltip below the
- *    link rather than over the text beside it.
+ *    link rather than over the text beside it;
+ * 9. the report the operator FILED, in their own words - with a slash COMMAND in
+ *    prose and a second one in backticks, neither of which is a file, in the
+ *    same paragraph as an extensionless token that IS a real directory. The
+ *    linkifier used to underline both commands and answer `No file at /new` on
+ *    hover, which is the screenshot this set exists to settle; the directory
+ *    beside them must keep its link, so the pair is one frame rather than two.
  *
- * A ninth shape - `NoViewerTargets`, below - is a story of its own rather than a
- * paragraph here, because this fixture is what every frame in
- * `docs/evidence/chat-canonical-links/` photographs: adding to it would move the
- * links under it and re-measure every strip in the set. That story is the
+ *    APPENDED, not spliced in beside the first shape, and that is a decision
+ *    rather than tidiness: the 21 entries of `chat-canonical-links--
+ *    detected-targets` in the capture rig find their subjects by selector, and
+ *    the first match wins - inserting a paragraph here would move every one of
+ *    them onto a different element while their names stayed the same. The new
+ *    shape sits below the fold of the 1024x720 frame, so the entry that
+ *    photographs it parks it with the rig's own `scrollTo` (see
+ *    `scripts/capture-evidence.mjs`).
+ *
+ * ONE MORE story - `NoViewerTargets`, below - is a story of its own rather than a
+ * paragraph here, for the same reason: this fixture is what every frame in
+ * `docs/evidence/chat-canonical-links/` photographs, and adding to it would move
+ * the links under it and re-measure every strip in the set. That story is the
  * UNCHANGED half of "a supported file opens in the canvas" - a `.zip` and a
- * `.dmg` keep the OS's own `Open` beside an `.xlsx` that does not.
+ * `.dmg` keep the OS's own `Open` beside an `.xlsx` that does not. (It read "A
+ * ninth shape" before this branch's own ninth paragraph below it; the ordinal is
+ * the only word the fold changed, because two nines is one too many.)
  */
 const ANSWER = [
 	`Saved it to ${REPORT} (37 KB, 8 sheets).`,
@@ -146,6 +177,8 @@ const ANSWER = [
 	`Two more things: ${GONE} is gone, and ${PROJECT} is the folder everything landed in.`,
 	"",
 	"And a long one for the wrap: ~/workspace/opoint-renewal-2026-09-17/exports/2026-09-17/adverse-media-review-full-corpus-with-annotations.xlsx",
+	"",
+	`I noticed that sometimes when new conversations are started with /new and no message has been sent yet, peer messages can end up arriving at the session. \`/new\` at the prompt starts one cleanly, and everything this run wrote is under ${PROJECT}.`,
 ].join("\n");
 
 const CONVERSATION: TranscriptRecord[] = [
@@ -318,9 +351,11 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * The eight shapes at rest, which is also the case the operator reported from the
+ * The nine shapes at rest, which is also the case the operator reported from the
  * other side: before this change every path here was dead text, and the frame
- * that shows them plain is the "before" half of that comparison.
+ * that shows them plain is the "before" half of that comparison. The ninth - the
+ * slash-command paragraph this change is about - is listed with the others in
+ * `CONVERSATION` above.
  */
 export const DetectedTargets: Story = {
 	render: () => <Frame />,
