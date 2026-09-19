@@ -6,6 +6,7 @@
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button } from "@shared/components/ui";
@@ -23,7 +24,8 @@ type RadientAccountSectionProps = {
 export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	onAfterCredentialUpdate,
 }) => {
-	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
+	const { isAuthenticated, user, isLoading, error, signOut, refreshUser } =
+		useRadientAuth();
 	const isSigningOut = useUserStore((state) => state.isSigningOut);
 
 	const handleSignOut = useCallback(async () => {
@@ -93,6 +95,33 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 		);
 	}, [isAuthenticated, user?.radientUser, handleSignOut]);
 
+	/*
+	 * What to say when the account read failed, and what the reader can do.
+	 *
+	 * WHY NOT THE RAW MESSAGE, which is what used to render here ("Error checking
+	 * account status: Get radient.request request failed: 401"): it names a
+	 * transport verb and an HTTP integer, and neither changes what the person
+	 * does next - the rule `backend-error.ts` records for the same mistake on the
+	 * settings surface.
+	 *
+	 * WHY A REFUSAL IS ITS OWN SENTENCE. A 401/403 on this read is Radient
+	 * REJECTING the credential this app already holds, which is a different
+	 * situation from an unreachable server and from not being signed in at all:
+	 * the old credential has to be replaced, and the control that replaces it is
+	 * the sign-in prompt directly below. Every other failure says only what was
+	 * observed and offers the retry, because nothing about it authorises a
+	 * sentence about the credential.
+	 */
+	const accountReadFailure = useMemo(() => {
+		if (!error) return null;
+		const refused =
+			error instanceof DesktopControlError &&
+			(error.status === 401 || error.status === 403);
+		return refused
+			? "Radient refused the account this app is signed in with, so your account details could not be read. Sign in again below to replace that sign-in."
+			: "Your Radient account could not be read. Try again, or sign in again below.";
+	}, [error]);
+
 	const signInSection = useMemo(() => {
 		if (isAuthenticated && user) return null;
 
@@ -137,10 +166,19 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	// sign-in prompt, with the lookup failure above it when there was one.
 	return (
 		<div className="flex flex-col gap-4">
-			{error && (
-				<Alert variant="danger">
-					Error checking account status:{" "}
-					{error instanceof Error ? error.message : String(error)}
+			{accountReadFailure && (
+				<Alert variant="warning">
+					<div className="flex items-center justify-between gap-3">
+						<span>{accountReadFailure}</span>
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => refreshUser()}
+						>
+							Retry
+						</Button>
+					</div>
 				</Alert>
 			)}
 			{signInSection}
