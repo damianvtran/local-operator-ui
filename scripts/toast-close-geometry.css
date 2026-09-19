@@ -1,0 +1,20 @@
+/*
+ * The stylesheet entry for the toast-close geometry harness.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet, so the
+ * toast's ground, ink, border and type step — all of which the theme's inline
+ * custom properties point at — cannot differ between this surface and the
+ * shipped one. Sonner's own stylesheet is NOT imported here: sonner 2.x injects
+ * it from its module into <head> at import time, which is the path the app
+ * takes too, and pinning a second copy here would be a second source for the
+ * close button's `left`/`right`/`transform` rules.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY: this page's
+ * vite root is `scripts/`, outside the renderer tree, so without it Tailwind's
+ * scan misses the renderer's own classes and the shipped component compiles
+ * against an empty utility set. See `composer-alert-geometry.css`, where the
+ * same trap would have measured a page with no defect to report.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";
