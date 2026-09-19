@@ -296,6 +296,13 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
 	"download-verification-failed": "The update couldn't be verified",
 	"artifact-metadata-missing": "The update couldn't be verified",
 	"insufficient-disk-space": "Not enough disk space to update",
+	// The refusal for an artifact macOS would not launch (the 0.29.6 class: a
+	// restricted entitlement with no provisioning profile behind it). It is
+	// deliberately in the user's terms rather than the OS's — the detail line
+	// carries the entitlement and the profile path for whoever reads the log — and
+	// its remedy is a reinstall rather than a retry, because the artifact is
+	// already here and re-downloading the same release delivers the same bundle.
+	"artifact-cannot-launch": "The update can't be launched",
 };
 
 /**

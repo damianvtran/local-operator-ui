@@ -229,6 +229,8 @@ const {
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
+	mainExecutablePath,
+	profileAuthorizes,
 	runChecks,
 	summarize,
 	verifyArtifacts,
@@ -3575,9 +3577,19 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			"app-codesign",
 			"app-spctl",
 			"app-stapler",
+			// The question no other check in this list asks, and the one that
+			// bricked 0.29.6: will macOS actually spawn what we are about to ship?
+			// Honoured only by executing the binary — amfid's refusal is invisible to
+			// codesign, spctl and stapler alike (both measured on the real bundle).
+			"app-spawn",
+			// The cause behind it: a restricted entitlement with no profile to
+			// authorize it.
+			"app-profile-authorization",
 			// The passkey entitlement, asserted on the SIGNED bundle: every failure
 			// downstream of it is silent by design, so the release gate reads it off
 			// the artifact rather than trusting the build (review round 1, finding 6).
+			// Bidirectional since 0.29.6: absent is the shipped default, and present
+			// is only acceptable when a profile authorizes it.
 			"app-webauthn-entitlement",
 			"dmg-spctl",
 			"dmg-stapler",
@@ -3626,6 +3638,17 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// notarized and stapled, and the image itself is none of those.
 	const shippedV0170 = (command, args) => {
 		const joined = args.join(" ");
+		// The spawn probe executes the bundle's own main executable; a stub has to
+		// answer for it like any other command this file runs.
+		if (joined === "-p process.exit(0)") {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		}
 		if (command === "/usr/bin/codesign") {
 			return { status: 0, stdout: "", stderr: "" };
 		}
@@ -3661,29 +3684,41 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
 		failing.failures.map((result) => result.id),
-		// The app's own WebAuthn entitlement is the first thing wrong here: 0.17.0's
-		// signature carries no keychain access group, and the release gate reads that
-		// off the artifact rather than trusting the build (review round 1, finding 6).
-		["app-webauthn-entitlement", "dmg-spctl", "dmg-stapler"],
+		// The image is the only thing wrong here. 0.17.0's app signature carries no
+		// WebAuthn group, which the gate reads off the artifact rather than trusting
+		// the build (review round 1, finding 6) — and since 0.29.6 "no group" is the
+		// SHIPPED arrangement rather than a failure, so that check passes here.
+		["dmg-spctl", "dmg-stapler"],
 	);
 	assert.match(
 		failing.failures.find((result) => result.id === "dmg-spctl").output,
 		/no usable signature/,
 	);
 
-	// The same artifacts after the fix: image signed, notarized and stapled.
+	// The same artifacts after the fix: image signed, notarized and stapled, app
+	// group-free — which is what the release path ships while no provisioning
+	// profile exists, and what a user can actually launch.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
+		if (joined === "-p process.exit(0)") {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		}
 		if (joined.includes("stapler validate")) {
 			return { status: 0, stdout: "The validate action worked!", stderr: "" };
 		}
 		if (joined.includes("--entitlements")) {
-			// The signed, entitled app: the group the release renderer writes into the
-			// build's entitlements plist, read back off the artifact.
+			// The committed plist, read back off the artifact: sandbox and
+			// hardened-runtime keys only, no restricted claim.
 			return {
 				status: 0,
 				stdout:
-					"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+					"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
 				stderr: "",
 			};
 		}
@@ -3700,6 +3735,307 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
 		true,
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The 0.29.6 class: a restricted entitlement with no profile behind it
+// ---------------------------------------------------------------------------
+
+/**
+ * The real v0.29.6 release signature's entitlements, with the team id replaced.
+ *
+ * Captured with `codesign -d --entitlements - --xml` from the bundle the
+ * operator's machine updated itself into on 2026-09-19, and sanitized in exactly
+ * one respect: the team id is a release secret this repository does not publish,
+ * so it is the synthetic id the other fixtures use. Everything else is what
+ * shipped — thirteen unrestricted sandbox/hardened-runtime keys, and
+ * `keychain-access-groups` carrying `<TEAM_ID>.<BUNDLE_ID>.webauthn`.
+ *
+ * This is the negative fixture both directions are asserted against. The same
+ * signature answers `codesign --verify --deep --strict` with exit 0, `spctl -a
+ * -vvv -t exec` with "accepted / Notarized Developer ID" and `stapler validate`
+ * with success (all measured on the real bundle), which is why the checks below
+ * have to ask a different question than the ones already in this file.
+ */
+const V0296_SIGNATURE_ENTITLEMENTS = `<plist version="1.0"><dict><key>com.apple.security.cs.allow-dyld-environment-variables</key><true/><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/><key>com.apple.security.device.audio-input</key><true/><key>com.apple.security.device.camera</key><true/><key>com.apple.security.device.microphone</key><true/><key>com.apple.security.device.screen-capture</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.downloads.read-write</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/><key>com.apple.security.network.client</key><true/><key>com.apple.security.network.server</key><true/><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></plist>`;
+
+/** A bundle laid out enough for the gate: an Info.plist naming the executable and
+ * the bundle id, and a file where that executable would be. */
+function gateFixtureBundle(prefix, { profile = null } = {}) {
+	const dir = tempDir(prefix);
+	const app = join(dir, "Local Operator.app");
+	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+	);
+	writeFileSync(join(app, "Contents", "MacOS", "Local Operator"), "fixture\n");
+	if (profile != null)
+		writeFileSync(join(app, "Contents", "embedded.provisionprofile"), profile);
+	return app;
+}
+
+/**
+ * A `run` that answers for a bundle everything except the spawn probe says yes
+ * to, with the signature's entitlements supplied per case.
+ *
+ * The probe's answer is the one measured on the real 0.29.6 bundle: killed by a
+ * signal at exec, no output (a shell reports that as `Killed: 9`, exit 137).
+ * `spawnRunner` turns it into `status: 1, signal: "SIGKILL"`; the stub produces
+ * that same shape rather than a fabricated exit code, because the predicate's
+ * whole point is that this shape is red.
+ */
+function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
+	return (command, args) => {
+		const joined = args.join(" ");
+		if (joined === "-p process.exit(0)") {
+			return spawnFails
+				? {
+						status: 1,
+						signal: "SIGKILL",
+						timedOut: false,
+						stdout: "",
+						stderr: "",
+					}
+				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+		}
+		if (command.endsWith("/security")) {
+			return {
+				status: profileDump ? 0 : 1,
+				stdout: profileDump ?? "",
+				stderr: "",
+			};
+		}
+		if (joined.includes("--entitlements")) {
+			return { status: 0, stdout: entitlements, stderr: "" };
+		}
+		if (command === "/usr/bin/codesign")
+			return { status: 0, stdout: "", stderr: "" };
+		if (joined.includes("-t exec"))
+			return {
+				status: 0,
+				stdout: "accepted\nsource=Notarized Developer ID",
+				stderr: "",
+			};
+		if (joined.includes("stapler validate"))
+			return { status: 0, stdout: "The validate action worked!", stderr: "" };
+		throw new Error(`unexpected command: ${command} ${joined}`);
+	};
+}
+
+test("the gate refuses the 0.29.6 signature and passes the group-free one", () => {
+	const bricked = gateFixtureBundle("lo-gate-brick-");
+	// The real broken signature: a restricted claim, no profile, and a spawn the OS
+	// refuses. Three findings, because three different questions were unanswerable
+	// about this bundle until this change.
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: bricked,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					spawnFails: true,
+				}),
+			}),
+		).failures.map((result) => result.id),
+		["app-spawn", "app-profile-authorization", "app-webauthn-entitlement"],
+	);
+
+	// The shipped default: the committed plist, no restricted claim at all. This
+	// is the bundle the release path produces while no profile exists, and it has
+	// to pass — the old `app-webauthn-entitlement` failed exactly here.
+	const groupFree = gateFixtureBundle("lo-gate-free-");
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: groupFree,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements:
+						"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
+				}),
+			}),
+		).ok,
+		true,
+	);
+
+	// The passkey arrangement done right: the claim is present AND the embedded
+	// profile authorizes exactly that group, which is the only state in which the
+	// group may be signed in.
+	const authorized = gateFixtureBundle("lo-gate-auth-", {
+		profile: "synthetic\n",
+	});
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: authorized,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					profileDump:
+						"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+				}),
+			}),
+		).failures.map((result) => result.id),
+		[],
+	);
+
+	// A profile that authorizes a DIFFERENT group is the other half of the rule: the
+	// claim is authorized, so macOS spawns the app and `app-profile-authorization`
+	// passes — what is wrong is the feature, which can never work because Chromium
+	// asks for the exact group in the signature. That is `app-webauthn-entitlement`'s
+	// job, and it is why the two checks are not one.
+	const wrongProfile = gateFixtureBundle("lo-gate-wrong-", {
+		profile: "synthetic\n",
+	});
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: wrongProfile,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					profileDump:
+						"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.somebody-else.webauthn</string></array></dict></dict></plist>",
+				}),
+			}),
+		).failures.map((result) => result.id),
+		["app-webauthn-entitlement"],
+	);
+
+	// The predicate itself, so the cases above are not the only statement of it.
+	assert.equal(
+		profileAuthorizes(
+			"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+			"keychain-access-groups",
+			"com.local-operator",
+			"AB12CD34EF.com.local-operator.webauthn",
+		),
+		true,
+	);
+	assert.equal(profileAuthorizes(null, "keychain-access-groups"), false);
+	assert.equal(
+		profileAuthorizes("", "com.apple.developer.associated-domains"),
+		false,
+	);
+});
+
+test("the update pre-flight refuses the artifact macOS would not launch", () => {
+	const block = install.stagedSignatureBlock({
+		entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.equal(block.code, "artifact-cannot-launch");
+	assert.match(block.message, /update to version 0\.29\.6 can't be launched/);
+	assert.equal(block.remedy.url, install.DOWNLOAD_PAGE_URL);
+	// The detail names the cause, not just the symptom: it is what a support thread
+	// has to quote, and the entitlement alone would not say why it matters.
+	assert.match(block.detail, /keychain-access-groups/);
+	assert.match(block.detail, /embedded\.provisionprofile/);
+
+	// The positive direction: the committed, group-free signature is what the
+	// release path ships now, and it must install.
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist:
+				"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
+			embeddedProfile: false,
+			artifactName: "local-operator-ui-0.30.0-arm64.zip",
+			version: "0.30.0",
+		}),
+		null,
+	);
+	// Passkeys enabled, profile embedded: the arrangement that works.
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+			embeddedProfile: true,
+			artifactName: "local-operator-ui-0.30.0-arm64.zip",
+			version: "0.30.0",
+		}),
+		null,
+	);
+	// "We could not read the signature" is not "nothing is claimed": refused when
+	// no profile is embedded, allowed when one is.
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist: null,
+			embeddedProfile: false,
+			artifactName: "unknown.zip",
+		})?.code,
+		"artifact-cannot-launch",
+	);
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist: null,
+			embeddedProfile: true,
+			artifactName: "unknown.zip",
+		}),
+		null,
+	);
+
+	// The policy the app and the gate share, stated once: the sandbox and
+	// hardened-runtime families need no profile, and anything else does — including
+	// spellings nobody has invented yet, which is the fail-closed direction.
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.security.cs.allow-jit"),
+		false,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.security.device.camera"),
+		false,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("keychain-access-groups"),
+		true,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement(
+			"com.apple.developer.associated-domains",
+		),
+		true,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.some.future.thing"),
+		true,
+	);
+});
+
+test("the artifact's own members decide, and the wrong binary is not read", () => {
+	// A listing shaped like the real 0.29.6 archive: the helper bundles' own
+	// Contents/MacOS entries come FIRST, and only the top-level app's executable is
+	// the one launchd would run. Reading a helper would answer about the wrong
+	// binary — and in this incident the helpers were refused too, for the same
+	// reason, so a check bound to the wrong file could still look right.
+	const listing = [
+		"Local Operator.app/",
+		"Local Operator.app/Contents/Frameworks/",
+		"Local Operator.app/Contents/Frameworks/Local Operator Helper (GPU).app/Contents/MacOS/Local Operator Helper (GPU)",
+		"Local Operator.app/Contents/Frameworks/Local Operator Helper (Renderer).app/Contents/MacOS/Local Operator Helper (Renderer)",
+		"Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+		"Local Operator.app/Contents/Info.plist",
+		"Local Operator.app/Contents/MacOS/",
+		"Local Operator.app/Contents/MacOS/Local Operator",
+	].join("\n");
+	assert.equal(
+		install.zipMainExecutableEntry(listing),
+		"Local Operator.app/Contents/MacOS/Local Operator",
+	);
+	assert.equal(install.zipListingHasEmbeddedProfile(listing), false);
+	assert.equal(
+		install.zipListingHasEmbeddedProfile(
+			`${listing}\nLocal Operator.app/Contents/embedded.provisionprofile`,
+		),
+		true,
+	);
+	assert.equal(
+		install.zipMainExecutableEntry("Local Operator.app/Contents/MacOS/"),
+		null,
+	);
+	assert.equal(install.zipListingHasEmbeddedProfile(""), false);
 });
 
 test("missing artifacts fail rather than passing vacuously", () => {

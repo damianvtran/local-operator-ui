@@ -21,6 +21,7 @@ import {
 	relative,
 } from "node:path";
 import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
+import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
 
 /**
  * Pure helpers behind the application update path.
@@ -238,7 +239,8 @@ export type InstallBlockCode =
 	| "installed-bundle-not-sealed"
 	| "download-verification-failed"
 	| "insufficient-disk-space"
-	| "artifact-metadata-missing";
+	| "artifact-metadata-missing"
+	| "artifact-cannot-launch";
 
 /** What the user can actually do about a refusal, in their own UI terms. */
 export type UpdateRemedy = {
@@ -981,6 +983,176 @@ export function resolveStagedArtifactPath(input: {
 		if (match) return join(input.pendingDir, match);
 	}
 	return null;
+}
+
+/**
+ * Where macOS looks for the profile that authorizes a restricted entitlement,
+ * as it appears inside an artifact's zip. Read from the app's shared definition
+ * (`src/shared/macos-entitlement-policy.json`), which the release gate reads
+ * too, so the two cannot disagree about which file matters.
+ */
+export const EMBEDDED_PROVISIONING_PROFILE_PATH =
+	MACOS_ENTITLEMENT_POLICY.embeddedProvisioningProfilePath;
+
+/**
+ * Facts about a staged artifact's signature, read without installing it.
+ *
+ * Three fields rather than a boolean because the refusal has to distinguish
+ * "nothing was claimed" from "we could not read the claim": a blacklist read
+ * that failed is not evidence of a launchable bundle, and this module's own
+ * precedent is that "the probe could not run" is a different claim from "the
+ * probe said no" (`SealVerdict`).
+ */
+export type StagedSignatureFacts = {
+	/** `codesign -d --entitlements - --xml` on the artifact's main executable.
+	 * `null` when the executable or its signature could not be read at all. */
+	entitlementsPlist: string | null;
+	/** Whether the artifact carries an embedded provisioning profile. */
+	embeddedProfile: boolean;
+	/** File name of the artifact, for the refusal's detail line. */
+	artifactName: string;
+	/** The release being verified, for the refusal copy. */
+	version?: string | null;
+};
+
+/**
+ * Whether one entitlement key needs a provisioning profile behind it.
+ *
+ * Apple's TN3125 names the UNRESTRICTED families (the App Sandbox, the hardened
+ * runtime, `get-task-allow`, `application-groups`) and says everything else must
+ * be authorized by a profile. So this is a list of the unrestricted spellings,
+ * and an unrecognised key — including one added after this was written — counts
+ * as restricted. That is the fail-closed direction on purpose: the cost of
+ * over-calling is a refusal with an explanation, and the cost of under-calling
+ * is the 0.29.6 incident, where every executable in the bundle was refused at
+ * spawn.
+ */
+export function isProfileBackedEntitlement(key: string): boolean {
+	if (MACOS_ENTITLEMENT_POLICY.unrestrictedEntitlementKeys.includes(key)) {
+		return false;
+	}
+	return !MACOS_ENTITLEMENT_POLICY.unrestrictedEntitlementPrefixes.some(
+		(prefix) => key.startsWith(prefix),
+	);
+}
+
+/**
+ * Every entitlement an entitlements plist claims that needs a profile.
+ *
+ * The scan reads `<key>` names only: the question is WHICH entitlements are
+ * claimed, not what they are set to. `null` and the empty string both mean the
+ * signature claimed nothing, which is the ordinary case for an artifact this
+ * project signs today — `build/entitlements.mac.plist` is entirely sandbox and
+ * hardened-runtime keys.
+ */
+export function profileBackedEntitlementKeys(
+	plistText: string | null | undefined,
+): string[] {
+	const keys: string[] = [];
+	for (const match of String(plistText ?? "").matchAll(
+		/<key>([^<]+)<\/key>/g,
+	)) {
+		const key = match[1];
+		if (isProfileBackedEntitlement(key) && !keys.includes(key)) keys.push(key);
+	}
+	return keys;
+}
+
+/**
+ * Whether a zip listing carries the bundle's embedded provisioning profile.
+ *
+ * Matched on the path's tail rather than on the app's name: the listing's root
+ * entry is whatever electron-builder named the bundle, and the profile's
+ * location inside it is fixed by macOS. Zip entries are always forward-slash
+ * separated, whatever platform wrote the archive.
+ */
+export function zipListingHasEmbeddedProfile(listing: string): boolean {
+	const suffix = `/${EMBEDDED_PROVISIONING_PROFILE_PATH}`;
+	return String(listing ?? "")
+		.split("\n")
+		.some((entry) => entry.trim().endsWith(suffix));
+}
+
+/**
+ * The archive entry holding the bundle's own main executable, or null.
+ *
+ * Only the TOP-LEVEL `.app` is considered. An Electron bundle also carries
+ * `Contents/Frameworks/Local Operator Helper*.app/Contents/MacOS/...` and the
+ * Squirrel framework's ShipIt, and reading one of those would answer a question
+ * about the wrong binary — this module wants the executable launchd would run.
+ * The entry has to be a file, so the bare directory entries a zip also lists
+ * (they end in `/`) are skipped.
+ */
+export function zipMainExecutableEntry(listing: string): string | null {
+	for (const raw of String(listing ?? "").split("\n")) {
+		const entry = raw.trim();
+		if (!entry || entry.endsWith("/")) continue;
+		if (/^[^/]+\.app\/Contents\/MacOS\/[^/]+$/.test(entry)) return entry;
+	}
+	return null;
+}
+
+/**
+ * The refusal for a staged artifact macOS would refuse to launch.
+ *
+ * Why an update has to care before it installs: the 0.29.6 release signed
+ * `keychain-access-groups` into every executable of the bundle and embedded no
+ * provisioning profile, so amfid refused every Mach-O at exec — the app could
+ * not be launched at all, and neither could the ShipIt that was supposed to
+ * relaunch it. The user was left with no app and no message. Every check the
+ * pipeline had (and every check this pre-flight already had) passed on that
+ * artifact, because none of them asks whether macOS will spawn it.
+ *
+ * The remedy is a reinstall rather than a retry: the artifact is already here,
+ * verified byte for byte, and re-downloading the same release would deliver the
+ * same bundle — which is why the copy sends the user to the download page
+ * instead of telling them to check for updates again.
+ */
+export function stagedSignatureBlock(
+	facts: StagedSignatureFacts,
+): InstallBlock | null {
+	/*
+	 * A signature that could not be read is refused UNLESS the artifact carries
+	 * the profile.
+	 *
+	 * The asymmetry is deliberate and it is the one place this check chooses the
+	 * strict direction, so the reasoning is recorded here rather than rediscovered:
+	 * "no profile AND a signature we could not read" is the exact shape 0.29.6 had
+	 * (the profile was absent; the only thing we could not see was the claim), and
+	 * a running app that installs it leaves the user with no app at all. The cost
+	 * of the strict side is bounded to artifacts whose main executable cannot be
+	 * extracted or signed-read from the archive — not a transient probe failure,
+	 * which is what the seal check's "we could not ask" rule covers — and the
+	 * remedy for it (a fresh download) is the one that works either way.
+	 */
+	if (facts.entitlementsPlist == null) {
+		if (facts.embeddedProfile) return null;
+		return {
+			code: "artifact-cannot-launch",
+			message: facts.version
+				? `The update to version ${facts.version} can't be checked for launch, so it wasn't installed.`
+				: "The downloaded update can't be checked for launch, so it wasn't installed.",
+			remedy: {
+				text: "Download a fresh copy from the website and replace the app in Applications.",
+				url: DOWNLOAD_PAGE_URL,
+			},
+			detail: `${facts.artifactName} carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH} and its signature could not be read, so a restricted entitlement it may claim cannot be shown to be authorized.`,
+		};
+	}
+	const claimed = profileBackedEntitlementKeys(facts.entitlementsPlist);
+	if (claimed.length === 0) return null;
+	if (facts.embeddedProfile) return null;
+	return {
+		code: "artifact-cannot-launch",
+		message: facts.version
+			? `The update to version ${facts.version} can't be launched by macOS, so it wasn't installed.`
+			: "The downloaded update can't be launched by macOS, so it wasn't installed.",
+		remedy: {
+			text: "Download a fresh copy from the website and replace the app in Applications.",
+			url: DOWNLOAD_PAGE_URL,
+		},
+		detail: `${facts.artifactName} claims ${claimed.join(", ")} in its signature and carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH}: macOS requires a profile to authorize a restricted entitlement (Apple TN3125) and refuses to launch the app without one.`,
+	};
 }
 
 // ---------------------------------------------------------------------------

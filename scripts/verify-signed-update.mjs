@@ -236,6 +236,16 @@ const SIGNATURE_CHECK_IDS = new Set([
 	"dmg-stapler",
 ]);
 
+/*
+ * `app-spawn` AND `app-profile-authorization` ARE DELIBERATELY NOT IN THAT SET.
+ * Both ask about the artifact rather than about this host's capabilities, so a
+ * failure is the candidate's own. In particular `app-spawn` executing a bundle
+ * the OS refuses is exactly the 0.29.6 class: an artifact produced by a signing
+ * job that cannot be launched. Recording that as BLOCKED - "this host cannot
+ * sign" - would put the one verdict this repository has already been burned by
+ * behind the one verdict nobody has to act on.
+ */
+
 /**
  * A candidate whose signature checks failed is BLOCKED, not FAIL.
  *
