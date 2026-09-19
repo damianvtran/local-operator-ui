@@ -113,9 +113,39 @@ export interface BrowserChromeState {
 	canGoForward: boolean;
 	pendingConsent: PendingConsentView[];
 	approvals: ApprovalView[];
+	/** The download surface (§16.4): what the host is writing now, where, and the
+	 * last few decisions.
+	 *
+	 * WHY IT IS PART OF THIS PROJECTION rather than a channel of its own: it is
+	 * chrome state the host owns, it changes for the same reason the tab list does
+	 * (something happened in the browser), and `browser-projection-store.ts`'s rule
+	 * is one event and one read rather than two projections that can disagree. The
+	 * renderer never computes any of it: `dir` is the path MAIN opened, and the
+	 * notes are main's decisions.
+	 *
+	 * Optional because a host that predates the feature answers without it — the row
+	 * then simply never renders, which is the honest degrade for a build that cannot
+	 * download anything. */
+	downloads?: DownloadActivityView;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
+}
+
+/** One download decision, as the host reports it. */
+export interface DownloadNoteView {
+	name: string;
+	outcome: "saved" | "refused";
+	reason: string;
+	at: number;
+}
+
+/** What the download row renders. `active` is the name of the download in flight,
+ * `dir` the directory the host is writing into (null before any arm). */
+export interface DownloadActivityView {
+	active: string | null;
+	dir: string | null;
+	notes: DownloadNoteView[];
 }
 
 export type ConsentDecision = "once" | "session" | "site" | "domain" | "deny";
@@ -221,6 +251,15 @@ export interface BrowserChrome {
 	revokeAllApprovals: () => Promise<void>;
 	forgetSite: (origin: string) => Promise<void>;
 	clearData: (what: "cookies" | "cache" | "everything") => Promise<void>;
+	/**
+	 * Open the host's download directory in the OS file manager (§16.4).
+	 *
+	 * A HUMAN ACTION BY CONSTRUCTION, and this is the design's line rather than a
+	 * UI preference: §11.4 forbids "reveal in Finder" FROM THE TOOL, so the agent has
+	 * no route to this — it is a button the user presses, and the path it opens is
+	 * the one main chose, never one this side named.
+	 */
+	revealDownloads: () => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -477,6 +516,7 @@ export function useBrowserChrome(): BrowserChrome {
 			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
 			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
 			clearData: (what) => runVoid(() => api?.clearData(what)),
+			revealDownloads: () => runVoid(() => api?.revealDownloads()),
 		}),
 		[
 			state,

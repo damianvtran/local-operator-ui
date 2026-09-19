@@ -87,6 +87,16 @@ export const METHODS = [
 	"owner_retain",
 	"owner_release",
 	...CONSOLE_METHODS,
+	// File transfer, appended in the Python source's order so the two lists stay
+	// comparable by eye (design §6.1, §6.5). Both halves are NOT symmetric on the
+	// extension, and the reason is a measurement rather than a preference — see
+	// `EXTENSION_CANNOT_SERVE` in `browser_bridge/protocol.py`: no extension build
+	// can serve `download`, because Chrome refuses an extension every CDP primitive
+	// that could put a file where the harness chose (measured 2026-09-18, Chrome
+	// 153), while `upload` rides `DOM.setFileInputFiles` on the session it already
+	// holds. THIS host serves both.
+	"download",
+	"upload",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -128,6 +138,16 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	cancel_access: 20.0,
 	retitle: 20.0,
 	...CONSOLE_COMMAND_TIMEOUTS_S,
+	// `download` waits on a PAGE rather than on us: the click that starts it may be
+	// followed by a slow server, and the agent's own `timeout_s` may raise the wait
+	// (clamped to `CAPS.downloadTimeoutMaxS`). It is the one method whose bound is
+	// measured in minutes rather than seconds, which is why the harness's discovery
+	// record is what tells a session this host can serve it at all (design §6.3)
+	// rather than the budget implying it.
+	download: 120.0,
+	// `upload` is local: the browser reads the bytes off disk, so the budget covers
+	// the attach plus the read-back that proves the DOM holds them.
+	upload: 60.0,
 };
 
 /**
@@ -156,6 +176,15 @@ export const ERROR_CODES = [
 	"proto_mismatch",
 	"owner_refused",
 	"extension_unresponsive",
+	// Present for MIRROR PARITY with `protocol.py`'s `ErrorCode`, and emitted by the
+	// DAEMON, never by this host (§6.2). It has to be in this list for the reason
+	// `rpc.ts` narrows an unknown code to `internal`: an already-released session
+	// validates `ErrorDetail.code` against the Python enum, so a frame carrying a
+	// code it does not know is DROPPED — which is worse than a wrong answer, because
+	// the caller waits out its whole budget. The daemon is on the safe side of that
+	// direction (daemon -> session), a browser host is not, which is exactly why a
+	// policy refusal travels as an `ok: true` result here.
+	"capability_unsupported",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
 	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
@@ -185,6 +214,56 @@ export interface ScrollResult {
 	url: string;
 	title: string;
 }
+
+/** One file's facts, in the ONE shape both hosts return for `download` and
+ * `upload` — byte-for-byte the generated `FileFact` (`gen_ts.py`, design §6.1).
+ *
+ * `sha256` is computed by PYTHON, never by a host: a host that reports a hash it
+ * did not compute is a host whose word is being trusted, which is the property
+ * the post-hoc verification (§5.3) exists to remove. A host therefore sends ""
+ * here and Python replaces it from the bytes on disk.
+ *
+ * `sniffed` is what the reporting side observed about the CONTENT, or "" when it
+ * could observe nothing — which is every case in this host: only Python reads the
+ * bytes. `mime` is what the SERVER declared. */
+export interface FileFact {
+	name: string;
+	path: string;
+	bytes: number;
+	mime: string;
+	sniffed: string;
+	sha256: string;
+}
+
+/** `download` -> the files that landed, whether a capture was armed at all, and
+ * why not. `armed: false` with a `reason` is a POLICY ANSWER, not a fault. */
+export interface DownloadResult {
+	files: FileFact[];
+	armed: boolean;
+	reason: string;
+}
+
+/** `upload` -> the selectors that accepted files, and the facts of what the DOM
+ * actually holds after the attach (read back, never assumed). */
+export interface UploadResult {
+	inputs: string[];
+	accepted: FileFact[];
+}
+
+/**
+ * The methods THIS host build serves, as it advertises them.
+ *
+ * WHY CAPABILITY AND NOT A VERSION COMPARISON (design §6.3): a host that predates
+ * a feature must produce a TYPED degrade naming the remedy, and version
+ * arithmetic cannot tell "older" from "current but stopped answering" — the two
+ * have opposite remedies. The same list travels in the discovery record
+ * (`state-file.ts`'s `capabilities`) and in `/health`, which is what lets the
+ * harness degrade without opening a socket at all.
+ *
+ * ONE constant, three writers: a second list beside this one is how a host starts
+ * advertising something it does not serve.
+ */
+export const HOST_CAPABILITIES: readonly Method[] = ["download", "upload"];
 
 export interface Request {
 	id: string;
@@ -226,4 +305,8 @@ export interface HealthBody {
 	 * facts that identify this process — never anything readable from the jar.
 	 */
 	console?: boolean;
+	/** The methods this build serves, additively (§6.3): a caller that predates the
+	 * field reads a missing key as "nothing advertised" and degrades typed, and one
+	 * that does not reads the same list the discovery record carries. */
+	capabilities: string[];
 }

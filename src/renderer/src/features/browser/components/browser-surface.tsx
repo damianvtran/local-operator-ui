@@ -38,6 +38,7 @@ import {
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
+import { BrowserDownloadRow } from "./browser-download-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserTabStrip } from "./browser-tab-strip";
@@ -524,6 +525,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onOpenApprovals={() => setDockOpen((open) => !open)}
 				waitingCount={queue.count}
 				triggerRef={approvalsTriggerRef}
+			/>
+			{/* The download row sits in the SAME strip as the consent band and the popup
+			    notice, and ABOVE the band deliberately: a refusal is the case a human has
+			    to see, and the band's own visibility is driven by a pending approval, which
+			    a download usually does not have. Rendering it as the band's child would
+			    make the row invisible in exactly the common case (§16.4). */}
+			<BrowserDownloadRow
+				downloads={chrome.state?.downloads}
+				onReveal={() => void chrome.revealDownloads()}
 			/>
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One

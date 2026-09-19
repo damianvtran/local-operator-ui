@@ -136,6 +136,8 @@ declare global {
 							| "credential-not-offered";
 					}) => void,
 				) => () => void;
+				/** Reveal the host's own download directory (§16.4). Takes no path. */
+				revealDownloads: () => Promise<unknown>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

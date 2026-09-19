@@ -52,10 +52,33 @@ const SOURCE_REPO = "damianvtran/local-operator";
 export const VENDORED_FILES = [
 	{ from: "extension/src/driver/psl.gen.ts", to: "driver/psl.gen.ts" },
 	{ from: "extension/src/driver/access-flow.ts", to: "driver/access-flow.ts" },
-	{ from: "extension/src/driver/access-queue.ts", to: "driver/access-queue.ts" },
+	{
+		from: "extension/src/driver/access-queue.ts",
+		to: "driver/access-queue.ts",
+	},
 	{ from: "extension/src/driver/ax-compact.ts", to: "driver/ax-compact.ts" },
 	{ from: "extension/src/driver/deadline.ts", to: "driver/deadline.ts" },
 	{ from: "extension/src/driver/errors.ts", to: "driver/errors.ts" },
+	// The file-transfer policy pair (design §10.4). Listed TOGETHER and in this order
+	// because the second is the generated table the first imports: a pin that moved
+	// one without the other would typecheck in lop and fail here, which is the
+	// failure mode the vendoring gate exists to make loud.
+	//
+	// `file-transfer-policy.ts` is HAND-WRITTEN in lop (the sanitiser and the
+	// name-vs-list check — deliberately not a sniffer: this host cannot read the
+	// bytes Chrome wrote, so a signature table here would be dead code pretending to
+	// be a control). `file-transfer.tables.gen.ts` is emitted by `gen_ts.py` from
+	// `local_operator/browser_files.py`, which is the one source of truth for the
+	// deny/allow lists, the caps and the conformance fixture — the same
+	// generated-table discipline `psl.gen.ts` above follows.
+	{
+		from: "extension/src/driver/file-transfer-policy.ts",
+		to: "driver/file-transfer-policy.ts",
+	},
+	{
+		from: "extension/src/driver/file-transfer.tables.gen.ts",
+		to: "driver/file-transfer.tables.gen.ts",
+	},
 	{
 		from: "extension/src/driver/origin-policy.ts",
 		to: "driver/origin-policy.ts",
@@ -261,7 +284,11 @@ async function main() {
 	]);
 	const protoVersion = /^PROTO_VERSION\s*=\s*(\d+)/m.exec(protocolSource)?.[1];
 
-	const inputs = [sha, "local_operator/browser_bridge/protocol.py", protocolSource];
+	const inputs = [
+		sha,
+		"local_operator/browser_bridge/protocol.py",
+		protocolSource,
+	];
 	const files = {};
 	const written = [];
 	for (const entry of VENDORED_FILES) {
@@ -318,7 +345,7 @@ async function main() {
 		`PROVENANCE.json: proto_version=${provenance.proto_version} inputs_sha256=${provenance.inputs_sha256}`,
 	);
 	console.log(
-		`note: this proves nothing about drift against lop — run scripts/check-vendored.mjs for the in-repo gate.`,
+		"note: this proves nothing about drift against lop — run scripts/check-vendored.mjs for the in-repo gate.",
 	);
 }
 

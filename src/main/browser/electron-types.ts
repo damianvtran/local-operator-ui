@@ -31,6 +31,34 @@ export interface DebuggerLike {
 	removeListener?(event: string, listener: (...args: never[]) => void): void;
 }
 
+/** The subset of Electron's `DownloadItem` the download path reads and drives.
+ *
+ * Structural, like everything else in this file, so `scripts/browser-host.test.mjs`
+ * can drive the arm-gated save path with a fake item and a real temp directory —
+ * the save path, the uniquifier, the name refusal and the read-back comparison
+ * are the parts worth testing, and none of them need Chromium's download stack.
+ *
+ * `once` rather than `on`: the capture attaches exactly one `done` listener per
+ * item and the item is discarded with it. */
+export interface DownloadItemLike {
+	getFilename(): string;
+	getURL(): string;
+	getMimeType(): string;
+	/** Total size, or -1 when the response declares none. The cap is enforced
+	 * BEFORE the write when this is known (design §10.3). */
+	getTotalBytes(): number;
+	getReceivedBytes(): number;
+	setSavePath(path: string): void;
+	getSavePath(): string;
+	cancel(): void;
+	/** `progressing` | `completed` | `cancelled` | `interrupted`. */
+	getState(): string;
+	once(
+		event: "done",
+		listener: (event: unknown, state: string) => void,
+	): unknown;
+}
+
 /** The subset of `WebContents` the driver uses. */
 export interface DriveableWebContents {
 	readonly id: number;
