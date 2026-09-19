@@ -2295,8 +2295,9 @@ export const NothingOpenEmpty: Story = {
 /**
  * The blank canvas at the dock's 400px FLOOR, which is the state the action row
  * was fixed for and the one NO frame held: `nothing-open` and
- * `nothing-open-empty` are 718px, the `CanvasFrame` default, where the row has
- * room and `flex-wrap` never fires (design round 2, D9).
+ * `nothing-open-empty` render at the `CanvasFrame` default, 720px (the row box
+ * measures 718px inside it), where the row has room and `flex-wrap` never fires
+ * (design round 2, D9).
  *
  * With files, because that is the wrapping case: `Browse files (12)` is the widest
  * of the three actions, and it is the measurement that failed at this width before

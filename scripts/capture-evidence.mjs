@@ -2556,11 +2556,11 @@ export const STORIES = [
 	["canvas-workspace--nothing-open-empty", 1280, 900],
 	/*
 	 * THE BLANK CANVAS AT THE DOCK'S 400px FLOOR (design round 2, D9). The two
-	 * `nothing-open*` frames above render at the story default (718px measured),
-	 * where the action row has room and its `flex-wrap` never fires - so the state
-	 * the row was fixed FOR had no picture, and the round-1 record claimed one. This
-	 * entry is that state: the three actions, with files, inside a 351px content
-	 * box.
+	 * `nothing-open*` frames above render at the `CanvasFrame` default - 720px, with
+	 * the row box measuring 718px inside it - where the action row has room and its
+	 * `flex-wrap` never fires, so the state the row was fixed FOR had no picture and
+	 * the round-1 record claimed one. This entry is that state: the three actions,
+	 * with files, inside a 351px content box.
 	 */
 	["canvas-workspace--nothing-open-narrow", 1280, 900],
 	/*
