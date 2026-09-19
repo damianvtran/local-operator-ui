@@ -694,7 +694,11 @@ test("the connectivity band offers its Retry only where a re-pairing act exists"
 	assert.equal(pairingHasRemedy("governed-elsewhere"), false);
 	assert.equal(pairingHasRemedy("pre-handshake"), false);
 	for (const cause of ["successor", "credential-refused", "unpaired", null])
-		assert.equal(pairingHasRemedy(cause), true, `${cause} is the app's to repair`);
+		assert.equal(
+			pairingHasRemedy(cause),
+			true,
+			`${cause} is the app's to repair`,
+		);
 
 	const governed = serverBannerCopy(detached("governed-elsewhere"));
 	assert.equal(
@@ -746,7 +750,10 @@ test("a relay is rebuilt when the CREDENTIAL changes under a stable address", ()
 		"a re-pair on the same port must rebuild: the old bearer is refused forever",
 	);
 	assert.equal(
-		relayNeedsRebuild({ url, token: "key-a" }, { url: "http://127.0.0.1:46141", token: "key-a" }),
+		relayNeedsRebuild(
+			{ url, token: "key-a" },
+			{ url: "http://127.0.0.1:46141", token: "key-a" },
+		),
 		true,
 		"and so must a moved address",
 	);

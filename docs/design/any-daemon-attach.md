@@ -582,3 +582,52 @@ place to look is the claim path, not the copy.
    adjacent to a design that contradicts it.
 8. **No version bump in the PR**, and no new `CONTROLS` row unless a new visual
    surface actually appears (`AGENTS.md`).
+
+---
+
+## 11. Corrected and added by review round 1
+
+This section is the round's own record of where the design above was wrong or
+incomplete. The text above is left as it was written; these entries govern.
+
+1. **§ 0(c) and § 2 S2 mis-attribute the operator's screen (design round 1, D5).**
+   The daemon's sentence — *"Desktop controls require a backend started by the
+   desktop app."* — is written by `local_operator/server/desktop.py` only when the
+   plane is CLOSED (`desktop_posture().enabled` is false): unclaimed, and no
+   environment token. A plane governed by another program does not answer with
+   that prose; it answers 401/403 to a caller that is not its principal. So the
+   photographed state was a closed plane this app held no claimable credential
+   for, and § 2's S2 sentence with its withheld control belongs only where the
+   plane is genuinely another principal's (the record's `desktop: true` with an
+   empty `claim_key`). The closed-plane case is worded by the transport table
+   (`pairing.plane-closed`), and the frames below were re-attributed accordingly.
+
+2. **§ 4's per-surface table was wrong about the pane (design round 1, D1, D6).**
+   It assigned the pane the BANNER's sentence. Measured in a frame, that rendered
+   one 169-character sentence twice on one screen, the second copy a screen-height
+   below the first, listing the app-wide losses inside a pane whose own condition
+   is that this conversation cannot be read. The pane now has its own sentence per
+   cause (`BACKEND_PANE_SENTENCE`): its own consequence, and — because it is the
+   screen that hides the user's conversations — where those conversations still
+   are.
+
+3. **§ 2's "the connectivity banner keeps its title unchanged" is narrowed.**
+   The band above offered its Retry for a state the band below declared
+   un-remediable, and promised an automatic reconnection for a plane this app may
+   never drive (design round 1, D2; UX round 1, U3). Its control and its promise
+   are now gated on the same pairing cause the compatibility band uses.
+
+4. **A defect the design did not know about, found by QA (Q-2): the feed relay
+   was bound to the address and not to the credential.** A re-pair keeps the port
+   and replaces the claim key, so a rebuild keyed on the URL alone left a relay
+   that was refused on every attempt — the sidebar went on saying "Not connected
+   to the backend — showing the last known state." while main reported the app
+   attached and paired, and it never cleared. `relayNeedsRebuild` now states the
+   rule once, and the feed relay applies it.
+
+5. **The rig could be configured against the operator's live daemon (Q-1).**
+   `src/main/backend/config.ts` folds a `.env` from `process.cwd()` with
+   `override: true`, so a boot whose cwd was the checkout was configured for
+   whatever that file pinned. Every boot in `attach-frame-evidence.mjs` now names a
+   scratch working directory, the app is launched by absolute path, and each scene
+   asserts from the app's own log which address it was configured for.
