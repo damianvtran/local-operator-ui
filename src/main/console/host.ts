@@ -931,6 +931,8 @@ export class ConsoleHost {
 		if (runtime.subscribers.size === 0) return;
 		runtime.pending.push(bytes);
 		if (runtime.pendingTimer) return;
+		// NOT unref'd, for `delay`'s reason: this timer is what delivers a coalesced
+		// frame to subscribers, and an idle loop must not be able to drop it.
 		runtime.pendingTimer = setTimeout(() => {
 			runtime.pendingTimer = null;
 			const pending = runtime.pending;
@@ -1255,10 +1257,21 @@ export function framePng(image: NativeImage): Buffer {
  * payload is small enough that the allocation is the whole cost. */
 const ENCODER = new TextEncoder();
 
+/**
+ * A delay that KEEPS THE PROCESS ALIVE, which is the whole point of it.
+ *
+ * The first version `unref()`d the timer, and that is a promise that can be
+ * stranded: an awaited unref'd timer does not hold the event loop open, so a
+ * process whose only pending work is this delay drains its loop, the await never
+ * settles, and node's test runner cancels whatever was waiting on it —
+ * measured in CI as `cancelledByParent` with "Promise resolution is still
+ * pending but the event loop has already resolved", on the capture retry below.
+ * Three call sites depend on it settling: the capture retry, and the close grace
+ * that races a pty's exit.
+ */
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => {
-		const timer = setTimeout(resolve, ms);
-		timer.unref?.();
+		setTimeout(resolve, ms);
 	});
 }
 

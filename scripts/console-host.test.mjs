@@ -923,6 +923,26 @@ test("input is written as bytes, and paste is bracketed only when the record say
 	assert.equal(pty.written[4], "\x03");
 });
 
+test("the wire's cursor is the emulator's {x, y}, and not the tool's {row, col}", async () => {
+	// §10.2 never shaped this field and §5.4 names the emulator's `{x, y}`; a
+	// neighbouring PR parsed `{row, col}` and rendered "cursor: row None", which is a
+	// false statement in a model-facing result whose own tests could not see it. The
+	// shape is therefore asserted here rather than merely the field's presence.
+	const { host, spawned } = hostWithWindow();
+	const created = await createSurface(host);
+	spawned[0].pty.emit("hi");
+	await ticks(30);
+	const status = await host.status(created.surface);
+	assert.deepEqual(Object.keys(status.cursor).sort(), ["x", "y"]);
+	assert.equal(typeof status.cursor.x, "number");
+	assert.equal(typeof status.cursor.y, "number");
+	assert.equal(status.cursor.x, 2);
+	assert.equal(status.cursor.y, 0);
+	// The read carries the same shape, from the same source.
+	const read = await host.read(created.surface, "viewport");
+	assert.deepEqual(Object.keys(read.cursor).sort(), ["x", "y"]);
+});
+
 test("an input payload past the bound is refused before any byte reaches the pty", async () => {
 	const { host, spawned } = hostWithWindow();
 	const created = await createSurface(host);
