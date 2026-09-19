@@ -51,7 +51,7 @@ import { canvasDocumentForPath } from "./canvas-document";
 import type { CanvasPane } from "./canvas-pane";
 import { getFileTypeFromPath } from "./file-types";
 import { getFileName } from "./get-file-name";
-import { probeStateFor, probeTarget } from "./link-actions";
+import { type ProbedTarget, forgetProbe, probeStateFor } from "./link-actions";
 import { READ_ENCODING, viewerFor } from "./viewer-routing";
 
 /**
@@ -60,16 +60,26 @@ import { READ_ENCODING, viewerFor } from "./viewer-routing";
  * One mebibyte, and the number is about the store rather than about reading:
  * `canvas-store` persists its documents to `localStorage` with no `partialize`,
  * so a document's `content` is a persisted string, base64 inflates it by about a
- * third, and the whole app shares a quota of roughly 5 MB. Above this the
- * document is opened the way every Files-panel MENTION is opened - a pointer
- * with `sizeBytes` and no bytes - and the viewer reads for itself when the
- * reader looks at it (`canvas-file-viewer.tsx` reads on demand), so the press
- * is neither refused nor persisted at megabyte scale.
+ * third, and the whole app shares a quota of roughly 5 MB.
+ *
+ * ABOVE IT THE PRESS REFUSES (`return false`), which is the contract the whole
+ * module is built on: the caller falls back to the OS hand-off and its own
+ * sentence, exactly as it does for a `.zip` or a directory. The first version of
+ * this bound opened the file as a POINTER instead - a document with `sizeBytes`
+ * and no bytes, justified as "the shape every Files-panel mention has, and the
+ * viewer reads on demand" - and that justification was false twice over: a
+ * mention's viewer is the tile flow rather than this press, and for the three
+ * kinds this cap covers (`utf-8`/`base64`: markdown, code, spreadsheet, html) the
+ * viewer renders `document.content` and reads nothing on demand. Round 2 measured
+ * the cost: an empty editor with a normal `Modified` stamp, and, for a
+ * spreadsheet, `Workbook is empty` thrown from the sheet viewer the moment the
+ * reader left the tab - an ErrorBoundary over the whole window. A refusal is
+ * honest about what this press can do; a blank document is not.
  *
  * It is a bound this press needs because a transcript link can name any path an
- * agent wrote; the Files panel's own click makes the same read uncapped, and
- * that is its own change rather than this one's (`docs/design/chat-link-affordances.md`
- * § 10 records the difference).
+ * agent wrote. The Files panel's own click still reads uncapped - that is its own
+ * change, not this one's (`docs/design/chat-link-affordances.md` § 10 records it) -
+ * and this constant is where the ceiling is enforced as well as stated.
  */
 const MAX_EAGER_READ_BYTES = 1024 * 1024;
 
@@ -89,6 +99,36 @@ export const opensInCanvas = (
 ): boolean => pane !== null && path !== null && viewerFor(path) !== null;
 
 /**
+ * Ask the bridge about ONE path, freshly, and answer `null` when there is no
+ * bridge or the ask failed.
+ *
+ * NOT `probeTarget`, deliberately: that one answers from the cache when it has an
+ * entry, which is the right economy for a hover that repeats and the wrong answer
+ * for a press. A cached positive is a fact about a moment that has passed (round
+ * 2, QA R2-2: hover, delete, press still opened a dead tab for the kinds that read
+ * nothing here), so the press asks for itself and the cache is only what it falls
+ * back to when the ask cannot happen at all.
+ */
+async function askFresh(path: string): Promise<ProbedTarget> {
+	const ask = window.api?.probeFiles;
+	if (typeof ask !== "function") return null;
+	try {
+		const [answer] = await ask([path]);
+		if (!answer) return null;
+		return {
+			exists: answer.exists,
+			isFile: answer.isFile,
+			resolved: answer.resolved ?? path,
+			sizeBytes: answer.sizeBytes ?? null,
+			mtimeMs: answer.mtimeMs ?? null,
+		};
+	} catch (error) {
+		console.warn("probe-files failed:", error);
+		return null;
+	}
+}
+
+/**
  * Open a local path in `conversationId`'s canvas, or answer `false` and leave
  * the caller to do what this app did before the canvas had a say.
  *
@@ -102,33 +142,34 @@ export async function openPathInCanvas(
 	path: string,
 ): Promise<boolean> {
 	/*
-	 * ASK WHEN NOTHING IS KNOWN, so the press acts on its own answer rather than on
-	 * whatever a hover happened to leave behind.
+	 * THE PRESS ASKS FOR ITSELF, EVERY TIME, and the cached answer is only the
+	 * fallback for a surface with no bridge or an ask that failed.
 	 *
-	 * The hover normally warms this cache (the toolbar's liveness is learned there,
-	 * so a row is not a stat storm), and the kinds that read their own bytes
-	 * (`bytes`, `range`) read nothing here at all - so without this a file that
-	 * vanished between the reveal and the press opened a tab onto nothing, where
-	 * the text kinds correctly refuse and hand the path to the OS. A press can
-	 * also arrive with no hover at all: a keyboard activation, a touch, a link
-	 * whose strip was never revealed.
+	 * A hover warms the cache; a cached positive is therefore a fact about a moment
+	 * that has passed, and round 1's own repro (hover the link, delete the file,
+	 * press it) went on opening a dead tab for every kind that reads nothing here -
+	 * the stale `exists: true` passed the guard. Asking costs one stat (0.0-0.3 ms on
+	 * QA's rig) and buys the honest answer: refuse, and let the caller hand the path
+	 * to the OS with its sentence.
 	 *
-	 * A probe that throws, or a surface with no bridge, leaves the answer unknown,
-	 * and unknown is NOT a reason to refuse: the document is built without a
-	 * probe's facts and the canvas renders its own state, which is the optimistic
-	 * direction `probeTarget` documents.
+	 * The stale entry is dropped when the fresh answer disagrees with it, because
+	 * the toolbar's own strip is drawn from the cache and would otherwise keep
+	 * offering `Open in canvas` for a file that is gone; the next reveal re-probes
+	 * (`forgetProbe`'s documented recovery).
 	 */
-	let known = probeStateFor(path);
-	if (known === undefined) {
-		await probeTarget(path, window.api?.probeFiles);
-		known = probeStateFor(path);
-	}
+	const asked = await askFresh(path);
+	const known = asked ?? probeStateFor(path);
 	/*
-	 * A path the probe has already answered for is only a document if it is a
-	 * FILE that is THERE. A directory has no viewer state to open into, and a
-	 * missing path's tab would open onto a "not there" viewer - a dead tab, which
-	 * is worse than the OS attempt and its sentence.
+	 * A path the probe has answered for is only a document if it is a FILE that is
+	 * THERE. A directory has no viewer state to open into, and a missing path's tab
+	 * would open onto a "not there" viewer - a dead tab, which is worse than the OS
+	 * attempt and its sentence. Applied to the FRESH answer first, so a file that
+	 * vanished after the hover is refused rather than trusted.
 	 */
+	if (asked && (!asked.exists || !asked.isFile)) {
+		forgetProbe(path);
+		return false;
+	}
 	if (known && (!known.exists || !known.isFile)) return false;
 
 	const type = getFileTypeFromPath(path);
@@ -152,11 +193,12 @@ export async function openPathInCanvas(
 	 * `range`) are handed over without them - a PDF's 40 MB must never become a
 	 * base64 string in a store that is persisted to `localStorage`.
 	 *
-	 * The read is bounded twice, both times because the press now holds the probe's
-	 * answer. It is SKIPPED when the document is already open - the store keeps
-	 * the entry it has, so re-reading would read bytes nobody looks at - and it is
-	 * skipped above `MAX_EAGER_READ_BYTES`, where the document is opened as a
-	 * pointer and its viewer reads on demand.
+	 * The read is bounded twice. Above `MAX_EAGER_READ_BYTES` the press REFUSES: a
+	 * document without bytes is an empty sheet, an empty editor and - leaving a
+	 * spreadsheet - a `Workbook is empty` throw that takes the window into the error
+	 * boundary, so there is no version of "open it anyway" worth handing over. It is
+	 * also SKIPPED when the document is already open, because the store keeps the
+	 * entry it has and re-reading would read bytes nobody looks at.
 	 */
 	const encoding = READ_ENCODING[kind];
 	let content: string | undefined;
@@ -165,11 +207,11 @@ export async function openPathInCanvas(
 		// No bridge at all (Storybook, browser development): nothing to open with,
 		// and no reason to claim a document whose bytes nobody read.
 		if (typeof read !== "function") return false;
+		if ((known?.sizeBytes ?? 0) > MAX_EAGER_READ_BYTES) return false;
 		const alreadyOpen = (
 			useCanvasStore.getState().conversations[conversationId]?.files ?? []
 		).some((file) => file.id === identity);
-		const aboveCap = (known?.sizeBytes ?? 0) > MAX_EAGER_READ_BYTES;
-		if (!alreadyOpen && !aboveCap) {
+		if (!alreadyOpen) {
 			const result = await read(path, encoding);
 			if (!result.success) return false;
 			content = result.data;
