@@ -24,6 +24,7 @@ import {
 	existsSync,
 	lstatSync,
 	openSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	statSync,
@@ -53,6 +54,76 @@ const SPCTL = "/usr/sbin/spctl";
 const XCRUN = "/usr/bin/xcrun";
 
 /**
+ * The rendered WebAuthn keychain access group, as it appears in a signed app's
+ * entitlements: `keychain-access-groups` carrying `<TEAM_ID>.<BUNDLE_ID>.webauthn`.
+ *
+ * WHY THE SHAPE AND NOT THE VALUE: the team id is a release secret
+ * (`APPLE_TEAM_ID`) that is not available to this gate, and the group is derived
+ * from it at build time (`scripts/render-mac-entitlements.mjs`). What a release
+ * can prove without the secret is that the entitlement LANDED and that the group
+ * has the one shape `src/main/webauthn.ts` accepts; the app itself compares the
+ * full value against its own signature at runtime and stays inert if it differs.
+ *
+ * WHY THIS CHECK EXISTS AT ALL (reviewer round 1, finding 6): every failure
+ * downstream of the entitlement is designed to be SILENT — the app logs one line
+ * naming the reason and goes inert — so a release whose rendered plist never
+ * reached the signature would ship a passkey feature that can never work, with
+ * nothing in the pipeline saying so.
+ */
+/**
+ * The bundle identifier an app declares, read from its own `Info.plist`, or null
+ * when it cannot be read (no plist, or one this does not parse).
+ *
+ * It is here because the WebAuthn group is `<TEAM_ID>.<THIS bundle id>.webauthn`,
+ * and a shape-only check was satisfiable by a group for a DIFFERENT bundle id or
+ * by a `.webauthn` string in some other array — a release that passes such a
+ * check ships an inert passkey feature, which is the hole this check exists to
+ * close (reviewer round 2, R4). The team id is a release secret and stays
+ * unverifiable here; the bundle id is not a secret and is read off the artifact.
+ */
+export function bundleIdentifierFromInfoPlist(appPath) {
+	try {
+		const plist = readFileSync(join(appPath, "Contents", "Info.plist"), "utf8");
+		const match = plist.match(
+			/<key>CFBundleIdentifier<\/key>\s*<string>([^<]+)<\/string>/,
+		);
+		return match?.[1]?.trim() || null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The WebAuthn group an entitlements plist carries, or null.
+ *
+ * The array is BOUNDED at its own `</array>` rather than searched with an
+ * open-ended `[\s\S]*?`: an unbounded walk leaves the array it started in, so a
+ * `.webauthn` string anywhere later in the plist satisfied the old pattern
+ * (reviewer round 2, R4). With a bundle id in hand the value must also be for
+ * THIS app.
+ */
+export function webauthnEntitlementGroup(plistText, bundleId) {
+	const array = plistText.match(
+		/<key>keychain-access-groups<\/key>\s*<array>([\s\S]*?)<\/array>/,
+	);
+	if (!array) return null;
+	for (const [, value] of array[1].matchAll(/<string>([^<]*)<\/string>/g)) {
+		if (!value.endsWith(".webauthn")) continue;
+		if (bundleId && !value.endsWith(`.${bundleId}.webauthn`)) continue;
+		return value;
+	}
+	return null;
+}
+
+/** Whether an entitlements plist (from `codesign -d --entitlements -`) carries a
+ * WebAuthn keychain access group for `bundleId` (or of that shape at all, when
+ * the bundle id could not be read). Exported so its test can assert both
+ * verdicts. */
+export function hasWebauthnEntitlement(plistText, bundleId) {
+	return webauthnEntitlementGroup(plistText, bundleId) !== null;
+}
+
+/**
  * The checks, in the order a user's machine performs them.
  *
  * `expect` is a predicate over the raw result rather than an exit code: `spctl`
@@ -62,6 +133,7 @@ const XCRUN = "/usr/bin/xcrun";
  */
 export function artifactChecks({ appPath, dmgPath }) {
 	const checks = [];
+	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
 	if (appPath) {
 		checks.push(
 			{
@@ -90,6 +162,24 @@ export function artifactChecks({ appPath, dmgPath }) {
 				command: XCRUN,
 				args: ["stapler", "validate", appPath],
 				expect: (result) => result.status === 0,
+			},
+			{
+				id: "app-webauthn-entitlement",
+				scope: "app",
+				target: appPath,
+				description: bundleId
+					? `the signature carries a WebAuthn keychain access group for ${bundleId}`
+					: "the signature carries a WebAuthn keychain access group (shape only: the app's Info.plist did not name a bundle id)",
+				// `-` writes to stdout and `--xml` keeps it an XML plist: measured on
+				// an ad-hoc bundle signed with the committed plist, `-` alone prints a
+				// human-readable `[Dict] [Key] [Value]` dump the pattern below cannot
+				// read, and `:-` prints the XML but warns that the `:` path spelling is
+				// deprecated (QA round 2, Q1 — the warning is real, the suggested
+				// spelling was not the fix). It exits 0 with empty output for a
+				// signature that has none — which is exactly the failure this catches.
+				command: CODESIGN,
+				args: ["-d", "--entitlements", "-", "--xml", appPath],
+				expect: (result) => hasWebauthnEntitlement(result.stdout, bundleId),
 			},
 		);
 	}

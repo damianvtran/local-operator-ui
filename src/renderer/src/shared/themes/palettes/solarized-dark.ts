@@ -57,20 +57,24 @@ export const solarizedDark: ThemeDefinition = {
 		sunken: "#00252E",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2A3432  accent hue, C* 4.73, +1.70 L*, ΔE00 9.72 off `surface`,
-		 *                       `inkDim` 5.41:1 on the fill, hue 4.54° off `accent`.
-		 * rowSelected #203C39  accent hue, C* 11.57, +4.07 L*, ΔE00 8.67 off
-		 *                       `surface` and 6.78 off `rowHover`, `inkDim` 5.01:1, and the
-		 *                       2px `accent` bar at 4.50:1 against it.
+		 * rowHover    #22373E  panel hue, C* 9.32,
+		 *                       the rule's 0.60 x the panel's 15.32; +2.60 L*,
+		 *                       ΔE00 4.65 off `surface`, `inkDim` 5.25:1.
+		 * rowSelected #003C4C  panel hue, C* 18.23,
+		 *                       the panel's cast + 4.0, floored at 5.0; +3.79 L*,
+		 *                       ΔE00 3.20 off `surface` and 5.96 off
+		 *                       `rowHover`; the pair ranks 1.18 `L*` and 8.9 `C*`,
+		 *                       `inkDim` 5.05:1.
 		 */
-		rowHover: "#2A3432",
-		rowSelected: "#203C39",
+		rowHover: "#22373E",
+		rowSelected: "#003C4C",
 
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.

@@ -47,20 +47,24 @@ export const kanagawaLotus: ThemeDefinition = {
 		sunken: "#D3CB9C",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #DADCE4  accent hue, C* 4.22, +1.62 L*, ΔE00 20.42 off `surface`,
-		 *                       `inkDim` 6.04:1 on the fill, hue 3.14° off `accent`.
-		 * rowSelected #CBD3E9  accent hue, C* 11.84, +4.87 L*, ΔE00 27.51 off
-		 *                       `surface` and 6.02 off `rowHover`, `inkDim` 5.53:1, and the
-		 *                       2px `accent` bar at 5.76:1 against it.
+		 * rowHover    #DDD8BE  panel hue, C* 13.70,
+		 *                       the rule's 0.60 x the panel's 22.88; +3.33 L*,
+		 *                       ΔE00 5.52 off `surface`, `inkDim` 5.77:1.
+		 * rowSelected #DBD4A6  panel hue, C* 24.18,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.00 L*,
+		 *                       ΔE00 3.29 off `surface` and 5.82 off
+		 *                       `rowHover`; the pair ranks 1.67 `L*` and 10.5 `C*`,
+		 *                       `inkDim` 5.51:1.
 		 */
-		rowHover: "#DADCE4",
-		rowSelected: "#CBD3E9",
+		rowHover: "#DDD8BE",
+		rowSelected: "#DBD4A6",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

@@ -26,15 +26,19 @@ const bundle = await build({
 			export {
 				classifyHref,
 				clickDecision,
+				canvasActionFor,
+				evidenceFor,
 				hasHighlight,
 				forgetProbe,
 				linkToolbarModel,
 				missingNote,
 				probeStateFor,
 				probeTarget,
+				probeTargets,
 				resetProbeCache,
 				selectionLinkIn,
 				selectionWhollyWithin,
+				subscribeProbes,
 				LINK_TARGET_ATTR,
 			} from "./src/renderer/src/features/chat/utils/link-actions";
 		`,
@@ -59,15 +63,19 @@ globalThis.Node = { ELEMENT_NODE: 1 };
 const {
 	classifyHref,
 	clickDecision,
+	canvasActionFor,
+	evidenceFor,
 	forgetProbe,
 	hasHighlight,
 	linkToolbarModel,
 	missingNote,
 	probeStateFor,
 	probeTarget,
+	probeTargets,
 	resetProbeCache,
 	selectionLinkIn,
 	selectionWhollyWithin,
+	subscribeProbes,
 	LINK_TARGET_ATTR,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -192,25 +200,319 @@ test("the click decision: a file opens, a drag refuses, everything else default"
 	 * can be read off a frame - a still of an opened file and a still of a suppressed
 	 * click look the same - and the anchor's own handler is the one place they live,
 	 * so the decision was lifted here to be assertable without a browser.
-	 *
 	 * `hold` is the drag-select refusal: `mousedown` and `mouseup` inside one anchor
 	 * fire `click`, so a drag over a file link without it would launch an
 	 * application mid-gesture. `browse` is everything this app has no answer for:
 	 * a URL keeps `target="_blank"`, and a highlight over one does NOT stop that
 	 * click, which is the behaviour it had before this change.
+	 *
+	 * `canOpenInCanvas` is the THIRD input and the operator's ask: a local path this
+	 * app has a viewer for, in a pane that has a canvas, opens there on a plain press
+	 * rather than in the OS's own application. Both directions are asserted here and
+	 * both are needed - the canvas half because it is the new behaviour, and the
+	 * fallback half because a change that routed EVERY local path to the canvas would
+	 * take a `.zip`, a directory and a `.dmg` away from the OS with the tab as its
+	 * only evidence.
 	 */
-	assert.equal(clickDecision({ kind: "file", hasHighlight: false }), "open");
-	assert.equal(clickDecision({ kind: "file", hasHighlight: true }), "hold");
-	assert.equal(clickDecision({ kind: "url", hasHighlight: false }), "browse");
-	assert.equal(clickDecision({ kind: "url", hasHighlight: true }), "browse");
-	assert.equal(clickDecision({ kind: "other", hasHighlight: false }), "browse");
-	assert.equal(clickDecision({ kind: "other", hasHighlight: true }), "browse");
+	const clickFor = (input) =>
+		clickDecision({ canOpenInCanvas: false, ...input });
+
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: false }),
+		"open",
+		"no pane in reach: today's OS hand-off",
+	);
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: false, canOpenInCanvas: true }),
+		"canvas",
+		"a viewer and a pane: the canvas is what a plain press opens",
+	);
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: true, canOpenInCanvas: true }),
+		"hold",
+		"the drag refusal outranks the canvas, as it outranks the OS",
+	);
+	assert.equal(
+		clickFor({ kind: "url", hasHighlight: false, canOpenInCanvas: true }),
+		"browse",
+		"a URL is never the canvas's, whatever the caller says about viewers",
+	);
+
+	assert.equal(clickFor({ kind: "file", hasHighlight: true }), "hold");
+	assert.equal(clickFor({ kind: "url", hasHighlight: false }), "browse");
+	assert.equal(clickFor({ kind: "url", hasHighlight: true }), "browse");
+	assert.equal(clickFor({ kind: "other", hasHighlight: false }), "browse");
+	assert.equal(clickFor({ kind: "other", hasHighlight: true }), "browse");
 });
 
 /* ------------------------------------------------------------ the toolbar matrix */
 
+/*
+ * `canOpenInCanvas: false` is the DEFAULT of both helpers below, because that is
+ * the answer everywhere this app renders markdown without a chat pane: the legacy
+ * message rows, the trace rows, Storybook, the run panel's child reader. Every
+ * case written before this change keeps its old expectation through that default,
+ * which is the assertion that "no pane" is still exactly today's matrix.
+ */
 const modelFor = (input) =>
-	linkToolbarModel({ quotable: false, probe: null, ...input });
+	linkToolbarModel({
+		quotable: false,
+		probe: null,
+		canOpenInCanvas: false,
+		...input,
+	});
+const canvasModelFor = (input) =>
+	linkToolbarModel({
+		quotable: false,
+		probe: null,
+		canOpenInCanvas: true,
+		...input,
+	});
+
+test("a canvas-openable file offers both opens, and the canvas is the one called Open", () => {
+	/*
+	 * The operator's ask, as the matrix: "opening up files ... supported by canvas
+	 * view by default are opened in the canvas instead of opened by the OS unless
+	 * the user clicks to open with default application". So the two presses are both
+	 * THERE and they are different places: the id `open` is the canvas, and the OS
+	 * gets an id of its own rather than the ambiguity of two buttons whose labels
+	 * are the only difference.
+	 */
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/x/report.xlsx",
+		probe: { exists: true, isFile: true },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.deepEqual(
+		model.actions.map((entry) => entry.label),
+		[
+			"Copy path",
+			"Open in canvas",
+			"Open in default app",
+			"Open folder",
+			"Quote",
+		],
+	);
+	/*
+	 * The OS label is the string the canvas's own viewer chrome already ships
+	 * (`OpenInOsButton`, `file-viewer-state.tsx`). Asserted literally because a
+	 * second spelling for one action is how a reader concludes the two presses
+	 * differ.
+	 */
+	assert.equal(model.label, "Actions for report.xlsx");
+});
+
+test("a canvas-openable file leads with Quote when the highlight is inside it", () => {
+	assert.deepEqual(
+		canvasModelFor({
+			kind: "file",
+			target: "/tmp/a.pdf",
+			probe: { exists: true, isFile: true },
+			quotable: true,
+		}).actions.map((entry) => entry.id),
+		["quote", "copy", "open", "open-default", "open-folder"],
+	);
+});
+
+test("a DIRECTORY keeps one Open even where a canvas is in reach", () => {
+	/*
+	 * The veto that a naive `viewerFor` check would miss: a directory named
+	 * `notes.md` HAS a viewer by extension and is still not a document, so the
+	 * canvas action is off for every directory - and the single `Open` it keeps is
+	 * the OS's, which is what opens a folder.
+	 */
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/workspace/opoint-renewal-2026-09-17",
+		probe: { exists: true, isFile: false },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "quote"],
+	);
+	assert.equal(model.actions[1].label, "Open");
+});
+
+test("a file type with no viewer keeps the OS's Open even where a canvas exists", () => {
+	/*
+	 * `canOpenInCanvas` is FALSE here for the reason it exists: `viewerFor` answers
+	 * `null` for a `.zip`, so the caller cannot offer a canvas for it. The matrix is
+	 * asserted in that shape as well as through `canvasModelFor`, because the flag is
+	 * the caller's answer rather than a re-derivation of the extension list here.
+	 */
+	const model = modelFor({
+		kind: "file",
+		target: "~/x/bundle.zip",
+		probe: { exists: true, isFile: true },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "open-folder", "quote"],
+	);
+	assert.equal(model.actions[1].label, "Open");
+});
+
+test("a missing path offers no canvas action, whatever the caller claims", () => {
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/x/gone.xlsx",
+		probe: { exists: false, isFile: false },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "quote"],
+	);
+	assert.equal(model.note, "No file at …/x/gone.xlsx");
+});
+
+test("a file above the read ceiling keeps the OS shape and says why (round 3, U8a)", () => {
+	/*
+	 * The strip must not promise a destination the press refuses. The press reads
+	 * the eagerly-read kinds itself and returns `false` above `MAX_EAGER_READ_BYTES`
+	 * (the store persists document contents), so this file's toolbar loses the canvas
+	 * button and keeps the OS one - the same shape a `.zip` has - with the note slot
+	 * explaining the absence, because the reader's expectation (set by the operator's
+	 * own rule for supported types) is that a `.csv` HAS a canvas.
+	 */
+	const overCeiling = canvasModelFor({
+		kind: "file",
+		target: "~/x/enormous.csv",
+		probe: { exists: true, isFile: true, sizeBytes: 9_411_130 },
+	});
+	assert.deepEqual(
+		overCeiling.actions.map((entry) => entry.id),
+		["copy", "open", "open-folder", "quote"],
+		"no canvas action, because the press would refuse this file",
+	);
+	assert.equal(overCeiling.actions[1].label, "Open");
+	assert.equal(overCeiling.note, "Too large for the canvas preview");
+
+	/*
+	 * The bytes/range kinds read their own bytes, so the ceiling is not theirs: a
+	 * 40 MB PDF is exactly what the canvas is for and keeps its action.
+	 */
+	const pdf = canvasModelFor({
+		kind: "file",
+		target: "~/x/annual-report.pdf",
+		probe: { exists: true, isFile: true, sizeBytes: 40 * 1024 * 1024 },
+	});
+	assert.deepEqual(
+		pdf.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.equal(pdf.note, null);
+
+	/* And an eagerly-read file BELOW the ceiling is untouched. */
+	const small = canvasModelFor({
+		kind: "file",
+		target: "~/x/quarterly.csv",
+		probe: { exists: true, isFile: true, sizeBytes: 623_918 },
+	});
+	assert.deepEqual(
+		small.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.equal(small.note, null);
+});
+
+test("the canvas action is one predicate, asked by the matrix and the icon map alike", () => {
+	/*
+	 * `canvasActionFor` is what keeps the fifth button and the icon that marks it
+	 * from drifting: the two cases that are easy to get wrong are here rather than
+	 * only inside `linkToolbarModel`, because the toolbar's icon map reads this and
+	 * NOT the model's action list.
+	 */
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
+			isDirectory: false,
+			probe: { exists: true, isFile: true, sizeBytes: 37_000 },
+			canOpenInCanvas: true,
+		}),
+		true,
+	);
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/notes.md",
+			isDirectory: true,
+			probe: { exists: true, isFile: false },
+			canOpenInCanvas: true,
+		}),
+		false,
+	);
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/gone.txt",
+			isDirectory: false,
+			probe: { exists: false, isFile: false },
+			canOpenInCanvas: true,
+		}),
+		false,
+	);
+	/*
+	 * And the ceiling, which is the fourth of the same kind of veto (round 3,
+	 * U8a). What the strip must not do is offer `Open in canvas` for a path the
+	 * press will refuse, so the predicate answers `false` for an eagerly-read kind
+	 * above `MAX_EAGER_READ_BYTES` - and `true` for the kinds that read their own
+	 * bytes at any size, which is what keeps a 40 MB PDF's canvas action.
+	 */
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/enormous.csv",
+			isDirectory: false,
+			probe: { exists: true, isFile: true, sizeBytes: 9_411_130 },
+			canOpenInCanvas: true,
+		}),
+		false,
+		"an eagerly-read file above the ceiling must not be offered the canvas",
+	);
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/enormous.pdf",
+			isDirectory: false,
+			probe: { exists: true, isFile: true, sizeBytes: 40_000_000 },
+			canOpenInCanvas: true,
+		}),
+		true,
+		"a bytes/range kind is never capped, whatever its size",
+	);
+	/*
+	 * Nothing known is the OPTIMISTIC case, the same direction `probeTarget`
+	 * documents: with no answer to stat through, the app has no grounds to withhold
+	 * the canvas, and a wrong guess costs one press that reports itself.
+	 */
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
+			isDirectory: false,
+			probe: null,
+			canOpenInCanvas: true,
+		}),
+		true,
+	);
+	assert.equal(
+		canvasActionFor({
+			target: "/tmp/x/report.xlsx",
+			isDirectory: false,
+			probe: { exists: true, isFile: true },
+			canOpenInCanvas: false,
+		}),
+		false,
+	);
+});
+
+test("an unprobed canvas-openable file offers the whole canvas matrix", () => {
+	assert.deepEqual(
+		canvasModelFor({ kind: "file", target: "/tmp/x.xlsx" }).actions.map(
+			(entry) => entry.id,
+		),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+});
 
 test("a file offers Copy, Open, Open folder and Quote", () => {
 	const model = modelFor({
@@ -365,12 +667,32 @@ test("a probe is asked once per target, and its answer is cached", async () => {
 	const asked = [];
 	const ask = async (paths) => {
 		asked.push(paths);
-		return [{ exists: true, isFile: true }];
+		return [
+			{
+				exists: true,
+				isFile: true,
+				resolved: "/tmp/a.pdf",
+				sizeBytes: 1024,
+				mtimeMs: 1_760_000_000_000,
+			},
+		];
 	};
 	await probeTarget("/tmp/a.pdf", ask);
 	await probeTarget("/tmp/a.pdf", ask);
 	assert.deepEqual(asked, [["/tmp/a.pdf"]]);
-	assert.deepEqual(probeStateFor("/tmp/a.pdf"), { exists: true, isFile: true });
+	/*
+	 * The whole answer is cached, not the two booleans it started with: the press
+	 * that needs the RESOLVED path (the document's identity), the size (the read's
+	 * ceiling) and the mtime (the freshness baseline) reads them from here rather
+	 * than asking again on the path the reader is waiting on.
+	 */
+	assert.deepEqual(probeStateFor("/tmp/a.pdf"), {
+		exists: true,
+		isFile: true,
+		resolved: "/tmp/a.pdf",
+		sizeBytes: 1024,
+		mtimeMs: 1_760_000_000_000,
+	});
 	// Two spellings of one file are two keys: the toolbar acts on the string the
 	// reader is looking at, and the second is not asked on the first's answer.
 	await probeTarget("~/x/a.pdf", ask);
@@ -385,6 +707,9 @@ test("a negative is cached too, and a failed press is what clears it", async () 
 	assert.deepEqual(probeStateFor("/tmp/gone.pdf"), {
 		exists: false,
 		isFile: false,
+		resolved: "/tmp/gone.pdf",
+		sizeBytes: null,
+		mtimeMs: null,
 	});
 	/*
 	 * The recovery the app has: `openLocalTarget` drops the entry when the press
@@ -406,6 +731,165 @@ test("no bridge and a throwing bridge both leave the answer unknown", async () =
 	   NOT cached as a negative - the same rule `use-mentioned-files` states for
 	   its tiles. */
 	assert.equal(probeStateFor("/tmp/b.pdf"), undefined);
+});
+
+/* ------------------------------------------------- the grammar's read of the probe */
+
+test("`evidenceFor` answers the grammar's question in three states", async () => {
+	/*
+	 * The transcript's linkifier decides whether an extensionless token is a LINK
+	 * from this function (`TargetPolicy.evidence`), so its three answers are the
+	 * difference between an anchor and plain text - and "unknown" is not a
+	 * smaller yes: the grammar refuses on it.
+	 */
+	resetProbeCache();
+	assert.equal(evidenceFor("/new"), "unknown", "nothing has asked");
+	await probeTarget("/new", async () => [{ exists: false, isFile: false }]);
+	assert.equal(evidenceFor("/new"), "missing");
+	await probeTarget("/Users/you/workspace", async () => [
+		{ exists: true, isFile: false },
+	]);
+	assert.equal(evidenceFor("/Users/you/workspace"), "exists");
+	/*
+	 * The same reset the stories use: one cache, so clearing the toolbar's answers
+	 * clears the grammar's evidence too and the token demotes to plain text rather
+	 * than keeping a claim nobody can now check.
+	 */
+	resetProbeCache();
+	assert.equal(evidenceFor("/new"), "unknown");
+	assert.equal(evidenceFor("/Users/you/workspace"), "unknown");
+});
+
+test("a batch is deduped, chunked at maxBatch and asked in order", async () => {
+	/*
+	 * 65 paths with one repeat: one call per `maxBatch` chunk and no call for the
+	 * repeat, which is the whole reason this entry point exists rather than a loop
+	 * over `probeTarget`. The cap is a PARAMETER rather than `MAX_PROBE_PATHS`
+	 * imported here, because this module is bundled by a bare `node --test` file and
+	 * importing `desktop-contract` would drag zod in behind it; 64 is the value the
+	 * renderer passes.
+	 */
+	resetProbeCache();
+	const asks = [];
+	const ask = async (paths) => {
+		asks.push(paths);
+		return paths.map(() => ({ exists: true, isFile: true }));
+	};
+	const paths = Array.from(
+		{ length: 65 },
+		(_, index) => `/tmp/batch/${index}.pdf`,
+	);
+	await probeTargets([...paths, paths[0]], ask, 64);
+	assert.deepEqual(
+		asks.map((chunk) => chunk.length),
+		[64, 1],
+		"one call per chunk, the repeat not asked at all",
+	);
+	assert.deepEqual(asks[1], ["/tmp/batch/64.pdf"]);
+	assert.equal(evidenceFor("/tmp/batch/64.pdf"), "exists");
+	/* An answer already in the cache is not asked again, whatever the batch is. */
+	asks.length = 0;
+	await probeTargets([paths[0], "/tmp/batch/fresh.pdf"], ask, 64);
+	assert.deepEqual(asks, [["/tmp/batch/fresh.pdf"]]);
+});
+
+test("two askers of one spelling in the same frame cost one call", async () => {
+	/*
+	 * The shape the transcript produces in bulk: two rows carrying `/tmp` paint in
+	 * the same frame, see a cold cache and would both ask. Main stats
+	 * SYNCHRONOUSLY on its own event loop, so the duplicate is an app-wide stall
+	 * rather than one row's delay - which is why the in-flight set exists on top of
+	 * the cache.
+	 */
+	resetProbeCache();
+	let calls = 0;
+	let release = () => {};
+	const ask = (paths) => {
+		calls += 1;
+		return new Promise((resolve) => {
+			release = () =>
+				resolve(paths.map(() => ({ exists: true, isFile: true })));
+		});
+	};
+	const first = probeTargets(["/tmp/dup", "/tmp/other"], ask, 64);
+	const second = probeTargets(["/tmp/dup"], ask, 64);
+	assert.equal(calls, 1, "the second asker waits on the first");
+	release();
+	await Promise.all([first, second]);
+	assert.equal(calls, 1);
+	/*
+	 * The FULL answer, not the two booleans this assertion pinned before the fold:
+	 * `origin/main`'s one-target probe wrote `resolved`, `sizeBytes` and `mtimeMs`
+	 * into the cache beside them (the canvas opens the RESOLVED path, and the
+	 * eager-read ceiling reads the size), and this branch's batched `probeTargets`
+	 * is now the single writer of all five. The stub above answers existence only,
+	 * so the three fall back exactly as upstream's own body did - the spelling
+	 * itself for `resolved`, `null` for the pair it had no answer for - which is
+	 * what makes this assertion the merge's shape rather than either side's.
+	 */
+	assert.deepEqual(probeStateFor("/tmp/dup"), {
+		exists: true,
+		isFile: true,
+		resolved: "/tmp/dup",
+		sizeBytes: null,
+		mtimeMs: null,
+	});
+});
+
+test("a landed answer notifies with the spellings it landed, once", async () => {
+	/*
+	 * The subscription is how the component that owns the parse learns an answer
+	 * arrived (it has no prop for this and is memoised), so the PAYLOAD matters as
+	 * much as the call: a row armed on three tokens must not re-parse when an
+	 * unrelated spelling comes back, and a listener that unsubscribed must not be
+	 * called at all.
+	 */
+	resetProbeCache();
+	const landed = [];
+	const stop = subscribeProbes((changed) => landed.push([...changed]));
+	const ask = async (paths) =>
+		paths.map((input) => ({ exists: input !== "/new", isFile: false }));
+	await probeTargets(["/new", "/tmp", "/other"], ask, 2);
+	assert.deepEqual(landed, [["/new", "/tmp"], ["/other"]]);
+	stop();
+	await probeTarget("/tmp/after-stop", ask);
+	assert.equal(landed.length, 2, "an unsubscribed listener hears nothing");
+});
+
+test("a throwing chunk leaves its spellings unknown and warns once", async () => {
+	/*
+	 * A stat that failed says nothing about whether the file exists, so those
+	 * spellings stay `unknown` - which the grammar refuses - rather than being
+	 * cached as absent. The warning is per CALL and not per chunk: one broken bridge
+	 * is one fact, and a batch of chunks failing is the same fact repeated.
+	 */
+	resetProbeCache();
+	const warnings = [];
+	const original = console.warn;
+	console.warn = (...args) => warnings.push(args);
+	try {
+		await probeTargets(
+			["/tmp/x.pdf", "/tmp/y.pdf"],
+			async () => {
+				throw new Error("stat failed");
+			},
+			1,
+		);
+	} finally {
+		console.warn = original;
+	}
+	assert.equal(warnings.length, 1);
+	assert.equal(probeStateFor("/tmp/x.pdf"), undefined);
+	assert.equal(probeStateFor("/tmp/y.pdf"), undefined);
+	assert.equal(evidenceFor("/tmp/x.pdf"), "unknown");
+	/*
+	 * And the failed chunk left the in-flight set clean, so the next asker retries
+	 * instead of inheriting a token that is permanently "being asked about".
+	 */
+	await probeTarget("/tmp/x.pdf", async (paths) =>
+		paths.map(() => ({ exists: true, isFile: false })),
+	);
+	assert.equal(evidenceFor("/tmp/x.pdf"), "exists");
 });
 
 /* ------------------------------------------------- the selection-in-link rule */

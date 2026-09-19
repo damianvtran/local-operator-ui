@@ -89,3 +89,82 @@ export class Notification {
 		for (const listener of this.#clickListeners) listener();
 	}
 }
+
+/**
+ * `app`, as far as this repo's main process uses it in a bundled test.
+ *
+ * Added with the WebAuthn work: `src/main/webauthn.ts` imports `app` as a VALUE,
+ * because the platform authenticator is configured once per process through
+ * `app.configureWebAuthn`. The two members modelled are the two that module
+ * reads — `isPackaged` (the gate's "unpackaged" arm) and the configuration call
+ * itself, recorded so a test can assert WHAT was configured and, just as
+ * importantly, that nothing was configured when the gate said no.
+ *
+ * `configureWebAuthn` is deliberately silent and non-throwing, which is what the
+ * real call does when the entitlement is missing (measured; see the module's
+ * header): a stub that threw would make the gate look load-bearing for a reason
+ * the platform does not provide.
+ */
+export const app = {
+	/** Flipped by tests: the gate's first check after the platform. */
+	isPackaged: false,
+	/** What was configured, most recent last. */
+	webauthnConfigured: [] as Array<{
+		touchID: { keychainAccessGroup: string; promptReason: string };
+	}>,
+	configureWebAuthn(options: {
+		touchID: { keychainAccessGroup: string; promptReason: string };
+	}): void {
+		app.webauthnConfigured.push(options);
+	},
+	reset(): void {
+		app.isPackaged = false;
+		app.webauthnConfigured = [];
+	},
+};
+
+/**
+ * `contextBridge` and `ipcRenderer`, as far as `src/preload/index.ts` needs them
+ * to LOAD.
+ *
+ * WHY THEY ARE HERE. The preload is where every inbound IPC payload is validated
+ * — including the passkey chooser's, which is parsed by `parseWebauthnRequest` —
+ * and a validator tested through a copy of itself is not tested. Importing the
+ * real module is what makes the test bind the shipped parser, and the module
+ * calls `contextBridge.exposeInMainWorld` at its own module scope, so the stub
+ * has to answer that call. `ipcRenderer` is present for the same reason: the
+ * module reads it at import time, and the channels that USE it are driven
+ * elsewhere (through `ipcMain`'s handler registry, as the renderer's `invoke`
+ * would).
+ *
+ * WHAT THEY ARE NOT: neither is a fake of Electron's bridge. `exposeInMainWorld`
+ * records nothing and returns nothing — the exposed object is reachable in a real
+ * renderer and is not simulated here — and `ipcRenderer.invoke` deliberately
+ * REJECTS, so a test that reaches for the real transport by accident fails loudly
+ * instead of silently talking to a stub.
+ */
+export const contextBridge = {
+	exposeInMainWorld(): void {
+		// Nothing to model: the exposure is a wiring step, and the wiring is
+		// covered by the desktop-transport contract tests that boot the preload.
+	},
+};
+
+export const ipcRenderer = {
+	on(): void {},
+	removeListener(): void {},
+	async invoke(channel: string): Promise<never> {
+		throw new Error(
+			`the electron stub has no transport: ${channel} was invoked directly`,
+		);
+	},
+};
+
+/**
+ * `webFrame`, which `@electron-toolkit/preload` imports at its module scope.
+ *
+ * Present so the preload MODULE loads. Nothing in this repo's own code calls a
+ * member of it, and the suite never reaches a zoom or routing call, so an empty
+ * object is the honest model rather than a set of methods that pretend to work.
+ */
+export const webFrame = {};

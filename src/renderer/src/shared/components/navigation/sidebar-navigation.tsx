@@ -55,27 +55,55 @@ type NavItem = {
  * shadow on an in-flow panel is exactly what the branding contract reserves for
  * objects that leave the flow.
  *
- * ## Why the rail is `sunken` and not `surface`
+ * ## Why the rail is `surface`, and what bounds it
  *
- * It was `surface` — a step *above* the `canvas` page — which is backwards for
- * a permanent rail and produced a visible defect: on the agents and settings
- * routes this rail sits directly against another `surface` list panel with no
- * boundary between them, so the two merged into one 480px slab and the app
- * looked like it had one enormous sidebar.
- *
- * On `sunken` the app reads as three planes left to right, which is the depth
- * model the theme picker's own preview has always advertised and the one every
- * three-pane desktop app uses (1Password, Slack, Linear, Mail):
+ * HISTORY, because the first half of this was a real fix and its finding still
+ * holds. The rail was `surface` — a step *above* the `canvas` page — which is
+ * backwards for a permanent rail and produced a visible defect: on the agents
+ * and settings routes this rail sits directly against another `surface` list
+ * panel with no boundary between them, so the two merged into one 480px slab
+ * and the app looked like it had one enormous sidebar. It was moved to `sunken`
+ * for that reason, and on `sunken` the app read as three planes left to right:
  *
  *   sunken app rail  ->  surface list panel  ->  canvas working surface
  *
- * permanent chrome recedes, the secondary list sits between, and the thing you
- * are working on comes forward. No border is needed to separate any of them.
+ * THE ROW-STATE REFINEMENT PUT IT BACK, because `sunken` broke something this
+ * rail owns. THE ROWS IN THIS LIST ARE ROW STATES: the destination you are on
+ * carries `rowCurrent` and the rows around it take `hover:bg-row-hover`, and
+ * both roles are authored as a step of the palette's own `surface`
+ * (`docs/design/row-states-refinement.md` § 4). A rail whose ground is a rung
+ * *below* `surface` therefore paints those states INTO that rung rather than
+ * out of the panel they were authored against, and the panel is the reference
+ * both roles are measured from. MEASURED, on the fleet: the current row's fill
+ * landed **ΔE00 0.44** off this rail on `alucard` — 7 of the 59 palettes under
+ * the file's own 2.0 field floor — and on 13 of the 59 the row under the
+ * pointer read at least as far off this rail as the row the reader is ON, where
+ * the shipped values did that on 2. That is the defect recorded in the
+ * row-state block below, reintroduced by the ground rather than by the mark,
+ * and the operator's original screenshot is the same sentence.
+ *
+ * So the rule is now the one the direction states, and it is an invariant the
+ * app holds rather than a value a palette can be re-solved for: **a surface
+ * that paints the row states wears `surface`**. Re-asserting the roles against
+ * `sunken` was measured and refused — on the light fleet the largest ink-legal
+ * fill can reach ΔE00 1.73-2.81 against `canvas` and clearing `sunken` forces
+ * `alucard`'s selection down to a 2.36 `L*` step, under the pair's own floors.
+ *
+ * The boundary the tonal step used to carry is DRAWN instead — `border-r
+ * border-hairline`, the same construction the agents panel beside it uses
+ * (`features/agents/components/agents-sidebar.tsx`), so a rail that is `surface`
+ * and a list that is `surface` are two panels rather than one slab. The rule is
+ * doing real work on the light fleet, where `surface` and `canvas` are closest:
+ * this rail's pair with the content beside it measures ΔE00 2.32 on
+ * `localOperatorLight` and 2.60 on `alucard` — the two tightest of the four rail
+ * palettes the evidence set renders, though NOT the fleet's tightest pairs
+ * (`sage` 2.05, `catppuccinMacchiato` 2.08 and `oneLight` 2.10 are, and none of
+ * the three carries a rail frame) — and on those it is the only boundary there is.
  *
  * The chat route is the same rule one plane to the right: its list panel is
  * `surface` and the column it opens is `canvas`, so the pair never repeats the
- * merge described above. Repainting that column `surface` puts the two back
- * into one slab, and there is no rule between them to fall back on.
+ * merge described above — and neither of those two columns paints a row state,
+ * which is why neither of them has to be `surface`.
  *
  * ## Density
  *
@@ -190,9 +218,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * WEAKER mark than the hover beside it — `obsidian` 2.02 against
 					 * 3.42 is this rail, in the screenshot the operator reported — so
 					 * the row he was on was quieter than the row he was merely pointing
-					 * at. `rowCurrent` brings the role's ground, its `font-medium` and
-					 * its 2px accent bar; the wash stays the transient idiom (pointer
-					 * hover, and a keyboard-focused option in a list that is open).
+					 * at. `rowCurrent` brings the role's ground and its `font-medium`
+					 * (the 2px accent bar was removed with the refinement round — the
+					 * fill carries the ranking now); the wash stays the transient idiom
+					 * (pointer hover, and a keyboard-focused option in a list that is
+					 * open).
+					 *
+					 * THIS ROW IS WHY THE RAIL IS `surface`, and the ground note above
+					 * is the measurement: the roles are steps of the panel, so the panel
+					 * they are painted on has to BE the panel. The first round of this
+					 * branch painted this row on the rail's own `sunken` and the fill
+					 * landed ΔE00 0.44 from its backdrop on `alucard`.
 					 *
 					 * The mark is still the accent, and the label still stays `ink`:
 					 * tinting ground, mark and text is three signals for one fact, and
@@ -248,10 +284,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * uses the palette once. The chord is written on the row (the app's key cap, the
 	 * same one the palette's own footer prints) rather than in a tooltip, so the rail
 	 * teaches Cmd+K without being asked. It used to be plain monospace HERE and caps
-	 * there, on the argument that a cap is `bg-sunken` and this rail IS `sunken`, so a
-	 * cap would be a key with no key around it — true of that cap, and the reason the
-	 * cap lost its fill rather than keeping two spellings of one thing
-	 * (`docs/command-palette.md` records the single idiom).
+	 * there, on the argument that a cap is `bg-sunken` while this rail was `sunken`
+	 * too, so the cap would be a key with no key around it — true of that cap, and
+	 * the reason the cap lost its fill rather than keeping two spellings of one
+	 * thing (`docs/command-palette.md` records the single idiom). The rail's ground
+	 * moved to `surface` with the row-state refinement and the argument does not
+	 * come back: the cap is FILL-LESS by its own construction
+	 * (`shared/components/common/keyboard-shortcut.tsx`, `CAP` — no fill, no
+	 * border), so it needs no ground of its own on either one.
 	 *
 	 * The macOS spelling rides a real platform check rather than a guess: off
 	 * macOS the same row reads Ctrl+K.
@@ -276,13 +316,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * Decorative: the accessible name above already carries the chord, so the
 			 * caps are hidden from a screen reader rather than announced beside it.
 			 *
-			 * The app's own key cap, on the rail's own `sunken` ground. That is only
-			 * possible because a cap has no fill of its own: the `bg-sunken` this
-			 * component used to paint would vanish into this row exactly as the comment
-			 * above says, which is why this row was monospace text for a round while
-			 * the panel's footer drew caps. One idiom, one geometry, one ink. The ink is
-			 * a step up from the row's label, so the chord reads as a chord rather than
-			 * as fine print (design round 1, D6).
+			 * The app's own key cap, on the rail's own ground — `surface` since the
+			 * row-state refinement re-grounded the rail, `sunken` when this row was
+			 * written. That is only possible because a cap has no fill of its own: the
+			 * `bg-sunken` this component used to paint would vanish into this row
+			 * exactly as the comment above says, which is why this row was monospace
+			 * text for a round while the panel's footer drew caps. One idiom, one
+			 * geometry, one ink — and the cap is still fill-less on the new ground
+			 * rather than assumed to be, which the evidence README records as a DOM
+			 * readback beside the rail's frames. The ink is a step up from the row's
+			 * label, so the chord reads as a chord rather than as fine print (design
+			 * round 1, D6).
 			 */}
 			<span aria-hidden="true" className="ml-auto">
 				<KeyboardShortcut shortcut={paletteShortcutCaps(isMac)} />
@@ -351,7 +395,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	return (
 		<nav
 			className={cn(
-				"group flex shrink-0 flex-col overflow-x-hidden bg-sunken transition-[width] duration-base ease-out-quart",
+				/* `border-r border-hairline` carries the boundary the `sunken` step used
+				   to: the rail and the list panel beside it are both `surface` now, and the
+				   rule is the same construction `agents-sidebar.tsx` uses between two
+				   `surface` panels. The ground note above says why the rail wears
+				   `surface` at all (`rowCurrent` is painted on it). */
+				"group flex shrink-0 flex-col overflow-x-hidden border-hairline border-r bg-surface transition-[width] duration-base ease-out-quart",
 				expanded ? RAIL_WIDTH.expanded : RAIL_WIDTH.collapsed,
 			)}
 		>

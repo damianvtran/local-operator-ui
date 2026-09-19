@@ -50,20 +50,25 @@ export const linen: ThemeDefinition = {
 		sunken: "#D3D5D0",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 1.59) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #DBE7E4  accent hue, C* 4.54, +1.50 L*, ΔE00 4.93 off `surface`,
-		 *                       `inkDim` 5.84:1 on the fill, hue 1.20° off `accent`.
-		 * rowSelected #C4E1D9  accent hue, C* 11.10, +4.91 L*, ΔE00 11.40 off
-		 *                       `surface` and 6.77 off `rowHover`, `inkDim` 5.33:1, and the
-		 *                       2px `accent` bar at 5.12:1 against it.
+		 * rowHover    #DAE1DF  `accent` hue, C* 2.72,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.24 L*,
+		 *                       ΔE00 3.40 off `surface`, `inkDim` 5.57:1.
+		 * rowSelected #CFDEDA  `accent` hue, C* 5.76,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.92 L*,
+		 *                       ΔE00 6.86 off `surface` and 3.71 off
+		 *                       `rowHover`; the pair ranks 1.69 `L*` and 3.0 `C*`,
+		 *                       `inkDim` 5.33:1.
 		 */
-		rowHover: "#DBE7E4",
-		rowSelected: "#C4E1D9",
+		rowHover: "#DAE1DF",
+		rowSelected: "#CFDEDA",
 
 		ink: "#2B2E2C",
 

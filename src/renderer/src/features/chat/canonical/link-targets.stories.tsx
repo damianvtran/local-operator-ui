@@ -19,7 +19,7 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
  * must not) and about what the toolbar offers for each kind of target. Both are
  * properties of the components rather than of one session's data: a live run
  * proves them too, but only on whatever transcript that run happened to open,
- * while this fixture holds the eight shapes at once, in every palette, from the
+ * while this fixture holds the nine shapes at once, in every palette, from the
  * diff alone.
  *
  * WHAT A `play` FUNCTION CAN AND CANNOT DRIVE HERE. `play` cannot produce a real
@@ -59,6 +59,19 @@ const FILE_URL = `file://${SHOTS.replace(/ /g, "%20")}`;
 
 const MISSING_MARKER = "/tmp/lo-link-missing/";
 
+/**
+ * The slash-shaped tokens this fixture writes that name NOTHING on disk.
+ *
+ * The stub below stands in for the operator's machine, so it has to answer the
+ * one question the story's new ninth shape turns on: `/new` is a slash command,
+ * not a file, and this is what the disk says about it. It is a literal here for
+ * the same reason every other path in this file is one - the fixture and the
+ * stub disagreeing is a frame that photographs the wrong state while looking
+ * perfectly normal - and NOT a command vocabulary the components consult: the
+ * grammar asks the disk and nothing else.
+ */
+const ABSENT_ON_DISK = ["/new"];
+
 /*
  * Installed at module scope rather than in a `play`, for the reason the composer's
  * electron shim is a module: the toolbar asks on REVEAL, which happens in a later
@@ -73,7 +86,8 @@ if (typeof window !== "undefined") {
 			paths.map((input) => ({
 				input,
 				resolved: input,
-				exists: !input.startsWith(MISSING_MARKER),
+				exists:
+					!input.startsWith(MISSING_MARKER) && !ABSENT_ON_DISK.includes(input),
 				isFile: input !== PROJECT,
 				sizeBytes: 37_000,
 				mtimeMs: 1_760_000_000_000,
@@ -107,7 +121,7 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
 }
 
 /**
- * The motivating turn, and seven more shapes beside it.
+ * The motivating turn, and eight more shapes beside it.
  *
  * Each paragraph is one case, and every one of them is a string this app's own
  * transcripts contain:
@@ -123,7 +137,31 @@ function transcriptOf(records: TranscriptRecord[]): TranscriptState {
  * 6. a directory, so the toolbar's own directory rule is on screen;
  * 7. a path that does not exist, so the "no file" state is on screen;
  * 8. a path long enough to wrap, which is the case that puts the tooltip below the
- *    link rather than over the text beside it.
+ *    link rather than over the text beside it;
+ * 9. the report the operator FILED, in their own words - with a slash COMMAND in
+ *    prose and a second one in backticks, neither of which is a file, in the
+ *    same paragraph as an extensionless token that IS a real directory. The
+ *    linkifier used to underline both commands and answer `No file at /new` on
+ *    hover, which is the screenshot this set exists to settle; the directory
+ *    beside them must keep its link, so the pair is one frame rather than two.
+ *
+ *    APPENDED, not spliced in beside the first shape, and that is a decision
+ *    rather than tidiness: the 21 entries of `chat-canonical-links--
+ *    detected-targets` in the capture rig find their subjects by selector, and
+ *    the first match wins - inserting a paragraph here would move every one of
+ *    them onto a different element while their names stayed the same. The new
+ *    shape sits below the fold of the 1024x720 frame, so the entry that
+ *    photographs it parks it with the rig's own `scrollTo` (see
+ *    `scripts/capture-evidence.mjs`).
+ *
+ * ONE MORE story - `NoViewerTargets`, below - is a story of its own rather than a
+ * paragraph here, for the same reason: this fixture is what every frame in
+ * `docs/evidence/chat-canonical-links/` photographs, and adding to it would move
+ * the links under it and re-measure every strip in the set. That story is the
+ * UNCHANGED half of "a supported file opens in the canvas" - a `.zip` and a
+ * `.dmg` keep the OS's own `Open` beside an `.xlsx` that does not. (It read "A
+ * ninth shape" before this branch's own ninth paragraph below it; the ordinal is
+ * the only word the fold changed, because two nines is one too many.)
  */
 const ANSWER = [
 	`Saved it to ${REPORT} (37 KB, 8 sheets).`,
@@ -139,6 +177,8 @@ const ANSWER = [
 	`Two more things: ${GONE} is gone, and ${PROJECT} is the folder everything landed in.`,
 	"",
 	"And a long one for the wrap: ~/workspace/opoint-renewal-2026-09-17/exports/2026-09-17/adverse-media-review-full-corpus-with-annotations.xlsx",
+	"",
+	`I noticed that sometimes when new conversations are started with /new and no message has been sent yet, peer messages can end up arriving at the session. \`/new\` at the prompt starts one cleanly, and everything this run wrote is under ${PROJECT}.`,
 ].join("\n");
 
 const CONVERSATION: TranscriptRecord[] = [
@@ -148,6 +188,40 @@ const CONVERSATION: TranscriptRecord[] = [
 		"Where did the adverse-media run put everything? Save the paths.",
 	),
 	record("a1", "assistant", ANSWER),
+];
+
+/**
+ * The other half of the routing decision: local paths the canvas has NO viewer
+ * for, beside one it has.
+ *
+ * This is a second story rather than two more sentences in `ANSWER`, and the
+ * reason is the frames rather than tidiness: every entry in
+ * `docs/evidence/chat-canonical-links/` photographs the transcript above, so a
+ * paragraph inserted into it moves the links below it and re-measures every strip
+ * in the set. A separate fixture keeps the new claim additive - the unchanged
+ * side of "opens in the canvas by default" is what a reviewer needs to see beside
+ * the changed one, and a `.zip` or a `.dmg` is where it is visible.
+ */
+const NO_VIEWER = "~/workspace/opoint-renewal-2026-09-17/bundle.zip";
+/*
+ * NO SPACE IN THIS ONE, and that is a fixture constraint rather than taste:
+ * `PROSE_PATH` (`link-grammar.ts`) stops at whitespace, so
+ * `local-operator-0.28.4.dmg` would linkify as `.../Local` - a frame showing a broken
+ * link that no change on this branch produced. A name with a space reaches the
+ * app as a `file://` URL, which is what `SHOTS` in the other fixture is for.
+ */
+const INSTALLER =
+	"~/workspace/opoint-renewal-2026-09-17/local-operator-0.28.4.dmg";
+
+const NO_VIEWER_ANSWER = [
+	`The bundle is at ${NO_VIEWER} (18 MB) and the installer is ${INSTALLER}.`,
+	"",
+	`The report inside it is ${REPORT} (37 KB, 8 sheets) - that one opens here.`,
+].join("\n");
+
+const NO_VIEWER_CONVERSATION: TranscriptRecord[] = [
+	record("u1", "user", "What did you build, and where are the artifacts?"),
+	record("a1", "assistant", NO_VIEWER_ANSWER),
 ];
 
 /** The pane's own sentinel, as `chat-content.tsx` hands it one. */
@@ -184,14 +258,16 @@ const Frame = ({
 	height = 720,
 	width = 1024,
 	composer = false,
+	records = CONVERSATION,
 }: {
 	height?: number;
 	width?: number;
 	composer?: boolean;
+	records?: TranscriptRecord[];
 }) => {
 	useCleanReplies();
 	const containerRef = useRef<HTMLDivElement>(null);
-	const transcript = useMemo(() => transcriptOf(CONVERSATION), []);
+	const transcript = useMemo(() => transcriptOf(records), [records]);
 	return (
 		<div className="flex flex-col bg-canvas" style={{ width, height }}>
 			<div className="flex min-h-0 grow flex-col px-4 pt-4">
@@ -275,9 +351,11 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * The eight shapes at rest, which is also the case the operator reported from the
+ * The nine shapes at rest, which is also the case the operator reported from the
  * other side: before this change every path here was dead text, and the frame
- * that shows them plain is the "before" half of that comparison.
+ * that shows them plain is the "before" half of that comparison. The ninth - the
+ * slash-command paragraph this change is about - is listed with the others in
+ * `CONVERSATION` above.
  */
 export const DetectedTargets: Story = {
 	render: () => <Frame />,
@@ -293,6 +371,19 @@ export const DetectedTargets: Story = {
  */
 export const DetectedTargetsNarrow: Story = {
 	render: () => <Frame width={420} height={900} />,
+};
+
+/**
+ * The same routing rule from the other side: paths the canvas declines.
+ *
+ * `bundle.zip` and `local-operator-0.28.4.dmg` are local, existing files with no viewer
+ * (`viewerFor` answers `null`), so their toolbar keeps the single `Open` that
+ * hands them to the OS - and the `.xlsx` on the next line, one paragraph down,
+ * shows the five-action strip beside them. The pair is the assertion: the new
+ * default is about files the app can SHOW, not about every path an agent writes.
+ */
+export const NoViewerTargets: Story = {
+	render: () => <Frame height={360} records={NO_VIEWER_CONVERSATION} />,
 };
 
 /**

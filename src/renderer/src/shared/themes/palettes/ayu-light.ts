@@ -49,20 +49,35 @@ export const ayuLight: ThemeDefinition = {
 		sunken: "#DBE4EB",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #EBF2FF  accent hue, C* 7.04, +1.92 L*, ΔE00 4.30 off `surface`,
-		 *                       `inkDim` 6.02:1 on the fill, hue 4.00° off `accent`.
-		 * rowSelected #DCEAFF  accent hue, C* 11.72, +4.99 L*, ΔE00 7.61 off
-		 *                       `surface` and 3.87 off `rowHover`, `inkDim` 5.56:1, and the
-		 *                       2px `accent` bar at 5.58:1 against it.
+		 * rowHover    #E7EDF0  panel hue, C* 2.59,
+		 *                       the rule's 0.60 x the panel's 2.89, floored at 2.5;
+		 *                       -3.86 L*, ΔE00 2.36 off `surface`, `inkDim` 5.73:1.
+		 * rowSelected #DCEBF4  panel hue, C* 6.86,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.04 L*,
+		 *                       ΔE00 4.74 off `surface` and 3.89 off
+		 *                       `rowHover`; the pair ranks 1.18 `L*` and 4.3 `C*`,
+		 *                       `inkDim` 5.56:1.
+		 *
+		 * THE HOVER'S STEP IS LIFTED OFF THE RULE'S OWN 0.65 x THE SELECTION (3.28)
+		 * TO THE TOP OF ITS LEGAL WINDOW, which is what moved this palette off
+		 * `ROW_STATE_MEASURED_SHORTFALL` in the remediation round. The band was 1.95,
+		 * under the 2.0 field floor, and it is the same wall as this palette's
+		 * light-family neighbours: the panel's cast is C* 2.9, so the fill's chroma is
+		 * capped at the rule's own 2.5, and a light palette's ΔE00 is compressed by the
+		 * S_l term. With no cast to spend, the only axis is the step, and the window
+		 * for it is wide here (the selection's own step is 5.04), so the lift lands at
+		 * 3.86 — the largest rung at or under `step_selected - 1.15` that keeps the
+		 * pair's rank above its floor.
 		 */
-		rowHover: "#EBF2FF",
-		rowSelected: "#DCEAFF",
+		rowHover: "#E7EDF0",
+		rowSelected: "#DCEBF4",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

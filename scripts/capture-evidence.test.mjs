@@ -29,10 +29,23 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 
 import {
+	THEME_SETTLE_DEFAULT_MS,
+	THEME_SETTLE_ENV,
+	THEME_SETTLE_POLL_MS,
 	clearSweptFrames,
 	profileOwnerPid,
+	resolveThemeSettleMs,
 	storyDrew,
 } from "./capture-evidence.mjs";
+
+/*
+ * The two patterns the theme-settle tests assert against, at the top level
+ * because `lint/performance/useTopLevelRegex` is part of the contract
+ * `scripts/` is held to.
+ */
+const THEME_SETTLE_REFUSAL = /positive whole number of milliseconds/;
+const THEME_SETTLE_JOINED = /joined with '='/;
+const MODULE_LOADED = /loaded/;
 
 const build = () => {
 	const out = mkdtempSync(join(tmpdir(), "lo-sweep-"));
@@ -305,4 +318,169 @@ sweepStaleProfiles();`;
 	);
 	assert.ok(existsSync(other));
 	assert.ok(existsSync(root));
+});
+
+/*
+ * The theme guard's budget, at every edge it has.
+ *
+ * Why this is a test rather than a paragraph in the capture script: the budget
+ * was the literal `40` (40 x 250 ms, ~10.9 s with the 900 ms post-navigation
+ * settle) until it was made configurable on 2026-09-18, after three runs died
+ * at the first entry of a set with `document carries theme "" after 10s` on a
+ * host at load 144-233 - where CDP measured the SAME story reaching
+ * `tokyoNight` at 72.1 s. Two properties have to hold and neither is visible
+ * from outside the script: the DEFAULT must stay the value every committed
+ * frame was taken with (a default that drifted would silently re-time the
+ * gate), and a malformed value must FAIL the run rather than quietly fall back
+ * to 10 s on the machine that has already demonstrated 10 s does not fit.
+ */
+test("the theme guard's flag is honoured, and the default is the shipped 10s", () => {
+	assert.equal(THEME_SETTLE_DEFAULT_MS, 10_000);
+	// The shipped budget as the guard actually spends it: 40 polls of 250 ms.
+	// Pinned as arithmetic because the literal it replaced was `attempt < 40`.
+	assert.equal(
+		Math.ceil(THEME_SETTLE_DEFAULT_MS / THEME_SETTLE_POLL_MS),
+		40,
+		"the default budget no longer spends the 40 polls the frames were taken in",
+	);
+	assert.equal(resolveThemeSettleMs([], {}), THEME_SETTLE_DEFAULT_MS);
+	assert.equal(resolveThemeSettleMs(["--theme-settle-ms=45000"], {}), 45_000);
+	// The environment is the second door to the same number, and the flag wins
+	// over it, because the flag is the one a reader of the command line sees.
+	assert.equal(
+		resolveThemeSettleMs([], { [THEME_SETTLE_ENV]: "120000" }),
+		120_000,
+	);
+	assert.equal(
+		resolveThemeSettleMs(["--theme-settle-ms=45000"], {
+			[THEME_SETTLE_ENV]: "120000",
+		}),
+		45_000,
+	);
+	// Surrounding whitespace in an exported variable is not a malformed value.
+	assert.equal(
+		resolveThemeSettleMs([], { [THEME_SETTLE_ENV]: " 30000 " }),
+		30_000,
+	);
+});
+
+test("a malformed theme-settle budget is refused, not defaulted", () => {
+	const bad = [
+		"--theme-settle-ms=abc",
+		"--theme-settle-ms=",
+		"--theme-settle-ms=0",
+		"--theme-settle-ms=-5",
+		"--theme-settle-ms=1.5",
+		"--theme-settle-ms=10s",
+		// A safe-integer check rather than only a digits check: this passes
+		// `/^\d+$/` and would otherwise become an unbounded poll.
+		"--theme-settle-ms=99999999999999999999",
+	];
+	for (const arg of bad) {
+		assert.throws(
+			() => resolveThemeSettleMs([arg], {}),
+			THEME_SETTLE_REFUSAL,
+			`${arg} was accepted instead of refused`,
+		);
+	}
+	for (const value of ["", "ten seconds", "0", "-1", "1e6", "60000ms"]) {
+		assert.throws(
+			() => resolveThemeSettleMs([], { [THEME_SETTLE_ENV]: value }),
+			THEME_SETTLE_REFUSAL,
+			`${THEME_SETTLE_ENV}=${JSON.stringify(value)} was accepted instead of refused`,
+		);
+	}
+});
+
+/*
+ * The refusal above is only worth anything if the script actually reads it - a
+ * resolver nothing calls fails open. So the module is imported in a child with
+ * the bad flag in ITS argv, which is the path a typo takes, and the same child
+ * without the flag is the control: without it, a failure here could be the
+ * import rather than the flag.
+ */
+test("the script refuses to load at all on a malformed theme-settle flag", () => {
+	const home = mkdtempSync(join(tmpdir(), "lop-theme-settle-"));
+	cleaned.push(home);
+	const script = `await import(${JSON.stringify(
+		new URL("./capture-evidence.mjs", import.meta.url).href,
+	)});
+console.log("loaded");`;
+	const run = (arg) =>
+		spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", script, "probe", ...(arg ? [arg] : [])],
+			{
+				env: { PATH: process.env.PATH, HOME: home, TMPDIR: home },
+				encoding: "utf8",
+			},
+		);
+
+	const control = run(null);
+	assert.equal(
+		control.status,
+		0,
+		`the same child without the flag exited ${control.status}: ${control.stderr}`,
+	);
+	assert.match(control.stdout, MODULE_LOADED);
+
+	const refused = run("--theme-settle-ms=ten");
+	assert.notEqual(refused.status, 0, "a malformed flag loaded the script");
+	assert.match(refused.stderr, THEME_SETTLE_REFUSAL);
+});
+
+/*
+ * The space-separated spelling, which the file's shared `flag()` shape cannot
+ * see: round 5 (R5-8) measured that `--theme-settle-ms 300000` matched nothing
+ * and the run silently took the 10 s default - on the host that had already
+ * shown 10 s does not fit. It is refused by name now, which is the difference
+ * between a knob that fails closed and one that fails quietly.
+ */
+test("a space-separated theme-settle flag is refused rather than ignored", () => {
+	assert.throws(
+		() => resolveThemeSettleMs(["--theme-settle-ms", "300000"], {}),
+		THEME_SETTLE_JOINED,
+	);
+	// The `=` form is the one that works, and the environment is still read when
+	// the flag is absent entirely.
+	assert.equal(resolveThemeSettleMs(["--theme-settle-ms=300000"], {}), 300_000);
+	assert.equal(
+		resolveThemeSettleMs([], { [THEME_SETTLE_ENV]: "300000" }),
+		300_000,
+	);
+});
+
+/*
+ * The budget and the guard that spends it, pinned as ONE thing.
+ *
+ * Why this is a test rather than a sentence in the commit message: round 5's
+ * R5-3 probed a copy of the module with the guard's loop body reverted to the
+ * pre-change literal (`attempt < 40`, the shape this knob replaced) and the
+ * whole file stayed green at 10/10 — because every assertion above is about the
+ * constants, and a guard that ignores them is invisible from the outside. That
+ * revert is the one regression that would silently re-time every capture
+ * without moving a constant, so the coupling is asserted against the shipped
+ * source, where it lives.
+ */
+test("the theme guard spends the configurable budget, not a literal", () => {
+	const source = readFileSync(
+		new URL("./capture-evidence.mjs", import.meta.url),
+		"utf8",
+	);
+	const required = [
+		"const settleAttempts = Math.ceil(THEME_SETTLE_MS / THEME_SETTLE_POLL_MS);",
+		"for (let attempt = 0; attempt < settleAttempts; attempt++) {",
+		"await sleep(THEME_SETTLE_POLL_MS);",
+		'document carries theme "${applied}" after ${THEME_SETTLE_MS / 1000}s',
+	];
+	for (const needle of required) {
+		assert.ok(
+			source.includes(needle),
+			`the guard no longer contains: ${needle}`,
+		);
+	}
+	assert.ok(
+		!source.includes("attempt < 40"),
+		"the pre-change literal is back in the guard: the budget constants are no longer what it spends",
+	);
 });

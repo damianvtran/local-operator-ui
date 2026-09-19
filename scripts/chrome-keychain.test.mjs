@@ -81,7 +81,7 @@ function splitArguments(text) {
 /**
  * The directories whose `.mjs`/`.js`/`.cjs` files are scanned, and how deeply.
  *
- * The three `docs/evidence/<surface>/harness/` rigs are scanned recursively, to
+ * The FOUR `docs/evidence/<surface>/harness/` rigs are scanned recursively, to
  * any depth under `harness/`, because their docstrings say they drive Chrome
  * "exactly the way `scripts/capture-evidence.mjs` does - same private
  * `--headless=new` profile under the system temp dir, same DevTools websocket",
@@ -367,6 +367,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"photographs the sign-in dialog's footer at a settled MCP grant",
+	),
+	guarded(
+		"docs/evidence/row-states-refined/harness/row-states-capture.mjs",
+		"spawn",
+		1,
+		"photographs the row states from a BUILT Storybook of two trees - the branch and `origin/main` - so the before/after pair is two real builds rather than a proposal render",
 	),
 ];
 

@@ -257,6 +257,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-challenge-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a BUILT app tree - `--app-tree`, so the same rig runs against a before and an after tree - headless for the challenge arm and inactive for the real-site one, and drives the browser host over its own /rpc",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,
