@@ -107,11 +107,17 @@ export function accountChoiceVoice(
  *
  * Said rather than left blank (UX round 1, U1; design round 1, D9): a chooser
  * offering three ordinals gives no basis for a choice, and a row that explains
- * it is one the user can at least cancel deliberately. The recovery clause is
- * UX round 2's U8: the row said what the pick decides and not what to do when it
- * is the wrong one, which is the only thing a user in this state can act on. */
+ * it is one the user can at least cancel deliberately.
+ *
+ * IT IS ONE SENTENCE, AND NOT THE RECOVERY CLAUSE (design round 3, D11; UX round
+ * 3, U9). This slot exists for a LOGIN — `truncate` with the full value as a
+ * `title` (design round 1, D1) — so a prose instruction put here is the part that
+ * gets cut: measured on the rendered node, a 706px string in a 380px box painted
+ * about half of itself, with the actionable half ("…the wrong one, sign out and
+ * ask the site again.") reachable only by hovering. The clause lives in the lead
+ * now, once, where prose wraps. */
 export const UNNAMED_ACCOUNT_DETAIL =
-	"The site stored no name for this passkey. If it is the wrong one, sign out and ask the site again.";
+	"The site stored no name for this passkey.";
 
 /**
  * The second line for an account, or null when there is nothing to add.
@@ -152,7 +158,10 @@ export function chooserLead(request: WebauthnChoiceRequest): string {
 		return `${site} asked for a passkey. Pick it to sign in.`;
 	}
 	if (accountsAreNameless(request.accounts)) {
-		return `${site} asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as.`;
+		// The recovery clause is HERE rather than in the rows (design round 3, D11):
+		// the rows are machine-voice lines that truncate, and this sentence is prose
+		// that wraps — and it is the same sentence for every row, so once is enough.
+		return `${site} asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as. If it is the wrong one, sign out and ask the site again.`;
 	}
 	return `${site} asked for a passkey. More than one of your passkeys matches, so pick the one to use.`;
 }

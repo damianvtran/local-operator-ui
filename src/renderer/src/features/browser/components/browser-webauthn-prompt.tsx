@@ -3,6 +3,7 @@ import {
 	noteWebauthnRequest,
 	replaceWebauthnRequests,
 	useWebauthnRequests,
+	webauthnRequestsSnapshot,
 } from "@shared/browser-webauthn-queue";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
@@ -63,9 +64,6 @@ export const BrowserWebauthnPrompt: FC = () => {
 	 * the control that opened it.
 	 */
 	const previousFocus = useRef<Element | null>(null);
-	/** Whether the chooser was already up on the previous render, so the focus
-	 * capture above fires once per opening rather than once per offered request. */
-	const wasOpen = useRef(false);
 
 	const panel = chooserPanel({ requests, ending, answering });
 	const panelOpen = panel.kind !== "none";
@@ -79,23 +77,50 @@ export const BrowserWebauthnPrompt: FC = () => {
 		void api
 			.pendingWebauthnRequests?.()
 			.then((pending) => {
-				if (!cancelled) replaceWebauthnRequests(pending);
+				if (cancelled) return;
+				// The pull half opens the panel too, so it captures the same way.
+				if (pending.length > 0) recordFocus(document.activeElement);
+				replaceWebauthnRequests(pending);
 			})
 			.catch(() => {
 				// A host that is not running has no pending choosers, which is the
 				// empty queue this leaves in place.
 			});
-		const offRequest = api.onWebauthnRequest?.(noteWebauthnRequest);
+		const offRequest = api.onWebauthnRequest?.((request) => {
+			// CAPTURE AT RAISE TIME, in the handler itself: this is the last moment at
+			// which the caret is still the user's, whatever the rendering order turns
+			// out to be (Radix takes focus into the dialog as it opens, and a capture
+			// taken then records the dialog — measured). See `recordFocus` for why a
+			// bare read is not enough on its own.
+			recordFocus(document.activeElement);
+			noteWebauthnRequest(request);
+		});
 		const offSettled = api.onWebauthnSettled?.((payload) => {
-			const removed = clearWebauthnRequest(payload.requestId);
-			// Only explain an ending the user did not cause, and only for a request
-			// the mirror was actually holding: a request raised and ended while
-			// nothing was mounted was never on screen, so there is no ending to
-			// acknowledge (the pull cannot replay a request main has already
-			// answered either).
-			if (!removed) return;
-			const settled = endingFor(payload.requestId, payload.outcome);
+			/*
+			 * THE ENDING IS SET BEFORE THE MIRROR DROPS THE REQUEST, and that order is
+			 * load-bearing (UX round 3, U6). The other order makes the panel pass through
+			 * `none` for one render — the request is gone and no ending is set yet — which
+			 * CLOSES the dialog, and a close is what dispatches the restore: the caret was
+			 * handed back when the ending APPEARED rather than when it was dismissed, with
+			 * whatever `document.activeElement` happened to be at that instant, and the
+			 * dismissal itself then had nothing left to give back. Measured on the old
+			 * order: nine dismissals of a plain expiry ending across five boots, every one
+			 * leaving the caret on `<body>`, while the door that follows an in-dialog answer
+			 * (the shape the rig happened to walk) restored correctly.
+			 *
+			 * Only an ending the user did not cause, and only for a request the mirror was
+			 * actually holding: a request raised and ended while nothing was mounted was
+			 * never on screen, so there is no ending to acknowledge (the pull cannot replay
+			 * a request main has already answered either).
+			 */
+			const held = webauthnRequestsSnapshot().some(
+				(entry) => entry.requestId === payload.requestId,
+			);
+			const settled = held
+				? endingFor(payload.requestId, payload.outcome)
+				: null;
 			if (settled) setEnding(settled);
+			clearWebauthnRequest(payload.requestId);
 		});
 		return () => {
 			cancelled = true;
@@ -115,19 +140,51 @@ export const BrowserWebauthnPrompt: FC = () => {
 	 * closed-to-open transition is the moment the element the user was on is still
 	 * the active one.
 	 */
-	useEffect(() => {
-		if (!panelOpen) {
-			wasOpen.current = false;
-			return;
+	/*
+	 * WHERE THE USER WAS, kept while no chooser is up.
+	 *
+	 * Two halves, because one is not enough on this machine and the other is not
+	 * enough for a person:
+	 *
+	 *  - a READ on every render while nothing is open, which is what works in a
+	 *    background window — Chromium does not dispatch `focusin` when the document
+	 *    itself is unfocused, and every rig here runs `--window-mode=headless`
+	 *    (measured: a listener-only version recorded nothing, and the door it exists
+	 *    for failed with the caret on `<body>`);
+	 *  - a `focusin` LISTENER while nothing is open, which is what keeps it fresh for
+	 *    a user who tabs or clicks around without causing a render.
+	 *
+	 * A value is only ever WRITTEN, never cleared: an element inside the dialog, the
+	 * body, and a disconnected node are all "not where the user was", so they leave
+	 * the previous answer standing. That is the difference between this and the
+	 * transition capture it replaces — Radix moves focus into the dialog as it opens
+	 * (instrumented: a `focus()` on the first account row, inside `[role=dialog]`), so
+	 * a capture taken then recorded the DIALOG and the dismissal had nothing to hand
+	 * back (UX round 3, U6). The body is the same trap in a different direction: it is
+	 * what Radix returns focus to, and restoring to it is what "the caret went nowhere"
+	 * measured as.
+	 */
+	const recordFocus = useCallback((element: Element | null) => {
+		if (
+			element instanceof HTMLElement &&
+			element !== document.body &&
+			!element.closest("[role=dialog]")
+		) {
+			previousFocus.current = element;
 		}
-		if (wasOpen.current) return;
-		wasOpen.current = true;
-		const active = document.activeElement;
-		previousFocus.current =
-			active instanceof HTMLElement && !active.closest("[role=dialog]")
-				? active
-				: null;
-	}, [panelOpen]);
+	}, []);
+
+	useEffect(() => {
+		if (!panelOpen) recordFocus(document.activeElement);
+	});
+
+	useEffect(() => {
+		if (panelOpen) return;
+		const onFocusIn = (event: FocusEvent) =>
+			recordFocus(event.target as Element | null);
+		document.addEventListener("focusin", onFocusIn);
+		return () => document.removeEventListener("focusin", onFocusIn);
+	}, [panelOpen, recordFocus]);
 
 	/**
 	 * Answer main and drop the request from the mirror at once.
@@ -163,9 +220,36 @@ export const BrowserWebauthnPrompt: FC = () => {
 
 	const restoreFocus = useCallback(() => {
 		const element = previousFocus.current;
-		previousFocus.current = null;
 		if (element instanceof HTMLElement && element.isConnected) element.focus();
+		// The capture is NOT consumed here. Radix dispatches its own
+		// `autoFocusOnUnmount` inside a `setTimeout(0)`, so a close and a reopen in
+		// the same tick would have the late call clear a capture the new opening had
+		// just taken (agent review round 3, N3); leaving it in place makes the restore
+		// idempotent and lets the next dismissal still hand the caret back. It is
+		// replaced wholesale at the next open.
 	}, []);
+
+	/**
+	 * Hand the caret back after the panel closes — sequenced, not raced.
+	 *
+	 * Radix moves focus to `<body>` as it unmounts the dialog, and it does that from
+	 * its own zero-delay timer, so a restore that runs earlier is simply undone. The
+	 * app's own dismissal handlers therefore schedule this rather than calling it: one
+	 * frame, then one task, which is after the paint AND after Radix's timer. Measured
+	 * on the unattended expiry with `HTMLElement.prototype.focus` instrumented: the
+	 * only calls were Radix's own two (into the account row when the dialog opened,
+	 * onto the ending's Close when it appeared), and none at the dismissal at all —
+	 * the caret was left on `<body>` on every door (UX round 3, U6).
+	 */
+	const scheduleRestore = useCallback(() => {
+		// Two nested tasks, and NO `requestAnimationFrame`: this app runs its rigs in
+		// `--window-mode=headless`, where the page is never visible and rAF is
+		// suspended — a chain that went through it never reached the restore at all
+		// (measured: the instrumented tape showed no `focus()` call after the
+		// dismissal, which is what "the caret went nowhere" looked like from inside).
+		// The nesting is the sequencing: the inner task is queued after Radix's own.
+		setTimeout(() => setTimeout(restoreFocus, 0), 0);
+	}, [restoreFocus]);
 
 	/*
 	 * Give focus back when the panel closes FOR GOOD.
@@ -182,6 +266,15 @@ export const BrowserWebauthnPrompt: FC = () => {
 	const handleCloseAutoFocus = useCallback(
 		(event: Event) => {
 			event.preventDefault();
+			// Unconditional, deliberately. A guard that skipped the restore while
+			// another panel was pending looked right and was wrong: Radix dispatches
+			// this hook from its own timer, which can fire before React has committed
+			// the render that closed the panel, so the guard read a stale "still open"
+			// and the UNATTENDED expiry — the door UX round 3 filed U6 against — went on
+			// leaving the caret on `<body>` (measured: `activeElement=BODY` on this very
+			// check, while the queued door passed). Restoring when a new dialog is
+			// already opening is harmless: Radix's focus trap takes the caret straight
+			// back, which is what the queued door has always done.
 			restoreFocus();
 		},
 		[restoreFocus],
@@ -197,9 +290,17 @@ export const BrowserWebauthnPrompt: FC = () => {
 			}}
 			onCancelRequest={() => {
 				if (panel.kind !== "request") return;
+				// The panel only closes if this was the last request; a queue that
+				// advances keeps it up, and Radix holds the caret inside it.
+				if (requests.length <= 1) scheduleRestore();
 				answer(panel.request.requestId, null);
 			}}
-			onDismissEnding={() => setEnding(null)}
+			onDismissEnding={() => {
+				// An ending is only ever shown once nothing is answerable, so dismissing
+				// it always closes the panel.
+				scheduleRestore();
+				setEnding(null);
+			}}
 			onCloseAutoFocus={handleCloseAutoFocus}
 		/>
 	);

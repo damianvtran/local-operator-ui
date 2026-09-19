@@ -16,7 +16,7 @@
  * (Electron 44.3.0, macOS 25.6.0): `codesign -dv --verbose=4` prints
  * `Identifier=` and, for a team-signed bundle, `TeamIdentifier=` on its own
  * lines, and an ad-hoc signature prints no `TeamIdentifier=` line at all;
- * `codesign -d --entitlements :-` prints a single-line XML plist, and NOTHING
+ * `codesign -d --entitlements - --xml` prints a single-line XML plist, and NOTHING
  * when the signature carries no entitlements. The values are synthetic.
  */
 
@@ -101,7 +101,7 @@ const ADHOC_REPORT = [
 	"Info.plist=not bound",
 ].join("\n");
 
-/** Entitlements as `codesign -d --entitlements :-` prints them with the group. */
+/** Entitlements as `codesign -d --entitlements - --xml` prints them with the group. */
 const ENTITLEMENTS_WITH_GROUP =
 	'<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>' +
 	"<key>com.apple.security.cs.allow-jit</key><true/>" +
@@ -173,7 +173,7 @@ test("keychain access groups are parsed from the entitlements plist", () => {
 	]);
 	// The shipped app: entitlements present, none of them this one.
 	assert.deepEqual(parseKeychainAccessGroups(ENTITLEMENTS_WITHOUT_GROUP), []);
-	// An ad-hoc signature prints NOTHING for `-d --entitlements :-` (measured):
+	// An ad-hoc signature prints NOTHING for `-d --entitlements - --xml` (measured):
 	// that is "entitlement absent", not a parse failure.
 	assert.deepEqual(parseKeychainAccessGroups(""), []);
 	// A malformed tail must not be read as a group.
@@ -823,6 +823,71 @@ test("the mirror merges main's snapshot instead of overwriting what it holds", (
 		["req-2"],
 	);
 	clearWebauthnRequest("req-2");
+});
+
+test("the recovery clause lives in the lead, where prose wraps, and not in a truncating row", () => {
+	/*
+	 * Design round 3, D11 (and UX round 3's U9). The clause was put in the row's
+	 * second line, which exists for a LOGIN: `truncate` + `title`, so a 706px
+	 * sentence in a 380px box painted about half of itself and the actionable half
+	 * was hover-only. The test pins the shape the frame settles: the clause is in the
+	 * lead, and the row's line is one sentence.
+	 */
+	const nameless = {
+		requestId: "req-n",
+		relyingPartyId: "accounts.example.com",
+		accounts: [
+			{ credentialId: "a", displayName: null, name: null },
+			{ credentialId: "b", displayName: null, name: null },
+		],
+		tabId: 1,
+		pageTitle: null,
+	};
+	const lead = chooserLead(nameless);
+	assert.match(lead, /sign out and ask the site again/);
+	assert.equal(
+		UNNAMED_ACCOUNT_DETAIL,
+		"The site stored no name for this passkey.",
+	);
+	assert.ok(
+		!UNNAMED_ACCOUNT_DETAIL.includes("sign out and ask the site again"),
+		"the recovery clause is not in the row's line",
+	);
+	// A length ceiling rather than a pixel measurement: the row's box is 380px at the
+	// panel's fixed width, and this is the string that has to fit it.
+	assert.ok(
+		UNNAMED_ACCOUNT_DETAIL.length <= 60,
+		`the row's line stays short (${UNNAMED_ACCOUNT_DETAIL.length} chars)`,
+	);
+});
+
+test("a request whose push throws leaves nothing pending behind", () => {
+	/*
+	 * Agent review round 3, N1. `notify` is the host's `webContents.send` behind a
+	 * destroyed check, so it is the one call in the pre-timer body that can throw.
+	 * Registering the entry before it would leave main advertising a request whose
+	 * page `handle`'s catch has just cancelled.
+	 */
+	const thrown = [];
+	const chooser = new WebauthnChooser({
+		notify: () => {
+			throw new Error("window is gone");
+		},
+		log: (message) => thrown.push(message),
+		timeoutMs: 10_000,
+	});
+	let answered = "unset";
+	chooser.handle(
+		{ relyingPartyId: "example.test", accounts: ACCOUNTS },
+		(value) => {
+			answered = value;
+		},
+	);
+	// `undefined` rather than `null`: `onceAnswer` normalises "nothing" to the shape
+	// Electron's own callback documents (measured by the round-1 expiry case too).
+	assert.equal(answered, undefined, "the callback is still settled");
+	assert.deepEqual(chooser.pendingRequestIds(), [], "no entry is left pending");
+	assert.match(thrown.join("\n"), /could not be prepared/);
 });
 
 test("a live request is never hidden behind an ending, and an ending cancels nothing", () => {

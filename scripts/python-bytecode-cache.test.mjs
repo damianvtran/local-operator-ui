@@ -2215,7 +2215,7 @@ const SPAWN_SITES = [
 		"src/main/webauthn.ts",
 		"execFile",
 		1,
-		"the signature probe's runner: `file` is the parameter a test injects, and the only value the app itself passes is `/usr/bin/codesign` with an explicit argv (`-dv --verbose=4`, `-d --entitlements :-`). No interpreter, and no environment of its own: the child inherits this process's",
+		"the signature probe's runner: `file` is the parameter a test injects, and the only value the app itself passes is `/usr/bin/codesign` with an explicit argv (`-dv --verbose=4`, `-d --entitlements - --xml`). No interpreter, and no environment of its own: the child inherits this process's",
 	),
 ];
 

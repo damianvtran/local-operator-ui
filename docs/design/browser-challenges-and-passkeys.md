@@ -389,12 +389,22 @@ end for anybody with two passkeys for one site, so the app now answers it:
   screen ran the live branch's answer, cancelling a request the user had never
   seen. The property is asserted by `scripts/webauthn.test.mjs` (which fails on
   the round-1 behaviour) and re-measured live by the rig's queued-expiry step;
-- **focus is captured once per opening and restored by the dialog's own close**
-  (`onCloseAutoFocus`). Re-capturing on every change of the offered request
-  recorded Radix's dialog content instead of the user's element as soon as a
-  second request was queued, and the restore then targeted a disconnected node —
-  while restoring from an effect lost a race with Radix's return-to-`body` for
-  the ending's dismissal (review round 2, R5; UX round 2, U6);
+- **where the user was is TRACKED while nothing is open, and the caret is given
+  back at the dismissal** (review round 2 R5; UX rounds 2 and 3, U6). Three
+  measurements shaped this, and each one killed a cheaper version:
+  re-capturing on every change of the offered request recorded Radix's dialog
+  content as soon as a second request was queued; capturing on the closed-to-open
+  transition recorded the dialog as well, because Radix moves focus into it as it
+  opens (instrumented: `focus()` on the first account row, inside `[role=dialog]`);
+  and restoring through `requestAnimationFrame` never ran at all in the
+  `--window-mode=headless` rigs, where a hidden page's rAF is suspended. So the
+  record is written at RAISE time in the handler, refreshed on every render while
+  the panel is closed and by a `focusin` listener (a background window dispatches
+  no focus events, a person's does), never cleared — an element inside the dialog,
+  the body and a disconnected node all leave the previous answer standing — and the
+  dismissal handlers sequence the restore themselves rather than racing Radix's own
+  return-to-`body`. Measured on both doors: `activeElement=nav-item-chat`, with the
+  instrumented tape showing Radix's two `focus()` calls and then the app's;
 - the dialog is the existing hand-over dialog's shape — the same `BaseDialog` and
   roles, sentence case, no emoji, `cn` for class names (branding contract) — and
   everything it says is **derived from the request**: the lead sentence says which
@@ -410,7 +420,11 @@ end for anybody with two passkeys for one site, so the app now answers it:
   machine string, so it leads its row in the app's own ink while a login keeps the
   machine voice (N2), and the unnamed row's second line now carries the recovery
   clause — what to do when the pick is the wrong one — rather than only what the
-  pick decides (UX round 2, U8). The rows' text also dims with the disabled state
+  pick decides (UX round 2, U8) — and that clause lives in the LEAD, in prose that
+  wraps, rather than in the row's second line, which is the machine voice and
+  truncates with a `title` (design round 3, D11; UX round 3, U9: a 706px sentence in
+  a 380px box painted about half of itself, and the half that was lost was the
+  actionable one). The rows' text also dims with the disabled state
   again (one `disabled:[&>span]:text-ink-disabled` on the row, because the D1 fix's
   spans declared their own colours and overrode the primitive's), and the
   "Answering…" cue moved out of the scrolling body into the footer for the same
@@ -689,6 +703,14 @@ the accounts.
   plist.** Its artifacts exist to exercise the updater path and are never shipped,
   so the entitlement is not added there; if a candidate ever needs working
   passkeys, it needs the same two lines.
+- **A queue of ENDINGS is not built** (agent review round 3, N2): the panel holds
+  the newest unacknowledged ending, so two requests expiring in sequence produce
+  one paragraph. Nothing is cancelled or hidden by that — the live request always
+  wins, and the ending is only shown once nothing is answerable — but it does mean
+  the older ending is never acknowledged. A FIFO of endings adds a second axis to
+  the panel model and to the frames, and the reviewer who found it explicitly did
+  not ask for the fix; it belongs with a design ruling rather than in a
+  remediation round.
 - **The frozen-tab limit** (§1.4): not fixed, only documented. Nothing in this
   branch makes a captcha solvable in an invisible tab.
 - **A refused agent navigation still leaves no trace in the browser surface** (UX
