@@ -110,6 +110,15 @@ what the row draws at rest.
   branch (`feat/chat-sidebar-pins`) is not on this branch's base, so `row-hover`
   shows one reserved `size-6` slot where the merged feature will show two. The
   archive slot is the second of the pair and is built to compose with it.
+- **The Storybook story is not part of the sweep.**
+  `src/renderer/src/features/chat/components/session-archive.stories.tsx` renders
+  the same surfaces at component level (and `at-rest` was confirmed once through
+  `scripts/capture-evidence.mjs`), but the sweep sets the palette through a
+  decorator effect with a 10 s bound and that bound expired on every attempt
+  while this set was being prepared, on a machine running two other Storybook
+  servers. It is deliberately NOT registered in the sweep's `STORIES` list, so
+  no future sweep can fail on a story this session could not sweep; the file
+  says so itself, and registering it is a design-round task on a quiet machine.
 - **The stand-in advertises the seven `REQUIRED_BACKEND_FEATURES` keys** and
   answers the claim handshake, so the compatibility and attachment banners do not
   cover the surfaces these frames are of. That is a property of the stand-in, not

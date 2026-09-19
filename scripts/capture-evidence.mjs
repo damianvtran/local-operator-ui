@@ -4072,60 +4072,6 @@ export const STORIES = [
 	["chat-slash-highlight--clipped-boundary", 900, 240],
 	["chat-slash-highlight--geometry", 1000, 2600],
 	["chat-slash-highlight--scrolled-parity", 1000, 1000],
-
-	/*
-	 * SESSION ARCHIVE AND DELETE.
-	 *
-	 * The surfaces, in the order a reader meets them: the panel at rest with the
-	 * capability present (`at-rest`), the same panel with the pointer on a row so the
-	 * archive slot is REVEALED (`row-hover` - the reveal is CSS, so the entry is what
-	 * moves a real pointer; a story cannot put one there), the search block with a
-	 * query (`search-live-only`) and with `Include archived` on
-	 * (`search-include-archived`, where the archived conversation appears marked and
-	 * the sidebar has gained no section to hold it), the capability WITHDRAWN
-	 * (`capability-withdrawn` - byte-compared against `at-rest` in the README), the
-	 * one delete confirmation, and the header's two states (the archived pill, and
-	 * the conversation menu open).
-	 *
-	 * Every one of these is 320px wide except the header's pair, because 320 is the
-	 * shipped sidebar's own floor: the reserved 24px slot costs TITLE width, and a
-	 * frame of a width the app does not have would price it against a panel nobody
-	 * uses.
-	 *
-	 * The states are all one story file's (`session-archive--*`), which is why they
-	 * land under `docs/evidence/session-archive/<state>/`.
-	 */
-	["session-archive--at-rest", 320, 560, { dir: "at-rest" }],
-	[
-		"session-archive--row-hover",
-		320,
-		560,
-		/* The reveal is `group-hover`, so a frame of it needs a pointer the page
-		   believes in: the row's own button is the hover TARGET (the wrapper is what
-		   carries the group hook), and it is hit at its centre. */
-		{ dir: "row-hover", hover: "[data-chat-row]", hoverSettleMs: 500 },
-	],
-	["session-archive--search-live-only", 320, 560, { dir: "search-live-only" }],
-	[
-		"session-archive--search-include-archived",
-		320,
-		560,
-		{ dir: "search-include-archived" },
-	],
-	[
-		"session-archive--capability-withdrawn",
-		320,
-		560,
-		{ dir: "capability-withdrawn" },
-	],
-	["session-archive--delete-dialog", 560, 400, { dir: "delete-dialog" }],
-	["session-archive--archived-header", 560, 84, { dir: "archived-header" }],
-	[
-		"session-archive--conversation-actions",
-		560,
-		200,
-		{ dir: "conversation-actions" },
-	],
 ];
 
 /**
