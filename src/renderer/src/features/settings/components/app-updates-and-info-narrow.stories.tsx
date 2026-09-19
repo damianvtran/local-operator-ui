@@ -80,6 +80,8 @@ const updaterStub = () => ({
 	onUpdateProgress: () => () => {},
 	onUpdateInstallInFlight: () => () => {},
 	onBeforeQuitForUpdate: () => () => {},
+	onUpdateInstallProgress: () => () => {},
+	onUpdateInstallSucceeded: () => () => {},
 });
 
 const Bridge = ({

@@ -2252,12 +2252,25 @@ const SPAWN_SITES = [
 		/"\/bin\/launchctl"/,
 		"removes ShipIt's launchd job",
 	),
-	runsCommand(
+	passThrough(
 		"src/main/update-service.ts",
 		"spawn",
 		1,
-		/"sh"/,
-		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
+		"the update extraction (`runExtraction`): the command is `/usr/bin/ditto` by default and the caller's only in a test, and the argv is `update-shipit.ts`'s `extractionArguments`. No interpreter runs under it; it is spawned detached so the bound can take its whole process group down, and its environment is inherited because `ditto` reads nothing from ours",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		2,
+		/plan\.script/,
+		"the relaunch watchdog: a shell script that waits for the swap and starts the app again, or for the installer this app spawned to go. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		3,
+		/plan\.args/,
+		"the installer spawner: a shell that waits for this process's pid to go and then `exec`s Apple's ShipIt. It runs no interpreter - the process it becomes is Apple's installer - and its `env` is the inherited one plus the plan's four variables (`update-shipit.ts`'s `buildInstallerSpawn`)",
 	),
 	passThrough(
 		"src/main/webauthn.ts",

@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 import { desktopProxyPlugin } from "../../../../scripts/vite-plugins/desktop-proxy.ts";
 
 /**
@@ -153,6 +153,7 @@ for (const name of [
 	"onUpdateAvailable", "onUpdateNotAvailable", "onUpdateDevMode",
 	"onUpdateNpxAvailable", "onUpdateDownloaded", "onUpdateError",
 	"onUpdateProgress", "onUpdateInstallBlocked", "onUpdateInstallFailed",
+	"onUpdateInstallProgress", "onUpdateInstallSucceeded",
 	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
