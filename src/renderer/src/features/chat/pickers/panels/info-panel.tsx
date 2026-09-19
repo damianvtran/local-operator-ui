@@ -158,6 +158,21 @@ const INSTALL_COLUMNS: Column<InfoRow>[] = [
 	},
 ];
 
+/*
+ * THE PERSON'S WORD, NOT THE TOKEN, for the one state whose token is a machine's.
+ *
+ * `live`, `stale` and `stored` read as words already; `wedged` does not — it is
+ * the wire's own spelling (`live_state`), and this panel was the last place in
+ * the product still showing it to a person while every other surface says "not
+ * answering" (`info_panel.py` renders the same table and the same count that
+ * way, and the CLI's STATE cell was moved off its token for exactly this
+ * reason). The badge keeps its warning variant: the INK was already right, and
+ * only the label was the machine's.
+ *
+ * The key stays the raw code, because it is the key: `row.state` is what the
+ * backend published, and translating the key would mean translating every
+ * lookup too.
+ */
 const STATE_BADGE: Record<
 	string,
 	{
@@ -167,7 +182,7 @@ const STATE_BADGE: Record<
 	}
 > = {
 	live: { variant: "neutral", label: "live" },
-	wedged: { variant: "warning", label: "wedged" },
+	wedged: { variant: "warning", label: "not answering" },
 	stale: { variant: "neutral", label: "stale", className: "text-ink-dim" },
 	stored: { variant: "neutral", label: "stored", className: "text-ink-dim" },
 };
@@ -393,7 +408,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 												value={formatCount(sessions?.live ?? 0)}
 											/>
 											<StatCard
-												label="Wedged"
+												/*
+												 * "Not answering", not "Wedged", to match the badge in the
+												 * table below and the rest of the product: the count is the
+												 * same fact the row marks and the TUI's own meta line state in
+												 * the person's word, and this card was naming it in the
+												 * wire's.
+												 */
+												label="Not answering"
 												value={formatCount(sessions?.wedged ?? 0)}
 												tone={
 													(sessions?.wedged ?? 0) > 0 ? "warning" : "neutral"

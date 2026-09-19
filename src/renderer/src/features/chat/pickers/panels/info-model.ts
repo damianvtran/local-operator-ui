@@ -478,12 +478,17 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 			/*
 			 * The split appears only when there is one to make. With nothing wedged,
 			 * `21 live` under a card whose value is already `21` restates the Live and
-			 * Wedged tiles directly above it (design round 1, D3); the value is what this
-			 * card is for — the denominator of the trajectory tally beside it.
+			 * Not answering tiles directly above it (design round 1, D3); the value is what
+			 * this card is for — the denominator of the trajectory tally beside it.
+			 *
+			 * "not answering", not "wedged": the terminal's equivalent line reads
+			 * `N live · M not answering` (`info_panel.py::_sessions_facts`), and this is a
+			 * port of it rather than a second opinion — the token is the wire's word and
+			 * the person's word is this one.
 			 */
 			value: formatCount(runtimes),
 			note: sessions.wedged
-				? `${formatCount(sessions.live)} live${SEPARATOR}${formatCount(sessions.wedged)} wedged`
+				? `${formatCount(sessions.live)} live${SEPARATOR}${formatCount(sessions.wedged)} not answering`
 				: undefined,
 		},
 		{
@@ -566,18 +571,23 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 		 * above do: `1 session are wedged; their counts` reads as a template nobody
 		 * finished rather than as a measurement.
 		 *
-		 * This is the terminal's FALLBACK spelling, and deliberately so. The wired
-		 * sentence (`render.py::not_answering_clause`) additionally names the last
-		 * heartbeat's age and the pid, and ends by pricing `lop stop --pid N`; it
-		 * earns those clauses from the same record rows this payload carries, so the
-		 * shorter form is a choice about this SURFACE rather than a limit on the
-		 * data. The count leads either way, and the disclosure — a count that
-		 * includes these runtimes is as of a heartbeat that stopped — is what the
-		 * sentence exists to make.
+		 * This is the terminal's FALLBACK spelling — `render.py`'s
+		 * `not_answering_clause` with no rows to price, which reads `1 session is not
+		 * answering; its counts are as of its last heartbeat` — and it is ported
+		 * rather than paraphrased: the wired sentence additionally names the last
+		 * heartbeat's age and the pid, and ends by pricing a stop; it earns those
+		 * clauses from record rows this payload does not carry, so the shorter form
+		 * is a choice about this SURFACE rather than a limit on the data. The count
+		 * leads either way, and the disclosure — a count that includes these runtimes
+		 * is as of a heartbeat that stopped — is what the sentence exists to make.
+		 *
+		 * "not answering" and NOT "wedged": the word was the one thing the port
+		 * changed, and it is the same drift the badges above carry (design D5) — the
+		 * token is the machine's spelling, and a reader of this panel is a person.
 		 */
 		const one = sessions.wedged === 1;
 		caveats.push(
-			`${plural(sessions.wedged, "session")} ${one ? "is" : "are"} wedged; ` +
+			`${plural(sessions.wedged, "session")} ${one ? "is" : "are"} not answering; ` +
 				`${one ? "its" : "their"} counts are as of ${one ? "its" : "their"} last heartbeat.`,
 		);
 	}
