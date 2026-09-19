@@ -902,6 +902,14 @@ test("every fact has a sentence that fits the row, and a full one for the toolti
 	assert.match(dirtySentence, /save to replace it/);
 	assert.doesNotMatch(dirtySentence, /discard/i);
 	assert.match(FACT_DETAIL["disk-changed"], /unsaved edits are discarded/);
+	/*
+	 * AND THE BOUNDARY IS IN THE SENTENCE (UX round 1, U1). "Your unsaved edits are
+	 * kept" without a "for how long" is a promise the app cannot keep under two of
+	 * its three natural readings: the registry that holds them is module state, so
+	 * they survive the close and die with the process. The reader is told at the row
+	 * (here) and again at the close (`close-copy.ts`, asserted in the close suite).
+	 */
+	assert.match(FACT_DETAIL["disk-changed"], /kept until the app quits/);
 	assert.ok(
 		ANSWER_LIFETIME_MS > 0,
 		"an answer retires rather than standing for ever",

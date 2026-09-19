@@ -79,6 +79,7 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/components/canvas/document-buffers";
 			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
 			export { tabFollowingClose } from "./src/renderer/src/features/chat/components/canvas/tab-selection";
+			export { keptWordsMessage } from "./src/renderer/src/features/chat/components/canvas/close-copy";
 			export {
 				createFreshnessRunner,
 				clearDocumentDirty,
@@ -117,6 +118,7 @@ const {
 	setBufferPorts,
 	canvasDocumentForPath,
 	tabFollowingClose,
+	keptWordsMessage,
 	createFreshnessRunner,
 	clearDocumentDirty,
 	isDocumentDirty,
@@ -232,8 +234,9 @@ function closeTab(documentId) {
 
 /** The close's second half, and the waits the async arms need to settle. */
 const settleAfter = async (documentId) => {
-	closeBuffer(documentId);
+	const outcome = await closeBuffer(documentId);
 	await new Promise((resolve) => setTimeout(resolve, 20));
+	return outcome;
 };
 
 // ------------------------------------------------------------ (a) the close
@@ -253,7 +256,12 @@ test("(a) a closed clean tab is gone, and the unmount commit does not bring it b
 		"the ✕ handler closes the document itself",
 	);
 
-	await settleAfter(document.id);
+	const cleanOutcome = await settleAfter(document.id);
+	assert.equal(
+		cleanOutcome.keptWords,
+		false,
+		"a close with nothing un-written has nothing to report (the report is for kept words)",
+	);
 
 	assert.deepEqual(
 		[open().files.length, open().openTabs.length],
@@ -377,12 +385,17 @@ test("(b) closing a dirty tab whose file has not moved writes the bytes and keep
 	proposeBuffer(document.id, "the reader's words");
 
 	closeTab(document.id);
-	await settleAfter(document.id);
+	const writtenOutcome = await settleAfter(document.id);
 
 	assert.deepEqual(
 		bridge.writes.map((write) => write.text),
 		["the reader's words"],
 		"the flush reaches the file",
+	);
+	assert.equal(
+		writtenOutcome.keptWords,
+		false,
+		"and a close whose words reached the file reports nothing kept - there is no silence to fill",
 	);
 	assert.deepEqual(
 		[open().files.length, open().openTabs.length],
@@ -430,8 +443,13 @@ test("(c) a close whose write was refused keeps the words, and opening the path 
 	fileMoves(path, "external\n", 200);
 
 	closeTab(document.id);
-	await settleAfter(document.id);
+	const heldOutcome = await settleAfter(document.id);
 
+	assert.equal(
+		heldOutcome.keptWords,
+		true,
+		"the close REPORTS that it kept un-written words (UX round 1, U1: this outcome used to be discarded)",
+	);
 	assert.deepEqual(bridge.writes, [], "a held document is never written over");
 	assert.deepEqual(
 		[open().files.length, open().openTabs.length],
@@ -718,4 +736,34 @@ test("(d) the restart boundary: nothing about a closed document is persisted, an
 
 	setBufferPorts(null);
 	resetBuffers();
+});
+
+// --------------------------------------------- (e) what a close says about it
+
+test("(e) the close's sentence names the boundary, so 'kept' cannot be read as 'saved' or 'kept for good'", () => {
+	const sentence = keptWordsMessage("close-held.md");
+	/*
+	 * WHAT THIS PINS (UX round 1, U1). The app keeps un-written words in module
+	 * state: they survive the close, and they do not survive a quit. The row says so
+	 * (`FACT_DETAIL["disk-changed"]`, asserted in the freshness suite) and the close
+	 * says so too, and this is the sentence the reader is shown - asserted here
+	 * because the copy is the whole of the fix and a later edit to it is a change to
+	 * what the app promises, not a wording preference.
+	 */
+	assert.ok(
+		sentence.includes("close-held.md"),
+		"it names the document that was closed",
+	);
+	assert.ok(
+		sentence.includes("could not be saved"),
+		"it says why the words are still here, rather than only that they are",
+	);
+	assert.ok(
+		sentence.includes("kept until the app quits"),
+		"and it names the BOUNDARY: the registry that holds them dies with the process",
+	);
+	assert.ok(
+		sentence.includes("opening it again brings them back"),
+		"with the one action the reader can take, which is true of this session",
+	);
 });
