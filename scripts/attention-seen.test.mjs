@@ -16,11 +16,15 @@ import { build } from "esbuild";
  *      snake_case items in the order they were enumerated, and a body the
  *      backend's own schema accepts — 1..500 items, real uuids, no extra key.
  *      A batch that is refused at the schema is a click that did nothing.
- *   2. THE SET. `markAllRead` sends exactly the store's rows that carry
- *      `unseen` AND a `completion_token`. A row without a token names no
- *      completion, and a row already read has nothing to acknowledge; sending
- *      either inflates the batch and puts a number in the receipt that no row's
- *      story explains. Zero such rows sends NO REQUEST — not an empty one.
+ *   2. THE SET. `markAllRead` sends exactly the store's rows that DRAW an
+ *      outstanding completion mark (`unreadMarkKind`: `unseen` plus a
+ *      `complete`/`error`/`interrupted` status code) AND carry a
+ *      `completion_token`. A row without a token names no completion, a row
+ *      already read has nothing to acknowledge, and a row whose live state has
+ *      taken it over (busy, wedged, a parked gate) draws its own glyph rather
+ *      than the mark — sending any of the three inflates the batch and puts a
+ *      number in the receipt that no row's story explains. Zero such rows sends
+ *      NO REQUEST — not an empty one.
  *   3. THE ANSWER IS THE ONLY WRITE. `superseded` and `unknown` rows keep their
  *      marks, nothing is cleared optimistically while the request is in flight,
  *      and a refusal leaves the store byte-identical. This is the property that
@@ -247,7 +251,12 @@ const storeModule = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
 const { useCanonicalSessionsStore: store } = storeModule;
-const { unreadAckableCount, unreadAckableRows, markAllReadCopy } = storeModule;
+const {
+	unreadAckableCount,
+	unreadAckableRows,
+	unreadMarkKind,
+	markAllReadCopy,
+} = storeModule;
 
 /** One unread completion, as a catalogue row carries it. */
 const unread = (sessionId, over = {}) => ({
@@ -261,6 +270,43 @@ const unread = (sessionId, over = {}) => ({
 	...over,
 });
 
+/**
+ * The derived status pair of a finished turn that has not been read: what the
+ * runtime publishes on `status` for a row whose completion mark stands
+ * (`CatalogEntry.status_code`).
+ */
+const COMPLETE = { code: "complete", label: "Unseen completion" };
+
+/**
+ * The other derived pairs a catalogue row can carry, spelled the way
+ * `CatalogEntry.status_code` publishes them: live state and a parked gate each
+ * outrank an unread completion, so those rows never carry `complete`.
+ */
+const BUSY = { code: "busy", label: "Working" };
+const WEDGED = { code: "wedged", label: "Not answering · process alive" };
+const APPROVAL = { code: "approval", label: "Approval needed" };
+const ANSWER = { code: "answer", label: "Answer needed" };
+
+/**
+ * One row as `sessions.list` sends it: the runtime's derived `status` pair BESIDE
+ * the attention state, because those two are what the surface reads together.
+ *
+ * The pair is not decoration, and a fixture that leaves it off is not a row the
+ * backend can produce. `status.code` is the runtime's own precedence: it
+ * publishes `complete`/`error`/`interrupted` only where
+ * `CatalogEntry.shows_completion_mark` holds, and `busy`, `wedged`, `approval`
+ * or `answer` where live state outranks the mark. `unreadMarkKind` reads exactly
+ * that, so a roster that omits it would be testing the predicate against a wire
+ * the app cannot see — and would pass whatever the predicate did with an absent
+ * code.
+ */
+const completeRow = (sessionId, over = {}) => ({
+	session_id: sessionId,
+	status: COMPLETE,
+	attention: unread(sessionId),
+	...over,
+});
+
 /** Seed the store's rows, as a catalogue read would have left them. */
 const seed = (rows) => {
 	store.setState({ sessions: rows });
@@ -271,21 +317,27 @@ const rowFor = (sessionId) =>
 
 test("the batch is exactly the rows carrying an unseen completion with a token", async () => {
 	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-		{
-			session_id: OTHER,
+		completeRow(SESSION, { title: "Reconcile" }),
+		completeRow(OTHER, {
 			title: "Quarterly",
 			attention: unread(OTHER, {
 				unseen: false,
 				revision: [4, 4],
 			}),
-		},
-		{
-			session_id: "222222222222",
+		}),
+		completeRow("222222222222", {
 			title: "Read but no token",
 			attention: unread("222222222222", { completion_token: null }),
+		}),
+		/*
+		 * The status pair is present and the mark is: this row is excluded for the
+		 * ABSENCE of attention alone, which is what the case names.
+		 */
+		{
+			session_id: "333333333333",
+			title: "No attention at all",
+			status: COMPLETE,
 		},
-		{ session_id: "333333333333", title: "No attention at all" },
 	]);
 	serve({ read: [], superseded: [], unknown: [] });
 	await store.getState().markAllRead();
@@ -308,17 +360,15 @@ test("the label's number is the set the request sends, from one predicate", asyn
 	 * nor sent).
 	 */
 	const rows = [
-		{ session_id: SESSION, title: "Unread", attention: unread(SESSION) },
-		{
-			session_id: OTHER,
+		completeRow(SESSION, { title: "Unread" }),
+		completeRow(OTHER, {
 			title: "Read",
 			attention: unread(OTHER, { unseen: false }),
-		},
-		{
-			session_id: "333333333333",
+		}),
+		completeRow("333333333333", {
 			title: "No token",
 			attention: unread("333333333333", { completion_token: null }),
-		},
+		}),
 	];
 	seed(rows);
 	serve({ read: [], superseded: [], unknown: [] });
@@ -337,6 +387,125 @@ test("the label's number is the set the request sends, from one predicate", asyn
 	);
 });
 
+/**
+ * Every row of the roster below carries the mark-bearing ATTENTION state
+ * (`unseen` plus a token), which is what the count used to read — so each one
+ * here was counted under the control before `unreadMarkKind`.
+ *
+ * The roster is one the backend can actually produce, because the exclusion is
+ * not this client's opinion: `CatalogEntry.status_code` publishes `busy`,
+ * `wedged`, `approval` or `answer` wherever live state or a parked gate
+ * outranks an unread completion, and publishes `complete`/`error`/
+ * `interrupted` only where `shows_completion_mark` holds. The last two rows are
+ * the whitelist's own edges rather than wire states: a code this build does not
+ * know, and the ABSENT pair a locally created row carries until its first
+ * catalogue read. `unseen` is a LEVEL, so it survives a session being resumed
+ * (nothing but an acknowledgement clears it) — which is exactly how a row that
+ * finished a turn and started another came to be counted under a spinner.
+ */
+const MARK_ROSTER = [
+	["busy-unseen", BUSY, {}],
+	["wedged-unseen", WEDGED, {}],
+	["approval-unseen", APPROVAL, {}],
+	["answer-unseen", ANSWER, {}],
+	["unknown-code-unseen", { code: "sideways", label: "?" }, {}],
+	["no-status-unseen", undefined, {}],
+	["complete-unseen", COMPLETE, { kind: "complete" }],
+	["error-unseen", { code: "error", label: "Unseen error" }, { kind: "error" }],
+	[
+		"interrupted-unseen",
+		{ code: "interrupted", label: "Unseen interruption" },
+		{ kind: "interrupted" },
+	],
+	["complete-read", COMPLETE, { unseen: false }],
+	["complete-tokenless", COMPLETE, { completion_token: null }],
+];
+
+const markRoster = () =>
+	MARK_ROSTER.map(([id, status, attention]) =>
+		completeRow(id, {
+			title: id,
+			...(status ? { status } : { status: undefined }),
+			attention: unread(id, attention),
+		}),
+	);
+
+test("the count is the rows DRAWING a mark, not the rows carrying `unseen`", async () => {
+	const rows = markRoster();
+	const kind = (id) =>
+		unreadMarkKind(rows.find((row) => row.session_id === id));
+
+	// The four the runtime outranks, and the two it cannot vouch for: no mark.
+	for (const id of [
+		"busy-unseen",
+		"wedged-unseen",
+		"approval-unseen",
+		"answer-unseen",
+		"unknown-code-unseen",
+		"no-status-unseen",
+	])
+		assert.equal(kind(id), null, `${id} must draw no mark`);
+
+	// The marks: a completion, and the two failures the operator counts as
+	// "error X indicators".
+	assert.equal(kind("complete-unseen"), "complete");
+	assert.equal(kind("error-unseen"), "error");
+	assert.equal(kind("interrupted-unseen"), "interrupted");
+
+	// And the state stops the count: an acknowledged row is not a mark, and a
+	// mark with no token is drawn but cannot be sent.
+	assert.equal(kind("complete-read"), null);
+	assert.equal(kind("complete-tokenless"), "complete");
+
+	const copy = markAllReadCopy(rows);
+	assert.equal(copy.count, 3, "the count is the drawn marks with a token");
+	assert.equal(copy.label, "Mark all 3 read");
+
+	seed(rows);
+	serve({ read: [], superseded: [], unknown: [] });
+	await store.getState().markAllRead();
+	assert.deepEqual(
+		requests[0].items.map((entry) => entry.sessionId),
+		["complete-unseen", "error-unseen", "interrupted-unseen"],
+		"the batch carries the three marks and nothing else",
+	);
+});
+
+test("the tokenless clause names the drawn marks it cannot send, and only those", () => {
+	/*
+	 * The clause is the one sentence that has to agree with the screen: it says a
+	 * mark stays because no click can clear it. Under bare `unseen` it also named
+	 * rows with NO mark — a busy row's spinner was reported as an uncleared
+	 * unread mark, which is the defect one seating away from the count.
+	 */
+	const rows = [
+		completeRow(SESSION, { title: "Unread", active: true }),
+		completeRow(OTHER, {
+			title: "Mark, no token",
+			active: true,
+			attention: unread(OTHER, { completion_token: null }),
+		}),
+		completeRow("333333333333", {
+			title: "Busy, no token",
+			active: true,
+			status: BUSY,
+			attention: unread("333333333333", { completion_token: null }),
+		}),
+	];
+	const copy = markAllReadCopy(rows);
+	assert.equal(copy.count, 1);
+	/*
+	 * Every row is `active`, so the `elsewhere` clause is absent and this asserts the
+	 * tokenless clause alone; the both-clauses sentence is asserted in the copy case
+	 * above, where the separator defect (design D5 / QA Q-1) lived.
+	 */
+	assert.equal(
+		copy.scope,
+		"Mark 1 unread chat as read. 1 unread mark with no completion token cannot be cleared.",
+		"the clause must name the drawn, unsendable mark and not the busy row's",
+	);
+});
+
 test("the control's copy names the extent before the click", () => {
 	/*
 	 * UX round 1 (U1) and design D3: the gesture is catalogue-wide, so the number
@@ -346,24 +515,14 @@ test("the control's copy names the extent before the click", () => {
 	 * a check that survives an acknowledged clear with nothing explaining it.
 	 */
 	const elsewhere = [
-		{
-			session_id: SESSION,
-			title: "Active unread",
-			active: true,
-			attention: unread(SESSION),
-		},
-		{
-			session_id: OTHER,
-			title: "Previous unread",
-			active: false,
-			attention: unread(OTHER),
-		},
+		completeRow(SESSION, { title: "Active unread", active: true }),
+		completeRow(OTHER, { title: "Previous unread", active: false }),
 	];
 	const local = markAllReadCopy(elsewhere);
 	assert.equal(local.label, "Mark all 2 read");
 	assert.equal(
 		local.scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats",
+		"Mark 2 unread chats as read, including 1 in Previous chats.",
 	);
 	assert.equal(
 		local.nameSuffix,
@@ -378,12 +537,7 @@ test("the control's copy names the extent before the click", () => {
 	);
 
 	const withoutElsewhere = markAllReadCopy([
-		{
-			session_id: SESSION,
-			title: "Active unread",
-			active: true,
-			attention: unread(SESSION),
-		},
+		completeRow(SESSION, { title: "Active unread", active: true }),
 	]);
 	assert.equal(withoutElsewhere.label, "Mark all 1 read");
 	assert.equal(withoutElsewhere.scope, "Mark 1 unread chat as read.");
@@ -394,34 +548,48 @@ test("the control's copy names the extent before the click", () => {
 	);
 
 	const tokenless = markAllReadCopy([
-		{
-			session_id: SESSION,
-			title: "Active unread",
-			active: true,
-			attention: unread(SESSION),
-		},
-		{
-			session_id: "444444444444",
+		completeRow(SESSION, { title: "Active unread", active: true }),
+		completeRow("444444444444", {
 			title: "Unseen, no token",
 			active: true,
 			attention: unread("444444444444", { completion_token: null }),
-		},
+		}),
 	]);
 	assert.equal(tokenless.count, 1, "a mark with no token is not the set sent");
 	assert.equal(
 		tokenless.scope,
 		"Mark 1 unread chat as read. 1 unread mark with no completion token cannot be cleared.",
 	);
+	/*
+	 * BOTH CLAUSES AT ONCE, which is the case neither arm's own assertion above could
+	 * see: the old join dropped the separator between them and produced "…in Previous
+	 * chats 1 unread mark with no completion token cannot be cleared." (design D5 / QA
+	 * Q-1, measured on this head and on the base). The tooltip is the one place a
+	 * pointer user reads the extent, so both sentences have to survive being read
+	 * together.
+	 */
+	const both = markAllReadCopy([
+		...elsewhere,
+		completeRow("555555555555", {
+			title: "Unseen, no token",
+			active: true,
+			attention: unread("555555555555", { completion_token: null }),
+		}),
+	]);
+	assert.equal(both.count, 2, "the tokenless mark is not in the set sent");
+	assert.equal(
+		both.scope,
+		"Mark 2 unread chats as read, including 1 in Previous chats. 1 unread mark with no completion token cannot be cleared.",
+	);
 });
 
 test("nothing unread sends no request and writes nothing", async () => {
 	const rows = [
-		{ session_id: SESSION, title: "Reconcile" },
-		{
-			session_id: OTHER,
+		{ session_id: SESSION, title: "Reconcile", status: COMPLETE },
+		completeRow(OTHER, {
 			title: "Quarterly",
 			attention: unread(OTHER, { unseen: false }),
-		},
+		}),
 	];
 	seed(rows);
 	serve({ read: [], superseded: [], unknown: [] });
@@ -446,13 +614,9 @@ test("nothing unread sends no request and writes nothing", async () => {
 
 test("only the answer's `read` bucket clears a mark", async () => {
 	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-		{ session_id: OTHER, title: "Quarterly", attention: unread(OTHER) },
-		{
-			session_id: "222222222222",
-			title: "Migrate",
-			attention: unread("222222222222"),
-		},
+		completeRow(SESSION, { title: "Reconcile" }),
+		completeRow(OTHER, { title: "Quarterly" }),
+		completeRow("222222222222", { title: "Migrate" }),
 	]);
 	serve({
 		read: [
@@ -489,9 +653,7 @@ test("only the answer's `read` bucket clears a mark", async () => {
 });
 
 test("nothing is cleared while the request is in flight, and a failure clears nothing", async () => {
-	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-	]);
+	seed([completeRow(SESSION, { title: "Reconcile" })]);
 	let settle;
 	globalThis.__attentionRequest = () =>
 		new Promise((resolve) => {
@@ -515,9 +677,7 @@ test("nothing is cleared while the request is in flight, and a failure clears no
 });
 
 test("a failed request rejects and leaves every mark where it was", async () => {
-	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-	]);
+	seed([completeRow(SESSION, { title: "Reconcile" })]);
 	const before = store.getState().sessions;
 	globalThis.__attentionRequest = async () => {
 		throw new Error("the store is busy");
@@ -537,11 +697,10 @@ test("the merge guard refuses a receipt that would carry a row backwards", async
 	 * single-frame path uses, so the newer pair stays.
 	 */
 	seed([
-		{
-			session_id: SESSION,
+		completeRow(SESSION, {
 			title: "Reconcile",
 			attention: unread(SESSION, { revision: [9, 9], unseen: false }),
-		},
+		}),
 	]);
 	store
 		.getState()
@@ -552,9 +711,7 @@ test("the merge guard refuses a receipt that would carry a row backwards", async
 });
 
 test("a state for a conversation the catalogue does not hold is dropped", () => {
-	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-	]);
+	seed([completeRow(SESSION, { title: "Reconcile" })]);
 	const before = store.getState().sessions;
 	store.getState().applyAttentionMany([
 		// A session that left the catalogue between the render and the answer:
@@ -569,8 +726,8 @@ test("a state for a conversation the catalogue does not hold is dropped", () => 
 
 test("a batch of states is ONE commit", () => {
 	seed([
-		{ session_id: SESSION, title: "Reconcile", attention: unread(SESSION) },
-		{ session_id: OTHER, title: "Quarterly", attention: unread(OTHER) },
+		completeRow(SESSION, { title: "Reconcile" }),
+		completeRow(OTHER, { title: "Quarterly" }),
 	]);
 	const before = store.getState().sessions;
 	store

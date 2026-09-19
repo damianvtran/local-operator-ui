@@ -1286,10 +1286,15 @@ type CanonicalSessionsState = {
 	 * Clear the unread marks THIS CLIENT holds, in one call.
 	 *
 	 * The set is enumerated from the store's own rows and is TOKEN-bound: a row
-	 * is sent only when it carries `attention.unseen` AND a `completion_token`,
-	 * so the batch names exactly the completions this client rendered — a
-	 * completion published after the render is not in it and stays unread, and a
-	 * mark with no token (which names no completion) is neither sent nor counted.
+	 * is sent only when it is DRAWING an outstanding completion mark
+	 * (`unreadMarkKind`) AND carries a `completion_token`, so the batch names
+	 * exactly the completions this client rendered — a completion published after
+	 * the render is not in it and stays unread, a mark with no token (which names
+	 * no completion) is neither sent nor counted, and a row whose live state has
+	 * taken it over (busy, wedged, a parked gate) is not in the batch at all:
+	 * acknowledging a completion the reader was never shown would clear a mark
+	 * that could then never appear, because an acknowledgement is the only thing
+	 * that clears `unseen`.
 	 *
 	 * NOTHING IS WRITTEN LOCALLY UNTIL THE ANSWER ARRIVES. There is no optimistic
 	 * clear at any point, which is what makes a failed request leave nothing to
@@ -1414,6 +1419,56 @@ function mergeRow(
 }
 
 /**
+ * The kind of completion mark a row is DRAWING, or null when it draws none.
+ *
+ * THE ONE DECISION behind every "unread" word and number on the sidebar: the
+ * glyph and its ink, the accessible name's `, unread`, the row's tooltip, and
+ * the bulk control's count all ask this function. Two derivations of one fact
+ * is precisely how the reported defect happened — the count read
+ * `attention.unseen` alone while the glyph read a code as well, so a session
+ * that finished a turn and then started another was counted under a control
+ * whose row was drawing a spinner, and clicking it acknowledged a completion
+ * nobody was ever shown (an acknowledgement is the only thing that clears
+ * `unseen`, so that mark could never appear afterwards).
+ *
+ * IT READS `status.code`, and that is the point rather than a detail. The
+ * runtime's `CatalogEntry.shows_completion_mark` (`local_operator/session/
+ * catalog.py`) is the single arbiter of "does an unread completion win the
+ * glyph, or does live state", and `status_code` is its stable transport
+ * spelling: a parked gate publishes `approval`/`answer`, `wedged` and `busy`
+ * publish themselves, and the unseen completion publishes `complete` / `error`
+ * / `interrupted` only where the mark wins. A row's `status.code` therefore IS
+ * that precedence, already decided by the side that owns it — re-deciding it
+ * here from `live_state`/`pending`/`unseen` would be a SECOND derivation of one
+ * fact, which is the drift this function exists to remove.
+ *
+ * `unseen` is still read, and it is not redundant: it is a LEVEL, not an edge —
+ * true from the moment a turn completes until somebody READS that session,
+ * because resuming does not acknowledge it — so the code alone cannot say
+ * whether the mark still stands. On its own it is not enough either: that is
+ * the defect.
+ *
+ * `error` and `interrupted` draw marks. They are the "error X indicators" a
+ * reader counts, the runtime ranks them as outstanding completions
+ * (`session/creation.py::session_category`), and it labels them "Unseen error"
+ * / "Unseen interruption" — so they belong on the counted side even though the
+ * glyph they carry is their own code's. A code this build does not know draws
+ * no mark, and neither does an ABSENT status (a locally created row carries
+ * none until the next catalogue read): unknown is not unread.
+ */
+export type UnreadMarkKind = "complete" | "error" | "interrupted";
+
+export const unreadMarkKind = (
+	row: CanonicalSessionRow,
+): UnreadMarkKind | null => {
+	if (row.attention?.unseen !== true) return null;
+	const code = row.status?.code;
+	return code === "complete" || code === "error" || code === "interrupted"
+		? code
+		: null;
+};
+
+/**
  * The rows a bulk acknowledgement can NAME, in the store's own terms.
  *
  * The single home of this predicate, and it lives here rather than in the
@@ -1424,20 +1479,24 @@ function mergeRow(
  * because the number on screen would stop being the set the request carries.
  * `features/chat/mark-all-read.ts` re-exports it for the surface.
  *
- * `unseen` AND a `completion_token`: a mark with no token names no completion,
- * so the backend has nothing to match it against and would answer `unknown` for
- * it — sending it would only inflate the batch, and counting it would put a
+ * A DRAWN MARK AND a `completion_token`, the mark half being `unreadMarkKind`:
+ * the control's number is then exactly the rows a reader can see a mark on,
+ * which is the property the report that produced this fix asked for — "the
+ * mark as read function always reflects indicators that people are actually
+ * seeing in the UI". Counting `unseen` alone reached rows whose live state had
+ * taken the row over, and a mark with no token names no completion at all, so
+ * the backend has nothing to match it against and would answer `unknown` for
+ * it: sending that would only inflate the batch, and counting it would put a
  * number in the label that no click can honour.
  */
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
 ): CanonicalSessionRow[] =>
-	rows.filter(
-		(row) =>
-			row.attention?.unseen === true &&
-			typeof row.attention.completion_token === "string" &&
-			row.attention.completion_token.length > 0,
-	);
+	rows.filter((row) => {
+		if (unreadMarkKind(row) === null) return false;
+		const token = row.attention?.completion_token;
+		return typeof token === "string" && token.length > 0;
+	});
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
