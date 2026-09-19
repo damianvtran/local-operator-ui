@@ -425,7 +425,7 @@ const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
 			cancelled = true;
 			delete document.documentElement.dataset.capturePending;
 		};
-	}, [expect]);
+	}, [expect, press]);
 
 	return (
 		<div className="min-h-screen bg-canvas p-6 font-sans text-body text-ink">
