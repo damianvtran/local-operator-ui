@@ -39,6 +39,7 @@ import type {
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
+import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import {
@@ -791,9 +792,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				setOpenTabs(conversationId, newTabs);
 				setFiles(conversationId, newFiles);
 				if (selectedTabId === docId) {
+					/*
+					 * THE NEIGHBOUR, NOT THE OLDEST TAB (design review round 1, D1). This
+					 * used to select `newTabs[0]`, so every close of a selected tab dropped
+					 * the reader on the first document they ever opened - which breaks the
+					 * repeated gesture the close is, and, because the strip scrolls the
+					 * selection into view, slides the whole row back to the left under the
+					 * pointer. The rule - following tab, or the preceding one when it was last
+					 * - is `tabFollowingClose`, shared with the pane's own handler and with the
+					 * strip's focus move so the three cannot disagree.
+					 *
+					 * Read off `files` rather than `openTabs` on purpose: `files` is the list
+					 * the strip and the pane are drawn from, so its order - not `openTabs`' -
+					 * is the one the reader sees and the one "neighbour" means.
+					 */
 					setSelectedTab(
 						conversationId,
-						newTabs.length > 0 ? newTabs[0].id : null,
+						tabFollowingClose(files, docId)?.id ?? null,
 					);
 				}
 			},
