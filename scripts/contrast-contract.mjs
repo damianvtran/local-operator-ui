@@ -3502,7 +3502,9 @@ for (const { id, palette: p } of palettes) {
 	 * OR the edge at the non-text floor, per state, per palette.
 	 *
 	 * The pair is what makes this satisfiable rather than a flat 3:1 on the edge:
-	 * `borderControl` against `rowSelected` bottoms at 2.77 (`vaporwave`) and against
+	 * `borderControl` against `rowSelected` bottoms at 2.77 (`vaporwave`, tied with
+	 * `catppuccinMocha` - the two are the joint minimum, so neither is "the" worst)
+	 * and against
 	 * `rowHover` at 2.92 (`catppuccinMocha`), so an edge-only floor would fail 12 and
 	 * 5 palettes respectively — and on every one of those the FILL clears the field
 	 * floor. The other arm fails in the other direction: `sunken` misses the field

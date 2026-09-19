@@ -21,13 +21,13 @@ render.
 | --- | --- | --- |
 | `before/` | `origin/main` at **`a17a6b3ba`**, checked out as a worktree at `/tmp/rs-before-tree` | `pnpm exec storybook build` on that tree, then the harness below against it |
 | `defect/` | this branch's own **pre-remediation head** at **`f249a6604`** (the rebased `ffd05dec1`), worktree `/tmp/rs-defect-tree` | the same build, the same harness |
-| `after/` | this branch at its **fix commit** `326383d10` — the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry, and the tree that ships (the commit after it moves `docs/` only) | the same build, the same harness, the same stories, the same viewports, **re-shot at that tree** |
+| `after/` | this branch at its **fix commit** `cbb88009e` — the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry, and the tree that ships (the commit after it moves `docs/` only) | the same build, the same harness, the same stories, the same viewports, **re-shot at that tree** |
 
 Each half is a picture of ONE tree, and the manifest names the `after/` one in
 its `capturedAtHead` because that is the field that pairs with the pass's own
 tree stamps: `before/` is `origin/main` at `a17a6b3ba`, `defect/` is this branch's
 pre-remediation head `f249a6604` (now the head of neither half's record), and
-`after/` is the branch's fix commit `326383d10`, whose trees are the ones the
+`after/` is the branch's fix commit `cbb88009e`, whose trees are the ones the
 stamps carry and the ones that ship. The frames were taken from the working
 tree that became that commit, before it existed, which is why the SHA is a name
 for the tree and not a claim about capture order.
@@ -150,9 +150,10 @@ state is a step of the panel it sits on, and the plate's fill is `elevated` — 
 same role, byte-identical on `arcade`. Its carrier is therefore a 1px
 `border-control` edge, and the run READS it rather than leaving it to the eye. The
 harness resolves the plate by that edge's own class and fails unless exactly one
-element in the rail matches it, then reports the element's box, border and fill:
-all six frames (three themes, expanded and collapsed) report a **28x28** disc, a
-**1px** border, and the border's colour equal to that palette's own
+element in the rail matches it, then ASSERTS the box, the border's width and the
+border's colour before it writes the frame - a number a reader compares by eye is
+not a guard (review round 4, R4-2). All six frames (three themes, expanded and
+collapsed) are 28x28 with a 1px border whose colour is that palette's own
 `--lo-border-control` while the fill resolves to its `elevated`:
 
 | theme | plate box | border (`--lo-border-control`) | fill (`elevated`) |

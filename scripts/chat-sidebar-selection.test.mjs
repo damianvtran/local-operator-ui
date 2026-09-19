@@ -1390,21 +1390,47 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
  * a row role. A new one therefore FAILS here until it is named below, which is
  * the property a per-call-site assertion cannot have.
  *
- * WHAT IT CANNOT SEE, stated rather than implied, because a guard read as broader
- * than it is is worse than a narrow one: a ground carried by a component whose
- * default lives in another file is recognised only for the primitives in
- * `CARRIED_GROUNDS`, and each of those is read from that component's own class
- * expression in the test below — a NEW primitive with a default ground, or a
- * carrier behind any other component boundary, is review's business rather than
- * this scan's, the way `scripts/chrome-keychain.test.mjs` states the roots its
- * own scan does not reach.
+ * THE LEXICAL PRECONDITION, stated rather than implied, because a guard read as
+ * broader than it is is worse than a narrow one: **this scan reads class text
+ * that is WRITTEN, as a string or template literal, where the element is.** It
+ * tokenises the `className` expression the JSX transform hands it, so a class
+ * token it is asked about has to be a literal in that expression. Five shapes
+ * therefore pass it silently, and a future author must not write them expecting
+ * this file to notice — each is a blind spot, not a bug in the scan:
+ *   1. a class assembled with a substitution — `` `bg-${rung}` ``. The tripwire
+ *      test below catches the flavour that carries a rung or a role token beside
+ *      the substitution; the rest is review's;
+ *   2. a ground that arrives through an identifier — `className={plateGround}` or
+ *      `cn(plateGround)`. The scan sees `plateGround` and not the class, so
+ *      neither the ground nor the edge question reaches the table;
+ *   3. a class with the important modifier — `bg-sunken!` is a different token
+ *      from `bg-sunken` to a string compare, and the role system bans `!`
+ *      anyway. The token reader strips it, so this one is no longer silent;
+ *   4. a bare `bg-row-hover` as a host with no `hover:` prefix — a row state
+ *      painted statically. `ROW_STATE_TOKENS` carries both spellings now, so
+ *      this one is no longer silent either;
+ *   5. a ground that is NOT a rung of the ladder (`bg-accent`, `bg-control`).
+ *      `GROUND_ROLES` is the ladder the row states are authored against, and a
+ *      ground off it cannot be a state collision — a state lands on a rung. It
+ *      is outside the rule's REASON rather than its reach, so it stays out of the
+ *      table and is named here instead: this file asserts the rule about the
+ *      palettes' rungs, and an off-ladder ground is a different question.
+ *
+ * WHAT IT CANNOT SEE THROUGH A BOUNDARY is a second limit: a ground carried by a
+ * component whose default lives in another file is recognised only for the
+ * primitives in `CARRIED_GROUNDS`, and each of those is read from that
+ * component's own class expression in the test below — a NEW primitive with a
+ * default ground, or a carrier behind any other component boundary, is review's
+ * business rather than this scan's, the way `scripts/chrome-keychain.test.mjs`
+ * states the roots its own scan does not reach.
  *
  * FOUR OF THE SEVEN CARRIERS ARE EXEMPT, and each exemption carries the FACT it
  * rests on so the record cannot rot into a sentence:
  *   - the canvas file row's `img`/`video` thumbnail: its `sunken` is the ground
  *     BEHIND real content (`object-cover` fills the box), so what the reader sees
- *     is the picture; the loading placeholder is the only state in which the fill
- *     shows, and a ring here would box every thumbnail in every row;
+ *     is the picture; the state the fill shows is the slot BEFORE the picture
+ *     arrives, whether it is still loading or never comes, and a ring here would
+ *     box every thumbnail in every row;
  *   - the browser tab strip's chrome cluster: an overlay BAND whose ground exists
  *     so the title's tail is not read through it (its own comment earned that
  *     ground, review round 3) — a cover, not a mark, and the two controls it
@@ -1416,10 +1442,31 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 const ROW_STATE_TOKENS = [
 	"rowCurrent",
 	"bg-row-selected",
+	"bg-row-hover",
 	"hover:bg-row-hover",
 	"hover:bg-row-selected",
 ];
 const GROUND_ROLES = ["bg-elevated", "bg-sunken", "bg-surface", "bg-canvas"];
+
+/*
+ * The class tokens a `className` expression names, read the way a browser would
+ * match them rather than by substring: a quoted or backticked literal is split on
+ * whitespace, and the important modifier is stripped so `bg-sunken!` reads as
+ * `bg-sunken` (blind spot 3 in the block comment above - a string compare on the
+ * raw text missed it, which is one of the five shapes the round-4 review used to
+defeat an earlier version of this scan).
+ *
+ * Deliberately NOT a JS evaluator: a substitution and an identifier are left in
+ * the token list as themselves, so the caller still sees that it could not read
+ * them. See the tripwire test below for the one shape that is detected rather
+ * than only documented.
+ */
+const classTokens = (text) =>
+	String(text)
+		.replace(/[`"']/g, " ")
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((token) => token.replace(/!+$/, ""));
 
 /*
  * The primitives that carry a ground by DEFAULT, so a call site with no
@@ -1620,9 +1667,10 @@ const carriersInsideRowStates = async () => {
 					? outerArgs[1]
 					: null;
 			const hostClass = hostProps ? jsClassName(hostProps) : null;
+			const hostTokens = hostClass ? classTokens(hostClass) : [];
 			if (
 				!hostClass ||
-				!ROW_STATE_TOKENS.some((token) => hostClass.includes(token))
+				!ROW_STATE_TOKENS.some((token) => hostTokens.includes(token))
 			)
 				continue;
 			for (const inner of calls) {
@@ -1635,7 +1683,7 @@ const carriersInsideRowStates = async () => {
 					args.length > 1 && args[1].trim().startsWith("{") ? args[1] : null;
 				const own = props ? jsClassName(props) : null;
 				if (own !== null) {
-					const tokens = own.split(/["'\s]+/).filter(Boolean);
+					const tokens = classTokens(own);
 					const grounds = GROUND_ROLES.filter((role) => tokens.includes(role));
 					if (grounds.length === 0) continue;
 					seen.add(inner[0]);
@@ -1758,6 +1806,59 @@ test("every object a row state can paint over keeps an edge, or records why it n
 			);
 		}
 	}
+});
+
+/*
+ * THE TRIPWIRE FOR THE ONE BLIND SPOT A SCAN CAN SEE: A RUNG OR A ROLE NAMED
+ * BESIDE A SUBSTITUTION.
+ *
+ * Blind spot 1 in the block above is a class assembled at runtime — `` `bg-${rung}` ``
+ * — which no string scan can resolve. But the shape that gets written by accident
+ * is narrower than that: an author interpolates a VARIANT or a size into a string
+ * that also names the rung or the role, which is a class the row state can land
+ * on and which this file cannot read. That shape is detectable without evaluating
+ * anything: the template literal's own literal parts still carry the token.
+ *
+ * Deliberately a TRIPWIRE rather than a rule: it fails when the two appear in one
+ * template literal, and its fix is to write the class out, not to teach this file
+ * to evaluate JavaScript. The remaining blind spots are documented above instead,
+ * because a guard that pretends to see an identifier it cannot read is the defect
+ * this block exists to prevent.
+ *
+ * `*.stories.tsx` is outside the walk: a story is a dev-only fixture, nothing
+ * renders it inside a row, and the two hits the tree does carry (`bg-canvas` in a
+ * notification-feed story's height literal, `bg-surface` in the chat hydration
+ * placeholder's measure literal) are the fixture's own frame rather than a class
+ * a row state can land on. Excluding them is a scope decision with the same
+ * reason `scripts/` sits outside `sourcesIn`: this file asks about the app's
+ * surfaces, and a story is not one.
+ */
+test("no template literal builds a row state or a rung beside a substitution", () => {
+	const offences = [];
+	for (const { file, source } of sourcesIn("src")) {
+		if (/\.stories\.tsx$/.test(file)) continue;
+		if (
+			!ROW_STATE_TOKENS.some((token) => source.includes(token)) &&
+			!GROUND_ROLES.some((role) => source.includes(role))
+		)
+			continue;
+		for (const match of source.matchAll(/`(?:[^`\\]|\\.)*`/g)) {
+			const literal = match[0];
+			if (!literal.includes("${")) continue;
+			const named = [...ROW_STATE_TOKENS, ...GROUND_ROLES].filter((token) =>
+				classTokens(literal.replace(/\$\{[^}]*\}/g, " ")).includes(token),
+			);
+			if (named.length > 0)
+				offences.push(
+					`${file}: ${JSON.stringify(literal.slice(0, 120))} names ${named.join(", ")}`,
+				);
+		}
+	}
+	assert.deepEqual(
+		offences,
+		[],
+		`a template literal names a row state or a rung of the ladder AND builds part of the class at runtime, so this file's scan cannot read what the element paints: ${JSON.stringify(offences)}. Write the class out as a literal, or - if the substitution is genuinely needed - take the element out of the rule's reach on purpose and record why beside the other exemptions`,
+	);
 });
 
 /*

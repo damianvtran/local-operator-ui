@@ -99,6 +99,15 @@ const STATES = (flag("states") ?? "rest,neighbour-hovered").split(",");
  * collapsed: 28x28, `border: 1px <that palette's borderControl>`.
  */
 const PLATE_SELECTOR = "nav button span.border-control";
+/*
+ * The disc's own box, asserted rather than reported (review round 4, R4-2): the
+ * frames are evidence `alucard` 0.44 -> 4.35 for a 28px avatar, and the number
+ * was printed in the readback for a reader to compare by eye - so a run that
+ * photographed an 8x8 sliver with the same 1px ring would have committed it under
+ * a README table that says 28x28. Measured on every rail frame of the re-shoot:
+ * 28x28 at device scale factor 2, i.e. 56 device pixels.
+ */
+const PLATE_BOX = "28x28";
 const SCENES = {
 	"chat-sidebar": {
 		story: "chat-sidebar-current-row--selected-row",
@@ -431,6 +440,18 @@ const main = async () => {
 						);
 					}
 					const [width, ...colour] = read.plate.border.split(" ");
+					/*
+					 * AND THE BOX IS ASSERTED, not reported (review round 4, R4-2). The size is
+					 * what makes the ring a ring on a 28px disc rather than a hairline on a
+					 * sliver: every clause above would have passed on an 8x8 image with a 1px
+					 * `border-control` edge, and the readback that carried this number was
+					 * only ever printed for a reader to notice.
+					 */
+					if (read.plate.box !== PLATE_BOX) {
+						throw new Error(
+							`${theme}/${state}: the plate is ${read.plate.box}, not the ${PLATE_BOX} disc this set is evidence for (${read.plate.bg}, border ${read.plate.border}) - the ring and the box are one object, and a size the frames are not pictures of is the thing the re-shoot exists to prevent`,
+						);
+					}
 					if (width !== "1px") {
 						throw new Error(
 							`${theme}/${state}: the plate's edge is ${width}, not the 1px border-control ring this set is evidence for (${read.plate.box}, ${read.plate.bg})`,
