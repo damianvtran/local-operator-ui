@@ -15,7 +15,11 @@
  *
  *   1. `attached` - a real `lop serve` with a seeded conversation. Cell: the
  *      conversation list loads and nothing claims the server is away.
- *   2. `absent` - the configured address answers nothing. Cell: the honest copy
+ *   2. `absent` - the honest copy for an address with no usable daemon. CORRECTED
+ *      (review round 2, QA Q-4): it does NOT mean "nothing answers". The scene
+ *      runs its own stub on that port, so something answers and is REJECTED for
+ *      want of a serve record; what the cell photographs is "the address answers
+ *      but publishes no record, and this app may not start one". Cell: the honest copy
  *      (which the base tree does not say at all). The `unattachable` state the
  *      spawn gate produces is NOT photographable in this stub environment; the
  *      scene's own comment says why and what covers it instead.
@@ -51,12 +55,15 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
@@ -74,7 +81,7 @@ const LABEL = argValue("--label", "tree");
 const ONLY = argValue("--scene", "all");
 if (!OUT) {
 	console.error(
-		"usage: attach-frame-evidence.mjs --out <dir> --label <tree> [--scene attached|absent|flap|withdrawn|all]",
+		"usage: attach-frame-evidence.mjs --out <dir> --label <tree> [--scene any-daemon|other-principal|attached|absent|flap|withdrawn|all]",
 	);
 	process.exit(1);
 }
@@ -136,6 +143,94 @@ const STUB_TEAM = {
 	members: [],
 };
 const CLAIM_KEY = "a".repeat(64);
+/** The liveness route, used here only to ask whether a port is still held. */
+const HEALTH_PATH_FOR_RIG = "/health";
+/**
+ * The refusal the DAEMON's own plane writes, transcribed from
+ * `local_operator/server/desktop.py`.
+ *
+ * It is in this rig because it is the sentence the operator photographed on a
+ * surface belonging to this app: a 503 which the app did not author was rendered as
+ * the app's diagnosis, and the frame that proves it is gone has to carry the string
+ * the server really sends rather than one invented here (design § 0(c), § 5.1).
+ */
+/**
+ * The identity of the BUILT BUNDLE these frames will depict.
+ *
+ * WHY IT EXISTS (review round 2 D13, round 3 D18): the first version of this
+ * record quoted `out/main/index.js` — a 72-byte bytecode STUB whose sha256 is
+ * identical across every build on this machine, including builds that predate the
+ * fix — so the identity could not fail, and "a grep of the bundle finds no
+ * occurrence of X" was vacuously true of 72 bytes. The artifacts that actually
+ * change between builds are the renderer chunk and the compiled main bytecode, so
+ * those are what this records, per scene, beside the newest source mtime.
+ *
+ * And it REFUSES to run against a stale tree: a rig that photographs whatever
+ * happens to be in `out/` is how the round-1 "re-shot" frames came to be
+ * byte-identical to the frames they claimed to replace.
+ */
+function bundleIdentity() {
+	const sha256 = (file) =>
+		createHash("sha256").update(readFileSync(file)).digest("hex");
+	/*
+	 * REPO ENDS WITH A "/", so `${REPO}/` never matched and every record carried an
+	 * absolute /Users/... path that means nothing on another machine (review round
+	 * 4, R4-3). The strip is prefix-based and slashes are normalised after it.
+	 */
+	const rel = (file) => file.replace(REPO, "").replace(/^\/+/, "");
+	const describe = (file) => ({
+		file: rel(file),
+		// Repo-relative on purpose: an absolute /Users/... path in a committed frame
+		// record matches nothing on any other machine.
+		sha256: sha256(file),
+		builtAt: statSync(file).mtime.toISOString(),
+	});
+	const mainBundle = join(REPO, "out/main/index.jsc");
+	if (!existsSync(mainBundle))
+		throw new Error(
+			"out/main/index.jsc is missing: run pnpm build before the rig",
+		);
+	const assets = join(REPO, "out/renderer/assets");
+	const chunks = readdirSync(assets).filter((entry) =>
+		/^index-.*\.js$/.test(entry),
+	);
+	if (chunks.length === 0)
+		throw new Error("out/renderer/assets holds no entry chunk: run pnpm build");
+	const chunk = chunks
+		.map((entry) => join(assets, entry))
+		.sort((a, b) => statSync(b).size - statSync(a).size)[0];
+	// The newest source file, so the age of the build can be judged against the
+	// tree it claims to photograph rather than against the clock.
+	let newest = { file: "", at: 0 };
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(path);
+				continue;
+			}
+			const at = statSync(path).mtimeMs;
+			if (at > newest.at) newest = { file: rel(path), at };
+		}
+	};
+	walk(join(REPO, "src"));
+	const builtAtMs = Math.min(
+		statSync(mainBundle).mtimeMs,
+		statSync(chunk).mtimeMs,
+	);
+	if (newest.at > builtAtMs)
+		throw new Error(
+			`out/ is STALE: ${newest.file} is newer than the build (${new Date(newest.at).toISOString()} > ${new Date(builtAtMs).toISOString()}). Run pnpm build, then re-shoot.`,
+		);
+	return {
+		mainBytecode: describe(mainBundle),
+		rendererChunk: describe(chunk),
+		newestSource: { file: newest.file, at: new Date(newest.at).toISOString() },
+	};
+}
+
+const DAEMON_PLANE_REFUSAL =
+	"Desktop controls require a backend started by the desktop app.";
 /**
  * The credential a managed launch would have persisted, for the scenes that
  * attach to a STUB backend.
@@ -203,9 +298,20 @@ const childEnv = (
 const children = [];
 /** Every profile this run booted, so the teardown can read each one's own log. */
 const bootedProfiles = [];
-function launch(command, args, env) {
+/**
+ * Spawn a child, with its own working directory.
+ *
+ * WHY THE CWD IS A PARAMETER AND NOT ALWAYS THE CHECKOUT (measured, review round 1
+ * QA Q-1): `src/main/backend/config.ts` folds a `.env` from `process.cwd()` with
+ * `override: true`, so a boot whose cwd is the checkout is configured against
+ * whatever that file pins - on this machine the operator's LIVE daemon on :1111 -
+ * no matter what the launcher passes. Every boot now names a scratch directory, the
+ * app is named by absolute path, and each scene asserts from the app's own log
+ * which address it was configured for.
+ */
+function launch(command, args, env, cwd = REPO) {
 	const child = spawn(command, args, {
-		cwd: REPO,
+		cwd,
 		env,
 		stdio: ["ignore", "pipe", "pipe"],
 		/*
@@ -482,7 +588,15 @@ const READ_PAGE = `(async () => {
 		seeded_row_visible: seededRow,
 		composer_present: Boolean(composer),
 		snapshot: snapshot && typeof snapshot === "object"
-			? { state: snapshot.state, reachable: undefined, url: snapshot.url, pid: snapshot.pid, owned: snapshot.owned, unanswered: snapshot.unanswered, detail: snapshot.detail }
+			? { state: snapshot.state, reachable: undefined, url: snapshot.url, pid: snapshot.pid, owned: snapshot.owned, unanswered: snapshot.unanswered, detail: snapshot.detail,
+				/*
+				 * Main's PAIRING record, read for the reason this whole read exists: the
+				 * question these scenes turn on is what the app believes about the daemon
+				 * it can see, and the pairing record is where main publishes the cause
+				 * rather than leaving each surface to invent one (design § 5.2).
+				 */
+				pairing: snapshot.pairing ? { available: snapshot.pairing.available, cause: snapshot.pairing.cause } : null,
+			  }
 			: snapshot,
 		/*
 		 * The chat sidebar's own register, read by the app's OWN landmark: it is
@@ -508,15 +622,35 @@ const READ_PAGE = `(async () => {
 		 * engine's own answer to "would a reader see this".
 		 */
 		pane: (() => {
+			/*
+			 * THE PANE'S OWN SENTENCES, and nothing else (review round 3, D19).
+			 *
+			 * One list holding both band and pane strings, read with "take the last DOM
+			 * match", let a frame in which the pane was stating its own condition be
+			 * recorded as the BAND's: the governed scene's page.pane came back holding
+			 * the band's sentence with the band's geometry (text-body-sm, w1062, y80)
+			 * instead of the pane's (text-center, w832, y469). Each reader therefore
+			 * carries its own vocabulary, and the scene asserts both fields.
+			 */
 			const wanted = [
+				"cannot be read here",
 				"Update the backend to use canonical chats",
 				"cannot use the backend's desktop controls",
 				"Choose an agent or team",
 				"Start a chat",
 				"Connecting to the backend",
 			];
-			const hits = [...document.querySelectorAll("p, div, section, h1")].filter((el) =>
-				wanted.some((w) => (el.textContent || "").includes(w)),
+			/*
+			 * BANDS ARE NOT THE PANE. The compatibility band carries a whole sentence too,
+			 * and it is a div like any other: a probe that took the first match in the
+			 * document read the BAND and reported it as the pane's own sentence, which
+			 * silently produced two byte-identical frames for a scene whose whole point is
+			 * that the pane and the band say the same thing in two places.
+			 */
+			const hits = [...document.querySelectorAll("p, div, section, h1")].filter(
+				(el) =>
+					wanted.some((w) => (el.textContent || "").includes(w)) &&
+					!el.closest('[role="alert"], [role="status"]'),
 			);
 			if (hits.length === 0) return { sentence: null, chain: [] };
 			const node = hits[hits.length - 1];
@@ -638,10 +772,17 @@ async function waitForPage(debugPort, timeoutMs = 90_000) {
 /** Boot the app against a URL and return its debug port once it has painted. */
 async function bootApp(name, apiUrl, configDir, debugPort, options) {
 	bootedProfiles.push(name);
+	/*
+	 * A working directory of this boot's own, empty of any `.env`. The app is named
+	 * by absolute path below, so nothing needs the checkout to be the cwd - and
+	 * nothing may silently configure this boot for the operator's own daemon.
+	 */
+	const cwd = join(ROOT, `cwd-${name}`);
+	mkdirSync(cwd, { recursive: true });
 	const app = launch(
-		"node_modules/.bin/electron",
+		join(REPO, "node_modules/.bin/electron"),
 		[
-			".",
+			REPO,
 			`--remote-debugging-port=${debugPort}`,
 			`--user-data-dir=${join(ROOT, `profile-${name}`)}`,
 			`--window-size=${WIDTH}x${HEIGHT}`,
@@ -652,7 +793,30 @@ async function bootApp(name, apiUrl, configDir, debugPort, options) {
 			// back at the end; this is also the directory the rig already looked in.
 			logDir: join(ROOT, `profile-${name}`, "logs"),
 		}),
+		cwd,
 	);
+	/*
+	 * WHICH ADDRESS THIS BOOT WAS ACTUALLY CONFIGURED FOR, read from the app's own
+	 * log rather than trusted from the launcher's environment: a boot configured for
+	 * anything but the scene's address fails here instead of producing a frame
+	 * nobody can place.
+	 */
+	const configured = await waitUntil(
+		async () => {
+			const found = appLog(name).match(
+				/Backend service configured with port (\d+) and URL (\S+)/,
+			);
+			return found ? { port: Number(found[1]), url: found[2] } : null;
+		},
+		`the app never recorded which backend it was configured for: ${app.text()}`,
+		60_000,
+	);
+	const expected = new URL(apiUrl);
+	if (configured.port !== Number(expected.port) || configured.url !== apiUrl)
+		throw new Error(
+			`${name}: the app was configured for ${configured.url} but this scene is about ${apiUrl} - a .env in the working directory overrides the launcher environment`,
+		);
+	summary.scenes[name] = { ...(summary.scenes[name] ?? {}), configured };
 	const first = await waitForPage(debugPort); // The seed lands after the first paint and reloads, so the second read is the
 	// app as a returning user rather than the onboarding one.
 	if (
@@ -695,6 +859,22 @@ function stubDaemon(port, state) {
 			response.writeHead(status, { "Content-Type": "application/json" });
 			response.end(JSON.stringify(body));
 		};
+		/*
+		 * A plane that is GOVERNED BY ANOTHER PROGRAM: every desktop route refuses (that
+		 * is what the daemon's own `require_desktop` does for a plane nobody claimed),
+		 * while `/health` and the public capability route keep answering. This is the
+		 * state the operator's screenshot was taken in - a daemon that is running,
+		 * healthy and not this app's (design § 2 S2).
+		 */
+		if (state.shutPlane && path.startsWith("/v1/desktop/claim")) {
+			// A second claim is refused even when it presents the correct key.
+			json(409, { detail: "This desktop plane is already controlled." });
+			return;
+		}
+		if (state.shutPlane && path.startsWith("/v1/desktop/")) {
+			json(503, { detail: DAEMON_PLANE_REFUSAL });
+			return;
+		}
 		if (path === "/health") {
 			const answer = () =>
 				json(200, {
@@ -805,7 +985,7 @@ function stubDaemon(port, state) {
  * five minutes. A writer that arms a timer around itself is a rig that saturates
  * itself, and it looked exactly like a machine-lease failure.
  */
-function writeRecord(runDir, port, pid) {
+function writeRecord(runDir, port, pid, options = {}) {
 	const file = join(runDir, `${pid}.json`);
 	const now = Date.now() / 1000;
 	let started = now - 10;
@@ -825,8 +1005,15 @@ function writeRecord(runDir, port, pid) {
 			source_ref: "",
 			prefix: "/tmp/frame-evidence-prefix",
 			install_kind: "uv-tool",
-			desktop: false,
-			claim_key: CLAIM_KEY,
+			/*
+			 * `desktop: true` with an empty key is the record a GOVERNED plane leaves:
+			 * somebody else claimed it, or its spawner governed it through the
+			 * environment. It is the discriminator between "another program has this" and
+			 * "the plane is unclaimed", and nothing read it before this change (design
+			 * § 1.5).
+			 */
+			desktop: options.governed === true,
+			claim_key: options.governed === true ? "" : CLAIM_KEY,
 			started_at: started,
 			heartbeat_at: now,
 		}),
@@ -842,12 +1029,23 @@ function writeRecord(runDir, port, pid) {
  * Write the record now, then keep it fresh on a cadence, and hand back the one
  * handle the scene clears at the end of its own scene.
  */
-function armHeartbeat(runDir, port, pid) {
-	writeRecord(runDir, port, pid);
-	return setInterval(() => writeRecord(runDir, port, pid), 5_000);
+function armHeartbeat(runDir, port, pid, options = {}) {
+	writeRecord(runDir, port, pid, options);
+	return setInterval(() => writeRecord(runDir, port, pid, options), 5_000);
 }
 
-const summary = { label: LABEL, scenes: {} };
+/*
+ * The bundle these frames depict, computed BEFORE any scene runs and refused if it
+ * is older than the sources: a rig that photographs whatever is in out/ is how the
+ * round-1 "re-shot" frames came to be byte-identical to the ones they claimed to
+ * replace (D13). Recorded per scene as well as once, because a reader checking a
+ * single frame should not have to look elsewhere for the build it came from (D18).
+ */
+const BUNDLE = bundleIdentity();
+console.log(
+	`# bundle: ${BUNDLE.rendererChunk.file} sha256=${BUNDLE.rendererChunk.sha256.slice(0, 16)} built=${BUNDLE.rendererChunk.builtAt} newestSource=${BUNDLE.newestSource.file}`,
+);
+const summary = { label: LABEL, bundle: BUNDLE, scenes: {} };
 
 async function sceneAttached() {
 	const configDir = join(ROOT, "config-attached");
@@ -889,6 +1087,470 @@ async function sceneAttached() {
 	summary.scenes.attached = page;
 	await stop(daemon);
 	return page;
+}
+
+/** The app's own backend log for a booted profile, read back as text. */
+function appLog(name) {
+	const file = join(ROOT, `profile-${name}`, "logs", "backend-service.log");
+	return existsSync(file) ? readFileSync(file, "utf8") : "";
+}
+
+/**
+ * The strings that mean this app is blaming the daemon's VERSION.
+ *
+ * The design's falsifiable prediction, checked against a rendered frame rather than
+ * against the copy tables: because pairing through the claim route implies a build
+ * new enough to have it, no string may tell a user to update the server while the
+ * app is attached to a daemon it did not spawn (design § 4). The node runner pins
+ * the same property over the shipped selectors; this is the live half, and it is
+ * the half that would have caught the operator's own screenshot.
+ */
+const VERSION_BLAME =
+	/older than the pairing handshake|older than this app expects|Update the backend|Update the server/;
+
+function assertNoVersionBlame(page, scene) {
+	const found = JSON.stringify(page).match(VERSION_BLAME);
+	if (found)
+		throw new Error(
+			`${scene}: the app blames the server's version while attached to a daemon it did not spawn: "${found[0]}"`,
+		);
+}
+
+/** Wait for `check` to answer non-null, or throw with what was seen. */
+async function waitUntil(check, describe, timeoutMs) {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		const value = await check();
+		if (value) return value;
+		await wait(500);
+	}
+	throw new Error(`${describe}: nothing within ${timeoutMs}ms`);
+}
+
+/**
+ * R1's direct evidence: a real `lop serve` this app did NOT start, claimed by it.
+ *
+ * WHAT the earlier frames could not show. The rig's `attached` scene already boots
+ * against a real daemon and proves the app renders a list - but it reads the app's
+ * own log into the OUT directory and asserts nothing, so it cannot say whether the
+ * app PAIRED with that daemon or merely talked to it. The operator's requirement is
+ * about exactly that difference, and the instruments are the two parties' own words:
+ * the daemon's access log and record for the claim it accepted, and the app's log
+ * for the claim it made.
+ *
+ * The SWAP half is the second half of the requirement: a successor on the same port
+ * with a fresh key and a shut plane must be re-paired by the app on its own, with no
+ * user action and with no surface claiming the server is old.
+ */
+async function sceneAnyDaemon() {
+	const configDir = join(ROOT, "config-any-daemon");
+	mkdirSync(configDir, { recursive: true });
+	// A real conversation for the list, written by the repository's own seeder.
+	const seederCwd = join(ROOT, "cwd-seeder");
+	mkdirSync(seederCwd, { recursive: true });
+	const seeder = launch(
+		process.execPath,
+		[join(REPO, "scripts/seed-paging-session.mjs"), configDir, "6"],
+		baseEnv,
+		seederCwd,
+	);
+	await new Promise((resolve) => seeder.child.on("exit", resolve));
+
+	const port = 46140;
+	const debugPort = 46141;
+	const daemonEnv = childEnv(configDir, `http://127.0.0.1:${port}`);
+	/* The daemon gets a scratch cwd too: it reads the same `.env` machinery. */
+	const daemonCwd = join(ROOT, "cwd-daemon");
+	mkdirSync(daemonCwd, { recursive: true });
+	const daemon = launch(
+		"lop",
+		["serve", "--port", String(port)],
+		daemonEnv,
+		daemonCwd,
+	);
+	/*
+	 * The record the DAEMON wrote, found by DIRECTORY rather than by the pid this rig
+	 * spawned: `lop` is a shim, so `child.pid` is the shim's while the file is named
+	 * after the server process it becomes. Measured: keying on the shim's pid
+	 * produced "no serve record" for a daemon that had started normally.
+	 */
+	const recordDir = join(configDir, "run", "serve");
+	const recordNames = () =>
+		existsSync(recordDir)
+			? readdirSync(recordDir)
+					.filter((entry) => entry.endsWith(".json"))
+					.sort()
+			: [];
+	const recordFile = await waitUntil(
+		async () => {
+			const found = recordNames();
+			return found.length > 0 ? join(recordDir, found[found.length - 1]) : null;
+		},
+		`no serve record from the daemon this rig started: ${daemon.text()}`,
+		60_000,
+	);
+
+	await bootApp("any-daemon", `http://127.0.0.1:${port}`, configDir, debugPort);
+
+	// The app's own sentence about the claim it made, from the app's own log.
+	const claimed = await waitUntil(
+		async () => appLog("any-daemon").match(/Claimed the desktop plane on \S+/),
+		"the app never recorded claiming the plane on the daemon this rig started",
+		90_000,
+	);
+
+	let page = null;
+	await waitUntil(
+		async () => {
+			page = await readPage(debugPort);
+			return page.seeded_row_visible ? page : null;
+		},
+		"the chat list never populated against the daemon this app adopted",
+		60_000,
+	);
+	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-attached.png`));
+	assertNoVersionBlame(page, "any-daemon");
+
+	/*
+	 * The daemon's OWN record, which it rewrites when it accepts a claim. Read from
+	 * the daemon's side of the exchange, so the evidence is two processes agreeing
+	 * rather than one process asserting.
+	 */
+	const governedRecord = JSON.parse(readFileSync(recordFile, "utf8"));
+	summary.scenes["any-daemon"] = {
+		// The build THIS run launched, on the entry itself (review round 4, D26): the
+		// combined file is rewritten by whichever run writes it last, and an identity
+		// that lives only at the top level is that run's, not this scene's.
+		bundle: BUNDLE,
+		/*
+		 * Spread first: the boot wrote this scene's own record (the address it was
+		 * configured for), and assigning a fresh object here used to drop it - which
+		 * is how a committing run published frames without the one field that says
+		 * which backend they are about.
+		 */
+		...(summary.scenes["any-daemon"] ?? {}),
+		claimed: claimed[0],
+		recordAfterClaim: {
+			desktop: governedRecord.desktop,
+			claim_key: governedRecord.claim_key,
+			instance_id: governedRecord.instance_id,
+			version: governedRecord.version,
+			pid: governedRecord.pid,
+		},
+		claimInDaemonLog: /POST \/v1\/desktop\/claim[^\n]*200/.test(daemon.text()),
+		page,
+	};
+
+	/*
+	 * THE SWAP. Kill that daemon and start a successor on the same port with the same
+	 * config directory: a fresh `claim_key`, and a plane that is shut until somebody
+	 * claims it - which is what a `lop` build swap leaves behind.
+	 */
+	await stop(daemon);
+	// Wait for the port to be free rather than racing the old process's teardown: a
+	// successor that fails to bind would make this scene a test of EADDRINUSE.
+	await waitUntil(
+		async () => {
+			try {
+				await fetch(`http://127.0.0.1:${port}${HEALTH_PATH_FOR_RIG}`, {
+					signal: AbortSignal.timeout(500),
+				});
+				return null;
+			} catch {
+				return true;
+			}
+		},
+		"the port never came free after the first daemon stopped",
+		30_000,
+	);
+
+	/*
+	 * THE PRE-REPAIR FRAME, taken here rather than after the successor starts, and the
+	 * reason is measured: the app re-claims a successor within seconds of its record
+	 * appearing, so a frame taken after that launch photographed the REPAIRED state
+	 * twice (two byte-identical frames for a scene whose point is the difference).
+	 * This is the condition the band exists for - a server this app was attached to
+	 * that is gone - and it is also the moment a reader can check that no surface
+	 * blames a version.
+	 */
+	/*
+	 * WAITED FOR, not sampled: the app's probe cadence is ten seconds, so a frame
+	 * taken the instant the daemon dies photographs an app that still believes it is
+	 * attached - byte-identical to the repaired frame, and evidence of nothing. What
+	 * this scene owes is the state the band exists for, so it waits for the app to
+	 * notice (bounded, and recorded if it never does).
+	 */
+	let during = null;
+	await waitUntil(
+		async () => {
+			during = await readPage(debugPort);
+			return during.banner ? during : null;
+		},
+		"the app never noticed the daemon it was attached to had gone",
+		40_000,
+	).catch(async () => {
+		during = await readPage(debugPort);
+	});
+	assertNoVersionBlame(during, "any-daemon(swap, before the successor)");
+	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-swap-during.png`));
+
+	const successor = launch(
+		"lop",
+		["serve", "--port", String(port)],
+		daemonEnv,
+		daemonCwd,
+	);
+	const firstRecords = recordNames();
+	const successorRecord = await waitUntil(
+		async () => {
+			const fresh = recordNames().filter(
+				(entry) => !firstRecords.includes(entry),
+			);
+			return fresh.length > 0 ? join(recordDir, fresh[fresh.length - 1]) : null;
+		},
+		`the successor never published a record of its own: ${successor.text()}`,
+		60_000,
+	);
+	const successorKey = JSON.parse(
+		readFileSync(successorRecord, "utf8"),
+	).claim_key;
+
+	/*
+	 * NO USER ACTION: the app must re-claim on its own. The probe tick runs every 10 s
+	 * and the state machine needs three answered contradictions before it detaches and
+	 * re-discovers (local-operator-ui #375), so the window is generous and bounded
+	 * rather than open ended.
+	 */
+	const reclaimed = await waitUntil(
+		async () => {
+			const claims = appLog("any-daemon").match(
+				/Claimed the desktop plane on \S+/g,
+			);
+			return claims && claims.length > 1 ? claims : null;
+		},
+		"the app never re-claimed the successor on its own after the swap",
+		180_000,
+	);
+
+	let after = null;
+	await waitUntil(
+		async () => {
+			after = await readPage(debugPort);
+			return after.seeded_row_visible ? after : null;
+		},
+		"the chat list never came back after the swap",
+		60_000,
+	);
+	/*
+	 * And the RENDERER's own answer has to catch up before the frame is taken. A
+	 * re-claim is main's fact; the surfaces read the capability answer, which the
+	 * renderer re-asks on its own cadence. Capturing the moment the claim landed
+	 * photographed a frame still carrying "Not connected to the backend - showing the
+	 * last known state", which is true of that instant and is NOT the state this scene
+	 * is evidence for: the sentence a reader must not see is the VERSION one, and the
+	 * honest "after" is the app with no band at all.
+	 */
+	await waitUntil(
+		async () => {
+			after = await readPage(debugPort);
+			return after.banner === null ? after : null;
+		},
+		"the connectivity band never cleared after the app re-paired",
+		60_000,
+	);
+	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-swap-after.png`));
+	assertNoVersionBlame(after, "any-daemon(swap)");
+
+	summary.scenes["any-daemon"].swap = {
+		successorClaimKeyIsFresh: successorKey !== governedRecord.claim_key,
+		claims: reclaimed,
+		during,
+		after,
+	};
+	await stop(successor);
+	return after;
+}
+
+/**
+ * The photographed TRIPLE, re-shot against one daemon: a plane another program
+ * governs.
+ *
+ * WHY this state. The operator's screenshot had three surfaces disagreeing at once
+ * about ONE fact - a daemon that is running, healthy, and not this app's:
+ *
+ *   (a) the compatibility banner asked them to restart the app "so it can manage its
+ *       own server", with a Retry that could not change anything;
+ *   (b) the chat pane told them their SERVER was old, which is a different fact with
+ *       a remedy that cannot work here;
+ *   (c) a sidebar surface printed the daemon's own sentence about who owns it as
+ *       though it were this app's diagnosis.
+ *
+ * The daemon is the rig's own stub rather than a real `lop`, and deliberately: the
+ * governed state cannot be produced by running a second real daemon (the plane's
+ * whole contract is that a second claim is refused), and what is being photographed
+ * is the APP's surfaces, whose inputs are the record and the answers the stub gives.
+ *
+ * WHICH surfaces can be photographed HERE, measured: the band and the sidebar, but
+ * NOT the chat pane. The pane's own sentence needs a conversation open, and opening
+ * one needs a desktop read (`sessions.get`, the transcript stream) that this daemon
+ * refuses - the row click lands and the pane never mounts. So the pane's half of the
+ * rule is pinned by `scripts/backend-error-surfaces.test.mjs`, which drives the
+ * decision the pane renders from, and the set's README says so.
+ */
+async function sceneOtherPrincipal() {
+	const port = 46150;
+	const debugPort = 46151;
+	const configDir = join(ROOT, "config-other-principal");
+	const runDir = join(configDir, "run", "serve");
+	mkdirSync(runDir, { recursive: true });
+
+	const state = { shutPlane: true, withdrawn: true, requests: [], reads: [] };
+	const stub = stubDaemon(port, state);
+	const heartbeat = armHeartbeat(runDir, port, process.pid, { governed: true });
+	try {
+		await bootApp(
+			"other-principal",
+			`http://127.0.0.1:${port}`,
+			configDir,
+			debugPort,
+			// No backend manager: this app may not spawn a daemon here, and the point of
+			// the scene is what it says about the one that is running.
+			{ manager: false },
+		);
+		const page = await readPage(debugPort);
+		await capture(debugPort, join(OUT, `${LABEL}-other-principal-triple.png`));
+
+		/*
+		 * The surfaces, asserted rather than described, and each against the string the
+		 * OTHER side really writes: the banner carries the pairing sentence for the
+		 * cause, NO control is offered (the daemon refuses a second claim even with the
+		 * correct key), and the daemon's own prose appears NOWHERE in what the app
+		 * renders.
+		 */
+		/*
+		 * BOTH SURFACES, each read from its own vocabulary (review round 3, D19). The
+		 * band must carry a band sentence, and the pane - when it states one - must
+		 * state the PANE's: this frame used to pass every assertion while its pane
+		 * field held the band's sentence with the band's geometry.
+		 */
+		/*
+		 * The band's own sentence, read from the page's FIRST LINES rather than from a
+		 * second in-page walk: the in-page reader threw inside the shared page eval and
+		 * took the whole read down ("the app's page never became readable over CDP"),
+		 * which is a worse failure than the one it was there to detect. The band's
+		 * vocabulary is unique to the band now that the pane has its own copy (D1), so
+		 * the page's own lines answer the same question.
+		 */
+		/*
+		 * SHORT discriminators, because the page's own lines are TRUNCATED: the
+		 * stored line reads "The Local Operator server on this machine is already
+		 * managed", so the full phrase this list used to carry never matched and the
+		 * field came back null while the band was on screen - the assertion then
+		 * passed on a different line of the same array, which is how a probe can be
+		 * "passing" and reading nothing (review round 3, D19, one level up).
+		 */
+		const bandWanted = [
+			"already managed",
+			"was replaced while this app was running",
+			"older than the pairing handshake",
+			"credential for the running Local Operator server was refused",
+			"is not paired with the running",
+			"Not connected to a Local Operator server",
+		];
+		/*
+		 * Read from the page's FULL text, not from `first_lines`: those are fourteen
+		 * TRUNCATED lines, and the band's sentence is not reliably among them - which
+		 * is how this field came back null while the band was on screen. `evaluate` is
+		 * a second CDP call rather than an addition to the shared page eval, because
+		 * the last in-eval addition took the whole read down with it.
+		 */
+		/*
+		 * AND READ FROM THE RECORDED LINES, not from a fresh DOM read (measured): a
+		 * second `Runtime.evaluate` of `document.body.innerText` comes back EMPTY in
+		 * this window mode - `innerText` is layout-dependent and this window is
+		 * headless - so the field read null while the frame carried band copy, and the
+		 * assertion then passed on a different line of the same array. The page's own
+		 * recorded `first_lines` need no layout, are what the frame's reader sees, and
+		 * carry the band copy ("Not connected to a Local Operator server.", "The Local
+		 * Operator server on this machine is already managed"). Shape: `first_lines`.
+		 */
+		const rendered = JSON.stringify(page);
+		/*
+		 * THE GUARD ON THE DAEMON'S PROSE, AND ITS MEASURED LIMIT.
+		 *
+		 * What it asserts: the daemon's own sentence - the one this stub answers every
+		 * desktop route with, transcribed from `desktop.py` - appears nowhere in what
+		 * the app renders. What it does NOT do is show the prose REACHING the app, which
+		 * is what would make it discriminating (review round 1, D4). That drive was
+		 * attempted and failed, measured three times: `window.api.desktop.request({op:
+		 * "profiles.list"})` - a route this stub refuses - came back SUCCESSFUL through
+		 * the app's own IPC, and the scene's own record shows the app serves ZERO
+		 * `/v1/desktop/` routes in the governed state, because main's capability answer
+		 * closes the gated surfaces before any of them can call one. So the count is
+		 * published beside the assertion rather than the premise assumed, and the class
+		 * is covered where it is decidable today: the transport and routing tests drive
+		 * real refusals and assert the composed sentence.
+		 */
+		const desktopAsked = state.requests.filter((entry) =>
+			entry.path.startsWith("/v1/desktop/"),
+		);
+		/*
+		 * THE FIELDS ARE SET ON THE OBJECT THAT IS STORED, at the assignment rather
+		 * than earlier in the scene: measured, a mutation of the scene's own `page`
+		 * did not appear in the record at all (no `bandSentence`, no source marker),
+		 * which means the summary stores a different object from the one the probe
+		 * walked - the D19 defect one level up, and this is the shape that removes it
+		 * rather than moving it. The band's sentence is read from the page's RECORDED
+		 * first lines, which need no layout (a fresh `document.body.innerText` comes
+		 * back empty in this window mode) and are exactly what a reader of the frame
+		 * sees.
+		 */
+		const bandLines = (page.first_lines ?? [])
+			.map((line) => line.replace(/\s+/g, " ").trim())
+			.filter((line) => bandWanted.some((w) => line.includes(w)))
+			.slice(0, 4);
+		if (bandLines.length === 0)
+			throw new Error(
+				"other-principal: no band copy was read from the frame's own lines, so this frame cannot show what the band says",
+			);
+		/*
+		 * AFTER the band's line is known, not before it (review round 4, D28): the guard
+		 * used to compare against `page.bandSentence`, which this probe never returned,
+		 * so it could not fire while the README claimed it did. A frame whose pane held
+		 * the band's sentence is the defect it names.
+		 */
+		if (page.pane?.sentence && page.pane.sentence === bandLines[0])
+			throw new Error(
+				"other-principal: the pane field holds the BAND's sentence - the probe's lists are mixing surfaces again",
+			);
+		summary.scenes["other-principal"] = {
+			...(summary.scenes["other-principal"] ?? {}),
+			// The build this run launched, on the entry itself (D26).
+			bundle: BUNDLE,
+			bandSentenceSource: "first_lines",
+			bandLines,
+			bandSentence: bandLines[0] ?? null,
+			page,
+			desktopRoutesServed: desktopAsked.length,
+			daemonRefusals: state.requests.filter((entry) =>
+				entry.path.startsWith("/v1/desktop/"),
+			).length,
+			rendersVersionBlame: VERSION_BLAME.test(rendered),
+			rendersDaemonProse: rendered.includes(DAEMON_PLANE_REFUSAL),
+		};
+		if (VERSION_BLAME.test(rendered))
+			throw new Error(
+				"other-principal: a pairing condition is rendered as a version problem",
+			);
+		if (rendered.includes(DAEMON_PLANE_REFUSAL))
+			throw new Error(
+				"other-principal: the daemon's own sentence reached the screen as this app's diagnosis",
+			);
+		return page;
+	} finally {
+		clearInterval(heartbeat);
+		stub.close();
+	}
 }
 
 async function sceneUnattachable() {
@@ -1135,6 +1797,8 @@ function requestCounts(state) {
 }
 
 const scenes = {
+	"any-daemon": sceneAnyDaemon,
+	"other-principal": sceneOtherPrincipal,
 	attached: sceneAttached,
 	absent: sceneUnattachable,
 	flap: sceneFlap,
@@ -1153,13 +1817,45 @@ try {
 			// A scene that fails keeps what the others produced and says so: this
 			// rig's frame evidence is read scene by scene, and losing three scenes
 			// because the fourth threw is how a run reports nothing at all.
-			summary.scenes[name] = { error: String(error) };
+			summary.scenes[name] = { error: String(error), bundle: BUNDLE };
 			console.log(`# scene ${name} FAILED: ${error}`);
 		}
 	}
 } finally {
 	for (const child of children) await stop(child);
 	reapScratchProfiles();
+	/*
+	 * ONE RECORD PER SCENE, merged on write.
+	 *
+	 * WHY: a scene is a launch of its own (it has to be - each needs an isolated HOME,
+	 * config dir and user-data-dir), so a second scene's run overwrote the first one's
+	 * summary and left the committed `after-frames.json` describing only whichever
+	 * scene ran last. Rebuilding it from every scene's own record means re-running one
+	 * scene cannot drop another's, and every frame keeps a machine-readable account of
+	 * the run that produced it.
+	 */
+	writeFileSync(
+		join(OUT, `${LABEL}-frames-${ONLY}.json`),
+		JSON.stringify(summary, null, 2),
+	);
+	for (const entry of readdirSync(OUT)) {
+		if (!entry.startsWith(`${LABEL}-frames-`) || !entry.endsWith(".json"))
+			continue;
+		const other = JSON.parse(readFileSync(join(OUT, entry), "utf8"));
+		/*
+		 * EACH SCENE CARRIES THE BUILD ITS OWN RUN LAUNCHED, not the build of the
+		 * process doing the merging (review round 4, R4-3): `bundle: BUNDLE` here
+		 * stamped the head build onto scenes shot minutes earlier against a
+		 * superseded `out/`, so the record attributed frames to an artifact they never
+		 * ran. `other.bundle` is the per-scene file's own top-level identity, written
+		 * by the run that actually booted the app.
+		 */
+		for (const [name, value] of Object.entries(other.scenes ?? {}))
+			summary.scenes[name] = {
+				...value,
+				bundle: value.bundle ?? other.bundle ?? BUNDLE,
+			};
+	}
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),
 		JSON.stringify(summary, null, 2),

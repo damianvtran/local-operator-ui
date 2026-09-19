@@ -27,6 +27,7 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DaemonStatusSnapshot } from "../../shared/backend-status";
+import { DAEMON_PAIRED, relayNeedsRebuild } from "../../shared/backend-status";
 import type {
 	DesktopFeedState,
 	DesktopResponse,
@@ -371,6 +372,20 @@ export class BackendServiceManager {
 	 */
 	private feedRelay: DesktopFeedRelay | null = null;
 	private feedRelayUrl = "";
+	/**
+	 * The credential the current feed relay was built with.
+	 *
+	 * WHY IT IS TRACKED AT ALL, and the defect it stands for: the relay takes its
+	 * bearer ONCE, at construction, and a re-pair leaves the address unchanged
+	 * while replacing the credential - same port, new claim key. A rebuild keyed on
+	 * the URL alone therefore keeps a relay that 401s on every attempt, for good:
+	 * measured after the successor swap, the app was `attached` and paired with the
+	 * new daemon while the sidebar still rendered "Not connected to the backend -
+	 * showing the last known state." more than a minute later, and the same line
+	 * never cleared (QA round 1 Q-2, design round 1 D3). The stream relay next door
+	 * already compares the token; this one now does too.
+	 */
+	private feedRelayToken: string | null = null;
 	/** Both survive relay recreation, so a URL rotation cannot silently detach
 	 * the banner path or leave the sidebar reading a stale connection state. */
 	private feedFrameObserver: ((frame: DesktopFeedFrame) => void) | null = null;
@@ -516,7 +531,13 @@ export class BackendServiceManager {
 	 * backend-ready hook, which is the first moment the token exists.
 	 */
 	getDesktopFeedRelay(): DesktopFeedRelay {
-		if (!this.feedRelay || this.feedRelayUrl !== this.backendUrl) {
+		if (
+			!this.feedRelay ||
+			relayNeedsRebuild(
+				{ url: this.feedRelayUrl, token: this.feedRelayToken },
+				{ url: this.backendUrl, token: this.desktopToken },
+			)
+		) {
 			this.feedRelay?.stop();
 			this.feedRelay = new DesktopFeedRelay(
 				this.backendUrl,
@@ -541,6 +562,7 @@ export class BackendServiceManager {
 			this.feedRelay.observe(this.feedFrameObserver);
 			this.feedRelay.watchState(this.feedStateObserver);
 			this.feedRelayUrl = this.backendUrl;
+			this.feedRelayToken = this.desktopToken;
 		}
 		return this.feedRelay;
 	}
@@ -1333,17 +1355,36 @@ export class BackendServiceManager {
 		// an env-governed daemon the app did not spawn has no key on disk and a
 		// token nobody told us.
 		if (!key && !this.desktopToken) {
+			/*
+			 * WHICH fact this is decides both the sentence and whether any control may
+			 * be offered, and the record already publishes it: `ServeRecord.desktop` is
+			 * `true` exactly when the plane is GOVERNED (`registry.py` sets it for an
+			 * env-governed plane and for an accepted claim, and publishes `claim_key:
+			 * ""` in that same state). So a record with `desktop: true` and no key says
+			 * "somebody else claimed this plane", which is a state with NO remedy this
+			 * app may offer - while a record with neither says the daemon predates the
+			 * handshake, where an update of an install this app owns IS a remedy.
+			 * Collapsing the two into one sentence is what the operator photographed
+			 * (design § 1.5, § 2 S2/S3).
+			 */
+			const governed = candidate.record.desktop;
 			logger.info(
-				`Daemon ${candidate.address} publishes no claim key and this app holds no pairing token for it; not attaching (its controls would refuse every call).`,
+				`Daemon ${candidate.address} publishes no claim key and this app holds no pairing token for it; not attaching (its controls would refuse every call).${governed ? " Its record says the plane is already governed by another program." : " Its record does not describe a governed plane, so it predates the pairing handshake."}`,
 				LogFileType.BACKEND,
 			);
 			// A CAPABILITY result, recorded beside the state: the daemon is
 			// running, this app simply may not use it. Rendering that as "server
 			// down" is the conflation this whole change exists to remove.
+			this.daemonState.setPairing({
+				available: false,
+				cause: governed ? "governed-elsewhere" : "pre-handshake",
+			});
 			this.daemonState.observe({
 				kind: "capability",
 				status: 401,
-				detail: `A daemon is running at ${candidate.address}, but this app holds no credential for its desktop plane.`,
+				detail: governed
+					? `A daemon is running at ${candidate.address}, but its desktop plane is already managed by another program and this app holds no credential for it.`
+					: `A daemon is running at ${candidate.address}, but it is older than the pairing handshake this app uses and this app holds no credential for it.`,
 			});
 			this.notifyStatus();
 			return false;
@@ -1372,14 +1413,56 @@ export class BackendServiceManager {
 					);
 					break;
 				case "wrong-key":
-				case "refused":
-					// The record's key is not the plane's (a record from a previous
-					// process), or this caller may not claim at all. Either way there
-					// is nothing to use here.
+					/*
+					 * `401` from the claim route means the key this record published is not the
+					 * key the answering process holds, which is a record left behind by a
+					 * PREVIOUS process at this address - a successor took the port. That is the
+					 * S1 fact, and naming it is what lets the banner say the server was replaced
+					 * instead of inventing an ownership instruction (design § 2 S1, § 1.6).
+					 */
 					logger.info(
-						`Daemon ${candidate.address} did not accept this app's claim (${outcome.outcome}); not attaching.`,
+						`Daemon ${candidate.address} did not accept the claim key its own record published (${outcome.outcome}); the record belongs to a process that is no longer answering. Not attaching.`,
 						LogFileType.BACKEND,
 					);
+					this.daemonState.setPairing({
+						available: false,
+						cause: "successor",
+					});
+					return false;
+				case "no-handshake":
+					// The route is absent, so the INSTALL predates the handshake. No credential
+					// of ours can ever be accepted by it, and that is a different sentence from
+					// "it refused me" - and the only pairing cause for which a server update is
+					// a remedy at all (design § 2 S3).
+					logger.info(
+						`Daemon ${candidate.address} has no claim route (HTTP ${outcome.status}); it predates the pairing handshake. Not attaching.`,
+						LogFileType.BACKEND,
+					);
+					this.daemonState.setPairing({
+						available: false,
+						cause: "pre-handshake",
+					});
+					this.daemonState.observe({
+						kind: "capability",
+						status: outcome.status,
+						detail: `A daemon is running at ${candidate.address}, but it is older than the pairing handshake this app uses (its claim route answered HTTP ${outcome.status}).`,
+					});
+					this.notifyStatus();
+					return false;
+				case "refused":
+					// The daemon answered and refused the claim for a reason of its own. A
+					// `503` is the one status the daemon's contract uses for "this plane never
+					// published a key", which is the pre-handshake shape again; everything
+					// else is this app's credential being refused.
+					logger.info(
+						`Daemon ${candidate.address} did not accept this app's claim (${outcome.outcome} ${outcome.status}); not attaching.`,
+						LogFileType.BACKEND,
+					);
+					this.daemonState.setPairing({
+						available: false,
+						cause:
+							outcome.status === 503 ? "pre-handshake" : "credential-refused",
+					});
 					return false;
 				case "unreachable":
 					logger.info(
@@ -1395,6 +1478,10 @@ export class BackendServiceManager {
 				`Daemon ${candidate.address} refused this app's bearer for its desktop plane (HTTP ${probe.status}); not attaching (it would refuse every session list and every stream).`,
 				LogFileType.BACKEND,
 			);
+			this.daemonState.setPairing({
+				available: false,
+				cause: "credential-refused",
+			});
 			this.daemonState.observe({
 				kind: "capability",
 				status: probe.status,
@@ -1531,7 +1618,7 @@ export class BackendServiceManager {
 			},
 			{ owned: false },
 		);
-		this.daemonState.setDesktopAvailable(true);
+		this.daemonState.setPairing(DAEMON_PAIRED);
 		if (candidate.record.retiring_to) {
 			/*
 			 * The record announces that the INSTALLED build changed under this
@@ -1638,7 +1725,7 @@ export class BackendServiceManager {
 				},
 				{ owned: false },
 			);
-			this.daemonState.setDesktopAvailable(true);
+			this.daemonState.setPairing(DAEMON_PAIRED);
 			logger.info(
 				`Adopted a pre-record daemon at ${this.backendUrl} (v${version || "unknown"}) through the deprecated fallback.`,
 				LogFileType.BACKEND,
@@ -2079,7 +2166,7 @@ export class BackendServiceManager {
 		this.daemonState.attach(identity, { owned: true });
 		// Spawned by this app with this app's desktop token, so the plane accepts
 		// it. Never asserted for a daemon this app did not start.
-		this.daemonState.setDesktopAvailable(true);
+		this.daemonState.setPairing(DAEMON_PAIRED);
 		this.notifyStatus();
 		logger.info(
 			`Registered this app's own daemon: ${identity.url} (pid ${identity.pid}, v${identity.version || "unknown"}, ${identity.installKind || "kind unknown"}).`,
@@ -2683,6 +2770,41 @@ export class BackendServiceManager {
 		const probe = await probeIdentity(this.backendUrl, expected, {
 			timeoutMs: PROBE_TIMEOUT_MS,
 		});
+		/*
+		 * THE ANSWERED VERDICT IS ALSO A PAIRING FACT, and recording it here is what
+		 * makes the pairing record honest while the app is still `attached`.
+		 *
+		 * The state machine asks two questions of one answer and they are not the
+		 * same question: is the connection ALIVE (any answer counts, and the
+		 * transport answers that continuously), and does this app still hold a
+		 * credential for what is answering (only the same process does). A daemon
+		 * replaced under the app - a `lop` build swap is the ordinary cause - keeps
+		 * answering `/health` and its public capability route while refusing every
+		 * gated call, so an app that recorded pairing only when it attached reported
+		 * a pairing that no longer existed for as long as the operator left it open
+		 * (design § 1.4, measured on this machine 2026-09-18).
+		 *
+		 * Only an ANSWERED contradiction sets it, and only a matching answer clears
+		 * it. `unreachable` settles nothing about the pairing - a socket that
+		 * refused, or a budget that expired on a busy daemon, is a statement about
+		 * the connection - so it is left alone rather than overwritten with a cause
+		 * the app cannot prove.
+		 */
+		const answersThisApp =
+			probe.outcome === "identified" &&
+			probe.identity.pid === this.daemonState.snapshot().pid;
+		const answeredAnotherProcess =
+			probe.outcome === "identity-mismatch" ||
+			probe.outcome === "not-a-daemon" ||
+			probe.outcome === "identified";
+		if (answersThisApp) {
+			this.daemonState.setPairing(DAEMON_PAIRED);
+		} else if (answeredAnotherProcess) {
+			this.daemonState.setPairing({
+				available: false,
+				cause: "successor",
+			});
+		}
 		switch (probe.outcome) {
 			case "identified":
 				return probe.identity.pid === this.daemonState.snapshot().pid

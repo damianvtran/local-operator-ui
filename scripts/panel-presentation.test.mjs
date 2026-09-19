@@ -341,8 +341,8 @@ test("the palette gates the machine rows on liveness, the credential and a pane"
 	);
 	assert.match(
 		sources,
-		/desktopAvailable === false/,
-		"only main's explicit `false` closes the gate: `null` is a host with no desktop bridge or an answer still in flight, not a refusal",
+		/pairing.available === false/,
+		"only main's explicit `false` closes the gate: an absent record is a host with no desktop bridge or an answer still in flight, not a refusal - and the read is the pairing RECORD rather than the boolean beside it, because that boolean was written `true` at every attach and `false` nowhere (design § 1.4, § 5.2)",
 	);
 	assert.match(
 		sources,

@@ -93,8 +93,16 @@ const SERVER_DOWN: SessionFailureNotice = {
 
 /** The app holds no credential for the backend it is talking to. */
 const NOT_PAIRED: SessionFailureNotice = {
+	/*
+	 * "restart the app so it can manage its own server" used to end this sentence,
+	 * and it is the same defect the compatibility banner carried: the app is a CLIENT
+	 * of whatever daemon is running, so a pairing failure is not repaired by making
+	 * the app own the server (design § 1.8, § 3.1). The sentence states what is true
+	 * and offers no action, because the action that helps - main re-claiming the
+	 * plane - is not something this notice can perform or promise.
+	 */
 	statement:
-		"This app is not paired with the Local Operator server, so this conversation cannot be read — restart the app so it can manage its own server.",
+		"This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
 	action: null,
 };
 
