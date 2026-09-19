@@ -140,6 +140,28 @@ const APP_OWNED_DETAIL =
 const SERVER_UPDATE_FAILURE_MESSAGE =
 	"The server update to 0.55.10 did not take effect: the install still reports 0.55.9. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
+/*
+ * THE INSTALLER'S OWN WORDS FOR THAT ATTEMPT, and they are not decoration: the
+ * sentence above points at them.
+ *
+ * WHY THEY HAVE TO BE HERE (review round 3, R3-1 = design D4). The composer picks
+ * the "output is below" pointer only when the diagnosis is non-empty
+ * (`server-update-copy.ts`), and the producer sends `installerOutput: diagnosis ||
+ * undefined` from that same value (`update-service.ts`), while the panel renders
+ * the block only when the payload carries it (`update-notification.tsx`). A
+ * payload with that sentence and no output is therefore a pairing no shipped path
+ * composes - and the twelve committed frames showed exactly that: "The installer's
+ * own output is below." over nothing, on the one frame for "a genuine failure still
+ * reads as a failure". The pin in `scripts/update-robustness.test.mjs` now asserts
+ * the pairing, so the sentence and the block cannot part company again.
+ */
+const SERVER_UPDATE_FAILURE_OUTPUT = [
+	"uv tool upgrade local-operator",
+	"Resolved 55 packages in 1.02s",
+	"Installed 1 package in 12ms",
+	" + local-operator==0.55.10",
+].join("\n");
+
 /**
  * The listeners `onBackendUpdateError` has registered for the current story.
  *
@@ -214,7 +236,15 @@ const mockUpdaterApi = () => {
 			}
 			if (window.triggerBackendUpdateError) {
 				for (const listener of [...backendUpdateErrorListeners]) {
-					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
+					listener({
+						message: SERVER_UPDATE_FAILURE_MESSAGE,
+						// The diagnosis the sentence above points at, from the same value
+						// the producer derives both from (review round 3, R3-1 = D4).
+						installerOutput: SERVER_UPDATE_FAILURE_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
 				}
 				return false;
 			}
