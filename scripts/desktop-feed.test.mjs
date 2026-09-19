@@ -118,10 +118,9 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const { useCanonicalSessionsStore: store, mergeCompletionAttention } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
-	);
+const { useCanonicalSessionsStore: store, mergeCompletionAttention } = await import(
+	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
+);
 
 const SESSION = "123456abcdef";
 const OTHER = "ffffffffffff";
@@ -314,11 +313,7 @@ test("with the capability the feed delivers frames, beats presence, and closes c
 		frames.map((frame) => frame.type),
 		["open", "attention", "catalogue"],
 	);
-	assert.equal(
-		frames[2].payload.revision,
-		11,
-		"the invalidation carries its revision",
-	);
+	assert.equal(frames[2].payload.revision, 11, "the invalidation carries its revision");
 
 	relay.stop();
 	await sleep(TICK);
@@ -509,11 +504,8 @@ test("a frame that omits `supported` inherits it, and an explicit one wins", () 
 	// A producer that answers explicitly is not overruled — including a `false`,
 	// which is the whole reason the field is sent at all.
 	assert.equal(
-		mergeCompletionAttention(
-			current,
-			{ ...withoutFlag, supported: false },
-			SESSION,
-		).supported,
+		mergeCompletionAttention(current, { ...withoutFlag, supported: false }, SESSION)
+			.supported,
 		false,
 	);
 	assert.equal(
@@ -708,9 +700,7 @@ test("the sidebar's 5 s poll is gone, and the feed is what replaced it", () => {
 	);
 	// The disconnected line's pinned sentence, so a re-word shows up here.
 	assert.ok(
-		source.includes(
-			"Not connected to the backend — showing the last known state.",
-		),
+		source.includes("Not connected to the backend — showing the last known state."),
 	);
 	// And the unseen mark is no longer a weight change on the title.
 	assert.ok(
