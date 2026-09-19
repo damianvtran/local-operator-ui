@@ -37,7 +37,7 @@ newer generation, which is the state the operator's machine was in at
 
 | frame | `--expect-notice` | what the app does |
 | --- | --- | --- |
-| `unattended-before/localOperatorDark.webp` | `absent` | reconciles the record against the frozen generation, concludes "did not move the install", and reports nothing at all - for 30 s of frames |
+| `unattended-before/localOperatorDark.webp` | `absent` | reconciles the record against the frozen generation, concludes "did not move the install", and reports nothing at all - for 30 s of frames. The committed frame is the last of that window (`probe-59`), because with no notice in any of the sixty there is no moment the run could pick; the sixty PNGs stay in the run's scratch tree beside it. |
 | `unattended-after/localOperatorDark.webp` | `present` | the same launch reports the landed update: the "Server update completed successfully" notice, 3.0 s into the run |
 
 ## What is NOT here, and why
