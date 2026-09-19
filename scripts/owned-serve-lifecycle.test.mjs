@@ -715,13 +715,20 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			 * The app-owned staging is a collaborator of this handler now, and this
 			 * slice is about the ORDER of the owned cleanup against the handoff - so it
 			 * is stubbed to refuse, which is the Squirrel path this case pins
-			 * (`stageInstallerHandoff` returning null is exactly "stage it the old
+			 * (`stageInstallerHandoff` refusing is exactly "stage it the old
 			 * way"). The direct path's own ordering is pinned in
 			 * `scripts/update-shipit.test.mjs`, against the shipped service rather than
 			 * a slice.
 			 */
-			stageInstallerHandoff: async () => null,
+			stageInstallerHandoff: async () => ({ kind: "fallback" }),
 			startInstaller: () => null,
+			/*
+			 * The pre-quit phases are announced on the update surface (UX U5), and this
+			 * slice has no renderer: what is asserted here is the ORDER of the owned
+			 * cleanup against the handoff, and the phases are asserted against the
+			 * shipped service in `scripts/update-shipit.test.mjs`.
+			 */
+			reportInstallProgress: () => {},
 			backendService: {
 				stop: () => {
 					actions.push("stop");
