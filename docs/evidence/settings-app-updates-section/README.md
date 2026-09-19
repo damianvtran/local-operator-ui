@@ -101,9 +101,13 @@ nice -n 19 node scripts/capture-evidence.mjs http://127.0.0.1:6157 \
   --only=settings-app-updates-section --allow-backend
 ```
 
-`--only` matches all five story ids, so one pass writes the whole surface - sixty
-frames - and the run re-stamps `head`, `frames` and the `partialCapture` record
-itself. Why a production build rather than the dev server, and why the port is a
+`--only` matches all six story ids, so one pass writes the whole surface -
+seventy-two frames - and the run re-stamps `head`, `frames` and the
+`partialCapture` record itself. (This line said five ids and sixty frames until
+review round 4 (D6); the sixth state, `record-kept-while-target-ahead/`, is the
+pressless one this branch added, and the count is the rig's own: measured,
+`--only=settings-app-updates-section --themes=localOperatorDark` prints
+`Captured 6 frames`, so the ids are six and a twelve-theme pass writes 72.) Why a production build rather than the dev server, and why the port is a
 private one, are unchanged from the original capture below.
 
 This section records that original capture, not a command to repeat during
