@@ -857,7 +857,8 @@ test("a pair the marker rule calls a failure is never a retirement", () => {
 	 * dead-assertion shape comes straight back.
 	 */
 	assert.ok(
-		kindsSeen.has("failed") && kindsSeen.has("in-flight") &&
+		kindsSeen.has("failed") &&
+			kindsSeen.has("in-flight") &&
 			(kindsSeen.has("succeeded") || kindsSeen.has("stale")),
 		`the pairs must cover the failure, the in-flight probe and an arrival; saw ${[...kindsSeen].join(", ")}`,
 	);

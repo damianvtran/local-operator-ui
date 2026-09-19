@@ -47,7 +47,8 @@ import { build } from "esbuild";
  */
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/main/update-install";',
+		contents:
+			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -98,6 +99,7 @@ const {
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
+	serverUpdateFailureSentence,
 	parseSealViolations,
 	pendingInstallAgeSeconds,
 	pendingInstallMarkerPath,
@@ -1431,7 +1433,10 @@ test("a failure after an install was in flight names the relaunch as the cause",
  * the three committed frames rendered a sentence the app does not ship (reviews
  * R6 and D9; R1 for the same drift in the in-flight fixture). The frames cannot
  * be checked against the payload by a test because they are pixels - the
- * fixtures can, and the frames are a function of them.
+ * fixtures can, and the frames are a function of them. The server-update failure
+ * sentence is the newest entry in the list below for exactly that reason: it was
+ * the one fixture this case did not cover, and it had drifted (design review
+ * round 2, D2).
  */
 test("the story fixtures carry the payload strings verbatim", () => {
 	const stories = readFileSync(
@@ -1471,6 +1476,29 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		["the start-up refusal message", startup.message],
 		["the start-up refusal heading", startup.heading],
 		["the start-up refusal dismiss label", startup.dismissLabel],
+		/*
+		 * THE SERVER-UPDATE FAILURE SENTENCE, which this list never covered and
+		 * which is why it drifted: the fixture stood for a payload whose sentence no
+		 * arm of `serverUpdateFailureSentence` emits, so the one committed frame for
+		 * "a genuine failure still reads as a failure" was a picture of wording the
+		 * app cannot produce (design review round 2, D2).
+		 */
+		[
+			"the server-update failure message",
+			serverUpdateFailureSentence({
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 0,
+				groupSurvived: false,
+				// Present, so the sentence points at the output block the panel
+				// renders under it - the arm the fixture's own frame shows.
+				diagnosis: "the installer's own output",
+				target: "0.55.10",
+				after: "0.55.9",
+				before: "0.55.9",
+				updateCommand: "lop update",
+			}),
+		],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
@@ -12350,47 +12378,6 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 			},
 		},
 	];
-test("the story fixture's server-failure sentence is one the shipped composer produces", () => {
-	/*
-	 * DESIGN D2 (review round 2). `update-notification.stories.tsx`'s
-	 * `SERVER_UPDATE_FAILURE_MESSAGE` stands in for the payload main sends on
-	 * `backend-update-error`, and that story is the only committed frame for "a
-	 * genuine failure still reads as a failure". It used to carry wording no arm of
-	 * the composer can produce ("the server is still on ...", "See the update
-	 * service log for pip's output"), so the frame a reviewer would cite for that
-	 * claim was a picture of text this build cannot emit.
-	 *
-	 * The composer is a main-process module and the story cannot import it, so this
-	 * case is what holds the two together: it reads the literal out of the stories
-	 * file and composes the same facts through the real module. Either side moving
-	 * alone turns this red.
-	 */
-	const stories = readFileSync(
-		"src/renderer/src/shared/components/common/update-notification.stories.tsx",
-		"utf8",
-	);
-	const fixture = stories.match(
-		/const SERVER_UPDATE_FAILURE_MESSAGE =\s*\n?\s*"((?:[^"\\]|\\.)*)";/,
-	);
-	assert.ok(fixture, "the stories file must still declare the fixture sentence");
-	assert.equal(
-		fixture[1],
-		producer.serverUpdateFailureSentence({
-			rebuildRoute: false,
-			ran: true,
-			exitCode: 0,
-			groupSurvived: false,
-			// Present, so the sentence points at the output block the panel renders
-			// under it - the arm the story's own frame shows.
-			diagnosis: "the installer's own output",
-			target: "0.55.10",
-			after: "0.55.9",
-			before: "0.55.9",
-			updateCommand: "lop update",
-		}),
-		"the story's fixture sentence must be one the shipped composer can produce",
-	);
-});
 
 	for (const route of routes) {
 		const sentence = producer.serverUpdateFailureSentence(route.input);
