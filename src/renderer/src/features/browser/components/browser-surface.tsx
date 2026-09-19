@@ -529,6 +529,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// present for as long as the host has written one, so the strip's row is free to be
 				// the notification it is meant to be.
 				downloadsDir={chrome.state?.transfers?.dir ?? null}
+				// WHAT THE DURABLE CONTROL SAYS IT OPENS (review round 2, U12): once the row has
+				// retired, this control is the only download-related thing on screen, and a user
+				// who was reading Chat during the transfer had no way in the app to learn that
+				// anything arrived. The newest save and the session count ride the projection,
+				// so the control cannot describe a save the host does not have.
+				downloadsRecent={chrome.state?.transfers?.recent ?? null}
 				onOpenDownloads={() => void chrome.revealDownloads()}
 			/>
 			{/* The transfer row sits in the SAME strip as the consent band and the popup
@@ -544,11 +550,20 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// The tab list lives here, so the WORDS for a decision taken elsewhere do too
 				// (review round 1, D2). An agent's tab is created inactive, so the row keeps
 				// showing the decision and names whose it is rather than dropping it.
-				tabLabel={(tabId) =>
-					state?.tabs.find((tab) => tab.tabId === tabId)?.owner === "agent"
+				tabLabel={(tabId, ownerKind) => {
+					// THE TAB LIST FIRST, THE NOTE'S OWN RECORD SECOND (review round 2, U10): a tab
+					// that has been CLOSED has no record here, and "· on another tab" about a tab
+					// that no longer exists is a marker pointing at nothing — the one thing a
+					// marker whose whole job is honesty about whose action this was must not be.
+					// The kind the host recorded with the decision is still true of a closed tab,
+					// so it is what the label falls back to; `null` (the host could not say) keeps
+					// the old wording rather than inventing a kind.
+					const owner =
+						state?.tabs.find((tab) => tab.tabId === tabId)?.owner ?? ownerKind;
+					return owner === "agent"
 						? "· on the agent's tab"
-						: "· on another tab"
-				}
+						: "· on another tab";
+				}}
 			/>
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One

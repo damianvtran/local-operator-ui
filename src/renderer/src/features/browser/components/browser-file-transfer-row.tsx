@@ -86,8 +86,15 @@ export interface BrowserFileTransferRowProps {
 	/** How to name the tab a decision belongs to, when it is not the one on screen
 	 * (review round 1, D2). The surface owns the tab list, so it owns the words; a
 	 * decision taken elsewhere is LABELLED rather than hidden, because an agent's tab
-	 * is created inactive and hiding it would take the file off screen entirely. */
-	tabLabel?: (tabId: number) => string;
+	 * is created inactive and hiding it would take the file off screen entirely.
+	 *
+	 * THE SECOND ARGUMENT IS THE KIND THE HOST RECORDED FOR THAT DECISION (review
+	 * round 2, U10): a tab can be CLOSED while its note is still on screen, and the
+	 * caller then has no record to resolve — so the note's own `ownerKind` is what
+	 * lets the label stay true ("on the agent's tab" is still true of a closed agent
+	 * tab) instead of pointing at a tab that does not exist. `null` is "the host
+	 * could not say", which the surface renders the generic way rather than guessing. */
+	tabLabel?: (tabId: number, ownerKind: "user" | "agent" | null) => string;
 }
 
 export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
@@ -131,7 +138,15 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	// contradict, so it says nothing.
 	const owner =
 		active || latest
-			? awayLabel(transfers, active?.tabId ?? latest?.tabId, tabLabel)
+			? awayLabel(
+					transfers,
+					active?.tabId ?? latest?.tabId,
+					// Mid-flight the tab is live, so the surface resolves the kind from its own
+					// list; once DECIDED, the note's own recorded kind is what survives the tab
+					// being closed (review round 2, U10).
+					active ? null : (latest?.ownerKind ?? null),
+					tabLabel,
+				)
 			: "";
 
 	return (
@@ -156,20 +171,55 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 			{active ? (
 				// IN FLIGHT, WITH PROGRESS (review round 1, U6): one static line on a 40 MB
 				// file is indistinguishable from a hung one, and the per-file cap is 256 MiB.
-				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted">
+				//
+				// THE TICKING HALF IS OUT OF THE LIVE REGION (review round 2, U8). The row is
+				// `<output aria-live="polite">`, so every change inside it is a queued
+				// announcement: the progress line repaints on a 250 ms cadence and UX round 2
+				// measured 15 mutation records / 6 distinct texts in 2.5 s — ~2.4 announcements
+				// per second for as long as a transfer runs (minutes, at a 256 MiB cap), with
+				// the sentence that MATTERS ("… was saved to …", "Download refused — …")
+				// queued behind them. `aria-hidden` on the moving number is this repo's own
+				// rule, stated verbatim in `trace/working-line.tsx`: a screen-reader user gets
+				// "running 3 tools" once when the phase changes, "not the clock read out every
+				// second — which is why the clock and the spinner are both `aria-hidden` inside
+				// it." The state transition is what is worth announcing, not the byte count.
+				//
+				// AND THE DIRECTORY IS NAMED HERE TOO (review round 2, D12). D8's remediation
+				// said the reveal is live "in every state — including mid-flight, where the row
+				// now says which directory it opens", and mid-flight it did not: the path was
+				// rendered only in the decided branch, so a press during the write opened a
+				// directory whose newest file is a partial under its final name, unexplained.
+				// The path is long by nature and this line has no room to spare at the app's
+				// minimum window, so it rides the row's own `title` — the same fact, stated
+				// where the row can afford it.
+				<p
+					className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted"
+					title={transfers.dir ?? undefined}
+				>
 					<span className="shrink-0">Downloading</span>
 					<span className="min-w-0 truncate font-mono text-mono-sm">
 						{active.name}
 					</span>
-					<span className="shrink-0">{progressCopy(active)}</span>
+					<span aria-hidden className="shrink-0">
+						{progressCopy(active)}
+					</span>
 				</p>
 			) : refusing ? (
 				// NAME AND RULE ELIDE, CONSEQUENCE DOES NOT (D3): the name truncates, the
 				// rule clause truncates after it, and the outcome sits in a `shrink-0` span
 				// so the half a reader needs is the half that survives.
+				//
+				// THE NAME IS CAPPED, NOT MERELY SHRINKABLE (review round 2, D11). It used to
+				// be `min-w-0 truncate` alone, which lets a long name eat the line: design
+				// round 2 measured the rule span at 74 px with the clipped word `is an exec…`,
+				// and that clause is the only statement of WHY the file was refused — so
+				// clipping it to a fragment costs the sentence its reason. The saved branch
+				// already caps its own name (`max-w-[32ch] shrink-0 truncate`) so the path keeps
+				// its room; the refusal now does the same, which lets a long name shorten the
+				// reason without truncating it to nothing.
 				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink">
 					<span className="shrink-0">Download refused —</span>
-					<span className="min-w-0 truncate font-mono text-mono-sm">
+					<span className="max-w-[32ch] shrink-0 truncate font-mono text-mono-sm">
 						{name}
 					</span>
 					<span className="min-w-0 truncate">
@@ -178,6 +228,21 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					{latest && (
 						<span className="shrink-0">
 							{outcomeCopy(latest.outcome, latest.refusal)}
+						</span>
+					)}
+					{latest && (
+						// A REFUSAL SAYS HOW OLD IT IS (review round 2, U9). It is the loud half,
+						// the half a user may have to act on, and deliberately the longest-lived
+						// (5 minutes against 2 for a decided transfer) — so the row with the most
+						// reason to be read carefully was the only one that could not say whether
+						// it happened now or five minutes ago. The TTL asymmetry stays.
+						// `aria-hidden` for the reason the progress span carries it (U8): this
+						// number changes on the 15 s tick, and a live region that re-announces a
+						// refusal every quarter minute is the same flood, slower. The refusal is
+						// announced ONCE, when it settles; the age is a staleness cue for the
+						// glance that finds it still on screen.
+						<span aria-hidden className="shrink-0 text-ink-dim">
+							· {ageCopy(now, latest.at)}
 						</span>
 					)}
 				</p>
@@ -189,12 +254,27 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					    the path — which is long by nature — is the part that gives way. The
 					    refusal's sentence is a different problem (D3) and is handled below. */}
 					<span className="max-w-[32ch] shrink-0 truncate font-mono text-mono-sm">
-						{sending && (latest?.count ?? 1) > 1
-							? `${latest?.count} files`
-							: name}
+						{name}
 					</span>
+					{sending && (latest?.count ?? 1) > 1 && (
+						// AN UPLOAD NAMES WHAT LEFT, NOT ONLY HOW MANY (review round 2, U11). The
+						// line used to say `3 files were attached to …`, so a user whose assistant
+						// attached three files out of a twelve-file folder could not tell which
+						// three left the machine from anything on screen — and upload is the more
+						// dangerous verb in this design's own words. Naming the first and counting
+						// the rest keeps ONE line and ONE decision (§16.4's rule is against a
+						// per-file LIST with per-file actions, which this is not) while saying what
+						// actually went.
+						<span className="shrink-0 text-ink-dim">
+							+ {latest.count - 1} more
+						</span>
+					)}
 					<span className="shrink-0">
-						{sending ? "were attached to" : "was saved to"}
+						{sending
+							? (latest?.count ?? 1) > 1
+								? "were attached to"
+								: "was attached to"
+							: "was saved to"}
 					</span>
 					{/* WHERE IT WENT, WHICH THE ROW NEVER SAID (review round 1, D4 and U2).
 					    Rendered from the host's own path, mono, and truncated FROM THE LEFT so
@@ -209,7 +289,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					>
 						<bdi dir="ltr">{sending ? latest?.site : latest?.dir}</bdi>
 					</span>
-					<span className="shrink-0 text-ink-dim">
+					<span aria-hidden className="shrink-0 text-ink-dim">
 						· {ageCopy(now, latest?.at ?? now)}
 					</span>
 				</p>
@@ -221,8 +301,11 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 
 			{/* The reveal is pointless for an upload (there is no file of ours on disk),
 			    and for a download it is live in every state — including mid-flight, where
-			    the row now says which directory it opens, which is what D8 asked for
-			    instead of hiding a control the user may want. */}
+			    the row now says which directory it opens (review round 2, D12: it said so
+			    only AFTER the decision until this round, so the claim D8's remediation made
+			    was true of the settled states and not of the one it named). The in-flight
+			    clause carries the directory as the row's own `title` rather than a span,
+			    because at the app's minimum window this line has no room for a path. */}
 			{direction === "download" && (
 				<Button
 					variant="outline"
@@ -254,11 +337,14 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 function awayLabel(
 	transfers: TransferActivityView,
 	tabId: number | undefined,
-	tabLabel: ((tabId: number) => string) | undefined,
+	ownerKind: "user" | "agent" | null,
+	tabLabel:
+		| ((tabId: number, ownerKind: "user" | "agent" | null) => string)
+		| undefined,
 ): string {
 	if (tabId === undefined || transfers.activeTabId === null) return "";
 	if (transfers.activeTabId === tabId) return "";
-	return tabLabel ? tabLabel(tabId) : "on another tab";
+	return tabLabel ? tabLabel(tabId, ownerKind) : "on another tab";
 }
 
 /** What a transfer in flight says about itself.
@@ -291,6 +377,12 @@ function ruleCopy(refusal: TransferRefusalView | null): string {
 			return "could not be saved: the download folder could not be written to.";
 		case "deadline":
 			return `did not finish within ${refusal.limit}s and was cancelled.`;
+		case "overrun":
+			// The runtime cap (review round 2, R2-5): its own rule rather than `limit`,
+			// because the file DID exist for a moment — the clause says when the limit
+			// was passed, and `outcomeCopy` then says the partial was discarded rather
+			// than that nothing was saved.
+			return `went over the ${formatBytes(refusal.limit)} per-file download limit while it was being written.`;
 		case "interrupted":
 			return "did not finish.";
 		default:
@@ -308,7 +400,13 @@ function outcomeCopy(
 	// A partial that a cancel removed is the one case where "nothing was saved"
 	// would be true but insufficient: what the user needs to know is that the file
 	// they may have seen appear is gone.
-	if (refusal?.rule === "interrupted" || refusal?.rule === "deadline") {
+	if (
+		refusal?.rule === "interrupted" ||
+		refusal?.rule === "deadline" ||
+		// The runtime cap's write existed on disk before it was cancelled, so
+		// "nothing was saved" is the wrong half of the truth for it (R2-5).
+		refusal?.rule === "overrun"
+	) {
 		return "The partial file was discarded.";
 	}
 	return "Nothing was saved.";

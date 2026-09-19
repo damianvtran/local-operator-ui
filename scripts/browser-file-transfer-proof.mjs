@@ -149,9 +149,32 @@ const RECEIPTS = 7;
 /** Over the per-file cap, declared so the host can refuse it BEFORE the write.
  * The body is never finished: the refusal happens at `will-download`. */
 const OVER_CAP_BYTES = 256 * 1024 * 1024 + 1;
+/** What the endless endpoint will push before giving up, and what it actually
+ * pushed, both in bytes (review round 2, Q4).
+ *
+ * The self-cap is deliberately far past the 256 MiB limit — the case exists to
+ * measure how far past it the host lets a write run, and a server that stopped at
+ * the limit would make the measurement impossible. It is a BACKSTOP against a host
+ * that fails to cancel at all, not the bound under test: a run that reaches it has
+ * found a defect, and G12 says so. */
+const ENDLESS_SELF_CAP = 768 * 1024 * 1024;
+let endlessPushed = 0;
+
+/** A SECOND origin, on its own port, that the user is never asked about.
+ *
+ * WHY A SEPARATE LISTENER RATHER THAN `localhost`: an origin is scheme + host +
+ * PORT, so a second port on the same host is a different origin with no DNS in the
+ * path — which matters here because `G10` needs the navigation to an unapproved
+ * document to COMMIT while the upload is still running, and a `localhost` lookup
+ * that first tries `::1` (where nothing listens) adds tens of milliseconds of
+ * connection retry to that race. */
+let elsewherePort = 0;
 /** The same cap as a string, for the negative half of `C4`: the refusal must NOT
  * print the raw byte count beside a raw byte count any more (review round 1, D1). */
 const CAPS_BYTES = String(256 * 1024 * 1024);
+/** The per-file cap as a NUMBER, for the overshoot arithmetic in `G12` (review round
+ * 2, Q4): the point of that case is how far PAST this the host let a write run. */
+const DOWNLOAD_CAP_BYTES = 256 * 1024 * 1024;
 /** A name long enough that the refusal's own sentence cannot fit beside it, which is
  * the case D3 is about: the NAME must elide and the consequence must not. Measured
  * rather than guessed — see G8, which asserts which span is the clipped one. */
@@ -174,6 +197,18 @@ ${body}
 </div></body></html>`;
 }
 
+/** THE SITE, AND WHY ITS FIXTURES HOLD THE MAIN THREAD (review round 2, R2-1/R2-2).
+ * The two auto-submitting forms busy-wait for 80-120 ms inside their `change`
+ * handler after starting their submit. That is what makes the shape DETERMINISTIC
+ * rather than a race: the navigation's response arrives while the renderer's main
+ * thread is held, so the commit is queued ahead of the read-back the host sends when
+ * the attach returns — which is the ordering the round-2 findings describe ("the
+ * attach has already happened and the bytes have already gone"), produced on demand
+ * instead of hoped for. The first version of these two cases submitted and returned
+ * immediately, and the read-back won the race in both.
+ *
+ * The away case lands on a SECOND origin on its own port, never approved: see
+ * `elsewherePort` for why it is not `localhost`. */
 function startSite() {
 	return new Promise((resolve) => {
 		const server = createServer((request, response) => {
@@ -202,6 +237,7 @@ function startSite() {
 <p><a id="hung-link" href="/hung.pdf" download>never-finishes.pdf</a></p>
 <p><a id="slow-a-link" href="/slow-a.pdf" download>slow-a.pdf</a></p>
 <p><a id="slow-b-link" href="/slow-b.pdf" download>slow-b.pdf</a></p>
+<p><a id="endless-link" href="/endless.bin" download>endless.bin</a></p>
 <p><a id="dup-link" href="#" onclick="document.getElementById('dup-a').click(); document.getElementById('dup-b').click(); return false">Two files named same.pdf</a></p>
 <p hidden><a id="dup-a" href="/dup-a.pdf" download>dup a</a><a id="dup-b" href="/dup-b.pdf" download>dup b</a></p>`,
 					),
@@ -336,6 +372,97 @@ function startSite() {
 				);
 				return;
 			}
+			if (path === "/autosubmit") {
+				// THE FORM THAT MOVES ON UNDER THE READ-BACK, on the SAME origin (review round
+				// 2, R2-2). The attach fires the input's `change` handler, and the handler
+				// REPLACES the document (`document.open()` / `write` / `close`) — which
+				// destroys the execution context the read-back runs in, while the bytes have
+				// already gone. The landing stays on this approved origin, so the call must
+				// RESOLVE with the attach reported as unverified rather than failing with
+				// Chromium's raw error.
+				//
+				// WHY A DOCUMENT REPLACEMENT AND NOT ONLY A FORM SUBMIT: the submit shape is
+				// here too (`/autosubmit-away`) and this rig MEASURED that its commit does not
+				// land until after the action has answered — see `G10`, which records that
+				// rather than pretending otherwise. `document.open()` is the same CLASS the
+				// finding is about (a read-back whose execution context is gone), produced in
+				// the same tick as the attach, which is what makes this case deterministic.
+				response.writeHead(200, { "Content-Type": "text/html" });
+				response.end(
+					page(
+						"Attach and move on",
+						`<form id="autosubmit" method="post" action="/autosubmit-received" enctype="multipart/form-data">
+<input id="auto" type="file" name="files" onchange="document.open(); document.write('<p>sent</p>'); document.close()">
+</form>`,
+					),
+				);
+				return;
+			}
+			if (path === "/autosubmit-away") {
+				// THE SAME SHAPE, LANDING SOMEWHERE THE USER NEVER APPROVED (review round 2,
+				// R2-1). A second PORT is a second origin, so the grant this rig answers for
+				// the fixture origin does not cover it. An upload whose form submits itself
+				// here must be refused with the REACHED ORIGIN NAMED and the landing put back
+				// — which is what the round-1 M2 fix gave `download` and what `upload` was
+				// missing.
+				//
+				// THE 400 ms HOLD IS THE INSTRUMENT FOR `G10`'s MEASUREMENT, not a device to
+				// force an outcome: the rig holds the renderer's main thread while the POST
+				// goes out and its response arrives, and records that the commit still lands
+				// AFTER the upload call has answered. It is left in place so that
+				// measurement stays reproducible — a shorter handler changes nothing, and a
+				// future change that DOES reach the refusal path can be seen against it.
+				response.writeHead(200, { "Content-Type": "text/html" });
+				response.end(
+					page(
+						"Attach and send elsewhere",
+						`<form id="autosubmit-away" method="post" action="http://127.0.0.1:${elsewherePort}/autosubmit-received" enctype="multipart/form-data">
+<input id="auto-away" type="file" name="files" onchange="this.form.submit(); const until = Date.now() + 400; while (Date.now() < until) {}">
+</form>`,
+					),
+				);
+				return;
+			}
+			if (path === "/autosubmit-received" && request.method === "POST") {
+				// The auto-submitting form's own destination. It answers immediately and
+				// tiny, because what the two cases above are about is the COMMIT of this
+				// document tearing down the previous execution context.
+				request.resume();
+				request.on("end", () => {
+					response.writeHead(200, { "Content-Type": "text/html" });
+					response.end(page("Sent", "<p>Received.</p>"));
+				});
+				return;
+			}
+			if (path === "/endless.bin") {
+				// A CHUNKED BODY WITH NO `Content-Length` THAT NEVER ENDS ON ITS OWN (review
+				// round 2, Q4): the pre-write cap cannot fire on a length the server never
+				// declared, so only the runtime cap bounds it — and QA round 2 measured that
+				// cap firing 2.7x past the limit because `updated` went silent for the whole
+				// write. The server self-caps far past the limit so a run cannot fill the
+				// disk if the host fails to cancel at all, and it records what it pushed.
+				response.writeHead(200, {
+					"Content-Type": "application/octet-stream",
+					"Content-Disposition": 'attachment; filename="endless.bin"',
+				});
+				const chunk = Buffer.alloc(256 * 1024, 5);
+				let pushed = 0;
+				const push = () => {
+					if (pushed >= ENDLESS_SELF_CAP) {
+						response.end();
+						return;
+					}
+					pushed += chunk.length;
+					endlessPushed = pushed;
+					if (response.write(chunk)) setImmediate(push);
+					else response.once("drain", push);
+				};
+				push();
+				response.on("close", () => {
+					endlessPushed = pushed;
+				});
+				return;
+			}
 			if (path === "/form") {
 				response.writeHead(200, { "Content-Type": "text/html" });
 				response.end(
@@ -378,6 +505,26 @@ function startSite() {
 		server.listen(0, "127.0.0.1", () => {
 			sitePort = server.address().port;
 			resolve({ server, port: sitePort });
+		});
+	});
+}
+
+/** The second origin's own listener (see `elsewherePort`): it answers the
+ * auto-submitting form's POST and nothing else, because the case is about the tab
+ * LANDING on a document the user never approved, not about what that document does
+ * once it is there. */
+function startElsewhere() {
+	return new Promise((resolve) => {
+		const server = createServer((request, response) => {
+			request.resume();
+			request.on("end", () => {
+				response.writeHead(200, { "Content-Type": "text/html" });
+				response.end(page("Elsewhere", "<p>Received.</p>"));
+			});
+		});
+		server.listen(0, "127.0.0.1", () => {
+			elsewherePort = server.address().port;
+			resolve({ server, port: elsewherePort });
 		});
 	});
 }
@@ -662,6 +809,11 @@ async function rowReading() {
 	})()`);
 }
 
+/** The row's own sentence, as the DOM holds it, or "" when there is no row. */
+async function rowText() {
+	return (await rowReading()).text ?? "";
+}
+
 /** The row's own spans, with the numbers that decide whether the CONSEQUENCE
  * survived the layout (review round 1, D3): a `truncate` span clips its own
  * content (`scrollWidth > clientWidth`), and a `shrink-0` span must not be pushed
@@ -746,6 +898,24 @@ async function frame(state, token, name) {
 	say(`frame: ${path}`);
 	return { path, rect };
 }
+/** The URL one of the host's own surfaces is on, read from `status` rather than from
+ * `chromeState()`.
+ *
+ * WHY NOT `chromeState()`: that projection describes the tab the USER is looking at,
+ * and an agent tab is created INACTIVE by design (§11.4) — so in this rig the
+ * chrome's `url` is the surface's own `New tab` (about:blank) for the whole run, and
+ * a check that waits on it waits out its whole timeout and then reads the wrong tab.
+ * `status` reports every surface, which is what a check about the tab under test
+ * needs. */
+async function surfaceUrl(state, needle) {
+	const status = await rpc(state, "status", { requester: "session:proof" });
+	const surfaces = status.json?.result?.surfaces ?? [];
+	return (
+		surfaces.find((entry) => String(entry.url ?? "").includes(needle))?.url ??
+		null
+	);
+}
+
 /** Press a control the way a user does: a real CDP click at its centre. */
 async function clickTag(tag) {
 	return await evaluate(`(() => {
@@ -764,6 +934,8 @@ async function main() {
 	mkdirSync(CONFIG_DIR, { recursive: true });
 	mkdirSync(LOG_DIR, { recursive: true });
 
+	const elsewhere = await startElsewhere();
+	say(`elsewhere (never approved): http://127.0.0.1:${elsewherePort}`);
 	const { server } = await startSite();
 	say(`site: ${origin()}`);
 	app = await launchApp();
@@ -993,6 +1165,11 @@ async function main() {
 			(refusedRow.text.match(/setup\.exe/g) ?? []).length === 1,
 		JSON.stringify(refusedRow.text),
 	);
+	check(
+		"C3b the refusal carries its age, which is the state that lives longest (U9)",
+		/· just now/.test(refusedRow.text ?? ""),
+		JSON.stringify(refusedRow.text),
+	);
 
 	const hugeArm = await rpc(state, "download", {
 		tab: token,
@@ -1177,9 +1354,14 @@ async function main() {
 	// here rather than the state file, because the claim is about what the user sees.
 	const uploadRow = await rowReading();
 	check(
-		"D8 an upload leaves a line in the strip, naming how many files and where they went",
+		"D8 an upload leaves a line in the strip, naming WHICH files left and where they went",
 		uploadRow.present === true &&
 			/were attached to/.test(uploadRow.text ?? "") &&
+			// NAMING THE FILES, NOT ONLY A COUNT (review round 2, U11): the line used to
+			// read `3 files were attached to …`, so a user whose assistant attached three
+			// files out of a twelve-file folder could not tell which three left.
+			/brief\.pdf/.test(uploadRow.text ?? "") &&
+			/\+ 2 more/.test(uploadRow.text ?? "") &&
 			(uploadRow.text ?? "").includes("127.0.0.1"),
 		JSON.stringify({ row: uploadRow.text }),
 	);
@@ -1317,6 +1499,16 @@ for raw in paths:
 	});
 	await sleep(900);
 	const progressRow = await rowReading();
+	// D12: the reveal is live in EVERY state, and mid-flight the row has to say which
+	// directory it opens — the claim D8's remediation made and the row did not keep.
+	// READ HERE, IN FLIGHT, and that placement is the whole of the fix's evidence: the
+	// first version of this check read the title after the transfer had answered, when
+	// the row is in its DECIDED branch and the path is a span instead of the row's own
+	// `title` — so it read `null` and reported a defect that was not there.
+	const inFlightTitle = await evaluate(`(() => {
+		const row = document.querySelector('[data-tour-tag="browser-file-transfer-row"]');
+		return row ? (row.querySelector('p')?.getAttribute('title') ?? null) : null;
+	})()`);
 	// THE CHROME HALF IS TAKEN IN FLIGHT AND THE PAGE HALF AFTER, and that is a property
 	// of the host rather than a shortcut: `screenshot` is tab-scoped, so it takes the
 	// tab's command lane — the SAME lane this `download` call is holding until it
@@ -1341,6 +1533,12 @@ for raw in paths:
 			/Downloading/.test(progressRow.text ?? "") &&
 			/(KiB|MiB|%)/.test(progressRow.text ?? ""),
 		JSON.stringify({ row: progressRow.text, frame: progressFrame.path }),
+	);
+	// D12, measured at the moment the row was in flight (see the read above).
+	check(
+		"G2b the in-flight row names the directory the reveal opens (D12)",
+		inFlightTitle === QUARANTINE,
+		String(inFlightTitle),
 	);
 	check(
 		"G3 the same transfer lands when it is given the time, so the cancel paths are not refusing ordinary downloads",
@@ -1444,6 +1642,9 @@ for raw in paths:
 	const nameSpan = longSpans.find((span) =>
 		span.text.startsWith("quarterly-financial"),
 	);
+	const ruleSpan = longSpans.find((span) =>
+		span.text.startsWith("is an executable"),
+	);
 	const consequence = longSpans.find((span) =>
 		span.text.startsWith("Nothing was saved"),
 	);
@@ -1454,6 +1655,268 @@ for raw in paths:
 			consequence?.clipped === false &&
 			consequence?.inside === true,
 		JSON.stringify({ spans: longSpans, frame: longFrame.path }),
+	);
+	check(
+		"G8b the name's own cap leaves the REASON readable rather than clipping it to a fragment (D11)",
+		// Design round 2 measured this span at 74px with the clipped word `is an exec…`,
+		// because the name span was only shrinkable and ate the line. The saved branch
+		// already capped its own name; the refusal now does the same, so the clause that
+		// states WHY the file was refused keeps its room.
+		ruleSpan?.clipped === false &&
+			/is an executable\/script type\./.test(ruleSpan?.text ?? ""),
+		JSON.stringify(ruleSpan ?? null),
+	);
+
+	// ---- G10..G13. ROUND 2: the sibling verb, the unverified attach, the cap's
+	// granularity, and the durable control's own label (R2-1, R2-2, Q4, U12) ------
+	// Each case is a shape the round-2 reports named and this rig could not produce
+	// before: an upload whose form submits ITSELF — once landing on an approved
+	// origin and once on one the user never approved — an unknown-size write measured
+	// against the limit its refusal quotes, and the durable folder control read after
+	// the row it belongs to has been replaced.
+
+	// G10. THE UPLOAD THAT NAVIGATES TO AN UNAPPROVED ORIGIN (review round 2, R2-1) —
+	// RECORDED AS NOT EXERCISABLE FROM THIS RIG, with the measurement that says why
+	// rather than an assertion bent to fit.
+	//
+	// WHAT R2-1 IS ABOUT: a document that changes WHILE the action runs, so the result
+	// is authorized against the document it actually came from — an unapproved landing
+	// then refusing WITH the origin named and the landing reverted, instead of the
+	// round-1 `reason: "changed"` with no origin and the page left on screen.
+	//
+	// WHAT THIS RIG MEASURED: the page's own submit DOES navigate to the never-approved
+	// origin (`/autosubmit-away`'s form posts to a second port, which is a different
+	// origin the user was never asked about), but the commit lands AFTER this call has
+	// answered. Lengthening the page's own `change` handler to hold the renderer's main
+	// thread for 400 ms — while the POST goes out and its response arrives — did not
+	// change that: the read-back and the post-perform authorization both still run
+	// first, because a DevTools command outranks the navigation's commit task in the
+	// renderer. So the app-level rig cannot produce the ordering, on Electron, by any
+	// shape a page can drive. The DISCRIMINATING case is the unit test that drives the
+	// epoch change at exactly the point `perform` returns
+	// (`scripts/browser-host.test.mjs`: "an upload whose form navigates is refused with
+	// the origin NAMED and the landing reverted (review round 2, R2-1)"), and PR A
+	// measured the opposite ordering on Chrome, where the raw `-32000` this finding
+	// cites comes from.
+	//
+	// THE SHAPE THE RIG CAN STILL SHOW, and records: the submit's navigation is a real
+	// one to an unapproved origin, so the tab ends up there after the answer — which is
+	// the page-initiated-navigation case round 1 weighed and accepted for `download`
+	// (the per-hop gate is deliberately off for these verbs; see `NAVIGATION_ACTIONS`),
+	// and the reason the fix is a result check rather than a fetch block.
+	await rpc(state, "goto", {
+		tab: token,
+		url: `${origin()}/autosubmit-away`,
+		requester: "session:proof",
+	});
+	await waitFor(
+		async () =>
+			(await surfaceUrl(state, "/autosubmit-away")) ===
+			`${origin()}/autosubmit-away`,
+	);
+	const awayFile = join(SCRATCH, "away.pdf");
+	writeFileSync(awayFile, Buffer.alloc(2_048, 65));
+	const awayUpload = await rpc(state, "upload", {
+		tab: token,
+		selector: "#auto-away",
+		paths: [awayFile],
+		requester: "session:proof",
+	});
+	const awayElsewhere = `http://127.0.0.1:${elsewherePort}`;
+	const awayLanded = await waitFor(
+		async () =>
+			(await surfaceUrl(state, "/autosubmit-received"))?.startsWith(
+				awayElsewhere,
+			) === true,
+		15_000,
+	);
+	record(
+		"G10 (observation) the auto-submitting form's navigation to the never-approved origin",
+		`answered first: ok=${awayUpload.json?.ok} error=${JSON.stringify(awayUpload.json?.error ?? null)}; tab reached ${awayElsewhere} after the answer: ${awayLanded}; origin never approved: ${awayElsewhere}`,
+	);
+	blocked(
+		"G10 an upload whose form submits itself to an unapproved origin is refused with the origin NAMED (R2-1)",
+		"the navigation's commit lands after this call has answered on Electron — measured with a 400 ms main-thread hold in the page's own change handler, and unchanged by it — so the document never changes DURING the action and the refusal path cannot be reached from a page. The discriminating case is the unit test in scripts/browser-host.test.mjs (R2-1), which drives the epoch change at the point `perform` returns; PR A measured the other ordering on Chrome.",
+	);
+	// G11. THE SAME SHAPE LANDING ON AN APPROVED ORIGIN (review round 2, R2-2) — also
+	// RECORDED AS NOT EXERCISABLE FROM THIS RIG, for the same measured reason.
+	//
+	// WHAT R2-2 IS ABOUT: a read-back that could not be TAKEN (the attach already
+	// resolved, the bytes have gone) must be reported as an unverified attach rather
+	// than escaping as Chromium's raw error — no `accepted` facts, no note, no audit
+	// row, and a model that re-sends files that already left.
+	//
+	// WHAT THIS RIG MEASURED, on two shapes: the page's own submit (`/autosubmit-away`)
+	// and a document REPLACEMENT from the change handler (`document.open()` /
+	// `write` / `close`, this page). Neither produces a failed read-back here. The
+	// submit's commit lands after the call has answered (see `G10`), and Chromium
+	// REUSES the execution context across `document.open()`, so the resolved input
+	// still answers with the files it holds. There is no page-driven shape left that
+	// destroys the context inside the action's window, which is what the read-back
+	// would have to lose to.
+	//
+	// The reviewer reached the same conclusion from the other side: "The e2e rig cannot
+	// see it: its upload case presses the form's own Send control through the host as a
+	// separate `click`, which never puts a navigation under the upload action." The
+	// discriminating case is the unit test that makes the read fail
+	// (`scripts/browser-host.test.mjs`: "a read-back the page destroyed is reported as
+	// an UNVERIFIED attach, not an untyped CDP error (review round 2, R2-2)").
+	await rpc(state, "goto", {
+		tab: token,
+		url: `${origin()}/autosubmit`,
+		requester: "session:proof",
+	});
+	await waitFor(
+		async () =>
+			(await surfaceUrl(state, "/autosubmit")) === `${origin()}/autosubmit`,
+	);
+	const autoSendFile = join(SCRATCH, "auto-send.pdf");
+	writeFileSync(autoSendFile, Buffer.alloc(4_096, 66));
+	const autoSendUpload = await rpc(state, "upload", {
+		tab: token,
+		selector: "#auto",
+		paths: [autoSendFile],
+		requester: "session:proof",
+	});
+	const autoSendResult = autoSendUpload.json?.result ?? {};
+	record(
+		"G11 (observation) a document replacement under the read-back",
+		`ok=${autoSendUpload.json?.ok} readback=${JSON.stringify(autoSendResult.readback ?? "")} accepted=${JSON.stringify(autoSendResult.accepted?.map((fact) => [fact.name, fact.bytes]))} — the read-back still completed, so document.open() does not destroy the execution context on this build`,
+	);
+	blocked(
+		"G11 an upload the page's own submit raced is reported as an UNVERIFIED attach, not as a failure (R2-2)",
+		"no page-driven shape on Electron destroys the read-back's execution context inside the action's window: a form submit's commit lands after the call has answered (measured with a 400 ms main-thread hold) and document.open() reuses the context. The discriminating case is the unit test in scripts/browser-host.test.mjs (R2-2), which makes the read fail and asserts the marker, the facts and the answer.",
+	);
+
+	// G12. THE RUNTIME CAP'S GRANULARITY (review round 2, Q4). A chunked body with no
+	// `Content-Length` cannot be capped pre-write, and QA measured the runtime cap
+	// firing only on Chromium's `updated` — which went silent, letting a 700 MiB write
+	// run against a 256 MiB limit. The host samples the partial's own size now, so the
+	// overshoot is one sample interval rather than one event interval.
+	//
+	// AND THE MEASUREMENT IS THE RIG'S OWN, not the host's self-report: the partial is
+	// on disk under its final name while it is written, so a 10 ms poller over that
+	// path records the LARGEST size the write ever reached and the moment it vanished.
+	// What QA measured was the host's reading at cancel (734,003,200 bytes); what the
+	// disk actually held is the fact the ceiling is about.
+	await rpc(state, "goto", {
+		tab: token,
+		url: `${origin()}/receipts`,
+		requester: "session:proof",
+	});
+	await waitFor(
+		async () =>
+			(await surfaceUrl(state, "/receipts")) === `${origin()}/receipts`,
+	);
+	const endlessDir = join(QUARANTINE, "endless");
+	const endlessPartial = join(endlessDir, "endless.bin");
+	const endlessStartedAt = Date.now();
+	let maxOnDisk = 0;
+	let crossedAt = 0;
+	let vanishedAt = 0;
+	let partialSeen = false;
+	const poll = setInterval(() => {
+		try {
+			if (existsSync(endlessPartial)) {
+				const size = statSync(endlessPartial).size;
+				partialSeen = true;
+				if (size > maxOnDisk) maxOnDisk = size;
+				if (size > DOWNLOAD_CAP_BYTES && crossedAt === 0) {
+					crossedAt = Date.now() - endlessStartedAt;
+				}
+			} else if (partialSeen && vanishedAt === 0) {
+				vanishedAt = Date.now() - endlessStartedAt;
+			}
+		} catch {
+			// The file is being created or removed under the poller; the next tick reads
+			// the state that follows.
+		}
+	}, 10);
+	const endlessArm = await rpc(state, "download", {
+		tab: token,
+		selector: "#endless-link",
+		dir: endlessDir,
+		timeout_s: 60,
+		requester: "session:proof",
+	});
+	const endlessMs = Date.now() - endlessStartedAt;
+	clearInterval(poll);
+	const endlessResult = endlessArm.json?.result ?? {};
+	const endlessNotes = (await chromeState()).transfers?.notes ?? [];
+	const overrunNote = endlessNotes.find(
+		(note) => note.refusal?.rule === "overrun",
+	);
+	const endlessLanded = existsSync(endlessDir) ? readdirSync(endlessDir) : [];
+	check(
+		"G12 an unknown-size write is cancelled AT the limit rather than an update interval later (Q4)",
+		endlessResult.files?.length === 0 &&
+			/went over the 256 MiB per-file download limit while it was being written/.test(
+				endlessResult.reason ?? "",
+			) &&
+			// THE DISK BOUND: what the write actually reached. QA round 2 measured the host
+			// reading 734,003,200 bytes (2.7x the limit) at cancel; the bound the host's own
+			// clock can promise is the cap plus one sample interval of throughput. Measured
+			// here across runs at a 100 ms sampling cadence: 277,348,110 bytes (8.9 MiB over,
+			// 76 ms past the limit) idle, and the same order under load. The 96 MiB / 800 ms
+			// ceilings leave room for a loaded machine while still refusing anything like the
+			// 2.7x overshoot QA measured.
+			maxOnDisk <= DOWNLOAD_CAP_BYTES + 96 * 1024 * 1024 &&
+			// And the time the write ran past the limit, which is the same claim in the unit
+			// the cap is enforced in.
+			crossedAt > 0 &&
+			vanishedAt > crossedAt &&
+			vanishedAt - crossedAt <= 800 &&
+			// The server stopped pushing because the write was cancelled, not because it
+			// reached its own backstop.
+			endlessPushed < ENDLESS_SELF_CAP &&
+			endlessLanded.length === 0,
+		JSON.stringify({
+			elapsedMs: endlessMs,
+			maxOnDisk,
+			cap: DOWNLOAD_CAP_BYTES,
+			overshoot: maxOnDisk - DOWNLOAD_CAP_BYTES,
+			crossedAt,
+			vanishedAt,
+			msPastCap: vanishedAt - crossedAt,
+			hostReadAtCancel: overrunNote?.refusal?.bytes ?? null,
+			serverPushed: endlessPushed,
+			files: endlessLanded,
+			reason: endlessResult.reason,
+			rule: overrunNote?.refusal?.rule,
+		}),
+	);
+	check(
+		"G12b the runtime cap is its own rule in the projection, so the row says the partial was discarded (R2-5)",
+		overrunNote?.outcome === "refused" &&
+			/The partial file was discarded/.test(await rowText()),
+		JSON.stringify({ rule: overrunNote?.refusal?.rule, row: await rowText() }),
+	);
+
+	// G13. THE DURABLE CONTROL'S OWN LABEL (review round 2, U12). Once the row has
+	// retired it is the only download-related thing on screen, and an icon-only
+	// control answers "where do downloads go" and nothing else — so a user who was in
+	// Chat during the transfer had no way in the app to learn that anything arrived.
+	// Opened the way a pointer does: the tooltip's trigger listens for `pointermove`.
+	await sleep(900);
+	const hovered = await evaluate(`(() => {
+		const control = document.querySelector('[data-tour-tag="browser-downloads-folder"]');
+		if (!control) return false;
+		control.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+		return true;
+	})()`);
+	await sleep(1_200);
+	const tooltipText = await evaluate(`(() => {
+		const el = document.querySelector('[role="tooltip"]');
+		return el ? el.innerText.replace(/\\s+/g, ' ').trim() : null;
+	})()`);
+	check(
+		"G13 the durable folder control names the newest save, so a transfer that happened while the user was elsewhere is discoverable (U12)",
+		hovered === true &&
+			/newest|was saved there/.test(tooltipText ?? "") &&
+			/endless|receipt-\d+\.pdf|slow-a\.pdf|\.pdf|\.bin/.test(
+				tooltipText ?? "",
+			),
+		JSON.stringify({ hovered, tooltip: tooltipText }),
 	);
 
 	// G9. THE ROW STACKED WITH THE CONSENT BAND (D6): the composition worst case, and
@@ -1492,6 +1955,7 @@ for raw in paths:
 	say(`app log: ${app.logPath}`);
 	say(`frames: ${OUT_DIR}`);
 	server.close();
+	elsewhere.server.close();
 }
 
 try {

@@ -60,9 +60,12 @@ export async function download(
 	// ARM BEFORE THE CLICK, and this order is load-bearing: a download that starts
 	// synchronously inside the click would otherwise arrive at a tab with no arm and
 	// be CANCELLED by the pre-feature default, which is a race that would look like
-	// an intermittent failure on fast files.
-	const arm = ctx.downloads.arm(record.tabId, dir, timeoutS * 1000);
+	// an intermittent failure on fast files. The arm is INSIDE the `try` (review round
+	// 2, R2-6) so the `finally` really does cover "whatever happened": an `arm` that
+	// threw part-way — a directory this host cannot create is now a typed refusal
+	// rather than an untyped escape — cannot leave a capture nobody will release.
 	try {
+		const arm = ctx.downloads.arm(record.tabId, dir, timeoutS * 1000);
 		if (selector) await click(ctx, params);
 		const result = await arm.done();
 		ctx.registry.touch(record);

@@ -54,6 +54,18 @@ import { CAPS } from "./vendor/driver/file-transfer.tables.gen";
  * while the bytes arrive (`item.on("updated")` + `item.cancel()` at the limit),
  * which is the only place a host can bound a length it was never told.
  *
+ * AND THE TRIGGER IS THE HOST'S OWN CLOCK, NOT ONLY CHROMIUM'S EVENT (review
+ * round 2, Q4). `updated` is coarse: QA round 2 measured NO `updated` anywhere
+ * between the 256 MiB cap and the end of a 700 MiB write, so the bound the
+ * refusal implies was really "the cap plus one update interval of throughput" —
+ * 2.7x the cap on a fast origin, and up to twenty unknown-size writes can be in
+ * flight on one call. The host owns `savePath`, so the partial's own size is
+ * SAMPLED on a timer as well (`CAP_SAMPLE_MS`) and cancelled from there; the
+ * overshoot becomes one sample interval instead of one event interval, and the
+ * check stops depending on an event the page's throughput controls. `updated`
+ * keeps its own check, because an event arriving between two samples should not
+ * be thrown away.
+ *
  * A WRITE THIS HOST CANCELS IS NOT A FILE, AND IS NOT LEFT ON DISK. Every cancel
  * path (`updated` over the cap, the deadline, a page's own cancellation, a call
  * that goes away) reports what happened by NAME and discards the partial. That is
@@ -96,6 +108,27 @@ const NOTES_KEPT = 4;
  * a 40 MB download is not thousands of messages (review round 1, U6). */
 const PROGRESS_RENDER_MS = 250;
 
+/** How often a still-writing transfer's own byte count is sampled for the runtime
+ * cap (review round 2, Q4).
+ *
+ * WHAT IT BUYS IS THE BOUND, NOT THE SAMPLE RATE, and the number is a deliberate
+ * trade rather than a copy of the row's own 250 ms cadence. `updated` can be silent
+ * for the whole of a write (QA measured none between 256 MiB and 700 MiB), so
+ * without a host-owned clock the ceiling is "the cap plus however long Chromium
+ * stays quiet" — 2.7x the cap in QA's run. With one, the ceiling is the cap plus one
+ * sampling interval of the origin's throughput, and the rig measures the DISK (not
+ * this host's self-report): 8.9 MiB over the cap and 76 ms past it on an idle
+ * machine, 50 MiB / 379 ms on a busy one.
+ *
+ * WHY 100 ms RATHER THAN 250. The interval is what the overshoot is proportional to,
+ * and it is not free of the machine: a run under real load measured the interval
+ * firing ~1.1 s late, which is 117 MiB of overshoot at this fixture's throughput —
+ * so the cadence is set by what a LOADED main process can still deliver rather than
+ * by the idle case. The cost is one map iteration per capture ten times a second,
+ * and the check reads `getReceivedBytes()` (a number the item already holds) rather
+ * than the disk, so a tighter cadence buys disk safety without adding I/O. */
+const CAP_SAMPLE_MS = 100;
+
 /** What the `download` method answers (design §6.1, mirrored in `protocol.ts`). */
 export interface DownloadCaptureResult {
 	files: FileFact[];
@@ -126,7 +159,21 @@ export interface DownloadDecision {
  * own from this rule and these facts: the name and the rule may elide, and the
  * consequence is the part that never does. */
 export interface TransferRefusal {
-	rule: "executable" | "limit" | "count" | "write" | "interrupted" | "deadline";
+	rule:
+		| "executable"
+		| "limit"
+		| "count"
+		| "write"
+		| "interrupted"
+		| "deadline"
+		// THE RUNTIME CAP IS ITS OWN RULE (review round 2, R2-5). It shared `limit`
+		// with the pre-write cap, and the two are not the same event: the pre-write
+		// one refused a file that never existed ("Nothing was saved."), while this
+		// one cancelled a write that was already on disk ("The partial file was
+		// discarded."). One rule for both made the row say the wrong one of those
+		// for whichever case it was not written for. The tool result's sentence is
+		// unchanged — only the row's own copy keys off this.
+		| "overrun";
 	/** The file's own size, in bytes, where the host knows it (0 otherwise). */
 	bytes: number;
 	/** The cap that fired, in its own unit: bytes for `limit`, files for `count`,
@@ -165,6 +212,17 @@ export interface TransferNote {
 	/** Which rule refused it, and the numbers the row's sentence needs. Null on a
 	 * note that was not refused. */
 	refusal: TransferRefusal | null;
+	/** WHO owned the tab this decision was taken on, recorded at the decision
+	 * (review round 2, U10).
+	 *
+	 * WHY THE NOTE CARRIES THIS rather than the renderer resolving it from its tab
+	 * list: a tab can be CLOSED while its note is still on screen, and the row's
+	 * marker then fell back to "· on another tab" — a marker whose referent does
+	 * not exist, which is the one thing a marker whose whole job is honesty about
+	 * whose action this was must not be. The kind is true of a closed tab too, so
+	 * it travels with the decision. `null` when the host cannot say, which the row
+	 * renders the old way rather than guessing. */
+	ownerKind: "user" | "agent" | null;
 }
 
 /** The transfer in flight, with the progress the row needs to say something other
@@ -188,6 +246,17 @@ export interface TransferActivity {
 	dir: string | null;
 	notes: TransferNote[];
 	activeTabId: number | null;
+	/** The newest file SAVED into the download directory, and how many have been saved
+	 * in this app run, for the durable control's own label (review round 2, U12).
+	 *
+	 * WHY IT RIDES THE PROJECTION rather than a second store: the folder control is
+	 * the only download-related thing on screen once the row has retired, and U12's
+	 * complaint is that a user who was elsewhere during the transfer had no way to
+	 * learn anything had arrived. It is kept for the life of the process rather than
+	 * derived from `notes` — the notes are a four-entry notification window, so a save
+	 * four decisions ago would vanish from the summary exactly when a run of refusals
+	 * made it most worth seeing. */
+	recent: { name: string; count: number } | null;
 }
 
 /** One accepted download still writing. `weCancelled` is what separates a write
@@ -217,10 +286,16 @@ interface Capture {
 	 * so a settle or a forget can CANCEL it instead of letting a write nobody is
 	 * waiting for land unjudged (review round 1, B1 and M1). */
 	live: LiveDownload[];
-	/** The paths this capture has already promised Chromium. A RESERVATION, not a
-	 * probe: Chromium creates the file after `setSavePath` returns, so two accepted
+	/** The paths THIS capture has promised Chromium. A RESERVATION, not a probe:
+	 * Chromium creates the file after `setSavePath` returns, so two accepted
 	 * downloads of one name can both find the disk empty and both be handed the same
-	 * path (review round 1, Q1/M4 — the silent overwrite §11.4 forbids). */
+	 * path (review round 1, Q1/M4 — the silent overwrite §11.4 forbids).
+	 *
+	 * IT IS THE CAPTURE'S OWN LIST RATHER THAN THE LOOKUP (review round 2, R2-4):
+	 * what a name collides in is the DIRECTORY, so the armer keeps
+	 * `reserved: Map<dir, Set<path>>` as the index `uniquePath` asks, and this set
+	 * is what makes releasing safe — a `done` event arriving after this capture was
+	 * forgotten releases only what this capture actually promised, never another's. */
 	handedOut: Set<string>;
 	/** What the row says is in flight, and how far along it is. */
 	active: ActiveTransfer | null;
@@ -228,6 +303,9 @@ interface Capture {
 	lastProgressAt: number;
 	quietTimer: ReturnType<typeof setTimeout> | null;
 	deadlineTimer: ReturnType<typeof setTimeout> | null;
+	/** The host's own clock for the runtime cap (review round 2, Q4): see
+	 * `CAP_SAMPLE_MS` for why `updated` alone is not a bound. */
+	capTimer: ReturnType<typeof setInterval> | null;
 	finish: (() => void) | null;
 	settled: boolean;
 }
@@ -243,6 +321,10 @@ export interface DownloadArm {
 export interface DownloadArmerOptions {
 	/** The tab a webContents belongs to, or null when it is not one of ours. */
 	tabForWebContents: (webContentsId: number) => number | null;
+	/** Who owns one tab, recorded on the note a decision writes (review round 2,
+	 * U10). Optional because a test armer has no registry: absent means "cannot
+	 * say", which the row renders as it did before rather than inventing a kind. */
+	ownerKindFor?: (tabId: number) => "user" | "agent" | null;
 	log: (message: string) => void;
 	/** Called whenever the surface's state changes (arm, accept, refusal, finish),
 	 * so the chrome can re-render the row without polling. */
@@ -276,8 +358,40 @@ export interface DownloadArmerOptions {
 export class DownloadArmer {
 	private readonly captures = new Map<number, Capture>();
 	private readonly notes: TransferNote[] = [];
+	/** The newest file SAVED into the download directory, and how many have been saved
+	 * in this app run, for the durable control's own label (review round 2, U12).
+	 *
+	 * WHY IT IS NOT DERIVED FROM `notes`: the notes are a bounded NOTIFICATION window
+	 * (`NOTES_KEPT` = 4), so a save four decisions ago is gone from them — and the
+	 * first draft of this field read the notes, which meant the summary VANISHED
+	 * exactly when the user most needed it (a refusal, a refusal, a refusal, and the
+	 * trace of the file that did arrive is gone). It is one string and a count, kept
+	 * for the life of the process, which is what makes "this session" a true word in
+	 * the control's label rather than a bound dressed up as a total. */
+	private savedSummary: { name: string; count: number } | null = null;
+	/** The paths this host has PROMISED Chromium, keyed by the DIRECTORY they are
+	 * in (review round 2, R2-4).
+	 *
+	 * WHY IT IS NOT ON THE CAPTURE ANY MORE. A reservation held per capture answers
+	 * only the question that capture asked: two same-named downloads on two armed
+	 * CALLS into one directory are still decided by the `existsSync` probe alone,
+	 * because Chromium creates the file after `setSavePath` returns — so the second
+	 * call cannot see the first's path. The directory is what a name can collide in,
+	 * so the directory is the key. And a reservation is RELEASED when the write it
+	 * was for settles — it either exists on disk (the probe sees it) or was
+	 * discarded (the name is free) — rather than consuming its suffix for the rest
+	 * of the call, which is how the next download of that name landed as
+	 * `name (1).ext` with nothing on disk (review round 2, R2-4). */
+	private readonly reserved = new Map<string, Set<string>>();
 
 	constructor(private readonly options: DownloadArmerOptions) {}
+
+	/** The owner kind of one tab, or null when this armer cannot say (review round
+	 * 2, U10: the kind travels with the decision because the tab may be closed by
+	 * the time the row renders it). */
+	private ownerKindOf(tabId: number): "user" | "agent" | null {
+		return this.options.ownerKindFor?.(tabId) ?? null;
+	}
 
 	/** Arm one tab. `dir` is the harness-composed directory (§10.2); it is created
 	 * 0700 if missing, because the harness composes it and a race with a session's
@@ -301,8 +415,22 @@ export class DownloadArmer {
 		}
 		this.forget(tabId);
 		const created = !existsSync(dir);
-		mkdirSync(dir, { recursive: true, mode: 0o700 });
-		if (created) chmodSync(dir, 0o700);
+		try {
+			mkdirSync(dir, { recursive: true, mode: 0o700 });
+			if (created) chmodSync(dir, 0o700);
+		} catch (error) {
+			// A TYPED REFUSAL, NOT A RAW `EACCES` (review round 2, R2-6). A directory
+			// this host cannot create used to escape as an untyped error with no
+			// `param`, while everything else in this module answers with a
+			// `BrowserHostError` naming what it needs — so the harness had nothing to
+			// key on and the model got a stack rather than a sentence. The `dir` the
+			// caller composed is the parameter that could not be honoured.
+			throw new BrowserHostError(
+				"internal",
+				`download needs a directory it can write into: ${describe(error)}`,
+				{ param: "dir" },
+			);
+		}
 		const now = this.options.now ?? Date.now;
 		const capture: Capture = {
 			tabId,
@@ -319,6 +447,7 @@ export class DownloadArmer {
 			lastProgressAt: 0,
 			quietTimer: null,
 			deadlineTimer: null,
+			capTimer: null,
 			finish: null,
 			settled: false,
 		};
@@ -326,6 +455,16 @@ export class DownloadArmer {
 		const deadline = setTimeout(() => this.settle(capture), timeoutMs);
 		deadline.unref?.();
 		capture.deadlineTimer = deadline;
+		// THE HOST'S OWN CLOCK FOR THE RUNTIME CAP (review round 2, Q4), started with
+		// the arm rather than with the first write: a download that starts and
+		// finishes inside one sample interval is bounded by its own `updated` check
+		// anyway, and a timer armed later is a window with no ceiling at all.
+		const capSample = setInterval(
+			() => this.sampleCaps(capture),
+			CAP_SAMPLE_MS,
+		);
+		capSample.unref?.();
+		capture.capTimer = capSample;
 		this.options.log(
 			`[browser] armed downloads on tab ${tabId} into ${dir} for ${Math.round(timeoutMs / 1000)}s`,
 		);
@@ -361,6 +500,12 @@ export class DownloadArmer {
 			"was still being written when the download call ended",
 			{ rule: "interrupted", bytes: 0, limit: 0 },
 		);
+		// ANY RESERVATION STILL HELD IS GIVEN BACK (review round 2, R2-4). A path whose
+		// write was cancelled above was released by the cancel; what is left here is a
+		// write that never reported `done` at all (a dead view, a tab destroyed under
+		// it), and a capture that is gone must not keep a name out of the directory's
+		// index for the rest of the process.
+		for (const path of capture.handedOut) this.release(capture, path);
 		if (!capture.settled) {
 			capture.settled = true;
 			capture.finish?.();
@@ -454,10 +599,36 @@ export class DownloadArmer {
 		// THE RESERVATION, and it has to happen AFTER `setSavePath` (review round 1,
 		// Q1/M4): Chromium creates the file only once the item accepted the path, so a
 		// probe of the disk cannot see the first of two same-named downloads that are
-		// both in flight. What the capture keeps is what it has PROMISED, and the next
-		// `uniquePath` for the same name probes that as well as the filesystem.
-		capture.handedOut.add(savePath);
+		// both in flight. What is kept is what this host has PROMISED — indexed by the
+		// directory (review round 2, R2-4) so a second CALL into the same one sees it
+		// too — and the capture keeps its own list of what it reserved, so releasing on
+		// one capture's end never frees another's.
+		this.reserve(capture, savePath);
 		return { cancel: false, reason: "" };
+	}
+
+	/** Promise one path, in this capture's own list and in the directory's index. */
+	private reserve(capture: Capture, savePath: string): void {
+		capture.handedOut.add(savePath);
+		const held = this.reserved.get(capture.dir);
+		if (held) held.add(savePath);
+		else this.reserved.set(capture.dir, new Set([savePath]));
+	}
+
+	/** Give a reserved name back, because the write it was for has settled (review
+	 * round 2, R2-4): the file is on disk, so the probe sees it, or it was
+	 * discarded, so the name is free again.
+	 *
+	 * The capture's OWN list is what decides whether this host ever promised the
+	 * path, so a `done` event arriving after the arm was forgotten — the capture
+	 * object is still reachable through the listener closure even though the map
+	 * entry is gone — cannot release something a different capture reserved. */
+	private release(capture: Capture, savePath: string): void {
+		if (!capture.handedOut.delete(savePath)) return;
+		const held = this.reserved.get(capture.dir);
+		if (!held) return;
+		held.delete(savePath);
+		if (held.size === 0) this.reserved.delete(capture.dir);
 	}
 
 	/** What the chrome row renders for ONE tab (§16.4).
@@ -495,6 +666,7 @@ export class DownloadArmer {
 			dir: this.downloadDir(),
 			notes: [...this.notes].reverse(),
 			activeTabId: tabId,
+			recent: this.savedSummary,
 		};
 	}
 
@@ -534,6 +706,7 @@ export class DownloadArmer {
 			tabId,
 			site,
 			refusal: null,
+			ownerKind: this.ownerKindOf(tabId),
 		});
 		while (this.notes.length > NOTES_KEPT) this.notes.shift();
 		this.options.onActivity?.();
@@ -569,25 +742,30 @@ export class DownloadArmer {
 		// declared.
 		item.on("updated", () => {
 			if (entry.weCancelled) return;
-			const name = basename(savePath);
 			if (capture.settled) {
-				// The answer is out and this write is still going: nothing will classify it
-				// (M1), so it is cancelled with the sentence the settle's own cancel path
-				// would have used.
-				this.cancelEntry(capture, entry);
-				return;
-			}
-			if (item.getReceivedBytes() > CAPS.downloadMaxBytes) {
+				// UNREACHABLE TODAY, AND KEPT AS THE GUARD FOR THE INVARIANT IT PROTECTS
+				// (review round 2, R2-6). All three settle paths cancel and clear `live`
+				// before the answer, and a settled capture accepts no new item, so an
+				// entry can never reach here; if that invariant ever broke, the write
+				// would land after the answer with nothing left to classify it — which is
+				// the defect this branch exists to prevent. It names `interrupted`, not
+				// the DEADLINE rule it used to name: no budget expired here, and a rule the
+				// harness caches a meaning for must not be borrowed for an event that did
+				// not happen.
 				this.refuseLive(
 					capture,
 					entry,
-					`\`${name}\` went over the ${humanBytes(CAPS.downloadMaxBytes)} per-file download limit while it was being written`,
+					`\`${basename(savePath)}\` was still being written after this call's answer`,
 					{
-						rule: "limit",
+						rule: "interrupted",
 						bytes: item.getReceivedBytes(),
-						limit: CAPS.downloadMaxBytes,
+						limit: 0,
 					},
 				);
+				return;
+			}
+			if (item.getReceivedBytes() > CAPS.downloadMaxBytes) {
+				this.overrun(capture, entry);
 				return;
 			}
 			this.showProgress(capture, entry);
@@ -597,14 +775,29 @@ export class DownloadArmer {
 			capture.pending -= 1;
 			capture.live = capture.live.filter((live) => live !== entry);
 			const name = basename(savePath);
+			// The write is OVER, so the name it reserved is settled: the file exists (and
+			// the probe sees it) or it was discarded (and the name is free). Released
+			// before the branches rather than inside one of them, so a completed write
+			// stops holding a suffix for the rest of the call (review round 2, R2-4).
+			this.release(capture, savePath);
 			// `weCancelled` FIRST, and it is what makes the deadline case reportable at
 			// all: our own cancel happens BEFORE the answer is sent (so the sentence
 			// survives it), and the `done` event it produces must not write a second
 			// note when it arrives after the call has already answered (review round 1,
 			// U1: an aborted download ended with no row, no note, and a partial file on
 			// disk under a complete-looking name).
+			//
+			// AND A CANCELLED ITEM CHROMIUM ALREADY CALLS `completed` IS LEFT ALONE
+			// (review round 2, R2-3). `refuseLive` deliberately declines to discard a
+			// completed write — this host removes residue, never a file — while this
+			// handler used to discard unconditionally under `weCancelled`, so the two
+			// guards disagreed and the disagreement deleted a finished file one event
+			// after a refusal claimed to have discarded a partial. Nothing is added to
+			// `files` either: the refusal that named this write is already in the
+			// answer, and a second account of one write is what `files` and `refusals`
+			// are kept apart to prevent.
 			if (entry.weCancelled) {
-				discardPartial(savePath, this.options.log);
+				if (state !== "completed") discardPartial(savePath, this.options.log);
 			} else if (state === "completed") {
 				// 0600, asserted rather than inherited from the process umask (§4(c): the
 				// quarantine is "private by construction: created 0700, files 0600"). Chromium
@@ -624,6 +817,16 @@ export class DownloadArmer {
 				// Python: that rule is about the VERDICT on a completed file, which this host
 				// still never makes, and a `setSavePath` write is created at its final name,
 				// so leaving it is a complete-looking name whose bytes are a prefix.
+				//
+				// THE `interrupted` RULE'S REACHABILITY, RECORDED RATHER THAN IMPLIED (QA
+				// round 2, Q5). QA could not produce this sentence from any of four shapes
+				// it tried — a declared length that ends early, a malformed chunk, a
+				// destroyed socket and a tab close all left Chromium RETRYING for the whole
+				// budget, so each answered with the `deadline` rule instead — and the
+				// tab-close route is not reachable from a headless rig at all (the tab lane
+				// refuses a concurrent `close` with `busy`). So this branch rests on the unit
+				// cases in `scripts/browser-host.test.mjs`, not on the end-to-end run, and
+				// that is the honest state of the coverage rather than a gap in the product.
 				const reason = capture.settled
 					? `refused: \`${name}\` did not finish (${state}) after this call's answer; the partial file was discarded`
 					: `refused: \`${name}\` did not finish (${state}); the partial file was discarded`;
@@ -664,18 +867,44 @@ export class DownloadArmer {
 		this.options.onActivity?.();
 	}
 
-	/** Cancel one still-writing download, with the deadline's own sentence. */
-	private cancelEntry(capture: Capture, entry: LiveDownload): void {
+	/** THE RUNTIME CAP'S REFUSAL, IN ONE PLACE (review round 2, Q4). Two triggers fire
+	 * it now — Chromium's `updated` and this host's own sampler — and two spellings
+	 * of one rule is exactly how the row's copy and the tool result stop agreeing.
+	 *
+	 * The RULE is `overrun` rather than `limit` (review round 2, R2-5): this case
+	 * cancelled a write that was already on disk, and the row must not tell the user
+	 * "Nothing was saved." about a partial it discarded. The SENTENCE is unchanged,
+	 * because it is the tool result's and QA and the review both read it as right. */
+	private overrun(capture: Capture, entry: LiveDownload): void {
 		this.refuseLive(
 			capture,
 			entry,
-			`\`${basename(entry.savePath)}\` was still being written when the ${Math.round(capture.timeoutMs / 1000)}s budget expired`,
+			`\`${basename(entry.savePath)}\` went over the ${humanBytes(CAPS.downloadMaxBytes)} per-file download limit while it was being written`,
 			{
-				rule: "deadline",
+				rule: "overrun",
 				bytes: entry.item.getReceivedBytes(),
-				limit: Math.round(capture.timeoutMs / 1000),
+				limit: CAPS.downloadMaxBytes,
 			},
 		);
+	}
+
+	/** Sample every still-writing transfer's own byte count for the runtime cap.
+	 *
+	 * WHY THIS EXISTS BESIDE THE `updated` CHECK (review round 2, Q4): `updated` is
+	 * Chromium's event, and QA measured it silent for the whole of a 700 MiB write,
+	 * so on its own it bounds the disk by the cap plus however long the origin stays
+	 * quiet. This reads `getReceivedBytes()` — the item's own counter, the same one
+	 * the refusal reports — so the ceiling is the host's to enforce rather than the
+	 * page's throughput to decide. It reports nothing of its own: the refusal, the
+	 * note and the cancel all go through `overrun`, so a sample can never produce a
+	 * second account of a write the event already cancelled. */
+	private sampleCaps(capture: Capture): void {
+		if (capture.settled) return;
+		for (const entry of [...capture.live]) {
+			if (entry.weCancelled) continue;
+			if (entry.item.getReceivedBytes() <= CAPS.downloadMaxBytes) continue;
+			this.overrun(capture, entry);
+		}
 	}
 
 	/** Report a download this host is cancelling, and cancel it.
@@ -719,6 +948,11 @@ export class DownloadArmer {
 		// is left alone: this host removes residue, never a file.
 		if (entry.item.getState() !== "completed") {
 			discardPartial(entry.savePath, this.options.log);
+			// AND THE NAME IT HELD GOES BACK (review round 2, R2-4): the partial is gone,
+			// so a later download of this name must be able to take the plain name rather
+			// than land as `name (1).ext` with nothing on disk. Released exactly where the
+			// discard happens, so a write this host declined to touch keeps its claim.
+			this.release(capture, entry.savePath);
 		}
 		this.options.onActivity?.();
 	}
@@ -849,15 +1083,26 @@ export class DownloadArmer {
 			tabId: capture.tabId,
 			site: "",
 			refusal,
+			ownerKind: this.ownerKindOf(capture.tabId),
 		});
+		// THE DURABLE SUMMARY, updated where the note is written so the two can never
+		// describe different saves (review round 2, U12).
+		if (outcome === "saved") {
+			this.savedSummary = {
+				name,
+				count: (this.savedSummary?.count ?? 0) + 1,
+			};
+		}
 		while (this.notes.length > NOTES_KEPT) this.notes.shift();
 	}
 
 	private clearTimers(capture: Capture): void {
 		if (capture.quietTimer) clearTimeout(capture.quietTimer);
 		if (capture.deadlineTimer) clearTimeout(capture.deadlineTimer);
+		if (capture.capTimer) clearInterval(capture.capTimer);
 		capture.quietTimer = null;
 		capture.deadlineTimer = null;
+		capture.capTimer = null;
 	}
 
 	/**
@@ -883,8 +1128,12 @@ export class DownloadArmer {
 	 * The reservation closes the window the probe could not see.
 	 */
 	private uniquePath(capture: Capture, clean: string, raw: string): string {
+		// THE DIRECTORY'S INDEX, NOT THIS CAPTURE'S (review round 2, R2-4): the question
+		// is whether a name is taken in `dir`, and a second armed call into the same
+		// directory is the case a per-capture set could not see.
+		const reserved = this.reserved.get(capture.dir);
 		const taken = (path: string): boolean =>
-			existsSync(path) || capture.handedOut.has(path);
+			existsSync(path) || (reserved?.has(path) ?? false);
 		const first = join(capture.dir, clean);
 		if (!taken(first)) return first;
 		const dot = clean.lastIndexOf(".");

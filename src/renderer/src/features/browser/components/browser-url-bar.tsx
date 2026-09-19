@@ -95,8 +95,32 @@ export interface BrowserUrlBarProps {
 	 * for a host that predates the feature is no control at all.
 	 */
 	downloadsDir: string | null;
+	/** The newest save into that directory, and how many the strip still remembers
+	 * (review round 2, U12). Rides the same projection as `downloadsDir` so the
+	 * control cannot describe a save the row does not have; `null` when nothing has
+	 * been saved yet, which leaves the label as it was. */
+	downloadsRecent?: { name: string; count: number } | null;
 	/** Open that directory. Takes no path — main decides which one. */
 	onOpenDownloads: () => void;
+}
+
+/** What the durable folder control says it opens (review round 2, U12).
+ *
+ * WHY IT IS A SENTENCE AND NOT A LIST: §16.4's rule is against a per-file list with
+ * per-file actions, and this control has one action — open the folder. Naming the
+ * newest file and how many have been saved in this app run is what turns an icon
+ * into an answer to "did anything arrive while I was reading Chat", which is the
+ * state U12 is about. The count is the host's own SESSION total rather than a window
+ * over its note buffer, which is why the wording can promise "this session" — the
+ * first draft derived it from the notes and the summary vanished after four later
+ * decisions, which is exactly when a user would be looking for it. */
+function downloadsLabel(
+	recent: { name: string; count: number } | null,
+): string {
+	if (!recent) return "Open downloads folder";
+	return recent.count > 1
+		? `Open downloads folder — ${recent.name} was the newest saved there (${recent.count} this session)`
+		: `Open downloads folder — ${recent.name} was saved there`;
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -122,6 +146,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	waitingCount,
 	triggerRef,
 	downloadsDir,
+	downloadsRecent,
 	onOpenDownloads,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
@@ -231,7 +256,21 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				// be dismissed or age out, and this is what makes that allowed. Placed with
 				// the navigation controls rather than beside Approvals because it is a
 				// browser affordance, not a consent one.
-				<Tooltip content="Open downloads folder">
+				//
+				// AND IT CARRIES THE NEWEST SAVE (review round 2, U12). An icon-only control
+				// answers "where do downloads go" and nothing else, so a user who was in Chat
+				// when the transfer happened had no way in the app to learn that anything
+				// arrived — the row is the only account of it and the row retires. The label
+				// now names the newest file and how many the strip still holds, on HOVER and on
+				// FOCUS (the same tooltip mechanism the rest of the toolbar uses, so a keyboard
+				// user reaches it by tabbing). It is still not a per-file list (§16.4) and it
+				// still opens the same directory: the sentence is the row's own facts, moved to
+				// the one surface that outlives it.
+				//
+				// "recently" rather than "this session" is deliberate: the count is bounded by
+				// the host's own note window, so a word that promised a total would be a lie the
+				// first time five files landed.
+				<Tooltip content={downloadsLabel(downloadsRecent ?? null)}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
