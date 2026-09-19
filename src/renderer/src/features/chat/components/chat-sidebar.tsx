@@ -14,6 +14,12 @@ import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { Label } from "@shared/components/ui/label";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
@@ -138,6 +144,37 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
  * line is not an option and the sentence is what has to change length.
  */
 const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
+
+/**
+ * WHERE THE ROW'S PER-ROW CONTROLS SHED, and why they shed at all.
+ *
+ * The panel carries TWO reserved 24px slots per row - the pin's and the archive
+ * control's - and the row's own 4px gap between them: 56px off every title, on
+ * every row, whether or not the pointer is anywhere near it. That is a price this
+ * panel has already refused once: the per-row BROWSER control was deleted on
+ * 2026-09-18 for exactly this reason - it "cost every title its 28px for a control
+ * used rarely" - and two of them is twice that.
+ *
+ * The pair is kept from the panel's DEFAULT width up, where the title still has
+ * room, and shed below it. The threshold is where the title stops being readable
+ * rather than where the arithmetic gets tight: the sidebar's own clamp is
+ * 240/288/360 with 280 as the default (`chat-layout.tsx`), and the header row is
+ * 17px narrower than the panel, so the query is on the ROW's width.
+ *
+ * Measured at the clamp minimum (240px panel, 223px row) on a row that carries an
+ * unread mark, which is the binding case: the mark is a trailing slot OUTSIDE the
+ * truncating title, so a row that is also unread has less title than a bare one at
+ * the same width. See `docs/design/session-archive-delete.md` for the numbers and
+ * the frames that carry them.
+ */
+const ROW_CONTROLS_PAIR_SHED = "@max-[280px]/chatsidebar:hidden";
+/**
+ * The other half of the same decision: the one shared control is drawn ONLY in the
+ * band the pair is shed in, so the row never carries both at once and never carries
+ * neither. Same container, inverted, which is what makes the pair and the shared
+ * control one rule rather than two.
+ */
+const ROW_CONTROLS_SHARED_SHOWN = "@max-[280px]/chatsidebar:flex hidden";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -1252,7 +1289,15 @@ export function ChatSidebar({
 			pinFactValues,
 			archiveView,
 		);
-	}, [answered, search.data, listed, heldRows, pinFactValues, archiveView, query]);
+	}, [
+		answered,
+		search.data,
+		listed,
+		heldRows,
+		pinFactValues,
+		archiveView,
+		query,
+	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
 	// term `awaiting` stays true forever and `Searching conversations…` sits under
 	// the failure notice that says the search is unavailable — the panel claiming
@@ -1611,23 +1656,15 @@ export function ChatSidebar({
 				</div>
 			);
 		}
-		return (
-			<div
-				key={row.session_id}
-				/* The row's own box, and the hook the current-row ground is asserted
-				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
-				data-session-row={row.session_id}
-				className={cn(
-					// Carried while EITHER per-row control is mounted, because both reveal
-					// themselves through `group-hover`/`group-focus-within` on it, and absent
-					// when neither is - which is what keeps the fully withdrawn panel's class
-					// list the one it had before either feature existed.
-					(pinsEnabled || archiveEnabled) && "group",
-					rowBoxStyle,
-					current && rowCurrent,
-				)}
-			>
-				{rowButton}
+		/*
+		 * WHETHER THE ROW CARRIES THE PAIR AT ALL. Both capabilities present is the
+		 * only case with two controls to hold; with one, `controls` is that one control
+		 * and the pair wrapper would be a flex box around a single child - the same
+		 * class list, one more element, nothing measured.
+		 */
+		const bothControls = pinsEnabled && archiveEnabled;
+		const controls = (
+			<>
 				{/*
 				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
 				 * AT REST whenever the capability is present, so the reveal cannot reflow
@@ -1674,11 +1711,11 @@ export function ChatSidebar({
 						data-session-pin
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
-						   the pressed state is `aria-pressed`'s to report. */
+					   the pressed state is `aria-pressed`'s to report. */
 						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
 						/* The same string as the accessible name, matching the entity row's
-						   manage control: it is the affordance a pointer user gets, and it
-						   duplicates the name without being announced twice. */
+					   manage control: it is the affordance a pointer user gets, and it
+					   duplicates the name without being announced twice. */
 						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
 						onClick={(event) => {
 							/*
@@ -1896,6 +1933,131 @@ export function ChatSidebar({
 						)}
 					</button>
 				)}
+			</>
+		);
+		/*
+		 * THE SHARED CONTROL, mounted only while a pair could be drawn at all and shown
+		 * only below the panel's default width (`NARROW_SHOWS_THE_SHARED_CONTROL`): one
+		 * reserved 24px slot holding both acts as menu items. It exists because the pair
+		 * is a width COST and its 56px is not payable at the clamp minimum - not because
+		 * either act is less wanted there.
+		 *
+		 * A MENU RATHER THAN A SECOND GLYPH. One 24px box cannot carry two controls (the
+		 * rule the pair exists for), so the narrow band would otherwise lose an act: a
+		 * single button can only invert one of the two flags. The two items name their
+		 * acts in words, which is what keeps the control legible where the row has no
+		 * room to spell a tooltip.
+		 *
+		 * NO PRESS GUARD, unlike the two row controls: both items are two clicks from the
+		 * list (open, then choose), so the reflex the guards protect against - the second
+		 * click of a double-click landing on whatever row slid into the gap - cannot reach
+		 * a menu item. A guard here would be a rule with no gesture behind it.
+		 */
+		const sharedActions = (
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<button
+						type="button"
+						data-session-actions
+						aria-label={`Actions for ${label}`}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"text-ink-dim group-hover:text-ink-muted group-focus-within:text-ink-muted",
+							ROW_CONTROLS_SHARED_SHOWN,
+							// The ROW's own state, never a ground - see the two controls above.
+							!current && "hover:bg-row-hover",
+						)}
+					>
+						<MoreHorizontal aria-hidden="true" className="size-4" />
+					</button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem
+						onSelect={() =>
+							void setSessionPin(row.session_id, !pinned, {
+								title: row.title ?? undefined,
+								updated_at: row.updated_at ?? undefined,
+							})
+						}
+					>
+						<Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} />
+						<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onSelect={() =>
+							void setSessionArchived(
+								row.session_id,
+								!archived,
+								row.title ?? undefined,
+							)
+						}
+					>
+						{archived ? (
+							<ArchiveRestore aria-hidden="true" />
+						) : (
+							<Archive aria-hidden="true" />
+						)}
+						<span>
+							{archived ? "Unarchive conversation" : "Archive conversation"}
+						</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		);
+
+		return (
+			<div
+				key={row.session_id}
+				/* The row's own box, and the hook the current-row ground is asserted
+				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
+				data-session-row={row.session_id}
+				className={cn(
+					// Carried while EITHER per-row control is mounted, because both reveal
+					// themselves through `group-hover`/`group-focus-within` on it, and absent
+					// when neither is - which is what keeps the fully withdrawn panel's class
+					// list the one it had before either feature existed.
+					(pinsEnabled || archiveEnabled) && "group",
+					rowBoxStyle,
+					current && rowCurrent,
+				)}
+			>
+				{rowButton}
+				{/*
+				 * THE PAIR, OR THE ONE CONTROL THAT STANDS IN FOR IT WHEN THE PANEL IS AT
+				 * ITS NARROWEST. Both controls are siblings of the row's button, never
+				 * children, and both reveal on the pointer or on focus inside the row - the
+				 * pin and the archive control are two independent affordances, so the row
+				 * carries them as a pair of reserved 24px slots rather than sharing one
+				 * (two controls in one box occlude each other's reveal, and an overlapping
+				 * reveal hides the title of the row the pointer is on).
+				 *
+				 * THE PAIR COSTS THE TITLE 28px PER CONTROL (24 + the row's own 4px gap),
+				 * which is the price this panel has already refused once: the per-row
+				 * BROWSER control was deleted on 2026-09-18 because it "cost every title
+				 * its 28px for a control used rarely". Two reserved slots are 56px off
+				 * every title, on every row, and at the 240px clamp minimum that leaves a
+				 * bare row about eight characters - and a row that also carries an unread
+				 * mark or a status fewer still, because those are trailing slots OUTSIDE
+				 * the truncating title. Measured; the numbers and the frames that carry
+				 * them are in `docs/design/session-archive-delete.md`.
+				 *
+				 * SO THE PAIR IS CARRIED ONLY FROM THE PANEL'S DEFAULT WIDTH UP, and below
+				 * it ONE shared control opens both acts as menu items: the same two acts,
+				 * one slot, no act lost. The switch is a container query on the panel
+				 * (`@container/chatsidebar`), the idiom this file already uses to shed the
+				 * mark-all-read label and the directory chip.
+				 */}
+				{bothControls ? (
+					<div
+						data-session-control-pair
+						className={cn("flex items-center gap-1", ROW_CONTROLS_PAIR_SHED)}
+					>
+						{controls}
+					</div>
+				) : (
+					controls
+				)}
+				{bothControls && sharedActions}
 			</div>
 		);
 	};
@@ -2254,7 +2416,9 @@ export function ChatSidebar({
 	return (
 		<nav
 			aria-label="Chats"
-			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			/* The container the per-row controls shed against (`ROW_CONTROLS_PAIR_SHED`),
+			   named so the query cannot be answered by an ancestor's width. */
+			className="@container/chatsidebar flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
 			{/* The header once carried a 16px `Plus` for the same action the "New

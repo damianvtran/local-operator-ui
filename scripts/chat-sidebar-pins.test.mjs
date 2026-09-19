@@ -266,10 +266,18 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * trees). The assertions are positional, and the one that matters is the identity: the
 	 * box the withdrawn branch renders is the SAME literal the enabled branch does.
 	 */
-	const withdrawnAt = source.indexOf("if (!pinsEnabled) {");
+	/*
+	 * TWO CAPABILITIES NOW SHARE THIS ROW, so the fail-closed branch is entered when
+	 * NEITHER is advertised rather than when the pins are absent alone (the archive
+	 * work, which added the second per-row control). With the pins present and only
+	 * the archive withdrawn, the row is this branch's own box, class list included -
+	 * which is what keeps the archive branch's withdrawn pair byte-identical to this
+	 * one's panel.
+	 */
+	const withdrawnAt = source.indexOf("if (!pinsEnabled && !archiveEnabled) {");
 	assert.ok(
 		withdrawnAt > 0,
-		"the session row has a fail-closed branch on `pinsEnabled`",
+		"the session row has a fail-closed branch on the pair of per-row capabilities",
 	);
 	// The branch's own closing brace at this indent, rather than the next `;`: the return
 	// carries `{row.session_id}` and `{rowButton}` in braces of their own.
@@ -294,8 +302,14 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		"the withdrawn branch adds no hover group and no pin-state hook: with no control mounted, both would be hooks nothing reads",
 	);
 	const slotAt = source.indexOf("data-session-pin\n");
+	/*
+	 * The control moved into the shared `controls` constant when the archive
+	 * work added the second per-row control, so the box the enabled branch renders
+	 * and the slot are no longer contiguous: the assertions below are about ORDER
+	 * (the box, then the slot, then the wrapper that carries it), not adjacency.
+	 */
 	assert.ok(
-		source.slice(branchEnd, slotAt).includes("rowBoxStyle"),
+		source.slice(branchEnd).includes("rowBoxStyle"),
 		"the enabled branch renders the SAME named box: the two paths share one literal so the withdrawn one cannot drift off main's row again",
 	);
 	assert.ok(
@@ -306,8 +320,25 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	// `[data-session-row="…"]` too, and that mention sits above the gate.
 	const wrapperAt = source.indexOf("data-session-row={row.session_id}");
 	assert.ok(
-		wrapperAt > branchEnd && wrapperAt < slotAt,
-		"the hover wrapper belongs to the enabled branch, and the slot is inside it",
+		wrapperAt > branchEnd,
+		"the hover wrapper belongs to the enabled branch",
+	);
+	/*
+	 * AND THE SLOT IS RENDERED INSIDE IT. The control is no longer written inline in
+	 * the wrapper's children: with two per-row controls the archive work extracted the
+	 * pair into one `controls` constant the wrapper renders, so the placement to assert
+	 * is that the wrapper renders that constant and the constant holds the slot.
+	 */
+	const controlsAt = source.indexOf("const controls = (");
+	assert.ok(
+		controlsAt > 0 && controlsAt < slotAt,
+		"the slot is declared inside the shared `controls` constant",
+	);
+	assert.ok(
+		source
+			.slice(wrapperAt, source.indexOf("</div>", wrapperAt))
+			.includes("{controls}"),
+		"the enabled branch's wrapper renders the shared controls, so the slot is inside it",
 	);
 	/*
 	 * The wrapper carries the row's current-row ground as well as the hover group -
