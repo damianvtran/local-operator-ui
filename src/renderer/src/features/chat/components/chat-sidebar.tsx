@@ -13,7 +13,9 @@ import {
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { Button } from "@shared/components/ui/button";
+import { Tooltip } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
@@ -21,15 +23,18 @@ import {
 	type CanonicalSessionRow,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
+	ArrowUpDown,
 	Bot,
 	CheckCheck,
 	ChevronDown,
 	ChevronRight,
+	ChevronUp,
 	List,
 	LoaderCircle,
 	MessageSquarePlus,
@@ -68,6 +73,23 @@ import {
 } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
+import {
+	type SidebarRegionName,
+	hideRegion,
+	resolveSidebarSplit,
+} from "../sidebar-split";
+
+/*
+ * The ids the boundary's controls point at with `aria-controls`.
+ *
+ * Named constants because two controls reference each one and a literal written
+ * twice is how a control ends up pointing at nothing: the cluster's buttons only
+ * render while their region does, so the reference is never dangling, and the
+ * restore row names its region in words instead of pointing at a node that does
+ * not exist yet.
+ */
+const ENTITY_REGION_ID = "chat-sidebar-entities";
+const CHAT_REGION_ID = "chat-sidebar-chats";
 
 type Props = {
 	selectedConversation?: string;
@@ -2008,8 +2030,970 @@ export function ChatSidebar({
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
 	});
+
+	/*
+	 * ---- The split ----------------------------------------------------------
+	 *
+	 * Which of the two regions are on screen, how tall the chats list is, which
+	 * edge the boundary sits on, and whether it may be dragged at all. The
+	 * DECISION is `resolveSidebarSplit`'s, in `features/chat/sidebar-split.ts`,
+	 * so it is drivable without a browser; this component owns the two
+	 * MEASUREMENTS that decision takes and the nodes it draws.
+	 *
+	 * `useLayoutEffect` rather than `useEffect`, for the reason
+	 * `chat-content.tsx` gives for the same choice one component over: the
+	 * numbers feed the rendering of the commit that produced them, so a passive
+	 * effect would paint one frame of a panel sized from a guess and correct it
+	 * after the browser had already shown it.
+	 */
+	const navRef = useRef<HTMLElement | null>(null);
+	const splitRef = useRef<HTMLDivElement | null>(null);
+	const [splitCapacity, setSplitCapacity] = useState(0);
+	const [splitPanelHeight, setSplitPanelHeight] = useState(0);
+	const [drawnListHeight, setDrawnListHeight] = useState(0);
+	const chatSidebarRegions = useUiPreferencesStore((s) => s.chatSidebarRegions);
+	const chatSidebarListHeight = useUiPreferencesStore(
+		(s) => s.chatSidebarListHeight,
+	);
+	const chatSidebarOrder = useUiPreferencesStore((s) => s.chatSidebarOrder);
+	const setChatSidebarRegions = useUiPreferencesStore(
+		(s) => s.setChatSidebarRegions,
+	);
+	const setChatSidebarListHeight = useUiPreferencesStore(
+		(s) => s.setChatSidebarListHeight,
+	);
+	const restoreDefaultChatSidebarListHeight = useUiPreferencesStore(
+		(s) => s.restoreDefaultChatSidebarListHeight,
+	);
+	const setChatSidebarOrder = useUiPreferencesStore(
+		(s) => s.setChatSidebarOrder,
+	);
+	/*
+	 * The persisted values are passed as they were READ rather than as a
+	 * pre-validated copy: `localStorage` is not the setter's path out, so the
+	 * module is the one place a tampered value is rejected, and validating here
+	 * as well would be a second opinion about the same blob.
+	 */
+	const split = resolveSidebarSplit({
+		regions: chatSidebarRegions,
+		listHeight: chatSidebarListHeight,
+		order: chatSidebarOrder,
+		showList,
+		query: Boolean(query),
+		capacity: splitCapacity,
+		drawnListHeight,
+		panelContentHeight: splitPanelHeight,
+	});
+	const observedRef = useRef<Element[]>([]);
+	const splitObserverRef = useRef<ResizeObserver | null>(null);
+	/*
+	 * No dependency list, for the reason the `holdFocusedRow` effect above has
+	 * none: the measurement is cheap and must follow nodes that mount and
+	 * unmount, which a dependency list can only spell as a list of booleans the
+	 * body does not itself read. The OBSERVER, which is the expensive half, is
+	 * rebuilt only when the set of measured nodes changes - a `ResizeObserver`
+	 * left on a detached node would report its last height for ever.
+	 */
+	useLayoutEffect(() => {
+		const nav = navRef.current;
+		const container = splitRef.current;
+		if (!nav || !container) return;
+		const measure = () => {
+			/*
+			 * The box the two regions share, measured from the container rather
+			 * than summed from the regions: the container's height is fixed by
+			 * the panel, so it does not move while a drag moves the boundary -
+			 * which is the property the divider's live range needs, and the
+			 * reason a derived sum would be circular in a window too short to
+			 * host both floors.
+			 */
+			const capacity = container.getBoundingClientRect().height;
+			/*
+			 * The panel's own content box, which is what the shipped
+			 * `max-h-[45%]` resolved against before the regions moved into this
+			 * container. `p-2` is 8px on each side, and the nav's class list is
+			 * pinned byte-for-byte by `scripts/contrast-contract.mjs`, so the 16
+			 * cannot drift without that gate failing.
+			 */
+			const panelHeight = nav.clientHeight - 16;
+			/*
+			 * Sub-pixel changes are ignored, the way `chat-content.tsx` ignores
+			 * them for its own measurement: without that, a fractional layout
+			 * would have this panel re-rendering against its own measurement.
+			 */
+			setSplitCapacity((current) =>
+				Math.abs(current - capacity) < 1 ? current : capacity,
+			);
+			setSplitPanelHeight((current) =>
+				Math.abs(current - panelHeight) < 1 ? current : panelHeight,
+			);
+			const list = listPanelRef.current;
+			const drawn = list ? list.getBoundingClientRect().height : 0;
+			setDrawnListHeight((current) =>
+				Math.abs(current - drawn) < 1 ? current : drawn,
+			);
+		};
+		measure();
+		const nodes: Element[] = [nav, container];
+		if (listPanelRef.current) nodes.push(listPanelRef.current);
+		const observed = observedRef.current;
+		const sameShape =
+			observed.length === nodes.length &&
+			observed.every((node, index) => node === nodes[index]);
+		if (!sameShape) {
+			splitObserverRef.current?.disconnect();
+			const observer = new ResizeObserver(measure);
+			for (const node of nodes) observer.observe(node);
+			splitObserverRef.current = observer;
+			observedRef.current = nodes;
+		}
+	});
+	/*
+	 * The observer outlives the layout effects above on purpose, so its teardown
+	 * is its own: a component that unmounts with a live `ResizeObserver` leaves
+	 * a callback wired to a detached node.
+	 */
+	useEffect(
+		() => () => {
+			splitObserverRef.current?.disconnect();
+			splitObserverRef.current = null;
+			observedRef.current = [];
+		},
+		[],
+	);
+	/*
+	 * A drag WRITES, and only when the boundary can honour what the drag
+	 * produced: with the range collapsed (`resizable` false) the separator
+	 * reports the drawn height and this refuses, so a gesture the panel cannot
+	 * express does not destroy a preference the user set in a window that could.
+	 * That is `chat-content.tsx`'s `runPanelResizable` contract, unchanged.
+	 */
+	const handleListHeightChange = (height: number) => {
+		if (!split.divider?.resizable) return;
+		setChatSidebarListHeight(height);
+	};
+	/*
+	 * The reset is the boundary's double-click AND its Enter, and it stores
+	 * `null`: the auto rule is renderable in every window, so unlike a stored
+	 * pixel height it needs no clamp on its way in.
+	 */
+	const topRegion: SidebarRegionName =
+		split.order === "entities-first" ? "entities" : "chats";
+	const bottomRegion: SidebarRegionName =
+		split.order === "entities-first" ? "chats" : "entities";
+	/*
+	 * The two regions' names in the controls' own register. "the chats list"
+	 * rather than "chats" because the control is named for what it does to a
+	 * region, and the list region's own row is the one that says "All chats".
+	 */
+	const hideLabel = (region: SidebarRegionName) =>
+		region === "entities" ? "Hide agents and teams" : "Hide the chats list";
+	const showLabel = (region: SidebarRegionName) =>
+		region === "entities" ? "Show agents and teams" : "Show the chats list";
+	const regionName = (region: SidebarRegionName) =>
+		region === "entities" ? "Agents and teams" : "Chats";
+	/*
+	 * The chats list is the region the ORDER control moves, and its name states
+	 * the outcome rather than the mechanism: `Move the chats list to the top`
+	 * is what the panel will look like, and it is what a screen reader reads.
+	 */
+	const orderLabel =
+		split.order === "entities-first"
+			? "Move the chats list to the top"
+			: "Move the chats list to the bottom";
+	/*
+	 * `showList` is the catalogue gate's own answer, and the list region is
+	 * still gated on it: a withdrawn gate keeps the last-known ENTITY rows
+	 * mounted and renders no list region at all, which is the DOM the gate's
+	 * frames photograph. `split.listVisible` says the user has not hidden it -
+	 * the two are different questions, and the assembly below needs both.
+	 */
+	const listShown = split.listVisible && showList;
+	const bothVisible = split.entityVisible && listShown;
+	/*
+	 * Which end of the column a hidden region's restore row sits at: where the
+	 * region itself was, so the row is at the top when the hidden region was
+	 * the one drawn first. The row expanding downward at the top and upward at
+	 * the bottom is what the chevron on it points at.
+	 */
+	const restoreAtTop =
+		split.restore !== null &&
+		(split.order === "entities-first") === (split.restore === "entities");
+	/*
+	 * The RULE between the regions is the lower one's own `border-t`, so the
+	 * region above the boundary never carries it. With the default order that
+	 * is the list region's shipped `border-t border-hairline`, which is the
+	 * boundary's whole resting appearance.
+	 */
+	const entityHasRuleAbove = bothVisible && split.order === "chats-first";
+	const listHasRuleAbove = bothVisible
+		? split.order === "entities-first"
+		: restoreAtTop;
+
+	const entityRegion = (
+		/*
+		 * The entity region, and the SECOND container that needs the rule below.
+		 * An entity is a disclosure row whose CHILDREN are session rows drawn from
+		 * the same catalogue array the list draws (`children()`), so a nested row's
+		 * slot is the same backend order key: a completion re-files it on the same
+		 * event, inside a container that scrolls. The region was "deliberately not
+		 * touched" in the first pass on the premise that nothing in it re-files,
+		 * and that premise was false (round 1, R1) - the measurement is in
+		 * `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
+		 * NESTED row rather than from the list's.
+		 *
+		 * The trade is not the list's, and it is stated rather than implied: this is
+		 * the one region where content genuinely GROWS above the reader - a
+		 * catalogue arriving, or a query expanding every entity at once - and
+		 * `overflow-anchor: none` gives up Chrome's compensation for that case to
+		 * buy the re-file case. The growth is user-initiated or at load (the search
+		 * box re-renders the region it filters), while the re-file is involuntary
+		 * and arrives on every completion, which is the exchange this side of the
+		 * declaration takes.
+		 */
+		<div
+			ref={entityPanelRef}
+			onScroll={() =>
+				refreshFocusedInside(entityPanelRef.current, entitySlotRef)
+			}
+			id={ENTITY_REGION_ID}
+			data-sidebar-region="entities"
+			/*
+			 * The padding and the rule are the LOWER region's, so this container
+			 * keeps its `p-1` and no rule until the order puts it below the boundary
+			 * - and then it takes the 8px lead the list region's `pt-2` has always
+			 * given the side below a rule, which is what keeps the 10px band inside
+			 * padding rather than over a row's pixels.
+			 */
+			className={cn(
+				"min-h-0 flex-1 space-y-4 overflow-y-auto [overflow-anchor:none]",
+				entityHasRuleAbove ? "border-t border-hairline px-1 pt-2 pb-1" : "p-1",
+			)}
+		>
+			{capabilities.isLoading && (
+				<p aria-live="polite" className="text-meta text-ink-dim">
+					Connecting to chats…
+				</p>
+			)}
+			{capabilities.error && (
+				<div role="alert" className="space-y-1 text-body-sm text-danger">
+					<p>
+						{capabilities.error.message}
+						{stale ? " Showing the last chats loaded." : ""}
+					</p>
+					<button
+						type="button"
+						className="underline"
+						onClick={() => void capabilities.refetch()}
+					>
+						Retry
+					</button>
+				</div>
+			)}
+			{/*
+			    The sentence is the gate's, not this file's (see the module): which half of
+			    the gate closed, whether the store's own read has already failed (the D9 rule
+			    this file applies to the feed line below - two statements about one backend is
+			    one too many), and whether there are last-known rows to speak for are three
+			    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
+			    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
+			    cadence, and this is the same control the error branch above offers.
+			 */}
+			{notice && (
+				<div role="alert" className="space-y-1 text-body-sm text-warning">
+					<p>{notice}</p>
+					<button
+						type="button"
+						className="underline"
+						onClick={() => void capabilities.refetch()}
+					>
+						Retry
+					</button>
+				</div>
+			)}
+			{/*
+			    The state is carried by the sentence, never by a treatment on the rows
+			    (branding § 6 and § 9: disabled changes colour, and opacity is not a state
+			    signal at all - it composites `ink` down to ~6:1 on this palette and below the 4.5:1 floor on four of the twelve palettes it was
+			    measured on, which `check-themes` cannot see
+			    because it does not evaluate alpha). These rows are also the only way to
+			    reach a conversation, so dimming them says "unavailable" about the one
+			    thing that still works. Design round 1, D1. */}
+			{showList && (
+				<div className="space-y-4 pb-2">
+					<section>
+						{heading("agents", "Agents", true)}
+						{(query || isOpen("agents", true)) && (
+							<>
+								{profiles.isLoading && (
+									<p aria-live="polite" className="text-meta text-ink-dim">
+										Loading agents…
+									</p>
+								)}
+								{/*
+								    A user with no agents of their own gets the shortcut as the
+								    next step rather than as a quiet line: on a fresh install this
+								    section previously showed six rows the user had not installed
+								    and no way to tell them from their own. `profiles.data` being
+								    empty is the degenerate case of the same state — nothing to
+								    list, and nothing to install either, so only the create row
+								    remains.
+								*/}
+								{/*
+								 * ONE element across both states, and the batch's own control is the
+								 * same child at the same index in each, because the two states differ
+								 * in a way the batch itself causes.
+								 *
+								 * The completion summary is owned by `InstallBuiltinAgents`, and the
+								 * batch's last act is to invalidate `profiles`: the six installs land
+								 * as the user's own agents, `ownAgents` stops being empty, and this
+								 * block used to swap a `div` for a fragment in place. React unmounts
+								 * a subtree whose element type changes, so the summary was destroyed
+								 * ~89ms after it was painted: on the built app against the real
+								 * backend the section went straight from the shortcut to the six-row
+								 * list, and `"6 installed. Done"` was caught in the DOM once by a
+								 * MutationObserver and never seen again. The collision arm's "5
+								 * installed, 1 skipped. Skipped 1: you already have an agent called
+								 * `coder`." is the sentence a user actually needs, and it was
+								 * unreadable by construction (QA round 1, Q1).
+								 *
+								 * So the state lives somewhere that does not move: the outer element
+								 * is the empty state's padded box in one case and `display: contents`
+								 * in the other, which contributes no box at all, so the rows and the
+								 * batch's control lay out exactly as they did as bare children; the
+								 * variable content sits in its own `contents` child so the batch is
+								 * at index 1 either way. Same treatment as the live region in
+								 * `install-builtin-agents.tsx`, for the same reason (U11): what the
+								 * user has to be able to read cannot be the thing that gets
+								 * replaced. DO NOT split this back into one call site per branch.
+								 */}
+								<div
+									className={cn(
+										agentsEmpty ? "flex flex-col gap-2 px-3 py-2" : "contents",
+									)}
+									data-testid={agentsEmpty ? "agents-sidebar-empty" : undefined}
+								>
+									<div className="contents">
+										{agentsEmpty ? (
+											<>
+												<p className="text-body-sm text-ink">No agents yet</p>
+												{/*
+												 * The offer is CONDITIONAL on there being something to offer, and it
+												 * names what that is.
+												 *
+												 * It used to render unconditionally: on a backend with no packaged
+												 * profiles the section still said "Built-in agents are ready to
+												 * install" while offering nothing that installs one — the same
+												 * paragraph, pixel-identical, in a state whose whole point is that
+												 * there is nothing to install (design round 1, D3). And what it
+												 * promised was a list of activities rather than the roles on offer,
+												 * including a "research" role that is not among the packaged
+												 * profiles, with no count at all until the batch had started (UX
+												 * round 1, U6). Derived from the rows the backend sent, because
+												 * the catalogue is the authority on what can be installed and a
+												 * hand-written list can disagree with it.
+												 */}
+												{availableBuiltins.length > 0 && (
+													<p className="text-meta text-ink-muted">
+														{builtinOfferSentence(availableBuiltins)}
+													</p>
+												)}
+											</>
+										) : (
+											ownAgents.map((profile) => entity("agent", profile.name))
+										)}
+									</div>
+									{/* Renders nothing once every built-in is installed. */}
+									<InstallBuiltinAgents
+										builtins={availableBuiltins}
+										presentation={agentsEmpty ? "primary" : "row"}
+									/>
+								</div>
+								<button
+									type="button"
+									className={cn(rowStyle, "w-full text-ink-muted")}
+									onClick={() => navigate("/agents?create=agent")}
+								>
+									<Plus className="size-4" />
+									Create agent
+								</button>
+							</>
+						)}
+					</section>
+					<section>
+						{heading("teams", "Teams", true)}
+						{(query || isOpen("teams", true)) && (
+							<>
+								{teams.isLoading && (
+									<p aria-live="polite" className="text-meta text-ink-dim">
+										Loading teams…
+									</p>
+								)}
+								{teams.data?.map((team) => entity("team", team.name))}
+								<button
+									type="button"
+									className={cn(rowStyle, "w-full text-ink-muted")}
+									onClick={() => navigate("/agents?create=team")}
+								>
+									<Plus className="size-4" />
+									Create team
+								</button>
+							</>
+						)}
+					</section>
+				</div>
+			)}
+		</div>
+	);
+
+	/*
+	 * The pin failure, in the panel's own register rather than a toast.
+	 * One sentence and one action, the shape the withdrawn-gate notice above
+	 * already uses - and NO `role="alert"`, so it cannot compete with the
+	 * catalogue alert below about a different failure. What announces it is
+	 * `aria-pressed` flipping back on the control the user just pressed; this
+	 * sentence is the durable half. `warning` and not `danger`: the list is
+	 * intact and only this row's pin did not move.
+	 */
+	const pinFailureLine = pinFailure ? (
+		<p className="pb-2 text-meta text-warning">
+			Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
+			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
+			<button
+				type="button"
+				className="underline"
+				onClick={() =>
+					void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
+				}
+			>
+				Retry
+			</button>
+		</p>
+	) : null;
+
+	const listRegion = (
+		/*
+		 *  The global partition is NAVIGATION, not a peer of the entity lists.
+		 * Sharing one scroll flow pushed Previous below the fold at 16+ sessions
+		 * and its disclosure became easy to miss, so it is pinned below the
+		 * scrolling entity region and owns its own scroll area.
+		 *
+		 * `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
+		 * property of the ROWS this panel draws rather than a style choice. A
+		 * session's slot is the backend's order key, so a completion re-files the
+		 * row - within the same section when it was already Active - and the feed
+		 * now invalidates the client's list read on that change rather than on a
+		 * section move, so the re-file happens on every completion instead of on
+		 * the next poll.
+		 *
+		 * Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
+		 * picks the element that moved as the anchor and pays for its move by
+		 * moving THIS container's `scrollTop` by exactly the row's travel -
+		 * measured on the overflowing story at -96 px for a 3-row travel
+		 * (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
+		 * request). The reader is not following the row: they are somewhere else in
+		 * the list, and the whole viewport slides under them by the travel, which is
+		 * the jitter this change is about. Refusing to anchor holds `scrollTop`
+		 * through the re-file and leaves the one-row shift the re-file itself
+		 * produces - the rows redrawn in their new order - which is the row moving
+		 * rather than the reader being moved.
+		 *
+		 * The sibling rule is the transcript's, and the two are opposite on
+		 * purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
+		 * ITS content grows under a reader pinned to the end, where following the
+		 * content is the feature.
+		 *
+		 * THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
+		 * entity region above carries the same declaration for the same reason,
+		 * and the two are a pair. What it gives up is stated rather than denied:
+		 * a row inserted ABOVE a reader who is scrolled down, or a list read that
+		 * adds rows above the viewport, is no longer compensated for, so the
+		 * reader's content shifts by the insertion - the trade this declaration
+		 * accepts for holding the position through a re-file, which arrives on
+		 * every completion rather than on an edit the reader made. (The claim in
+		 * the first pass ran the other way - "nothing here grows; the list only
+		 * re-orders" - and it was both false for the entity region and false
+		 * here: round 1, N2.)
+		 *
+		 * One cost is not paid by the reader who is nowhere near the row: the
+		 * keyboard cursor is an ELEMENT, so a focused row that re-files out of the
+		 * panel would leave the cursor off screen. `holdFocusedRow`
+		 * (`sidebar-focus-hold.ts`) is the other half of this rule - the container
+		 * follows the row the CURSOR is on, by the minimum, which is the case the
+		 * transcript's rule is about. It follows it only when the RE-FILE is what
+		 * took it out of the panel - a reader who scrolled their cursor away keeps
+		 * the position they chose, and so does the reader whose cursor row was not
+		 * on screen at all when the change landed.
+		 */
+		<div
+			ref={listPanelRef}
+			onScroll={() => refreshFocusedInside(listPanelRef.current, listSlotRef)}
+			id={CHAT_REGION_ID}
+			data-sidebar-region="chats"
+			style={
+				split.listMax === null
+					? undefined
+					: {
+							/*
+							 * The cap the split module computed: the shipped 45% of the
+							 * panel's own content box in the auto state, and the stored
+							 * height clamped to what this panel can give it when the user
+							 * has chosen one. A stored value is never rewritten, so a
+							 * window that can honour it draws it again.
+							 */
+							maxHeight: split.listMax,
+							/*
+							 * `auto` measures itself, so only a CHOSEN height is forced: the
+							 * region is a definite box of that size, not a box that happens
+							 * to be that big around its content - which is what makes the
+							 * stored number the number the user dragged the boundary to.
+							 */
+							height: split.listFixed ? split.listMax : undefined,
+						}
+			}
+			/*
+			 * The pointer's path, which is the half a coordinate test cannot see: a
+			 * reader who moves away from the point they pressed and comes back has made
+			 * a NEW gesture, so the record expires on that movement. Leaving the list
+			 * expires it too - the reflex this protects never leaves the region between
+			 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
+			 */
+			onPointerMove={(event) => {
+				const from = lastPinPress.current;
+				if (
+					from !== null &&
+					Math.hypot(event.clientX - from.x, event.clientY - from.y) >
+						PIN_PRESS_SLOP_PX
+				) {
+					lastPinPress.current = null;
+				}
+			}}
+			onPointerLeave={() => {
+				lastPinPress.current = null;
+			}}
+			className={cn(
+				"space-y-4 overflow-y-auto [overflow-anchor:none]",
+				/*
+				 * Two shapes, and which one is drawn is the difference between a split
+				 * and a collapse: with both regions on screen this container is the
+				 * SIZED one, so it is `shrink-0` with the cap the module handed it;
+				 * alone, it is the one that fills the column and its `flex-1` is the
+				 * mirror of the entity region's.
+				 */
+				bothVisible ? "max-h-[45%] shrink-0" : "min-h-0 flex-1",
+				listHasRuleAbove ? "border-t border-hairline pt-2" : "",
+			)}
+		>
+			<section>
+				<button
+					type="button"
+					data-chat-row
+					/* The driver's way into the list (see `chat-session-row`): the
+					   sections above it are entity lists, and this is the control that
+					   widens the list to every conversation. */
+					data-tour-tag="chat-all-chats"
+					className={cn(rowStyle, "w-full", all && rowCurrent)}
+					aria-pressed={all}
+					onClick={() => setAll((value) => !value)}
+				>
+					<List className="size-4" />
+					<span className="flex-1 text-left">All chats</span>
+					{/* The three global counts read as one set, so this must honour
+				    the active filter exactly as Active/Previous do. A zero badge
+				    beside the "No chats yet" sentence just repeats it. */}
+					{matching.length > 0 && countBadge(matching.length)}
+				</button>
+				{/* Sits inside the All chats section so it holds the same place
+			    — under the toggle, above whatever the toggle reveals — in
+			    both the flat list and the Active/Previous split. Deliberately
+			    a plain `rowStyle` row and not a `heading()`: a chevron would
+			    promise something to expand. Disabled tracks `ready` because
+			    staging a draft needs the session catalogue that gate covers.
+
+			    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
+			    an omission. It used to wear `border-control` as this system's
+			    "outline control" idiom, which reads as a control at rest — but
+			    that edge was also the one thing that stepped the row out of
+			    line with the All chats row directly above it. The app is
+			    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
+			    own `h-8` box and pushes the icon and the label in by 1px on
+			    each side, and no other row in this block has a boundary at all.
+			    The operator asked for the two rows to line up and for the BORDER
+			    to go - "the pill" is this file's description of what the border
+			    produced, not the operator's words. Removing the edge is what does
+			    both, and the measurement is in docs/evidence/new-chat-row (the
+			    icon's left inset goes from 5px, the border plus `rowStyle`'s
+			    `px-1`, to 4px).
+
+			    What still marks the row as the ACTION here is everything the
+			    rows around it do NOT have: the `MessageSquarePlus` glyph
+			    rather than `Plus`, which means "open a creation form" twice
+			    over in this panel (Create agent, Create team) while this
+			    stages a chat, and which matches the glyph the entity rows
+			    reveal for the same outcome; the `mb-1` margin that separates
+			    it from the Active/Previous split below; `rowStyle`'s
+			    `hover:bg-row-hover` colour step; and the `rowCurrent`
+			    ground (recessed from the panel, and hover-proof) while
+			    an untargeted draft is staged.
+
+			    `border-control` is therefore RETIRED on this row by the
+			    operator's own instruction, not merely unused: re-adding it puts
+			    the row back 1px out of alignment with the row above, so it is
+			    not a free tidy-up for a later reader. */}
+				<button
+					type="button"
+					// REACHABLE now, and this is the state that makes it live: a gate that
+					// withdraws without an error leaves `showList` true (the last-known
+					// rows stay mounted) while `ready` is false, so this row renders
+					// disabled and refuses to stage a draft against an absent catalogue.
+					// Before the withdrawn case was handled, the only way here was a
+					// capability error, and react-query keeps the last good `data`
+					// across a failed refetch (`retry: false`, no reset) - so `ready`
+					// stayed true there and this was defensive rather than reachable.
+					//
+					// Kept and now load-bearing, because the pairing is what makes
+					// decoupling `showList` from `ready` safe: staging a draft needs the
+					// session catalogue, so a not-ready render must disable rather than
+					// stage against nothing. Only a focusable row is a stop in the arrow
+					// ring - `keyDown` moves by calling `.focus()` on the next
+					// `[data-chat-row]` and a disabled button silently refuses it - so the
+					// attribute has to drop out in exactly the states the button is
+					// disabled, or a keyboard user strands here.
+					data-chat-row={ready || undefined}
+					className={cn(
+						rowStyle,
+						"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
+						// Marked current on the same terms as an entity row: an
+						// untargeted draft is the one THIS row stages. A draft
+						// carrying a target belongs to its entity row, which is
+						// already highlighting itself, and two rows claiming the
+						// same draft would misreport where the user is.
+						Boolean(activeDraftKey) && !draft?.target && rowCurrent,
+					)}
+					aria-current={activeDraftKey && !draft?.target ? "page" : undefined}
+					disabled={!ready}
+					onClick={() => onStageDraft(undefined, true)}
+				>
+					<MessageSquarePlus className="size-4" />
+					<span className="flex-1 text-left">New chat</span>
+					{/*
+					 * The chord this row is the visible half of, as caps — the same
+					 * `KeyboardShortcut` the inline editor's footer prints, so the two
+					 * spellings of "a shortcut" in this app cannot diverge.
+					 *
+					 * It is the TRAILING element, where the All chats row above carries
+					 * its count: both rows end in the column that says what the row will
+					 * give you, and the label's own `flex-1` is what holds it there.
+					 *
+					 * NOTHING IS PASSED WHILE THE ROW IS CURRENT, and that is the point
+					 * rather than an omission: a cap has no fill and no edge of its own
+					 * (`keyboard-shortcut.tsx` carries the measurement that retired the
+					 * `bg-sunken` fill), so the marks it used to need on this one row —
+					 * the `capEdge` outline, which existed because the cap and the row
+					 * were both `sunken` — have nothing left to separate. The row's own
+					 * `rowCurrent` ground carries the state on the ROW's box, not on the
+					 * caps, and the chord is drawn the same way
+					 * on every ground it lands on, which is what makes it one idiom rather
+					 * than one idiom plus an exception.
+					 *
+					 * Platform: `isMac` above, derived from `navigator.platform` the way
+					 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
+					 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
+					 * use. The read is synchronous (the capability hook's answer is async,
+					 * and a row that painted `⌘N` before it arrived would flash the wrong cap
+					 * on Windows), and the cap is asserted in
+					 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
+					 *
+					 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
+					 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
+					 * attribute would announce the same chord twice.
+					 */}
+					<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
+				</button>
+			</section>
+			{/*
+			 * The `All chats` and `New chat` rows first, then Pinned chats.
+			 *
+			 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
+			 * that those two rows are NAVIGATION rather than chats: navigation names
+			 * the list, so it precedes the sections that fill it. Above them, the
+			 * section sat over the control that names the list it belongs to.
+			 *
+			 * It sits directly above the `Active chats` heading in the split view and
+			 * directly above the flat list in `All chats` mode - the same place on
+			 * both, which is what keeps pins from vanishing for anyone using the flat
+			 * list (there is no `Active chats` anchor there to sit above at all).
+			 *
+			 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
+			 * TUI's own rule (an empty section contributes no header).
+			 */}
+			{pinned.length > 0 && (
+				<section>
+					{heading("pinned", "Pinned chats", true, pinned.length)}
+					{(query || isOpen("pinned", true)) &&
+						pinned.map((row) => sessionRow(row))}
+				</section>
+			)}
+			{all ? (
+				<section>{rest.map((row) => sessionRow(row))}</section>
+			) : (
+				<>
+					<section>
+						{heading(
+							"active",
+							"Active chats",
+							true,
+							/*
+							 * The count is the section's own rows: `rest` is `matching` minus the pinned
+							 * ones, and a pinned chat that is running is drawn in the section ABOVE
+							 * this one, so counting `matching` here would put a number beside a group
+							 * that does not hold that many rows. With no pin store `rest` IS
+							 * `matching`, so this is main's own count in the state main ships.
+							 */
+							rest.filter((row) => row.active).length,
+							/*
+							 * The bulk read receipt sits with the group the operator
+							 * pointed at — the one whose rows carry the completion
+							 * checkmarks — while the set it clears is the STORE's, so
+							 * the visible column of marks and the count its label names
+							 * are the same fact. It is deliberately not duplicated
+							 * beside "Previous chats": one gesture, one control. The
+							 * flat "All chats" view has none — recorded on the pull
+							 * request as deferred rather than papered over, because a
+							 * second control site is a second design decision.
+							 */
+							markAllReadControl,
+							/*
+							 * The disclosure the reader is handed when clearing the last
+							 * mark unmounts the control under their cursor.
+							 */
+							activeHeadingRef,
+						)}
+						{(query || isOpen("active", true)) &&
+							/*
+							 * The empty sentence reads the WHOLE filtered set, not `rest`:
+							 * a running chat that is pinned is drawn in the section above,
+							 * and "Nothing running right now."` beside it would be a claim
+							 * the panel itself contradicts. The rows are `rest`'s, so the
+							 * section still holds none of the pinned ones.
+							 */
+							(matching.some((row) => row.active) ? (
+								rest.filter((row) => row.active).map((row) => sessionRow(row))
+							) : (
+								<p className="px-2 text-meta text-ink-dim">
+									{livenessUnread
+										? "The daemon could not read which chats are running, so this list may be incomplete."
+										: "Nothing running right now."}
+								</p>
+							))}
+					</section>
+					<section>
+						{heading(
+							"previous",
+							"Previous chats",
+							false,
+							rest.filter((row) => !row.active).length,
+						)}
+						{(query || isOpen("previous")) &&
+							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
+					</section>
+				</>
+			)}
+			{/* A COLD-START sentence, not an empty-list one: it says the store
+		    holds no chats at all, so it must not appear beside rows. The
+		    catalogue being empty while `matching` is not is reachable now
+		    that a search hit for a session beyond this client's page is
+		    rendered as a row of its own (review round 2, R13 — this gate
+		    asked only about `sessions`, and a query was the other half of
+		    the claim). */}
+			{!sessions.length && !matching.length && !loading && !query.trim() && (
+				<p className="text-meta text-ink-muted">
+					No chats yet. Choose an agent, team or New chat.
+				</p>
+			)}
+			{truncated && (
+				<p className="text-meta text-ink-muted">
+					Showing up to 500 chats. Older chats remain available in the terminal.
+				</p>
+			)}
+			{/*
+			 * The feed's own state, in the sidebar's register (M3).
+			 *
+			 * `ink-dim` rather than `warning`, because a disconnected feed is not a
+			 * failure in front of the user: banners and marks stop arriving, and
+			 * everything already on screen is still true. `warning` ink is spent
+			 * only when the app is otherwise IDLE, where this line is the whole
+			 * reason nothing is updating. Never `danger`: nothing the user did
+			 * failed, and the retry is main's watchdog's, not theirs.
+			 *
+			 * Rendered only when the feed is expected to exist — an older backend
+			 * or a browser-dev renderer has no feed to be disconnected from, and
+			 * the legacy poll is running instead.
+			 */}
+			{/* Suppressed when the alert below already carries the condition
+		    (design review round 1, D9): the catalogue fetch fails exactly
+		    when the backend is down, so the two statements about one
+		    backend would otherwise stack — a quiet `ink-dim` line directly
+		    under a `role="alert" text-danger` block about the same thing. */}
+			{feed.available && !feed.connected && !error && (
+				<p
+					className={cn(
+						"text-meta",
+						sessions.some((row) => row.active)
+							? "text-ink-dim"
+							: "text-warning",
+					)}
+				>
+					Not connected to the backend — showing the last known state.
+				</p>
+			)}
+		</div>
+	);
+
+	/*
+	 * The boundary, and the controls that live on it.
+	 *
+	 * It is drawn only while BOTH regions are: with one hidden there is no
+	 * boundary to drag, and the restore row is the way back. The wrapper is
+	 * `h-0`, so the boundary itself contributes no layout, and it carries the
+	 * `mt-2` the list region used to hold as its own margin - the margin has to
+	 * sit above the boundary so the boundary's line lands ON the lower region's
+	 * rule rather than 8px above it.
+	 *
+	 * The cluster is a SIBLING of the separator rather than a child: the
+	 * separator's band starts a drag on `mousedown`, so a control inside it
+	 * would have to stop that event from reaching its own parent. As siblings
+	 * the two can never share a target, and a press on a control cannot also
+	 * start a drag - one structural fact instead of a `stopPropagation` that a
+	 * later edit can drop.
+	 *
+	 * It takes the panel's own ground (`bg-surface`, the declaration the sticky
+	 * group heading in this file already uses for something that floats over
+	 * rows) rather than the rail's groundless shape: these buttons sit across
+	 * the boundary, so without a ground their hover wash would paint over a row.
+	 */
+	const boundary = split.divider ? (
+		<div data-sidebar-split className="group relative mt-2 h-0 shrink-0">
+			<ResizableDivider
+				orientation="horizontal"
+				side={split.side}
+				sidebarWidth={split.divider.value}
+				onSidebarWidthChange={handleListHeightChange}
+				minWidth={split.divider.min}
+				maxWidth={split.divider.max}
+				onDoubleClick={restoreDefaultChatSidebarListHeight}
+				label="Resize the chats list"
+			/>
+			<div
+				data-sidebar-cluster
+				className={cn(
+					"pointer-events-none absolute top-0 left-1/2 z-[13] flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
+					"opacity-0 transition-opacity duration-fast ease-out-quart",
+					"group-hover:pointer-events-auto group-hover:opacity-100",
+					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+				)}
+			>
+				<Tooltip content={hideLabel(topRegion)}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						data-sidebar-hide={topRegion}
+						aria-label={hideLabel(topRegion)}
+						aria-expanded
+						aria-controls={
+							topRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
+						}
+						onClick={() =>
+							setChatSidebarRegions(hideRegion(chatSidebarRegions, topRegion))
+						}
+					>
+						<ChevronUp aria-hidden="true" />
+					</Button>
+				</Tooltip>
+				<Tooltip content={hideLabel(bottomRegion)}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						data-sidebar-hide={bottomRegion}
+						aria-label={hideLabel(bottomRegion)}
+						aria-expanded
+						aria-controls={
+							bottomRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
+						}
+						onClick={() =>
+							setChatSidebarRegions(
+								hideRegion(chatSidebarRegions, bottomRegion),
+							)
+						}
+					>
+						<ChevronDown aria-hidden="true" />
+					</Button>
+				</Tooltip>
+				<Tooltip content={orderLabel}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						data-sidebar-order
+						aria-label={orderLabel}
+						onClick={() =>
+							setChatSidebarOrder(
+								split.order === "entities-first"
+									? "chats-first"
+									: "entities-first",
+							)
+						}
+					>
+						<ArrowUpDown aria-hidden="true" />
+					</Button>
+				</Tooltip>
+			</div>
+		</div>
+	) : null;
+	/*
+	 * The way back, and it is not optional: the control that COLLAPSED a region
+	 * lives on the boundary, and with one region hidden there is no boundary
+	 * left - so the affordance that hid it cannot be the only one that restores
+	 * it. The row is one control, 28px on the heading ramp, and it names what is
+	 * hidden rather than offering a second action: while the chats list is
+	 * hidden the primary `New chat` row is one press further away and `⌘N` still
+	 * works, and a `MessageSquarePlus` here would make the collapsed state two
+	 * controls instead of one.
+	 */
+	const restoreRow = split.restore ? (
+		<button
+			type="button"
+			data-sidebar-restore={split.restore}
+			aria-label={showLabel(split.restore)}
+			className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
+			onClick={() => setChatSidebarRegions("both")}
+		>
+			{/*
+			 * The chevron points where the region will come back: downward for a
+			 * row at the top of the column, upward for one at the bottom, which
+			 * is the same direction the region itself expands in.
+			 */}
+			{restoreAtTop ? (
+				<ChevronDown className="size-3.5" aria-hidden="true" />
+			) : (
+				<ChevronUp className="size-3.5" aria-hidden="true" />
+			)}
+			<span className="min-w-0 flex-1 truncate text-left">
+				{regionName(split.restore)}
+			</span>
+			{/*
+			 * The list region's own count, from the same predicate its `All
+			 * chats` row uses, so the collapsed state tells the truth about how
+			 * many chats there are instead of hiding the panel's main signal.
+			 * The entity region has no count today, so its row carries none.
+			 */}
+			{split.restore === "chats" &&
+				matching.length > 0 &&
+				countBadge(matching.length)}
+		</button>
+	) : null;
 	return (
 		<nav
+			ref={navRef}
 			aria-label="Chats"
 			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
@@ -2148,587 +3132,43 @@ export function ChatSidebar({
 						? `Nothing in your chats matches ${query.trim()}.`
 						: ""}
 			</p>
-			{/* The entity region, and the SECOND container that needs the rule below.
-		    An entity is a disclosure row whose CHILDREN are session rows drawn from
-		    the same catalogue array the list draws (`children()`), so a nested row's
-		    slot is the same backend order key: a completion re-files it on the same
-		    event, inside a container that scrolls. The region was "deliberately not
-		    touched" in the first pass on the premise that nothing in it re-files,
-		    and that premise was false (round 1, R1) - the measurement is in
-		    `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
-		    NESTED row rather than from the list's.
-
-		    The trade is not the list's, and it is stated rather than implied: this is
-		    the one region where content genuinely GROWS above the reader - a
-		    catalogue arriving, or a query expanding every entity at once - and
-		    `overflow-anchor: none` gives up Chrome's compensation for that case to
-		    buy the re-file case. The growth is user-initiated or at load (the search
-		    box re-renders the region it filters), while the re-file is involuntary
-		    and arrives on every completion, which is the exchange this side of the
-		    declaration takes. */}
-			<div
-				ref={entityPanelRef}
-				onScroll={() =>
-					refreshFocusedInside(entityPanelRef.current, entitySlotRef)
-				}
-				className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none]"
-			>
-				{capabilities.isLoading && (
-					<p aria-live="polite" className="text-meta text-ink-dim">
-						Connecting to chats…
-					</p>
-				)}
-				{capabilities.error && (
-					<div role="alert" className="space-y-1 text-body-sm text-danger">
-						<p>
-							{capabilities.error.message}
-							{stale ? " Showing the last chats loaded." : ""}
-						</p>
-						<button
-							type="button"
-							className="underline"
-							onClick={() => void capabilities.refetch()}
-						>
-							Retry
-						</button>
-					</div>
-				)}
-				{/*
-				    The sentence is the gate's, not this file's (see the module): which half of
-				    the gate closed, whether the store's own read has already failed (the D9 rule
-				    this file applies to the feed line below - two statements about one backend is
-				    one too many), and whether there are last-known rows to speak for are three
-				    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
-				    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
-				    cadence, and this is the same control the error branch above offers.
-				 */}
-				{notice && (
-					<div role="alert" className="space-y-1 text-body-sm text-warning">
-						<p>{notice}</p>
-						<button
-							type="button"
-							className="underline"
-							onClick={() => void capabilities.refetch()}
-						>
-							Retry
-						</button>
-					</div>
-				)}
-				{/*
-				    The state is carried by the sentence, never by a treatment on the rows
-				    (branding § 6 and § 9: disabled changes colour, and opacity is not a state
-				    signal at all - it composites `ink` down to ~6:1 on this palette and below the 4.5:1 floor on four of the twelve palettes it was
-				    measured on, which `check-themes` cannot see
-				    because it does not evaluate alpha). These rows are also the only way to
-				    reach a conversation, so dimming them says "unavailable" about the one
-				    thing that still works. Design round 1, D1. */}
-				{showList && (
-					<div className="space-y-4 pb-2">
-						<section>
-							{heading("agents", "Agents", true)}
-							{(query || isOpen("agents", true)) && (
-								<>
-									{profiles.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading agents…
-										</p>
-									)}
-									{/*
-									    A user with no agents of their own gets the shortcut as the
-									    next step rather than as a quiet line: on a fresh install this
-									    section previously showed six rows the user had not installed
-									    and no way to tell them from their own. `profiles.data` being
-									    empty is the degenerate case of the same state — nothing to
-									    list, and nothing to install either, so only the create row
-									    remains.
-									*/}
-									{/*
-									 * ONE element across both states, and the batch's own control is the
-									 * same child at the same index in each, because the two states differ
-									 * in a way the batch itself causes.
-									 *
-									 * The completion summary is owned by `InstallBuiltinAgents`, and the
-									 * batch's last act is to invalidate `profiles`: the six installs land
-									 * as the user's own agents, `ownAgents` stops being empty, and this
-									 * block used to swap a `div` for a fragment in place. React unmounts
-									 * a subtree whose element type changes, so the summary was destroyed
-									 * ~89ms after it was painted: on the built app against the real
-									 * backend the section went straight from the shortcut to the six-row
-									 * list, and `"6 installed. Done"` was caught in the DOM once by a
-									 * MutationObserver and never seen again. The collision arm's "5
-									 * installed, 1 skipped. Skipped 1: you already have an agent called
-									 * `coder`." is the sentence a user actually needs, and it was
-									 * unreadable by construction (QA round 1, Q1).
-									 *
-									 * So the state lives somewhere that does not move: the outer element
-									 * is the empty state's padded box in one case and `display: contents`
-									 * in the other, which contributes no box at all, so the rows and the
-									 * batch's control lay out exactly as they did as bare children; the
-									 * variable content sits in its own `contents` child so the batch is
-									 * at index 1 either way. Same treatment as the live region in
-									 * `install-builtin-agents.tsx`, for the same reason (U11): what the
-									 * user has to be able to read cannot be the thing that gets
-									 * replaced. DO NOT split this back into one call site per branch.
-									 */}
-									<div
-										className={cn(
-											agentsEmpty
-												? "flex flex-col gap-2 px-3 py-2"
-												: "contents",
-										)}
-										data-testid={
-											agentsEmpty ? "agents-sidebar-empty" : undefined
-										}
-									>
-										<div className="contents">
-											{agentsEmpty ? (
-												<>
-													<p className="text-body-sm text-ink">No agents yet</p>
-													{/*
-													 * The offer is CONDITIONAL on there being something to offer, and it
-													 * names what that is.
-													 *
-													 * It used to render unconditionally: on a backend with no packaged
-													 * profiles the section still said "Built-in agents are ready to
-													 * install" while offering nothing that installs one — the same
-													 * paragraph, pixel-identical, in a state whose whole point is that
-													 * there is nothing to install (design round 1, D3). And what it
-													 * promised was a list of activities rather than the roles on offer,
-													 * including a "research" role that is not among the packaged
-													 * profiles, with no count at all until the batch had started (UX
-													 * round 1, U6). Derived from the rows the backend sent, because
-													 * the catalogue is the authority on what can be installed and a
-													 * hand-written list can disagree with it.
-													 */}
-													{availableBuiltins.length > 0 && (
-														<p className="text-meta text-ink-muted">
-															{builtinOfferSentence(availableBuiltins)}
-														</p>
-													)}
-												</>
-											) : (
-												ownAgents.map((profile) =>
-													entity("agent", profile.name),
-												)
-											)}
-										</div>
-										{/* Renders nothing once every built-in is installed. */}
-										<InstallBuiltinAgents
-											builtins={availableBuiltins}
-											presentation={agentsEmpty ? "primary" : "row"}
-										/>
-									</div>
-									<button
-										type="button"
-										className={cn(rowStyle, "w-full text-ink-muted")}
-										onClick={() => navigate("/agents?create=agent")}
-									>
-										<Plus className="size-4" />
-										Create agent
-									</button>
-								</>
-							)}
-						</section>
-						<section>
-							{heading("teams", "Teams", true)}
-							{(query || isOpen("teams", true)) && (
-								<>
-									{teams.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading teams…
-										</p>
-									)}
-									{teams.data?.map((team) => entity("team", team.name))}
-									<button
-										type="button"
-										className={cn(rowStyle, "w-full text-ink-muted")}
-										onClick={() => navigate("/agents?create=team")}
-									>
-										<Plus className="size-4" />
-										Create team
-									</button>
-								</>
-							)}
-						</section>
-					</div>
+			<div ref={splitRef} className="flex min-h-0 flex-1 flex-col">
+				{bothVisible ? (
+					/*
+					 * The pin failure line sits above the BOUNDARY in both
+					 * orders, which is where it has always sat: below it, it
+					 * would push the lower region's rule off the boundary's own
+					 * line and leave the band straddling nothing.
+					 */
+					<>
+						{split.order === "entities-first" ? entityRegion : listRegion}
+						{pinFailureLine}
+						{boundary}
+						{split.order === "entities-first" ? listRegion : entityRegion}
+					</>
+				) : listShown ? (
+					<>
+						{restoreAtTop && restoreRow}
+						{pinFailureLine}
+						{listRegion}
+						{!restoreAtTop && restoreRow}
+					</>
+				) : (
+					/*
+					 * The entity region alone, which is the withdrawn-gate DOM as well as a
+					 * collapsed chats list. The pin failure line sits AFTER the region here
+					 * rather than before it, because that is where it has always sat: it
+					 * belongs to the list region's side of the column, so it follows the
+					 * region above it and precedes the region below.
+					 */
+					<>
+						{restoreAtTop && restoreRow}
+						{entityRegion}
+						{pinFailureLine}
+						{!restoreAtTop && restoreRow}
+					</>
 				)}
 			</div>
-			{/* The global partition is NAVIGATION, not a peer of the entity lists.
-									    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
-									    and its disclosure became easy to miss, so it is pinned below the
-									    scrolling entity region and owns its own scroll area.
-
-									    `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
-									    property of the ROWS this panel draws rather than a style choice. A
-									    session's slot is the backend's order key, so a completion re-files the
-									    row - within the same section when it was already Active - and the feed
-									    now invalidates the client's list read on that change rather than on a
-									    section move, so the re-file happens on every completion instead of on
-									    the next poll.
-
-									    Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
-									    picks the element that moved as the anchor and pays for its move by
-									    moving THIS container's `scrollTop` by exactly the row's travel -
-									    measured on the overflowing story at -96 px for a 3-row travel
-									    (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
-									    request). The reader is not following the row: they are somewhere else in
-									    the list, and the whole viewport slides under them by the travel, which is
-									    the jitter this change is about. Refusing to anchor holds `scrollTop`
-									    through the re-file and leaves the one-row shift the re-file itself
-									    produces - the rows redrawn in their new order - which is the row moving
-									    rather than the reader being moved.
-
-									    The sibling rule is the transcript's, and the two are opposite on
-									    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
-									    ITS content grows under a reader pinned to the end, where following the
-									    content is the feature.
-
-									    THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
-									    entity region above carries the same declaration for the same reason,
-									    and the two are a pair. What it gives up is stated rather than denied:
-									    a row inserted ABOVE a reader who is scrolled down, or a list read that
-									    adds rows above the viewport, is no longer compensated for, so the
-									    reader's content shifts by the insertion - the trade this declaration
-									    accepts for holding the position through a re-file, which arrives on
-									    every completion rather than on an edit the reader made. (The claim in
-									    the first pass ran the other way - "nothing here grows; the list only
-									    re-orders" - and it was both false for the entity region and false
-									    here: round 1, N2.)
-
-									    One cost is not paid by the reader who is nowhere near the row: the
-									    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
-									    panel would leave the cursor off screen. `holdFocusedRow`
-									    (`sidebar-focus-hold.ts`) is the other half of this rule - the container
-									    follows the row the CURSOR is on, by the minimum, which is the case the
-									    transcript's rule is about. It follows it only when the RE-FILE is what
-									    took it out of the panel - a reader who scrolled their cursor away keeps
-									    the position they chose, and so does the reader whose cursor row was not
-									    on screen at all when the change landed. */}
-			{/* The pin failure, in the panel's own register rather than a toast.
-		    One sentence and one action, the shape the withdrawn-gate notice
-		    above already uses - and NO `role="alert"`, so it cannot compete with
-		    the catalogue alert below about a different failure. What announces
-		    it is `aria-pressed` flipping back on the control the user just
-		    pressed; this sentence is the durable half. `warning` and not `danger`:
-		    the list is intact and only this row's pin did not move. */}
-			{pinFailure && (
-				<p className="pb-2 text-meta text-warning">
-					Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
-					{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
-					<button
-						type="button"
-						className="underline"
-						onClick={() =>
-							void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
-						}
-					>
-						Retry
-					</button>
-				</p>
-			)}
-			{showList && (
-				<div
-					ref={listPanelRef}
-					onScroll={() =>
-						refreshFocusedInside(listPanelRef.current, listSlotRef)
-					}
-					/*
-					 * The pointer's path, which is the half a coordinate test cannot see: a
-					 * reader who moves away from the point they pressed and comes back has made
-					 * a NEW gesture, so the record expires on that movement. Leaving the list
-					 * expires it too - the reflex this protects never leaves the region between
-					 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
-					 */
-					onPointerMove={(event) => {
-						const from = lastPinPress.current;
-						if (
-							from !== null &&
-							Math.hypot(event.clientX - from.x, event.clientY - from.y) >
-								PIN_PRESS_SLOP_PX
-						) {
-							lastPinPress.current = null;
-						}
-					}}
-					onPointerLeave={() => {
-						lastPinPress.current = null;
-					}}
-					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
-				>
-					<section>
-						<button
-							type="button"
-							data-chat-row
-							/* The driver's way into the list (see `chat-session-row`): the
-							   sections above it are entity lists, and this is the control that
-							   widens the list to every conversation. */
-							data-tour-tag="chat-all-chats"
-							className={cn(rowStyle, "w-full", all && rowCurrent)}
-							aria-pressed={all}
-							onClick={() => setAll((value) => !value)}
-						>
-							<List className="size-4" />
-							<span className="flex-1 text-left">All chats</span>
-							{/* The three global counts read as one set, so this must honour
-						    the active filter exactly as Active/Previous do. A zero badge
-						    beside the "No chats yet" sentence just repeats it. */}
-							{matching.length > 0 && countBadge(matching.length)}
-						</button>
-						{/* Sits inside the All chats section so it holds the same place
-					    — under the toggle, above whatever the toggle reveals — in
-					    both the flat list and the Active/Previous split. Deliberately
-					    a plain `rowStyle` row and not a `heading()`: a chevron would
-					    promise something to expand. Disabled tracks `ready` because
-					    staging a draft needs the session catalogue that gate covers.
-
-					    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
-					    an omission. It used to wear `border-control` as this system's
-					    "outline control" idiom, which reads as a control at rest — but
-					    that edge was also the one thing that stepped the row out of
-					    line with the All chats row directly above it. The app is
-					    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
-					    own `h-8` box and pushes the icon and the label in by 1px on
-					    each side, and no other row in this block has a boundary at all.
-					    The operator asked for the two rows to line up and for the BORDER
-					    to go - "the pill" is this file's description of what the border
-					    produced, not the operator's words. Removing the edge is what does
-					    both, and the measurement is in docs/evidence/new-chat-row (the
-					    icon's left inset goes from 5px, the border plus `rowStyle`'s
-					    `px-1`, to 4px).
-
-					    What still marks the row as the ACTION here is everything the
-					    rows around it do NOT have: the `MessageSquarePlus` glyph
-					    rather than `Plus`, which means "open a creation form" twice
-					    over in this panel (Create agent, Create team) while this
-					    stages a chat, and which matches the glyph the entity rows
-					    reveal for the same outcome; the `mb-1` margin that separates
-					    it from the Active/Previous split below; `rowStyle`'s
-					    `hover:bg-row-hover` colour step; and the `rowCurrent`
-					    ground (recessed from the panel, and hover-proof) while
-					    an untargeted draft is staged.
-
-					    `border-control` is therefore RETIRED on this row by the
-					    operator's own instruction, not merely unused: re-adding it puts
-					    the row back 1px out of alignment with the row above, so it is
-					    not a free tidy-up for a later reader. */}
-						<button
-							type="button"
-							// REACHABLE now, and this is the state that makes it live: a gate that
-							// withdraws without an error leaves `showList` true (the last-known
-							// rows stay mounted) while `ready` is false, so this row renders
-							// disabled and refuses to stage a draft against an absent catalogue.
-							// Before the withdrawn case was handled, the only way here was a
-							// capability error, and react-query keeps the last good `data`
-							// across a failed refetch (`retry: false`, no reset) - so `ready`
-							// stayed true there and this was defensive rather than reachable.
-							//
-							// Kept and now load-bearing, because the pairing is what makes
-							// decoupling `showList` from `ready` safe: staging a draft needs the
-							// session catalogue, so a not-ready render must disable rather than
-							// stage against nothing. Only a focusable row is a stop in the arrow
-							// ring - `keyDown` moves by calling `.focus()` on the next
-							// `[data-chat-row]` and a disabled button silently refuses it - so the
-							// attribute has to drop out in exactly the states the button is
-							// disabled, or a keyboard user strands here.
-							data-chat-row={ready || undefined}
-							className={cn(
-								rowStyle,
-								"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
-								// Marked current on the same terms as an entity row: an
-								// untargeted draft is the one THIS row stages. A draft
-								// carrying a target belongs to its entity row, which is
-								// already highlighting itself, and two rows claiming the
-								// same draft would misreport where the user is.
-								Boolean(activeDraftKey) && !draft?.target && rowCurrent,
-							)}
-							aria-current={
-								activeDraftKey && !draft?.target ? "page" : undefined
-							}
-							disabled={!ready}
-							onClick={() => onStageDraft(undefined, true)}
-						>
-							<MessageSquarePlus className="size-4" />
-							<span className="flex-1 text-left">New chat</span>
-							{/*
-							 * The chord this row is the visible half of, as caps — the same
-							 * `KeyboardShortcut` the inline editor's footer prints, so the two
-							 * spellings of "a shortcut" in this app cannot diverge.
-							 *
-							 * It is the TRAILING element, where the All chats row above carries
-							 * its count: both rows end in the column that says what the row will
-							 * give you, and the label's own `flex-1` is what holds it there.
-							 *
-							 * NOTHING IS PASSED WHILE THE ROW IS CURRENT, and that is the point
-							 * rather than an omission: a cap has no fill and no edge of its own
-							 * (`keyboard-shortcut.tsx` carries the measurement that retired the
-							 * `bg-sunken` fill), so the marks it used to need on this one row —
-							 * the `capEdge` outline, which existed because the cap and the row
-							 * were both `sunken` — have nothing left to separate. The row's own
-							 * `rowCurrent` ground carries the state on the ROW's box, not on the
-							 * caps, and the chord is drawn the same way
-							 * on every ground it lands on, which is what makes it one idiom rather
-							 * than one idiom plus an exception.
-							 *
-							 * Platform: `isMac` above, derived from `navigator.platform` the way
-							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
-							 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
-							 * use. The read is synchronous (the capability hook's answer is async,
-							 * and a row that painted `⌘N` before it arrived would flash the wrong cap
-							 * on Windows), and the cap is asserted in
-							 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
-							 *
-							 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
-							 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
-							 * attribute would announce the same chord twice.
-							 */}
-							<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
-						</button>
-					</section>
-					{/*
-					 * The `All chats` and `New chat` rows first, then Pinned chats.
-					 *
-					 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
-					 * that those two rows are NAVIGATION rather than chats: navigation names
-					 * the list, so it precedes the sections that fill it. Above them, the
-					 * section sat over the control that names the list it belongs to.
-					 *
-					 * It sits directly above the `Active chats` heading in the split view and
-					 * directly above the flat list in `All chats` mode - the same place on
-					 * both, which is what keeps pins from vanishing for anyone using the flat
-					 * list (there is no `Active chats` anchor there to sit above at all).
-					 *
-					 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
-					 * TUI's own rule (an empty section contributes no header).
-					 */}
-					{pinned.length > 0 && (
-						<section>
-							{heading("pinned", "Pinned chats", true, pinned.length)}
-							{(query || isOpen("pinned", true)) &&
-								pinned.map((row) => sessionRow(row))}
-						</section>
-					)}
-					{all ? (
-						<section>{rest.map((row) => sessionRow(row))}</section>
-					) : (
-						<>
-							<section>
-								{heading(
-									"active",
-									"Active chats",
-									true,
-									/*
-									 * The count is the section's own rows: `rest` is `matching` minus the pinned
-									 * ones, and a pinned chat that is running is drawn in the section ABOVE
-									 * this one, so counting `matching` here would put a number beside a group
-									 * that does not hold that many rows. With no pin store `rest` IS
-									 * `matching`, so this is main's own count in the state main ships.
-									 */
-									rest.filter((row) => row.active).length,
-									/*
-									 * The bulk read receipt sits with the group the operator
-									 * pointed at — the one whose rows carry the completion
-									 * checkmarks — while the set it clears is the STORE's, so
-									 * the visible column of marks and the count its label names
-									 * are the same fact. It is deliberately not duplicated
-									 * beside "Previous chats": one gesture, one control. The
-									 * flat "All chats" view has none — recorded on the pull
-									 * request as deferred rather than papered over, because a
-									 * second control site is a second design decision.
-									 */
-									markAllReadControl,
-									/*
-									 * The disclosure the reader is handed when clearing the last
-									 * mark unmounts the control under their cursor.
-									 */
-									activeHeadingRef,
-								)}
-								{(query || isOpen("active", true)) &&
-									/*
-									 * The empty sentence reads the WHOLE filtered set, not `rest`:
-									 * a running chat that is pinned is drawn in the section above,
-									 * and "Nothing running right now."` beside it would be a claim
-									 * the panel itself contradicts. The rows are `rest`'s, so the
-									 * section still holds none of the pinned ones.
-									 */
-									(matching.some((row) => row.active) ? (
-										rest
-											.filter((row) => row.active)
-											.map((row) => sessionRow(row))
-									) : (
-										<p className="px-2 text-meta text-ink-dim">
-											{livenessUnread
-												? "The daemon could not read which chats are running, so this list may be incomplete."
-												: "Nothing running right now."}
-										</p>
-									))}
-							</section>
-							<section>
-								{heading(
-									"previous",
-									"Previous chats",
-									false,
-									rest.filter((row) => !row.active).length,
-								)}
-								{(query || isOpen("previous")) &&
-									rest
-										.filter((row) => !row.active)
-										.map((row) => sessionRow(row))}
-							</section>
-						</>
-					)}
-					{/* A COLD-START sentence, not an empty-list one: it says the store
-				    holds no chats at all, so it must not appear beside rows. The
-				    catalogue being empty while `matching` is not is reachable now
-				    that a search hit for a session beyond this client's page is
-				    rendered as a row of its own (review round 2, R13 — this gate
-				    asked only about `sessions`, and a query was the other half of
-				    the claim). */}
-					{!sessions.length &&
-						!matching.length &&
-						!loading &&
-						!query.trim() && (
-							<p className="text-meta text-ink-muted">
-								No chats yet. Choose an agent, team or New chat.
-							</p>
-						)}
-					{truncated && (
-						<p className="text-meta text-ink-muted">
-							Showing up to 500 chats. Older chats remain available in the
-							terminal.
-						</p>
-					)}
-					{/*
-					 * The feed's own state, in the sidebar's register (M3).
-					 *
-					 * `ink-dim` rather than `warning`, because a disconnected feed is not a
-					 * failure in front of the user: banners and marks stop arriving, and
-					 * everything already on screen is still true. `warning` ink is spent
-					 * only when the app is otherwise IDLE, where this line is the whole
-					 * reason nothing is updating. Never `danger`: nothing the user did
-					 * failed, and the retry is main's watchdog's, not theirs.
-					 *
-					 * Rendered only when the feed is expected to exist — an older backend
-					 * or a browser-dev renderer has no feed to be disconnected from, and
-					 * the legacy poll is running instead.
-					 */}
-					{/* Suppressed when the alert below already carries the condition
-				    (design review round 1, D9): the catalogue fetch fails exactly
-				    when the backend is down, so the two statements about one
-				    backend would otherwise stack — a quiet `ink-dim` line directly
-				    under a `role="alert" text-danger` block about the same thing. */}
-					{feed.available && !feed.connected && !error && (
-						<p
-							className={cn(
-								"text-meta",
-								sessions.some((row) => row.active)
-									? "text-ink-dim"
-									: "text-warning",
-							)}
-						>
-							Not connected to the backend — showing the last known state.
-						</p>
-					)}
-				</div>
-			)}
 			{(error || profiles.error || teams.error) && (
 				<div role="alert" className="pt-2 text-meta text-danger">
 					<p>{error || profiles.error?.message || teams.error?.message}</p>
