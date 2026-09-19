@@ -14,6 +14,25 @@ export type SessionCatalogueRow = {
 	live_state: string;
 	pending: string | null;
 	active: boolean;
+	/**
+	 * Whether this conversation is pinned, as the BACKEND's pin store holds it.
+	 *
+	 * ALWAYS PRESENT, both values, on EVERY row - the one field on this shape that
+	 * may not be omitted. `replaceSessionRows` -> `mergeRow` in
+	 * `canonical-sessions-store.ts` is `{...current, ...incoming}` under the rule
+	 * "an absent key is not a claim", so a backend that omitted `pinned` on an
+	 * unpinned row would leave a stale optimistic `true` immortal: the row would
+	 * keep its glyph and its section membership after a successful unpin
+	 * somewhere else. Sending both values is what makes a list read settle the
+	 * field.
+	 *
+	 * The store behind it is shared with the terminal: it is the TUI's
+	 * `sidebar-pins.json` in the backend's own config root
+	 * (`local_operator/tui/sidebar_pins.py`), which is why `pinned` is the
+	 * backend's answer rather than this client's - a pin made with `f10` in a
+	 * terminal and a pin made here are the same pin.
+	 */
+	pinned: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
@@ -60,6 +79,22 @@ export type SessionSearchHit = {
 	forked: boolean;
 	rank: number;
 	body_match: boolean;
+	/**
+	 * The row's pin STATE, and OPTIONAL on purpose - which is the exception on this
+	 * shape rather than an oversight, because here the absence is the information.
+	 *
+	 * On a catalogue row `pinned` is always present (both values) so a list read
+	 * settles the client's optimistic flag; a search hit is a different question -
+	 * it is asked of the WHOLE store, so a pinned conversation the client's capped
+	 * page cannot hold arrives as a hit with no local row to compare against. A
+	 * backend that describes the pin state answers it here, and the synthesized row
+	 * carries it, so the conversation lands in `Pinned chats` with a filled glyph
+	 * (QA round 1, Q1). A backend that does NOT describe it leaves the field absent,
+	 * and the row then offers no pin control at all: the row is rebuilt from the wire
+	 * hit on every render, so a control there could not repair it, and an affordance
+	 * that silently does nothing is worse than none (review round 1, m1).
+	 */
+	pinned?: boolean;
 };
 /**
  * The search answer. `query` is ECHOED rather than assumed: keystrokes are
