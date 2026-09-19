@@ -1704,8 +1704,22 @@ export const STORIES = [
 	 * every code twice at one size, where `chat-sidebar-status-feed--*` below shows
 	 * three of them in their own rows, which is what a transition needs and not what
 	 * a vocabulary needs.
+	 *
+	 * TALLER THAN IT WAS, because the story now opens with the `error`/`wedged`
+	 * PAIR above the matrix: the marking change is a separation, and a separation
+	 * is not visible in the fixed state it produced — the two rows have to be in
+	 * the frame together. 120px is the pair's own two rows plus its rule and the
+	 * gap the matrix below them keeps.
 	 */
-	["chat-session-status--neighbours", 860, 600],
+	["chat-session-status--neighbours", 860, 720],
+	/*
+	 * THE AMBER CLASS IN ONE COLUMN (design round 1, D4), which the set could not
+	 * answer before: the four marks a reader meets in one list were legible only by
+	 * cross-referencing the matrix's two columns, and the closest pair — the waves
+	 * against `Pause`'s bars — never appeared together. One column, four rows, ~300px
+	 * tall.
+	 */
+	["chat-session-status--amber-class", 520, 300],
 	/*
 	 * The conversation sidebar's row status, delivered by the machine-wide feed
 	 * rather than by a catalogue read. THREE frames, and the pair they are half of
@@ -1721,6 +1735,42 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-answered", 780, 560],
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
+	/*
+	 * The state the operator reported, in the sidebar that draws it, with the
+	 * failed row directly under it: `wedged` and `error` used to share one mark in
+	 * one ink, and this frame is where the separation is visible. 600px rather than
+	 * the 560 the states above take, because the readout now prints the rows'
+	 * COMPOSED tooltips - the remedy clause lives only in a native `title`, which
+	 * is not photographable - and the caption is a line taller for it.
+	 *
+	 * `expectSentence` ON THE CLAUSE, AND IT IS THE SUBJECT OF THE FRAME (review
+	 * round 2's MAJOR 1, QA Q-5, UX U8). The readout fills from a 200ms poll
+	 * (`chat-sidebar-status-feed.stories.tsx`), so a shutter that lands before the
+	 * tick that saw the rows writes `Row tooltips: (none on screen)` - which is
+	 * exactly what the fold re-captured here and what `check-evidence` could not
+	 * see, because its predicate is paint plus the manifest stamps and never the
+	 * content. Height was bought for that line, so the line has to be in the frame:
+	 * this entry now refuses to commit one whose readout does not carry the clause.
+	 */
+	[
+		"chat-sidebar-status-feed--wedged-owner",
+		780,
+		600,
+		{
+			/*
+			 * SCOPED TO THE READOUT, because the clause is RENDERED elsewhere on the page
+			 * too: the row's own `sr-only` remedy span is in the document's text whatever
+			 * this paragraph says, so a document-wide search would pass on
+			 * `(none on screen)` - which is exactly how a subject-less frame got committed
+			 * here once. The subject of this frame is the READOUT LINE, and the gate names
+			 * it.
+			 */
+			expectSentence: {
+				selector: "[data-readout-titles]",
+				includes: "/stop if it stays silent",
+			},
+		},
+	],
 	/*
 	 * A row re-filing INSIDE its section (local-operator #1224's renderer half).
 	 * Five states rather than five transitions: the same four-row roster once with
@@ -6919,15 +6969,56 @@ const main = async () => {
 			 * and not a sentence the reader is meant to read: one name for two meanings is how a
 			 * guard stops guarding.
 			 */
+			/*
+			 * WAITED FOR, not read once, because a story is allowed to fill a line LATE and a
+			 * shutter that can beat it will eventually beat it (review round 2's MAJOR 1: the
+			 * `wedged-owner` readout is written by a 200ms poll, and a frame was committed
+			 * reading `Row tooltips: (none on screen)` — the sentence that frame exists to
+			 * evidence, absent, with the height still paid for the line). The claim is about
+			 * what a reader sees, so the run waits for the subject to appear and FAILS if it
+			 * never does: a frame without its subject is evidence for something else, and it
+			 * must not be committed silently. Two seconds is ten poll ticks — the interval is
+			 * the story's own 200ms — and it costs a passing sweep nothing.
+			 */
 			if (options?.expectSentence) {
-				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
-					expression: "document.body.innerText || ''",
-					returnByValue: true,
-				});
-				const painted = String(claimRead?.value ?? "");
-				if (!painted.includes(options.expectSentence)) {
+				/*
+				 * SCOPED TO A PLACE, NOT TO THE DOCUMENT (round 3, found by the reader
+				 * re-taking this very frame). The first version of this check searched
+				 * `document.body.innerText`, and the `sr-only` remedy span is RENDERED —
+				 * clipped to a pixel rather than `display: none` — so its text is in the
+				 * document's innerText whatever the readout says. The gate therefore passed
+				 * on a frame reading `Row tooltips: (none on screen)`: it asserted that the
+				 * sentence existed SOMEWHERE, which is not the claim. A subject gate has to
+				 * name the surface the frame was sized for, so the sentence form below is
+				 * `{ selector, includes }` and the subject is that element's own text.
+				 */
+				const claim = options.expectSentence;
+				const scoped = typeof claim === "string" ? null : claim.selector;
+				const wanted = typeof claim === "string" ? claim : claim.includes;
+				const paintedIn = async () => {
+					const { result: claimRead } = await cdp.send("Runtime.evaluate", {
+						expression: scoped
+							? `(() => { const el = document.querySelector(${JSON.stringify(scoped)}); return el ? (el.innerText || "") : "\\u0000missing"; })()`
+							: "document.body.innerText || ''",
+						returnByValue: true,
+					});
+					const value = String(claimRead?.value ?? "");
+					if (value.includes("\u0000missing")) {
+						throw new Error(
+							`${story} @ ${theme}: expectSentence names the surface ${JSON.stringify(scoped)}, which is not in the document — the gate cannot vouch for a frame whose subject never rendered`,
+						);
+					}
+					return value;
+				};
+				let painted = await paintedIn();
+				for (let waited = 0; waited < 2000; waited += 100) {
+					if (painted.includes(wanted)) break;
+					await sleep(100);
+					painted = await paintedIn();
+				}
+				if (!painted.includes(wanted)) {
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
 					);
 				}
 			}

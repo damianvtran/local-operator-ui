@@ -105,7 +105,13 @@ for (const [code, icon, ink] of [
  * ink cannot show it in.
  */
 for (const [code, icon, ink] of [
-	["wedged", "circle-alert", "danger"],
+	/*
+	 * `wedged` WEARS A MARK OF ITS OWN AND NOT `error`'S, which is the change this
+	 * file exists to pin. It used to read `["wedged", "circle-alert", "danger"]`
+	 * — byte-identical to the `error` row two cases above — so an owner that had
+	 * merely stopped reporting was drawn exactly like a turn that had failed.
+	 */
+	["wedged", "equal-approximately", "warning"],
 	["busy", "loader-circle", "accent"],
 	["answer", "circle-alert", "warning"],
 	["approval", "circle-alert", "warning"],
@@ -123,6 +129,82 @@ for (const [code, icon, ink] of [
 		assert.match(after, new RegExp(`text-${ink}`));
 	});
 }
+
+/*
+ * The separation itself, asserted as a RELATION between two rows.
+ *
+ * A table row proves what `wedged` draws; it cannot prove that what it draws is
+ * different from `error`, and sameness is exactly what the defect was. So this
+ * case renders the pair and compares them, on both channels that carry the mark:
+ * the glyph and the ink. The ink half is checked as inequality rather than as two
+ * literals because this product's own measurement records the two inks CONVERGING
+ * under deuteranopia — the silhouettes have to differ on their own, and a test
+ * that only pinned the two class names would pass with two identical marks in two
+ * colours.
+ *
+ * WHICH OF THESE ASSERTIONS DISCRIMINATES, because one of them does not on its
+ * own (QA round 1, Q-1). `notEqual` is a smoke assertion: the two rows differ in
+ * their LABELS as well as their marks, so it passes for the exact regression this
+ * case exists to catch — a `wedged` row wearing `error`'s silhouette in the
+ * warning ink — and both reviewers had to mutate the component to establish that.
+ * The discriminating pair is `match(/lucide-equal-approximately/)` with
+ * `doesNotMatch(/lucide-circle-alert/)`: those two fail on such a mutant while
+ * `notEqual` still passes. They are kept TOGETHER and after it, so the shape is
+ * named rather than left to be inferred from a case that reads like an
+ * inequality test.
+ */
+test("a not-answering row is not drawn like a failed one", () => {
+	const failed = render("error", false);
+	const silent = render("wedged", false);
+	assert.notEqual(silent, failed);
+	assert.match(silent, /lucide-equal-approximately/);
+	assert.doesNotMatch(silent, /lucide-circle-alert/);
+	assert.match(silent, /text-warning/);
+	assert.doesNotMatch(silent, /text-danger/);
+	assert.match(failed, /lucide-circle-alert/);
+	assert.match(failed, /text-danger/);
+});
+
+/*
+ * THE WORDS STAY ON THE WIRE. The state's sentence is the backend's
+ * (`session/catalog.py`'s `status`) and the renderer must read it rather than
+ * re-author it — so a row carrying a DIFFERENT label has to render that label,
+ * in the channel this component owns (the `sr-only` name). The assertion is
+ * deliberately made with a label no other code in this repo contains, so a
+ * hard-coded `"Not answering · process alive"` fails here.
+ *
+ * THE TOOLTIP CHANNEL MOVED TO THE ROW (review round 1, MINOR 1), and the second
+ * half of this case is now the assertion that keeps it there: this component used
+ * to put `title` on the span wrapping the mark, which — nested inside the row's
+ * button — SHADOWED the row's composed tooltip over the mark itself, hiding the
+ * remedy clause over the very glyph it is about. The label is still shown by a
+ * tooltip, the row's, and that is asserted where the row is (`mark-all-read-
+ * control.test.mjs`, which mounts the shipped sidebar); what is asserted here is
+ * that no `title` comes back to shadow it.
+ */
+test("the wedged row renders the backend's sentence, not one of its own", () => {
+	const label = "Not answering · process alive (last heartbeat 4m ago)";
+	const markup = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "fixture",
+				status: { code: "wedged", label },
+			},
+		}),
+	);
+	// `includes` rather than a RegExp: the label carries parentheses and a `·`,
+	// and a pattern built from it would be testing the escaping rather than the
+	// string. The literal below is the one the catalogue publishes.
+	assert.ok(
+		markup.includes(`sr-only">${label}`),
+		"the accessible name lost the backend's sentence",
+	);
+	assert.doesNotMatch(
+		markup,
+		/title=/,
+		"a `title` came back onto the mark, where it shadows the row's tooltip",
+	);
+});
 
 /*
  * ------------------------------------------------------------ the row the
