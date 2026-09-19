@@ -3,17 +3,17 @@
   "bundle": {
     "mainBytecode": {
       "file": "out/main/index.jsc",
-      "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
-      "builtAt": "2026-09-19T15:59:16.452Z"
+      "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+      "builtAt": "2026-09-19T20:29:48.563Z"
     },
     "rendererChunk": {
-      "file": "out/renderer/assets/index-CaQSxb2x.js",
-      "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
-      "builtAt": "2026-09-19T16:01:15.786Z"
+      "file": "out/renderer/assets/index-DnAsAjdv.js",
+      "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+      "builtAt": "2026-09-19T20:30:26.569Z"
     },
     "newestSource": {
-      "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
-      "at": "2026-09-19T15:58:10.438Z"
+      "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+      "at": "2026-09-19T20:29:06.567Z"
     }
   },
   "scenes": {
@@ -21,17 +21,17 @@
       "bundle": {
         "mainBytecode": {
           "file": "out/main/index.jsc",
-          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
-          "builtAt": "2026-09-19T15:59:16.452Z"
+          "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+          "builtAt": "2026-09-19T20:29:48.563Z"
         },
         "rendererChunk": {
-          "file": "out/renderer/assets/index-CaQSxb2x.js",
-          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
-          "builtAt": "2026-09-19T16:01:15.786Z"
+          "file": "out/renderer/assets/index-DnAsAjdv.js",
+          "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+          "builtAt": "2026-09-19T20:30:26.569Z"
         },
         "newestSource": {
-          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
-          "at": "2026-09-19T15:58:10.438Z"
+          "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+          "at": "2026-09-19T20:29:06.567Z"
         }
       },
       "configured": {
@@ -41,10 +41,10 @@
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "eJbbezu-OxtOWLCaTW87Q-AaSPqXtD7i0htReWoh_Xk",
-        "instance_id": "QrLeyVB6C7Q1mBnbw8js9_B9VzJHStzBUEBq3RKNO3Y",
+        "claim_key": "lFvyw_UfQAuQ3kNXAORv7Hip-nO5JUVW3EAZKksNUZY",
+        "instance_id": "HOUCYvs3yi3kca1Jb1S2eHoRwZVGXMAPRjs9L59EAeM",
         "version": "0.59.9",
-        "pid": 22217
+        "pid": 14218
       },
       "claimInDaemonLog": true,
       "page": {
@@ -56,16 +56,16 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 22217,
+          "pid": 14218,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 22217, v0.59.9).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 14218, v0.59.9).",
           "pairing": {
             "available": true,
             "cause": null
           }
         },
-        "sidebar": "Chats Agents Loading agents… Create agent Teams Loading teams… Create team All chats New chat ⌘ + N Active chats Nothing running right now. Previous chats Not connected to the backend — showing the last known state.",
+        "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back…",
         "pane": {
           "sentence": "Choose an agent or team",
           "chain": [
@@ -224,7 +224,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 22217,
+            "pid": 14218,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -386,10 +386,10 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 25690,
+            "pid": 14587,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 25690, v0.59.9).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 14587, v0.59.9).",
             "pairing": {
               "available": true,
               "cause": null

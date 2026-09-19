@@ -3,17 +3,17 @@
   "bundle": {
     "mainBytecode": {
       "file": "out/main/index.jsc",
-      "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
-      "builtAt": "2026-09-19T15:59:16.452Z"
+      "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+      "builtAt": "2026-09-19T20:29:48.563Z"
     },
     "rendererChunk": {
-      "file": "out/renderer/assets/index-CaQSxb2x.js",
-      "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
-      "builtAt": "2026-09-19T16:01:15.786Z"
+      "file": "out/renderer/assets/index-DnAsAjdv.js",
+      "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+      "builtAt": "2026-09-19T20:30:26.569Z"
     },
     "newestSource": {
-      "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
-      "at": "2026-09-19T15:58:10.438Z"
+      "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+      "at": "2026-09-19T20:29:06.567Z"
     }
   },
   "scenes": {
@@ -25,17 +25,17 @@
       "bundle": {
         "mainBytecode": {
           "file": "out/main/index.jsc",
-          "sha256": "dadcbbcff3a20a4f4b2dc70a7032ab32e7c54b9a3dd12c76c4f309a0c21e026b",
-          "builtAt": "2026-09-19T15:59:16.452Z"
+          "sha256": "cf8b6b6d8f5d8bf66d780485ac88b4b75c675dbc3c9a802e3a5639722511ca4f",
+          "builtAt": "2026-09-19T20:29:48.563Z"
         },
         "rendererChunk": {
-          "file": "out/renderer/assets/index-CaQSxb2x.js",
-          "sha256": "3b0871e091e4caaf8e3e88ff1983242a406f1e027e9baf403bc745853a150032",
-          "builtAt": "2026-09-19T16:01:15.786Z"
+          "file": "out/renderer/assets/index-DnAsAjdv.js",
+          "sha256": "9a2343b26064e249ef46fb8219207a2f2509a744aefb80f6f16b8bc6c6eb102c",
+          "builtAt": "2026-09-19T20:30:26.569Z"
         },
         "newestSource": {
-          "file": "src/renderer/src/features/settings/components/backend-settings-section.tsx",
-          "at": "2026-09-19T15:58:10.438Z"
+          "file": "src/renderer/src/shared/api/local-operator/backend-error.ts",
+          "at": "2026-09-19T20:29:06.567Z"
         }
       },
       "bandSentenceSource": "first_lines",
