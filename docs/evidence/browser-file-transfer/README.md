@@ -1,6 +1,6 @@
 # File transfer, in composition
 
-Eight frames from `scripts/browser-file-transfer-proof.mjs`, which drives the built
+Nine frames from `scripts/browser-file-transfer-proof.mjs`, which drives the built
 app with its own browser host and photographs what a user meets: the chrome band,
 the transfer row, and the driven page in one frame, at the window size the app runs.
 They are here because the change's own claim is a COMPOSITION claim, and no story
@@ -17,8 +17,9 @@ at all.
 | `04-upload-form.webp` | the upload case, holding the three attached files (`Choose Files · 3 files`), with the strip carrying the upload's OWN line — the state round 1 found with `notes: []` and nothing on screen while three files left the machine (U3). It NAMES the files rather than only counting them (round 2, U11): `brief.pdf + 2 more were attached to 127.0.0.1:49198`, because a user whose assistant attached three files out of a twelve-file folder could not otherwise tell which three left. The evidence that the bytes ARRIVED is the next frame and `D6`, not this one |
 | `05-upload-received.webp` | the page the receiving server answered on: the browser's own view of `{"received":3}` from `/echo`. This is the server's word for what it got, and `D6` is the digest comparison that makes it evidence of the right bytes rather than of a count |
 | `06-downloading.webp` | a transfer IN FLIGHT, which §12.3 asks for and no earlier version of these frames showed: the row reports the percentage and the bytes rather than one static line (D6, U6). THE PAGE HALF OF THIS FRAME IS TAKEN AFTER THE TRANSFER FINISHES, and that is the host's own structure rather than a shortcut: `screenshot` is tab-scoped, so it waits on the tab's command lane — the lane the `download` call holds until it answers — and asking for the page in flight comes back empty (the first version of this case did exactly that and shipped a blank page area). The page does not change while the transfer runs, and the row's pixels are the mid-flight ones |
-| `07-row-and-band.webp` | the row STACKED with the consent band — the composition worst case (three strips above one page), and the arrangement the "it reflowed rather than overlapped" claim had not been shown for (D6). The row in it is the RUNTIME-CAP refusal (`G12`), which round 2 split out as its own rule so the consequence reads "The partial file was discarded." rather than "Nothing was saved." |
-| `08-long-name-refused.webp` | a refusal whose NAME cannot fit: the name elides and `Nothing was saved.` does not. The transcript's `G8` measures which span is the clipped one rather than leaving it to the eye (D3), and `G8b` measures the half round 2 added — the name is now CAPPED rather than merely shrinkable, so it can shorten the reason without clipping it to a fragment (round 2, D11: the rule span used to be 74 px of `is an exec…`, and reads `is an executable/script type.` at 170 px here) |
+| `07-row-and-band.webp` | the row STACKED with the consent band — the composition worst case (three strips above one page), and the arrangement the "it reflowed rather than overlapped" claim had not been shown for (D6). The row in it is the RUNTIME-CAP refusal (`G12`), which round 2 split out as its own rule so the consequence reads "The partial file was discarded." rather than "Nothing was saved." The frame is taken BEFORE `G13` opens the folder control's own tooltip (design round 3, D15): an open tooltip is painted across the alert glyph, `Download refused —`, the file name and the first clause, so the row's own sentence would be the one part of the picture a reader could not read |
+| `08-long-name-refused.webp` | a refusal whose NAME cannot fit: the name elides and `Nothing was saved.` does not. The transcript's `G8` measures which span is the clipped one rather than leaving it to the eye (D3), and `G8b` measures the half round 2 added — the name is now CAPPED rather than merely shrinkable, so it can shorten the reason without clipping it to a fragment (round 2, D11: the rule span used to be 74 px of `is an exec…`, and reads `is an executable/script type.` in full at 197 px here). Round 3 gave the rule span its own `title`, so the clause is recoverable even where a narrower row clips it (`09`) |
+| `09-long-name-refused-minimum-window.webp` | the SAME refusal at the app's 800 px MINIMUM window, which is the arrangement design round 3's D14 was filed about and the one state these frames had never shown: the name's cap was an absolute one, so at a narrow width the rule — the only statement of WHY a file was refused — was the span giving up every pixel (the specimen measured it at 22 logical px reading `is …`, against 168 px at the app's default window). The name yields now (`G8c` measures the two spans), the rule keeps the larger share, and the whole clause rides the span's own `title`. WHAT THIS FRAME ALSO SHOWS, and it is the honest half of it: the APP's minimum window is much tighter than the specimen D14 was measured on — the navigation rail takes ~248 px of the 800, so the strip's paragraph measures 269 px there — and the label (`Download refused —`, 125 px), the consequence (`Nothing was saved.`, 118 px) and the age (58 px) exceed that between them, so no division of name and rule puts this sentence on one line. `G8c` records the widths and which spans paint past the paragraph instead of asserting a legibility this width cannot give, and the frame is what a reader can check that against |
 
 TWO FACTS ABOUT THESE FRAMES THAT ARE THE RUN'S, NOT THE FRAME'S, so a reader
 does not read determinism into them: the row in `02` names whichever receipt
@@ -58,15 +59,21 @@ node scripts/browser-file-transfer-proof.mjs --out /tmp/ft-frames
 # the rig writes PNGs (the composited frame plus its two layers); the committed
 # `.webp` frames are those PNGs through sharp at quality 90, one per frame name.
 #
-# THE FRAMES IN THIS DIRECTORY ARE FROM THE RUN ON THIS HEAD, after the branch was
-# folded onto `origin/main` = `181a9c4fd` (77 upstream commits): every one of the
-# eight was re-taken, because the app's own chrome around the row is part of the
-# picture and upstream moved it. The transcript quoted below is that run's.
+# THE FRAMES IN THIS DIRECTORY ARE FROM THE ROUND-3 RUNS ON THIS HEAD, after the branch
+# was folded onto `origin/main` = `181a9c4fd` (77 upstream commits) and then twice more,
+# last onto `22cc0dbe1` — a fold that moves `src/renderer` (the update-notification
+# component) as well as `scripts/` and main's own evidence, which is why all nine frames
+# were RE-TAKEN on the folded tree rather than re-stamped: the app's chrome around the
+# row is part of the picture and the fold moved it. Round 3 moved the row's own refusal
+# layout (D14) and the order `G13` runs in (D15) in the same commit. The transcript
+# quoted below is that run's, and the second run of the same head is the one QA's Q6
+# asked for.
 ```
 
 
-The rig prints its own transcript to stdout — **61 checks recorded, 0 FAIL, 2
-BLOCKED** on the capture these frames came from — and writes `transcript.json` beside
+The rig prints its own transcript to stdout — **65 checks recorded, 0 FAIL, 2
+BLOCKED** on either of the two runs this round's frames came from (two runs of one
+head, agreeing check for check) — and writes `transcript.json` beside
 the frames; each frame is the renderer's own `Page.captureScreenshot` composited with
 the page as the HOST's `screenshot` action returns it, at the rectangle the renderer
 reports to main. Frames are encoded to `.webp` at quality 90.
@@ -89,18 +96,37 @@ recorded rather than bent to fit, with the measurement that says why:
   change at exactly the point `perform` returns, and the other makes the read fail and
   asserts the marker, the facts and the answer.
 
-**THE RUNTIME CAP'S BOUND IS MEASURED OFF THE DISK, not off this host's self-report**
-(`G12`): a 10 ms poller watches the partial at its final path from the rig, so the
-number is what the write actually reached rather than what the host said it had
-received. The bound the host's own clock can promise is the cap plus one sample
-interval of throughput, and the interval is what the MACHINE decides — measured at the
-shipped 100 ms cadence: **277,348,110 bytes (8.9 MiB over the cap, 76 ms past the
-limit)** idle, **327,221,015 (58.8 MiB over, 219 ms)** and **328,662,599 (60.2 MiB
-over, 182 ms)** on busy runs, and **394,002,389 (125.5 MiB over, 399 ms)** at a load
-average of 124. The check's ceilings (192 MiB / 1200 ms) are set for that last case,
-because what it asserts is that a starved main process still cancels on its OWN clock
-rather than waiting on `updated` — against QA round 2's 734,003,200 (**2.7x the cap**,
-server still pushing, no bound at all) under the trigger this replaced.
+**THE RUNTIME CAP'S ASSERTION IS THE RULE AND THE DISCARD, and the byte readings
+beside it are reported rather than gated** (`G12`, and this changed in round 3 for QA
+Q6). `overrun` on a chunked body can only come from the host's own sampler —
+Chromium's `updated` is silent for one, which is the whole of Q4 — so the rule
+firing, with the partial discarded and nothing on disk, is the property a loaded box
+cannot fake; the case fails if the sampler ever stops bounding the write, because the
+refusal would then come at the call's deadline. The OVERSHOOT is a reading of the
+machine, not of the code: the host samples every 100 ms, so the write runs on by one
+sample interval of throughput (~52 MiB at the ~525 MiB/s this box writes), and a
+starved main process makes that interval late — **8.9 MiB (76 ms past the cap) on an
+idle box, 58.8 MiB (219 ms) and 60.2 MiB (182 ms) busy, 125.5 MiB (399 ms) at load
+124, and 515.2 MiB (1,030 ms) at load 100+** while another session's evidence sweep
+ran. Those are the same code path at different scheduling latencies. The two runs this
+round's frames came from, on the folded head minutes apart, read **283,115,520 bytes
+(14.0 MiB over, on a box that had quietened) and 281,018,368 (12.0 MiB over)**, with the
+disk poller corroborating both and reading exactly what the host had counted each time.
+Earlier runs of the same head, at load 100+, read 406,519,575 (138.1 MiB over, 340 ms
+past the cap) and 376,307,685 (107.9 MiB over, 382 ms). The disk poller
+is the cross-check beside the host's own reading: it sees the partial under its final
+name, and it can only see LESS of it than the host counted (the host counts bytes
+received, the disk holds bytes written) — a relationship that holds whatever the box
+is doing, which is why it is the one bound asserted. QA round 2's regression, for
+comparison, read **734,003,200 bytes (2.7x the cap) with the server still pushing and
+no bound at all** under the `updated`-only trigger this replaced. WHICH INSTRUMENT
+CARRIES THE CHECK is what round 3 changed: the disk poller used to be the assertion's
+premise (`crossedAt > 0`), so a starved Node process could fail the case without the
+code being wrong — two runs of one head went FAIL then PASS, and QA's own 5 ms poller
+measured an effective 19-33 ms tick on this box. A child process does not fix that
+(the starvation is machine-wide rather than the rig's own event loop), so the check
+asserts the host's reading at cancel and the poller's agreement, and reports the
+poller's tick gap, the write's duration and the server's pushed bytes beside them.
 
 **The app is launched with `--use-mock-keychain --password-store=basic`**, through
 `withMockKeychain` from `scripts/chrome-keychain.mjs`. Both are load-bearing here:
@@ -113,8 +139,11 @@ site by whether the command says `chrome`; the Electron rigs are outside its rea
 **What these frames do NOT show, said rather than implied:** a real `DeepSeek`
 receipts page behind a login (the rig drives a local fixture server, which is the
 reproducible half of that case — §12.1's E1 names the live site as BLOCKED without
-the operator's paired profile); the window itself (the run is headless by design,
-so the pixels come from the app photographing itself rather than from the
-desktop); and the row at the app's 800px MINIMUM window, which is committed as the
-`browser-file-transfer-row/*` story `LongNameAtMinimumWindow` instead — a rendered
-frame of the row at that width, but a decorator rather than the whole app.
+the operator's paired profile); and the window itself (the run is headless by design,
+so the pixels come from the app photographing itself rather than from the desktop).
+The app's MINIMUM window is here from round 3 on, as `09`, with the caveat its own
+row states: the width is pinned by the emulation domain rather than by resizing a
+window, because this Electron's CDP exposes no window bounds. The
+`browser-file-transfer-row/*` story `LongNameAtMinimumWindow` renders the same width
+against a decorator, which is where that state lived before it had a frame of its own
+— a rendered row, but not the app.

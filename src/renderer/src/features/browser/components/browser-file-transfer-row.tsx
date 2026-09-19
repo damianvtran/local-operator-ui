@@ -40,8 +40,9 @@ import type {
  * construction, and at the app's minimum window the consequence at the END of that
  * sentence is the first thing `truncate` eats. So the note carries the RULE and its
  * numbers, and this component writes the human sentence from them: the name and the
- * rule are the parts allowed to elide, and the consequence is `shrink-0` so it
- * never does. What must not happen is paraphrase — every clause below is the host's
+ * rule are the parts allowed to elide — the name yielding first, and the rule only
+ * past its `24ch` floor, so the reason survives the narrowest window (review round
+ * 3, D14) — and the consequence is `shrink-0` so it never does. What must not happen is paraphrase — every clause below is the host's
  * own rule in the host's own words, minus the `refused:` prefix and the backticks
  * the tool result carries (deviation 5).
  *
@@ -133,6 +134,9 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	const sending = !active && latest?.outcome === "sent";
 	const direction = active ? "download" : (latest?.direction ?? "download");
 	const name = active?.name ?? latest?.name ?? "";
+	// D14: one string, rendered AND carried as the rule span's `title`, so the
+	// clause a narrow row clips is still recoverable from the span itself.
+	const rule = refusing ? ruleCopy(latest?.refusal ?? null) : "";
 	// WHOSE DECISION THIS IS, when it is not the tab on screen. `null` means no tab is
 	// active, which is not the same as "another tab" — there is nothing for the row to
 	// contradict, so it says nothing.
@@ -215,15 +219,40 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// and that clause is the only statement of WHY the file was refused — so
 				// clipping it to a fragment costs the sentence its reason. The saved branch
 				// already caps its own name (`max-w-[32ch] shrink-0 truncate`) so the path keeps
-				// its room; the refusal now does the same, which lets a long name shorten the
-				// reason without truncating it to nothing.
+				// its room; the refusal caps its own for the same reason.
+				//
+				// AND THE NAME IS THE SPAN THAT YIELDS (design round 3, D14). The cap on its
+				// own was an ABSOLUTE one: `max-w-[32ch] shrink-0` measured 237.5 logical px at
+				// BOTH the specimen's width and the app's default window, so every px of
+				// narrowing was taken by the rule span — 168 px down to 22 px, reading `is …`.
+				// The rule is the only statement of WHY, so the reason is the protected half
+				// now, in the specimen design round 3 measured: `min(24ch,50%)` floors it at
+				// 194.8 px there — more than the 180 px clause it renders — while the name
+				// yields (it carries `shrink`, and it yields FIRST rather than not at all: its
+				// own `min(6ch,20%)` floor is what stops a squeezed row from dropping the name
+				// to zero width, which is a state that reads as a layout bug rather than as a
+				// clip). The whole rule rides the span's own `title` (the vehicle D17 is about;
+				// it is stated here because a clipped rule is otherwise unrecoverable).
+				//
+				// WHY BOTH SHARES ARE PROPORTIONAL RATHER THAN `32ch`/`24ch` ALONE (measured on
+				// the app at its minimum window, `G8c`). The specimen is not the tightest case
+				// this row has to survive: the app's own 800 px window spends ~248 px of it on
+				// the navigation rail, so the strip's paragraph there measures a fraction of the
+				// specimen's — the rig read it at 269 px, where the label (`Download refused —`,
+				// 125 px), the consequence (`Nothing was saved.`, 118 px) and the age (58 px)
+				// already exceed it between them, so no division of the name and the rule can
+				// put that sentence on one line there. An absolute floor would paint the reason
+				// further past the row's own controls; a proportional one keeps the reason at
+				// least as much room as the name at every width, and leaves the rest to the
+				// layout problem that state actually has (a sentence too long for the row, which
+				// is the design round's to rearrange, not this flex row's).
 				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink">
 					<span className="shrink-0">Download refused —</span>
-					<span className="max-w-[32ch] shrink-0 truncate font-mono text-mono-sm">
+					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
 						{name}
 					</span>
-					<span className="min-w-0 truncate">
-						{ruleCopy(latest?.refusal ?? null)}
+					<span className="min-w-[min(24ch,50%)] truncate" title={rule}>
+						{rule}
 					</span>
 					{latest && (
 						<span className="shrink-0">
