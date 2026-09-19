@@ -166,11 +166,28 @@ export interface TransferNoteView {
 	tabId: number;
 	/** Which rule refused it, and the numbers the row's sentence needs. */
 	refusal: TransferRefusalView | null;
+	/** Who owned the tab this decision was taken on, as the HOST recorded it (review
+	 * round 2, U10). The renderer resolves the tab's live record when it has one, and
+	 * falls back to this when it does not: a tab can be CLOSED while its note is
+	 * still on screen, and the marker must not then name a tab that is gone. `null`
+	 * is "the host could not say", which renders the generic fallback rather than a
+	 * guess. */
+	ownerKind: "user" | "agent" | null;
 }
 
 /** The rule a refusal came from, and its own units. */
 export interface TransferRefusalView {
-	rule: "executable" | "limit" | "count" | "write" | "interrupted" | "deadline";
+	rule:
+		| "executable"
+		| "limit"
+		| "count"
+		| "write"
+		| "interrupted"
+		| "deadline"
+		// The runtime cap: a write that was already on disk when it was cancelled, so
+		// the row says the partial was discarded rather than that nothing was saved
+		// (review round 2, R2-5).
+		| "overrun";
 	/** The file's own size in bytes, 0 where unknown. */
 	bytes: number;
 	/** The cap that fired: bytes for `limit`, files for `count`, seconds for
@@ -202,6 +219,11 @@ export interface TransferActivityView {
 	dir: string | null;
 	notes: TransferNoteView[];
 	activeTabId: number | null;
+	/** The newest file saved into the download directory, and how many have been saved
+	 * in this app run, for the durable control's own label (review round 2, U12: once
+	 * the row has retired, the folder control is the only thing on screen that knows
+	 * anything arrived). */
+	recent: { name: string; count: number } | null;
 }
 
 export type ConsentDecision = "once" | "session" | "site" | "domain" | "deny";

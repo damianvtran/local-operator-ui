@@ -48,10 +48,11 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
 	// starts the file) and `upload` names a file input on it, so both are authorized
-	// against that document on entry and again on the result. `download` IS in the
-	// NAVIGATING_ACTIONS set below (its own click can move the tab) and NOT in
-	// NAVIGATION_ACTIONS (the per-hop gate stays off for it); both set comments say
-	// why, and the pair is what replaced the single post-hoc check the round-1
+	// against that document on entry and again on the result. BOTH are in the
+	// NAVIGATING_ACTIONS set below — each reaches its own control by driving the page,
+	// and an auto-submitting form turns an attach into a navigation — and NEITHER is
+	// in NAVIGATION_ACTIONS (the per-hop gate stays off for both); the set comments
+	// say why, and the pair is what replaced the single post-hoc check the round-1
 	// review refused (M2).
 	"download",
 	"upload",
@@ -69,11 +70,30 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
  * branch, which refuses the answer with `reason: "changed"` — so the call was
  * refused with NO ORIGIN NAMED and the tab was left sitting on the document it
  * reached, fetched with the user's cookies.
+ *
+ * `upload` IS THE SAME CASE ON THE SIBLING VERB, and it is the round-2 review's
+ * R2-1: attaching files fires the input's `change` handler, and a form that
+ * submits itself from that handler — the standard "pick a file and it uploads"
+ * shape, and the shape PR A's QA measured failing with Chromium's raw `-32000` —
+ * navigates in the same tick. It was left in `DOCUMENT_SCOPED` alone, so an
+ * upload that navigated got `reason: "changed"`, no origin named, and no restore,
+ * which is exactly the control round 1 refused for `download` ("a control that
+ * protects the model's report and not the user's browser"). Membership here is
+ * what makes the reached document judged by `documentAllowed` instead: an
+ * APPROVED landing passes and an UNAPPROVED one refuses WITH the origin named and
+ * the landing reverted.
+ *
+ * NEITHER IS IN `NAVIGATION_ACTIONS` BELOW, and the reason is the same for both:
+ * the per-hop gate decides DOCUMENT-stage requests, and it would refuse the
+ * cross-origin URL a download is routinely fetched from (a signed S3 or CDN link)
+ * and fail the page's own subresource loads under an upload for no consent gain.
+ * See that set's own comment.
  */
 const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"download",
+	"upload",
 ]);
 
 /**
@@ -104,6 +124,13 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * result came from is authorized and the reached origin is NAMED in the refusal,
  * and a refused landing is REVERTED to the document the call entered on rather
  * than left on screen.
+ *
+ * `upload` IS THE SECOND SUCH ACTION, on the same reasoning (review round 2,
+ * R2-1): its own work does not fetch a document — it hands the browser process
+ * local paths — and the navigation an auto-submitting form performs is the PAGE's,
+ * which is judged by the same pair. Arming `Fetch.enable` around an attach would
+ * intercept that form's own POST and its subresources for no consent gain, which
+ * is the side effect this set exists to avoid.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
 
@@ -405,13 +432,14 @@ export class BrowserHost implements BrowserActionContext {
 			) {
 				this.registry.bumpEpoch(record.tabId);
 				// A REFUSED LANDING IS PUT BACK, not merely refused (review round 1, M2).
-				// `download` is the case this exists for: its click cannot be gated
-				// pre-fetch (see `NAVIGATION_ACTIONS`), so without this the page the click
-				// reached stays rendered in the view the user is watching — cookies sent,
-				// body fetched — and the only thing that refused was the model's sentence.
-				// A `click`/`type` hop is blocked by the gate before it is fetched, so for
-				// those this is unreachable-except-by-race and harmless; it is written once,
-				// as the rule for an action that can move the tab.
+				// `download` and `upload` are the cases this exists for: their own work is
+				// not gated pre-fetch (see `NAVIGATION_ACTIONS`), so without this the page
+				// the click or the form's own submit reached stays rendered in the view the
+				// user is watching — cookies sent, body fetched — and the only thing that
+				// refused was the model's sentence. A `click`/`type` hop is blocked by the
+				// gate before it is fetched, so for those this is unreachable-except-by-race
+				// and harmless; it is written once, as the rule for an action that can move
+				// the tab.
 				if (NAVIGATING_ACTIONS.has(method) && url.href !== entryUrl) {
 					this.restoreApprovedDocument(record, entryUrl);
 				}

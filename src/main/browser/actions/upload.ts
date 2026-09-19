@@ -38,6 +38,16 @@ import { resolveNode } from "./input";
  * name-and-size against the files on disk, and a mismatch fails the call naming
  * BOTH sides, because "the input holds nothing" and "the input holds something
  * else" have different remedies.
+ *
+ * A READ THAT COULD NOT BE TAKEN IS THE OTHER CASE, AND IT IS NOT A FAILURE (review
+ * round 2, R2-2). A page that submits itself from the change handler — or replaces
+ * its own document — destroys the execution context the read-back runs in, in the
+ * same tick as the attach: so the attach happened and the bytes went while the DOM
+ * can no longer be asked. That is reported as an UNVERIFIED attach (facts from the
+ * paths, plus a `readback` marker the harness turns into `verified: false` and an
+ * audit row) rather than as an error, because "the call failed" over bytes that left
+ * is what makes a model re-send them. The extension host states the same rule in the
+ * same words; the two hosts must classify the same failure the same way.
  */
 
 /** What the DOM holds after the attach, read back over the same session. */
@@ -54,15 +64,88 @@ interface InputReadBack {
  * `DOM.resolveNode` already gave us the object. `returnByValue` keeps the answer
  * to names and sizes — never the file's contents, which this host has no business
  * reading through the page. */
+/** Read `input.files` from the resolved node.
+ *
+ * A function on the NODE rather than a `document.querySelector` in the page: the
+ * target may be a snapshot ref (`e5`), which no CSS selector can address, and
+ * `DOM.resolveNode` already gave us the object. `returnByValue` keeps the answer
+ * to names and sizes — never the file's contents, which this host has no business
+ * reading through the page.
+ *
+ * READ THROUGH THE PROTOTYPE'S OWN GETTER, NEVER `this.files`. The page is the
+ * adversary this read-back exists for, and `files` is a property a page can shadow
+ * with `Object.defineProperty` to answer with anything — including a count that
+ * matches what was attached for an input the page actually ignored, which is the
+ * one failure this comparison is here to catch. The extension host reads the same
+ * way for the same reason (`extension/src/commands/upload.ts`), and the two hosts
+ * have to agree on what a read-back MEANS rather than merely on its shape. */
 const READ_FILES_FUNCTION = `function () {
-  if (!("files" in this) || this.files === null) return null;
-  const files = Array.from(this.files);
-  return { count: files.length, names: files.map((f) => f.name), sizes: files.map((f) => f.size) };
+  if (!("files" in this)) return null;
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files");
+  let files;
+  try { files = descriptor && descriptor.get ? descriptor.get.call(this) : this.files; }
+  catch (err) { return null; }
+  if (!files) return null;
+  const list = Array.from(files);
+  return { count: list.length, names: list.map((f) => f.name), sizes: list.map((f) => f.size) };
 }`;
 
 /** What a selector names, when it names something that is not a file input. */
 const NOT_A_FILE_INPUT =
 	'that selector is not a file input; snapshot the page and use the element that <input type="file"> names';
+
+/** CDP failures that mean the page MOVED ON under the read-back.
+ *
+ * Used for WORDING only, never as the gate (review round 2, R2-2): every failed
+ * read-back is reported as an UNVERIFIED attach — see the `try` in `upload` — and
+ * this list only decides which sentence the marker carries. Matched on the MESSAGE
+ * because `-32000` is CDP's generic "something went wrong", and the strings are the
+ * concrete ones Chromium returns.
+ *
+ * WHY IT IS TWO LISTS RATHER THAN THE EXTENSION HOST'S ONE (which this mirrors
+ * otherwise): the extension words every read failure as "the page navigated out of
+ * the change event", and the execution context can also be destroyed by a document
+ * REPLACEMENT that is not a navigation at all (`document.open()`, which a page can
+ * do from its own change handler) — and a node the page detached produces a third.
+ * The CLASSIFICATION is identical in all three cases, which is what the two hosts
+ * must agree on; the sentence names the mechanism the host actually observed, so a
+ * model reading it is not told about a navigation that did not happen. */
+const CONTEXT_GONE = [
+	"Cannot find context with specified id",
+	"Cannot find execution context",
+	"Execution context was destroyed",
+	"Inspected target navigated or closed",
+];
+
+/** CDP failures that mean the NODE the read-back addressed is gone. */
+const NODE_GONE = [
+	"Node with given id does not belong to the document",
+	"No node with given id found",
+	"Could not find node with given id",
+];
+
+function isContextGone(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return CONTEXT_GONE.some((marker) => message.includes(marker));
+}
+
+function isNodeGone(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return NODE_GONE.some((marker) => message.includes(marker));
+}
+
+/** One readable line for an error that failed a READ, for the note and the audit
+ * row. Trimmed to a single line and capped: the text comes from Chromium, lands in
+ * the operator's transcript and in the audit file, and a multi-line CDP payload
+ * there would push the rest of the row out of sight. The harness sanitises and
+ * caps it again on its own side (`browser_files.readback_label`), because a host
+ * must not be trusted for the length of a string it chose. */
+function describeError(error: unknown): string {
+	const message = (error instanceof Error ? error.message : String(error))
+		.replace(/\s+/g, " ")
+		.trim();
+	return message.slice(0, 120) || "no detail";
+}
 
 export async function upload(
 	ctx: BrowserActionContext,
@@ -107,21 +190,49 @@ export async function upload(
 			});
 		});
 
-	const held = await readBack(ctx, record, node.objectId);
-	if (!held) {
-		throw new BrowserHostError("element_not_found", NOT_A_FILE_INPUT, {
-			selector,
-			accept,
-		});
+	// THE READ-BACK IS MANDATORY, BUT A READ THAT COULD NOT BE TAKEN IS NOT A FAILED
+	// ATTACH (review round 2, R2-2, and the same rule the extension host states).
+	// A page that submits itself from the change handler navigates in the same tick
+	// as the attach, which destroys the execution context this read runs in — the
+	// attach has already RESOLVED and the bytes have already gone. Letting the raw
+	// CDP error escape said "the call failed" about bytes that left, with no
+	// `accepted` facts, no note and no audit row: the model cannot learn the files
+	// were sent (so it retries and double-sends) and a real egress leaves no trail.
+	// So the calls in this `try` are READS, and a read that failed is evidence of
+	// nothing — what the read-back exists to catch is a MISMATCH, found by a read
+	// that SUCCEEDED, and every mismatch still throws below.
+	let held: InputReadBack | null = null;
+	let readback = "";
+	try {
+		held = await readBack(ctx, record, node.objectId);
+	} catch (error) {
+		readback = isContextGone(error)
+			? "unavailable — the page replaced its document from the change event before the input could be read back"
+			: isNodeGone(error)
+				? "unavailable — the input was replaced or removed before it could be read back"
+				: `unavailable — the read-back failed (${describeError(error)})`;
 	}
-	assertHolds(paths, held, selector, accept);
+	if (!readback) {
+		if (!held) {
+			throw new BrowserHostError("element_not_found", NOT_A_FILE_INPUT, {
+				selector,
+				accept,
+			});
+		}
+		assertHolds(paths, held, selector, accept);
+	}
 
+	// ONE TAIL FOR BOTH OUTCOMES, so the strip's line and the tool result are built
+	// from the same facts however the read went: a second copy is how the row and
+	// the answer start describing one attach differently. The FACTS are the paths
+	// this call was handed (`bytes` is this host's own stat, so the harness's
+	// comparison against its re-stat still holds and still catches a mismatch — the
+	// marker is what says the DOM was not asked, never a licence to skip the check).
 	ctx.registry.touch(record);
 	// THE UPLOAD'S OWN LINE IN THE STRIP (review round 1, U3). Recorded HERE rather
 	// than by the caller because this is the only place that knows both halves the
-	// row needs — the names the DOM actually took (read back above, never the ones
-	// we were handed) and the page they went to — and because a note written
-	// anywhere else would be a second account of a transfer.
+	// row needs — the names the call attached and the page they went to — and
+	// because a note written anywhere else would be a second account of a transfer.
 	const facts = paths.map(factOf);
 	const page = pageOf(record.view);
 	ctx.downloads.noteUpload(record.tabId, facts, siteOf(page.url));
@@ -132,10 +243,15 @@ export async function upload(
 		// same shape.
 		inputs: [selector],
 		accepted: facts,
+		// The host's own word about its read: "" when it completed, a sentence when it
+		// could not. The harness reports the attach as UNVERIFIED when this is set
+		// (`tools/builtin.py`: `verified = count >= 0 and not readback_reported`) rather
+		// than turning a completed egress into an error.
+		readback,
 		// The page's own identity, as every other action reports it: the harness's audit
 		// row for this call records the origin the files went TO, and a host that answered
 		// without it would leave that row naming nowhere.
-		...pageOf(record.view),
+		...page,
 	};
 }
 

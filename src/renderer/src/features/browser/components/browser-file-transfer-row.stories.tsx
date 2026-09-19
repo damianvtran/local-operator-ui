@@ -27,17 +27,34 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 const DIR =
 	"/Users/someone/Library/Application Support/Local Operator/browser/downloads/20260919-120000-session1";
 
+/** WHEN THESE DECISIONS HAPPENED, RELATIVE TO THE RENDER (review round 2, D10).
+ *
+ * WHY IT IS NOT A CONSTANT ANY MORE, and this is the finding rather than a tidy-up:
+ * every note used to carry a frozen `at` (`1_789_000_000_000` = 2026-09-10), and the
+ * TTL this change added makes the component return `null` once `now - at` passes it
+ * (2 min for a decided transfer, 5 for a refusal). So on the round-2 head EVERY
+ * decided specimen painted an empty ground — `--downloading` was the only one with
+ * no note to gate on — and the 800px minimum-window state that D3's fix rests on had
+ * no rendered artifact anywhere: every committed app frame is the 1380px window and
+ * the story that was to cover 800px was invisible. A relative `at` is also what keeps
+ * the specimens alive as the calendar moves past them.
+ *
+ * Five seconds back, so the row reads `just now` — the age the row composes itself
+ * (U7/U9) — rather than sitting exactly on the boundary of the TTL. */
+const AT = Date.now() - 5_000;
+
 const SAVED: TransferNoteView = {
 	name: "receipt-1.pdf",
 	count: 1,
 	dir: DIR,
 	outcome: "saved",
 	reason: "",
-	at: 1_789_000_000_000,
+	at: AT,
 	direction: "download",
 	site: "",
 	refusal: null,
 	tabId: 7,
+	ownerKind: "user",
 };
 
 const REFUSED: TransferNoteView = {
@@ -47,11 +64,12 @@ const REFUSED: TransferNoteView = {
 	outcome: "refused",
 	reason:
 		"refused: `setup.exe` is an executable/script type; nothing was saved",
-	at: 1_789_000_000_001,
+	at: AT,
 	direction: "download",
 	site: "",
 	refusal: { rule: "executable", bytes: 0, limit: 0 },
 	tabId: 7,
+	ownerKind: "user",
 };
 
 const OVER_CAP: TransferNoteView = {
@@ -61,11 +79,32 @@ const OVER_CAP: TransferNoteView = {
 	outcome: "refused",
 	reason:
 		"refused: `huge.pdf` is over the 256 MiB per-file download limit; nothing was saved (it is 268435457 bytes)",
-	at: 1_789_000_000_002,
+	at: AT,
 	direction: "download",
 	site: "",
 	refusal: { rule: "limit", bytes: 268_435_457, limit: 268_435_456 },
 	tabId: 7,
+	ownerKind: "user",
+};
+
+/** THE RUNTIME CAP, which is its own rule (review round 2, R2-5): a write that was
+ * already on disk when the limit was passed and was cancelled, so the row says the
+ * partial was discarded rather than that nothing was saved. Its own specimen
+ * because the copy differs from `OverCap`'s by exactly the clause this rule exists
+ * to get right. */
+const OVERRUN: TransferNoteView = {
+	name: "endless.bin",
+	count: 1,
+	dir: DIR,
+	outcome: "refused",
+	reason:
+		"refused: `endless.bin` went over the 256 MiB per-file download limit while it was being written; it was cancelled and the partial file was discarded",
+	at: AT,
+	direction: "download",
+	site: "",
+	refusal: { rule: "overrun", bytes: 268_435_457, limit: 268_435_456 },
+	tabId: 7,
+	ownerKind: "user",
 };
 
 /** The state the round-1 walk found with nothing on screen at all (U3). */
@@ -75,11 +114,12 @@ const SENT: TransferNoteView = {
 	dir: "",
 	outcome: "sent",
 	reason: "",
-	at: 1_789_000_000_003,
+	at: AT,
 	direction: "upload",
 	site: "forms.example",
 	refusal: null,
 	tabId: 7,
+	ownerKind: "user",
 };
 
 /** A long name at the narrow window, which is the shape D3 asked to see: the name
@@ -91,17 +131,24 @@ const LONG_NAME: TransferNoteView = {
 	outcome: "refused",
 	reason:
 		"refused: `quarterly-financial-statements-and-notes-2026-q3-final-v7.pdf` is an executable/script type; nothing was saved",
-	at: 1_789_000_000_004,
+	at: AT,
 	direction: "download",
 	site: "",
 	refusal: { rule: "executable", bytes: 0, limit: 0 },
 	tabId: 7,
+	ownerKind: "user",
 };
 
 const activity = (
 	notes: TransferNoteView[],
 	active: ActiveTransferView | null = null,
-): TransferActivityView => ({ active, dir: DIR, notes, activeTabId: 7 });
+): TransferActivityView => ({
+	active,
+	dir: DIR,
+	notes,
+	activeTabId: 7,
+	recent: null,
+});
 
 const meta = {
 	title: "Browser/File transfer row",
@@ -154,6 +201,13 @@ export const Refused: Story = {
  * size is not restated beside it (D1). */
 export const OverCap: Story = {
 	args: { transfers: activity([OVER_CAP]), onReveal: () => {} },
+};
+
+/** The RUNTIME cap's copy (review round 2, R2-5): the same limit, reached while the
+ * file was being written, so the consequence clause is the discard rather than
+ * "Nothing was saved." */
+export const OverCapWhileWriting: Story = {
+	args: { transfers: activity([OVERRUN]), onReveal: () => {} },
 };
 
 /** The upload, which had no surface at all before this round (U3). */
