@@ -635,7 +635,10 @@ export type ThemePalette = {
 	 *   that survives when the ink cannot spend a second hue: `read` draws the page
 	 *   (`tool-glyphs.ts`'s `FileText`) while the coordination family draws its own
 	 *   marks (`Users` for `task`/`agent`, `Send`, `Clock`, `ListChecks`, and the
-	 *   wrench the TUI itself gives `hub`/`ask`), and `mcp__*` draws the plug. A
+	 *   wrench the TUI itself gives `hub`/`ask` — the SAME wrench `tool-glyphs.ts`
+	 *   gives any tool it has no entry for, so `team` and an unknown tool wear it
+	 *   too: on a pinned palette a `hub` row and an unknown-tool row are the same
+	 *   ink AND the same shape), and `mcp__*` draws the plug. A
 	 *   pinned palette should send the reader to where the answer IS — the row's
 	 *   shape — rather than leave the note saying only that a floor is waived.
 	 * - **ΔE00 >= 8 from `info`, at the role's decorative sites** — the reduced
