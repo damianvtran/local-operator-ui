@@ -2984,6 +2984,17 @@ export const STORIES = [
 	// the running bundle was already broken and no update was in play, so the copy
 	// has to describe that instead of an update that never happened (review R2).
 	["common-updatenotification--install-blocked-at-startup", 1280, 900],
+	/*
+	 * The OTHER refusal, and the one the 0.29.6 incident produced: the artifact the
+	 * updater downloaded is signed, notarized, `codesign --verify`-clean and
+	 * `spctl`-accepted, and macOS refuses to spawn it because it claims the
+	 * restricted `keychain-access-groups` entitlement with no provisioning profile
+	 * to authorize it (amfid -413, SIGKILL at exec). The panel is the seal
+	 * refusal's shape on purpose - same subject (an update that will not be
+	 * installed), same remedy - so what a reader compares across the two frames is
+	 * the heading, not the layout, and the mechanism stays in the details block.
+	 */
+	["common-updatenotification--install-blocked-cannot-launch", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the
