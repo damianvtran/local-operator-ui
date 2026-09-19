@@ -114,3 +114,48 @@ test("the panel uses these sentences rather than a copy of them", async () => {
 		/Opening it while the update is installing cancels the install\./,
 	);
 });
+
+/**
+ * One sentence names the step, and it is the current attempt's.
+ *
+ * WHAT WAS WRONG (UX U8, measured in round 2 by rendering the real component):
+ * pressing Install now rendered the same sentence twice - the button's generic
+ * "Preparing to install..." beside the status line's "Preparing to install...",
+ * differing only in the ellipsis glyph - and with a phase set the pair stayed, so
+ * the line never replaced the label the code comment claimed it replaced. The
+ * second half is the stale phase: `installPhase` outlives a refused attempt, and
+ * a second press rendered the PREVIOUS attempt's last step until the new event
+ * arrived, which is the one thing the copy module's own rule forbids (an unknown
+ * step must not claim to be a known one).
+ */
+test("the panel names the current step once, and resets it for the next attempt", async () => {
+	const source = await readFile(COMPONENT, "utf8");
+	// The line is the carrier, and it is the element the platform treats as a live
+	// region for the result of an action.
+	assert.match(
+		source,
+		/<output className="mt-2 block text-body text-ink-muted">\s*\{installPhaseCopy\(installPhase\)\}/,
+	);
+	// The button does NOT restate it while the install runs: its label is stable,
+	// which is what removes the duplicate - and what stops it widening at the
+	// instant of the press (UX U12's reflow, half of it, for free).
+	assert.doesNotMatch(
+		source,
+		/installing \? "Preparing to install\.\.\." : "Install now"/,
+	);
+	assert.match(source, /Install now\n\s*<\/Button>/);
+
+	// Every attempt starts from no phase: the state survives a refusal, and a
+	// second press must not name the previous attempt's step while the new one is
+	// only an IPC hop away. The reset is asserted BEFORE the invoke, because after
+	// it the app is on its way out and nothing there reaches a renderer.
+	const start = source.indexOf("const installUpdate = useCallback(");
+	const installUpdate = source.slice(start, source.indexOf("}, []);", start));
+	assert.ok(start > 0, "installUpdate is not in the component any more");
+	assert.match(installUpdate, /setInstallPhase\(null\)/);
+	assert.ok(
+		installUpdate.indexOf("setInstallPhase(null)") <
+			installUpdate.indexOf("quitAndInstall()"),
+		"the phase is cleared after the invoke, so a stale step can still be rendered",
+	);
+});
