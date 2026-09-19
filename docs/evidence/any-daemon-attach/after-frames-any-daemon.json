@@ -2,13 +2,17 @@
   "label": "after",
   "scenes": {
     "any-daemon": {
+      "configured": {
+        "port": 46140,
+        "url": "http://127.0.0.1:46140"
+      },
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "Q0HcxNb8ZKyalzygm8ma98NXMy8PlgX_gg09zda-FMs",
-        "instance_id": "xgFtIVZLgYKn3643jc-LjPaafVKMf_4j_bDQeVU8HGk",
-        "version": "0.59.8",
-        "pid": 56360
+        "claim_key": "XBM-ENGBkrL0KkKo8oSNPwLOEIX-pcHVDbZuj2uYxkM",
+        "instance_id": "ry7yX09zWho73VQIRBrAXsa5dQgu9_F31WMQqAG_8Vw",
+        "version": "0.59.9",
+        "pid": 64499
       },
       "claimInDaemonLog": true,
       "page": {
@@ -20,10 +24,10 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 56360,
+          "pid": 64499,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 56360, v0.59.8).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 64499, v0.59.9).",
           "pairing": {
             "available": true,
             "cause": null
@@ -188,7 +192,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 56360,
+            "pid": 64499,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -350,16 +354,16 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 58058,
+            "pid": 66997,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 58058, v0.59.8).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 66997, v0.59.9).",
             "pairing": {
               "available": true,
               "cause": null
             }
           },
-          "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back… Not connected to the backend — showing the last known state.",
+          "sidebar": "Chats Agents No agents yet Six built-in agents are ready to install — architect, coder, designer, manager, reviewer and scout. You can edit them once installed. Install all built-in agents Create agent Teams Create team All chats 1 1 New chat ⌘ + N Active chats Nothing running right now. Previous chats 1 1 Recent [row 0000] written conversation ever this ever scrolls back…",
           "pane": {
             "sentence": "Choose an agent or team",
             "chain": [

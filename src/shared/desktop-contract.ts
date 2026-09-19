@@ -1784,9 +1784,11 @@ export function desktopRefusalCodeForStatus(
 	/*
 	 * A 409 is deliberately NOT read this way. A conflict about the RESOURCE (a
 	 * profile repair, a store that is busy) answers 409 on the same routes as a
-	 * conflict about the PLANE, and only the answering process can say which - which
-	 * is what its declared `pairing.stale` is for. Measured: reading the status
-	 * alone ate a profile conflict's own category.
+	 * conflict about the PLANE, and only the answering process can say which: a
+	 * declared code is what carries that answer. Measured: reading the status alone
+	 * ate a profile conflict's own category. (This comment used to name a
+	 * `pairing.stale` code as the discriminator; no such code exists — it was
+	 * removed for having no producer.)
 	 */
 	return undefined;
 }

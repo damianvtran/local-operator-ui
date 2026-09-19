@@ -9,7 +9,7 @@
       "page": {
         "viewport": "1380x868",
         "dpr": 2,
-        "banner": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. A local daemon may still be running, but could not be attached. Waiting without starting a duplicate. Retry",
+        "banner": "Not connected to a Local Operator server. A local daemon may still be running, but could not be attached. Waiting without starting a duplicate.",
         "seeded_row_visible": true,
         "composer_present": false,
         "snapshot": {
@@ -30,86 +30,62 @@
           "chain": [
             {
               "tag": "p",
-              "cls": "text-center",
-              "w": 832,
-              "h": 43,
-              "y": 469,
+              "cls": "text-body-sm",
+              "w": 1062,
+              "h": 20,
+              "y": 80,
               "display": "block",
               "overflow": "visible",
-              "height": "43.3906px",
+              "height": "19.5px",
               "minHeight": "auto",
               "visible": true
             },
             {
               "tag": "div",
-              "cls": "flex h-full min-h-0 flex-1 flex-col items-center",
-              "w": 880,
-              "h": 756,
-              "y": 113,
+              "cls": "flex w-full items-center justify-between gap-4",
+              "w": 1078,
+              "h": 20,
+              "y": 80,
               "display": "flex",
               "overflow": "visible",
-              "height": "755.5px",
-              "minHeight": "0px",
+              "height": "19.5px",
+              "minHeight": "auto",
               "visible": true
             },
             {
               "tag": "div",
-              "cls": "flex h-full min-h-0 flex-col",
-              "w": 880,
-              "h": 756,
-              "y": 113,
+              "cls": "flex min-w-0 flex-col gap-1",
+              "w": 1078,
+              "h": 20,
+              "y": 80,
               "display": "flex",
               "overflow": "visible",
-              "height": "755.5px",
-              "minHeight": "0px",
-              "visible": true
-            },
-            {
-              "tag": "div",
-              "cls": "h-full grow overflow-hidden",
-              "w": 880,
-              "h": 756,
-              "y": 113,
-              "display": "block",
-              "overflow": "hidden",
-              "height": "755.5px",
+              "height": "19.5px",
               "minHeight": "auto",
               "visible": true
             },
             {
               "tag": "div",
-              "cls": "flex h-full w-full overflow-hidden",
-              "w": 1160,
-              "h": 756,
-              "y": 113,
-              "display": "flex",
-              "overflow": "hidden",
-              "height": "755.5px",
-              "minHeight": "auto",
-              "visible": true
-            },
-            {
-              "tag": "main",
-              "cls": "flex grow flex-col overflow-hidden",
-              "w": 1160,
-              "h": 756,
-              "y": 113,
-              "display": "flex",
-              "overflow": "hidden",
-              "height": "755.5px",
-              "minHeight": "auto",
-              "visible": true
-            },
-            {
-              "tag": "div",
-              "cls": "flex min-h-0 flex-1 overflow-hidden",
+              "cls": "flex w-full gap-3 border p-3 text-body-sm border",
               "w": 1380,
-              "h": 756,
-              "y": 113,
+              "h": 45,
+              "y": 68,
               "display": "flex",
-              "overflow": "hidden",
-              "height": "755.5px",
+              "overflow": "visible",
+              "height": "44.5px",
               "minHeight": "0px",
+              "visible": true
+            },
+            {
+              "tag": "div",
+              "cls": "w-full",
+              "w": 1380,
+              "h": 45,
+              "y": 68,
+              "display": "block",
+              "overflow": "visible",
+              "height": "44.5px",
+              "minHeight": "auto",
               "visible": true
             },
             {
@@ -150,11 +126,10 @@
             }
           ]
         },
-        "band": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. A local daemon may still be running, but could not be attached. Waiting without starting a duplicate. Retry",
+        "band": "Not connected to a Local Operator server. A local daemon may still be running, but could not be attached. Waiting without starting a duplicate.",
         "first_lines": [
-          "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own.",
+          "Not connected to a Local Operator server.",
           "A local daemon may still be running, but could not be attached. Waiting without starting a duplicate.",
-          "Retry",
           "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management.",
           "Local Operator",
           "Chat",
@@ -165,7 +140,8 @@
           "Settings",
           "Search",
           "⌘",
-          "+"
+          "+",
+          "K"
         ]
       },
       "desktopRoutesServed": 0,

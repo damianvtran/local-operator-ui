@@ -348,7 +348,11 @@ the photographed line. Fix, following `desktop-stream-notice.ts` verbatim in sha
 
 - the pairing-family refusals (a 401/403/503 whose op maps to a `/v1/desktop/`
   route) are classified into a machine code — `pairing.refused`,
-  `pairing.plane-closed`, `pairing.stale` — carried on `DesktopControlError.code`
+  `pairing.plane-closed`, `pairing.no-credential`, `pairing.stale` — carried on
+  `DesktopControlError.code`. (Corrected by review round 2: `pairing.stale` was
+  removed for having no producer; the live vocabulary is
+  `pairing.no-credential`, `pairing.refused`, `pairing.plane-closed` and
+  `transport.failed`.)
   (the field already exists, `desktop-api.ts:196`) rather than smuggled in
   `message`;
 - one translator composes the product sentence from the code, and the daemon's
@@ -585,7 +589,7 @@ place to look is the claim path, not the copy.
 
 ---
 
-## 11. Corrected and added by review round 1
+## 12. Corrected and added by review round 1
 
 This section is the round's own record of where the design above was wrong or
 incomplete. The text above is left as it was written; these entries govern.
