@@ -53,12 +53,17 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
+import { offerArchiveUndo } from "../archive-undo";
 import {
 	type ArchivePressRecord,
 	archivePressExpired,
 	archivePressOutcome,
 } from "../chat-archive-press";
-import { archiveControlLabel, visibleRows } from "../chat-archived";
+import {
+	archiveControlLabel,
+	archivedSearchWidened,
+	visibleRows,
+} from "../chat-archived";
 import {
 	type ArchiveView,
 	chatCountAnnouncement,
@@ -383,6 +388,48 @@ const builtinOfferSentence = (
 		names.length === 1 ? "it" : "them"
 	} once installed.`;
 };
+
+/**
+ * Focus the row that takes the place of a row that is about to leave the list.
+ *
+ * WHY THIS EXISTS: activating a row's archive control unmounts the control AND its
+ * row, so the browser's own focus handling drops the reader on `<body>` - the next
+ * Tab restarts at the top of the document, twelve stops from where they were (UX
+ * round 1, U5, and the same class of defect as U9 in the dialog). The app's
+ * discipline elsewhere is to hand focus to whatever took the place of the focused
+ * control; in a list, that is the row that slides up into the gap.
+ *
+ * Read from the DOM rather than from the list model on purpose: a row's position
+ * in the model is a section, a search result set or a group, which this handler
+ * cannot index, while the document order of `[data-chat-row]` IS the order the
+ * reader sees. The snapshot is taken at the press and filtered to what is still
+ * connected when the callback runs, so it is correct whether or not React has
+ * committed the removal yet: before the commit the pressed row is still connected
+ * and the successor is the element after it; after it the pressed row is gone and
+ * the first survivor past its index is that same element.
+ *
+ * Returns a callback rather than moving focus itself, because the caller only
+ * wants it moved when the write was ACCEPTED - a refused press leaves the row (and
+ * the reader) exactly where they were.
+ */
+function focusRowAfterRemoval(pressed: HTMLElement): () => void {
+	const rows = Array.from(
+		document.querySelectorAll<HTMLElement>("[data-chat-row]"),
+	);
+	const rowButton =
+		pressed.parentElement?.querySelector<HTMLElement>("[data-chat-row]") ??
+		null;
+	const index = rowButton ? rows.indexOf(rowButton) : -1;
+	return () => {
+		const live = rows
+			.map((element, position) => ({ element, position }))
+			.filter(({ element }) => element.isConnected);
+		const successor =
+			live.find(({ position }) => position > index)?.element ??
+			live.filter(({ position }) => position < index).at(-1)?.element;
+		successor?.focus();
+	};
+}
 
 export function ChatSidebar({
 	selectedConversation,
@@ -961,18 +1008,30 @@ export function ChatSidebar({
 	 *
 	 * FAIL-CLOSED MEANS NO AFFORDANCE AND NO PARTITION, not a disabled one: absent
 	 * `session_archive` this is false, the row mounts no second control, no row
-	 * carries a marker and `visibleRows` returns the page untouched - so the panel's
-	 * DOM and class set are byte-identical to the one that never knew about
-	 * archiving. A permanently reserved empty slot would cost every row width to
-	 * advertise a feature the user cannot get, which is the rule the pin slot is
-	 * written under.
+	 * carries a marker and `visibleRows` returns the page untouched. A permanently
+	 * reserved empty slot would cost every row width to advertise a feature the user
+	 * cannot get, which is the rule the pin slot is written under.
+	 *
+	 * WHAT THAT IS AND IS NOT, because the earlier wording overclaimed it: the rows
+	 * and the classes of a panel with the capability are the ones a panel without it
+	 * draws, up to the capability's own additions - but the DOM is NOT identical
+	 * when a conversation is archived, and the published measurement says so
+	 * (`docs/evidence/session-archive/README.md`): nothing is hidden without the
+	 * capability, so an archived conversation is LISTED here where an enabled panel
+	 * hides it, and the at-rest frame gains that row. What is byte-identical is the
+	 * 690x60 band around a live row, which is what the withdrawn pair is compared
+	 * for.
 	 */
 	const archiveEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"session_archive",
 	);
 	/*
-	 * The `Include archived` control, scoped to ONE search.
+	 * The `Include archived` control, REMEMBERED for the session but in force only
+	 * while a query is - `archivedSearchWidened` is the rule and its docstring
+	 * carries the reasoning (UX round 1, U8: clearing the box used to disarm the
+	 * widening silently, so a user who cleared and retyped lost the archived result
+	 * they had just found, with nothing saying why).
 	 *
 	 * Local state rather than the store, for the reason the query itself is local:
 	 * it is a property of the box, not of the data, and it is deliberately not
@@ -980,15 +1039,9 @@ export function ChatSidebar({
 	 * they chose to include once, days ago.
 	 */
 	const [includeArchived, setIncludeArchived] = useState(false);
-	/*
-	 * Cleared with the query, because the control is only on screen while a query
-	 * exists: leaving it set would arm the NEXT search with a filter the user can no
-	 * longer see, which is a hidden state rather than a remembered one.
-	 */
-	useEffect(() => {
-		if (!query.trim()) setIncludeArchived(false);
-	}, [query]);
+	const widened = archivedSearchWidened(includeArchived, query, archiveEnabled);
 	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
+	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
@@ -1005,8 +1058,17 @@ export function ChatSidebar({
 		return values;
 	}, [archiveFacts]);
 	const archiveView = useMemo<ArchiveView>(
-		() => ({ include: includeArchived, facts: archiveFactValues }),
-		[includeArchived, archiveFactValues],
+		() => ({
+			include: widened,
+			facts: archiveFactValues,
+			/*
+			 * The delete tombstones, as a SET because that is all the join asks: a
+			 * conversation this window has deleted must not be drawn from a row or rebuilt
+			 * from a cached search hit (`chat-search.ts`).
+			 */
+			forgotten: new Set(Object.keys(forgottenFacts)),
+		}),
+		[widened, archiveFactValues, forgottenFacts],
 	);
 	/*
 	 * The last archive press the POINTER made, and where (`chat-archive-press.ts`).
@@ -1037,11 +1099,7 @@ export function ChatSidebar({
 	 * whether or not there are hits — so what the notice describes is what the
 	 * user is still getting, not a replacement for it.
 	 */
-	const search = useChatSearch(
-		query,
-		ready && searchSupported,
-		includeArchived,
-	);
+	const search = useChatSearch(query, ready && searchSupported, widened);
 	const overLong = search.refused;
 	/*
 	 * The rows the LISTS may draw, which is the page minus the archived ones unless
@@ -1056,8 +1114,8 @@ export function ChatSidebar({
 	 * rejoin every list for as long as the query lasts.
 	 */
 	const listed = useMemo(
-		() => visibleRows(sessions, archiveEnabled && !includeArchived),
-		[sessions, archiveEnabled, includeArchived],
+		() => visibleRows(sessions, archiveEnabled && !widened),
+		[sessions, archiveEnabled, widened],
 	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
@@ -1288,6 +1346,7 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		const pinned = row.pinned === true;
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -1353,21 +1412,6 @@ export function ChatSidebar({
 		 * the press guard on the row's own `onClick` — both sides' intents, neither
 		 * restated from the other.
 		 */
-		const pinned = row.pinned === true;
-		const label = row.title || "Untitled chat";
-		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
-		 * name the same row differently. */
-		const label = row.title || "Untitled chat";
-		/*
-		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
-		 * has written one that this row's answer predates (`archiveFacts` - the same
-		 * precedence the search join applies, read here for the rows the page holds).
-		 *
-		 * The fact is what makes the press INVERT: the row is rebuilt from the store on
-		 * every render, so a press that only wrote the backend would read back the state
-		 * the catalogue last saw, and the control could never undo its own press.
-		 */
-		const archived = archiveFactValues[row.session_id] ?? row.archived === true;
 		const rowButton = (
 			<button
 				type="button"
@@ -1783,11 +1827,45 @@ export function ChatSidebar({
 							);
 							lastArchivePress.current = press.record;
 							if (press.drop) return;
+							/*
+							 * Snapshot the successor BEFORE the press, because the press removes the
+							 * row: `event.currentTarget` is not readable after an await, and the
+							 * document order at press time is the order the user sees.
+							 */
+							const restoreFocus = focusRowAfterRemoval(event.currentTarget);
 							void setSessionArchived(
 								row.session_id,
 								!archived,
 								row.title ?? undefined,
-							);
+							).then((accepted) => {
+								/*
+								 * A REFUSED PRESS MOVES NOTHING, focus included: the row is still
+								 * there and the reader is still on the control they pressed, with the
+								 * store's refusal sentence beside the list.
+								 */
+								if (!accepted) return;
+								restoreFocus();
+								/*
+								 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving takes the row AND its
+								 * control out of the list, which is exactly the situation the offer
+								 * exists for - so the row's press offers the same Undo the typed
+								 * `/archive` does, rather than the same act reporting differently
+								 * depending on which surface asked for it. Unarchiving offers none: the
+								 * row comes back into the list, which is its own visible trace.
+								 */
+								if (archived) return;
+								offerArchiveUndo({
+									sessionId: row.session_id,
+									title: row.title ?? undefined,
+									archived: true,
+									onUndo: () =>
+										void setSessionArchived(
+											row.session_id,
+											false,
+											row.title ?? undefined,
+										),
+								});
+							});
 						}}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -2055,6 +2133,13 @@ export function ChatSidebar({
 				ref={toggleRef}
 				type="button"
 				data-chat-row
+				/*
+				 * The section a driver scene expands (`data-chat-section={key}`): a collapsed
+				 * section draws no rows, and its own label is a copy string, so a scene that
+				 * reached it by text would be asserting a copy edit - the convention
+				 * `data-chat-row` and `data-session-delete` already follow.
+				 */
+				data-chat-section={key}
 				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-row-hover"
 				aria-expanded={query ? true : isOpen(key, initial)}
 				onClick={() => toggle(key, initial)}
@@ -2630,8 +2715,14 @@ export function ChatSidebar({
 			 * it, and this sentence is the durable half. `warning` and not `danger`:
 			 * the list is intact and only this row's archive state did not move.
 			 */}
+			{/*
+			 * `data-session-archive-failure` is the driver scene's anchor for the refusal
+			 * (the convention `data-session-delete` and `data-chat-row` follow): the
+			 * sentence names a conversation, so a scene that selected it by text would be
+			 * asserting a copy edit rather than a state.
+			 */}
 			{archiveFailure && (
-				<p className="pb-2 text-meta text-warning">
+				<p data-session-archive-failure className="pb-2 text-meta text-warning">
 					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
 					{archiveFailure.title}”.
 					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}

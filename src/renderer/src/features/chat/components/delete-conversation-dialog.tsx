@@ -1,7 +1,10 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { type FC, useState } from "react";
-import { deleteConversationMessage } from "../delete-conversation";
+import { type FC, useEffect, useRef, useState } from "react";
+import {
+	DELETE_LIVE_REMEDY,
+	deleteConversationMessage,
+} from "../delete-conversation";
 
 /**
  * The ONE permanent-delete confirmation, asked for from wherever the user asked.
@@ -49,13 +52,58 @@ export const DeleteConversationDialog: FC<{
 	 * different request, and a stored id compares rather than races - an effect that
 	 * resets on `candidate` would leave one frame in which the previous refusal is
 	 * drawn under the new question.
+	 *
+	 * `live` is carried because the CAUSE changes what has to be said: a hold the
+	 * route refuses for needs the remedy this window can actually offer, and a
+	 * transport failure does not.
 	 */
 	const [refusal, setRefusal] = useState<{
 		candidate: string;
 		detail: string;
+		live: boolean;
 	} | null>(null);
 	const shownRefusal =
-		refusal && refusal.candidate === candidate ? refusal.detail : null;
+		refusal && refusal.candidate === candidate ? refusal : null;
+	/*
+	 * A COUNTER rather than a boolean, because the modal takes the signal as a
+	 * CHANGE (`focusCancelSignal`): a second refusal has to move the keyboard back
+	 * to the safe action again, and a boolean that is already true would be no
+	 * change at all.
+	 */
+	const [refusalSeq, setRefusalSeq] = useState(0);
+	/*
+	 * WHAT HAD THE KEYBOARD WHEN THE DIALOG OPENED.
+	 *
+	 * A dialog that closes without returning focus leaves the reader on `<body>` and
+	 * the next Tab restarts at the top of the document - twelve stops from where
+	 * they were (UX round 1, U9). Captured when the candidate is staged rather than
+	 * in the component that stages it, so both routes (the header's menu and a typed
+	 * `/delete`) are covered by one rule.
+	 *
+	 * The header's menu closes when this dialog opens, so the element that had focus
+	 * is usually unmounted by the time it closes: the fallback is the trigger that
+	 * own control belongs to (`data-conversation-actions`), which is the successor
+	 * of the same act. The typed route's opener is the composer, which survives, so
+	 * it gets its own focus back.
+	 */
+	const opener = useRef<HTMLElement | null>(null);
+	useEffect(() => {
+		if (candidate !== null) {
+			opener.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+			return;
+		}
+		const element = opener.current;
+		opener.current = null;
+		if (!element) return;
+		if (element.isConnected) {
+			element.focus();
+			return;
+		}
+		document.querySelector<HTMLElement>("[data-conversation-actions]")?.focus();
+	}, [candidate]);
 	const candidateTitle =
 		sessions.find((row) => row.session_id === candidate)?.title || title;
 	return (
@@ -65,12 +113,29 @@ export const DeleteConversationDialog: FC<{
 			message={
 				<>
 					<p>{deleteConversationMessage(candidateTitle, hasSubagentRuns)}</p>
-					{shownRefusal && <p className="pt-2 text-danger">{shownRefusal}</p>}
+					{shownRefusal && (
+						<p className="pt-2 text-danger">{shownRefusal.detail}</p>
+					)}
+					{/*
+					 * The REMEDY, in the quieter ink: the refusal above is the failure, this is
+					 * what can be done about it, and only the live refusal has one (UX round 1,
+					 * U3 - the route's own sentence sends the reader to a Stop control this pane
+					 * does not have).
+					 */}
+					{shownRefusal?.live && (
+						<p className="pt-2 text-ink-muted">{DELETE_LIVE_REMEDY}</p>
+					)}
 				</>
 			}
 			confirmText="Delete"
 			cancelText="Cancel"
 			isDangerous
+			/*
+			 * The refusal is the only thing this dialog can be told that makes the SAFE
+			 * action the one the keyboard should hold: the request was refused, nothing
+			 * was deleted, and the next Enter must not repeat it.
+			 */
+			focusCancelSignal={refusalSeq}
 			onConfirm={() => {
 				if (!candidate) return;
 				void (async () => {
@@ -79,9 +144,16 @@ export const DeleteConversationDialog: FC<{
 					 * Success needs nothing here: the store dropped the row, which is
 					 * also what cleared the candidate. A failure keeps the dialog up
 					 * with its own sentence, which is the only surface that can still
-					 * say what happened.
+					 * say what happened - and hands the keyboard back to Cancel.
 					 */
-					if (!outcome.ok) setRefusal({ candidate, detail: outcome.detail });
+					if (!outcome.ok) {
+						setRefusal({
+							candidate,
+							detail: outcome.detail,
+							live: outcome.live,
+						});
+						setRefusalSeq((seq) => seq + 1);
+					}
 				})();
 			}}
 			onCancel={() => requestDelete(null)}

@@ -442,6 +442,15 @@ export function installDevDriver(): string[] {
 					height: Math.round(rect.height),
 				},
 				hitTest: hit !== null && (hit === element || element.contains(hit)),
+				/*
+				 * WHETHER THE ELEMENT HAS THE KEYBOARD, which is a question scenes have to
+				 * be able to ask and no other verb can answer: the focus fixes of UX round 1
+				 * (U3: a refusal must leave the SAFE action holding it, U5/U9: a control that
+				 * unmounts must hand it to its successor) are only claims until something
+				 * reads `document.activeElement`. Additive, so a scene that does not ask is
+				 * unaffected.
+				 */
+				focused: element === document.activeElement,
 				inViewport:
 					rect.top >= 0 &&
 					rect.left >= 0 &&

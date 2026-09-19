@@ -520,3 +520,83 @@ test("the delete candidate is the dialog's whole state", async () => {
 	store.getState().requestSessionDelete(null);
 	assert.equal(store.getState().deleteCandidate, null);
 });
+
+/*
+ * THE DELETED-ROW CURRENCY, which is the shape agent review round 1 (M1)
+ * reproduced: `forgetSession` filtered the array and recorded nothing, so a page
+ * whose request had already started landed afterwards through
+ * `replaceSessionRows` and put the conversation straight back - drawn, clickable
+ * and re-deletable, for a delete that had been confirmed. The archive press has
+ * been protected against exactly this since it was written; these are the same
+ * two arms for the delete, plus the surface the delete itself never answered: a
+ * search answer cached for 30 s.
+ */
+test("a page in flight across a delete cannot resurrect the conversation", async () => {
+	await seed([{ session_id: SESSION, title: "Doomed", archived: false }]);
+	let release;
+	serve(
+		() =>
+			new Promise((resolve) => {
+				// The page's OWN request starts now, before the delete below.
+				release = () =>
+					resolve(
+						page([{ session_id: SESSION, title: "Doomed", archived: false }]),
+					);
+			}),
+	);
+	const reading = store.getState().fetchSessions();
+	serve({ session_id: SESSION, deleted: true });
+	assert.deepEqual(await store.getState().deleteSession(SESSION), { ok: true });
+	release();
+	await reading;
+	assert.deepEqual(
+		store.getState().sessions,
+		[],
+		"an answer asked about before the delete must not put the row back",
+	);
+	/*
+	 * The tombstone is what did it, and it carries the name the pane's header
+	 * needs once the row is gone (UX round 1, U1 - the pane says the conversation
+	 * is deleted and must still say WHICH one).
+	 */
+	assert.equal(store.getState().forgotten[SESSION].title, "Doomed");
+});
+
+test("a page requested after the delete settles the tombstone", async () => {
+	await seed([
+		{ session_id: SESSION, title: "Doomed", archived: false },
+		{ session_id: OTHER, title: "Kept", archived: false },
+	]);
+	serve({ session_id: SESSION, deleted: true });
+	await store.getState().deleteSession(SESSION);
+	// The page that answers WITHOUT the row is the read whose membership claim is
+	// complete, so the tombstone has nothing left to protect and goes.
+	serve(page([{ session_id: OTHER, title: "Kept", archived: false }]));
+	await store.getState().fetchSessions();
+	assert.equal(store.getState().forgotten[SESSION], undefined);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		[OTHER],
+	);
+});
+
+test("a search answer does not settle a tombstone", async () => {
+	await seed([{ session_id: SESSION, title: "Doomed", archived: false }]);
+	serve({ session_id: SESSION, deleted: true });
+	await store.getState().deleteSession(SESSION);
+	/*
+	 * A cached answer (30 s `staleTime` in `session-search.ts`) can still name the
+	 * conversation, so it must not be allowed to settle the tombstone the way a
+	 * page does - otherwise the same cached answer would start drawing the row the
+	 * join is filtering out. The join's own half of this is asserted in
+	 * `chat-search.test.mjs`, where the module lives.
+	 */
+	const seq = store.getState().beginAnswer();
+	store.getState().applySearchAnswer(seq, [{ id: SESSION }]);
+	assert.notEqual(
+		store.getState().forgotten[SESSION],
+		undefined,
+		"a query-scoped answer is not a membership claim",
+	);
+	assert.deepEqual(store.getState().sessions, []);
+});

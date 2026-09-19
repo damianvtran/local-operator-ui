@@ -57,6 +57,7 @@ import { offerArchiveUndo } from "../archive-undo";
 import {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
+	ARCHIVE_STATE_UNKNOWN_REASON,
 	ARCHIVE_UNAVAILABLE_REASON,
 	archiveDestinationApplies,
 } from "../chat-archived";
@@ -675,10 +676,20 @@ export function useSlashDispatch({
 					if (
 						!archiveDestinationApplies(spec.destination, state, archiveEnabled)
 					) {
+						/*
+						 * The `/unarchive` refusal has THREE arms and they are different claims:
+						 * the conversation is archived (`/archive`),
+						 * it is not archived (`/unarchive`, a state this client holds), or
+						 * its state is unknown here (`/unarchive`, the pane's conversation being
+						 * off this client's page) - which must not be reported as "not archived",
+						 * a state nobody established (review round 1, N4).
+						 */
 						note(
 							archived
 								? ARCHIVE_ALREADY_ARCHIVED_REASON
-								: ARCHIVE_NOT_ARCHIVED_REASON,
+								: state === undefined
+									? ARCHIVE_STATE_UNKNOWN_REASON
+									: ARCHIVE_NOT_ARCHIVED_REASON,
 							true,
 						);
 						return "consumed";
@@ -699,6 +710,7 @@ export function useSlashDispatch({
 					offerArchiveUndo({
 						sessionId,
 						title,
+						archived,
 						onUndo: () =>
 							void useCanonicalSessionsStore
 								.getState()

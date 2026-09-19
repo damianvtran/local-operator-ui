@@ -1393,6 +1393,18 @@ function SessionPanel({
 			? state.sessions.find((row) => row.session_id === sessionId)
 			: undefined,
 	);
+	/*
+	 * The name a conversation this window has DELETED wore when it went.
+	 *
+	 * The pane lands on its existing missing-session state for a deleted
+	 * conversation (see `chat-content.tsx`), and that state still has to name WHICH
+	 * conversation is gone - the row is out of the catalogue by then, so the store's
+	 * tombstone is the only source left, and the alternative is a header reading
+	 * "Untitled chat" over a delete (UX round 1, U1).
+	 */
+	const forgottenTitle = useCanonicalSessionsStore((state) =>
+		sessionId ? state.forgotten[sessionId]?.title : undefined,
+	);
 	const loaded =
 		[canonical.frontend?.active_agent, canonical.frontend?.active_team]
 			.filter(Boolean)
@@ -1411,7 +1423,9 @@ function SessionPanel({
 		draftKey,
 		draftTarget: loadedTarget,
 		liveTitle: canonical.frontend?.conversation_title,
-		catalogueTitle: boundRow?.title,
+		// The row's own name, or - for a conversation this window has deleted - the
+		// name that row wore when it went.
+		catalogueTitle: boundRow?.title ?? forgottenTitle,
 	});
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }

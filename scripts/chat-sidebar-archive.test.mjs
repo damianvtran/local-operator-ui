@@ -197,12 +197,22 @@ test("the Include archived control is inside the search block and only while a q
 		/const INCLUDE_ARCHIVED_ID = "chat-search-include-archived"/,
 	);
 	/*
-	 * And it is SCOPED TO ONE SEARCH: cleared with the box, so the next search
-	 * cannot start armed with a filter the user can no longer see.
+	 * And it is REMEMBERED but IN FORCE ONLY WHILE A QUERY IS (UX round 1, U8):
+	 * clearing the box used to disarm it, so a user who cleared and retyped lost the
+	 * archived result they had just found; a remembered box that widened the at-rest
+	 * lists instead would put archived conversations back into every default list.
+	 * The rule has one home - `archivedSearchWidened` in `chat-archived`, asserted
+	 * there - and the sidebar's half is that it consults that rule rather than
+	 * clearing its own state.
 	 */
 	assert.match(
 		code(SIDEBAR),
-		/if \(!query\.trim\(\)\) setIncludeArchived\(false\)/,
+		/const widened = archivedSearchWidened\(includeArchived, query, archiveEnabled\)/,
+	);
+	assert.doesNotMatch(
+		code(SIDEBAR),
+		/setIncludeArchived\(false\)/,
+		"the widening must not be cleared with the box any more",
 	);
 });
 
@@ -210,17 +220,16 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	const source = code(SIDEBAR);
 	// ONE filter, before anything reads the list: the flat list, both sections, the
 	// agent and team groups and the local half of the search all read this array.
+	assert.match(source, /visibleRows\(sessions, archiveEnabled && !widened\)/);
+	assert.match(source, /visibleRows\(sessions, archiveEnabled && !widened\)/);
+	// The request itself carries the widening, and the join is given the client's own
+	// facts plus the delete tombstones, so a press on a row rebuilt from a cached hit
+	// can be inverted and a deleted conversation cannot be drawn from one.
 	assert.match(
 		source,
-		/visibleRows\(sessions, archiveEnabled && !includeArchived\)/,
+		/useChatSearch\(query, ready && searchSupported, widened\)/,
 	);
-	// The request itself carries the control's state, and the join is given the
-	// client's own facts, so a press on a row rebuilt from a cached hit can be
-	// inverted.
-	assert.match(
-		source,
-		/useChatSearch\(\s*query,\s*ready && searchSupported,\s*includeArchived,\s*\)/,
-	);
+	assert.match(source, /forgotten: new Set\(Object\.keys\(forgottenFacts\)\)/);
 	assert.match(source, /searchChats\(listed, query, hits, archiveView\)/);
 	assert.match(
 		source,
@@ -329,10 +338,26 @@ test("the dialog is the app's one delete confirmation, and it stays open to refu
 	// the sentence belongs to the candidate it was about.
 	assert.match(
 		source,
-		/setRefusal\(\{ candidate, detail: outcome\.detail \}\)/,
+		/setRefusal\(\{\s*candidate,\s*detail: outcome\.detail,\s*live: outcome\.live,?\s*\}\)/,
 	);
 	assert.match(source, /refusal\.candidate === candidate/);
 	assert.match(source, /text-danger/);
+	/*
+	 * A refusal is not the end of the interaction, and the two things that follow
+	 * from it are asserted here rather than trusted to the reader (UX round 1, U3
+	 * and U9): the keyboard goes back to CANCEL - the press left it on the
+	 * destructive button, so the next Enter would repeat the refused act - and the
+	 * LIVE refusal states the remedy this window actually has, because the route's
+	 * own sentence sends the reader to a Stop control the pane does not carry.
+	 */
+	assert.match(source, /focusCancelSignal=\{refusalSeq\}/);
+	assert.match(source, /setRefusalSeq\(\(seq\) => seq \+ 1\)/);
+	assert.match(source, /shownRefusal\?\.live && \(/);
+	assert.match(source, /DELETE_LIVE_REMEDY/);
+	// And closing the dialog hands the keyboard back to whatever opened it (the
+	// header's trigger when the menu that hosted the item is gone).
+	assert.match(source, /data-conversation-actions/);
+	assert.match(source, /element\.isConnected/);
 	// It reads the store rather than taking a candidate as a prop, which is what
 	// makes one dialog serve both callers (the header's menu and typed `/delete`).
 	assert.match(source, /state\.deleteCandidate/);
@@ -406,6 +431,10 @@ test("a typed /archive writes the store, reports a refusal, and offers an undo o
 	// The desired state is the word: archive asks for true, unarchive for false.
 	assert.match(branch, /const archived = entry\.action === "archive"/);
 	assert.match(branch, /setSessionArchived\(\s*sessionId,\s*archived,/);
+	// Offered with the STATE it is about (see `undoOfferStands`): the offer stands
+	// while the conversation still holds that state, so a catalogue answer that
+	// merely mentions the row cannot retire it after 0.4-1.6 s (UX round 1, U4).
+	assert.match(branch, /archived,/);
 	// The rule is the palette's own, asked once more, so a hidden row that is typed
 	// anyway is refused WITH A REASON rather than swallowed.
 	assert.match(
@@ -414,6 +443,10 @@ test("a typed /archive writes the store, reports a refusal, and offers an undo o
 	);
 	assert.match(branch, /ARCHIVE_ALREADY_ARCHIVED_REASON/);
 	assert.match(branch, /ARCHIVE_NOT_ARCHIVED_REASON/);
+	// The THIRD arm, for a conversation whose state this client does not hold at all
+	// (agent review round 1, N4): reported as unknown rather than as "not archived",
+	// a state nobody established.
+	assert.match(branch, /ARCHIVE_STATE_UNKNOWN_REASON/);
 	assert.match(branch, /ARCHIVE_UNAVAILABLE_REASON/);
 	// A refused press says nothing here: the panel's register already carries it,
 	// and one press must not be reported on two surfaces.
@@ -438,4 +471,39 @@ test("the three destinations resolve to local actions, with no control of their 
 		source,
 		/"sessions.delete": \{ kind: "direct", action: "request-delete" \}/,
 	);
+});
+
+test("the row's press is the same act as the typed command, and keeps the reader's place", () => {
+	const source = code(SIDEBAR);
+	/*
+	 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving from the row takes the row
+	 * AND its control out of the list, which is exactly the situation the undo offer
+	 * exists for - so the row's press offers the same offer the typed `/archive`
+	 * does, and offers it only in the direction that removes the row (unarchiving
+	 * puts the row back, which is its own visible trace).
+	 */
+	assert.match(source, /offerArchiveUndo\(\{/);
+	assert.match(source, /archived: true,/);
+	assert.match(
+		source,
+		/if \(archived\) return;/,
+		"unarchiving must not offer a restore",
+	);
+	// A refused press changes nothing, focus included: the row is still there and
+	// the store's sentence is beside the list.
+	assert.match(source, /if \(!accepted\) return;/);
+	/*
+	 * AND THE KEYBOARD KEEPS ITS PLACE (UX round 1, U5). Activating the control
+	 * unmounts it and its row, which used to leave the reader on `<body>` with the
+	 * next Tab restarting at the top of the document; the successor row is snapped
+	 * before the press (the element is unreadable after an await) and focused only
+	 * when the write was accepted.
+	 */
+	assert.match(
+		source,
+		/const restoreFocus = focusRowAfterRemoval\(event\.currentTarget\)/,
+	);
+	assert.match(source, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
+	assert.match(source, /element\.isConnected/);
+	assert.match(source, /successor\?\.focus\(\)/);
 });
