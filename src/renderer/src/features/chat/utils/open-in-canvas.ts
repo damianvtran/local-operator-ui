@@ -189,7 +189,9 @@ export async function openPathInCanvas(
 		 * - set only when bytes were actually read, because a pointer's baseline
 		 * belongs to whoever reads it.
 		 */
-		...(known?.exists && known.isFile ? { availability: "present" as const } : {}),
+		...(known?.exists && known.isFile
+			? { availability: "present" as const }
+			: {}),
 		...(known?.sizeBytes != null ? { sizeBytes: known.sizeBytes } : {}),
 		...(known?.mtimeMs != null ? { lastAgentModified: known.mtimeMs } : {}),
 		...(content !== undefined && known?.mtimeMs != null

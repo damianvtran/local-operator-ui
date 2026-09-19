@@ -1258,7 +1258,11 @@ test("a press with nothing cached ASKS, and refuses a path the probe says is gon
 		undefined,
 		"a path the probe says is gone gets no tab, for a file kind that would never have read it",
 	);
-	assert.deepEqual(opened, [pdf], "and the OS attempt and its sentence are what is left");
+	assert.deepEqual(
+		opened,
+		[pdf],
+		"and the OS attempt and its sentence are what is left",
+	);
 });
 
 test("a file above the read ceiling opens as a POINTER: no bytes, size carried", async () => {
@@ -1284,7 +1288,11 @@ test("a file above the read ceiling opens as a POINTER: no bytes, size carried",
 	await frame.dispatch(anchor, "click");
 	await act(async () => {});
 	const document = canvasStateFor(PANE).files.at(-1);
-	assert.deepEqual(read, [], "above the ceiling nothing is read into the persisted store");
+	assert.deepEqual(
+		read,
+		[],
+		"above the ceiling nothing is read into the persisted store",
+	);
 	assert.equal(
 		document.content,
 		"",
