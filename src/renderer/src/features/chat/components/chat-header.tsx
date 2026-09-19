@@ -449,6 +449,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							<Button
 								variant="ghost"
 								size="icon"
+								/*
+								 * The hook the delete dialog hands focus back to (UX round 1, U9): the menu
+								 * ITEM that opened the dialog is unmounted with the menu, so the trigger is
+								 * the successor control of the same act — the one a keyboard reader returns
+								 * to - and a name only this file could spell is not a hook a dialog should
+								 * reach for.
+								 */
+								data-conversation-actions
 								aria-label="Conversation actions"
 							>
 								<MoreHorizontal aria-hidden="true" />
@@ -457,6 +465,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						<DropdownMenuContent align="end" className="min-w-45">
 							{archiveEnabled && (
 								<DropdownMenuItem
+									/*
+									 * The anchor a driver scene presses to archive from the header: the item's
+									 * own label is a sentence that flips with the state, and a scene that
+									 * selected it by text would break on a copy edit that changed nothing else.
+									 */
+									data-session-archive-action
 									onSelect={() => onSetArchived?.(!archived)}
 									disabled={!onSetArchived}
 								>

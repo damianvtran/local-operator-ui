@@ -61,8 +61,6 @@ export const CHAT_SEARCH_DEBOUNCE_MS = 150;
 export function chatSearchKey(query: string, includeArchived = false) {
 	return ["desktop", "sessions", "search", query, includeArchived] as const;
 }
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-
 export function useChatSearch(
 	query: string,
 	enabled: boolean,

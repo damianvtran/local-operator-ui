@@ -11,10 +11,16 @@
  * which parts were exercised against this and which are still owed to QA against
  * the real daemon.
  *
- * WHAT IT IS NOT. Not a backend: no store, no turns, no transcript. Two
- * conversations and a search over four names. Every op it has no answer for is
- * answered 503 and named on stderr, so a scene that needs one shows up as a
- * missing route rather than as a screen that quietly did not paint.
+ * WHAT IT IS NOT. Not a backend: no store, no turns, no transcript. FOUR
+ * conversations, one of them archived at boot and one carrying the live-session
+ * claim the two refusal frames are of, and a search over their names. Every op it
+ * has no answer for is answered 503 and named on stderr, so a scene that needs one
+ * shows up as a missing route rather than as a screen that quietly did not paint.
+ *
+ * IT IS STATEFUL, deliberately (the archive and delete routes mutate the rows), so
+ * a scene run leaves it holding what the run did: give each launch its OWN
+ * process - `--records` is per process - or the next launch starts from a store
+ * the previous one emptied.
  *
  * Usage: node stub-daemon.mjs --port <n> --records <dir> [--no-archive]
  *
@@ -92,6 +98,17 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		/*
+		 * THE GUARD'S PRECONDITION, arranged by hand and disclosed as such: the real
+		 * route refuses a delete (and an archive) for a conversation a RUNNING SESSION
+		 * holds, which on a real install is a `.session.pid` marker beside the
+		 * transcript rather than a running turn. The stub has no runtimes, so the claim
+		 * is a field - and `live_state` stays `idle` on purpose, because a `busy` row
+		 * draws an indeterminate glyph and no frame of this set may depend on that.
+		 * This is the conversation the two refusal frames are OF; every other row
+		 * accepts both writes.
+		 */
+		live_claim: true,
 	},
 	{
 		id: "a91f4c7e2b60",
@@ -249,6 +266,22 @@ const route = (method, pathname, query, body) => {
 		if (!row) {
 			return { status: 404, body: { detail: "No such conversation." } };
 		}
+		/*
+		 * THE SAME GUARD AS THE DELETE, and it is quoted rather than invented: the
+		 * sibling route's own sentence, as the UX round reported reading it against a
+		 * real daemon. A stub cannot derive the wording, so the frame shows the
+		 * client's rendering of a backend sentence (the panel's warning ink and its
+		 * Retry) rather than a sentence this file authored.
+		 */
+		if (row.live_claim) {
+			return {
+				status: 409,
+				body: {
+					detail:
+						"That conversation is open in a running session. Stop it before archiving it.",
+				},
+			};
+		}
 		row.archived = body?.archived === true;
 		return ok({ session_id: row.id, archived: row.archived });
 	}
@@ -263,11 +296,12 @@ const route = (method, pathname, query, body) => {
 		 * running in this conversation, so the route refuses and NAMES the guard
 		 * rather than deleting a transcript a running agent is writing to.
 		 */
-		if (conversations[at].live_state === "busy") {
+		if (conversations[at].live_state === "busy" || conversations[at].live_claim) {
 			return {
 				status: 409,
 				body: {
-					detail: "This conversation is running. Stop it before deleting it.",
+					detail:
+						"That conversation is open in a running session. Stop it before deleting it.",
 				},
 			};
 		}

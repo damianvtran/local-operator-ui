@@ -49,12 +49,15 @@ const bundle = await build({
 const {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
+	ARCHIVE_STATE_UNKNOWN_REASON,
 	ARCHIVE_UNAVAILABLE_REASON,
 	DELETE_UNAVAILABLE_REASON,
 	archiveControlLabel,
 	archiveDestinationApplies,
 	archivedRows,
+	archivedSearchWidened,
 	deleteConversationMessage,
+	undoOfferStands,
 	visibleRows,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -177,6 +180,7 @@ test("every refusal sentence says what is wrong in the register the panel uses",
 		ARCHIVE_UNAVAILABLE_REASON,
 		ARCHIVE_ALREADY_ARCHIVED_REASON,
 		ARCHIVE_NOT_ARCHIVED_REASON,
+		ARCHIVE_STATE_UNKNOWN_REASON,
 		DELETE_UNAVAILABLE_REASON,
 	]) {
 		assert.match(sentence, /^[A-Z].*\.$/);
@@ -185,4 +189,50 @@ test("every refusal sentence says what is wrong in the register the panel uses",
 	// The two state refusals are DIFFERENT sentences, because they are different
 	// problems and only one of them has anything the user can do.
 	assert.notEqual(ARCHIVE_ALREADY_ARCHIVED_REASON, ARCHIVE_NOT_ARCHIVED_REASON);
+});
+
+test("the widened-search rule needs a query, and remembering the box does not widen the lists", () => {
+	/*
+	 * The UX round 1 (U8) decision, pinned: the `Include archived` box is
+	 * REMEMBERED across a cleared query (so a user who clears and retypes does not
+	 * silently lose the archived result they just found) but is IN FORCE only while
+	 * a query is - otherwise a remembered box would widen the at-rest lists, which
+	 * is the one thing the feature exists to prevent.
+	 */
+	assert.equal(archivedSearchWidened(true, "quarterly", true), true);
+	assert.equal(
+		archivedSearchWidened(true, "   ", true),
+		false,
+		"a remembered box with no query in force must not widen anything",
+	);
+	assert.equal(archivedSearchWidened(false, "quarterly", true), false);
+	assert.equal(
+		archivedSearchWidened(true, "quarterly", false),
+		false,
+		"no capability, no widening - the fail-closed arm",
+	);
+});
+
+test("the undo offer stands while the state it was made about holds, and not a moment longer", () => {
+	/*
+	 * The rule UX round 1 (U4) and the agent review (N5) both landed on, as one
+	 * function so the comment and the behaviour cannot drift: the offer is about
+	 * `archived: true`, so a client that still knows the conversation is archived
+	 * keeps offering (an ANSWER that merely mentions the row does not end it - the
+	 * shipped version retired on any answer, which measured 0.4-1.6 s of toast), and
+	 * one that knows anything else retires it.
+	 */
+	assert.equal(undoOfferStands(true, true), true, "the state still holds");
+	assert.equal(undoOfferStands(true, false), false, "it was restored");
+	assert.equal(
+		undoOfferStands(true, undefined),
+		false,
+		"no such conversation here any more: deleted, or off the page",
+	);
+	assert.equal(
+		undoOfferStands(false, false),
+		true,
+		"the same rule, offered the other way",
+	);
+	assert.equal(undoOfferStands(false, true), false);
 });

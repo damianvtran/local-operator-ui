@@ -46,6 +46,15 @@ already follows: while the box has a query. At rest the panel is the panel it
 was — no section, no row, no column, no badge — and a search that has been widened
 says so where the widening happened, because that is the moment it matters.
 
+**The control is REMEMBERED, and the widening is scoped to a query** (round 1,
+UX U8: clearing the box used to disarm it, so a user who cleared and retyped the
+same query silently lost the archived result they had just found). The two halves
+are separate on purpose: the box keeps its tick across an empty field, and
+`archivedSearchWidened` (with its own test) is what says the tick is IN FORCE only
+while a query is — otherwise a remembered switch would widen the at-rest lists,
+which is the one thing this feature exists not to do. The state is visible where
+it acts: the box comes back ticked.
+
 ### Delete asks, and never on the row
 
 A hover-revealed control that permanently destroys a transcript is one mis-click
@@ -67,6 +76,16 @@ is precisely the row that most often needs "· in conversation" (an archived
 conversation found by search is usually found by its body). A leading glyph is
 outside that rule rather than an extension of it.
 
+**Its cost, recorded rather than hidden** (round 1, D4): the glyph plus its 4px
+lead indents the title of an ARCHIVED row by 14–18px, so the title column is
+ragged exactly in the view built to compare archived and live rows side by side.
+The design round's cheapest fix — draw the marker in the existing ~20px status
+column, which costs no new width — cannot be taken without either losing the
+status glyph that shares that column or reserving the width on EVERY row, which
+would take ~3 characters off every live title to remove a 14px rag from the
+archived ones. Neither is cheap, so the rag is accepted and stated; the
+measurement is in the evidence README.
+
 ### Fail-closed, stated as a measurement
 
 With `session_archive` absent there is no slot on any row, no marker, no control
@@ -78,6 +97,31 @@ back. The frames measure what that does and does not mean
 (`docs/evidence/session-archive/README.md`): the panel is the same except that the
 archived conversation is now listed, and a 690x60 band around a live row is
 byte-identical.
+
+## The reserved slot, and the rule for the pair (round 1, design ruling)
+
+The design round ruled the **first** slot stays at every width and verified the
+no-reflow claim rather than accepting it. The second slot — the pin control's,
+which this branch does not carry — is where the ruling binds: **two sibling slots
+at ≥ 280px, one shared hover-revealed control holding pin + archive below 280.**
+The numbers the ruling rests on, all of them from the frames (the sidebar occupies
+device `x 440..999`, i.e. **280 CSS px**, the default; the clamp is 240–360):
+
+| panel | no slot | one slot (this branch) | two slots (pin + archive) |
+| --- | --- | --- | --- |
+| 240 (clamp min) | 200 px | 172 px | **144 px ≈ 20 characters** |
+| 280 (default, = these frames) | 240 px | **212 px — measured** | 184 px ≈ 26 characters |
+| 360 (clamp max) | 320 px | 292 px | 264 px |
+
+The arithmetic is one reservation of 28px (24px control + the wrapper's 4px gap)
+per slot, subtracted from the panel: `panel − 68` with one slot, `panel − 96` with
+two. At the clamp minimum the pair leaves a title that identifies nothing, paid on
+every row whether or not the reader ever pins or archives — which is why the rule
+sheds a slot below 280 rather than reserving both everywhere.
+
+**A correction this record owes**: an earlier draft of the evidence README said
+the frames were taken at a "shipped 320px panel". They were not — the panel is
+**280px in every frame**, which is `DEFAULT_CHAT_SIDEBAR_WIDTH`.
 
 ## What was deliberately NOT built
 
@@ -104,29 +148,58 @@ byte-identical.
 
 1. **Archive a row**: the row's control (`aria-label` = `Archive “<title>”`)
    writes the desired state, the row leaves the list, the panel reports a refusal
-   in its own register if the wire says no.
+   in its own register if the wire says no — and a successful press offers the
+   same **Undo** the typed command does, because the row and its control are gone
+   with it (round 1, UX U2: the same act used to report differently depending on
+   the surface that performed it). The keyboard moves to the row that took the
+   vacated place rather than to `<body>` (UX U5).
 2. **Archive by command**: `/archive` on the open conversation does the same and
-   offers **Undo** in a toast, retired the moment an answer newer than the press
-   speaks about the row — an offer is only honest while the state it was taken
-   from still holds.
+   offers the same **Undo**, under one retirement rule: the offer stands while the
+   conversation still holds the state the offer was taken from, and is retired the
+   moment this client knows it does not (`undoOfferStands`). An answer that merely
+   MENTIONS the row no longer ends it — that version lasted 0.4–1.6s and nobody
+   could reach it (round 1, UX U4).
 3. **Find it again**: the search block, with `Include archived` on. The row is
    marked, and its control reads **Unarchive**.
 4. **Restore the open one**: the header's `Archived` pill carries an unarchive
    control beside it; `/unarchive` appears in the palette only while the open
-   conversation is archived.
+   conversation is archived. Typed on a conversation whose state this window does
+   not hold, it says SO rather than claiming "not archived" (round 1, N4).
 5. **Delete**: the conversation menu's `Delete conversation…`, or `/delete`
    typed. Both open the confirmation; confirming removes exactly this
    conversation, and keeps any subagent runs it started (the dialog says so when
-   there are any). A live conversation is refused with the guard's own sentence.
+   there are any). A live conversation is refused with the guard's own sentence
+   PLUS the remedy this window actually has — the route's "stop it before deleting
+   it" names a control this pane does not carry (round 1, UX U3) — and the
+   refusal returns the keyboard to **Cancel** rather than leaving it on the
+   destructive button. Closing the dialog hands the keyboard back to the control
+   that opened it (UX U9).
+6. **Deleted while open**: the pane lands on the missing-session state it already
+   had (`MISSING_SESSION_NOTICE_ID`), naming the conversation that is gone, with
+   the composer refusing input — and the row cannot come back from an answer that
+   was already in flight, nor from a cached search answer (round 1, M1: the
+   delete is a stamped write like the archive, via the store's `forgotten`
+   tombstone).
+
+## What is owed to QA, stated rather than assumed
+
+`setSessionArchived`'s currency rests on an ordering assumption the client cannot
+prove from here: that a read whose REQUEST started after the press observes the
+write. If the sibling route answers a post-press read from before its own write —
+two connections, more than one worker — an answer saying `archived: false` would
+settle the client's fact and the row would reappear until the next page. The
+comment in the store says so at the stamp; QA settles what the route actually
+guarantees.
 
 ## Open for the design round
 
-- **The reserved slot costs the title 28px** (24px + the row wrapper's 4px gap)
-  on every row at rest, and 56px once the pin control's own slot lands beside it.
-  The frames and the arithmetic are in
-  `docs/evidence/session-archive/README.md`. If that reads as too expensive, the
-  alternatives are a single shared menu on the row (which the pin session
-  rejected for its own control) or revealing on focus only.
-- **The marker's weight** (`text-ink-dim`, 14px) is chosen to read as "filed
-  away" rather than as a warning; a second opinion belongs in the design round,
-  in both palettes.
+- **The pair rule** above is the design round's ruling and is carried to the pin
+  pull request; this branch ships one slot, which is what the ruling keeps at
+  every width.
+- **The marker's ragged title column** (~14px, archived rows only) is recorded
+  above rather than fixed: the two candidate fixes cost more than the defect.
+- **The withdrawn panel is not DOM-identical**, and the earlier claim that it was
+  is corrected here and in the source comments: with no capability nothing is
+  hidden, so an archived conversation is LISTED where an enabled panel hides it.
+  What is byte-identical is the 690×60 band around a live row, which is what the
+  `cmp` in the evidence README compares.
