@@ -12,8 +12,9 @@
  * and the strip's own focus move in `canvas-tabs.tsx` - and they must agree: if
  * the strip focused one tab while the pane selected another, a close would leave
  * focus and selection on two different documents. A rule copied three times is a
- * rule that will disagree with itself, which is the same reason `file-tiles.ts`
- * and `viewer-routing.ts` beside it are modules rather than component bodies.
+ * rule that will disagree with itself, which is the same reason `file-rows.ts`
+ * beside it and `viewer-routing.ts` under `utils/` are modules rather than
+ * component bodies.
  *
  * WHAT IT IS NOT. It is not a "first remaining tab" fallback: that is what the
  * sites this replaces did, and it is wrong in the ordinary overflowing strip - a
