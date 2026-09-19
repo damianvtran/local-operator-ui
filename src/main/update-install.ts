@@ -2057,6 +2057,13 @@ export type InstallProgressPhase = "verifying" | "staging" | "starting";
  * decision - the launch hold, recovery's marker line and recovery's in-flight line -
  * and a person reading `update-service.log` after a slow update needs to know which
  * of the two signals the app was actually deciding on.
+ *
+ * THREE shapes, not two, because one of those callers is written for every marker
+ * rather than only for a live install: `recovery`'s marker line (`update-service.ts`)
+ * runs before anything has been classified, so the ordinary state it has to describe
+ * is a marker whose installer has FINISHED, or failed. The `installerSignal: null`
+ * arm is that state, and it says the pid has gone - it is the arm a person is most
+ * likely to read, and claiming liveness there was review R3-1.
  */
 export function installLivenessText(
 	liveness: InstallLiveness,
@@ -2072,15 +2079,25 @@ export function installLivenessText(
 	}
 	const named = installerPid ?? "unknown";
 	/*
-	 * The pid the marker names is dead in the `elsewhere` case, so naming it as the
-	 * process at work would send the reader to a pid that answers with nothing - or,
-	 * worse, with whatever reused it. Say which of the two is holding, and say that
-	 * the named one has gone rather than leaving its absence to be inferred (review
-	 * R2-2).
+	 * Which of three facts is true, because the caller's line is written for EVERY
+	 * marker rather than only for a live install (review R3-1). The `null` arm is
+	 * the one a person actually reads: it is the ordinary end state - an install
+	 * that finished (or failed), with the marker still on disk at the next start -
+	 * and the line it lands in exists to separate "in flight" from "finished".
+	 * Saying "is still running" there was the defect the `elsewhere` arm was fixed
+	 * for, one case further out: a claim of life about a pid that has stopped.
+	 *
+	 * So the text is derived from `installerSignal` and not from the request the
+	 * caller made ("describe a pid marker"): the pid being dead is a fact about the
+	 * machine, and it is not the same fact as an install that is over.
 	 */
-	return liveness.installerSignal === "elsewhere"
-		? `the install this app started is still running (pid ${named} has gone; its ShipIt is still at work)`
-		: `the installer this app started (pid ${named}) is still running`;
+	if (liveness.installerSignal === "elsewhere") {
+		return `the install this app started is still running (pid ${named} has gone; its ShipIt is still at work)`;
+	}
+	if (liveness.installerSignal === "pid") {
+		return `the installer this app started (pid ${named}) is still running`;
+	}
+	return `the installer this app started (pid ${named}) has gone`;
 }
 
 /**
