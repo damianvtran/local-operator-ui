@@ -5,10 +5,10 @@
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "RzNEB4B5eRf7pIr_PAbsXCVK_71gAgICEMl2eyLcB3I",
-        "instance_id": "-wD237HiEQ0KN3q5CVU3TxgIpqubjn-v_QsPZSVGfHA",
-        "version": "0.59.7",
-        "pid": 46089
+        "claim_key": "Q0HcxNb8ZKyalzygm8ma98NXMy8PlgX_gg09zda-FMs",
+        "instance_id": "xgFtIVZLgYKn3643jc-LjPaafVKMf_4j_bDQeVU8HGk",
+        "version": "0.59.8",
+        "pid": 56360
       },
       "claimInDaemonLog": true,
       "page": {
@@ -20,10 +20,10 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 46089,
+          "pid": 56360,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 46089, v0.59.7).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 56360, v0.59.8).",
           "pairing": {
             "available": true,
             "cause": null
@@ -188,7 +188,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 46089,
+            "pid": 56360,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -350,10 +350,10 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 47391,
+            "pid": 58058,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 47391, v0.59.7).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 58058, v0.59.8).",
             "pairing": {
               "available": true,
               "cause": null

@@ -217,9 +217,20 @@ const childEnv = (
 const children = [];
 /** Every profile this run booted, so the teardown can read each one's own log. */
 const bootedProfiles = [];
-function launch(command, args, env) {
+/**
+ * Spawn a child, with its own working directory.
+ *
+ * WHY THE CWD IS A PARAMETER AND NOT ALWAYS THE CHECKOUT (measured, review round 1
+ * QA Q-1): `src/main/backend/config.ts` folds a `.env` from `process.cwd()` with
+ * `override: true`, so a boot whose cwd is the checkout is configured against
+ * whatever that file pins - on this machine the operator's LIVE daemon on :1111 -
+ * no matter what the launcher passes. Every boot now names a scratch directory, the
+ * app is named by absolute path, and each scene asserts from the app's own log
+ * which address it was configured for.
+ */
+function launch(command, args, env, cwd = REPO) {
 	const child = spawn(command, args, {
-		cwd: REPO,
+		cwd,
 		env,
 		stdio: ["ignore", "pipe", "pipe"],
 		/*
@@ -679,10 +690,17 @@ async function waitForPage(debugPort, timeoutMs = 90_000) {
 /** Boot the app against a URL and return its debug port once it has painted. */
 async function bootApp(name, apiUrl, configDir, debugPort, options) {
 	bootedProfiles.push(name);
+	/*
+	 * A working directory of this boot's own, empty of any `.env`. The app is named
+	 * by absolute path below, so nothing needs the checkout to be the cwd - and
+	 * nothing may silently configure this boot for the operator's own daemon.
+	 */
+	const cwd = join(ROOT, `cwd-${name}`);
+	mkdirSync(cwd, { recursive: true });
 	const app = launch(
-		"node_modules/.bin/electron",
+		join(REPO, "node_modules/.bin/electron"),
 		[
-			".",
+			REPO,
 			`--remote-debugging-port=${debugPort}`,
 			`--user-data-dir=${join(ROOT, `profile-${name}`)}`,
 			`--window-size=${WIDTH}x${HEIGHT}`,
@@ -693,7 +711,30 @@ async function bootApp(name, apiUrl, configDir, debugPort, options) {
 			// back at the end; this is also the directory the rig already looked in.
 			logDir: join(ROOT, `profile-${name}`, "logs"),
 		}),
+		cwd,
 	);
+	/*
+	 * WHICH ADDRESS THIS BOOT WAS ACTUALLY CONFIGURED FOR, read from the app's own
+	 * log rather than trusted from the launcher's environment: a boot configured for
+	 * anything but the scene's address fails here instead of producing a frame
+	 * nobody can place.
+	 */
+	const configured = await waitUntil(
+		async () => {
+			const found = appLog(name).match(
+				/Backend service configured with port (\d+) and URL (\S+)/,
+			);
+			return found ? { port: Number(found[1]), url: found[2] } : null;
+		},
+		`the app never recorded which backend it was configured for: ${app.text()}`,
+		60_000,
+	);
+	const expected = new URL(apiUrl);
+	if (configured.port !== Number(expected.port) || configured.url !== apiUrl)
+		throw new Error(
+			`${name}: the app was configured for ${configured.url} but this scene is about ${apiUrl} - a .env in the working directory overrides the launcher environment`,
+		);
+	summary.scenes[name] = { ...(summary.scenes[name] ?? {}), configured };
 	const first = await waitForPage(debugPort); // The seed lands after the first paint and reloads, so the second read is the
 	// app as a returning user rather than the onboarding one.
 	if (
@@ -1012,25 +1053,46 @@ async function sceneAnyDaemon() {
 	const configDir = join(ROOT, "config-any-daemon");
 	mkdirSync(configDir, { recursive: true });
 	// A real conversation for the list, written by the repository's own seeder.
+	const seederCwd = join(ROOT, "cwd-seeder");
+	mkdirSync(seederCwd, { recursive: true });
 	const seeder = launch(
 		process.execPath,
-		["scripts/seed-paging-session.mjs", configDir, "6"],
+		[join(REPO, "scripts/seed-paging-session.mjs"), configDir, "6"],
 		baseEnv,
+		seederCwd,
 	);
 	await new Promise((resolve) => seeder.child.on("exit", resolve));
 
 	const port = 46140;
 	const debugPort = 46141;
 	const daemonEnv = childEnv(configDir, `http://127.0.0.1:${port}`);
-	const daemon = launch("lop", ["serve", "--port", String(port)], daemonEnv);
-	const recordFile = join(
-		configDir,
-		"run",
-		"serve",
-		`${daemon.child.pid}.json`,
+	/* The daemon gets a scratch cwd too: it reads the same `.env` machinery. */
+	const daemonCwd = join(ROOT, "cwd-daemon");
+	mkdirSync(daemonCwd, { recursive: true });
+	const daemon = launch(
+		"lop",
+		["serve", "--port", String(port)],
+		daemonEnv,
+		daemonCwd,
 	);
-	await waitUntil(
-		async () => existsSync(recordFile),
+	/*
+	 * The record the DAEMON wrote, found by DIRECTORY rather than by the pid this rig
+	 * spawned: `lop` is a shim, so `child.pid` is the shim's while the file is named
+	 * after the server process it becomes. Measured: keying on the shim's pid
+	 * produced "no serve record" for a daemon that had started normally.
+	 */
+	const recordDir = join(configDir, "run", "serve");
+	const recordNames = () =>
+		existsSync(recordDir)
+			? readdirSync(recordDir)
+					.filter((entry) => entry.endsWith(".json"))
+					.sort()
+			: [];
+	const recordFile = await waitUntil(
+		async () => {
+			const found = recordNames();
+			return found.length > 0 ? join(recordDir, found[found.length - 1]) : null;
+		},
 		`no serve record from the daemon this rig started: ${daemon.text()}`,
 		60_000,
 	);
@@ -1128,16 +1190,21 @@ async function sceneAnyDaemon() {
 	assertNoVersionBlame(during, "any-daemon(swap, before the successor)");
 	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-swap-during.png`));
 
-	const successor = launch("lop", ["serve", "--port", String(port)], daemonEnv);
-	const successorRecord = join(
-		configDir,
-		"run",
-		"serve",
-		`${successor.child.pid}.json`,
+	const successor = launch(
+		"lop",
+		["serve", "--port", String(port)],
+		daemonEnv,
+		daemonCwd,
 	);
-	await waitUntil(
-		async () => existsSync(successorRecord),
-		`the successor never published a record: ${successor.text()}`,
+	const firstRecords = recordNames();
+	const successorRecord = await waitUntil(
+		async () => {
+			const fresh = recordNames().filter(
+				(entry) => !firstRecords.includes(entry),
+			);
+			return fresh.length > 0 ? join(recordDir, fresh[fresh.length - 1]) : null;
+		},
+		`the successor never published a record of its own: ${successor.text()}`,
 		60_000,
 	);
 	const successorKey = JSON.parse(
@@ -1257,8 +1324,29 @@ async function sceneOtherPrincipal() {
 		 * renders.
 		 */
 		const rendered = JSON.stringify(page);
+		/*
+		 * THE GUARD ON THE DAEMON'S PROSE, AND ITS MEASURED LIMIT.
+		 *
+		 * What it asserts: the daemon's own sentence - the one this stub answers every
+		 * desktop route with, transcribed from `desktop.py` - appears nowhere in what
+		 * the app renders. What it does NOT do is show the prose REACHING the app, which
+		 * is what would make it discriminating (review round 1, D4). That drive was
+		 * attempted and failed, measured three times: `window.api.desktop.request({op:
+		 * "profiles.list"})` - a route this stub refuses - came back SUCCESSFUL through
+		 * the app's own IPC, and the scene's own record shows the app serves ZERO
+		 * `/v1/desktop/` routes in the governed state, because main's capability answer
+		 * closes the gated surfaces before any of them can call one. So the count is
+		 * published beside the assertion rather than the premise assumed, and the class
+		 * is covered where it is decidable today: the transport and routing tests drive
+		 * real refusals and assert the composed sentence.
+		 */
+		const desktopAsked = state.requests.filter((entry) =>
+			entry.path.startsWith("/v1/desktop/"),
+		);
 		summary.scenes["other-principal"] = {
+			...(summary.scenes["other-principal"] ?? {}),
 			page,
+			desktopRoutesServed: desktopAsked.length,
 			daemonRefusals: state.requests.filter((entry) =>
 				entry.path.startsWith("/v1/desktop/"),
 			).length,
