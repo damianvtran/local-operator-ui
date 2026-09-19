@@ -21,24 +21,25 @@ render.
 | --- | --- | --- |
 | `before/` | `origin/main` at **`a17a6b3ba`**, checked out as a worktree at `/tmp/rs-before-tree` | `pnpm exec storybook build` on that tree, then the harness below against it |
 | `defect/` | this branch's own **pre-remediation head** at **`f249a6604`** (the rebased `ffd05dec1`), worktree `/tmp/rs-defect-tree` | the same build, the same harness |
-| `after/` | this branch at the **shipping head** `326383d10` — the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry | the same build, the same harness, the same stories, the same viewports, **re-shot at that head** |
+| `after/` | this branch at its **fix commit** `326383d10` — the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry, and the tree that ships (the commit after it moves `docs/` only) | the same build, the same harness, the same stories, the same viewports, **re-shot at that tree** |
 
 Each half is a picture of ONE tree, and the manifest names the `after/` one in
 its `capturedAtHead` because that is the field that pairs with the pass's own
 tree stamps: `before/` is `origin/main` at `a17a6b3ba`, `defect/` is this branch's
 pre-remediation head `f249a6604` (now the head of neither half's record), and
-`after/` is the shipping head `326383d10`. The frames were taken from the working
+`after/` is the branch's fix commit `326383d10`, whose trees are the ones the
+stamps carry and the ones that ship. The frames were taken from the working
 tree that became that commit, before it existed, which is why the SHA is a name
 for the tree and not a claim about capture order.
 
-**The `after/` half was re-shot at the shipping head, because it pictured a tree
-that no longer ships.** Its 34 frames were first taken at `76e880af7`, which
+**The `after/` half was re-shot at the tree that ships, because it pictured one
+that no longer does.** Its 34 frames were first taken at `76e880af7`, which
 predates the two commits that gave the avatar plates their `border-control` edge
 (`user-profile-sidebar.tsx`'s account plate and `agents-sidebar.tsx`'s avatar).
 The six rail frames contain the account row, so they were a picture of a plate
 WITHOUT its ring on a branch that ships one — the ring being the whole pixel of
 the change they would otherwise be evidence for. All 34 were re-taken through the
-same harness at the shipping head rather than only the six: a half is a picture
+same harness at that tree rather than only the six: a half is a picture
 of ONE tree, and six frames of one tree beside 28 of another is the shape the
 defect above produced. Measured against the retired capture: the six rail frames'
 bytes changed and the other 28 are byte-identical, so the re-shoot moved exactly
