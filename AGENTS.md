@@ -301,6 +301,33 @@ now arms instead of printing a refusal, and the browser host takes the plan's
 `show` to suppress consent banners. Both directions are the safe one, and both
 are why an assumed mode is reported on stdout rather than left implicit.
 
+**The mode governs the WINDOW; it cannot promise what the rig does afterwards.**
+A launch that resolves `headless` is never shown and is unfocusable — that is the
+property the mode owns. The property an operator actually feels is a different
+one: whether anything the run does *afterwards* asks the OS to make it frontmost.
+Measured on this machine while the policy was holding exactly as documented —
+zero windows across every rig launch sampled, and one windowless, unfocusable
+instance still the frontmost application for seconds at a time — so "never shown"
+is not "cannot take the operator's focus". Re-derive it rather than take that on
+faith: `docs/evidence/window-mode/harness/run.sh` prints the
+`frontmost application in <STOLE> of <TOTAL> samples` line for a run, which is
+where this section's other numbers come from too.
+
+So a rig never calls `window.focus()` (which asks macOS to order the window *and*
+activate the app) and never sends `Page.bringToFront` or `Target.activateTarget`
+over CDP. Element focus — `input.focus()`, `document.body.focus()` — moves a
+caret inside the page, and `Emulation.setFocusEmulationEnabled` makes a page that
+is not on screen read as focused; between them they cover every focus assertion a
+rig needs, which is why the rule bans the three calls that leave the page rather
+than focus itself. `scripts/window-mode.test.mjs` scans for those three the same
+way it scans `src/main` for off-site raises: `scripts/` in every executable a
+driver is written in (`.mjs`, `.js`, `.cjs`, `.ts`, `.tsx`, `.html`), the CDP
+harnesses under `docs/evidence/*/harness/`, and `bin/` — because the `src/main`
+scan cannot see a request a rig makes from the renderer side, which is where a rig
+reaches the OS. Comments are blanked with the repository's own `blankComments`
+helper, so the rule can be documented in prose while a call hiding behind a
+comment is still found.
+
 ```bash
 # The built app, driven over CDP at an exact size, with no window at all.
 #
