@@ -31,6 +31,7 @@
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
+import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
 	panelIdentityFor,
@@ -347,6 +348,50 @@ export function installDevDriver(): string[] {
 				),
 			};
 		},
+
+		/**
+		 * Every query the app is holding, as the screen's own gate reads it.
+		 *
+		 * WHY THIS IS A VERB AND NOT A SCREEN. A full-page spinner is the state a
+		 * settings page reaches when a query it does not need has not settled, and
+		 * the app cannot show that from the outside: two queries hold this route (the
+		 * config it renders and the Radient account it only reads a boolean from),
+		 * the spinner is the same pixels either way, and the two are indistinguishable
+		 * in a frame. So the numbers a scene needs are the cache's own - `isLoading`
+		 * in the query hook's terms is `pending` AND `fetching`, which is why both
+		 * fields travel.
+		 *
+		 * Keys only, never data: this is a reading of the SHAPE of the cache, and the
+		 * profile, the conversation list and the account payload have no business in
+		 * a harness log. The error is carried as its message for the same reason the
+		 * cache holds it there - it is what the screen's own copy is derived from.
+		 */
+		queries: () =>
+			queryClient
+				.getQueryCache()
+				.getAll()
+				.map((query) => ({
+					key: JSON.stringify(query.queryKey),
+					status: query.state.status,
+					fetchStatus: query.state.fetchStatus,
+					/*
+					 * The two fields above, ANDed exactly as `useQuery` ANDs them into
+					 * `isLoading`. The reader of this log should not have to rebuild React
+					 * Query's own rule from its parts, and a scene asserting on the parts
+					 * would keep passing if that rule changed.
+					 */
+					isLoading:
+						query.state.status === "pending" &&
+						query.state.fetchStatus === "fetching",
+					error:
+						query.state.error instanceof Error
+							? query.state.error.message
+							: null,
+					hasData: query.state.data !== undefined,
+					updatedAt: query.state.dataUpdatedAt,
+					failureCount: query.state.fetchFailureCount,
+					observers: query.getObserversCount(),
+				})),
 
 		/** Navigate the way the URL does — `HashRouter` reads this hash. */
 		navigate: async (payload) => {

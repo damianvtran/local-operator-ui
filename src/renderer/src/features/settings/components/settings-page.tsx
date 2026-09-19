@@ -307,11 +307,23 @@ export const SettingsPage: FC = () => {
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
-	// Only the signed-in bit is needed here: the profile fields go read-only
-	// when the backend resolves a Radient account. The query hook is the
-	// backend-proxy source of that fact; the wrapper hook additionally syncs
-	// the user store, which this page does not need.
-	const { isAuthenticated, isLoading: isAuthLoading } = useRadientUserQuery();
+	// The Radient account read, and deliberately only three things from it.
+	//
+	// `isAuthenticated` is the fact this page needs: the profile fields go
+	// read-only when the backend resolves a Radient account, and the billing and
+	// usage blocks render under it. The query hook is the backend-proxy source
+	// of that fact; the wrapper hook additionally syncs the user store, which
+	// this page does not need.
+	//
+	// `error` and `refreshUser` are here because the FAILURE of this read is a
+	// state the page has to say out loud: the profile fields render the user
+	// store's own copy, whose default is the literal name "User", so a refused
+	// read is otherwise indistinguishable from a person who has not set a name.
+	//
+	// The hook's own `isLoading` is deliberately NOT read: it is what held this
+	// whole surface (see the gate below).
+	const { isAuthenticated, error: authError, refreshUser } =
+		useRadientUserQuery();
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
@@ -650,8 +662,37 @@ export const SettingsPage: FC = () => {
 		}
 	};
 
-	// Combine loading states
-	const isLoading = isConfigLoading || isAuthLoading;
+	/*
+	 * What holds this surface while it loads: the config it RENDERS, and nothing
+	 * else.
+	 *
+	 * WHY THE RADIENT ACCOUNT READ IS NOT IN THIS EXPRESSION, measured in the
+	 * built app on 2026-09-19: with the account read refused upstream (401) and
+	 * `['config']` already `success`, the page sat on `Spinner label="Loading
+	 * settings"` for the whole 30s window it was sampled over, because
+	 * `isAuthLoading` was true the entire time - the account read is re-issued
+	 * about once a second while the query never leaves `pending`/`fetching`
+	 * (33 reads in 33.4s at the backend, one per second). A read that can fail
+	 * forever must not decide whether a page can render, and this page reads
+	 * exactly ONE thing from it: `isAuthenticated`, for two read-only fields and
+	 * two Radient-only blocks. `isConfigLoading` is the read the surface cannot
+	 * be rendered without, and the error branch above is what makes its failure
+	 * actionable.
+	 *
+	 * The account read still gates the surfaces that genuinely depend on it -
+	 * `RadientAccountSection` renders its own waiting state and its own failure
+	 * copy - and it still decides the two profile fields' read-only bit below.
+	 */
+	const isLoading = isConfigLoading;
+	/*
+	 * A refused account read, told apart from an ordinary signed-out state: a
+	 * 409 from the proxy means "no Radient credential is stored", which is the
+	 * state the sign-in prompt is for, while any other failure means the app
+	 * could not find out WHO is signed in. The distinction is the whole reason
+	 * this is not folded into `isAuthenticated`: both are false, and only one of
+	 * them is a fault.
+	 */
+	const accountReadFailed = Boolean(authError) && !isAuthenticated;
 	// Well inside the transport's deadline for these reads (the op's own derived
 	// budget), so the explanation appears while
 	// the user is still deciding whether the app is stuck rather than after they
@@ -846,6 +887,41 @@ export const SettingsPage: FC = () => {
 								icon={User}
 								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
 							>
+								{/*
+								 * A refused account read, said out loud. Without this the two fields
+								 * below render the user store's default - the literal name "User" and
+								 * `user@example.com` - in the same editable styling as a real profile,
+								 * so a person whose Radient credential was rejected sees placeholder
+								 * data and no reason for it (measured 2026-09-19: the sidebar read
+								 * "User" beside a backend that held a Radient credential).
+								 *
+								 * `warning` and a Retry, matching the config branch above and the
+								 * providers grid: one fault renders at one severity, and a failure
+								 * with a retry beside it has cost the user nothing. The raw
+								 * exception stays out of the sentence for the reason
+								 * `backend-error.ts` records - the sentence has to name something
+								 * the reader can do.
+								 */}
+								{accountReadFailed && (
+									<Alert variant="warning">
+										<div className="flex items-center justify-between gap-3">
+											<span>
+												Your Radient account could not be read, so the name and
+												email below are this app's own copy rather than your
+												account details. Try again here, or sign in to Radient
+												again in the Radient account section.
+											</span>
+											<Button
+												variant="secondary"
+												size="sm"
+												className="shrink-0"
+												onClick={() => refreshUser()}
+											>
+												Retry
+											</Button>
+										</div>
+									</Alert>
+								)}
 								{/*
 								 * Neither field carries a glyph. The section heading is
 								 * already a person, and a second person glyph 60px under it
