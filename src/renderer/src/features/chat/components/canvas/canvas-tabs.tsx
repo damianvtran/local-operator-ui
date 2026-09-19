@@ -132,9 +132,25 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 	// A tab selected from the overflow menu, or opened by the agent, is often
 	// outside the scrolled viewport. `nearest` scrolls only when it has to, so
 	// clicking a visible tab never shifts the strip under the cursor.
+	//
+	// THE GROUP, NOT THE LABEL (UX round 1, U3), and the reason is this PR's own
+	// subject: the ✕ is a SIBLING of the tab button, so scrolling the button's box
+	// into view - which is what the refs point at - can leave the one permanently
+	// revealed control off the edge. Measured at nine documents: the selected tab's
+	// label was on screen, its ✕ was `closeVisiblePx 0`, and the pixel at the ✕'s
+	// centre belonged to the strip's pinned overflow button, so a reader aiming at
+	// the close instead opened a menu that cannot close anything. The group's box
+	// contains the ✕, so scrolling it scrolls what the reader needs to press.
+	//
+	// `selectedId` alone, and that is enough: the two things that change the row's
+	// width arrive with a selection. Opening a document selects it, so the scroll
+	// runs. A close that leaves the selection alone can only make the row NARROWER
+	// - the removed box was to the left of the selected one or to its right - so the
+	// selected tab's box moves left or stays, and there is nothing left to scroll to.
 	useEffect(() => {
 		if (!selectedId) return;
-		tabRefs.current.get(selectedId)?.scrollIntoView({
+		const tab = tabRefs.current.get(selectedId);
+		(tab?.parentElement ?? tab)?.scrollIntoView({
 			block: "nearest",
 			inline: "nearest",
 		});
@@ -157,9 +173,15 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 			 *
 			 * Focused synchronously, before the re-render that removes the ✕: the tab
 			 * this targets is still mounted, and moving focus first means a keyboard
-			 * reader never sees focus fall to `body` at all. When the close empties the
-			 * strip there is no tab to move to and this is a no-op: `null` is the empty
-			 * state, which the pane paints (see the deferral on D3 in the review thread).
+			 * reader never sees focus fall to `body` at all. It is the same rule the
+			 * browser side's tab strip parks the caret by (`browser-tab-strip.tsx`),
+			 * where the close arrives asynchronously and the parking is therefore an
+			 * armed effect with a "never take the caret back" guard; a canvas close is
+			 * decided in the same tick as the press, so the rule lands here in one step
+			 * and there is no window in which the reader could have moved the caret
+			 * themselves. When the close empties the strip there is no tab to move to
+			 * and this is a no-op: `null` is the empty state, which the pane paints (see
+			 * the deferral on D3 in the review thread).
 			 */
 			const nextTab = tabFollowingClose(documents, documentId);
 			if (nextTab) tabRefs.current.get(nextTab.id)?.focus();

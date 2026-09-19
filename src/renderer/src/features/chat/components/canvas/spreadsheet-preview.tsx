@@ -20,9 +20,9 @@ import type {
 import { iconSetQuartz } from "ag-grid-community";
 import type { CanvasDocument } from "../../types/canvas";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { closeDocumentBuffer } from "./close-report";
 import {
 	adoptBuffer,
-	closeBuffer,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
@@ -810,8 +810,23 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	 * the file is opened again. The dirty flag and the hold are the owner's to keep
 	 * while the fact stands (R4-1).
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the bytes and the store handoff.
-	useEffect(() => () => closeBuffer(document.id), [document.id]);
+	/*
+	 * THE CLOSE'S REPORT (UX round 1, U1): the cleanup's own outcome is what the
+	 * reader is told when a close could not write their words - see
+	 * `close-report.ts`, which also decides whether this unmount was a close at all.
+	 *
+	 * Keyed on the document's identity FIELDS rather than on the document object:
+	 * the store hands this component a new object whenever the document changes
+	 * (every keystroke that reaches the store, every freshness apply), and an
+	 * effect keyed on the object would run its cleanup on each of those - closing,
+	 * and reporting, a document that is still open.
+	 */
+	const documentId = document.id;
+	const documentTitle = document.title;
+	useEffect(
+		() => () => closeDocumentBuffer({ id: documentId, title: documentTitle }),
+		[documentId, documentTitle],
+	);
 
 	const saveChangesRef = useRef<((explicit?: boolean) => Promise<void>) | null>(
 		null,
