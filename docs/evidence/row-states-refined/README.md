@@ -21,15 +21,36 @@ render.
 | --- | --- | --- |
 | `before/` | `origin/main` at **`a17a6b3ba`**, checked out as a worktree at `/tmp/rs-before-tree` | `pnpm exec storybook build` on that tree, then the harness below against it |
 | `defect/` | this branch's own **pre-remediation head** at **`f249a6604`** (the rebased `ffd05dec1`), worktree `/tmp/rs-defect-tree` | the same build, the same harness |
-| `after/` | this branch at the **remediation head** `76e880af7` (the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry) | the same build, the same harness, the same stories, the same viewports |
+| `after/` | this branch at the **shipping head** `326383d10` — the commit whose `src`/`scripts` trees `docs/evidence/manifest.json`'s stamps carry | the same build, the same harness, the same stories, the same viewports, **re-shot at that head** |
 
 Each half is a picture of ONE tree, and the manifest names the `after/` one in
 its `capturedAtHead` because that is the field that pairs with the pass's own
 tree stamps: `before/` is `origin/main` at `a17a6b3ba`, `defect/` is this branch's
 pre-remediation head `f249a6604` (now the head of neither half's record), and
-`after/` is the remediation head `76e880af7`. The frames were taken from the
-working tree that became `76e880af7`, before the commit existed, which is why the
-SHA is a name for the tree and not a claim about capture order.
+`after/` is the shipping head `326383d10`. The frames were taken from the working
+tree that became that commit, before it existed, which is why the SHA is a name
+for the tree and not a claim about capture order.
+
+**The `after/` half was re-shot at the shipping head, because it pictured a tree
+that no longer ships.** Its 34 frames were first taken at `76e880af7`, which
+predates the two commits that gave the avatar plates their `border-control` edge
+(`user-profile-sidebar.tsx`'s account plate and `agents-sidebar.tsx`'s avatar).
+The six rail frames contain the account row, so they were a picture of a plate
+WITHOUT its ring on a branch that ships one — the ring being the whole pixel of
+the change they would otherwise be evidence for. All 34 were re-taken through the
+same harness at the shipping head rather than only the six: a half is a picture
+of ONE tree, and six frames of one tree beside 28 of another is the shape the
+defect above produced. Measured against the retired capture: the six rail frames'
+bytes changed and the other 28 are byte-identical, so the re-shoot moved exactly
+what the ring moved and nothing else. What the six now carry is READ BACK rather
+than eyeballed (below): a 1px `border-control` hairline on the plate, at that
+palette's own variable. Neither `before/` nor `defect/` is a control for the ring
+— both differ from `after/` in the rail's ground as well, so a frame from either
+would show two changes at once — and the four palettes the ring is load-bearing
+on (`arcade`, `gruvbox`, `obsidian`, `everforest`, where the plate's fill alone
+vanishes under the pointer) are photographed by no half of this set; the design
+round shot those itself and cites them on the pull request rather than committing
+them here.
 
 Both `before/` and `after/` are the **real component through the real cascade**.
 Nothing is injected at the DOM in either: the difference between them is the
@@ -81,12 +102,15 @@ named), plus the two the remediation round added — **`rosePineDawn`** (the
 fleet's minimum band, § 11.5) and **`ayuLight`** (the second of the three the
 field floor used to refuse, and one of the two the round lifted).
 
-**Four rail palettes**: `alucard` (the tightest of the rail's four palettes' pairs
-- the fleet's own tightest `surface`|`canvas` pair is `sage` 2.05, which this set
-does not render - and the 0.44), `localOperatorLight` (the 1.19, and the
-second-tightest of the four), `localOperatorDark` (the control — the change there
-is a step between two near-black grounds and reads as almost nothing), and
-`kanagawaLotus` (0.83 on the categories rail).
+**Four rail palettes**, and they are ordered by the DEFECT's own quantity — the
+ΔE00 between the current row's fill and the ground it is painted on, which is
+what the `defect/` half exists to show: `alucard` (the **0.44**, the tightest of
+the four by that measure; the fleet's own tightest `surface`|`canvas` pair is
+`sage` 2.05, a different quantity, and this set does not render it),
+`localOperatorLight` (the **1.19**, second-tightest of the four by the same
+measure), `localOperatorDark` (the control — the change there is a step between
+two near-black grounds and reads as almost nothing), and `kanagawaLotus` (0.83 on
+the categories rail).
 
 ## The DOM readback, which is how these grounds are asserted
 
@@ -117,6 +141,30 @@ sentence `sidebar-navigation.tsx`'s own comment records fixing once already. The
 collapsed rail tells the same story without a label in the row: the tile is the
 whole mark, and at 0.44 there is no tile.
 
+### The plate's edge, read from the same run
+
+The six rail frames contain the account row, and the avatar plate inside it is the
+pixel the closing rounds are about: the row paints `hover:bg-row-hover`, a row
+state is a step of the panel it sits on, and the plate's fill is `elevated` — the
+same role, byte-identical on `arcade`. Its carrier is therefore a 1px
+`border-control` edge, and the run READS it rather than leaving it to the eye. The
+harness resolves the plate by that edge's own class and fails unless exactly one
+element in the rail matches it, then reports the element's box, border and fill:
+all six frames (three themes, expanded and collapsed) report a **28x28** disc, a
+**1px** border, and the border's colour equal to that palette's own
+`--lo-border-control` while the fill resolves to its `elevated`:
+
+| theme | plate box | border (`--lo-border-control`) | fill (`elevated`) |
+| --- | --- | --- | --- |
+| `alucard` | 28x28 | 1px `rgb(108, 102, 75)` = `#6c664b` | `rgb(254, 253, 248)` |
+| `localOperatorLight` | 28x28 | 1px `rgb(133, 127, 112)` = `#857f70` | `rgb(254, 253, 250)` |
+| `localOperatorDark` | 28x28 | 1px `rgb(131, 124, 109)` = `#837c6d` | `rgb(50, 45, 34)` |
+
+That is what makes a re-shot frame a picture of the state under review rather than
+of the tree before it, and it is the same discipline the ground assertion above
+uses: a frame whose ring had not rendered, or had rendered in another palette's
+colour, fails the run instead of being committed.
+
 ### The rail's seam, read rather than assumed
 
 The rail takes `border-r border-hairline` for the boundary its `sunken` step used
@@ -128,12 +176,16 @@ it carries **0px** — so the seam is one rule, not two, which is the case the
 design round asked to have checked. The `defect` half reads 0px on both sides,
 which is the same seam before the rule was drawn.
 
-The rail's chrome/content pairs are the two tightest of the FOUR RAIL PALETTES
-this set renders — `surface` against the `canvas` beside it is ΔE00 **2.32** on
-`localOperatorLight` and **2.60** on `alucard` — which is why the hairline is
-doing real work on those two and is the reason the boundary was drawn rather than
-left to the tonal step. They are not the fleet's tightest pairs, and an earlier
-revision of this sentence said they were: `surface` against `canvas` measures
+The rail's chrome/content pairs — a **different quantity** from the four
+palettes' row-vs-ground collisions above, and the reason the two order
+`localOperatorLight` first and `alucard` second where the collisions do the
+reverse: this one is the ΔE00 between the rail's `surface` and the `canvas`
+beside it — are the two tightest of the four rail palettes this set renders:
+**2.32** on `localOperatorLight` and **2.60** on `alucard` — which is why the
+hairline is doing real work on those two and is the reason the boundary was drawn
+rather than left to the tonal step. They are not the fleet's tightest pairs, and
+an earlier revision of this sentence said they were: `surface` against `canvas`
+measures
 **2.05** on `sage`, 2.08 on `catppuccinMacchiato` and 2.10 on `oneLight`
 (`localOperatorLight` is ninth, `alucard` twenty-third), and none of the three is
 in this set. The design round's own `sage` frame is the check the sentence was
@@ -163,19 +215,26 @@ assumed here because the comment that argued from it has been rewritten.
 | 7 | `outrun`'s selection is the loudest in the after fleet (C\* 24.47) | `after/neighbour-hovered/outrun` — a deeper, more saturated plane in the panel's own family; the palette to look at if the ceiling needs re-arguing |
 | 8 | nothing in the light fleet gets lighter | the light pairs (`localOperatorLight`, `kanagawaLotus`, `iceberg`, `rosePineDawn`, `ayuLight`): every after selection is *darker* than its panel |
 | D1 | the two `rowCurrent` rails wear the row ground | `rail-expanded/`, `rail-collapsed/` and `categories-rail/`, all three halves, with the readback table above |
+| D14 | an object inside a row state keeps its own edge | `after/rail-expanded/*` and `after/rail-collapsed/*`: the account plate's 1px `border-control` ring, on a 28x28 disc, read back in the section above and re-shot for it |
 
 ## The sweep, which has still not run on these frames
 
 `pnpm check-evidence` admits **one sweep per machine**, and it has deferred at
-**75** on every attempt this branch has made — the closing round's included, at
-2026-09-19T04:28Z, where the holder is identified rather than assumed: a peer
-session's own sweep (`scripts/check-evidence.mjs`, pid **26555**, started
-00:13:25 local) driving a QA rig against **PR #384**
-(`~/qa384-r2/head/scripts/check-evidence.mjs`, its image child pid 26565, which is
-the pid the lock file records). The holder this README used to name — pid 46106,
-worktree `~/local-operator-ui/.worktrees/wedged-status` — is **gone**; the record
-is corrected rather than left to send the next reader hunting for a dead pid.
-**No frame in this set has been content-checked by the sweep.** The manifest's
+**75** on every attempt this branch has made, **the closing round's included** —
+the latest at 2026-09-19T06:22Z, with the holder identified rather than assumed
+again: a peer session's own sweep of the toast-close-corner worktree
+(`scripts/check-evidence.mjs`, pid **57942**, started 02:08 local, its image child
+pid **8132**, running `magick … toast-close-corner/docs/evidence/canvas-workspace/spreadsheet/dune.webp`).
+The holder the round before this one found was a different peer's sweep (pid
+26555, a QA rig against PR #384, its image child 26565), and the one before that
+(pid 46106, worktree `~/local-operator-ui/.worktrees/wedged-status`) is gone:
+each attempt names the holder the lock file records, and no earlier holder is left
+standing in place of the live one.
+**No frame in this set has been content-checked by the sweep** — and the re-shot
+frames do not change that half of the story: the sweep checks a frame's dominant
+colour against the palette its filename names, which is not what a 1px ring is.
+The ring is what the harness's own plate assertion reads (above), on the same run
+that wrote the frames. The manifest's
 `rowStatesRefinedPass.checkEvidence` records the same deferral with the same
 holder, so it is stated in both places rather than left silent. What HAS run
 against these frames is `scripts/evidence-manifest.test.mjs` (the stamps, the
@@ -210,6 +269,12 @@ node ... --serve /tmp/rs-sb-defect --out .../defect --half defect \
   --scene rail-expanded/rail-collapsed/categories-rail <the same themes>
 ```
 
+**The `after/` half's four commands were run twice** — once at `76e880af7` and
+again at the shipping head, each group's readback written to its own file with
+`--readings` — and the second run is the one these frames come from. The plate
+table above is the second run's own output, and the retired capture is what the
+"six frames' bytes changed, 28 did not" measurement is against.
+
 **Why a harness beside the frames rather than `scripts/capture-evidence.mjs`.**
 A before/after pair has to come from two trees, and the committed rig captures
 from the tree it lives in, so the before half would have to be a worktree swap
@@ -224,8 +289,11 @@ driven by `args=theme:<id>` plus a seeded `ui-preferences-storage`, the
 `dataset.theme` assertion before every shutter, a real `Input.dispatchMouseEvent`
 pointer on the neighbour selector the rig uses for the same state
 (`scripts/capture-evidence.mjs`'s `chat-sidebar-current-row--selected-row`
-neighbour entry), the crop at device scale factor 2, and WebP at the
-repository's own quality. `scripts/chrome-keychain.test.mjs` scans this
+neighbour entry), the crop at device scale factor 2, WebP at the repository's own
+quality, and — on the two rail scenes — **the plate's own edge, resolved by its
+`border-control` class and asserted to be that palette's 1px `--lo-border-control`
+on a 28x28 disc**, so the frames the plate's ring is evidence for cannot be
+committed without it. `scripts/chrome-keychain.test.mjs` scans this
 directory — `.mjs` files under `docs/evidence/<surface>/harness/` — and the call
 it requires is here.
 
@@ -243,7 +311,10 @@ and the Chrome process is killed by exact pid when the run ends.
   categories rail's column**, both of which are re-grounded and carry frames and a
   readback above. What is still unframed is the `elevated` face of the exemption: a
   selected row can be the same colour as a dialog's ground or an input well, and no
-  row is painted on one.
+  row is painted on one. The OTHER face of that withdrawal — an object with a
+  ground of its own INSIDE a row state — is no longer an accepted risk: it is
+  answered with an edge (`docs/design/row-states-refinement.md` § 9.2), and the
+  six rail frames both carry that edge and read it back above.
 - **`kanagawaLotus` is the only strong-cast light panel with a hovered neighbour**
   in the chat-sidebar arrangements; `everforestLight` and `gruvboxLight` are in the
   direction's 59-palette simulation only, and `gruvboxLight` is one of the two wash
@@ -256,7 +327,12 @@ and the Chrome process is killed by exact pid when the run ends.
 - The **agents sidebar and the agents page roster** are `rowCurrent` surfaces with
   no frame here: no story renders `AgentsSidebar`, and the roster row only wears
   the role for the agent that is open, which a backend-less run does not have.
-  Their ground is asserted by `scripts/chat-sidebar-selection.test.mjs` instead.
+  Their ground is asserted by `scripts/chat-sidebar-selection.test.mjs` instead —
+  **and so is the avatar plate inside the agents sidebar's row**, the second object
+  the closing round gave a `border-control` edge: it has no frame in any half for
+  the same reason, and its pair is asserted per palette in
+  `scripts/contrast-contract.mjs` and by class (with the whole set of objects a row
+  state can paint over) in `scripts/chat-sidebar-selection.test.mjs`.
 - These are **not contrast instruments**: the ratios and ΔE00 values quoted in the
   direction and in `scripts/contrast-contract.mjs` are computed from the palette
   values, not sampled from these pixels. The one table above that IS computed from

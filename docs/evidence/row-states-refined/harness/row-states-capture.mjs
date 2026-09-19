@@ -81,6 +81,24 @@ const STATES = (flag("states") ?? "rest,neighbour-hovered").split(",");
  * `crop` is either a single element or the UNION of every match (`cropIsUnion`),
  * which is how the chat sidebar's frames are the row list's own bounding box.
  */
+/*
+ * THE PLATE'S OWN SELECTOR, named once (design review D14, review M1). The `after/`
+ * half of this set is the evidence for a change whose whole pixel is a 1px
+ * `border-control` ring on the avatar plate inside a row state, and two of the
+ * three surfaces a row state is photographed on — the app rail's expanded and
+ * collapsed frames — contain it. The ring was NOT the change the frames were
+ * first taken for, which is exactly why it went unphotographed for a round: the
+ * committed rail frames were a picture of a tree from before the ring existed.
+ *
+ * The selector is the account row's own disc, addressed by the ring itself:
+ * `border-control` is the class the plate is the only wearer of inside the rail's
+ * `<nav>` (`shared/components/navigation/user-profile-sidebar.tsx`), and the run
+ * FAILS unless it matches exactly one element, so a second one appearing — or the
+ * selector matching nothing on a tree where the ring does — is a failure rather
+ * than a frame taken of something else. Measured on the rail, expanded and
+ * collapsed: 28x28, `border: 1px <that palette's borderControl>`.
+ */
+const PLATE_SELECTOR = "nav button span.border-control";
 const SCENES = {
 	"chat-sidebar": {
 		story: "chat-sidebar-current-row--selected-row",
@@ -90,6 +108,7 @@ const SCENES = {
 		crop: "[data-chat-row]",
 		cropIsUnion: true,
 		assertGround: null,
+		plate: null,
 	},
 	"rail-expanded": {
 		story: "shell-app-shell--agents",
@@ -98,6 +117,7 @@ const SCENES = {
 		crop: "nav",
 		cropIsUnion: false,
 		assertGround: "surface",
+		plate: PLATE_SELECTOR,
 	},
 	"rail-collapsed": {
 		story: "shell-app-shell--rail-collapsed",
@@ -106,6 +126,7 @@ const SCENES = {
 		crop: "nav",
 		cropIsUnion: false,
 		assertGround: "surface",
+		plate: PLATE_SELECTOR,
 	},
 	"categories-rail": {
 		story: "agent-hub-page--grid",
@@ -122,6 +143,7 @@ const SCENES = {
 		cropIsUnion: true,
 		cropPad: 10,
 		assertGround: "surface",
+		plate: null,
 	},
 };
 const SCENE = SCENES[flag("scene", "chat-sidebar")];
@@ -375,7 +397,7 @@ const main = async () => {
 				 * alone has to be trusted.
 				 */
 				const read = await cdp.eval(
-					`(()=>{const row=document.querySelector(${JSON.stringify(SCENE.row)});const painted=(el)=>{let n=el.parentElement;while(n&&n!==document.documentElement){const bg=getComputedStyle(n).backgroundColor;if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent')return {tag:n.tagName.toLowerCase(),cls:String(n.className).slice(0,140),bg};n=n.parentElement;}return null;};const s=getComputedStyle(document.documentElement);const v=(n)=>s.getPropertyValue(n).trim();const probe=document.createElement('div');probe.style.backgroundColor='var(--lo-surface)';document.body.appendChild(probe);const surfaceRgb=getComputedStyle(probe).backgroundColor;probe.remove();const rows=[...document.querySelectorAll('[data-chat-row]')].map((e)=>{const r=e.getBoundingClientRect();return {label:e.textContent.trim().slice(0,32),bg:getComputedStyle(e).backgroundColor,w:Math.round(r.width),h:Math.round(r.height)};});/* THE BOUNDARY, read rather than assumed: the rail's own border-r has to be the only one on that seam, or two rules double into a 2px line where the design asks for one. */const rail=row?row.closest('nav'):null;const next=rail?rail.nextElementSibling:null;const boundary= rail?{railBorderRight:getComputedStyle(rail).borderRightWidth+' '+getComputedStyle(rail).borderRightColor,nextTag:next?next.tagName.toLowerCase():null,nextBorderLeft:next?getComputedStyle(next).borderLeftWidth+' '+getComputedStyle(next).borderLeftColor:null}:null;return {row: row?getComputedStyle(row).backgroundColor:null,rowLabel: row?row.textContent.trim().slice(0,40):null,painted: row?painted(row):null,surfaceRgb,surface:v('--lo-surface'),sunken:v('--lo-sunken'),canvas:v('--lo-canvas'),varSel:v('--lo-row-selected'),varHov:v('--lo-row-hover'),boundary,rows};})()`,
+					`(()=>{const row=document.querySelector(${JSON.stringify(SCENE.row)});const plateEls=${JSON.stringify(SCENE.plate)}?[...document.querySelectorAll(${JSON.stringify(SCENE.plate)})]:[];const plateEl=plateEls[0]??null;const borderProbe=document.createElement('div');borderProbe.style.borderColor='var(--lo-border-control)';document.body.appendChild(borderProbe);const borderControlRgb=getComputedStyle(borderProbe).borderColor;borderProbe.remove();const painted=(el)=>{let n=el.parentElement;while(n&&n!==document.documentElement){const bg=getComputedStyle(n).backgroundColor;if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent')return {tag:n.tagName.toLowerCase(),cls:String(n.className).slice(0,140),bg};n=n.parentElement;}return null;};const s=getComputedStyle(document.documentElement);const v=(n)=>s.getPropertyValue(n).trim();const probe=document.createElement('div');probe.style.backgroundColor='var(--lo-surface)';document.body.appendChild(probe);const surfaceRgb=getComputedStyle(probe).backgroundColor;probe.remove();const rows=[...document.querySelectorAll('[data-chat-row]')].map((e)=>{const r=e.getBoundingClientRect();return {label:e.textContent.trim().slice(0,32),bg:getComputedStyle(e).backgroundColor,w:Math.round(r.width),h:Math.round(r.height)};});/* THE BOUNDARY, read rather than assumed: the rail's own border-r has to be the only one on that seam, or two rules double into a 2px line where the design asks for one. */const rail=row?row.closest('nav'):null;const next=rail?rail.nextElementSibling:null;const boundary= rail?{railBorderRight:getComputedStyle(rail).borderRightWidth+' '+getComputedStyle(rail).borderRightColor,nextTag:next?next.tagName.toLowerCase():null,nextBorderLeft:next?getComputedStyle(next).borderLeftWidth+' '+getComputedStyle(next).borderLeftColor:null}:null;return {borderControl:v('--lo-border-control'),plateMatches:plateEls.length,plate: plateEl?{tag:plateEl.tagName.toLowerCase(),cls:String(plateEl.className).slice(0,140),bg:getComputedStyle(plateEl).backgroundColor,border:getComputedStyle(plateEl).borderTopWidth+' '+getComputedStyle(plateEl).borderTopColor,box:(r=>Math.round(r.width)+'x'+Math.round(r.height))(plateEl.getBoundingClientRect())}:null,borderControlRgb,row: row?getComputedStyle(row).backgroundColor:null,rowLabel: row?row.textContent.trim().slice(0,40):null,painted: row?painted(row):null,surfaceRgb,surface:v('--lo-surface'),sunken:v('--lo-sunken'),canvas:v('--lo-canvas'),varSel:v('--lo-row-selected'),varHov:v('--lo-row-hover'),boundary,rows};})()`,
 				);
 				if (read.row === null) {
 					throw new Error(
@@ -392,6 +414,31 @@ const main = async () => {
 					if (read.painted === null || read.painted.bg !== read.surfaceRgb) {
 						throw new Error(
 							`${theme}/${state}: the row is painted on ${JSON.stringify(read.painted)}, not on var(--lo-surface) = ${read.surfaceRgb} (surface ${read.surface}, sunken ${read.sunken}, canvas ${read.canvas})`,
+						);
+					}
+				}
+				if (HALF === "after" && SCENE.plate !== null) {
+					/*
+					 * THE RING IS READ, not left to the eye — the same discipline as the
+					 * ground: the plate under the row's own state has to resolve to a 1px
+					 * `border-control` that this palette's variable carries, or the frame
+					 * is not a picture of the shipping state. A selector that matches
+					 * nothing fails here rather than reporting a plate of `null`.
+					 */
+					if (read.plateMatches !== 1 || read.plate === null) {
+						throw new Error(
+							`${theme}/${state}: ${read.plateMatches} element(s) matched ${JSON.stringify(SCENE.plate)}, and the plate this set is evidence for is exactly one — a second ring, or none, means the frame is not a picture of the state under review`,
+						);
+					}
+					const [width, ...colour] = read.plate.border.split(" ");
+					if (width !== "1px") {
+						throw new Error(
+							`${theme}/${state}: the plate's edge is ${width}, not the 1px border-control ring this set is evidence for (${read.plate.box}, ${read.plate.bg})`,
+						);
+					}
+					if (colour.join(" ") !== read.borderControlRgb) {
+						throw new Error(
+							`${theme}/${state}: the plate edge is ${colour.join(" ")}, not var(--lo-border-control) = ${read.borderControl} (${read.borderControlRgb})`,
 						);
 					}
 				}
