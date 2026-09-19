@@ -165,7 +165,7 @@ test("the release gate accepts a rendered group and refuses a signature without 
 	// in its own description (the app's Info.plist is what supplies the id).
 	assert.equal(hasWebauthnEntitlement(rendered), true);
 
-	// An ad-hoc signature prints nothing at all for `-d --entitlements :-`
+	// An ad-hoc signature prints nothing at all for `-d --entitlements - --xml`
 	// (measured), which is the case this has to catch rather than accept.
 	assert.equal(hasWebauthnEntitlement(""), false);
 	// Entitlements that carry other keys but no keychain group are refused too.

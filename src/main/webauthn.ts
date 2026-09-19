@@ -172,7 +172,7 @@ export function parseBundleIdentifier(
  * The `keychain-access-groups` values from an entitlements plist.
  *
  * Parsed with a tag scan rather than a plist library: the input is
- * `codesign -d --entitlements :-`'s own output, which is a single-line XML
+ * `codesign -d --entitlements - --xml`'s own output, which is a single-line XML
  * plist, and the alternative is a dependency in the main process for one array.
  * A signature with NO entitlements prints nothing at all (measured on an ad-hoc
  * signed bundle), which is the empty array this returns — the "entitlement
@@ -667,6 +667,27 @@ export class WebauthnChooser {
 		);
 		// A pending chooser must not be the reason this process cannot exit.
 		timer.unref?.();
+		const request: WebauthnChooserRequest = {
+			requestId,
+			relyingPartyId,
+			accounts,
+			tabId: source.tabId,
+			pageTitle: source.pageTitle,
+		};
+		this.options.log(
+			`[webauthn] ${relyingPartyId || "a site"} matched ${accounts.length} passkeys; asking the user which one to use (${requestId})`,
+		);
+		/*
+		 * THE ENTRY IS REGISTERED AFTER THE PUSH, not before (agent review round 3,
+		 * N1). `notify` is the one call here that can throw — it is the host's own
+		 * `webContents.send` behind a destroyed check — and registering first would
+		 * leave main holding a request whose page `handle`'s catch has already
+		 * cancelled: a later pull would advertise it, and a later press would be
+		 * logged as a choice for a page that saw `NotAllowedError`. Nothing can answer
+		 * in between: the renderer's answer arrives over IPC, which cannot preempt this
+		 * synchronous block.
+		 */
+		this.options.notify(request);
 		this.pending.set(requestId, {
 			requestId,
 			relyingPartyId,
@@ -676,10 +697,6 @@ export class WebauthnChooser {
 			answer,
 			timer,
 		});
-		this.options.log(
-			`[webauthn] ${relyingPartyId || "a site"} matched ${accounts.length} passkeys; asking the user which one to use (${requestId})`,
-		);
-		this.options.notify(this.view(requestId));
 	}
 
 	/**

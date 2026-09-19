@@ -1503,6 +1503,101 @@ async function runWebauthnAttempt() {
 	);
 
 	/*
+	 * THE DOOR UX ROUND 3 FILED U6 AGAINST, and the shape a user actually meets: a
+	 * single request, nobody answers it, the ending arrives at the 60 s bound, and
+	 * the user dismisses it. Round 2's check walked the OTHER shape — an ending that
+	 * follows an in-dialog answer — which is why it was green while nine dismissals
+	 * of this one left the caret on `<body>` (UX round 3, five boots). The caret is
+	 * read here, after the dismissal has settled, against the seeded rail row.
+	 */
+	await goRoute(renderer, "#/browser");
+	await sleep(600);
+	/*
+	 * FOCUS IS INSTRUMENTED FOR THIS STEP, because the claim has been wrong twice
+	 * and a bare `activeElement` reading says nothing about WHEN the app tried to
+	 * give the caret back (UX round 3 did it this way too: patch
+	 * `HTMLElement.prototype.focus`, log every call with its target).
+	 */
+	await evaluateValue(
+		renderer,
+		`(() => {
+			window.__focusCalls = [];
+			const real = HTMLElement.prototype.focus;
+			HTMLElement.prototype.focus = function (...args) {
+				window.__focusCalls.push({
+					target: this.getAttribute?.("data-tour-tag") ?? this.tagName,
+					inDialog: Boolean(this.closest?.("[role=dialog]")),
+					at: Date.now(),
+				});
+				return real.apply(this, args);
+			};
+			return true;
+		})()`,
+		8_000,
+	);
+	await evaluateValue(
+		renderer,
+		"(() => { const el = document.querySelector('[data-tour-tag=\"nav-item-chat\"]'); if (!el) return null; el.focus(); return document.activeElement === el; })()",
+		8_000,
+	);
+	await evaluateValue(renderer, "window.__focusCalls.length = 0", 8_000);
+	const plainExpiryStart = Date.now();
+	await emitChooser(main, {
+		requestId: "webauthn-arm-9",
+		relyingPartyId: "unattended.example.com",
+		accounts: NAMED,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the unattended chooser",
+		20_000,
+	);
+	let plainEnding = null;
+	const plainDeadline = Date.now() + 95_000;
+	while (Date.now() < plainDeadline) {
+		const state = await chooserState(renderer);
+		const said = [state?.title ?? "", ...(state?.paragraphs ?? [])].join(" ");
+		if (state?.open && state.rows.length === 0 && /expired/i.test(said)) {
+			plainEnding = state;
+			break;
+		}
+		await sleep(2_500);
+	}
+	if (!plainEnding)
+		throw new Error("timed out waiting for the plain expiry ending");
+	await captureFrame("chooser-plain-expiry-ending", { renderer });
+	say(
+		`[webauthn] the unattended request expired after ${Date.now() - plainExpiryStart}ms; dismissing it`,
+	);
+	// The caret arrives on the ending's own Close (measured by UX round 3), so the
+	// press below is the keyboard user's own next move.
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the plain expiry ending to close",
+		15_000,
+	);
+	const focusAfterPlainEnding = await evaluateValue(
+		renderer,
+		"document.activeElement ? (document.activeElement.getAttribute('data-tour-tag') ?? document.activeElement.tagName) : null",
+		8_000,
+	);
+	await captureFrame("chooser-plain-expiry-dismissed", { renderer });
+	const focusTape = await evaluateValue(
+		renderer,
+		"JSON.stringify(window.__focusCalls ?? [])",
+		8_000,
+	);
+	say(
+		`[webauthn] the unattended door: expiry at ${plainExpiryStart + 60_000}ms, dismissal read at ${Date.now()}ms, focus calls ${focusTape}`,
+	);
+	check(
+		"dismissing an UNATTENDED expiry hands the caret back (UX round 3, U6)",
+		focusAfterPlainEnding === "nav-item-chat",
+		`activeElement=${focusAfterPlainEnding} focusCalls=${focusTape}`,
+	);
+
+	/*
 	 * THE ANSWERING STATE, photographed rather than described (design round 2, N1).
 	 *
 	 * `answer()` drops the answered request from the mirror before it awaits, so

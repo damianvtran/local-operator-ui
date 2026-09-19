@@ -1,4 +1,4 @@
-# The passkey chooser, on the round-2 remediation head
+# The passkey chooser, on the round-3 remediation head
 
 Frames from `scripts/browser-challenge-proof.mjs --arm webauthn --attempts 1`
 (committed, re-runnable) against this branch's built tree, `--window-mode=headless`.
@@ -8,15 +8,21 @@ arm: the native page view is suppressed by the dialog's own overlay policy, and 
 arm opens no tab — so there is no second layer to composite, and nothing in these
 pictures is a stand-in.
 
-The two `*-storybook.webp` frames are the exception, and they say so in their
-names: they are the committed stories file rendered through Storybook
-(`browser-webauthn-dialog--answering`, `--several-named`) and captured in a real
-browser, because the Answering state is the one state the app-side rig cannot hold
-— measured, not assumed: the preload's `contextBridge` object refuses the patch
-(`api.respondToWebauthn = …` leaves the original in place), and the only way to
-keep the IPC pending from the main process would freeze the same process that
-serves the screenshot. The pair exists to show the design-round-2 N1 dim: same
-dialog, same rows, one state disabled.
+The four `*-storybook.webp` frames are the exception, and they say so in their
+names: they are the committed stories file rendered through Storybook and captured
+in a real browser.
+
+- `chooser-answering-storybook.webp` + `chooser-several-named-storybook.webp` show
+  design round 2's N1 dim (same dialog, same rows, one state disabled). The
+  Answering state is the one state the app-side rig cannot hold — measured, not
+  assumed: the preload's `contextBridge` object refuses the patch
+  (`api.respondToWebauthn = …` leaves the original in place), and the only way to
+  keep the IPC pending from the main process would freeze the same process that
+  serves the screenshot.
+- `chooser-nameless-dark-storybook.webp` + `chooser-nameless-light-storybook.webp`
+  are design round 3's D11 in both brand ramps: the recovery clause in the lead,
+  wrapped and fully painted, and the rows back to the one machine sentence they
+  were built for.
 
 Run:
 
@@ -24,14 +30,14 @@ Run:
 node scripts/browser-challenge-proof.mjs --arm webauthn --attempts 1 --out /tmp/webauthn
 ```
 
-Result on this head: **arm=webauthn pass=1/1**, 21 checks, all PASS. Per-check output
+Result on this head: **arm=webauthn pass=1/1**, 22 checks, all PASS. Per-check output
 is in the run's `proof.md`; the numbers cited below are from that transcript.
 
 | frame | state | what it shows |
 | --- | --- | --- |
 | `chooser-several-named.webp` | two named passkeys | the everyday multi-match: the lead names the site, both rows carry a name and a login |
 | `chooser-answered.webp` | after choosing | the dialog is gone, the credential reached Electron's callback, focus is back on the rail row it was on before |
-| `chooser-nameless.webp` | three unnamed credentials | the copy says the OS gave no names and what the choice decides, and every row says so as well — the second line now also carries the recovery clause (UX U8) |
+| `chooser-nameless.webp` | three unnamed credentials | the lead says what the choice decides and carries the recovery clause in prose (design D11 / UX U9); every row's second line is the short "The site stored no name for this passkey." |
 | `chooser-long-names.webp` | a long display name and a 76-character login | both rows wrap: `client=396 scroll=396`, `overflowing=false`, no text outside the panel |
 | `chooser-many-accounts.webp` | twelve credentials | the list scrolls; the Touch ID sentence stays inside the panel (`notePinned=true`) |
 | `chooser-queued.webp` | two requests at once | the second is COUNTED as waiting ("One more passkey request is waiting." — requests, not sites: N3/U7) instead of replacing the first |
@@ -39,6 +45,8 @@ is in the run's `proof.md`; the numbers cited below are from that transcript.
 | `chooser-queued-oldest-expired.webp` | the older one has expired, the newer is still live | **the round-2 blocker measured**: `elapsed=61s open=true rows=2 expires=1` — the panel still shows `newer.example.com`, and no ending is on screen |
 | `chooser-ending-after-the-queue.webp` | the newer one cancelled | the ending the live request was hiding becomes the panel: `rows=0`, "This passkey request expired", one Close |
 | `chooser-ending-dismissed.webp` | the ending dismissed | the dialog is gone and the caret is back on the rail row — `activeElement=nav-item-chat` (UX U6) |
+| `chooser-plain-expiry-ending.webp` | a single request, nobody answered, 60 s | the ending on its own — the shape a user actually meets, and the one round 2's check did not walk |
+| `chooser-plain-expiry-dismissed.webp` | that ending dismissed | the dialog is gone and the caret is on the rail row: `activeElement=nav-item-chat`, with the instrumented tape showing the app's own `focus(nav-item-chat)` at the dismissal (UX round 3, U6) |
 | `chooser-on-chat-route.webp` | raised while the browser surface is NOT mounted | `hash=#/chat`, `surface-mounted=false`, and the dialog is up and answerable |
 | `chooser-after-return.webp` | back on the surface | byte-identical to `chooser-several-named.webp` — the same request, unchanged by the route change |
 | `chooser-expired.webp` | 60.3 s later | the rows are replaced by the ending in words, not a live-looking dialog whose click would be discarded |
@@ -62,6 +70,8 @@ Round 1's findings, each with the number the rig printed:
 | agent review 2 R1 / UX U2 — a live request hidden behind an ending, cancelled by its Close | `elapsed=61s open=true rows=2 expires=1` (the living request stays on screen), then `rows=0` with the ending only after the queue emptied, and `the ending's Close answers nothing: the tape does not grow` |
 | UX U6 — dismissing an ENDING left the caret on `<body>` | `activeElement=nav-item-chat` after the ending's Close, and the frame `chooser-ending-dismissed.webp` |
 | design N1 — the Answering state's text no longer dimmed | pixels sampled from the two story frames: label-region `ink` 2902 → 1539 and `ink-disabled` 118 → 2585 (same dialog, same rows) |
+| UX round 3 U6 — the caret after an UNATTENDED expiry | `activeElement=nav-item-chat` on both doors, with the tape reading `[{…,browser-webauthn-account,inDialog:true}, {…,BUTTON,inDialog:true}, {…,nav-item-chat,inDialog:false}]` — Radix's two calls, then the app's restore at the dismissal (the previous head had no third call at all) |
+| design round 3 D11 / UX round 3 U9 — the recovery clause clipped in the row | the clause is in the lead, wrapped over four lines in both ramps (the two nameless story frames); the row's line is 41 characters against the 380px box design round 3 measured, with no ellipsis in either ramp |
 
 ## The one synthetic part, stated plainly
 
