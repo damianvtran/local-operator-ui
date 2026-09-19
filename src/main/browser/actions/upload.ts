@@ -87,10 +87,25 @@ export async function upload(
 	// explainable.
 	const accept = await acceptsOf(ctx, record, node.nodeId);
 
-	await ctx.cdp.send(contents, "DOM.setFileInputFiles", {
-		files: paths,
-		nodeId: node.nodeId,
-	});
+	await ctx.cdp
+		.send(contents, "DOM.setFileInputFiles", {
+			files: paths,
+			nodeId: node.nodeId,
+		})
+		.catch((error: unknown) => {
+			// THE ONE CDP FAILURE WITH A BETTER SENTENCE THAN CHROMIUM'S (review round
+			// 1, Q3). A selector that names a real `<button>` fails inside
+			// `DOM.setFileInputFiles` with Chromium's own `{"code":"internal","message":
+			// "Node is not a file input element"}` — no selector, no `accept`, no remedy —
+			// so the module's own `NOT_A_FILE_INPUT` sentence, which names all three, never
+			// fired. Re-raised as the typed code that already means "this selector does not
+			// address the thing this action needs".
+			if (!/not a file input/i.test(String(error))) throw error;
+			throw new BrowserHostError("element_not_found", NOT_A_FILE_INPUT, {
+				selector,
+				accept,
+			});
+		});
 
 	const held = await readBack(ctx, record, node.objectId);
 	if (!held) {
@@ -102,13 +117,21 @@ export async function upload(
 	assertHolds(paths, held, selector, accept);
 
 	ctx.registry.touch(record);
+	// THE UPLOAD'S OWN LINE IN THE STRIP (review round 1, U3). Recorded HERE rather
+	// than by the caller because this is the only place that knows both halves the
+	// row needs — the names the DOM actually took (read back above, never the ones
+	// we were handed) and the page they went to — and because a note written
+	// anywhere else would be a second account of a transfer.
+	const facts = paths.map(factOf);
+	const page = pageOf(record.view);
+	ctx.downloads.noteUpload(record.tabId, facts, siteOf(page.url));
 	return {
 		// The selectors that accepted files. One entry today, because the wire takes
 		// one `selector`; the field is a list because the result vocabulary is shared
 		// with the extension host, whose `DOM.setFileInputFiles` call can address the
 		// same shape.
 		inputs: [selector],
-		accepted: paths.map(factOf),
+		accepted: facts,
 		// The page's own identity, as every other action reports it: the harness's audit
 		// row for this call records the origin the files went TO, and a host that answered
 		// without it would leave that row naming nowhere.
@@ -235,6 +258,17 @@ function sizeOf(path: string): number {
 		return statSync(path).size;
 	} catch {
 		return -1;
+	}
+}
+
+/** The site an upload went to, for the strip's own line: the HOST of the page the
+ * action reported, never a URL a caller composed. A URL that will not parse yields
+ * "" — the row then says what it can rather than inventing a destination. */
+function siteOf(url: string): string {
+	try {
+		return new URL(url).host;
+	} catch {
+		return "";
 	}
 }
 

@@ -39,22 +39,30 @@ export interface DebuggerLike {
  * are the parts worth testing, and none of them need Chromium's download stack.
  *
  * `once` rather than `on`: the capture attaches exactly one `done` listener per
- * item and the item is discarded with it. */
+ * item and the item is discarded with it. `updated` is the exception and gets a
+ * real `on`: a response that declares no length is bounded from that event (design
+ * §10.3, review round 1 B1), and a bound that can fire once is not a bound. */
 export interface DownloadItemLike {
 	getFilename(): string;
 	getURL(): string;
 	getMimeType(): string;
 	/** Total size, or -1 when the response declares none. The cap is enforced
-	 * BEFORE the write when this is known (design §10.3). */
+	 * BEFORE the write when this is known and WHILE it is written when it is not. */
 	getTotalBytes(): number;
 	getReceivedBytes(): number;
 	setSavePath(path: string): void;
 	getSavePath(): string;
 	cancel(): void;
-	/** `progressing` | `completed` | `cancelled` | `interrupted`. */
+	/** `progressing` | `completed` | `cancelled` | `interrupted`. Read by the
+	 * cancel paths: only a `progressing` item is one this host can still stop. */
 	getState(): string;
 	once(
 		event: "done",
+		listener: (event: unknown, state: string) => void,
+	): unknown;
+	/** Fired as the bytes arrive, with the state as the second argument. */
+	on(
+		event: "updated",
 		listener: (event: unknown, state: string) => void,
 	): unknown;
 }
