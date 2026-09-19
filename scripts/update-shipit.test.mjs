@@ -84,6 +84,7 @@ const {
 	evaluateStagedBundle,
 	extractionArguments,
 	fileUrlForDirectory,
+	installerElsewhere,
 	installerIsAlive,
 	installerLogPath,
 	sameVolume,
@@ -96,7 +97,7 @@ const {
 
 const {
 	buildWatchdogPlan,
-	installRunningNow,
+	installLivenessNow,
 	isInstallInFlight,
 	parsePendingInstallMarker,
 	requiredDiskBytes,
@@ -219,17 +220,20 @@ test("the extraction is the tool and the argv Squirrel itself uses", () => {
 /**
  * The state plist is Squirrel's own schema, key for key.
  *
- * The values here are the ones this machine's own
+ * The SCHEMA and the URL spellings are the ones this machine's own
  * `~/Library/Caches/com.local-operator.ShipIt/ShipItState.plist` carries - written
  * by the 2026-09-18 11:59 install and read back by ShipIt - so the comparison is
- * against the artifact rather than against a reading of the note.
+ * against the artifact rather than against a reading of the note. The staging path
+ * is synthetic, of the shape the app builds rather than this machine's own home:
+ * what the plist has to get right is the directory URL encoding, not whose home it
+ * was written in (review NIT-1).
  */
 test("the state plist is Squirrel's own schema", () => {
 	const plist = shipItStatePlist({
 		bundleIdentifier: "com.local-operator",
 		targetBundlePath: "/Applications/Local Operator.app",
 		updateBundlePath:
-			"/Users/damian/Library/Application Support/Local Operator/update-staging/0.28.5-abc123/Local Operator.app",
+			"/Users/someone/Library/Application Support/Local Operator/update-staging/0.28.5-abc123/Local Operator.app",
 	});
 	assert.deepEqual(Object.keys(plist).sort(), [
 		"bundleIdentifier",
@@ -245,7 +249,7 @@ test("the state plist is Squirrel's own schema", () => {
 	);
 	assert.equal(
 		plist.updateBundleURL,
-		"file:///Users/damian/Library/Application%20Support/Local%20Operator/update-staging/0.28.5-abc123/Local%20Operator.app/",
+		"file:///Users/someone/Library/Application%20Support/Local%20Operator/update-staging/0.28.5-abc123/Local%20Operator.app/",
 	);
 	// Relaunching the app after a successful swap is his own behaviour and the
 	// reason the app's watchdog must stay BEHIND it rather than beside it.
@@ -416,47 +420,98 @@ test("a marker's own installer pid wins over the install job", () => {
 		installerPid,
 	});
 	let jobAsked = 0;
-	const jobRunning = () => {
+	const jobState = () => {
 		jobAsked++;
-		return true;
+		return "running";
 	};
-
-	// A live installer: in flight, and launchd is not asked at all.
-	assert.equal(
-		installRunningNow({
-			marker: markerOf(4242),
-			installerCommandLine: `${shipItPath} com.local-operator.ShipIt ${stagingRoot}/0.28.5-abc/state.plist`,
+	let listAsked = 0;
+	const livenessOf = (input) =>
+		installLivenessNow({
+			marker: input.marker,
+			installerCommandLine: () => input.commandLine ?? null,
+			installerElsewhere: () => {
+				listAsked++;
+				return input.elsewhere === true;
+			},
 			shipItPath,
 			stagingRoot,
-			jobRunning,
+			jobState,
+		});
+
+	// A live installer: in flight, and launchd is not asked at all.
+	assert.deepEqual(
+		livenessOf({
+			marker: markerOf(4242),
+			commandLine: `${shipItPath} com.local-operator.ShipIt ${stagingRoot}/0.28.5-abc/state.plist`,
+		}),
+		{ installerRunning: true, jobState: "unread", decidedBy: "installer-pid" },
+	);
+	assert.equal(jobAsked, 0);
+	assert.equal(listAsked, 0);
+	// Its installer is gone AND no process of ours is anywhere: NOT in flight,
+	// whatever launchd says about a job this path never submits.
+	assert.deepEqual(livenessOf({ marker: markerOf(4242), commandLine: null }), {
+		installerRunning: false,
+		jobState: "unread",
+		decidedBy: "installer-pid",
+	});
+	assert.equal(jobAsked, 0);
+	// The pid stopped being the installer, but an install it started is still being
+	// carried out by a process that names our ShipIt and our staging root: alive
+	// (review MINOR-3). This is the direction that must not read as dead, because
+	// recovery's action on "dead" is to reap the tree a live installer is using.
+	assert.deepEqual(
+		livenessOf({ marker: markerOf(4242), commandLine: null, elsewhere: true }),
+		{ installerRunning: true, jobState: "unread", decidedBy: "installer-pid" },
+	);
+	assert.equal(listAsked, 2);
+	// The older path, and the fallback: no pid, so the job is the answer - and the
+	// listing is not read, because there is no pid to have lost.
+	assert.deepEqual(livenessOf({ marker: markerOf(null), commandLine: null }), {
+		installerRunning: false,
+		jobState: "running",
+		decidedBy: "install-job",
+	});
+	assert.equal(jobAsked, 1);
+	assert.equal(listAsked, 2);
+
+	/*
+	 * And a stopped pid really is the installer when the LISTING says so, which is
+	 * what the scan is: `installerIsAlive`'s own two facts, asked of every process.
+	 * The line has to name this app's ShipIt AND this staging root, so another
+	 * application's ShipIt - this machine has several - cannot answer for ours.
+	 */
+	const pidLine = `${shipItPath} com.local-operator.ShipIt ${stagingRoot}/0.28.5-abc/state.plist`;
+	assert.equal(
+		installerElsewhere({
+			processList: `/sbin/launchd\n${pidLine}\n/usr/bin/ps -Ao command= -ww`,
+			shipItPath,
+			stagingRoot,
 		}),
 		true,
 	);
-	assert.equal(jobAsked, 0);
-	// Its installer is gone: NOT in flight, whatever launchd says about the job.
 	assert.equal(
-		installRunningNow({
-			marker: markerOf(4242),
-			installerCommandLine: null,
+		installerElsewhere({
+			processList: `/sbin/launchd\n${shipItPath} com.local-operator.ShipIt /somewhere/else/state.plist`,
 			shipItPath,
 			stagingRoot,
-			jobRunning,
 		}),
 		false,
 	);
-	assert.equal(jobAsked, 0);
-	// The older path, and the fallback: no pid, so the job is the answer.
 	assert.equal(
-		installRunningNow({
-			marker: markerOf(null),
-			installerCommandLine: null,
+		installerElsewhere({
+			processList: "/sbin/launchd\n/usr/bin/ps -Ao command= -ww",
 			shipItPath,
 			stagingRoot,
-			jobRunning,
 		}),
-		true,
+		false,
 	);
-	assert.equal(jobAsked, 1);
+	// A listing that could not be read answers false, which is the direction the
+	// caller states rather than hides: unproven is treated as gone.
+	assert.equal(
+		installerElsewhere({ processList: null, shipItPath, stagingRoot }),
+		false,
+	);
 
 	// And the predicate on top of it keeps its own three facts.
 	const now = Date.now();
@@ -478,20 +533,9 @@ test("a marker's own installer pid wins over the install job", () => {
 		isInstallInFlight({
 			marker: { ...markerOf(1), startedAt: "" },
 			installerRunning: true,
+			now,
 		}),
 		false,
-	);
-	// A marker written before this field existed parses as "ask the job".
-	assert.equal(
-		parsePendingInstallMarker(
-			JSON.stringify({
-				targetVersion: "0.28.5",
-				artifactPath: "/tmp/update.zip",
-				startedAt: new Date().toISOString(),
-				watchdogPid: 9,
-			}),
-		).installerPid,
-		null,
 	);
 });
 
@@ -1060,7 +1104,17 @@ function writeAppExecutable(target) {
 
 function writeBundleFixture(
 	appPath,
-	{ version, withShipIt = true, shipItLog },
+	{
+		version,
+		withShipIt = true,
+		shipItLog,
+		// Which app this fixture claims to be, and whether it is tampered with AFTER
+		// it was signed. The two are the staged tree's own verdicts (review
+		// MINOR-2): a staged bundle that is not the app, and one whose seal is
+		// broken, are the cases Squirrel's own path cannot do better on.
+		bundleId = FIXTURE_BUNDLE_ID,
+		tamper = false,
+	},
 ) {
 	const contents = join(appPath, "Contents");
 	mkdirSync(join(contents, "MacOS"), { recursive: true });
@@ -1097,7 +1151,7 @@ function writeBundleFixture(
 		`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>${FIXTURE_BUNDLE_ID}</string>
+<key>CFBundleIdentifier</key><string>${bundleId}</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
 <key>CFBundleExecutable</key><string>${FIXTURE_APP_NAME}</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -1125,16 +1179,24 @@ function writeBundleFixture(
 		"-",
 		appPath,
 	]);
+	if (tamper) {
+		// A file added to a SEALED bundle: `codesign --verify` reports it as a
+		// sealed resource that is missing or invalid, which is the reading the
+		// staging step makes and Apple's own validation would make too.
+		writeFileSync(join(contents, "MacOS", "added-after-signing.txt"), "x");
+	}
 	return appPath;
 }
 
 /** The update artifact: the same app at `version`, zipped the way Squirrel zips. */
-function writeUpdateZip(dir, { version, shipItLog }) {
+function writeUpdateZip(dir, { version, shipItLog, bundleId, tamper = false }) {
 	const staged = join(dir, "update-tree");
 	mkdirSync(staged, { recursive: true });
 	writeBundleFixture(join(staged, `${FIXTURE_APP_NAME}.app`), {
 		version,
 		shipItLog,
+		bundleId,
+		tamper,
 	});
 	const zipPath = join(dir, `local-operator-ui-${version}-arm64.zip`);
 	execFileSync("/usr/bin/ditto", [
@@ -1338,6 +1400,12 @@ test(
 			);
 			assert.equal(alive(installerPid), true, "the installer was not started");
 
+			// The three steps of the pre-quit work, in the order they happened (UX
+			// U5): the pre-flight, the staging, and the spawn.
+			assert.deepEqual(
+				globalThis.__loSent.map((entry) => entry.payload?.phase),
+				["verifying", "staging", "starting"],
+			);
 			// It is OUR installer, by the machine's own answer: a waiting spawner
 			// whose command line carries the token.
 			const commandLine = commandLineOf(installerPid);
@@ -1390,9 +1458,23 @@ test(
 			updateService.downloadedArtifactPath = zipPath;
 			updateService.lastUpdateInfo = releaseMetadata(zipPath, "0.0.2");
 
+			// Absent rather than empty until something is sent: the rig creates the
+			// record on the first push.
+			assert.deepEqual(globalThis.__loSent ?? [], []);
 			assert.equal(
 				await globalThis.__loIpcHandlers["quit-and-install"](),
 				true,
+			);
+			/*
+			 * The wait is named as it happens (UX U5), and on this path it stops
+			 * where the refusal does: the pre-flight, then the staging that could
+			 * not proceed. No `starting` - nothing of ours starts here, and claiming
+			 * a step that did not happen is exactly the kind of copy this change is
+			 * removing.
+			 */
+			assert.deepEqual(
+				globalThis.__loSent.map((entry) => entry.payload?.phase),
+				["verifying", "staging"],
 			);
 
 			// Squirrel's own path, once, with its own arguments.
@@ -1413,6 +1495,228 @@ test(
 				JSON.stringify(globalThis.__loTestLogs),
 			);
 		});
+	},
+);
+
+/**
+ * The extraction is asynchronous, and the bound really stops a wedged one.
+ *
+ * `spawnSync` with a timeout spent the WHOLE bound (ten minutes, against a measured
+ * ~5 s for the real artifact) frozen on the main process's own thread - the install
+ * panel included - and the case the bound exists for is the one where that is worst:
+ * a `ditto` wedged on a slow or nearly-full volume (review MINOR-5). The three cases
+ * below are the three outcomes: it works, it fails with a reason, and a process that
+ * will not finish is killed at the bound rather than outliving the decision to stop
+ * waiting for it.
+ */
+test(
+	"the extraction is async, reports why it failed, and kills one that will not finish",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("extraction");
+		const shipItLog = join(dir, "shipit-argv.log");
+		const zipPath = writeUpdateZip(dir, { version: "0.0.2", shipItLog });
+
+		// The module is loaded inside the rig because its logger resolves its
+		// directory from the account home, exactly as it does in production.
+		await withUpdateService(async () => {
+			// The namespace the rig already loads, so what is driven is the shipped
+			// function rather than a copy of it.
+			const { service: module } = await loadUpdateServiceModule();
+
+			// 1. The real artifact, through the shipped argv: the staged tree appears.
+			const target = join(dir, "staged");
+			mkdirSync(target, { recursive: true });
+			assert.deepEqual(await module.runExtraction(zipPath, target), {
+				ok: true,
+			});
+			assert.equal(existsSync(join(target, `${FIXTURE_APP_NAME}.app`)), true);
+
+			// 2. A file that is not an archive: the failure carries `ditto`'s own words
+			//    rather than an exit code alone, because that string is what the log
+			//    line and the refusal panel are built from.
+			const notAZip = join(dir, "not-a-zip.zip");
+			writeFileSync(notAZip, "this is not an archive");
+			const failed = await module.runExtraction(notAZip, join(dir, "failed"));
+			assert.equal(failed.ok, false);
+			assert.match(failed.reason, /ditto exited \d+/);
+
+			// 3. A process that never finishes is killed at the bound. The stand-in
+			//    records its own pid so the test can prove it is gone, which is the
+			//    whole assertion: a bound that leaves the child running leaks a
+			//    process holding a half-written staging tree.
+			const stuck = join(dir, "stuck.sh");
+			const stuckPid = join(dir, "stuck.pid");
+			writeFileSync(stuck, `#!/bin/sh\necho $$ > "${stuckPid}"\nsleep 300\n`);
+			execFileSync("/bin/chmod", ["+x", stuck]);
+			const started = Date.now();
+			const wedged = await module.runExtraction(zipPath, join(dir, "wedged"), {
+				command: stuck,
+				timeoutMs: 700,
+			});
+			assert.equal(wedged.ok, false);
+			assert.match(wedged.reason, /still running after 700 ms/);
+			assert.ok(Date.now() - started < 5000, "the bound did not end the wait");
+			const pid = Number.parseInt(readFileSync(stuckPid, "utf8").trim(), 10);
+			/*
+			 * Bounded poll rather than an immediate read: the signal is delivered
+			 * synchronously but the child is reaped asynchronously, and a killed
+			 * process is still visible as a zombie for that moment - which is a fact
+			 * about process reaping, not about whether the bound holds.
+			 */
+			let gone = false;
+			for (let attempt = 0; attempt < 40 && !gone; attempt++) {
+				gone = !alive(pid);
+				if (!gone) await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			assert.equal(gone, true, "the wedged extraction outlived its bound");
+		});
+	},
+);
+
+/**
+ * The staged tree's OWN verdicts stop the install, and are not handed to Squirrel.
+ *
+ * WHY THIS IS NOT A FALLBACK (review MINOR-2). Squirrel's path would unpack the same
+ * artifact and run the same validation, so for these two readings it reaches the same
+ * answer - four minutes later, after the app has been closed for the whole of it, and
+ * delivered as a failed install instead of a panel with a remedy. The three
+ * *preconditions* (no ShipIt, another volume, a `ditto` that failed) are the opposite
+ * case: Squirrel does that work itself and may well succeed, so those fall back.
+ *
+ * Both halves of the distinction are asserted here, on the shipped handler: the
+ * refusal reaches the renderer as a block, and the marker - the record of an install
+ * this app was about to run - is never written.
+ */
+test(
+	"a staged tree that is not this app, or is not sealed, is blocked rather than handed to Squirrel",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const cases = [
+			{
+				name: "a staged bundle that is a different application",
+				zip: (dir, shipItLog) =>
+					writeUpdateZip(dir, {
+						version: "0.0.2",
+						shipItLog,
+						bundleId: "com.local-operator.something-else",
+					}),
+				detail: /is not this application/,
+			},
+			{
+				name: "a staged bundle whose seal was broken after it was signed",
+				zip: (dir, shipItLog) =>
+					writeUpdateZip(dir, {
+						version: "0.0.2",
+						shipItLog,
+						tamper: true,
+					}),
+				detail: /seal reads `unsealed`/,
+			},
+		];
+		for (const testCase of cases) {
+			const dir = scratchDir(`blocked-${cases.indexOf(testCase)}`);
+			const shipItLog = join(dir, "shipit-argv.log");
+			const runningBundle = writeBundleFixture(
+				join(dir, "tree", `${FIXTURE_APP_NAME}.app`),
+				{ version: "0.0.1", shipItLog },
+			);
+			const zipPath = testCase.zip(dir, shipItLog);
+
+			await withUpdateService(async ({ updateService, userData }) => {
+				updateService.runningBundleProbe = () => runningBundle;
+				updateService.downloadedArtifactPath = zipPath;
+				updateService.lastUpdateInfo = releaseMetadata(zipPath, "0.0.2");
+				globalThis.__loSent = [];
+
+				assert.equal(
+					await globalThis.__loIpcHandlers["quit-and-install"](),
+					false,
+					testCase.name,
+				);
+				// Neither installer ran, and the app is still here: nothing was quit
+				// for an install that cannot succeed.
+				assert.deepEqual(globalThis.__loQuitAndInstall, [], testCase.name);
+				assert.deepEqual(globalThis.__loQuits, [], testCase.name);
+				// No marker: no install was recorded, so recovery has nothing to
+				// report as a failure on the next launch.
+				assert.equal(
+					install.readPendingInstallMarker(userData),
+					null,
+					testCase.name,
+				);
+				const block = globalThis.__loSent.find(
+					(entry) => entry.channel === "update-install-blocked",
+				);
+				assert.ok(block, `${testCase.name}: no block reached the renderer`);
+				assert.equal(block.payload.code, "download-verification-failed");
+				assert.match(block.payload.detail, testCase.detail, testCase.name);
+				assert.ok(
+					globalThis.__loTestLogs.some((line) =>
+						/Refusing to install the staged update: /.test(line),
+					),
+					`${testCase.name}: ${JSON.stringify(globalThis.__loTestLogs)}`,
+				);
+			});
+		}
+	},
+);
+
+/**
+ * The installer's log is a precondition of the staging, checked before the quit.
+ *
+ * The redirect that opens it lives inside the spawner, after this process is gone
+ * (review MINOR-1): `exec ... >>"$LOG" 2>&1` on a `sh` whose redirect fails ends the
+ * shell, so ShipIt never starts, nothing is logged, and the user is left with a
+ * marker naming a dead pid and a failure panel for an install that could not begin -
+ * repeatable while the cache directory stays unwritable. Refusing instead costs the
+ * fast path and still installs.
+ */
+test(
+	"an installer log that cannot be opened refuses the staging instead of quitting into it",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("log-refusal");
+		const shipItLog = join(dir, "shipit-argv.log");
+		const runningBundle = writeBundleFixture(
+			join(dir, "tree", `${FIXTURE_APP_NAME}.app`),
+			{ version: "0.0.1", shipItLog },
+		);
+		const zipPath = writeUpdateZip(dir, { version: "0.0.2", shipItLog });
+
+		await withUpdateService(
+			async ({ updateService, userData, shipItCache }) => {
+				// The cache ROOT is a file, so the log's directory cannot be created -
+				// the same failure an unwritable cache directory produces on a real
+				// machine, without depending on permission bits a root-owned CI runner
+				// would ignore.
+				rmSync(shipItCache, { recursive: true, force: true });
+				writeFileSync(shipItCache, "not a directory");
+
+				updateService.runningBundleProbe = () => runningBundle;
+				updateService.downloadedArtifactPath = zipPath;
+				updateService.lastUpdateInfo = releaseMetadata(zipPath, "0.0.2");
+
+				assert.equal(
+					await globalThis.__loIpcHandlers["quit-and-install"](),
+					true,
+				);
+				assert.deepEqual(globalThis.__loQuitAndInstall, [[false, true]]);
+				assert.deepEqual(globalThis.__loQuits, []);
+				assert.ok(
+					globalThis.__loTestLogs.some((line) =>
+						/Not staging the update for the installer: the installer's log .* could not be opened for appending/.test(
+							line,
+						),
+					),
+					JSON.stringify(globalThis.__loTestLogs),
+				);
+				// The fallback still records its install, exactly as Squirrel's path did.
+				const marker = install.readPendingInstallMarker(userData);
+				assert.equal(marker.targetVersion, "0.0.2");
+				assert.equal(marker.installerPid, null);
+			},
+		);
 	},
 );
 
@@ -1485,7 +1789,7 @@ test(
 				assert.ok(
 					globalThis.__loTestLogs.some(
 						(line) =>
-							line.includes(`installer pid ${installer.pid}`) &&
+							line.includes(`pid ${installer.pid}`) &&
 							line.includes("still running"),
 					),
 					JSON.stringify(globalThis.__loTestLogs),
@@ -1518,5 +1822,73 @@ test(
 		} finally {
 			await reap(installer.pid);
 		}
+	},
+);
+
+/**
+ * A completed install is SAID, once, on the launch after it (UX U4).
+ *
+ * The fast path's window is seconds, so the app coming back is no longer the report
+ * that the update went in: the user saw a window vanish, a banner promising minutes
+ * (before UX U1) and then their app again, on the new version, with nothing saying
+ * so. Recovery is the one place the app learns an install landed - the marker's
+ * target is the version it is now running - so it is the one place that can say it.
+ *
+ * What is asserted is the whole shape of the claim: the event carries the version the
+ * install was FOR, it is sent once, and the marker is gone by then, so a second
+ * launch cannot repeat it.
+ */
+test(
+	"a completed install reports itself once, with the version it landed on",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("succeeded");
+		const runningBundle = writeBundleFixture(
+			join(dir, "tree", `${FIXTURE_APP_NAME}.app`),
+			{ version: "0.0.0-test", shipItLog: join(dir, "shipit-argv.log") },
+		);
+
+		await withUpdateService(async ({ updateService, userData }) => {
+			updateService.runningBundleProbe = () => runningBundle;
+			globalThis.__loSent = [];
+			install.writePendingInstallMarker(userData, {
+				// The version the app is RUNNING, which is the install having landed.
+				targetVersion: "0.0.0-test",
+				artifactPath: "/tmp/update.zip",
+				startedAt: new Date().toISOString(),
+				watchdogPid: null,
+				installerPid: 987654,
+			});
+
+			updateService.recoverPendingInstall();
+			assert.equal(install.readPendingInstallMarker(userData), null);
+
+			// The delivery waits for the window (`did-finish-load`, with a 5 s
+			// fallback), so the notice is waited for rather than read immediately.
+			const deadline = Date.now() + 7_000;
+			let succeeded = null;
+			while (succeeded === null && Date.now() < deadline) {
+				succeeded =
+					globalThis.__loSent.find(
+						(entry) => entry.channel === "update-install-succeeded",
+					) ?? null;
+				if (succeeded === null) {
+					await new Promise((resolve) => setTimeout(resolve, 50));
+				}
+			}
+			assert.deepEqual(succeeded?.payload, { version: "0.0.0-test" });
+
+			// Once, not on every pass: a second recovery of the same launch has
+			// nothing left to report, because the marker it read is gone.
+			globalThis.__loSent = [];
+			updateService.recoverPendingInstall();
+			await new Promise((resolve) => setTimeout(resolve, 5_200));
+			assert.deepEqual(
+				globalThis.__loSent.filter(
+					(entry) => entry.channel === "update-install-succeeded",
+				),
+				[],
+			);
+		});
 	},
 );

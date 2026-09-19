@@ -431,6 +431,16 @@ declare global {
 				onUpdateProgress: (
 					callback: (progressObj: ProgressInfo) => void,
 				) => () => void;
+				/** The step a pre-quit install is on, so the panel can name the wait. */
+				onUpdateInstallProgress: (
+					callback: (info: {
+						phase: "verifying" | "staging" | "starting";
+					}) => void,
+				) => () => void;
+				/** An install that landed, reported once on the launch after it. */
+				onUpdateInstallSucceeded: (
+					callback: (info: { version: string }) => void,
+				) => () => void;
 				onBeforeQuitForUpdate: (callback: () => void) => () => void;
 			};
 			ipcRenderer: {

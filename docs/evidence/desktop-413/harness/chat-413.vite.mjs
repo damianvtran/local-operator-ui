@@ -128,6 +128,7 @@ for (const name of [
 	"onUpdateAvailable", "onUpdateNotAvailable", "onUpdateDevMode",
 	"onUpdateNpxAvailable", "onUpdateDownloaded", "onUpdateError",
 	"onUpdateProgress", "onUpdateInstallBlocked", "onUpdateInstallFailed",
+	"onUpdateInstallProgress", "onUpdateInstallSucceeded",
 	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",

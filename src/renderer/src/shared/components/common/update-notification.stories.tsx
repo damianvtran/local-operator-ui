@@ -78,6 +78,8 @@ const createEmptyUpdaterMethods = () => {
 			onUpdateInstallBlocked: noop,
 			onUpdateInstallFailed: noop,
 			onUpdateInstallInFlight: noop,
+			onUpdateInstallProgress: noop,
+			onUpdateInstallSucceeded: noop,
 		};
 	}
 };
@@ -781,6 +783,36 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
+		/**
+		 * The step a pre-quit install is on, as the panel reports it.
+		 *
+		 * A string flag rather than a boolean, like `triggerBackendUpdatePhase`:
+		 * there are three phases and a story has to say which one, and the phase is
+		 * exactly what the sentence on screen is derived from.
+		 */
+		onUpdateInstallProgress: (
+			callback: (info: { phase: "verifying" | "staging" | "starting" }) => void,
+		) => {
+			if (window.triggerInstallProgress) {
+				callback({ phase: window.triggerInstallProgress });
+			}
+			return () => {};
+		},
+		/**
+		 * An install that landed, with the version it landed on.
+		 *
+		 * The signal only exists once the work it describes is over, so unlike the
+		 * phase flags it carries no state to set up: the story says which version, and
+		 * nothing else about the launch matters.
+		 */
+		onUpdateInstallSucceeded: (
+			callback: (info: { version: string }) => void,
+		) => {
+			if (window.triggerInstallSucceeded) {
+				callback({ version: window.triggerInstallSucceeded });
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -873,6 +905,9 @@ declare global {
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
+		/** Which phase the pre-quit install reports, and the version that landed. */
+		triggerInstallProgress?: "verifying" | "staging" | "starting";
+		triggerInstallSucceeded?: string;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -923,6 +958,10 @@ const meta = {
 					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
+				window.triggerInstallProgress =
+					context.parameters.triggerInstallProgress;
+				window.triggerInstallSucceeded =
+					context.parameters.triggerInstallSucceeded;
 			}, [
 				context.parameters.triggerUpdateAvailable,
 				context.parameters.triggerUpdateNotAvailable,
@@ -937,6 +976,8 @@ const meta = {
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
 				context.parameters.triggerBackendUpdateNonManaged,
+				context.parameters.triggerInstallProgress,
+				context.parameters.triggerInstallSucceeded,
 			]);
 
 			return (
