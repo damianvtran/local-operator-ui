@@ -162,7 +162,7 @@ const storeErrorMessage = (error: unknown, fallback: string): string =>
 			? error.message
 			: fallback;
 
-const SEND_UNCONFIRMED_MESSAGE =
+export const SEND_UNCONFIRMED_MESSAGE =
 	"The send could not be confirmed. Retry this draft.";
 
 /**

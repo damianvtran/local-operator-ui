@@ -1452,26 +1452,16 @@ async function sceneOtherPrincipal() {
 		 * a second CDP call rather than an addition to the shared page eval, because
 		 * the last in-eval addition took the whole read down with it.
 		 */
-		const fullText = String(await evaluate(debugPort, "document.body.innerText"));
-		page.bandSentence =
-			fullText
-				.split("\n")
-				.map((line) => line.replace(/\s+/g, " ").trim())
-				.find((line) => bandWanted.some((w) => line.includes(w))) ?? null;
-		page.bandLines = fullText
-			.split("\n")
-			.map((line) => line.replace(/\s+/g, " ").trim())
-			.filter((line) => bandWanted.some((w) => line.includes(w)))
-			.slice(0, 4);
 		/*
-		 * BOTH FIELDS ASSERTED, and each says what was read: a null here means the
-		 * band's copy was not found on the published object, which is a readable
-		 * failure rather than a probe that quietly passes.
+		 * AND READ FROM THE RECORDED LINES, not from a fresh DOM read (measured): a
+		 * second `Runtime.evaluate` of `document.body.innerText` comes back EMPTY in
+		 * this window mode - `innerText` is layout-dependent and this window is
+		 * headless - so the field read null while the frame carried band copy, and the
+		 * assertion then passed on a different line of the same array. The page's own
+		 * recorded `first_lines` need no layout, are what the frame's reader sees, and
+		 * carry the band copy ("Not connected to a Local Operator server.", "The Local
+		 * Operator server on this machine is already managed"). Shape: `first_lines`.
 		 */
-		if (!page.bandSentence)
-			throw new Error(
-				"other-principal: no band sentence was read at all, so this frame cannot show what the band says",
-			);
 		if (page.pane?.sentence && page.pane.sentence === page.bandSentence)
 			throw new Error(
 				"other-principal: the pane field holds the BAND's sentence - the probe's lists are mixing surfaces again",
@@ -1496,8 +1486,30 @@ async function sceneOtherPrincipal() {
 		const desktopAsked = state.requests.filter((entry) =>
 			entry.path.startsWith("/v1/desktop/"),
 		);
+		/*
+		 * THE FIELDS ARE SET ON THE OBJECT THAT IS STORED, at the assignment rather
+		 * than earlier in the scene: measured, a mutation of the scene's own `page`
+		 * did not appear in the record at all (no `bandSentence`, no source marker),
+		 * which means the summary stores a different object from the one the probe
+		 * walked - the D19 defect one level up, and this is the shape that removes it
+		 * rather than moving it. The band's sentence is read from the page's RECORDED
+		 * first lines, which need no layout (a fresh `document.body.innerText` comes
+		 * back empty in this window mode) and are exactly what a reader of the frame
+		 * sees.
+		 */
+		const bandLines = (page.first_lines ?? [])
+			.map((line) => line.replace(/\s+/g, " ").trim())
+			.filter((line) => bandWanted.some((w) => line.includes(w)))
+			.slice(0, 4);
+		if (bandLines.length === 0)
+			throw new Error(
+				"other-principal: no band copy was read from the frame's own lines, so this frame cannot show what the band says",
+			);
 		summary.scenes["other-principal"] = {
 			...(summary.scenes["other-principal"] ?? {}),
+			bandSentenceSource: "first_lines",
+			bandLines,
+			bandSentence: bandLines[0] ?? null,
 			page,
 			desktopRoutesServed: desktopAsked.length,
 			daemonRefusals: state.requests.filter((entry) =>
