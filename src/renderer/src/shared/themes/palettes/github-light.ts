@@ -61,20 +61,25 @@ export const githubLight: ThemeDefinition = {
 		sunken: "#DDE2E8",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 1.84) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #EEEFFD  accent hue, C* 7.19, +1.65 L*, ΔE00 5.60 off `surface`,
-		 *                       `inkDim` 5.74:1 on the fill, hue 0.61° off `accent`.
-		 * rowSelected #E3E5FF  accent hue, C* 13.47, +4.89 L*, ΔE00 10.23 off
-		 *                       `surface` and 4.87 off `rowHover`, `inkDim` 5.28:1, and the
-		 *                       2px `accent` bar at 4.83:1 against it.
+		 * rowHover    #EBEBF0  `accent` hue, C* 2.58,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.22 L*,
+		 *                       ΔE00 2.82 off `surface`, `inkDim` 5.51:1.
+		 * rowSelected #E5E6F1  `accent` hue, C* 5.70,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.89 L*,
+		 *                       ΔE00 5.21 off `surface` and 2.90 off
+		 *                       `rowHover`; the pair ranks 1.67 `L*` and 3.1 `C*`,
+		 *                       `inkDim` 5.28:1.
 		 */
-		rowHover: "#EEEFFD",
-		rowSelected: "#E3E5FF",
+		rowHover: "#EBEBF0",
+		rowSelected: "#E5E6F1",
 
 		ink: "#1F2328",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken`, so the readout rung darkens to clear the 4.5

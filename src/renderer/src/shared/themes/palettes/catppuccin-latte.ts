@@ -82,20 +82,24 @@ export const catppuccinLatte: ThemeDefinition = {
 		sunken: "#DADEE6",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #F0EAF5  accent hue, C* 6.07, +1.66 L*, ΔE00 5.60 off `surface`,
-		 *                       `inkDim` 5.72:1 on the fill, hue 0.39° off `accent`.
-		 * rowSelected #EBDEF6  accent hue, C* 13.33, +4.98 L*, ΔE00 11.50 off
-		 *                       `surface` and 6.16 off `rowHover`, `inkDim` 5.24:1, and the
-		 *                       2px `accent` bar at 4.73:1 against it.
+		 * rowHover    #E5E8EC  panel hue, C* 2.31,
+		 *                       the rule's 0.60 x the panel's 2.16; +3.22 L*,
+		 *                       ΔE00 2.02 off `surface`, `inkDim` 5.49:1.
+		 * rowSelected #DDE3EE  panel hue, C* 6.04,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.02 L*,
+		 *                       ΔE00 4.49 off `surface` and 3.39 off
+		 *                       `rowHover`; the pair ranks 1.79 `L*` and 3.7 `C*`,
+		 *                       `inkDim` 5.24:1.
 		 */
-		rowHover: "#F0EAF5",
-		rowSelected: "#EBDEF6",
+		rowHover: "#E5E8EC",
+		rowSelected: "#DDE3EE",
 
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.

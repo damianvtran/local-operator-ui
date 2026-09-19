@@ -61,20 +61,31 @@ export const synth: ThemeDefinition = {
 		sunken: "#1C1A20",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2F2628  accent hue, C* 4.64, +1.53 L*, ΔE00 15.48 off `surface`,
-		 *                       `inkDim` 5.71:1 on the fill, hue 3.77° off `accent`.
-		 * rowSelected #3F2A2E  accent hue, C* 10.57, +4.98 L*, ΔE00 14.36 off
-		 *                       `surface` and 6.29 off `rowHover`, `inkDim` 5.15:1, and the
-		 *                       2px `accent` bar at 4.65:1 against it.
+		 * rowHover    #32273E  panel hue, C* 16.63,
+		 *                       the rule's 0.60 x the panel's 26.83; +3.12 L*,
+		 *                       ΔE00 5.81 off `surface`, `inkDim` 5.45:1.
+		 * rowSelected #39294A  panel hue, C* 23.37,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.15 L*,
+		 *                       ΔE00 3.84 off `surface` and 4.06 off
+		 *                       `rowHover`; the pair ranks 2.03 `L*` and 6.7 `C*`,
+		 *                       `inkDim` 5.13:1.
+		 *
+		 * ITS CAST FLOOR IS UNREACHABLE, and the reason is geometry rather than a
+		 * value: this panel carries C* 26.83, past the rule's flat cap of 24, so no
+		 * authored fill can hold the panel's own cast here and the selection sits at
+		 * the cap. The row is named in `scripts/contrast-contract.mjs`'s
+		 * `ROW_STATE_FLOOR_UNREACHABLE` with the flat cap as the constraint that
+		 * refuses it, and it is re-measured every run.
 		 */
-		rowHover: "#2F2628",
-		rowSelected: "#3F2A2E",
+		rowHover: "#32273E",
+		rowSelected: "#39294A",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are
