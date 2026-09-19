@@ -1,0 +1,362 @@
+#!/usr/bin/env node
+/**
+ * The row states' before/after frames, captured from a BUILT Storybook.
+ *
+ *     node row-states-capture.mjs --serve <storybook-static> --out <dir> \
+ *          --half before|after --themes a,b,c [--states rest,neighbour-hovered]
+ *
+ * This is the local-operator evidence rig's own path, driven directly rather
+ * than through `scripts/capture-evidence.mjs`, for one reason: a before/after
+ * PAIR has to come from two TREES (this branch's and `origin/main`'s), and the
+ * committed rig captures from the tree it lives in. Everything it does that
+ * matters is reproduced here rather than re-invented:
+ *
+ *   - a PRIVATE headless Chrome over raw CDP: scratch `--user-data-dir`, the
+ *     mock-keychain switch taken from `scripts/chrome-keychain.mjs` (which is
+ *     what a scratch HOME needs, or macOS raises a Keychain dialog on the
+ *     operator's screen), `--no-first-run`, `--remote-debugging-port=0`,
+ *     `--headless=new`.
+ *     Nothing raises a window and the process is killed by exact pid on exit.
+ *     No `screencapture`, no downloaded browser engine;
+ *   - the theme is driven the way the committed rig drives it - `args=theme:<id>`
+ *     on the iframe URL plus a seeded `ui-preferences-storage` before the
+ *     document's scripts run - and EVERY frame asserts
+ *     `documentElement.dataset.theme` equals the palette it is named for before
+ *     the shutter;
+ *   - the hover is a REAL POINTER, an `Input.dispatchMouseEvent` `mouseMoved`
+ *     left on the row above the current one, addressed by the selector
+ *     `scripts/capture-evidence.mjs` uses for the same state
+ *     (`div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]`);
+ *   - the frame is `Page.captureScreenshot` clipped to the row list's own
+ *     bounding box at device scale factor 2, converted to WebP at the
+ *     repository's own quality;
+ *   - the page's own `getComputedStyle` readback per frame (both row fills, the
+ *     two role variables, every row's rect and label) is printed and written
+ *     beside the run, so a frame can be checked against its palette rather than
+ *     trusted.
+ */
+import { execFileSync, spawn } from "node:child_process";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { extname, join, normalize } from "node:path";
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
+import { loadPalettes } from "../../../../scripts/palette-source.mjs";
+
+const ARGS = process.argv.slice(2);
+/* Both spellings, because the committed rig's own flags take `--name=value` and a
+   reader copying its commands would otherwise pass a flag this one ignores. */
+const flag = (n, d = null) => {
+	const inline = ARGS.find((a) => a.startsWith(`--${n}=`));
+	if (inline !== undefined) return inline.slice(n.length + 3);
+	const i = ARGS.indexOf(`--${n}`);
+	return i === -1 ? d : ARGS[i + 1];
+};
+const OUT = flag("out");
+const SERVE = flag("serve");
+const HALF = flag("half", "after");
+const THEMES = flag("themes").split(",");
+const STATES = (flag("states") ?? "rest,neighbour-hovered").split(",");
+const STORY = flag("story", "chat-sidebar-current-row--selected-row");
+const W = Number(flag("width", "780"));
+const H = Number(flag("height", "560"));
+const SCALE = Number(flag("scale", "2"));
+const READINGS = flag(
+	"readings",
+	join(tmpdir(), `lo-row-states-readings-${HALF}.json`),
+);
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const MIME = {
+	".html": "text/html",
+	".js": "text/javascript",
+	".mjs": "text/javascript",
+	".json": "application/json",
+	".css": "text/css",
+	".svg": "image/svg+xml",
+	".woff2": "font/woff2",
+	".woff": "font/woff",
+	".ttf": "font/ttf",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".webp": "image/webp",
+	".map": "application/json",
+	".ico": "image/x-icon",
+	".wasm": "application/wasm",
+	".txt": "text/plain",
+};
+
+const server = createServer((req, res) => {
+	const url = new URL(req.url, "http://x");
+	const p = normalize(decodeURIComponent(url.pathname)).replace(
+		/^(\.\.[/\\])+/,
+		"",
+	);
+	const file = join(SERVE, p === "/" ? "/index.html" : p);
+	try {
+		const body = readFileSync(file);
+		res.writeHead(200, {
+			"content-type": MIME[extname(file)] ?? "application/octet-stream",
+			"cache-control": "no-store",
+		});
+		res.end(body);
+	} catch {
+		res.writeHead(404).end("not found");
+	}
+});
+
+class Cdp {
+	constructor(ws) {
+		this.ws = ws;
+		this.id = 0;
+		this.pending = new Map();
+		ws.addEventListener("message", (e) => {
+			const m = JSON.parse(e.data);
+			if (m.id && this.pending.has(m.id)) {
+				this.pending.get(m.id)(m);
+				this.pending.delete(m.id);
+			}
+		});
+	}
+	send(method, params = {}) {
+		const id = ++this.id;
+		return new Promise((resolve) => {
+			this.pending.set(id, resolve);
+			this.ws.send(JSON.stringify({ id, method, params }));
+		});
+	}
+	async eval(expression) {
+		const r = await this.send("Runtime.evaluate", {
+			expression,
+			returnByValue: true,
+			awaitPromise: true,
+		});
+		if (r.error) throw new Error(JSON.stringify(r.error));
+		return r.result?.result?.value;
+	}
+}
+
+/** The committed rig's own quality, so a frame here is the size of its peers. */
+const toWebp = (pngPath, webpPath) => {
+	execFileSync("magick", [
+		pngPath,
+		"-quality",
+		"82",
+		"-define",
+		"webp:method=6",
+		webpPath,
+	]);
+};
+
+const main = async () => {
+	mkdirSync(OUT, { recursive: true });
+	await new Promise((r) => server.listen(0, "127.0.0.1", r));
+	const ORIGIN = `http://127.0.0.1:${server.address().port}`;
+
+	const dataDir = mkdtempSync(join(tmpdir(), "lo-rowstates-"));
+	const chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			"--no-first-run",
+			"--no-default-browser-check",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+		{ stdio: ["ignore", "ignore", "pipe"] },
+	);
+
+	let stderr = "";
+	const wsUrl = await new Promise((resolve, reject) => {
+		const t = setTimeout(
+			() => reject(new Error(`Chrome gave no debug port\n${stderr}`)),
+			30_000,
+		);
+		chrome.stderr.on("data", (d) => {
+			stderr += d.toString();
+			const m = stderr.match(/DevTools listening on (ws:\/\/\S+)/);
+			if (m) {
+				clearTimeout(t);
+				resolve(m[1]);
+			}
+		});
+		chrome.on("exit", (c) =>
+			reject(new Error(`Chrome exited early (${c})\n${stderr}`)),
+		);
+	});
+
+	const { host } = new URL(wsUrl);
+	const targets = await fetch(`http://${host}/json`).then((r) => r.json());
+	const page = targets.find((t) => t.type === "page");
+	const ws = new WebSocket(page.webSocketDebuggerUrl);
+	await new Promise((r) => ws.addEventListener("open", r, { once: true }));
+	const cdp = new Cdp(ws);
+	await cdp.send("Page.enable");
+	await cdp.send("Runtime.enable");
+	await cdp.send("Emulation.setDeviceMetricsOverride", {
+		width: W,
+		height: H,
+		deviceScaleFactor: SCALE,
+		mobile: false,
+	});
+
+	const report = [];
+	let seed = null;
+	try {
+		for (const theme of THEMES) {
+			for (const state of STATES) {
+				if (seed)
+					await cdp.send("Page.removeScriptToEvaluateOnNewDocument", {
+						identifier: seed,
+					});
+				({ identifier: seed } = await cdp.send(
+					"Page.addScriptToEvaluateOnNewDocument",
+					{
+						source: `try{localStorage.setItem("ui-preferences-storage",JSON.stringify({state:{themeName:${JSON.stringify(theme)}},version:0}));localStorage.removeItem("conversation-input-store");}catch{}`,
+					},
+				));
+				/* Park the pointer away from the list before the document loads, so a
+				   frame is a function of its own story and not of the one before it. */
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: W - 4,
+					y: H - 4,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				await cdp.send("Page.navigate", {
+					url: `${ORIGIN}/iframe.html?id=${STORY}&viewMode=story&args=theme:${theme}`,
+				});
+				await sleep(700);
+				let applied = "";
+				for (let i = 0; i < 60 && applied !== theme; i++) {
+					applied = await cdp.eval(
+						"document.documentElement.dataset.theme||''",
+					);
+					if (applied !== theme) await sleep(150);
+				}
+				if (applied !== theme) {
+					throw new Error(`${theme}: theme never applied (got ${applied})`);
+				}
+				await sleep(500);
+
+				const neighbour =
+					state === "neighbour-hovered"
+						? await cdp.eval(
+								`(()=>{const e=document.querySelector('div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]');if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`,
+							)
+						: null;
+				if (state === "neighbour-hovered") {
+					if (!neighbour) {
+						throw new Error(`${theme}/${state}: hover target not found`);
+					}
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: Math.round(neighbour.x),
+						y: Math.round(neighbour.y),
+						button: "none",
+						buttons: 0,
+						clickCount: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(350);
+				}
+
+				const rect = await cdp.eval(
+					`(()=>{const a=document.querySelectorAll('[data-chat-row]');if(!a.length)return null;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;a.forEach(e=>{const r=e.getBoundingClientRect();x0=Math.min(x0,r.left);y0=Math.min(y0,r.top);x1=Math.max(x1,r.right);y1=Math.max(y1,r.bottom);});return {x:x0,y:y0,w:x1-x0,h:y1-y0};})()`,
+				);
+				if (!rect) throw new Error(`${theme}/${state}: no rows on screen`);
+
+				const shot = await cdp.send("Page.captureScreenshot", {
+					format: "png",
+					captureBeyondViewport: false,
+					clip: {
+						x: rect.x,
+						y: rect.y,
+						width: rect.w,
+						height: rect.h,
+						scale: 1,
+					},
+				});
+				const dir = join(OUT, state);
+				mkdirSync(dir, { recursive: true });
+				const png = join(tmpdir(), `lo-rowstates-${theme}-${state}.png`);
+				writeFileSync(png, Buffer.from(shot.result.data, "base64"));
+				toWebp(png, join(dir, `${theme}.webp`));
+				rmSync(png, { force: true });
+
+				const read = await cdp.eval(
+					`(()=>{const e=document.querySelector('[data-chat-row][aria-current="page"]');const n=document.querySelector('div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]');const s=getComputedStyle(document.documentElement);const f=x=>x?getComputedStyle(x).backgroundColor:'—';return {selected:f(e),neighbour:f(n),varSel:s.getPropertyValue('--lo-row-selected').trim(),varHov:s.getPropertyValue('--lo-row-hover').trim()};})()`,
+				);
+				if (HALF === "after") {
+					/* The ONE thing the before half cannot be asked: that the page is showing
+					   the SHIPPED role variables rather than whatever a proposal left
+					   behind. Read from the same parser the contrast gate reads, so a frame
+					   cannot be named for one value and painted with another. */
+					const want = loadPalettes().find(
+						(entry) => entry.id === theme,
+					)?.palette;
+					if (!want) throw new Error(`${theme}: no palette by that name`);
+					if (
+						read.varHov.toLowerCase() !== want.rowHover.toLowerCase() ||
+						read.varSel.toLowerCase() !== want.rowSelected.toLowerCase()
+					) {
+						throw new Error(
+							`${theme}: the page's role variables are ${read.varHov}/${read.varSel}, not the shipped ${want.rowHover}/${want.rowSelected}`,
+						);
+					}
+				}
+				report.push({ theme, state, half: HALF, rect, read });
+				process.stdout.write(
+					`  ${HALF} ${theme}/${state} -> ${join(dir, `${theme}.webp`)}\n`,
+				);
+			}
+		}
+	} finally {
+		writeFileSync(READINGS, JSON.stringify(report, null, 1));
+		try {
+			ws.close();
+		} catch {}
+		/* Killed by exact pid, and the profile is reaped rather than left behind: a
+		   scratch Chrome profile on this machine is a directory the operator finds
+		   later, and an abandoned one also re-attempts the keychain for minutes
+		   after its run ends. The retry is because SIGKILL is asynchronous - Chrome
+		   can still be writing into its own profile when the walk starts - and a
+		   cleanup that fails must not turn a run that captured its frames into a
+		   non-zero exit. */
+		chrome.kill("SIGKILL");
+		server.close();
+		for (const wait of [0, 250, 1000]) {
+			await sleep(wait);
+			try {
+				rmSync(dataDir, { recursive: true, force: true });
+				break;
+			} catch (error) {
+				process.stderr.write(
+					`  profile reap failed (${error?.code}); retrying\n`,
+				);
+			}
+		}
+	}
+	console.log(`${report.length} frames -> ${OUT} (readings: ${READINGS})`);
+};
+
+main().catch((e) => {
+	console.error(e);
+	process.exit(1);
+});
