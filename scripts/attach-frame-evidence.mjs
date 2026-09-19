@@ -1429,18 +1429,45 @@ async function sceneOtherPrincipal() {
 		 * vocabulary is unique to the band now that the pane has its own copy (D1), so
 		 * the page's own lines answer the same question.
 		 */
+		/*
+		 * SHORT discriminators, because the page's own lines are TRUNCATED: the
+		 * stored line reads "The Local Operator server on this machine is already
+		 * managed", so the full phrase this list used to carry never matched and the
+		 * field came back null while the band was on screen - the assertion then
+		 * passed on a different line of the same array, which is how a probe can be
+		 * "passing" and reading nothing (review round 3, D19, one level up).
+		 */
 		const bandWanted = [
-			"already managed by another program",
+			"already managed",
 			"was replaced while this app was running",
 			"older than the pairing handshake",
 			"credential for the running Local Operator server was refused",
-			"is not paired with the running Local Operator server",
+			"is not paired with the running",
 			"Not connected to a Local Operator server",
 		];
+		/*
+		 * Read from the page's FULL text, not from `first_lines`: those are fourteen
+		 * TRUNCATED lines, and the band's sentence is not reliably among them - which
+		 * is how this field came back null while the band was on screen. `evaluate` is
+		 * a second CDP call rather than an addition to the shared page eval, because
+		 * the last in-eval addition took the whole read down with it.
+		 */
+		const fullText = String(await evaluate(debugPort, "document.body.innerText"));
 		page.bandSentence =
-			(page.first_lines ?? []).find((line) =>
-				bandWanted.some((w) => line.includes(w)),
-			) ?? null;
+			fullText
+				.split("\n")
+				.map((line) => line.replace(/\s+/g, " ").trim())
+				.find((line) => bandWanted.some((w) => line.includes(w))) ?? null;
+		page.bandLines = fullText
+			.split("\n")
+			.map((line) => line.replace(/\s+/g, " ").trim())
+			.filter((line) => bandWanted.some((w) => line.includes(w)))
+			.slice(0, 4);
+		/*
+		 * BOTH FIELDS ASSERTED, and each says what was read: a null here means the
+		 * band's copy was not found on the published object, which is a readable
+		 * failure rather than a probe that quietly passes.
+		 */
 		if (!page.bandSentence)
 			throw new Error(
 				"other-principal: no band sentence was read at all, so this frame cannot show what the band says",

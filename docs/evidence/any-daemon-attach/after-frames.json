@@ -3,17 +3,17 @@
   "bundle": {
     "mainBytecode": {
       "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-      "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
-      "builtAt": "2026-09-19T05:45:21.296Z"
+      "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
+      "builtAt": "2026-09-19T06:18:30.944Z"
     },
     "rendererChunk": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
-      "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
-      "builtAt": "2026-09-19T05:46:04.168Z"
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
+      "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
+      "builtAt": "2026-09-19T06:19:17.534Z"
     },
     "newestSource": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
-      "at": "2026-09-19T05:43:41.289Z"
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
+      "at": "2026-09-19T06:08:52.483Z"
     }
   },
   "scenes": {
@@ -21,17 +21,17 @@
       "bundle": {
         "mainBytecode": {
           "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-          "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
-          "builtAt": "2026-09-19T05:45:21.296Z"
+          "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
+          "builtAt": "2026-09-19T06:18:30.944Z"
         },
         "rendererChunk": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
-          "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
-          "builtAt": "2026-09-19T05:46:04.168Z"
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
+          "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
+          "builtAt": "2026-09-19T06:19:17.534Z"
         },
         "newestSource": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
-          "at": "2026-09-19T05:43:41.289Z"
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
+          "at": "2026-09-19T06:08:52.483Z"
         }
       },
       "configured": {
@@ -199,7 +199,11 @@
           "+",
           "K"
         ],
-        "bandSentence": "Not connected to a Local Operator server."
+        "bandSentence": "Not connected to a Local Operator server.",
+        "bandLines": [
+          "Not connected to a Local Operator server.",
+          "The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
+        ]
       },
       "desktopRoutesServed": 0,
       "daemonRefusals": 0,
@@ -210,17 +214,17 @@
       "bundle": {
         "mainBytecode": {
           "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-          "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
-          "builtAt": "2026-09-19T05:45:21.296Z"
+          "sha256": "5fdd306523d8e6986729b203b256230908090cd119efeb0f3e9a5711745681fc",
+          "builtAt": "2026-09-19T06:18:30.944Z"
         },
         "rendererChunk": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
-          "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
-          "builtAt": "2026-09-19T05:46:04.168Z"
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-BEE20Aqh.js",
+          "sha256": "d06ad8d1facfeb7fd45af8f60a735ab856eace3c284878c7b4e0e3c69532b5d6",
+          "builtAt": "2026-09-19T06:19:17.534Z"
         },
         "newestSource": {
-          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
-          "at": "2026-09-19T05:43:41.289Z"
+          "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/shared/components/common/themed-toast-container.tsx",
+          "at": "2026-09-19T06:08:52.483Z"
         }
       },
       "configured": {
@@ -230,10 +234,10 @@
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "WWHen251hkSyO8N3r0L_P6d3bW-Y-iAtCHSsnC1UxYg",
-        "instance_id": "RmMY-HhVMY8iy32_gAahWlrzh1boAX0_Eb883jIYkXI",
+        "claim_key": "GGgZbWdvA4Z7uU3l42j3HW_BpxaMu3vRGPTzVxNwPVE",
+        "instance_id": "aNF1ipVOhKs9e1XicGos6_DaBY_b4HAYokiSBxeiaVE",
         "version": "0.59.9",
-        "pid": 72848
+        "pid": 94259
       },
       "claimInDaemonLog": true,
       "page": {
@@ -245,10 +249,10 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 72848,
+          "pid": 94259,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 72848, v0.59.9).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 94259, v0.59.9).",
           "pairing": {
             "available": true,
             "cause": null
@@ -381,7 +385,6 @@
           ]
         },
         "band": null,
-        "bandSentence": null,
         "first_lines": [
           "Local Operator",
           "Chat",
@@ -414,7 +417,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 72848,
+            "pid": 94259,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -550,7 +553,6 @@
             ]
           },
           "band": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. The daemon's process is gone. Retry",
-          "bandSentence": null,
           "first_lines": [
             "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own.",
             "The daemon's process is gone.",
@@ -577,10 +579,10 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 73267,
+            "pid": 94604,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 73267, v0.59.9).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 94604, v0.59.9).",
             "pairing": {
               "available": true,
               "cause": null
@@ -713,7 +715,6 @@
             ]
           },
           "band": null,
-          "bandSentence": null,
           "first_lines": [
             "Local Operator",
             "Chat",
