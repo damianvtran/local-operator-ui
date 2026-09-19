@@ -159,9 +159,26 @@ type StoryWorld = {
 	offer?: Record<string, unknown>;
 	/** Fired on `backend-update-not-available` when present. */
 	skew?: Record<string, unknown>;
+	/**
+	 * What `get-last-install-attempt` answers, for the story about the record the
+	 * card keeps and prints.
+	 *
+	 * It is a WORLD field because the record is main's answer, not a detail of the
+	 * component: the sentence's own correctness is about which VERSION it names, and
+	 * that comparison is between this payload and `numbers.app` - the two readings a
+	 * real machine supplies - rather than between two strings a story can pick
+	 * independently.
+	 */
+	lastInstallAttempt?: Record<string, unknown> | null;
 };
 
-const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
+const scriptedUpdater = ({
+	verdict,
+	numbers,
+	offer,
+	skew,
+	lastInstallAttempt,
+}: StoryWorld) => {
 	const appCurrent: Array<(info: UpdateInfo) => void> = [];
 	const serverOffered: Array<ServerOfferListener> = [];
 	const serverNotAvailable: Array<(info: Record<string, unknown>) => void> = [];
@@ -219,7 +236,7 @@ const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
 		downloadUpdate: async () => [],
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
-		getLastInstallAttempt: async () => null,
+		getLastInstallAttempt: async () => lastInstallAttempt ?? null,
 		onUpdateAvailable: noop,
 		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) =>
 			hold(appCurrent, callback),
@@ -444,6 +461,10 @@ const meta = {
 					REPORTED_MACHINE) as MachineNumbers,
 				offer: context.parameters.offer as Record<string, unknown> | undefined,
 				skew: context.parameters.skew as Record<string, unknown> | undefined,
+				lastInstallAttempt: context.parameters.lastInstallAttempt as
+					| Record<string, unknown>
+					| null
+					| undefined,
 			});
 			return <Story />;
 		},
@@ -625,4 +646,42 @@ export const ServingServerBehindInstall: Story = {
 	render: () => (
 		<ReportFrame expect="The server is on an older build than the install" />
 	),
+};
+
+/**
+ * THE STATE THE BANNER IS KEPT IN, and the one design D1 is about.
+ *
+ * The record's target (0.30.0) is still AHEAD of the app, so the record is kept -
+ * correctly, because the failure it names is still true and retiring it would
+ * delete information the operator asked to keep. What may not be kept is the
+ * VERSION it printed: the record's own `runningVersion` is what was running when
+ * the failure was WRITTEN (0.29.2), while this machine has since gained a version
+ * by a route other than that install (0.29.5). The card's "Application version"
+ * row prints the live 0.29.5, so the banner two rows below it prints 0.29.5 as
+ * well; before that fix the same frame carried "Version 0.29.2 is running" under a
+ * row reading 0.29.5, which is the class of untrue statement this change exists to
+ * remove.
+ *
+ * The two versions are deliberately different AND both on the frame: a fixture
+ * whose record agreed with the machine could not tell the two readings apart.
+ */
+export const RecordKeptWhileTargetAhead: Story = {
+	parameters: {
+		verdict: REPORTED_VERDICT,
+		numbers: {
+			app: "0.29.5",
+			server: INSTALLED_SERVER,
+			published: PUBLISHED_SERVER,
+		},
+		lastInstallAttempt: {
+			targetVersion: "0.30.0",
+			runningVersion: "0.29.2",
+			startedAt: "2026-09-18T13:37:09.507Z",
+			detectedAt: "2026-09-18T14:12:16.975Z",
+			detail:
+				"Install started /Users/someone/Library/Caches/local-operator-updater/pending/local-operator-ui-0.30.0-arm64.zip. Squirrel cancels an install when an instance of the app is running.",
+			attempts: 2,
+		},
+	},
+	render: () => <ReportFrame expect="Version 0.29.5 is running" />,
 };

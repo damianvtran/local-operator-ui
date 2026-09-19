@@ -55,8 +55,11 @@ const install = await import(
 const {
 	classifyGlobalInstall,
 	didUpgradeLand,
+	evaluatePendingInstall,
 	generationInstallRoot,
+	installAttemptSupersededBy,
 	installPointerPath,
+	targetStanding,
 	installerSearchPath,
 	isSourceBuildRef,
 	readInstallIdentity,
@@ -757,4 +760,91 @@ test("an evidence read of a generation install follows the install's own pointer
 		installPointerPath(join(unpointed, "bin", "local-operator")),
 		join(unpointed, "bin", "local-operator"),
 	);
+});
+
+// ---------------------------------------------------------------------------
+// One arrival rule, two callers
+// ---------------------------------------------------------------------------
+
+test("a pair the marker rule calls a failure is never a retirement", () => {
+	/*
+	 * THE ANTI-DRIFT CASE (review round 1, R1-2). Two predicates answer "has this
+	 * machine arrived at that target" about the same two strings: `evaluatePendingInstall`
+	 * decides whether a launch has a failure to report, and `installAttemptSupersededBy`
+	 * decides whether the record that failure writes may be retired. They disagreed on
+	 * the pre-release pair - `compareVersions` is triple-only, so `0.1.2` against
+	 * `0.1.2-beta.9` orders EQUAL, the marker rule called it `failed`, and the retire
+	 * rule answered `order <= 0` and deleted the record for it - so the launch that
+	 * reported "the install of 0.1.2 didn't finish" retired it on the first read.
+	 *
+	 * The property is stated over the whole space rather than over one pair, so a
+	 * future edit to either predicate has to keep the two agreeing: every pair the
+	 * marker rule calls a failure must be one the record may not retire, and every
+	 * arrival it reports must be one the record may retire.
+	 */
+	const marker = (targetVersion) => ({
+		targetVersion,
+		artifactPath: "/synthetic/staged.zip",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		watchdogPid: null,
+	});
+	const record = (targetVersion) => ({
+		targetVersion,
+		runningVersion: "0.28.2",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail: "synthetic",
+		attempts: 1,
+	});
+
+	for (const [target, running] of [
+		// The pre-release pair: the same triple, a different spelling.
+		["0.1.2", "0.1.2-beta.9"],
+		["0.1.2-beta.9", "0.1.2"],
+		// The operator's own case, and the exact arrival.
+		["0.28.3", "0.29.2"],
+		["0.29.0", "0.29.0"],
+		// Not reached, and not orderable either side.
+		["0.30.0", "0.29.1"],
+		["nightly", "0.29.1"],
+		["0.29.1", "unknown"],
+	]) {
+		const kind = evaluatePendingInstall({
+			marker: marker(target),
+			runningVersion: running,
+			installInFlight: false,
+		}).kind;
+		const retires = installAttemptSupersededBy(record(target), running);
+		if (kind === "failed") {
+			assert.equal(
+				retires,
+				false,
+				`${target} against ${running}: the marker rule reports a failure, so the record may not be retired`,
+			);
+		}
+		if (kind === "succeeded" || kind === "stale") {
+			assert.equal(
+				retires,
+				true,
+				`${target} against ${running}: the marker rule reports an arrival, so the record retires`,
+			);
+		}
+		if (kind === "in-flight") {
+			assert.equal(
+				retires,
+				false,
+				`${target} against ${running}: a target still installing has not been reached`,
+			);
+		}
+	}
+
+	/*
+	 * And the standing itself, named, so the pre-release pair cannot be read as an
+	 * arrival by a future caller that goes to `targetStanding` directly.
+	 */
+	assert.equal(targetStanding("0.1.2", "0.1.2-beta.9"), "same-triple");
+	assert.equal(targetStanding("0.29.0", "0.29.0"), "reached");
+	assert.equal(targetStanding("0.28.3", "0.29.2"), "passed");
+	assert.equal(targetStanding("0.30.0", "0.29.1"), "ahead");
+	assert.equal(targetStanding("nightly", "0.29.1"), "unorderable");
 });
