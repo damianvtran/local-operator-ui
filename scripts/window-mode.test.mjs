@@ -1773,3 +1773,83 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 		`the scan reached subdirectories (scanned ${scanned.length} modules)`,
 	);
 });
+
+test("no rig script asks the operating system for window focus", () => {
+	/*
+	 * The RIG-side half of the scan above, and the half that was missing while
+	 * the operator's focus was still being taken with the mode policy holding.
+	 *
+	 * Measured on the operator's machine (2026-09-19): 46 app instances launched
+	 * by rigs, 227 window samples, ZERO windows — the mode policy working exactly
+	 * as documented — and one of those windowless, unfocusable instances was
+	 * still the FRONTMOST APPLICATION for about eight seconds. "Never shown" and
+	 * "cannot take the operator's focus" are different properties: the launch
+	 * decides the first one, and the requests the rig makes afterwards decide the
+	 * second. The `src/main` scan cannot see a request made from the renderer
+	 * side, and that is precisely where a rig reaches the operating system.
+	 *
+	 * The calls named here are the ones that leave the page: `window.focus()`
+	 * asks macOS to order the window and activate the app, and
+	 * `Page.bringToFront` / `Target.activateTarget` are the CDP spellings of the
+	 * same request. Element focus (`input.focus()`, `document.body.focus()`) is
+	 * deliberately NOT matched — moving a caret inside the page is the supported
+	 * way to arrange a focus assertion, and `Emulation.setFocusEmulationEnabled`
+	 * is the supported way to make a page that is not on screen read as focused.
+	 * Between them they cover what a rig needs, which is why this is a ban on the
+	 * three calls that leave the page rather than on focus assertions.
+	 *
+	 * WHAT THIS TEST DOES NOT CLAIM: that a rig caused the activation measured
+	 * above. The mechanism was never identified, and the instance that took the
+	 * front ran a driver whose only focus calls were element-level. The rule
+	 * stands on its own terms — a rig has no business asking the operating system
+	 * for the keyboard, whatever mode the run declared — so the scan exists to
+	 * keep that request out of the tree, not to explain that afternoon.
+	 */
+	const LEAVES_THE_PAGE =
+		/window\.focus\(\)|Page\.bringToFront|Target\.activateTarget/;
+	/*
+	 * COMMENTS ARE NOT CALL SITES. The first version of this scan read prose as
+	 * well as code and failed on the paragraph documenting the ban — in this file's
+	 * sibling, the one that says the line it removed is not a page call. Skipping
+	 * comment lines is the honest fix: the guard is about what a rig DOES, and a
+	 * comment neither orders a window nor activates an app. The alternative —
+	 * writing the ban in prose the scan cannot see, or splitting the call to dodge
+	 * the pattern — hides the rule from the person reading the file, which is the
+	 * worse failure of the two.
+	 */
+	const COMMENT = /^\s*(\/\/|\/\*|\*|\*\/)/;
+	/*
+	 * This file is skipped, the same way the scan above skips `window-raise.ts`:
+	 * its subject matter is these three call sites, so it necessarily contains
+	 * them, and a scan that flagged its own pattern list would only teach the
+	 * next author to obfuscate the pattern.
+	 */
+	const SELF = "window-mode.test.mjs";
+	const offSite = [];
+	const scanned = [];
+	for (const file of readdirSync("scripts", { recursive: true }).filter(
+		(name) => name.endsWith(".mjs") || name.endsWith(".js"),
+	)) {
+		scanned.push(file);
+		if (file.endsWith(SELF)) continue;
+		readFileSync(join("scripts", file), "utf8")
+			.split("\n")
+			.forEach((line, index) => {
+				if (COMMENT.test(line)) return;
+				if (!LEAVES_THE_PAGE.test(line)) return;
+				offSite.push(`scripts/${file}:${index + 1}: ${line.trim()}`);
+			});
+	}
+	assert.deepEqual(
+		offSite,
+		[],
+		"these lines ask the operating system to bring a window forward, which takes the operator's focus whatever window mode the run declared",
+	);
+	// Pins the width of the scan the same way the `src/main` scan does: the rig
+	// scripts are the surface this guard exists for, so a scan that silently
+	// reached a handful of files would pass while proving nothing about the tree.
+	assert.ok(
+		scanned.length > 20,
+		`the scan reached the scripts tree (scanned ${scanned.length} files)`,
+	);
+});
