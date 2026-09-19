@@ -1,9 +1,11 @@
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
+import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
+import * as uploadActions from "./actions/upload";
 import type { ConsentDecision } from "./approvals";
 import { BrowserHostError } from "./errors";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
@@ -44,6 +46,15 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"type",
 	"scroll",
 	"logs",
+	// `download` names a control on the CURRENT document (the link or button that
+	// starts the file) and `upload` names a file input on it, so both are authorized
+	// against that document on entry and again on the result. `download` is
+	// deliberately NOT in NAVIGATION_ACTIONS — see its own note in
+	// `actions/download.ts`: the per-hop gate decides DOCUMENT-stage requests, and a
+	// download is routinely a cross-origin URL the tab was never approved for, so
+	// gating it would refuse the downloads this feature exists to make possible.
+	"download",
+	"upload",
 ]);
 
 /**
@@ -76,6 +87,13 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"logs",
 	"close",
 	"retitle",
+	// The two file verbs take the tab's lane for the same reason every other
+	// tab-addressed action does, and for one more: `download` ARMS the tab for the
+	// duration of the call, and two concurrent arms on one tab would be two captures
+	// writing into two harness directories with no way to tell which file came from
+	// which call.
+	"download",
+	"upload",
 ]);
 
 /**
@@ -207,6 +225,10 @@ export interface BrowserHostOptions {
 	cdp: BrowserActionContext["cdp"];
 	approvals: BrowserActionContext["approvals"];
 	ownership: BrowserActionContext["ownership"];
+	/** The per-tab download arm (§8). Injected rather than built here because the
+	 * `will-download` handler that feeds it is installed on the SESSION, which this
+	 * module deliberately does not own. */
+	downloads: BrowserActionContext["downloads"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -221,6 +243,7 @@ export class BrowserHost implements BrowserActionContext {
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
+	readonly downloads: BrowserActionContext["downloads"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
@@ -247,6 +270,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
+		this.downloads = options.downloads;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		this.facts = options.facts;
@@ -407,6 +431,10 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.click(this, params);
 			case "type":
 				return inputActions.type(this, params);
+			case "download":
+				return downloadActions.download(this, params);
+			case "upload":
+				return uploadActions.upload(this, params);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,
@@ -609,6 +637,12 @@ export class BrowserHost implements BrowserActionContext {
 				loading: this.tabLoading(entry.tabId),
 			})),
 			activeTabId: activeRecord?.tabId ?? null,
+			// The download surface's facts (§16.4): what is in flight, where it went and
+			// what was refused, so the chrome row renders from the host's own state rather
+			// than from a second copy the renderer would have to keep in step. Shipped in
+			// the same projection as the strip for the reason the approvals list is: one
+			// subscription is one thing that can go stale.
+			downloads: this.downloads.activity(),
 			url: active ? active.view.webContents.getURL() : "",
 			title: active
 				? this.titleForChrome(active.view.webContents.getTitle())

@@ -682,6 +682,11 @@ const api = {
 				ipcRenderer.removeListener("browser-webauthn-settled", handler);
 			};
 		},
+		/** Reveal the directory the host is writing downloads into (§16.4). No
+		 * argument: the renderer asks for "the download directory" and main opens the
+		 * one IT used, so no path from this side ever reaches `shell.openPath`. */
+		revealDownloads: (): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reveal-downloads"),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);
