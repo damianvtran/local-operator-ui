@@ -1,10 +1,10 @@
 {
-	"head": "e24af8eaebefbea09579e50058385fda26924679",
+	"head": "2094c33fd6ab10e44a27b74b5694d26ce6e4c8fb",
 	"headNote": "PR #362, TWICE FOLDED: onto `origin/main` = `7622b41e4` (the launch-discipline merge) and then onto `213b7c45c` (PR #361's `feat/color-application` palette re-solve). THIS file was the only conflict in both, its usual shape, since both sides rewrite it; each fold was resolved as a union - main's side wholesale, with this branch's own records re-layered on top - and every derived field was re-derived from the folded tree rather than carried across. The second fold also RE-SHOT this branch's frames, because a fold onto a palette change is the one case a re-stamp cannot pay for: `tokyoNight` differs in all six directories and the other eleven swept themes are byte-identical, which is the honest measure of what the re-solve moved on this surface. `head`, `partialCapture.addedAtHead` and `partialCapture.refreshedAtHead` name the commit that carries the frames; the two folds' own records are `partialCapture.foldOntoLaunchDisciplineRestampNote` and `partialCapture.foldOntoColourApplicationNote`.",
-	"srcTree": "a923c86951e18c04038977b9a42cf6f6745513f4",
-	"scriptsTree": "16497fa51d748776406b6abd5264268f8ddeeadd",
+	"srcTree": "41927cabf854e5afa04e56e3c9ba6ae5b4600188",
+	"scriptsTree": "7c916e2b3c072db5cd29f285e6f043f85f89cfff",
 	"dirtyWorkingTree": false,
-	"capturedAt": "2026-09-17T07:08:08.000Z",
+	"capturedAt": "2026-09-18T20:26:57-04:00",
 	"frames": 7808,
 	"surfaces": 767,
 	"themes": 12,
@@ -6068,6 +6068,16 @@
 			"capturedAt": "2026-09-18T00:14:11.923Z",
 			"capturedAtHead": "1c5fae31d1e3f36a075d17f8d5c96287a0b048db",
 			"capturedAtHeadNote": "The commit this branch LANDS the set under in this lineage, not the tree the frames were painted from: they are the base's own rendering (`origin/main` at `a42bf4739`, this branch's original base), a combination no commit of this branch contains on its own. Re-pointed forward at every fold since (this one: onto `3cb1eea3c`); the frames' own bytes have not moved."
+		},
+		{
+			"path": "any-daemon-attach",
+			"frames": 5,
+			"surfaces": 2,
+			"themes": 12,
+			"source": "`scripts/attach-frame-evidence.mjs --scene any-daemon` and `--scene other-principal`, against apps built from this branch's head. `any-daemon` runs a REAL `lop serve` from the machine's own launcher on a scratch `LOCAL_OPERATOR_CONFIG_DIR`, then replaces it on the same port with a successor holding a fresh claim key and a shut plane; `other-principal` drives a stub that publishes the record a governed plane leaves (`desktop: true`, empty `claim_key`) and answers every desktop route with the daemon's own 503 prose, transcribed from `local_operator/server/desktop.py`.",
+			"why": "The two requirements the operator stated, photographed rather than argued. (1) The app attaches to a daemon it did not start, and the evidence is BOTH sides' own words - the app's `Claimed the desktop plane on ...`, the daemon's record turning to `desktop: true` with the key it now accepts, and that daemon's access log carrying `POST /v1/desktop/claim` -> 200; and it re-pairs a successor on its own with no user action. (2) No surface reads a PAIRING condition as a version one - the governed-plane frame carries the cause and offers no control, and no frame renders the daemon's prose as this app's diagnosis, which is what the operator's own screenshot showed.",
+			"capturedAt": "2026-09-18T20:26:57-04:00",
+			"capturedAtHead": "2094c33fd6ab10e44a27b74b5694d26ce6e4c8fb"
 		}
 	],
 	"remediationRecord": {
