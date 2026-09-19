@@ -18,7 +18,10 @@ import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useModels } from "@shared/hooks/use-models";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
-import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import {
+	isRadientAccountFailure,
+	useRadientUserQuery,
+} from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
@@ -315,15 +318,23 @@ export const SettingsPage: FC = () => {
 	// of that fact; the wrapper hook additionally syncs the user store, which
 	// this page does not need.
 	//
-	// `error` and `refreshUser` are here because the FAILURE of this read is a
-	// state the page has to say out loud: the profile fields render the user
+	// `accountRead` and `refreshUser` are here because the FAILURE of this read is
+	// a state the page has to say out loud: the profile fields render the user
 	// store's own copy, whose default is the literal name "User", so a refused
-	// read is otherwise indistinguishable from a person who has not set a name.
+	// read is otherwise indistinguishable from a person who has not set a name --
+	// and an UNANSWERED read renders the same placeholder, which is the state the
+	// report came from.
 	//
-	// The hook's own `isLoading` is deliberately NOT read: it is what held this
-	// whole surface (see the gate below).
-	const { isAuthenticated, error: authError, refreshUser } =
-		useRadientUserQuery();
+	// The hook's own `isLoading` is deliberately NOT read as a gate: it is what
+	// held this whole surface (see the gate below). The classification it feeds is
+	// read instead, which keeps "not answered yet" separate from "answered with
+	// nothing" -- the two this page's fields used to render identically.
+	const {
+		isAuthenticated,
+		accountRead,
+		isFetching: isAccountFetching,
+		refreshUser,
+	} = useRadientUserQuery();
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
@@ -685,14 +696,22 @@ export const SettingsPage: FC = () => {
 	 */
 	const isLoading = isConfigLoading;
 	/*
-	 * A refused account read, told apart from an ordinary signed-out state: a
-	 * 409 from the proxy means "no Radient credential is stored", which is the
-	 * state the sign-in prompt is for, while any other failure means the app
-	 * could not find out WHO is signed in. The distinction is the whole reason
-	 * this is not folded into `isAuthenticated`: both are false, and only one of
-	 * them is a fault.
+	 * The account read's own state, from ONE classification (`accountRead` in
+	 * `use-radient-user-query`). The two facts this page renders from are: is the
+	 * read still out (`checking`, which must not present the user store's
+	 * placeholder as the reader's own), and did it come back without an answer
+	 * (any failure class, which must say so beside the fields it affects).
+	 *
+	 * The distinction from `isAuthenticated`, which is false in both of those and
+	 * in the ordinary signed-out state: only two of the three are things to tell
+	 * the reader about. The classes themselves are read from the backend's own
+	 * `code`, never from a status or a sentence, because the same 401 on this
+	 * route is either Radient refusing the account's credential (sign in again)
+	 * or the desktop plane refusing this app's bearer (restart or re-pair), and
+	 * the copy below has to know which.
 	 */
-	const accountReadFailed = Boolean(authError) && !isAuthenticated;
+	const accountReadChecking = accountRead === "checking";
+	const accountReadFailed = isRadientAccountFailure(accountRead);
 	// Well inside the transport's deadline for these reads (the op's own derived
 	// budget), so the explanation appears while
 	// the user is still deciding whether the app is stuck rather than after they
@@ -888,12 +907,43 @@ export const SettingsPage: FC = () => {
 								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
 							>
 								{/*
-								 * A refused account read, said out loud. Without this the two fields
-								 * below render the user store's default - the literal name "User" and
-								 * `user@example.com` - in the same editable styling as a real profile,
-								 * so a person whose Radient credential was rejected sees placeholder
-								 * data and no reason for it (measured 2026-09-19: the sidebar read
-								 * "User" beside a backend that held a Radient credential).
+								 * The status slot above the fields, in the app's one register for "this
+								 * is not authoritative yet": `text-meta text-ink-dim`, sentence
+								 * case, no spinner, no icon, no border (`branding.md` section 8).
+								 *
+								 * WHY THE FIELDS CANNOT JUST SIT THERE WHILE THE READ IS OUT. They
+								 * render the user store's own profile, whose default is the literal
+								 * name "User" and `user@example.com`, in the same styling as a real
+								 * one -- so an unanswered read presented placeholder data as the
+								 * reader's own, and (measured 2026-09-19) the in-flight frame was
+								 * byte-identical to the ordinary signed-out frame. "Checking" costs
+								 * the reader one line and removes the claim.
+								 *
+								 * Present from the first painted frame, not on a deadline: unlike
+								 * the config gate below, the ambiguity here is not "is it hung" but
+								 * "whose data is this", and that question is unanswered from the
+								 * first frame the fields are on screen.
+								 */}
+								{accountReadChecking && (
+									<p className="text-meta text-ink-dim">
+										Checking your Radient account…
+									</p>
+								)}
+								{/*
+								 * A failed account read, said out loud. Without this the two fields
+								 * below render the user store's default - the literal name "User"
+								 * and `user@example.com` - in the same styling as a real profile,
+								 * so a person whose Radient credential was rejected sees
+								 * placeholder data and no reason for it (measured 2026-09-19: the
+								 * sidebar read "User" beside a backend that held a Radient
+								 * credential).
+								 *
+								 * ONE ALERT FOR THIS FAULT, and it is this one: the lie is visible
+								 * here, so the explanation and its Retry live here. The Radient
+								 * account section says what the read's failure means for ITS own
+								 * state in one sentence rather than rendering a second warning
+								 * 3173px below (design round 1, D1: two warnings for one fault, with
+								 * two opposite sentences 16px apart, is what the reader was shown).
 								 *
 								 * `warning` and a Retry, matching the config branch above and the
 								 * providers grid: one fault renders at one severity, and a failure
@@ -901,23 +951,44 @@ export const SettingsPage: FC = () => {
 								 * exception stays out of the sentence for the reason
 								 * `backend-error.ts` records - the sentence has to name something
 								 * the reader can do.
+								 *
+								 * NO CAUSE IS NAMED UNLESS THE BACKEND NAMED IT. "Radient refused
+								 * the sign-in" is a statement about the ACCOUNT's credential and
+								 * is only made for the class that carries
+								 * `radient_credential_refused`; every other failure - including a
+								 * bare 401/403, which also means this app's own bearer was
+								 * refused - keeps to what was observed and the retry.
 								 */}
 								{accountReadFailed && (
 									<Alert variant="warning">
 										<div className="flex items-center justify-between gap-3">
 											<span>
 												Your Radient account could not be read, so the name and
-												email below are this app's own copy rather than your
-												account details. Try again here, or sign in to Radient
-												again in the Radient account section.
+												email below are placeholders rather than your account
+												details.
+												{accountRead === "refused"
+													? " Retry, or sign in to Radient again."
+													: " Retry."}
 											</span>
+											{/*
+											 * The config branch's own idiom, for its own reason: the
+											 * alert STAYS MOUNTED while its re-read is out (the query
+											 * keeps the failure across the fetch, see the hook), and
+											 * this control reports that the press did something. Without
+											 * it the frame after a press is pixel-identical to the
+											 * frame before it - issue 89's own "I cannot tell whether
+											 * this is working or hung", one click downstream of its
+											 * fix. `isFetching`, not `isLoading`: a retry of an
+											 * errored query keeps `status: "error"`.
+											 */}
 											<Button
 												variant="secondary"
 												size="sm"
 												className="shrink-0"
 												onClick={() => refreshUser()}
+												disabled={isAccountFetching}
 											>
-												Retry
+												{isAccountFetching ? "Retrying" : "Retry"}
 											</Button>
 										</div>
 									</Alert>
@@ -930,6 +1001,16 @@ export const SettingsPage: FC = () => {
 								 * kept alone: one indented label beside one flush label is a
 								 * ragged column, and "Display name" and "Email address" are
 								 * not words that need a picture to be told apart.
+								 */}
+								{/*
+								 * Editable only when the app KNOWS the account is not the source of
+								 * these fields. Signed out, they are the reader's own local profile
+								 * and editing them is the point; while the read is out (the caption
+								 * above), or after it failed (the alert above), an edit made here is
+								 * silently replaced when the read does resolve - the store-sync
+								 * effect in `use-radient-auth.ts` writes the account's name over
+								 * the store's - and that window is one this page could not show
+								 * before the gate change.
 								 */}
 								<div className="flex flex-col gap-4">
 									<EditableField
@@ -945,7 +1026,7 @@ export const SettingsPage: FC = () => {
 												setSavingField(null);
 											}
 										}}
-										readOnly={isAuthenticated}
+										readOnly={accountRead !== "signed-out"}
 									/>
 									<EditableField
 										value={userStore.profile.email}
@@ -960,7 +1041,7 @@ export const SettingsPage: FC = () => {
 												setSavingField(null);
 											}
 										}}
-										readOnly={isAuthenticated}
+										readOnly={accountRead !== "signed-out"}
 									/>
 								</div>
 							</SettingsSection>
