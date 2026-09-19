@@ -4970,7 +4970,11 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 										return globalThis.__loTestAppIsPackaged ?? true;
 									},
 									getPath: (name) => paths[name] ?? paths.userData,
-									getVersion: () => "0.0.0-test",
+									// A getter rather than a literal, so a case that is about the
+									// version the app REPORTS (the retire rule's own input) can
+									// set it; the default is unchanged for every other case.
+									getVersion: () =>
+										globalThis.__loTestAppVersion ?? "0.0.0-test",
 									getName: () => "Local Operator",
 									getAppPath: () => process.cwd(),
 									whenReady: async () => {},
@@ -12930,5 +12934,231 @@ test("the unattended reconciliation follows the pointer a record names", async (
 	} finally {
 		drive.dispose();
 		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+/**
+ * THE RECORDED INSTALL FAILURE RETIRES ONCE THE MACHINE HAS ARRIVED.
+ *
+ * `last-update-install.json` outlives the notice by design (a dismissal must not be an
+ * information loss), and nothing retired it when the install it complained about was
+ * later reached: on 2026-09-18 the app ran 0.29.1 while the record still named a 0.28.3
+ * install, so Settings printed "The last update to version 0.28.3 didn't finish. Version
+ * 0.28.2 is running." - two versions stale, about a state the machine had left hours
+ * earlier. The operator's rule is the rule here: cleared whenever the UI updates to a
+ * newer version, successfully.
+ */
+test("the recorded install failure retires when the running version has reached its target", async () => {
+	const recordFor = (targetVersion) => ({
+		targetVersion,
+		runningVersion: "0.28.2",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail:
+			"Install started. Squirrel cancels an install when an instance runs.",
+		attempts: 1,
+	});
+
+	const at = async (appVersion, targetVersion) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-last-install-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const markerDir = userData;
+		writeFileSync(
+			join(markerDir, "last-update-install.json"),
+			`${JSON.stringify(recordFor(targetVersion), null, 2)}\n`,
+		);
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		return {
+			updateService,
+			path: join(markerDir, "last-update-install.json"),
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The operator's own state: a 0.28.3 record on a 0.29.1 app. Retired at the read,
+	// and the FILE goes with it - a later launch, a `cat` and the panel agree.
+	const stale = await at("0.29.1", "0.28.3");
+	try {
+		assert.equal(stale.updateService.lastInstallAttempt(), null);
+		assert.equal(
+			existsSync(stale.path),
+			false,
+			"the retirement is a removal, not a read-time mask",
+		);
+	} finally {
+		stale.dispose();
+	}
+
+	// An install that reached its target exactly is the same fact: the record describes
+	// a version this app is running.
+	const exact = await at("0.29.0", "0.29.0");
+	try {
+		assert.equal(exact.updateService.lastInstallAttempt(), null);
+	} finally {
+		exact.dispose();
+	}
+
+	// The record still has something to say: the target is AHEAD of what is running, so
+	// the failure it names is the state of this machine and the attempts count stands.
+	const live = await at("0.29.1", "0.30.0");
+	try {
+		const record = live.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.attempts, 1);
+		assert.equal(existsSync(live.path), true);
+	} finally {
+		live.dispose();
+	}
+
+	/*
+	 * And nothing is dropped on a guess: a target the module cannot order is not
+	 * evidence that the install landed, which is the direction `evaluatePendingInstall`
+	 * takes for a marker it cannot order either.
+	 */
+	const unorderable = await at("0.29.1", "nightly");
+	try {
+		assert.equal(
+			unorderable.updateService.lastInstallAttempt()?.targetVersion,
+			"nightly",
+		);
+		assert.equal(existsSync(unorderable.path), true);
+	} finally {
+		unorderable.dispose();
+	}
+});
+
+test("a start-up that observes an install arrived retires the record, and a failed one keeps it", async () => {
+	/*
+	 * The event-driven half of the same rule: the launch that observes the install
+	 * having succeeded (or being superseded) is the moment the fact becomes true, and
+	 * the two arms that report it are where the record is cleared. The arms that do
+	 * NOT report arrival - an install still in flight, and one that failed - must leave
+	 * it alone, or the record loses its only purpose.
+	 */
+	const scenario = async ({ markerTarget, appVersion, recordTarget }) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-recover-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const recordPath = join(userData, "last-update-install.json");
+		writeFileSync(
+			recordPath,
+			JSON.stringify({
+				targetVersion: recordTarget,
+				runningVersion: "0.28.2",
+				startedAt: "2026-09-18T13:37:09.507Z",
+				detectedAt: "2026-09-18T14:12:16.975Z",
+				detail:
+					"Install started. Squirrel cancels an install when an instance runs.",
+				attempts: 1,
+			}),
+		);
+		writeFileSync(
+			join(userData, "pending-update-install.json"),
+			JSON.stringify({
+				targetVersion: markerTarget,
+				artifactPath: join(userData, "staged.zip"),
+				startedAt: new Date().toISOString(),
+				watchdogPid: null,
+			}),
+		);
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		updateService.shipItInstallJobLoaded = () => false;
+		return {
+			updateService,
+			recordPath,
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The install arrived: the marker's target is what this app is running.
+	const arrived = await scenario({
+		markerTarget: "0.29.0",
+		appVersion: "0.29.0",
+		recordTarget: "0.29.0",
+	});
+	try {
+		arrived.updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(arrived.recordPath),
+			false,
+			"the launch that observed the install arrive is the end of the record",
+		);
+	} finally {
+		arrived.dispose();
+	}
+
+	// And a failure is still a failure: the record it writes survives its own report,
+	// with the attempts count the panel reads. The arm REPLACES the record with this
+	// attempt's (that is what the count is for) - what it may not do is remove it,
+	// which is the clearing the two arms above perform and this one must not.
+	const failed = await scenario({
+		markerTarget: "0.30.0",
+		appVersion: "0.29.1",
+		recordTarget: "0.28.3",
+	});
+	try {
+		failed.updateService.recoverPendingInstall();
+		const record = failed.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.runningVersion, "0.29.1");
+	} finally {
+		failed.dispose();
 	}
 });

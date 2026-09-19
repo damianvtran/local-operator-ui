@@ -1439,6 +1439,59 @@ export function recordInstallFailure(
 	return record;
 }
 
+/**
+ * Whether a recorded failure has been overtaken by the version now running.
+ *
+ * WHY A RECORD HAS TO RETIRE. The record outlives the notice on purpose (a
+ * dismissal must not be an information loss), but nothing retired it when the
+ * install it complained about was later reached: on 2026-09-18 the app was
+ * running 0.29.1 while `last-update-install.json` still named a 0.28.3 install
+ * that failed on 2026-09-18T13:37Z, so Settings' "Application updates and info"
+ * printed "The last update to version 0.28.3 didn't finish. Version 0.28.2 is
+ * running." to a user on 0.29.1 - two versions stale, and a claim about a state
+ * the machine left behind hours earlier. The operator's rule is the rule here:
+ * it is cleared whenever the UI updates to a newer version, successfully.
+ *
+ * `runningVersion` is the CURRENT app version, and the record's target is what
+ * the install was trying to reach, so `running >= target` is exactly "this
+ * machine has arrived" - the target itself counts, because an install that
+ * reached its target version and then reported a failure of that same target
+ * (a marker whose message raced the swap) is describing a state that is gone.
+ *
+ * THE UNPARSEABLE CASE KEEPS THE RECORD, and it is the same direction
+ * `evaluatePendingInstall` takes for a marker it cannot order: null is not
+ * evidence that the install landed, and a record dropped on a guess is the one
+ * loss this file exists to prevent. `compareVersions` answers null for a dev
+ * stamp, for `unknown`, or for any string without a leading `x.y.z`, so keeping
+ * it means a nightly-style target keeps printing until either side becomes
+ * orderable - visibly stale, but never silently gone.
+ */
+export function installAttemptSupersededBy(
+	record: LastInstallAttempt,
+	runningVersion: string,
+): boolean {
+	const order = compareVersions(record.targetVersion, runningVersion);
+	return order !== null && order <= 0;
+}
+
+/**
+ * Remove the recorded failure. True when a record was there to remove.
+ *
+ * The retirement is a FILE removal rather than a read-time mask, so the state
+ * and the record agree: a later launch, a `cat` of the file and the panel all
+ * read the same thing, and no reader has to remember a rule to see it.
+ */
+export function clearLastInstallAttempt(dir: string): boolean {
+	const path = lastInstallAttemptPath(dir);
+	if (!existsSync(path)) return false;
+	try {
+		rmSync(path, { force: true });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export type PendingInstallOutcome =
 	| { kind: "none" }
 	| { kind: "succeeded"; marker: PendingInstallMarker }
