@@ -444,6 +444,26 @@ const CURRENT = [
 	},
 	{
 		/*
+		 * The session row's archive control, which is the row's SECOND sibling control
+		 * (the pin work lands the first). It is a row surface for the same reason the
+		 * entity row's two 24px controls are: it sits INSIDE a row's box and answers
+		 * the pointer, so `hover:bg-row-hover` is its only sanctioned ground and a
+		 * `!current` guard is what keeps the pointer from replacing the mark that says
+		 * where the reader is.
+		 *
+		 * Resolved from the anchor rather than from the label, because the label is a
+		 * computed string (`archiveControlLabel`) this instrument would have to stub
+		 * twice - forward for the archived state and backward for the live one.
+		 */
+		what: "the session row's archive control",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-archive"),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
+	},
+	{
+		/*
 		 * `rowCurrent` IS STUBBED HERE SINCE ROUND 5 (design D22, agent A-7), and the stub
 		 * moving with the component is the instrument's contract rather than a detail:
 		 * the rail's current branch reads the symbol it imports from the chat panel, so a
@@ -786,9 +806,16 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// is a GROUND (it is every menu, popover, tooltip and dialog in the
 				// app) and a row state is not a ground — that is the boundary the
 				// two `row*` roles exist to draw, and the test below holds it for
-				// every row surface in the tree. The pin control is the sixth because a
+				// every row surface in the tree. The pin control is the SIXTH because a
 				// control inside a row takes the ROW's own hover step, exactly as the two
 				// 24px controls beside it do: its ground is the row's state, not a menu's.
+				//
+				// The SEVENTH is the session row's ARCHIVE control, this branch's: a second
+				// sibling inside the row's own box, revealed by opacity and answering the
+				// pointer with the same `rowHover` step its neighbours take. It carries a
+				// `!current` guard, so it is one of the elements `CURRENT` resolves - see its
+				// entry above, which is also what keeps a new control inside a current row
+				// from being seen by nobody.
 				"hover:bg-row-hover": 6,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,

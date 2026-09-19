@@ -73,6 +73,7 @@ const {
 	rowTakesDraft,
 	sharedCommandPrefix,
 	slashArgumentContext,
+	slashDestructive,
 	slashKeyIntent,
 	stagedNote,
 	stagedPromiseVerb,
@@ -2045,4 +2046,38 @@ test("the locked run's sentence says what happened and what it can give back", (
 		lockedCommandNote("credential", { dialog: true, undo: true }, true),
 		lockedCommandNote("credential", { dialog: true, undo: true }, true),
 	);
+});
+
+/*
+ * `/delete` is destructive IN THIS HOST, and the word arm is where that is
+ * written down.
+ *
+ * The registry cannot say it for a bare command: the `alert` flag belongs to an
+ * ARGUMENT row (`{value, alert}`), so a command with no arguments has no other
+ * channel - and `/delete` has no arguments, exactly as `/logout` has none. What
+ * the two words have in common is the property this function is about: pressing
+ * Enter on them destroys something the user cannot get back (a stored credential;
+ * a transcript).
+ *
+ * WHY IT IS WORTH A TEST rather than a comment: the same call decides the ink the
+ * palette paints the row in (`commandRowContent` asks it) and whether an
+ * unambiguous Enter is allowed to RUN it (`slashRunAllowed`'s `destructive`
+ * input). Two surfaces, one word list, and a word quietly dropped from it would
+ * show as a command that looks ordinary and then runs.
+ */
+test("a bare destructive word is destructive in this host, and an ordinary one is not", () => {
+	// The command word, case-insensitively, with no argument row to consult.
+	assert.equal(slashDestructive("delete", undefined), true);
+	assert.equal(slashDestructive("DELETE", undefined), true);
+	assert.equal(slashDestructive("logout", undefined), true);
+	// Everything else is not: `/archive` removes a conversation from the default
+	// lists and restores it in one press, and painting it in the danger role would
+	// teach the user to read the role as decoration.
+	assert.equal(slashDestructive("archive", undefined), false);
+	assert.equal(slashDestructive("unarchive", undefined), false);
+	assert.equal(slashDestructive("model", undefined), false);
+	assert.equal(slashDestructive(null, undefined), false);
+	// The argument-row arm is unchanged: a row that paints its own destructive
+	// detail still routes through it.
+	assert.equal(slashDestructive("model", true), true);
 });
