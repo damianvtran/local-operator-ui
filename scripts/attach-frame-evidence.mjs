@@ -1023,7 +1023,12 @@ async function sceneAnyDaemon() {
 	const debugPort = 46141;
 	const daemonEnv = childEnv(configDir, `http://127.0.0.1:${port}`);
 	const daemon = launch("lop", ["serve", "--port", String(port)], daemonEnv);
-	const recordFile = join(configDir, "run", "serve", `${daemon.child.pid}.json`);
+	const recordFile = join(
+		configDir,
+		"run",
+		"serve",
+		`${daemon.child.pid}.json`,
+	);
 	await waitUntil(
 		async () => existsSync(recordFile),
 		`no serve record from the daemon this rig started: ${daemon.text()}`,
@@ -1135,7 +1140,9 @@ async function sceneAnyDaemon() {
 		`the successor never published a record: ${successor.text()}`,
 		60_000,
 	);
-	const successorKey = JSON.parse(readFileSync(successorRecord, "utf8")).claim_key;
+	const successorKey = JSON.parse(
+		readFileSync(successorRecord, "utf8"),
+	).claim_key;
 
 	/*
 	 * NO USER ACTION: the app must re-claim on its own. The probe tick runs every 10 s
@@ -1145,7 +1152,9 @@ async function sceneAnyDaemon() {
 	 */
 	const reclaimed = await waitUntil(
 		async () => {
-			const claims = appLog("any-daemon").match(/Claimed the desktop plane on \S+/g);
+			const claims = appLog("any-daemon").match(
+				/Claimed the desktop plane on \S+/g,
+			);
 			return claims && claims.length > 1 ? claims : null;
 		},
 		"the app never re-claimed the successor on its own after the swap",
@@ -1557,7 +1566,8 @@ try {
 		JSON.stringify(summary, null, 2),
 	);
 	for (const entry of readdirSync(OUT)) {
-		if (!entry.startsWith(`${LABEL}-frames-`) || !entry.endsWith(".json")) continue;
+		if (!entry.startsWith(`${LABEL}-frames-`) || !entry.endsWith(".json"))
+			continue;
 		const other = JSON.parse(readFileSync(join(OUT, entry), "utf8"));
 		for (const [name, value] of Object.entries(other.scenes ?? {}))
 			summary.scenes[name] = value;

@@ -71,7 +71,8 @@ const TRANSPORT_503 =
  * and the daemon's words about the DESKTOP APP's ownership were carried through
  * verbatim as machine-voice detail (design § 0(c), § 5.1).
  */
-const PLANE_503 = "Desktop controls require a backend started by the desktop app.";
+const PLANE_503 =
+	"Desktop controls require a backend started by the desktop app.";
 /** The pairing code the renderer derives for that refusal. */
 const PLANE_503_CODE = "pairing.plane-closed";
 
