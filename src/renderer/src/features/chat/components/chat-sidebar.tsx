@@ -13,6 +13,8 @@ import {
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
+import { Checkbox } from "@shared/components/ui/checkbox";
+import { Label } from "@shared/components/ui/label";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
@@ -24,6 +26,8 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
+	Archive,
+	ArchiveRestore,
 	Bot,
 	CheckCheck,
 	ChevronDown,
@@ -49,6 +53,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
+	type ArchivePressRecord,
+	archivePressExpired,
+	archivePressOutcome,
+} from "../chat-archive-press";
+import { archiveControlLabel, visibleRows } from "../chat-archived";
+import {
+	type ArchiveView,
 	chatCountAnnouncement,
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
@@ -304,6 +315,16 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  * event is unambiguously doing the work when the two disagree.
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
+
+/**
+ * The DOM id joining the `Include archived` checkbox to its label.
+ *
+ * A constant rather than an inline string because the two elements carry it in
+ * two places, and a label whose `for` names an id no input has is an accessible
+ * name that silently disappears - the control would then be a bare box beside
+ * the word "Include archived" rather than a checkbox called that.
+ */
+const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -695,6 +716,68 @@ export function ChatSidebar({
 		"session_search",
 	);
 	/*
+	 * Whether this backend can hold an archived conversation at all, read from the
+	 * same capability answer the catalogue gate above uses rather than from a
+	 * second negotiation.
+	 *
+	 * FAIL-CLOSED MEANS NO AFFORDANCE AND NO PARTITION, not a disabled one: absent
+	 * `session_archive` this is false, the row mounts no second control, no row
+	 * carries a marker and `visibleRows` returns the page untouched - so the panel's
+	 * DOM and class set are byte-identical to the one that never knew about
+	 * archiving. A permanently reserved empty slot would cost every row width to
+	 * advertise a feature the user cannot get, which is the rule the pin slot is
+	 * written under.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	/*
+	 * The `Include archived` control, scoped to ONE search.
+	 *
+	 * Local state rather than the store, for the reason the query itself is local:
+	 * it is a property of the box, not of the data, and it is deliberately not
+	 * persisted - a user who reopens the app must not silently be searching a set
+	 * they chose to include once, days ago.
+	 */
+	const [includeArchived, setIncludeArchived] = useState(false);
+	/*
+	 * Cleared with the query, because the control is only on screen while a query
+	 * exists: leaving it set would arm the NEXT search with a filter the user can no
+	 * longer see, which is a hidden state rather than a remembered one.
+	 */
+	useEffect(() => {
+		if (!query.trim()) setIncludeArchived(false);
+	}, [query]);
+	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
+	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
+	const setSessionArchived = useCanonicalSessionsStore(
+		(s) => s.setSessionArchived,
+	);
+	/*
+	 * The pure search module takes plain booleans: the stamp that orders a fact
+	 * against an answer is the store's business (`applySearchAnswer`), and a row
+	 * only needs what to draw.
+	 */
+	const archiveFactValues = useMemo(() => {
+		const values: Record<string, boolean> = {};
+		for (const [id, fact] of Object.entries(archiveFacts))
+			values[id] = fact.archived;
+		return values;
+	}, [archiveFacts]);
+	const archiveView = useMemo<ArchiveView>(
+		() => ({ include: includeArchived, facts: archiveFactValues }),
+		[includeArchived, archiveFactValues],
+	);
+	/*
+	 * The last archive press the POINTER made, and where (`chat-archive-press.ts`).
+	 *
+	 * A ref rather than state: it is read and written inside the press handler, it
+	 * must survive between two clicks of one double-click, and nothing renders from
+	 * it - so making it state would re-render the list on every pointer move.
+	 */
+	const lastArchivePress = useRef<ArchivePressRecord | null>(null);
+	/*
 	 * An over-long query never reaches the wire. The op's `q` is capped at
 	 * `SESSION_SEARCH_MAX_CHARS`, and asking anyway buys a generic 422 that the
 	 * panel then renders as a backend outage with a Retry that cannot succeed —
@@ -715,8 +798,28 @@ export function ChatSidebar({
 	 * whether or not there are hits — so what the notice describes is what the
 	 * user is still getting, not a replacement for it.
 	 */
-	const search = useChatSearch(query, ready && searchSupported);
+	const search = useChatSearch(
+		query,
+		ready && searchSupported,
+		includeArchived,
+	);
 	const overLong = search.refused;
+	/*
+	 * The rows the LISTS may draw, which is the page minus the archived ones unless
+	 * the search control includes them.
+	 *
+	 * ONE FILTER, before anything reads the list: the flat list, the two sections,
+	 * the agent and team groups and the local half of the search all read this
+	 * array, so "archived conversations are not in the default lists" is a property
+	 * of the base rather than a condition repeated at each of the five call sites -
+	 * which is how one of them would eventually be missed. With the control ON the
+	 * filter is off (that is what the control promises), and the archived rows
+	 * rejoin every list for as long as the query lasts.
+	 */
+	const listed = useMemo(
+		() => visibleRows(sessions, archiveEnabled && !includeArchived),
+		[sessions, archiveEnabled, includeArchived],
+	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
 	 * them and the counts below read their honesty off the same array, so the two
@@ -730,8 +833,8 @@ export function ChatSidebar({
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats(sessions, query, hits),
-		[sessions, query, hits],
+		() => searchChats(listed, query, hits, archiveView),
+		[listed, query, hits, archiveView],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -794,8 +897,13 @@ export function ChatSidebar({
 	 */
 	const previous = useMemo(() => {
 		if (answered || !search.data || !query.trim()) return null;
-		return searchChats(sessions, search.data.query, search.data.sessions);
-	}, [answered, search.data, sessions, query]);
+		return searchChats(
+			listed,
+			search.data.query,
+			search.data.sessions,
+			archiveView,
+		);
+	}, [answered, search.data, listed, query, archiveView]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
 	// term `awaiting` stays true forever and `Searching conversations…` sits under
 	// the failure notice that says the search is unavailable — the panel claiming
@@ -889,6 +997,20 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		/** The row's own name, used by the archive control's accessible name and tooltip
+		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
+		 * name the same row differently. */
+		const label = row.title || "Untitled chat";
+		/*
+		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
+		 * has written one that this row's answer predates (`archiveFacts` - the same
+		 * precedence the search join applies, read here for the rows the page holds).
+		 *
+		 * The fact is what makes the press INVERT: the row is rebuilt from the store on
+		 * every render, so a press that only wrote the backend would read back the state
+		 * the catalogue last saw, and the control could never undo its own press.
+		 */
+		const archived = archiveFactValues[row.session_id] ?? row.archived === true;
 		/** The row is the CURRENT one, read ONCE and shared by the wrapper and the button:
 		 * two elements paint one state, so two copies of this expression would be two chances
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
@@ -926,6 +1048,24 @@ export function ChatSidebar({
 					// boxes are coextensive now, and painting it in one place only would make
 					// the state a property of whichever element the pointer is on.
 					current && rowCurrent,
+					/*
+					 * `group` ONLY WHILE THE ARCHIVE CONTROL IS MOUNTED, so the withdrawn
+					 * panel's class list is exactly the one it had before this feature
+					 * existed - `visibleRows`'s own note states the same rule for the list,
+					 * and the fail-closed frames compare bytes. The hook is on the WRAPPER
+					 * rather than on the button because the pointer target is the row: a
+					 * reveal that answered only the glyph's own hover would be unreachable,
+					 * since the glyph is `opacity-0` (and `pointer-events-none`) until
+					 * something reveals it.
+					 *
+					 * A second control joins this wrapper when the pin work lands (a sibling
+					 * of this one, `size-6 shrink-0`, revealed the same way). The two slots
+					 * are RESERVED side by side rather than shared: two controls in one 24px
+					 * slot occlude each other's reveal, so only the top one could ever be
+					 * pressed, and an overlapping reveal hides the title of the row the
+					 * pointer is on.
+					 */
+					archiveEnabled && "group",
 				)}
 			>
 				<button
@@ -938,6 +1078,20 @@ export function ChatSidebar({
 				   carries, and it is inert outside a driver run. */
 					data-tour-tag="chat-session-row"
 					data-child={nested || undefined}
+					/*
+					 * The row's archived state as an ATTRIBUTE, absent when the conversation is
+					 * live.
+					 *
+					 * It is here rather than on the wrapper because this is the element a reader
+					 * already means by "the row" (`data-chat-row` is what the arrow ring collects
+					 * and what the driver's `measure` verb finds), and a second anchor for the
+					 * same row would be a second place a scene has to know about. It carries no
+					 * pixels: the visible mark is the glyph below, and this is what lets a scene
+					 * assert that the archived conversation is ABSENT from the list before the
+					 * search control is on and PRESENT after it, rather than comparing two stills
+					 * and hoping the difference is the row.
+					 */
+					data-session-archived={archived ? "true" : undefined}
 					className={cn(
 						rowStyle,
 						// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
@@ -967,10 +1121,38 @@ export function ChatSidebar({
 			   busy or gated row's tooltip claim a mark its own spinner and gate were
 			   nowhere drawing — the reported defect, in the channel a reader reaches
 			   by hovering, and the row that most needs the tooltip to be true. */
-					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
 					onClick={() => onSelectConversation(row.session_id)}
 				>
 					<ChatSessionStatus row={row} />
+					{/*
+					 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
+					 * answer for: IN FRONT of the title rather than in the trailing slot.
+					 *
+					 * That slot is CONTESTED and deliberately admits exactly one statement
+					 * (`rowTrailingStatement` in `features/chat/chat-search.ts` records the
+					 * three layouts that failed when it admitted more), so a marker competing
+					 * for it would either displace "· in conversation" - the reason a row with
+					 * nothing visibly in common with the query is on screen - or be dropped
+					 * from the one row that most needs both. A leading glyph is outside that
+					 * rule rather than an extension of it, it cannot be truncated away (it is
+					 * not inside the title's span), and it reads where the row's other
+					 * leading fact already is: beside the status glyph.
+					 *
+					 * `aria-hidden` on the glyph with the word carried by the `sr-only` span
+					 * after the title, so a screen reader hears "archived" once, in the
+					 * sentence the tooltip also states - the arrangement the "· in
+					 * conversation" mark already uses.
+					 */}
+					{archiveEnabled && archived && (
+						<>
+							<Archive
+								aria-hidden="true"
+								className="ml-1 size-3.5 shrink-0 text-ink-dim"
+							/>
+							<span className="sr-only">, archived</span>
+						</>
+					)}
 					{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 				    in `features/chat/chat-search.ts` — which is also where the three
 				    failed layouts that led to it are written down (an orphan `·` from
@@ -1035,6 +1217,104 @@ export function ChatSidebar({
 						</>
 					)}
 				</button>
+				{/*
+				 * THE ARCHIVE CONTROL: a SIBLING of the row's button, never a child.
+				 *
+				 * A nested button is invalid HTML, unfocusable, and a press inside it fires
+				 * the row's own `onClick` as well - opening the conversation the user was
+				 * trying to archive. As a sibling it is a control in its own right: Tab
+				 * reaches it (it is in the tab order wherever the row is), and the arrow-key
+				 * traversal in `keyDown` skips it, because that traversal collects
+				 * `[data-chat-row]` and this button deliberately does not carry the
+				 * attribute - the rule the entity row's own two controls are written under.
+				 *
+				 * RESERVED AT REST, REVEALED BY OPACITY ONLY. It is `size-6 shrink-0` and
+				 * present in the layout whenever the capability is, so the reveal cannot
+				 * reflow the row under the pointer; only `opacity`, `pointer-events` and
+				 * colour move, which keeps this inside the design contract's rule that
+				 * nothing lifts, scales or translates on hover. `group-focus-within` is what
+				 * makes it reachable by keyboard: pressing Tab into the row's button reveals
+				 * it, and the next Tab lands on it.
+				 *
+				 * HIDDEN IS ALSO INERT: `pointer-events-none` while invisible, because an
+				 * affordance the reader cannot see must not be the thing a press lands on.
+				 *
+				 * THE STATE MUST READ WITHOUT HOVERING, or a reader cannot tell an archived
+				 * row from a live one: an archived row carries the leading marker AND this
+				 * control's icon is the RESTORE glyph (see `archiveControlLabel`), so the
+				 * action it offers is legible the moment it is revealed.
+				 */}
+				{archiveEnabled && (
+					<button
+						type="button"
+						data-session-archive
+						aria-label={archiveControlLabel(label, archived)}
+						/*
+						 * The action, never the state: "Archive \u201cX\u201d" is what pressing
+						 * does, and the state is carried by the marker beside the title and by
+						 * this button's glyph. `aria-pressed` is deliberately NOT used here,
+						 * unlike the pin's control: a boolean `aria-pressed` on a button whose
+						 * action is "archive" reads as "archive: pressed", which is a claim
+						 * about a toggle rather than about a conversation's state.
+						 */
+						title={archiveControlLabel(label, archived)}
+						onClick={(event) => {
+							/*
+							 * THE REPEAT-PRESS GUARD RUNS FIRST, before anything is written or
+							 * remembered (`chat-archive-press.ts` carries the rule and the
+							 * gesture it protects): archiving removes this row from the list, so
+							 * the second click of a double-click lands on whatever row slid up
+							 * into the gap - with the pointer already inside that row's reveal.
+							 * A dropped press changes nothing at all.
+							 *
+							 * `event.detail === 0` is the keyboard (a click synthesised from
+							 * Enter or Space carries no click count), which always acts on the
+							 * focused row and is therefore never dropped.
+							 */
+							const press = archivePressOutcome(
+								lastArchivePress.current,
+								event.detail === 0
+									? null
+									: { x: event.clientX, y: event.clientY },
+								row.session_id,
+							);
+							lastArchivePress.current = press.record;
+							if (press.drop) return;
+							void setSessionArchived(
+								row.session_id,
+								!archived,
+								row.title ?? undefined,
+							);
+						}}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"text-ink-dim opacity-0 pointer-events-none",
+							// The duration governs the transition INTO the current state, so the
+							// resting value is the fade-out and the revealed one the fade-in:
+							// quick to appear, gentler to leave.
+							"transition-opacity duration-base ease-out-quart",
+							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
+							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							// The hover GROUND is dropped while this row is the current one, the
+							// rule the entity row's two controls follow: a child's background
+							// paints over the row's own, so keeping it would let the pointer's
+							// transient mark replace the mark that says where the reader is.
+							//
+							// And it is the ROW STATE (`rowHover`), never a ground: this control
+							// lives inside a row, so `elevated` - which is every menu, popover,
+							// tooltip and dialog in the app - would answer the pointer with a
+							// role that means something else entirely. The panel's own guard
+							// (`chat-sidebar-selection.test.mjs`) is what holds that boundary.
+							!current && "hover:bg-row-hover",
+						)}
+					>
+						{archived ? (
+							<ArchiveRestore aria-hidden="true" className="size-4" />
+						) : (
+							<Archive aria-hidden="true" className="size-4" />
+						)}
+					</button>
+				)}
 			</div>
 		);
 	};
@@ -1438,6 +1718,43 @@ export function ChatSidebar({
 					</Button>
 				)}
 			</div>
+			{/*
+			 * INCLUDE ARCHIVED, and its own render rule is the same one the clear
+			 * control above follows: it is drawn only while a query exists.
+			 *
+			 * Not decoration - the rule is what keeps the panel free of new chrome at
+			 * rest, which is the constraint this half of the feature is under. The
+			 * brief rules out an `Archived chats` section, and a permanently visible
+			 * toggle would be that section's control sitting in a block that is
+			 * otherwise about the query: with an empty box there is nothing to scope
+			 * the widened search to, so the control would be a switch for a search that
+			 * is not happening.
+			 *
+			 * A CHECKBOX with a label rather than a pressed button: the question is
+			 * binary and it widens the CURRENT SEARCH rather than selecting a thing, so
+			 * it reads as "what this search looks at" - which is also why the label is
+			 * the whole control and there is no icon.
+			 *
+			 * FAIL-CLOSED: absent `session_archive` this is not rendered at all, and
+			 * with it rendered off the panel is the panel it always was (`visibleRows`
+			 * keeps the archived rows out of every list either way, so the control can
+			 * only ever reveal them inside one query).
+			 */}
+			{archiveEnabled && query.trim() && (
+				<div className="flex items-center gap-2 pb-2">
+					<Checkbox
+						id={INCLUDE_ARCHIVED_ID}
+						checked={includeArchived}
+						onCheckedChange={(checked) => setIncludeArchived(checked === true)}
+					/>
+					<Label
+						htmlFor={INCLUDE_ARCHIVED_ID}
+						className="text-meta text-ink-muted"
+					>
+						Include archived
+					</Label>
+				</div>
+			)}
 			{/* Says what the search actually LOOKED AT, and only while a query is
 			    active, because that is the moment the claim is true and relevant.
 			    Both cases are degradations the user cannot see otherwise: the list
@@ -1780,12 +2097,63 @@ export function ChatSidebar({
 			    took it out of the panel - a reader who scrolled their cursor away keeps
 			    the position they chose, and so does the reader whose cursor row was not
 			    on screen at all when the change landed. */}
+			{/*
+			 * THE ARCHIVE REFUSAL, in the panel's own register beside the list rather
+			 * than in a toast. One sentence and one action, the shape the withdrawn-gate
+			 * notice already uses - and no `role="alert"`, so it cannot compete with
+			 * the catalogue alert below about a different failure: what announces the
+			 * refusal is the row coming back with its control in the state the user left
+			 * it, and this sentence is the durable half. `warning` and not `danger`:
+			 * the list is intact and only this row's archive state did not move.
+			 */}
+			{archiveFailure && (
+				<p className="pb-2 text-meta text-warning">
+					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
+					{archiveFailure.title}”.
+					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveFailure.sessionId,
+								archiveFailure.archived,
+								archiveFailure.title,
+							)
+						}
+					>
+						Retry
+					</button>
+				</p>
+			)}
+			{/*
+			 * The pointer's PATH, which is the half a coordinate test cannot see: a reader
+			 * who moves away from the point they pressed and comes back has made a NEW
+			 * gesture, so the archive press record expires on that movement. Leaving the
+			 * list expires it too - the reflex the guard protects against never leaves the
+			 * region between its two clicks (`chat-archive-press.ts`).
+			 *
+			 * (Both handlers are on the scrolling region rather than on a row, because the
+			 * rows are unmounted by the very press the record is about.)
+			 */}
 			{showList && (
 				<div
 					ref={listPanelRef}
 					onScroll={() =>
 						refreshFocusedInside(listPanelRef.current, listSlotRef)
 					}
+					onPointerMove={(event) => {
+						if (
+							archivePressExpired(lastArchivePress.current, {
+								x: event.clientX,
+								y: event.clientY,
+							})
+						)
+							lastArchivePress.current = null;
+					}}
+					onPointerLeave={() => {
+						lastArchivePress.current = null;
+					}}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
 				>
 					<section>

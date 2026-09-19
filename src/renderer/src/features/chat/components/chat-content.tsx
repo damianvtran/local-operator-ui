@@ -1,10 +1,15 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	DEFAULT_RUN_PANEL_WIDTH,
@@ -49,6 +54,7 @@ import {
 	ChatTabs,
 } from "./chat-tabs";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
+import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
@@ -473,6 +479,39 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
+		/*
+		 * The conversation's own archive state, and the two capabilities that decide
+		 * whether any of it is offered at all.
+		 *
+		 * Read HERE - the component that renders both the header and the dialog -
+		 * rather than inside either of them, for the reason the header takes
+		 * `fileCount` as a prop: the header is rendered by stories with fixtures and by
+		 * the legacy path with nothing, and the store read has exactly one honest
+		 * answer per session. `sessionId` is undefined on a draft, and a draft has no
+		 * conversation to archive or delete, so every one of these is inert there.
+		 */
+		const capabilities = useDesktopCapabilities();
+		const archiveEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"session_archive",
+		);
+		const deleteEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"session_delete",
+		);
+		const archived = useCanonicalSessionsStore((state) =>
+			sessionId
+				? (state.archiveFacts[sessionId]?.archived ??
+						state.sessions.find((row) => row.session_id === sessionId)
+							?.archived) === true
+				: false,
+		);
+		const setSessionArchived = useCanonicalSessionsStore(
+			(state) => state.setSessionArchived,
+		);
+		const requestSessionDelete = useCanonicalSessionsStore(
+			(state) => state.requestSessionDelete,
+		);
 
 		useEffect(() => {
 			if (!chatContainerRef.current) {
@@ -906,6 +945,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
+						{/*
+						 * The conversation's own actions, offered only where they can act: a draft
+						 * (`sessionId` undefined) has no conversation to archive and no route to
+						 * delete with, so the menu and the pill are absent rather than disabled.
+						 * `onSetArchived` is the same desired-state write the row's control makes,
+						 * so the header and the row cannot drift about what a press means.
+						 */}
 						<ChatHeader
 							agentName={agentName}
 							description={description}
@@ -918,7 +964,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							readerChildId={readerChildId}
 							onOpenBrowser={() => setBrowserPaneOpen(true)}
 							browserAttentionCount={browserAttentionCount}
+							archiveEnabled={archiveEnabled}
+							archived={archived}
+							onSetArchived={
+								sessionId
+									? (next) =>
+											void setSessionArchived(sessionId, next, agentName)
+									: undefined
+							}
+							deleteEnabled={deleteEnabled}
+							onRequestDelete={
+								sessionId ? () => requestSessionDelete(sessionId) : undefined
+							}
 						/>
+						{/*
+						 * The one delete confirmation, rendered here because this component owns
+						 * the conversation it asks about (`title`) and the run details whose
+						 * children the copy has to mention. It renders nothing at all while no
+						 * candidate is staged in the store, and BOTH callers - the header's menu
+						 * and a typed `/delete` - reach it by staging one.
+						 */}
+						{deleteEnabled && (
+							<DeleteConversationDialog
+								title={agentName}
+								hasSubagentRuns={(runDetails?.lineage.length ?? 0) > 0}
+							/>
+						)}
 						{/* Chat Options Sidebar */}
 						{!canonical && (
 							<ChatOptionsSidebar

@@ -37,6 +37,18 @@ export type CanonicalSessionRow = {
 	live_state?: string;
 	pending?: string | null;
 	active?: boolean;
+	/**
+	 * The backend's ARCHIVE state for this conversation, as the catalogue row
+	 * carried it. Declared explicitly beside `active`/`status` because this row
+	 * type's index signature would otherwise type every read of it `unknown` at the
+	 * one place that writes it optimistically (`setSessionArchived`).
+	 *
+	 * The wire row's `archived` is ALWAYS present (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts` says why that matters here): the merge below is
+	 * `{...current, ...incoming}`, so an omitted key would leave this app's
+	 * optimistic `true` immortal after an unarchive made somewhere else.
+	 */
+	archived?: boolean;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -57,6 +69,49 @@ type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
 	mtime: number;
+};
+/**
+ * What this client knows about one conversation's archive state, and when.
+ *
+ * See `archiveFacts` on the state for why the stamp exists; this is the shape it
+ * is stored in. Deliberately narrower than the pin's own fact: a pin has to
+ * describe a conversation the page cannot carry, because pinning moves a row
+ * OUT of the flat list into a section of its own and the row must still be
+ * drawn. Archiving moves a row nowhere - the archived row is simply not drawn by
+ * default - so a fact here needs no `title`/`updated_at` to reconstruct a row
+ * from, and the one surface that must report the state without a row (the open
+ * conversation's header pill) reads the boolean.
+ */
+export type ArchiveFact = {
+	archived: boolean;
+	/** The request sequence this write took, which orders it against every read. */
+	at: number;
+};
+/**
+ * An archive press the backend did not accept, and what to say about it.
+ *
+ * Carries the INTENT rather than the row, so a retry re-sends the same desired
+ * state the user asked for and nothing else: a retry that re-read the row would
+ * send whatever the catalogue says NOW, which is the value the failed press
+ * failed to change.
+ */
+export type ArchiveFailure = {
+	sessionId: string;
+	/** The desired state that was refused, not the state on screen. */
+	archived: boolean;
+	/**
+	 * The conversation's title as the row carried it at the press, so the sentence
+	 * names the row the user pressed rather than one a later catalogue read has
+	 * retitled or dropped.
+	 */
+	title: string;
+	/**
+	 * The backend's own sentence for the refusal, EMPTY when the failure was not
+	 * one the backend authored - a runtime exception's `message` is a stack-trace
+	 * fragment, and putting it on screen states the wrong thing about a reachable
+	 * backend.
+	 */
+	detail: string;
 };
 export type ChatDraft = {
 	key: string;
@@ -1224,11 +1279,83 @@ type CanonicalSessionsState = {
 	 * exactly as it did before it existed.
 	 */
 	statusUnavailable: string[];
+	/**
+	 * One counter, shared by every read this store issues, that orders answers
+	 * against writes (see `archiveFacts`).
+	 *
+	 * A MONOTONIC STAMP RATHER THAN A CLOCK, for the reason `refreshGeneration`
+	 * above is a stamp: a clock is comparable across two writers only if they share
+	 * one, and the press and the request are already in one process, so a counter
+	 * says exactly what is needed - "this read was asked about after that write" -
+	 * with no skew to reason about.
+	 */
+	answerSeq: number;
 	loading: boolean;
 	truncated: boolean;
 	error: string | null;
 	cwd: string;
 	setCwd: (cwd: string) => void;
+	/**
+	 * What THIS CLIENT knows about one conversation's archive state, and WHEN it
+	 * learned it, keyed by session id.
+	 *
+	 * A fact exists because the write is OPTIMISTIC: the row leaves the list the
+	 * moment the user presses, and every read that follows - a search answer served
+	 * from the cache, a catalogue page whose request started before the press - was
+	 * asked before the backend held the new state. The `at` stamp is the currency
+	 * that orders them: an answer that SPEAKS about the id (`applySearchAnswer`, or
+	 * a newer page) supersedes a fact older than the answer's own request, while a
+	 * fact written after that request survives it. Without the stamp the fact would
+	 * outrank every later answer, so an unarchive made in the terminal would leave
+	 * the conversation hidden here forever - the two-way claim this work exists for.
+	 *
+	 * The stamp is taken when the REQUEST STARTS, never when its answer lands:
+	 * comparing arrival times would let an answer that predates a press supersede
+	 * it, which is the same defect on a shorter clock.
+	 */
+	archiveFacts: Record<string, ArchiveFact>;
+	/**
+	 * The last archive press the backend did not accept, or null.
+	 *
+	 * Rendered in the panel's own register beside the list rather than in a toast
+	 * (the pin's own refusal went the same way): the sentence belongs where the
+	 * control is, and the control is on the row the user just pressed.
+	 */
+	archiveFailure: ArchiveFailure | null;
+	/**
+	 * The conversation a danger dialog is asking about, or null.
+	 *
+	 * In the STORE rather than in the component that draws the dialog, because two
+	 * surfaces ask the same question and must reach ONE dialog: the header's session
+	 * menu, and a typed `/delete` (which is dispatched from the composer, a
+	 * different subtree). A second dialog would be a second confirmation flow to
+	 * keep in step with the first.
+	 */
+	deleteCandidate: string | null;
+	beginAnswer: () => number;
+	applySearchAnswer: (seq: number, hits: { id: string }[]) => void;
+	/**
+	 * Archive or unarchive one conversation: the optimistic write, its currency
+	 * stamp, and the revert-and-report path when the backend refuses.
+	 *
+	 * `title` is only what a failure SENTENCE needs to name the row the user
+	 * pressed, since a conversation this client does not list has no row to read a
+	 * title off.
+	 */
+	setSessionArchived: (
+		sessionId: string,
+		archived: boolean,
+		title?: string,
+	) => Promise<boolean>;
+	/**
+	 * Delete ONE conversation, permanently. Never optimistic: the row is dropped
+	 * only after the backend confirms, because a delete this client invented cannot
+	 * be undone by a later read the way an archive can.
+	 */
+	deleteSession: (
+		sessionId: string,
+	) => Promise<{ ok: true } | { ok: false; detail: string; live: boolean }>;
+	requestSessionDelete: (sessionId: string | null) => void;
 	fetchSessions: (limit?: number) => Promise<void>;
 	createSession: (
 		cwd: string,
@@ -1619,6 +1746,96 @@ function heldStatusOver(
 		status_epoch: current?.status_epoch,
 	};
 }
+/**
+ * The facts a write newer than `floor` still owns.
+ *
+ * A read asked about at `floor` speaks about everything it covers, so a fact
+ * written before that request is settled by it and must go. A fact written AFTER
+ * the request survives: that is the half that stops an answer in flight across a
+ * press from undoing the press (see `archiveFacts`).
+ *
+ * Returns the SAME object when nothing is dropped, so a page that settles nothing
+ * does not re-render every row it carried.
+ */
+function factsNewerThan(
+	facts: Record<string, ArchiveFact>,
+	floor: number,
+): Record<string, ArchiveFact> {
+	const kept: Record<string, ArchiveFact> = {};
+	let dropped = false;
+	for (const [id, fact] of Object.entries(facts)) {
+		if (fact.at < floor) {
+			dropped = true;
+			continue;
+		}
+		kept[id] = fact;
+	}
+	return dropped ? kept : facts;
+}
+
+/**
+ * The facts' own values written back over an answer that predates them.
+ *
+ * `replaceSessionRows` rebuilds each row's values from the page, so a page whose
+ * request started before a press would regress the very row the user just
+ * archived - and the panel would resurrect it under the pointer. Only the rows a
+ * surviving fact names are touched; nothing is added, so a page cannot be made to
+ * carry a conversation it does not hold, and the array identity is kept when no
+ * fact applies (`applyAttention`'s rule: an unchanged merge must not re-render a
+ * 500-row list for an answer that carried nothing new).
+ */
+function applyArchiveFacts(
+	rows: CanonicalSessionRow[],
+	facts: Record<string, ArchiveFact>,
+): CanonicalSessionRow[] {
+	if (Object.keys(facts).length === 0) return rows;
+	let changed = false;
+	const next = rows.map((row) => {
+		const fact = facts[row.session_id];
+		if (!fact || row.archived === fact.archived) return row;
+		changed = true;
+		return { ...row, archived: fact.archived };
+	});
+	return changed ? next : rows;
+}
+
+/**
+ * The state a delete leaves behind: the row is gone, and so is anything this
+ * client remembered about it.
+ *
+ * The fact goes with the row because both describe a conversation the backend no
+ * longer holds - a surviving fact would resurrect the row's state on the next
+ * answer that mentioned the id (a search hit, say), which is the one thing the
+ * frozen contract says a delete must not do.
+ *
+ * `activeSessionId` IS DELIBERATELY LEFT ALONE. Deleting the conversation you
+ * have open must land the pane on its EXISTING missing-session state (the 404
+ * path in `use-canonical-session`, whose sentence already reads "This
+ * conversation is no longer on this machine."), and that state is reached by the
+ * pane asking about an id the daemon no longer has. Clearing the selection here
+ * instead would replace it with a blank pane that explains nothing, which is the
+ * second missing-session state this change is told not to invent.
+ */
+function forgetSession<T extends SessionForgetState>(
+	state: T,
+	sessionId: string,
+): Partial<T> {
+	const facts = { ...state.archiveFacts };
+	delete facts[sessionId];
+	return {
+		sessions: state.sessions.filter((row) => row.session_id !== sessionId),
+		archiveFacts: facts,
+		deleteCandidate:
+			state.deleteCandidate === sessionId ? null : state.deleteCandidate,
+	} as Partial<T>;
+}
+
+type SessionForgetState = {
+	sessions: CanonicalSessionRow[];
+	archiveFacts: Record<string, ArchiveFact>;
+	deleteCandidate: string | null;
+};
+
 /** Full list responses replace membership; a disappeared row is not immortal.
  * Stream updates use upsert separately and never imply a complete inventory. */
 export function replaceSessionRows(
@@ -1735,12 +1952,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
+			answerSeq: 0,
+			archiveFacts: {},
+			archiveFailure: null,
+			deleteCandidate: null,
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
 			fetchSessions: async (limit = 500) => {
 				const generation = ++refreshGeneration;
-				set({ loading: true, error: null });
+				/*
+				 * The page is an ANSWER too, so it carries the same currency a write does:
+				 * taken when the REQUEST starts, so a page already in flight across an
+				 * archive press cannot supersede that press (`archiveFacts`).
+				 */
+				const answerAt = get().answerSeq + 1;
+				set({ answerSeq: answerAt, loading: true, error: null });
 				try {
 					const result = await desktopResult<{
 						sessions: BackendSessionRow[];
@@ -1750,7 +1977,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * daemon that sends nothing here is one that answered all of them.
 						 */
 						degraded?: string[];
-					}>({ op: "sessions.list", limit });
+					}>({
+						op: "sessions.list",
+						limit,
+						/*
+						 * THE ARCHIVED ROWS ARE ASKED FOR AND THEN HIDDEN HERE, rather than left
+						 * out by the route. The default `false` is a promise to clients that
+						 * predate archiving - they must keep the list they had, and this app
+						 * asks for them, so it must be the one to decide what is drawn:
+						 *
+						 *   - `visibleRows` partitions them out of EVERY default list, so the
+						 *     surface is the one the brief asks for (Active, Previous and the
+						 *     flat list all exclude them);
+						 *   - the open conversation's own state is known after a reload even
+						 *     when the conversation was archived elsewhere (from the terminal, or
+						 *     from another window) - without this, a restored archived session
+						 *     would look ordinary and offer no unarchive at all, which is
+						 *     precisely the "archived with no way back" trap the design record
+						 *     names in Claude desktop's behaviour;
+						 *   - and a row found by the "Include archived" search can be restored
+						 *     from its own control even when the hit's own page never carried it.
+						 *
+						 * The cost this carries, stated rather than discovered: archived rows
+						 * compete for the page's 500-row cap like any other row, so a store with
+						 * more than 500 conversations where most are archived can push live rows
+						 * off the page. The route cannot answer both questions at once today,
+						 * and the alternative - hiding the archived set from this client
+						 * entirely - fails the two bullets above.
+						 */
+						include_archived: true,
+					});
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
 						...rest,
@@ -1758,19 +2014,42 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						title: name,
 						updated_at: mtime,
 					}));
-					set((state) => ({
-						sessions: replaceSessionRows(state.sessions, rows),
-						loading: false,
-						truncated: result.truncated === true,
+					set((state) => {
 						/*
-						 * Read only from an answer that arrived: a failed read leaves the last
-						 * known list in place (and says so through `error`), so the marker that
-						 * belonged to those rows is the honest thing to keep beside them.
+						 * A page newer than the write SETTLES the archive state of everything it
+						 * speaks about, so the facts it supersedes are dropped. It speaks about the
+						 * archived set as a whole because it ASKED for it (`include_archived`
+						 * above), which is what makes absence mean "unarchived or gone" here
+						 * rather than "not mentioned".
 						 */
-						statusUnavailable: Array.isArray(result.degraded)
-							? result.degraded.filter((read) => typeof read === "string")
-							: [],
-					}));
+						const facts = factsNewerThan(state.archiveFacts, answerAt);
+						/*
+						 * AND THE ROWS, not only the facts. `replaceSessionRows` rebuilds each
+						 * row's values from the page, so a page whose request STARTED before a
+						 * press would hand the panel the pre-press value: the row the user just
+						 * archived would reappear, under the pointer, from an answer that
+						 * predates their press. A write newer than the page's own request
+						 * outranks it, and keeps doing so until a page requested AFTER the write
+						 * arrives to settle it.
+						 */
+						return {
+							sessions: applyArchiveFacts(
+								replaceSessionRows(state.sessions, rows),
+								facts,
+							),
+							archiveFacts: facts,
+							loading: false,
+							truncated: result.truncated === true,
+							/*
+							 * Read only from an answer that arrived: a failed read leaves the last
+							 * known list in place (and says so through `error`), so the marker that
+							 * belonged to those rows is the honest thing to keep beside them.
+							 */
+							statusUnavailable: Array.isArray(result.degraded)
+								? result.degraded.filter((read) => typeof read === "string")
+								: [],
+						};
+					});
 				} catch (error) {
 					if (generation === refreshGeneration)
 						set({
@@ -1782,6 +2061,175 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						});
 				}
 			},
+			/*
+			 * The read-side currency, and the two writers that use it.
+			 *
+			 * ONE COUNTER for every read this store issues, and every write stamps
+			 * itself with it (`archiveFacts`). A read takes its stamp when the REQUEST
+			 * starts, which is what lets an answer that was in flight across a press be
+			 * recognised as older than the press rather than newer than it - the
+			 * alternative, comparing arrival times, would let the answer undo it.
+			 */
+			beginAnswer: () => {
+				const seq = get().answerSeq + 1;
+				set({ answerSeq: seq });
+				return seq;
+			},
+			applySearchAnswer: (seq, hits) => {
+				set((state) => {
+					/*
+					 * Only the ids the answer SPEAKS about. A search answers a question about
+					 * one query, so an id it does not mention is not evidence of anything -
+					 * unlike the page above, which asked for the whole archived set and can
+					 * therefore settle it. Dropping every fact older than the request here
+					 * would make a search for an unrelated word forget the state of a
+					 * conversation it never mentioned.
+					 */
+					const facts = { ...state.archiveFacts };
+					let settled = false;
+					for (const hit of hits) {
+						const fact = facts[hit.id];
+						if (fact && fact.at < seq) {
+							delete facts[hit.id];
+							settled = true;
+						}
+					}
+					return settled ? { archiveFacts: facts } : state;
+				});
+			},
+			setSessionArchived: async (sessionId, archived, title) => {
+				/*
+				 * OPTIMISTIC, AND STAMPED, which is one decision rather than two: the row
+				 * has to leave the list the moment the user presses (an archive that waits
+				 * for a round trip reads as a control that does nothing), and the answer
+				 * that follows is one this client cannot trust to be newer than the press.
+				 */
+				const at = get().answerSeq + 1;
+				const previous = get().sessions.find(
+					(row) => row.session_id === sessionId,
+				)?.archived;
+				const rowTitle =
+					title ??
+					get().sessions.find((row) => row.session_id === sessionId)?.title;
+				set((state) => ({
+					answerSeq: at,
+					archiveFacts: {
+						...state.archiveFacts,
+						[sessionId]: { archived, at },
+					},
+					/*
+					 * A new press retires the refusal about the previous one: the sentence
+					 * beside the list describes the last thing the user tried, and leaving a
+					 * stale one under a press that then succeeded is a failure notice for a
+					 * failure that is no longer the state of anything.
+					 */
+					archiveFailure:
+						state.archiveFailure?.sessionId === sessionId
+							? null
+							: state.archiveFailure,
+					sessions: state.sessions.map((row) =>
+						row.session_id === sessionId ? { ...row, archived } : row,
+					),
+				}));
+				try {
+					await desktopResult<{ session_id: string; archived: boolean }>({
+						op: "sessions.archive",
+						sessionId,
+						archived,
+					});
+					return true;
+				} catch (error) {
+					set((state) => {
+						/*
+						 * A REFUSED PRESS IS REVERTED ONLY IF IT IS STILL THE NEWEST WRITE for
+						 * this conversation. A second press made while the first was in flight
+						 * owns the row now, and reverting on the older one's failure would undo
+						 * the newer press - the failure of a request the user has already moved
+						 * on from is not a statement about what is on screen.
+						 */
+						if (state.archiveFacts[sessionId]?.at !== at) return state;
+						const facts = { ...state.archiveFacts };
+						delete facts[sessionId];
+						return {
+							archiveFacts: facts,
+							/*
+							 * The value the row carried BEFORE the press, not `!archived`: a press
+							 * is a desired state rather than a toggle, so the value to restore is
+							 * the one the press replaced. A conversation this client does not list
+							 * has no row to restore, and dropping the fact is the whole revert
+							 * there - the row is rebuilt from the wire hit, which is what it read
+							 * before the press.
+							 */
+							sessions:
+								previous === undefined
+									? state.sessions
+									: state.sessions.map((row) =>
+											row.session_id === sessionId
+												? { ...row, archived: previous }
+												: row,
+										),
+							archiveFailure: {
+								sessionId,
+								archived,
+								title: rowTitle || "Untitled chat",
+								/*
+								 * The backend's own sentence when there is one. A transport failure
+								 * that reached nothing keeps an empty detail and the sentence around
+								 * it states the fact: the row did not move.
+								 */
+								detail:
+									error instanceof DesktopControlError && error.message
+										? error.message
+										: "",
+							},
+						};
+					});
+					return false;
+				}
+			},
+			deleteSession: async (sessionId) => {
+				try {
+					await desktopResult<{ session_id: string; deleted: boolean }>({
+						op: "sessions.delete",
+						sessionId,
+						/* The user's own answer to the danger dialog, on the wire. */
+						confirmed: true,
+					});
+					set((state) => forgetSession(state, sessionId));
+					return { ok: true };
+				} catch (error) {
+					const status =
+						error instanceof DesktopControlError ? error.status : null;
+					/*
+					 * A 404 IS THE OUTCOME THE USER ASKED FOR, and it is not reported as a
+					 * failure: the route answers it for an id this daemon does not have, so the
+					 * conversation the user asked to remove is not there to remove. The row is
+					 * dropped for the same reason a confirmed delete drops it - otherwise the
+					 * panel would keep drawing a conversation the backend has just denied
+					 * holding, and the next page would take it away anyway.
+					 */
+					if (status === 404) {
+						set((state) => forgetSession(state, sessionId));
+						return { ok: true };
+					}
+					/*
+					 * 409 is the live-session guard, and the backend's sentence is the one that
+					 * names it - quoted rather than paraphrased here, because a client that
+					 * re-words a guard it does not own drifts from the route the moment the
+					 * route changes. Every other failure keeps whatever sentence the transport
+					 * or the daemon authored.
+					 */
+					return {
+						ok: false,
+						live: status === 409,
+						detail:
+							error instanceof DesktopControlError && error.message
+								? error.message
+								: "The conversation could not be deleted.",
+					};
+				}
+			},
+			requestSessionDelete: (sessionId) => set({ deleteCandidate: sessionId }),
 			createSession: async (
 				cwd,
 				target,
