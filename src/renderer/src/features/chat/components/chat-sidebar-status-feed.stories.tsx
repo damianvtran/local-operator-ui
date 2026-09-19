@@ -120,6 +120,19 @@ const wireRow = (
 const BUSY = { code: "busy", label: "Working" };
 const APPROVAL = { code: "approval", label: "Approval needed" };
 const WEDGED = { code: "wedged", label: "Not answering · process alive" };
+/*
+ * The same state with the age the catalogue actually measures, which is what
+ * `WedgedOwner` needs and the shorter constant deliberately does not carry: the
+ * sentence the app shows is `WEDGED_STATUS` plus a `(last heartbeat … ago)`
+ * clause whenever the record has an age, and a frame shot from the bare constant
+ * would show a row the wire does not produce. Kept as a second constant rather
+ * than widening `WEDGED`, because `MarkAllReadUnseenWithoutMark` is already
+ * committed off that one and its frames are not part of this change.
+ */
+const WEDGED_SILENT = {
+	code: "wedged",
+	label: "Not answering · process alive (last heartbeat 4m ago)",
+};
 const IDLE = { code: "idle", label: "Recent" };
 const COMPLETE = { code: "complete", label: "Complete" };
 /*
@@ -430,7 +443,10 @@ const catalogueSettled = async (rows: number, timeoutMs = 4_000) => {
  * `chat-session-status.stories.tsx`'s own labelled specimens use, and it is
  * rendered from the store so a frame cannot claim a state the app does not hold.
  */
-const Readout: FC<{ rows?: number }> = ({ rows }) => {
+const Readout: FC<{ rows?: number; tooltips?: boolean }> = ({
+	rows,
+	tooltips = false,
+}) => {
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	// Subscribed rather than read: see `deliver`'s note on why a caption that
 	// only repaints when the store moves lies on the tree where it does not.
@@ -471,6 +487,22 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 	 */
 	const [control, setControl] = useState("absent");
 	/*
+	 * The rows' COMPOSED tooltips, read off the document.
+	 *
+	 * A native `title` is not photographable, and the row tooltip is where this
+	 * change puts the remedy clause — so without a surface for it the wording half
+	 * of the change has no evidence in the app at all. Read from the DOM rather
+	 * than rebuilt from the store for the reason the control line above gives: a
+	 * caption that re-implemented the expression could agree with itself while
+	 * disagreeing with the screen, and this caption exists precisely to be the
+	 * thing that cannot.
+	 *
+	 * Every row button is read, in document order, because the composed string is
+	 * per-row and its order is the list's: a caption naming only the fifth row's
+	 * tooltip would say nothing about the four above it.
+	 */
+	const [rowTitles, setRowTitles] = useState<string[]>([]);
+	/*
 	 * The shed span's TREE MEMBERSHIP, which `textContent` cannot answer — the fact
 	 * agent review round 2's R2-1 turned on. `display: none` text still reads
 	 * through `textContent`, so a caption built on it reports the label present in a
@@ -508,11 +540,48 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 						? "OUT of the accessibility tree (display:none)"
 						: "in the accessibility tree";
 			setLabelTree((previous) => (previous === tree ? previous : tree));
+			/*
+			 * THE TITLE READOUT IS OPT-IN, and that is a decision about the committed
+			 * FRAMES rather than about this component.
+			 *
+			 * It exists because the remedy clause this change adds lives only in a native
+			 * `title`, which is not photographable — so the surface needs a readout or the
+			 * wording half of the change has no evidence at all. Printing it in EVERY feed
+			 * story would grow every one of those captions by a line, and a caption taller
+			 * than the frame its entry declares is clipped: nineteen story directories
+			 * across twelve themes would have to be re-taken so that eighteen of them could
+			 * show a line about a clause none of them is about. The story whose subject the
+			 * tooltip is asks for it (`WedgedOwner`), and the rest keep the bytes they were
+			 * reviewed at.
+			 */
+			if (tooltips) {
+				/*
+				 * `[data-chat-row]` narrowed to the elements that CARRY a composed title:
+				 * the stamp is on every row-shaped control in the panel (`chat-sidebar.tsx`
+				 * puts it on the bulk-read control and the catalogue rows too), and the
+				 * subject here is the tooltip, which only a session row has.
+				 */
+				const titles = [...document.querySelectorAll("[data-chat-row]")]
+					.filter((row) => row.hasAttribute("title"))
+					.map((row) => row.getAttribute("title") ?? "(no title)");
+				setRowTitles((previous) =>
+					previous.length === titles.length &&
+					previous.every((value, index) => value === titles[index])
+						? previous
+						: titles,
+				);
+			}
 		};
 		measure();
 		const timer = setInterval(measure, 200);
 		return () => clearInterval(timer);
-	}, []);
+		/*
+		 * `tooltips` IS A DEPENDENCY because the effect reads it, and the interval is
+		 * re-armed if it ever changes. It does not change within a story — it is a
+		 * prop the story passes once — so the only thing the dependency buys is the
+		 * rule holding rather than an exemption being carved for it.
+		 */
+	}, [tooltips]);
 	return (
 		<div className="w-[420px] shrink-0 space-y-3 border-l border-hairline p-4 text-meta text-ink-muted">
 			<p className="text-ink">Row status as the sidebar reads it</p>
@@ -549,14 +618,28 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 				row(s) it would name
 			</p>
 			<p data-readout-label>Action label: {labelTree}</p>
+			{/*
+			 * The composed row tooltips: the clause this change adds is only ever in a
+			 * native `title`, so this line is what puts it in the frame. Opt-in — see
+			 * the note in the measure effect.
+			 */}
+			{tooltips ? (
+				<p data-readout-titles>
+					Row tooltips:{" "}
+					{rowTitles.length === 0
+						? "(none on screen)"
+						: rowTitles.map((title) => `“${title}”`).join(" · ")}
+				</p>
+			) : null}
 		</div>
 	);
 };
 
-const Page: FC<{ readoutRows?: number; sidebarWidth?: number }> = ({
-	readoutRows,
-	sidebarWidth = 360,
-}) => (
+const Page: FC<{
+	readoutRows?: number;
+	sidebarWidth?: number;
+	tooltips?: boolean;
+}> = ({ readoutRows, sidebarWidth = 360, tooltips = false }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
 		{/*
 		 * The width is a parameter because the panel is resizable between the app's
@@ -575,7 +658,7 @@ const Page: FC<{ readoutRows?: number; sidebarWidth?: number }> = ({
 				onStageDraft={() => undefined}
 			/>
 		</div>
-		<Readout rows={readoutRows} />
+		<Readout rows={readoutRows} tooltips={tooltips} />
 	</div>
 );
 
@@ -602,6 +685,8 @@ type Story = StoryObj;
 const RECONCILE = "0f1e2d3c4b5a";
 const QUARTERLY = "1a2b3c4d5e6f";
 const MIGRATE = "2b3c4d5e6f70";
+/** The session `WedgedOwner` photographs: a live pid whose beat stopped landing. */
+const SILENT = "4d5e6f708192";
 
 export const GateAnswered: Story = {
 	render: () => {
@@ -695,6 +780,70 @@ export const CompletionUnseen: Story = {
 		await catalogueSettled(3);
 		deliver(statusFrame(MIGRATE, COMPLETE, 3, 61));
 		deliver(attentionFrame(MIGRATE, true, 62));
+		await sleep(300);
+	},
+};
+
+/**
+ * A runtime that is running but not answering, in the list that has to say so.
+ *
+ * THE ROW THIS FILE COULD NOT DRAW. `WEDGED` has been a fixture here since the
+ * bulk receipt landed, but only as one row inside `MarkAllReadUnseenWithoutMark`,
+ * where it is third of three and the story's subject is the absent control — so
+ * the state the operator reported had no frame of its own anywhere in the app's
+ * review set, while `error` had one in every roster that stages a failure.
+ *
+ * THE NEIGHBOUR IS THE POINT. The failed row sits directly under it, and before
+ * this change the two drew the SAME mark in the SAME ink: `CircleAlert` in
+ * `text-danger` for `wedged` and for `error` alike (`chat-session-status.tsx`),
+ * which is what made an owner that had merely stopped reporting indistinguishable
+ * from a turn that had actually broken. The pair is now separable without colour
+ * — two horizontal waves against a ring with a bar and a dot.
+ *
+ * The label is the catalogue's own sentence, age and all, because the state's
+ * words are the backend's (`session/catalog.py`'s `status`) and a fixture that
+ * shortened them would photograph copy the app never shows (design D9).
+ */
+export const WedgedOwner: Story = {
+	render: () => {
+		fixtures();
+		/*
+		 * The subject FIRST and the mtimes descending with the order, like every
+		 * roster here: the sidebar draws top-down, and a frame that does not contain
+		 * the row the claim is about is not evidence about that row. `live_state`
+		 * agrees with the code each row publishes, as the wire does — the row's mark
+		 * is read from `status`, and a fixture whose two fields disagreed would be
+		 * photographing a row the backend cannot produce.
+		 */
+		roster = [
+			wireRow(
+				SILENT,
+				"Quiet owner (stale beat)",
+				1_760_004_300,
+				WEDGED_SILENT,
+				3,
+				undefined,
+				undefined,
+				{ live_state: "wedged" },
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_004_200, FAILED, 3),
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_004_100,
+				BUSY,
+				2,
+			),
+		];
+		/*
+		 * The readout is asked for the tooltips HERE and in no other story: this is the
+		 * one whose subject is the composed row tooltip, and its caption grows a line
+		 * for it (see the note in the measure effect for why that is opt-in).
+		 */
+		return <Page tooltips />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
 		await sleep(300);
 	},
 };

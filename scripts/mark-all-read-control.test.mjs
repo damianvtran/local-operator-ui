@@ -748,3 +748,94 @@ test("the store composes the refusal's own sentence instead of storing the serve
 		window.api = undefined;
 	}
 });
+
+test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
+	const SILENT = "d4e5f6a7b8c9";
+	const FAILED = "e5f6a7b8c9d0";
+	const rows = [
+		{
+			session_id: SILENT,
+			title: "Quiet owner (stale beat)",
+			active: true,
+			status: {
+				code: "wedged",
+				label: "Not answering · process alive (last heartbeat 4m ago)",
+			},
+		},
+		{
+			session_id: FAILED,
+			title: "Failed turn",
+			active: true,
+			status: { code: "error", label: "Failed" },
+		},
+	];
+	/*
+	 * Staged through the app's own read as well as the store: the sidebar issues
+	 * `sessions.list` on mount and the stub answers every other op with the bulk
+	 * receipt, so a case that only calls `mount` gets its roster replaced by one
+	 * junk row before an attribute can be read.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	try {
+		const row = (name) =>
+			harness.ring().find((element) => element.textContent?.includes(name));
+		const silent = row("Quiet owner (stale beat)");
+		const failed = row("Failed turn");
+		assert.ok(silent, "the not-answering row did not render");
+		assert.ok(failed, "the failed row did not render");
+		// The pointer channel: the composed tooltip ends with the clause, so the
+		// row itself still carries it where a pointer lands.
+		assert.match(
+			silent.getAttribute("title") ?? "",
+			/· \/stop if it stays silent$/,
+		);
+		// The keyboard channel: the row POINTS at the sentence, which is what
+		// makes it announced on focus when the name is read.
+		const id = silent.getAttribute("aria-describedby");
+		assert.ok(id, "the not-answering row points at no remedy");
+		const clause = document.getElementById(id);
+		assert.ok(
+			clause,
+			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
+		);
+		assert.equal(clause.textContent, "/stop if it stays silent");
+		assert.ok(
+			clause.textContent && !clause.textContent.includes("·"),
+			"the description kept the tooltip's separator, which is read aloud as punctuation",
+		);
+		/*
+		 * AND THE TARGET IS OUTSIDE THE ROW, which is the half that decides whether the
+		 * clause is ALSO in the accessible name (review round 2's MAJOR 2, measured in
+		 * Chromium's tree by all four roles). A button takes its name from its contents,
+		 * so an `sr-only` span inside it is collected into the name as well as pointed at
+		 * by the description — the reader heard the advice twice, and the name stopped
+		 * being the state's sentence. This harness has no accessibility tree, so it
+		 * asserts the STRUCTURAL fact the property rests on rather than the property:
+		 * the named element is not a descendant of the named element's owner. The tree
+		 * reading itself is in the round's evidence, and `directory-indicator.tsx` places
+		 * its own sentence the same way.
+		 */
+		assert.equal(
+			silent.querySelector(`#${id}`),
+			null,
+			"the remedy is inside the row button, so name-from-content collects it into the accessible name as well",
+		);
+		assert.ok(
+			silent.parentElement?.querySelector(`#${id}`),
+			"the remedy is not beside the row either — `aria-describedby` resolves by id, so it has to render somewhere",
+		);
+		// The control: the state next door offers no stop.
+		assert.equal(failed.getAttribute("aria-describedby"), null);
+		assert.doesNotMatch(failed.getAttribute("title") ?? "", /\/stop/);
+	} finally {
+		globalThis.__ack = undefined;
+		await harness.unmount();
+	}
+});
