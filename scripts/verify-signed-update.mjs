@@ -51,6 +51,8 @@ import {
 import {
 	bundledBytecodeCheck,
 	bundledPythonCheck,
+	profileAuthorizationCheck,
+	readEmbeddedProfileEntitlements,
 	runChecks,
 	spawnRunner,
 } from "./verify-macos-artifacts.mjs";
@@ -234,7 +236,28 @@ const SIGNATURE_CHECK_IDS = new Set([
 	"app-webauthn-entitlement",
 	"dmg-spctl",
 	"dmg-stapler",
+	/*
+	 * The READ half of the authorization walk, and it belongs here for exactly the
+	 * reason the WRITE half does not: an unsigned candidate — which this harness
+	 * consumes from a workflow that can build one — has no readable entitlements at
+	 * all, so "we could not ask" must not read as "the candidate failed". The
+	 * authorization row (`app-profile-authorization`, deliberately NOT in this set)
+	 * is the opposite claim: a candidate whose signature DOES carry a restricted
+	 * claim with no profile behind it has failed, and that is the 0.29.6 class this
+	 * repository was burned by. The walk returns them as two ids for this split.
+	 */
+	"app-entitlements-readable",
 ]);
+
+/*
+ * `app-spawn` AND `app-profile-authorization` ARE DELIBERATELY NOT IN THAT SET.
+ * Both ask about the artifact rather than about this host's capabilities, so a
+ * failure is the candidate's own. In particular `app-spawn` executing a bundle
+ * the OS refuses is exactly the 0.29.6 class: an artifact produced by a signing
+ * job that cannot be launched. Recording that as BLOCKED - "this host cannot
+ * sign" - would put the one verdict this repository has already been burned by
+ * behind the one verdict nobody has to act on.
+ */
 
 /**
  * A candidate whose signature checks failed is BLOCKED, not FAIL.
@@ -353,12 +376,28 @@ try {
 		// `-x64.zip` carrying an arm64 app is refused here rather than shipped.
 		const results = finalContainerChecks(path, {
 			run: spawnRunner,
-			checkApp: (app, arch) => [
-				...runChecks({ appPath: app, dmgPath: null, run: spawnRunner }),
-				bundledPythonCheck(app, { expectArch: arch }),
-				bundledBytecodeCheck(app),
-				privatePythonSeedCheck(app, { expectArch: arch }),
-			],
+			checkApp: (app, arch) => {
+				// The embedded profile is read ONCE and handed to everything that asks,
+				// for the reason it is read once in `runChecks`: two reads could answer
+				// two halves of one question from two different reads (review round 1,
+				// finding 5; this caller was the one still paying for the second read).
+				const profile = readEmbeddedProfileEntitlements(app, spawnRunner);
+				return [
+					...runChecks({
+						appPath: app,
+						dmgPath: null,
+						run: spawnRunner,
+						profile,
+					}),
+					// The candidate's own answer to the 0.29.6 class, walked over every
+					// executable in the bundle rather than its launcher alone — the
+					// artifact this harness exists to vet carried the group on eight.
+					...profileAuthorizationCheck(app, { run: spawnRunner, profile }),
+					bundledPythonCheck(app, { expectArch: arch }),
+					bundledBytecodeCheck(app),
+					privatePythonSeedCheck(app, { expectArch: arch }),
+				];
+			},
 		});
 		// What the build assembled must be right: those failures are the candidate's.
 		const assembly = results.filter((row) => !SIGNATURE_CHECK_IDS.has(row.id));

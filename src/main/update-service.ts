@@ -9,12 +9,14 @@ import { createHash } from "node:crypto";
 import {
 	createReadStream,
 	existsSync,
+	mkdtempSync,
 	readdirSync,
+	rmSync,
 	statSync,
 	statfsSync,
 } from "node:fs";
 import * as https from "node:https";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import * as path from "node:path";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
@@ -93,6 +95,7 @@ import {
 	type SealProbe,
 	type SealVerdict,
 	type SourceMarkerState,
+	type StagedSignatureFacts,
 	type UpdateFileMetadata,
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
@@ -139,12 +142,15 @@ import {
 	resolveStagedArtifactPath,
 	shipItCacheDir,
 	shipItJobLabel,
+	stagedSignatureBlock,
 	verifyStagedArtifact,
 	watchdogIsOurs,
 	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
 	writePendingServerUpdateMarker,
+	zipListingHasEmbeddedProfile,
+	zipMainExecutableEntry,
 } from "./update-install";
 
 // Regex constants for performance (moved to top-level)
@@ -221,6 +227,17 @@ const APP_OWNED_PUBLISH_HEADROOM_BYTES = 450 * 1024 * 1024;
  * out there used to refuse the install for good (review R5).
  */
 const SEAL_PROBE_TIMEOUT_MS = 45_000;
+
+/**
+ * How long one step of the staged-artifact signature probe may take.
+ *
+ * Three local steps run inside it - a zip central-directory listing, the
+ * extraction of one ~54 KB member, and one `codesign -d` on that file - and every
+ * one of them is measured in milliseconds on the artifact this machine holds. The
+ * bound exists so a wedged `unzip` or a `codesign` blocked on something cannot
+ * hold the install's pre-flight open, which is the one path the user is waiting on.
+ */
+const STAGED_SIGNATURE_PROBE_TIMEOUT_MS = 20_000;
 
 /**
  * How long after the window is created the start-up seal pass runs.
@@ -2950,9 +2967,141 @@ export class UpdateService {
 				`Staged artifact verified: ${artifactPath} (${verdict.size} bytes, sha512 matches, ${required} bytes required free, ${installedBundleSize ?? "unknown"} byte app).`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			return null;
+			/*
+			 * Then the question none of the checks above asks: will macOS actually
+			 * launch what we are about to install? See
+			 * `inspectStagedSignature` - 0.29.6 passed every check here and every
+			 * check the release pipeline had, and could not be spawned at all.
+			 */
+			return this.stagedSignatureBlock(artifactPath, info);
 		}
 		return verdict.block;
+	}
+
+	/**
+	 * Refuse a staged artifact macOS would not launch, before the app quits.
+	 *
+	 * Why this is worth a probe of its own. On 2026-09-19 the operator's install
+	 * updated itself to 0.29.6, which was Developer-ID signed, notarized, stapled,
+	 * `codesign --verify --deep --strict`-clean and `spctl -t exec`-accepted - and
+	 * completely unlaunchable: every executable in the bundle claimed the
+	 * restricted `keychain-access-groups` entitlement while the bundle embedded no
+	 * provisioning profile to authorize it, so amfid refused every Mach-O at exec
+	 * (`AppleMobileFileIntegrityError Code=-413 "No matching profile found"`).
+	 * `open` reported `RBSRequestErrorDomain Code=5 / NSPOSIXErrorDomain Code=163
+	 * "Launchd job spawn failed"`. The ShipIt that should have relaunched the app
+	 * was refused for the same reason, so the install completed and left the user
+	 * with no app, no message and no automatic way back.
+	 *
+	 * The signature check is done on the STAGED artifact rather than on the
+	 * installed bundle because by the time the installed bundle is the broken one,
+	 * there is nothing left running to report it.
+	 *
+	 * A probe that could not read the artifact at all is not a refusal by itself -
+	 * `stagedSignatureBlock` decides that - and neither is a non-zip artifact: the
+	 * macOS in-app update is a `.zip`, and an artifact this cannot read is reported
+	 * as such rather than treated as clean.
+	 */
+	private async stagedSignatureBlock(
+		artifactPath: string,
+		info: UpdateInfo | null,
+	): Promise<InstallBlock | null> {
+		const facts = await this.inspectStagedSignature(artifactPath, info);
+		if (!facts) return null;
+		const block = stagedSignatureBlock(facts);
+		if (!block) {
+			logger.info(
+				`Staged artifact signature checked: ${facts.artifactName} claims no entitlement macOS needs a provisioning profile for.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		logger.warn(
+			`Refusing the update to ${info?.version ?? "an unknown version"}: ${block.detail}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		return block;
+	}
+
+	/**
+	 * The facts `stagedSignatureBlock` decides on, read out of the archive.
+	 *
+	 * Two members of the zip and one `codesign`, which is cheap because the file
+	 * that carries the entitlements is the bundle's LAUNCHER rather than the app
+	 * (`Contents/MacOS/Local Operator` is ~54 KB beside a ~376 MB bundle). The
+	 * listing comes from the central directory, so neither the interpreter nor the
+	 * frameworks are ever decompressed.
+	 *
+	 * Returns null when there is nothing this can ask about - not a zip, or a zip
+	 * whose listing could not be read - and says so in the log. That is a
+	 * deliberate "we could not tell", which is different from "we looked and it is
+	 * clean"; the caller logs the clean case itself.
+	 */
+	private async inspectStagedSignature(
+		artifactPath: string,
+		info: UpdateInfo | null,
+	): Promise<StagedSignatureFacts | null> {
+		const artifactName = basename(artifactPath);
+		if (!artifactPath.toLowerCase().endsWith(".zip")) {
+			logger.info(
+				`Staged artifact ${artifactName} is not a zip; its signature was not inspected before the install.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		const listing = await runCommand("/usr/bin/unzip", ["-Z1", artifactPath], {
+			timeoutMs: STAGED_SIGNATURE_PROBE_TIMEOUT_MS,
+		});
+		if (!listing.ran || listing.exitCode !== 0) {
+			logger.warn(
+				`Could not list ${artifactName} to check its signature (exit ${listing.exitCode}): ${listing.stderr.trim() || "no output"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		const embeddedProfile = zipListingHasEmbeddedProfile(listing.stdout);
+		const entry = zipMainExecutableEntry(listing.stdout);
+		const base: StagedSignatureFacts = {
+			entitlementsPlist: null,
+			embeddedProfile,
+			artifactName,
+			version: info?.version ?? null,
+		};
+		if (!entry) {
+			logger.warn(
+				`${artifactName} has no Contents/MacOS entry to read a signature from; its entitlements were not inspected before the install.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return base;
+		}
+		const scratch = mkdtempSync(join(tmpdir(), "lo-staged-signature-"));
+		try {
+			const extracted = await runCommand(
+				"/usr/bin/unzip",
+				["-o", "-q", artifactPath, entry, "-d", scratch],
+				{ timeoutMs: STAGED_SIGNATURE_PROBE_TIMEOUT_MS },
+			);
+			if (!extracted.ran || extracted.exitCode !== 0) {
+				logger.warn(
+					`Could not extract ${entry} from ${artifactName} (exit ${extracted.exitCode}): ${extracted.stderr.trim() || "no output"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return base;
+			}
+			const signature = await runCommand(
+				"/usr/bin/codesign",
+				["-d", "--entitlements", "-", "--xml", join(scratch, entry)],
+				{ timeoutMs: STAGED_SIGNATURE_PROBE_TIMEOUT_MS },
+			);
+			// `codesign -d` prints the plist on stdout and exits 0; a signature it
+			// cannot read leaves the plist null, which the verdict reports as
+			// "could not be read" rather than as "nothing claimed".
+			return signature.ran && signature.exitCode === 0
+				? { ...base, entitlementsPlist: signature.stdout }
+				: base;
+		} finally {
+			rmSync(scratch, { recursive: true, force: true });
+		}
 	}
 
 	/**
