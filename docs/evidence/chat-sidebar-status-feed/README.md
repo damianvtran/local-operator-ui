@@ -5,7 +5,7 @@ status arrives from the desktop feed rather than from a whole-catalogue read,
 and — since the bulk read receipt landed — the one control that clears a pile of
 unacknowledged completions.
 
-## The three feed stories
+## The feed stories
 
 - **`gate-answered/`** — an approval answered on a row the operator is NOT
   looking at. The list said `approval` / "Approval needed"; the frame carries the
@@ -17,6 +17,24 @@ unacknowledged completions.
   story is also the pair's "after" half**: `chat-sidebar-status-feed-baseline/`
   is the same story captured from unmodified `origin/main`, where the pile of
   marks is present and there is no way to clear it in bulk.
+
+## `wedged-owner/` — the row the operator reported, and the tooltip
+
+A session whose runtime has stopped reporting, with a FAILED row directly under
+it. Before this change the two drew the same `CircleAlert` in the same
+`text-danger`; the pair is now the waves in amber against the ring in red, and
+the adjacency is the whole claim — a separation is not visible in the fixed
+state it produced. `wedged-status-baseline/` is the before half, on the tree the
+branch was cut from.
+
+The story is also the one place the row's **composed tooltip** is photographed.
+A native `title` cannot be, and the remedy clause this change adds
+(`· /stop if it stays silent`) lives only there, so the readout prints every
+on-screen row's `title` — read off the document rather than rebuilt from the
+store, like the readout's other measured lines. That line is asked for by this
+story alone (`<Page tooltips />`): printing it in every story would grow every
+other caption by a line, and nineteen re-taken directories to show a clause that
+none of them is about.
 
 ## The bulk read receipt
 
