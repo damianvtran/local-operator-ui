@@ -44,6 +44,7 @@ const {
 	FLEET_DRAIN_POLL_MS,
 	FLEET_RETIRE_GRACE_MS,
 	FLEET_RETIRE_SETTLE_MS,
+	SESSION_ENGAGE_HOLD_MS,
 	busyRosterRows,
 	displacedSessions,
 	engageSessionThroughStream,
@@ -850,6 +851,20 @@ test("a runtime still resident at the grace is reported, not passed over as noth
 		logged.some((line) => line.includes("still resident")),
 		`the log must name what was left running: ${JSON.stringify(logged)}`,
 	);
+	/*
+	 * AND IT NAMES THE LOSS RATHER THAN A REPAIR (review round 3, R3-m1). The report used
+	 * to leave the reader with the comment's claim that the caller's own repair walks
+	 * act on a still-resident runtime, and there are none: `reengageFleetAfterRestart`
+	 * reports and stops. The clause is what says so where the reader is, and this case
+	 * is the arm that produces it.
+	 */
+	assert.ok(
+		logged.some(
+			(line) =>
+				line.includes("still resident") && line.includes("nothing re-engages"),
+		),
+		`the report must name the loss, not a repair that does not exist: ${JSON.stringify(logged)}`,
+	);
 	assert.ok(
 		time.now() >= 60_000 && time.now() < 65_000,
 		`the wait is still bounded by the grace: ${time.now()}ms`,
@@ -1003,6 +1018,170 @@ test("a lease the daemon accepts is not a runtime, and the engage says which it 
 	assert.ok(
 		watched.length > 1 && watched[0] === "a".repeat(32),
 		`the held lease is renewed with the stream's own id: ${JSON.stringify(watched)}`,
+	);
+});
+
+test("a stream that drops mid-hold stops being renewed, and the miss names the transport", async () => {
+	/*
+	 * THE HOLD IS RE-CHECKED (review round 3, R3-m2). `streamError` was read on the way
+	 * IN and never again, so a stream that died during the hold left the bridge holding
+	 * no subscription while this loop went on renewing a dead id: every renewal is the
+	 * 404 an unknown id meets, residency is withdrawn with nothing surfaced, and the miss
+	 * blamed the RUNTIME for a transport that had died. The renewal count is the
+	 * measurement - it must stop at the lease when the stream does - and the reason must
+	 * carry the transport's own sentence rather than "no runtime".
+	 */
+	const time = clock();
+	let emit = null;
+	const watched = [];
+	const logged = [];
+	const outcome = await engageSessionThroughStream({
+		sessionId: "ccccccccccc3",
+		subscribe: (_sessionId, sink) => {
+			emit = sink;
+			queueMicrotask(() =>
+				sink({
+					kind: "data",
+					data: JSON.stringify({
+						type: "open",
+						payload: { subscription_id: "a".repeat(32) },
+					}),
+				}),
+			);
+			return { streamId: "stream-1" };
+		},
+		unsubscribe: () => {},
+		watch: async (subscriptionId) => {
+			watched.push(subscriptionId);
+			return { status: 200 };
+		},
+		warm: async () => ({ status: 200 }),
+		/* The socket resets at the start of the hold, and the roster never shows a runtime. */
+		hasRuntime: async () => {
+			if (emit !== null) emit({ kind: "error", detail: "socket reset" });
+			return false;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		openMs: 1_000,
+		beatMs: 500,
+		holdMs: 2_000,
+		log: (line) => logged.push(line),
+	});
+	assert.equal(outcome.engaged, false);
+	assert.equal(
+		watched.length,
+		1,
+		`a dead lease is not renewed into the ground: ${JSON.stringify(watched)}`,
+	);
+	assert.match(String(outcome.reason), /socket reset/);
+	assert.doesNotMatch(
+		String(outcome.reason),
+		/no runtime/,
+		"the miss must not blame the runtime for a transport that died",
+	);
+	assert.ok(
+		logged.some((line) => line.includes("socket reset")),
+		`the withdrawal is logged with the transport's own sentence: ${JSON.stringify(logged)}`,
+	);
+});
+
+test("a stream that drops mid-hold does not overrule the roster", async () => {
+	/*
+	 * THE OTHER HALF OF R3-m2's SHAPE: the re-check stops the renewals and changes the
+	 * REPORT, not the verdict. The roster is what says whether the session has a runtime
+	 * (`sessionHasRuntime`), so a runtime that did come up while the stream was dying is
+	 * still a success - the fix may not turn a live session into a reported miss.
+	 */
+	const time = clock();
+	let emit = null;
+	const watched = [];
+	const outcome = await engageSessionThroughStream({
+		sessionId: "ccccccccccc3",
+		subscribe: (_sessionId, sink) => {
+			emit = sink;
+			queueMicrotask(() =>
+				sink({
+					kind: "data",
+					data: JSON.stringify({
+						type: "open",
+						payload: { subscription_id: "a".repeat(32) },
+					}),
+				}),
+			);
+			return { streamId: "stream-1" };
+		},
+		unsubscribe: () => {},
+		watch: async (subscriptionId) => {
+			watched.push(subscriptionId);
+			return { status: 200 };
+		},
+		warm: async () => ({ status: 200 }),
+		/* The stream dies on the first poll, and the runtime is there on that same poll. */
+		hasRuntime: async () => {
+			if (emit !== null) emit({ kind: "error", detail: "socket reset" });
+			return true;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		openMs: 1_000,
+		beatMs: 500,
+		holdMs: 2_000,
+	});
+	assert.equal(outcome.engaged, true);
+	assert.equal(
+		watched.length,
+		1,
+		`the lease is the only renewal: ${JSON.stringify(watched)}`,
+	);
+});
+
+test("the miss reports the hold that ran, not the module constant", async () => {
+	/*
+	 * THE BOUND THAT RAN (review round 3, R3-m3). The hold's loop is bounded by
+	 * `openMs + holdMs` measured from the CALL, so the time spent holding after the
+	 * lease is `holdMs + (openMs - openDuration)` - more than the constant whenever the
+	 * open frame is not immediate, which is the ordinary case. This is the one line a
+	 * reader gets when a session does not come back, and it used to print the constant.
+	 *
+	 * The clock here makes the difference arithmetically visible: the open frame lands
+	 * after one 500 ms beat, and the call's own bound is 1 000 + 2 000 ms, so the hold
+	 * that ran is 2 500 ms (3 s rounded) against the constant's 2 s.
+	 */
+	const time = clock();
+	const outcome = await engageSessionThroughStream({
+		sessionId: "ccccccccccc3",
+		subscribe: (_sessionId, sink) => {
+			queueMicrotask(() =>
+				sink({
+					kind: "data",
+					data: JSON.stringify({
+						type: "open",
+						payload: { subscription_id: "a".repeat(32) },
+					}),
+				}),
+			);
+			return { streamId: "stream-1" };
+		},
+		unsubscribe: () => {},
+		watch: async () => ({ status: 200 }),
+		warm: async () => ({ status: 200 }),
+		hasRuntime: async () => false,
+		sleep: time.sleep,
+		now: time.now,
+		openMs: 1_000,
+		beatMs: 500,
+		holdMs: 2_000,
+	});
+	assert.equal(outcome.engaged, false);
+	assert.match(
+		String(outcome.reason),
+		/no runtime for ccccccccccc3 3s after the lease/,
+	);
+	assert.doesNotMatch(
+		String(outcome.reason),
+		new RegExp(` ${SESSION_ENGAGE_HOLD_MS / 1000}s `),
+		"the reason must report the hold that ran, not the module constant",
 	);
 });
 

@@ -522,13 +522,29 @@ export async function reengageDisplacedSessions(input: {
 	if (finalRead !== null) after = finalRead;
 	const displaced = displacedSessions(input.before, after);
 	/*
-	 * WHAT IS STILL LIVE IS NAMED, NOT DROPPED. A pre-swap runtime still resident when
-	 * the wait ends is not "nothing to do": it is a runtime that declined to retire
-	 * (an idle-gated one retires when its turn ends, which no clock here can cover)
-	 * and whose session will have no runtime the moment it leaves. Reporting it is the
-	 * difference between a log that says the app stopped watching and one that claims
-	 * the fleet had nothing left to put back - and the caller's own repair walks are
-	 * the only thing that can act on it afterwards.
+	 * WHAT IS STILL LIVE IS NAMED, NOT DROPPED, AND NOTHING IS COMING FOR IT (review
+	 * round 3, R3-m1). A pre-swap runtime still resident when the wait ends is not
+	 * "nothing to do": it is a runtime that declined to retire - an idle-gated one
+	 * retires when its TURN ends, which no clock here can cover - and its session has
+	 * no runtime the moment it leaves.
+	 *
+	 * THIS USED TO SAY THE CALLER'S OWN REPAIR WALKS WOULD ACT ON IT, AND THERE ARE
+	 * NONE. Every caller of this function is `reengageFleetAfterRestart`
+	 * (`update-service.ts`, both update paths), and it reports what this returns and
+	 * then stops; nothing in `src/main` re-engages a session after that report, and
+	 * the shipped log line on the other side says so plainly ("will go cold on their
+	 * own schedule"). So the honest statement is the loss rather than a mechanism:
+	 * the app has stopped watching, and that session goes cold on its own schedule
+	 * with nothing left to put it back. Naming it is the difference between a log
+	 * that says that and one that claims the fleet had nothing left to put back.
+	 *
+	 * TWO WAYS A MEMBER CAN STILL BE HERE, and neither is repaired by this function:
+	 * the grace ran out (the arm above), or the wave MOVED and then held still for a
+	 * full convergence stride - which ends the wait early BY DESIGN, and so can end it
+	 * while a member whose own retirement was more than one stride behind the last
+	 * movement is still live. Both arms report through this one field, and the stride
+	 * arm is the narrow one (the wave's own stagger is 20 s, so a >30 s gap between
+	 * retirements is the unusual shape) - narrow, and named rather than covered.
 	 */
 	const stillResident = snapshot.filter((row) => stillLive.has(row.sessionId));
 	const engaged: string[] = [];
@@ -549,7 +565,7 @@ export async function reengageDisplacedSessions(input: {
 		}
 	}
 	input.log?.(
-		`Re-engaged ${engaged.length} of ${displaced.length} displaced session(s)${failed.length > 0 ? `; ${failed.length} did not answer (${failed.map((row) => row.sessionId).join(", ")})` : ""}${stillResident.length > 0 ? `; ${stillResident.length} pre-swap runtime(s) still resident when the wait ended (${stillResident.map((row) => row.sessionId).join(", ")})` : ""}`,
+		`Re-engaged ${engaged.length} of ${displaced.length} displaced session(s)${failed.length > 0 ? `; ${failed.length} did not answer (${failed.map((row) => row.sessionId).join(", ")})` : ""}${stillResident.length > 0 ? `; ${stillResident.length} pre-swap runtime(s) still resident when the wait ended (${stillResident.map((row) => row.sessionId).join(", ")}), which nothing re-engages afterwards and which go cold on their own schedule` : ""}`,
 	);
 	return { displaced, engaged, failed, stillResident };
 }

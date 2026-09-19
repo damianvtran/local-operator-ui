@@ -51,6 +51,13 @@
  * daemon that is up (which is a precondition of the caller: the re-engage runs
  * after the server answered its health check). It exists so a stream that never
  * opens cannot hold the re-engage open forever, not to pace the ordinary case.
+ *
+ * THE OPEN WAIT POLLS ON `beatMs`, NOT ON THIS (review round 3, R3-n1). With the
+ * shipped pair (5 s beat against a 5 s bound) the loop's own condition is what
+ * ends it, but a `beatMs` larger than `openMs` - the two are injectable, so a
+ * caller may retune one alone - would make the `min` clamp on the sleep the only
+ * thing keeping this bound. It does keep it, which is why this is a word in the
+ * comment rather than a defect; it is the pair to keep in step.
  */
 export const SESSION_ENGAGE_OPEN_MS = 5_000;
 
@@ -226,6 +233,13 @@ export async function engageSessionThroughStream(input: {
 		}
 		let beats = 0;
 		let cameUp = false;
+		/*
+		 * WHETHER THE LEASE IS STILL SOMETHING TO RENEW, and the second half of
+		 * R3-m2 below: once the stream is gone the bridge no longer holds this
+		 * subscription, so there is nothing left to keep alive.
+		 */
+		let leaseHeld = true;
+		const leaseAt = input.now();
 		while (input.now() - startedAt < openMs + holdMs) {
 			const live = await input.hasRuntime();
 			if (live === true) {
@@ -239,6 +253,27 @@ export async function engageSessionThroughStream(input: {
 				),
 			);
 			/*
+			 * THE HOLD IS RE-CHECKED (review round 3, R3-m2). `streamError` used to be
+			 * read on the way IN and never again, so a stream that dropped mid-hold - a
+			 * second daemon bounce, a socket reset, the relay's own watchdog - left the
+			 * bridge holding no subscription for this id while the loop went on renewing
+			 * it: every renewal is then the 404 an unknown id meets, residency is
+			 * withdrawn with nothing surfaced, and the miss below blamed the RUNTIME for
+			 * a transport that died. The roster read stays the verdict, because a runtime
+			 * that did come up is still a success whatever the stream did; what changes is
+			 * that the dead lease is not renewed and the reason names the transport's own
+			 * sentence.
+			 */
+			if (streamError !== null) {
+				if (leaseHeld) {
+					leaseHeld = false;
+					input.log?.(
+						`The lease for ${input.sessionId} was withdrawn when its stream ended (${streamError}); the roster read still decides whether a runtime came up`,
+					);
+				}
+				continue;
+			}
+			/*
 			 * RENEWED, because the lease is what expresses the intent: letting it
 			 * lapse mid-hold would withdraw the residency request the stream is being
 			 * held for, which is the failure mode this whole module exists to avoid.
@@ -246,13 +281,24 @@ export async function engageSessionThroughStream(input: {
 			await input.watch(subscriptionId);
 			beats += 1;
 		}
-		return cameUp
-			? { engaged: true, beats }
-			: {
-					engaged: false,
-					reason: `no runtime for ${input.sessionId} ${Math.round(holdMs / 1000)}s after the lease`,
-					beats,
-				};
+		if (cameUp) return { engaged: true, beats };
+		/*
+		 * THE BOUND THAT RAN, NOT THE CONSTANT (review round 3, R3-m3). The loop is
+		 * bounded by `openMs + holdMs` measured from the CALL, so the time actually
+		 * spent holding after the lease is up to `holdMs + (openMs - openDuration)` -
+		 * 25 s when the open frame is immediate, never the 20 s this used to print. It
+		 * is the one line a reader gets when a session does not come back, so it
+		 * reports the measured hold rather than a number the call may not have spent.
+		 */
+		const heldSeconds = Math.round((input.now() - leaseAt) / 1000);
+		return {
+			engaged: false,
+			reason:
+				streamError === null
+					? `no runtime for ${input.sessionId} ${heldSeconds}s after the lease`
+					: `the session's events stream ended ${heldSeconds}s into the hold (${streamError}), so the lease was withdrawn before the runtime could be asked for`,
+			beats,
+		};
 	} finally {
 		/*
 		 * ALWAYS CLOSED. The stream is a real request against the daemon and the

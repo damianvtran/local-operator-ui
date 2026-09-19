@@ -3114,7 +3114,7 @@ export const STORIES = [
 		900,
 		{
 			expectSentence: [
-				"The update did not finish restarting",
+				"The update didn't finish restarting",
 				"The install itself has landed",
 			],
 		},

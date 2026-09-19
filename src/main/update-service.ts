@@ -6184,7 +6184,7 @@ export class UpdateService {
 				 * takeaway from a panel they have been looking at for ten minutes, and the
 				 * three refusal sites are not the same event: the install leg's refusal left
 				 * nothing on disk, while the two restart-leg refusals happen AFTER the build
-				 * landed. "The update did not start" is false on the second pair - the
+				 * landed. "The update didn't start" is false on the second pair - the
 				 * producer's own doc for `installLanded` says so - so the fact travels with
 				 * the report and the panel keys its heading on it.
 				 */
