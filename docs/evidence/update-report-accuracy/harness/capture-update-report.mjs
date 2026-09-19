@@ -561,7 +561,15 @@ try {
 				.evaluate("document.body.innerText")
 				.catch(() => "");
 			const present = Boolean(text) && /server update/i.test(text);
-			const png = join(OUT, `probe-${String(i).padStart(2, "0")}.png`);
+			/*
+			 * PROBES ARE SCRATCH, and this is the line that makes the comment below
+			 * true: they were written into `--out`, which is a COMMITTED directory, so
+			 * a run left sixty untracked PNGs among the evidence (and `--out` pointing
+			 * at a committed frame directory is the documented invocation). The window's
+			 * frames are inspected by a reviewer, not shipped by the gate, so they
+			 * belong in the scratch tree the run names in its last line.
+			 */
+			const png = join(SCRATCH, `probe-${String(i).padStart(2, "0")}.png`);
 			await cdp.frame(png);
 			lastProbeFrame = png;
 			if (present) {
@@ -607,8 +615,10 @@ try {
 
 	/*
 	 * The frames are committed as `<theme>.webp`, which is what the evidence gate
-	 * reads a frame's theme from. The probe PNGs stay in the scratch tree so a
-	 * reviewer can see what the window looked like around the kept frame.
+	 * reads a frame's theme from. The probe PNGs live in the run's scratch tree, so
+	 * a reviewer can see what the window looked like around the kept frame: they are
+	 * written there and NOT into `--out`, which is a committed directory, and a run
+	 * keeps that tree only when it was asked to (`--keep`).
 	 *
 	 * THE LAST CANDIDATE, AND THE LAST PROBE WHEN THERE IS NONE (review round 1,
 	 * R1-1). The loop above makes a frame a candidate only when it carries the
