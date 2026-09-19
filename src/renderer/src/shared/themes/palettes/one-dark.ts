@@ -158,7 +158,25 @@ export const oneDark: ThemeDefinition = {
 		 * tokens. Measured: ΔE00 33.97 from `accent`, 25.83 from its nearest
 		 * semantic (`danger`), 4.53:1 on the tightest ground (`surface`).
 		 */
-		accentAlt: "#CC7DE3",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.08:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue held at 320 deg, L* 64.20 -> 67.62, C* 61.57 -> 61.75):
+		 * 4.55:1 on `elevated`, 5.06:1 on `surface`, 6.23:1 on `sunken`,
+		 * 5.66:1 on `canvas` - ΔE00 35.55 from `info` (the 8 floor intact),
+		 * 33.75 from `accent`, 23.34 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.22:1.
+		 */
+		accentAlt: "#D686ED",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 20.62 and C* 7.46, with the hue moved to

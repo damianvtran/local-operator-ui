@@ -397,10 +397,18 @@ semantic or `info`. The seven desktop-only palettes have no `label` and take a
 rotation of their accent's own `L*` and `C*` instead. Each palette file carries
 its own derivation and the measurement it was authored against.
 
-**What may spend it** — two sites today: the theme picker's miniature (a
+**What may spend it** — three sites today: the theme picker's miniature (a
 `bg-accent-alt` bar beside the accent fill, so a two-hue theme advertises both of
-its colours) and mermaid's categorical fills (`accent-alt-wash` at index 1 of the
-wash cycle, ahead of the semantics).
+its colours), mermaid's categorical fills (`accent-alt-wash` at index 1 of the
+wash cycle, ahead of the semantics), and the settled trace row's IDENTITY ink —
+the `meta` category (`task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake`) in the
+trace's shared name column, drawn as text and as the glyph beside it. That site is
+why the role carries a text floor on a STATE ground: a settled row's hover raises
+the row to `elevated`, so the ink is painted there, and the role — seated at its
+4.5:1 floor on `surface` — had no headroom for it. Ten palettes were re-seated on
+their own hue's lightness (chroma rising with it only where the lift would
+otherwise walk into `info`); the run's `Identity pairs:` line reports the tightest
+pair the fleet holds after the move.
 
 **What may not, and this list is the rule:** every selection and hover ground,
 the focus ring and the caret, primary/ghost/outline buttons and chips, links, the
@@ -463,9 +471,12 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `ink-disabled` against `ink-dim`, on each of the six grounds | ≤ 0.8 × |
 | `accent` and each semantic colour as text on all six grounds | 4.5:1 |
 | `accent-alt` as text on `canvas`, `surface` and `sunken` | 4.5:1 |
+| `accent-alt` as text on a row's state ground (the trace row's hover ground, `elevated`) | 4.5:1 |
 | `accent-alt` against `accent` | ΔE00 15 |
 | `accent-alt` against `success`, `warning`, `danger` | ΔE00 15 |
-| `accent-alt` against `info` | ΔE00 8 |
+| `accent-alt` against `info`, as the ledger's two CATEGORY inks | ΔE00 15, with five palettes pinned at 8.58–13.57 |
+| `accent-alt` against `info`, at the role's decorative sites | ΔE00 8 |
+| `info` against `accent`, the settled `read` ink against the liveness ink | ΔE00 8, with five palettes pinned at 0–5.87 |
 | `accent-alt`'s chroma | C\* 15 |
 | `accent-alt-wash` against `accent-wash` | ΔE00 2.0 |
 | `on-accent` on the accent fill | 4.5:1 |

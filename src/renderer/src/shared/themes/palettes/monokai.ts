@@ -122,7 +122,25 @@ export const monokai: ThemeDefinition = {
 		 * every floor — ΔE00 83.41 from `accent`, 25.77 from its nearest semantic
 		 * (`danger`), 4.75:1 as text on the tightest ground (`surface`).
 		 */
-		accentAlt: "#ae81ff",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.15:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue held at 307 deg, L* 63.28 -> 66.46, C* 71.29 -> 64.80):
+		 * 4.60:1 on `elevated`, 5.27:1 on `surface`, 6.46:1 on `sunken`,
+		 * 5.79:1 on `canvas` - ΔE00 33.65 from `info` (the 8 floor intact),
+		 * 80.81 from `accent`, 37.85 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.01:1.
+		 */
+		accentAlt: "#B68CFF",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 24.80 and C* 17.82, with the hue moved to

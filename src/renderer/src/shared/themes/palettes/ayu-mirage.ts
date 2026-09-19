@@ -136,7 +136,25 @@ export const ayuMirage: ThemeDefinition = {
 		 * from `accent`, 15.02 from its nearest semantic (`warning`), 4.76:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#CA973E",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.22:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 78.97 -> 72.80 deg, L* 65.78 -> 68.39, C* 53.57 -> 75.46):
+		 * 4.58:1 on `elevated`, 5.17:1 on `surface`, 6.98:1 on `sunken`,
+		 * 6.02:1 on `canvas` - ΔE00 49.61 from `info` (the 8 floor intact),
+		 * 51.63 from `accent`, 29.25 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 4.96:1.
+		 */
+		accentAlt: "#E79509",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 23.34 and C* 11.85, with the hue moved to

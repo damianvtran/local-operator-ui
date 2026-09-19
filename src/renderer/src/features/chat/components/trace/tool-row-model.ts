@@ -415,9 +415,27 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	ask: "meta",
 };
 
-/** The category `toolName` belongs to, or `plain` when nothing has filed it. */
+/**
+ * The category `toolName` belongs to, or `plain` when nothing has filed it.
+ *
+ * An OWN-property lookup, and NOT a bare `CATEGORIES[key] ?? "plain"`. An object
+ * literal inherits from `Object.prototype`, so a subscript reads the prototype
+ * CHAIN: `toolCategory("constructor")` answered `Object`, and `"toString"`,
+ * `"hasOwnProperty"` and `"__proto__"` answer functions the same way. A tool name
+ * is MODEL-controlled, so a provider naming a tool `constructor` is reachable — and
+ * that row then rendered with NO ink class at all, which is the opposite of the
+ * documented neutral this fallback exists to give it.
+ *
+ * `Object.prototype.hasOwnProperty.call` rather than `Object.hasOwn`, which reads
+ * better but needs an ES2022 lib this tsconfig does not target — the constraint and
+ * the idiom `toast-manager.ts` records for its own `RAW_TRANSPORT_ERRORS` table. The
+ * TUI's lookup is `dict.get`, which has no chain to read.
+ */
 export function toolCategory(toolName: string): ToolCategory {
-	return CATEGORIES[toolName.trim().toLowerCase()] ?? "plain";
+	const key = toolName.trim().toLowerCase();
+	return Object.prototype.hasOwnProperty.call(CATEGORIES, key)
+		? CATEGORIES[key]
+		: "plain";
 }
 
 /**
