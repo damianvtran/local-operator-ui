@@ -57,6 +57,11 @@ pnpm build
 node scripts/browser-file-transfer-proof.mjs --out /tmp/ft-frames
 # the rig writes PNGs (the composited frame plus its two layers); the committed
 # `.webp` frames are those PNGs through sharp at quality 90, one per frame name.
+#
+# THE FRAMES IN THIS DIRECTORY ARE FROM THE RUN ON THIS HEAD, after the branch was
+# folded onto `origin/main` = `181a9c4fd` (77 upstream commits): every one of the
+# eight was re-taken, because the app's own chrome around the row is part of the
+# picture and upstream moved it. The transcript quoted below is that run's.
 ```
 
 
@@ -87,10 +92,15 @@ recorded rather than bent to fit, with the measurement that says why:
 **THE RUNTIME CAP'S BOUND IS MEASURED OFF THE DISK, not off this host's self-report**
 (`G12`): a 10 ms poller watches the partial at its final path from the rig, so the
 number is what the write actually reached rather than what the host said it had
-received. Two runs at the shipped cadence: **277,348,110 bytes (8.9 MiB over the cap,
-76 ms past the limit)** and **327,221,015 (58.8 MiB over, 219 ms past)** — against QA
-round 2's 734,003,200 (**2.7x the cap**) under the `updated`-only trigger this
-replaced.
+received. The bound the host's own clock can promise is the cap plus one sample
+interval of throughput, and the interval is what the MACHINE decides — measured at the
+shipped 100 ms cadence: **277,348,110 bytes (8.9 MiB over the cap, 76 ms past the
+limit)** idle, **327,221,015 (58.8 MiB over, 219 ms)** and **328,662,599 (60.2 MiB
+over, 182 ms)** on busy runs, and **394,002,389 (125.5 MiB over, 399 ms)** at a load
+average of 124. The check's ceilings (192 MiB / 1200 ms) are set for that last case,
+because what it asserts is that a starved main process still cancels on its OWN clock
+rather than waiting on `updated` — against QA round 2's 734,003,200 (**2.7x the cap**,
+server still pushing, no bound at all) under the trigger this replaced.
 
 **The app is launched with `--use-mock-keychain --password-store=basic`**, through
 `withMockKeychain` from `scripts/chrome-keychain.mjs`. Both are load-bearing here:

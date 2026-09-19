@@ -1,9 +1,9 @@
 {
   "source_repo": "damianvtran/local-operator",
-  "source_ref": "f4a27d0d4cfe60ce7143e4413fa4d710151295cb",
+  "source_ref": "90992a61aadd9dcb1cf7b558dcd31d843499787c",
   "proto_version": 1,
   "app_proto_version": 1,
-  "inputs_sha256": "6533682f3d0f4dbabe1c8c6dc744ffe23d9a1c23bcbffd96ad37fef67c338e05",
+  "inputs_sha256": "5fd0f837c47a9d32abd980bf53dcd7d050e433ac388354f85623be70a01d4147",
   "generator": "scripts/sync-vendored.mjs",
   "patches": [
     {
@@ -22,7 +22,7 @@
     "driver/deadline.ts": "18cbe85e22a16f340cf92c8d86a42f963a19d40d4f442bccf7b3d07d87c4f5f0",
     "driver/errors.ts": "7465167cbc0b285b5d813ff458b74eeb43ad96a359cd07ed9602245d1feb80dd",
     "driver/file-transfer-policy.ts": "6e6f7bbe33cca2d8d4f73e4d7903744f6da60682657add3f54ca76b63492a4b9",
-    "driver/file-transfer.tables.gen.ts": "09e45681f8d27da7ad3436dbb756fb2da98f8b6cb6caf09f9cc496e28260974e",
+    "driver/file-transfer.tables.gen.ts": "533e07c67b7e0dc71b948d0b5e467bc4347812679bc253ce6a64b2dd77b10214",
     "driver/origin-policy.ts": "aa441ccd0fa3486ec6d0c8c0979abe552920982fc734b83e92a39c4ad87fae35",
     "driver/scroll-expressions.ts": "1ec22ec38898030f228a5adcfd4d1d2a81150d4acefe0ec99104ba7e3b7c46f5"
   }
