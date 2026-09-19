@@ -1367,6 +1367,79 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 }
 
 /**
+ * Capture a frame WITH the app's own toast on it - the opposite of what
+ * `captureSettled` is for, and deliberate.
+ *
+ * WHY THIS EXISTS (UX round 1, U1). A close that could not save the reader's words
+ * now says so, so the frame that shows the fix has to be a frame the toast is ON.
+ * `captureSettled` waits for toasts to clear and throws away any frame that catches
+ * one, which is the right rule everywhere else and would photograph this screen a
+ * few seconds after the message had gone. Two consecutive identical captures prove
+ * the frame held still (sonner animates a toast in), and the toast's own text is
+ * read alongside each capture so the frame and the sentence are known to belong to
+ * each other. `stable: false, toastText: null` means there was no toast to
+ * photograph, which is a failure of the scene rather than of the run.
+ */
+async function captureWithToast(
+	cdp,
+	label,
+	{ attempts = 10, gapMs = 200 } = {},
+) {
+	let previous = null;
+	let frame = null;
+	let text = null;
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		const captured = await capture(cdp, label);
+		const shown = await toastText(cdp).catch(() => null);
+		if (shown === null)
+			return { ...captured, attempts: attempt, stable: false, toastText: null };
+		frame = captured;
+		text = shown;
+		const bytes = readFileSync(captured.path);
+		if (previous?.equals(bytes))
+			return { ...captured, attempts: attempt, stable: true, toastText: text };
+		previous = bytes;
+		await wait(gapMs);
+	}
+	return { ...frame, attempts, stable: false, toastText: text };
+}
+
+/** The text of the toast on screen, or `null` when there is none. */
+function toastText(cdp) {
+	return cdp.evaluate(
+		`(() => { const t = document.querySelector(${JSON.stringify(TOAST_SELECTOR)}); return t ? (t.textContent ?? null) : null; })()`,
+	);
+}
+
+/**
+ * The close's sentence, READ FROM THE MODULE THAT OWNS IT.
+ *
+ * `close-copy.ts` is where the words a close shows live (UX round 1, U1), and this
+ * scene asserts that sentence reaching the screen. Spelling it out here as well
+ * would be a second copy of the promise, and a second copy can drift from the first
+ * - which is the one thing a check of copy must not do. So the sentence is parsed
+ * out of the module, and a module that no longer carries it in this shape fails the
+ * scene rather than silently comparing against a stale string.
+ */
+const CLOSE_SENTENCE_SOURCE_RE = /`Closed \$\{title\}\.([^`]*)`/;
+
+function closeKeptWordsSentence(title) {
+	const source = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/canvas/close-copy.ts",
+		),
+		"utf8",
+	);
+	const match = source.match(CLOSE_SENTENCE_SOURCE_RE);
+	if (!match)
+		throw new Error(
+			"close-copy.ts no longer carries the close's sentence in the shape this scene reads it in",
+		);
+	return `Closed ${title}.${match[1]}`;
+}
+
+/**
  * The bridge's own methods, which are NOT scene verbs: `facts()` (window facts
  * from main) and `capture()` live on `window.__loDevDriver` itself, while the
  * verbs the app registers are reached through `call(name)`. The two surfaces are
@@ -4558,6 +4631,28 @@ const writesListing = (writes, id) =>
 	);
 
 /**
+ * The writes that come AFTER the first one that satisfies `settled`.
+ *
+ * WHY NOT SIMPLY "no write lists it": the close's own writes are several, and the
+ * first of them still lists the document - the ✕ handler takes it out of `openTabs`
+ * and then out of `files` in two store writes, so the window a scene clears before
+ * the press legitimately contains one or two writes from BEFORE the removal. What
+ * the finding is about is the writes AFTER the removal, which is the only place a
+ * re-listing can appear: on the pre-fix tree that is the unmount commit's upsert.
+ *
+ * `[]` for a window whose first write never satisfies `settled`: a scene that did
+ * not see the removal has nothing to say about what followed it, and returning the
+ * whole window would turn a missing removal into a passing check.
+ */
+const writesAfter = (writes, settled) => {
+	const list = Array.isArray(writes) ? writes : [];
+	const first = list.findIndex((write) =>
+		Object.values(write.shape ?? {}).some(settled),
+	);
+	return first === -1 ? [] : list.slice(first + 1);
+};
+
+/**
  * The row's hold sentence, as a module-level constant rather than an inline
  * literal (agent review round 1, N1): a regex inside a function body is a new one
  * per call and biome's `useTopLevelRegex` says so, which is 12 warnings this file
@@ -4591,6 +4686,9 @@ const CANVAS_DOCUMENT_TEXT_EXPR = `(() => {
 const CANVAS_TAB_SELECTOR =
 	'[role="tablist"][aria-label="Open documents"] [role="tab"]';
 
+/** The strip's own scroll container, which is the box a tab has to be inside to count as visible. */
+const CANVAS_STRIP_SELECTOR = '[role="tablist"][aria-label="Open documents"]';
+
 /**
  * The tab the strip has selected, as the strip's own DOM reports it.
  *
@@ -4621,6 +4719,43 @@ const CANVAS_FOCUSED_TAB_EXPR = `(() => {
 	const label = active.getAttribute("aria-label") ?? active.textContent?.trim() ?? null;
 	return { in: "control", label: label ? label.slice(0, 60) : null };
 })()`;
+
+/**
+ * How much of a document's ✕ is inside the strip's own box, and what is under it.
+ *
+ * THE MEASUREMENT UX ROUND 1 (U3) MADE, reproduced rather than described: at nine
+ * documents the selected tab's label was on screen, its ✕ measured
+ * `closeVisiblePx 0`, and the pixel at the ✕'s centre belonged to the strip's
+ * pinned "All open files" button - so a reader aiming at the close opened a menu
+ * that cannot close anything. `visiblePx` is the overlap between the control's box
+ * and the strip's, and `atCentre` is what `elementFromPoint` answers at the point a
+ * reader would press.
+ */
+function closeControlWhereabouts(cdp, title) {
+	const selector = `${CANVAS_STRIP_SELECTOR} [aria-label="Close ${title}"]`;
+	return cdp.evaluate(`(() => {
+		const strip = document.querySelector(${JSON.stringify(CANVAS_STRIP_SELECTOR)});
+		const control = document.querySelector(${JSON.stringify(selector)});
+		if (!strip || !control) return { found: false, visiblePx: 0, atCentre: null };
+		const s = strip.getBoundingClientRect();
+		const c = control.getBoundingClientRect();
+		const visiblePx = Math.max(0, Math.min(c.right, s.right) - Math.max(c.left, s.left));
+		const x = Math.round((c.left + c.right) / 2);
+		const y = Math.round((c.top + c.bottom) / 2);
+		const hit = document.elementFromPoint(x, y);
+		return {
+			found: true,
+			visiblePx: Math.round(visiblePx),
+			widthPx: Math.round(c.width),
+			centreX: x,
+			hitIsControl: Boolean(hit && (hit === control || control.contains(hit))),
+			atCentre: hit
+				? (hit.getAttribute("aria-label") ??
+					(hit.closest('[role="tab"]') ? "the tab label" : hit.tagName.toLowerCase()))
+				: null,
+		};
+	})()`);
+}
 
 /** The document on screen, as its own editor renders it. */
 function canvasDocumentText(cdp) {
@@ -6246,6 +6381,19 @@ async function sceneCanvasFreshness(cdp, app) {
 		`!Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).some((tab) => (tab.textContent ?? "").includes("close-clean.md"))`,
 		5_000,
 	);
+	/*
+	 * AND THE CLEAN CLOSE SAYS NOTHING, which is half of the report's contract (UX
+	 * round 1, U1 plus its U5): the sentence exists for words a close could not
+	 * write, and a close that wrote them is the autosave the reader already meets
+	 * elsewhere in this surface. Asserted here rather than assumed, because a report
+	 * that fires on every close is a different defect from one that fires on none.
+	 */
+	const cleanToast = await toastText(cdp);
+	check(
+		"a clean close says nothing: the message is for words that could not be written",
+		cleanToast === null,
+		JSON.stringify(cleanToast),
+	);
 	check(
 		"the ✕ on the strip closes the tab, and the strip stops listing it",
 		cleanGone.ok,
@@ -6325,7 +6473,13 @@ async function sceneCanvasFreshness(cdp, app) {
 		cleanDropWrite,
 		JSON.stringify(cleanWriteRows),
 	);
-	const cleanRelisted = writesListing(cleanWrites, closeClean);
+	const cleanRelisted = writesListing(
+		writesAfter(
+			cleanWrites,
+			(conversation) => !conversation.files.includes(closeClean),
+		),
+		closeClean,
+	);
 	check(
 		"and NO later write re-lists it - the flicker the reader reported, as a write that does not happen",
 		Array.isArray(cleanWrites) &&
@@ -6431,8 +6585,38 @@ async function sceneCanvasFreshness(cdp, app) {
 		"and the held close's own writes never re-list it either, on the dirty arm",
 		Array.isArray(heldWrites) &&
 			heldWrites.length > 0 &&
-			writesListing(heldWrites, closeHeld).length === 0,
+			Object.values(heldWrites[heldWrites.length - 1].shape ?? {}).some(
+				(conversation) => !conversation.files.includes(closeHeld),
+			) &&
+			writesListing(
+				writesAfter(
+					heldWrites,
+					(conversation) => !conversation.files.includes(closeHeld),
+				),
+				closeHeld,
+			).length === 0,
 		JSON.stringify(heldWriteRows),
+	);
+	/*
+	 * THE SENTENCE THE READER GETS (UX round 1, U1). The words are kept, the row that
+	 * would have said so has unmounted with the document, and until this change
+	 * nothing was said at all - so this is the assertion the finding is about, and the
+	 * frame beside it is the one committed frame the app's own toast is meant to be on
+	 * (`captureWithToast`, not `captureSettled`, which waits for toasts to clear).
+	 */
+	const heldToast = await captureWithToast(cdp, "canvas-freshness-close-kept");
+	const expectedKept = closeKeptWordsSentence("close-held.md");
+	check(
+		"a close that could not save the reader's words SAYS SO, on screen",
+		heldToast.stable === true && heldToast.toastText === expectedKept,
+		`stable=${heldToast.stable} toast=${JSON.stringify(heldToast.toastText)} expected=${JSON.stringify(expectedKept)}`,
+	);
+	check(
+		"and the sentence names the boundary (until the app quits) and the way back",
+		typeof heldToast.toastText === "string" &&
+			heldToast.toastText.includes("kept until the app quits") &&
+			heldToast.toastText.includes("opening it again brings them back"),
+		JSON.stringify(heldToast.toastText),
 	);
 	const closeHeldAfterFrame = await captureSettled(
 		cdp,
@@ -6507,9 +6691,19 @@ async function sceneCanvasFreshness(cdp, app) {
 	for (const path of neighbourSubjects)
 		await verb(cdp, "openCanvasDocument", { path });
 	const [neighbourA, neighbourB, neighbourC, neighbourD] = neighbourSubjects;
+	/*
+	 * BY LABEL rather than by count: the two closes above leave a document open, so
+	 * the strip holds five tabs at this point and a count would be a second thing
+	 * this phase has to keep in step with the phases before it. What it cares about
+	 * is that ITS four are there.
+	 */
+	const neighbourLabels = neighbourSubjects.map((path) =>
+		path.split("/").pop(),
+	);
+	const tabLabelsOnScreen = `Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).map((tab) => tab.textContent ?? "")`;
 	const neighbourOpened = await waitForCondition(
 		cdp,
-		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 4`,
+		`${JSON.stringify(neighbourLabels)}.every((name) => ${tabLabelsOnScreen}.some((label) => label.includes(name)))`,
 		10_000,
 	);
 	check(
@@ -6541,7 +6735,7 @@ async function sceneCanvasFreshness(cdp, app) {
 	note("the ✕ press on the middle tab", JSON.stringify(middlePressed));
 	const middleClosed = await waitForCondition(
 		cdp,
-		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 3`,
+		`!${tabLabelsOnScreen}.some((label) => label.includes("neighbour-b.md"))`,
 		5_000,
 	);
 	const neighbourSelectedInDom = await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR);
@@ -6577,7 +6771,7 @@ async function sceneCanvasFreshness(cdp, app) {
 	});
 	const lastClosed = await waitForCondition(
 		cdp,
-		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 2`,
+		`!${tabLabelsOnScreen}.some((label) => label.includes("neighbour-d.md"))`,
 		5_000,
 	);
 	const precedingSelected = await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR);
@@ -6600,11 +6794,106 @@ async function sceneCanvasFreshness(cdp, app) {
 	 */
 	const neighbourLeftover = await stripTabs();
 	check(
-		"the oldest tab is still open and is NOT the one either close selected",
-		neighbourLeftover.length === 2 &&
+		"the oldest tab is still open, and is NOT the one either close selected",
+		neighbourLeftover.includes("neighbour-a.md") &&
+			neighbourLeftover.includes("neighbour-c.md") &&
+			!neighbourLeftover.includes("neighbour-b.md") &&
+			!neighbourLeftover.includes("neighbour-d.md") &&
 			precedingSelected !== neighbourA &&
 			neighbourSelectedInDom !== neighbourA,
 		JSON.stringify(neighbourLeftover),
+	);
+
+	/*
+	 * THE OVERFLOWING STRIP, AND THE ✕ THE READER CANNOT REACH (UX round 1, U3).
+	 *
+	 * WHY THIS SCENE DODGES IT EVERYWHERE ELSE, and why it must not. Every press the
+	 * close phase asserts on above closes a tab in a strip that FITS - and it got
+	 * there by closing six documents first, because a press aimed at a scrolled tab's
+	 * ✕ reported `hitTest: false` and named the strip's pinned overflow button. That
+	 * workaround hid the state the reader who reported the flicker is actually in:
+	 * nine documents, a strip that scrolls, and a ✕ that is the one permanently
+	 * revealed control on the tab they are reading. UX measured it as `closeVisiblePx
+	 * 0` - the label on screen, the ✕ past the strip's edge, and the pixel where it
+	 * should be belonging to "All open files". So the last thing this scene does is
+	 * aim at exactly that ✕, in exactly that strip, and require it to be there.
+	 */
+	const overflowSubjects = [];
+	for (let index = 0; index < 9; index += 1) {
+		const path = join(dir, `many-${index}.md`);
+		writeFileSync(path, `many-${index}\n`);
+		setExactMtime(path, BASE_SECOND - 200 + index);
+		overflowSubjects.push(path);
+	}
+	for (const path of overflowSubjects)
+		await verb(cdp, "openCanvasDocument", { path });
+	const overflowOpened = await waitForCondition(
+		cdp,
+		`${tabLabelsOnScreen}.some((label) => label.includes("many-8.md"))`,
+		15_000,
+	);
+	const stripBox = await cdp.evaluate(
+		`(() => {
+			const s = document.querySelector(${JSON.stringify(CANVAS_STRIP_SELECTOR)});
+			return s ? { scrollWidth: s.scrollWidth, clientWidth: s.clientWidth, scrollLeft: s.scrollLeft } : null;
+		})()`,
+	);
+	check(
+		"the strip genuinely overflows before the ✕ is aimed at - the reader's own state",
+		overflowOpened.ok &&
+			Boolean(stripBox) &&
+			stripBox.scrollWidth > stripBox.clientWidth,
+		JSON.stringify(stripBox),
+	);
+	const selectedCloseWhereabouts = await closeControlWhereabouts(
+		cdp,
+		"many-8.md",
+	);
+	note(
+		"the selected tab's ✕ in the overflowing strip",
+		JSON.stringify(selectedCloseWhereabouts),
+	);
+	check(
+		"and the SELECTED tab's ✕ is inside the strip, not scrolled out past its edge",
+		selectedCloseWhereabouts.found === true &&
+			selectedCloseWhereabouts.visiblePx >=
+				selectedCloseWhereabouts.widthPx - 1,
+		JSON.stringify(selectedCloseWhereabouts),
+	);
+	check(
+		"so the pixel at its centre is the ✕ itself, and not the strip's overflow menu",
+		selectedCloseWhereabouts.hitIsControl === true,
+		JSON.stringify(selectedCloseWhereabouts),
+	);
+	const overflowFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-overflow",
+	);
+	const overflowCountBefore = await cdp.evaluate(
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length`,
+	);
+	const overflowPressed = await verb(cdp, "press", {
+		selector: closeControlFor("many-8.md"),
+	});
+	const overflowClosed = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === ${overflowCountBefore - 1}`,
+		5_000,
+	);
+	const overflowLanding = await cdp.evaluate(CANVAS_SELECTED_TAB_EXPR);
+	check(
+		"and the press closes the document the reader is on, landing on its neighbour",
+		overflowPressed.hitTest === true &&
+			overflowClosed.ok &&
+			overflowLanding === overflowSubjects[overflowSubjects.length - 2],
+		`hitTest=${overflowPressed.hitTest} closed=${overflowClosed.ok} selected=${JSON.stringify(overflowLanding)}`,
+	);
+	const overflowLeftover = await stripTabs();
+	check(
+		"and the overflow menu was never what the press hit - the tab is gone, not its name",
+		!overflowLeftover.includes("many-8.md") &&
+			overflowLeftover.includes("many-7.md"),
+		JSON.stringify(overflowLeftover),
 	);
 
 	const closeFrames = [
@@ -6615,6 +6904,7 @@ async function sceneCanvasFreshness(cdp, app) {
 		closeReopenFrame,
 		neighbourFrame,
 		precedingFrame,
+		overflowFrame,
 	];
 	note("the close phase's frames", JSON.stringify(closeFrames));
 	check(
