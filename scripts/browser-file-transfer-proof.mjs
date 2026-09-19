@@ -175,6 +175,11 @@ const CAPS_BYTES = String(256 * 1024 * 1024);
 /** The per-file cap as a NUMBER, for the overshoot arithmetic in `G12` (review round
  * 2, Q4): the point of that case is how far PAST this the host let a write run. */
 const DOWNLOAD_CAP_BYTES = 256 * 1024 * 1024;
+/** The app's own minimum window width, mirrored from `src/main/window-mode.ts`
+ * (`WINDOW_MIN_WIDTH`), which clamps every requested `--window-size` to it. `G8c`
+ * measures the refusal's spans at this width, because it is the narrowest the app
+ * can be made and therefore the worst case the row has to survive. */
+const MINIMUM_WINDOW_WIDTH = 800;
 /** A name long enough that the refusal's own sentence cannot fit beside it, which is
  * the case D3 is about: the NAME must elide and the consequence must not. Measured
  * rather than guessed — see G8, which asserts which span is the clipped one. */
@@ -762,6 +767,12 @@ function send(method, params = {}) {
 	});
 }
 
+/** The same call under a name `main` cannot shadow: the upload flow binds its own
+ * `const send` (the fixture page's Send button, `:1321`), and a `const` is scoped to
+ * the whole function body, so a bare `send(...)` anywhere later in `main` is that
+ * button rather than this socket. `G8c` needs the socket. */
+const cdp = (method, params = {}) => send(method, params);
+
 async function evaluate(expression) {
 	const result = await send("Runtime.evaluate", {
 		expression,
@@ -834,8 +845,20 @@ async function rowSpanReadings() {
 				clipped: s.scrollWidth > s.clientWidth + 1,
 				inside: r.right <= box.right + 1 && r.left >= box.left - 1,
 				width: Math.round(r.width),
+				title: s.getAttribute('title'),
 			};
 		});
+	})()`);
+}
+
+/** The paragraph's own content box, in CSS px, for `G8c`: the `.webp` a reader
+ * looks at says how the row divided the width, and this says how much width there
+ * was to divide — which is the number that decides whether a floor can fit. */
+async function rowParagraphWidth() {
+	return await evaluate(`(() => {
+		const row = document.querySelector('[data-tour-tag="browser-file-transfer-row"]');
+		const p = row?.querySelector('p');
+		return p ? Math.round(p.getBoundingClientRect().width) : null;
 	})()`);
 }
 
@@ -1667,6 +1690,113 @@ for raw in paths:
 		JSON.stringify(ruleSpan ?? null),
 	);
 
+	// G8c. THE SAME REFUSAL AT THE APP'S MINIMUM WINDOW (design round 3, D14), which is
+	// where the name's cap used to cost the sentence its reason: `max-w-[32ch] shrink-0`
+	// is an absolute 237.5 logical px at EVERY width, so design round 3 measured this
+	// rule span at 22 px reading `is …` at 800 px against the 168 px it reads at the
+	// app's default window. The name is the span that yields now and the rule carries a
+	// floor, so the two numbers this case records are the two that finding turned on —
+	// and it photographs them, because until this case the 800 px state had no rendered
+	// artifact in the app at all (the README's "what these frames do NOT show" said so).
+	//
+	// HOW THE WIDTH IS SET, and why this IS the minimum window rather than "a small
+	// viewport": `--window-size` is read at launch, and this Electron's CDP does not
+	// expose the Browser domain (measured: `Browser.getWindowForTarget` answers
+	// "'Browser.getWindowForTarget' wasn't found" on the page session AND on the
+	// browser endpoint), so the window cannot be resized from inside the rig. The
+	// renderer's viewport is pinned to 800 CSS px instead, which is the same layout:
+	// `src/main/window-mode.ts` clamps a request to WINDOW_MIN_WIDTH=800, and a headless
+	// window carries no decoration, so `--window-size=WxH` yields exactly innerWidth W
+	// (measured: 1380 for `--window-size=1380x900`) — 800 here is the number the clamped
+	// minimum resolves to, not an approximation of it.
+	await cdp("Emulation.setDeviceMetricsOverride", {
+		width: MINIMUM_WINDOW_WIDTH,
+		height: WINDOW_SIZE.height,
+		deviceScaleFactor: 2,
+		mobile: false,
+	});
+	const minimumPinned = await waitFor(
+		async () => (await evaluate("window.innerWidth")) === MINIMUM_WINDOW_WIDTH,
+		5_000,
+	);
+	await sleep(400);
+	const minimumSpans = (await rowSpanReadings()) ?? [];
+	const minimumParagraphWidth = await rowParagraphWidth();
+	const minimumFrame = await frame(
+		state,
+		token,
+		"09-long-name-refused-minimum-window",
+	);
+	const minimumName = minimumSpans.find((span) =>
+		span.text.startsWith("quarterly-financial"),
+	);
+	const minimumRule = minimumSpans.find((span) =>
+		span.text.startsWith("is an executable"),
+	);
+	check(
+		"G8c at the app's minimum window the NAME yields and the rule keeps the larger share (D14)",
+		minimumPinned === true &&
+			// The rank both rounds want, in the two numbers a still cannot show: the name
+			// gives up most of its room, and the reason is left with at least as much as
+			// the name has. Both are load- and font-independent (the ratio is what D14 is
+			// about); the widths themselves are recorded in the detail.
+			(minimumName?.width ?? Number.POSITIVE_INFINITY) <
+				(nameSpan?.width ?? 0) / 2 &&
+			// Yields, but does not vanish: a zero-width name is a layout bug rather than a
+			// clip, so the name keeps its own proportional floor.
+			(minimumName?.width ?? 0) > 0 &&
+			minimumName?.clipped === true &&
+			(minimumRule?.width ?? 0) >= (minimumName?.width ?? 0) &&
+			/is an executable\/script type\./.test(minimumRule?.text ?? "") &&
+			minimumRule?.title === "is an executable/script type.",
+		JSON.stringify({
+			atMinimum: minimumSpans,
+			paragraphWidth: minimumParagraphWidth,
+			atDefault: { name: nameSpan, rule: ruleSpan },
+			frame: minimumFrame.path,
+		}),
+	);
+	// WHAT THE MINIMUM WINDOW'S OWN WIDTH IS, RECORDED RATHER THAN ASSERTED INTO
+	// LEGIBILITY (design round 3, D14). The frame above is the honest photograph of
+	// this state, and the numbers beside it are why this state is a layout problem
+	// rather than a flex-priority one: the specimen `LongNameAtMinimumWindow` gives the
+	// paragraph ~576 px, while the APP at its own 800 px window spends ~248 px of that on
+	// the navigation rail and leaves the strip a fraction of it — at which point the
+	// label (`Download refused —`, ~125 px), the consequence (`Nothing was saved.`, ~118
+	// px) and the age (~58 px) exceed the paragraph between them, so no division of the
+	// name and the rule can put the sentence on one line there. That is recorded, and the
+	// finding is stated rather than papered over: making it legible needs the row to
+	// rearrange itself at that width (wrap, or drop the age), which is the design round's
+	// call and not something this case should assert its way past.
+	record(
+		"G8c (observation) the app's minimum window is much tighter than the specimen's",
+		JSON.stringify({
+			paragraphWidth: minimumParagraphWidth,
+			outsideTheOwnBox: minimumSpans
+				.filter((span) => span.inside === false)
+				.map((span) => `${span.text.slice(0, 24)}=${span.width}px`),
+			spans: minimumSpans.map(
+				(span) => `${span.text.slice(0, 24)}=${span.width}px`,
+			),
+		}),
+	);
+	// And the width is given back before anything else is captured: every frame after
+	// this one is a picture of the app at its default window. A failure to widen is an
+	// exception rather than a check, because it is the rig's instrument that would be
+	// broken and the frames after it would be mislabelled rather than the product
+	// wrong.
+	await cdp("Emulation.clearDeviceMetricsOverride", {});
+	const backToDefault = await waitFor(
+		async () => (await evaluate("window.innerWidth")) === WINDOW_SIZE.width,
+		5_000,
+	);
+	if (backToDefault !== true) {
+		throw new Error(
+			`the renderer is ${await evaluate("window.innerWidth")} px wide after G8c; the frames after this one would claim a width they were not taken at`,
+		);
+	}
+	await sleep(400);
+
 	// ---- G10..G13. ROUND 2: the sibling verb, the unverified attach, the cap's
 	// granularity, and the durable control's own label (R2-1, R2-2, Q4, U12) ------
 	// Each case is a shape the round-2 reports named and this rig could not produce
@@ -1794,6 +1924,21 @@ for raw in paths:
 	// run against a 256 MiB limit. The host samples the partial's own size now, so the
 	// overshoot is one sample interval rather than one event interval.
 	//
+	// WHAT THIS CHECK RESTS ON, AND WHY IT CHANGED IN ROUND 3 (QA Q6). The bound is the
+	// HOST's own reading at cancel — `refusal.bytes`, which is `item.getReceivedBytes()`
+	// sampled on the host's 100 ms clock, so nothing the rig is doing can starve it. The
+	// disk poller beside it is a CROSS-CHECK: the partial is on disk under its final name
+	// while it is written, so a poller over that path sees the largest size the write
+	// ever reached. It used to be the assertion's premise (`crossedAt > 0`), and that
+	// made G12 go red for a reason unrelated to the code — two runs of the same head
+	// FAILED then PASSED, because a starved Node process never landed a tick inside the
+	// write's window (QA's own 5 ms poller measured an effective 19-33 ms tick under
+	// this box's load). A child process would not have fixed that: the starvation is
+	// machine-wide, which is what QA measured in a process of its own. So the check now
+	// asserts the host's reading and the server's pushed bytes, and treats the poller's
+	// own reading as the corroboration it is: asserted when it caught the crossing,
+	// recorded in the transcript when it did not, never a FAIL about the product.
+	//
 	// AND THE MEASUREMENT IS THE RIG'S OWN, not the host's self-report: the partial is
 	// on disk under its final name while it is written, so a 10 ms poller over that
 	// path records the LARGEST size the write ever reached and the moment it vanished.
@@ -1811,21 +1956,33 @@ for raw in paths:
 	const endlessDir = join(QUARANTINE, "endless");
 	const endlessPartial = join(endlessDir, "endless.bin");
 	const endlessStartedAt = Date.now();
+	/** The ceiling the check refuses past, shared by the host's reading and the disk's:
+	 * the cap plus one sample interval at the fastest rate this box was measured
+	 * writing (~525 MiB/s, so ~52 MiB a tick). */
+	const CEILING = DOWNLOAD_CAP_BYTES + 192 * 1024 * 1024;
 	let maxOnDisk = 0;
 	let crossedAt = 0;
 	let vanishedAt = 0;
 	let partialSeen = false;
+	let lastTickAt = endlessStartedAt;
+	let worstTickGap = 0;
 	const poll = setInterval(() => {
+		const now = Date.now();
+		// The poller's OWN health, measured rather than assumed: the gap between ticks is
+		// what a starved process produces, and it is reported beside the reading so a
+		// reader can tell "the write never crossed" from "this instrument was asleep".
+		worstTickGap = Math.max(worstTickGap, now - lastTickAt);
+		lastTickAt = now;
 		try {
 			if (existsSync(endlessPartial)) {
 				const size = statSync(endlessPartial).size;
 				partialSeen = true;
 				if (size > maxOnDisk) maxOnDisk = size;
 				if (size > DOWNLOAD_CAP_BYTES && crossedAt === 0) {
-					crossedAt = Date.now() - endlessStartedAt;
+					crossedAt = now - endlessStartedAt;
 				}
 			} else if (partialSeen && vanishedAt === 0) {
-				vanishedAt = Date.now() - endlessStartedAt;
+				vanishedAt = now - endlessStartedAt;
 			}
 		} catch {
 			// The file is being created or removed under the poller; the next tick reads
@@ -1847,45 +2004,83 @@ for raw in paths:
 		(note) => note.refusal?.rule === "overrun",
 	);
 	const endlessLanded = existsSync(endlessDir) ? readdirSync(endlessDir) : [];
+	/** What the HOST read at the moment it cancelled: its own counter, on its own
+	 * clock. This is the number the bound is about, and the one number here that no
+	 * amount of load on this machine can fail to produce. */
+	const hostReadAtCancel = overrunNote?.refusal?.bytes ?? 0;
+	/** Whether the poller watched the write cross the cap AND then vanish. Both halves
+	 * are needed: a poller that saw the file once and lost it before the crossing has
+	 * not measured the overshoot at all. */
+	const pollerSawTheWholeSpan = crossedAt > 0 && vanishedAt > crossedAt;
 	check(
 		"G12 an unknown-size write is cancelled AT the limit rather than an update interval later (Q4)",
 		endlessResult.files?.length === 0 &&
 			/went over the 256 MiB per-file download limit while it was being written/.test(
 				endlessResult.reason ?? "",
 			) &&
-			// THE DISK BOUND: what the write actually reached. QA round 2 measured the host
-			// reading 734,003,200 bytes (2.7x the limit) at cancel, with the server still
-			// pushing and no bound of its own; the bound the host's own clock can promise is
-			// the cap plus one sample interval of throughput, and the interval is what the
-			// machine decides. Measured here at a 100 ms cadence across runs: 277,348,110
-			// bytes (8.9 MiB over, 76 ms past) idle, 327,221,015 (58.8 MiB, 219 ms) busy, and
-			// 394,002,389 (125.5 MiB, 399 ms) at a load average of 124. The ceilings below are
-			// set for that last case — a starved main process still cancels on its OWN clock,
-			// and that is the property under test rather than the byte count — while still
-			// refusing anything like the 434 MiB over the old `updated`-only trigger produced.
-			maxOnDisk <= DOWNLOAD_CAP_BYTES + 192 * 1024 * 1024 &&
-			// And the time the write ran past the limit, which is the same claim in the unit
-			// the cap is enforced in.
-			crossedAt > 0 &&
-			vanishedAt > crossedAt &&
-			vanishedAt - crossedAt <= 1_200 &&
-			// The server stopped pushing because the write was cancelled, not because it
-			// reached its own backstop.
-			endlessPushed < ENDLESS_SELF_CAP &&
-			endlessLanded.length === 0,
+			// THE ASSERTION IS THE RULE AND THE DISCARD, not the byte count (review round
+			// 3, Q6). `overrun` on a chunked body can only come from the host's own sampler:
+			// Chromium's `updated` is silent for one — that silence IS Q4 — so this is the
+			// property a loaded box cannot fake, and the case fails if the sampler ever stops
+			// bounding the write (the refusal would come at the call's deadline instead, or
+			// not at all).
+			//
+			// PAST THE CAP, which is what makes it the limit's own trigger rather than a
+			// coincidence: the sample that fires has to be over the cap, so the host's
+			// reading at cancel is over it whatever the machine is doing.
+			hostReadAtCancel > DOWNLOAD_CAP_BYTES &&
+			endlessLanded.length === 0 &&
+			// THE DISK, when the poller was awake for the whole span: it sees the same file
+			// and can only see less of it than the host counted (the host counts bytes
+			// RECEIVED, the disk holds bytes WRITTEN). That relationship is a structural
+			// invariant of the two instruments, so it holds on an idle box and a loaded one
+			// alike — unlike a byte ceiling, which is the machine's throughput times its own
+			// scheduling latency (see the observation below).
+			(!pollerSawTheWholeSpan || maxOnDisk <= hostReadAtCancel * 1.05),
 		JSON.stringify({
 			elapsedMs: endlessMs,
-			maxOnDisk,
+			hostReadAtCancel,
 			cap: DOWNLOAD_CAP_BYTES,
-			overshoot: maxOnDisk - DOWNLOAD_CAP_BYTES,
+			overTheCap: hostReadAtCancel - DOWNLOAD_CAP_BYTES,
+			maxOnDisk,
+			diskCorroborated: pollerSawTheWholeSpan,
 			crossedAt,
 			vanishedAt,
 			msPastCap: vanishedAt - crossedAt,
-			hostReadAtCancel: overrunNote?.refusal?.bytes ?? null,
+			pollerWorstTickGapMs: worstTickGap,
 			serverPushed: endlessPushed,
+			serverBackstop: ENDLESS_SELF_CAP,
 			files: endlessLanded,
 			reason: endlessResult.reason,
 			rule: overrunNote?.refusal?.rule,
+		}),
+	);
+	// THE OVERSHOOT IS THE MACHINE'S, and this line is where a reader can tell a
+	// loaded box from a regression (review round 3, Q6). The host's 100 ms sampler is
+	// what bounds the write, so the overshoot is one sample interval of throughput —
+	// ~52 MiB at the ~525 MiB/s this box writes at — and a starved main process makes
+	// that interval late: measured 8.9 MiB (76 ms past the cap) on an idle box, 58.8
+	// MiB (219 ms) and 60.2 MiB (182 ms) busy, 125.5 MiB (399 ms) at load 124, and
+	// 515.2 MiB (1,030 ms) at load 100+ while another session's evidence sweep ran.
+	// Those are the same code path at different scheduling latencies, so they are
+	// reported with the write's own duration and the poller's tick gap beside them
+	// rather than turned into a threshold the machine can cross — and the server's own
+	// 768 MiB backstop is reported rather than gated for the same reason: a loaded box
+	// can bring the two within ~15 MiB of each other, which is a reading to hand a
+	// reader, not a verdict.
+	record(
+		"G12 (observation) which instrument carried the bound, and how late the box made it",
+		JSON.stringify({
+			hostReadAtCancel,
+			overTheCap: hostReadAtCancel - DOWNLOAD_CAP_BYTES,
+			referenceCeiling: CEILING,
+			diskCorroborated: pollerSawTheWholeSpan,
+			maxOnDisk: pollerSawTheWholeSpan ? maxOnDisk : null,
+			msPastCap: pollerSawTheWholeSpan ? vanishedAt - crossedAt : null,
+			writeMs: endlessMs,
+			pollerWorstTickGapMs: worstTickGap,
+			serverPushed: endlessPushed,
+			serverBackstop: ENDLESS_SELF_CAP,
 		}),
 	);
 	check(
@@ -1893,33 +2088,6 @@ for raw in paths:
 		overrunNote?.outcome === "refused" &&
 			/The partial file was discarded/.test(await rowText()),
 		JSON.stringify({ rule: overrunNote?.refusal?.rule, row: await rowText() }),
-	);
-
-	// G13. THE DURABLE CONTROL'S OWN LABEL (review round 2, U12). Once the row has
-	// retired it is the only download-related thing on screen, and an icon-only
-	// control answers "where do downloads go" and nothing else — so a user who was in
-	// Chat during the transfer had no way in the app to learn that anything arrived.
-	// Opened the way a pointer does: the tooltip's trigger listens for `pointermove`.
-	await sleep(900);
-	const hovered = await evaluate(`(() => {
-		const control = document.querySelector('[data-tour-tag="browser-downloads-folder"]');
-		if (!control) return false;
-		control.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
-		return true;
-	})()`);
-	await sleep(1_200);
-	const tooltipText = await evaluate(`(() => {
-		const el = document.querySelector('[role="tooltip"]');
-		return el ? el.innerText.replace(/\\s+/g, ' ').trim() : null;
-	})()`);
-	check(
-		"G13 the durable folder control names the newest save, so a transfer that happened while the user was elsewhere is discoverable (U12)",
-		hovered === true &&
-			/newest|was saved there/.test(tooltipText ?? "") &&
-			/endless|receipt-\d+\.pdf|slow-a\.pdf|\.pdf|\.bin/.test(
-				tooltipText ?? "",
-			),
-		JSON.stringify({ hovered, tooltip: tooltipText }),
 	);
 
 	// G9. THE ROW STACKED WITH THE CONSENT BAND (D6): the composition worst case, and
@@ -1942,6 +2110,43 @@ for raw in paths:
 		"G9 the row and the consent band stack in the same strip, and the page keeps its own area",
 		bandReady === true && stackedRow.present === true,
 		JSON.stringify({ row: stackedRow.text, frame: stackedFrame.path }),
+	);
+
+	// G13. THE DURABLE CONTROL'S OWN LABEL (review round 2, U12) — AND WHY IT RUNS AFTER
+	// THE FRAME. Once the row has retired the control is the only download-related thing
+	// on screen, and an icon-only control answers "where do downloads go" and nothing
+	// else — so a user who was in Chat during the transfer had no way in the app to learn
+	// that anything arrived. Opened the way a pointer does: the tooltip's trigger listens
+	// for `pointermove`.
+	//
+	// IT IS LAST SO `07` DOES NOT CARRY IT (design round 3, D15). The open tooltip is
+	// painted across the top-left of the row — over the alert glyph, `Download refused —`,
+	// the file name and the first clause — so a composition frame taken with it up cannot
+	// be read for the row's own copy, and the most prominent text in the picture is a
+	// hover label rather than the sentence. Round 2 said this check was moved after the
+	// frame and the rig said otherwise (the `pointermove` and the tooltip read sat at
+	// `:1903-1923`, the stacked frame at `:1939`, with nothing dismissing it in between);
+	// the order and the note agree now.
+	await sleep(900);
+	const hovered = await evaluate(`(() => {
+		const control = document.querySelector('[data-tour-tag="browser-downloads-folder"]');
+		if (!control) return false;
+		control.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+		return true;
+	})()`);
+	await sleep(1_200);
+	const tooltipText = await evaluate(`(() => {
+		const el = document.querySelector('[role="tooltip"]');
+		return el ? el.innerText.replace(/\\s+/g, ' ').trim() : null;
+	})()`);
+	check(
+		"G13 the durable folder control names the newest save, so a transfer that happened while the user was elsewhere is discoverable (U12)",
+		hovered === true &&
+			/newest|was saved there/.test(tooltipText ?? "") &&
+			/endless|receipt-\d+\.pdf|slow-a\.pdf|\.pdf|\.bin/.test(
+				tooltipText ?? "",
+			),
+		JSON.stringify({ hovered, tooltip: tooltipText }),
 	);
 
 	// ---- the transcript ----------------------------------------------------

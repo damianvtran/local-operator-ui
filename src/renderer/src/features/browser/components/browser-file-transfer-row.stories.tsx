@@ -123,7 +123,9 @@ const SENT: TransferNoteView = {
 };
 
 /** A long name at the narrow window, which is the shape D3 asked to see: the name
- * elides and the consequence does not. */
+ * elides and the consequence does not. Since design round 3 (D14) the name is also
+ * the span that YIELDS, so at 800 px the name is heavily clipped and the reason
+ * beside it reads in full — the same fixture now photographs both halves. */
 const LONG_NAME: TransferNoteView = {
 	name: "quarterly-financial-statements-and-notes-2026-q3-final-v7.pdf",
 	count: 1,
@@ -216,7 +218,10 @@ export const Sent: Story = {
 };
 
 /** The long name at the declared minimum window, which is the frame D3 asked for:
- * the name truncates, the rule truncates after it, and "Nothing was saved." stays. */
+ * the consequence stays whole and, since design round 3 (D14), the RULE beside it
+ * stays legible at this width — the name is the span that yields now, so the file
+ * name is what clips and `is an executable/script type.` is what survives. The rig's
+ * `G8c` measures the same three spans against the app itself at this width. */
 export const LongNameAtMinimumWindow: Story = {
 	args: { transfers: activity([LONG_NAME]), onReveal: () => {} },
 	render: (args) => (

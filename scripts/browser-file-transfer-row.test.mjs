@@ -176,6 +176,7 @@ async function open(t, props) {
 			text: span.textContent.trim(),
 			hidden: span.getAttribute("aria-hidden") === "true",
 			className: span.className,
+			title: span.getAttribute("title"),
 		}));
 	return {
 		container,
@@ -368,7 +369,21 @@ test("the in-flight row names the directory it opens (review round 2, D12)", asy
 	);
 });
 
-test("the refusal's name span is capped, so a long name cannot clip the reason to a fragment (review round 2, D11)", async (t) => {
+test("the refusal's NAME is the span that yields and its RULE keeps its room (review rounds 2 D11 / 3 D14)", async (t) => {
+	// ONE SENTENCE, TWO ROUNDS, PULLING IN OPPOSITE DIRECTIONS. Round 2 (D11) found the
+	// first failure: the name was only shrinkable, so a long name ate the line and the
+	// rule — the only statement of WHY the file was refused — clipped to `is an exec…`.
+	// Round 3 (D14) found the cost of that fix: `max-w-[32ch] shrink-0` is an ABSOLUTE
+	// 237.5 px at every width, so at the app's 800 px minimum the rule gave up every px
+	// of the narrowing and read `is …` — a fragment again, by the other span's hand.
+	//
+	// What both rounds want is a RANK rather than a fixed width: the name is capped so
+	// it cannot eat the line at the app's default window, it yields FIRST when the row
+	// narrows, and the rule is floored so it cannot be reduced below a readable clause.
+	//
+	// jsdom has no layout engine, so this pins the RANK (which span shrinks, which span
+	// is floored) and that the rule is recoverable in full from its own `title`. The
+	// geometry is `G8b`/`G8c` against the built app.
 	const refused = await open(t, {
 		transfers: activity([
 			note({
@@ -386,13 +401,36 @@ test("the refusal's name span is capped, so a long name cannot clip the reason t
 	assert.ok(name, "the name is its own span");
 	assert.match(
 		name.className,
-		/max-w-\[32ch\]/,
-		"the name is capped rather than merely shrinkable, which is what left the rule 74px",
+		/max-w-\[min\(32ch,45%\)\]/,
+		"the name stays capped at the app's default window, which is what round 2's D11 asked for — and proportionally, so a row too narrow for its own sentence is not handed the name's px as well (D14)",
 	);
 	assert.match(
 		name.className,
-		/shrink-0/,
-		"and it cannot be pushed wider by the rule beside it",
+		/min-w-\[min\(6ch,20%\)\]/,
+		"and the name does not VANISH when it yields: a zero-width name is a layout bug rather than a clip",
+	);
+	assert.ok(
+		!/shrink-0/.test(name.className),
+		"and the name YIELDS: an absolute cap is what took every px of the narrowing from the rule (D14)",
+	);
+	const rule = refused
+		.spans()
+		.find((span) => span.text.startsWith("is an executable"));
+	assert.ok(rule, "the rule is its own span");
+	assert.match(
+		rule.className,
+		/min-w-\[min\(24ch,50%\)\]/,
+		"the rule keeps a floor, so the reason cannot be clipped to a fragment (D14)",
+	);
+	assert.match(
+		rule.className,
+		/truncate/,
+		"and it still clips rather than overflowing the row when a longer rule needs more room",
+	);
+	assert.equal(
+		rule.title,
+		"is an executable/script type.",
+		"the full rule rides the span's own title, so a clipped clause is still recoverable",
 	);
 });
 
