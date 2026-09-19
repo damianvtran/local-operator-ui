@@ -17,13 +17,12 @@ PATH="$HOME/.local/bin:$PATH" \
 ```
 
 `after` is this branch's head, built with `pnpm build` from the same tree. The
-`lop` on `PATH` for the real-daemon scene is the machine's own launcher:
-**`lop` v0.59.6** (`~/.local/bin/lop` → `~/.local/share/lop/current/bin/lop`).
+`lop` on `PATH` for the real-daemon scene is the machine's own launcher
+(`~/.local/bin/lop`); the daemon's own record reports its version, `0.59.7`.
 
-The rig writes one `--label`-keyed summary per invocation, so the two runs' files
-are kept separately (`after-frames-any-daemon.json`,
-`after-frames-other-principal.json`) and merged into `after-frames.json` so a
-reader sees both scenes in one document. Nothing else about the runs is edited.
+The rig keeps one record per scene (`after-frames-any-daemon.json`,
+`after-frames-other-principal.json`) and merges them into `after-frames.json`, so a
+reader sees both scenes in one document and re-running one cannot drop the other's.
 
 ## `after-any-daemon-*.png` — R1: a real `lop serve` the app did not start
 
@@ -37,7 +36,7 @@ are in `after-frames.json`:
   `Claimed the desktop plane on http://127.0.0.1:46140.`;
 - the **daemon's** own serve record, read back after the claim, reports
   `desktop: true` with the `claim_key` it now accepts, its `instance_id`, its
-  `version` (`0.59.6`) and its pid — i.e. the daemon's own statement that this
+  `version` (`0.59.7`) and its pid — i.e. the daemon's own statement that this
   plane is governed;
 - the daemon's own access log carries `POST /v1/desktop/claim` → `200`
   (`claimInDaemonLog: true`).
@@ -53,8 +52,12 @@ config directory: a fresh `claim_key` (`successorClaimKeyIsFresh: true`) and a
 plane that is shut until somebody claims it, which is what a `lop` build swap
 leaves behind. Nothing touches the app.
 
-- `...-swap-during.png` is the app after the swap and before it has repaired: the
-  connectivity band says the daemon's process is gone, and the list is still
+- `...-swap-during.png` is the app after the daemon is gone and before the
+  successor exists — **waited for rather than sampled**, because a frame taken the
+  instant the process dies photographs an app that still believes it is attached,
+  byte-identical to the repaired frame. This is the state the band exists for
+  (`Not connected to a Local Operator server. If one is still running, the app
+  reconnects to it on its own. The daemon's process is gone.`), with the list still
   showing what it last knew. **No surface claims the server is old** — that is the
   assertion the scene makes (`assertNoVersionBlame`) and the falsifiable prediction
   of design § 4.
@@ -89,8 +92,8 @@ It is asserted, not described: nothing in the frame renders the daemon's own pro
   through the desktop plane — which the governed daemon refuses, measured in this
   very scene (the row click lands; the pane never mounts). The other route to that
   state, the swap, closes within the renderer's own capability poll: the app
-  re-pairs in about thirty seconds, so the pane's gate does not stay closed long
-  enough to photograph. The half of the rule that is decidable is pinned by
+  re-pairs on its own, so the pane's gate does not stay closed long enough to
+  photograph. The half of the rule that is decidable is pinned by
   `scripts/backend-error-surfaces.test.mjs` — `backendPairingSentence` over every
   cause, and `desktopFeatureState` returning `unpaired` rather than
   `below-version` for a closed plane.

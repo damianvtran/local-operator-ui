@@ -56,6 +56,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -1092,6 +1093,36 @@ async function sceneAnyDaemon() {
 		30_000,
 	);
 
+	/*
+	 * THE PRE-REPAIR FRAME, taken here rather than after the successor starts, and the
+	 * reason is measured: the app re-claims a successor within seconds of its record
+	 * appearing, so a frame taken after that launch photographed the REPAIRED state
+	 * twice (two byte-identical frames for a scene whose point is the difference).
+	 * This is the condition the band exists for - a server this app was attached to
+	 * that is gone - and it is also the moment a reader can check that no surface
+	 * blames a version.
+	 */
+	/*
+	 * WAITED FOR, not sampled: the app's probe cadence is ten seconds, so a frame
+	 * taken the instant the daemon dies photographs an app that still believes it is
+	 * attached - byte-identical to the repaired frame, and evidence of nothing. What
+	 * this scene owes is the state the band exists for, so it waits for the app to
+	 * notice (bounded, and recorded if it never does).
+	 */
+	let during = null;
+	await waitUntil(
+		async () => {
+			during = await readPage(debugPort);
+			return during.banner ? during : null;
+		},
+		"the app never noticed the daemon it was attached to had gone",
+		40_000,
+	).catch(async () => {
+		during = await readPage(debugPort);
+	});
+	assertNoVersionBlame(during, "any-daemon(swap, before the successor)");
+	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-swap-during.png`));
+
 	const successor = launch("lop", ["serve", "--port", String(port)], daemonEnv);
 	const successorRecord = join(
 		configDir,
@@ -1105,20 +1136,6 @@ async function sceneAnyDaemon() {
 		60_000,
 	);
 	const successorKey = JSON.parse(readFileSync(successorRecord, "utf8")).claim_key;
-
-	/*
-	 * The frame the operator took, one surface down: the app after the swap and
-	 * before it has repaired, with the band naming the condition and the list still
-	 * showing what it last knew.
-	 *
-	 * The PANE is not in this frame, and the reason is measured rather than assumed: a
-	 * pane states its own condition only while a conversation is open, opening one
-	 * needs a desktop read, and this app has just been refused by the daemon it is
-	 * pointed at - so the pane cannot be brought into the state this scene is about
-	 * (see the set's README).
-	 */
-	const during = await readPage(debugPort);
-	await capture(debugPort, join(OUT, `${LABEL}-any-daemon-swap-during.png`));
 
 	/*
 	 * NO USER ACTION: the app must re-claim on its own. The probe tick runs every 10 s
@@ -1525,6 +1542,26 @@ try {
 } finally {
 	for (const child of children) await stop(child);
 	reapScratchProfiles();
+	/*
+	 * ONE RECORD PER SCENE, merged on write.
+	 *
+	 * WHY: a scene is a launch of its own (it has to be - each needs an isolated HOME,
+	 * config dir and user-data-dir), so a second scene's run overwrote the first one's
+	 * summary and left the committed `after-frames.json` describing only whichever
+	 * scene ran last. Rebuilding it from every scene's own record means re-running one
+	 * scene cannot drop another's, and every frame keeps a machine-readable account of
+	 * the run that produced it.
+	 */
+	writeFileSync(
+		join(OUT, `${LABEL}-frames-${ONLY}.json`),
+		JSON.stringify(summary, null, 2),
+	);
+	for (const entry of readdirSync(OUT)) {
+		if (!entry.startsWith(`${LABEL}-frames-`) || !entry.endsWith(".json")) continue;
+		const other = JSON.parse(readFileSync(join(OUT, entry), "utf8"));
+		for (const [name, value] of Object.entries(other.scenes ?? {}))
+			summary.scenes[name] = value;
+	}
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),
 		JSON.stringify(summary, null, 2),
