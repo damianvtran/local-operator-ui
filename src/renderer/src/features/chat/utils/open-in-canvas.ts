@@ -26,13 +26,18 @@
  * - it falls back to the OS through a local `fallbackAction` that swallows the
  *   reason, where a link's fallback is `openLocalTarget` and reports itself.
  *
- * THE PROBE IS THE CACHE, AND THAT IS A DELIBERATE BOUND rather than an
- * oversight. A press that arrived on a link the reader hovered has that path's
- * answer already (`link-actions.ts` caches it on reveal, and the toolbar's
- * liveness is learned there so a row is not a stat storm), so this reads it and
- * does not ask again. `null` - nothing known - is NOT treated as a reason to
- * refuse: the document is built without a probe's facts and the canvas renders
- * its own state, which is the optimistic direction `probeTarget` documents.
+ * THE PRESS ASKS FOR ITSELF, AND THE CACHE IS ONLY ITS FALLBACK (`askFresh`). A
+ * hover warms `link-actions.ts`'s cache - the toolbar's liveness is learned there
+ * so a row is not a stat storm - but a cached positive is a fact about a MOMENT,
+ * and round 2's QA found the cost of trusting it: hover a link, delete the file,
+ * press it, and the stale `exists: true` opened a tab onto nothing where the fresh
+ * answer refuses and hands the path to the OS. The cache is read here for exactly
+ * two things: the fallback when there is no bridge to ask, and the facts that come
+ * with an answer (the resolved spelling, the size, the mtime).
+ *
+ * `null` - nothing known at all - is NOT treated as a reason to refuse: the
+ * document is built without a probe's facts and the canvas renders its own state,
+ * which is the optimistic direction `probeTarget` documents.
  * What the cached answer is used for is the one case where opening would be a
  * lie: a path the probe already knows is not a file (a directory, or one that
  * is gone) gets no tab, and the caller keeps today's OS behaviour instead.
@@ -52,36 +57,11 @@ import type { CanvasPane } from "./canvas-pane";
 import { getFileTypeFromPath } from "./file-types";
 import { getFileName } from "./get-file-name";
 import { type ProbedTarget, forgetProbe, probeStateFor } from "./link-actions";
-import { READ_ENCODING, viewerFor } from "./viewer-routing";
-
-/**
- * The ceiling on the bytes a press reads INTO the document.
- *
- * One mebibyte, and the number is about the store rather than about reading:
- * `canvas-store` persists its documents to `localStorage` with no `partialize`,
- * so a document's `content` is a persisted string, base64 inflates it by about a
- * third, and the whole app shares a quota of roughly 5 MB.
- *
- * ABOVE IT THE PRESS REFUSES (`return false`), which is the contract the whole
- * module is built on: the caller falls back to the OS hand-off and its own
- * sentence, exactly as it does for a `.zip` or a directory. The first version of
- * this bound opened the file as a POINTER instead - a document with `sizeBytes`
- * and no bytes, justified as "the shape every Files-panel mention has, and the
- * viewer reads on demand" - and that justification was false twice over: a
- * mention's viewer is the tile flow rather than this press, and for the three
- * kinds this cap covers (`utf-8`/`base64`: markdown, code, spreadsheet, html) the
- * viewer renders `document.content` and reads nothing on demand. Round 2 measured
- * the cost: an empty editor with a normal `Modified` stamp, and, for a
- * spreadsheet, `Workbook is empty` thrown from the sheet viewer the moment the
- * reader left the tab - an ErrorBoundary over the whole window. A refusal is
- * honest about what this press can do; a blank document is not.
- *
- * It is a bound this press needs because a transcript link can name any path an
- * agent wrote. The Files panel's own click still reads uncapped - that is its own
- * change, not this one's (`docs/design/chat-link-affordances.md` § 10 records it) -
- * and this constant is where the ceiling is enforced as well as stated.
- */
-const MAX_EAGER_READ_BYTES = 1024 * 1024;
+import {
+	MAX_EAGER_READ_BYTES,
+	READ_ENCODING,
+	viewerFor,
+} from "./viewer-routing";
 
 /**
  * Whether this pane can show this path at all.
@@ -188,17 +168,38 @@ export async function openPathInCanvas(
 	const identity = known?.resolved ?? path;
 
 	/*
+	 * AN OPEN DOCUMENT WINS OVER EVERYTHING BELOW (review round 3, U8b).
+	 *
+	 * The document may already be in this pane's canvas - the Files panel's own
+	 * click reads uncapped, so a 9 MB spreadsheet can be sitting there open - and a
+	 * press on its link must SELECT it, not refuse it. The refusal below is about
+	 * what this press can BUILD; a document that is already built has nothing to do
+	 * with the ceiling, and refusing here would send a reader who is looking at the
+	 * file to the OS to open the same file again. It runs before the cap check for
+	 * the same reason, and it re-selects the EXISTING document rather than a freshly
+	 * built one: the store keeps the entry it has, so passing the live object back is
+	 * what keeps the reader's own edits and the viewer's own read in place.
+	 */
+	const open = useCanvasStore.getState().conversations[conversationId];
+	const existing = (open?.files ?? []).find((file) => file.id === identity);
+	if (existing) {
+		useUiPreferencesStore.getState().setCanvasOpen(true);
+		useCanvasStore.getState().addFileAndSelect(conversationId, existing);
+		return true;
+	}
+
+	/*
 	 * The same split the panel's click makes: the text kinds are read here, so the
 	 * document carries its bytes, and the kinds that read their own (`bytes`,
 	 * `range`) are handed over without them - a PDF's 40 MB must never become a
 	 * base64 string in a store that is persisted to `localStorage`.
 	 *
-	 * The read is bounded twice. Above `MAX_EAGER_READ_BYTES` the press REFUSES: a
-	 * document without bytes is an empty sheet, an empty editor and - leaving a
+	 * Above `MAX_EAGER_READ_BYTES` the press REFUSES, and that is the whole contract:
+	 * a document without bytes is an empty sheet, an empty editor and - leaving a
 	 * spreadsheet - a `Workbook is empty` throw that takes the window into the error
-	 * boundary, so there is no version of "open it anyway" worth handing over. It is
-	 * also SKIPPED when the document is already open, because the store keeps the
-	 * entry it has and re-reading would read bytes nobody looks at.
+	 * boundary, so there is no version of "open it anyway" worth handing over. The
+	 * ceiling is exported by `viewer-routing.ts` and read by the toolbar too, so the
+	 * strip does not offer a destination this `return false` would not reach.
 	 */
 	const encoding = READ_ENCODING[kind];
 	let content: string | undefined;
@@ -208,14 +209,9 @@ export async function openPathInCanvas(
 		// and no reason to claim a document whose bytes nobody read.
 		if (typeof read !== "function") return false;
 		if ((known?.sizeBytes ?? 0) > MAX_EAGER_READ_BYTES) return false;
-		const alreadyOpen = (
-			useCanvasStore.getState().conversations[conversationId]?.files ?? []
-		).some((file) => file.id === identity);
-		if (!alreadyOpen) {
-			const result = await read(path, encoding);
-			if (!result.success) return false;
-			content = result.data;
-		}
+		const result = await read(path, encoding);
+		if (!result.success) return false;
+		content = result.data;
 	}
 
 	const document = canvasDocumentForPath(identity, {

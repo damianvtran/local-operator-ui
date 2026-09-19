@@ -1317,6 +1317,102 @@ test("a file above the read ceiling is REFUSED: nothing read, nothing written", 
 	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
 });
 
+test("above the read ceiling the strip loses the canvas and says why", async () => {
+	/*
+	 * Round 3, U8a, at the toolbar rather than at the matrix: the same mounted
+	 * transcript, the same file, one difference - the probe answers 9 MB. The strip
+	 * must not offer a destination the press refuses (UX measured exactly that: a
+	 * button reading `Open in canvas` handing the file to the OS), so the canvas
+	 * action is gone and the note explains the absence, because a reader who has
+	 * learned that a `.xlsx` opens in the canvas reads a missing button as a bug.
+	 */
+	resetProbeCache();
+	resetCanvasStores();
+	await mountTranscript({ sizeBytes: 9_411_130 });
+	const report = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	await frame.dispatch(report, "focusin");
+	/* The reveal's probe is a promise; the strip's own answer lands one turn later. */
+	await act(async () => {});
+	const strip = frame.document.querySelector("[data-lo-link-toolbar]");
+	const labels = [...strip.querySelectorAll("button")].map((button) =>
+		button.getAttribute("aria-label"),
+	);
+	assert.deepEqual(
+		labels,
+		["Copy path", "Open", "Open folder", "Quote"],
+		"the canvas action must be gone when the press would refuse it",
+	);
+	assert.match(
+		strip.textContent,
+		/Too large for the canvas preview/,
+		"and the note must say why the canvas is absent",
+	);
+});
+
+test("an already-open document is SELECTED, not refused, above the ceiling too", async () => {
+	/*
+	 * Round 3, U8b. The Files panel's own click reads uncapped, so a 9 MB
+	 * spreadsheet can already be open in this pane when its link is pressed. The
+	 * ceiling is about what this press can BUILD, so a document that is already
+	 * built must win: the old order refused it and sent the reader to the OS to open
+	 * the file they were looking at. The panel's tile op runs after the mount here
+	 * because the mount clears the stores - which is also the incidental proof that
+	 * the press reads the store at press time rather than trusting anything it saw
+	 * when it rendered.
+	 */
+	resetProbeCache();
+	const { read, opened, anchor } = await renderInPane(
+		`The export is ${REPORT}.`,
+		{
+			probeFiles: async (paths) =>
+				paths.map((input) => ({
+					input,
+					resolved: resolveUserPath(input),
+					exists: true,
+					isFile: true,
+					sizeBytes: 9_411_130,
+					mtimeMs: 1_760_000_000_000,
+				})),
+		},
+	);
+	useCanvasStore.getState().addFileAndSelect(PANE, {
+		id: RESOLVED_REPORT,
+		path: RESOLVED_REPORT,
+		title: "opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		type: "spreadsheet",
+		content: "the-panels-own-read",
+	});
+	useCanvasStore.getState().setSelectedTab(PANE, null);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	const state = canvasStateFor(PANE);
+	assert.equal(
+		state.selectedTabId,
+		RESOLVED_REPORT,
+		"the open document is selected rather than refused",
+	);
+	assert.deepEqual(
+		opened,
+		[],
+		"and the OS is not asked to open what is on screen",
+	);
+	assert.deepEqual(
+		read,
+		[],
+		"and nothing is re-read: the store's own document is kept",
+	);
+	assert.equal(state.files.length, 1, "one document, not two");
+	assert.equal(
+		state.files[0].content,
+		"the-panels-own-read",
+		"and the bytes the panel read survive the press",
+	);
+	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+});
+
 test("a file deleted AFTER the hover is refused too: the press asks for itself", async () => {
 	/*
 	 * Review round 2, QA R2-2. Round 1's fix asked only when nothing was cached, so
