@@ -39,9 +39,9 @@ import {
 import { type FC, memo } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { closeDocumentBuffer } from "./close-report";
 import {
 	adoptBuffer,
-	closeBuffer,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
@@ -874,14 +874,30 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 * check driven off the store would see no change and overwrite the typing.
 	 */
 
+	/* The unmount is one call: the owner flushes a write that should happen, hands the
+	 * buffer's current words to the store's copy of this document through the port
+	 * registered above, and keeps the dirty flag while the document is held (R4-1).
+	 * On the close path the document has already left `files`, so the commit updates
+	 * nothing - and that is the point: what it must NOT do is put the document back
+	 * (see `commitCanvasDocument`), because the words are the buffer owner's and it
+	 * hands them back to the screen if the file is opened again. */
 	/*
-	 * The unmount is one call: the owner flushes a write that should happen, commits
-	 * the buffer through the port registered above (an upsert, which is what makes it
-	 * work after the document has left the store's file list - code review round 4,
-	 * R4-7), and keeps the dirty flag while the document is held (R4-1).
+	 * THE CLOSE'S REPORT (UX round 1, U1): the cleanup's own outcome is what the
+	 * reader is told when a close could not write their words - see
+	 * `close-report.ts`, which also decides whether this unmount was a close at all.
+	 *
+	 * Keyed on the document's identity FIELDS rather than on the document object:
+	 * the store hands this component a new object whenever the document changes
+	 * (every keystroke that reaches the store, every freshness apply), and an
+	 * effect keyed on the object would run its cleanup on each of those - closing,
+	 * and reporting, a document that is still open.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
-	useEffect(() => () => closeBuffer(document.id), [document.id]);
+	const documentId = document.id;
+	const documentTitle = document.title;
+	useEffect(
+		() => () => closeDocumentBuffer({ id: documentId, title: documentTitle }),
+		[documentId, documentTitle],
+	);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
