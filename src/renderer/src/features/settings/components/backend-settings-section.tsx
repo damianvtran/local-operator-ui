@@ -28,10 +28,7 @@
  *   section AND the tier its target lives in before it focuses it.
  */
 
-import {
-	BACKEND_PAIRING_SENTENCE,
-	backendLoadErrorMessage,
-} from "@shared/api/local-operator/backend-error";
+import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type {
 	BackendSetting,
 	BackendSettings,
@@ -43,11 +40,10 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DaemonPairingCause } from "../../../../../shared/backend-status";
-import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import {
 	type SettingTier,
 	allOpenTargets,
@@ -115,48 +111,6 @@ const FOCUS_ATTEMPTS = 40;
  * a key is worth being able to find.
  */
 const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
-
-/**
- * Main's pairing cause, read from the BRIDGE the app already has.
- *
- * WHY NOT `useServerHealth()` (measured): that hook's module chain reaches
- * `shared/config/app-config.ts`, which reads `import.meta.env` at module scope -
- * Vite defines it in the app and nothing defines it under esbuild, so importing
- * the hook failed `scripts/backend-settings-collapse.test.mjs` at MODULE LOAD with
- * "Cannot convert undefined or null to object" before a single render. The status
- * this surface needs is one bridge call, and reading it here keeps the Settings
- * bundle's dependencies the ones it already had. A bridge that is absent (a
- * browser-dev renderer) leaves the cause null, which is exactly the previous
- * behaviour: the composed load-error sentence.
- */
-function usePairingCause(): DaemonPairingCause | null {
-	const [cause, setCause] = useState<DaemonPairingCause | null>(null);
-	useEffect(() => {
-		const backend = window.api?.backend;
-		if (!backend?.getStatus) return;
-		let live = true;
-		const read = async () => {
-			try {
-				const status = await backend.getStatus();
-				if (!live) return;
-				const pairing = status?.pairing;
-				setCause(
-					pairing && !pairing.available ? (pairing.cause ?? "unpaired") : null,
-				);
-			} catch {
-				// A status read that fails says nothing about pairing, and a surface
-				// may not invent a cause it was not given.
-			}
-		};
-		void read();
-		const off = backend.onStatusChange?.(() => void read());
-		return () => {
-			live = false;
-			off?.();
-		};
-	}, []);
-	return cause;
-}
 
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
@@ -761,23 +715,20 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		 * control is withheld where no act exists, by the same predicate the banner
 		 * and the pane use.
 		 */
-		const pairingSentence = pairingCause
-			? BACKEND_PAIRING_SENTENCE[pairingCause]
-			: null;
-		const remedy = pairingHasRemedy(pairingCause);
+		/* One authority for both cards (Q-6): the sentence for the cause main published,
+		   and whether an act exists at all. */
+		const { sentence: pairingSentence, remedy } = pairingCardCopy(
+			pairingCause,
+			"Your settings could not be loaded.",
+			loadError,
+		);
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
 					{/* Same classifier, same remedy sentence as the compatibility banner
 					    and the providers grid. Nothing about this surface makes its
 					    diagnosis of the server different from theirs. */}
-					<span>
-						{pairingSentence ??
-							backendLoadErrorMessage(
-								"Your settings could not be loaded.",
-								loadError,
-							)}
-					</span>
+					<span>{pairingSentence}</span>
 					{/* `isFetching` on both, because either query may be the one
 					    in flight; an errored query keeps `status: "error"` through its
 					    refetch, so without this the click changes nothing on screen. */}

@@ -19,6 +19,7 @@
  */
 
 import type { DaemonPairingCause } from "../../../../../shared/backend-status";
+import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
 
@@ -495,4 +496,29 @@ export function retryDesktopQuery(
 	if (error instanceof DesktopControlError && error.status === null)
 		return false;
 	return failureCount < 1;
+}
+
+/**
+ * What a card that reports a failed read may say, and what it may offer.
+ *
+ * WHY ONE FUNCTION (review round 5, Q-6 / UX U2): two surfaces render this card - the
+ * settings page's load error and the Backend section's - and they drifted. The page kept
+ * printing "The Local Operator server is not answering." with a Retry over a daemon that
+ * IS answering, while the two bands on the same screen named the cause. So the sentence
+ * is the pairing table's for the cause main published, and the control exists only where
+ * an act does (`pairingHasRemedy`). `cause === null` means no pairing cause was
+ * published at all, which is when the transport classification's sentence is the right
+ * one and its Retry is a real act.
+ */
+export function pairingCardCopy(
+	cause: DaemonPairingCause | null,
+	fallback: string,
+	error: unknown,
+): { sentence: string; remedy: boolean } {
+	return cause === null
+		? { sentence: backendLoadErrorMessage(fallback, error), remedy: true }
+		: {
+				sentence: BACKEND_PAIRING_SENTENCE[cause],
+				remedy: pairingHasRemedy(cause),
+			};
 }

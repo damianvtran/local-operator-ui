@@ -1,7 +1,7 @@
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
-import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -17,6 +17,7 @@ import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useModels } from "@shared/hooks/use-models";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
@@ -286,6 +287,23 @@ export const SettingsPage: FC = () => {
 		error: configError,
 		refetch,
 	} = useConfig();
+
+	/*
+	 * THE CAUSE BEFORE THE SENTENCE, and at a top-level hook site rather than inside
+	 * the error branch: a hook called inside `if (configError)` changes the hook count
+	 * between renders, which is the crash review round 4 found on this card's sibling.
+	 * The words and the control both come from `pairingCardCopy`, the one authority the
+	 * Backend section's card also calls (Q-6 / UX U2): over a governed or pre-handshake
+	 * daemon the server IS answering, and this card used to call it silent while two
+	 * bands on the same screen named who holds the plane.
+	 */
+	const pairingCause = usePairingCause();
+	const { sentence: loadErrorSentence, remedy: loadErrorRemedy } =
+		pairingCardCopy(
+			pairingCause,
+			"Your settings could not be loaded.",
+			configError,
+		);
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
@@ -667,12 +685,7 @@ export const SettingsPage: FC = () => {
 						    an integer, none of which change what the user does next, so it
 						    stays on `error.message` for logs and support and out of the
 						    sentence. */}
-						<span>
-							{backendLoadErrorMessage(
-								"Your settings could not be loaded.",
-								configError,
-							)}
-						</span>
+						<span>{loadErrorSentence}</span>
 						{/* Same recovery the providers grid offers: re-ask the server in
 						    place, so a transient stall does not cost a relaunch.
 
@@ -683,15 +696,17 @@ export const SettingsPage: FC = () => {
 						    Without a pending state the frame is pixel-identical after the
 						    click -- issue 89's own "I cannot tell whether this is working
 						    or hung", one click downstream of its fix. */}
-						<Button
-							variant="secondary"
-							size="sm"
-							className="shrink-0"
-							onClick={() => void refetch()}
-							disabled={isConfigFetching}
-						>
-							{isConfigFetching ? "Retrying" : "Retry"}
-						</Button>
+						{loadErrorRemedy && (
+							<Button
+								variant="secondary"
+								size="sm"
+								className="shrink-0"
+								onClick={() => void refetch()}
+								disabled={isConfigFetching}
+							>
+								{isConfigFetching ? "Retrying" : "Retry"}
+							</Button>
+						)}
 					</div>
 				</Alert>
 			</div>
