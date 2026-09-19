@@ -214,22 +214,22 @@ export function usePaletteItems({
 	 * authenticate to still answers it, and answers with its own
 	 * `desktop_available: true`, so `canStageDraft` is satisfied by an origin every
 	 * other op of ours is refused at (QA round 1, Q-1). Main is the process that
-	 * knows — it sets `desktopAvailable` when the daemon proves it accepts this
-	 * app's bearer and never for one that did not
-	 * (`shared/backend-status.ts`, `DaemonStatusSnapshot.desktopAvailable`) — so the
-	 * machine rows ask it, and a daemon that refused the credential stops offering
-	 * a row whose panel could only repeat "Desktop authorization is required." per
-	 * section.
+	 * knows - it claims the plane and holds the bearer - and it publishes the
+	 * PAIRING record (`shared/backend-status.ts`, `DaemonStatusSnapshot.pairing`),
+	 * which is read here rather than the `desktopAvailable` boolean that used to sit
+	 * beside it: that boolean was written `true` at every attach and `false` nowhere,
+	 * so it could not report a pairing a successor had destroyed (design § 1.4,
+	 * § 5.2).
 	 *
-	 * ONLY AN EXPLICIT `false` CLOSES THE GATE. `null` is a host with no main to ask
-	 * (Storybook, the browser dev server) or an answer still in flight, and turning
+	 * ONLY AN ESTABLISHED CAUSE CLOSES THE GATE. `undefined` is a host with no main to
+	 * ask (Storybook, the browser dev server) or an answer still in flight, and turning
 	 * "nobody has answered" into "the backend refused you" would be the second
 	 * opinion this palette keeps refusing to hold — on a host with no bridge there
 	 * is no desktop transport at all, so there is nothing to mislead.
 	 */
 	const { data: serverHealth } = useServerHealth();
 	const desktopPlaneRefused =
-		serverHealth?.snapshot?.desktopAvailable === false;
+		serverHealth?.snapshot?.pairing.available === false;
 
 	/* ---------------------------- conversations ---------------------------- */
 

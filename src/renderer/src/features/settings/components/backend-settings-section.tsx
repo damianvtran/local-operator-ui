@@ -28,7 +28,7 @@
  *   section AND the tier its target lives in before it focuses it.
  */
 
-import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type {
 	BackendSetting,
 	BackendSettings,
@@ -40,6 +40,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -116,6 +117,15 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	initialFilter = "",
 }) => {
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * AT THE TOP, unconditionally (review round 4, R4-1): this used to be called
+	 * inside the `if (loadError || !settings)` branch, so the ordinary
+	 * loading→error transition rendered MORE hooks than the previous render and
+	 * threw "Rendered more hooks than during the previous render" - in exactly the
+	 * state the sentence below exists for. The hook is one bridge read; it costs
+	 * nothing to run on the loaded path and it must run on every path.
+	 */
+	const pairingCause = usePairingCause();
 	const enabled = desktopFeatureEnabled(capabilities.data, "settings");
 	const [filter, setFilter] = useState(initialFilter);
 	const [showAdvanced, setShowAdvanced] = useState(false);
@@ -693,37 +703,53 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		(capabilities.data ? null : capabilities.error) ?? settingsQuery.error;
 	if (loadError || !settings) {
 		const retrying = capabilities.isFetching || settingsQuery.isFetching;
+		/*
+		 * WHAT THIS SURFACE MAY SAY, and what it may offer.
+		 *
+		 * WHY IT ASKS MAIN RATHER THAN COMPOSING ITS OWN SENTENCE (UX round 2 and 3,
+		 * U2): with the app-managed remedy gone, this panel still printed "The Local
+		 * Operator server is not answering." over a daemon that IS answering - the
+		 * band two lines above names the true cause - and its Retry cannot change a
+		 * plane another program governs or an install older than the handshake. So
+		 * the sentence is the pairing table's for the cause main published, and the
+		 * control is withheld where no act exists, by the same predicate the banner
+		 * and the pane use.
+		 */
+		/* One authority for both cards (Q-6): the sentence for the cause main published,
+		   and whether an act exists at all. */
+		const { sentence: pairingSentence, remedy } = pairingCardCopy(
+			pairingCause,
+			"Your settings could not be loaded.",
+			loadError,
+		);
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
 					{/* Same classifier, same remedy sentence as the compatibility banner
 					    and the providers grid. Nothing about this surface makes its
 					    diagnosis of the server different from theirs. */}
-					<span>
-						{backendLoadErrorMessage(
-							"Your settings could not be loaded.",
-							loadError,
-						)}
-					</span>
+					<span>{pairingSentence}</span>
 					{/* `isFetching` on both, because either query may be the one
 					    in flight; an errored query keeps `status: "error"` through its
 					    refetch, so without this the click changes nothing on screen. */}
-					<Button
-						variant="secondary"
-						size="sm"
-						className="shrink-0"
-						onClick={() => {
-							// Retry what actually broke. On the gated path capabilities are
-							// the fault and the reason this query never ran, so re-asking
-							// only the gated query would re-fail against the same unfixed
-							// cause without ever retrying it.
-							if (capabilities.isError) void capabilities.refetch();
-							else void settingsQuery.refetch();
-						}}
-						disabled={retrying}
-					>
-						{retrying ? "Retrying" : "Retry"}
-					</Button>
+					{remedy && (
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => {
+								// Retry what actually broke. On the gated path capabilities are
+								// the fault and the reason this query never ran, so re-asking
+								// only the gated query would re-fail against the same unfixed
+								// cause without ever retrying it.
+								if (capabilities.isError) void capabilities.refetch();
+								else void settingsQuery.refetch();
+							}}
+							disabled={retrying}
+						>
+							{retrying ? "Retrying" : "Retry"}
+						</Button>
+					)}
 				</div>
 			</Alert>
 		);

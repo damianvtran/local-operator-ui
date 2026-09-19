@@ -23,26 +23,41 @@ import { AppUpdatesSection } from "./app-updates-section";
 
 const snapshot = (
 	overrides: Partial<DaemonStatusSnapshot>,
-): DaemonStatusSnapshot => ({
-	state: "attached",
-	reconnecting: false,
-	owned: false,
-	url: "http://127.0.0.1:7341",
-	instanceId: "i".repeat(43),
-	pid: 4242,
-	version: "0.54.47",
-	prefix: "/Users/you/.local/share/uv/tools/local-operator",
-	installKind: "uv-tool",
-	desktopAvailable: true,
-	failures: 0,
-	capabilityStatus: null,
-	unanswered: 0,
-	lastTransportAt: null,
-	detail:
-		"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
-	updatedAt: Date.now(),
-	...overrides,
-});
+): DaemonStatusSnapshot => {
+	const merged: Omit<DaemonStatusSnapshot, "pairing"> = {
+		state: "attached",
+		reconnecting: false,
+		owned: false,
+		url: "http://127.0.0.1:7341",
+		instanceId: "i".repeat(43),
+		pid: 4242,
+		version: "0.54.47",
+		prefix: "/Users/you/.local/share/uv/tools/local-operator",
+		installKind: "uv-tool",
+		desktopAvailable: true,
+		failures: 0,
+		capabilityStatus: null,
+		unanswered: 0,
+		lastTransportAt: null,
+		detail:
+			"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
+		updatedAt: Date.now(),
+		...overrides,
+	};
+	/*
+	 * `pairing` is DERIVED from the merged `desktopAvailable` unless a story names
+	 * it, so a fixture that flips the boolean cannot leave the two disagreeing -
+	 * the defect the record replaces, in miniature (design § 1.4).
+	 */
+	return {
+		...merged,
+		pairing:
+			overrides.pairing ??
+			(merged.desktopAvailable
+				? { available: true, cause: null }
+				: { available: false, cause: "unpaired" }),
+	};
+};
 
 /**
  * The updater surface the section reaches on mount, at the bridge's own width.

@@ -50,6 +50,8 @@ const RE_UPDATE_THE_BACKEND = /Update the backend/;
 const RE_LAST_CHATS_AND_TEAMS_THAT_LOADED = /last chats and teams that loaded/;
 const RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL =
 	/^Update the backend to use canonical chats\./;
+/** The app-managed clause that must appear in no pairing sentence (design § 3.1). */
+const RE_MANAGE_ITS_OWN_SERVER = /manage its own server/;
 
 const gateBundle = await build({
 	stdin: {
@@ -83,9 +85,19 @@ const bannerBundle = await build({
 	platform: "node",
 	write: false,
 });
-const { compatibilityBannerShown } = await import(
+const { compatibilityBannerShown, BACKEND_PAIRING_SENTENCE } = await import(
 	`data:text/javascript;base64,${Buffer.from(bannerBundle.outputFiles[0].text).toString("base64")}`
 );
+
+/**
+ * The sentence table the GATE must be reading, taken from the shipped module.
+ *
+ * Read from the module rather than copied, for the reason this file reads
+ * `compatibilityBannerShown` the same way: a case that restated the sentences
+ * would pass against its own copy while the app rendered something else, and "one
+ * cause, one sentence" is exactly the property under test (design § 11.1).
+ */
+const pairingSentences = BACKEND_PAIRING_SENTENCE;
 
 /** Records what `useDesktopCapabilities` asks React Query for. */
 const CAPTURE_KEY = "__sidebarGateTestUseQuery";
@@ -138,16 +150,20 @@ const {
  * `coveredByCompatibilityBanner` is the banner's own condition, read through the
  * predicate the call site uses.
  */
-const inputs = (over = {}) => ({
-	ready: true,
-	failed: false,
-	answered: true,
-	wasReady: true,
-	rows: 12,
-	storeFailed: false,
-	coveredByCompatibilityBanner: false,
-	...over,
-});
+const inputs = (over = {}) => {
+	const { ready = true, state, cause = null, ...rest } = over;
+	return {
+		state: state ?? (ready ? "enabled" : "unpaired"),
+		cause,
+		failed: false,
+		answered: true,
+		wasReady: true,
+		rows: 12,
+		storeFailed: false,
+		coveredByCompatibilityBanner: false,
+		...rest,
+	};
+};
 
 test("a ready gate shows the list and claims nothing about the past", () => {
 	assert.deepEqual(catalogueGate(inputs()), {
@@ -197,7 +213,10 @@ test("one statement per condition: the banner's condition silences the gate's", 
 	// predicate that silences the notice, so an uncovered withdrawal is one whose
 	// answer still claims `desktop_available` (review round 3, MINOR-2).
 	const uncovered = catalogueGate(
-		inputs({ ready: false, coveredByCompatibilityBanner: false }),
+		inputs({
+			state: "below-version",
+			coveredByCompatibilityBanner: false,
+		}),
 	);
 	assert.match(
 		uncovered.notice ?? "",
@@ -254,7 +273,7 @@ test("a first load that never opened the gate is not stale, and names the update
 	// never existed. The sentence is still owed - it is the one actionable thing
 	// here, and it is what the pre-refactor component rendered on this path.
 	const gate = catalogueGate(
-		inputs({ ready: false, wasReady: false, rows: 0 }),
+		inputs({ state: "below-version", wasReady: false, rows: 0 }),
 	);
 	assert.equal(gate.stale, false);
 	assert.equal(gate.showList, false);
@@ -273,7 +292,7 @@ test("a first load with nothing to show neither claims rows nor names a remedy",
 	// cannot produce (review round 3, MINOR-2).
 	const gate = catalogueGate(
 		inputs({
-			ready: false,
+			state: "below-version",
 			wasReady: false,
 			rows: 0,
 			coveredByCompatibilityBanner: false,
@@ -337,8 +356,53 @@ test("the store's own failure suppresses the gate sentence (the D9 rule)", () =>
 test("the version half keeps the remedy that exists", () => {
 	// A plane that IS available and merely does not advertise the catalogue is a
 	// backend to update, and that is the one place "Update the backend" is true.
-	const gate = catalogueGate(inputs({ ready: false }));
+	// The version half is named outright here: `ready: false` is the PAIRING half,
+	// and telling the two apart is the whole of this change (design § 4).
+	const gate = catalogueGate(inputs({ state: "below-version" }));
 	assert.match(gate.notice ?? "", RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL);
+});
+
+/*
+ * The pairing half of the same sentence, one case per cause - the design's rule is
+ * one cause, one sentence, and it is answerable here because the gate reads the
+ * SAME table the compatibility banner and the chat pane read. Before this, a shut
+ * gate said "Update the backend to use canonical chats" whatever the cause was,
+ * which is how the operator's pane told them their server was old when the fact
+ * was that this app held no credential for it (design § 1.3, § 4).
+ */
+test("a withdrawn gate says which PAIRING cause closed it, not that the server is old", () => {
+	const causes = [
+		"successor",
+		"governed-elsewhere",
+		"pre-handshake",
+		"credential-refused",
+		"unpaired",
+	];
+	for (const cause of causes) {
+		const gate = catalogueGate(
+			inputs({
+				state: "unpaired",
+				cause,
+				coveredByCompatibilityBanner: false,
+			}),
+		);
+		assert.ok(gate.notice, `${cause}: a withdrawn gate owes a sentence`);
+		assert.equal(
+			gate.notice,
+			pairingSentences[cause],
+			`${cause}: the sentence must be the shared table's, not a second copy of it`,
+		);
+		assert.doesNotMatch(
+			gate.notice,
+			RE_MANAGE_ITS_OWN_SERVER,
+			`${cause}: a pairing cause may not ask the user to make the app manage the server`,
+		);
+		assert.doesNotMatch(
+			gate.notice,
+			RE_UPDATE_THE_BACKEND,
+			`${cause}: no pairing cause may be worded as a version problem`,
+		);
+	}
 });
 
 test("the capabilities query watches the open plane, and re-negotiates a shut one", () => {

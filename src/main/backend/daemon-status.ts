@@ -72,6 +72,11 @@ import type {
 	DaemonConnectionState,
 	DaemonStatusSnapshot,
 } from "../../shared/backend-status";
+import {
+	DAEMON_PAIRED,
+	DAEMON_UNPAIRED,
+	type DaemonPairing,
+} from "../../shared/backend-status";
 import type { UnreachableCause } from "./discovery";
 
 /** Consecutive identity-failing probes before `detached` (design §5). */
@@ -175,7 +180,14 @@ export class DaemonStateMachine {
 	private identity: DaemonIdentity | null = null;
 	private failures = 0;
 	private capabilityStatus: number | null = null;
-	private desktopAvailable = false;
+	/**
+	 * Whether this app is paired with the daemon it can see, and why not when it
+	 * is not. ONE field rather than the pair it used to be (`desktopAvailable`,
+	 * written `true` at three sites and `false` at none): the value and its cause
+	 * are one fact, and a producer that can only set half of it is how the app
+	 * went on claiming a pairing a successor had already destroyed.
+	 */
+	private pairing: DaemonPairing = DAEMON_UNPAIRED;
 	private detail = "Looking for a Local Operator daemon.";
 	private updatedAt: number;
 	private detachedSince: number | null = null;
@@ -199,6 +211,18 @@ export class DaemonStateMachine {
 		this.backoffMs = REATTACH_BACKOFF_MS;
 		this.state = "attached";
 		this.detail = `Connected to the daemon on ${identity.url} (pid ${identity.pid}, v${identity.version}).`;
+		/*
+		 * PAIRED, and reset here rather than at each caller.
+		 *
+		 * Every path that reaches `attach` has just proved the app may drive this
+		 * daemon - a claim the daemon accepted, a bearer `probeCandidate` accepted, a
+		 * token this app spawned the child with, or the deprecated adoption path's own
+		 * `authenticatesAgainstBackend` - so the pairing is the one fact `attach`
+		 * asserts, and NOT resetting it is the second half of the defect this type
+		 * replaces: a pairing broken by a `lop` build swap stayed reported as good
+		 * because nothing on the way back in cleared it.
+		 */
+		this.pairing = DAEMON_PAIRED;
 		this.updatedAt = this.now();
 	}
 
@@ -210,9 +234,15 @@ export class DaemonStateMachine {
 		this.updatedAt = this.now();
 	}
 
-	/** Record a capability answer - never a liveness answer. */
-	setDesktopAvailable(available: boolean): void {
-		this.desktopAvailable = available;
+	/**
+	 * Record this app's PAIRING with the daemon, cause and all.
+	 *
+	 * The replacement for `setDesktopAvailable(boolean)`, which could only ever be
+	 * called with `true` in practice and therefore could not report the one thing
+	 * the renderer needed: which fact made the app unusable (design § 1.4, § 5.2).
+	 */
+	setPairing(pairing: DaemonPairing): void {
+		this.pairing = pairing;
 		this.updatedAt = this.now();
 	}
 
@@ -555,7 +585,11 @@ export class DaemonStateMachine {
 			version: this.identity?.version ?? null,
 			prefix: this.identity?.prefix ?? null,
 			installKind: this.identity?.installKind ?? null,
-			desktopAvailable: this.desktopAvailable,
+			// DERIVED, never set independently: the pairing record is the value, and
+			// this field is its boolean projection for the callers that only need the
+			// bit. One assignment, so the two cannot disagree.
+			desktopAvailable: this.pairing.available,
+			pairing: this.pairing,
 			failures: this.failures,
 			capabilityStatus: this.capabilityStatus,
 			/**
