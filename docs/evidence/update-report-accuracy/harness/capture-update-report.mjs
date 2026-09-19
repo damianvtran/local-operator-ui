@@ -39,7 +39,14 @@
  *   pnpm build
  *   node docs/evidence/update-report-accuracy/harness/capture-update-report.mjs \
  *     --scenario stale-record --expect-record=present \
- *     --out docs/evidence/update-report-accuracy/stale-record-before --keep
+ *     --out /tmp/lo-update-report-stale-record --keep
+ *
+ * `--out` IS A SCRATCH DIRECTORY, and the example above names one because this
+ * scenario writes `<scenario>.png` beside whatever else the run keeps - so an
+ * `--out` under `docs/evidence/` leaves an untracked PNG among the committed
+ * frames, which the evidence gate would not catch either: it walks `*.webp`
+ * (review round 2, R2-2). The same holds for the unattended-landing probes. Only
+ * the `<theme>.webp` a run produces by hand is ever copied into the tree.
  *
  * `--expect-record` / `--expect-notice` are the run's own claim, so a run that
  * photographs the other build's behaviour FAILS rather than committing the wrong

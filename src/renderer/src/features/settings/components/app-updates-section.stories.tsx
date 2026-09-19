@@ -357,6 +357,14 @@ const pressCheckForUpdates = () => {
 /**
  * The press, and the shutter.
  *
+ * `press: false` IS FOR A STATE WHOSE SUBJECT IS ALREADY ON SCREEN WITHOUT ONE
+ * (design review round 2, D3). In a production build the press raises the
+ * "Server update available" panel, and at this surface's own 900x572 that panel
+ * sits over the card's top-right - including the tail of the retained-record
+ * banner's meta line, which is the sentence such a state is photographed for. The
+ * shutter still waits for `expect`, so a frame taken without a press is a frame
+ * whose sentence was read, not a frame taken early.
+ *
  * `expect` is the text this verdict's own press is supposed to put on screen -
  * the notification's offer when the server trails, the affirmation sentence
  * when the whole check proved both channels current - and the shutter waits for
@@ -364,33 +372,38 @@ const pressCheckForUpdates = () => {
  * photograph a press that produced nothing, and the wait is a property of the
  * story's script rather than of how long the harness happened to sleep.
  */
-const ReportFrame: FC<{ expect: string }> = ({ expect }) => {
+const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
+	expect,
+	press = true,
+}) => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
 		const settle = async () => {
-			/*
-			 * `UpdateNotification` and the button both subscribe in passive
-			 * effects. Pressing before those land would fire the events into an
-			 * empty registry, which is a frame of the harness rather than of the
-			 * app, and it would look like the bug being absent rather than like
-			 * the fixture being early.
-			 */
-			for (let i = 0; i < 200; i++) {
-				const counts = updaterRef()?.listenerCounts();
-				if ((counts?.serverOffered ?? 0) > 0) break;
-				await new Promise((resolve) => setTimeout(resolve, 20));
+			if (press) {
+				/*
+				 * `UpdateNotification` and the button both subscribe in passive
+				 * effects. Pressing before those land would fire the events into an
+				 * empty registry, which is a frame of the harness rather than of the
+				 * app, and it would look like the bug being absent rather than like
+				 * the fixture being early.
+				 */
+				for (let i = 0; i < 200; i++) {
+					const counts = updaterRef()?.listenerCounts();
+					if ((counts?.serverOffered ?? 0) > 0) break;
+					await new Promise((resolve) => setTimeout(resolve, 20));
+				}
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => resolve(null)),
+				);
+				/*
+				 * The press is the subject, so it happens before anything is
+				 * photographed, and the shutter waits for the text the verdict produces.
+				 * On the pre-fix tree the affirmation is committed in the same pass as
+				 * the panel, so both are up by the time the offer lands.
+				 */
+				await pressCheckForUpdates();
 			}
-			await new Promise((resolve) =>
-				requestAnimationFrame(() => resolve(null)),
-			);
-			/*
-			 * The press is the subject, so it happens before anything is
-			 * photographed, and the shutter waits for the text the verdict produces.
-			 * On the pre-fix tree the affirmation is committed in the same pass as
-			 * the panel, so both are up by the time the offer lands.
-			 */
-			await pressCheckForUpdates();
 			for (let i = 0; i < 100; i++) {
 				if (document.body.textContent?.includes(expect)) {
 					break;
@@ -683,5 +696,12 @@ export const RecordKeptWhileTargetAhead: Story = {
 			attempts: 2,
 		},
 	},
-	render: () => <ReportFrame expect="Version 0.29.5 is running" />,
+	/*
+	 * NO PRESS: the banner this state exists for is on screen from the mount read, and
+	 * a press would put the offer panel over the card's top-right and the banner's meta
+	 * tail in the production build (design review round 2, D3).
+	 */
+	render: () => (
+		<ReportFrame expect="Version 0.29.5 is running" press={false} />
+	),
 };

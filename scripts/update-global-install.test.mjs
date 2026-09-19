@@ -797,23 +797,37 @@ test("a pair the marker rule calls a failure is never a retirement", () => {
 		attempts: 1,
 	});
 
-	for (const [target, running] of [
+	/*
+	 * The third element is the PROBE's answer, and it is a column rather than a
+	 * constant for a reason: this loop used to hand every pair
+	 * `installInFlight: false`, so `evaluatePendingInstall` could never answer
+	 * `in-flight` and the assertion below for that arm was dead - the case checked
+	 * two of the three relations it named (review round 2, R2-1). The two `0.30.0`
+	 * rows are otherwise identical, so the only thing that separates them is the
+	 * probe.
+	 */
+	const kindsSeen = new Set();
+	for (const [target, running, installInFlight] of [
 		// The pre-release pair: the same triple, a different spelling.
-		["0.1.2", "0.1.2-beta.9"],
-		["0.1.2-beta.9", "0.1.2"],
+		["0.1.2", "0.1.2-beta.9", false],
+		["0.1.2-beta.9", "0.1.2", false],
 		// The operator's own case, and the exact arrival.
-		["0.28.3", "0.29.2"],
-		["0.29.0", "0.29.0"],
-		// Not reached, and not orderable either side.
-		["0.30.0", "0.29.1"],
-		["nightly", "0.29.1"],
-		["0.29.1", "unknown"],
+		["0.28.3", "0.29.2", false],
+		["0.29.0", "0.29.0", false],
+		// Not reached: once with the probe saying an install of this target is
+		// running, once with it knowing of none.
+		["0.30.0", "0.29.1", true],
+		["0.30.0", "0.29.1", false],
+		// And not orderable on either side.
+		["nightly", "0.29.1", false],
+		["0.29.1", "unknown", false],
 	]) {
 		const kind = evaluatePendingInstall({
 			marker: marker(target),
 			runningVersion: running,
-			installInFlight: false,
+			installInFlight,
 		}).kind;
+		kindsSeen.add(kind);
 		const retires = installAttemptSupersededBy(record(target), running);
 		if (kind === "failed") {
 			assert.equal(
@@ -837,6 +851,16 @@ test("a pair the marker rule calls a failure is never a retirement", () => {
 			);
 		}
 	}
+
+	/*
+	 * The loop has to have exercised all three relations it asserts about, or the
+	 * dead-assertion shape comes straight back.
+	 */
+	assert.ok(
+		kindsSeen.has("failed") && kindsSeen.has("in-flight") &&
+			(kindsSeen.has("succeeded") || kindsSeen.has("stale")),
+		`the pairs must cover the failure, the in-flight probe and an arrival; saw ${[...kindsSeen].join(", ")}`,
+	);
 
 	/*
 	 * And the standing itself, named, so the pre-release pair cannot be read as an
