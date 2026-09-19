@@ -234,6 +234,21 @@ and its accessible name, so one action has one name in the app.
 
 Recorded here so each is a decision rather than an omission. None is a ticket.
 
+**One accepted tension, recorded rather than fixed (design round 3, D14).** In
+`localOperatorLight` the `⋯` control's `hover:bg-accent-wash` (`#e7f1e8`) sits
+**1.02:1** from the row's own `hover:bg-row-hover` (`#E4F5E8`), so on that theme the
+control's box stops reading as a box while the pointer is on it. It read against the
+row ground before — Δ15/255 on `surface` — and the pair is a consequence of moving
+the row's ground onto the row (D11) rather than of either value being wrong. The
+state survives through the ink step: `hover:text-ink` is what says "this control is
+under the pointer", and it is visible as such in
+`docs/evidence/canvas-workspace/files-row-actions-hover/localOperatorLight.webp`.
+`localOperatorLight` is the only one of the twelve themes where the pair collapses.
+The lever, if a later round wants the box to read in that theme, is the CONTROL's
+own hover ground — a row-role or ink step for the `⋯` — and NOT the palette: moving
+`accentWash` would repaint every active-control wash in the app, and every theme in
+it, for one 28px box.
+
 - Arrow-key row navigation, roving tabindex, Home/End and typeahead. The grid had
   none, and adding one changes the interaction flow, which deserves its own pass.
 - A scoped `/` (or another chord) to focus the search from inside the canvas,
