@@ -26,10 +26,12 @@ export function usePairingCause(): DaemonPairingCause | null {
 				const status = await backend.getStatus();
 				if (!live) return;
 				/*
-				 * `pairing` on the snapshot, with the nested shape accepted too: the
-				 * connectivity hook carries the snapshot inside its own object, and a
-				 * reader that assumed the wrong one silently reported "no cause" while
-				 * main was publishing one (the round-5 Q-6 reading).
+				 * `pairing` is a field of the snapshot itself: `getStatus()` is typed
+				 * `Promise<DaemonStatusSnapshot>`, and it is the CONNECTIVITY hook that
+				 * wraps the snapshot inside an object of its own - which is why a reader
+				 * looking for a nested shape finds nothing (review round 5, R5-4: this
+				 * comment used to claim both shapes were accepted while the code read
+				 * one).
 				 */
 				const pairing = status?.pairing;
 				setCause(

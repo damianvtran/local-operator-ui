@@ -52,7 +52,10 @@ const SOURCE_REPO = "damianvtran/local-operator";
 export const VENDORED_FILES = [
 	{ from: "extension/src/driver/psl.gen.ts", to: "driver/psl.gen.ts" },
 	{ from: "extension/src/driver/access-flow.ts", to: "driver/access-flow.ts" },
-	{ from: "extension/src/driver/access-queue.ts", to: "driver/access-queue.ts" },
+	{
+		from: "extension/src/driver/access-queue.ts",
+		to: "driver/access-queue.ts",
+	},
 	{ from: "extension/src/driver/ax-compact.ts", to: "driver/ax-compact.ts" },
 	{ from: "extension/src/driver/deadline.ts", to: "driver/deadline.ts" },
 	{ from: "extension/src/driver/errors.ts", to: "driver/errors.ts" },
@@ -261,7 +264,11 @@ async function main() {
 	]);
 	const protoVersion = /^PROTO_VERSION\s*=\s*(\d+)/m.exec(protocolSource)?.[1];
 
-	const inputs = [sha, "local_operator/browser_bridge/protocol.py", protocolSource];
+	const inputs = [
+		sha,
+		"local_operator/browser_bridge/protocol.py",
+		protocolSource,
+	];
 	const files = {};
 	const written = [];
 	for (const entry of VENDORED_FILES) {

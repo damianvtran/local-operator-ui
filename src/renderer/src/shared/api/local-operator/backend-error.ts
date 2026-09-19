@@ -499,7 +499,31 @@ export function retryDesktopQuery(
 }
 
 /**
- * What a card that reports a failed read may say, and what it may offer.
+ * The SETTINGS CARD's own sentence, per cause.
+ *
+ * WHY THE CARD DOES NOT REUSE THE BANNER'S TABLE (design review rounds 1 and 5,
+ * D1/D37, and UX round 5's U13, which is the same finding): the card rendered the
+ * band's 169-character sentence verbatim - the same string, 380 px apart on one
+ * screen - and lost its own lead with it, because that sentence is written for a
+ * band listing what the APP loses. A reader who reached the card learned nothing the
+ * band had not already said, and the card stopped saying what THIS PAGE cannot do.
+ * Same cause, card-scoped words, one lead.
+ */
+export const BACKEND_PAIRING_CARD_SENTENCE: Record<DaemonPairingCause, string> =
+	{
+		successor:
+			"Your settings could not be loaded: the app is pairing with the server that replaced the one it was using.",
+		"governed-elsewhere":
+			"Your settings could not be loaded: another program is managing this machine's Local Operator server, so this page cannot read or change them here.",
+		"pre-handshake":
+			"Your settings could not be loaded: the server this app is talking to is older than the pairing handshake, so this page cannot read them from it.",
+		"credential-refused":
+			"Your settings could not be loaded: the server refused this app's credential, so this page cannot read them from it.",
+		unpaired:
+			"Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it.",
+	};
+
+/**
  *
  * WHY ONE FUNCTION (review round 5, Q-6 / UX U2): two surfaces render this card - the
  * settings page's load error and the Backend section's - and they drifted. The page kept
@@ -515,10 +539,16 @@ export function pairingCardCopy(
 	fallback: string,
 	error: unknown,
 ): { sentence: string; remedy: boolean } {
+	/*
+	 * The CARD's table, not the band's (D37/U13): rendering the band's sentence here
+	 * repeated it verbatim 380 px below itself and dropped this page's own lead. The
+	 * no-cause branch is the one the composed classifier is for, which is why it keeps
+	 * the `fallback` argument's lead.
+	 */
 	return cause === null
 		? { sentence: backendLoadErrorMessage(fallback, error), remedy: true }
 		: {
-				sentence: BACKEND_PAIRING_SENTENCE[cause],
+				sentence: BACKEND_PAIRING_CARD_SENTENCE[cause],
 				remedy: pairingHasRemedy(cause),
 			};
 }
