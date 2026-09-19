@@ -12,7 +12,14 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, delimiter, dirname, join } from "node:path";
+import {
+	basename,
+	delimiter,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+} from "node:path";
 import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
 
 /**
@@ -1121,6 +1128,15 @@ export type PendingServerUpdateMarker = {
 	 * Optional because a record written by an older build does not have it; a reader
 	 * that finds none falls back to the shim and SAYS SO, rather than pretending the
 	 * reading is about the attempt's install.
+	 *
+	 * AND ON A GENERATION INSTALL IT IS SPELLED THROUGH THAT INSTALL'S POINTER
+	 * (`installPointerPath`): the generation the attempt started from is unreferenced
+	 * once superseded and therefore prunable, while the pointer names the install the
+	 * attempt moved. Records written by older builds carry a concrete generation path,
+	 * which the reader resolves the same way WHILE THAT GENERATION IS STILL ON DISK -
+	 * a pruned one no longer resolves, so the read is a no-op and the reconciliation
+	 * says nothing (`!after`), which is the safe direction and the behaviour this
+	 * path had before the fix rather than a new silence.
 	 */
 	installPath?: string | null;
 };
@@ -1426,6 +1442,67 @@ export function recordInstallFailure(
 	return record;
 }
 
+/**
+ * Whether a recorded failure has been overtaken by the version now running.
+ *
+ * WHY A RECORD HAS TO RETIRE. The record outlives the notice on purpose (a
+ * dismissal must not be an information loss), but nothing retired it when the
+ * install it complained about was later reached: on 2026-09-18 the app was
+ * running 0.29.1 while `last-update-install.json` still named a 0.28.3 install
+ * that failed on 2026-09-18T13:37Z, so Settings' "Application updates and info"
+ * printed "The last update to version 0.28.3 didn't finish. Version 0.28.2 is
+ * running." to a user on 0.29.1 - two versions stale, and a claim about a state
+ * the machine left behind hours earlier. The operator's rule is the rule here:
+ * it is cleared whenever the UI updates to a newer version, successfully.
+ *
+ * IT ASKS `targetStanding`, AND THAT IS THE FIX RATHER THAN A TIDY-UP. This
+ * predicate and `evaluatePendingInstall` answer the same question about the same
+ * two strings - has the machine arrived at that target - and they disagreed:
+ * this one retired on `compareVersions(target, running) <= 0`, while the sibling
+ * that decides whether there is a failure at all answered `succeeded` only on
+ * the exact spelling and `stale` only on `order < 0`. Measured on target `0.1.2`
+ * against a running `0.1.2-beta.9`: `compareVersions` reads triples, so it
+ * ordered the pair EQUAL, this predicate returned true, and the launch that had
+ * just written "the install of 0.1.2 didn't finish" deleted its own record on the
+ * first read. A record must never be retired for a pair this module calls a
+ * failure, and one shared rule is what makes that impossible rather than
+ * remembered - the pre-release stamp is a shape this repository has shipped
+ * (`bump version to 0.1.2-beta.9`), not a hypothetical one.
+ *
+ * The unparseable case keeps the record, because `targetStanding` answers
+ * `unorderable` for it: null is not evidence that the install landed, and a
+ * record dropped on a guess is the one loss this file exists to prevent.
+ * `compareVersions` answers null for a dev stamp, for `unknown`, or for any
+ * string without a leading `x.y.z`, so keeping it means a nightly-style target
+ * keeps printing until either side becomes orderable - visibly stale, but never
+ * silently gone.
+ */
+export function installAttemptSupersededBy(
+	record: LastInstallAttempt,
+	runningVersion: string,
+): boolean {
+	const standing = targetStanding(record.targetVersion, runningVersion);
+	return standing === "reached" || standing === "passed";
+}
+
+/**
+ * Remove the recorded failure. True when a record was there to remove.
+ *
+ * The retirement is a FILE removal rather than a read-time mask, so the state
+ * and the record agree: a later launch, a `cat` of the file and the panel all
+ * read the same thing, and no reader has to remember a rule to see it.
+ */
+export function clearLastInstallAttempt(dir: string): boolean {
+	const path = lastInstallAttemptPath(dir);
+	if (!existsSync(path)) return false;
+	try {
+		rmSync(path, { force: true });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export type PendingInstallOutcome =
 	| { kind: "none" }
 	| { kind: "succeeded"; marker: PendingInstallMarker }
@@ -1470,6 +1547,47 @@ export function compareVersions(a: string, b: string): number | null {
 }
 
 /**
+ * Where the version now running stands relative to a target.
+ *
+ * ONE RULE, TWO CALLERS, and sharing it is the point rather than a tidy-up.
+ * `evaluatePendingInstall` decides from it whether a marker is `succeeded` or
+ * `stale`, and `installAttemptSupersededBy` from it whether the failure record
+ * that marker's launch wrote may be retired. Two spellings of the rule drifted
+ * once and the drift was not cosmetic: this file called the pair `failed` and the
+ * record's reader deleted the record for it on the way out (see
+ * `installAttemptSupersededBy` for the measurement).
+ *
+ * `same-triple` exists for exactly that pair. `compareVersions` reads triples, so
+ * `0.1.2` against `0.1.2-beta.9` orders EQUAL - which is not an arrival: a
+ * machine reporting `0.1.2-beta.9` is not running `0.1.2`, and only the exact
+ * spelling is `reached`. Pre-release and build stamps are a shape this repository
+ * has shipped, so the case is real rather than defensive.
+ */
+export type TargetStanding =
+	/** The running version is the target, spelled the same. */
+	| "reached"
+	/** The running version is ordered after the target: the install was superseded. */
+	| "passed"
+	/** The same triple, a different spelling (a pre-release or build stamp). NOT an arrival. */
+	| "same-triple"
+	/** The running version is ordered before the target: the install has not landed. */
+	| "ahead"
+	/** No order to read: at least one side is not an `x.y.z`, so nothing is proven. */
+	| "unorderable";
+
+export function targetStanding(
+	target: string,
+	runningVersion: string,
+): TargetStanding {
+	if (target === runningVersion) return "reached";
+	const order = compareVersions(target, runningVersion);
+	if (order === null) return "unorderable";
+	if (order < 0) return "passed";
+	if (order > 0) return "ahead";
+	return "same-triple";
+}
+
+/**
  * Interpret the marker on the next start.
  *
  * The running version is the only evidence available: Squirrel leaves no exit
@@ -1506,11 +1624,15 @@ export function evaluatePendingInstall(input: {
 }): PendingInstallOutcome {
 	const { marker } = input;
 	if (marker == null) return { kind: "none" };
-	if (marker.targetVersion === input.runningVersion) {
-		return { kind: "succeeded", marker };
-	}
-	const order = compareVersions(marker.targetVersion, input.runningVersion);
-	if (order !== null && order < 0) return { kind: "stale", marker };
+	/*
+	 * THE ARRIVAL ARMS COME FROM THE SHARED RULE, not from a comparison spelled
+	 * here: `succeeded` is the exact spelling and `stale` is "ordered after", and
+	 * everything else - including the same triple spelled differently - is judged
+	 * by the in-flight probe and then the failure arm below.
+	 */
+	const standing = targetStanding(marker.targetVersion, input.runningVersion);
+	if (standing === "reached") return { kind: "succeeded", marker };
+	if (standing === "passed") return { kind: "stale", marker };
 	if (input.installInFlight === true) return { kind: "in-flight", marker };
 	return { kind: "failed", marker };
 }
@@ -3618,6 +3740,62 @@ export function generationInstallRoot(
 		}
 		dir = parent;
 	}
+}
+
+/**
+ * The same install, named through its own `current` pointer, when it has one.
+ *
+ * WHY A READER IN A GENERATION INSTALL NEEDS THIS. Under the layout above, the
+ * tree a process was launched from is `generations/<id>` and is NEVER mutated by
+ * an install: `local-operator update` builds a NEW generation and flips
+ * `<stable>/current` to it. So a path handed out by a running daemon - `/health`
+ * reports its own install root, and that root names the generation the daemon
+ * started from - is a photograph of a moment, and any "did this install move"
+ * reading taken against it compares the same frozen tree with itself.
+ *
+ * That is the whole defect this function exists for, measured on this machine
+ * 2026-09-18: the app ran the serving install's own front end (correct), and then
+ * read both halves of its verdict - the version and the rebuild marker - from the
+ * generation the daemon came from, so a run that created `20260918T233919Z-0.59.7`
+ * and flipped the pointer reported "The server update to 0.59.7 did not take
+ * effect: the install still reports 0.59.6" while Settings, one second later,
+ * read 0.59.7 through the shim.
+ *
+ * WHAT IT IS NOT. Not a re-resolution of the install: the caller's subject stays
+ * the install it named (round 5/6's rule), and the pointer names the SAME install
+ * - one stable root, one layout - so `generations/<id>` and `<stable>/current`
+ * are two spellings of one subject that differ only in whether a flip is visible
+ * through them, which is the difference the evidence needs and the one the layout
+ * is for (`docs/design-install-generations.md` §2/§3.2).
+ *
+ * IDEMPOTENT: a path already spelled through the pointer resolves to the same
+ * string (the relative part is taken against the resolved generation), so it is
+ * safe on a record written by this build and on one written by an older build
+ * that stored a concrete generation path.
+ *
+ * Returns the path unchanged for every other layout - there is no pointer to
+ * follow on an install that rewrites itself in place - and null only for a null
+ * input, so a caller may pass its subject straight through.
+ */
+export function installPointerPath(filePath: string | null): string | null {
+	if (!filePath) return null;
+	const identity = readInstallIdentity(filePath);
+	const generation = generationInstallRoot(identity);
+	if (!generation) return filePath;
+	let resolved: string;
+	try {
+		resolved = realpathSync(identity.realPath ?? filePath);
+	} catch {
+		return filePath;
+	}
+	const inside = relative(generation, resolved);
+	// A file that is not in the generation it was recognised by cannot be
+	// re-pointed by a relative move, and guessing where it lands is how a reader
+	// ends up describing a tree nobody named. The caller's own spelling stands.
+	if (inside === "" || inside.startsWith("..") || isAbsolute(inside)) {
+		return filePath;
+	}
+	return join(dirname(dirname(generation)), "current", inside);
 }
 
 /**
