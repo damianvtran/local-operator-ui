@@ -379,6 +379,16 @@ export type SlashSubmissionArgs = {
 const WHITESPACE = /\s/;
 
 /**
+ * A RUN of whitespace, which is what Python's `str.split()` collapses — the
+ * endpoint's own tokenisation, and the count `argumentFits` has to agree with.
+ *
+ * Hoisted for the same reason `WHITESPACE` is: a regex literal inside a function
+ * that runs on every plan is the shape this file's lint rule rejects, and the
+ * difference between the two constants is the whole of round 1's F1.
+ */
+const WHITESPACE_RUN = /\s+/;
+
+/**
  * The lower-cased command word of a token's text, `/team ops` → `team`.
  *
  * The split is `invocationOf`'s, and that is the whole point of this being a
@@ -555,6 +565,18 @@ export type ArgumentShapeCatalogueRow = {
  * every older backend's rows claim arbitrary text, which is the direction that
  * hands a sentence to a command.
  */
+/**
+ * The ENDPOINT'S own server-name pattern, mirrored (`local_operator/mcp/config.py:36`:
+ * `^[A-Za-z0-9_.:-]{1,100}$`, applied to the second token by `_is_mcp_invocation`).
+ *
+ * A second copy, and deliberately so rather than by accident: the row publishes its
+ * subcommand vocabulary but not this pattern, and the alternative — accepting any
+ * second token — plans a draft the endpoint reads as prose, which its command route
+ * then refuses. If the backend ever publishes the pattern on the catalogue row,
+ * read that instead and delete this.
+ */
+const SERVER_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,100}$/;
+
 export function argumentShapeVocabulary(
 	commands: readonly ArgumentShapeCatalogueRow[],
 ): Map<string, ArgumentShapeRow> {
@@ -563,9 +585,14 @@ export function argumentShapeVocabulary(
 		if (!command.argument_shape) continue;
 		const row: ArgumentShapeRow = {
 			shape: command.argument_shape,
-			words: new Set(
-				(command.argument_words ?? []).map((word) => word.toLowerCase()),
-			),
+			/*
+			 * AS PUBLISHED, case included. The endpoint's own arms are case-sensitive
+			 * (`_is_single_word` tests membership unfolded, `_is_provider` looks the token
+			 * up as written), so folding a word here makes the composer plan `/mcp LOGOUT`
+			 * as the command while the endpoint reads prose and its command route refuses
+			 * the draft — a 422 where a message send was possible (round 1 F2).
+			 */
+			words: new Set(command.argument_words ?? []),
 		};
 		shapes.set(command.name.toLowerCase(), row);
 		for (const alias of command.aliases) shapes.set(alias.toLowerCase(), row);
@@ -606,9 +633,22 @@ export function prefixingVocabulary(
 export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
 	const trimmed = args.trim();
 	if (trimmed === "") return false;
-	const tokens = trimmed.split(WHITESPACE);
-	const firstKnown =
-		shape.words.size === 0 || shape.words.has(tokens[0].toLowerCase());
+	/*
+	 * `\s+` AND NOT `\s`, because this must count what the endpoint counts: Python's
+	 * `str.split()` collapses a run of separators, while splitting per separator
+	 * emits an empty token for each extra one. For `subcommand` — the one shape that
+	 * admits two tokens — that turns `/mcp logout  srv` into three tokens here and
+	 * two there, so the composer plans prose for a draft the endpoint runs, posts
+	 * it, and the message route refuses it (round 1 F1).
+	 */
+	const tokens = trimmed.split(WHITESPACE_RUN);
+	/*
+	 * Matched AS PUBLISHED and case included, for the reason
+	 * `argumentShapeVocabulary` states where the words are built: the endpoint's arms
+	 * are case-sensitive, so folding the token here plans commands the endpoint
+	 * reads as prose (round 1 F2).
+	 */
+	const firstKnown = shape.words.size === 0 || shape.words.has(tokens[0]);
 	switch (shape.shape) {
 		case "none":
 			return false;
@@ -616,7 +656,17 @@ export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
 		case "provider":
 			return tokens.length === 1 && firstKnown;
 		case "subcommand":
-			return tokens.length <= 2 && firstKnown;
+			/*
+			 * The endpoint's own `_is_mcp_invocation`: at most two tokens, the first a
+			 * published subcommand, and the SECOND a server name by its own pattern — a
+			 * check this arm used to omit, which planned `/mcp add (bad)` as the command
+			 * where the endpoint reads prose (round 1 F2/Q1-2).
+			 */
+			return (
+				tokens.length <= 2 &&
+				firstKnown &&
+				(tokens.length === 1 || SERVER_NAME_PATTERN.test(tokens[1]))
+			);
 		case "any":
 			return true;
 	}

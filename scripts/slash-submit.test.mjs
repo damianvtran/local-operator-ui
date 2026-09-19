@@ -1579,6 +1579,17 @@ test("the locked scan costs one pass, not one call per slash", () => {
  * (none of `usage`, `compact` or `mcp` is in them), so a planner that stops
  * reading `argumentShapes` fails here, and one that DEFAULTS a shape-less row to
  * `any` fails the fallback case.
+ *
+ * AND THE VOCABULARIES ARE THE PUBLISHED ONES, taken from the catalogue the
+ * endpoint serves (`SLASH_COMMANDS`, dumped through `command_argument_words`)
+ * rather than written from memory: the `mcp` row below listed
+ * `["logout", "login", "grant"]`, three words that are not what the wire
+ * publishes (`grant` is not a subcommand at all, and `add`/`list`/`reauth`/
+ * `remove` were missing), so the suite could not have caught a planner that read
+ * `argument_words` wrongly - the rows below pin against the real set instead
+ * (round 1 F4). The provider row names two of the twenty-four published ids
+ * rather than all of them, which is the whole of what it has to discriminate: a
+ * token inside the vocabulary and one outside it.
  */
 const WIRE_ROWS = [
 	{
@@ -1628,7 +1639,7 @@ const WIRE_ROWS = [
 		name: "mcp",
 		aliases: [],
 		argument_shape: "subcommand",
-		argument_words: ["logout", "login", "grant"],
+		argument_words: ["add", "list", "login", "logout", "reauth", "remove"],
 	},
 ];
 const WIRE_SHAPES = argumentShapeVocabulary(WIRE_ROWS);
@@ -1659,6 +1670,30 @@ test("the wire's argument shape decides the whole draft", () => {
 		// operator's own draft is the row this field exists for.
 		["/mcp logout", "whole"],
 		["/mcp logout seems to cause a crash", "send"],
+		/*
+		 * AND THE ROWS THE ROUND-1 FINDINGS WERE ABOUT, each one measured against the
+		 * endpoint's own predicates (round 1 F1, F2, Q1-2). They are here as PINS, not
+		 * as prose, because every one of them was a plan the endpoint disagreed with.
+		 */
+		// A WHITESPACE RUN is one separator, as Python's `str.split()` counts it: the
+		// composer used to count an empty token per extra space and plan prose for a
+		// draft the endpoint runs, which the message route then refused.
+		["/mcp logout  srv", "whole"],
+		["/mcp logout \tsrv", "whole"],
+		["/mcp logout \t srv", "whole"],
+		// THE FIRST TOKEN IS MATCHED AS PUBLISHED, case included, because the
+		// endpoint's arms are case-sensitive — folding made this a command the
+		// endpoint refuses.
+		["/mcp LOGOUT srv", "send"],
+		["/login OpenAI", "send"],
+		// THE PUBLISHED VOCABULARY ITSELF, both directions: `add` is a real
+		// subcommand and `grant` is not one anywhere in the catalogue.
+		["/mcp add srv", "whole"],
+		["/mcp grant srv", "send"],
+		// THE SECOND TOKEN IS A SERVER NAME by the endpoint's own pattern, which this
+		// arm used to omit: a URL is prose to the endpoint and was a command here.
+		["/mcp login http://x", "send"],
+		["/mcp add my.srv-1", "whole"],
 		// `any` owns whatever follows it.
 		["/move ~/x", "whole"],
 		["/credential hunter2", "whole"],
@@ -1759,6 +1794,39 @@ test("the wire vocabulary is keyed by alias, and `argumentFits` is the endpoint'
 			"logout seems to cause a crash",
 		),
 		false,
+	);
+	/*
+	 * THE THREE FACTS ROUND 1 MEASURED, each one a place this function used to
+	 * answer the endpoint's question differently. They are asserted here as well as
+	 * through the planner above because they are the function's own contract:
+	 * a whitespace RUN is one separator (Python's `str.split()`), the first token is
+	 * matched as published, and a subcommand's second token is a server NAME.
+	 */
+	const mcp = { shape: "subcommand", words: new Set(["add", "logout"]) };
+	assert.equal(
+		argumentFits(mcp, "logout  srv"),
+		true,
+		"a run of spaces is one separator, as the endpoint counts it",
+	);
+	assert.equal(
+		argumentFits(mcp, "logout \t srv"),
+		true,
+		"a mixed run of tab and spaces is one separator too",
+	);
+	assert.equal(
+		argumentFits(mcp, "LOGOUT srv"),
+		false,
+		"the published vocabulary is matched case-sensitively, as the endpoint does",
+	);
+	assert.equal(
+		argumentFits(mcp, "logout http://x"),
+		false,
+		"the second token must be a server name by the endpoint's own pattern",
+	);
+	assert.equal(
+		argumentFits(mcp, "logout my.srv-1"),
+		true,
+		"and a real server name is one: letters, digits, underscore, dash, dot, colon",
 	);
 	assert.equal(
 		argumentFits({ shape: "word", words: new Set() }, ""),
