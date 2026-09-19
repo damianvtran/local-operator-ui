@@ -99,16 +99,13 @@ const bundle = await build({
 					{ filter: /^@shared\/hooks\/use-connectivity-status$/ },
 					() => ({ path: "server-health", namespace: "surfaces-fixture" }),
 				);
-				builder.onLoad(
-					{ filter: /.*/, namespace: "surfaces-fixture" },
-					() => ({
-						contents:
-							"export const serverHealthQueryKey = [\"server-health\"];\n" +
-							"export const useServerHealth = () => ({ data: globalThis.__serverHealth });\n",
-						loader: "js",
-						resolveDir: process.cwd(),
-					}),
-				);
+				builder.onLoad({ filter: /.*/, namespace: "surfaces-fixture" }, () => ({
+					contents:
+						'export const serverHealthQueryKey = ["server-health"];\n' +
+						"export const useServerHealth = () => ({ data: globalThis.__serverHealth });\n",
+					loader: "js",
+					resolveDir: process.cwd(),
+				}));
 			},
 		},
 	],
@@ -138,12 +135,43 @@ let bridgeStatus = 503;
  * that hand-made them would not notice the banner reading the wrong field.
  * The verb is counted rather than called for real (design § 2, § 11.2).
  */
-let daemonSnapshot = null;
+const daemonSnapshot = null;
 globalThis.window = {
 	api: {
+		/*
+		 * The updater surface IN FULL, not only the two members this file calls.
+		 * A component that mounts under a partial stub throws inside its effect and
+		 * nothing re-drives it, so `scripts/preload-updater-surface.test.mjs` sweeps
+		 * every fixture that installs one for completeness - the shape that caught this
+		 * stub (and the reason the list is copied from the preload rather than guessed).
+		 */
 		updater: {
-			updateBackend: async () => true,
+			checkForAllUpdates: async () => undefined,
+			checkForBackendUpdates: async () => undefined,
+			checkForUpdates: async () => undefined,
+			downloadUpdate: async () => undefined,
+			getLastInstallAttempt: async () => null,
+			onBackendUpdateAvailable: () => () => undefined,
+			onBackendUpdateCompleted: () => () => undefined,
+			onBackendUpdateDevMode: () => () => undefined,
 			onBackendUpdateError: () => () => undefined,
+			onBackendUpdateManualRequired: () => () => undefined,
+			onBackendUpdateNotAvailable: () => () => undefined,
+			onBackendUpdateProgress: () => () => undefined,
+			onBeforeQuitForUpdate: () => () => undefined,
+			onUpdateAvailable: () => () => undefined,
+			onUpdateDevMode: () => () => undefined,
+			onUpdateDownloaded: () => () => undefined,
+			onUpdateError: () => () => undefined,
+			onUpdateInstallBlocked: () => () => undefined,
+			onUpdateInstallFailed: () => () => undefined,
+			onUpdateInstallInFlight: () => () => undefined,
+			onUpdateNotAvailable: () => () => undefined,
+			onUpdateNpxAvailable: () => () => undefined,
+			onUpdateProgress: () => () => undefined,
+			quitAndInstall: () => () => undefined,
+			quitForUpdateInstall: () => () => undefined,
+			updateBackend: async () => true,
 		},
 		backend: {
 			getStatus: async () => daemonSnapshot,
@@ -948,7 +976,11 @@ test("one cause, one sentence: every pairing cause is worded once, and it is not
 			answered: true,
 			cause,
 		});
-		assert.equal(message, sentence, `${cause}: the banner's sentence is the table's`);
+		assert.equal(
+			message,
+			sentence,
+			`${cause}: the banner's sentence is the table's`,
+		);
 		assert.equal(
 			backendPairingSentence("unpaired", cause),
 			sentence,
@@ -969,7 +1001,10 @@ test("one cause, one sentence: every pairing cause is worded once, and it is not
 		BACKEND_PAIRING_SENTENCE["pre-handshake"],
 		/older than the pairing handshake/,
 	);
-	assert.match(BACKEND_PAIRING_SENTENCE["pre-handshake"], /CLI and the TUI are unaffected/);
+	assert.match(
+		BACKEND_PAIRING_SENTENCE["pre-handshake"],
+		/CLI and the TUI are unaffected/,
+	);
 
 	/*
 	 * And the tri-state is what keeps that true at the surfaces: a payload that

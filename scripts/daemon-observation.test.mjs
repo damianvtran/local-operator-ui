@@ -1217,7 +1217,11 @@ test("S2: a plane another program governs reports `governed-elsewhere`", async (
 	});
 	try {
 		const { manager, adopted } = await adoptAtStartup(scene);
-		assert.equal(adopted, false, "this app may not drive another program's plane");
+		assert.equal(
+			adopted,
+			false,
+			"this app may not drive another program's plane",
+		);
 		const snapshot = manager.getStatusSnapshot();
 		assert.deepEqual(
 			snapshot.pairing,

@@ -41,10 +41,13 @@ const refusalContractBundle = await build({
 	conditions: ["import"],
 	write: false,
 });
-const { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, DESKTOP_MACHINE_DETAIL } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(refusalContractBundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	DESKTOP_REFUSAL_CODE,
+	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_MACHINE_DETAIL,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(refusalContractBundle.outputFiles[0].text).toString("base64")}`
+);
 
 /**
  * Import a fresh copy of the transport with `window.api.desktop.request` bound
@@ -1395,11 +1398,7 @@ test("a plane's refusal is coded, and the sentence is this app's rather than the
 		// status, request, expected code
 		[403, { op: "sessions.list", limit: 10 }, DESKTOP_REFUSAL_CODE.refused],
 		[401, { op: "sessions.list", limit: 10 }, DESKTOP_REFUSAL_CODE.refused],
-		[
-			503,
-			{ op: "sessions.list", limit: 10 },
-			DESKTOP_REFUSAL_CODE.planeClosed,
-		],
+		[503, { op: "sessions.list", limit: 10 }, DESKTOP_REFUSAL_CODE.planeClosed],
 		/*
 		 * The discrimination the PATH supplies: `/v1/capabilities` is served without
 		 * admitting anyone, so a 503 for it is that route's own failure and not a
@@ -1420,8 +1419,15 @@ test("a plane's refusal is coded, and the sentence is this app's rather than the
 		} catch (error) {
 			caught = error;
 		}
-		assert.ok(caught instanceof DesktopControlError, `${status}: it must reject`);
-		assert.equal(caught.code, code, `${status} ${request.op}: the code is derived`);
+		assert.ok(
+			caught instanceof DesktopControlError,
+			`${status}: it must reject`,
+		);
+		assert.equal(
+			caught.code,
+			code,
+			`${status} ${request.op}: the code is derived`,
+		);
 		const rendered = userFacingMessage(caught, "fallback");
 		if (code === undefined) {
 			/*
@@ -1466,10 +1472,12 @@ test("a code main declared wins, so the app's own refusal is not read as the pla
 		],
 	];
 	for (const [code, message] of cases) {
-		const { desktopResult, userFacingMessage } = await loadTransport(async () => ({
-			status: 503,
-			body: { detail: { code, message } },
-		}));
+		const { desktopResult, userFacingMessage } = await loadTransport(
+			async () => ({
+				status: 503,
+				body: { detail: { code, message } },
+			}),
+		);
 		let caught = null;
 		try {
 			await desktopResult({ op: "sessions.list", limit: 10 });
@@ -1492,15 +1500,17 @@ test("a code main declared wins, so the app's own refusal is not read as the pla
 	 * with a pairing fact (measured on a 409 profile conflict, whose category this
 	 * change briefly ate).
 	 */
-	const { desktopResult, userFacingMessage } = await loadTransport(async () => ({
-		status: 409,
-		body: {
-			detail: {
-				code: "unresolved_attachment",
-				message: "Choose an available profile or detach it before sending.",
+	const { desktopResult, userFacingMessage } = await loadTransport(
+		async () => ({
+			status: 409,
+			body: {
+				detail: {
+					code: "unresolved_attachment",
+					message: "Choose an available profile or detach it before sending.",
+				},
 			},
-		},
-	}));
+		}),
+	);
 	let caught = null;
 	try {
 		await desktopResult({
