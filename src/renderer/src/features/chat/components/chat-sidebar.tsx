@@ -164,10 +164,13 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * `catppuccinMacchiato` 0.80, then tokyoNight 1.05), and on **6 of 41** dark
  * themes it is a WEAKER mark than the hover beside it — `obsidian` 2.02 against
  * 3.42, `tokyoNight` 2.04 against 3.41 — which is the exact arrangement the
- * retired role existed to fix. The wash is not broken everywhere — the app rail
- * paints it on `sunken`, where it measures 9.6 — which is why this is a call-site
- * ground and NOT a wash: strengthening `accentWash` for the panels that draw it
- * on `surface` would make every hover tint in the app louder. (The SETTINGS rail
+ * retired role existed to fix. The wash is not broken everywhere — on the rail's
+ * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
+ * and NOT a wash: strengthening `accentWash` for the panels that draw it on
+ * `surface` would make every hover tint in the app louder. (The rail no longer
+ * paints a ground of its own at all: it is `surface` with a `border-r
+ * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
  * declaration below.)
@@ -284,13 +287,23 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * One literal, deliberately: this role is the one thing a guard reads out of the
  * tree (`scripts/chat-sidebar-selection.test.mjs` resolves it and every call site
  * through the shipped `cn`), and a literal assembled from parts would be a role a
- * reader of that file cannot get in one piece. `relative` is IN here rather than
- * at each call site because the bar is `absolute`: the element that carries the
- * role is the bar's containing block, and a consumer that forgot `relative` would
- * let the bar escape its row.
+ * reader of that file cannot get in one piece.
+ *
+ * THE 2px `accent` BAR IS GONE (row-state refinement, 2026-09-18), and `relative`
+ * with it. The bar was the row's non-colour second signal because both fills used
+ * to be one hue at two strengths; the refined roles rank the pair on `L*` and on
+ * cast, so the fill carries the ranking and `font-medium` is the non-colour half.
+ * The bar also squared the row's leading edge (its square overlay painted over
+ * `rowStyle`'s `rounded-md`), so removing it is what restores the left rounding
+ * the operator asked for - the radius itself never moved. The two POPUP bars
+ * (`slash-commands.tsx`, `at-picker.tsx`) stay: their row is the one Enter
+ * applies, in a transient popup, and the keyboard has no other mark there.
+ *
+ * `relative` existed ONLY to be the bar's containing block, so it goes with the
+ * bar rather than staying as a stray positioning context on every current row.
  */
 export const rowCurrent =
-	"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";
+	"bg-row-selected font-medium text-ink hover:bg-row-selected";
 
 import {
 	type FocusedSlot,

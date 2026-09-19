@@ -54,20 +54,24 @@ export const everforestLight: ThemeDefinition = {
 		sunken: "#DCD7BC",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #E9E9E1  accent hue, C* 4.13, +1.54 L*, ΔE00 6.69 off `surface`,
-		 *                       `inkDim` 5.99:1 on the fill, hue 0.10° off `accent`.
-		 * rowSelected #E0E2BA  accent hue, C* 20.70, +4.87 L*, ΔE00 6.97 off
-		 *                       `surface` and 11.29 off `rowHover`, `inkDim` 5.48:1, and the
-		 *                       2px `accent` bar at 5.01:1 against it.
+		 * rowHover    #E8E4D5  panel hue, C* 7.89,
+		 *                       the rule's 0.60 x the panel's 13.08; +3.16 L*,
+		 *                       ΔE00 4.04 off `surface`, `inkDim` 5.74:1.
+		 * rowSelected #E7DFBF  panel hue, C* 16.86,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.99 L*,
+		 *                       ΔE00 3.85 off `surface` and 5.92 off
+		 *                       `rowHover`; the pair ranks 1.83 `L*` and 9.0 `C*`,
+		 *                       `inkDim` 5.46:1.
 		 */
-		rowHover: "#E9E9E1",
-		rowSelected: "#E0E2BA",
+		rowHover: "#E8E4D5",
+		rowSelected: "#E7DFBF",
 
 		ink: "#394246",
 		/*
