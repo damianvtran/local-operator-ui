@@ -179,7 +179,18 @@ export const FACT_DETAIL: Record<FreshnessFact, string> = {
 	failed:
 		"This file could not be re-read, so the version we last read is still shown.",
 	"disk-changed":
-		"Your unsaved edits are kept, and saving is paused while the file has changed on disk. Load its version to see the change (your unsaved edits are discarded), or save to replace the file with your version.",
+		/*
+		 * THE BOUNDARY IS IN THE SENTENCE (UX round 1, U1). The row said the edits
+		 * were kept and never said for how long, while the two registries that hold
+		 * them are module state: they survive the close and they do not survive a
+		 * quit. Both readings of the silence - "kept" as "saved", and "kept" as
+		 * "kept for good" - are wrong, and the reader gets to choose at the moment
+		 * they hand their words to the app. NAME THE BOUNDARY where the reader can
+		 * read it, which is here: the detail is the tooltip and the control's
+		 * description, one hover or one Tab from the row, and the same sentence is
+		 * what the close now says out loud (see `close-report.ts`).
+		 */
+		"Your unsaved edits are kept until the app quits, and saving is paused while the file has changed on disk. Load its version to see the change (your unsaved edits are discarded), or save to replace the file with your version.",
 	"save-replaced":
 		"Your save replaced the version that had changed on disk. Re-read the file to see what is there now.",
 };

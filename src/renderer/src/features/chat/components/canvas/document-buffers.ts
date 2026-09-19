@@ -601,7 +601,21 @@ export async function saveBuffer(
 }
 
 /**
- * Close a document: flush what should be written, keep what must not be lost.
+ * WHAT A CLOSE DID WITH THE WORDS, which is the half that used to be discarded.
+ *
+ * `keptWords` is true when the buffer still holds words the file does not after the
+ * flush has settled - a write that was refused (the file moved on disk under the
+ * reader), failed, or was superseded leaves the buffer dirty, and a write that
+ * landed makes it clean. The reader-facing half of this is `close-report.ts`; the
+ * distinction lives here because this module is the only one that knows.
+ */
+export type CloseBufferOutcome = {
+	keptWords: boolean;
+};
+
+/**
+ * Close a document: flush what should be written, keep what must not be lost, and
+ * REPORT which of the two happened.
  *
  * I5. The commit is the port the editor registered, and it hands the store the
  * words THIS buffer holds. Whether that document is still open is the store's
@@ -615,10 +629,19 @@ export async function saveBuffer(
  * The dirty flag is deliberately NOT cleared here while the document is held: the
  * fact is still true, and a following activation must not apply the file's version
  * over the reader's words (R4-1).
+ *
+ * THE OUTCOME IS RETURNED RATHER THAN SWALLOWED (UX round 1, U1). The refused arm
+ * used to end in `.catch(() => {})` with its fact raised into a freshness row that
+ * has, by then, unmounted with the document - so the reader was told nothing at
+ * exactly the moment they needed to be told. The fact is still raised (it is what
+ * the row says if the document is opened again), and the outcome now also reaches
+ * whoever asked for the close, which is how the reader gets a sentence about it.
  */
-export function closeBuffer(documentId: string): void {
+export async function closeBuffer(
+	documentId: string,
+): Promise<CloseBufferOutcome> {
 	const entry = buffers.get(documentId);
-	if (!entry) return;
+	if (!entry) return { keptWords: false };
 	entry.closed = true;
 	const committed = entry.serialize ? entry.serialize().text : entry.token;
 	/* The close materialises the bytes anyway, so they are cached for the projection
@@ -626,16 +649,19 @@ export function closeBuffer(documentId: string): void {
 	entry.materialised = { token: entry.token, text: committed };
 	projectionChanged();
 	if (dirtyOf(entry)) {
-		void saveBuffer(documentId)
-			.catch(() => {
-				/* Refused or failed: the fact is raised and the buffer stays. */
-			})
-			.finally(() => {
-				entry.commit?.(committed, entry.baselineMtime ?? null);
-			});
-		return;
+		await saveBuffer(documentId).catch(() => {
+			/* Refused or failed: the fact is raised and the buffer stays. */
+		});
+		entry.commit?.(committed, entry.baselineMtime ?? null);
+		/*
+		 * Read AFTER the flush: a write that landed cleared the dirty flag, and every
+		 * arm that did not (refused, failed, superseded by a resolution) left it set,
+		 * which is exactly "these words are still only here".
+		 */
+		return { keptWords: dirtyOf(entry) };
 	}
 	entry.commit?.(committed, entry.baselineMtime ?? null);
+	return { keptWords: false };
 }
 
 /**
