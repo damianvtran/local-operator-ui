@@ -599,7 +599,12 @@ export async function startBrowserHost(
 		// thrown: a reveal that fails is a Finder problem, not a fault in the agent's
 		// download.
 		revealDownloads: async () => {
-			const dir = downloads.activity().dir;
+			// `downloadDir` rather than the chrome projection's own `dir`: this button is
+			// about the FOLDER the host writes into, not about the tab the user happens to be
+			// looking at, so it must not go blank when the active tab has no download of its
+			// own (review round 1, U2 scoped the strip per tab and this is the other half of
+			// that decision).
+			const dir = downloads.downloadDir();
 			if (!dir) return "no download directory yet";
 			return shell.openPath(dir);
 		},

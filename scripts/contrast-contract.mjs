@@ -948,8 +948,8 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * The download row (design §16.4): the chrome band's line about a file the
-		 * agent downloaded, or refused.
+		 * The transfer row (design §16.4): the chrome band's line about a file the
+		 * agent downloaded, sent or refused.
 		 *
 		 * WHY IT NEEDS A ROW OF ITS OWN rather than inheriting the consent band above it.
 		 * The SAVED state is the band's own pairing (`surface` fill, `borderControl` edge,
@@ -960,13 +960,22 @@ const CONTROLS = [
 		 * own comment says must not be added without a row, because the urgency has to
 		 * live on a role the contract measures rather than on a colour nobody checks.
 		 *
+		 * `ink` IS THE ROLE THE COMPONENT PAINTS, and review round 1's D5 is why that
+		 * sentence is here rather than assumed: the row declared `ink` while the component
+		 * painted `ink-muted`, so this row's green output described a pairing that did
+		 * not ship - and `inkMuted` on `dangerWash` measures 5.49:1 in kanagawaLotus,
+		 * 0.01 under the 5.5 floor this file sets for that role. The component paints
+		 * `ink` now (min 7.03:1) for the refusal's copy and its glyph, so the declaration
+		 * and the pixels agree; `dangerWash` is deliberately NOT in `GROUNDS6`, whose ink
+		 * loop would then assert every ink on it including the two that fail.
+		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
 		 * than caution: the row is a sibling of the consent band and the popup notice in
 		 * the same strip, and the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */
-		name: "browser download row (refused)",
+		name: "browser file-transfer row (refused)",
 		on: GROUNDS,
 		fill: "dangerWash",
 		border: "borderControl",
@@ -1633,8 +1642,8 @@ const STRUCTURAL_CALL_SITES = [
 		 * neighbours; only this pin sees the edit that drops the row's edge to `hairline`
 		 * (no floor at all) and lets two washes read as one band.
 		 */
-		what: "browser download row edge",
-		file: "src/renderer/src/features/browser/components/browser-download-row.tsx",
+		what: "browser file-transfer row edge",
+		file: "src/renderer/src/features/browser/components/browser-file-transfer-row.tsx",
 		must: "border-control border-b bg-danger-wash",
 		why: "the refused row's edge is the only boundary between it and the row below it, both washes; `hairline` has no floor and removing it merges them, and no palette assertion can see either edit",
 	},

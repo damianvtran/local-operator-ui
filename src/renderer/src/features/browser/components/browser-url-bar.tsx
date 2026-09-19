@@ -3,6 +3,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	ArrowLeft,
 	ArrowRight,
+	FolderOpen,
 	Loader2,
 	RotateCw,
 	ShieldCheck,
@@ -76,6 +77,26 @@ export interface BrowserUrlBarProps {
 	 * closes the dock. A ref rather than a callback because the surface owns both
 	 * ends of that exchange. */
 	triggerRef?: Ref<HTMLButtonElement>;
+	/**
+	 * The directory the host writes downloads into, or null when it has never
+	 * written one.
+	 *
+	 * WHY THE FOLDER IS REACHABLE FROM HERE AT ALL (review round 1, U2, D2). The
+	 * strip's row is a NOTIFICATION: it is dismissed by a press and it retires by
+	 * age (U7), and both of those are right for a line about what just happened —
+	 * but until this control existed, the row was also the ONLY route to the files,
+	 * so dismissing it made the user's download unreachable from inside the app.
+	 * The row carries the path now, and this is the durable half: one control that
+	 * opens the same directory main opens, for as long as the host has written
+	 * anything, whether or not any row is on screen.
+	 *
+	 * It renders ONLY when a directory exists: a control that opens a folder a build
+	 * cannot have written is a promise the app cannot keep, and the honest degrade
+	 * for a host that predates the feature is no control at all.
+	 */
+	downloadsDir: string | null;
+	/** Open that directory. Takes no path — main decides which one. */
+	onOpenDownloads: () => void;
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -100,6 +121,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenApprovals,
 	waitingCount,
 	triggerRef,
+	downloadsDir,
+	onOpenDownloads,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
 	/**
@@ -200,6 +223,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						data-tour-tag="browser-reload"
 					>
 						<RotateCw aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{downloadsDir && (
+				// The durable route to the files (review round 1, U2): the strip's row can
+				// be dismissed or age out, and this is what makes that allowed. Placed with
+				// the navigation controls rather than beside Approvals because it is a
+				// browser affordance, not a consent one.
+				<Tooltip content="Open downloads folder">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Open downloads folder"
+						onClick={onOpenDownloads}
+						data-tour-tag="browser-downloads-folder"
+					>
+						<FolderOpen aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
 			)}
