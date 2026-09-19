@@ -1,12 +1,12 @@
 # Any-daemon attach — the app as a client of a server it did not start
 
-Two scenes, run by `scripts/attach-frame-evidence.mjs` (isolated `HOME`, isolated
-`LOCAL_OPERATOR_CONFIG_DIR`, a `--user-data-dir` and a WORKING DIRECTORY of its
-own per boot, an allowlisted environment, `--window-mode=headless`). The design
-record is `docs/design/any-daemon-attach.md`, whose § 12 records what review
-rounds 1 and 2 corrected.
+Two scenes and one narrow re-shoot, run by `scripts/attach-frame-evidence.mjs`
+(isolated `HOME`, isolated `LOCAL_OPERATOR_CONFIG_DIR`, a `--user-data-dir` and a
+WORKING DIRECTORY of its own per boot, an allowlisted environment,
+`--window-mode=headless`). The design record is `docs/design/any-daemon-attach.md`,
+whose § 12 records what the review rounds corrected.
 
-## How this set was produced — and which BUNDLE it depicts
+## How this set was produced — and the identity of the build it depicts
 
 ```sh
 pnpm build                     # FIRST: the frames must depict the code under review
@@ -16,93 +16,90 @@ PATH="$HOME/.local/bin:$PATH" \
 PATH="$HOME/.local/bin:$PATH" \
   node scripts/attach-frame-evidence.mjs --out docs/evidence/any-daemon-attach \
        --label after --scene other-principal
+ATTACH_FRAME_WIDTH=760 ATTACH_FRAME_HEIGHT=868 PATH="$HOME/.local/bin:$PATH" \
+  node scripts/attach-frame-evidence.mjs --out docs/evidence/any-daemon-attach \
+       --label narrow --scene other-principal
 ```
 
-**Bundle identity**, recorded because a stale `out/` is exactly how round 1's
-"re-shot" frames came to be byte-identical to the frames they claimed to replace
-(review round 2, D13): the rig boots `out/`, and these frames were taken from the
-build made at **2026-09-19 00:35** (`out/main/index.js`, sha256
-`9a0e2c5478d7c4b8…`). A grep of that bundle finds **zero** occurrences of
-`Restart the app so it can start its own server.`, the sentence round 2 removed
-(UX U2) — so a reader can tell from the artifact alone that the app they are
-looking at is the one under review.
+**The bundle identity is the renderer entry chunk and the compiled main bytecode**,
+recorded in every scene's record (`bundle`). The first version of this record quoted
+`out/main/index.js` — a 72-byte bytecode stub whose sha256 is identical across every
+build on this machine, including builds predating the fix — so it could not
+discriminate, and "a grep of the bundle finds no occurrence of X" was vacuously true
+of 72 bytes (review round 3, D18). What changes between builds is what is recorded
+now:
+
+- `out/renderer/assets/index-OBBklTG0.js`, sha256 `7e733d9c2be77a5c…`;
+- `out/main/index.jsc`, sha256 `7f1e498362a863d5…`;
+- newest source at capture: `backend-settings-section.tsx`, 2026-09-19T05:43:41Z,
+  against a build made 2026-09-19T05:46:04Z.
+
+And the rig now **refuses to run** when any file under `src/` is newer than the
+build: a rig that photographs whatever happens to be in `out/` is how the round-1
+"re-shot" frames came to be byte-identical to the frames they claimed to replace.
 
 **Which address each boot was configured for** is read from the app's OWN log and
-asserted, not taken from the launcher's environment: `src/main/backend/config.ts`
-folds a `.env` from `process.cwd()` with `override: true`, so a boot whose cwd is
-the checkout is configured against whatever that file pins (review round 1, QA
-Q-1). Each scene's record carries `configured: {port, url}`.
-
-The rig keeps one record per scene (`after-frames-any-daemon.json`,
-`after-frames-other-principal.json`) and merges them into `after-frames.json`.
+asserted, not taken from the launcher's environment (`config.ts` folds a `.env`
+from `process.cwd()` with `override: true`; review round 1, QA Q-1). Each scene's
+record carries `configured: {port, url}`.
 
 ## `after-any-daemon-*.png` — R1: a real `lop serve` the app did not start
 
 - the app's log carries `Claimed the desktop plane on http://127.0.0.1:46140.`;
-- the **daemon's** own serve record, read after the claim, reports `desktop: true`
-  with the `claim_key` it now accepts, its `instance_id`, its `version` and pid;
-- the daemon's own access log carries `POST /v1/desktop/claim` → `200`
-  (`claimInDaemonLog: true`).
+- the **daemon's** own serve record reports `desktop: true` with the `claim_key` it
+  now accepts, its `instance_id`, its `version` and pid;
+- the daemon's own access log carries `POST /v1/desktop/claim` → `200`.
 
-`after-any-daemon-attached.png` is the frame: the chat list populated from the
-adopted daemon's own store, `pairing: {available: true, cause: null}`, no band.
+`after-any-daemon-attached.png`: the chat list populated from that daemon's own
+store, `pairing: {available: true, cause: null}`, no band.
 
-`...-swap-during.png` is the app after that daemon is gone and before the
-successor exists — waited for rather than sampled. It carries the connectivity
-band with the list still showing what it last knew, and no version blame.
+`...-swap-during.png`: the app after the daemon is gone and before the successor
+exists — waited for rather than sampled. `...-swap-after.png`: the app after it
+re-paired **on its own** (the second `Claimed the desktop plane on …`), with the
+old "Not connected to the backend" line gone — the line whose feed relay was bound
+to the address and not to the credential (QA round 1 Q-2 / design D3).
 
-`...-swap-after.png` is the app after it re-paired **on its own**: the second
-`Claimed the desktop plane on …` in the app's log, the list back, no band, and the
-sidebar's "Not connected to the backend" line gone — the line whose relay was
-bound to the address and not to the credential, which is why it used to persist
-for ever after a re-pair (QA round 1 Q-2 / design D3).
+## `after-other-principal-*.png` — the governed screen, and its narrow re-shoot
 
-## `after-other-principal-triple.png` — the governed screen
+A daemon this app may not drive: the stub publishes the governed record
+(`desktop: true`, `claim_key: ""`) and the app's status derives
+`pairing: {available: false, cause: "governed-elsewhere"}`.
 
-A daemon this app may not drive: the stub publishes the record a governed plane
-leaves (`desktop: true`, `claim_key: ""`), and the app's status reports the cause
-it derived from it — `pairing: {available: false, cause: "governed-elsewhere"}`.
-The frame carries the compatibility band naming which program has the plane, with
-**no control**, and no version blame anywhere.
+**Both surfaces are read, each from its own vocabulary** (review round 3, D19).
+`page.bandSentence` comes from the band's own phrases and `page.pane.sentence` from
+the pane's, and the scene fails if the two are the same string: the round-2 version
+of this probe had one mixed list and took the last DOM match, so this scene's
+`page.pane` held the band's sentence with the band's geometry (`text-body-sm`,
+w1062, y80) while the pane was really saying something else. In this scene the pane
+field is now `null` — no conversation is open, so no pane sentence exists — and the
+band field carries the cause.
 
-**What the record claims, and what it does not.** The rig publishes
-`desktopRoutesServed` for this scene, and it is **0**: main's capability answer
-closes the gated surfaces before any of them can call a desktop route, so the
-daemon's prose cannot appear in this frame for a reason that has nothing to do
-with this change. The guard is therefore an assertion of ABSENCE and nothing
-stronger, and the record says so rather than implying the sentence reached the app
-and was suppressed. (A round-1 draft published `daemonProseReachedApp: true` — no
-such field exists in the tree, and the claim was wrong; review round 2, D15.) The
-class is covered where it is decidable, by the transport and routing tests, and
-the frame-level guard is deferred with that measurement.
+**What the prose guard can and cannot show.** The rig publishes
+`desktopRoutesServed`, which is **0**: main's capability answer closes the gated
+surfaces before any of them can call a desktop route, so the daemon's prose could
+not appear in this frame whatever the fix did. The assertion is therefore an
+ABSENCE, published beside its own count, and the record does not claim the sentence
+reached the app and was suppressed (a round-1 draft published
+`daemonProseReachedApp: true`, which had no field behind it; review rounds 2–3,
+D4/D15).
+
+`after-other-principal-narrow.png` (`--label narrow`, 760×868) is the same state at
+a narrow viewport, which round 1 deferred and round 3 measured to be one env var
+away.
 
 ### What the operator's own screen was (corrected attribution)
 
 The prose *"Desktop controls require a backend started by the desktop app."* is
-written only for a plane that is CLOSED: unclaimed, with no environment token. A
-plane governed by another principal answers 401/403 instead. So the operator's 503
-came from a closed plane this app held no claimable credential for, and the
-governed screen is the neighbouring state, photographed here because it is the one
-this branch's sentence and withheld control are for (design round 1, D5; design
-record § 12.1).
+written only for a plane that is CLOSED. A plane governed by another principal
+answers 401/403. So the operator's 503 came from a closed plane this app held no
+claimable credential for, and the governed screen is the neighbouring state (design
+round 1, D5; design record § 12.1).
 
 ## What this set does NOT cover
 
-- **A rendered frame of the chat pane's own sentence.** Opening a conversation
-  needs a desktop read the governed daemon refuses, and the swap window closes as
-  the app re-pairs. Pinned by `scripts/backend-error-surfaces.test.mjs`
-  (`backendPaneSentence`, `desktopFeatureState`) and, for the sidebar's own copy,
-  by `scripts/mark-all-read-control.test.mjs`.
-- **A frame of the daemon's prose being refused at the surface that photographs
-  it** (the caught desktop error behind a control): the drive was attempted and
-  measured to come back successful through the app's own IPC, and this scene
-  serves no desktop route at all — see the note above.
-- **A narrow-viewport and a light-theme frame** of the governed state, and **a
-  story** for the compatibility band's control states (design round 1 D10/D11,
-  round 2 D17): deferred. The geometry is measured (the S2 line to x 1100 of a
-  1380 px window; the pane wrapping at 832 px) and no theme role is introduced by
-  this change, but a rig knob for window size and theme plus a re-shoot is its own
-  slice.
-- **A `before` arm.** The only honest `before` is the operator's screenshot; the
-  replaced copy is quoted in the design record § 0 and pinned by the tests that
-  assert no pairing sentence asks a user to change what the app manages.
+- **A frame of the daemon's prose being refused at the surface that photographed
+  it** — see the guard's note above; the class is covered where it is decidable, by
+  the transport, routing and store tests.
+- **A light-theme frame** (round 1 D10): deferred, and no theme role is introduced
+  by this change.
+- **A `before` arm.** The only honest `before` is the operator's screenshot.

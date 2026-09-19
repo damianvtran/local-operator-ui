@@ -1,5 +1,21 @@
 {
   "label": "after",
+  "bundle": {
+    "mainBytecode": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
+      "sha256": "7f1e498362a863d58857aa9f60f95d220b8374487baf5cae6620885bb748c94d",
+      "builtAt": "2026-09-19T05:45:21.296Z"
+    },
+    "rendererChunk": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-OBBklTG0.js",
+      "sha256": "7e733d9c2be77a5cca7823b8ba74aff4bb3a717b07a375f659facbab3af21510",
+      "builtAt": "2026-09-19T05:46:04.168Z"
+    },
+    "newestSource": {
+      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
+      "at": "2026-09-19T05:43:41.289Z"
+    }
+  },
   "scenes": {
     "any-daemon": {
       "configured": {
@@ -9,10 +25,10 @@
       "claimed": "Claimed the desktop plane on http://127.0.0.1:46140.",
       "recordAfterClaim": {
         "desktop": true,
-        "claim_key": "XBM-ENGBkrL0KkKo8oSNPwLOEIX-pcHVDbZuj2uYxkM",
-        "instance_id": "ry7yX09zWho73VQIRBrAXsa5dQgu9_F31WMQqAG_8Vw",
+        "claim_key": "WWHen251hkSyO8N3r0L_P6d3bW-Y-iAtCHSsnC1UxYg",
+        "instance_id": "RmMY-HhVMY8iy32_gAahWlrzh1boAX0_Eb883jIYkXI",
         "version": "0.59.9",
-        "pid": 64499
+        "pid": 72848
       },
       "claimInDaemonLog": true,
       "page": {
@@ -24,10 +40,10 @@
         "snapshot": {
           "state": "attached",
           "url": "http://127.0.0.1:46140",
-          "pid": 64499,
+          "pid": 72848,
           "owned": false,
           "unanswered": 0,
-          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 64499, v0.59.9).",
+          "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 72848, v0.59.9).",
           "pairing": {
             "available": true,
             "cause": null
@@ -160,6 +176,7 @@
           ]
         },
         "band": null,
+        "bandSentence": null,
         "first_lines": [
           "Local Operator",
           "Chat",
@@ -192,7 +209,7 @@
           "snapshot": {
             "state": "detached",
             "url": "http://127.0.0.1:46140",
-            "pid": 64499,
+            "pid": 72848,
             "owned": false,
             "unanswered": 0,
             "detail": "The daemon's process is gone.",
@@ -328,6 +345,7 @@
             ]
           },
           "band": "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own. The daemon's process is gone. Retry",
+          "bandSentence": null,
           "first_lines": [
             "Not connected to a Local Operator server. If one is still running, the app reconnects to it on its own.",
             "The daemon's process is gone.",
@@ -354,10 +372,10 @@
           "snapshot": {
             "state": "attached",
             "url": "http://127.0.0.1:46140",
-            "pid": 66997,
+            "pid": 73267,
             "owned": false,
             "unanswered": 0,
-            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 66997, v0.59.9).",
+            "detail": "Connected to the daemon on http://127.0.0.1:46140 (pid 73267, v0.59.9).",
             "pairing": {
               "available": true,
               "cause": null
@@ -490,6 +508,7 @@
             ]
           },
           "band": null,
+          "bandSentence": null,
           "first_lines": [
             "Local Operator",
             "Chat",

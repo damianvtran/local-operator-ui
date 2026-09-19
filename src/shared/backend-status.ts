@@ -326,8 +326,16 @@ export function serverBannerCopy(
 						 * The promise in the title is kept, because the app really does
 						 * keep looking; the control is withheld where no act exists.
 						 */
-						title:
-							"The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears.",
+						/*
+						 * The title does not assert the process DIED (UX round 3, U10):
+						 * main's own detail beside it says the daemon may still be running,
+						 * and for a governed or older install the process is fine while the
+						 * app may not attach. What this arm can say is the connection fact
+						 * and that the app keeps looking.
+						 */
+						title: remedy
+							? "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears."
+							: "Not connected to a Local Operator server. The app keeps looking for one.",
 						detail,
 						retry: remedy,
 					};
