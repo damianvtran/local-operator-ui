@@ -33,6 +33,55 @@ const PAIR: [string, string][] = [
 	["wedged", WEDGED_LABEL],
 ];
 
+/**
+ * THE AMBER CLASS IN ONE COLUMN, which is design round 1's D4.
+ *
+ * The design's §1.5 asks whether the four marks a reader meets in one list —
+ * needs-you, interrupted, not answering and error — can be told apart, and the
+ * matrix below answers it only by CROSS-REFERENCING two columns: `approval` and
+ * `interrupted` sit on the left, `answer` and `wedged` on the right, so the
+ * closest pair (`≈`'s two waves against `Pause`'s two bars) never appears in one
+ * place. The designer composed this strip from the frame's own pixels to check it,
+ * which is the signal that the frame should have shown it: a claim about a COLUMN
+ * cannot be read off a grid.
+ *
+ * FOUR ROWS, one per mark, in the order a list would sort them, each with the ink
+ * role named beside it. THREE OF THE FOUR WEAR `warning` — that is the point of
+ * the specimen rather than an accident of the fixture, and it is why the silhouette
+ * carries the state: this product's own measurement records `warning` and `danger`
+ * converging under deuteranopia, so colour alone separates nothing here.
+ */
+const AMBER_CLASS: [string, string, string][] = [
+	["approval", "Approval needed", "needs you — CircleAlert, warning"],
+	["interrupted", "Interrupted", "interrupted — Pause, warning"],
+	["wedged", WEDGED_LABEL, "not answering — EqualApproximately, warning"],
+	["error", "Failed", "error — CircleAlert, danger"],
+];
+
+export const AmberClass: Story = {
+	args: { row: { session_id: "specimen" } },
+	render: () => (
+		<div className="bg-surface text-ink flex w-[380px] flex-col gap-3 p-6">
+			{AMBER_CLASS.map(([code, label, note]) => (
+				<div className="flex items-center gap-2" key={code}>
+					<ChatSessionStatus
+						row={
+							{
+								session_id: "specimen",
+								status: { code, label },
+							} as CanonicalSessionRow
+						}
+					/>
+					<div className="flex min-w-0 flex-col">
+						<span className="truncate">{label}</span>
+						<span className="text-ink-muted text-meta">{note}</span>
+					</div>
+				</div>
+			))}
+		</div>
+	),
+};
+
 export const Neighbours: Story = {
 	args: { row: { session_id: "specimen" } },
 	render: () => (

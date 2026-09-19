@@ -64,7 +64,6 @@ import {
 } from "react";
 import type {
 	CanonicalFrontendState,
-	DesktopColdReason,
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
@@ -210,19 +209,6 @@ export type CanonicalTranscriptProps = {
 	 * its failing shapes live in `transcriptPaneHoldsPlaceholder`.
 	 */
 	awaitingHydration: boolean;
-	/**
-	 * WHY the page this pane is waiting for has not arrived, when the session's own
-	 * stream has said so.
-	 *
-	 * Handed down rather than read here, like `awaitingHydration` above and for the
-	 * same reason: it is the canonical session handle's fact (`cold_reason` from the
-	 * read that answered), and a second derivation from the frame would be a second
-	 * answer to one question. Optional — a pane with no session behind it has no read
-	 * to explain, and says nothing rather than guessing.
-	 */
-	coldReason?: DesktopColdReason | null;
-	/** A retained dial whose canonical state has not arrived yet. */
-	attaching?: boolean;
 	/**
 	 * True while the rows below came from the local paint cache rather than from
 	 * the owner (M2).
@@ -1332,8 +1318,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	failure,
 	awaitingHydration,
-	coldReason = null,
-	attaching = false,
 	stale = false,
 	missing = false,
 	attachmentScope,
@@ -1862,11 +1846,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    at the same inset and the same bottom anchor the rows will, rather
 				    than at the pane's centre in the composer band. */}
 					{holdPlaceholder && (
-						<TranscriptPlaceholder
-							isSmallView={isSmallView}
-							coldReason={coldReason}
-							attaching={attaching}
-						/>
+						<TranscriptPlaceholder isSmallView={isSmallView} />
 					)}
 					{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest

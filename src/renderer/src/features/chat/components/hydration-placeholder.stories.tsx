@@ -89,39 +89,3 @@ export const Hydrating: Story = {
 		</Region>
 	),
 };
-
-/**
- * The wait, with the reason the read is slow — the operator's second complaint.
- *
- * ALL FOUR CODES ON ONE FRAME rather than four stories, because the mapping is
- * the claim and a reader can check it in one look: no pid holds the session's
- * lease, one holds it and did not deliver canonical state (the operator's quiet
- * owner), the record is finishing a turn first, and a retained dial whose state
- * has not landed. The tokens are the wire's (`DesktopColdReason`); every sentence
- * below is authored on the surface, which is the division the contract states.
- *
- * The DEFAULT case is `Hydrating` above and is deliberately not repeated here:
- * with nothing known the words are the ones this region already shipped, and the
- * point of this pair of stories is that the unknown case did not move.
- *
- * NOT THE `Region` WRAPPER, and that is measured rather than preferred. `Region`
- * is the transcript region at its real height with the composer band under it,
- * which is what makes `Hydrating` a picture of the box a click lands in; four
- * stacked placeholders do not fit inside that box, so a `Region` here would clip
- * the fourth sentence out of the frame — a legend with one of its four entries
- * missing. This frame is about the WORDS, so it is drawn at the height its own
- * content needs, on the same ground the region uses. The component is the
- * shipped one either way: the bars, the pulse and the ink are the region's.
- */
-export const Reasons: Story = {
-	render: () => (
-		<div className="flex w-full flex-col bg-canvas p-4">
-			<div className={`flex flex-col gap-8 ${CHAT_MEASURE}`}>
-				<TranscriptPlaceholder coldReason="no-runtime" />
-				<TranscriptPlaceholder coldReason="owner-silent" />
-				<TranscriptPlaceholder coldReason="owner-leaving" />
-				<TranscriptPlaceholder attaching />
-			</div>
-		</div>
-	),
-};

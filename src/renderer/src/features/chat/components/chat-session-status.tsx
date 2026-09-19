@@ -123,10 +123,18 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 							? "text-success"
 							: "text-ink-dim";
 	return (
-		<span
-			className="flex size-4 shrink-0"
-			title={row.status?.label ?? "Recent"}
-		>
+		/*
+		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
+		 * `row.status?.label`, and because this span sits INSIDE the row's button it won
+		 * the nested-`title` rule: hovering the 16px mark showed the state's sentence
+		 * WITHOUT the remedy clause the row composes, so the one piece of advice this
+		 * change adds was unreachable exactly over the mark it is about — and the row's
+		 * own tooltip, which carries the clause, was shadowed over that square of pixels.
+		 * The sentence is not lost by dropping it: the row's button owns the tooltip for
+		 * the whole row (including the mark), and the `sr-only` span below carries the
+		 * same words to the accessibility tree.
+		 */
+		<span className="flex size-4 shrink-0">
 			<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			<span className="sr-only">
 				{row.status?.label ?? "Recent"}
