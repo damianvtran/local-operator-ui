@@ -777,6 +777,30 @@ export const STORIES = [
 	["browser-load-failure--unmapped-code", 1280, 420],
 
 	/*
+	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
+	 * artifact anywhere: the design round had to build one from an untracked file,
+	 * and this table had no row for it, so the surface could not be re-shot and a
+	 * regression in its copy or its rows had no frame to show up in.
+	 *
+	 * Sized per state rather than at 900 for the reason `/usage`'s states are: the
+	 * chooser is content-sized, so four rows in a 900-tall frame is mostly ground
+	 * (`check-evidence`'s uniformity ceiling is what notices), while the twelve-
+	 * account state genuinely needs the height to show that the list scrolls and
+	 * that the Touch ID sentence stays pinned under it.
+	 */
+	["browser-webauthn-dialog--several-named", 1024, 620],
+	// The Answering state is the one state the app-side rig cannot hold (the preload
+	// object refuses the patch, and holding it from main would freeze the process
+	// that serves the screenshot), so the dimming rule design round 2 found broken
+	// is captured here — disabled rows and the pinned cue — against the enabled
+	// state above it.
+	["browser-webauthn-dialog--answering", 1024, 620],
+	["browser-webauthn-dialog--nameless", 1024, 660],
+	["browser-webauthn-dialog--long-names", 1024, 620],
+	["browser-webauthn-dialog--many-accounts", 1024, 900],
+	["browser-webauthn-dialog--expired", 1024, 480],
+
+	/*
 	 * The conversation-scoped pane (`docs/design/browser-approval-ux.md` §7),
 	 * captured at the PANE's own width rather than at 1280: an evidence frame of a
 	 * pane should be the pane, so the viewport is the box the user sees — 640, the

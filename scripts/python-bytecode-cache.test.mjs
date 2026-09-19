@@ -2211,6 +2211,12 @@ const SPAWN_SITES = [
 		/"sh"/,
 		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
 	),
+	passThrough(
+		"src/main/webauthn.ts",
+		"execFile",
+		1,
+		"the signature probe's runner: `file` is the parameter a test injects, and the only value the app itself passes is `/usr/bin/codesign` with an explicit argv (`-dv --verbose=4`, `-d --entitlements - --xml`). No interpreter, and no environment of its own: the child inherits this process's",
+	),
 ];
 
 test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {
