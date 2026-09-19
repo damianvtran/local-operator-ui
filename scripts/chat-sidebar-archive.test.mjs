@@ -68,7 +68,15 @@ test("the archive control is a SIBLING of the row's button, never a child", () =
 	 * conversation the user was trying to archive.
 	 */
 	const rowButtonEnd = rows.indexOf("</button>");
-	const control = rows.indexOf("data-session-archive");
+	/*
+	 * ANCHORED ON THE CONTROL'S ACCESSIBLE NAME, not on its `data-session-archive`
+	 * attribute - and the reason is a trap this file hit: `data-session-archive` is
+	 * a PREFIX of `data-session-archived`, the row button's own archived flag, so a
+	 * substring search for the control's attribute finds the button's first (at
+	 * line ~1094) and every assertion below then describes the row's box instead of
+	 * the control's.
+	 */
+	const control = rows.indexOf("aria-label={archiveControlLabel(label, archived)}");
 	assert.notEqual(rowButtonEnd, -1, "the row's button no longer closes");
 	assert.notEqual(control, -1, "the row no longer mounts an archive control");
 	assert.ok(
@@ -90,7 +98,11 @@ test("the archive control is a SIBLING of the row's button, never a child", () =
 });
 
 test("the archive control is reserved, revealed by opacity, and named by its action", () => {
-	const control = between(SIDEBAR, "data-session-archive", "</button>");
+	const control = between(
+		SIDEBAR,
+		"aria-label={archiveControlLabel(label, archived)}",
+		"</button>",
+	);
 	// Reserved at rest: the box is the same size in both states, so the reveal
 	// cannot reflow the row under the pointer - and it is hidden AND inert, because
 	// an affordance the reader cannot see must not be what a press lands on.

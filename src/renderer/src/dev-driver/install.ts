@@ -388,6 +388,69 @@ export function installDevDriver(): string[] {
 		},
 
 		/**
+		 * Read one element's painted box, WITHOUT touching it.
+		 *
+		 * WHY A SCENE NEEDS THIS AND `press` CANNOT SERVE. A hover is browser state: it
+		 * is set by the pointer being over an element, not by an event that element is
+		 * handed, so a `group-hover` reveal cannot be produced by dispatching anything
+		 * - and the pointer a scene moves has to be the REAL one, through the driver's
+		 * own input pipeline (CDP `Input.dispatchMouseEvent`), which lives on the other
+		 * side of this bridge. What the driver cannot work out for itself is where the
+		 * element IS: the app's layout is its own, and the driver has no evaluation
+		 * channel by design (see the module note).
+		 *
+		 * So this verb answers the one question that leaves: the box, in CSS pixels,
+		 * with the same hit test `press` reports, and it deliberately does not click,
+		 * focus or scroll anything. A verb that moved the pointer itself would be a
+		 * second way to hover, and the point of the split is that the pointer stays the
+		 * driver's.
+		 */
+		measure: async (payload) => {
+			const request =
+				typeof payload === "string"
+					? { selector: payload }
+					: (payload as { selector: unknown; timeoutMs?: unknown });
+			const selector = requireString(request?.selector, "measure selector");
+			const timeoutMs =
+				typeof request?.timeoutMs === "number" ? request.timeoutMs : 10_000;
+			const started = Date.now();
+			let element: Element | null = null;
+			while (element === null) {
+				element = document.querySelector(selector);
+				if (element !== null) break;
+				if (Date.now() - started > timeoutMs) {
+					throw new Error(
+						`nothing matches ${selector} after ${timeoutMs}ms of waiting`,
+					);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			const rect = element.getBoundingClientRect();
+			const centre = {
+				x: Math.round(rect.left + rect.width / 2),
+				y: Math.round(rect.top + rect.height / 2),
+			};
+			const hit = document.elementFromPoint(centre.x, centre.y);
+			return {
+				selector,
+				target: describeElement(element),
+				centre,
+				rect: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					width: Math.round(rect.width),
+					height: Math.round(rect.height),
+				},
+				hitTest: hit !== null && (hit === element || element.contains(hit)),
+				inViewport:
+					rect.top >= 0 &&
+					rect.left >= 0 &&
+					rect.bottom <= window.innerHeight &&
+					rect.right <= window.innerWidth,
+			};
+		},
+
+		/**
 		 * Press a control, waiting for it to exist.
 		 *
 		 * The wait is part of the verb rather than something a scene does before
