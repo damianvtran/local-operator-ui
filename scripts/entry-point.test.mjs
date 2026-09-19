@@ -171,7 +171,7 @@ function cases(root) {
 		},
 		{
 			// The WebAuthn entitlement renderer: the refusal a release job must fail on
-			// rather than render a plist without the group. This case pins the first
+			// rather than render a group nothing can authorize. This case pins the first
 			// check (a missing destination), which happens before any secret is read,
 			// so it needs no environment and reaches no keychain.
 			script: "render-mac-entitlements.mjs",
@@ -183,10 +183,12 @@ function cases(root) {
 			stderr: /--out <path> is required/,
 		},
 		{
-			// And the render itself, over the COMMITTED plist: it needs no signing
-			// identity and no secret, which is why this is the half a test can drive.
-			// The destination is inside the throwaway root, so the two spellings of the
-			// invocation cannot collide.
+			// And the render itself, over the COMMITTED plist with NO profile: this is the
+			// shipped default since the 0.29.6 incident, and the half a test can drive
+			// without a signing identity or a Developer ID profile. It writes the plist
+			// unchanged (no restricted claim, so the app launches) and says what that
+			// means for passkeys. The destination is inside the throwaway root, so the two
+			// spellings of the invocation cannot collide.
 			script: "render-mac-entitlements.mjs",
 			args: [
 				"--out",
@@ -198,8 +200,27 @@ function cases(root) {
 			env: {},
 			status: 0,
 			stdout:
-				/^render-mac-entitlements: wrote \d+ entitlements, including one keychain access group, to /m,
+				/^render-mac-entitlements: wrote the committed entitlements \(no keychain access group, no provisioning profile\) to .*passkeys stay inert$/m,
 			stderr: /^$/,
+		},
+		{
+			// The group, asked for WITHOUT the profile that authorizes it: the door stays
+			// shut, and it shuts on an exit status rather than on a warning. This is the
+			// half-open state that produced the unlaunchable 0.29.6 bundle.
+			script: "render-mac-entitlements.mjs",
+			args: [
+				"--out",
+				join(plain, "never-rendered.plist"),
+				"--team-id",
+				"AB12CD34EF",
+				"--profile",
+				join(plain, "absent.provisionprofile"),
+			],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /does not name a readable provisioning profile/,
 		},
 		{
 			script: "release-baseline.mjs",
