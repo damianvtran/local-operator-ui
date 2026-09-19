@@ -34,6 +34,7 @@ import {
 	LoaderCircle,
 	MessageSquarePlus,
 	MoreHorizontal,
+	Pin,
 	Plus,
 	Users,
 	X,
@@ -58,6 +59,7 @@ import {
 	searchAnswerIsClipped,
 	searchChats,
 } from "../chat-search";
+import { pinnedRows, unpinnedRows } from "../chat-sections";
 import { clearSearch } from "../clear-search";
 import {
 	markAllReadCopy,
@@ -74,6 +76,19 @@ type Props = {
 };
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+
+/*
+ * The conversation row's BOX - the element main's `ce5fd9578` put around the button,
+ * and the box both of this row's paths render.
+ *
+ * It is a named constant because the two paths must render THE SAME BOX and not merely
+ * similar ones: the button inside it is `min-w-0 grow`, so a path that rendered the
+ * button alone would leave it without a flex parent, shrink-to-fitting its words. That
+ * is exactly what design round 8 (D1) measured on the capability-withdrawn path -
+ * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
+ * how the two paths drifted when main's row changed shape under this branch's fold.
+ */
+const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
@@ -151,10 +166,13 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * `catppuccinMacchiato` 0.80, then tokyoNight 1.05), and on **6 of 41** dark
  * themes it is a WEAKER mark than the hover beside it — `obsidian` 2.02 against
  * 3.42, `tokyoNight` 2.04 against 3.41 — which is the exact arrangement the
- * retired role existed to fix. The wash is not broken everywhere — the app rail
- * paints it on `sunken`, where it measures 9.6 — which is why this is a call-site
- * ground and NOT a wash: strengthening `accentWash` for the panels that draw it
- * on `surface` would make every hover tint in the app louder. (The SETTINGS rail
+ * retired role existed to fix. The wash is not broken everywhere — on the rail's
+ * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
+ * and NOT a wash: strengthening `accentWash` for the panels that draw it on
+ * `surface` would make every hover tint in the app louder. (The rail no longer
+ * paints a ground of its own at all: it is `surface` with a `border-r
+ * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
  * declaration below.)
@@ -271,13 +289,23 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * One literal, deliberately: this role is the one thing a guard reads out of the
  * tree (`scripts/chat-sidebar-selection.test.mjs` resolves it and every call site
  * through the shipped `cn`), and a literal assembled from parts would be a role a
- * reader of that file cannot get in one piece. `relative` is IN here rather than
- * at each call site because the bar is `absolute`: the element that carries the
- * role is the bar's containing block, and a consumer that forgot `relative` would
- * let the bar escape its row.
+ * reader of that file cannot get in one piece.
+ *
+ * THE 2px `accent` BAR IS GONE (row-state refinement, 2026-09-18), and `relative`
+ * with it. The bar was the row's non-colour second signal because both fills used
+ * to be one hue at two strengths; the refined roles rank the pair on `L*` and on
+ * cast, so the fill carries the ranking and `font-medium` is the non-colour half.
+ * The bar also squared the row's leading edge (its square overlay painted over
+ * `rowStyle`'s `rounded-md`), so removing it is what restores the left rounding
+ * the operator asked for - the radius itself never moved. The two POPUP bars
+ * (`slash-commands.tsx`, `at-picker.tsx`) stay: their row is the one Enter
+ * applies, in a transient popup, and the keyboard has no other mark there.
+ *
+ * `relative` existed ONLY to be the bar's containing block, so it goes with the
+ * bar rather than staying as a stray positioning context on every current row.
  */
 export const rowCurrent =
-	"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";
+	"bg-row-selected font-medium text-ink hover:bg-row-selected";
 
 import {
 	type FocusedSlot,
@@ -400,6 +428,38 @@ export function ChatSidebar({
 	 * the report it answers and why the withdrawn case is not the error case.
 	 */
 	const searchRef = useRef<HTMLInputElement>(null);
+	/*
+	 * Whether this backend can hold pins at all, read from the same capability
+	 * answer the catalogue gate above uses rather than from a second negotiation.
+	 *
+	 * FAIL-CLOSED MEANS NO AFFORDANCE, not a disabled one: absent `session_pins`
+	 * this is false, `pinnedRows` returns nothing, the section renders no heading
+	 * and the row mounts no pin slot - so the panel's DOM and class set are
+	 * byte-identical to the one that never knew about pins. A disabled pin would
+	 * be worse than an absent one, because the row's other 24px control slot is
+	 * right there and the user would read pinning as a feature they have not
+	 * unlocked, while a permanently reserved empty slot costs every row width to
+	 * advertise nothing.
+	 */
+	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
+	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
+	/*
+	 * The client's own pin state for conversations this panel's page does not carry
+	 * (the store's `pinFacts`). A row synthesized from a search hit is rebuilt from
+	 * the cached answer on every render, so without this the row reports the state
+	 * the search last saw and its control cannot invert its own press (Qr2-1).
+	 */
+	const pinFacts = useCanonicalSessionsStore((s) => s.pinFacts);
+	/*
+	 * The pure search module takes plain booleans: the stamp that orders a fact against
+	 * an answer is the store's business, and a row only needs what to draw.
+	 */
+	const pinFactValues = useMemo(() => {
+		const values: Record<string, boolean> = {};
+		for (const [id, fact] of Object.entries(pinFacts)) values[id] = fact.pinned;
+		return values;
+	}, [pinFacts]);
+	const setSessionPin = useCanonicalSessionsStore((s) => s.setSessionPin);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
 	const { stale, showList, notice } = catalogueGate({
@@ -476,6 +536,198 @@ export function ChatSidebar({
 			return {};
 		}
 	});
+	/*
+	 * THE ROW A PIN JUST MOVED, AND WHERE THE READER LEFT IT (QA round 1, U1/U2/U3).
+	 *
+	 * Pinning moves a conversation out of `Active`/`Previous` and into `Pinned chats`,
+	 * which is a change of DOM POSITION, and three things went wrong with it when the
+	 * move was left to the browser: the region's scroll was re-anchored (275 -> 319,
+	 * with the `Pinned chats` heading 309 px above the visible top), the pointer was
+	 * left over a DIFFERENT conversation's row - a second click opens the wrong chat -
+	 * and the control holding keyboard focus was unmounted with the row, so the next
+	 * Tab started at the top of the panel.
+	 *
+	 * ONE CORRECTION PER KIND OF PRESS, because the two want opposite things and
+	 * pretending otherwise is how the browser's own anchoring got it wrong:
+	 *
+	 *   - a POINTER press anchors the CONTENT: the row the pointer was next to keeps
+	 *     the line it had, so the list does not move under the reader and the pointer
+	 *     is left over the vacated slot - not over a neighbour, and not over a control
+	 *     that would act on a conversation nobody chose. This is measurable and is
+	 *     measured: the neighbour's viewport top is asserted unchanged in the scene.
+	 *   - a KEYBOARD press follows the ROW: the caret went to the row's control, so the
+	 *     row moving away from the caret is the disorienting part. The correction puts
+	 *     it back on its line, or - when that is geometrically impossible, because the
+	 *     section it moved into has less content above it than the reader had scrolled,
+	 *     measured at scrollTop 334 needing a target of -187 - brings it to the
+	 *     region's top edge and hands focus back to the same control on that row.
+	 *
+	 * `event.detail === 0` is what tells them apart: a click synthesised from Enter or
+	 * Space carries no click count, and a real pointer press carries 1.
+	 */
+	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	const movedRef = useRef<{
+		id: string;
+		top: number;
+		follow: boolean;
+		anchorId: string | null;
+		anchorTop: number;
+		/** Where the pointer was at the press, for the wobble slop above. */
+		pointer: { x: number; y: number } | null;
+	} | null>(null);
+	const rememberMovedRow = (
+		sessionId: string,
+		follow: boolean,
+		pointer: { x: number; y: number } | null,
+	) => {
+		const rows = Array.from(
+			listPanelRef.current?.querySelectorAll<HTMLElement>(
+				"[data-session-row]",
+			) ?? [],
+		);
+		const index = rows.findIndex(
+			(row) => row.getAttribute("data-session-row") === sessionId,
+		);
+		if (index < 0) {
+			movedRef.current = null;
+			return;
+		}
+		// The row the reader can watch: the one below the pressed row, or the one above
+		// when it was last. Either is a row the pointer is NOT on, which is the point.
+		const neighbour = rows[index + 1] ?? rows[index - 1] ?? null;
+		movedRef.current = {
+			id: sessionId,
+			top: rows[index].getBoundingClientRect().top,
+			follow,
+			pointer,
+			anchorId: neighbour?.getAttribute("data-session-row") ?? null,
+			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
+		};
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: this runs after every render and clears itself; the guard IS the state it waits on
+	useEffect(() => {
+		const moved = movedRef.current;
+		const list = listPanelRef.current;
+		if (!moved || !list) return;
+		const row = list.querySelector<HTMLElement>(
+			`[data-session-row="${moved.id}"]`,
+		);
+		if (!row) {
+			// The row is gone entirely (the read removed it): nothing to correct, and the
+			// ref must not survive into the next press as a stale anchor.
+			movedRef.current = null;
+			return;
+		}
+		if (moved.follow) {
+			const delta = row.getBoundingClientRect().top - moved.top;
+			if (delta !== 0) list.scrollTop += delta;
+			const listBox = list.getBoundingClientRect();
+			const rowBox = row.getBoundingClientRect();
+			if (rowBox.top < listBox.top) list.scrollTop -= listBox.top - rowBox.top;
+			else if (rowBox.bottom > listBox.bottom)
+				list.scrollTop += rowBox.bottom - listBox.bottom;
+			/*
+			 * `preventScroll`, which is the whole reason the correction above survives: a
+			 * plain `focus()` scrolls the element into view itself - measured as the region
+			 * snapping to 0 and the row landing 202 px above the line it was pressed on.
+			 * The correction is this effect's; focus only says where the caret is.
+			 */
+			row
+				.querySelector<HTMLElement>("[data-session-pin]")
+				?.focus({ preventScroll: true });
+		} else if (moved.anchorId !== null) {
+			const anchor = list.querySelector<HTMLElement>(
+				`[data-session-row="${moved.anchorId}"]`,
+			);
+			if (anchor) {
+				const delta = anchor.getBoundingClientRect().top - moved.anchorTop;
+				if (delta !== 0) list.scrollTop += delta;
+			}
+		}
+		movedRef.current = null;
+	});
+	/*
+	 * A PRESS BELONGS TO THE CONTROL IT WAS MADE ON (QA round 1, U3; UX round 2, U3-unpin).
+	 *
+	 * A pin press re-orders the panel: the pressed row leaves the list, and the rows below
+	 * slide up. The pointer has not moved, so it is now over a DIFFERENT conversation - and
+	 * a repeat press there would pin or open a row the reader never pointed at. The first
+	 * instrument for this was a disarm: after any press the reveal went inert until the
+	 * pointer moved again. It was too blunt, and QA round 2 (Qr2-1) is where that showed:
+	 * a reader who pins a row and then presses its glyph again to UNPIN it pressed the SAME
+	 * control, at coordinates that had not changed, and the disarm swallowed a gesture that
+	 * was exactly what the panel invites.
+	 *
+	 * So the guard is about identity rather than time or distance: a pointer press that
+	 * repeats the previous one without the pointer having gone anywhere - inside the wobble
+	 * slop - is dropped WHEN THE CONTROL UNDER THE POINTER IS A DIFFERENT CONVERSATION'S,
+	 * and honoured when it is the same one. That is the hazard stated precisely (a row that
+	 * merely slid into place is not the row the press meant) without taking the reader's own
+	 * control away from them. The keyboard is never involved: Enter or Space carries no
+	 * pointer position, so it always acts on the row that has focus.
+	 *
+	 * The slop is a hand's tremor, not a movement: a few px of wobble is still the same
+	 * press. But the tremor test alone made the guard a DISC rather than a gesture (QA
+	 * round 3, Qr3-1; UX round 3, U9): pressing the parked point after the pointer had left
+	 * and come back was still "a repeat", and the disc outlived the gesture, so a deliberate
+	 * later press on a control the reader could see was silently dropped. So the record is
+	 * EXPIRED by the pointer's own path - a move further than the slop clears it, and so
+	 * does leaving the list - which is what makes the drop describe "the pointer has not
+	 * gone anywhere since" rather than "these coordinates were used a moment ago".
+	 */
+	const lastPinPress = useRef<{
+		x: number;
+		y: number;
+		sessionId: string;
+	} | null>(null);
+	/*
+	 * A hand's tremor, in CSS px. The scene's instrument uses 3 px and the code allows a
+	 * little more, so the instrument sits inside the boundary rather than on it; QA round 3
+	 * measured the recovery at 8 px, which is the first move that clears this record.
+	 */
+	const PIN_PRESS_SLOP_PX = 6;
+	/**
+	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
+	 *
+	 * Called by the pin's own handler before it does anything, and it records the press it is
+	 * asked about in the same place - one place, so the record and the decision cannot
+	 * disagree about which press was last. `pointer === null` is the keyboard (a click
+	 * synthesised from Enter or Space carries no count): it has no position, so it is never
+	 * dropped and it records nothing.
+	 */
+	const dropRepeatPress = (
+		pointer: { x: number; y: number } | null,
+		sessionId: string,
+	) => {
+		const last = lastPinPress.current;
+		/*
+		 * A dropped press does NOT advance the record. The row under a parked pointer is not the
+		 * row the gesture was aimed at, and the reader has still not moved: recording the
+		 * dropped press would make the NEXT repeat look like the same control's own press and
+		 * let the hazard through on the second attempt. Measured, before this line existed: a
+		 * 3 px wobble after a press on another row unpinned the row that had slid into place,
+		 * which is the exact gesture UX round 2 reported.
+		 */
+		if (pointer === null) {
+			/*
+			 * The keyboard carries no position: it always acts on the row that has focus, so it
+			 * is never dropped. It also does NOT clear the record (review round 4, item 7): a
+			 * keyboard press re-orders the panel exactly as a pointer press does, so the parked
+			 * pointer is left over a different conversation by it too - and clearing the record
+			 * here disarmed the guard for the next pointer press, which is the one press the
+			 * guard exists for. `lastPinPress` describes the last POINTER press, which is the
+			 * only kind that has a position, and the path expiry above is what keeps it fresh.
+			 */
+			return false;
+		}
+		if (last !== null) {
+			const repeated =
+				Math.hypot(pointer.x - last.x, pointer.y - last.y) <= PIN_PRESS_SLOP_PX;
+			if (repeated && last.sessionId !== sessionId) return true;
+		}
+		lastPinPress.current = { ...pointer, sessionId };
+		return false;
+	};
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
@@ -748,13 +1000,41 @@ export function ChatSidebar({
 	const hits = hitsAnswerQuery(search.data, query)
 		? search.data.sessions
 		: null;
+	/*
+	 * THE PIN THE PAGE CANNOT DRAW, drawn from the fact (design round 4, D17; UX round 4,
+	 * U14). A press on a conversation the catalogue page does not carry is remembered by
+	 * `pinFacts`, and the fact is now a record a row can be built from rather than a bare
+	 * boolean - because the alternative is what D12 photographed: the backend and the
+	 * terminal both holding a pin, and the app drawing no row, no heading and no count for
+	 * a conversation that is genuinely in the pinned set. The design round weighed the
+	 * alternatives and refused both (a count with no row under-reports the shared set; a
+	 * "not in this list" badge exposes a paging bound the reader has no model for).
+	 *
+	 * The row is built only for a conversation the catalogue does NOT list: where it does,
+	 * the catalogue's own row is the row, and this one would be a second copy on one axis -
+	 * the same defect the partition exists to avoid.
+	 */
+	const heldRows = useMemo(() => {
+		const listed = new Set(sessions.map((row) => row.session_id));
+		const out: CanonicalSessionRow[] = [];
+		for (const [id, fact] of Object.entries(pinFacts)) {
+			if (!fact.pinned || listed.has(id)) continue;
+			out.push({
+				session_id: id,
+				title: fact.title || "Untitled chat",
+				updated_at: fact.updated_at,
+				pinned: true,
+			});
+		}
+		return out;
+	}, [pinFacts, sessions]);
 	const {
 		rows: matching,
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats(sessions, query, hits),
-		[sessions, query, hits],
+		() => searchChats([...sessions, ...heldRows], query, hits, pinFactValues),
+		[sessions, heldRows, query, hits, pinFactValues],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -772,6 +1052,22 @@ export function ChatSidebar({
 				? row.binding?.team === name
 				: !row.binding?.team && row.binding?.agent === name,
 		);
+	/*
+	 * The pinned partition, applied to the FILTERED list and to nothing else: the
+	 * Pinned section draws `matching ∩ pinned` (a pinned row the search excludes is
+	 * simply absent), and the sections below it draw the rest, so one conversation
+	 * is drawn once. Both calls take `pinsEnabled`, and `unpinnedRows` returning
+	 * every row when it is false is what keeps a withdrawn capability from erasing
+	 * a row that still carries a flag - see that function's own comment.
+	 *
+	 * `children` above reads `matching` rather than `rest` deliberately: sections
+	 * and agent groups are two axes, and this panel already draws one chat in two
+	 * places on two axes (in `Active chats` and under its agent when expanded).
+	 * Lifting a pinned row out of its group would also move the group's own count
+	 * badge, which is `children().length`.
+	 */
+	const pinned = pinnedRows(matching, pinsEnabled);
+	const rest = unpinnedRows(matching, pinsEnabled);
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -927,98 +1223,121 @@ export function ChatSidebar({
 		 * `scripts/chat-sidebar-selection.test.mjs` resolves both expressions through the
 		 * shipped `cn` rather than looking for a class name.
 		 *
-		 * THE WRAPPER IS DELIBERATELY NOT COLLAPSED INTO THE BUTTON. With the mark gone the two
-		 * boxes are the same box, so this is dead structure today rather than a load-bearing
-		 * split: the shape is kept because the row's geometry is not this change's to alter —
-		 * the slot the wrapper reserves is where the operator's hover-revealed pin goes, and
-		 * that reshape belongs to the change that adds it. The `group` class the wrapper used
-		 * to carry is GONE rather than kept: nothing left inside the row reads a `group-*`
-		 * variant (the reveal it was added for was never implemented — see the removed mark's
-		 * history in the pull request), and a hook no element reads is a hook nobody can trust.
+		 * THE WRAPPER, THE SLOT AND THE `group` HOOK, stated together because this is the
+		 * seam the fold welded: the slot the next paragraph describes as reserved is now
+		 * FILLED, by this branch's 24px pin control (mounted only when the backend
+		 * advertises `session_pins`, revealed on hover or focus inside the row, and
+		 * reserving its box at rest so the reveal cannot reflow the row), and the
+		 * `group` class the wrapper carried is back for exactly the reason its removal
+		 * gave — something inside READS it now (`group-hover`/`group-focus-within` on
+		 * that control), and a hook an element reads is the only kind worth carrying.
+		 * The wrapper keeps its other job unchanged, and carries
+		 * `data-session-row`, the hook the pins harness and this file's CURRENT table
+		 * address the row by. The `w-full` -> `min-w-0 grow` note on the button below is
+		 * main's and still holds: a full-width button sharing a flex row with a sibling
+		 * is a row that overflows.
 		 *
 		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with it
 		 * `title` and `aria-current` — three committed harnesses select on those and the
-		 * arrow-key traversal walks the attribute.
+		 * arrow-key traversal walks the attribute. The pin control deliberately does NOT
+		 * carry it: Tab reaches that control and the arrow-key traversal does not.
+		 *
+		 * WHY THE FOLD KEPT BOTH HALVES: main's row body is the shipped one (its unread
+		 * tail reads `unreadMarkKind`, the predicate the glyph, the accessible name and
+		 * the bulk count all read) and this branch's contribution is the trailing pin and
+		 * the press guard on the row's own `onClick` — both sides' intents, neither
+		 * restated from the other.
 		 */
-		return (
-			<div
-				key={row.session_id}
-				className={cn(
-					"flex h-8 items-center gap-1 rounded-md",
-					// The wrapper's ground, under the same condition as the button's: the two
-					// boxes are coextensive now, and painting it in one place only would make
-					// the state a property of whichever element the pointer is on.
-					current && rowCurrent,
-				)}
-			>
-				<button
-					type="button"
-					data-chat-row
-					/* Named for the driver, which has to OPEN a conversation before the chat
+		const pinned = row.pinned === true;
+		const label = row.title || "Untitled chat";
+		const rowButton = (
+			<button
+				type="button"
+				data-chat-row
+				/* Named for the driver, which has to OPEN a conversation before the chat
 				   header - and so the right slot's three triggers - exists at all
 				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
 				   class: it is the same hook every other drivable control in this app
 				   carries, and it is inert outside a driver run. */
-					data-tour-tag="chat-session-row"
-					data-child={nested || undefined}
-					className={cn(
-						rowStyle,
-						// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
-						// the row's box with whatever the wrapper carries beside it, and a full-width
-						// button inside a flex wrapper with a sibling is a row that overflows.
-						"min-w-0 grow text-left",
-						nested && "pl-7",
-						current && rowCurrent,
-						// m4: the unread mark is NOT here. `font-semibold` on this
-						// `flex-1 truncate` title rewrote the visible string when the
-						// mark arrived, re-truncating text under the reader's cursor;
-						// it lives in the reserved status slot instead (see `Status`).
-					)}
-					aria-current={current ? "page" : undefined}
-					/* The tooltip carries the row's binding and its own state — the facts the
-			   row may not be drawing — and deliberately NOT the search mark's words,
-			   which the row announces itself through the `sr-only` span beside it:
-			   both channels saying "matched in conversation" would be one fact
-			   announced twice (review round 4, R23). Stated as the rule the
-			   expression below implements: the tooltip completes the set minus the
-			   MARK'S words, which is the only statement it withholds. The binding
-			   and ", not sent yet" are appended in every case, so on a row that
-			   draws one of those the tooltip repeats it rather than omitting it
-			   (review round 6, R33). The ", unread" tail is read from the SAME
-			   predicate the glyph, the accessible name and the bulk count read
-			   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
-			   busy or gated row's tooltip claim a mark its own spinner and gate were
-			   nowhere drawing — the reported defect, in the channel a reader reaches
-			   by hovering, and the row that most needs the tooltip to be true. */
-					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
-					onClick={() => onSelectConversation(row.session_id)}
-				>
-					<ChatSessionStatus row={row} />
-					{/* ONE trailing statement per row, decided by `rowTrailingStatement`
-				    in `features/chat/chat-search.ts` — which is also where the three
-				    failed layouts that led to it are written down (an orphan `·` from
-				    a single truncating span, a starved title from unbounded slots, and
-				    a qualifier clipped to a bare `·` by a floor the row could not pay).
-				    Read that docstring before changing anything here.
+				data-tour-tag="chat-session-row"
+				data-child={nested || undefined}
+				className={cn(
+					rowStyle,
+					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
+					// the row's box with whatever the wrapper carries beside it, and a full-width
+					// button inside a flex wrapper with a sibling is a row that overflows.
+					"min-w-0 grow text-left",
+					nested && "pl-7",
+					current && rowCurrent,
+					// m4: the unread mark is NOT here. `font-semibold` on this
+					// `flex-1 truncate` title rewrote the visible string when the
+					// mark arrived, re-truncating text under the reader's cursor;
+					// it lives in the reserved status slot instead (see `Status`).
+				)}
+				aria-current={current ? "page" : undefined}
+				/* The tooltip carries the row's binding and its own state — the facts the
+				   row may not be drawing — and deliberately NOT the search mark's words,
+				   which the row announces itself through the `sr-only` span beside it:
+				   both channels saying "matched in conversation" would be one fact
+				   announced twice (review round 4, R23). Stated as the rule the
+				   expression below implements: the tooltip completes the set minus the
+				   MARK'S words, which is the only statement it withholds. The binding
+				   and ", not sent yet" are appended in every case, so on a row that
+				   draws one of those the tooltip repeats it rather than omitting it
+				   (review round 6, R33). The ", unread" tail is read from the SAME
+				   predicate the glyph, the accessible name and the bulk count read
+				   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
+				   busy or gated row's tooltip claim a mark its own spinner and gate were
+				   nowhere drawing — the reported defect, in the channel a reader reaches
+				   by hovering, and the row that most needs the tooltip to be true. */
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+				onClick={(event) => {
+					/*
+					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
+					 * previous one without the pointer having gone anywhere belongs to the row the
+					 * reader pressed, and this row may simply have slid into its place. Opening a
+					 * conversation the reader never pointed at is the same hazard as pinning one,
+					 * and it is worse to undo.
+					 */
+					if (
+						dropRepeatPress(
+							event.detail === 0
+								? null
+								: { x: event.clientX, y: event.clientY },
+							row.session_id,
+						)
+					) {
+						return;
+					}
+					onSelectConversation(row.session_id);
+				}}
+			>
+				<ChatSessionStatus row={row} />
+				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
+			    in `features/chat/chat-search.ts` — which is also where the three
+			    failed layouts that led to it are written down (an orphan `·` from
+			    a single truncating span, a starved title from unbounded slots, and
+			    a qualifier clipped to a bare `·` by a floor the row could not pay).
+			    Read that docstring before changing anything here.
 
-				    What matters at this call site: the number of statements is capped
-				    rather than negotiated by the flex algorithm, no floor is needed
-				    because at most one statement can ever be drawn, and TWO elements
-				    truncate — the title, and the binding slot inside its own 45% cap,
-				    which is that cap doing the work a floor used to. The two literal
-				    statements below cannot truncate anything: they are fixed strings
-				    with no width to run out of. */}
-					<span className="min-w-0 flex-1 truncate">
-						{row.title || "Untitled chat"}
-					</span>
-					{/* In a flat list nothing else names the profile answering, so two
+			    What matters at this call site: the number of statements is capped
+			    rather than negotiated by the flex algorithm, no floor is needed
+			    because at most one statement can ever be drawn, and TWO elements
+			    truncate — the title, and the binding slot inside its own 45% cap,
+			    which is that cap doing the work a floor used to. The two literal
+			    statements below cannot truncate anything: they are fixed strings
+			    with no width to run out of. */}
+				<span className="min-w-0 flex-1 truncate">
+					{row.title || "Untitled chat"}
+				</span>
+				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's `title` carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
-					{trailing === "binding" && (
-						/* Bounded, unlike the two literals below. `bindingName` is a
+				{trailing === "binding" && (
+					/* Bounded, unlike the two literals below. `bindingName` is a
 					   user-authored agent or team name and the agent-name field
 					   accepts 64 characters, so `shrink-0` with no `truncate` left an
 					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
@@ -1029,16 +1348,16 @@ export function ChatSidebar({
 					   it scales with the panel, and `truncate` clips inside it. The
 					   other two are literals and stay `shrink-0`: they cannot grow,
 					   so they cannot starve anything. */
-						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-							· {bindingName(row)}
-						</span>
-					)}
-					{trailing === "not_sent" && (
-						<span className="ml-1 shrink-0 text-meta text-ink-muted">
-							· Not sent yet
-						</span>
-					)}
-					{/* Says WHY a row is in a filtered list when its visible text does not
+					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						· {bindingName(row)}
+					</span>
+				)}
+				{trailing === "not_sent" && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+						· Not sent yet
+					</span>
+				)}
+				{/* Says WHY a row is in a filtered list when its visible text does not
 			    contain the query. Without it a row appears in a filtered list with
 			    nothing in common with the query, which is worse than no filter: the
 			    user cannot tell a real match from a bug. Rendered in the row's own
@@ -1046,18 +1365,191 @@ export function ChatSidebar({
 			    element so it can never be clipped, and on the rows that carry it.
 			    The visible words are `aria-hidden` and the sentence is carried by
 			    the `sr-only` span after them, so a screen reader hears it once. */}
-					{trailing === "conversation" && (
-						<>
-							<span
-								aria-hidden="true"
-								className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
-							>
-								· in conversation
-							</span>
-							<span className="sr-only">, matched in conversation</span>
-						</>
-					)}
-				</button>
+				{trailing === "conversation" && (
+					<>
+						<span
+							aria-hidden="true"
+							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+						>
+							· in conversation
+						</span>
+						<span className="sr-only">, matched in conversation</span>
+					</>
+				)}
+			</button>
+		);
+		/*
+		 * FAIL-CLOSED MEANS MAIN'S OWN ROW, and this paragraph moved with the code beside it.
+		 * The withdrawn path used to return a bare button, because a bare button IS what this
+		 * branch's base rendered - and the frames the withdrawn pair compares against are that
+		 * tree's. main's `ce5fd9578` then made the row a flex wrapper whose button is
+		 * `min-w-0 grow`, so a path that still returned the button alone left it with no flex
+		 * parent to grow in: design round 8 measured the withdrawn row's button at 138.3 /
+		 * 210.7 / 179.0 / 165.6px against main's 264px, with the row's own click strip and the
+		 * selected row's ground shrinking to match (141.2px against 264px), and the frame
+		 * difference is 15,832px dark / 15,898px light.
+		 *
+		 * So the withdrawn path renders MAIN'S BOX: `rowBoxStyle`, the conversation button
+		 * inside it, and nothing else. No pin slot, no `group` - an absent control is the only
+		 * thing that reads one - and no `data-session-row`, which is this branch's hook for a
+		 * state only a pin can produce. "Byte-identical to the pre-change panel" is still the
+		 * claim this branch makes; what moved is which panel is the pre-change one.
+		 */
+		if (!pinsEnabled) {
+			return (
+				<div
+					key={row.session_id}
+					className={cn(rowBoxStyle, current && rowCurrent)}
+				>
+					{rowButton}
+				</div>
+			);
+		}
+		return (
+			<div
+				key={row.session_id}
+				/* The row's own box, and the hook the current-row ground is asserted
+				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
+				data-session-row={row.session_id}
+				className={cn("group", rowBoxStyle, current && rowCurrent)}
+			>
+				{rowButton}
+				{/*
+				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
+				 * AT REST whenever the capability is present, so the reveal cannot reflow
+				 * the row: a row that reflows under the pointer is worse than no affordance
+				 * (the rule the entity row's own reveal is written under). Only `opacity`
+				 * moves here - nothing lifts, scales or translates on hover - and the whole
+				 * control is absent, not disabled, when the backend advertises no pin store
+				 * (`pinsEnabled`).
+				 *
+				 * 24px and `shrink-0`, matching the entity row's manage control beside it,
+				 * which is this panel's established shape for a row's secondary action: Tab
+				 * reaches it and the arrow-key traversal does not, because `data-chat-row`
+				 * is deliberately absent from it.
+				 *
+				 * THE STATE MUST READ WITHOUT HOVERING, or the user cannot find what is
+				 * pinned: a pinned row's glyph is `text-ink` and FILLED (the `fill` idiom
+				 * `agent-details-page.tsx` uses for its own filled/outline state), while an
+				 * unpinned one is an outline in `ink-dim` that exists once revealed.
+				 *
+				 * The hover GROUND is dropped while this row is the current one, exactly as
+				 * the entity row's two controls drop theirs: a child's background paints
+				 * over the row's own ground, so keeping it would let the pointer's
+				 * transient mark replace the mark that says where the reader is.
+				 *
+				 * `aria-pressed` carries the state. It is also the FAILURE channel: the
+				 * store reverts a refused press, and the flip back on the focused control
+				 * is what a screen reader announces - which is why the sentence beside the
+				 * list carries no `role="alert"` and does not compete with the catalogue
+				 * alert at the foot of this panel.
+				 */}
+				{/*
+				 * WITHHELD WHEN THE ROW'S PIN STATE IS UNKNOWN, which is a different fact
+				 * from the capability. `pinned` is always present on a catalogue row from a
+				 * pins-capable backend, but a row synthesized from a SEARCH HIT whose
+				 * backend does not describe the pin state has no `pinned` at all - and a
+				 * control there could not repair it: the row is rebuilt from the wire hit on
+				 * every render, so a press would be a no-op the user reads as a failure
+				 * (QA round 1, Q1; review round 1, m1). An affordance that cannot act on the
+				 * row it is drawn on is withheld rather than offered broken.
+				 */}
+				{row.pinned !== undefined && (
+					<button
+						type="button"
+						data-session-pin
+						aria-pressed={pinned}
+						/* The action, never the state: `Pin "X"` is what pressing does, and
+						   the pressed state is `aria-pressed`'s to report. */
+						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						/* The same string as the accessible name, matching the entity row's
+						   manage control: it is the affordance a pointer user gets, and it
+						   duplicates the name without being announced twice. */
+						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						onClick={(event) => {
+							/*
+							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
+							 * change nothing at all, and `rememberMovedRow` arms an anchor
+							 * correction that the next render - a doorbell, a keystroke - would
+							 * then apply, computing a correction for a press that never wrote
+							 * anything. Dropped means dropped, so nothing is recorded.
+							 */
+							if (
+								dropRepeatPress(
+									event.detail === 0
+										? null
+										: { x: event.clientX, y: event.clientY },
+									row.session_id,
+								)
+							) {
+								return;
+							}
+							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
+							// corrections (see `rememberMovedRow`), and `detail === 0` is the
+							// keyboard (a click synthesised from Enter or Space carries no count).
+							rememberMovedRow(row.session_id, event.detail === 0, {
+								x: event.clientX,
+								y: event.clientY,
+							});
+							/*
+							 * The seed is what lets the store HOLD a conversation it does not
+							 * list: without it the write reaches the backend and the row keeps
+							 * drawing the cached wire hit, so the press can never be undone
+							 * from this control (QA round 2, Qr2-1).
+							 */
+							void setSessionPin(row.session_id, !pinned, {
+								// A row's title/`updated_at` are nullable on the canonical shape; the
+								// store's seed is not, and a row with neither is still the right row.
+								title: row.title ?? undefined,
+								updated_at: row.updated_at ?? undefined,
+							});
+						}}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"transition-opacity duration-base ease-out-quart",
+							// The duration governs the transition INTO the current state, so
+							// the unpinned value is the fade-OUT and the revealed value the
+							// fade-IN: quick to appear, gentler to leave. The reveal is
+							// `opacity` alone - the box, the glyph's size and the row's
+							// height are the same in both states, which is what makes the
+							// reserved slot unable to reflow the row.
+							pinned
+								? // Visible, because a pinned glyph is the STATE and hiding it would
+									// be worse than the hazard. Its repeat-press hazard is handled by
+									// the press guard, not by taking the control away.
+									"text-ink"
+								: cn(
+										"text-ink-dim opacity-0",
+										/*
+										 * HIDDEN IS ALSO INERT: an affordance the reader cannot see must
+										 * not be the thing a press lands on (QA round 1, U3). The row
+										 * behind it is the hover target - `group-hover` reveals the
+										 * control, and the same two states make it operable - so the
+										 * transition from inert to operable is the reveal itself.
+										 */
+										"pointer-events-none",
+										"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:duration-fast",
+									),
+							// Colour step only, and only while this row is NOT the current
+							// one - see the block comment above. The step is the ROW's own
+							// (`rowHover`), which is what every other control inside a
+							// conversation row takes: `elevated` is a GROUND (menus,
+							// popovers, tooltips, dialogs) and this control sits INSIDE a
+							// row, so a ground here would be the conflation the two `row*`
+							// roles exist to draw - and `chat-sidebar-selection.test.mjs`
+							// counts every `hover:bg-*` in this panel against its declared
+							// map, so a second spelling is a failing test rather than a
+							// quiet divergence.
+							!current && "hover:bg-row-hover",
+						)}
+					>
+						<Pin
+							aria-hidden="true"
+							className="size-4"
+							fill={pinned ? "currentColor" : "none"}
+						/>
+					</button>
+				)}
 			</div>
 		);
 	};
@@ -1111,16 +1603,16 @@ export function ChatSidebar({
 						)}
 					</button>
 					{/* Clicking the name has always staged a draft, but nothing on the
-					    row said so, so the primary action of the whole sidebar was
-					    invisible and went unused. The glyph is the label for that
-					    existing action, NOT a second control: putting it inside the same
-					    button keeps one click target for one outcome, adds no tab stop,
-					    and leaves the arrow-key traversal in `keyDown` untouched. Its
-					    slot is reserved at rest rather than inserted on hover, because a
-					    row that reflows under the pointer is worse than no affordance —
-					    only `opacity` changes, which is also what keeps this inside
-					    § Motion's rule that nothing lifts, scales or translates on hover.
-					    `group-focus-within` is what makes it reachable without a mouse. */}
+				    row said so, so the primary action of the whole sidebar was
+				    invisible and went unused. The glyph is the label for that
+				    existing action, NOT a second control: putting it inside the same
+				    button keeps one click target for one outcome, adds no tab stop,
+				    and leaves the arrow-key traversal in `keyDown` untouched. Its
+				    slot is reserved at rest rather than inserted on hover, because a
+				    row that reflows under the pointer is worse than no affordance —
+				    only `opacity` changes, which is also what keeps this inside
+				    § Motion's rule that nothing lifts, scales or translates on hover.
+				    `group-focus-within` is what makes it reachable without a mouse. */}
 					<button
 						type="button"
 						data-chat-row
@@ -1160,9 +1652,9 @@ export function ChatSidebar({
 							aria-hidden="true"
 						/>
 						{/* A reserved column, not just `tabular-nums`. Digit width alone
-						    still lets an absent or two-digit count shift everything left
-						    of it, which moved the glyph across 14px between rows and made
-						    the reveal jitter as the pointer ran down the list. */}
+					    still lets an absent or two-digit count shift everything left
+					    of it, which moved the glyph across 14px between rows and made
+					    the reveal jitter as the pointer ran down the list. */}
 						<span className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim">
 							{rows.length || ""}
 						</span>
@@ -1306,7 +1798,7 @@ export function ChatSidebar({
 				)}
 				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				{/* A zero badge next to a group that already says it is empty is the
-				    same fact twice; only a non-zero count carries information. */}
+			    same fact twice; only a non-zero count carries information. */}
 				{count !== undefined && count !== 0 && countBadge(count)}
 			</button>
 			{action}
@@ -1392,7 +1884,6 @@ export function ChatSidebar({
 	 * still followed; `sidebar-focus-hold.ts` carries both arguments.
 	 */
 	const entityPanelRef = useRef<HTMLDivElement | null>(null);
-	const listPanelRef = useRef<HTMLDivElement | null>(null);
 	const entitySlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
@@ -1414,19 +1905,19 @@ export function ChatSidebar({
 			onKeyDown={keyDown}
 		>
 			{/* The header once carried a 16px `Plus` for the same action the "New
-			    chat" row below now names in words. Two controls firing one action at
-			    two sizes in one panel reads as an accident, and the small one was the
-			    reported defect — it was the only entry point and users did not find
-			    it. The named row replaces it rather than joining it. */}
+		    chat" row below now names in words. Two controls firing one action at
+		    two sizes in one panel reads as an accident, and the small one was the
+		    reported defect — it was the only entry point and users did not find
+		    it. The named row replaces it rather than joining it. */}
 			<div className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
 			</div>
 			{/* The field carries its own clear control rather than relying on
-			    Escape, which also blurs: a pointer user who wants to widen the filter
-			    back out had to select the text and delete it, and there was nothing on
-			    screen saying the field could be emptied at all. `pr-9` keeps the query
-			    clear of the control — the same reserved-column idiom the settings
-			    search uses on the left for its leading glyph. */}
+		    Escape, which also blurs: a pointer user who wants to widen the filter
+		    back out had to select the text and delete it, and there was nothing on
+		    screen saying the field could be emptied at all. `pr-9` keeps the query
+		    clear of the control — the same reserved-column idiom the settings
+		    search uses on the left for its leading glyph. */}
 			<div className="relative my-2">
 				<input
 					ref={searchRef}
@@ -1437,18 +1928,18 @@ export function ChatSidebar({
 					onChange={(event) => setQuery(event.target.value)}
 				/>
 				{/* Rendered only while a filter is applied: a clear control beside an
-				    empty field is a control that does nothing.
+			    empty field is a control that does nothing.
 
-				    The ring is pulled INSIDE the control's own box, against the shared
-				    `icon-sm` step. That step draws a 2px outline at a 1px offset, which
-				    needs 3px of clearance around the control; this one is 28px inside a
-				    32px field, so 2px is all there is, and at the step's own offset the
-				    ring's top and bottom arcs crossed the field's `border-control` line
-				    and read as a control bulging out of the field it sits in (design
-				    round 1, D1). Inset, the ring hugs the control's own radius, stays
-				    clear of the 14px glyph, and cannot leave the field in any palette.
-				    `!` because the size step's offset is itself important and this is
-				    an override of it rather than a second convention. */}
+			    The ring is pulled INSIDE the control's own box, against the shared
+			    `icon-sm` step. That step draws a 2px outline at a 1px offset, which
+			    needs 3px of clearance around the control; this one is 28px inside a
+			    32px field, so 2px is all there is, and at the step's own offset the
+			    ring's top and bottom arcs crossed the field's `border-control` line
+			    and read as a control bulging out of the field it sits in (design
+			    round 1, D1). Inset, the ring hugs the control's own radius, stays
+			    clear of the 14px glyph, and cannot leave the field in any palette.
+			    `!` because the size step's offset is itself important and this is
+			    an override of it rather than a second convention. */}
 				{query && (
 					<Button
 						variant="ghost"
@@ -1462,18 +1953,18 @@ export function ChatSidebar({
 				)}
 			</div>
 			{/* Says what the search actually LOOKED AT, and only while a query is
-			    active, because that is the moment the claim is true and relevant.
-			    Both cases are degradations the user cannot see otherwise: the list
-			    still narrows, it just narrows by less than the box promises, and a
-			    search that quietly stops looking inside conversations is
-			    indistinguishable from one that found nothing there. */}
+		    active, because that is the moment the claim is true and relevant.
+		    Both cases are degradations the user cannot see otherwise: the list
+		    still narrows, it just narrows by less than the box promises, and a
+		    search that quietly stops looking inside conversations is
+		    indistinguishable from one that found nothing there. */}
 			{/* A box past the op's own bound is refused before the request is made, so
-			    it must not be rendered as a backend problem with a Retry: retrying
-			    re-sends the same characters and is refused identically (QA round 1,
-			    Q1). It takes precedence over the names-only notice below, which
-			    describes the same narrowing for a different cause and offers a remedy
-			    (update the app) that cannot help THIS box — shorten the query and that
-			    notice returns for the reason it was written for. */}
+		    it must not be rendered as a backend problem with a Retry: retrying
+		    re-sends the same characters and is refused identically (QA round 1,
+		    Q1). It takes precedence over the names-only notice below, which
+		    describes the same narrowing for a different cause and offers a remedy
+		    (update the app) that cannot help THIS box — shorten the query and that
+		    notice returns for the reason it was written for. */}
 			{overLong && ready && (
 				<p className="pb-2 text-meta text-ink-muted">
 					Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
@@ -1500,28 +1991,28 @@ export function ChatSidebar({
 				</p>
 			)}
 			{/* The two states of "there is no answer for what you typed yet", and the
-			    empty result once there is. All three sit here, beside the notices,
-			    rather than inside the scrolling list: they are statements about the
-			    SEARCH, and every other line that says something about the search
-			    holds this column — inside the container they sat ~6px off it, which
-			    showed as a stagger whenever a notice and the sentence appeared
-			    together (design round 2, D13).
+		    empty result once there is. All three sit here, beside the notices,
+		    rather than inside the scrolling list: they are statements about the
+		    SEARCH, and every other line that says something about the search
+		    holds this column — inside the container they sat ~6px off it, which
+		    showed as a stagger whenever a notice and the sentence appeared
+		    together (design round 2, D13).
 
-			    The no-match sentence is rendered only when the conversation search
-			    actually RAN and answered this exact query. `Nothing in your chats
-			    matches X` is otherwise unverifiable, and on a names-only or failed
-			    backend it is simply false: the app would say it cannot see inside
-			    conversations and then assert that nothing in any conversation
-			    matches (design round 2, D11 — `classifer` matches a conversation on
-			    the capable backend, in the same fixture). When the search could not
-			    run, the notice above is the whole truth and this says nothing.
+		    The no-match sentence is rendered only when the conversation search
+		    actually RAN and answered this exact query. `Nothing in your chats
+		    matches X` is otherwise unverifiable, and on a names-only or failed
+		    backend it is simply false: the app would say it cannot see inside
+		    conversations and then assert that nothing in any conversation
+		    matches (design round 2, D11 — `classifer` matches a conversation on
+		    the capable backend, in the same fixture). When the search could not
+		    run, the notice above is the whole truth and this says nothing.
 
-			    `Searching conversations…` covers the other window: the debounce plus
-			    the round trip, during which the list legitimately holds name and
-			    label matches only. The list visibly loses the conversation matches it
-			    was showing, and without this line that reads as a bug (review round
-			    1, R2) — naming the state is the honest answer, not filling it with
-			    the previous question's hits (review round 2, R10). */}
+		    `Searching conversations…` covers the other window: the debounce plus
+		    the round trip, during which the list legitimately holds name and
+		    label matches only. The list visibly loses the conversation matches it
+		    was showing, and without this line that reads as a bug (review round
+		    1, R2) — naming the state is the honest answer, not filling it with
+		    the previous question's hits (review round 2, R10). */}
 			{query.trim() && showList && !matching.length && answered && (
 				<p className="pb-2 text-meta text-ink-muted">
 					Nothing in your chats matches “{query.trim()}”.
@@ -1534,11 +2025,11 @@ export function ChatSidebar({
 					</p>
 				)}
 			{/* Mounted at all times and filled later: a live region added to the
-			    tree WITH its text already inside is frequently not announced at
-			    all, because the region has to exist before the change for the
-			    change to be the event (design round 2, D15). `sr-only`, so the
-			    announcement mirrors the visible sentence without a second visible
-			    copy of it. */}
+		    tree WITH its text already inside is frequently not announced at
+		    all, because the region has to exist before the change for the
+		    change to be the event (design round 2, D15). `sr-only`, so the
+		    announcement mirrors the visible sentence without a second visible
+		    copy of it. */}
 			<p aria-live="polite" className="sr-only">
 				{awaiting &&
 				lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
@@ -1548,23 +2039,23 @@ export function ChatSidebar({
 						: ""}
 			</p>
 			{/* The entity region, and the SECOND container that needs the rule below.
-			    An entity is a disclosure row whose CHILDREN are session rows drawn from
-			    the same catalogue array the list draws (`children()`), so a nested row's
-			    slot is the same backend order key: a completion re-files it on the same
-			    event, inside a container that scrolls. The region was "deliberately not
-			    touched" in the first pass on the premise that nothing in it re-files,
-			    and that premise was false (round 1, R1) - the measurement is in
-			    `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
-			    NESTED row rather than from the list's.
+		    An entity is a disclosure row whose CHILDREN are session rows drawn from
+		    the same catalogue array the list draws (`children()`), so a nested row's
+		    slot is the same backend order key: a completion re-files it on the same
+		    event, inside a container that scrolls. The region was "deliberately not
+		    touched" in the first pass on the premise that nothing in it re-files,
+		    and that premise was false (round 1, R1) - the measurement is in
+		    `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
+		    NESTED row rather than from the list's.
 
-			    The trade is not the list's, and it is stated rather than implied: this is
-			    the one region where content genuinely GROWS above the reader - a
-			    catalogue arriving, or a query expanding every entity at once - and
-			    `overflow-anchor: none` gives up Chrome's compensation for that case to
-			    buy the re-file case. The growth is user-initiated or at load (the search
-			    box re-renders the region it filters), while the re-file is involuntary
-			    and arrives on every completion, which is the exchange this side of the
-			    declaration takes. */}
+		    The trade is not the list's, and it is stated rather than implied: this is
+		    the one region where content genuinely GROWS above the reader - a
+		    catalogue arriving, or a query expanding every entity at once - and
+		    `overflow-anchor: none` gives up Chrome's compensation for that case to
+		    buy the re-file case. The growth is user-initiated or at load (the search
+		    box re-renders the region it filters), while the re-file is involuntary
+		    and arrives on every completion, which is the exchange this side of the
+		    declaration takes. */}
 			<div
 				ref={entityPanelRef}
 				onScroll={() =>
@@ -1753,62 +2244,104 @@ export function ChatSidebar({
 				)}
 			</div>
 			{/* The global partition is NAVIGATION, not a peer of the entity lists.
-			    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
-			    and its disclosure became easy to miss, so it is pinned below the
-			    scrolling entity region and owns its own scroll area.
+									    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
+									    and its disclosure became easy to miss, so it is pinned below the
+									    scrolling entity region and owns its own scroll area.
 
-			    `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
-			    property of the ROWS this panel draws rather than a style choice. A
-			    session's slot is the backend's order key, so a completion re-files the
-			    row - within the same section when it was already Active - and the feed
-			    now invalidates the client's list read on that change rather than on a
-			    section move, so the re-file happens on every completion instead of on
-			    the next poll.
+									    `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
+									    property of the ROWS this panel draws rather than a style choice. A
+									    session's slot is the backend's order key, so a completion re-files the
+									    row - within the same section when it was already Active - and the feed
+									    now invalidates the client's list read on that change rather than on a
+									    section move, so the re-file happens on every completion instead of on
+									    the next poll.
 
-			    Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
-			    picks the element that moved as the anchor and pays for its move by
-			    moving THIS container's `scrollTop` by exactly the row's travel -
-			    measured on the overflowing story at -96 px for a 3-row travel
-			    (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
-			    request). The reader is not following the row: they are somewhere else in
-			    the list, and the whole viewport slides under them by the travel, which is
-			    the jitter this change is about. Refusing to anchor holds `scrollTop`
-			    through the re-file and leaves the one-row shift the re-file itself
-			    produces - the rows redrawn in their new order - which is the row moving
-			    rather than the reader being moved.
+									    Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
+									    picks the element that moved as the anchor and pays for its move by
+									    moving THIS container's `scrollTop` by exactly the row's travel -
+									    measured on the overflowing story at -96 px for a 3-row travel
+									    (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
+									    request). The reader is not following the row: they are somewhere else in
+									    the list, and the whole viewport slides under them by the travel, which is
+									    the jitter this change is about. Refusing to anchor holds `scrollTop`
+									    through the re-file and leaves the one-row shift the re-file itself
+									    produces - the rows redrawn in their new order - which is the row moving
+									    rather than the reader being moved.
 
-			    The sibling rule is the transcript's, and the two are opposite on
-			    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
-			    ITS content grows under a reader pinned to the end, where following the
-			    content is the feature.
+									    The sibling rule is the transcript's, and the two are opposite on
+									    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
+									    ITS content grows under a reader pinned to the end, where following the
+									    content is the feature.
 
-			    THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
-			    entity region above carries the same declaration for the same reason,
-			    and the two are a pair. What it gives up is stated rather than denied:
-			    a row inserted ABOVE a reader who is scrolled down, or a list read that
-			    adds rows above the viewport, is no longer compensated for, so the
-			    reader's content shifts by the insertion - the trade this declaration
-			    accepts for holding the position through a re-file, which arrives on
-			    every completion rather than on an edit the reader made. (The claim in
-			    the first pass ran the other way - "nothing here grows; the list only
-			    re-orders" - and it was both false for the entity region and false
-			    here: round 1, N2.)
+									    THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
+									    entity region above carries the same declaration for the same reason,
+									    and the two are a pair. What it gives up is stated rather than denied:
+									    a row inserted ABOVE a reader who is scrolled down, or a list read that
+									    adds rows above the viewport, is no longer compensated for, so the
+									    reader's content shifts by the insertion - the trade this declaration
+									    accepts for holding the position through a re-file, which arrives on
+									    every completion rather than on an edit the reader made. (The claim in
+									    the first pass ran the other way - "nothing here grows; the list only
+									    re-orders" - and it was both false for the entity region and false
+									    here: round 1, N2.)
 
-			    One cost is not paid by the reader who is nowhere near the row: the
-			    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
-			    panel would leave the cursor off screen. `holdFocusedRow`
-			    (`sidebar-focus-hold.ts`) is the other half of this rule - the container
-			    follows the row the CURSOR is on, by the minimum, which is the case the
-			    transcript's rule is about. It follows it only when the RE-FILE is what
-			    took it out of the panel - a reader who scrolled their cursor away keeps
-			    the position they chose, and so does the reader whose cursor row was not
-			    on screen at all when the change landed. */}
+									    One cost is not paid by the reader who is nowhere near the row: the
+									    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
+									    panel would leave the cursor off screen. `holdFocusedRow`
+									    (`sidebar-focus-hold.ts`) is the other half of this rule - the container
+									    follows the row the CURSOR is on, by the minimum, which is the case the
+									    transcript's rule is about. It follows it only when the RE-FILE is what
+									    took it out of the panel - a reader who scrolled their cursor away keeps
+									    the position they chose, and so does the reader whose cursor row was not
+									    on screen at all when the change landed. */}
+			{/* The pin failure, in the panel's own register rather than a toast.
+		    One sentence and one action, the shape the withdrawn-gate notice
+		    above already uses - and NO `role="alert"`, so it cannot compete with
+		    the catalogue alert below about a different failure. What announces
+		    it is `aria-pressed` flipping back on the control the user just
+		    pressed; this sentence is the durable half. `warning` and not `danger`:
+		    the list is intact and only this row's pin did not move. */}
+			{pinFailure && (
+				<p className="pb-2 text-meta text-warning">
+					Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
+					{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
+						}
+					>
+						Retry
+					</button>
+				</p>
+			)}
 			{showList && (
 				<div
 					ref={listPanelRef}
 					onScroll={() =>
 						refreshFocusedInside(listPanelRef.current, listSlotRef)
 					}
+					/*
+					 * The pointer's path, which is the half a coordinate test cannot see: a
+					 * reader who moves away from the point they pressed and comes back has made
+					 * a NEW gesture, so the record expires on that movement. Leaving the list
+					 * expires it too - the reflex this protects never leaves the region between
+					 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
+					 */
+					onPointerMove={(event) => {
+						const from = lastPinPress.current;
+						if (
+							from !== null &&
+							Math.hypot(event.clientX - from.x, event.clientY - from.y) >
+								PIN_PRESS_SLOP_PX
+						) {
+							lastPinPress.current = null;
+						}
+					}}
+					onPointerLeave={() => {
+						lastPinPress.current = null;
+					}}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
 				>
 					<section>
@@ -1826,47 +2359,47 @@ export function ChatSidebar({
 							<List className="size-4" />
 							<span className="flex-1 text-left">All chats</span>
 							{/* The three global counts read as one set, so this must honour
-							    the active filter exactly as Active/Previous do. A zero badge
-							    beside the "No chats yet" sentence just repeats it. */}
+						    the active filter exactly as Active/Previous do. A zero badge
+						    beside the "No chats yet" sentence just repeats it. */}
 							{matching.length > 0 && countBadge(matching.length)}
 						</button>
 						{/* Sits inside the All chats section so it holds the same place
-						    — under the toggle, above whatever the toggle reveals — in
-						    both the flat list and the Active/Previous split. Deliberately
-						    a plain `rowStyle` row and not a `heading()`: a chevron would
-						    promise something to expand. Disabled tracks `ready` because
-						    staging a draft needs the session catalogue that gate covers.
+					    — under the toggle, above whatever the toggle reveals — in
+					    both the flat list and the Active/Previous split. Deliberately
+					    a plain `rowStyle` row and not a `heading()`: a chevron would
+					    promise something to expand. Disabled tracks `ready` because
+					    staging a draft needs the session catalogue that gate covers.
 
-						    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
-						    an omission. It used to wear `border-control` as this system's
-						    "outline control" idiom, which reads as a control at rest — but
-						    that edge was also the one thing that stepped the row out of
-						    line with the All chats row directly above it. The app is
-						    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
-						    own `h-8` box and pushes the icon and the label in by 1px on
-						    each side, and no other row in this block has a boundary at all.
-						    The operator asked for the two rows to line up and for the BORDER
-						    to go - "the pill" is this file's description of what the border
-						    produced, not the operator's words. Removing the edge is what does
-						    both, and the measurement is in docs/evidence/new-chat-row (the
-						    icon's left inset goes from 5px, the border plus `rowStyle`'s
-						    `px-1`, to 4px).
+					    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
+					    an omission. It used to wear `border-control` as this system's
+					    "outline control" idiom, which reads as a control at rest — but
+					    that edge was also the one thing that stepped the row out of
+					    line with the All chats row directly above it. The app is
+					    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
+					    own `h-8` box and pushes the icon and the label in by 1px on
+					    each side, and no other row in this block has a boundary at all.
+					    The operator asked for the two rows to line up and for the BORDER
+					    to go - "the pill" is this file's description of what the border
+					    produced, not the operator's words. Removing the edge is what does
+					    both, and the measurement is in docs/evidence/new-chat-row (the
+					    icon's left inset goes from 5px, the border plus `rowStyle`'s
+					    `px-1`, to 4px).
 
-						    What still marks the row as the ACTION here is everything the
-						    rows around it do NOT have: the `MessageSquarePlus` glyph
-						    rather than `Plus`, which means "open a creation form" twice
-						    over in this panel (Create agent, Create team) while this
-						    stages a chat, and which matches the glyph the entity rows
-						    reveal for the same outcome; the `mb-1` margin that separates
-						    it from the Active/Previous split below; `rowStyle`'s
-						    `hover:bg-row-hover` colour step; and the `rowCurrent`
-						    ground (recessed from the panel, and hover-proof) while
-						    an untargeted draft is staged.
+					    What still marks the row as the ACTION here is everything the
+					    rows around it do NOT have: the `MessageSquarePlus` glyph
+					    rather than `Plus`, which means "open a creation form" twice
+					    over in this panel (Create agent, Create team) while this
+					    stages a chat, and which matches the glyph the entity rows
+					    reveal for the same outcome; the `mb-1` margin that separates
+					    it from the Active/Previous split below; `rowStyle`'s
+					    `hover:bg-row-hover` colour step; and the `rowCurrent`
+					    ground (recessed from the panel, and hover-proof) while
+					    an untargeted draft is staged.
 
-						    `border-control` is therefore RETIRED on this row by the
-						    operator's own instruction, not merely unused: re-adding it puts
-						    the row back 1px out of alignment with the row above, so it is
-						    not a free tidy-up for a later reader. */}
+					    `border-control` is therefore RETIRED on this row by the
+					    operator's own instruction, not merely unused: re-adding it puts
+					    the row back 1px out of alignment with the row above, so it is
+					    not a free tidy-up for a later reader. */}
 						<button
 							type="button"
 							// REACHABLE now, and this is the state that makes it live: a gate that
@@ -1940,8 +2473,31 @@ export function ChatSidebar({
 							<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
 						</button>
 					</section>
+					{/*
+					 * The `All chats` and `New chat` rows first, then Pinned chats.
+					 *
+					 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
+					 * that those two rows are NAVIGATION rather than chats: navigation names
+					 * the list, so it precedes the sections that fill it. Above them, the
+					 * section sat over the control that names the list it belongs to.
+					 *
+					 * It sits directly above the `Active chats` heading in the split view and
+					 * directly above the flat list in `All chats` mode - the same place on
+					 * both, which is what keeps pins from vanishing for anyone using the flat
+					 * list (there is no `Active chats` anchor there to sit above at all).
+					 *
+					 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
+					 * TUI's own rule (an empty section contributes no header).
+					 */}
+					{pinned.length > 0 && (
+						<section>
+							{heading("pinned", "Pinned chats", true, pinned.length)}
+							{(query || isOpen("pinned", true)) &&
+								pinned.map((row) => sessionRow(row))}
+						</section>
+					)}
 					{all ? (
-						<section>{matching.map((row) => sessionRow(row))}</section>
+						<section>{rest.map((row) => sessionRow(row))}</section>
 					) : (
 						<>
 							<section>
@@ -1949,7 +2505,14 @@ export function ChatSidebar({
 									"active",
 									"Active chats",
 									true,
-									matching.filter((row) => row.active).length,
+									/*
+									 * The count is the section's own rows: `rest` is `matching` minus the pinned
+									 * ones, and a pinned chat that is running is drawn in the section ABOVE
+									 * this one, so counting `matching` here would put a number beside a group
+									 * that does not hold that many rows. With no pin store `rest` IS
+									 * `matching`, so this is main's own count in the state main ships.
+									 */
+									rest.filter((row) => row.active).length,
 									/*
 									 * The bulk read receipt sits with the group the operator
 									 * pointed at — the one whose rows carry the completion
@@ -1969,8 +2532,15 @@ export function ChatSidebar({
 									activeHeadingRef,
 								)}
 								{(query || isOpen("active", true)) &&
+									/*
+									 * The empty sentence reads the WHOLE filtered set, not `rest`:
+									 * a running chat that is pinned is drawn in the section above,
+									 * and "Nothing running right now."` beside it would be a claim
+									 * the panel itself contradicts. The rows are `rest`'s, so the
+									 * section still holds none of the pinned ones.
+									 */
 									(matching.some((row) => row.active) ? (
-										matching
+										rest
 											.filter((row) => row.active)
 											.map((row) => sessionRow(row))
 									) : (
@@ -1986,22 +2556,22 @@ export function ChatSidebar({
 									"previous",
 									"Previous chats",
 									false,
-									matching.filter((row) => !row.active).length,
+									rest.filter((row) => !row.active).length,
 								)}
 								{(query || isOpen("previous")) &&
-									matching
+									rest
 										.filter((row) => !row.active)
 										.map((row) => sessionRow(row))}
 							</section>
 						</>
 					)}
 					{/* A COLD-START sentence, not an empty-list one: it says the store
-					    holds no chats at all, so it must not appear beside rows. The
-					    catalogue being empty while `matching` is not is reachable now
-					    that a search hit for a session beyond this client's page is
-					    rendered as a row of its own (review round 2, R13 — this gate
-					    asked only about `sessions`, and a query was the other half of
-					    the claim). */}
+				    holds no chats at all, so it must not appear beside rows. The
+				    catalogue being empty while `matching` is not is reachable now
+				    that a search hit for a session beyond this client's page is
+				    rendered as a row of its own (review round 2, R13 — this gate
+				    asked only about `sessions`, and a query was the other half of
+				    the claim). */}
 					{!sessions.length &&
 						!matching.length &&
 						!loading &&
@@ -2031,10 +2601,10 @@ export function ChatSidebar({
 					 * the legacy poll is running instead.
 					 */}
 					{/* Suppressed when the alert below already carries the condition
-					    (design review round 1, D9): the catalogue fetch fails exactly
-					    when the backend is down, so the two statements about one
-					    backend would otherwise stack — a quiet `ink-dim` line directly
-					    under a `role="alert" text-danger` block about the same thing. */}
+				    (design review round 1, D9): the catalogue fetch fails exactly
+				    when the backend is down, so the two statements about one
+				    backend would otherwise stack — a quiet `ink-dim` line directly
+				    under a `role="alert" text-danger` block about the same thing. */}
 					{feed.available && !feed.connected && !error && (
 						<p
 							className={cn(

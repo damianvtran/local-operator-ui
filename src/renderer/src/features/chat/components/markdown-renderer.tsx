@@ -9,13 +9,18 @@ import ReactMarkdown, {
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { type CanvasPane, useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_ATTR,
 	LINK_TARGET_PATH_ATTR,
 	type LinkKind,
 	classifyHref,
 	clickDecision,
+	evidenceFor,
+	probeTargets,
+	subscribeProbes,
 } from "../utils/link-actions";
+import { ambiguousTargetsIn } from "../utils/link-grammar";
 import { openLocalTarget, selectionTouches } from "../utils/link-open";
 import {
 	type BlockScanner,
@@ -23,10 +28,12 @@ import {
 	scanMarkdownBlocks,
 	trimmedEndLength,
 } from "../utils/markdown-blocks";
+import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import "./markdown.css";
+import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
 import { MermaidDiagram } from "./mermaid-diagram";
 
@@ -139,12 +146,20 @@ const NEWLINE_REGEX = /\n$/;
  * fact rather than a defect to fix here - the link toolbar therefore offers Quote
  * on hover as well (`link-toolkit.tsx`), so the affordance does not depend on a
  * selection the browser will not make.
+ *
+ * WHERE A PRESS GOES. A local path this app has a VIEWER for, inside a pane that
+ * has a canvas, opens THERE - the operator's ask - and every other press keeps
+ * the OS hand-off exactly as it was. The pane arrives through a context
+ * (`canvas-pane.tsx`) rather than a prop, because this anchor is rendered by every
+ * markdown surface in the app and only one of them has a pane at all; with no
+ * provider the context answers `null` and the click is the click of before.
  */
 const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	href,
 	children,
 }) => {
 	const target = classifyHref(href);
+	const pane = useCanvasPane();
 	if (!target || target.kind === "other") {
 		return (
 			<a href={href} target="_blank" rel="noopener noreferrer">
@@ -170,7 +185,11 @@ const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 			 */
 			target={target.kind === "url" ? "_blank" : undefined}
 			rel={target.kind === "url" ? "noopener noreferrer" : undefined}
-			onClick={target.kind === "file" ? handleFileAnchorClick : undefined}
+			onClick={
+				target.kind === "file"
+					? (event) => handleFileAnchorClick(event, pane)
+					: undefined
+			}
 		>
 			{children}
 		</a>
@@ -212,19 +231,36 @@ const LINK_TARGET_PATH = LINK_TARGET_PATH_ATTR;
  * mandatory `preventDefault` for a file target, and the drag-select refusal. The
  * live selection is the input because the browser owns it - whatever ended the
  * gesture, the state that matters is whether text is still lit.
+ *
+ * THE FALLBACK IS PART OF THE RULE, not an error path. A pane refuses a press it
+ * cannot honour - a directory, a type with no viewer, a read that failed, a path
+ * the probe already knows is gone (`open-in-canvas.ts` says which) - and that
+ * refusal means "do what this app did before", which is the OS attempt and its
+ * own `Could not open …` toast. Without the fallback the pane's honest refusal
+ * would be a press that did nothing at all, which is the failure the whole matrix
+ * exists to remove.
  */
-const handleFileAnchorClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+const handleFileAnchorClick = (
+	event: ReactMouseEvent<HTMLAnchorElement>,
+	pane: CanvasPane | null,
+) => {
 	const anchor = event.currentTarget;
 	const kind = (anchor.getAttribute(LINK_TARGET_ATTR) ?? "file") as LinkKind;
+	const target = anchor.getAttribute(LINK_TARGET_PATH);
 	const outcome = clickDecision({
 		kind,
 		hasHighlight: selectionTouches(anchor),
+		canOpenInCanvas: opensInCanvas(pane, target),
 	});
 	if (outcome === "browse") return;
 	event.preventDefault();
-	if (outcome === "hold") return;
-	const target = anchor.getAttribute(LINK_TARGET_PATH);
-	if (!target) return;
+	if (outcome === "hold" || !target) return;
+	if (outcome === "canvas" && pane) {
+		void pane.openInCanvas(target).then((opened) => {
+			if (!opened) void openLocalTarget(target);
+		});
+		return;
+	}
 	void openLocalTarget(target);
 };
 
@@ -261,16 +297,25 @@ export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
 };
 
 /**
- * Hoisted, and that matters more than it looks.
+ * Hoisted, and that matters more than it looks - though not for the reason this
+ * comment used to give.
  *
- * react-markdown memoises its pipeline against the props it is given. Rebuilding
- * this literal inside the component body handed it a new object on every render,
- * so the memo missed every time and the whole document was re-processed — the
- * exact cost the streaming path is built to avoid.
+ * MEASURED, react-markdown 10.1.0, in jsdom, for the evidence change below:
+ * `Markdown(options)` builds a fresh processor and calls `runSync` on EVERY
+ * render, so a per-render literal here would not miss a memo - there is no memo
+ * to miss, and the document is re-processed per render whatever the identity is.
+ * What actually bounds that work is this repo's own `memo()` on the two
+ * components that hold a `<ReactMarkdown>` (`MarkdownRenderer`, and
+ * `StableBlock` below).
+ *
+ * So why hoist? Because it costs nothing, because a module-scope array is the
+ * shape a future react-markdown restoring an internal memo would read, and
+ * because a per-render literal here would allocate on the streaming path for no
+ * reason at all.
  *
  * The `a` entry is the anchor every link in the app renders as
- * (`MarkdownAnchor`), because the alternative — a second anchor implementation
- * for the transcript's rows — is the "second implementation of one thing" § 9
+ * (`MarkdownAnchor`), because the alternative - a second anchor implementation
+ * for the transcript's rows - is the "second implementation of one thing" § 9
  * refuses, and because the links that need the new behaviour are exactly the
  * ones markdown produces.
  */
@@ -296,15 +341,20 @@ const MARKDOWN_COMPONENTS: Components = {
 /**
  * The same map with the citation override, for the one caller that opts in.
  *
- * Hoisted for the same reason the map above is: react-markdown memoises its
- * pipeline against the props it is handed, so an object rebuilt per render
- * re-processes the whole document on every frame.
+ * Hoisted for the same reason the map above is - and, MEASURED on react-markdown
+ * 10.1.0, that reason is not a memo the library keeps: `Markdown(options)` builds
+ * a fresh processor per render, so an object rebuilt per render re-processes the
+ * whole document either way (see `MARKDOWN_COMPONENTS`). Module scope is kept
+ * because it costs nothing, because it is what an upgrade restoring an internal
+ * memo would read, and because it gives `citationAwareAnchor` one object identity
+ * to be built into rather than one per frame.
  */
 const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 	...MARKDOWN_COMPONENTS,
 	// The factory is called HERE, once at module scope, so the override keeps one
-	// object identity for react-markdown's memo - and the anchor it delegates to is
-	// the renderer's own, which is the only link implementation in the app.
+	// object identity for the renderer's whole life rather than a fresh map per
+	// frame - and the anchor it delegates to is the renderer's own, which is the
+	// only link implementation in the app.
 	a: citationAwareAnchor(MarkdownAnchor),
 };
 
@@ -312,10 +362,20 @@ const GFM_ONLY = [remarkGfm];
 const GFM_AND_MATH = [remarkGfm, remarkMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
- * reason `MARKDOWN_COMPONENTS`'s comment records: react-markdown memoises against
- * the ARRAY IDENTITY, so a function that returned a fresh array for the same
- * arguments would miss that memo on every render. Eight constants rather than a
- * builder, and `REMARK_PIPELINES` below is only a selector over them.
+ * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
+ * react-markdown 10.1.0, that reason is NOT an internal memo: `Markdown(options)`
+ * builds a fresh processor and calls `runSync` on EVERY render, so a fresh array
+ * here would miss nothing and the document is re-processed per render whatever
+ * the identity is. The identity is kept because it costs nothing, because a
+ * module-scope array is the shape a future react-markdown restoring an internal
+ * memo would read, and because a builder function returning a fresh array for
+ * the same arguments would be the thing that defeats such a memo rather than the
+ * thing that benefits from it. What bounds the re-parse today is this repo's own
+ * `memo()` on the components that own a `<ReactMarkdown>`, plus the state bump
+ * `useLinkEvidence` uses as its re-parse trigger.
+ *
+ * Eight constants rather than a builder, and `REMARK_PIPELINES` below is only a
+ * selector over them.
  */
 const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
 const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
@@ -386,16 +446,19 @@ const useStyleVariables = (
  *
  * `linkify` and `citations` are the second and third things this hook decides,
  * and they are parameters rather than props of their own because every answer
- * has to come out as ONE array identity: react-markdown memoises its pipeline
- * against the arrays it is handed, so a caller that picked the arrays itself
- * could hand it a fresh pair on every render.
+ * has to come out as ONE array identity. Measured (see `MARKDOWN_COMPONENTS`):
+ * react-markdown 10.1.0 re-runs the pipeline per render whatever that identity
+ * is, so it buys nothing today - it is kept as the contract a memo inside a
+ * future react-markdown would read, and because keying `REMARK_PIPELINES` and
+ * returning one of its constants is a better shape than nested ternaries over
+ * eight combinations, or than mutating a shared array to switch pipelines.
  *
  * The name says MATH because that was its only subject when it was written, and
  * it is kept rather than renamed: the file that carries it was rewritten on `main`
  * for the linkifier in the same window this branch added the citation pass, and a
  * rename here would be a third spelling of the same function for no behaviour.
  * `REMARK_PIPELINES` above is what holds the answer; every branch of it is a
- * hoisted array, which is the memo the arrays exist to keep.
+ * hoisted array, which is what such a memo would read.
  */
 const useMathPipeline = (
 	content: string,
@@ -441,6 +504,77 @@ const useMathPipeline = (
 };
 
 /**
+ * The evidence loop for one rendered document.
+ *
+ * WHAT IT IS FOR. A slash command and a directory are the same shape to a
+ * scanner - `/new`, `/tmp`, `/v2/things` - so the grammar admits such a token
+ * only when the disk vouches for it (`TargetPolicy.evidence`), and something has
+ * to ask. This hook is that something, and it lives HERE because this file holds
+ * the two components that own a `<ReactMarkdown>`: the transcript's row list is
+ * `memo()`'d and its identity contract is explicit
+ * (`use-mentioned-files.ts:8-14`), so a prop threaded down every row to carry
+ * this would be a new input to the hottest list in the app, and a store write
+ * would be a second source of truth for what a row renders.
+ *
+ * THE RE-PARSE TRIGGER IS THE STATE BUMP, and the measured reason it works is
+ * that react-markdown 10.1.0 does NOT memoise its pipeline: `Markdown(options)`
+ * calls `createProcessor` and `runSync` on every render (measured in jsdom for
+ * this change - the remark plugin ran once on mount and once per re-render, with
+ * the plugin array's identity held constant). So the re-render this hook
+ * provokes is the whole mechanism, and nothing has to be threaded through a prop
+ * or an array identity. The hoisted arrays above are kept because they cost
+ * nothing and are the shape that survives a future upgrade restoring an internal
+ * memo - not because they gate this today.
+ *
+ * ONE ASK PER DISTINCT SPELLING, EVER. The pre-scan is deduped, `probeTargets`
+ * dedupes again against the cache and against the asks already in flight (two
+ * rows carrying `/tmp` paint in the same frame and would otherwise both ask), and
+ * the answers land in the same cache the link toolbar reads. A streaming row
+ * (`linkify` false) does no scanning and asks nothing at all - a per-delta stat
+ * storm is the one shape this could go wrong in.
+ *
+ * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED STAYS PLAIN. The Files panel
+ * owns a growth-triggered retry (`use-mentioned-files`); the linkifier owns none,
+ * so an extensionless file that appears later is not re-scanned. That is the
+ * accepted false negative of plain-until-known, recorded on the pull request
+ * rather than discovered by a reader.
+ */
+const useLinkEvidence = (content: string, linkify: boolean): void => {
+	const [, setTick] = useState(0); // the state is the re-render, not a value
+	useEffect(() => {
+		if (!linkify) return; // a streaming row is parsed but not linkified
+		const suspects = ambiguousTargetsIn(content);
+		if (suspects.length === 0) return;
+		let live = true;
+		const armed = new Set(suspects);
+		const stop = subscribeProbes((landed) => {
+			if (live && landed.some((target) => armed.has(target)))
+				setTick((count) => count + 1);
+		});
+		void probeTargets(suspects, window.api?.probeFiles, MAX_PROBE_PATHS).then(
+			() => {
+				/*
+				 * An answer that landed before this effect subscribed - another row, or
+				 * the toolbar, asked first - is caught here rather than by the
+				 * subscription: the ask above returns immediately when every spelling is
+				 * already cached, and nothing would notify a listener that arrived after
+				 * the fact.
+				 */
+				if (
+					live &&
+					suspects.some((target) => evidenceFor(target) !== "unknown")
+				)
+					setTick((count) => count + 1);
+			},
+		);
+		return () => {
+			live = false;
+			stop();
+		};
+	}, [content, linkify]);
+};
+
+/**
  * Renders a complete markdown document.
  *
  * Bare URLs are linked by remark-gfm's autolink literals. There used to be a
@@ -473,6 +607,11 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			credentialCitations,
 		);
 		const style = useStyleVariables(styleProps);
+		/*
+		 * The pre-scan runs on the SAME string the parse does, so the suspects and the
+		 * tokens the plugin will meet cannot drift on a leading newline.
+		 */
+		useLinkEvidence(trimmed, linkify);
 
 		return (
 			<div className={cn("lo-markdown", className)} style={style}>
@@ -532,6 +671,14 @@ const StableBlock = memo(({ source }: { source: string }) => {
 	 * excludes.
 	 */
 	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true, false);
+	/*
+	 * The same evidence loop the completed render runs, and the block is a good
+	 * place for it: the source is frozen when the block closes, so this asks at
+	 * most once per spelling per block and never on a delta. Memoised on
+	 * `source`, so a parent re-render that changes nothing here re-parses as it
+	 * already did and asks nothing again.
+	 */
+	useLinkEvidence(source, true);
 	return (
 		<ReactMarkdown
 			remarkPlugins={remarkPlugins}

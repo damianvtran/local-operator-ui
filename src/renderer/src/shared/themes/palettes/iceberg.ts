@@ -71,26 +71,25 @@ export const iceberg: ThemeDefinition = {
 		sunken: "#E0E1E6",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
+		 * has no cast of its own (C* 1.57) and there is no panel hue to be faithful
+		 * to - the one routing the rule names for a cast-less panel. They used to be
+		 * tints of the accent at a strength the accent could not hold; the rule, and
+		 * why the fill now carries the ranking the 2px `accent` bar used to, are in
+		 * the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #EDEEFA  accent hue, C* 6.17, +1.51 L*, ΔE00 4.33 off `surface`,
-		 *                       `inkDim` 6.08:1 on the fill, hue 1.37° off `accent`.
-		 * rowSelected #E2E4F4  accent hue, C* 8.31, +4.98 L*, ΔE00 6.56 off
-		 *                       `surface` and 2.69 off `rowHover`, `inkDim` 5.56:1, and the
-		 *                       2px `accent` bar at 5.85:1 against it.
-		 *
-		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at a 5.06 `L*` step, 0.06 past
-		 * the 5.0 ceiling, and was one of the named exceptions: the step had been
-		 * pushed to the top of its band to buy the old 6.0 separation. The separation
-		 * rides the `accent` bar and `font-medium` now, so the step is taken to where
-		 * the inks stop it and the exception is gone.
+		 * rowHover    #E9E9EE  `accent` hue, C* 2.58,
+		 *                       the rule's 2.5 floor for a panel with no cast; +3.37 L*,
+		 *                       ΔE00 2.39 off `surface`, `inkDim` 5.80:1.
+		 * rowSelected #E3E4EF  `accent` hue, C* 5.71,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.04 L*,
+		 *                       ΔE00 4.91 off `surface` and 2.91 off
+		 *                       `rowHover`; the pair ranks 1.67 `L*` and 3.1 `C*`,
+		 *                       `inkDim` 5.55:1.
 		 */
-		rowHover: "#EDEEFA",
-		rowSelected: "#E2E4F4",
+		rowHover: "#E9E9EE",
+		rowSelected: "#E3E4EF",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest

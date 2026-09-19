@@ -36,6 +36,24 @@ export type ViewerKind =
 	| null;
 
 /**
+ * The ceiling on the bytes a press reads INTO the canvas document.
+ *
+ * One mebibyte, and the number is about the store rather than about reading:
+ * `canvas-store` persists its documents to `localStorage` with no `partialize`,
+ * so a document's `content` is a persisted string, base64 inflates it by about a
+ * third, and the whole app shares a quota of roughly 5 MB.
+ *
+ * It lives HERE, beside `READ_ENCODING`, because it is a property of that table:
+ * the eagerly-read kinds (`utf-8`/`base64`) are the ones a press reads itself, so
+ * they are the only ones a ceiling can apply to, and the kinds that read their own
+ * bytes (`bytes`/`range`: pdf, image, audio, video) are never capped. The two
+ * readers are the press (`open-in-canvas.ts`, which REFUSES above it) and the link
+ * toolbar (`link-actions.ts`, which must not offer a destination the press will not
+ * reach); one exported number is what keeps those two answers from drifting apart.
+ */
+export const MAX_EAGER_READ_BYTES = 1024 * 1024;
+
+/**
  * How the bytes reach the viewer, per kind.
  *
  * One map rather than a predicate per caller, because the two consumers ask the

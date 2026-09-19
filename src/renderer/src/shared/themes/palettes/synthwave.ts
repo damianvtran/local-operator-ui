@@ -72,20 +72,24 @@ export const synthwave: ThemeDefinition = {
 		elevated: "#332F4A",
 		sunken: "#1E1B2A",
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #362E33  accent hue, C* 5.06, +1.61 L*, ΔE00 9.06 off `surface`,
-		 *                       `inkDim` 5.46:1 on the fill, hue 1.09° off `accent`.
-		 * rowSelected #4A2D41  accent hue, C* 18.32, +4.36 L*, ΔE00 10.58 off
-		 *                       `surface` and 10.87 off `rowHover`, `inkDim` 5.00:1, and the
-		 *                       2px `accent` bar at 5.31:1 against it.
+		 * rowHover    #33313F  panel hue, C* 9.53,
+		 *                       the rule's 0.60 x the panel's 15.94; +2.71 L*,
+		 *                       ΔE00 4.78 off `surface`, `inkDim` 5.28:1.
+		 * rowSelected #363250  panel hue, C* 20.21,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.12 L*,
+		 *                       ΔE00 3.78 off `surface` and 6.92 off
+		 *                       `rowHover`; the pair ranks 1.41 `L*` and 10.7 `C*`,
+		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#362E33",
-		rowSelected: "#4A2D41",
+		rowHover: "#33313F",
+		rowSelected: "#363250",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",

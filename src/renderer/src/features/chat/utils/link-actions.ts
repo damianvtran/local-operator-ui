@@ -11,15 +11,18 @@
  *    exactly the behaviour it had, which is why "something else" is a case here
  *    rather than a default that quietly inherits the new one.
  * 2. **The matrix.** Which buttons a link's toolbar shows is a function of the
- *    probe's answer, and the three states are not variations on one: a file gets
- *    Open and Open folder, a DIRECTORY gets Open and no folder (a Finder reveal
- *    of a directory is a no-op on macOS), and a missing path gets neither — a
- *    press that would silently do nothing is the thing this matrix exists to
- *    prevent, so the missing case states the reason instead.
+ *    probe's answer and of whether the pane has a canvas to put the path in, and
+ *    the states are not variations on one: a canvas-openable FILE gets `Open in
+ *    canvas`, `Open in default app` and `Open folder`, a file type with no viewer
+ *    keeps `Open` (the OS) and `Open folder`, a DIRECTORY gets Open and no folder
+ *    (a Finder reveal of a directory is a no-op on macOS), and a missing path
+ *    gets neither — a press that would silently do nothing is the thing this
+ *    matrix exists to prevent, so the missing case states the reason instead.
  * 3. **The click.** Whether a press on an anchor opens anything is a function of
- *    the target's kind and of whether the reader is dragging a highlight over it
- *    (`clickDecision`), which is the ONE place the anchor's two traps are decided
- *    — asserted directly, because neither can be read off a frame.
+ *    the target's kind, of whether the reader is dragging a highlight over it,
+ *    and of whether the pane can show it (`clickDecision`), which is the ONE
+ *    place the anchor's two traps are decided — asserted directly, because
+ *    neither can be read off a frame.
  *
  * ## Where a `%` is decoded, and why it is decoded here
  *
@@ -53,11 +56,24 @@
  * two keys for one file, and that is the right granularity here: the toolbar
  * acts on the string the reader is looking at.
  *
+ * THE CACHE HAS TWO READERS, and the second one is why `evidenceFor` lives here
+ * rather than in the grammar. The toolbar reads it to choose its buttons; the
+ * linkifier reads it - through the injected oracle `link-grammar.ts` accepts -
+ * to decide whether an extensionless token is a link AT ALL, because a slash
+ * command and a directory are the same shape to a scanner and only the disk
+ * tells them apart. One cache, one `resetProbeCache`, and no second "does it
+ * exist" knowledge in the renderer.
+ *
  * Nothing here reads `window` or the DOM; the caller injects the probe function,
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
-import { normalizeFileUrl } from "./link-grammar";
+import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
+import {
+	MAX_EAGER_READ_BYTES,
+	READ_ENCODING,
+	viewerFor,
+} from "./viewer-routing";
 
 export type LinkKind = "url" | "file" | "other";
 
@@ -167,29 +183,82 @@ export function classifyHref(
  * question, one answer.
  */
 export type ClickOutcome =
-	/** Cancel the default and open the local path. */
+	/** Cancel the default and open the path in the pane's own canvas. */
+	| "canvas"
+	/** Cancel the default and open the local path in the OS's own application. */
 	| "open"
 	/** Cancel the default and do nothing: the reader is selecting, not pressing. */
 	| "hold"
 	/** Leave the anchor's own behaviour to the browser. */
 	| "browse";
 
+/**
+ * What a press on an anchor does, in one place.
+ *
+ * `canOpenInCanvas` is the caller's answer to "is there a canvas that can show
+ * this path", and it is the caller's because both halves of it are facts about
+ * the surface rather than about the target: whether a pane identity is in reach
+ * (the context, `null` everywhere there is no chat pane) and whether the app has
+ * a viewer for the type (`viewerFor`'s `null`, which is the ONE definition of
+ * "the canvas can show this"). `opensInCanvas` in `open-in-canvas.ts` answers
+ * both together, so the anchor and the toolbar cannot disagree about it.
+ *
+ * The decision is where the two behaviours part: a canvas-openable path goes to
+ * the pane, and every other local path - a directory, a `.zip`, a type with no
+ * viewer, and every path on a surface with no pane - keeps exactly the OS
+ * hand-off it had before the canvas had a say.
+ */
 export function clickDecision(input: {
 	kind: LinkKind;
 	/** Whether the reader's live highlight touches this anchor. */
 	hasHighlight: boolean;
+	/** Whether a pane in reach has a viewer for this target's type. */
+	canOpenInCanvas: boolean;
 }): ClickOutcome {
 	if (input.kind !== "file") return "browse";
-	return input.hasHighlight ? "hold" : "open";
+	if (input.hasHighlight) return "hold";
+	return input.canOpenInCanvas ? "canvas" : "open";
 }
 
-/** The probe's answer for one path, or `null` when nothing is known yet. */
-export type ProbedTarget = { exists: boolean; isFile: boolean } | null;
+/**
+ * The probe's answer for one path, or `null` when nothing is known yet.
+ *
+ * THE RESOLVED PATH IS PART OF THE ANSWER rather than a convenience, because it
+ * is this app's document IDENTITY: `canvas-document.ts` states the rule (the
+ * store dedupes by `id`) and the Files panel's own tile is rewritten to
+ * `result.resolved` for exactly that reason (`use-mentioned-files.ts`). A press
+ * that opened `~/workspace/x/report.xlsx` while the tile for the same file was
+ * `/Users/…/x/report.xlsx` would put two tabs on one file, so the press needs
+ * the resolved string - and the answer already carries it, where asking again
+ * would cost a second round trip on the one path the reader is waiting on.
+ *
+ * `sizeBytes`/`mtimeMs` come from the same answer and are what make a document
+ * the probe knows about a STATABLE document rather than a pointer: the size is
+ * what stops an eager read from putting a multi-megabyte string into a
+ * `localStorage`-persisted store, and the mtime is the freshness baseline the
+ * canvas compares a later probe against.
+ */
+export type ProbedTarget = {
+	exists: boolean;
+	isFile: boolean;
+	/** The path this spelling resolved to: the document's `id` and `path`. */
+	resolved: string;
+	/** Size in bytes, `null` when the probe could not stat a file. */
+	sizeBytes: number | null;
+	/** mtime in ms since epoch, `null` likewise. */
+	mtimeMs: number | null;
+} | null;
 
 /** `window.api.probeFiles`, narrowed to what this module needs. */
-export type ProbeFunction = (
-	paths: string[],
-) => Promise<readonly { exists: boolean; isFile: boolean }[]>;
+export type ProbeFunction = (paths: string[]) => Promise<
+	readonly {
+		exists: boolean;
+		isFile: boolean;
+		resolved?: string;
+		sizeBytes?: number | null;
+		mtimeMs?: number | null;
+	}[]
+>;
 
 /*
  * The session's answers. A negative is cached too (the file may be created
@@ -234,18 +303,168 @@ export const resetProbeCache = (): void => {
  * A throwing probe is left uncached and unanswered for the same reason
  * `use-mentioned-files` leaves its tiles unmarked: a stat that failed says
  * nothing about whether the file exists.
+ *
+ * This is now a one-target call into `probeTargets`, and that is the point: the
+ * toolbar's `ask once, cache forever` rule and the transcript's batched
+ * pre-scan are ONE implementation with one cache, so a spelling asked by a row
+ * and then hovered does not pay two stats, and the toolbar's call site does not
+ * change shape.
  */
 export async function probeTarget(
 	target: string,
 	ask: ProbeFunction | undefined,
 ): Promise<void> {
-	if (!ask || probeCache.has(target)) return;
-	try {
-		const [answer] = await ask([target]);
-		if (!answer) return;
-		probeCache.set(target, { exists: answer.exists, isFile: answer.isFile });
-	} catch (error) {
-		console.warn("probe-files failed:", error);
+	return probeTargets([target], ask, 1);
+}
+
+/**
+ * Everything the session has been told about one spelling, as `TargetEvidence`.
+ *
+ * WHAT THE GRAMMAR ASKS. `link-grammar.ts` holds no bridge to the disk - it is
+ * pure and runs under `node --test` - so it takes this function as an injected
+ * oracle (`TargetPolicy.evidence`) and asks it only about the tokens whose SHAPE
+ * cannot answer the question (`isAmbiguousCandidate`). This is the second reader
+ * of `probeCache`, and it is beside the cache rather than in the grammar because
+ * the toolbar already fills that cache: a spelling the reader hovered is
+ * answered from it, and a spelling nothing has asked about answers "unknown" -
+ * which the gate REFUSES, so an unprobed token renders as plain text.
+ *
+ * This module stays `window`-free: the caller unwraps `window.api.probeFiles`,
+ * exactly as `probeTarget` already required.
+ */
+export const evidenceFor = (target: string): TargetEvidence => {
+	const known = probeCache.get(target);
+	/*
+	 * The truthiness test is the whole check, and its rationale has to be true:
+	 * `probeCache` is only ever WRITTEN with an object (`probeTargets`'s set, below),
+	 * so the value observed here is `undefined` until an answer lands - `null` is
+	 * `probeStateFor`'s pre-existing spelling for "nothing is known yet" on the
+	 * TOOLBAR's side and this map never holds it (round 1, review R1-7). Either way
+	 * an entry nobody wrote is not evidence about the disk, so both answer `unknown`
+	 * and the grammar's gate REFUSES it.
+	 */
+	if (!known) return "unknown";
+	return known.exists ? "exists" : "missing";
+};
+
+/**
+ * Who wants to know when an answer LANDS, and which spellings it was about.
+ *
+ * The transcript's rows are `memo()`'d and take no prop for this - see
+ * `markdown-renderer.tsx`'s `useLinkEvidence` - so the component that asked
+ * subscribes here and re-renders on its own state bump when its own suspect
+ * list moved. Module-level, like `probeCache`, because there is one session's
+ * worth of answers and one set of askers.
+ *
+ * The payload is the spellings that LANDED in that step, not every suspect that
+ * was asked for: a row armed on three tokens and waiting for one has no reason
+ * to re-parse when the other two come back, and a chunk that threw landed
+ * nothing at all.
+ */
+const probeListeners = new Set<(landed: readonly string[]) => void>();
+
+/** Listen for landed answers. The returned function unsubscribes. */
+export const subscribeProbes = (
+	listener: (landed: readonly string[]) => void,
+): (() => void) => {
+	probeListeners.add(listener);
+	return () => {
+		probeListeners.delete(listener);
+	};
+};
+
+const notifyProbes = (landed: readonly string[]): void => {
+	for (const listener of probeListeners) listener(landed);
+};
+
+/**
+ * The spellings with an ask in flight, so two askers of one token cost one stat.
+ *
+ * `probeCache` alone cannot do this: it is written when the answer ARRIVES, so
+ * two rows painting in the same frame - both carrying `/tmp` - would both see a
+ * cold cache and both ask. That is the one shape the transcript can produce in
+ * bulk, and main stats SYNCHRONOUSLY on its own event loop (`src/main/index.ts`),
+ * so a duplicate batch is an app-wide stall rather than one row's delay.
+ *
+ * A failed chunk clears its entries here (`finally`), so the next asker retries
+ * rather than inheriting a permanently in-flight token.
+ */
+const inFlightProbes = new Set<string>();
+
+/**
+ * Ask about many targets in `maxBatch`-sized sequential chunks.
+ *
+ * Deduped three ways (input order, `probeCache`, the in-flight set), asked in
+ * order, and each chunk's answers cached as they land so a NOTIFY arrives per
+ * chunk rather than once at the end - a row holding one token does not wait for
+ * another row's hundred.
+ *
+ * `maxBatch` is a PARAMETER rather than an import of `MAX_PROBE_PATHS` on
+ * purpose: this module is bundled by a bare `node --test` file
+ * (`scripts/link-actions.test.mjs`), and importing `desktop-contract` would drag
+ * zod in behind it. The renderer passes `MAX_PROBE_PATHS` (64) - the bound main
+ * enforces - and the toolbar's one-target call passes 1.
+ *
+ * A chunk that throws warns ONCE per call and is left uncached: a stat that
+ * failed says nothing about whether the file exists, and a second warning for a
+ * second bad chunk is noise about one broken bridge.
+ */
+export async function probeTargets(
+	targets: readonly string[],
+	ask: ProbeFunction | undefined,
+	maxBatch: number,
+): Promise<void> {
+	/*
+	 * No bridge is not an error: Storybook and browser development have none, and
+	 * the callers depend on this returning rather than throwing so their own
+	 * effects stay quiet. Every spelling stays `unknown`, which the grammar's gate
+	 * refuses, so nothing is rendered as a claim about the disk.
+	 */
+	if (!ask) return;
+	const size = maxBatch > 0 ? Math.floor(maxBatch) : 1;
+	const seen = new Set<string>();
+	const wanted: string[] = [];
+	for (const target of targets) {
+		if (probeCache.has(target) || inFlightProbes.has(target)) continue;
+		if (seen.has(target)) continue;
+		seen.add(target);
+		wanted.push(target);
+	}
+	for (const target of wanted) inFlightProbes.add(target);
+	let warned = false;
+	for (let at = 0; at < wanted.length; at += size) {
+		const chunk = wanted.slice(at, at + size);
+		try {
+			const answers = await ask(chunk);
+			const landed: string[] = [];
+			chunk.forEach((target, index) => {
+				const answer = answers[index];
+				if (!answer) return;
+				probeCache.set(target, {
+					exists: answer.exists,
+					isFile: answer.isFile,
+					/*
+					 * These three are upstream's (its own inline body wrote them before this
+					 * branch made the toolbar's one-target probe call into this batched path), and
+					 * the fold that merged the two implementations keeps them: the canvas opens the
+					 * RESOLVED path, so dropping them here would read as a working probe and a
+					 * broken Open.
+					 */
+					resolved: answer.resolved ?? target,
+					sizeBytes: answer.sizeBytes ?? null,
+					mtimeMs: answer.mtimeMs ?? null,
+				});
+				landed.push(target);
+			});
+			if (landed.length > 0) notifyProbes(landed);
+		} catch (error) {
+			if (!warned) {
+				console.warn("probe-files failed:", error);
+				warned = true;
+			}
+		} finally {
+			for (const target of chunk) inFlightProbes.delete(target);
+		}
 	}
 }
 
@@ -351,7 +570,13 @@ export function selectionLinkIn(turn: HTMLElement | null): Element | null {
 	return turn.contains(link) ? link : null;
 }
 
-export type LinkActionId = "quote" | "copy" | "open" | "open-folder";
+export type LinkActionId =
+	| "quote"
+	| "copy"
+	| "open"
+	/* The OS hand-off, offered BESIDE the canvas action rather than instead of it. */
+	| "open-default"
+	| "open-folder";
 export type LinkAction = {
 	id: LinkActionId;
 	/** Sentence case, and the tooltip and the accessible name together. */
@@ -435,8 +660,9 @@ export function missingNote(target: string): { note: string; title: string } {
  * continues their gesture belongs at the leading edge rather than behind two
  * clipboard-shaped ones.
  *
- * With NO highlight it TRAILS (`Copy path` · `Open` · `Open folder` · `Quote`),
- * and that is round 2's decision rather than a leftover: the designed
+ * With NO highlight it TRAILS (`Copy path` · `Open in canvas` · `Open in default
+ * app` · `Open folder` · `Quote` for a canvas-openable file), and that is round
+ * 2's decision rather than a leftover: the designed
  * "highlight wholly inside one link" state turned out to be unreachable with a
  * mouse in every instrument this project can drive (UX round 2, U4 - a
  * `mousedown` on an `<a href>` in Chromium starts no selection and fires no
@@ -453,14 +679,20 @@ export function missingNote(target: string): { note: string; title: string } {
  * is only ever consulted for a link that is the toolbar's subject, so a `false`
  * here does not mean "this link cannot be quoted"; it means the reader has not
  * highlighted this link, and the press will quote what the link says instead.
+ *
+ * `canOpenInCanvas` is the caller's answer to the same question `clickDecision`
+ * asks, and it is the caller's for the same reason: whether a pane is in reach
+ * and whether the type has a viewer are facts about the surface, not about the
+ * target.
  */
 export function linkToolbarModel(input: {
 	kind: LinkKind;
 	target: string;
 	probe: ProbedTarget;
 	quotable: boolean;
+	canOpenInCanvas: boolean;
 }): LinkToolbarModel | null {
-	const { kind, target, probe, quotable } = input;
+	const { kind, target, probe, quotable, canOpenInCanvas } = input;
 	if (kind === "other") return null;
 	const leading = quotable ? [action("quote", "Quote")] : [];
 	const trailing = quotable ? [] : [action("quote", "Quote")];
@@ -502,9 +734,20 @@ export function linkToolbarModel(input: {
 	 * reveal somewhere they did not ask for. Opening the directory is what they
 	 * wanted.
 	 */
-	const fileActions = isDirectory
-		? [action("open", "Open")]
-		: [action("open", "Open"), action("open-folder", "Open folder")];
+	const fileActions = actionListFor({
+		target,
+		isDirectory,
+		probe,
+		canOpenInCanvas,
+	});
+	/*
+	 * A file the canvas can show but the press will refuse for its size gets the
+	 * honest alternative and the sentence that explains it (round 3, U8a): the
+	 * no-canvas action shape, plus the same note slot the missing path uses. Without
+	 * it the strip offers `Open in canvas` and the press does something else.
+	 */
+	const overCeiling =
+		!isDirectory && overEagerReadCeiling(target, probe?.sizeBytes);
 	return {
 		actions: [
 			...leading,
@@ -512,8 +755,103 @@ export function linkToolbarModel(input: {
 			...fileActions,
 			...trailing,
 		],
-		note: null,
-		noteTitle: null,
+		note: overCeiling ? TOO_LARGE_NOTE : null,
+		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
 		label: `Actions for ${name}`,
 	};
+}
+
+/**
+ * The sentence a strip shows when the canvas is on offer for the TYPE but a press
+ * would refuse this FILE.
+ *
+ * The note slot is the missing-path one's, and the reason it is reused rather than
+ * a button being dropped silently is the reader's own expectation: the operator's
+ * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
+ * button reads as a bug unless the strip says why. Sentence case, and short enough
+ * to sit in the strip's own line, because it renders beside the buttons.
+ */
+const TOO_LARGE_NOTE = "Too large for the canvas preview";
+const TOO_LARGE_TITLE =
+	"Too large for the canvas preview, so Open uses the default app";
+
+/**
+ * Whether the press on this path would REFUSE it for the read ceiling.
+ *
+ * The press reads the eagerly-read kinds itself (`open-in-canvas.ts`, bounded by
+ * `MAX_EAGER_READ_BYTES` because the store persists document contents to
+ * `localStorage`) and refuses above the number, so a strip that still offered
+ * `Open in canvas` would be promising a destination the press will not reach -
+ * and round 3's UX pass measured exactly that: a button that reads "Open in
+ * canvas" handing the file to the OS.
+ *
+ * The kind test comes from `READ_ENCODING` rather than from a list of extensions,
+ * because "which kinds a press reads itself" is that table's own answer: the
+ * `bytes`/`range` kinds (pdf, image, audio, video) read their own bytes and are
+ * never capped, so a 40 MB PDF keeps its canvas action.
+ */
+export function overEagerReadCeiling(
+	path: string,
+	sizeBytes: number | null | undefined,
+): boolean {
+	const kind = viewerFor(path);
+	if (kind === null) return false;
+	const encoding = READ_ENCODING[kind];
+	if (encoding !== "utf-8" && encoding !== "base64") return false;
+	return (sizeBytes ?? 0) > MAX_EAGER_READ_BYTES;
+}
+
+/**
+ *
+ * One rule with two readers, which is why it is a function: the matrix above asks
+ * it to choose between `Open in canvas`/`Open in default app` and a lone `Open`,
+ * and `link-toolkit.tsx` asks it to choose an icon. A second copy of the
+ * condition inside the component is exactly the kind of agreement this module
+ * exists to delete — and the two answers it must not drift apart on are the
+ * ones that look like details: a DIRECTORY is never canvas-openable (a directory
+ * named `notes.md` has a viewer by extension and is still not a document), and a
+ * path the probe already knows is GONE never is (a canvas tab onto "this is not
+ * there" is worse than the OS attempt's own sentence).
+ */
+export function canvasActionFor(input: {
+	target: string;
+	isDirectory: boolean;
+	probe: ProbedTarget;
+	canOpenInCanvas: boolean;
+}): boolean {
+	if (!input.canOpenInCanvas) return false;
+	if (input.isDirectory) return false;
+	if (input.probe?.exists === false) return false;
+	/*
+	 * And the ceiling is the last of the same kind of veto: the type has a viewer,
+	 * the path is there, and the press would still refuse it for its size, so the
+	 * strip offers the OS and the note says why (round 3, U8a).
+	 */
+	return !overEagerReadCeiling(input.target, input.probe?.sizeBytes);
+}
+
+/** The non-copy actions a local target offers, in visual order. */
+function actionListFor(input: {
+	target: string;
+	isDirectory: boolean;
+	probe: ProbedTarget;
+	canOpenInCanvas: boolean;
+}): LinkAction[] {
+	if (input.isDirectory) return [action("open", "Open")];
+	/*
+	 * Where the app can show the file itself, the canvas is what `Open` means and
+	 * the OS gets a press of its own: the operator's ask is that a supported file
+	 * opens in the canvas "by default ... unless the user clicks to open with
+	 * default application". The label is the existing one the canvas's own viewer
+	 * chrome already ships (`OpenInOsButton`), because two spellings of one action
+	 * is how a reader concludes they do different things.
+	 */
+	if (canvasActionFor(input)) {
+		return [
+			action("open", "Open in canvas"),
+			action("open-default", "Open in default app"),
+			action("open-folder", "Open folder"),
+		];
+	}
+	return [action("open", "Open"), action("open-folder", "Open folder")];
 }

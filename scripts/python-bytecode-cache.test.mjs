@@ -2211,6 +2211,12 @@ const SPAWN_SITES = [
 		/"sh"/,
 		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
 	),
+	passThrough(
+		"src/main/webauthn.ts",
+		"execFile",
+		1,
+		"the signature probe's runner: `file` is the parameter a test injects, and the only value the app itself passes is `/usr/bin/codesign` with an explicit argv (`-dv --verbose=4`, `-d --entitlements - --xml`). No interpreter, and no environment of its own: the child inherits this process's",
+	),
 ];
 
 test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {
@@ -2626,6 +2632,44 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		index: 4,
 		binding: /const env = pythonChildEnv\(\{/,
 		why: "the venv interpreter's own `site` probe",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 2,
+		env: /env:\s*pythonChildEnv\(\{\}\)/,
+		why: "the conversation the U15 step's baseline read asks the terminal's own `read_pins` about, before anything is written (UX round 5, U15)",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 3,
+		env: /env:\s*pythonChildEnv\(\{\}\)/,
+		why: "the terminal's own writer PINNING a conversation this client's page does not carry - U15's own write (UX round 5, U15)",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 4,
+		env: /env:\s*pythonChildEnv\(\{\}\)/,
+		why: "the same writer UNPINNING it, because the check has to show the row LEAVES rather than being held by this client's memory (UX round 5, U15)",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 5,
+		// This site binds its env from a local (`const env = pythonChildEnv({...})`), so the row
+		// matches the BINDING rather than the call's `env:` argument: the U15 step's three spawns
+		// sit above it and shifted it from #2 to #5 (QA round 6, Q6-1).
+		binding: /const env = pythonChildEnv\(\{\}/,
+		why: "the terminal's own `read_pins`, asked what the shared pin store holds after this app pinned from its own surface — the pins scene's `--tui-python` step",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 6,
+		env: /env:\s*pythonChildEnv\(\{\}\)/,
+		why: "the terminal's own `toggle_pin`, which is the write the TUI's `f10` makes — the cross-surface half of the same scene, and the only python this repository starts to WRITE a store rather than read one",
 	},
 	{
 		file: "scripts/submit-latency.test.mjs",

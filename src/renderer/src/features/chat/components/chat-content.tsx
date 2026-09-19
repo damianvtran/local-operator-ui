@@ -872,28 +872,41 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * The working surface takes the PAGE ground, `canvas`, not the panel
 					 * ground.
 					 *
-					 * The depth model this app is built on reads three planes left to
-					 * right: the icon rail is `sunken`, the list panel beside it is
-					 * `surface`, and the thing you are working on is `canvas`
-					 * (sidebar-navigation.tsx states the model, and why the rail moved off
-					 * `surface`). This column was the one main area in the app painted
-					 * `surface`, and `surface` is exactly what the list panel next to it
-					 * uses - measured in the running app, the boundary between them was
-					 * ΔE00 0 in every sampled theme, so the two read as one slab with
-					 * nothing between them: no rule (the divider is `w-0`), no border, no
-					 * step. Settings and agents already root their main area at `canvas`;
-					 * chat was contradicting the model, not extending it.
+					 * The depth model this app is built on reads the planes left to
+					 * right as CHROME and then the thing you are working on: the icon
+					 * rail and the list panel beside it are both `surface`, and the
+					 * working surface is `canvas`. The rail used to be the recessed
+					 * `sunken` step; it is `surface` with a `border-r border-hairline`
+					 * now, which is where the boundary its tonal step used to carry is
+					 * DRAWN (`sidebar-navigation.tsx` states the model, and why the rail
+					 * moved off the rung). This column was the one main area in the app
+					 * painted `surface`, and `surface` is exactly what the list panel
+					 * next to it uses - measured in the running app, the boundary
+					 * between them was ΔE00 0 in every sampled theme, so the two read as
+					 * one slab with nothing between them: no rule (the divider is
+					 * `w-0`), no border, no step. Settings and agents already root their
+					 * main area at `canvas`; chat was contradicting the model, not
+					 * extending it.
 					 *
-					 * The step this creates is deliberately the SLIGHT one of the two, and
-					 * it is the only boundary between list panel and working surface - no
-					 * rule, no border, no shadow, because elevation in this system is a
-					 * lightness step (branding § 2). `check-themes` already asserts
-					 * `canvas`/`surface` and `surface`/`sunken` as adjacent ground pairs:
-					 * across every palette `surface`→`canvas` measures ΔE00 2.08
-					 * (catppuccinMacchiato) to 6.56 (synth), against 3.75 (iceberg) to 14.94
-					 * (synth) for `surface`→`sunken`. The rail therefore keeps the clearly
-					 * stronger separation, which is the relationship the report asked
-					 * for.
+					 * The step this creates is deliberately the SLIGHT one of the two,
+					 * and it is the only boundary between list panel and working
+					 * surface - no rule, no border, no shadow, because elevation in
+					 * this system is a lightness step (branding § 2). `check-themes`
+					 * already asserts `canvas`/`surface` and `surface`/`sunken` as
+					 * adjacent ground pairs: across every palette `surface`→`canvas`
+					 * measures ΔE00 2.05 (`sage`, the fleet's tightest) to 6.76
+					 * (`radient`), against 3.96 (`iceberg`) to 14.88 (`synth`) for
+					 * `surface`→`sunken`. The second of those is no longer a
+					 * separation anything in the shell uses, because `sunken` is no
+					 * longer a chrome ground: what separates chrome from WORK is the
+					 * first, and the rail's own separation from the list panel beside
+					 * it is the 1px rule it draws - `hairline` against the rail's
+					 * `surface` measures ΔE00 7.13 on `localOperatorLight` and 5.37 at
+					 * the fleet's tightest (`autumn`), a much stronger edge than this
+					 * column's step. `hairline` owes perceptibility rather than a
+					 * contrast floor (branding § 2), so that pair is measured here and
+					 * read back from the frames in the row-states evidence README
+					 * rather than asserted in `check-themes`.
 					 *
 					 * Everything inside this column that paints a ground of its own was
 					 * sized against a `surface` column; the composer band and the legacy

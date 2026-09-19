@@ -81,8 +81,9 @@ type AgentsSidebarItemProps = {
  *
  * Forty rows with an edge each is forty boxes of chrome around a single list.
  * The rows are separated by the gap and, when pointed at or selected, by a
- * ground step — hover takes `elevated`, selection takes the accent wash. That
- * wash is the row's *only* accent spend: the avatar and the name stay neutral,
+ * ground step — hover takes `rowHover`, selection takes `rowSelected`, the two
+ * roles the row-state pass authored for both rails. That step is the row's *only*
+ * accent spend: the avatar and the name stay neutral,
  * because tinting three things to say one thing spends the screen's accent
  * budget on a state the ground already carries.
  *
@@ -137,7 +138,36 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				)}
 			>
 				<Avatar className="size-8 shrink-0">
-					<AvatarFallback>
+					{/*
+					 * THE AVATAR IS AN OBJECT INSIDE A ROW STATE, SO IT KEEPS ITS OWN EDGE.
+					 * The row above paints `rowCurrent` when this agent is the open one and
+					 * `hover:bg-row-hover` under the pointer, and the fallback's ground is
+					 * `sunken` — a rung of the ladder, so on some palette the row's own state
+					 * lands on it. Measured on the shipped values: `sunken` against
+					 * `rowSelected` is inside the file's ΔE00 2.0 field floor on seven
+					 * palettes (`alucard` 0.44, `localOperatorLight` 1.19, `paper` 1.24, `sage`
+					 * 1.63, `rosePineDawn` 1.66, `catppuccinLatte` 1.73, `solarizedLight`
+					 * 1.78) and against `rowHover` on one (`iceberg` 1.86) — open an agent, or
+					 * point at one, and the disc is the row's own fill.
+					 *
+					 * No fill role escapes that, because a row state IS a step of the panel it
+					 * sits on — `elevated` against `rowHover` is byte-identical on `arcade` — so
+					 * the edge is the carrier, exactly as it is on the rail's account plate
+					 * (`./user-profile-sidebar.tsx`, which this reason is now shared with).
+					 * `border-control` is this system's role for an edge that IS the boundary of
+					 * a thing, and the two arms are a PAIR here rather than a flat 3:1: the edge
+					 * alone misses the non-text floor on 12 palettes against the selection
+					 * (`vaporwave` 2.77) and 5 against the hover (`catppuccinMocha` 2.92), where
+					 * the FILL carries it instead, and the fill alone misses the field floor on
+					 * the eight above, where the edge clears (4.66 `alucard` … 3.02
+					 * `rosePineDawn` against the selection, 3.35 `iceberg` against the hover).
+					 * Neither arm clears the fleet by itself and no palette fails both, which is
+					 * what the pair in `scripts/contrast-contract.mjs` asserts per palette; the
+					 * class half — that this element still wears the edge, and that no new object
+					 * inside a row state is added without one — is in
+					 * `scripts/chat-sidebar-selection.test.mjs`.
+					 */}
+					<AvatarFallback className="border border-control bg-sunken">
 						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
 				</Avatar>
