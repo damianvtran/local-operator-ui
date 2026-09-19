@@ -2,18 +2,18 @@
   "label": "after",
   "bundle": {
     "mainBytecode": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/main/index.jsc",
-      "sha256": "4d2d7d2b1b550cb3efac8d4254c5e4c815221580cf9900b02fb2954ea982d4df",
-      "builtAt": "2026-09-19T06:27:14.595Z"
+      "file": "out/main/index.jsc",
+      "sha256": "ccfe65c7940da29321d91242ac0bd13f66b429ff0e44b79746e3ecbcb90faba7",
+      "builtAt": "2026-09-19T08:15:44.580Z"
     },
     "rendererChunk": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/out/renderer/assets/index-DhkfQ4qv.js",
-      "sha256": "d53b5733cfedeaba3e75a709cc5630d2e21a6c5d799777923ae9a65dbeec5ad2",
-      "builtAt": "2026-09-19T06:28:10.981Z"
+      "file": "out/renderer/assets/index-CEO213-u.js",
+      "sha256": "5e4def147a91214ddc4275305561b2123cb353491ae1d30041b5cdb248714aed",
+      "builtAt": "2026-09-19T08:16:09.695Z"
     },
     "newestSource": {
-      "file": "/Users/damian/local-operator-ui/.worktrees/daemon-any-attach/src/renderer/src/features/settings/components/backend-settings-section.tsx",
-      "at": "2026-09-19T06:26:54.573Z"
+      "file": "src/renderer/src/shared/store/canonical-sessions-store.ts",
+      "at": "2026-09-19T07:53:11.555Z"
     }
   },
   "scenes": {

@@ -172,8 +172,16 @@ const HEALTH_PATH_FOR_RIG = "/health";
 function bundleIdentity() {
 	const sha256 = (file) =>
 		createHash("sha256").update(readFileSync(file)).digest("hex");
+	/*
+	 * REPO ENDS WITH A "/", so `${REPO}/` never matched and every record carried an
+	 * absolute /Users/... path that means nothing on another machine (review round
+	 * 4, R4-3). The strip is prefix-based and slashes are normalised after it.
+	 */
+	const rel = (file) => file.replace(REPO, "").replace(/^\/+/, "");
 	const describe = (file) => ({
-		file: file.replace(`${REPO}/`, ""),
+		file: rel(file),
+		// Repo-relative on purpose: an absolute /Users/... path in a committed frame
+		// record matches nothing on any other machine.
 		sha256: sha256(file),
 		builtAt: statSync(file).mtime.toISOString(),
 	});
@@ -202,7 +210,7 @@ function bundleIdentity() {
 				continue;
 			}
 			const at = statSync(path).mtimeMs;
-			if (at > newest.at) newest = { file: path.replace(`${REPO}/`, ""), at };
+			if (at > newest.at) newest = { file: rel(path), at };
 		}
 	};
 	walk(join(REPO, "src"));
@@ -1822,8 +1830,16 @@ try {
 		if (!entry.startsWith(`${LABEL}-frames-`) || !entry.endsWith(".json"))
 			continue;
 		const other = JSON.parse(readFileSync(join(OUT, entry), "utf8"));
+		/*
+		 * EACH SCENE CARRIES THE BUILD ITS OWN RUN LAUNCHED, not the build of the
+		 * process doing the merging (review round 4, R4-3): `bundle: BUNDLE` here
+		 * stamped the head build onto scenes shot minutes earlier against a
+		 * superseded `out/`, so the record attributed frames to an artifact they never
+		 * ran. `other.bundle` is the per-scene file's own top-level identity, written
+		 * by the run that actually booted the app.
+		 */
 		for (const [name, value] of Object.entries(other.scenes ?? {}))
-			summary.scenes[name] = { bundle: BUNDLE, ...value };
+			summary.scenes[name] = { bundle: other.bundle ?? BUNDLE, ...value };
 	}
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),

@@ -9,7 +9,6 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
@@ -44,6 +43,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import {
 	type AnswerOutcome,

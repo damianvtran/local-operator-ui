@@ -144,7 +144,7 @@ export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
  * the page-level fallback and this one are the same sentence about the same
  * event and drifted apart when they were two literals.
  */
-export /**
+/**
  * The app's own sentence for a REFUSAL, and the error's own for everything else.
  *
  * WHY THIS IS NOT A BARE `userFacingMessage` CALL (measured, review round 3): the
@@ -161,7 +161,6 @@ const storeErrorMessage = (error: unknown, fallback: string): string =>
 		: error instanceof Error
 			? error.message
 			: fallback;
-
 export const SEND_UNCONFIRMED_MESSAGE =
 	"The send could not be confirmed. Retry this draft.";
 
