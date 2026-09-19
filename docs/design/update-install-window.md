@@ -13,12 +13,28 @@ that stops a launch from cancelling an install mid-flight. Where a symbol exists
 only on that branch it is marked **(#365)**; every other citation is against
 `origin/main` at `ef8ae2bfe`.
 
+**Measured since (2026-09-19).** Two of the figures below are superseded by real
+installs of the operator's app, and the change this note designs has since merged
+while none of those installs carried it. **Appendix D** is an addition rather than a
+revision — it says which numbers were the design's premise and which were measured
+afterwards — and it is the reason §1 and §6 must not be quoted on their own. Read it
+before either.
+
 **The one-line claim.** An install spends four and a half minutes inside
 `SecStaticCodeCheckValidityWithErrors` because it runs in a launchd job's
 scheduling class, not because there is anything slow about the work. The same
 `ShipIt` doing the same validation, spawned by us instead of submitted to
-launchd, completes a whole install — validation, swap, relaunch — in **2.3-5.2 s**
-on this machine (four completed installs, Appendix A). Nothing needs to be
+launchd, completes the install's own two phases — validate and swap — in **2.3-4.6 s**,
+the span of `request -> swap landed` across Appendix A's four runs (the terminal line
+follows 0.3-0.6 s later; #370's header quotes `2.3-5.2 s`, whose upper end is a
+TERMINAL figure from the aside run listed under Appendix A's run 1, which is why the
+two endpoints are stated separately here). (The relaunch is the third phase and is NOT
+inside either figure: those runs kept `launchAfterInstallation: false` on purpose, while
+the design in §5.2 leaves it `true` for the shipped app.) That is a sample rather than
+a ceiling: re-run on the same 394 MB bundle since, this rig has taken **3.7 s at load
+80-84**, **10.4 s at load 109-114** and **3.5 s at load 185.33** `request -> swap
+landed` (Appendix D), so a future install is held against that range with the load it
+was taken at. Nothing needs to be
 re-implemented: the
 installer is still Apple's, the validation is still Apple's, the swap is still
 Apple's. The only thing that changes is who starts it.
@@ -46,9 +62,12 @@ that process put 100% of its samples in
 it was blocked, not computing. The same call on the same content costs
 0.25-3.85 s from an ordinary process and 33.3 s as a launchd job in the same
 minute (PR #365's measurements; `pnpm sec-check --background` reproduces the pair).
-Measured again for this note, on the same 394 MB bundle, minutes apart: **2.3-5.2 s
-spawned directly, still inside `Beginning installation` after 300 s under
-`taskpolicy -b`** (Appendix A, runs 1-2 and 4).
+Measured again for this note, on the same 394 MB bundle, minutes apart: **2.3-4.6 s to
+the swap landed (2.6-5.2 s to the terminal line) spawned directly, still inside
+`Beginning installation` after 300 s under `taskpolicy -b`** (Appendix A, runs 1-2 and
+4; the same rig has since measured 3.5 s, 3.7 s, 10.2 s and 10.4 s across loads of 80
+to 185, so this is a range that moves with the machine rather than a band with a top —
+Appendix D).
 
 An install that *aborts* costs the user the whole wait as well: the 09:37 install
 was cancelled after 3 min 49 s with `SQRLInstallerErrorDomain Code=-9 "App Still
@@ -147,7 +166,9 @@ Gatekeeper scans). Rejected.
 **(B) Spawn `ShipIt` ourselves, in a context that gets scheduled.** Recommended.
 The installer, its validation, its swap and its relaunch are all unchanged; only
 the launch is ours. Measured ceiling of the win: 0.3-0.8 s foreground against
-3.9-777 s in the class for the same call, and a whole install in 2.3-5.2 s here.
+3.9-777 s in the class for the same call, and the same two phases of a whole install
+in 2.3-4.6 s here (`request -> swap landed`; 3.5-10.4 s on later runs, load 80-185
+— Appendix D).
 
 **(C) Own the swap entirely.** Out of scope, and it gives up Apple's validation
 and Apple's swap for nothing this note needs. If a future change wants the
@@ -417,6 +438,13 @@ with the same install also completing end to end — app back, new version runni
 `Update marker: install of version X succeeded` in the app log — because a fast
 window that does not install anything is not the result.
 
+> **Superseded in part (2026-09-19).** The `before` half above is the worst case
+> measured, not the typical one — three installs since have run 44.3 s to 1 min 11.1 s
+> — and the `after` half is still unproven, because no real install has yet carried
+> this design. The change has since merged (Appendix D says where), which is a fact
+> about the repository and not a measurement of it. The requirements below are
+> unchanged and still unmet; see **Appendix D**.
+
 **How many.** Five consecutive real installs, at two different load levels
 (one under ~120, one over ~250), all five showing `request -> swap landed` under
 10 s and `Installation completed successfully`. Fewer than five because a single
@@ -510,7 +538,12 @@ print the phase table and the inode change), `cleanup` (remove every tree it mad
 including `ShipIt`'s temp directories and the preferences file its synthetic label
 creates). Guards: the target is always inside the scratch root, the clone source is
 never written, the label is synthetic so `ShipIt`'s running-instance check and its
-relaunch cannot reach the operator's app, and `launchAfterInstallation` is false.
+relaunch cannot reach the operator's app, and `launchAfterInstallation` is false. The
+last two are checked against the state plist itself — the file `ShipIt` reads, located
+inside the scratch root, not the paths the rig derived — and a `--scratch` root that is
+not empty and carries no `evidence.json` (i.e. one this rig did not create) is refused
+rather than wiped, so a mistyped argument cannot turn `prepare` into an `rm -rf` of
+the operator's own directories.
 
 Run on 2026-09-18 against the 394,498,048-byte installed bundle, all four from
 `~/local-operator-ui-worktrees/shipit-direct`, scratch `/tmp/lop-shipit-spike`,
@@ -615,3 +648,97 @@ stop using `autoUpdater` for checks (it stays, for the feed and the renderer
 events), and not a claim that the numbers above are the change's numbers. They are
 the mechanism's numbers, taken in a rig that put everything it made where it could
 delete it.
+
+## Appendix D — update, 2026-09-19: what has been measured since this note
+
+**This is an addition, not a revision.** Nothing above it is rewritten, so the figures
+that were the design's premise stay distinguishable from the figures measured later.
+Everything here is read from the same two logs §6 names, through
+`scripts/update-window-report.mjs`, and dated.
+
+**On `main` since 2026-09-19, and still unproven.** The paragraph this one replaces said
+there was no implementation on `main`, and that stopped being true while this note sat
+in review: #370 merged as `024d2e1e6` at 22:38:25Z on 2026-09-19, after agent review
+rounds 1-4, QA rounds 1-4 and UX rounds 1-3 on that PR. The mechanism is in the tree
+now, and that is a fact about the repository rather than about the design's numbers.
+
+What a reader must not take from it: **merging is not measuring, and no real install has
+yet carried the change.** §6's acceptance test stands unmet — five consecutive real
+installs of the operator's app at two load levels, all five showing `request -> swap
+landed` under 10 s — and the last install measured on this machine (2026-09-19 11:30,
+**44.3 s** closed, 43.0 s of it the validation phase) ran on a build that did **not**
+carry it. The first real install that does is the measurement this note is waiting for;
+until one exists the seconds belong to the rig, and 44.3 s remains what the app costs
+rather than what it used to cost.
+
+**The "before" is the worst case measured, not the typical one.** §1 and §6 quote the
+2026-09-18 11:59 install's **4 min 28.9 s** `request -> swap landed` (#11). Three real
+installs of the operator's app have completed since, and none took anything like that
+long:
+
+```
+2026-09-18 19:36   0.29.1   52.8 s        (validation phase 45.5 s)
+2026-09-18 21:40   0.29.2   1 min 11.1 s   (validation phase 1 min 6.2 s)
+2026-09-19 11:30   0.29.6   44.3 s        (validation phase 43.0 s)
+```
+
+The phase that costs the minutes is still the same one — `Beginning installation ->
+Moving bundle`, the validation in `SecStaticCodeCheckValidityWithErrors` — so the
+mechanism §1 argues about is unchanged. What those three installs show is the spread
+on this machine, with the two long ones at the top of it: 4 min 18.3 s (#8, 2026-09-18
+00:23) and the 4 min 28.9 s of #11. The window tracks machine load, as the instrument
+in §6 says in its own header, so **four and a half minutes is the figure to beat, not
+the figure to expect**, and a future comparison against four minutes as the baseline
+would understate what a regression has to look like.
+
+**Two details of that third install, so the citation does not surprise a reader.** It
+is an install **of 0.29.6** — the app's own marker and the artifact it downloaded both
+name 0.29.6, though the day's summary of the same install called it 0.29.7 — and unlike
+the other two it did not relaunch the app: `ShipIt` logged `Installation completed
+successfully` with no launch line, the app came back 22 minutes later through the
+watchdog, and the app's own marker recorded the install as not completing. That is the
+0.29.6 signing incident and the relaunch path, neither of which is this note's subject;
+the window it measured is still the window.
+
+**The "after" is still unproven, and §6's requirement still stands unmet.** No real
+install has yet carried this design — #370 has merged, which is not a measurement — so
+the `after` line in §6 is a prediction. Its ask — **five consecutive real installs at two
+load levels, all five under 10 s** — has not been run, and until it has, §1's one-line
+claim belongs to the spike's rig and Appendix A's `ShipIt` runs rather than to the app.
+
+**The spike was re-run on 2026-09-19**, to check that a rig written on 2026-09-18 still
+does what this appendix records on a tree a day newer — the installed bundle is
+394,371,072 bytes now against the 394,498,048 of the runs above. It was a complete
+install in **3.7 s** `request -> swap landed` at load 80-84, with the target's inode
+changed (1339874207 -> 1339879726), and `scripts/update-window-report.mjs
+--shipit-log <that run's log>` printing `CLOSED WINDOW request -> swap landed 3.7 s`
+with its bundle-move phase `-`, exactly as the runs above record it. Two of the
+guards Appendix A describes are now enforced rather than stated; see the sentence
+about them there.
+
+**The spike's band is a sample, not a ceiling.** §1 and §4 quote **2.3-4.6 s**
+`request -> swap landed` — 2.6-5.2 s if the terminal line is what is being timed, and
+those are the two boundaries stated separately because the older `2.3-5.2 s` paired one
+endpoint's low with the other's high (both come from Appendix A's runs, the 4.6 s and
+5.2 s from the aside run listed under run 1). The four runs carry 1-minute loads of
+100.22 / 113.72 / 123.36 / 140.64 — the lightest of which, run 4's, is where the band's
+fastest 2.3 s was taken — and #370's own header repeats the band as the measurement the
+change rests on. The same rig on the same
+394,371,072-byte bundle since: **3.7 s at load 80-84** (the re-run above), **10.4 s at
+load 109-114**, **10.2 s at load 118-138** — the last taken independently for this PR's
+review round on 2026-09-19, whose clone of the same bundle also took 6.8 s against 3.4 s
+here — and **3.5 s at load 185.33** (2026-09-19 18:19, taken while correcting this
+paragraph). Every one of them was a complete install of the two phases the rig
+exercises: the inode changed and `ShipIt` logged `Installation completed successfully`,
+with no launch line. So what stretches is the machine rather than the mechanism — and
+**the load does not order these runs**: 3.5 s at 185.33 sits beside 3.7 s at 80-84 and
+10.2-10.4 s at 109-138, which is why a future number belongs against the range it was
+taken in, with its load recorded beside it, and not against 5.2 s or any single figure.
+
+That matters for §6's bar, `request -> swap landed` under 10 s: at load 109-138 this
+rig has now measured 10.2 s and 10.4 s, i.e. at the bar rather than under it — and at
+load 185.33 it measured 3.5 s, the same point from the other side. §6's requirement is
+not moved here — it is the design's acceptance test, aimed at a real install rather
+than at this rig — but a five-install run read without its loads could fail on the
+machine rather than on the change, and `update-window-report.mjs` prints the load
+beside every number for exactly that reason.
