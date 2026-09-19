@@ -572,7 +572,7 @@ const INCONCLUSIVE = {
  * setter is visible to the next read - which is how a case observes what the
  * user would be looking at after a sequence.
  */
-function mount() {
+function mount({ appVersion } = {}) {
 	standIn.reset();
 	/*
 	 * A fresh bridge per mount. A case that leaves a check unanswered (the
@@ -581,7 +581,12 @@ function mount() {
 	 * mounted - a harness artefact that would read as a product failure.
 	 */
 	updater.checks.length = 0;
-	standIn.render = () => CheckForUpdatesButton({});
+	/*
+	 * `appVersion` is the card's LIVE reading, handed down by `AppUpdatesSection` in
+	 * the app (design D1). A case leaves it out to stand for a card that has not
+	 * read the version yet.
+	 */
+	standIn.render = () => CheckForUpdatesButton({ appVersion });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -875,6 +880,34 @@ function allCopy(handle) {
 	return walk(handle.tree)
 		.filter((node) => typeof node.props?.children === "string")
 		.map((node) => node.props.children);
+}
+
+/**
+ * Every string anywhere in the tree, joined - including the strings a paragraph
+ * holds as an ARRAY of children rather than as one child.
+ *
+ * `allCopy` reads only children that are a string outright, which is right for the
+ * copy a component owns as one line; the retained-record sentence is interleaved
+ * ("The last update to version {x} ..."), so its words arrive as an array and a
+ * case about them needs this flattened form.
+ */
+function allText(handle) {
+	const strings = [];
+	const visit = (value) => {
+		if (typeof value === "string") {
+			strings.push(value);
+			return;
+		}
+		if (Array.isArray(value)) {
+			for (const child of value) visit(child);
+			return;
+		}
+		if (value && typeof value === "object" && value.props) {
+			visit(value.props.children);
+		}
+	};
+	visit(handle.tree);
+	return strings.join(" ");
 }
 
 /** Every danger toast on screen right now, by the props the panel hands it. */
@@ -2676,4 +2709,81 @@ test("Q1: an offer does not dismiss a message that is not the affirmation", asyn
 		["danger"],
 		"an unrelated offer must not close an error toast",
 	);
+});
+
+test("the retained-record banner names the version that is running, not the one the record captured", async () => {
+	/*
+	 * DESIGN D1. The record is kept while its target is still ahead, so a machine
+	 * can gain a version by a route other than that install and the record's own
+	 * `runningVersion` - the version captured when the failure was WRITTEN - stops
+	 * being what runs. Printed as the running version it contradicted the card's own
+	 * "Application version" row two rows above it, which is the class of untrue
+	 * statement this change exists to remove: the operator's own delivered case with
+	 * the numbers swapped.
+	 *
+	 * The captured version is deliberately distinctive (0.20.9) and the target is
+	 * ahead of both readings, so a case that printed the record's field and a case
+	 * that printed the live one cannot look alike.
+	 */
+	/*
+	 * The record arrives through an async bridge call that lands in a state setter,
+	 * so the promise has to resolve and the component re-render before the sentence
+	 * exists at all - a case that read the tree straight after mount would assert
+	 * about an empty box.
+	 */
+	const settleRecord = async (handle) => {
+		await new Promise((resolve) => realSetTimeout(resolve, 0));
+		handle.render();
+	};
+	const original = updater.getLastInstallAttempt;
+	updater.getLastInstallAttempt = async () => ({
+		targetVersion: "0.30.0",
+		runningVersion: "0.20.9",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail:
+			"Install started. Squirrel cancels an install when an instance runs.",
+		attempts: 2,
+	});
+	try {
+		// The card has read the live version.
+		const live = mount({ appVersion: "0.29.5" });
+		await settleRecord(live);
+		const sentence = allText(live);
+		assert.match(
+			sentence,
+			/Version 0\.29\.5 is running\./,
+			"the sentence prints the version the card is running now",
+		);
+		assert.ok(
+			!sentence.includes("0.20.9"),
+			"the version captured when the record was written is not what is running",
+		);
+		assert.match(
+			sentence,
+			/The last update to version\s+0\.30\.0\s+didn't finish/,
+			"the target is still the record's own, and the attempts count survives",
+		);
+		assert.match(sentence, /\(2 attempts\)/);
+
+		/*
+		 * And with no live reading yet, the sentence claims NOTHING about what runs:
+		 * a version it cannot vouch for is worse than no version, which is the same
+		 * direction the record's own retirement takes.
+		 */
+		const unread = mount();
+		await settleRecord(unread);
+		const unreadText = allText(unread);
+		assert.match(
+			unreadText,
+			/The last update to version\s+0\.30\.0\s+didn't finish/,
+		);
+		assert.ok(
+			!unreadText.includes("is running"),
+			"an unread live version prints no claim rather than a stale one",
+		);
+		assert.ok(!unreadText.includes("0.20.9"));
+	} finally {
+		updater.getLastInstallAttempt = original;
+	}
 });
