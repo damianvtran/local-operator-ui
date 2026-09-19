@@ -20,6 +20,8 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import {
 	chmodSync,
+	existsSync,
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
@@ -2032,7 +2034,7 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 		// window manager, and what the channel must prove is that the path it opens is
 		// the HOST's, never one a caller named.
 		revealDownloads: async () => {
-			revealed.push(host.downloads.activity().dir ?? "");
+			revealed.push(host.downloads.downloadDir() ?? "");
 			return "";
 		},
 		log: () => {},
@@ -4406,6 +4408,7 @@ class FakeDownloadItem {
 		total = 10,
 		received = 10,
 		saveThrows = false,
+		state = "progressing",
 	} = {}) {
 		this.filename = filename;
 		this.url = url;
@@ -4413,9 +4416,11 @@ class FakeDownloadItem {
 		this.total = total;
 		this.received = received;
 		this.saveThrows = saveThrows;
+		this.state = state;
 		this.savePath = "";
 		this.cancelled = false;
 		this.listeners = [];
+		this.updateListeners = [];
 	}
 
 	getFilename() {
@@ -4449,10 +4454,14 @@ class FakeDownloadItem {
 
 	cancel() {
 		this.cancelled = true;
+		// Chromium reports the cancellation through `done` (and removes the partial
+		// file at the save path); the test fires that itself, as it does for every
+		// other transition, so the ordering under test is the ordering written down.
+		this.state = "cancelled";
 	}
 
 	getState() {
-		return "progressing";
+		return this.state;
 	}
 
 	once(event, listener) {
@@ -4460,8 +4469,22 @@ class FakeDownloadItem {
 		return this;
 	}
 
+	on(event, listener) {
+		if (event === "updated") this.updateListeners.push(listener);
+		return this;
+	}
+
+	/** Move the write along, as Chromium does while the bytes arrive. The runtime cap
+	 * for a response that declared no length is enforced from exactly this event. */
+	progress(received) {
+		this.received = received;
+		for (const listener of this.updateListeners) listener({}, this.state);
+		return this;
+	}
+
 	/** Fire `done`, as Chromium would once the write settles. */
 	finish(state = "completed") {
+		this.state = state;
 		for (const listener of this.listeners) listener({}, state);
 		return this;
 	}
@@ -4588,18 +4611,77 @@ test("a file over the per-file cap is refused pre-write, with its size", () => {
 	});
 	const decision = armer.decide(item, webContentsId);
 	assert.equal(decision.cancel, true);
-	assert.match(decision.reason, /per-file limit/);
-	assert.match(decision.reason, new RegExp(String(CAPS.downloadMaxBytes)));
+	// THE TOOL RESULT'S SENTENCE (review round 1, D1): the limit as a unit and the
+	// file's own size in bytes, never two nine-digit numbers one apart — those are the
+	// same number in every human unit, which is how the refusal came to read as a
+	// self-contradiction.
+	assert.match(decision.reason, /per-file download limit/);
+	assert.match(decision.reason, /256 MiB/);
+	assert.match(
+		decision.reason,
+		new RegExp(`it is ${CAPS.downloadMaxBytes + 1} bytes`),
+	);
+	// AND THE ROW'S OWN FACTS, which the component composes its sentence from: the
+	// rule, the cap in its own unit, and the size that tripped it. A unit test of the
+	// copy alone would not notice these going missing.
+	assert.deepEqual(armer.activityFor(tabId).notes[0]?.refusal, {
+		rule: "limit",
+		bytes: CAPS.downloadMaxBytes + 1,
+		limit: CAPS.downloadMaxBytes,
+	});
 	assert.equal(item.savePath, "");
 	assert.equal(readdirSync(dir).length, 0);
 	rmSync(dir, { recursive: true, force: true });
 });
 
-test("an unknown size cannot cap pre-write, so the file lands and the fact carries its bytes", async () => {
-	// The honest case §10.3's R2 describes: a chunked response with no
-	// `Content-Length` reports -1, the cap cannot fire, and the file that DID land is
-	// reported rather than the attempt being refused on a guess.
+test("an unknown size cannot cap pre-write, so the RUNTIME cap bounds it while it writes", async () => {
+	// The case §10.3's R2 describes, and the round-1 blocker (B1) is what changed
+	// here: a chunked response with no `Content-Length` reports -1, so the pre-write
+	// cap cannot fire — and the earlier version of this module therefore accepted the
+	// write with NO upper bound at all, leaving a hostile page able to fill the disk
+	// unattended. Nothing else bounds it: Python's `stat()` cap deletes a file it can
+	// see while Chromium keeps writing into the unlinked inode, and the harness's
+	// per-session ceiling is a directory measurement an unlinked file is invisible to.
 	const dir = tempDir("unknown");
+	const { armer, tabId, webContentsId, lines } = makeArmer();
+	const arm = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({
+		filename: "chunked.pdf",
+		total: -1,
+		received: 42,
+	});
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	// The write is allowed until the limit, and reported as it grows.
+	item.progress(1_024);
+	assert.equal(item.cancelled, false);
+	assert.equal(armer.activityFor(tabId).active?.received, 1_024);
+	// Then it is CANCELLED AT the limit rather than after it.
+	writeFileSync(item.savePath, Buffer.alloc(64));
+	item.progress(CAPS.downloadMaxBytes + 1);
+	assert.equal(item.cancelled, true, "the write is cancelled at the limit");
+	item.finish("cancelled");
+	const result = await arm.done();
+	assert.deepEqual(result.files, [], "nothing was counted as a file");
+	assert.match(result.reason, /went over the 256 MiB per-file download limit/);
+	assert.equal(existsSync(item.savePath), false, "the partial file is gone");
+	const notes = armer.activityFor(tabId).notes;
+	assert.equal(notes[0]?.outcome, "refused");
+	assert.deepEqual(notes[0]?.refusal, {
+		rule: "limit",
+		bytes: CAPS.downloadMaxBytes + 1,
+		limit: CAPS.downloadMaxBytes,
+	});
+	assert.ok(
+		lines.some((line) => line.includes("discarded the partial download")),
+		"the discard reaches the app log",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a download with a KNOWN size still lands when it is under the cap", async () => {
+	// The other half of the cap fix: the runtime ceiling must not refuse a write it
+	// was never about.
+	const dir = tempDir("known");
 	const { armer, tabId, webContentsId } = makeArmer();
 	const arm = armer.arm(tabId, dir, 5_000);
 	const item = new FakeDownloadItem({
@@ -4608,9 +4690,164 @@ test("an unknown size cannot cap pre-write, so the file lands and the fact carri
 		received: 42,
 	});
 	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	item.progress(2_048);
 	item.finish("completed");
 	const result = await arm.done();
-	assert.equal(result.files[0].bytes, 42);
+	assert.equal(result.files[0].bytes, 2_048);
+	assert.equal(item.cancelled, false);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a download still writing at the DEADLINE is cancelled, reported, and its partial discarded", async () => {
+	// Review round 1, B1/M1/U1: the call answers at its deadline, Python takes its
+	// one snapshot immediately afterwards, and a file still writing at that instant
+	// is either described from a prefix or lands with nothing left to classify it.
+	// Cancelling BEFORE the answer is what makes both unreachable, and the row is
+	// told rather than left blank.
+	const dir = tempDir("deadline");
+	const { armer, tabId, webContentsId } = makeArmer();
+	const arm = armer.arm(tabId, dir, 40);
+	const item = new FakeDownloadItem({
+		filename: "stalled.pdf",
+		total: 200_000,
+		received: 102_400,
+	});
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	writeFileSync(item.savePath, Buffer.alloc(1_024));
+	const result = await arm.done();
+	assert.equal(item.cancelled, true, "the write is stopped before the answer");
+	assert.equal(
+		existsSync(item.savePath),
+		false,
+		"no partial is left at the moment the call answers",
+	);
+	assert.deepEqual(result.files, [], "nothing is reported as a file");
+	assert.match(
+		result.reason,
+		/was still being written when the 0s budget expired/,
+	);
+	assert.match(result.reason, /partial file was discarded/);
+	// ...and the row the user reads, whose absence is what U1 found.
+	const notes = armer.activityFor(tabId).notes;
+	assert.equal(notes.length, 1);
+	assert.equal(notes[0]?.outcome, "refused");
+	assert.equal(notes[0]?.name, "stalled.pdf");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a call that ends with a write in flight cancels it rather than letting it land", async () => {
+	// `forget` is the path a closed tab, a refused click and a call's own `finally`
+	// take; all three can arrive with a download still writing, and a file that lands
+	// after the answer is one nothing classifies, names or chmods (M1).
+	const dir = tempDir("forget-cancel");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "late.pdf", total: 100 });
+	assert.equal(armer.decide(item, webContentsId).cancel, false);
+	writeFileSync(item.savePath, "partial");
+	armer.forget(tabId);
+	assert.equal(item.cancelled, true);
+	discardAndFinish(item);
+	assert.equal(existsSync(item.savePath), false);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("two downloads of ONE name in one call get different paths (no silent overwrite)", () => {
+	// Review round 1, Q1/M4. The comment this replaces claimed they "cannot race
+	// (an arm accepts them one at a time)", which is true of DECIDING and false of
+	// CREATING: Chromium opens the file after `setSavePath` returns, so both probes
+	// see an empty disk and both were handed the same path — the silent overwrite
+	// §11.4 forbids, with the result reporting two files at one path.
+	const dir = tempDir("reserve");
+	const { armer, tabId, webContentsId } = makeArmer();
+	armer.arm(tabId, dir, 5_000);
+	const first = new FakeDownloadItem({ filename: "same.pdf" });
+	const second = new FakeDownloadItem({ filename: "same.pdf" });
+	assert.equal(armer.decide(first, webContentsId).cancel, false);
+	assert.equal(armer.decide(second, webContentsId).cancel, false);
+	assert.equal(first.savePath, join(dir, "same.pdf"));
+	assert.equal(
+		second.savePath,
+		join(dir, "same (1).pdf"),
+		"the second gets a path the capture has not already promised",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a RELATIVE directory is refused rather than resolved against the app's cwd", () => {
+	// Review round 1, M3: the harness composes this path, but nothing between the
+	// wire and a `chmod` said so, and `upload` already asserts the same rule.
+	const { armer, tabId } = makeArmer();
+	assert.throws(
+		() => armer.arm(tabId, "browser/downloads", 5_000),
+		/absolute directory/,
+	);
+});
+
+test("an EXISTING directory is not re-moded by an arm", () => {
+	// The second half of M3: chmod is for a directory this host created.
+	const parent = tempDir("existing");
+	const dir = join(parent, "shared");
+	mkdirSync(dir, { mode: 0o755 });
+	const armer = new DownloadArmer({
+		tabForWebContents: () => 1,
+		log: () => {},
+	});
+	armer.arm(1, dir, 5_000);
+	assert.equal(statSync(dir).mode & 0o777, 0o755);
+	rmSync(parent, { recursive: true, force: true });
+});
+
+test("the row is scoped to ONE tab, so a strip cannot narrate another tab's decision", () => {
+	// Review round 1, D2.
+	const dir = tempDir("scope");
+	const armer = new DownloadArmer({
+		tabForWebContents: (id) => id,
+		log: () => {},
+	});
+	armer.arm(1, dir, 5_000);
+	const one = new FakeDownloadItem({ filename: "one.pdf" });
+	armer.decide(one, 1);
+	writeFileSync(one.savePath, "first");
+	one.finish("completed");
+	armer.arm(2, dir, 5_000);
+	const two = new FakeDownloadItem({ filename: "two.pdf" });
+	armer.decide(two, 2);
+	writeFileSync(two.savePath, "second");
+	two.finish("completed");
+	assert.deepEqual(
+		armer.activityFor(1).notes.map((note) => note.name),
+		["one.pdf"],
+	);
+	assert.deepEqual(
+		armer.activityFor(2).notes.map((note) => note.name),
+		["two.pdf"],
+	);
+	assert.deepEqual(armer.activityFor(null).notes, []);
+	// The reveal is about the FOLDER, so it is host-wide: the newest arm's directory.
+	assert.equal(armer.downloadDir(), dir);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("an upload records its own note, naming how many files went where", () => {
+	// Review round 1, U3.
+	const dir = tempDir("upload-note");
+	const armer = new DownloadArmer({
+		tabForWebContents: () => 1,
+		log: () => {},
+	});
+	armer.arm(1, dir, 5_000);
+	armer.noteUpload(
+		1,
+		[factOf2("brief.pdf"), factOf2("deck.pptx")],
+		"forms.example",
+	);
+	const note = armer.activityFor(1).notes[0];
+	assert.equal(note?.direction, "upload");
+	assert.equal(note?.outcome, "sent");
+	assert.equal(note?.count, 2);
+	assert.equal(note?.site, "forms.example");
+	assert.equal(note?.dir, "", "an upload has no destination of ours");
 	rmSync(dir, { recursive: true, force: true });
 });
 
@@ -4626,7 +4863,7 @@ test("an unwritable directory cancels the attempt instead of falling back to the
 	assert.equal(decision.cancel, true);
 	assert.match(
 		decision.reason,
-		/could not write into the quarantine directory/,
+		/could not be saved — the download folder could not be written to/,
 	);
 	rmSync(dir, { recursive: true, force: true });
 });
@@ -4641,6 +4878,7 @@ test("an interrupted write is reported as an answer, not counted as a file", asy
 	const result = await arm.done();
 	assert.deepEqual(result.files, []);
 	assert.match(result.reason, /did not finish \(interrupted\)/);
+	assert.match(result.reason, /partial file was discarded/);
 	rmSync(dir, { recursive: true, force: true });
 });
 
@@ -4681,6 +4919,27 @@ test("the armer creates the harness directory 0700", () => {
 	rmSync(parent, { recursive: true, force: true });
 });
 
+/** A `FileFact`-shaped input for the upload-note test, which needs names and no
+ * bytes on disk. */
+function factOf2(name) {
+	return {
+		name,
+		path: `/tmp/${name}`,
+		bytes: 1,
+		mime: "",
+		sniffed: "",
+		sha256: "",
+	};
+}
+
+/** Finish a cancelled item the way Chromium does: `done` fires, then the partial
+ * file at the save path is gone. The host's own discard is asserted before this
+ * runs, so this only keeps the fake consistent with the real sequence. */
+function discardAndFinish(item) {
+	if (existsSync(item.savePath)) rmSync(item.savePath, { force: true });
+	item.finish("cancelled");
+}
+
 // ---- file transfer: the vendored policy, against the shared fixture --------
 
 test("the vendored policy port reproduces the shared conformance fixture", () => {
@@ -4699,6 +4958,18 @@ test("the vendored policy port reproduces the shared conformance fixture", () =>
 			executableName(testCase.name),
 			testCase.nameIsDenyListed,
 			`${testCase.name}: the TS name check must agree with Python's fixture`,
+		);
+		// AND THE SANITISER, replayed from the fixture rather than from a list written
+		// here. `safeNameSniffedExt` exists on every case for exactly this call (the
+		// generated table's own comment says so), and until the re-pin to PR A's head
+		// nothing on this side read it, which made the fixture's newest field dead data
+		// and left the sanitiser's own contract asserted only by hand-written cases —
+		// the traversal, bidi-override and reserved-stem rows Python generates were
+		// never run against the TS port (review round 1, M6).
+		assert.equal(
+			safeName(testCase.name, testCase.safeNameSniffedExt),
+			testCase.safeName,
+			`${testCase.name}: the TS sanitiser must reproduce Python's expected name`,
 		);
 	}
 });
@@ -4934,7 +5205,7 @@ test("the download reveal opens the host's own directory and takes no path from 
 		host: () => host,
 		clearData: async () => {},
 		revealDownloads: async () => {
-			opened.push(host.downloads.activity().dir);
+			opened.push(host.downloads.downloadDir());
 			return "";
 		},
 		log: () => {},
