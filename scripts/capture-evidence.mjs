@@ -2988,7 +2988,7 @@ export const STORIES = [
 	 * frame of it would be a picture of ground.
 	 */
 	/*
-	 * The heights the content actually draws: 741x708 for `resting-default`,
+	 * The heights the content actually draws: 741x718 for `resting-default`,
 	 * 741x661 for `dragged-split`.
 	 *
 	 * The declaration is the viewport the harness resizes the content height to
@@ -3004,7 +3004,7 @@ export const STORIES = [
 	 * its declaration before this round. Declaring the content's own height makes
 	 * the resize a no-op and the caption true by construction.
 	 */
-	["chat-sidebar-sections--resting-default", 741, 708],
+	["chat-sidebar-sections--resting-default", 741, 718],
 	["chat-sidebar-sections--dragged-split", 741, 661],
 	["chat-sidebar-sections--entities-only", 741, 420],
 	["chat-sidebar-sections--chats-only", 741, 480],
