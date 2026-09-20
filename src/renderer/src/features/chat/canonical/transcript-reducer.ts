@@ -1326,16 +1326,15 @@ function customRow(
  * the first sentence is the harness talking to the MODEL — `This applies from now
  * on.`, `never echo, print, or write it` — which is exactly what the disclosure
  * is for. This warning is the one statement whose SECOND line is addressed to the
- * reader: `Reason: MCP authorization failed; /mcp reauth <server> — sign-in
- * expired` is the remedy, the only clause on the row anyone can act on. Split at
- * the first sentence, the collapsed row promises the tools "are gone until it
- * reconnects", which for the expired grant this row exists for is false — the
- * capability comes back when the operator runs the command, not when something
- * reconnects, and the TUI's live notice says so in its own words ("the tools are
- * gone until someone runs `/mcp reauth <server>`"). Measured on the rendered row:
- * collapsed, it sat in the same ink, pitch and label column as the
- * `session mcp recovery` row directly above it, which needs no action from
- * anyone (design round 1, D1).
+ * reader: `Reason: /mcp reauth <server> — sign-in expired` is the remedy, the only
+ * clause on the row anyone can act on, and the harness writes it COMMAND-FIRST so
+ * that clause cannot wrap away from its own command. Split at the first sentence,
+ * the collapsed row would show the fact alone, which says the tools are gone and
+ * nothing about what brings them back — the row the operator reported on read as
+ * though the capability might return by itself (design round 1, D1). Measured on
+ * the rendered row: collapsed, it sat in the same ink, pitch and label column as
+ * the `session mcp recovery` row directly above it, which needs no action from
+ * anyone.
  *
  * THE BOUND APPLIES TO THE FACT PLUS THE REASON, and a reason that does not fit is
  * HOISTED to its `/mcp …` clause rather than cut at its tail: a plain tail-cut

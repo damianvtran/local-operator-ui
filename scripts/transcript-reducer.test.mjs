@@ -2158,11 +2158,11 @@ test("the MCP-unavailable warning puts the operator's remedy on the row, and dis
 	// INLINE_CUSTOM_TYPES, because it is the one statement whose second line is
 	// addressed to the OPERATOR.
 	const FIXTURE =
-		"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.";
+		"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone for now.\nReason: /mcp reauth minerva-qa — sign-in expired\nIts tools are not callable until the user restores it, and the agent should not retry them in a loop.";
 	const TAIL =
-		"Do not call that server's tools in a tight loop; tell the user which server is down rather than retrying.";
+		"Its tools are not callable until the user restores it, and the agent should not retry them in a loop.";
 	const SENTENCE =
-		"MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.";
+		"MCP server 'minerva-qa' is unavailable: its tools are gone for now.";
 	const [row] = replay([
 		custom("mcp-unavailable", "session_mcp_unavailable", { text: FIXTURE }),
 	]);
@@ -2176,13 +2176,13 @@ test("the MCP-unavailable warning puts the operator's remedy on the row, and dis
 	assert.equal(row.provider, null, "and only an incident names a provider");
 	// The leading bracket tag is a register marker, not content — the row's own
 	// label already says what kind of row this is — so the headline starts at
-	// the sentence. The remedy follows it: collapsed, the sentence alone promises
-	// the tools return on their own, which is false for the expired grant this row
-	// exists for, and `/mcp reauth <server>` is the only clause anyone can act on
-	// (design round 1, D1).
+	// the sentence. The remedy follows it: the fact alone says the tools are gone
+	// and nothing about what brings them back, and `/mcp reauth <server>` is the
+	// only clause anyone can act on (design round 1, D1). The harness writes that
+	// clause COMMAND-FIRST so it cannot wrap away from its own command.
 	assert.equal(
 		row.headline,
-		`${SENTENCE} Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired`,
+		`${SENTENCE} Reason: /mcp reauth minerva-qa — sign-in expired`,
 	);
 	// What is behind the chevron is the MODEL's half and nothing else.
 	assert.equal(row.detail, TAIL);
@@ -2204,16 +2204,13 @@ test("the MCP-unavailable warning puts the operator's remedy on the row, and dis
 	// tail-cut would take the command off the line, which is the one thing the
 	// hoist exists to keep. What the cut leaves out is disclosed, not dropped.
 	const longReason =
-		"Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired; the credential store answered ECONNREFUSED 127.0.0.1:8787 and the token refresh loop gave up";
+		"Reason: /mcp reauth minerva-qa — sign-in expired; the credential store answered ECONNREFUSED 127.0.0.1:8787 and the token refresh loop gave up";
 	const [hoisted] = replay([
 		custom("mcp-unavailable-long", "session_mcp_unavailable", {
 			text: `[session warning] ${SENTENCE}\n${longReason}\n${TAIL}`,
 		}),
 	]);
-	assert.equal(
-		hoisted.headline,
-		`${SENTENCE} Reason: MCP authorization failed; /mcp reauth minerva-qa`,
-	);
+	assert.equal(hoisted.headline, `${SENTENCE} Reason: /mcp reauth minerva-qa`);
 	assert.ok(
 		hoisted.headline.length <= 160,
 		`hoisted headline was ${hoisted.headline.length}`,
