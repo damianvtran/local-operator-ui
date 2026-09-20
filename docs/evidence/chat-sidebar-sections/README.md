@@ -7,7 +7,11 @@ is the design contract; this directory is what it looks like when it renders.
 
 ## What produced these frames
 
-Storybook, from this branch:
+Storybook, from this branch. **Re-taken in one pass on the rebased head
+(`d109863e2`), together with the two swapped-order states the swap's own review
+round (D2) asked for**, and with a wait for the panel's geometry to stop moving
+before the shutter opens — the light half of `resting-default` had been captured
+mid-settle, describing a capacity 31px smaller than its own dark half (D4):
 
 ```
 pnpm check-types && pnpm lint && pnpm check-themes
@@ -41,6 +45,8 @@ would be a picture of ground.
 | `short-window` | a stored `900px` in a 480px window: the render clamps to `capacity - 72` (the readout shows `Stored: 900px` beside `now 352`) and the entity region keeps its own floor — the preference is not rewritten. |
 | `narrow-240` | the panel at its own width clamp, where the rows wrap hardest and the boundary has the least room. |
 | `query-while-collapsed` | a query with the chats list **persisted as hidden**: both regions render, the word finds one agent and one conversation, and `Stored: entities` still reads the collapse the user chose. |
+| `chats-first` | the swap: the chats list above and the entity lists below, at 360px. The one state in this change where more than a number moves — the regions trade their `flex-1`/`shrink-0` roles, the boundary moves to the list region's bottom edge (`side="bottom"`), and the rule above the lower region moves from the list to the entities. Design round 1 (D2) is the reason it is photographed: it shipped uninspected. |
+| `chats-first-narrow` | the same swap at the panel's width clamp, where the cluster's three glyphs have the least room. |
 
 ## What these frames do NOT prove
 
