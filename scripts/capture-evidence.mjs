@@ -7218,7 +7218,7 @@ const main = async () => {
 			 * a white page with a spinner on it shipped in a set of 396. Failing
 			 * here rather than at review time costs one screenshot.
 			 */
-			assertFramePaints(framePath, theme);
+			await assertFramePaints(framePath, theme);
 			captured++;
 		}
 	}
