@@ -31,6 +31,7 @@
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
+import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
 	panelIdentityFor,
@@ -38,6 +39,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { Query } from "@tanstack/react-query";
 
 /** One animation frame, so a capture sees the paint the action caused. */
 function nextFrame(): Promise<void> {
@@ -286,6 +288,114 @@ async function waitForRoute(path: string, timeoutMs = 10_000): Promise<string> {
 	return currentRoute();
 }
 
+/** The key the arming call fetches through the patched path to validate itself. */
+const QUERY_FETCH_PROBE_KEY = ["dev-driver", "query-fetch-probe"];
+
+type QueryFetchRecord = {
+	at: number;
+	key: string;
+	stack: string;
+};
+
+/**
+ * Where the fetch trap's records live while it is armed; null means not armed.
+ * Module scope because the trap has to outlive the scene's own navigation.
+ */
+let queryFetchLog: QueryFetchRecord[] | null = null;
+
+/**
+ * Patch the one place a query's fetch BEGINS, so a scene can name the caller.
+ *
+ * WHY THIS IS A PATCH IN HERE AND NOT A WRAPPER OVER THE BRIDGE. The scene it
+ * serves (`--scene settings-gate`) first tried to count account reads by wrapping
+ * `window.api.desktop.request` from the page. `window.api` is a `contextBridge`
+ * object, and a `contextBridge` object IGNORES property assignment silently: the
+ * wrapper never ran, the scene still logged "armed true", and the count it
+ * printed - "0 reads from 0 caller(s)" - was indistinguishable from a run in
+ * which nothing happened. That trap is measured three times in
+ * `scripts/renderer-driver.mjs` (which is why the probe counter lives in MAIN
+ * instead). A verb in this table is the app's OWN module running inside the page,
+ * so a patch installed here cannot be ignored.
+ *
+ * WHY THE PROTOTYPE AND NOT A CACHE SUBSCRIPTION. React Query notifies through
+ * `notifyManager`, whose callbacks run from a scheduled microtask - so a
+ * subscriber sees React Query's notification path, never the code that asked for
+ * the read. The caller is only visible at the synchronous moment `fetch()` is
+ * called: an observer subscribing (a mount, a route change), an
+ * `invalidateQueries` from an event listener, or the retryer's own timer. Every
+ * query shares this prototype, including the ones created after arming.
+ *
+ * VALIDATED BEFORE IT IS BELIEVED. An instrument that cannot record an event it
+ * CAUSED is indistinguishable from one that was ignored, which is exactly the
+ * false negative that produced the "0 from 0 caller(s)" line. Arming therefore
+ * fetches a key of its own through the patched path and reports itself armed only
+ * when that fetch lands in the log (`validated: false` is a broken instrument,
+ * not a quiet run).
+ */
+function armQueryFetchLog(): QueryFetchRecord[] {
+	if (queryFetchLog) return queryFetchLog;
+	const log: QueryFetchRecord[] = [];
+	const originalFetch = Query.prototype.fetch;
+	Query.prototype.fetch = function patchedFetch(
+		this: Query,
+		...args: unknown[]
+	) {
+		log.push({
+			at: Date.now(),
+			key: JSON.stringify(this.queryKey),
+			// Frame 0 is this wrapper; the caller is what follows it.
+			stack: (new Error().stack ?? "").split("\n").slice(2).join(" | "),
+		});
+		return (
+			originalFetch as unknown as (
+				this: Query,
+				...callArgs: unknown[]
+			) => unknown
+		).apply(this, args);
+	} as unknown as typeof Query.prototype.fetch;
+	queryFetchLog = log;
+	return log;
+}
+
+/**
+ * The fetch call sites the app has used, deduplicated by their own stack.
+ *
+ * The probe's own key is excluded and counted separately: it is the instrument's
+ * noise, and a histogram that put it beside the app's reads would overstate them.
+ */
+function readQueryFetchLog(keyFilter: string | undefined) {
+	const log = queryFetchLog ?? [];
+	const probeKey = JSON.stringify(QUERY_FETCH_PROBE_KEY);
+	const entries = log.filter(
+		(entry) =>
+			entry.key !== probeKey &&
+			(keyFilter === undefined || entry.key.includes(keyFilter)),
+	);
+	const byStack = new Map<
+		string,
+		{ key: string; count: number; firstAt: number; lastAt: number }
+	>();
+	for (const entry of entries) {
+		const seen = byStack.get(entry.stack) ?? {
+			key: entry.key,
+			count: 0,
+			firstAt: entry.at,
+			lastAt: entry.at,
+		};
+		seen.count += 1;
+		seen.lastAt = entry.at;
+		byStack.set(entry.stack, seen);
+	}
+	return {
+		armed: queryFetchLog !== null,
+		total: entries.length,
+		probeRecords: log.filter((entry) => entry.key === probeKey).length,
+		callers: [...byStack.entries()]
+			.map(([stack, seen]) => ({ stack, ...seen }))
+			.sort((a, b) => a.firstAt - b.firstAt),
+	};
+}
+
 export function installDevDriver(): string[] {
 	const bridge = window.__loDevDriver;
 	if (!bridge?.armed) return [];
@@ -345,6 +455,85 @@ export function installDevDriver(): string[] {
 				onboardingVisible: Boolean(
 					document.querySelector("[data-onboarding-modal]"),
 				),
+			};
+		},
+
+		/**
+		 * Every query the app is holding, as the screen's own gate reads it.
+		 *
+		 * WHY THIS IS A VERB AND NOT A SCREEN. A full-page spinner is the state a
+		 * settings page reaches when a query it does not need has not settled, and
+		 * the app cannot show that from the outside: two queries hold this route (the
+		 * config it renders and the Radient account it only reads a boolean from),
+		 * the spinner is the same pixels either way, and the two are indistinguishable
+		 * in a frame. So the numbers a scene needs are the cache's own - `isLoading`
+		 * in the query hook's terms is `pending` AND `fetching`, which is why both
+		 * fields travel.
+		 *
+		 * Keys and the error's own sentence, never data: this is a reading of the
+		 * SHAPE of the cache, and the profile, the conversation list and the account
+		 * payload have no business in a harness log. `error` is carried as its
+		 * message because the screen's own copy is derived from it - backend prose,
+		 * not payload, and the one field a reader of this log needs to tell one
+		 * failure from another.
+		 */
+		queries: () =>
+			queryClient
+				.getQueryCache()
+				.getAll()
+				.map((query) => ({
+					key: JSON.stringify(query.queryKey),
+					status: query.state.status,
+					fetchStatus: query.state.fetchStatus,
+					/*
+					 * The two fields above, ANDed exactly as `useQuery` ANDs them into
+					 * `isLoading`. The reader of this log should not have to rebuild React
+					 * Query's own rule from its parts, and a scene asserting on the parts
+					 * would keep passing if that rule changed.
+					 */
+					isLoading:
+						query.state.status === "pending" &&
+						query.state.fetchStatus === "fetching",
+					error:
+						query.state.error instanceof Error
+							? query.state.error.message
+							: null,
+					hasData: query.state.data !== undefined,
+					updatedAt: query.state.dataUpdatedAt,
+					failureCount: query.state.fetchFailureCount,
+					observers: query.getObserversCount(),
+				})),
+
+		/**
+		 * Arm the fetch trap, or read back who has been starting fetches.
+		 *
+		 * Two operations on one verb because they are two moments of one reading:
+		 * a scene arms before it navigates (the reads it cares about begin at the
+		 * route's mount) and reads the log when it is done. See
+		 * `armQueryFetchLog` for why the trap is here rather than over the bridge,
+		 * and why arming validates itself.
+		 */
+		queryFetches: async (payload) => {
+			const args = (payload ?? {}) as { arm?: boolean; key?: string };
+			if (!args.arm) return readQueryFetchLog(args.key);
+
+			const log = armQueryFetchLog();
+			const probeKey = JSON.stringify(QUERY_FETCH_PROBE_KEY);
+			const before = log.length;
+			/*
+			 * A real fetch through the patched path, on a key of the instrument's
+			 * own. `staleTime: 0` so a second arming in one run still fetches, and
+			 * `retry: false` so a failure cannot be mistaken for a missing record.
+			 */
+			await queryClient.fetchQuery({
+				queryKey: QUERY_FETCH_PROBE_KEY,
+				queryFn: () => null,
+				retry: false,
+				staleTime: 0,
+			});
+			return {
+				armed: true,
+				validated: log.slice(before).some((entry) => entry.key === probeKey),
 			};
 		},
 
