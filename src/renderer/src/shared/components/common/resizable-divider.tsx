@@ -135,6 +135,18 @@ export type ResizableDividerProps = {
 	 * caller that cannot name what it is sizing has not finished wiring the pane.
 	 */
 	label: string;
+	/**
+	 * What `Home`/`End` mean on this handle, passed through to the key map.
+	 *
+	 * Omitted means `"axis"`, the shipped meaning, so every existing call site
+	 * keeps the behaviour it has. A caller whose separator names a PANE and
+	 * announces that pane's `aria-valuemin`/`max` passes `"value"` instead, which
+	 * ties Home/End to the pane rather than to the edge it sits on - the APG
+	 * register, and the only one that keeps the key invariant under a layout that
+	 * moves the handle from one edge of that pane to the other (design round 2,
+	 * D8). The chat sidebar's boundary is that caller.
+	 */
+	homeEnd?: "axis" | "value";
 } & ResizableDividerAxis;
 
 /**
@@ -193,6 +205,7 @@ export const ResizableDivider = ({
 	side = "right",
 	onDoubleClick,
 	label,
+	homeEnd = "axis",
 }: ResizableDividerProps) => {
 	/*
 	 * The axis, stated once. Every site below reads either this or `side`, and
@@ -229,6 +242,7 @@ export const ResizableDivider = ({
 			min: minWidth,
 			max: maxWidth,
 			side,
+			homeEnd,
 		});
 		/* Not this handle's key: leave it to whoever else is listening. */
 		if (target === undefined) return;
