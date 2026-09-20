@@ -830,7 +830,17 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// shared control the pair sheds into (the band below the panel's default
 				// width) adds the last one. All three take the ROW state, never a ground,
 				// which is what this expectation exists to hold.
-				"hover:bg-row-hover": 8,
+				//
+				// NINE (design round 2, D13): the ROW BOX itself carries the step, on the
+				// wrapper `data-session-row` names. `rowStyle`'s `hover:` fires only while
+				// the pointer is over the BUTTON, and the row's two sibling controls sit
+				// inside the row's box and outside its button - so the ground used to
+				// vanish the moment the pointer reached either glyph, under a pointer that
+				// never left the row. This entry is the row's own box rather than a control
+				// inside one, it is guarded by `!current`, and it therefore can never sit
+				// inside a current row: the guard is what keeps the selected ground from
+				// being repainted as the pointer's, which is this table's subject.
+				"hover:bg-row-hover": 9,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

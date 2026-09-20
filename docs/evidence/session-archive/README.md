@@ -41,11 +41,11 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=stub-token-archive node scripts/renderer-driver.mjs
   --theme localOperatorDark --out /tmp/archive-frames-dark --window-size 1380x900
 for f in at-rest row-hover row-hover-body search-off search-on delete-dialog \
          delete-refused archive-refused header-archived undo-offer deleted-open \
-         pair-wide pair-narrow; do
+         pair-wide pair-rest pair-narrow shared-rest shared-menu; do
   d=docs/evidence/session-archive/$f
   mkdir -p "$d"
   cp /tmp/archive-frames-dark/$(echo $f | \
-       sed 's/search-off/search-live-only/;s/search-on/search-include-archived/;s/pair-wide/row-controls-pair/;s/pair-narrow/row-controls-shared/').png \
+       sed 's/search-off/search-live-only/;s/search-on/search-include-archived/;s/pair-wide/row-controls-pair/;s/pair-rest/row-controls-pair-rest/;s/pair-narrow/row-controls-shared/;s/shared-rest/row-controls-shared-rest/;s/shared-menu/row-controls-shared-menu/').png \
      "$d/localOperatorDark.png"
 done
 
@@ -72,8 +72,10 @@ cp /tmp/archive-frames-withdrawn/search-off.png \
 ```
 
 The scene asserts before it photographs. Run 1 (dark) and run 2 (light) report
-`ALL CHECKS PASSED` with thirteen frames each; the withdrawn run reports the same
-with two. What the assertions cover, in the run's own words: the catalogue
+`ALL CHECKS PASSED` with **sixteen frames each**; the withdrawn run reports the same
+with two. The set committed here is therefore **34 PNGs** (16 + 16 + 2), and the
+count is stated because the round brief and the manifest's earlier `headNote` both
+said 24 — a number that was already stale when they were written. What the assertions cover, in the run's own words: the catalogue
 answered, the archived conversation matches nothing before the control is on and a
 row after it, the delete confirmation is open on the conversation the menu was
 opened on, **Cancel hands the keyboard back to the header trigger**, the refused
@@ -83,7 +85,10 @@ the pane open, **the archive offer outlives the catalogue answers** (it was stil
 on screen 10s after the press, where the rule this round replaced retired it in
 0.4-1.6s), **the keyboard lands on a row after a row press** (not on `<body>`),
 **deleting the open conversation lands on the existing missing-session notice**,
-and the offer frame is a still picture of a toast that was really on screen. Every
+the unread mark is DRAWN on the row the widths are measured from and nowhere else
+(the fixture's `attention` had to be given the shape `mergeCompletionAttention`
+accepts — design round 2, D11 — or two equal title widths were two BARE rows), and
+the offer frame is a still picture of a register that was really there. Every
 settled frame additionally refuses to be committed unless the app held it still
 (`stable`) and nothing transient was on it (`toastFree`).
 
@@ -116,13 +121,16 @@ line, the register, the Retry) is what those frames are of.
 | `row-hover-body/{dark,light}` | the same row, pointer on its TITLE | the pair with `row-hover` settles design round 1 D5: the row's own highlight is a property of the ROW, not of the control's 24px box | the same, with the pointer 60px right of the row's left edge |
 | `row-controls-pair/{dark,light}` | the panel at its **280px default**, pointer on the row that carries an unread mark | the delivered rule: **two sibling reserved slots** (pin, then archive) reveal on that row and nowhere else, at a measured title width of **180px** — and the shared control is NOT drawn | the scene writes the panel width the divider writes (`setSidebarWidth`, 280), asserts the pair's box and the shared control's ABSENCE, then moves the real pointer onto the row |
 | `row-controls-shared/{dark,light}` | the same panel at its **240px clamp minimum**, same row | the rule's other half: the pair is SHED and **one shared pin+archive control** stands in its place, at a measured title width of **168px** — the same two acts, one slot, no act lost | the same, at 240, with both controls' boxes read (`pin 0x0, archive 0x0, shared 24x24`) so "shed" is a measurement rather than a description |
+| `row-controls-pair-rest/{dark,light}` | the same 280px panel, pointer PARKED off the list | the other half of the pair's rule: the slots are RESERVED with nothing drawn in them — two boxes, no glyphs — which a frame with the pointer on the row cannot show, because the pointer is what reveals them | the same run, with the pointer parked before the shutter |
+| `row-controls-shared-rest/{dark,light}` | the 240px panel, pointer parked | the shared control at REST, which is the state it was measured wrong in (design round 2, D10): it used to be drawn in the row's own ink at rest and to DIM under the pointer, so every row wore a title-weight glyph at the width with least room. Nothing is drawn here now | the same, at 240, with the pointer parked |
+| `row-controls-shared-menu/{dark,light}` | the shared control opened with the pointer, at 240 | the affordance that NAMES its two acts (`Pin/Unpin conversation`, `Archive/Unarchive conversation`), so "one slot, no act lost" is a picture rather than a claim about the source | a real click on `[data-session-actions]`, then `Escape` closes it before the scene continues |
 | `search-live-only/{dark,light}` | `notes` typed in the search box, `Include archived` off | the search block gains its one control only while a query exists; the archived conversation is NOT in the answer, and `[data-session-archived]` matches nothing | the scene types into the field through the input pipeline, then asserts the absence |
 | `search-include-archived/{dark,light}` | the same query, the control ON | the archived conversation is reachable from the search, carries the muted leading marker, and the sidebar has gained no section to hold it | a real click on the checkbox, then an assertion that `[data-session-archived]` now matches and is in the viewport |
 | `delete-dialog/{dark,light}` | the header's conversation menu → `Delete conversation…` | the one permanent delete asks with the danger role, names the conversation, says the transcript cannot be undone, and does nothing on its own | two real clicks (the trigger, then the item), then the dialog's box is measured |
 | `delete-refused/{dark,light}` | the same dialog, `Delete` pressed on a conversation a live session claims | the refusal stays **in the dialog that asked**, the route's sentence is quoted and the window's own remedy follows it, and the keyboard is back on **Cancel** | the stub answers 409 for one conversation `live_claim: true`; the scene presses Confirm and then measures `[data-cancel-action]` for `focused` |
 | `archive-refused/{dark,light}` | the archive control pressed on the same claimed conversation | a refused archive reports in the panel's own register beside the list, with the **Retry** that re-sends the desired state | the scene clicks the row's control and asserts `[data-session-archive-failure]` is in the viewport |
 | `header-archived/{dark,light}` | the open conversation archived from its own menu, no dialog open | archiving the OPEN conversation keeps the pane open and adds the header's `Archived` pill with its restore control beside it | the scene archives from the menu, asserts the pill is in the viewport AND `activeSessionId` is still that conversation, and waits out the offer's 15s ceiling so nothing transient is over the pill's ink |
-| `undo-offer/{dark,light}` | a row's archive just succeeded | a successful archive offers **Undo** on the surface that performed it (design round 1 D7 + UX U2), and the offer is still on screen after the catalogue's answers land | a real click on the row's control, then a plain `capture` (this is the one frame that is OF a toast, so it carries its own `stable` + `toastOnScreen` checks instead of the `toastFree` ones) |
+| `undo-offer/{dark,light}` | a row's archive just succeeded | a successful archive offers **Undo** on the surface that performed it, as a **panel register beside the list** rather than a toast: the box is inside the panel (measured x 228..492 of the panel's 220..500) and disjoint from the composer's Send control (x 1307..1339), and it is still on screen after the catalogue's answers land | a real click on the row's control, then a plain `capture` (this is the frame that is OF the offer, so it carries its own `stable` + `offerOnScreen` checks alongside the `toastFree` ones — and the scene asserts the register's box is inside the panel and does not intersect Send) |
 | `deleted-open/{dark,light}` | the OPEN conversation deleted from its own menu | the pane lands on the missing-session notice that already existed — naming the conversation that is gone, with the composer refusing input — and the route stays on the deleted id rather than being swapped for a blank pane | the stub deletes an `idle`, unclaimed conversation; the scene asserts `#lo-missing-session-notice` is in the viewport AND `activeSessionId` is still that conversation |
 | `capability-withdrawn/{dark}` | the same panel against a daemon that advertises neither capability | no slot, no marker, no control in the search block | `stub-daemon.mjs --no-archive` + `--capability-withdrawn`, which asserts both absences |
 | `capability-withdrawn-search/{dark}` | the same, with a query typed | the search block still gains nothing | same run |
@@ -140,7 +148,7 @@ magick docs/evidence/session-archive/at-rest/localOperatorDark.png \
 #   the colour changes once, at device x 1000 (2A2722 -> 22201C)
 ```
 
-**Two slots cost 28px each, and the frames carry the one this branch ships.**
+**Two slots cost 28px each, and the frames carry both halves of the rule.**
 The archive control measures 24px (`size-6`) and the wrapper's `gap-1` adds 4px,
 so 28px of the title's line box is reserved on every row, at rest, whether or not
 the pointer is near it. The arithmetic and the three panel widths:
@@ -162,8 +170,14 @@ this set's trees:
 ```
 
 The arithmetic that reproduces both, and predicts the rest of the table, is
-`panel − 16 (the panel's own p-2) − 28 × controls − 28 (the row's trailing status
-slot and its gap)`. The 28 per control is the `size-6` box plus the row's `gap-1`.
+`panel − 16 (the panel's own p-2) − 28 × controls − 28 (the row's own px-1, its
+LEADING status slot, and the gaps)`. The 28 per control is the `size-6` box plus
+the row's `gap-1`; the fixed 28 is 8 (the row's `px-1`) + 16 (`ChatSessionStatus`'s
+`size-4`) + 4 (the gap between them). **LEADING, not trailing** (design round 2,
+D14): this paragraph used to call it the row's trailing status slot, which is what
+four lanes then quoted as the reason a row with an unread mark has a narrower
+title. It does not - the mark is drawn INSIDE that leading slot - and the formula
+was right about the number while naming the wrong edge.
 The pair's own price is visible in the frame: **two slots cost 40 px of title
 against the single shared control at the same panel width** (180 against 140 is
 the pair at 280; 168 against 140 is the shared control against the pair at 240).
@@ -188,10 +202,11 @@ part of them. Re-deriving it on the shipped frames is a documented step of the
 design record's open questions, not a claim this file makes.
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
-`magick compare -metric AE` on the two `at-rest` frames reports **353 device
-pixels** above a threshold of 8/channel, in exactly two clusters (re-derived at
-the pair-delivery head; the counts differ from the earlier set by one row, and the
-claim does not):
+`magick compare -metric AE` on the two `at-rest` frames reports **354 device
+pixels** above a threshold of 8/channel, in exactly two clusters (re-derived on
+THIS round's frames, at the folded head; the number moves by a pixel or two between
+sets because the badges' own glyphs land on different sub-pixels, and the claim —
+two clusters, both of them counts — does not):
 
 ```
 magick docs/evidence/session-archive/at-rest/localOperatorDark.png \

@@ -2233,15 +2233,11 @@ async function sceneSessionArchive(cdp) {
 		const r = glyph?.getBoundingClientRect() ?? null;
 		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")]
 			.filter((el) => !marked?.contains(el)).length;
-		const title = marked?.querySelector("[data-session-title]");
-		const statusSlot = marked?.firstElementChild?.getBoundingClientRect() ?? null;
-		const titleBox = title?.getBoundingClientRect() ?? null;
 		return {
 			drawn: !!r && r.width > 0 && r.height > 0,
 			width: r?.width ?? 0,
 			height: r?.height ?? 0,
 			elsewhere,
-			titleGap: titleBox && statusSlot ? Math.round(titleBox.left - statusSlot.right) : null,
 		};
 	})()`);
 	check(
@@ -2284,6 +2280,16 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
 	await wait(400);
 	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
+	/*
+	 * AND THE SAME ROW AT REST, with the pointer parked off the list: this is the
+	 * half of the design that has no ink (design round 2, D10, which the shared
+	 * control failed). Two reserved slots are RESERVED - the boxes are there, the
+	 * glyphs are not - and a frame with the pointer on the row cannot show that,
+	 * because the pointer is what reveals them.
+	 */
+	await parkPointer(cdp);
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-rest${RUN_LABEL}`));
 
 	const narrow = await titlesAt(240);
 	check(
@@ -2302,6 +2308,37 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
 	await wait(400);
 	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
+	/*
+	 * THE SHARED CONTROL AT REST, which is the state it was measured WRONG in: it
+	 * used to be drawn at rest in the row's own ink (12.84:1 dark) and to dim under
+	 * the pointer (7.49:1), so at this width every row wore a title-weight glyph.
+	 * Nothing is drawn here now, and the frame is the evidence (design round 2, D10).
+	 */
+	await parkPointer(cdp);
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-rest${RUN_LABEL}`));
+	/*
+	 * AND THE MENU ITSELF (design round 2, D10's second half): the affordance that
+	 * NAMES its two acts had no frame, so the claim that the narrow band "loses no
+	 * act" rested on the source. Opened with the real pointer through `clickAt`, and
+	 * closed again before the scene goes on.
+	 */
+	await clickAt(cdp, "[data-session-actions]");
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-menu${RUN_LABEL}`));
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+	});
+	await wait(300);
 	await verb(cdp, "setSidebarWidth", { width: 280 });
 	await wait(300);
 
