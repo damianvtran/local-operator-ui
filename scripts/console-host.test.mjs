@@ -38,7 +38,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 import { consoleWiringDrift } from "./console-wiring.mjs";
@@ -152,6 +152,9 @@ const {
 	CONSOLE_IPC_CHANNELS,
 	CONSOLE_PUSH_CHANNELS,
 	ensureSpawnHelperExecutable,
+	forksSpawnHelper,
+	helperStatus,
+	nativeDirs,
 	unpackedPath,
 	ipcMain,
 } = mod;
@@ -2073,6 +2076,10 @@ test("the helper's exec bit is asserted and healed, and only when it is wrong", 
 	const target = { platform: "darwin", arch: "arm64" };
 	const helper = join(root, "prebuilds", "darwin-arm64", "spawn-helper");
 	mkdirSync(join(root, "prebuilds", "darwin-arm64"), { recursive: true });
+	writeFileSync(
+		join(root, "prebuilds", "darwin-arm64", "pty.node"),
+		Buffer.alloc(8),
+	);
 	writeFileSync(helper, "#!/bin/sh\n");
 	chmodSync(helper, 0o644);
 
@@ -2082,19 +2089,67 @@ test("the helper's exec bit is asserted and healed, and only when it is wrong", 
 	const healed = ensureSpawnHelperExecutable(root, target);
 	assert.equal(healed.healed, true);
 	assert.equal(healed.mode, 0o644);
+	assert.equal(healed.path, helper);
 	assert.equal(statSync(helper).mode & 0o777, 0o755);
 	// Idempotent: the second check finds it right and touches nothing.
 	const second = ensureSpawnHelperExecutable(root, target);
 	assert.equal(second.healed, false);
 	assert.equal(second.mode, 0o755);
+	assert.equal(helperStatus(second), "ready");
+
+	// THE FILE THAT IS FORKED, not only the prebuild copy. A macOS app packed for the
+	// Electron ABI is rebuilt into `build/Release`, the loader takes that module
+	// (`lib/utils.js` order), and `posix_spawn` execs the helper beside it - so a heal
+	// that repaired only `prebuilds/` would report a fixed file nothing runs, which is
+	// the ZIP-delivered-update case this heal exists for.
+	const rebuilt = scratch("console-pty-rebuilt-");
+	const dirs = [
+		join(rebuilt, "build", "Release"),
+		join(rebuilt, "prebuilds", "darwin-arm64"),
+	];
+	for (const dir of dirs) {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, "pty.node"), Buffer.alloc(8));
+		writeFileSync(join(dir, "spawn-helper"), "#!/bin/sh\n");
+		chmodSync(join(dir, "spawn-helper"), 0o644);
+	}
+	const forked = ensureSpawnHelperExecutable(rebuilt, target);
+	assert.equal(forked.path, join(dirs[0], "spawn-helper"));
+	assert.equal(forked.healed, true);
+	assert.deepEqual(
+		forked.helpers.map((entry) => entry.path),
+		dirs.map((dir) => join(dir, "spawn-helper")),
+	);
+	for (const dir of dirs) {
+		assert.equal(statSync(join(dir, "spawn-helper")).mode & 0o777, 0o755);
+	}
+
 	// An absent helper is reported rather than thrown: the runtime heals what it can
-	// and the packaged-tree proof is what fails a build over a missing one.
+	// and the packaged-tree proof is what fails a build over a missing one. On macOS
+	// that absence is a defect the first spawn hits, and the status line says so.
 	const missing = ensureSpawnHelperExecutable(
 		scratch("console-pty-empty-"),
 		target,
 	);
 	assert.equal(missing.path, null);
+	assert.equal(missing.required, true);
 	assert.equal(missing.reason, "no helper");
+	assert.equal(helperStatus(missing), "without a helper");
+
+	// On the platforms that fork NO helper - linux and win32, per node-pty's own
+	// `binding.gyp` (`spawn-helper` is built under `OS=="mac"` only) and `pty.cc`
+	// (`forkpty(3)` off Apple) - the same absence is how the console works there at
+	// all. Reporting it as "without a helper" was a probe answering a question it could
+	// not distinguish, and it printed on every Linux start.
+	const linux = ensureSpawnHelperExecutable(scratch("console-pty-linux-"), {
+		platform: "linux",
+		arch: "x64",
+	});
+	assert.equal(linux.required, false);
+	assert.equal(linux.path, null);
+	assert.equal(linux.healed, false);
+	assert.match(linux.reason ?? "", /forks none/);
+	assert.equal(helperStatus(linux), "no helper needed on this platform");
 	// A packaged path is probed where the bytes actually are. A mode probe that
 	// ignored the rewrite would stat a file inside an archive, which cannot hold an
 	// exec bit at all, and "heal" nothing.
@@ -2108,6 +2163,40 @@ test("the helper's exec bit is asserted and healed, and only when it is wrong", 
 		unpackedPath("/tmp/plain/node_modules/node-pty"),
 		"/tmp/plain/node_modules/node-pty",
 	);
+});
+
+test("the runtime heal searches the directories node-pty's loader searches", () => {
+	// Trap 1 has two halves - the pack step in `scripts/console-pack.mjs` and this
+	// runtime heal - and each carries the loader's directory list, because that tree is
+	// build tooling and must not be pulled into the app bundle. Both are pinned against
+	// node-pty's own literal (here and in `console-pack.test.mjs`), so they cannot drift
+	// apart without a test failing.
+	const utils = join("node_modules", "node-pty", "lib", "utils.js");
+	if (!existsSync(utils)) return; // a tree without the package cannot be asked
+	const literal = readFileSync(utils, "utf8").match(
+		/var dirs = \[([^\]]+)\]/,
+	)?.[1];
+	assert.ok(
+		literal,
+		"node-pty's loader still names its directories in one literal",
+	);
+	const loaderDirs = literal
+		.replace(/process\.platform/g, "linux")
+		.replace(/process\.arch/g, "x64")
+		.replace(/["']/g, "")
+		.replace(/\s*\+\s*/g, "")
+		.split(",")
+		.map((dir) => dir.trim());
+	assert.deepEqual(
+		nativeDirs("/root", { platform: "linux", arch: "x64" }).map((dir) =>
+			relative("/root", dir),
+		),
+		loaderDirs,
+	);
+	// And the platform question that decides whether any of them must hold one.
+	assert.equal(forksSpawnHelper("darwin"), true);
+	assert.equal(forksSpawnHelper("linux"), false);
+	assert.equal(forksSpawnHelper("win32"), false);
 });
 
 test("node-pty is required by NAME, because its own archive rewrite is not idempotent", () => {

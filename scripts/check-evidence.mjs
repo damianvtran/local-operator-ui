@@ -27,6 +27,15 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
+ * The frame decoder, at module scope on purpose.
+ *
+ * `sharp` is a devDependency and is already how other rigs in this tree decode
+ * WebP (see `desktop-renderer-transport.test.mjs`), so the histogram costs no
+ * new package. Imported eagerly rather than per frame: a 9703-frame sweep must
+ * not pay a module load per image, and the loader is synchronous anyway.
+ */
+import sharp from "sharp";
+/*
  * The capturer's own `dir` table, for `claimedStory` below - not to run it.
  *
  * This closes a cycle: `capture-evidence.mjs` imports this file for `frames`
@@ -65,7 +74,7 @@ const EVIDENCE = join(ROOT, "docs", "evidence");
  * How far a frame's dominant colour may sit from the nearest ground of its own
  * theme. See the header for where the number comes from.
  */
-const GROUND_CEILING = 25;
+export const GROUND_CEILING = 25;
 
 /**
  * How much of a frame one colour may cover before it stops being a picture.
@@ -90,7 +99,7 @@ const GROUND_CEILING = 25;
  * Re-measure these when the set changes size; the two load-bearing numbers are
  * the legitimate maximum and the margin above it.
  */
-const UNIFORMITY_CEILING = 0.985;
+export const UNIFORMITY_CEILING = 0.985;
 
 /**
  * A failing coverage and the ceiling it broke, rendered so the first is
@@ -135,57 +144,121 @@ export const frames = (dir) => {
 };
 
 /**
- * The colour covering the most pixels.
+ * The colour covering the most pixels, decoded in this process.
  *
- * ImageMagick's histogram is already sorted by count, so the first row after
- * the header is the mode. Reading it out of `magick` rather than decoding webp
- * here keeps this script to one job.
+ * Exported as `frameHistogram` so `scripts/evidence-histogram-parity.mjs` can
+ * compare THE SHIPPED READER against the ImageMagick one it replaced: a rig that
+ * re-implemented this side would agree with itself whatever the guard did.
+ *
+ * WHY THE SUBPROCESS IS GONE. This used to shell out to
+ * `magick <file> -format %c -depth 8 histogram:info:-` once per frame and read
+ * the mode out of its sorted histogram. The sweep covers every committed frame -
+ * 9763 of them on this tree - and the saving is real but it is a property of the
+ * HOST, so the figures are quoted with the machine they were taken on: 8x-11x
+ * over a 24-64 frame sample at load averages 58-84 (magick 31.8 s against 2.8 s
+ * in process over 64 frames), 27x on one 1280x1404 frame at load 50 (18.5 s
+ * against 0.69 s), and 3x at load 171, where the in-process leg is starved too.
+ * `scripts/evidence-histogram-parity.mjs` is the re-runnable form of that
+ * comparison - the same frames, both readers, back to back - and it also shows
+ * the two readers agreeing on the mode, its count and the total. `sharp` was
+ * already a devDependency and already decodes WebP for other rigs, so no
+ * dependency is added.
+ *
+ * WHAT IS DELIBERATELY THE SAME. The verdict is still "the colour covering the
+ * most pixels": one count per distinct 8-bit colour, the winner is the largest
+ * count, and ties go to the colour met first in raster order - the order
+ * ImageMagick builds its histogram dictionary in, so a tie resolves the same
+ * way. `coverage` is still the mode's count over the total number of pixels, and
+ * `hex` is still uppercase `#RRGGBB`, which is what `deltaE` and the palette
+ * comparison downstream consume.
+ *
+ * A READ THAT FAILS MUST STILL SAY SO IN THOSE WORDS. "This tool could not read
+ * the file" and "this frame is one flat colour" are different findings, and an
+ * earlier version of the subprocess reader turned the first into the second
+ * against 87 good frames. A decode that throws, or that yields no pixels, throws
+ * here with the same wording the child used to produce, so every caller and
+ * message downstream is unchanged.
  */
-const modalColour = (file, lockFd) => {
-	/*
-	 * A failed read must not be reported as a verdict about the picture.
-	 *
-	 * Under load - a capture still holding the machine - `magick` returns
-	 * successfully with empty output, and an earlier version of this reader
-	 * turned that into "no pixels" against 87 frames that were all fine and
-	 * passed on a quiet machine moments later. A tool that cannot read a file
-	 * has to say so in those words, because the alternative is a paint failure
-	 * nobody can reproduce.
-	 */
-	let out;
+export const frameHistogram = async (file) => {
+	let decoded;
 	try {
-		out = execFileSync(
-			"magick",
-			[file, "-format", "%c", "-depth", "8", "histogram:info:-"],
-			{
-				maxBuffer: 256 * 1024 * 1024,
-				// Keep admission occupied if the sweep dies during image decoding.
-				stdio: [
-					"ignore",
-					"pipe",
-					"pipe",
-					...(lockFd === undefined ? [] : [lockFd]),
-				],
-			},
-		).toString();
+		decoded = await sharp(file).raw().toBuffer({ resolveWithObject: true });
 	} catch (err) {
 		throw new Error(`${file}: could not read the image - ${err.message}`);
 	}
-	if (out.trim() === "") {
+	const { data, info } = decoded;
+	if (!info.width || !info.height || data.length === 0) {
 		throw new Error(
-			`${file}: \`magick\` produced an empty histogram, which means the read failed rather than the frame being blank`,
+			`${file}: could not read the image - the decode produced no pixels`,
 		);
 	}
-	let best = null;
-	let total = 0;
-	for (const line of out.split("\n")) {
-		const m = line.match(/^\s*(\d+):.*(#[0-9A-F]{6})/);
-		if (!m) continue;
-		const count = Number(m[1]);
-		total += count;
-		if (!best || count > best.count) best = { count, hex: m[2] };
+	/*
+	 * Four-channel frames keep their alpha in the key, at 8 bits, exactly as
+	 * `-depth 8` printed it: dropping it would merge two colours ImageMagick
+	 * counted separately, and the mode could then be a colour the frame does not
+	 * have. `channels` is 3 for every frame in this set today (measured over the
+	 * sample the parity rig compares); the branch exists so an alpha-bearing
+	 * capture cannot quietly change what the mode means.
+	 */
+	const hasAlpha = info.channels === 4;
+	/*
+	 * A buffer that is not a whole number of pixels is one this reader cannot
+	 * count: the loop below would read past the last pixel and fold `undefined`
+	 * into a key as `NaN`. Nothing produces that today, and the guard's rule is
+	 * that a read it cannot perform says so in the words the subprocess used
+	 * rather than inventing a mode (review round 1, MAJOR-1).
+	 */
+	if (info.channels < 3 || data.length % info.channels !== 0) {
+		throw new Error(
+			`${file}: could not read the image - the decode produced ${data.length} bytes across ${info.channels} channels, which is not a whole number of pixels`,
+		);
 	}
-	return best ? { ...best, coverage: best.count / total } : null;
+	const counts = new Map();
+	let total = 0;
+	for (
+		let offset = 0;
+		offset + info.channels <= data.length;
+		offset += info.channels
+	) {
+		const rgb =
+			(data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2];
+		// The alpha byte is folded in only for a four-channel frame, so a
+		// three-channel frame's key IS its `#RRGGBB` value and the shift below is
+		// the only place the two shapes differ. Multiplying unconditionally - as
+		// this did when the parity rig was first run - printed `#282A3700` for a
+		// frame with no alpha at all, which the rig caught on its first sample.
+		const key = hasAlpha ? rgb * 256 + data[offset + 3] : rgb;
+		counts.set(key, (counts.get(key) ?? 0) + 1);
+		total += 1;
+	}
+	let best = null;
+	for (const [key, count] of counts) {
+		if (best === null || count > best.count) best = { count, key };
+	}
+	if (best === null) return null;
+	/*
+	 * A four-channel key is `rgb * 256 + alpha`, which leaves 32-bit SIGNED range
+	 * for any mode whose red channel is at or above 0x80, and the recovery below
+	 * used to be `best.key >> 8`. That is exactly those frames: the shift returned
+	 * a negative "colour" - `#-373738` on a 4-channel probe whose mode is
+	 * `#C8C8C8` - and the count and total beside it were right, so the guard would
+	 * have measured the garbage and judged the frame on it (on the dracula palette
+	 * that reads ΔE00 29.13 against the ceiling of 25, so a legitimate frame is
+	 * reported as a paint failure, and another palette lets a bad one through).
+	 * Multiplication and `Math.floor` are exact inverses in double precision for
+	 * every key this loop can produce, which `>> 8` was not. Review round 1,
+	 * MAJOR-1; `scripts/evidence-histogram-parity.mjs` now writes a 4-channel
+	 * frame of its own so the branch is exercised by the rig rather than by hope.
+	 */
+	const rgb = hasAlpha ? Math.floor(best.key / 256) : best.key;
+	return {
+		count: best.count,
+		hex: `#${rgb.toString(16).padStart(6, "0").toUpperCase()}`,
+		coverage: best.count / total,
+		// Reported for `scripts/evidence-histogram-parity.mjs`, which explains a
+		// disagreement with it; nothing in the guard reads it.
+		total,
+	};
 };
 
 /**
@@ -194,10 +267,10 @@ const modalColour = (file, lockFd) => {
  * Throwing here costs one screenshot; discovering it in review costs a round
  * and leaves a set that reported a count it could not honour.
  */
-export const assertFramePaints = (file, theme) => {
+export const assertFramePaints = async (file, theme) => {
 	const palette = PALETTES.get(theme);
 	if (!palette) throw new Error(`${file}: no palette named \`${theme}\``);
-	const mode = modalColour(file);
+	const mode = await frameHistogram(file);
 	if (!mode) throw new Error(`${file}: no pixels`);
 	const got = groundDistance(mode.hex, palette);
 	if (got > GROUND_CEILING) {
@@ -213,8 +286,15 @@ export const assertFramePaints = (file, theme) => {
 	}
 };
 
-/** Nearest of the four grounds, in ΔE00. */
-function groundDistance(hex, palette) {
+/**
+ * Nearest of the four grounds, in ΔE00.
+ *
+ * Exported with the two ceilings so `scripts/evidence-histogram-parity.mjs`
+ * judges a frame with THIS function rather than a copy: the question that rig
+ * asks is whether the two decoders reach the same verdict, and a second
+ * implementation of the verdict could only answer it about itself.
+ */
+export function groundDistance(hex, palette) {
 	return Math.min(
 		...GROUNDS.filter((g) => /^#[0-9a-fA-F]{6}$/.test(palette[g] ?? "")).map(
 			(g) => deltaE(hex.toUpperCase(), palette[g].toUpperCase()),
@@ -1007,7 +1087,7 @@ export const provenanceFailures = (manifest, git = gitOut) => [
 
 // Exported only for the admitted worker's import; ordinary imports still never
 // sweep frames (capture-evidence imports the single-frame predicates).
-export const main = (lockFd) => {
+export const main = async () => {
 	if (!existsSync(EVIDENCE)) {
 		console.error(`No evidence at ${EVIDENCE}`);
 		process.exit(1);
@@ -1025,7 +1105,7 @@ export const main = (lockFd) => {
 			failures.push(`${relative(ROOT, file)}: no palette named \`${theme}\``);
 			continue;
 		}
-		const mode = modalColour(file, lockFd);
+		const mode = await frameHistogram(file);
 		if (!mode) {
 			failures.push(`${relative(ROOT, file)}: no pixels`);
 			continue;
@@ -1190,7 +1270,7 @@ if (isEntryPoint(import.meta.url)) {
 			process.execPath,
 			"--input-type=module",
 			"--eval",
-			`const { main } = await import(${JSON.stringify(import.meta.url)}); main(3);`,
+			`const { main } = await import(${JSON.stringify(import.meta.url)}); await main();`,
 		],
 		// The guard is a real interpreter, so it is handed an environment whose
 		// `PYTHON*` variables this process decided (scripts/python-child-env.mjs)

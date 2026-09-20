@@ -136,6 +136,10 @@ declare global {
 							| "credential-not-offered";
 					}) => void,
 				) => () => void;
+				/** Reveal the host's own download directory (§16.4). Takes no path, and
+				 * ANSWERS whether it opened: `shell.openPath` returns its failure rather than
+				 * throwing, so the answer is what a caller needs to show one. */
+				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
@@ -440,7 +444,23 @@ declare global {
 				 */
 				onBackendUpdateProgress: (
 					callback: (progress: {
-						phase: "installing" | "restarting";
+						/**
+						 * `draining` is the wait before anything is installed or restarted: the app
+						 * holds the update back while the sessions on this machine finish the turns
+						 * they are running. It is its own phase because it can last minutes and no
+						 * install has begun.
+						 */
+						phase: "draining" | "installing" | "restarting";
+						/**
+						 * How long the PRESS has been waiting for the fleet, when the phase is
+						 * `draining` (design round 1, D3).
+						 *
+						 * The one number the app already has for a wait that can run to ten
+						 * minutes: without it the frame is byte-identical to a hung one, and the
+						 * draining arm is the only in-flight phase with nothing on screen that
+						 * moves. Absent on the other phases, and absent from an older producer.
+						 */
+						waitedMs?: number;
 						/** True when the run is the checkout REBUILD rather than the release path. */
 						sourceRebuild?: boolean;
 					}) => void,

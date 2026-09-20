@@ -113,8 +113,12 @@ interface ResolvedNode {
  * `DOM.pushNodesByBackendIdsToFrontend` with "Document needs to be requested
  * first" on a session that has not asked for the document, and the selector path
  * below only gets it for free because it queries the document itself.
+ *
+ * EXPORTED, because `upload` needs the same ref/selector resolution and a second
+ * implementation of the epoch rule is exactly how one of them stops enforcing it.
+ * `download` reaches a click through `click` below for the same reason.
  */
-async function resolveNode(
+export async function resolveNode(
 	ctx: BrowserActionContext,
 	record: TabRecord,
 	target: string,

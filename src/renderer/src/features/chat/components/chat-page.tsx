@@ -49,10 +49,10 @@ import {
 	type AnswerOutcome,
 	type SendLock,
 	answerGateOption,
+	answerReport,
 	answerValue,
 	createSendLock,
 	errorCodeOf,
-	lostAnswerMessage,
 } from "../ask-answer";
 import {
 	type AdmittedSend,
@@ -268,6 +268,54 @@ function SessionPanel({
 	 */
 	const pendingGate = canonical.frontend?.pending_gate ?? null;
 	const gateKey = pendingGate ? gateKeyOf(pendingGate) : null;
+	/*
+	 * THE PRESSED CARD'S IDENTITY, READ LIVE (code review round 1, m2; design
+	 * round 1, D1).
+	 *
+	 * A press's report has to say whether the card it was made on is still the card
+	 * on screen — not whether SOME `Answer options` card is. The value this file
+	 * already computes, `gateKey`, cannot answer that from inside the press's own
+	 * handler: it is a render closure, and the closure the handler resumes with is
+	 * the one the press STARTED in, which is the same value `gate` was read from —
+	 * comparing them compares the press with itself. That is exactly the inert
+	 * conjunct this branch deleted (`stillThisGate`), and the replacement for it
+	 * cannot be another closure. This ref carries the key of the card the app is
+	 * actually painting, so the arm can compare the live card's identity rather than
+	 * the press's own.
+	 *
+	 * IT IS WRITTEN IN A `useLayoutEffect`, NOT IN THE RENDER BODY (agent review
+	 * round 2, MINOR-3). The liveness the render-body write was protecting is real —
+	 * an effect must not lag a commit — but `useLayoutEffect` runs INSIDE the commit,
+	 * after the DOM is mutated and before paint, and the read that matters (the
+	 * promise continuation below) can never interleave with a commit. So the layout
+	 * effect keeps every bit of that liveness and drops the one hazard the
+	 * render-body write has: React may render a state it then DISCARDS (this app
+	 * runs under `<React.StrictMode>` and behind Suspense boundaries), and a write
+	 * made in a discarded render still lands. The consequence is not symmetric — a
+	 * leaked NEWER key while the committed tree still paints the pressed card would
+	 * render the moved-on sentence for a question that is still on screen and still
+	 * unanswered, which is a new false copy of the kind this branch exists to
+	 * remove.
+	 */
+	const liveGateKey = useRef<string | null>(null);
+	/*
+	 * THE LIVE OWNER EPOCH, read the same way and for the same reason (code review
+	 * round 1, MAJOR-1).
+	 *
+	 * A codeless `409` from the answer route is three different events and only one
+	 * of them is a settlement; the epoch is what separates the rollover from the
+	 * other two. The press carries `canonical.ownerEpoch` — a render-closure value
+	 * — so comparing it against itself proves nothing, exactly as with the gate key
+	 * above. This ref holds the epoch the app holds NOW, so the report can see that
+	 * the runtime instance the press addressed is gone: a rollover mints a fresh
+	 * epoch and the old one is refused with the question still pending and still
+	 * answerable (measured — see `answerReport`'s note).
+	 */
+	const liveOwnerEpoch = useRef<string | null>(null);
+	useLayoutEffect(() => {
+		liveGateKey.current = gateKey;
+		liveOwnerEpoch.current = canonical.ownerEpoch;
+	});
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
 			? { sending: answerState.sending, refused: answerState.refused }
@@ -1208,88 +1256,81 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		/*
-		 * The gate this press belonged to is still on screen, so the card owns the
-		 * outcome: it is where the action was, it is still in view, and holding it
-		 * disabled is what stops a second press repeating the same refusal (QA
-		 * round 1, Q3). A gate that is gone cannot show anything, so that case falls
-		 * through to the composer below.
-		 */
-		const currentGate = canonical.frontend?.pending_gate;
-		const stillThisGate = currentGate != null && gateKeyOf(currentGate) === key;
-		const cardOnScreen =
-			document.querySelector('[aria-label="Answer options"]') !== null;
-		/*
-		 * Whether the press could still be the answer the ask took.
+		 * WHAT the press reports and WHERE, from its own outcome plus the live facts
+		 * — see `answerReport`. Nothing here reads the gate's movement to decide
+		 * whether the press WON: a press's own success is what removes its card, so
+		 * that reading reported a win as a loss whenever the owner's state push
+		 * painted before the answer's response landed, and the two channels have no
+		 * ordering between them (`ask-answer.ts` carries the margin).
 		 *
-		 * Two halves, because neither alone is the user's situation:
+		 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
+		 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
+		 * meant this arm took the definite not-sent sentence for every failure, so an
+		 * outcome the module calls unknowable — the deadline shape, which leaves the
+		 * card up *precisely because* the request is still in flight — was told
+		 * "your answer was not sent" and then denied it in the next clause.
 		 *
-		 * - **The card this press was made on is still on screen.** This is the
-		 *   condition the report is about, and it has to be read from the DOM rather
-		 *   than from `pending_gate`: on the wire that field is written by the
-		 *   notifier and survives the round trip after the owner has taken an answer
-		 *   (which is exactly why the card holds itself with `answerState`), so a
-		 *   store-only test says "still pending" while the user is looking at a
-		 *   transcript with no card on it. Measured on the committed rig: with the
-		 *   store test alone the losing-answer race stayed silent, because the
-		 *   `failed` branch wrote its refusal into a card that was no longer
-		 *   rendered.
-		 * - **The ask is still this ask.** A gate that has advanced to its next
-		 *   question carries the same `request_id`, and that is what our own answer to
-		 *   question N looks like, so it counts as the press having landed. Only a
-		 *   gate that is gone, or one belonging to a different ask, means the press
-		 *   lost.
+		 * Every fact below is read LIVE, from the refs the layout effect keeps
+		 * current, rather than from the closure this handler resumed in — the closure
+		 * is the one the press STARTED in, so a value read from it is the press
+		 * compared with itself. That was the inert conjunct this branch deleted, and
+		 * the replacements for it cannot be another closure. The identity half matters
+		 * as much as the DOM half: a multi-question ask paints its next question's
+		 * card in the same place under the same `aria-label` with a different key, so
+		 * a query for "a card" answered true for a card that cannot carry this press's
+		 * sentence — the sentence was written to a state no surface reads and the user
+		 * was told nothing while a fresh question appeared where they had pressed.
 		 */
-		const pressStillStands =
-			cardOnScreen &&
-			currentGate != null &&
-			(stillThisGate || currentGate.request_id === gate.request_id);
-		if (outcome.status === "refused") {
-			// Nothing was sent and nothing is wrong: either the lock was already
-			// held by a typed send, or this answer lost a race to another front
-			// end. The lock holder reports; this path stays quiet rather than
-			// stacking a second message about the same question.
-			setAnswerState(null);
-			return;
+		const report = answerReport(outcome, {
+			liveGateKey: liveGateKey.current,
+			pressedGateKey: key,
+			sentEpoch: canonical.ownerEpoch,
+			liveEpoch: liveOwnerEpoch.current,
+			cardOnScreen:
+				document.querySelector('[aria-label="Answer options"]') !== null,
+		});
+		switch (report.to) {
+			case "refused":
+				// Nothing was sent and nothing is wrong: the lock was already held by a
+				// typed send, or this request lost a race inside this window. The lock
+				// holder reports, so this path stays quiet rather than stacking a second
+				// message about the same question.
+				setAnswerState(null);
+				return;
+			case "sent":
+				/*
+				 * The owner took this answer, and that is the whole of the report: the
+				 * model is already acting on it, so a sentence here would be the bug this
+				 * branch exists to remove. The card's hold is settled — it keeps its
+				 * options disabled until the gate itself moves, which is what stops a
+				 * second press from repeating an answer that already landed.
+				 */
+				setAnswerState({ key, sending: false, refused: null });
+				return;
+			case "card":
+				// The sentence belongs on the surface the press was made on, where it
+				// cannot be missed and cannot be repeated. It is the SAME string the
+				// composer would have carried — the register is the outcome's — and
+				// the hold stays, so the card cannot repeat an answer whose fate is
+				// unknown (UX round 2, U9: the composer arm used to release the hold
+				// while leaving three live options under an unknowable outcome).
+				setAnswerState({ key, sending: false, refused: report.refused });
+				return;
+			case "composer":
+				// The card is gone — or is not this press's any more — so the composer
+				// carries it, in the register the outcome is entitled to: the settled
+				// sentence where the live facts establish that another front end took
+				// the question, the moved-on sentence where the ask advanced past it,
+				// the not-knowable one where no response ever came back, and the
+				// backend's own reason where it answered and refused. The code is
+				// always the report's own, so the alert's hint and remedies are
+				// functions of THIS failure rather than of the draft's last one
+				// (design round 1, D2).
+				setAnswerState(null);
+				setSendError(report.message);
+				setSendErrorCode(report.code);
+				return;
 		}
-		/*
-		 * The card owns the outcome only while the card is still ON SCREEN. Holding
-		 * it disabled is what stops a repeat press, and the refusal belongs on the
-		 * surface the press was made on — but a card that has already gone cannot
-		 * show anything, and writing the refusal into `answerState` for it is how
-		 * the losing-answer race lost its sentence: the state was set on a gate the
-		 * panel no longer rendered, and nothing said so (QA round 2, F-A).
-		 */
-		if (outcome.status === "failed" && stillThisGate && cardOnScreen) {
-			setAnswerState({
-				key,
-				sending: false,
-				// Outcome first, cause second: the user's press did not take
-				// effect, and that is the sentence they need before the reason.
-				refused: `Your answer was not sent. ${userFacingMessage(
-					outcome.error,
-					"The request could not be completed.",
-				)}`,
-			});
-			return;
-		}
-		/*
-		 * Everything still open is an answer this press did not get to make, on a
-		 * gate that had already moved: a rejection for a question no longer pending,
-		 * or — the case that used to say nothing at all — a 200 for an answer
-		 * another front end had already given. The card it referred to is gone, so
-		 * the report goes to the composer, in the outcome's language rather than the
-		 * backend's (UX round 1, U4; UX round 2, U9; QA round 2, F-A).
-		 */
-		const lost = lostAnswerMessage(outcome, pressStillStands);
-		if (lost) {
-			setAnswerState(null);
-			setSendError(lost);
-			setSendErrorCode(
-				outcome.status === "failed" ? errorCodeOf(outcome.error) : undefined,
-			);
-			return;
-		}
-		setAnswerState({ key, sending: false, refused: null });
 	};
 	/*
 	 * Put focus back after a keyboard answer.
