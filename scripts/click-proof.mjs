@@ -88,6 +88,18 @@ const MOVED_ON_SENTENCE =
  * reason: a run that never rendered it must not be able to pass as one that did.
  */
 const UNCONFIRMED_LEAD = "Whether your answer landed is not knowable.";
+
+/**
+ * The sentence a run expects to find ON THE CARD when it declared one.
+ *
+ * The register belongs to the outcome and not to the surface (UX round 2, U7),
+ * so a card that survives a press can carry either the not-sent sentence or the
+ * unknown one — and `CLICK_PROOF_EXPECT=card-unknown` is how a run says which.
+ * Read from the expectation rather than from a new knob so the declaration is
+ * still made in one place.
+ */
+const cardSentence = () =>
+	EXPECT === "card-unknown" ? UNCONFIRMED_LEAD : "Your answer was not sent.";
 /*
  * What this run must find on the page after the press, when the caller says.
  *
@@ -160,6 +172,17 @@ const READ_REPORT = `(() => {
 		 */
 		cardRefusal:
 			Boolean(field) && document.body.innerText.includes(notSent) && !inAlerts,
+		/*
+		 * The card's UNKNOWN register, read the same way and for the same reason:
+		 * the register is the outcome's, so the card carries the same sentence the
+		 * composer would (UX round 2, U7). Without this reading a run of that arm
+		 * could only be described as "cardRefusal: false", i.e. as a run whose card
+		 * said nothing — which is the shape round 2's finding was about.
+		 */
+		cardUnknown:
+			Boolean(field) &&
+			document.body.innerText.includes(${JSON.stringify(UNCONFIRMED_LEAD)}) &&
+			!inAlerts,
 		alerts,
 	};
 })()`;
@@ -565,7 +588,19 @@ try {
 					!alerts.some((a) => a.textContent.includes("Your answer was not sent.")),
 			};
 		})()`);
-		if (RESOLUTION === "refused" ? state.up && state.refusal : !state.up) {
+		/*
+		 * A CARD THAT STAYS UP IS AN EVENT, and which sentence it is carrying is
+		 * part of it: the register is the outcome's, so the arm where the card
+		 * survives can carry the not-sent sentence or the unknown one (UX round 2,
+		 * U7). Waiting for the literal not-sent string would time this arm out on a
+		 * card that had already said everything it was going to say.
+		 */
+		const cardSentencePresent = await evaluate(
+			`document.body.innerText.includes(${JSON.stringify(cardSentence())})`,
+		);
+		if (
+			RESOLUTION === "refused" ? state.up && cardSentencePresent : !state.up
+		) {
 			resolved = true;
 			gateCleared = RESOLUTION !== "refused";
 			break;
@@ -672,6 +707,10 @@ try {
 		settled: SETTLED_SENTENCE,
 		"moved-on": MOVED_ON_SENTENCE,
 		unknown: UNCONFIRMED_LEAD,
+		// The same register on the CARD, which is the arm UX round 2's U7 and QA's
+		// Q1 measured: the deadline shape leaves the card up *because* the request
+		// is still in flight, so this is what a plain press reaches.
+		"card-unknown": UNCONFIRMED_LEAD,
 	}[EXPECT];
 	if (declaredSentence) {
 		const sentenceDeadline = Date.now() + 45_000;
@@ -718,7 +757,9 @@ try {
 							? report.notSentCopy.length === 0
 							: EXPECT === "card-refusal"
 								? !report.cardRefusal
-								: false;
+								: EXPECT === "card-unknown"
+									? !report.cardUnknown
+									: false;
 	/*
 	 * And the ORDERING the run was told to force, asserted rather than merely
 	 * recorded: the verdict is computed from two timestamps and can be the other
