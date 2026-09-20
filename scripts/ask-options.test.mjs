@@ -841,14 +841,11 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			true,
 			`${String(error.message)} carries no HTTP response, so the outcome is unknown`,
 		);
-		assert.deepEqual(
-			answerReport({ status: "failed", error }, frame()),
-			{
-				to: "composer",
-				message: answerUnconfirmedMessage(error),
-				code: UNCONFIRMED_SEND_CODE,
-			},
-		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: answerUnconfirmedMessage(error),
+			code: UNCONFIRMED_SEND_CODE,
+		});
 	}
 	/*
 	 * And the same arm for the two failures the MAIN process authors: its deadline
@@ -878,14 +875,11 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			true,
 			`${String(error.message)} is the app losing sight of the request, not the owner refusing it`,
 		);
-		assert.deepEqual(
-			answerReport({ status: "failed", error }, frame()),
-			{
-				to: "composer",
-				message: answerUnconfirmedMessage(error),
-				code: UNCONFIRMED_SEND_CODE,
-			},
-		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: answerUnconfirmedMessage(error),
+			code: UNCONFIRMED_SEND_CODE,
+		});
 	}
 	/*
 	 * The two the BACKEND authors are NOT this arm, whatever their status: a `503`
@@ -935,18 +929,15 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			false,
 			`${String(error.message)} is a response the backend sent`,
 		);
-		assert.deepEqual(
-			answerReport({ status: "failed", error }, frame()),
-			{
-				to: "composer",
-				message: unsentAnswerMessage(error),
-				// The transport's own code where it carried one — `desktopResult`
-				// attaches one for the statuses it classifies — and the report's own
-				// otherwise, because the alert's hint must be a function of THIS
-				// failure rather than of the draft's last one.
-				code: errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE,
-			},
-		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: unsentAnswerMessage(error),
+			// The transport's own code where it carried one — `desktopResult`
+			// attaches one for the statuses it classifies — and the report's own
+			// otherwise, because the alert's hint must be a function of THIS
+			// failure rather than of the draft's last one.
+			code: errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE,
+		});
 	}
 	/*
 	 * And the SETTLED sentence must not be rendered for a refusal the live facts
