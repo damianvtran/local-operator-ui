@@ -3,7 +3,9 @@
  * End-to-end proof for browser FILE TRANSFER on the desktop app's host: a real
  * download into the harness-composed directory, the refusals, and a real
  * multi-file upload to a real form.
- * Design: docs/design/browser-file-transfer.md §6.1, §9.2, §9.3, §10.3, §11.4,
+ * Design: the harness repository's `docs/design/browser-file-transfer.md` §6.1, §9.2,
+ * §9.3, §10.3, §11.4 (`local-operator`, not this repo — the document has never lived
+ * here, and round 5's Q9 was filed on citations that read as if it did).
  * §12.1, §12.3.
  *
  * WHY A COMMITTED RIG RATHER THAN A PASTED TRANSCRIPT. The claim this PR makes is
@@ -878,24 +880,33 @@ async function rowSpanReadings() {
 		const p = row.querySelector('p');
 		if (!p) return null;
 		const box = p.getBoundingClientRect();
-		return [...p.querySelectorAll('span')].map((s) => {
-			const r = s.getBoundingClientRect();
-			return {
-				text: s.innerText.trim(),
-				clipped: s.scrollWidth > s.clientWidth + 1,
-				inside: r.right <= box.right + 1 && r.left >= box.left - 1,
-				width: Math.round(r.width),
-				// THE BOX, not only its width (design round 4, D16): two clauses that share a
-				// column are only distinguishable by their rectangles, and the layout that
-				// fixed the collision has to be provable as rectangles that do not intersect
-				// rather than as widths that happen to add up.
-				left: Math.round(r.left * 10) / 10,
-				right: Math.round(r.right * 10) / 10,
-				top: Math.round(r.top * 10) / 10,
-				bottom: Math.round(r.bottom * 10) / 10,
-				title: s.getAttribute('title'),
-			};
-		});
+		// A HIDDEN SPAN PAINTS NOTHING, SO IT IS NOT A RUN (round 5, D4). The decided row's
+		// separator is hidden at the app's minimum window, and a display-none element keeps
+		// a 0x0 rect at (0, 0) — which the line clustering reads as a line of its own and the
+		// inside test as a run painting outside the paragraph. Design's own instrument
+		// excludes zero-width boxes for the same reason; excluding them here is what keeps
+		// this reading about WHAT IS PAINTED. (No backticks in this comment: it lives inside
+		// a template literal.)
+		return [...p.querySelectorAll('span')]
+			.map((s) => {
+				const r = s.getBoundingClientRect();
+				return {
+					text: s.innerText.trim(),
+					clipped: s.scrollWidth > s.clientWidth + 1,
+					inside: r.right <= box.right + 1 && r.left >= box.left - 1,
+					width: Math.round(r.width),
+					// THE BOX, not only its width (design round 4, D16): two clauses that share
+					// a column are only distinguishable by their rectangles, and the layout that
+					// fixed the collision has to be provable as rectangles that do not intersect
+					// rather than as widths that happen to add up.
+					left: Math.round(r.left * 10) / 10,
+					right: Math.round(r.right * 10) / 10,
+					top: Math.round(r.top * 10) / 10,
+					bottom: Math.round(r.bottom * 10) / 10,
+					title: s.getAttribute('title'),
+				};
+			})
+			.filter((s) => s.width > 0 || s.bottom > s.top);
 	})()`);
 }
 
@@ -1261,7 +1272,28 @@ async function main() {
 
 	await sleep(800);
 	const afterRow = await rowReading();
+	const afterSpans = (await rowSpanReadings()) ?? [];
 	const after = await frame(state, token, "02-receipts-after");
+	// AND THE DEFAULT WINDOW IS STILL ONE LINE (review round 5, R5-1). The wrap is gated
+	// on the row's own width, and until this check NOTHING measured the decided branch at
+	// the app's default window: `G8`/`G8c` read the refused row at 1380 and both branches
+	// at 800, so an ungated `flex-wrap` tripled this row's band and passed the whole suite
+	// — `B12` asks only that the page moved BY AT LEAST the row's height, which a taller
+	// row satisfies. The band's height is also the number the prose quotes (78 -> 119, the
+	// row's own 41 px), so a wrap that leaks back to the wide window fails here rather than
+	// in a frame a reader has to measure.
+	check(
+		"B13 the decided row is ONE line at the app's default window, and its band is the height the prose quotes (round 5, R5-1)",
+		afterRow.present === true &&
+			afterSpans.length > 0 &&
+			sentenceLines(afterSpans) === 1 &&
+			afterRow.rect.height <= 48,
+		JSON.stringify({
+			lines: sentenceLines(afterSpans),
+			rect: afterRow.rect,
+			spans: afterSpans,
+		}),
+	);
 	check(
 		"B10 the download row is on screen, naming the file the host just wrote",
 		afterRow.present === true && /receipt-\d+\.pdf/.test(afterRow.text),
@@ -1498,6 +1530,14 @@ async function main() {
 			uploads.every((got, index) => got.sha256 === expected[index].sha256),
 		JSON.stringify(uploads),
 	);
+	// WHAT THIS FRAME CLAIMS, AND WHAT IT DOES NOT (design round 5, D6 — the frame and the
+	// note must agree, so the note says this). It is the PAGE the server answered on, taken
+	// once the URL is `/echo`. The upload's own row is asserted by D8, which WAITS for it;
+	// this still is captured a moment before that wait resolves, so the strip in it may be
+	// empty — it was in the previous set and is not in this one, which is a timing property
+	// of when the renderer paints the note rather than a behaviour change. Do not read the
+	// `04` -> `05` pair as evidence that the row persists across the state change, and do not
+	// read an empty strip here as evidence that it went away: `D8` carries that claim.
 	const receivedFrame = await frame(state, token, "05-upload-received");
 	check(
 		"D7 the frame was written for the page the server answered on",
@@ -1831,8 +1871,20 @@ for raw in paths:
 		// to spare (design round 4 measured the difference as 794.0 px -> 820.5 px, with
 		// every other run in the row identical to a tenth of a pixel). The span has no
 		// floor now; `gap-1` is 4 px, so anything past 6 px here is that hole returning.
+		//
+		// AND IT IS BOUNDED ON BOTH SIDES, ON THE SAME LINE (review round 5, R5-4). With
+		// only an upper bound the check passed vacuously as soon as this paragraph could
+		// wrap: a consequence that has moved to the next line sits at the paragraph's LEFT,
+		// so `left - right` goes negative and the assertion was green for a state where the
+		// rule no longer sits beside the consequence at all. The two spans must also share a
+		// line (`sentenceLines(...) === 1` below, on the same reading) — the refusal at the
+		// app's DEFAULT window is one line, which is half of what the wrap had to be gated
+		// on (R5-1).
 		typeof ruleSpan?.right === "number" &&
 			typeof consequence?.left === "number" &&
+			sentenceLines(longSpans) === 1 &&
+			Math.abs((consequence?.top ?? 0) - (ruleSpan?.top ?? 0)) <= 8 &&
+			consequence.left - ruleSpan.right >= -1 &&
 			consequence.left - ruleSpan.right <= 6,
 		JSON.stringify({
 			rule: ruleSpan,

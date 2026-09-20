@@ -83,13 +83,28 @@ export function sleep(ms: number): Promise<void> {
  * a renderer process, so it is a page-load-shaped cost rather than an IPC one.
  *
  * MEASURED (2026-09-19, this host, ~25 sessions, load average 100-190): the 5 s
- * alias fired on `loadURL(about:blank)` — the proof rig's `open` answered
+ * alias fired on `loadURL("about:blank")` — the proof rig's `open` answered
  * `internal` / `data.stalled: "loadURL(about:blank)"` / "did not respond within
  * 5000ms", and every check downstream of it cascaded — on a box where the app's
- * own renderer took minutes to commit its first document. 15 s is the same
- * ceiling this app already gives its other "milliseconds when healthy" channel
- * (the cookie-jar handshake, `session-cookies`), and it stays well under the 30 s
- * navigation settle and the 35 s `open` budget above, so a genuinely wedged view
- * still ends in the typed `stalled` answer rather than in a hang.
+ * own renderer took minutes to commit its first document.
+ *
+ * WHY A SATURATED DEV BOX IS THE RIGHT INSTRUMENT FOR A PRODUCT CEILING (review
+ * round 5, R5-5, which asked for this case to be stated rather than assumed). The
+ * cost of the new number lands on the failure path: a view that never produces a
+ * document now answers `stalled` after 15 s instead of 5. Two things make that the
+ * right trade. First, the call being bounded is a RENDERER START — Chromium gives a
+ * never-navigated view no process at all — so its cost is scheduling and process
+ * spawn, which is exactly what a loaded machine delays; an idle box cannot measure
+ * this bound, it can only confirm the happy path, and the number it would produce
+ * is the one that was already there. Second, the evidence is not one reading: the
+ * alias failed here in the rig's own `open`, `tab_closed`/`stalled` cropped up in QA
+ * round 4's runs on the same host at load 79-141, and design round 4 could not run
+ * the repo rig at all for the same reason. A desk machine with ~25 agent sessions on
+ * it is a supported target for this app, not an exotic one.
+ *
+ * 15 s is the same ceiling this app already gives its other "milliseconds when
+ * healthy" channel (the cookie-jar handshake, `session-cookies`), and it stays well
+ * under the 30 s navigation settle and the 35 s `open` budget above, so a genuinely
+ * wedged view still ends in the typed `stalled` answer rather than in a hang.
  */
 export const WEB_CONTENTS_DEADLINE_MS = 15_000;

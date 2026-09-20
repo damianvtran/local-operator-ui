@@ -8,8 +8,8 @@ import { click } from "./input";
 /**
  * `download`: arm one tab, optionally start the page's own download, and report
  * what landed where.
- * Design: docs/design/browser-file-transfer.md §6.1, §6.2, §7.3, §10.2, §10.3,
- * §11.4.
+ * Design: the harness repository's `docs/design/browser-file-transfer.md` §6.1, §6.2,
+ * §7.3, §10.2, §10.3, §11.4 (`local-operator`, not this repo — round 5, Q9).
  *
  * WHY THE SELECTOR IS OPTIONAL. A page starts a download in one of two ways: the
  * agent clicks a link or button, or the page has already started one (a POST
