@@ -12,6 +12,7 @@ import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-erro
 import type {
 	AuthOperation,
 	ProviderMethod,
+	RadientLoginVerdict,
 } from "@shared/api/local-operator/desktop-api";
 
 export function providerMethodLabel(
@@ -45,6 +46,54 @@ export function primaryMethod(
 }
 
 /**
+ * The provider whose sign-in owns this machine's tunnel.
+ *
+ * Its login is the ONE stored credential this app can get a verdict about
+ * (`GET /v1/auth/status`'s `radient_login`, read through the `accounts.list`
+ * desktop op), which is what makes the join below possible at all.
+ */
+export const RADIENT_PROVIDER_ID = "radient";
+
+/**
+ * The refused badge's long form, which the grid renders as its `title`, because
+ * the badge itself cannot wrap. Names the sign-in rather than the account or the
+ * machine, and stops short of the remedy the sign-in control beside it offers.
+ */
+const REFUSED_DETAIL =
+	"Radient no longer accepts the sign-in stored on this machine";
+
+/**
+ * Whether the login verdict refuses the credential a provider row counts.
+ *
+ * WHY THE CENSUS ALONE CANNOT ANSWER THIS. `has_credential` and `configured`
+ * are facts about the STORE -- a row is there, and `is_usable()` says so -- and
+ * a revoked grant keeps both: the row stays, its access token can still be
+ * inside its expiry, and `disabled_cause` stays NULL because nothing on the
+ * sign-in path writes it. So the grid asserted "Signed in" in green for a login
+ * that was dead, while the composer one screen away said it needed
+ * re-authentication and the account section said the user was not signed in
+ * (UX U1 on the chat session-issue PR, which is the report this predicate
+ * answers). The verdict is the one fact that separates the two.
+ *
+ * A `null`, absent or unreadable verdict keeps the store's own answer, and so
+ * does `unknown`: those are "this machine could not be asked" (an offline
+ * refresh, a backend older than the route), and a surface that reads them as a
+ * refusal sends a user who is signed in to a sign-in they do not need -- the
+ * same misdirection as the green chip, in the other direction.
+ *
+ * The verdict is about ONE provider, so it is joined by id here rather than
+ * applied to whichever row is rendering.
+ */
+export function loginRefused(
+	providerId: string,
+	verdict: RadientLoginVerdict | null | undefined,
+): boolean {
+	return (
+		providerId === RADIENT_PROVIDER_ID && verdict?.state === "login_required"
+	);
+}
+
+/**
  * What the app can honestly say about a provider WITHOUT contacting it.
  *
  * The grid used to render `configured` as a green "Connected" badge, but
@@ -69,12 +118,22 @@ export type ProviderReadiness = {
 	group: "Ready to use" | "Needs a running server" | "Needs sign-in";
 };
 
-export function providerReadiness(provider: {
-	local: boolean;
-	credential_optional: boolean;
-	has_credential: boolean;
-	configured: boolean;
-}): ProviderReadiness {
+export function providerReadiness(
+	provider: {
+		local: boolean;
+		credential_optional: boolean;
+		has_credential: boolean;
+		configured: boolean;
+	},
+	/**
+	 * Whether the credential this row counts is one the provider itself refuses,
+	 * from `loginRefused`. Defaulted rather than required, because the facts
+	 * above are all a surface that cannot read the verdict has -- and that is the
+	 * answer an absent, unreadable or `unknown` verdict must keep, not a
+	 * conservative guess in the other direction.
+	 */
+	credentialRefused = false,
+): ProviderReadiness {
 	// A local server needs no key, and that is ALL this says. "No key needed"
 	// is checkable; "Connected" was not.
 	if (provider.local || provider.credential_optional) {
@@ -83,6 +142,18 @@ export function providerReadiness(provider: {
 			detail: "No key needed - needs a running server",
 			tone: "neutral",
 			group: "Needs a running server",
+		};
+	}
+	// A credential ROW is not a working sign-in, and this is the only input that
+	// can tell the two apart (see `loginRefused`). It comes before the
+	// credential branch deliberately: the incident was a row that satisfied that
+	// branch while the provider had already stopped accepting it.
+	if (credentialRefused) {
+		return {
+			label: "Needs sign-in",
+			detail: REFUSED_DETAIL,
+			tone: "neutral",
+			group: "Needs sign-in",
 		};
 	}
 	if (provider.has_credential || provider.configured) {
@@ -97,6 +168,12 @@ export function providerReadiness(provider: {
  * would not say "Needs sign-in" (signed in, or a local server that needs
  * none). A second predicate here is how the picker drifted onto the env
  * file and labelled Anthropic unusable while the grid said Signed in.
+ *
+ * Deliberately NOT given the login verdict (unlike the grid's own call): this
+ * predicate decides whether a provider may be OFFERED as a place to run, and
+ * removing a provider from the control is a different act from correcting the
+ * badge on its row. The verdict belongs here when a surface comes to it with a
+ * reason of its own, not as a side effect of a wording fix.
  */
 export function hostingProviderSelectable(provider: {
 	local: boolean;

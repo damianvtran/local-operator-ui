@@ -2665,6 +2665,34 @@ export type DesktopProvider = {
 	stored_credentials: number;
 	base_url: string | null;
 };
+/**
+ * The verdict on the Radient sign-in this machine's tunnel belongs to.
+ *
+ * WHY IT IS ON THE WIRE AT ALL. `configured` and `has_credential` above are
+ * facts about the CREDENTIAL STORE, and a grant the identity provider has
+ * revoked keeps both: the row stays, its access token can still be inside its
+ * expiry, and `disabled_cause` is never written because nothing in the sign-in
+ * path sets it. So a census row asserted a working sign-in for a login that was
+ * dead, and two surfaces on one screen disagreed about it (the chat composer
+ * said "needs re-authentication" while Settings rendered both "not currently
+ * signed in" and a green "Signed in" chip). This is the one fact that
+ * separates the two, and it is decided from this device's own store rather than
+ * from a cloud read, because when the login is dead the cloud read is exactly
+ * what cannot answer.
+ */
+export type RadientLoginState = "ok" | "login_required" | "unknown";
+
+export type RadientLoginVerdict = {
+	/** The credential row the tunnel's login resolves to, or none. */
+	credential_id: number | null;
+	/**
+	 * `login_required` is a refusal; `unknown` is a check that could not RUN
+	 * (an offline machine, a refresh that did not finish) and is NOT a verdict
+	 * about the login - see `loginRefused` in `provider-labels.ts`.
+	 */
+	state: RadientLoginState;
+};
+
 export type AuthOperation = {
 	id: string;
 	provider: string;

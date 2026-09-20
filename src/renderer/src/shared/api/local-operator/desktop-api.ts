@@ -25,6 +25,8 @@ export type {
 	DesktopCapabilities,
 	DesktopProvider,
 	ProviderMethod,
+	RadientLoginState,
+	RadientLoginVerdict,
 } from "../../../../../shared/desktop-contract";
 
 /**

@@ -14,7 +14,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
-import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
+import type {
+	DesktopCapabilities,
+	DesktopProvider,
+	RadientLoginVerdict,
+} from "./desktop-api";
 
 export const desktopKeys = {
 	capabilities: ["desktop", "capabilities"] as const,
@@ -35,7 +39,58 @@ export const desktopKeys = {
 	 */
 	credentials: (sessionId: string) =>
 		["desktop", "credentials", sessionId] as const,
+	/**
+	 * The Radient login verdict on `GET /v1/auth/status` (`accounts.list`).
+	 *
+	 * Its own entry rather than `accounts`, because the payload a reader parses
+	 * out of the route is not the one the logout picker reads from the same
+	 * route, and two queries sharing one key fight over one cache slot. Nested
+	 * UNDER `accounts` so that the invalidations which already refresh the
+	 * stored-account list after a sign-out refresh this verdict too, by prefix.
+	 */
+	radientLogin: ["desktop", "auth", "accounts", "login"] as const,
 };
+
+/**
+ * How often the login verdict is re-read while the window is in the foreground.
+ *
+ * A minute, because the condition changes on human timescales (a sign-in, a
+ * revoked grant, a console edit) and this read is one local control with no
+ * upstream leg: `GET /v1/auth/status` decides the verdict from this device's own
+ * credential store and deliberately does not call the provider. Deliberately
+ * NOT `refetchIntervalInBackground`: a user who is not looking does not need a
+ * re-read, and coming back to the window refetches on focus anyway.
+ */
+export const RADIENT_LOGIN_POLL_MS = 60_000;
+
+/**
+ * The verdict on this machine's Radient sign-in, or `null` when nothing is
+ * known about it.
+ *
+ * `null` is the honest answer for all three ways this can come back with nothing
+ * to say -- a read that failed, a payload with no `radient_login` (every backend
+ * that predates the route), and a `state` of `unknown` is left to the caller's
+ * own predicate. Every caller treats it as "keep the credential store's own
+ * answer" (`loginRefused`), which is why there is no capability gate here: the
+ * `tunnel` feature key would fail closed into exactly that same branch, and
+ * gating would be a second way of saying one thing.
+ */
+export function useRadientLoginVerdict() {
+	return useQuery({
+		queryKey: desktopKeys.radientLogin,
+		queryFn: () =>
+			desktopResult<{ radient_login?: RadientLoginVerdict | null }>({
+				op: "accounts.list",
+			}).then((result) => result.radient_login ?? null),
+		staleTime: RADIENT_LOGIN_POLL_MS,
+		refetchInterval: RADIENT_LOGIN_POLL_MS,
+		refetchOnWindowFocus: true,
+		// A refusal here is a state to render rather than a transient to hammer,
+		// and a read that failed has already told the caller nothing about the
+		// login -- which renders as the store's own answer either way.
+		retry: false,
+	});
+}
 
 /**
  * How often this app re-asks what the backend can do, WHILE THE PLANE IS OPEN.
