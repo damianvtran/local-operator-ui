@@ -201,6 +201,22 @@ were re-taken for the pair delivery and the crop that produced the number is not
 part of them. Re-deriving it on the shipped frames is a documented step of the
 design record's open questions, not a claim this file makes.
 
+**The row's hover ground reaches the row box's right edge (design round 3, D18).**
+On `row-controls-pair/localOperatorDark.png` the hovered row's ground runs from
+device x 470 to 982 at the row's own centre line (CSS 228..491), passing under both
+control slots, with the panel ground `srgb(42,39,34)` resuming at 984. Before this
+round's fix the same frame measured CSS 228..436 — the conversation button's own
+ground, 56px short — because the class stating it on the box was inert. The scene
+now asserts the box's own computed background, with the pointer on the row and
+again with it on a control, so a class that never matches cannot pass again:
+
+```
+magick docs/evidence/session-archive/row-controls-pair/localOperatorDark.png \
+  -format "%[pixel:p{970,1680}]" info:      # -> srgb(48,45,42), the row ground
+magick docs/evidence/session-archive/row-controls-pair/localOperatorDark.png \
+  -format "%[pixel:p{990,1680}]" info:      # -> srgb(42,39,34), past the box
+```
+
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
 `magick compare -metric AE` on the two `at-rest` frames reports **354 device
 pixels** above a threshold of 8/channel, in exactly two clusters (re-derived on
