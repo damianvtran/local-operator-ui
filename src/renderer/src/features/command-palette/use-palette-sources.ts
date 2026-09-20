@@ -33,6 +33,7 @@ import {
 	matchesLabel,
 	searchChats,
 } from "@features/chat/chat-search";
+import type { ArchiveView } from "@features/chat/chat-search";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -234,6 +235,23 @@ export function usePaletteItems({
 	/* ---------------------------- conversations ---------------------------- */
 
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	/*
+	 * THE PALETTE'S OWN VIEW OF WHAT MAY NOT BE DRAWN (agent review round 2, R2-2).
+	 *
+	 * `searchChats` needs the tombstones and the archive widening, and this call
+	 * site used to hand it neither: a hit this client no longer lists, for a
+	 * conversation this window permanently deleted, was rebuilt into a synthesized
+	 * row - clickable, and opening onto the deleted conversation's notice - while
+	 * this module's own docstring promises the palette shows "the same rows the
+	 * sidebar would". The hits come from the same `useChatSearch` cache the sidebar
+	 * reads (same 30 s key), so the window in which the two disagree is exactly the
+	 * one the tombstone exists to close.
+	 *
+	 * Read the same two fields the sidebar reads, for the same reason: the sidebar
+	 * passes `archiveView` (`chat-sidebar.tsx`), and a second join with a different
+	 * view is how the two surfaces drift apart.
+	 */
+	const forgotten = useCanonicalSessionsStore((state) => state.forgotten);
 	const sessionsLoading = useCanonicalSessionsStore((state) => state.loading);
 	const fetchSessions = useCanonicalSessionsStore(
 		(state) => state.fetchSessions,
@@ -288,9 +306,27 @@ export function usePaletteItems({
 	const hits: SessionSearchHit[] | null =
 		search.data && search.data.query === terms ? search.data.sessions : null;
 
+	const archiveView = useMemo<ArchiveView>(
+		() => ({
+			/*
+			 * The palette asks its own search, so it widens nothing: a scope that
+			 * offered archived conversations would have to say so, and the sidebar's
+			 * toggle is where the user says it (`chat-sidebar.tsx`). One view, one
+			 * answer to "which conversations does a query match".
+			 */
+			include: false,
+			facts: {},
+			/*
+			 * And the tombstones, which are the half this call site was missing: the
+			 * set of ids this window must not draw, from a row OR from a cached hit.
+			 */
+			forgotten: new Set(Object.keys(forgotten)),
+		}),
+		[forgotten],
+	);
 	const chatItems = useMemo(() => {
 		if (!wantsChats) return [];
-		const { rows } = searchChats(sessions, terms, hits);
+		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
 		const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
 		return rows.map((row, index) => {
 			const hit = byId.get(row.session_id);
@@ -342,7 +378,7 @@ export function usePaletteItems({
 				featured: terms.length === 0,
 			} satisfies PaletteItem;
 		});
-	}, [sessions, terms, hits, wantsChats]);
+	}, [sessions, terms, hits, wantsChats, archiveView]);
 
 	/* -------------------------------- agents -------------------------------- */
 

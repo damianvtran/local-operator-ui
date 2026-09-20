@@ -39,10 +39,24 @@
  * correctness constraint: `sessions.archive` carries the DESIRED state rather than
  * a toggle, so an Undo pressed after another surface restored the conversation
  * re-sends `archived: false` - a no-op, not a double flip.
+ *
+ * A PANEL REGISTER RATHER THAN A TOAST (design round 2, D12), and that is the one
+ * thing about this module's shape that changed. The offer used to be
+ * `showInfoToast(..., { action: "Undo" })`, which put a box with the word Undo in
+ * it over the composer: measured in both palettes the toast covered x
+ * 1001..1360.5, y 789..842.5 while the Send control sits at x 1307..1339, y
+ * 803..835, so the offer's own press target sat exactly where Send had been for up
+ * to 15 s. An offer to take an action back must not be able to send a message, and
+ * it must sit on the surface that performed the action - and the archive is
+ * performed from the sidebar (a row's control, the conversation header's menu, a
+ * typed slash command dispatched by the composer but acting on the chat pane),
+ * never from the composer. The register lives beside the list in the panel, so it
+ * cannot reach the composer at all, and the rule above is implemented exactly as
+ * it was: the offer is written when the press is accepted and cleared by the same
+ * subscription or the same ceiling.
  */
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { dismissToast, showInfoToast } from "@shared/utils/toast-manager";
 import { undoOfferStands } from "./chat-archived";
 
 /**
@@ -90,11 +104,12 @@ export function offerArchiveUndo(input: {
 	title?: string;
 	/** The state the offer is about: what pressing Undo would take back. */
 	archived: boolean;
-	onUndo: () => void;
 }): void {
-	const toastId = showInfoToast(archiveOfferedText(input.title), {
-		action: { label: "Undo", onClick: input.onUndo },
-		duration: ARCHIVE_UNDO_CEILING_MS,
+	const store = () => useCanonicalSessionsStore.getState();
+	store().setArchiveUndo({
+		sessionId: input.sessionId,
+		title: input.title,
+		archived: input.archived,
 	});
 	let closed = false;
 	const stop = () => {
@@ -102,15 +117,21 @@ export function offerArchiveUndo(input: {
 		closed = true;
 		unsubscribe();
 		clearTimeout(ceiling);
+		/*
+		 * CLEARED ONLY IF IT IS STILL THIS OFFER'S. Two archives in a row (the second
+		 * while the first's ceiling is running) leave two subscriptions, and the first
+		 * one's expiry must not take the SECOND offer off the screen - it would clear
+		 * an offer that is still true, which is the same lie the retirement rule
+		 * exists to avoid, one press later.
+		 */
+		const current = store().archiveUndo;
+		if (current?.sessionId === input.sessionId) store().setArchiveUndo(null);
 	};
 	const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
 		// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
 		// comment and the behaviour cannot drift apart.
 		if (undoOfferStands(input.archived, knownArchived(input.sessionId))) return;
 		stop();
-		// Retired EARLY rather than left to its timer: the moment the state changed
-		// is the moment the offer stopped being about anything.
-		dismissToast(toastId);
 	});
 	const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
 }

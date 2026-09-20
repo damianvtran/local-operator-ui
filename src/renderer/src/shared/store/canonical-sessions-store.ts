@@ -160,35 +160,61 @@ export type ArchiveFact = {
 	at: number;
 };
 /**
- * A conversation THIS WINDOW has permanently deleted, and when.
+ * The undo offer a successful archive stands, and what pressing Undo would take
+ * back.
  *
- * WHY A TOMBSTONE RATHER THAN A FILTERED ARRAY. Dropping the row from `sessions`
- * is not enough to delete anything: every read this store issues REPLACES
- * membership from its own answer, so a catalogue page whose request started
- * before the delete - and there is nearly always one, because the page is read on
- * mount, on focus, on visibility, on every catalogue revision and by the 30 s
- * safety poll - lands afterwards and puts the row straight back, drawing a
- * conversation the user permanently removed. The archive press has been protected
- * against exactly this shape since it was written (`archiveFacts` + the stamp); a
- * delete without the same record is the same defect one direction over, and the
- * measured one is worse: the row comes back clickable and re-deletable.
+ * A plain record rather than a callback: every surface offers the same act -
+ * unarchive THIS conversation - so the press is the panel's own call to the same
+ * store action (`setSessionArchived(id, false, title)`), and the offer does not
+ * have to carry a closure from whichever surface happened to make it. That is what
+ * lets the offer be retired from outside the component that drew it.
+ */
+export type ArchiveUndoOffer = {
+	sessionId: string;
+	/** The name to quote, when the surface that offered it had one. */
+	title?: string;
+	/** The state the offer was taken from: what the press would take back. */
+	archived: boolean;
+};
+
+/**
+ * A conversation THIS WINDOW must not draw, and when it learned so.
  *
- * The stamp is the archive fact's own currency (`answerSeq`, taken at the WRITE,
- * compared against the sequence a read took when its REQUEST STARTED), so the two
- * records answer the same question the same way: a page asked for after the delete
- * speaks about membership and settles the tombstone, while a page asked for before
- * it cannot resurrect the id.
+ * TWO WRITERS, ONE RULE. The first is a delete this window performed: dropping the
+ * row from `sessions` is not enough to delete anything, because every read this
+ * store issues REPLACES membership from its own answer, so a catalogue page whose
+ * request started before the delete - and there is nearly always one, because the
+ * page is read on mount, on focus, on visibility, on every catalogue revision and
+ * by the 30 s safety poll - lands afterwards and puts the row straight back,
+ * drawing a conversation the user permanently removed, clickable and re-deletable.
+ * The second is a READ that answered not-found for the id (`openSession`'s guard
+ * read): the conversation is gone, and a pane that rolled back to a "Start a chat"
+ * landing - or, after a reload, to a fresh draft bound to a dead id - explains
+ * nothing about why (QA round 1, Q1). Both writers mean the same thing to every
+ * reader: this id may not be drawn, it may not hydrate a transcript, and its pane
+ * lands on the missing-session notice.
+ *
+ * THE STAMP IS THE ARCHIVE FACT'S OWN CURRENCY (`answerSeq`, taken at the WRITE,
+ * compared against the sequence a read took when its REQUEST STARTED), and it is
+ * what orders the record against every read in flight.
+ *
+ * A TOMBSTONE IS SETTLED BY A RESURRECTION, NOT BY A PAGE (agent review round 2,
+ * R2-1). It used to be settled by any page that outranked it and did not carry the
+ * id - which said nothing about the search answers still live, so a cached answer
+ * asked before the delete drew the row again, deterministically, with no race. It
+ * now goes only when a page that outranks it CARRIES the id back (something
+ * recreated the conversation). A page that outranks it and does not carry the id
+ * is what the tombstone predicted and changes nothing.
+ *
+ * A SEARCH ANSWER NEVER SETTLES IT, for the same reason: search answers are cached
+ * per query for 30 s (`session-search.ts`), so one already in hand can name the id
+ * long after the delete. Every join filters against this record (`searchChats`,
+ * `ArchiveView.forgotten`), in the sidebar and in the command palette alike.
  *
  * The title is kept only so a surface that has to NAME the conversation after the
  * row is gone can still do so - the pane's header is the one that needs it, and
- * "Untitled chat" over a conversation the user just deleted names nothing.
- *
- * A SEARCH ANSWER DOES NOT SETTLE A TOMBSTONE, deliberately: search answers are
- * cached per query for 30 s (`session-search.ts`), so an answer already in hand
- * can name the deleted id long after the delete, and the page is the read whose
- * membership claim is complete (`include_archived` is asked of it). The tombstone
- * therefore lives until the next page, and every search answer in the meantime is
- * filtered against it at the join (`searchChats`, `ArchiveView.forgotten`).
+ * "Untitled chat" over a conversation the user just deleted names nothing. The
+ * not-found writer has no title to give: it never read one.
  */
 export type ForgottenFact = {
 	/** The request sequence the delete took, which orders it against every read. */
@@ -1513,15 +1539,20 @@ type CanonicalSessionsState = {
 	 */
 	archiveFacts: Record<string, ArchiveFact>;
 	/**
-	 * The conversations THIS WINDOW has deleted and that the next catalogue page
-	 * has not yet settled, keyed by session id (see `ForgottenFact`).
+	 * The conversations THIS WINDOW must not draw, keyed by session id (see
+	 * `ForgottenFact`): the ones it permanently deleted, and the ones a read proved
+	 * are gone. Written by `forgetSession` (from the delete) and by `openSession`'s
+	 * guard read when it answers not-found.
 	 *
 	 * Read by three surfaces, all of them for the same reason - a delete must not be
 	 * undone by an answer that predates it: the catalogue page filters its rows
-	 * through it, the search join drops the hits that name a forgotten id (a cached
-	 * answer can outlive the delete by its 30 s `staleTime`), and the pane reads it
-	 * to land on the existing missing-session notice instead of a writable draft
-	 * bound to an id that is gone.
+	 * through it, the search joins (the sidebar's and the palette's) drop the hits
+	 * that name a forgotten id (a cached answer can outlive the delete by its 30 s
+	 * `staleTime`), and the pane reads it to land on the existing missing-session
+	 * notice instead of a writable draft bound to an id that is gone.
+	 *
+	 * SETTLED BY A RESURRECTION AND NOTHING ELSE: a page that outranks the record and
+	 * carries the id back (agent review round 2, R2-1).
 	 */
 	forgotten: Record<string, ForgottenFact>;
 	/**
@@ -1532,6 +1563,35 @@ type CanonicalSessionsState = {
 	 * control is, and the control is on the row the user just pressed.
 	 */
 	archiveFailure: ArchiveFailure | null;
+	/**
+	 * The undo offer a successful archive stands, or null.
+	 *
+	 * IN THE STORE, AND RENDERED IN THE PANEL, rather than in a toast, and the
+	 * reason is measurable rather than aesthetic (design round 2, D12). The offer is
+	 * a box with the word Undo in it, and the toast lane puts it over the composer:
+	 * measured in both palettes, the toast occupied x 1001..1360.5, y 789..842.5
+	 * while the Send control sits at x 1307..1339, y 803..835 - the offer's own
+	 * Undo box lands exactly where Send was, for the offer's whole life (up to
+	 * 15 s). Two constraints cannot both be met by a toast: an offer must NEVER
+	 * overlap the composer's interactive controls, and it must sit on the surface
+	 * that performed the action - and the archive is performed from the sidebar
+	 * (a row's control, the header's menu, a typed command), never from the
+	 * composer. A sidebar register satisfies both by construction: it is inside the
+	 * panel, so it cannot reach the composer, and it is drawn beside the list the
+	 * conversation left.
+	 *
+	 * The RETIREMENT RULE is unchanged and lives with the offer
+	 * (`features/chat/archive-undo.ts`): the offer stands while the conversation
+	 * still holds the state the offer was taken from, and it is retired the moment
+	 * this client knows it does not.
+	 */
+	archiveUndo: ArchiveUndoOffer | null;
+	/**
+	 * Record - or clear - the undo offer a successful archive stands.
+	 *
+	 * The offer's own module owns WHEN it is retired; this is only the write.
+	 */
+	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
 	/**
 	 * The conversation a danger dialog is asking about, or null.
 	 *
@@ -1958,12 +2018,20 @@ function heldStatusOver(
 /**
  * The stamped records a read newer than `floor` still owns.
  *
- * Used for both records this store orders against its reads - the archive facts
- * (`archiveFacts`) and the delete tombstones (`forgotten`) - because the rule is
- * one rule: a read asked about at `floor` speaks about everything it covers, so a
- * record written before that request is settled by it and must go, while a record
- * written AFTER the request survives. That second half is what stops an answer in
- * flight across a write from undoing the write.
+ * Used for the ARCHIVE facts (`archiveFacts`), where it is the whole rule: this app
+ * asks the list route for the archived rows too (`include_archived: true`), so a
+ * page speaks about the archived set as a whole and a fact older than its request
+ * is settled by it - absence from that page means "unarchived or gone" rather than
+ * "not mentioned".
+ *
+ * It is deliberately NOT the rule for the delete tombstones any more, and the
+ * reason is the same one `archiveFacts` does not have: the archive is a value the
+ * page always speaks about, while a tombstone is an id the page can only speak
+ * about by CARRYING it. A page that outranks a tombstone and does not carry the id
+ * is exactly what the tombstone predicts, so it settles nothing (agent review round
+ * 2, R2-1 - settling it there let a cached search answer put the deleted
+ * conversation back). The tombstones are settled at the call site, by a
+ * resurrection: a page that outranks the record AND carries the id.
  *
  * Returns the SAME object when nothing is dropped, so a page that settles nothing
  * does not re-render every row it carried.
@@ -2196,6 +2264,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFacts: {},
 			forgotten: {},
 			archiveFailure: null,
+			archiveUndo: null,
 			deleteCandidate: null,
 			error: null,
 			cwd: "~",
@@ -2281,17 +2350,46 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							delete facts[id];
 						}
 						/*
-						 * AND THE TOMBSTONES THE SAME WAY, then the rows through them. A page
-						 * asked for after a delete settles the tombstone - it answers complete
-						 * membership (`include_archived` is asked of it), so an id it does not
-						 * carry is a conversation this window really does not have - while a page
-						 * asked for BEFORE the delete is filtered, which is the arm that stops a
-						 * permanently deleted conversation being re-added by a read that was
-						 * already in flight when the user confirmed (`forgotten`).
+						 * AND THE TOMBSTONES ARE SETTLED BY A RESURRECTION, NEVER BY A PAGE THAT
+						 * MERELY FAILS TO CARRY THE ID (agent review round 2, R2-1).
+						 *
+						 * A page asked for after a delete answers complete membership, so it used
+						 * to settle every tombstone it did not carry. That is the same "absence is
+						 * not a claim" mistake this file keeps having to undo, one door over: the
+						 * page settling the tombstone says nothing about the SEARCH ANSWERS that
+						 * are still live, and one of them can be asked BEFORE the delete and
+						 * answered after it (`session-search.ts` caches per query for 30 s, and the
+						 * store takes no more than four page triggers). With the tombstone gone
+						 * the join drew a permanently deleted conversation again - deterministically,
+						 * with no race: search the row, delete it, let any page land, and the cached
+						 * answer still names the id.
+						 *
+						 * So the tombstone goes only when the read that outranks it carries the id
+						 * BACK. That is a resurrection - something recreated the conversation, so
+						 * this window's record of its absence is stale and false - and it is the
+						 * one read that really does speak about the id. A page that outranks the
+						 * tombstone and does NOT carry the id changes nothing, because it is
+						 * already what the tombstone says; keeping it is what holds the join and
+						 * the pane steady against every answer already in flight.
+						 *
+						 * The rows are filtered through the SETTLED record, which is the arm that
+						 * stops a page asked for BEFORE the delete (it carries the id, it just
+						 * carries a stale membership) re-adding the row.
 						 */
-						const forgotten = factsNewerThan(state.forgotten, answerAt);
+						const carried = new Set(rows.map((row) => row.session_id));
+						let revived = false;
+						const forgotten: Record<string, ForgottenFact> = {
+							...state.forgotten,
+						};
+						for (const [id, fact] of Object.entries(forgotten)) {
+							if (fact.at < answerAt && carried.has(id)) {
+								delete forgotten[id];
+								revived = true;
+							}
+						}
+						const tombstones = revived ? forgotten : state.forgotten;
 						const page = rows.filter(
-							(row) => forgotten[row.session_id] === undefined,
+							(row) => tombstones[row.session_id] === undefined,
 						);
 						/*
 						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
@@ -2306,7 +2404,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 */
 						const protectedRows = state.sessions.filter(
 							(row) =>
-								forgotten[row.session_id] === undefined &&
+								tombstones[row.session_id] === undefined &&
 								(state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
 						);
 						let next = replaceSessionRows(state.sessions, page);
@@ -2330,7 +2428,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							sessions: applyArchiveFacts(next, archiveFactSet),
 							pinFacts: facts,
 							archiveFacts: archiveFactSet,
-							forgotten,
+							forgotten: tombstones,
 							loading: false,
 							truncated: result.truncated === true,
 							/*
@@ -2353,6 +2451,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									: "Chats could not refresh. Retry to reconnect.",
 						});
 				}
+			},
+			setArchiveUndo: (offer) => {
+				set({ archiveUndo: offer });
 			},
 			setSessionArchived: async (sessionId, archived, title) => {
 				/*
@@ -2795,6 +2896,44 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						set({ validatingSessionId: null });
 					return true;
 				} catch (error) {
+					/*
+					 * A READ THAT PROVES THE TARGET IS GONE IS NOT A ROLLBACK (QA round 1, Q1).
+					 *
+					 * 404 from `sessions.get` is not "the read failed": the desktop plane
+					 * answers it for an id this host does not have, and it is terminal by
+					 * construction, so the target is gone rather than unreadable. Rolling back
+					 * there is what left the pane explaining nothing: on a cold start the
+					 * rollback has no previous session to restore, so a deep link to a deleted
+					 * conversation rendered the "Start a chat" landing on a route that names a
+					 * conversation - and a reload on the route did it again, every time
+					 * (`--scene qa-focus`'s reload leg).
+					 *
+					 * What it does instead is the same thing the delete path does: it records
+					 * the id as one this window must not draw (`forgotten`), and leaves the
+					 * view where the user aimed. The pane then reaches the ONE missing-session
+					 * state this app has - the one the composer already reads
+					 * (`MISSING_SESSION_NOTICE_ID`) - on the first paint, after the trace, and
+					 * across a reload, rather than a fresh draft bound to a dead id.
+					 *
+					 * `true` is the honest answer to the caller: the switch DID stand - the
+					 * view is on the target and the notice explains it - so the address bar
+					 * stays where the user put it (`select` only puts the URL back on a
+					 * `false`). Every other failure keeps the rollback below, which is right
+					 * for it: "could not be read" is a state the user came from can survive,
+					 * and "is gone" is not.
+					 */
+					if (
+						generation === navigationGeneration &&
+						error instanceof DesktopControlError &&
+						error.status === 404
+					) {
+						set({
+							validatingSessionId: null,
+							navigationError: null,
+							...forgetSession(get(), sessionId),
+						});
+						return true;
+					}
 					// Only the latest intent may roll back: a user who has already
 					// clicked elsewhere is not waiting on this read, and undoing their
 					// switch would be a worse lie than the one this path exists to

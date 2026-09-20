@@ -124,7 +124,26 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			 * and `data-chat-row` already follow. Attributes only: no dialog's rendering
 			 * changes.
 			 */}
-			<SecondaryButton ref={cancelRef} data-cancel-action onClick={onCancel}>
+			<SecondaryButton
+				ref={cancelRef}
+				data-cancel-action
+				onClick={onCancel}
+				/*
+				 * THE RING ON `:focus` AND NOT ONLY `:focus-visible` (design round 2, D6).
+				 *
+				 * This dialog MOVES focus to Cancel on purpose (`focusCancelSignal`), and
+				 * the app's ring is `:focus-visible`-only (`styles/index.css`) - which a
+				 * programmatic focus does NOT match, because the browser keys it on the
+				 * interaction that led there. So the state where the keyboard is
+				 * deliberately parked on the safe action was the one state that showed no
+				 * ring, while Enter on that very button cancels: the modal asserts the
+				 * keyboard is here and then draws nothing to say so.
+				 *
+				 * Same 2px accent ring at the same 2px offset the global rule draws, spelled
+				 * as utilities so it cannot drift from it in colour or weight.
+				 */
+				className="focus:outline-2 focus:outline-solid focus:outline-accent focus:outline-offset-2"
+			>
 				{cancelText}
 			</SecondaryButton>
 			{isDangerous ? (
