@@ -3045,12 +3045,20 @@ export function ChatSidebar({
 		}
 		savedScrollRef.current = saved;
 	};
+	/*
+	 * No dependency list, deliberately: the map is a ONE-SHOT by construction -
+	 * `saveRegionScroll` fills it and this empties it on the next commit - so the
+	 * effect is a no-op on every render that is not the render immediately after a
+	 * swap. Listing `split.order` would be the cheaper-looking spelling and is the
+	 * wrong one: the effect does not read the order, it reads a map the press wrote,
+	 * and the lint rule that says so is right.
+	 */
 	useLayoutEffect(() => {
 		const saved = savedScrollRef.current;
 		if (saved.size === 0) return;
 		savedScrollRef.current = new Map();
 		for (const [node, top] of saved) node.scrollTop = top;
-	}, [split.order]);
+	});
 	const clusterAction = (act: () => void) => () => {
 		const press = controlPressRef.current;
 		controlPressRef.current = null;
