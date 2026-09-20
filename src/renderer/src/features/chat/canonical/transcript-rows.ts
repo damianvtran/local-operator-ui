@@ -40,6 +40,87 @@ export const splitFirstLine = (
 	return { headline: lines[at].trim(), rest: rest || null };
 };
 
+/**
+ * How much of the model's reasoning one row PAINTS, in the TUI's own units.
+ *
+ * Both numbers are the TUI's (`tui/widgets/transcript.py`: a 2,000-character
+ * bounded tail, of which the last six rows are visible), and they are borrowed
+ * rather than re-derived on purpose: the two surfaces answer the same question
+ * with the same constraint — reasoning is one frame per token, measured up to
+ * 19,355 fragments in a single turn, so a block that grew with the model's
+ * thinking would be a block that reflows the answer for as long as the model
+ * stays quiet.
+ *
+ * The CHARACTER cap is what makes the cost per flush O(1) in how long the model
+ * has been thinking, and the ROW cap is what makes the paint height bounded —
+ * neither implies the other, because a model that emits no newline would render
+ * 2,000 characters as one twenty-line paragraph. The reducer holds the whole
+ * channel (it appends fragments and nothing else), so this is a paint rule and
+ * not a storage one: what the reader loses to it is a tail that was already off
+ * the top of the window, and `elided` is how the row says so.
+ */
+export const REASONING_TAIL_CHARS = 2_000;
+export const REASONING_VISIBLE_ROWS = 6;
+
+/**
+ * The two cuts `reasoningTail` makes, hoisted because it runs per flush.
+ *
+ * Reasoning repaints on the animation frame (up to 60 times a second for the
+ * length of a model call), and a regex literal inside that path allocates and
+ * compiles on every call — which is the cost this module's "bounded tail"
+ * exists to avoid. Top-level so neither can be skipped by a later edit.
+ */
+const FIRST_WHITESPACE = /\s/;
+const LEADING_WHITESPACE = /^\s+/;
+
+/**
+ * The slice of a reasoning block a row paints, and whether anything was dropped.
+ *
+ * Split out of the view, and asserted directly (`scripts/tool-row.test.mjs`),
+ * for the reason this module exists: which rows a reader sees is a rule with a
+ * right answer, and the two failure modes of getting it wrong are both visible
+ * ones — a block that paints from the FIRST fragment never moves, and a cut made
+ * at an arbitrary character opens mid-word (`and so the arrival time is
+ * 20:00` becoming `ime is 20:00`, which reads as a typo rather than as a cut).
+ *
+ * So the cut lands on a line boundary where the text offers one and on the next
+ * whitespace where it does not, and `elided` is returned rather than inferred:
+ * the mark is what tells the reader the block is a window and not the whole
+ * thought, and inferring it from the length would be wrong for a block that ends
+ * exactly at the cap.
+ */
+export function reasoningTail(reasoning: string): {
+	text: string;
+	elided: boolean;
+} {
+	const capped =
+		reasoning.length > REASONING_TAIL_CHARS
+			? reasoning.slice(-REASONING_TAIL_CHARS)
+			: reasoning;
+	const dropped = capped.length !== reasoning.length;
+	/*
+	 * The character cut is the aggressive one, so it is the one that has to be
+	 * repaired: start at the next grep-able boundary — the first whitespace —
+	 * because a half word is the artifact this function exists to avoid. A tail
+	 * with no whitespace at all is one unbroken run and is left whole.
+	 */
+	let text = capped;
+	if (dropped) {
+		const boundary = capped.search(FIRST_WHITESPACE);
+		if (boundary >= 0) text = capped.slice(boundary + 1);
+	}
+	const lines = text.split("\n");
+	const rows = lines.slice(-REASONING_VISIBLE_ROWS);
+	const elided = dropped || rows.length !== lines.length;
+	return {
+		// Leading blank lines are dropped with the head they belonged to: a tail
+		// whose first painted line is empty spends a line of the window on
+		// nothing, and mid-stream the model's own paragraph breaks land there.
+		text: rows.join("\n").replace(LEADING_WHITESPACE, ""),
+		elided,
+	};
+}
+
 export type Row = {
 	record: TranscriptRecord;
 	showAvatar: boolean;
@@ -74,9 +155,13 @@ export type Row = {
  *    captioned. A STATEMENT row at the end is not the turn's work at all, so the
  *    answer before it still closes the turn and keeps its caption
  *    (`isStatementRow`, design round 2's D2-1);
- * 2. that row is a settled assistant record with text in it, which is
- *    `paintsSomething` plus the liveness bit — an unfinished answer closes a turn
- *    without being an answer.
+ * 2. that row is a settled assistant record with TEXT in it — prose, which is
+ *    `paintsSomething` plus the liveness bit plus the ANSWER bit. An unfinished
+ *    answer closes a turn without being an answer, and so does a row whose only
+ *    content is the model's reasoning: `paintsSomething` counts a reasoning block
+ *    as content (an interrupted call keeps the thinking it was stopped during),
+ *    but that block is not the answer this caption stamps, so the text test is
+ *    stated here rather than inherited from the paint predicate.
  *
  * A turn is the records between two user records. The user turn itself is never
  * a candidate: its bubble carries the caption on the other rail.
@@ -93,7 +178,12 @@ export function closingAnswerIds(
 	let last: TranscriptRecord | null = null;
 	for (const record of records) {
 		if (record.kind === "user") {
-			if (last !== null && last.kind === "assistant" && !last.streaming) {
+			if (
+				last !== null &&
+				last.kind === "assistant" &&
+				!last.streaming &&
+				last.text
+			) {
 				closing.add(last.id);
 			}
 			last = null;
@@ -101,7 +191,12 @@ export function closingAnswerIds(
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
 	}
-	if (last !== null && last.kind === "assistant" && !last.streaming) {
+	if (
+		last !== null &&
+		last.kind === "assistant" &&
+		!last.streaming &&
+		last.text
+	) {
 		closing.add(last.id);
 	}
 	return closing;
@@ -244,7 +339,25 @@ export function isStatementRow(record: TranscriptRecord): boolean {
  */
 export function paintsSomething(record: TranscriptRecord): boolean {
 	if (record.kind !== "assistant") return true;
-	return Boolean(record.text);
+	/*
+	 * Reasoning paints, and it is the one addition to the rule that is not a
+	 * counterexample to the section above it.
+	 *
+	 * What that section removed was a row that said "Writing" — a second liveness
+	 * label for a fact the working line was already stating, in the answer's own
+	 * register. Reasoning is not a label about the work: it is the model's own
+	 * words, arriving one fragment at a time, and while it is arriving there is
+	 * nothing else on screen at all. It is the one thing this row can paint before
+	 * it has an answer.
+	 *
+	 * The consequence is deliberate and is why the paint is bounded: a call whose
+	 * reasoning is the only content it has left (an interrupted turn) is a row, so
+	 * a reader who stops a long-thinking turn keeps the thinking instead of
+	 * watching it vanish. On a settled row with neither prose nor reasoning — the
+	 * tool-only assistant row the invisible-row trap is about — this is still
+	 * false, and the row still paints nothing.
+	 */
+	return Boolean(record.text || record.reasoning);
 }
 
 /**

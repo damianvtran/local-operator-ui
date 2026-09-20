@@ -12,6 +12,8 @@ export { AskOptions } from "./ask-options";
 export type { AskOptionsProps } from "./ask-options";
 export { AgentReasoning } from "./agent-reasoning";
 export type { AgentReasoningProps } from "./agent-reasoning";
+export { LiveReasoning } from "./live-reasoning";
+export type { LiveReasoningProps } from "./live-reasoning";
 export { DiffBlock } from "./diff-block";
 export type { DiffBlockProps } from "./diff-block";
 export { SecurityNotice } from "./security-notice";

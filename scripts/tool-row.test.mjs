@@ -419,7 +419,7 @@ test("the app window's CSP admits the blob images the attachment path produces",
 const rowsBundle = await build({
 	stdin: {
 		contents:
-			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, closingAnswerIds, reasoningTail, REASONING_TAIL_CHARS, REASONING_VISIBLE_ROWS, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -442,6 +442,10 @@ const {
 	isTraceLike,
 	ledgerName,
 	paintsSomething,
+	closingAnswerIds,
+	reasoningTail,
+	REASONING_TAIL_CHARS,
+	REASONING_VISIBLE_ROWS,
 	splitFirstLine,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
@@ -472,6 +476,7 @@ const emptyAssistant = (id) => ({
 	id,
 	ts: 1,
 	text: "",
+	reasoning: "",
 	streaming: false,
 	stopReason: "toolUse",
 	error: false,
@@ -2957,4 +2962,129 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
 		2,
 		`the glyph and the name read one expression each — got ${calls.length}`,
 	);
+});
+
+/*
+ * The model's reasoning block: what a row paints of it, and when the row exists
+ * at all.
+ *
+ * Both are rules with a right answer — `reasoning-rows.ts` ports the TUI's
+ * bounded tail, and `paintsSomething` decides whether a record becomes a row —
+ * so they are asserted here rather than only looked at in a frame. The failures
+ * they guard are the two visible ones: a block that paints from the FIRST
+ * fragment never moves, and a cut made at an arbitrary character opens mid-word.
+ */
+
+test("a reasoning tail is bounded by characters and by rows, and says when it is", () => {
+	const short = reasoningTail("The train leaves at 14:05.");
+	assert.deepEqual(short, {
+		text: "The train leaves at 14:05.",
+		elided: false,
+	});
+
+	// Exactly at the cap is not yet a cut: the mark is what tells the reader the
+	// block is a window, and a false one on a complete block is a lie.
+	const exact = "a".repeat(REASONING_TAIL_CHARS);
+	assert.deepEqual(reasoningTail(exact), { text: exact, elided: false });
+
+	// Over the cap: the last cap-sized slice, cut at a word boundary so the
+	// window does not open mid-word.
+	const long = "alpha ".repeat(Math.ceil(REASONING_TAIL_CHARS / 6) + 50);
+	const capped = reasoningTail(long);
+	assert.equal(capped.elided, true);
+	assert.ok(long.endsWith(capped.text), "the tail is the text's own end");
+	assert.ok(
+		capped.text.length < REASONING_TAIL_CHARS,
+		"the cut spends a few characters landing on a boundary",
+	);
+	assert.equal(
+		long[long.length - capped.text.length - 1],
+		" ",
+		"the window opens at a boundary, not inside a word",
+	);
+	assert.equal(capped.text.startsWith("alpha"), true);
+
+	// A row window on top of the character cap: the painted block cannot exceed
+	// the line budget however long the model thinks, which is what keeps the
+	// answer below it from being pushed around by a flush.
+	const many = "line\n".repeat(40).trimEnd();
+	const rowed = reasoningTail(many);
+	assert.equal(rowed.text.split("\n").length, REASONING_VISIBLE_ROWS);
+	assert.equal(rowed.elided, true);
+	assert.equal(rowed.text.split("\n").at(-1), "line");
+
+	// Mid-stream the model's own paragraph break lands at the head of the window
+	// and would spend a painted line on nothing.
+	assert.equal(
+		reasoningTail("\n\n  \nsecond paragraph").text,
+		"second paragraph",
+	);
+	// A fragment that is all whitespace paints nothing at all.
+	assert.equal(reasoningTail("\n \n").text, "");
+});
+
+test("a reasoning block is a row; a settled record with nothing in it still is not", () => {
+	const live = {
+		kind: "assistant",
+		id: "a1",
+		ts: 1,
+		text: "",
+		reasoning: "Weighing two options.",
+		streaming: true,
+		stopReason: null,
+		error: false,
+	};
+	assert.equal(paintsSomething(live), true);
+	const rows = buildRows([live], []);
+	assert.deepEqual(
+		rows.map((row) => row.record.id),
+		["a1"],
+		"the call's reasoning is what the reader has, so the row exists",
+	);
+
+	// The interrupted turn: settled, no answer, and the thinking is the whole of
+	// what it produced.
+	const stopped = { ...live, streaming: false, stopReason: "aborted" };
+	assert.equal(paintsSomething(stopped), true);
+	assert.deepEqual(
+		buildRows([stopped], []).map((row) => row.record.id),
+		["a1"],
+	);
+
+	// And the invisible-row trap is unchanged: nothing at all paints nothing.
+	assert.equal(
+		paintsSomething({ ...live, reasoning: "", streaming: false }),
+		false,
+	);
+	assert.deepEqual(
+		buildRows([{ ...live, reasoning: "", streaming: false }], []),
+		[],
+	);
+});
+
+test("a row whose only content is reasoning does not close a turn", () => {
+	// The caption is the timestamp of the answer the reader is being handed. A
+	// reasoning-only row is content (`paintsSomething` says so, so an interrupted
+	// turn keeps its thinking) but it is not an answer, and stamping a turn's
+	// completion onto it would time the thinking and call it the reply.
+	const reasoningOnly = {
+		kind: "assistant",
+		id: "a1",
+		ts: 1,
+		text: "",
+		reasoning: "Weighing two options.",
+		streaming: false,
+		stopReason: "aborted",
+		error: false,
+	};
+	const records = [
+		{ kind: "user", id: "u1", ts: 1, text: "go", images: [] },
+		reasoningOnly,
+	];
+	assert.deepEqual([...closingAnswerIds(records)], []);
+
+	// The same turn once it has an answer: the prose row closes it, and it is
+	// still the row that carries the caption.
+	const answered = { ...reasoningOnly, text: "Here is the answer." };
+	assert.deepEqual([...closingAnswerIds([records[0], answered])], ["a1"]);
 });

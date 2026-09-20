@@ -3759,3 +3759,270 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 		"a settled row is whole, and the gap marks nothing on it",
 	);
 });
+
+/*
+ * The model's reasoning channel: the piece of the time-to-first-token work that
+ * lands on this surface.
+ *
+ * The runtime has always received the model's reasoning and until now it
+ * reached no front end at all — the desktop waited for the first TEXT token,
+ * measured at p50 3,067 ms from submit with 10 ms of local work in front of it.
+ * `reasoning_delta` is `{message_id, delta}`, one fragment per token, never an
+ * accumulated body and never persisted, and the rules asserted below are the
+ * whole of how this reducer handles it: append to the call's own record, retire
+ * when the answer starts, keep it only where nothing replaced it.
+ *
+ * What a durable row can carry is asserted here too, because the reduction has
+ * a wrong answer that would be invisible: reasoning that survived a history read
+ * would be a claim to permanence the producer's contract explicitly forbids.
+ */
+
+/** One reasoning fragment, in the producer's own shape. */
+const chunk = (id, delta) => ({
+	type: "reasoning_delta",
+	message_id: id,
+	delta,
+});
+
+/** A transcript with one assistant call open, in flight. */
+const openCall = (id = "a1") =>
+	applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant(id, "") },
+		1,
+	);
+
+test("reasoning appends to the call's own record, and never mints a row", () => {
+	let state = openCall();
+	const before = state.records[0];
+	for (const fragment of [
+		"The train leaves ",
+		"at 14:05. ",
+		"First leg: 3 h.",
+	]) {
+		state = applyEvent(state, chunk("a1", fragment), 2);
+	}
+	assert.equal(
+		state.records.length,
+		1,
+		"one record for one model call, however many fragments arrive",
+	);
+	const [a1] = state.records;
+	assert.equal(a1.id, "a1");
+	assert.equal(a1.kind, "assistant");
+	assert.equal(a1.reasoning, "The train leaves at 14:05. First leg: 3 h.");
+	// The reasoning channel is not the answer's: the record still has no prose,
+	// and it is still the same in-flight call the answer will land in.
+	assert.equal(a1.text, "");
+	assert.equal(a1.streaming, true);
+	// The row is re-minted per fragment (its content changed), so the identity
+	// claim is about the RECORD LIST, not the record object: nothing grew a tail.
+	assert.notEqual(state.records[0], before);
+});
+
+test("a fragment for a call this viewer never started mints the row, without claiming a prefix", () => {
+	// The seed cannot carry reasoning — it is never persisted, so the snapshot's
+	// `live_events` fold has none — so this is the only way a viewer that
+	// attached mid-reasoning gets a row for it.
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		chunk("a9", "Thinking about it."),
+		5,
+	);
+	assert.equal(state.records.length, 1);
+	const [a9] = state.records;
+	assert.equal(a9.kind, "assistant");
+	assert.equal(a9.reasoning, "Thinking about it.");
+	assert.equal(a9.text, "");
+	assert.equal(a9.streaming, true);
+	// The mark is the ANSWER's claim (`Earlier text of this answer is not on
+	// screen`); a row with no answer yet is not missing a prefix of one.
+	assert.equal(a9.truncated, undefined);
+});
+
+test("the answer retires the reasoning, and a fragment after it is refused", () => {
+	let state = openCall();
+	state = applyEvent(
+		state,
+		chunk("a1", "48 km at 4 km/h is twelve hours. "),
+		2,
+	);
+	assert.equal(state.records[0].reasoning.length > 0, true);
+
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "The arrival",
+			message: assistant("a1", ""),
+		},
+		3,
+	);
+	const answered = state.records[0];
+	assert.equal(answered.text, "The arrival");
+	assert.equal(
+		answered.reasoning,
+		"",
+		"the first text of the call's own message retires its reasoning",
+	);
+
+	// Models do interleave a thought with text. A later fragment must not
+	// re-open the block under prose the reader is already looking at.
+	const after = applyEvent(state, chunk("a1", "Actually, let me re-check."), 4);
+	assert.equal(after, state, "a refused fragment returns the same state");
+	assert.equal(after.records[0].reasoning, "");
+});
+
+test("a settled call refuses a replayed fragment, so a replay cannot reopen it", () => {
+	let state = openCall();
+	state = applyEvent(state, chunk("a1", "Some thinking."), 2);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Done.") },
+		3,
+	);
+	const settled = state.records[0];
+	assert.equal(settled.reasoning, "", "a settled row carries no reasoning");
+	const replayed = applyEvent(state, chunk("a1", "Some thinking."), 4);
+	assert.equal(replayed, state, "the replay is a no-op");
+});
+
+test("agent_end retires the reasoning on a clean turn and freezes it on an abort", () => {
+	let clean = openCall();
+	clean = applyEvent(clean, chunk("a1", "Half a thought."), 2);
+	clean = applyEvent(clean, { type: "agent_end", generation: "1" }, 3);
+	assert.equal(
+		clean.records[0].reasoning,
+		"",
+		"a clean end with nothing painted retires the transient block",
+	);
+	assert.equal(clean.records[0].streaming, false);
+
+	let aborted = openCall();
+	aborted = applyEvent(aborted, chunk("a1", "Half a thought."), 2);
+	aborted = applyEvent(
+		aborted,
+		{ type: "agent_end", generation: "1", aborted: true },
+		3,
+	);
+	const stopped = aborted.records[0];
+	assert.equal(
+		stopped.reasoning,
+		"Half a thought.",
+		"an abort keeps the thinking, because nothing replaced it",
+	);
+	assert.equal(stopped.streaming, false, "and stops it growing");
+	assert.equal(stopped.stopReason, "aborted");
+});
+
+test("an aborted end keeps what an ending message kept, and a completed one does not", () => {
+	const stopped = applyEvent(
+		openCall(),
+		{
+			type: "message_end",
+			message: { ...assistant("a1", ""), stop_reason: "aborted" },
+		},
+		2,
+	);
+	// No fragments ever arrived, so there is nothing to keep — the field is the
+	// same empty string either way, and this is the no-reasoning path.
+	assert.equal(stopped.records[0].reasoning, "");
+
+	let withThinking = openCall();
+	withThinking = applyEvent(
+		withThinking,
+		chunk("a1", "Weighing two options."),
+		2,
+	);
+	const aborted = applyEvent(
+		withThinking,
+		{
+			type: "message_end",
+			message: { ...assistant("a1", ""), stop_reason: "aborted" },
+		},
+		3,
+	);
+	assert.equal(aborted.records[0].reasoning, "Weighing two options.");
+	assert.equal(aborted.records[0].stopReason, "aborted");
+
+	const completed = applyEvent(
+		withThinking,
+		{ type: "message_end", message: assistant("a1", "") },
+		4,
+	);
+	assert.equal(
+		completed.records[0].reasoning,
+		"",
+		"a call that ended without an abort has given way",
+	);
+});
+
+test("a durable row carries no reasoning, and a history read cannot resurrect one", () => {
+	let state = openCall();
+	state = applyEvent(state, chunk("a1", "live thinking"), 2);
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a1",
+				ts: 1,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "The answer.") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const a1 = state.records.find((record) => record.id === "a1");
+	assert.equal(a1.text, "The answer.");
+	assert.equal(a1.reasoning, "");
+});
+
+test("reasoning never touches the answer's text, and the no-reasoning path is unchanged", () => {
+	let state = openCall();
+	state = applyEvent(state, chunk("a1", "thinking only"), 2);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Hello!", message: assistant("a1", "") },
+		3,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		4,
+	);
+	const [a1] = state.records;
+	assert.equal(a1.text, "Hello!");
+	assert.equal(a1.reasoning, "");
+	assert.equal(a1.streaming, false);
+	/*
+	 * And a turn that never reasons produces exactly the record it produced
+	 * before this change, field for field: the only difference is the empty
+	 * string, which is what the paint predicate and the view both read as "no
+	 * reasoning at all".
+	 */
+	let plain = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	plain = applyEvent(
+		plain,
+		{ type: "message_update", delta: "Hello!", message: assistant("a1", "") },
+		2,
+	);
+	// `truncated: undefined` is the key the reducer has always written for a
+	// delta-only stream (`shallowEqual` counts keys, so the shape is stated
+	// rather than omitted) and is asserted here so a later edit that changes
+	// which keys an assistant record carries has to say so.
+	assert.deepEqual(plain.records[0], {
+		kind: "assistant",
+		id: "a1",
+		ts: 1,
+		text: "Hello!",
+		reasoning: "",
+		streaming: true,
+		truncated: undefined,
+		stopReason: null,
+		error: false,
+	});
+});

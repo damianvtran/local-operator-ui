@@ -79,6 +79,7 @@ import {
 	AgentQuestion,
 	AskOptions,
 	DiffBlock,
+	LiveReasoning,
 	TraceLine,
 } from "../components/trace";
 import {
@@ -529,6 +530,26 @@ const AssistantRow = memo(function AssistantRow({
 				data-lo-streaming={record.streaming || undefined}
 				data-lo-truncated={record.truncated || undefined}
 			>
+				{/*
+				 * THE MODEL'S REASONING, ABOVE THE ANSWER IT IS ABOUT TO WRITE.
+				 *
+				 * First child of the row, because that is the only position that can carry
+				 * it: reasoning precedes the answer in time and the ordering is the same on
+				 * every other front end (the mobile projection orders its reasoning row above
+				 * the assistant row the same call opened; the TUI draws its block above the
+				 * answer and the flow review verified that ordering in every frame).
+				 *
+				 * It unmounts by itself. The reducer clears `reasoning` the moment this row
+				 * has text, so a call with an answer paints the answer and nothing else — the
+				 * block never sits beside prose, never grows under a line the reader is
+				 * reading, and the row's own gap tier and avatar do not change as it goes
+				 * (both are decided from the RECORD, which is the same record before and
+				 * after). Nothing here needs to know any of that.
+				 *
+				 * The one ending that keeps it is an abort, where the thinking is the whole
+				 * of what the turn produced and `Stopped before finishing` renders under it.
+				 */}
+				{record.reasoning ? <LiveReasoning text={record.reasoning} /> : null}
 				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				{/*
 				 * AN HONEST ROW FOR A MESSAGE THIS VIEWER ONLY PARTLY RECEIVED.
@@ -557,8 +578,15 @@ const AssistantRow = memo(function AssistantRow({
 				 * chunk is 4px while the row itself takes the `mark` gap tier above it
 				 * (`transcript-rows.ts`), which is what attaches the line to THIS row
 				 * rather than to the answer above it (design round 1, D1).
+				 *
+				 * `record.text` is part of the condition, and it is the ANSWER test rather
+				 * than a restatement of the paint test. `paintsSomething` counts a reasoning
+				 * block as content — an interrupted call keeps the thinking it was stopped
+				 * during — so a row whose only content is reasoning reaches this point, and
+				 * both sentences above are about an answer it does not have. Gating on text
+				 * is what keeps this caption true of the row it is on.
 				 */}
-				{record.truncated && (
+				{record.truncated && record.text && (
 					<p className={cn("mb-1 text-ink-dim text-meta")}>
 						{record.truncated === "prefix"
 							? "Earlier text of this answer is not on screen"

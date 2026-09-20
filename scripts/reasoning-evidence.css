@@ -1,0 +1,143 @@
+/*
+ * Stylesheet for the reasoning-stream evidence harness.
+ *
+ * Same reason as `submit-latency-evidence.css`: Tailwind v4 detects source
+ * files relative to the VITE ROOT, and this harness's root is `scripts/`, so
+ * without `@source` pointing back at the renderer tree the page comes out as
+ * correct markup with no design system — a picture of nothing. The app's own
+ * stylesheet is imported rather than restated so the harness resolves the same
+ * roles, radii and type ramp the product does, which is the whole point of
+ * photographing this surface: the block's ink is part of the claim.
+ */
+
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
+
+/*
+ * The app gives the chat surface the full window. `CanonicalTranscript` is the
+ * pane's own scroller, so it needs a box with a definite height to have a
+ * scroll region at all — without this the page collapses to content height and
+ * there is nothing to scroll, which is the state the scroll claim is about.
+ */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+/*
+ * The harness chrome: the transcript on the left at the app's own width, the
+ * probe readout on the right. Deliberately beside the frame rather than behind
+ * a click, so every screenshot carries the numbers that back it — a frame whose
+ * measurements live somewhere else is a frame a reader has to take on trust.
+ *
+ * No app token is used here: this is rig chrome, not product surface, and
+ * dressing it in the design system would invite a reader to read it as one.
+ */
+.lo-harness {
+	display: flex;
+	/* The stage plus the probe column, so neither is squeezed by a narrow window:
+	   the rig's own boxes are fixed above and this keeps them from being clipped
+	   into each other. */
+	min-width: 1360px;
+	height: 100%;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	background: #101014;
+	color: #d8d8de;
+}
+.lo-harness__stage {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 16px;
+}
+/*
+ * `display: flex` + a definite height, because that is the box
+ * `CanonicalTranscript` is written for: its root is a flex COLUMN whose scroller
+ * absorbs the leftover height (`min-h-0`, not `h-full`) and the caller supplies
+ * the size. A block box here would give the scroller no height to absorb and
+ * therefore nothing to scroll, which would make the scroll check below
+ * meaningless rather than failing it.
+ */
+.lo-harness__frame {
+	display: flex;
+	/*
+	 * A FIXED size, deliberately, and not a responsive one.
+	 *
+	 * The window this rig runs in is the operator's own, so its geometry is not
+	 * the rig's to choose: it has been measured at 1280x720 and at 0x0 during one
+	 * afternoon, and a frame sized by `%` collapses to nothing in the second case
+	 * (observed: the transcript's `clientHeight` went to 32px, which makes every
+	 * scroll number meaningless while the capture still looks plausible). Pinned,
+	 * the frame is the app's own 900px column and a 620px pane whatever the window
+	 * is doing, so the frames are comparable across runs.
+	 */
+	width: 900px;
+	height: 620px;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px solid #2a2a32;
+	border-radius: 4px;
+}
+.lo-harness__controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	width: 900px;
+}
+.lo-harness__controls button {
+	padding: 4px 8px;
+	border: 1px solid #3a3a44;
+	border-radius: 3px;
+	background: #1c1c22;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+.lo-harness__controls button:disabled {
+	color: #6a6a74;
+	cursor: default;
+}
+.lo-harness__probe {
+	display: flex;
+	width: 360px;
+	min-width: 360px;
+	flex-direction: column;
+	gap: 6px;
+	overflow: auto;
+	padding: 12px;
+	border-left: 1px solid #2a2a32;
+	white-space: pre-wrap;
+}
+.lo-harness__probe h2 {
+	margin: 0;
+	font-size: 11px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #8f8f9a;
+}
+.lo-harness__probe table {
+	border-collapse: collapse;
+	width: 100%;
+}
+.lo-harness__probe th,
+.lo-harness__probe td {
+	padding: 1px 4px;
+	text-align: left;
+	font-weight: normal;
+}
+.lo-harness__probe th {
+	color: #8f8f9a;
+}
+.lo-harness__probe .lo-good {
+	color: #7fd18f;
+}
+.lo-harness__probe .lo-bad {
+	color: #e0827a;
+}
