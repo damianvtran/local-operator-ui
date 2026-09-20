@@ -2733,6 +2733,13 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the terminal's own `toggle_pin`, which is the write the TUI's `f10` makes — the cross-surface half of the same scene, and the only python this repository starts to WRITE a store rather than read one",
 	},
 	{
+		file: "scripts/reload-reanchor-evidence.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "reads the version an installed build generation carries by running that generation's own interpreter; it is a REAL install tree under the operator's home rather than a fixture, so the environment is stated rather than inherited",
+	},
+	{
 		file: "scripts/submit-latency.test.mjs",
 		name: "spawn",
 		index: 1,

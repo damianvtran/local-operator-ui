@@ -55,6 +55,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
 /*
@@ -288,7 +289,15 @@ function installedVersions() {
 						"-c",
 						"import importlib.metadata as m; print(m.version('local-operator'))",
 					],
-					{ encoding: "utf8", timeout: 60_000 },
+					/*
+					 * `pythonChildEnv()` and not the ambient environment: this runs a REAL
+					 * interpreter out of the operator's own install tree, and an inherited
+					 * `PYTHONPYCACHEPREFIX` is how a harness in this repository once mirrored 19
+					 * `.pyc` into an installed app (`scripts/python-child-env.mjs`). It is also
+					 * the one reason this rig carries a row in
+					 * `python-bytecode-cache.test.mjs`'s spawn table.
+					 */
+					{ encoding: "utf8", timeout: 60_000, env: pythonChildEnv() },
 				).trim();
 				return { name, root, version };
 			} catch {
