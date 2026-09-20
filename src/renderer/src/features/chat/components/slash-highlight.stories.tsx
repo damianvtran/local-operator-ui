@@ -841,29 +841,50 @@ export const SeededNameInstruction: Story = {
 };
 
 /**
- * The same command with its instruction spanning lines: **nothing is painted**,
- * and the frame exists to show that rather than to be skipped.
+ * The same command with its instruction spanning lines: **the runs ARE painted**,
+ * and the frame exists to show that as well as the tint it produces.
  *
- * The run rule computes both runs for this draft — the probe prints
- * `command+name` — and the PLAN is what withholds them: with the caret at the
- * end of the draft, `planSlashSubmission` answers `send`, because the token at
- * the caret is not a command. Enter really does post this draft as a message on
- * this host, and a tint that said otherwise would be the defect the rule's own
- * D6 note is about (the TUI paints it because the endpoint admits the draft as a
- * command; the desktop's planner is caret-dependent until the wire's own
- * `argument_shape` vocabulary lands, which is a separate change).
+ * THIS STORY'S CLAIM WAS THE INVERSE UNTIL THE LEADING-LINE RULE LANDED, and the
+ * correction is the record of what changed rather than a tidy-up. The run rule has
+ * always computed both runs for this draft (`command` `/team` and the name after
+ * it), and what used to withhold them was the PLAN: with the caret at the end of
+ * the draft, `planSlashSubmission` answered `send`, so the tint followed Enter and
+ * painted nothing, and the frame documented that as the honest picture of a draft
+ * Enter would post as a message.
  *
- * So this frame is the honest picture of the interaction rather than of the
- * rule: the same draft paints its two runs while the caret is inside the command
- * word, and paints nothing once the caret is in the instruction — which is what
- * Enter will do with each of those two states.
+ * It no longer does. With no token at the caret the planner now reads the LEADING
+ * line, and only for a word the endpoint says owns its tail whatever it says —
+ * `/team` is one, which is exactly the case this story depicts — so the plan for
+ * this draft is `reassemble`: the runs paint, and Enter stages the draft as one
+ * line for the user to read before running it. The `argumentShape` vocabulary is
+ * what says so; with no wire at all the free-text half of the registry answers
+ * instead, so an older backend reaches the same plan here.
+ *
+ * THE FRAMES BESIDE THIS STORY WERE RE-SHOT, and they now show what this docblock
+ * says. `docs/evidence/chat-slash-highlight/name-instruction-multiline/` was first
+ * captured while the planner still answered `send` for this draft, so those stills
+ * depicted the interaction this change removed; the round that closed the deferral
+ * re-took all twelve themes from this tree
+ * (`node scripts/capture-evidence.mjs <origin> --only=name-instruction-multiline
+ * --allow-backend`), which is the one state this change repaints. The manifest
+ * records that run itself rather than the sentence that used to stand here:
+ * `captureOrigin.wireVocabularyReShoot` carries the run's own record — `head` and
+ * `capturedAt` for when it ran, and the `srcTree`/`scriptsTree` of the tree the
+ * frames came from. The manifest's two TOP-LEVEL stamps are a different pair and
+ * mean something else: they are re-derived for the tree that SHIPS, which is why
+ * they move at every rebase and the `captureOrigin` entry does not (round 3,
+ * R3-2 — this sentence used to call them the capture's, which is the mistake that
+ * costs a re-stamp cycle). A
+ * still that contradicts the story it sits under is the defect class this
+ * paragraph exists to keep visible, so if this rule moves again, the frames move
+ * with it.
  */
 export const NameInstructionMultiline: Story = {
 	name: "name-instruction-multiline",
 	/*
 	 * Typed, so the caret ends where a user's would: at the end of the draft, in
 	 * the instruction. That is the state the plan reads, and the one this frame is
-	 * about.
+	 * about — and the state the leading-line rule exists for.
 	 */
 	play: async () => {
 		const field = await screen.findByLabelText("Message");
@@ -874,7 +895,7 @@ export const NameInstructionMultiline: Story = {
 		);
 	},
 	render: () => (
-		<Frame label="name-instruction-multiline — the caret is in the instruction, so Enter sends this draft and the tint follows it">
+		<Frame label="name-instruction-multiline — the caret is in the instruction, so Enter stages this draft on one line and the tint follows it">
 			<TypedDraft label="name-instruction-multiline" />
 		</Frame>
 	),

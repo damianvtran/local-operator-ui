@@ -609,3 +609,51 @@ test("the composer and the mirror both make the calls these pins describe", () =
 		"the mirror must step its ink through the same helper the pin exercises",
 	);
 });
+
+/*
+ * Q3-1: THE SEPARATOR CLASS THE TINT TOKENISES ON IS PYTHON'S. This file read `\s`
+ * while the planner read Python's set, so the five characters Python separates on
+ * and JavaScript does not ran a command with NO tint — 2,804 rows of a
+ * 3,652-draft sweep, against 0 once both read the one class. Asserted through the
+ * planner's own filter, because "a command executes with the colour affordance
+ * the reader was promised" is the property, not "a run exists".
+ */
+test("the tint tokenises on the Python separator class, not `\\s` (Q3-1)", () => {
+	for (const [name, separator] of [
+		["U+001C", "\u001c"],
+		["U+001D", "\u001d"],
+		["U+001E", "\u001e"],
+		["U+001F", "\u001f"],
+		["U+0085", "\u0085"],
+	]) {
+		for (const draft of [
+			`${separator}/mcp logout srv`,
+			// The IN-WORD position is the one that discriminates the word-end
+			// separator: with `\s` the word here is `mcp<sep>logout`, which names
+			// nothing, so no command run is emitted at all.
+			`/mcp${separator}logout srv`,
+		]) {
+			const painted = runsMatchingPlan(runs(draft), draft, {
+				sendsAsWritten: false,
+			});
+			assert.ok(
+				painted.some(
+					(r) => r.kind === "command" && draft.slice(r.start, r.end) === "/mcp",
+				),
+				`${name} in ${JSON.stringify(draft)} tints the command that runs`,
+			);
+		}
+	}
+	// The reverse sign: U+FEFF is NOT a separator, so the word is not the draft's
+	// first token and there is nothing for the tint to own.
+	for (const feff of ["\ufeff/mcp logout srv", "/mcp\ufefflogout srv"]) {
+		const painted = runsMatchingPlan(runs(feff), feff, {
+			sendsAsWritten: false,
+		});
+		assert.equal(
+			painted.some((r) => r.kind === "command"),
+			false,
+			`U+FEFF is a character in the word, not a separator (${JSON.stringify(feff)})`,
+		);
+	}
+});
