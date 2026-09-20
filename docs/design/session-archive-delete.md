@@ -124,10 +124,21 @@ because it "cost every title its 28px for a control used rarely", with the slot
 | **280 (default)** | **180 px** | 168 px | `pin 24x24, archive 24x24` |
 | **240 (clamp min)** | 140 px (shed) | **168 px** | `pin 0x0, archive 0x0, shared 24x24` |
 
-so `title = panel − 16 (the panel's p-2) − 28 × controls − 28 (the row's trailing
-status slot)`, with the shed firing below a 280px panel. The clamp is 240/360 with
-280 as the default (`chat-layout.tsx`), so the pair is drawn at every width a user
-reaches by default and shed at the one they reach by dragging all the way in.
+so `title = panel − 16 (the panel's p-2) − 28 × controls − 28`, where the fixed 28
+is the row's own `px-1` (8) + its LEADING status slot (`ChatSessionStatus`,
+`size-4` = 16) + the gap between them (4). **LEADING, corrected in round 2 (D14):**
+this record, the README and two source comments all called that slot the row's
+trailing one, and four lanes then quoted it as the reason a row carrying an unread
+mark has a narrower title. It does not, and the edges are not interchangeable —
+the mark is drawn inside that leading slot.
+
+**The shed is a BAND, not a width (round 2, D17).** The container query is
+`@max-[263px]` on the panel's CONTENT box, and the panel carries `p-2`, so it
+matches while the user's preference is at or below **278**: the pair is shed from
+the 240 clamp minimum up to 278 (39 of the 121 selectable widths) and holds from
+**279**. The frames photograph the two ends (280 and 240); the band's extent is
+the query's own arithmetic, and saying "below the 280 default" would be true of
+one edge and silent about the other.
 
 **A correction, and it is a correction of the round's own assumption.** The pair
 was expected to be worst on a row that ALSO carries an unread mark, on the reading
@@ -155,6 +166,45 @@ items (`Pin/Unpin conversation`, `Archive/Unarchive conversation`). It is
 deliberately NOT a second glyph and deliberately has no repeat-press guard — both
 of its acts are two clicks from the list (open, then choose), so the reflex the
 row guards protect against cannot reach a menu item.
+
+**And it is reserved at rest like the pair, which it was not at first (round 2,
+D10).** As shipped it was drawn at rest in the row's own ink and DIMMED when the
+pointer arrived: measured, 12.84:1 dark / 15.23:1 light at rest against 7.49:1 /
+7.95:1 under the pointer, while the two controls beside it reveal from `opacity-0`.
+On the one width where the title has least room, every row therefore wore a
+title-weight glyph and hovering made the affordance fainter rather than clearer.
+It now follows the pair's model — reserved at rest, revealed by the pointer or by
+focus — with the menu's own open state as a third way in, because the menu is a
+PORTAL and a pointer that opens it and leaves the row must not undraw the control
+the menu belongs to.
+
+**The row's hover ground belongs to the ROW, not to its button (round 2, D13).**
+`rowStyle` carries `hover:bg-row-hover`, which fires only while the pointer is over
+the button; the two sibling controls sit inside the row's box and outside its
+button, so moving onto either glyph dropped the ground the pointer was standing
+on — a pop under a pointer that never left the row. The ground is stated once more
+on the row's box and dropped while the row is the current one, exactly as the two
+controls drop their own.
+
+**The undo offer is a PANEL REGISTER, not a toast (round 2, D12), and the
+measurement is why.** As a toast it covered the composer's Send control in both
+palettes: the toast box spanned x 1001..1360.5, y 789..842.5 and Send sits at
+x 1307..1339, y 803..835, so the offer's own Undo landed exactly where Send had
+been, for the offer's whole life (up to 15 s). Two constraints could not both be
+met by a toast — the offer must never overlap the composer's interactive controls,
+and it must sit on the surface that performed the action — and the archive is
+performed from the sidebar (a row's control, the header's menu, a typed command),
+never from the composer. The register sits beside the list in the panel, so it
+cannot reach the composer at all, and the retirement rule is unchanged: it stands
+while the conversation still holds the state the offer was taken from. The driver
+asserts both halves on the frames (the register is inside the panel, and disjoint
+from Send).
+
+**The confirmation's Cancel carries its ring on `:focus`, not only
+`:focus-visible` (round 2, D6).** The dialog moves focus to Cancel on purpose and
+the app's ring is `:focus-visible`-only, which a programmatic focus does not
+match — so the one state where the keyboard is deliberately parked on the safe
+action drew no ring while Enter on that same button cancelled.
 
 ## What was deliberately NOT built
 

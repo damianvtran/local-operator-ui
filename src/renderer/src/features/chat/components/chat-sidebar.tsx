@@ -169,8 +169,12 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * minus its own 16px, so the shed threshold for a 280px panel is 264. And the
  * comparison is INCLUSIVE in the direction that matters (`@max-[N]` compiles to
  * `not (min-width: N)`), so the bound sits one pixel under 264 rather than on it -
- * at 264 the pair is still drawn. Measured: the pair is drawn at the 280 default
- * and shed at the 240 clamp minimum, with the frames to show both.
+ * at 264 the pair is still drawn. Measured, and the measurement is a BAND rather
+ * than a width (design round 2, D17): the pair is shed from the 240 clamp minimum
+ * up to 278 - 39 of the 121 selectable widths - and holds from 279. The frames
+ * show its two ends (280 and 240), which is what the rule turns on; the band's own
+ * extent is the container query's, read off the arithmetic above rather than
+ * photographed at every width in it.
  *
  * Measured at both widths on a row that carries a status and on one that also
  * carries an unread mark. THIS COMMENT USED TO CLAIM THE MARK COSTS TITLE WIDTH,
