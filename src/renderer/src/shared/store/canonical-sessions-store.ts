@@ -4,7 +4,6 @@ import {
 	DesktopControlError,
 	UserFacingError,
 	desktopResult,
-	isSessionNotFound,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
@@ -1902,6 +1901,24 @@ function mergeRow(
  * no mark, and neither does an ABSENT status (a locally created row carries
  * none until the next catalogue read): unknown is not unread.
  */
+/**
+ * Whether a failure means THE CONVERSATION is gone, as opposed to unreadable.
+ *
+ * A NAMED SIBLING of the transport's `isAgentNotFound`, and it lives here because
+ * its only caller does (agent review round 3, N4). The desktop plane answers 404
+ * for a session id this host does not have, and `openSession` depends on the
+ * DIFFERENCE between that and a transient failure: a 404 keeps the view on the
+ * target so the missing-session notice explains it, while a 503 rolls back with a
+ * sentence. Inlined as a bare `instanceof`/`status === 404` at the call site, that
+ * distinction had no name and no test could read it; named and exported here, the
+ * rule and its argument sit in one place - and this module is what the transport
+ * stubs in the suite bundle, so a fixture cannot silently lose it the way a new
+ * named import from the transport module would.
+ */
+export function isSessionNotFound(error: unknown): boolean {
+	return error instanceof DesktopControlError && error.status === 404;
+}
+
 export type UnreadMarkKind = "complete" | "error" | "interrupted";
 
 export const unreadMarkKind = (
@@ -3524,6 +3541,34 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				activeSessionId: state.activeSessionId,
 				activeDraftKey: state.activeDraftKey,
 				cwd: state.cwd,
+				/*
+				 * THE TOMBSTONES GO WITH IT, SO THE UI'S OWN GONE-STATE SURVIVES A
+				 * RELOAD (QA round 2's Q1, second half).
+				 *
+				 * A daemon that keeps answering 200 for a conversation it has just been
+				 * told to delete - which is what QA measured, and what the round sent to
+				 * the backend - leaves the client nothing to read the deletion from after
+				 * a reload: the guard read succeeds, the transcript hydrates, and the pane
+				 * offers a writable composer over a conversation the user removed. What
+				 * THIS window did, it knows, and that is a durable fact about its own act
+				 * rather than a claim about the store: persisting it is what lets the pane
+				 * land on the missing-session notice on the first paint after a reload.
+				 *
+				 * `at` IS DELIBERATELY NOT PERSISTED, and 0 is the correct value for a
+				 * restored one: the stamp orders a tombstone against reads that were in
+				 * flight INSIDE one process, and a reload has none. Written as 0, any page
+				 * the fresh process asks for outranks the record, so the resurrection rule
+				 * still revives a conversation the store really does carry again - a
+				 * restored tombstone self-heals on the first page that lists the id, while
+				 * a page that omits it leaves the id hidden, which is the same rule the
+				 * live process applies one second earlier.
+				 */
+				forgotten: Object.fromEntries(
+					Object.entries(state.forgotten).map(([id, fact]) => [
+						id,
+						{ at: 0, title: fact.title },
+					]),
+				),
 				drafts: Object.fromEntries(
 					Object.entries(state.drafts).map(([key, draft]) => [
 						key,

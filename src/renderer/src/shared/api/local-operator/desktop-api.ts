@@ -376,23 +376,6 @@ export function isAgentNotFound(error: unknown): boolean {
 }
 
 /**
- * Whether a failure means THE CONVERSATION is gone, as opposed to unreadable.
- *
- * The same predicate as `isAgentNotFound` above, named for the other question it
- * answers, and the naming is the point (agent review round 3, N4): the desktop
- * plane answers 404 for a session id this host does not have, and the store's
- * navigation depends on the DIFFERENCE between that and a transient failure - a
- * 404 keeps the view on the target so the missing-session notice explains it,
- * while a 503 rolls back with a sentence. Inlined as
- * `error instanceof DesktopControlError && error.status === 404` at the call site,
- * that distinction was a literal nobody could name (and no test could read);
- * expressed here, the rule and its argument are in one place.
- */
-export function isSessionNotFound(error: unknown): boolean {
-	return isAgentNotFound(error);
-}
-
-/**
  * Whether the failure is the backend not answering at all, which is the one
  * case where "try again once the local server is running" is true. Same
  * reading of the status as the compatibility banner: `null` is a transport
