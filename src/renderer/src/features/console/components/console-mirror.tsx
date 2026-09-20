@@ -196,6 +196,46 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		let streaming = false;
 		const buffered: Uint8Array[] = [];
 
+		/*
+		 * THE HUMAN'S KEYSTROKES, and this line is the whole of the pane's input path
+		 * (§10.5, §13.4).
+		 *
+		 * `onData` IS THE REAL ENCODER, and the design says so in one sentence: "human
+		 * typing needs no encoder we own: the mirror's `@xterm/xterm` DOM handler
+		 * produces bytes for a real keystroke". So the pane sends what xterm produced —
+		 * `\r` for Enter, `\x7f` for Backspace, `\x1b[A` for Up, `\x03` for Ctrl-C —
+		 * and `console_keys` is deliberately NOT on this path: that namespace is the
+		 * AGENT's named-key vocabulary (§10.5's encoder, which exists because
+		 * `@xterm/headless` cannot encode). Routing the pane through it would add a
+		 * second encoder to the one path the design says needs none, and the two would
+		 * drift the moment a key's spelling changed.
+		 *
+		 * `paste` IS LEFT TO XTERM, which is not an omission: xterm wraps pasted text in
+		 * `\x1b[200~ … \x1b[201~` itself, and only when the program enabled
+		 * `modes.bracketedPasteMode` (its own `bracketedPasteMode` state) — so the guard
+		 * is already in the bytes by the time they arrive here, and main's `paste` flag
+		 * (which wraps only when the RECORD's mode says so, §10.5) is for the agent path
+		 * where no terminal is in the loop. Sending `paste: true` from the pane would
+		 * double-wrap.
+		 *
+		 * A REFUSED WRITE IS SWALLOWED, deliberately: a surface can be closed between
+		 * the keystroke and the call, and a rejected promise per character would be an
+		 * unhandled rejection for a state the pane's own listing already shows.
+		 */
+		const offData = terminal.onData((data) => {
+			void api.input(surface, data).catch(() => {});
+		});
+		/*
+		 * NOTHING IS WIRED TO `onBinary`, and that is a boundary rather than an
+		 * oversight: the preload's `console-input` carries TEXT (`input(surface,
+		 * text)`, one argument because that is the shape §10.5's "human typing needs
+		 * no encoder" needs), and a byte sequence sent through it would be encoded as
+		 * UTF-8 on the way to the pty — a decode step that changes 8-bit input into
+		 * something else. Reaching that path needs a preload channel that carries
+		 * bytes, which is PR A's wire and not this pane's; and the pane does not
+		 * enable the mode that raises it. Recorded here so the next reader finds the
+		 * reason rather than a second, quieter way of sending input. */
+
 		const offOutput = api.onOutput((payload) => {
 			if (payload.surface !== surface) return;
 			const bytes = decodeBytes(payload.bytes_base64);
@@ -234,6 +274,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			disposed = true;
 			offOutput();
 			offExit();
+			offData.dispose();
 			void api.unsubscribe(surface).catch(() => {});
 		};
 	}, [terminal, surface, bytes]);
