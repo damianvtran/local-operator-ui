@@ -330,34 +330,32 @@ const chatRows = () =>
  * consecutive samples to be identical before the shutter opens.
  */
 const layoutSettled = () =>
-	waitFor(
-		() => {
-			const sample = () => {
-				const panel = document.querySelector<HTMLElement>(
-					'[data-sidebar-region="chats"]',
-				);
-				const entities = document.querySelector<HTMLElement>(
-					'[data-sidebar-region="entities"]',
-				);
-				const separator = document.querySelector<HTMLElement>(
-					'[data-sidebar-split] [role="separator"]',
-				);
-				return [
-					panel ? Math.round(panel.getBoundingClientRect().height) : -1,
-					entities ? Math.round(entities.getBoundingClientRect().height) : -1,
-					separator?.getAttribute("aria-valuenow") ?? "none",
-				].join("/");
-			};
-			(globalThis as { __sidebarSamples?: string[] }).__sidebarSamples = [
-				...((globalThis as { __sidebarSamples?: string[] }).__sidebarSamples ?? []),
-				sample(),
-			].slice(-3);
-			const samples = (globalThis as { __sidebarSamples?: string[] })
-				.__sidebarSamples as string[];
-			return samples.length === 3 && new Set(samples).size === 1;
-		},
-		4_000,
-	);
+	waitFor(() => {
+		const sample = () => {
+			const panel = document.querySelector<HTMLElement>(
+				'[data-sidebar-region="chats"]',
+			);
+			const entities = document.querySelector<HTMLElement>(
+				'[data-sidebar-region="entities"]',
+			);
+			const separator = document.querySelector<HTMLElement>(
+				'[data-sidebar-split] [role="separator"]',
+			);
+			return [
+				panel ? Math.round(panel.getBoundingClientRect().height) : -1,
+				entities ? Math.round(entities.getBoundingClientRect().height) : -1,
+				separator?.getAttribute("aria-valuenow") ?? "none",
+			].join("/");
+		};
+		(globalThis as { __sidebarSamples?: string[] }).__sidebarSamples = [
+			...((globalThis as { __sidebarSamples?: string[] }).__sidebarSamples ??
+				[]),
+			sample(),
+		].slice(-3);
+		const samples = (globalThis as { __sidebarSamples?: string[] })
+			.__sidebarSamples as string[];
+		return samples.length === 3 && new Set(samples).size === 1;
+	}, 4_000);
 
 type SettleSpec = {
 	entities?: string[] | "absent";
