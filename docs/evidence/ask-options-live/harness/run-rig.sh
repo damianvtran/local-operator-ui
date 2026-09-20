@@ -10,11 +10,15 @@
 # <order>      cleared-first | delivered-first | -
 # <resolution> cleared | refused
 #
-# The <expect> list is the DRIVER's own vocabulary, and it has to be: an
-# unrecognised value falls through the driver's contradiction chain to "no
-# contradiction", so a reader who invents one here gets a run that prints success
-# and asserts nothing (design round 2, D8). `scripts/click-proof.mjs` is the list;
-# this line is a copy of it.
+# The <expect> list is the DRIVER's own vocabulary, and it has to be: a value the
+# driver does not know used to fall through its contradiction chain to "no
+# contradiction", so a reader who invented one here got a run that printed success
+# and asserted nothing (design round 2, D8). THAT IS NO LONGER POSSIBLE - the
+# driver checks the value before anything else runs and exits 2 with it named
+# beside the ones it accepts (agent review round 3, C; QA round 3, Q3) - so this
+# line is a copy kept honest by `scripts/click-proof-expect.test.mjs`, which holds
+# it, the driver's list and the driver's sentence map to each other rather than
+# trusting any of the three.
 #
 # WHY THIS IS COMMITTED. The frames below are re-derivable from the repository or
 # they are not evidence: an earlier round found the set could not be re-taken from

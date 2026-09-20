@@ -140,6 +140,12 @@ const EXPECT_ORDER = process.env.CLICK_PROOF_EXPECT_ORDER ?? "";
  *
  * `""` (unset) and `-` are legitimate: they mean "record without asserting",
  * which is how the set was first taken and what `EXPECT_ORDER`'s own `-` means.
+ *
+ * `CLICK_PROOF_EXPECT_ORDER` is deliberately NOT given the same list, and the
+ * reason is that its hole does not exist: a typo there computes
+ * `ORDER_VERDICTS[typo] === undefined`, which contradicts any recorded verdict,
+ * and `record.ordering` is written unconditionally - so a mistyped ORDER fails
+ * loudly. Do not "fix" the asymmetry by relaxing that arm (agent review round 4).
  */
 const KNOWN_EXPECTS = [
 	"",
