@@ -60,9 +60,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerWasSettledElsewhere, SETTLED_ELSEWHERE_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, QUESTION_MOVED_ON_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { buildSendPayload } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { buildSendPayload, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
@@ -105,8 +105,8 @@ const {
 	resolveNumericAnswer,
 	answerValue,
 	answerReport,
-	answerWasSettledElsewhere,
-	SETTLED_ELSEWHERE_MESSAGE,
+	answerRefusedWithoutACode,
+	QUESTION_MOVED_ON_MESSAGE,
 	unsentAnswerMessage,
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
@@ -116,6 +116,7 @@ const {
 	DesktopControlError,
 	UserFacingError,
 	buildSendPayload,
+	ANSWER_NOT_SENT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
 	CanonicalTranscript,
@@ -482,6 +483,70 @@ test("the gate branch resolves the TYPED text at the call site the app ships", (
 	);
 });
 
+test("the press's report is routed by the LIVE card's identity, at the call site the app ships", () => {
+	/*
+	 * Two things the `answerReport` assertions above cannot see, and both left this
+	 * file green when they were sabotaged (code review round 1, m1 and m2):
+	 *
+	 * - the SWITCH that consumes the report. `chat-page.tsx` is unreachable from
+	 *   this bundle's entry points, so swapping the `card` and `composer` arms —
+	 *   writing the refusal where nothing renders — changed nothing here. The same
+	 *   hole the `answerValue` call-site pin above was written for.
+	 * - the VALUE handed to it. `document.querySelector('[aria-label="Answer
+	 *   options"]') !== null` is true for ANY options card, including the card of
+	 *   the NEXT question in the same ask, which cannot render this press's refusal
+	 *   (design round 1, D1). The unit assertions take that boolean as an argument,
+	 *   so they cannot see what the app passes.
+	 *
+	 * Pinned by reading the shipped source, comments stripped first so a quotation
+	 * cannot satisfy it — the `window-mode.test.mjs` pattern this file already uses.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+	// The live half: the DOM read is ANDed with the live gate key, never used alone.
+	assert.match(
+		code,
+		/document\.querySelector\('\[aria-label="Answer options"\]'\) !== null &&\s*\n\s*liveGateKey\.current === key/,
+		"the pressed card is identified by the LIVE gate key beside the DOM read - a bare query is true for a card that cannot carry this press's refusal",
+	);
+	// ...and that key is the one the app is PAINTING with, not the handler's own
+	// closure (which is the value the deleted conjunct compared with itself).
+	assert.match(
+		code,
+		/liveGateKey\.current = gateKey;/,
+		"the live key must be carried from the render the app painted, not read from the closure the press started in",
+	);
+	// The composer arm: the sentence AND the report's own code, in that arm.
+	assert.match(
+		code,
+		/case "composer":[\s\S]{0,1200}?setSendError\(report\.message\);\s*\n\s*setSendErrorCode\(report\.code\);/,
+		"the composer arm must write the report's message AND its code - the code is what stops the alert inheriting the draft's failure",
+	);
+	// The card arm writes to the card's own hold, and only with this press's key.
+	assert.match(
+		code,
+		/case "card":[\s\S]{0,600}?setAnswerState\(\{ key, sending: false, refused: report\.refused \}\);/,
+		"the card arm must write the refusal onto the press's own card state",
+	);
+	// The sent arm says nothing: no sentence is written on the winning path.
+	assert.match(
+		code,
+		/case "sent":[\s\S]{0,900}?setAnswerState\(\{ key, sending: false, refused: null \}\);\s*\n\s*return;/,
+		"the sent arm settles the card's hold and returns without a sentence",
+	);
+	assert.doesNotMatch(
+		code,
+		/setSendError\(\s*(?:QUESTION_MOVED_ON_MESSAGE|SETTLED_ELSEWHERE_MESSAGE)/,
+		"the sentence is chosen by `answerReport`, never written by the call site",
+	);
+});
+
 test("the gate's focus restore refuses a composer the user has taken", () => {
 	/*
 	 * The delta's one new decision, and the one it added the hard way: handing
@@ -598,11 +663,21 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	 */
 	const UNSENT =
 		"Your answer was not sent. The request could not be completed.";
-	// The owner's own refusal: 409, and no typed code (the probe in
-	// `harness/probe-answer-exclusivity.py` shows every loser gets this shape).
+	// The owner's own refusal: 409, and no typed code. ALL THREE of the route's
+	// codeless refusals take this shape, which is why the sentence below is written
+	// to be true of the set rather than of a member (code review round 1, MAJOR-1):
+	// a settlement, an ask that advanced, and an epoch the previous runtime minted.
 	const settled = new DesktopControlError(
 		409,
 		"This question or approval is no longer pending",
+	);
+	const advanced = new DesktopControlError(
+		409,
+		"the answer does not match the current question",
+	);
+	const rolledOver = new DesktopControlError(
+		409,
+		"This answer belongs to an earlier session owner",
 	);
 
 	// (i) 2xx, with the store AND the card already cleared before the response
@@ -611,27 +686,34 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	assert.deepEqual(answerReport({ status: "sent" }, false), { to: "sent" });
 	assert.deepEqual(answerReport({ status: "sent" }, true), { to: "sent" });
 
-	// (ii) the refusal, which is the ONE failure that means another front end (or
-	// the next question) took the gate: the sentence, not the card's copy.
-	assert.equal(
-		answerWasSettledElsewhere(settled),
-		true,
-		"a bare 409 is the answer route refusing a question that moved on",
-	);
+	// (ii) the refusal: one predicate for all three causes, and the sentence says
+	// only what they share. The old wording ("already answered somewhere else")
+	// claimed the settlement for the other two, where it was false while the
+	// question was still pending and still answerable.
+	for (const error of [settled, advanced, rolledOver]) {
+		assert.equal(
+			answerRefusedWithoutACode(error),
+			true,
+			`${error.message} is the answer route refusing without a code`,
+		);
+	}
 
 	// (iii) the same refusal with the card GONE: it still reaches a surface, and
 	// that surface is the composer. (With the card still up it lands on the card,
 	// which is where the press was made — asserted here too so the arm cannot be
-	// removed by accident.)
-	assert.deepEqual(answerReport({ status: "failed", error: settled }, false), {
-		to: "composer",
-		message: SETTLED_ELSEWHERE_MESSAGE,
-		code: undefined,
-	});
-	assert.deepEqual(answerReport({ status: "failed", error: settled }, true), {
-		to: "card",
-		refused: `Your answer was not sent. ${settled.message}`,
-	});
+	// removed by accident.) The code is the report's own, never absent, so the
+	// alert cannot inherit a draft's failure (design round 1, D2).
+	for (const error of [settled, advanced, rolledOver]) {
+		assert.deepEqual(answerReport({ status: "failed", error }, false), {
+			to: "composer",
+			message: QUESTION_MOVED_ON_MESSAGE,
+			code: ANSWER_NOT_SENT_CODE,
+		});
+		assert.deepEqual(answerReport({ status: "failed", error }, true), {
+			to: "card",
+			refused: `Your answer was not sent. ${error.message}`,
+		});
+	}
 
 	// (iv) everything else, with the card gone, keeps the honest not-sent copy and
 	// must NOT claim another front end answered: a transport that never reached the
@@ -652,16 +734,29 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		new Error("409"),
 	]) {
 		assert.equal(
-			answerWasSettledElsewhere(error),
+			answerRefusedWithoutACode(error),
 			false,
-			`${String(error.message)} must not be read as the answer route's refusal`,
+			`${String(error.message)} must not be read as the answer route's bare refusal`,
 		);
 		assert.deepEqual(answerReport({ status: "failed", error }, false), {
 			to: "composer",
 			message: unsentAnswerMessage(error),
-			code: errorCodeOf(error),
+			code: errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE,
 		});
 	}
+	/*
+	 * And the SENTENCE must not name a cause a codeless `409` cannot establish:
+	 * the wording this test replaces claimed another front end had answered the
+	 * question, which was false for two of the three refusals it was rendered for
+	 * (code review round 1, MAJOR-1). Pinned here so a reinstatement is caught by
+	 * the instrument rather than by a reader who would have to know the route's
+	 * three bodies.
+	 */
+	assert.doesNotMatch(
+		QUESTION_MOVED_ON_MESSAGE,
+		/somewhere else|another front end|other (?:device|window|tab)/i,
+		"the sentence must not name a cause a codeless 409 cannot distinguish",
+	);
 	// The reason is carried, and only authored copy is: a `UserFacingError` is a
 	// sentence we wrote, while a runtime exception's `message` is not copy at all.
 	assert.equal(

@@ -74,6 +74,13 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+/*
+ * The press's own composer code, kept with the composer alert's other codes
+ * rather than here: `withholdsRetryHint` is the predicate that reads it, and a
+ * code it cannot see is a code that does not withhold the hint (design round 1,
+ * D2 — see `answerReport`'s note).
+ */
+import { ANSWER_NOT_SENT_CODE } from "@shared/store/canonical-sessions-store";
 import type { DesktopRequest } from "../../../../shared/desktop-contract";
 import type { PendingDesktopGate } from "../../../../shared/desktop-session-contract";
 
@@ -281,29 +288,59 @@ export const errorCodeOf = (error: unknown): string | undefined =>
 		: undefined;
 
 /**
- * The sentence for a press whose question the owner had already settled —
- * another front end answered it, or a multi-question ask moved on first.
+ * The sentence for a press the answer route refused without saying why.
+ *
+ * ## Why it cannot say "somewhere else answered it"
+ *
+ * It used to: the copy named the cause (another front end took the question),
+ * and that cause is only ONE of the three a bare `409` carries. Measured against
+ * the committed rig at this head (own scratch, own OS-assigned port, raw
+ * `http.client`, native bearer) by firing the three requests that reach it:
+ *
+ *   - `409 {"detail":"This question or approval is no longer pending"}` — the
+ *     settlement, and the only cause the old wording was true of;
+ *   - `409 {"detail":"the answer does not match the current question"}` — the
+ *     ask advanced to its next question between the render and the POST;
+ *   - `409 {"detail":"This answer belongs to an earlier session owner"}` — the
+ *     runtime rolled over and the epoch was minted by the previous instance,
+ *     a normal lifecycle event in the app the operator runs.
+ *
+ * In the last two the old sentence was false, and it was false while the
+ * question was still pending and still answerable: the app told the user that a
+ * front end they do not have had answered it. The copy now states only what all
+ * three hold in common — the question this press named is no longer the one the
+ * owner would take, so nothing was sent. WHICH of the three it was is the
+ * backend's to say and this app cannot derive it from a status, which is the
+ * contract's own position one layer down (`desktop-contract.ts`, on why a `409`
+ * is deliberately not read as a category). A typed code on the route would let
+ * the settlement be named again; that is a backend change, noted on the PR.
  */
-export const SETTLED_ELSEWHERE_MESSAGE =
-	"That question was already answered somewhere else, so your answer was not sent.";
+export const QUESTION_MOVED_ON_MESSAGE =
+	"That question had already been settled or moved on, so your answer was not sent.";
 
 /**
- * Whether this failure is the answer route refusing because the question is no
- * longer pending.
+ * Whether this failure is the answer route refusing, carrying no typed code.
  *
- * ## Why the STATUS is the instrument here, and the only one available
+ * ## What the STATUS establishes, and what it does not
  *
- * `POST /v1/desktop/sessions/{id}/answers` answers `409` for exactly one thing:
- * the owner would not take this answer for the question it names. Measured on
- * the committed rig (`harness/probe-answer-exclusivity.py`, which fires two
- * concurrent answers with DIFFERENT labels plus a third after the gate settles,
- * six rounds): exactly one request per gate is answered `2xx`, that request's
- * label is the one `owner-answer.json` records the owner as having taken, and
- * every other answer — the concurrent loser and the late one alike — is refused
- * with a bare `409`. The `code` field is absent on both refusals, which is why
- * this test reads `status === 409 && code === undefined`: a CODED 409 comes from
- * the relay and attachment ladders instead (`errors()` and its 413/422
- * neighbours in `desktop_sessions.py`), and those are not this.
+ * The route answers a bare `409` for EVERY answer the owner will not take, and
+ * the entailment runs one way only: a settlement IS a bare `409` — measured on
+ * the committed rig (`harness/probe-answer-exclusivity.py`: two concurrent
+ * answers with DIFFERENT labels plus a third after the gate settles, six
+ * rounds, exactly one `2xx` per gate and always the label `owner-answer.json`
+ * records the owner as having taken, a bare `409` for the concurrent loser and
+ * the late answer alike) — but a bare `409` is NOT necessarily a settlement.
+ * The same route raises the epoch-rollover and question-index refusals in the
+ * same shape and with no code (all three bodies are quoted on
+ * `QUESTION_MOVED_ON_MESSAGE`). The absent `code` is why this test reads
+ * `status === 409 && code === undefined`: a CODED 409 comes from the relay and
+ * attachment ladders instead (`errors()` and its 413/422 neighbours in
+ * `desktop_sessions.py`), and those are not this.
+ *
+ * What the predicate is fit for is therefore the SENTENCE, which is written to
+ * be true of the whole set, and never a claim about which member it was.
+ *
+ * ## Why the status is nevertheless the only instrument here
  *
  * The exclusivity is the owner's own rather than an inference from the status:
  * `serving.py`'s `_resolve_pending` pops the future off `_pending_futures` on
@@ -314,7 +351,7 @@ export const SETTLED_ELSEWHERE_MESSAGE =
  * 409. A `2xx` therefore means OUR value is the one the owner applied, which is
  * the property everything below rests on.
  */
-export const answerWasSettledElsewhere = (error: unknown): boolean =>
+export const answerRefusedWithoutACode = (error: unknown): boolean =>
 	error instanceof DesktopControlError &&
 	error.status === 409 &&
 	error.code === undefined;
@@ -347,12 +384,14 @@ export const unsentAnswerMessage = (error: unknown): string =>
  * case, not a corner: the two channels have no ordering between them. Resolving
  * the gate makes the owner push frontend state, which unmounts the card, and the
  * answer POST settles on its own schedule; measured on this rig a normal POST
- * response led the card clearing by ~76 ms (124 ms against 200 ms), and a busy
- * turn inverts a margin that size. Inverted, it told the user their answer was
- * not sent while the model was already acting on it.
+ * response led the card clearing by 0.95 ms, and the card cleared 328 ms after
+ * the delivery; a busy turn inverts a margin that size, and the earlier round's
+ * reading of the same race (124 ms against 200 ms) was the same race measured on
+ * a quieter one. Inverted, it told the user their answer was not sent while the
+ * model was already acting on it.
  *
  * The outcome cannot be raced that way and needs no proxy for it — see
- * `answerWasSettledElsewhere` for the measurement that shows a `2xx` is our
+ * `answerRefusedWithoutACode` for the measurement that shows a `2xx` is our
  * value and a refusal is not. So a `sent` outcome is silence: the owner has this
  * press, and saying anything at all is the bug this replaces.
  *
@@ -365,10 +404,24 @@ export const unsentAnswerMessage = (error: unknown): string =>
  * - `failed` with the card still on screen — the refusal belongs on the surface
  *   the press was made on: it is unmissable there and cannot be repeated,
  *   because the card holds its options disabled until the gate moves.
- * - `failed` with the card gone — the composer carries it: the card's own
- *   sentence for a failure the card cannot explain, and the settled-elsewhere
- *   sentence for the owner's refusal, which IS an explanation the user needs,
- *   because their press did not become the answer.
+ * - `failed` with the card gone — the composer carries it, in the register the
+ *   failure is entitled to: the question-moved-on sentence for the answer
+ *   route's own codeless refusal, which IS an explanation the user needs because
+ *   their press did not become the answer, and the card's own not-sent sentence
+ *   for everything else, which claims nothing about why.
+ *
+ * ## Why the report carries a code of its own (design round 1, D2)
+ *
+ * `chat-page`'s alert reads `activeErrorCode = sendErrorCode ?? draft.errorCode`,
+ * so a report that leaves the code UNSET inherits whatever code the draft was
+ * last left holding — and the same sentence then renders with the generic "Send
+ * it again" hint in one session and without it in another, or with a stale
+ * attachment remedy's buttons under a sentence about an option press. That is
+ * the inheritance defect already recorded for the attachment refusal, and this
+ * path had it too. So a composer report always names a code: the transport's own
+ * when the failure carried one, `ANSWER_NOT_SENT_CODE` when it did not — a code
+ * the composer's `withholdsRetryHint` lists, because "Send it again" is not the
+ * remedy for a press whose question is gone.
  */
 export type AnswerReport =
 	/** Nothing was sent, so the lock holder reports it. */
@@ -381,31 +434,47 @@ export type AnswerReport =
 	| {
 			readonly to: "composer";
 			readonly message: string;
-			/** The transport's own code, when the failure carried one. */
-			readonly code?: string;
+			/**
+			 * The transport's own code when the failure carried one, and
+			 * `ANSWER_NOT_SENT_CODE` otherwise — never absent, so the alert's own
+			 * hint and remedies are a function of THIS report rather than of the
+			 * draft's last failure (see the type's note above).
+			 */
+			readonly code: string;
 	  };
 
 /**
- * The report for one option press. `cardStillOnScreen` is the ONLY thing the
- * caller supplies that the outcome does not: it is a fact about the render — the
- * DOM still holds an `Answer options` card — and it decides where a failure is
- * written, never whether the press is reported. It cannot decide the second:
- * the pressed card is removed BY the press that won.
+ * The report for one option press.
+ *
+ * `cardIsThisPress` is the ONLY thing the caller supplies that the outcome does
+ * not: whether the card the press was made on is still on screen AND is still
+ * the press's own card. It decides where a failure is written, never whether the
+ * press is reported — the pressed card is removed BY the press that won.
+ *
+ * The identity half of that is not decoration (code review round 1, m2; design
+ * round 1, D1). A multi-question ask paints the NEXT question's card in the same
+ * place, under the same `aria-label`, with a different gate key, so a query for
+ * "a card" answers true for a card that cannot render this press's refusal — the
+ * refusal is written to a state no surface reads, and the user is told nothing
+ * while a fresh question appears where they pressed. Comparing the live card's
+ * key is what tells the two apart; the caller compares it against a ref rather
+ * than the render closure, which is the value the old code compared against
+ * itself.
  */
 export const answerReport = (
 	outcome: AnswerOutcome,
-	cardStillOnScreen: boolean,
+	cardIsThisPress: boolean,
 ): AnswerReport => {
 	if (outcome.status === "refused") return { to: "refused" };
 	if (outcome.status === "sent") return { to: "sent" };
-	if (cardStillOnScreen)
+	if (cardIsThisPress)
 		return { to: "card", refused: unsentAnswerMessage(outcome.error) };
 	return {
 		to: "composer",
-		message: answerWasSettledElsewhere(outcome.error)
-			? SETTLED_ELSEWHERE_MESSAGE
+		message: answerRefusedWithoutACode(outcome.error)
+			? QUESTION_MOVED_ON_MESSAGE
 			: unsentAnswerMessage(outcome.error),
-		code: errorCodeOf(outcome.error),
+		code: errorCodeOf(outcome.error) ?? ANSWER_NOT_SENT_CODE,
 	};
 };
 

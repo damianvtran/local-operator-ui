@@ -59,39 +59,94 @@ const HEIGHT = Number(process.env.CLICK_PROOF_HEIGHT ?? 900);
 const TARGET =
 	process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
 /*
- * The sentence the composer shows when the answer route refused because the
- * owner had already settled the question. Duplicated from `ask-answer.ts` here
- * deliberately: this driver is the way a reviewer checks that the shipped copy
- * is the one the module holds, and a driver that imported it would agree with
- * the module by construction.
+ * The two sentences the composer can show under a press, and which run shows
+ * which.
+ *
+ * They are duplicated from `ask-answer.ts` here deliberately: this driver is how
+ * a reviewer checks that the SHIPPED copy is the one the module holds, and a
+ * driver that imported the module would agree with it by construction.
+ *
+ *   - `OLD_SETTLED_SENTENCE` is the pre-fix wording (`origin/main` at
+ *     `60c1dc615`). It is kept so the BEFORE runs of this evidence can assert
+ *     what they found: a run on the old build must not be able to pass by
+ *     quietly rendering the new copy.
+ *   - `MOVED_ON_SENTENCE` is what this branch renders for a codeless 409 — a
+ *     settlement, an ask that advanced, or a runtime rollover (code review
+ *     round 1, MAJOR-1).
  */
-const SETTLED_SENTENCE =
+const OLD_SETTLED_SENTENCE =
 	"That question was already answered somewhere else, so your answer was not sent.";
+const MOVED_ON_SENTENCE =
+	"That question had already been settled or moved on, so your answer was not sent.";
 /*
  * What this run must find on the page after the press, when the caller says.
- * `silent` is the shipping contract for a press the owner TOOK: it is the
- * user's bug, so a run that finds a sentence there must not overwrite the
- * committed record with it. `settled` is the contract for a press the owner
- * refused. Unset records without asserting, which is how the pair was first
- * taken.
+ *
+ * `silent` is the shipping contract for a press the owner TOOK — the user's bug
+ * — so a run that finds a sentence there must not overwrite the committed
+ * record with it. `moved-on` is the contract for a press the answer route
+ * refused without a code, `not-sent` for any other failure, and `old-settled`
+ * for the pre-fix build the BEFORE run photographs. Unset records without
+ * asserting, which is how the set was first taken.
+ *
+ * `CLICK_PROOF_EXPECT_ORDER` is the same idea for the ordering the run exists
+ * to force: `cleared-first` (the card left the screen before the response was
+ * delivered — the order that inverted the old verdict) or `delivered-first`.
+ * The record already carried the verdict; until this knob existed nothing
+ * asserted it, so a run whose `--answer-delay-ms` did not take could be
+ * committed as proof of the losing order while showing the winning one (code
+ * review round 1, m3).
  */
 const EXPECT = process.env.CLICK_PROOF_EXPECT ?? "";
+const EXPECT_ORDER = process.env.CLICK_PROOF_EXPECT_ORDER ?? "";
+const ORDER_VERDICTS = {
+	"cleared-first": "the card cleared before the response was delivered",
+	"delivered-first": "the response was delivered before the card cleared",
+};
+/*
+ * HOW THIS RUN ENDS, because the two kinds of press end differently.
+ *
+ * `cleared` is the ordinary contract and the one both halves of the original
+ * pair use: the owner TAKES the press, the future returns, and the backend stops
+ * projecting a pending gate. `refused` is the other end state, and it is the one
+ * `--reject-answers` produces: the route refuses, nothing is settled, and the
+ * card is STILL UP carrying the refusal — the arm whose refusal used to be
+ * written where nothing renders (design round 1, D1). A run in that mode that
+ * waited for the card to clear would wait out its whole deadline and report
+ * itself unresolved while the page showed exactly the behaviour under test.
+ */
+const RESOLUTION = process.env.CLICK_PROOF_RESOLUTION ?? "cleared";
 
 /*
  * What the composer says about the press, read as the user reads it.
  *
- * `settledSentence` is read from the page's own TEXT rather than from the
- * sentence this driver holds, so a run that found an empty alert area in a
- * page that never rendered the message cannot be mistaken for one that
- * rendered nothing.
+ * Both sentences are matched against the page's own TEXT rather than against an
+ * alert node this driver hoped to find, so a run that rendered nothing cannot be
+ * mistaken for one that rendered the right thing. `notSentCopy` is scoped to the
+ * alerts so the general sentence can never satisfy the arm that is about a
+ * failure the card could not explain.
  */
 const READ_REPORT = `(() => {
 	const alerts = [...document.querySelectorAll('[role="alert"]')]
 		.map((n) => n.textContent.replace(/\\s+/g, " ").trim())
 		.filter(Boolean);
+	const field = document.querySelector('fieldset[aria-label="Answer options"]');
+	const notSent = "Your answer was not sent.";
+	const inAlerts = alerts.some((a) => a.includes(notSent));
 	return {
-		settledSentence: document.body.innerText.includes(${JSON.stringify(SETTLED_SENTENCE)}),
-		notSentCopy: alerts.filter((a) => a.includes("Your answer was not sent.")),
+		oldSettledSentence: document.body.innerText.includes(${JSON.stringify(OLD_SETTLED_SENTENCE)}),
+		movedOnSentence: document.body.innerText.includes(${JSON.stringify(MOVED_ON_SENTENCE)}),
+		notSentCopy: alerts.filter((a) => a.includes(notSent)),
+		cardUp: Boolean(field),
+		/*
+		 * The card's OWN refusal: the sentence is on the page, the card is still up,
+		 * and the sentence is NOT inside the composer's alert band. That last clause
+		 * is what makes this a reading of the card rather than of the page — the two
+		 * surfaces carry the same sentence on purpose (unsentAnswerMessage builds
+		 * both), so which one painted it is the whole question a refused-press frame
+		 * is asked.
+		 */
+		cardRefusal:
+			Boolean(field) && document.body.innerText.includes(notSent) && !inAlerts,
 		alerts,
 	};
 })()`;
@@ -442,23 +497,36 @@ try {
 		});
 	}
 
-	// The gate clearing IS the resolution: the owner's future returns and the
-	// backend stops projecting a pending gate.
-	const cleared = Date.now() + 30_000;
+	// The gate clearing IS the resolution in `cleared` mode: the owner's future
+	// returns and the backend stops projecting a pending gate. In `refused` mode
+	// the gate is NOT cleared — that is what a refusal means — so the end state is
+	// the refusal itself, rendered where the press was made: the card still up
+	// with the not-sent sentence inside it. See `RESOLUTION`.
+	const settleDeadline = Date.now() + 30_000;
 	let resolved = false;
-	while (Date.now() < cleared) {
-		if (
-			!(await evaluate(
-				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
-			))
-		) {
+	let gateCleared = false;
+	for (;;) {
+		const state = await evaluate(`(() => {
+			const field = document.querySelector('fieldset[aria-label="Answer options"]');
+			const alerts = [...document.querySelectorAll('[role="alert"]')];
+			return {
+				up: Boolean(field),
+				refusal: document.body.innerText.includes("Your answer was not sent.") &&
+					!alerts.some((a) => a.textContent.includes("Your answer was not sent.")),
+			};
+		})()`);
+		if (RESOLUTION === "refused" ? state.up && state.refusal : !state.up) {
 			resolved = true;
+			gateCleared = RESOLUTION !== "refused";
 			break;
 		}
+		if (Date.now() > settleDeadline) break;
 		await wait(250);
 	}
 	record.resolved = resolved;
-	const clearedAt = resolved ? Date.now() : null;
+	record.resolution = RESOLUTION;
+	record.gateCleared = gateCleared;
+	const clearedAt = gateCleared ? Date.now() : null;
 	/*
 	 * The answer's OWN record, read from the rig instead of guessed at with a
 	 * sleep.
@@ -473,6 +541,54 @@ try {
 	 */
 	const state = await waitForAnswer();
 	record.answers = state.answers;
+	/*
+	 * THE VALUE THE OWNER TOOK, carried into the record rather than left in a
+	 * sibling file a reader has to know about. A press's `200` says the route took
+	 * it, and this is what makes "the press WON" checkable from the artifact
+	 * alone: the label here is the pressed option's label (code review round 1,
+	 * m3).
+	 */
+	record.ownerAnswer = state.ownerAnswer ?? null;
+	/*
+	 * WHICH TREE this record is of. The pair's whole claim is that the same run
+	 * on two builds differs, and until this field existed that claim rested on the
+	 * manifest's prose: a reader could not check from the artifact which `src/`
+	 * the frames were taken on. `srcTree` is the one that matters (the renderer is
+	 * what the frame shows); `head` is the commit.
+	 */
+	record.tree = (() => {
+		const rev = (spec) => {
+			try {
+				return execFileSync("git", ["rev-parse", spec], {
+					encoding: "utf8",
+				}).trim();
+			} catch {
+				return null;
+			}
+		};
+		/*
+		 * `srcDirty` is what keeps a REVERTED-SOURCE run honest. The BEFORE half of
+		 * the pair is taken with this branch's two renderer files set back to the
+		 * base revision in the working tree, and `HEAD:src` alone would then name a
+		 * tree the run did not use. Recording the porcelain answer means the record
+		 * says which tree it was on without a reader having to be told.
+		 */
+		const status = (() => {
+			try {
+				return execFileSync("git", ["status", "--porcelain", "--", "src"], {
+					encoding: "utf8",
+				}).trim();
+			} catch {
+				return "";
+			}
+		})();
+		return {
+			head: rev("HEAD"),
+			srcTree: rev("HEAD:src"),
+			srcDirty: status !== "",
+			srcStatus: status === "" ? null : status,
+		};
+	})();
 	record.clearedAt = clearedAt;
 	record.clearedAfterPressMs =
 		clearedAt === null ? null : clearedAt - pressedAt;
@@ -507,12 +623,35 @@ try {
 	const report = record.report;
 	const contradicted =
 		EXPECT === "silent"
-			? report.settledSentence || report.notSentCopy.length > 0
-			: EXPECT === "settled"
-				? !report.settledSentence
-				: false;
+			? report.oldSettledSentence ||
+				report.movedOnSentence ||
+				report.notSentCopy.length > 0 ||
+				report.cardRefusal
+			: EXPECT === "old-settled"
+				? !report.oldSettledSentence
+				: EXPECT === "moved-on"
+					? !report.movedOnSentence
+					: EXPECT === "not-sent"
+						? report.notSentCopy.length === 0
+						: EXPECT === "card-refusal"
+							? !report.cardRefusal
+							: false;
+	/*
+	 * And the ORDERING the run was told to force, asserted rather than merely
+	 * recorded: the verdict is computed from two timestamps and can be the other
+	 * one whenever the delay did not take (a rig started without
+	 * `--answer-delay-ms`, a response that was already on the wire), and a
+	 * committed "before" frame read as the losing order while showing the winning
+	 * one is exactly the kind of evidence this repository refuses (code review
+	 * round 1, m3). `-` means the run makes no ordering claim — a refused press
+	 * never clears the gate, so it has no clearing to order against.
+	 */
+	const orderContradicted =
+		EXPECT_ORDER !== "" &&
+		EXPECT_ORDER !== "-" &&
+		record.ordering?.verdict !== ORDER_VERDICTS[EXPECT_ORDER];
 
-	if (resolved && !contradicted) {
+	if (resolved && !contradicted && !orderContradicted) {
 		writeFileSync(
 			join(OUT, "click-result.json"),
 			`${JSON.stringify(record, null, 2)}\n`,
@@ -539,7 +678,7 @@ try {
 		 * it does not is removed.
 		 */
 		record.error = resolved
-			? `the composer's report contradicted CLICK_PROOF_EXPECT=${EXPECT}: ${JSON.stringify(report)}`
+			? `the run contradicted its own declaration: expect=${EXPECT || "any"} order=${EXPECT_ORDER || "any"} saw ${JSON.stringify({ report, ordering: record.ordering })}`
 			: `the gate did not resolve: nothing cleared the pending gate within 30s of the press at ${aim.x},${aim.y} (${aim.label})`;
 		record.pageProblems = pageProblems;
 		record.frames.restored = [];

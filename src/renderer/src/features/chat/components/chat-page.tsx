@@ -268,6 +268,27 @@ function SessionPanel({
 	 */
 	const pendingGate = canonical.frontend?.pending_gate ?? null;
 	const gateKey = pendingGate ? gateKeyOf(pendingGate) : null;
+	/*
+	 * THE PRESSED CARD'S IDENTITY, READ LIVE (code review round 1, m2; design
+	 * round 1, D1).
+	 *
+	 * A press's report has to say whether the card it was made on is still the card
+	 * on screen — not whether SOME `Answer options` card is. The value this file
+	 * already computes, `gateKey`, cannot answer that from inside the press's own
+	 * handler: it is a render closure, and the closure the handler resumes with is
+	 * the one the press STARTED in, which is the same value `gate` was read from —
+	 * comparing them compares the press with itself. That is exactly the inert
+	 * conjunct this branch deleted (`stillThisGate`), and the replacement for it
+	 * cannot be another closure. This ref carries the key of the card the app is
+	 * actually painting, updated on every render, so the arm can compare the live
+	 * card's identity rather than the press's own. It is assigned in the render
+	 * body, not in an effect: an effect lags a commit, and the commit that matters
+	 * here is the one that REPLACED the card (a multi-question ask advancing, or
+	 * another front end settling the question while a press is in flight), which is
+	 * precisely the render the press's handler has to see.
+	 */
+	const liveGateKey = useRef<string | null>(null);
+	liveGateKey.current = gateKey;
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
 			? { sending: answerState.sending, refused: answerState.refused }
@@ -1215,18 +1236,22 @@ function SessionPanel({
 		 * push painted before the answer's response landed, and the two channels have
 		 * no ordering between them (`ask-answer.ts` carries the margin).
 		 *
-		 * `cardOnScreen` is the live half. `stillThisGate` is NOT a second one: it
-		 * compares `canonical.frontend?.pending_gate` with itself, because
-		 * `useCanonicalSessionStream` returns a render-closure snapshot and `gate` was
-		 * read from that same value at the top of this handler — so it is true by
-		 * construction, the `request_id` clause beside it could never matter, and the
-		 * arm below is written to say what it can actually decide: the refusal is
-		 * written onto the card only while a card is still on screen to carry it (QA
-		 * round 1, Q3).
+		 * `cardIsThisPress` is the live half, and it is TWO facts rather than one: an
+		 * `Answer options` card is on screen AND it is the card this press was made
+		 * on (`liveGateKey`, the value the app is painting with, against `key`, the
+		 * press's own). The identity half is what closes the deterministic hole this
+		 * arm used to have: a multi-question ask paints its next question's card in
+		 * the same place under the same `aria-label` with a different key, so a query
+		 * for "a card" answered true for a card that cannot render this refusal — the
+		 * refusal was written to a state no surface reads, and the user was told
+		 * nothing while a fresh question appeared where they had pressed. A card that
+		 * is not this press's is not a surface this report can use, so the composer
+		 * takes it, and the composer is the only surface that survives a gate change.
 		 */
-		const cardOnScreen =
-			document.querySelector('[aria-label="Answer options"]') !== null;
-		const report = answerReport(outcome, cardOnScreen);
+		const cardIsThisPress =
+			document.querySelector('[aria-label="Answer options"]') !== null &&
+			liveGateKey.current === key;
+		const report = answerReport(outcome, cardIsThisPress);
 		switch (report.to) {
 			case "refused":
 				// Nothing was sent and nothing is wrong: the lock was already held by a
@@ -1251,10 +1276,13 @@ function SessionPanel({
 				setAnswerState({ key, sending: false, refused: report.refused });
 				return;
 			case "composer":
-				// The card is gone, so the composer carries it — the settled-elsewhere
-				// sentence for the owner's own refusal, the not-sent sentence for a
-				// transport failure, in both cases in the outcome's language rather than
-				// the backend's (UX round 1, U4; UX round 2, U9).
+				// The card is gone — or is not this press's any more — so the composer
+				// carries it: the question-moved-on sentence for the answer route's own
+				// codeless refusal, the not-sent sentence for a transport failure, in
+				// both cases in the outcome's language rather than the backend's (UX
+				// round 1, U4; UX round 2, U9). The code is always the report's own, so
+				// the alert's hint and remedies are functions of THIS failure rather
+				// than of the draft's last one (design round 1, D2).
 				setAnswerState(null);
 				setSendError(report.message);
 				setSendErrorCode(report.code);
