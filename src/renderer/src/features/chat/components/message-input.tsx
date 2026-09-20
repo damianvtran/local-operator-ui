@@ -1,5 +1,6 @@
 import {
 	DesktopControlError,
+	desktopRequestTimeoutMs,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
@@ -109,17 +110,16 @@ import {
 	CREDENTIAL_CLEAR_UNDO_LABEL,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
-	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
 	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
+	type CredentialFate,
 	type CredentialPayload,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	type UnredactedDisclosure,
-	type UnstoredReason,
 	applyDomEdit,
 	armSpan,
 	cancelTypedCredential,
@@ -142,6 +142,7 @@ import {
 	syncCapture,
 	typeIntoCapture,
 	unbackedMarkers,
+	unconfirmedNotice,
 	unredactedBuffer,
 	unredactedNotice,
 	unredactedOverBuffer,
@@ -740,10 +741,11 @@ const ALERT_READ_DWELL_MS = 1500;
  * `promise`, or a rejection once `ms` has passed.
  *
  * The credential store sits ON THE SUBMIT SEAM (§9), so an answer that never
- * comes cannot be waited for indefinitely: a never-resolving transport would
- * park the composer behind a spinner with the user's message inside it. The TUI
- * bounds the same wait with `CREDENTIAL_STORE_TIMEOUT_S` and degrades LOUDLY
- * rather than holding the box, and this is that bound. The timer is cleared on
+ * comes cannot be waited for indefinitely: a never-resolving transport would park
+ * the composer behind a spinner with the user's message inside it. The TUI bounds
+ * the same wait with `CREDENTIAL_STORE_TIMEOUT_S` and degrades LOUDLY rather than
+ * holding the box, and this is that bound — now applied to one ATTEMPT rather
+ * than to the whole seam (see the two constants below). The timer is cleared on
  * both outcomes so a late answer cannot leave a rejection nobody handles.
  */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -771,6 +773,139 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 			},
 		);
 	});
+}
+
+/**
+ * How long ONE store attempt may take before this seam stops waiting for it.
+ *
+ * THE TRANSPORT'S OWN BUDGET FOR THIS OP, and that is the whole correction. This
+ * seam used to cut the store off at the TUI's 5 s (`CREDENTIAL_STORE_TIMEOUT_S`),
+ * copied on the reasoning that "the two products give up at the same moment" —
+ * but the two products do not have the same transport, and the copy is what
+ * produced the false citation in the operator's session. The TUI stores through
+ * an IN-PROCESS call to a session that is already live, where five seconds can
+ * only mean a hung socket; this store crosses to a session RUNTIME that may not
+ * be running yet, and the route has to engage one before it can answer
+ * (`desktop_lifecycle.py` → `bridge.remote.bind_runtime()`). Measured on this host
+ * against a real isolated backend, `2026-09-19`: a cold store answered 200 in
+ * 4.2 s, six concurrent cold stores answered 200 in 5.6-8.2 s, and the operator's
+ * own first message landed behind an engage whose boot lines arrived ~13 s after
+ * the spawn. Abandoning those at 5 s is exactly the bug: the write landed, and
+ * the model was told it had not.
+ *
+ * So the bound is `desktopRequestTimeoutMs`, the transport's own deadline for
+ * this op (main's 20 s control budget plus its 5 s renderer margin) — the same
+ * rule `desktop-api.ts` states for that margin, applied to the seam: the
+ * composer must never be the layer that gives up first, because the layer that
+ * knows the HTTP status is the one that can tell a refusal from a silence. The
+ * wait is not wasted either: the message cannot be sent before the runtime the
+ * store needs is up, so this is the send's own wait, reported rather than hidden.
+ */
+const CREDENTIAL_STORE_TIMEOUT_MS = desktopRequestTimeoutMs(
+	"sessions.credential",
+);
+
+/**
+ * How long a RESOLUTION attempt may take, once the first attempt proved nothing.
+ *
+ * Shorter than the attempt above on purpose. A resolution runs only after the
+ * store already spent the op's full budget without an answer, and its job is to
+ * catch a response that was LOST while the write landed — an engaged runtime
+ * answers it in milliseconds. Waiting the whole budget again would not find more
+ * truth; it would only park the send, which is the failure the seam's bound
+ * exists to prevent.
+ */
+const CREDENTIAL_RESOLVE_TIMEOUT_MS = 5000;
+
+/** What one store attempt settled, or `null` when it settled nothing at all. */
+type CredentialStoreAttempt =
+	| { kind: "stored" }
+	| { kind: "fate"; fate: CredentialFate };
+
+/**
+ * One store attempt, and the classification of every way it can end.
+ *
+ * WHICH CAUSE, and how little this transport can say about it. The route
+ * collapses the store's own refusal into one 409 (`server/routes/
+ * desktop_lifecycle.py`), so the store's `reason` never crosses the wire; what a
+ * 4xx DOES prove is that something ANSWERED — the store said no, or the route
+ * refused the request before it could reach one (`422` for a body it would not
+ * accept, `404` for an address that is not there). That is a confirmed
+ * non-store, and with a key this composer minted against
+ * `CREDENTIAL_KEY_PATTERN` the reachable refusal is a blank VALUE, exactly the
+ * restored draft whose bytes do not survive (§6), hence `"lost"`.
+ *
+ * Everything else proves NOTHING about the write and returns `null` for the
+ * caller to resolve: a transport failure or this composer's bound expiring
+ * (`status: null`), and any 5xx, including the transport's own `504` when a slow
+ * op runs out of its budget.
+ *
+ * That last group is the correction rather than a detail: it used to be reported
+ * as `"unreachable"`, i.e. as `[credential NOT stored — the session could not be
+ * reached]`, on the strength of a silence — and the operator's own session is the
+ * measured proof that a store can be silent here and still land.
+ */
+async function attemptCredentialStore(
+	sessionId: string,
+	payload: CredentialPayload,
+	timeoutMs: number,
+): Promise<CredentialStoreAttempt | null> {
+	try {
+		const answer = await withTimeout(
+			desktopResult<{ data?: { ok?: boolean; reason?: string } }>({
+				op: "sessions.credential",
+				sessionId,
+				action: "store",
+				key: payload.key,
+				value: payload.value,
+			}),
+			timeoutMs,
+		);
+		if (answer?.data?.ok === false)
+			return {
+				kind: "fate",
+				fate: answer.data.reason === "empty-key" ? "rejected-key" : "lost",
+			};
+		return { kind: "stored" };
+	} catch (error) {
+		const status = error instanceof DesktopControlError ? error.status : null;
+		if (status !== null && status >= 400 && status < 500)
+			return { kind: "fate", fate: "lost" };
+		return null;
+	}
+}
+
+/**
+ * Whether the session's own store holds `key` — a POSITIVE witness only.
+ *
+ * The one reader of the store's name list this seam is allowed to use is
+ * `credentialNamesFrom` (§9.7), and the answer is read in one direction on
+ * purpose. A key FOUND here is proof the write landed, so the citation can be
+ * the confident one the model needs; a key NOT found here is proof of nothing at
+ * all — the first store request may still be in flight behind the same cold
+ * engage that made this read fail, and a runtime that retires takes its unnamed
+ * values with it — so absence never produces a not-stored sentence. It costs one
+ * bounded read and it is only reached when two store attempts have already been
+ * silent, which is why the bound is the resolution one.
+ */
+async function sessionHoldsCredential(
+	sessionId: string,
+	key: string,
+	timeoutMs: number,
+): Promise<boolean> {
+	try {
+		const answer = await withTimeout(
+			desktopResult<unknown>({
+				op: "sessions.credential",
+				sessionId,
+				action: "list",
+			}),
+			timeoutMs,
+		);
+		return credentialNamesFrom(answer).includes(key);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -1434,7 +1569,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * happens between the composer and the transport (UX round 1, U2).
 				 */
 				sessionId: string | undefined = credentialSessionId,
-			): Promise<{ text: string; stored: string[]; refused: string[] }> => {
+			): Promise<{
+				text: string;
+				stored: string[];
+				refused: string[];
+				unconfirmed: string[];
+			}> => {
 				/*
 				 * Materialised ONCE, because the submit walks the map more than once (the
 				 * cited set, the unbacked markers, the rewrite) and a `Map.values()`
@@ -1453,59 +1593,75 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `substituteCredentials` exists to remove.
 				 */
 				if (cited.length === 0 && unbackedMarkers(text, listed).length === 0)
-					return { text, stored: [], refused: [] };
-				const refused = new Map<number, UnstoredReason>();
+					return { text, stored: [], refused: [], unconfirmed: [] };
+				/*
+				 * ONE MAP, because the map IS the per-payload fate: the rewrite below takes
+				 * exactly this value, so the citation the model receives and the two notices
+				 * the operator reads cannot disagree about what happened to a credential.
+				 */
+				const fates = new Map<number, CredentialFate>();
 				const stored: string[] = [];
 				for (const payload of cited) {
 					if (!sessionId) {
-						// No session to reach (a draft pane with no seam), which is the TUI's
-						// `null` answer: the round-trip could not be made at all.
-						refused.set(payload.index, "unreachable");
+						/*
+						 * No session to reach (a draft pane with no seam). The one pass through
+						 * this loop that needs no round trip, and the only one where the composer
+						 * does not have to GUESS: it is holding the proof itself — there is no
+						 * address to write to — so this is a confirmed non-store, not an unknown.
+						 */
+						fates.set(payload.index, "unreachable");
 						continue;
 					}
-					try {
-						const answer = await withTimeout(
-							desktopResult<{ data?: { ok?: boolean; reason?: string } }>({
-								op: "sessions.credential",
-								sessionId,
-								action: "store",
-								key: payload.key,
-								value: payload.value,
-							}),
-							CREDENTIAL_STORE_TIMEOUT_MS,
+					/*
+					 * THE ATTEMPT, AND THEN THE RESOLUTION (operator report, 2026-09-19).
+					 *
+					 * The store is idempotent for one key and value, so a second attempt is a
+					 * repair as well as a question: if it answers `ok`, the value is in the store
+					 * — including the case the first attempt was cut off mid-engage and landed
+					 * anyway — and the citation is the confident one the model needs. The name
+					 * list is the last resort, and it is read in ONE direction (see
+					 * `sessionHoldsCredential`).
+					 *
+					 * The order follows what each step can PROVE: the second attempt can prove
+					 * either outcome, the list read can only prove presence, and the first attempt
+					 * already spent the op's whole budget — so the two resolution steps get the
+					 * shorter bound.
+					 */
+					let attempt = await attemptCredentialStore(
+						sessionId,
+						payload,
+						CREDENTIAL_STORE_TIMEOUT_MS,
+					);
+					if (attempt === null)
+						attempt = await attemptCredentialStore(
+							sessionId,
+							payload,
+							CREDENTIAL_RESOLVE_TIMEOUT_MS,
 						);
-						if (answer?.data?.ok === false) {
-							refused.set(
-								payload.index,
-								answer.data.reason === "empty-key" ? "rejected-key" : "lost",
-							);
-							continue;
-						}
-						stored.push(payload.key);
-					} catch (error) {
+					if (
+						attempt === null &&
+						(await sessionHoldsCredential(
+							sessionId,
+							payload.key,
+							CREDENTIAL_RESOLVE_TIMEOUT_MS,
+						))
+					)
+						attempt = { kind: "stored" };
+					if (attempt === null) {
 						/*
-						 * WHICH CAUSE, and how little this transport can say about it.
-						 *
-						 * The route collapses every store refusal into one 409
-						 * (`server/routes/desktop_lifecycle.py:161-172`): the store's own
-						 * `reason` never crosses the wire. What the status DOES separate is
-						 * the two things a user acts on differently: a 4xx the route
-						 * answered means the store was REACHED and said no, and anything
-						 * else — a transport failure (status `null`), a 404 for a session
-						 * this backend does not have — means the round-trip could not be
-						 * made at all. With a key this composer minted, the reachable
-						 * refusal is a blank VALUE, which is exactly the restored draft
-						 * whose bytes do not survive (§6), hence `"lost"`.
+						 * NOTHING ON THE WIRE ANSWERED, so the fate is `"unconfirmed"` and NOT
+						 * `"unreachable"`: the value may be in the store this instant — the
+						 * operator's own session is the measurement — and asserting otherwise is
+						 * the lie this resolution exists to make unreachable.
 						 */
-						const status =
-							error instanceof DesktopControlError ? error.status : null;
-						refused.set(
-							payload.index,
-							status !== null && status >= 400 && status < 500
-								? "lost"
-								: "unreachable",
-						);
+						fates.set(payload.index, "unconfirmed");
+						continue;
 					}
+					if (attempt.kind === "stored") {
+						stored.push(payload.key);
+						continue;
+					}
+					fates.set(payload.index, attempt.fate);
 				}
 				/*
 				 * EVERY citation is rewritten, whether it stored or not — a marker left
@@ -1530,14 +1686,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					await queryClient.invalidateQueries({
 						queryKey: desktopKeys.credentials(sessionId),
 					});
+				/** The stored names behind one fate, for the two notices below. */
+				const namesWith = (matches: (fate: CredentialFate) => boolean) =>
+					[...fates.entries()]
+						.filter(([, fate]) => matches(fate))
+						.map(
+							([index]) =>
+								listed.find((payload) => payload.index === index)?.key ??
+								`#${index}`,
+						);
 				return {
-					text: substituteCredentials(text, listed, refused),
+					text: substituteCredentials(text, listed, fates),
 					stored,
-					refused: [...refused.keys()].map(
-						(index) =>
-							listed.find((payload) => payload.index === index)?.key ??
-							`#${index}`,
-					),
+					refused: namesWith((fate) => fate !== "unconfirmed"),
+					unconfirmed: namesWith((fate) => fate === "unconfirmed"),
 				};
 			},
 			[credentialSessionId, queryClient],
@@ -1565,7 +1727,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * because there is nothing to raise them about until it lands.
 				 */
 				let settled:
-					| { text: string; stored: string[]; refused: string[] }
+					| {
+							text: string;
+							stored: string[];
+							refused: string[];
+							unconfirmed: string[];
+					  }
 					| undefined;
 				const seam = credentialSessionId
 					? undefined
@@ -1579,7 +1746,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
 				const carried = seam
-					? { text: message, stored: [], refused: [] }
+					? { text: message, stored: [], refused: [], unconfirmed: [] }
 					: await storeCitedCredentials(message);
 				if (carried.stored.length > 0)
 					showSuccessToast(storedNotice(carried.stored));
@@ -1593,6 +1760,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				if (carried.refused.length > 0)
 					showWarningToast(unstoredNotice(carried.refused));
+				/*
+				 * AND THE THIRD RECEIPT, which is not a failure and must not be worded as
+				 * one: the store never confirmed the write, so the operator is told what
+				 * was observed ("could not be confirmed") rather than what was not
+				 * ("could not be stored"), and the notice names the one check that settles
+				 * it. Raised on the same warning surface for the same reason as the refusal
+				 * above: a gesture that did not do what it looked like it did.
+				 */
+				if (carried.unconfirmed.length > 0)
+					showWarningToast(unconfirmedNotice(carried.unconfirmed));
 				const accepted = await onSendMessage(
 					// With the seam the payload travels with its MARKERS: the seam stores
 					// first, substitutes second, and what leaves is the substituted text.
@@ -1611,6 +1788,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						showSuccessToast(storedNotice(settled.stored));
 					if (settled.refused.length > 0)
 						showWarningToast(unstoredNotice(settled.refused));
+					if (settled.unconfirmed.length > 0)
+						showWarningToast(unconfirmedNotice(settled.unconfirmed));
 				}
 				/*
 				 * Both failure answers leave the composer's own payload exactly as it is,

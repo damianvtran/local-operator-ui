@@ -880,6 +880,50 @@ At submit, with the TUI's `_capture_inline_credentials` as the reference:
    the collision rule was inert — and the picker crashed the renderer on its
    first successful list, React error #31 (QA round 1, Q3).
 
+8. **An outcome the store never reported is RESOLVED, and never guessed** —
+   the correction the operator's own session forced (report, 2026-09-19; see
+   § 9.1). A store is only ever CITED as unstored when something ANSWERED and
+   said no: `ok: false`, or a 4xx. Silence — a transport failure, a 5xx, this
+   composer's own bound expiring — proves nothing and is followed by a re-issue
+   of the same store (idempotent for one key and value, so it repairs as well as
+   asks) and then, if that is silent too, by a read of the session's own name
+   list. A key found there is cited exactly as a successful store is; only a
+   session that never answered at all produces the fourth sentence, which
+   asserts no outcome and hands the agent `list_variables` to settle it. The
+   read is a POSITIVE witness only: absence proves nothing (a first request can
+   still be in flight behind the same cold engage), so it can never produce the
+   unstored citation either. THE SEND STILL GOES OUT: the message is the
+   operator's, the citation under it is honest, and the agent has a route to the
+   truth, so holding the send back would cost them their message to buy nothing.
+   The repair the notice names is the one that always works — arm `/credential`
+   and paste again.
+
+### 9.1 Why the seam waits as long as the transport does
+
+§9's store crosses to the session's RUNTIME, which may have to be engaged before
+it can answer (`POST /v1/desktop/sessions/{id}/credentials` → the pool →
+`bind_runtime()`), and §9's original bound was the TUI's 5 s — copied on the
+reasoning that "the two products give up at the same moment". They do not: the
+TUI's store is an IN-PROCESS call to a session that is already live, where five
+seconds can only mean a hung socket.
+
+Measured against a real isolated backend on 2026-09-19, with a keyless mock
+provider so the runtime really engages: a cold store answered **200 OK in 4.2 s**;
+six concurrent cold stores answered **200 OK in 5.6 s, 7.6 s, 7.7 s, 7.7 s, 7.9 s
+and 8.2 s**; the same sessions' next store, warm, answered in **0.19-0.51 s**. The
+operator's failing send landed behind an engage whose boot lines arrived ~13 s
+after the spawn. Every one of those writes WAS stored, and every one of them was
+past the 5 s at which the seam used to publish `NOT stored`.
+
+So the attempt is bounded by `desktopRequestTimeoutMs("sessions.credential")` —
+the transport's own deadline for this op, which is the rule `desktop-api.ts`
+already states for its own margin: the composer must not be the layer that gives
+up first, because the layer that knows the HTTP status is the one that can tell a
+refusal from a silence. The wait is not added latency either: the runtime the
+store needs is the runtime the message will run on, so the send is waiting for it
+in any case. The two resolution steps that follow a silent attempt keep a shorter
+bound (they are retries, and the first attempt already spent the op's budget).
+
 The `/credential` argument must stay stripped from any command dispatch
 (`slash-dispatch.ts`: `/credential` is refused so a secret can never land in
 command text) — that guarantee is now stronger, not weaker, because the value
@@ -901,7 +945,9 @@ on a minted pill.
   in the same session, and the model's prompt contains the citation and never
   the bytes.
 - A store that fails produces the honest citation and a notice, never a key
-  nothing holds.
+  nothing holds — **and a store that never answered produces neither an outcome
+  nor a claim**: it is resolved against the session's own list, and only a store
+  that answered may be cited as refused (§ 9.8, § 9.1).
 - The pill and the masked span are legible in **every theme** (contrast
   floors from the branding contract), not only the two brand palettes.
 - **The chip covers the marker's own box, at both rungs.** The claim is a pair of

@@ -51,13 +51,25 @@ const CITATION_HREF = "#lo-credential/";
 /** The unstored form's URL: same scheme, no key and no count to carry. */
 const CITATION_HREF_UNSTORED = `${CITATION_HREF}unstored`;
 
+/**
+ * The unconfirmed form's URL, and it is a THIRD word for a reason.
+ *
+ * The two registers must not be interchangeable on the wire any more than they
+ * are in the sentence: `unstored` is a claim about the session's store and
+ * `unconfirmed` is the absence of one, so a URL that folded them would make the
+ * transcript's two faces a presentation choice rather than a reading of what the
+ * app actually wrote.
+ */
+const CITATION_HREF_UNCONFIRMED = `${CITATION_HREF}unconfirmed`;
+
 /** The count half of a citation URL, which is digits and nothing else. */
 const CITATION_CHARS = /^\d+$/;
 
 /** What a citation's URL means to the override. */
 export type CitationRef =
 	| { kind: "stored"; key: string; chars: number }
-	| { kind: "unstored" };
+	| { kind: "unstored" }
+	| { kind: "unconfirmed" };
 
 /**
  * The URL for one citation segment. The node's `title` carries the words: the
@@ -71,6 +83,7 @@ export const citationHref = (segment: {
 }): string => {
 	if (segment.kind === "stored")
 		return `${CITATION_HREF}${segment.key ?? ""}/${segment.chars ?? 0}`;
+	if (segment.kind === "unconfirmed") return CITATION_HREF_UNCONFIRMED;
 	return CITATION_HREF_UNSTORED;
 };
 
@@ -87,6 +100,7 @@ export function citationFromHref(href: string | undefined): CitationRef | null {
 	if (!href || !href.startsWith(CITATION_HREF)) return null;
 	const rest = href.slice(CITATION_HREF.length);
 	if (rest === "unstored") return { kind: "unstored" };
+	if (rest === "unconfirmed") return { kind: "unconfirmed" };
 	const cut = rest.lastIndexOf("/");
 	if (cut === -1) return null;
 	const key = rest.slice(0, cut);

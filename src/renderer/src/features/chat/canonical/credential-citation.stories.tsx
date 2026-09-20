@@ -22,6 +22,9 @@
  *    reference this app wrote, and the plugin is required to leave it alone. It
  *    is here because "it stays prose" is a claim about pixels too.
  *
+ *  - `CitationUnconfirmed`, the third register: a store the session never
+ *    answered, where the app says so instead of claiming an outcome.
+ *
  * WHAT THESE FRAMES DO NOT CLAIM: that anything about the STORED message
  * changed. It did not — the citation is still what the model receives and what
  * the transcript holds, and the chip is a presentation of it
@@ -66,6 +69,14 @@ const SENT_KEY = "LOP_SECRET_4CE3Y48G";
 const STORED_CITATION = `[credential ${SENT_KEY} (73 chars) — available to bash and eval as $${SENT_KEY}; its value cannot be read]`;
 const NOT_STORED_CITATION =
 	"[credential NOT stored — its value did not survive; ask the operator to paste it again]";
+/*
+ * The third sentence, built from the SAME constant the two above use, so the
+ * frames cannot photograph a key the app would not have written. It is
+ * `describeUnstored("unconfirmed", …)`'s output, and it exists because the
+ * operator's own session was handed the sentence above while its store held the
+ * key (report, 2026-09-19).
+ */
+const UNCONFIRMED_CITATION = `[credential unconfirmed — it may be held as $${SENT_KEY}, so check list_variables before assuming it is missing]`;
 
 const SENT_MID_SENTENCE = record(
 	"u1",
@@ -75,6 +86,18 @@ const SENT_MID_SENTENCE = record(
 const SENT_NOT_STORED = record(
 	"u1",
 	`Use this one for the deploy: ${NOT_STORED_CITATION} — I pasted it but the app said it did not survive.`,
+);
+
+/*
+ * The unresolved register, and the reason it is a frame rather than a unit test
+ * alone: its chip is the WARNING chip with different words, so what a reader has
+ * to be able to see is that the two states are told apart by their words (and by
+ * the full sentence in the title) rather than by a hue a monochrome reading
+ * cannot carry.
+ */
+const SENT_UNCONFIRMED = record(
+	"u1",
+	`Try this key for the deploy: ${UNCONFIRMED_CITATION} — the app never told me whether it landed.`,
 );
 
 /*
@@ -146,6 +169,18 @@ export const CitationMidSentence: Story = {
 /** The warning register: a citation whose value did not survive. */
 export const CitationNotStored: Story = {
 	render: () => <Frame records={[SENT_NOT_STORED]} />,
+};
+
+/**
+ * The unresolved register: the store never said whether the write landed.
+ *
+ * The operator's own case was this state reported as the one above — the value
+ * was in the session's store while the model was told it was not — so the pair of
+ * frames beside each other is the claim this change makes: one dash and one glyph
+ * apart in the chip, with the words doing the separating.
+ */
+export const CitationUnconfirmed: Story = {
+	render: () => <Frame records={[SENT_UNCONFIRMED]} />,
 };
 
 /** The citation quoted inside a fenced block, left exactly as the text. */

@@ -669,6 +669,13 @@ export const STORIES = [
 	   frame rather than a unit test alone. */
 	["chat-canonical-credential-citation--citation-mid-sentence", 1024, 620],
 	["chat-canonical-credential-citation--citation-not-stored", 1024, 620],
+	/*
+	 * The THIRD register, beside the warning one it is most easily confused with:
+	 * a store the session never answered says so rather than claiming the outcome,
+	 * and the pair is what shows the two are separated by words rather than by a
+	 * hue a monochrome reading cannot carry.
+	 */
+	["chat-canonical-credential-citation--citation-unconfirmed", 1024, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
 	 * The three states a notification click can paint before the owner answers:
