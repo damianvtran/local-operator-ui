@@ -188,16 +188,18 @@ part of them. Re-deriving it on the shipped frames is a documented step of the
 design record's open questions, not a claim this file makes.
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
-`magick compare -metric AE` on the two `at-rest` frames reports **310 device
-pixels** above a threshold of 8/channel, in exactly two clusters:
+`magick compare -metric AE` on the two `at-rest` frames reports **353 device
+pixels** above a threshold of 8/channel, in exactly two clusters (re-derived at
+the pair-delivery head; the counts differ from the earlier set by one row, and the
+claim does not):
 
 ```
 magick docs/evidence/session-archive/at-rest/localOperatorDark.png \
        docs/evidence/session-archive/capability-withdrawn/localOperatorDark.png \
   -compose difference -composite -threshold 8 \
   -define connected-components:verbose=true -connected-components 8 null:
-#   13x19+962+1375   (css x 481..487.5, y 687.5..697)   "All chats      3 -> 4"
-#   13x19+962+1683   (css x 481..487.5, y 841.5..851)   "Previous chats 2 -> 3"
+#   13x18+962+1376   (css x 481..487, y 688..697)   "All chats      4 -> 5"
+#   14x19+961+1683   (css x 480.5..487.5, y 841.5..851)   "Previous chats 2 -> 3"
 ```
 
 Both are the counts, and both were checked by cropping the badges out of the two
@@ -207,8 +209,8 @@ million pixels are identical** — not "a band around a live row", the whole fra
 ```
 for f in docs/evidence/session-archive/at-rest/localOperatorDark.png \
          docs/evidence/session-archive/capability-withdrawn/localOperatorDark.png; do
-  magick "$f" -fill black -draw "rectangle 955,1368 982,1400" \
-                     -draw "rectangle 955,1676 982,1708" "/tmp/masked-$(basename $(dirname $f)).png"
+  magick "$f" -fill black -draw "rectangle 950,1368 990,1404" \
+                     -draw "rectangle 950,1675 990,1712" "/tmp/masked-$(basename $(dirname $f)).png"
 done
 magick compare -metric AE /tmp/masked-at-rest.png /tmp/masked-capability-withdrawn.png null:   # -> 0
 ```
@@ -220,3 +222,12 @@ hidden and an archived conversation is LISTED. What the pixels say is the useful
 version — nothing at all changes on screen except the two counts of what is
 listed, and no row of the withdrawn panel is drawn differently from its live
 sibling in the enabled one.
+
+**What the withdrawn pair is OF moved at the fold, and the claim moved with it.**
+`main` now carries the pin control, so the withdrawn panel is the **pin-only**
+panel: the row's archive surface (control, marker, pair wrapper, shared control,
+the `Include archived` control) is absent, and the pin control — a different
+feature, with a different capability — is present, because the stand-in
+advertises it. The byte-identity this pair proves is therefore against the
+pin-only panel, not against a panel without pins; the earlier "identical to the
+pre-change panel" wording named a tree main has since moved past.
