@@ -319,6 +319,46 @@ const chatRows = () =>
  * a row count or as `"absent"` - which is the strongest form of a collapse
  * claim, since it says the region was UNMOUNTED rather than merely covered.
  */
+/**
+ * The panel's geometry, unchanged across consecutive polls.
+ *
+ * `readoutSettled` above only says the caption and the DOM AGREE - they can agree
+ * on a layout that is still moving, which is how the light half of
+ * `resting-default` came back describing a capacity 31px smaller than the dark
+ * half's while both captions matched their own pixels (design round 1, D4). What
+ * a captured frame needs is the state the story ENDS in, so this waits for three
+ * consecutive samples to be identical before the shutter opens.
+ */
+const layoutSettled = () =>
+	waitFor(
+		() => {
+			const sample = () => {
+				const panel = document.querySelector<HTMLElement>(
+					'[data-sidebar-region="chats"]',
+				);
+				const entities = document.querySelector<HTMLElement>(
+					'[data-sidebar-region="entities"]',
+				);
+				const separator = document.querySelector<HTMLElement>(
+					'[data-sidebar-split] [role="separator"]',
+				);
+				return [
+					panel ? Math.round(panel.getBoundingClientRect().height) : -1,
+					entities ? Math.round(entities.getBoundingClientRect().height) : -1,
+					separator?.getAttribute("aria-valuenow") ?? "none",
+				].join("/");
+			};
+			(globalThis as { __sidebarSamples?: string[] }).__sidebarSamples = [
+				...((globalThis as { __sidebarSamples?: string[] }).__sidebarSamples ?? []),
+				sample(),
+			].slice(-3);
+			const samples = (globalThis as { __sidebarSamples?: string[] })
+				.__sidebarSamples as string[];
+			return samples.length === 3 && new Set(samples).size === 1;
+		},
+		4_000,
+	);
+
 type SettleSpec = {
 	entities?: string[] | "absent";
 	chats?: number | "absent";
@@ -529,6 +569,7 @@ export const RestingDefault: Story = {
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -548,6 +589,7 @@ export const DraggedSplit: Story = {
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -569,6 +611,7 @@ export const EntitiesOnly: Story = {
 			chats: "absent",
 		});
 		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -585,6 +628,7 @@ export const ChatsOnly: Story = {
 	play: async () => {
 		await settled({ entities: "absent", chats: 3 });
 		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -607,6 +651,7 @@ export const ShortWindow: Story = {
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -623,6 +668,49 @@ export const Narrow240: Story = {
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
+		await layoutSettled();
+	},
+};
+
+/**
+ * The swap: the chats list above, the entity lists below.
+ *
+ * This is the state design round 1's D2 found unphotographed while S9 still
+ * declared reorder deferred, and it is the one layout in this change where more
+ * than a number changes: the regions trade their `flex-1`/`shrink-0` roles, the
+ * boundary moves to the other edge of the list region (`side="bottom"`), the
+ * restore row would follow the hidden region, and the rule above the lower
+ * region moves from the list to the entities. The readout prints the order and
+ * the separator's `side` for exactly that reason - the frame has to say which
+ * of the two orders it is, because the pixels alone do not.
+ */
+export const ChatsFirst: Story = {
+	render: () => {
+		bridge();
+		split({ order: "chats-first" });
+		return <Page />;
+	},
+	play: async () => {
+		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
+		await readoutSettled();
+		await layoutSettled();
+	},
+};
+
+/**
+ * The same swap at the panel's width clamp, where the three cluster controls and
+ * the entity rows have the least room they ever get.
+ */
+export const ChatsFirstNarrow: Story = {
+	render: () => {
+		bridge();
+		split({ order: "chats-first" });
+		return <Page sidebarWidth={240} />;
+	},
+	play: async () => {
+		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
+		await readoutSettled();
+		await layoutSettled();
 	},
 };
 
@@ -661,5 +749,6 @@ export const QueryWhileCollapsed: Story = {
 				chatRows() === 1,
 		);
 		await readoutSettled();
+		await layoutSettled();
 	},
 };

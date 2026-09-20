@@ -176,6 +176,24 @@ test("a query renders both regions and writes nothing", () => {
 		assert.equal(out.regions, stored, "the stored value is echoed unchanged");
 		assert.equal(out.listHeight, 300, "a stored height is echoed unchanged");
 		assert.equal(out.restore, null, "no restore row while a query is up");
+		/*
+		 * The BOUNDARY is the half that would pass while being broken: a regression
+		 * returning `divider: null` through a query would still draw both regions
+		 * and still satisfy every assertion above, and the user would have no way to
+		 * resize either one for the duration of the search - the component draws the
+		 * boundary off exactly this field (review round 1, m-4).
+		 */
+		assert.notEqual(
+			out.divider,
+			null,
+			`${stored}: the boundary survives a query`,
+		);
+		assert.equal(out.divider.resizable, true, `${stored}: and it is draggable`);
+		assert.equal(
+			out.divider.value,
+			300,
+			`${stored}: and it reports the height the user chose`,
+		);
 	}
 });
 
@@ -252,6 +270,53 @@ test("below two floors the range collapses onto what is drawn, and a write is re
 	// The collapse is not a lie about a range: the separator announces the one
 	// value it is drawn at.
 	assert.equal(out.divider.min, out.divider.max);
+});
+
+test("below two floors in AUTO, the announced value is what is drawn", () => {
+	/*
+	 * The stored case above announces the clamped stored height, which IS what
+	 * the render applies. AUTO is not the same question: there the render applies
+	 * `autoRegionCap`, which at capacity 100 is 28, while the clamp of the drawn
+	 * height to the floor is 72 - so announcing the clamp promises 44px the
+	 * layout does not have. Probed at 100/140/143 before the fix (review round 1,
+	 * m-3).
+	 */
+	for (const [capacity, expected] of [
+		[100, 28],
+		[140, 68],
+		[143, 71],
+	]) {
+		const out = resolveSidebarSplit(
+			inputs({
+				capacity,
+				listHeight: null,
+				drawnListHeight: expected,
+				panelContentHeight: 900,
+			}),
+		);
+		assert.equal(
+			out.divider.resizable,
+			false,
+			`capacity ${capacity} is below the offer`,
+		);
+		assert.equal(
+			out.divider.value,
+			expected,
+			`capacity ${capacity} announces the drawn height`,
+		);
+		assert.equal(out.divider.min, expected);
+		assert.equal(out.divider.max, expected);
+	}
+	/*
+	 * And a stored height still announces the clamp, because that is the number
+	 * the render applies to a `shrink-0` region with the same cap - the store's
+	 * value survives untouched either way.
+	 */
+	const stored = resolveSidebarSplit(
+		inputs({ capacity: 143, listHeight: 900, panelContentHeight: 900 }),
+	);
+	assert.equal(stored.divider.value, SIDEBAR_MIN_REGION_PX);
+	assert.equal(stored.listHeight, 900);
 });
 
 test("one region hidden means no boundary, and a restore row for the other", () => {
