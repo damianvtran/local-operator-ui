@@ -184,13 +184,29 @@ focus — with the menu's own open state as a third way in, because the menu is 
 PORTAL and a pointer that opens it and leaves the row must not undraw the control
 the menu belongs to.
 
-**The row's hover ground belongs to the ROW, not to its button (round 2, D13).**
-`rowStyle` carries `hover:bg-row-hover`, which fires only while the pointer is over
-the button; the two sibling controls sit inside the row's box and outside its
-button, so moving onto either glyph dropped the ground the pointer was standing
-on — a pop under a pointer that never left the row. The ground is stated once more
-on the row's box and dropped while the row is the current one, exactly as the two
-controls drop their own.
+**The row's hover ground belongs to the ROW, not to its button (round 2, D13; the
+first attempt at it was INERT and round 3, D18 measured that).** `rowStyle` carries
+`hover:bg-row-hover`, which fires only while the pointer is over the button; the
+two sibling controls sit inside the row's box and outside its button, so moving
+onto either glyph dropped the ground the pointer was standing on — a pop under a
+pointer that never left the row. The ground is stated once more on the row's box
+and dropped while the row is the current one, exactly as the two controls drop
+their own.
+
+The spelling is a PLAIN `hover:`, and that is the correction: the first version
+used `group-hover:bg-row-hover` on the element that CARRIES `group`, which Tailwind
+compiles to a DESCENDANT rule (`:is(:where(.group):hover *)`), so it could never
+match its own carrier — the class was in the source, every static assertion was
+green, and the box painted nothing. Measured on the frames: the ground was
+**CSS 228..436** (the button's, 56px short of the box at 280) and absent entirely
+with the pointer on a control. On this round's re-shot frames the ground runs
+**CSS 228..491**, i.e. the full row box, and it now passes under the two control
+slots (sampled at device x 470..982 on the hovered row of `row-controls-pair`,
+with the panel ground `srgb(42,39,34)` resuming at 984 — the box's own right
+edge). The scene asks the BROWSER for the row boxes' computed backgrounds, with
+the pointer on the row and again with it on a control, so the check evaluates the
+compiled selector rather than the source text — which is the difference the
+finding turned on.
 
 **The undo offer is a PANEL REGISTER, not a toast (round 2, D12), and the
 measurement is why.** As a toast it covered the composer's Send control in both

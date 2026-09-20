@@ -1883,12 +1883,25 @@ async function sceneSessionArchive(cdp) {
 	 * spelling could not express.
 	 */
 	const hoverGrounds = await readRowGrounds(cdp);
+	/*
+	 * THE ROW THE POINTER IS ON, read from the control's own ancestry, so this is an
+	 * assertion about THAT row rather than about "some row has a ground": the defect
+	 * was the ground living on the button (56px short) or, with the pointer on a
+	 * control, not being painted at all.
+	 */
+	const hoveredRowId = await cdp.evaluate(`(() => {
+		const control = document.querySelector("[data-session-archive]");
+		return (
+			control?.closest("[data-session-row]")?.getAttribute("data-session-row") ??
+			null
+		);
+	})()`);
 	check(
 		"the row's ground survives the pointer moving onto its control",
-		hoverGrounds.painted.length === 1 &&
-			hoverGrounds.painted[0].width > 0 &&
-			hoverGrounds.rows > 1,
-		JSON.stringify(hoverGrounds),
+		hoveredRowId !== null &&
+			hoverGrounds.painted.length === 1 &&
+			hoverGrounds.painted[0].id === hoveredRowId,
+		JSON.stringify({ hoveredRowId, ...hoverGrounds }),
 	);
 	note(
 		"the ground under the pointer, on a control",
