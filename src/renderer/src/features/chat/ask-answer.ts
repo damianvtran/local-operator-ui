@@ -628,8 +628,7 @@ export const answerReport = (
  */
 const composerMessageFor = (error: unknown, frame: PressFrame): string => {
 	if (answerRefusedWithoutACode(error)) {
-		if (frame.liveEpoch !== frame.sentEpoch)
-			return unsentAnswerMessage(error);
+		if (frame.liveEpoch !== frame.sentEpoch) return unsentAnswerMessage(error);
 		if (frame.liveGateKey === null) return SETTLED_ELSEWHERE_MESSAGE;
 		if (frame.liveGateKey !== frame.pressedGateKey)
 			return QUESTION_MOVED_ON_MESSAGE;
