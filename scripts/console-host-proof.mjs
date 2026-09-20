@@ -896,7 +896,10 @@ async function main() {
 		rows: 24,
 	});
 	await sleep(700);
-	await rpcOk(state, "console_input", { surface: catcher.surface, text: "日本" });
+	await rpcOk(state, "console_input", {
+		surface: catcher.surface,
+		text: "日本",
+	});
 	await rpcOk(state, "console_input", {
 		surface: catcher.surface,
 		bytes: [...Buffer.from("日\n", "utf8")],
@@ -904,7 +907,9 @@ async function main() {
 	await sleep(900);
 	await rpcOk(state, "console_close", { surface: catcher.surface, kill: true });
 	await sleep(300);
-	const written = existsSync(roundTrip) ? readFileSync(roundTrip) : Buffer.alloc(0);
+	const written = existsSync(roundTrip)
+		? readFileSync(roundTrip)
+		: Buffer.alloc(0);
 	const expectedInput = Buffer.concat([
 		// The `text` path: the host encodes it once and the pty receives those bytes.
 		Buffer.from("日本", "utf8"),
@@ -1091,7 +1096,11 @@ async function main() {
 			return 'armed';
 		})()
 	`);
-	check("the preload exposes a state-change subscriber", armed === "armed", armed);
+	check(
+		"the preload exposes a state-change subscriber",
+		armed === "armed",
+		armed,
+	);
 	const broadcastResize = await rpcOk(state, "console_resize", {
 		surface,
 		cols: 110,
@@ -1106,7 +1115,8 @@ async function main() {
 		"an agent's resize reaches a mounted pane as a broadcast, not only as its own reply",
 		broadcastResize.cols === 110 &&
 			frames >= 1 &&
-			paneState.surfaces.find((entry) => entry.surface === surface).cols === 110,
+			paneState.surfaces.find((entry) => entry.surface === surface).cols ===
+				110,
 		{
 			frames,
 			resize: broadcastResize,
@@ -1171,7 +1181,9 @@ async function main() {
 		surface: locked.surface,
 		mode: "viewport",
 	});
-	const afterToggle = existsSync(lockedLog) ? readFileSync(lockedLog) : Buffer.alloc(0);
+	const afterToggle = existsSync(lockedLog)
+		? readFileSync(lockedLog)
+		: Buffer.alloc(0);
 	check(
 		"the secure span keeps the bytes already retained, live and on disk (§11.4.4)",
 		beforeToggle.length > 0 &&
@@ -1375,7 +1387,10 @@ async function main() {
 			surface: floodSurface.surface,
 		},
 	);
-	await rpcOk(state, "console_close", { surface: floodSurface.surface, kill: true });
+	await rpcOk(state, "console_close", {
+		surface: floodSurface.surface,
+		kill: true,
+	});
 
 	// ---- the caps -----------------------------------------------------------
 	// Up to the cap rather than eight more: the session already holds the surfaces

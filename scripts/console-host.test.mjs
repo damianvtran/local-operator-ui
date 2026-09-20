@@ -56,10 +56,10 @@ const bundle = await build({
 			'export * from "./src/main/console/dispatch";',
 			'export * from "./src/main/console/pty";',
 			'export * from "./src/main/console/ipc";',
-		// The entry point itself, for the one thing only it can be asked: that a grid
-		// change is BROADCAST to the renderer (§8.2 step 2(c)), which is wiring rather
-		// than a rule and lives in `startConsoleHost`.
-		'export * from "./src/main/console/index";',
+			// The entry point itself, for the one thing only it can be asked: that a grid
+			// change is BROADCAST to the renderer (§8.2 step 2(c)), which is wiring rather
+			// than a rule and lives in `startConsoleHost`.
+			'export * from "./src/main/console/index";',
 			// The wire, and the record. `rpc.ts` is here so the console methods are
 			// driven through the REAL endpoint — the same envelope, the same key check,
 			// the same dispatch the app runs — rather than through a direct call into
@@ -955,7 +955,10 @@ test("non-ASCII survives BOTH directions, byte for byte", async () => {
 	pty.emit(`${cjk}\r\n`);
 	await ticks(30);
 	const read = await host.read(created.surface, "viewport");
-	assert.ok(read.text.includes(cjk), `the record holds ${JSON.stringify(read.text)}`);
+	assert.ok(
+		read.text.includes(cjk),
+		`the record holds ${JSON.stringify(read.text)}`,
+	);
 	host.flush(created.surface);
 	const onDisk = readFileSync(
 		logPath(historyRoot(dir), "session-1", created.surface),
@@ -1043,7 +1046,10 @@ test("a retained surface's writes are coalesced, and its sidecar is not rewritte
 		logPath(historyRoot(dir), "session-1", created.surface),
 	).size;
 	assert.equal(size, expected);
-	assert.equal(history.load("session-1", created.surface).bytes.length, expected);
+	assert.equal(
+		history.load("session-1", created.surface).bytes.length,
+		expected,
+	);
 	// And the record's own log still holds all of it in memory, so a read is not
 	// answered from a buffer the flush emptied.
 	assert.ok(host.status(created.surface).cols > 0);
@@ -1067,7 +1073,10 @@ test("a surface that asked not to be retained writes nothing, even when a flush 
 	host.setSecure(created.surface, true);
 	host.setSecure(created.surface, false);
 	await ticks(PERSIST_FLUSH_MS + 60);
-	assert.equal(existsSync(join(historyRoot(dir), fileStem("session-1"))), false);
+	assert.equal(
+		existsSync(join(historyRoot(dir), fileStem("session-1"))),
+		false,
+	);
 	assert.deepEqual(history.list(), []);
 });
 
@@ -1111,10 +1120,7 @@ test("a grid change is broadcast to the renderer, and the frame carries no paylo
 	// No payload, on purpose: the pane re-reads `console-state` and applies what MAIN
 	// says, which is what keeps main the only authority on the grid (§8.2 step 3).
 	assert.deepEqual(frames[0], ["console-state-changed"]);
-	assert.equal(
-		CONSOLE_PUSH_CHANNELS.includes("console-state-changed"),
-		true,
-	);
+	assert.equal(CONSOLE_PUSH_CHANNELS.includes("console-state-changed"), true);
 	// And the state the pane would read carries the new grid.
 	const state = host.state();
 	assert.equal(
@@ -1283,9 +1289,9 @@ test("secure input refuses reads and captures, and the bytes already retained ar
 	// The file is a PREFIX-extended copy of the pre-toggle bytes: nothing the toggle
 	// did rewrote or removed what was already retained.
 	assert.ok(
-		readFileSync(
-			logPath(historyRoot(dir), "session-1", created.surface),
-		).subarray(0, before.length).equals(before),
+		readFileSync(logPath(historyRoot(dir), "session-1", created.surface))
+			.subarray(0, before.length)
+			.equals(before),
 	);
 
 	// The residual the design states rather than hides: the RECORD still holds what a
@@ -2163,9 +2169,10 @@ test("the exit generation is bumped by the retention layer and survives a relaun
 	// live value wins the max, so two exits cannot share one generation.
 	assert.equal(history.nextExitEpoch("session-1", created.surface, 7), 8);
 	// And a sidecar written before this field existed reads as 0 rather than NaN —
-	// the normal state on a machine that ran an earlier build.
-	const legacy = { ...loaded[0].meta };
-	delete legacy.exit_epoch;
+	// the normal state on a machine that ran an earlier build. The older document is
+	// spelled with `undefined` because that is what one is: `JSON.stringify` omits
+	// the key, exactly as the build that wrote it did.
+	const legacy = { ...loaded[0].meta, exit_epoch: undefined };
 	history.writeMeta(legacy);
 	assert.equal(history.exitEpoch("session-1", created.surface), 0);
 });
