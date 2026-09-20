@@ -36,6 +36,8 @@ export const useRadientAuth = () => {
 	const {
 		user: radientUser,
 		isLoading,
+		isFetching,
+		accountRead,
 		error,
 		isAuthenticated,
 		hasLocalSession,
@@ -91,6 +93,14 @@ export const useRadientAuth = () => {
 		isAuthenticated,
 		hasLocalSession,
 		isLoading,
+		isFetching,
+		/**
+		 * The account read's own classification (`checking`/`ready`/`signed-out`/
+		 * `refused`/`unavailable`/`unknown`), passed through so the surfaces that
+		 * render it do not each rebuild the reading from `error`. See
+		 * `RadientAccountRead` in `use-radient-user-query.ts`.
+		 */
+		accountRead,
 		error,
 
 		// User information: only return if authenticated, otherwise null

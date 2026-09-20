@@ -89,8 +89,11 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
+ *   --gate-state <label>   (with --scene settings-gate) what this run's backend
+ *                          state is called in the frames and the log, so two
+ *                          runs against two backends can be told apart
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -6696,6 +6699,306 @@ async function readSettingsFields(cdp) {
  * need a backend (a driver run has none), and the chat route's own rows. Those
  * are in the live-app evidence instead.
  */
+/**
+ * Sample the gate's inputs at 100ms for the whole scene, in the page.
+ *
+ * WHY AT THIS RATE. A read that repeats once a second can be React Query's own
+ * retry, a refetch from an invalidation, or a consumer reacting to a status
+ * push - and the samplers above see one value per sample, which is too coarse
+ * to tell a retry loop from a pulse: both look like "still fetching". What
+ * separates them is whether the state LEAVES `fetching` between reads, so this
+ * records every transition with its timestamp and the two counters that move
+ * only on a real failure (`fetchFailureCount`).
+ *
+ * The browser's own connectivity events are recorded beside it because the
+ * connectivity gate listens for them and invalidates every active query on
+ * each one, excluding only `config` - which is exactly the key that is NOT
+ * allowed to hold this screen.
+ */
+function startGateSampler(cdp) {
+	return cdp.evaluate(`(() => {
+		const state = { events: [], online: navigator.onLine, onlineEvents: 0, offlineEvents: 0 };
+		window.__gateSample = state;
+		window.addEventListener("online", () => {
+			state.onlineEvents += 1;
+			state.events.push({ at: Date.now(), kind: "online" });
+		});
+		window.addEventListener("offline", () => {
+			state.offlineEvents += 1;
+			state.events.push({ at: Date.now(), kind: "offline" });
+		});
+		const read = () => {
+			const snapshot = window.__gateLastSnapshot;
+			const query = window.__gateQueryState;
+			return {
+				at: Date.now(),
+				daemon: snapshot ? snapshot.state : null,
+				status: query ? query.status : null,
+				fetchStatus: query ? query.fetchStatus : null,
+				failureCount: query ? query.failureCount : null,
+			};
+		};
+		state.timer = setInterval(() => {
+			const now = read();
+			const previous = state.last;
+			if (
+				!previous ||
+				previous.daemon !== now.daemon ||
+				previous.status !== now.status ||
+				previous.fetchStatus !== now.fetchStatus ||
+				previous.failureCount !== now.failureCount
+			) {
+				state.events.push(now);
+			}
+			state.last = now;
+		}, 100);
+		return true;
+	})()`);
+}
+
+/**
+ * When a `settings-gate` run reads the screen, in milliseconds after the
+ * navigation. Chosen against what the page can legitimately cost rather than
+ * against a guess: the config read answers in single-digit milliseconds on a
+ * live daemon, the account read is one desktop control with at most two React
+ * Query retries behind it, and the transport's own op deadline is 25s. So 0.5s
+ * is "before any of that has settled", 5s is "after the account read's last
+ * retry could have landed", and 30s is "past the deadline, so a spinner still
+ * here is NOT waiting for a request to answer".
+ */
+const GATE_SAMPLES_MS = [500, 5000, 30000];
+
+/**
+ * What is on the settings route right now: which surface, and which query holds it.
+ *
+ * The two spinners this route can show are the same pixels, so the reading is
+ * the accessible text rather than the picture: SettingsPage's own waiting branch
+ * labels its spinner "Loading settings", the route's Suspense fallback labels
+ * its own "Loading page", and the settings sidebar (`nav[aria-label="Settings
+ * sections"]`) is the marker that a REVIEWED surface is up, because it renders
+ * past both early returns.
+ */
+function readSettingsGate(cdp) {
+	return cdp.evaluate(`(() => {
+		const main = document.querySelector("main");
+		const statuses = Array.from(document.querySelectorAll('[role="status"]'))
+			.map((el) => (el.textContent || "").trim());
+		return {
+			route: window.location.hash.replace(/^#/, "") || "/",
+			statuses,
+			loadingSettings: statuses.includes("Loading settings"),
+			loadingPage: statuses.includes("Loading page"),
+			settingsNav: Boolean(document.querySelector('nav[aria-label="Settings sections"]')),
+			/*
+			 * The page's own error surface, which is a RESOLVED state rather than a
+			 * waiting one: configError is checked before the loading branch, so a
+			 * config read that failed renders this and stops waiting. A scene that
+			 * only accepted the sidebar would report the working recovery affordance
+			 * as a failure.
+			 *
+			 * No backticks anywhere in this template: the evaluate body IS a
+			 * backtick string, so one in a comment closes it (measured: this comment
+			 * as first written was a SyntaxError at load, and the scene never ran).
+			 */
+			configErrorCopy: (main?.textContent || "").includes(
+				"Your settings could not be loaded",
+			),
+			mainHeading: (main?.querySelector("h1")?.textContent || "").trim(),
+			mainChars: (main?.textContent || "").trim().length,
+		};
+	})()`);
+}
+
+/**
+ * Which queries are holding the route, read from the app's own cache.
+ *
+ * Only the two keys this route's gate reads are reported by VALUE, and every
+ * other query is reported by key and state alone: the others hold conversations,
+ * agents and credentials, and a harness log is not the place for them. The
+ * reading that matters is `isLoading` in the query hook's own terms -- React
+ * Query ANDs `pending` with `fetching` -- which is why the cache's two fields
+ * travel together with the derived boolean.
+ */
+async function readGateQueries(cdp) {
+	const all = await verb(cdp, "queries");
+	const ofInterest = [/^\["config"\]$/, /^\["radient-user","user"\]$/];
+	return all.map((entry) => ({
+		...entry,
+		watched: ofInterest.some((pattern) => pattern.test(entry.key)),
+	}));
+}
+
+/**
+ * What MAIN holds about the daemon, read from the renderer's bridge.
+ *
+ * WHY THIS IS PART OF THE READING. The surfaces that report "the server is
+ * offline" do not probe anything themselves: they read main's snapshot, and
+ * `isServerReachable` turns two of its states into "an offline app". So a
+ * screen that says waiting while every request it makes is answered can only be
+ * explained by this value, which is main's own sentence about what it observed.
+ */
+function readDaemonSnapshot(cdp) {
+	return cdp.evaluate(`(async () => {
+		try {
+			const snapshot = await window.api.backend.getStatus();
+			return {
+				state: snapshot.state,
+				reconnecting: snapshot.reconnecting,
+				url: snapshot.url,
+				desktopAvailable: snapshot.desktopAvailable,
+				failures: snapshot.failures,
+				unanswered: snapshot.unanswered,
+				detail: snapshot.detail,
+			};
+		} catch (error) {
+			return { error: String(error) };
+		}
+	})()`);
+}
+
+/**
+ * How long the settings route is held by its own loading gate, in the real app.
+ *
+ * WHY THIS SCENE EXISTS. Two different spinners are the same picture on this
+ * route, and the page's gate ANDs two queries that have nothing to do with each
+ * other: the config it renders and the Radient account it only reads a boolean
+ * from. Which one held the screen, for how long, and whether it ever returns are
+ * not answerable from a frame -- so this scene samples the surface AND the cache
+ * at the three moments above, and captures a frame at each of them so the two
+ * readings can be matched to the same instant.
+ *
+ * The frames are NOT settle-comparable and are not offered as such:
+ * `captureSettled` refuses a frame whose bytes are still changing, which is
+ * every frame of an animation the screen is deliberately showing, so this scene
+ * takes them with `capture` and says a spinner was on screen where that is what
+ * it recorded.
+ *
+ * The sibling route at the end is the lazy-chunk question asked of the same
+ * build: the route table is `React.lazy` across the board, so `/settings`
+ * rendering its own gate rather than the fallback -- while a sibling does too --
+ * is what distinguishes "this page's queries" from "no lazy route resolves".
+ */
+async function sceneSettingsGate(cdp) {
+	const label = argValue("--gate-state", "unlabelled");
+	const started = Date.now();
+	/*
+	 * Armed BEFORE the navigation, because the reads this instrument exists to
+	 * name begin at the route's mount. The verb starts a fetch of its own through
+	 * the patched path, so `validated` here is the difference between a reading
+	 * and a claim: the first version of this scene wrapped the bridge, was
+	 * silently ignored by it, and printed "0 reads from 0 caller(s)" beside an
+	 * "armed true" note that could not fail.
+	 */
+	const armed = await verb(cdp, "queryFetches", { arm: true });
+	note("account-read trap armed", JSON.stringify(armed));
+	await startGateSampler(cdp);
+	await verb(cdp, "navigate", "/settings");
+
+	const samples = [];
+	for (const at of GATE_SAMPLES_MS) {
+		const remaining = at - (Date.now() - started);
+		if (remaining > 0) await wait(remaining);
+		const surface = await readSettingsGate(cdp);
+		const queries = await readGateQueries(cdp);
+		const daemon = await readDaemonSnapshot(cdp);
+		/*
+		 * Feed the in-page sampler the two values it records transitions of. Read
+		 * here, on the sample's own cadence, because the sampler must not itself
+		 * run `getStatus()` 10 times a second against main.
+		 */
+		await cdp.evaluate(
+			`(() => {
+				window.__gateLastSnapshot = ${JSON.stringify(daemon)};
+				const watched = ${JSON.stringify(queries.filter((entry) => entry.watched))};
+				window.__gateQueryState = watched.find((entry) => entry.key.includes("radient-user")) || null;
+				return true;
+			})()`,
+		);
+		const frame = await capture(cdp, `settings-gate-${label}-${at}ms`);
+		const watched = queries.filter((entry) => entry.watched);
+		samples.push({ at, surface, daemon, watched, frame: frame?.path ?? null });
+		say(
+			`  [gate ${label}] t=${at}ms route=${surface.route} loadingSettings=${surface.loadingSettings} loadingPage=${surface.loadingPage} settingsNav=${surface.settingsNav} configError=${surface.configErrorCopy} daemon=${daemon.state}${daemon.reconnecting ? "(reconnecting)" : ""} queries=${JSON.stringify(watched)}`,
+		);
+	}
+
+	const last = samples[samples.length - 1];
+	/*
+	 * The callers, deduplicated by their own stack: one entry per distinct call
+	 * site, with how many reads it made and the wall-clock span they covered.
+	 */
+	/*
+	 * WHO asks, from the app's own query layer: one entry per distinct call site
+	 * with the number of fetches it started. This is the reading the proxy's log
+	 * cannot give (every desktop control leaves through one bridge) and the one a
+	 * page-side wrapper over `window.api` silently failed to record - so a
+	 * repeated read can finally be attributed to a mount, an invalidation or
+	 * React Query's own retry rather than guessed at.
+	 */
+	const fetches = await verb(cdp, "queryFetches", { key: "radient-user" });
+	say(
+		`  [gate ${label}] radient-user fetches this run: ${fetches.total} from ${fetches.callers.length} distinct call site(s) (trap armed=${fetches.armed} validation records=${fetches.probeRecords})`,
+	);
+	for (const caller of fetches.callers) {
+		say(
+			`    x${caller.count} span=${caller.lastAt - caller.firstAt}ms key=${caller.key} ${caller.stack}`,
+		);
+	}
+	check(
+		`the account-read trap was armed and validated itself (${label})`,
+		fetches.armed === true && fetches.probeRecords > 0,
+		`armed=${fetches.armed} validation-records=${fetches.probeRecords}`,
+	);
+	/*
+	 * The transitions, in order, from inside the page: this is the record that
+	 * says whether the screen was held by a query that kept FAILING and
+	 * restarting, or by one that never left `fetching` at all.
+	 */
+	const sampler = await cdp.evaluate(
+		`(() => {
+			const state = window.__gateSample || { events: [] };
+			if (state.timer) clearInterval(state.timer);
+			return {
+				online: state.online,
+				onlineEvents: state.onlineEvents,
+				offlineEvents: state.offlineEvents,
+				events: state.events.map((event) => ({ ...event, at: event.at - (state.events[0]?.at ?? event.at) })),
+			};
+		})()`,
+	);
+	say(
+		`  [gate ${label}] navigator.onLine=${sampler.online} online-events=${sampler.onlineEvents} offline-events=${sampler.offlineEvents}`,
+	);
+	say(`  [gate ${label}] transitions (t=ms from first):`);
+	for (const event of sampler.events) {
+		say(`    +${event.at}ms ${JSON.stringify(event)}`);
+	}
+	check(
+		`the settings route resolves in this build (${label})`,
+		last.surface.settingsNav === true || last.surface.configErrorCopy === true,
+		`still on ${last.surface.loadingPage ? "the route's Suspense fallback" : "the page's own waiting branch"} at ${last.at}ms: ${JSON.stringify(last.surface.statuses)}`,
+	);
+
+	/*
+	 * The sibling route, asked once. 8s is a state a person sees rather than a
+	 * race: the fallback is on screen for as long as the chunk takes to arrive,
+	 * and a chunk that has not arrived after 8s on this machine is the failure
+	 * this sample exists to see.
+	 */
+	await verb(cdp, "navigate", "/schedules");
+	await wait(8000);
+	const sibling = await readSettingsGate(cdp);
+	say(
+		`  [gate ${label}] sibling /schedules: loadingPage=${sibling.loadingPage} mainChars=${sibling.mainChars}`,
+	);
+	check(
+		`a sibling lazy route resolves too (${label})`,
+		sibling.loadingPage === false,
+		"/schedules is still on the route Suspense fallback after 8s",
+	);
+	return samples;
+}
+
 async function scenePalette(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -11283,6 +11586,7 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);

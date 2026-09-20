@@ -9,6 +9,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
 import { cn } from "@shared/lib/utils";
 import { LogOut, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -55,8 +56,27 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
 		const navigate = useNavigate();
 
-		const { user, isAuthenticated, signOut } = useRadientAuth();
-		const userName = user?.name ?? "User";
+		const { user, isAuthenticated, accountRead, signOut } = useRadientAuth();
+		/*
+		 * The row says what the app KNOWS about the account, never a placeholder
+		 * dressed as a person.
+		 *
+		 * The report this branch answers was partly read off THIS row: beside a
+		 * backend holding a valid Radient credential, the rail read "User" - the
+		 * user store's default name - exactly as it does for somebody who has
+		 * never signed in, while the account read was failing or never settling a
+		 * few hundred pixels away (qa round 1, A7). The placeholder is still the
+		 * fallback for the ordinary signed-out state, which is not a fault and not
+		 * this row's to explain; every state where the app cannot tell is now
+		 * named, in the same register the settings surface uses.
+		 */
+		const accountStateLabel =
+			accountRead === "checking"
+				? "Checking account…"
+				: isRadientAccountFailure(accountRead)
+					? "Account unavailable"
+					: null;
+		const userName = user?.name ?? accountStateLabel ?? "User";
 		const userEmail = user?.email ?? "";
 
 		const handleSignOut = useCallback(async () => {
@@ -73,15 +93,22 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		}, [isAuthenticated, signOut]);
 
 		const userInitials = useMemo(() => {
-			if (!userName) return null;
+			/*
+			 * Only a real account name carries initials. The row's fallback labels
+			 * are statements about the app ("Checking account…", "Account
+			 * unavailable"), and initialising those would put a two-letter code for
+			 * a sentence on the plate; the glyph fallback is what that case is for.
+			 */
+			const name = user?.name;
+			if (!name) return null;
 
-			return userName
+			return name
 				.split(" ")
 				.map((part) => part.charAt(0))
 				.join("")
 				.toUpperCase()
 				.substring(0, 2);
-		}, [userName]);
+		}, [user?.name]);
 
 		const row = (
 			<button
