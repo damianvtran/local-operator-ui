@@ -6,6 +6,19 @@ Status: **design, implementation not included.** Written read-only at UI head
 capture, no Storybook, no dependencies touched. Every line citation below is
 against that tree, read rather than recalled.
 
+**Citations and drift.** Every `file:line` citation below was written against
+the tree named above and is checked mechanically against this branch by
+`docs/design/sidebar-sections.md`'s own readers: all seventeen cited files exist
+and no cited range falls outside its file. Three ranges into files this branch
+EDITED have drifted since (they are positions on the base tree, and the
+implementation moved them): `resizable-divider.tsx:44` for the hover intent is
+now the exported `HOVER_INTENT_MS` (which is also why the constant is an export),
+`resizable-divider.tsx:91` for the hit band, and `ui-preferences-store.ts:613`
+for the persisted slice. Read those three by identifier rather than by line. The
+review rounds found and this branch amended three more claims that had drifted
+semantically rather than positionally: S2's `calc(100% - 72px)` and its "exactly
+as it does today", S9's "Reorder is deferred", and S12's three-tab-stop ledger.
+
 Read with: `docs/branding.md` (the design contract — § 5 space/radii/motion,
 § 6 focus, § 9 *Adding something new* and its `### Disclosure` subsection),
 `AGENTS.md` (environment, the evidence and `check-evidence` sections, change
