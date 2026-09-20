@@ -70,6 +70,10 @@
  * is one payload change away from silently reopening the same hole.
  */
 
+import {
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type { DesktopRequest } from "../../../../shared/desktop-contract";
 import type { PendingDesktopGate } from "../../../../shared/desktop-session-contract";
 
@@ -277,39 +281,132 @@ export const errorCodeOf = (error: unknown): string | undefined =>
 		: undefined;
 
 /**
- * What the user is told when their press did not become the gate's answer.
- *
- * The gate can move out from under a press in two ways, and both end with the
- * user's answer NOT being the one the owner took:
- *
- * - the transport refused it (`failed`) because the question was no longer
- *   pending — the backend's own 409;
- * - the transport ACCEPTED it (`sent`) with a 200 after another front end had
- *   already answered — the case measured on the committed rig, where the app's
- *   delayed POST came back `200`, the owner kept the other front end's answer,
- *   and the user was told nothing at all (QA round 2, F-A; UX round 2, U9).
- *
- * The second is why this is a function of the gate's movement rather than of the
- * status code: a 200 is not proof that OUR answer was the one taken, and the
- * only thing the app can compare is whether the gate it pressed still stands.
- * That comparison is sound because the two orderings differ — measured on the
- * rig, a normal answer's POST response lands BEFORE its card clears (124ms
- * against 200ms), so a press that won still sees its own gate. The caller
- * therefore counts "the ask moved on to its next question" as the press still
- * standing, because that is what our own answer to question N looks like: a
- * surviving ask can only have advanced.
- *
- * `null` for a `refused` outcome: nothing was sent, and the holder of the lock
- * is the one that reports. `null` while the gate still stands: the card owns the
- * outcome then, which is where the press happened.
+ * The sentence for a press whose question the owner had already settled —
+ * another front end answered it, or a multi-question ask moved on first.
  */
-export const lostAnswerMessage = (
+export const SETTLED_ELSEWHERE_MESSAGE =
+	"That question was already answered somewhere else, so your answer was not sent.";
+
+/**
+ * Whether this failure is the answer route refusing because the question is no
+ * longer pending.
+ *
+ * ## Why the STATUS is the instrument here, and the only one available
+ *
+ * `POST /v1/desktop/sessions/{id}/answers` answers `409` for exactly one thing:
+ * the owner would not take this answer for the question it names. Measured on
+ * the committed rig (`harness/probe-answer-exclusivity.py`, which fires two
+ * concurrent answers with DIFFERENT labels plus a third after the gate settles,
+ * six rounds): exactly one request per gate is answered `2xx`, that request's
+ * label is the one `owner-answer.json` records the owner as having taken, and
+ * every other answer — the concurrent loser and the late one alike — is refused
+ * with a bare `409`. The `code` field is absent on both refusals, which is why
+ * this test reads `status === 409 && code === undefined`: a CODED 409 comes from
+ * the relay and attachment ladders instead (`errors()` and its 413/422
+ * neighbours in `desktop_sessions.py`), and those are not this.
+ *
+ * The exclusivity is the owner's own rather than an inference from the status:
+ * `serving.py`'s `_resolve_pending` pops the future off `_pending_futures` on
+ * the owner's loop inside `settle()`, so the caller that pops it is the only one
+ * that can settle, and a second answer to the same question is refused;
+ * `attached.py`'s `answer_gate` refuses a request_id the bridge no longer
+ * projects; and `desktop_sessions.py`'s `answer` maps both refusals onto that
+ * 409. A `2xx` therefore means OUR value is the one the owner applied, which is
+ * the property everything below rests on.
+ */
+export const answerWasSettledElsewhere = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.status === 409 &&
+	error.code === undefined;
+
+/**
+ * The card's own not-sent sentence, for a failure that is not that refusal.
+ *
+ * Since the card can be gone by the time the outcome lands — the whole subject
+ * of `answerReport` — this sentence now has TWO surfaces, so one expression
+ * builds it and the card and the composer cannot disagree about what happened to
+ * the same press. The consequence-first order (what happened, then the reason)
+ * is `userFacingMessage`'s caller contract for an authored failure; a runtime
+ * exception never reaches it as copy, which is why the fallback is a sentence
+ * rather than `error.message`.
+ */
+export const unsentAnswerMessage = (error: unknown): string =>
+	`Your answer was not sent. ${userFacingMessage(
+		error,
+		"The request could not be completed.",
+	)}`;
+
+/**
+ * What one option press reports, and WHERE it reports it.
+ *
+ * ## Why the press's OUTCOME decides this, and never the card
+ *
+ * This used to be decided by reading the DOM: the verdict was "is the card this
+ * press was made on still on screen?". A press that WON was therefore reported
+ * lost whenever its own success had already removed that card — which is the
+ * case, not a corner: the two channels have no ordering between them. Resolving
+ * the gate makes the owner push frontend state, which unmounts the card, and the
+ * answer POST settles on its own schedule; measured on this rig a normal POST
+ * response led the card clearing by ~76 ms (124 ms against 200 ms), and a busy
+ * turn inverts a margin that size. Inverted, it told the user their answer was
+ * not sent while the model was already acting on it.
+ *
+ * The outcome cannot be raced that way and needs no proxy for it — see
+ * `answerWasSettledElsewhere` for the measurement that shows a `2xx` is our
+ * value and a refusal is not. So a `sent` outcome is silence: the owner has this
+ * press, and saying anything at all is the bug this replaces.
+ *
+ * ## The four cases, and why each goes where it goes
+ *
+ * - `refused` — nothing was sent (the lock was held, the gate is not an ask, the
+ *   session has no owner epoch), so nothing is said here; the surface that holds
+ *   the lock is the one that reports.
+ * - `sent` — silence, and the caller settles the card's own hold.
+ * - `failed` with the card still on screen — the refusal belongs on the surface
+ *   the press was made on: it is unmissable there and cannot be repeated,
+ *   because the card holds its options disabled until the gate moves.
+ * - `failed` with the card gone — the composer carries it: the card's own
+ *   sentence for a failure the card cannot explain, and the settled-elsewhere
+ *   sentence for the owner's refusal, which IS an explanation the user needs,
+ *   because their press did not become the answer.
+ */
+export type AnswerReport =
+	/** Nothing was sent, so the lock holder reports it. */
+	| { readonly to: "refused" }
+	/** The owner took this press: say nothing, and settle the card's hold. */
+	| { readonly to: "sent" }
+	/** The pressed card is still on screen, so it owns the refusal. */
+	| { readonly to: "card"; readonly refused: string }
+	/** The card is gone, so the composer carries the report. */
+	| {
+			readonly to: "composer";
+			readonly message: string;
+			/** The transport's own code, when the failure carried one. */
+			readonly code?: string;
+	  };
+
+/**
+ * The report for one option press. `cardStillOnScreen` is the ONLY thing the
+ * caller supplies that the outcome does not: it is a fact about the render — the
+ * DOM still holds an `Answer options` card — and it decides where a failure is
+ * written, never whether the press is reported. It cannot decide the second:
+ * the pressed card is removed BY the press that won.
+ */
+export const answerReport = (
 	outcome: AnswerOutcome,
-	pressStillStands: boolean,
-): string | null => {
-	if (pressStillStands) return null;
-	if (outcome.status === "refused") return null;
-	return "That question was already answered somewhere else, so your answer was not sent.";
+	cardStillOnScreen: boolean,
+): AnswerReport => {
+	if (outcome.status === "refused") return { to: "refused" };
+	if (outcome.status === "sent") return { to: "sent" };
+	if (cardStillOnScreen)
+		return { to: "card", refused: unsentAnswerMessage(outcome.error) };
+	return {
+		to: "composer",
+		message: answerWasSettledElsewhere(outcome.error)
+			? SETTLED_ELSEWHERE_MESSAGE
+			: unsentAnswerMessage(outcome.error),
+		code: errorCodeOf(outcome.error),
+	};
 };
 
 /** The `sessions.answer` request, as the wire contract defines it. */
