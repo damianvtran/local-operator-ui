@@ -4,6 +4,7 @@ import {
 	DesktopControlError,
 	UserFacingError,
 	desktopResult,
+	isSessionNotFound,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
@@ -2125,11 +2126,20 @@ function forgetSession<T extends SessionForgetState>(
 	/*
 	 * Stamped like a press, AND ADVANCING THE COUNTER, which is one decision rather
 	 * than two: a write takes the sequence the next request will take, so a page
-	 * asked for afterwards carries a greater value and settles the tombstone, while
-	 * a page asked for before it cannot. Stamping without advancing leaves the next
-	 * read at the same value (`fact.at < floor` is false), so the tombstone would
-	 * outlive the very answer that proves the conversation is gone - measured as
-	 * three suite failures before this line existed.
+	 * asked for afterwards carries a greater value and OUTRANKS the tombstone, while
+	 * a page asked for before it cannot. Outranking is not settling: under the rule
+	 * this record's own docstring states (design round 2, R2-1) a page settles a
+	 * tombstone only by CARRYING the id back, so what the advance buys is the
+	 * RESURRECTION arm - a page that really does bring the conversation back is
+	 * newer than the delete only if the delete advanced past it.
+	 *
+	 * THIS PARAGRAPH USED TO SAY the advance existed so the tombstone would not
+	 * "outlive the very answer that proves the conversation is gone", citing three
+	 * suite failures. That was the pre-R2-1 rule, and it is the opposite of what
+	 * this code now wants: a tombstone that outlives a page which does not carry the
+	 * id is exactly the protection a cached search answer needs (agent review round
+	 * 3, R3-1). Stamping without advancing still leaves the next read at the same
+	 * value (`fact.at < floor` is false), which is why the advance stays.
 	 */
 	const at = state.answerSeq + 1;
 	return {
@@ -2949,11 +2959,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * for it: "could not be read" is a state the user came from can survive,
 					 * and "is gone" is not.
 					 */
-					if (
-						generation === navigationGeneration &&
-						error instanceof DesktopControlError &&
-						error.status === 404
-					) {
+					if (generation === navigationGeneration && isSessionNotFound(error)) {
 						set({
 							validatingSessionId: null,
 							navigationError: null,

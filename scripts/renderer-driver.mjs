@@ -1363,6 +1363,36 @@ async function waitForNoToasts(cdp, timeoutMs = 15_000) {
 }
 
 /**
+ * Which ROW BOXES paint a ground right now, and which row the pointer is on.
+ *
+ * The question is asked of the browser's own computed style rather than of the
+ * class list, and that distinction is the whole of design round 3's D18: the first
+ * attempt at this fix put `group-hover:bg-row-hover` on the element that CARRIES
+ * `group`, which Tailwind compiles to a DESCENDANT rule (`:is(:where(.group):hover
+ * *)`), so the class was in the source, every static assertion was green, and the
+ * box painted nothing. A computed-style read evaluates the compiled selector.
+ *
+ * `painted` is the discriminating half: a check that the hovered row has a ground
+ * would pass for the BUTTON's own `hover:bg-row-hover` (`rowStyle`), which is what
+ * the 56px-short measurement was. What is asked here is which ELEMENTS paint one.
+ */
+async function readRowGrounds(cdp) {
+	return cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll("[data-session-row]")];
+		return {
+			rows: rows.length,
+			painted: rows
+				.map((el) => ({
+					id: el.getAttribute("data-session-row"),
+					width: Math.round(el.getBoundingClientRect().width),
+					background: getComputedStyle(el).backgroundColor,
+				}))
+				.filter((row) => row.background !== "rgba(0, 0, 0, 0)"),
+		};
+	})()`);
+}
+
+/**
  * Whether a selector is DRAWN right now (a non-zero box), without throwing.
  *
  * The distinction `drawn` makes inside the pair scene, lifted here because a second
@@ -1843,6 +1873,24 @@ async function sceneSessionArchive(cdp) {
 		 */
 		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's 4px gap, reserved on every row at rest; the first [data-chat-row] box is ${firstRow.rect.width}px of a ${hello.viewport.width}px window (that box is a section heading, not a session row)`,
 	);
+	/*
+	 * AND THE GROUND WITH THE POINTER ON A CONTROL (the arm D18 measured as "absent
+	 * entirely"): `hover:` on the row's box fires for the pointer being anywhere
+	 * inside it, children included, which is the property the group-prefixed
+	 * spelling could not express.
+	 */
+	const hoverGrounds = await readRowGrounds(cdp);
+	check(
+		"the row's ground survives the pointer moving onto its control",
+		hoverGrounds.painted.length === 1 &&
+			hoverGrounds.painted[0].width > 0 &&
+			hoverGrounds.rows > 1,
+		JSON.stringify(hoverGrounds),
+	);
+	note(
+		"the ground under the pointer, on a control",
+		JSON.stringify(hoverGrounds),
+	);
 	frames.push(await captureSettled(cdp, `row-hover${RUN_LABEL}`));
 
 	/*
@@ -2178,10 +2226,14 @@ async function sceneSessionArchive(cdp) {
 	 * a revealed control would photograph the reveal instead.
 	 *
 	 * The COST is measured rather than asserted in prose: the title element's own
-	 * painted width at each panel width, on two rows - the first row, which carries
-	 * a status trailing slot, and the row that also carries an UNREAD mark, which is
-	 * the binding case because that mark is a trailing slot OUTSIDE the truncating
-	 * title. `--width` cannot reach this band: the panel's width is the USER's
+	 * painted width at each panel width, on two rows - the first row, and the row
+	 * that also carries an UNREAD mark. THIS COMMENT USED TO CALL THE MARK A TRAILING
+	 * SLOT OUTSIDE THE TITLE and to call that row "the binding case" for the cost
+	 * (design round 3, D19): it is the opposite - the mark is drawn inside the row's
+	 * LEADING status slot, so a marked row's title measures the SAME width as a bare
+	 * one, and the two rows are measured here precisely to show that. The assertion
+	 * that the mark is really DRAWN is below ("the unread mark is DRAWN on this row"),
+	 * because two equal widths from two unmarked rows would prove nothing. `--width` cannot reach this band: the panel's width is the USER's
 	 * preference (`chatSidebarWidth`, clamped 240..360), not a function of the
 	 * window, so the scene writes the same preference the divider writes.
 	 */
@@ -2279,6 +2331,32 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
 	await wait(400);
+	/*
+	 * THE ROW'S OWN GROUND, READ FROM THE COMPILED RULE AND NOT FROM THE CLASS LIST
+	 * (design round 3, D18).
+	 *
+	 * This is the assertion whose absence let an INERT class ship twice: the first
+	 * attempt put `group-hover:bg-row-hover` on the element that CARRIES `group`,
+	 * which Tailwind compiles to a DESCENDANT rule - so the class was present, the
+	 * static tests were green, and the row box painted nothing. Asking the browser
+	 * for the element's own computed background is the cheapest question that
+	 * evaluates the compiled selector rather than the source text.
+	 *
+	 * THE SIBLING IS THE CONTROL, and it is what makes this discriminating: a bare
+	 * "the hovered row has a background" would pass for the button's own ground.
+	 * What is asserted is that the BOX paints it, that its width is the box's own
+	 * width (the D18 measurement was a ground 56px short of that), and that a row
+	 * the pointer is not on paints nothing.
+	 */
+	const ground = await readRowGrounds(cdp);
+	check(
+		"the ROW BOX paints the hover ground, and no other row does",
+		ground.rows > 1 &&
+			ground.painted.length === 1 &&
+			ground.painted[0].id === "b3f1a09c7d52",
+		JSON.stringify(ground),
+	);
+	note("the row's own ground", JSON.stringify(ground));
 	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
 	/*
 	 * AND THE SAME ROW AT REST, with the pointer parked off the list: this is the

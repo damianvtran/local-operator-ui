@@ -309,10 +309,19 @@ export function usePaletteItems({
 	const archiveView = useMemo<ArchiveView>(
 		() => ({
 			/*
-			 * The palette asks its own search, so it widens nothing: a scope that
-			 * offered archived conversations would have to say so, and the sidebar's
-			 * toggle is where the user says it (`chat-sidebar.tsx`). One view, one
-			 * answer to "which conversations does a query match".
+			 * The palette asks its own search and does not widen it, so an archived
+			 * conversation is not in a palette answer. THE SIDEBAR IS NOT ALWAYS
+			 * NARROWER THAN THIS, which is the correction agent review round 3 (N3)
+			 * asked for: with `chat-search.tsx`'s `Include archived` toggle ON and a
+			 * query typed, the sidebar lists the archived conversation the palette will
+			 * not, so the two DO disagree for as long as the toggle is on. That is a
+			 * deliberate scope difference - the palette has no toggle and offering
+			 * archived rows in it, with no control saying so, would be the silent
+			 * widening the brief forbids - but the earlier sentence here ("a scope that
+			 * offered archived conversations would have to say so") read as though the
+			 * palette could never be the narrower of the two. It can, and the honest
+			 * statement is that this view declares its own scope rather than inheriting
+			 * the sidebar's.
 			 */
 			include: false,
 			facts: {},
