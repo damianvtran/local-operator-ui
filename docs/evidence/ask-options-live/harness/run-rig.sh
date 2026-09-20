@@ -5,9 +5,16 @@
 #     <out-dir> <expect|-> <answer-delay-ms> <order|-> <resolution> \
 #     [extra serve-gate.py args...]
 #
-# <expect>     silent | settled | moved-on | unknown | not-sent | card-refusal | -
+# <expect>     silent | settled | moved-on | unknown | not-sent | card-refusal |
+#              card-unknown | -
 # <order>      cleared-first | delivered-first | -
 # <resolution> cleared | refused
+#
+# The <expect> list is the DRIVER's own vocabulary, and it has to be: an
+# unrecognised value falls through the driver's contradiction chain to "no
+# contradiction", so a reader who invents one here gets a run that prints success
+# and asserts nothing (design round 2, D8). `scripts/click-proof.mjs` is the list;
+# this line is a copy of it.
 #
 # WHY THIS IS COMMITTED. The frames below are re-derivable from the repository or
 # they are not evidence: an earlier round found the set could not be re-taken from
@@ -22,6 +29,16 @@
 # needs one. Nothing addresses the operator's own backend on :1111, and the
 # operator's config root is never read or written. Every process started here is
 # killed by exact pid on exit.
+#
+# THE DEV-SERVER PORT IS OURS OR THE RUN FAILS (design round 2, D11). Vite moves to
+# the next free port when the configured one is taken unless it is told not to, and
+# this script's readiness probe is a `curl` against `localhost:$PORT` — which
+# answers for WHOEVER is listening there. A sibling worktree's rig holding 5301 (the
+# documented port, so two captures on this host collide by default) therefore drove
+# the wrong page while every record the driver wrote still named this worktree's
+# `HEAD` and `srcTree`, because those are read with `git` here. That reads like a
+# flaky run rather than a collision. So: `--strictPort` makes vite refuse instead of
+# moving, and the pid check below refuses to drive a listener that is not ours.
 set -euo pipefail
 
 if [ "$#" -lt 5 ]; then
@@ -69,11 +86,19 @@ cd "$WT"
 
 # The dev-server port is fixed and a previous run's server can hold it for a few
 # seconds after its teardown: wait for it rather than racing it, which is how a
-# chained sweep hung on its third run.
+# chained sweep hung on its third run. If it is STILL held after the wait, that is a
+# collision rather than a straggler and this run stops here rather than driving
+# whoever is listening (design round 2, D11).
 for _ in $(seq 1 90); do
   lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 || break
   sleep 1
 done
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "port $PORT is held by another process after 90s:"
+  lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
+  echo "another worktree's rig is probably live - set RIG_PORT to a free port"
+  exit 1
+fi
 
 nohup "$PY" docs/evidence/ask-options-live/harness/serve-gate.py \
   --scratch "$SCRATCH" \
@@ -97,7 +122,7 @@ ASK_GATE_PORT="$PORT" \
 VITE_LOCAL_OPERATOR_API_URL="http://localhost:$PORT" \
 LOCAL_OPERATOR_DESKTOP_BACKEND_URL="http://127.0.0.1:$BPORT" \
 LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$SCRATCH/token")" \
-  nohup node_modules/.bin/vite --config docs/evidence/ask-options-live/harness/ask-gate.vite.mjs \
+  nohup node_modules/.bin/vite --strictPort --config docs/evidence/ask-options-live/harness/ask-gate.vite.mjs \
   >"$LOG/vite.log" 2>&1 &
 VITE_PID=$!
 
@@ -106,7 +131,16 @@ for _ in $(seq 1 120); do
   sleep 0.5
 done
 curl -sf "http://localhost:$PORT/" -o /dev/null || { echo "dev server never answered"; tail -30 "$LOG/vite.log"; exit 1; }
-echo "dev server on $PORT"
+# The listener must be OUR vite, not a stranger that answered first: the readiness
+# probe above cannot tell the two apart, and a run that drives the wrong page still
+# writes this worktree's `HEAD` into its record.
+LISTENER_PID="$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t | head -1)"
+if [ "$LISTENER_PID" != "$VITE_PID" ]; then
+  echo "port $PORT is answered by pid ${LISTENER_PID:-none}, not our vite (pid $VITE_PID)"
+  lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
+  exit 1
+fi
+echo "dev server on $PORT (pid $VITE_PID)"
 
 set +e
 CLICK_PROOF_EXPECT="$EXPECT" \

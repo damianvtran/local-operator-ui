@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T15:55:22.638Z",
+  "at": "2026-09-20T19:07:29.493Z",
   "arm": {
     "armed": true
   },
@@ -61,10 +61,10 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789919748006.968,
+      "requestedAt": 1789931255322.6152,
       "status": 200,
-      "answeredAt": 1789919748088.596,
-      "deliveredAt": 1789919750599.794
+      "answeredAt": 1789931255342.458,
+      "deliveredAt": 1789931257852.012
     }
   ],
   "answersFrom": "route",
@@ -74,16 +74,16 @@
     ]
   },
   "tree": {
-    "head": "0c1d4cc957be6cf4f665e1adf2310c3afbe5d5ea",
-    "srcTree": "1d00dfbaa8736816b8781873b07f898270c4f75e",
+    "head": "e40d4933e0451892ccc372db309e14692c324600",
+    "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789919748339,
-  "clearedAfterPressMs": 419,
+  "clearedAt": 1789931255616,
+  "clearedAfterPressMs": 310,
   "ordering": {
-    "clearedAt": 1789919748339,
-    "deliveredAt": 1789919750599.794,
+    "clearedAt": 1789931255616,
+    "deliveredAt": 1789931257852.012,
     "verdict": "the card cleared before the response was delivered"
   },
   "report": {
@@ -93,6 +93,7 @@
     "notSentCopy": [],
     "cardUp": false,
     "cardRefusal": false,
+    "cardUnknown": false,
     "alerts": []
   },
   "after": {
