@@ -2805,13 +2805,70 @@ export class BackendServiceManager {
 		 * the connection - so it is left alone rather than overwritten with a cause
 		 * the app cannot prove.
 		 */
+		/*
+		 * A RELOAD OF THE PROCESS THIS APP SPAWNED IS NOT A SUCCESSOR (2026-09-20).
+		 *
+		 * `lop-update` moving the daemon it serves in place is `os.execve`: the pid, the
+		 * listener fd, the cwd and the environment all survive, and the ASGI lifespan
+		 * re-runs - which MINTS A NEW `instance_id` and republishes the serve record under
+		 * it (`server/app.py`, `server/reload.py`). Read as "a different process answered"
+		 * that is a contradiction, and the app published the "server was replaced" band
+		 * over a connection still authenticated to the very same process - for hours, with
+		 * the band's Retry inert. Measured on the operator's machine 2026-09-20: app pid
+		 * 1968's own child, pid 2082, moved v0.61.1 -> v0.61.4 in place twice, and every
+		 * gated route on it kept answering 200.
+		 *
+		 * WHY THE SAME PID SETTLES IT, and why the app is the side that must yield.
+		 * An identity is minted per PROCESS, so "my daemon reloaded" and "something else
+		 * is answering" are told apart by the process, not by the id: `execve` cannot hand
+		 * one pid to a second live process, and the pid that answers here is the one
+		 * `spawn()` returned to this app. It is not merely a number read off a record -
+		 * `this.process` is a live `ChildProcess` handle whose `pid` proves it belongs to
+		 * the process this app started, so pid reuse cannot produce this shape: a reused
+		 * pid means our child EXITED, and an exited handle fails the guard below. The plane
+		 * is governed by the environment this app spawned that child with, which `execve`
+		 * preserves - `LOCAL_OPERATOR_DESKTOP_TOKEN` is the same token against the same
+		 * process - which is why the accepted bearer does not change either (the record
+		 * republishes `desktop: true, claim_key: ""`, i.e. env-governed).
+		 *
+		 * WHY THE DAEMON SIDE IS NOT THE FIX. Re-minting is that side's own contract for a
+		 * landed reload: `lop services` confirms one by looking for a NEW `instance_id`
+		 * under the SAME pid ("instance_id is the proof and the version is not: it is
+		 * minted once per process", `services.py`). Pinning the id would break the
+		 * handshake the operator's own tooling reads, so the false premise - "a new
+		 * instance id means a new process" - is this app's to correct.
+		 *
+		 * WHAT DOES NOT CHANGE: a DIFFERENT pid is still a successor, a `not-a-daemon`
+		 * answer is still not a daemon, and an unreachable socket is still a missing one -
+		 * all three keep their current verdicts, as does the reload of a daemon this app
+		 * did NOT spawn: with no child handle there is nothing to re-anchor to, so
+		 * discovery and the claim handshake remain that case's recovery (A3 of
+		 * `scripts/daemon-observation.test.mjs` pins it).
+		 */
+		const attachedPid = this.daemonState.snapshot().pid;
+		const reanchored =
+			probe.outcome === "identity-mismatch" &&
+			attachedPid !== null &&
+			probe.identity.pid === attachedPid &&
+			this.holdsLiveChildProcess(attachedPid)
+				? {
+						url: this.backendUrl,
+						instanceId: probe.identity.instanceId,
+						pid: probe.identity.pid,
+						version: probe.identity.version,
+						prefix: probe.identity.prefix,
+						installKind: probe.identity.installKind,
+					}
+				: null;
 		const answersThisApp =
-			probe.outcome === "identified" &&
-			probe.identity.pid === this.daemonState.snapshot().pid;
+			reanchored !== null ||
+			(probe.outcome === "identified" &&
+				probe.identity.pid === this.daemonState.snapshot().pid);
 		const answeredAnotherProcess =
-			probe.outcome === "identity-mismatch" ||
-			probe.outcome === "not-a-daemon" ||
-			probe.outcome === "identified";
+			reanchored === null &&
+			(probe.outcome === "identity-mismatch" ||
+				probe.outcome === "not-a-daemon" ||
+				probe.outcome === "identified");
 		if (answersThisApp) {
 			this.daemonState.setPairing(DAEMON_PAIRED);
 		} else if (answeredAnotherProcess) {
@@ -2838,7 +2895,18 @@ export class BackendServiceManager {
 				 * plane, so those refusals arrive as answers too - and if they were allowed
 				 * to excuse this observation, the count would never reach three and the app
 				 * would never re-discover or re-claim (see `daemon-status.ts`).
+				 *
+				 * The exception above it is the OTHER cause of a changed `instance_id`: the
+				 * same process, reloaded. It is checked before this arm so a reload cannot
+				 * reach the contradiction at all.
 				 */
+				if (reanchored) {
+					return {
+						kind: "reanchored",
+						identity: reanchored,
+						detail: `Connected to the daemon on ${this.backendUrl} (pid ${reanchored.pid}, v${reanchored.version}). It reloaded in place and kept the same process.`,
+					};
+				}
 				return {
 					kind: "contradicted",
 					detail: `Another process is answering at ${this.backendUrl} (${probe.detail})`,
@@ -3014,7 +3082,20 @@ export class BackendServiceManager {
 			// installs during a transient outage, especially with an active turn.
 			if (this.daemonState.expectedInstanceId()) {
 				const observation = await this.probeAttachedDaemon();
-				if (observation.kind === "identified") {
+				/*
+				 * `reanchored` is folded on the SAME arm as `identified`, and for the same
+				 * reason: both are the app's own process answering, so both are the
+				 * connection this app already had rather than a lost one. Recovery is the
+				 * banner's Retry (`reconnectNow()`), and a verdict it dropped here would
+				 * leave the Retry answering with the stale snapshot it was asked to
+				 * refresh - which is precisely what the reported defect did: it reached
+				 * neither this arm nor the discovery below it (the owned-child guard
+				 * would have returned), so only an app restart cleared the band.
+				 */
+				if (
+					observation.kind === "identified" ||
+					observation.kind === "reanchored"
+				) {
 					this.daemonState.observe(observation);
 					this.nextRecoveryAt = 0;
 					this.notifyStatus();
@@ -3080,6 +3161,15 @@ export class BackendServiceManager {
 				// answer `false` and fall through to `start({ quiet: true })` below - a
 				// second daemon spawned over a live child, which is the one outcome
 				// that guard exists to prevent.
+				//
+				// THE OWNED CASE THAT WAS STUCK IS NOT REACHED FROM HERE AT ALL, and that
+				// is the fix rather than a gap: the shape the guard declines - the live
+				// child this app spawned - is exactly the shape that now RE-ANCHORS in
+				// `probeAttachedDaemon` instead of contradicting, so it never becomes a
+				// `contradicted` observation to arrive here with (measured from the
+				// operator's machine, 2026-09-20: `lop-update` reloaded this app's own
+				// child in place, the app published `pairing: successor` over it and the
+				// Retry was inert until the app was restarted).
 				if (!processGone && observation.kind !== "contradicted") return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
@@ -3123,6 +3213,38 @@ export class BackendServiceManager {
 	 */
 	getOwnedPid(): number | null {
 		return this.process?.pid ?? null;
+	}
+
+	/**
+	 * Whether `pid` is the process this app spawned and that process is still live.
+	 *
+	 * The three clauses are one statement - "this is my child, and it has not
+	 * exited" - and each is load-bearing:
+	 *
+	 *  - the handle is the proof of identity. A `ChildProcess` is only ever built by
+	 *    this manager's own `spawn()`, so its `pid` cannot be a number read off a
+	 *    record that something else wrote, and it cannot be recycled: the OS does not
+	 *    reuse a pid while the process it names is alive, and a reused one means THIS
+	 *    child exited - which the `exitCode` clause reads;
+	 *  - `exitCode === null && signalCode == null` is the same liveness spelling
+	 *    `stop()` and the recovery guard act on (see `ownedPid`'s note), so a process
+	 *    this app has already reaped is never treated as live by one caller and dead
+	 *    by another;
+	 *  - a `null` pid is not a match. A manager that has never spawned anything owns
+	 *    nothing, and `undefined === undefined` must not read as ownership.
+	 *
+	 * Used by the reload re-anchor in `probeAttachedDaemon`, which is the one place
+	 * this app decides that a changed `instance_id` belongs to the process it
+	 * already holds rather than to a successor.
+	 */
+	private holdsLiveChildProcess(pid: number | null): boolean {
+		return (
+			pid !== null &&
+			this.process !== null &&
+			this.process.pid === pid &&
+			this.process.exitCode === null &&
+			this.process.signalCode == null
+		);
 	}
 
 	/**

@@ -53,6 +53,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
+import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -374,7 +375,11 @@ async function daemonScene({
 	 * therefore reports "nothing to attach to", which is exactly the answer that
 	 * used to be read as "the port is free".
 	 */
-	const publishRecordFile = (recordInstanceId, recordClaimKey) => {
+	const publishRecordFile = (
+		recordInstanceId,
+		recordClaimKey,
+		desktop = recordGoverned,
+	) => {
 		// The record the daemon itself publishes: staged-once, 0600, keyed by pid, with
 		// the heartbeat the reader's liveness classification is made from.
 		const now = Date.now() / 1000;
@@ -389,7 +394,7 @@ async function daemonScene({
 				source_ref: "",
 				prefix: "/tmp/observation-prefix",
 				install_kind: "uv-tool",
-				desktop: recordGoverned,
+				desktop,
 				claim_key: recordClaimKey,
 				started_at: now - 10,
 				heartbeat_at: now,
@@ -460,6 +465,36 @@ async function daemonScene({
 			await closeServer();
 			await stopChild();
 			rmSync(root, { recursive: true, force: true });
+		},
+		/**
+		 * The daemon RELOADS IN PLACE: same process, same pid, same listener, same
+		 * accepted bearer - a NEW `instance_id`, and its record republished under it.
+		 *
+		 * Distinct from `replaceUnderApp` on purpose, because the two are different
+		 * events: that one is a successor (a different process that refuses the
+		 * credential this app holds), and this one is `os.execve`
+		 * (`local_operator/server/reload.py`), whose whole point is that nothing but
+		 * the process IMAGE changes. `desktop: true` with `claim_key: ""` is what
+		 * such a reload republishes when the plane is governed through the
+		 * environment - the shape a daemon spawned by the app always has.
+		 */
+		async reloadInPlace({
+			instanceId: nextInstanceId,
+			acceptedBearer: nextBearer = live.acceptedBearer,
+			/**
+			 * What the reloaded process republishes as its claim key. `""` is the
+			 * env-governed shape (the spawner's token is the only credential that opens
+			 * the plane); a fresh key models a reload that lost the in-memory claim
+			 * latch and republished one - both are things `execve` can produce, and the
+			 * adopted daemon's recovery differs between them.
+			 */
+			claimKey = "",
+			desktop = true,
+		}) {
+			live.instanceId = nextInstanceId;
+			live.acceptedBearer = nextBearer;
+			publishRecordFile(nextInstanceId, claimKey, desktop);
+			return nextInstanceId;
 		},
 	};
 }
@@ -1273,5 +1308,737 @@ test("S4: a plane that refuses this app's bearer reports `credential-refused`", 
 		);
 	} finally {
 		await scene.die();
+	}
+});
+
+/*
+ * ===========================================================================
+ * A RELOAD IS NOT A REPLACEMENT (2026-09-20)
+ * ===========================================================================
+ *
+ * `lop-update` moves the daemon it serves onto the new build with `os.execve`:
+ * the pid, the listener fd, the working directory and the ENVIRONMENT all
+ * survive, the successor re-runs the ASGI lifespan - where `instance_id` is
+ * minted again (`server/app.py`) - and it republishes its serve record under the
+ * new id (`server/registry.py`). On the operator's machine that daemon was this
+ * app's OWN CHILD (app pid 1968, child pid 2082, spawned with
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN`, logged at 12:27 as "Registered this app's own
+ * daemon"), and `lop-update` moved it in place twice that afternoon.
+ *
+ * The app read the new instance id as a successor. It published
+ * `pairing: { available: false, cause: "successor" }`, which renders as "The
+ * Local Operator server was replaced while this app was running. Pairing with
+ * the new one." - a band that sat on screen for hours over a connection that was
+ * still authenticated to that same process, with every gated route answering
+ * 200. Recovery could not clear it either: `recoverFromDetachment` returns at its
+ * live owned-child guard (deliberately - that guard is what stops a second daemon
+ * being spawned over a live child), so the band's Retry (`reconnectNow()`) was
+ * inert and only an app restart cleared it.
+ *
+ * These cases drive the REAL manager, over real loopback HTTP and real record
+ * files, against a daemon it SPAWNED ITSELF - `startOwned()` through a fixture
+ * launch plan, so `this.process` is a live ChildProcess handle for the pid the
+ * record names, which is the whole of what the re-anchor rests on. The daemon it
+ * merely ADOPTS is A3, and that case is there to keep the reasoning honest rather
+ * than because it is broken.
+ *
+ * The fixture daemon is a real process - a node script the manager spawns, the
+ * same way it spawns `lop serve` - and its "reload" is the event in the one place
+ * the app can tell them apart: the same pid, port, listener and accepted bearer,
+ * with a new instance id and a republished record. What it cannot reproduce is
+ * the `execve` itself; the evidence script
+ * `scripts/reload-reanchor-evidence.mjs` runs that against a real `lop serve`.
+ */
+const RE_OWNED_SERVE_LAUNCH = /^\.\/owned-serve-launch$/;
+const RE_OWNED_FIXTURE_SOURCES =
+	/^(electron|logger-fixture|config-fixture|owned-launch-fixture)$/;
+
+/**
+ * The daemon `lop serve` would have been, as one real child process.
+ *
+ * It publishes a serve record, answers the routes this app reads, and can be
+ * told to reload in place over `/fixture/reload`. The route list is deliberately
+ * the narrow set the app's own paths touch - `/health` for identity,
+ * `/v1/desktop/sessions` for the gated read whose 200 is what "still paired"
+ * means, `/v1/capabilities` for the poll the renderer runs while a plane is shut
+ * - plus `/fixture/state`, which is the TEST's window (health-request count and
+ * the identity in force) and not something the app ever asks for.
+ */
+const OWNED_DAEMON_FIXTURE = `
+import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+const port = Number(process.env.FIXTURE_PORT);
+const runDir = join(process.env.FIXTURE_CONFIG_ROOT, "run", "serve");
+/*
+ * The bearer this app spawned the daemon with. A reload preserves the
+ * environment, so it stays the accepted one across it - which is the point: the
+ * same process keeps serving the same plane, and the record it republishes says
+ * so (desktop: true, claim_key: "").
+ */
+const bearer = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || "";
+const version = process.env.FIXTURE_VERSION || "0.61.1";
+let instanceId = process.env.FIXTURE_INSTANCE || "instance-before-reload";
+let startedAt = Date.now() / 1000;
+let healthCount = 0;
+mkdirSync(runDir, { recursive: true });
+
+const publish = () =>
+	writeFileSync(
+		join(runDir, process.pid + ".json"),
+		JSON.stringify({
+			pid: process.pid,
+			host: "127.0.0.1",
+			port,
+			instance_id: instanceId,
+			version,
+			source_ref: "",
+			prefix: "/tmp/owned-fixture-prefix",
+			install_kind: "uv-tool",
+			desktop: true,
+			claim_key: "",
+			reloadable: true,
+			started_at: startedAt,
+			heartbeat_at: Date.now() / 1000,
+		}),
+		{ mode: 0o600 },
+	);
+publish();
+setInterval(publish, 2000);
+
+const json = (res, status, body) => {
+	res.writeHead(status, { "Content-Type": "application/json" });
+	res.end(JSON.stringify(body));
+};
+
+createServer((req, res) => {
+	const path = (req.url || "").split("?")[0];
+	if (path === "/health") {
+		healthCount += 1;
+		json(res, 200, {
+			status: 200,
+			message: "ok",
+			result: {
+				version,
+				instance_id: instanceId,
+				pid: process.pid,
+				prefix: "/tmp/owned-fixture-prefix",
+				install_kind: "uv-tool",
+			},
+		});
+		return;
+	}
+	if (path === "/v1/capabilities") {
+		json(res, 200, { status: 200, result: { desktop_available: true } });
+		return;
+	}
+	if (path === "/v1/desktop/claim") {
+		json(res, 200, { status: 200 });
+		return;
+	}
+	if (path === "/fixture/state") {
+		json(res, 200, { pid: process.pid, instanceId, healthCount });
+		return;
+	}
+	if (path === "/fixture/reload") {
+		/*
+		 * IN PLACE. The process, the port, the listener and the environment are all
+		 * untouched; the identity is minted again and the record is republished,
+		 * which is what the far side of an execve produces for this app to read.
+		 */
+		instanceId = randomUUID();
+		startedAt = Date.now() / 1000;
+		publish();
+		json(res, 200, { instanceId });
+		return;
+	}
+	if (path === "/v1/desktop/sessions") {
+		const presented = String(req.headers.authorization || "").replace(
+			"Bearer ",
+			"",
+		);
+		if (presented !== bearer) {
+			json(res, 401, { detail: "Unauthorized" });
+			return;
+		}
+		json(res, 200, {
+			status: 200,
+			result: { sessions: [], truncated: false, limit: 1 },
+		});
+		return;
+	}
+	json(res, 404, { detail: "Not Found" });
+}).listen(port, "127.0.0.1");
+`;
+
+/**
+ * The same manager, with the SPAWN it makes in `startOwned()` handed a fixture
+ * daemon instead of an installed `lop`.
+ *
+ * Three substitutions, each of which keeps a real thing out of the run:
+ * `./config` and `./logger` for the reasons the file's header gives, and
+ * `./owned-serve-launch` because the alternative is spawning the operator's own
+ * installed build onto a port of this test's choosing. The substitution replaces
+ * the LAUNCH PLAN only: everything downstream of it - the real `spawn`, the real
+ * readiness poll, `captureServe`, `registerOwnedDaemon`, the armed probe loop -
+ * is the shipping code, which is what makes the owned-child handle in these cases
+ * mean what it means in the app.
+ */
+const ownedBundle = await build({
+	stdin: {
+		contents:
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	plugins: [
+		{
+			name: "owned-daemon-fixtures",
+			setup(builder) {
+				builder.onResolve({ filter: RE_ELECTRON }, () => ({
+					path: "electron",
+					namespace: "owned-fixture",
+				}));
+				for (const [filter, name] of [
+					[RE_LOGGER, "logger-fixture"],
+					[RE_CONFIG, "config-fixture"],
+					[RE_OWNED_SERVE_LAUNCH, "owned-launch-fixture"],
+				]) {
+					builder.onResolve({ filter }, (args) =>
+						args.importer.endsWith("main/backend/backend-service.ts")
+							? { path: name, namespace: "owned-fixture" }
+							: undefined,
+					);
+				}
+				builder.onLoad(
+					{
+						filter: RE_OWNED_FIXTURE_SOURCES,
+						namespace: "owned-fixture",
+					},
+					(args) => {
+						const sources = {
+							electron: `
+								export const app = {
+									getPath: (name) => name === "home" ? ${JSON.stringify(HOME)} : ${JSON.stringify(join(HOME, "userData"))},
+									whenReady: async () => {},
+									on: () => {},
+									quit: () => {},
+								};
+								export const dialog = { showErrorBox: () => {}, showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
+								export default { app, dialog };
+							`,
+							"logger-fixture": `
+								export const LogFileType = { INSTALLER: "installer", BACKEND: "backend", UPDATE_SERVICE: "update", OAUTH: "oauth" };
+								const emit = () => () => {};
+								export const logger = { info: emit(), warn: emit(), error: emit(), debug: emit(), verbose: emit() };
+							`,
+							"config-fixture": `
+								export const backendConfig = {
+									get VITE_LOCAL_OPERATOR_API_URL() { return globalThis.__testConfiguredUrl; },
+									VITE_DISABLE_BACKEND_MANAGER: "false",
+								};
+							`,
+							/*
+							 * The plan only. `interpreters` is ignored on purpose: the app's
+							 * own-venv branch is what `checkLocalOperatorExists = false`
+							 * selects, and this case is not about which interpreter a real
+							 * install would name (`scripts/owned-serve-lifecycle.test.mjs`).
+							 *
+							 * The `CMUX_*` scrub is not decoration: an inherited
+							 * `CMUX_WORKSPACE_ID` once let a headless test rename the
+							 * operator's real cmux workspaces, and this spawn inherits this
+							 * process's environment.
+							 */
+							"owned-launch-fixture": `
+								export const consoleInterpreter = () => process.execPath;
+								export const windowsInterpreterCandidates = async () => [];
+								export const windowsPathInterpreterCandidates = async () => [];
+								export const ownedServeLaunch = async (interpreters, port, env) => {
+									const childEnv = { ...env, FIXTURE_PORT: String(port), FIXTURE_CONFIG_ROOT: globalThis.__ownedFixtureRoot };
+									for (const key of Object.keys(childEnv)) {
+										if (key.startsWith("CMUX_")) Reflect.deleteProperty(childEnv, key);
+									}
+									return { command: process.execPath, args: [globalThis.__ownedFixtureScript], env: childEnv };
+								};
+							`,
+						};
+						return { contents: sources[args.path], loader: "js" };
+					},
+				);
+			},
+		},
+	],
+});
+
+const { BackendServiceManager: OwnedBackendServiceManager } = await import(
+	`data:text/javascript;base64,${Buffer.from(ownedBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/*
+ * The real loader starts a login shell to read the operator's rc files. Nothing
+ * here needs that answer - the environment this child gets is stated by the case
+ * that spawns it - and a test may not go looking through the operator's shell
+ * configuration to find one.
+ */
+OwnedBackendServiceManager.prototype.loadShellEnvironment = async () => {};
+
+/** An ephemeral port, released for the child that will bind it. */
+async function freePort() {
+	const probe = createNetServer();
+	await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
+	const { port } = probe.address();
+	await new Promise((resolve) => probe.close(resolve));
+	return port;
+}
+
+/**
+ * A daemon this app SPAWNS, so `this.process` is a live ChildProcess handle for
+ * the pid its record names - the fact the re-anchor rests on.
+ *
+ * Everything in the run is the shipping path except the launch plan: the spawn,
+ * the readiness poll, the registration against the record the child published,
+ * and the armed probe loop are all real.
+ */
+async function ownedDaemonScene({
+	version = "0.61.1",
+	instanceId = "instance-before-reload",
+} = {}) {
+	const root = mkdtempSync(join(tmpdir(), "daemon-observation-owned-"));
+	// One root for both halves: the record the child publishes is the record the
+	// manager reads, and no other case's record is a candidate.
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = root;
+	globalThis.__ownedFixtureRoot = root;
+	globalThis.__ownedFixtureScript = join(root, "owned-daemon-fixture.mjs");
+	writeFileSync(globalThis.__ownedFixtureScript, OWNED_DAEMON_FIXTURE);
+
+	const address = `http://127.0.0.1:${await freePort()}`;
+	globalThis.__testConfiguredUrl = address;
+
+	const { intervals, value: manager } = await withRecordedProbeLoop(
+		async () => {
+			const started = new OwnedBackendServiceManager();
+			managers.add(started);
+			started.shellEnv = {
+				...process.env,
+				LOCAL_OPERATOR_CONFIG_DIR: root,
+				FIXTURE_CONFIG_ROOT: root,
+				FIXTURE_VERSION: version,
+				FIXTURE_INSTANCE: instanceId,
+			};
+			/*
+			 * The install DECISION is not the subject and must not name the operator's
+			 * real `lop` install. `false` selects the app's own-venv branch, and the
+			 * substituted launch plan ignores the interpreter that branch names - so
+			 * this rig never reads, spawns or writes anything of the operator's.
+			 */
+			started.checkLocalOperatorExists = async () => false;
+			assert.equal(
+				await started.start({ quiet: true }),
+				true,
+				"the rig has to end up OWNING a daemon: every case below is about the process this app spawned",
+			);
+			return started;
+		},
+	);
+
+	return {
+		root,
+		address,
+		manager,
+		intervals,
+		async state() {
+			const response = await fetch(`${address}/fixture/state`);
+			return response.json();
+		},
+		/** Reload in place. Returns the identity the same process mints for it. */
+		async reloadInPlace() {
+			const response = await fetch(`${address}/fixture/reload`);
+			const body = await response.json();
+			return body.instanceId;
+		},
+		async dispose() {
+			await manager.stop(false).catch(() => {});
+			rmSync(root, { recursive: true, force: true });
+		},
+	};
+}
+
+/**
+ * Run ONE armed tick, the way the app's own 10 s interval does.
+ *
+ * The recorded callback IS the function a real tick runs, so calling it here is
+ * the tick the app would have run, ten seconds early and deterministically. The
+ * settle is measured rather than guessed: the child's own health-request count
+ * first (the probe reached the daemon), then the state machine's `updatedAt`,
+ * which every `observe()` writes (the verdict was folded).
+ *
+ * @returns whether a probe was made at all. A tick can make none - the app
+ * spends it PACED, returning from `recoverFromDetachment()` while the reattach
+ * backoff holds - and that is the app's own behaviour rather than a rig failure,
+ * so it is reported and left to the case's own assertions to judge. A rig that
+ * threw here instead would report "the tick never reached the daemon" for a
+ * connection that is broken in the way the case exists to describe.
+ */
+async function tickArmedProbe(scene) {
+	const counterBefore = (await scene.state()).healthCount;
+	const clockBefore = scene.manager.getStatusSnapshot().updatedAt;
+	const loop = scene.intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
+	assert.ok(loop, "startOwned() must have armed the probe loop");
+	loop.fn();
+	const deadline = Date.now() + 2_000;
+	let probed = false;
+	while (Date.now() < deadline) {
+		if ((await scene.state()).healthCount > counterBefore) {
+			probed = true;
+			break;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	if (!probed) return false;
+	await waitFor(
+		() => scene.manager.getStatusSnapshot().updatedAt > clockBefore,
+		"the tick's probe to be folded into the state machine",
+	);
+	return true;
+}
+
+test("a reload in place of the daemon this app spawned keeps the app attached and paired (2026-09-20)", async () => {
+	const scene = await ownedDaemonScene();
+	try {
+		const { manager } = scene;
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+
+		const before = manager.getStatusSnapshot();
+		assert.equal(
+			before.state,
+			"attached",
+			"the rig must start from a live, owned attachment",
+		);
+		assert.equal(before.owned, true);
+		assert.equal(before.pid, manager.getOwnedPid());
+		assert.equal(before.pairing.available, true);
+		assert.equal(
+			(await scene.state()).pid,
+			manager.getOwnedPid(),
+			"and the process the record names is the one this app spawned",
+		);
+
+		const reloadedInstanceId = await scene.reloadInPlace();
+		assert.notEqual(
+			reloadedInstanceId,
+			before.instanceId,
+			"the reload must be visible as a new instance id, or this case tests nothing",
+		);
+		assert.equal(
+			(await scene.state()).pid,
+			manager.getOwnedPid(),
+			"and it is the SAME process that answers after it: that is what makes a reload a reload",
+		);
+
+		const sequence = [];
+		for (let tick = 1; tick <= 5; tick++) {
+			const probed = await tickArmedProbe(scene);
+			const snapshot = manager.getStatusSnapshot();
+			sequence.push({
+				tick,
+				state: snapshot.state,
+				pairing: snapshot.pairing.available
+					? "paired"
+					: `cause: ${snapshot.pairing.cause}`,
+				instanceId: snapshot.instanceId,
+				probed,
+			});
+		}
+
+		const after = manager.getStatusSnapshot();
+		assert.equal(
+			after.state,
+			"attached",
+			`the app is still talking to the process it started, so it must stay attached. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			after.pairing.available,
+			true,
+			`a reload is not a replacement: the same process still holds this app's credential. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			after.instanceId,
+			reloadedInstanceId,
+			`and the app must adopt the identity the reload minted, or every later probe contradicts it again. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(after.pid, manager.getOwnedPid());
+		assert.equal(after.owned, true);
+		assert.equal(
+			pushes.filter((snapshot) => snapshot.pairing.cause === "successor")
+				.length,
+			0,
+			`no successor pairing may reach the renderer: that state is the band the operator photographed. Observed: ${JSON.stringify(pushes.map((snapshot) => [snapshot.state, snapshot.pairing.cause]))}`,
+		);
+		assert.equal(
+			pushes.filter(
+				(snapshot) =>
+					snapshot.state === "detached" || snapshot.state === "degraded",
+			).length,
+			0,
+			"and the connection never even left `attached`, because nothing was ever lost",
+		);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("the live evening, reproduced: an admitted read between probes is why the app's log held no detach line (2026-09-20)", async () => {
+	/*
+	 * The app did not sit still while it was telling the operator its server had
+	 * been replaced: it was listing sessions and streaming a transcript, and it
+	 * logged NO "Backend detached:" line all afternoon.
+	 *
+	 * This case is that sequence, and it settles the question the log could not.
+	 * The suspects were the transport-evidence gate and `observeUnanswered` - and
+	 * neither is it. The probe ANSWERED every time (an identity-mismatch is an
+	 * answer, so no unanswered miss was ever counted), and the gate never got a
+	 * chance to matter, because the count is cleared by something stronger: the
+	 * app's OWN request, admitted by the same plane, runs
+	 * `recordTransportSuccess()` -> which a `degraded` machine answers by zeroing
+	 * the failure count and returning to `attached`
+	 * (`daemon-health-state.test.mjs`, "an ADMITTED request still clears the count,
+	 * which is what a pairing is"). So the three CONSECUTIVE contradictions that
+	 * `DEGRADED_AFTER_FAILURES` requires were never reached: the state oscillated
+	 * between one contradiction and a cleared count, `checkBackendHealth` never
+	 * saw `detached`, and `recoverFromDetachment` - the only path that could have
+	 * repaired the pairing - was never entered at all. The band stayed up and its
+	 * Retry had nothing to trigger, which is exactly what the operator saw.
+	 *
+	 * Before the fix, the failure message on this case carries that sequence: the
+	 * state walks `degraded` -> `attached` -> `degraded` and the pairing reads
+	 * `successor` from the first tick on.
+	 */
+	const scene = await ownedDaemonScene();
+	try {
+		const { manager } = scene;
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+		await scene.reloadInPlace();
+
+		const sequence = [];
+		for (let tick = 1; tick <= 4; tick++) {
+			const probed = await tickArmedProbe(scene);
+			/*
+			 * The renderer's own traffic between probes. It is admitted because the
+			 * token is the same process's - the load-bearing fact of this whole
+			 * change - and the fixture refuses anything else with a 401.
+			 */
+			const read = await manager.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			assert.equal(
+				read.status,
+				200,
+				"the daemon this app spawned still admits this app's credential across a reload, which is why the band was false as well as stuck",
+			);
+			const snapshot = manager.getStatusSnapshot();
+			sequence.push({
+				tick,
+				state: snapshot.state,
+				failures: snapshot.failures,
+				pairing: snapshot.pairing.available
+					? "paired"
+					: `cause: ${snapshot.pairing.cause}`,
+				probed,
+			});
+		}
+
+		const after = manager.getStatusSnapshot();
+		assert.equal(
+			after.state,
+			"attached",
+			`the live state was never detached, and with the fix it is never even degraded. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(after.failures, 0);
+		assert.equal(
+			after.pairing.available,
+			true,
+			`the pairing the renderer reads must stay the true one. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			pushes.filter((snapshot) => snapshot.state === "detached").length,
+			0,
+			"no detach, so no `Backend detached:` line: this is the reproduced explanation for the empty log the report could not account for",
+		);
+		assert.equal(
+			pushes.filter((snapshot) => snapshot.pairing.cause === "successor")
+				.length,
+			0,
+		);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("the banner's Retry clears a stuck successor pairing on an owned child (2026-09-20)", async () => {
+	const scene = await ownedDaemonScene();
+	try {
+		const { manager } = scene;
+		const reloadedInstanceId = await scene.reloadInPlace();
+
+		/*
+		 * The state the operator's app was found in, built from the machine's OWN
+		 * vocabulary rather than from a hand-written snapshot: the answered
+		 * contradiction published the successor pairing (`probeAttachedDaemon`), and
+		 * the three contradictions a machine with no admitted traffic between probes
+		 * reaches detached it. The pairing is seeded here because a fix that no
+		 * longer produces it cannot produce it for a test either; everything the
+		 * repair then does is the fixing code's own.
+		 */
+		manager.daemonState.setPairing({
+			available: false,
+			cause: "successor",
+		});
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			manager.daemonState.observe({
+				kind: "contradicted",
+				detail: `Another process is answering at ${scene.address}`,
+			});
+		}
+		const stuck = manager.getStatusSnapshot();
+		assert.equal(
+			stuck.state,
+			"detached",
+			"the rig must start from the reported state",
+		);
+		assert.equal(stuck.pairing.cause, "successor");
+
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+		// The renderer's verb, exactly: this is what the band's Retry runs.
+		const healed = await manager.reconnectNow();
+
+		assert.equal(
+			healed.state,
+			"attached",
+			"the Retry has to clear the state it was offered for",
+		);
+		assert.equal(
+			healed.pairing.available,
+			true,
+			"and the pairing with it: the same process is still the one holding this app's credential",
+		);
+		assert.equal(
+			healed.instanceId,
+			reloadedInstanceId,
+			"the app adopts the identity the reload minted",
+		);
+		assert.equal(healed.pid, manager.getOwnedPid());
+		assert.ok(
+			pushes.some(
+				(snapshot) =>
+					snapshot.state === "attached" && snapshot.pairing.available,
+			),
+			"and the renderer is TOLD, rather than the repair living only in main",
+		);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("A3: an ADOPTED daemon that reloads in place recovers without a restart, by re-discovery", async () => {
+	/*
+	 * A guard on the reasoning rather than a requirement of the fix: the claim is
+	 * that the adopted shape ALREADY recovers, so the re-anchor correctly stays
+	 * owned-only and the pid-recycling hole that an adopted daemon could open in
+	 * the weaker rule is never opened at all.
+	 *
+	 * Both halves of the claim are driven here, because "the reload republishes a
+	 * record the app can open" is two different facts:
+	 *
+	 *   - the plane stays env-governed (`claim_key: ""`, `desktop: true`) and this
+	 *     app holds the credential an earlier run persisted, so the re-discovery
+	 *     pass opens it with that token;
+	 *   - the reload loses the in-memory claim latch and republishes a NEW key, so
+	 *     the app re-claims the plane with it.
+	 */
+	const token = "a".repeat(64);
+	const reMintedKey = "b".repeat(64);
+	const tokenFile = join(HOME, "userData", "desktop-token");
+
+	for (const [label, { claimKey, acceptedBearer }] of [
+		["the plane stays env-governed", { claimKey: "", acceptedBearer: token }],
+		[
+			"the reload republishes a claim key",
+			{ claimKey: reMintedKey, acceptedBearer: reMintedKey },
+		],
+	]) {
+		const scene = await daemonScene({
+			instanceId: "instance-adopted-before-reload",
+			claimKey: "",
+			acceptedBearer: token,
+		});
+		globalThis.__testConfiguredUrl = scene.address;
+		mkdirSync(join(HOME, "userData"), { recursive: true });
+		writeFileSync(tokenFile, token, { mode: 0o600 });
+		const { manager, intervals } = await adoptAtStartup(scene);
+		try {
+			assert.equal(
+				manager.getStatusSnapshot().state,
+				"attached",
+				`the rig must start adopted and attached (${label})`,
+			);
+			assert.equal(manager.getStatusSnapshot().owned, false);
+
+			const reloadedInstanceId = "instance-adopted-after-reload";
+			await scene.reloadInPlace({
+				instanceId: reloadedInstanceId,
+				claimKey,
+				acceptedBearer,
+			});
+
+			/*
+			 * No admitted read between these probes: this is the ordinary adopted
+			 * shape, where three answered contradictions are what a machine with no
+			 * traffic of its own reaches.
+			 */
+			for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+				const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
+				assert.ok(loop, "adoption must have armed the probe loop");
+				const clockBefore = manager.getStatusSnapshot().updatedAt;
+				const seenBefore = scene.seen.length;
+				loop.fn();
+				await waitFor(
+					() => scene.seen.length > seenBefore,
+					"the tick's probe to reach the daemon",
+				);
+				await waitFor(
+					() => manager.getStatusSnapshot().updatedAt > clockBefore,
+					"the tick's probe to be folded",
+				);
+			}
+
+			const healed = await waitFor(() => {
+				const snapshot = manager.getStatusSnapshot();
+				return snapshot.state === "attached" &&
+					snapshot.instanceId === reloadedInstanceId
+					? snapshot
+					: null;
+			}, `the adopted daemon's reload to be re-attached (${label})`);
+
+			assert.equal(healed.pairing.available, true, label);
+			assert.equal(
+				manager.getOwnedPid(),
+				null,
+				`nothing may be spawned over a daemon this app does not own (${label})`,
+			);
+			assert.equal(healed.pid, scene.pid, label);
+		} finally {
+			rmSync(tokenFile, { force: true });
+			await manager.stop(false).catch(() => {});
+			await scene.dispose();
+		}
 	}
 });
