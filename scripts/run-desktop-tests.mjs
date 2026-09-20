@@ -6,6 +6,11 @@
  *     node scripts/run-desktop-tests.mjs --test-concurrency=12 scripts/*.test.mjs
  *     node scripts/run-desktop-tests.mjs --scope=origin/main
  *
+ * `--scope` replaces the FILE LIST only: every other flag this runner knows
+ * (`--test-concurrency=N`, and anything node itself accepts) is still passed
+ * through to the child unchanged, and a file argument alongside `--scope` is a
+ * usage error rather than a union (see below).
+ *
  * `pnpm test:desktop` invokes this instead of `node --test` so the cap in
  * `desktop-test-concurrency.mjs` applies without every caller having to
  * remember it. The reasoning for the cap, and for every constant in it, is in
@@ -121,8 +126,21 @@ if (scopeArg !== undefined) {
 		);
 		process.exit(0);
 	}
-	const full =
-		plan.mode === SCOPE_MODES.WHOLE ? readSuiteFiles(process.cwd()) : [];
+	let full = [];
+	if (plan.mode === SCOPE_MODES.WHOLE) {
+		try {
+			full = readSuiteFiles(process.cwd());
+		} catch (error) {
+			// The list a refusal falls back to is the one CI runs. If it cannot be
+			// read in full, this run cannot spell "the whole suite" either, and
+			// running a subset under that label is the failure this whole module is
+			// built to refuse. Review round 1, MAJOR-2b.
+			console.error(
+				`desktop tests: the scope refused to narrow (see the line above) and the suite list could not be read: ${error.message}`,
+			);
+			process.exit(2);
+		}
+	}
 	if (plan.mode === SCOPE_MODES.WHOLE && full.length === 0) {
 		console.error(
 			"desktop tests: the scope refused to narrow (see the line above) and package.json's test:desktop list could not be read, so the whole suite cannot be spelled",
