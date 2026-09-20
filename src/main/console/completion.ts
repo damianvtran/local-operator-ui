@@ -82,9 +82,37 @@ export function consoleCompletionHooks(
 	deps: ConsoleCompletionDeps,
 ): Pick<ConsoleHostOptions, "onMark" | "onExit"> {
 	const now = deps.now ?? (() => Date.now());
-	/** Per-surface exits seen by THIS process. See `exited` for why a counter
-	 * rather than the design's persisted `exit_epoch`. */
+	/** Per-surface exits seen by THIS process, for the one case the host's own
+	 * generation is not readable: see `exitKey`. */
 	const exits = new Map<string, number>();
+
+	/**
+	 * The exit GENERATION, which is the design's own `exit_epoch` (§7.3) and now the
+	 * host's: the retention layer bumps it through the sidecar's arithmetic, the
+	 * host's listing projects it, and it survives a relaunch — which is what makes it
+	 * the right key rather than a number this module counts for itself.
+	 *
+	 * It is read from the listing at the moment of the exit, and the ordering is what
+	 * makes that correct: the host bumps the epoch BEFORE it calls the exit seams, so
+	 * the value read here is this exit's own generation (`host.ts`, the exit path's
+	 * own comment says the notifier dedupes on `(surface, exit_epoch)`).
+	 *
+	 * A COUNTER REMAINS AS THE FALLBACK, because this seam is also driven directly by
+	 * tests and rigs with a host that answers no listing; `null` means "nobody could
+	 * tell me", and the counter is then the honest answer rather than the epoch of
+	 * some other surface.
+	 */
+	const exitKey = (surface: string): string => {
+		const listing = deps.host()?.state() as
+			| { surfaces?: Array<{ surface?: unknown; exit_epoch?: unknown }> }
+			| undefined;
+		const row = listing?.surfaces?.find((entry) => entry.surface === surface);
+		const epoch =
+			typeof row?.exit_epoch === "number" ? row.exit_epoch : undefined;
+		const count = epoch ?? (exits.get(surface) ?? 0) + 1;
+		exits.set(surface, count);
+		return `console:exit:${surface}:${count}`;
+	};
 	/** The last banner per surface, and WHICH RUNG raised it, for the
 	 * same-completion rule below: a mark followed by its own process's exit is one
 	 * event, while two exits are two. */
@@ -175,15 +203,11 @@ export function consoleCompletionHooks(
 		 * RUNG 1: the surface's process exited — the one signal that is always
 		 * available, exactly once per surface, carrying the exit code (§12.1).
 		 *
-		 * THE KEY IS A COUNTER, NOT THE DESIGN'S `exit_epoch`. The design puts a
-		 * generation counter in the retention layer (A) and has `console_status`
-		 * return it; the host this pane was built against does not implement it, so
-		 * there is nothing to read. Within one process a counter is equivalent — each
-		 * exit is one frame (the host's own `exitDelivered` guarantees it) and each
-		 * frame is one number — and across a relaunch the question changes entirely:
-		 * a surface restored from history was already finished before the app
-		 * started, and the app has no banner owed for it. Reported as a divergence in
-		 * the PR rather than smoothed over.
+		 * THE KEY IS `(surface, exit_epoch)`, the design's own pair, read from the
+		 * host's listing (see `exitKey`). It is what the host's own comment expects the
+		 * notifier to dedupe on, it survives a relaunch because the retention layer
+		 * persists it, and it is what makes two exits two completions even with the
+		 * same code.
 		 *
 		 * A MARK-AND-THEN-EXIT IS ONE COMPLETION. A shell that exits from a prompt
 		 * emits its `D` mark and then the process exit, and both are the same thing
@@ -198,8 +222,7 @@ export function consoleCompletionHooks(
 			surface: string;
 			exitCode: number;
 		}) => {
-			const count = (exits.get(surface) ?? 0) + 1;
-			exits.set(surface, count);
+			const key = exitKey(surface);
 			const previous = lastBanner.get(surface);
 			// Only a MARK suppresses an exit, and only its own surface's: those two
 			// are one shell action seen twice. Two exits are two events, however close
@@ -214,11 +237,7 @@ export function consoleCompletionHooks(
 				);
 				return;
 			}
-			const notice = completionFor(
-				surface,
-				exitCode,
-				`console:exit:${surface}:${count}`,
-			);
+			const notice = completionFor(surface, exitCode, key);
 			if (notice) announce(notice, "exit");
 		},
 	};
