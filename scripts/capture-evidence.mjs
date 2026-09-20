@@ -2989,7 +2989,7 @@ export const STORIES = [
 	 */
 	/*
 	 * ABOVE each story's natural content height, deliberately: 741x760 for
-	 * `resting-default`, 741x680 for `dragged-split`.
+	 * `resting-default`, 741x700 for `dragged-split`.
 	 *
 	 * This is a floor rather than a measurement, and that is the fix. The content
 	 * height is SELF-REFERENTIAL here - the entity region is a fraction of the
@@ -3017,7 +3017,7 @@ export const STORIES = [
 	 * the resize a no-op and the caption true by construction.
 	 */
 	["chat-sidebar-sections--resting-default", 741, 760],
-	["chat-sidebar-sections--dragged-split", 741, 680],
+	["chat-sidebar-sections--dragged-split", 741, 700],
 	["chat-sidebar-sections--entities-only", 741, 420],
 	["chat-sidebar-sections--chats-only", 741, 480],
 	/*
