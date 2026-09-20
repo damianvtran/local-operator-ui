@@ -154,9 +154,7 @@ const KNOWN_EXPECTS = [
 ];
 if (!KNOWN_EXPECTS.includes(EXPECT)) {
 	console.error(
-		`click-proof: CLICK_PROOF_EXPECT=${JSON.stringify(EXPECT)} is not a value this driver asserts.\n` +
-			`Known values: ${KNOWN_EXPECTS.filter((v) => v !== "").join(" | ")} | - (or unset) to record without asserting.\n` +
-			"An unrecognised value would print success while asserting nothing, so this run stops here.",
+		`click-proof: CLICK_PROOF_EXPECT=${JSON.stringify(EXPECT)} is not a value this driver asserts.\nKnown values: ${KNOWN_EXPECTS.filter((v) => v !== "" && v !== "-").join(" | ")} | - (or unset) to record without asserting.\nAn unrecognised value would print success while asserting nothing, so this run stops here.`,
 	);
 	process.exit(2);
 }
