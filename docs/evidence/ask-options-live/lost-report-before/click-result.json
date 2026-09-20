@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:32:00.301Z",
+  "at": "2026-09-20T19:38:15.806Z",
   "arm": {
     "armed": true
   },
@@ -61,10 +61,10 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789932726992.419,
+      "requestedAt": 1789933101677.476,
       "status": 200,
-      "answeredAt": 1789932727051.759,
-      "deliveredAt": 1789932727063.19
+      "answeredAt": 1789933101684.354,
+      "deliveredAt": 1789933104188.438
     }
   ],
   "answersFrom": "route",
@@ -76,25 +76,27 @@
   "tree": {
     "head": "7fbee5e7d230dc91bb489ae2b716903f8d8a660d",
     "srcTree": "f7ca3a76a19ae2cb6ea3463fc1c14663c5e15a52",
-    "srcDirty": false,
-    "srcStatus": null
+    "srcDirty": true,
+    "srcStatus": "M  src/renderer/src/features/chat/ask-answer.ts\nM  src/renderer/src/features/chat/components/chat-page.tsx"
   },
-  "clearedAt": 1789932727389,
-  "clearedAfterPressMs": 423,
+  "clearedAt": 1789933102014,
+  "clearedAfterPressMs": 355,
   "ordering": {
-    "clearedAt": 1789932727389,
-    "deliveredAt": 1789932727063.19,
-    "verdict": "the response was delivered before the card cleared"
+    "clearedAt": 1789933102014,
+    "deliveredAt": 1789933104188.438,
+    "verdict": "the card cleared before the response was delivered"
   },
   "report": {
     "movedOnSentence": false,
-    "settledSentence": false,
+    "settledSentence": true,
     "unconfirmedSentence": false,
     "notSentCopy": [],
     "cardUp": false,
     "cardRefusal": false,
     "cardUnknown": false,
-    "alerts": []
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ]
   },
   "after": {
     "found": false,
@@ -106,7 +108,9 @@
     "disabled": [],
     "pointerEvents": null,
     "eyebrow": null,
-    "alerts": [],
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ],
     "incidentRow": false
   }
 }

@@ -460,6 +460,29 @@ export function isStoreWriteRefusal(code: string | undefined): boolean {
 }
 
 /**
+ * The composer's code for an option press that did not reach the owner.
+ *
+ * WHY THE PRESS NEEDS A CODE AT ALL, and why it is not the transport's. An
+ * option press reports through the same alert as a typed send, and that alert
+ * reads `activeErrorCode = sendErrorCode ?? draft.errorCode` — so a report that
+ * leaves the code unset inherits whatever failure the DRAFT was last left
+ * holding (design round 4, D13, which measured the inheritance on the attachment
+ * refusal). Two things then go wrong on the same screen: a stale
+ * `unresolved_attachment` code puts that remedy's own buttons under a sentence
+ * about an option press, and a stale code for which the retry hint is WITHHELD
+ * leaves the sentence bare while the same sentence renders with the hint in
+ * another session.
+ *
+ * It is a code of its own rather than `undefined` even though the press that
+ * carries it has already failed, because the questions the composer asks of a
+ * code are exactly the two that must not be answered by history: is the retry
+ * the remedy (it is not — the question this press named is gone, and there is
+ * nothing to press again; see `withholdsRetryHint`), and which remedies belong
+ * under this sentence (none of the draft's).
+ */
+export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
@@ -491,6 +514,14 @@ export function isStoreWriteRefusal(code: string | undefined): boolean {
  * round 1, U2.) Each carries its own statement of what to do instead, and the
  * composer withholds the hint for all of them.
  *
+ * The seventh is not a send refusal at all: an option press that failed carries
+ * `ANSWER_NOT_SENT_CODE`, and "Send it again" is wrong for it in its own
+ * direction — there is no text to send, and the question it answered has moved
+ * on, so the hint would name a box that has nothing to do with the failure. It
+ * is in this list rather than in a second one because the composer asks one
+ * question of a code (is the retry the remedy), and this is that question's
+ * answer, stated by the failure that owns it.
+ *
  * The guard's own code is the one with a history of being left out, and where the
  * hint is not merely redundant but self-contradicting: the operator's own remedy on
  * 2026-09-17 - drop the image that pushed the write over the threshold - lands
@@ -514,7 +545,8 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === UNREADABLE_ATTACHMENT_CODE ||
 		code === UNCONFIRMED_SEND_CODE ||
 		code === STORE_OUT_OF_SPACE_CODE ||
-		code === STORE_UNAVAILABLE_CODE
+		code === STORE_UNAVAILABLE_CODE ||
+		code === ANSWER_NOT_SENT_CODE
 	);
 }
 

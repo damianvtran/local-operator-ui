@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:32:00.301Z",
+  "at": "2026-09-20T19:34:25.716Z",
   "arm": {
     "armed": true
   },
@@ -61,16 +61,26 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789932726992.419,
+      "requestedAt": 1789932873408.436,
+      "preAnsweredBy": "Popup is not open",
+      "preAnswer": {
+        "status": 200,
+        "label": "Popup is not open"
+      },
+      "held": true
+    },
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789932873483.754,
       "status": 200,
-      "answeredAt": 1789932727051.759,
-      "deliveredAt": 1789932727063.19
+      "answeredAt": 1789932873525.096,
+      "deliveredAt": 1789932873529.325
     }
   ],
   "answersFrom": "route",
   "ownerAnswer": {
     "PAIRING": [
-      "Popup is open - generate the pairing code"
+      "Popup is not open"
     ]
   },
   "tree": {
@@ -79,22 +89,20 @@
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789932727389,
-  "clearedAfterPressMs": 423,
-  "ordering": {
-    "clearedAt": 1789932727389,
-    "deliveredAt": 1789932727063.19,
-    "verdict": "the response was delivered before the card cleared"
-  },
+  "clearedAt": 1789932873770,
+  "clearedAfterPressMs": 425,
+  "ordering": null,
   "report": {
     "movedOnSentence": false,
     "settledSentence": false,
-    "unconfirmedSentence": false,
+    "unconfirmedSentence": true,
     "notSentCopy": [],
     "cardUp": false,
     "cardRefusal": false,
     "cardUnknown": false,
-    "alerts": []
+    "alerts": [
+      "Whether your answer landed is not knowable. The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+    ]
   },
   "after": {
     "found": false,
@@ -106,7 +114,9 @@
     "disabled": [],
     "pointerEvents": null,
     "eyebrow": null,
-    "alerts": [],
+    "alerts": [
+      "Whether your answer landed is not knowable. The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+    ],
     "incidentRow": false
   }
 }

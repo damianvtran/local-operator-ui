@@ -82,11 +82,18 @@ export default defineConfig({
 						target: process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL,
 						changeOrigin: false,
 					},
-					/* The rig's own control route, answered by
-					 * `harness/serve-gate.py`'s middleware rather than by the app.
-					 * Same origin, so a manual run can arm the card with one curl and
-					 * the driver never needs a second address. */
+					/* The rig's own control routes, answered by `harness/serve-gate.py`'s
+					 * middleware rather than by the app. Same origin, so a manual run can arm
+					 * the card with one curl and the driver never needs a second address.
+					 * `/rig-state` is the answer log the driver reads before it reads the
+					 * page: it carries the status the answer route chose and the epoch-ms
+					 * timings of the request, the route's own answer and the response's
+					 * delivery, which is what says which of the two channels landed first. */
 					"/rig-arm": {
+						target: process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL,
+						changeOrigin: false,
+					},
+					"/rig-state": {
 						target: process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL,
 						changeOrigin: false,
 					},

@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:32:00.301Z",
+  "at": "2026-09-20T19:34:00.130Z",
   "arm": {
     "armed": true
   },
@@ -61,16 +61,28 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789932726992.419,
+      "requestedAt": 1789932844994.3318,
+      "preAnsweredBy": "Popup is not open",
+      "preAnswer": {
+        "status": 200,
+        "label": "Popup is not open"
+      },
+      "status": 409,
+      "answeredAt": 1789932845124.24,
+      "deliveredAt": 1789932845130.557
+    },
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789932845060.086,
       "status": 200,
-      "answeredAt": 1789932727051.759,
-      "deliveredAt": 1789932727063.19
+      "answeredAt": 1789932845109.001,
+      "deliveredAt": 1789932845113.876
     }
   ],
   "answersFrom": "route",
   "ownerAnswer": {
     "PAIRING": [
-      "Popup is open - generate the pairing code"
+      "Popup is not open"
     ]
   },
   "tree": {
@@ -79,22 +91,24 @@
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789932727389,
-  "clearedAfterPressMs": 423,
+  "clearedAt": 1789932845365,
+  "clearedAfterPressMs": 402,
   "ordering": {
-    "clearedAt": 1789932727389,
-    "deliveredAt": 1789932727063.19,
+    "clearedAt": 1789932845365,
+    "deliveredAt": 1789932845130.557,
     "verdict": "the response was delivered before the card cleared"
   },
   "report": {
     "movedOnSentence": false,
-    "settledSentence": false,
+    "settledSentence": true,
     "unconfirmedSentence": false,
     "notSentCopy": [],
     "cardUp": false,
     "cardRefusal": false,
     "cardUnknown": false,
-    "alerts": []
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ]
   },
   "after": {
     "found": false,
@@ -106,7 +120,9 @@
     "disabled": [],
     "pointerEvents": null,
     "eyebrow": null,
-    "alerts": [],
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ],
     "incidentRow": false
   }
 }

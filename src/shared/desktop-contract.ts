@@ -1729,6 +1729,37 @@ export type DesktopRefusalCode =
 	(typeof DESKTOP_REFUSAL_CODE)[keyof typeof DESKTOP_REFUSAL_CODE];
 
 /**
+ * The daemon's OWN hop failure, which is a sight loss rather than a refusal.
+ *
+ * WHY THIS IS NOT IN `DESKTOP_REFUSAL_CODE`. That table is the app's vocabulary
+ * for a refusal by the desktop PLANE — pairing conditions, each with its own
+ * authored sentence. This code means something else, and the difference is a
+ * constraint rather than a filing preference: it says the daemon could not hand
+ * the request to the session's OWNER, so nothing was established about whether
+ * the request arrived.
+ *
+ * The path is short and it is write-then-wait. `POST
+ * /v1/desktop/sessions/{id}/answers` wraps `bridge.remote.answer_gate(...)`, which
+ * hands the value over the bridge socket (`attach_client.py`): the frame is
+ * WRITTEN first and its ack awaited after, raising `OwnerAckTimeout` past
+ * `ACK_TIMEOUT_S = 15.0` and `ConnectionError` when the connection drops
+ * mid-flight. Both land in the route's `errors()`, whose `ConnectionError` and
+ * `(RuntimeError, asyncio.TimeoutError)` arms answer
+ * `503 {"code": "runtime_unreachable"}` with the vetted sentence below.
+ *
+ * So an owner that resolved the gate and then lost its ack produces this, which
+ * is the same fact `DESKTOP_REFUSAL_CODE.transportFailed` carries one hop up —
+ * main could not complete the request — and the app must treat both the same way:
+ * as an outcome it cannot know rather than as a refusal it can state. A `503`
+ * whose code is `pairing.plane-closed` is the daemon refusing this app, and that
+ * IS an answer (agent review round 2, MAJOR-1).
+ */
+export const DESKTOP_LOST_SIGHT_CODE = {
+	/** The daemon could not reach the session's owner to deliver the answer. */
+	runtimeUnreachable: "runtime_unreachable",
+} as const;
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the
