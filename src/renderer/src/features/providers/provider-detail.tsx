@@ -10,6 +10,10 @@
  * explicit "Save key" action; blur never persists a credential silently.
  */
 
+import {
+	isTerminalAuthState,
+	pollAuthOperation,
+} from "@shared/api/local-operator/auth-operation";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type {
 	AuthOperation,
@@ -25,7 +29,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTerminalAuthState, primaryMethod } from "./provider-labels";
+import { primaryMethod } from "./provider-labels";
 
 /**
  * Reachability for a local provider, stated only after it has been checked.
@@ -100,44 +104,6 @@ type ProviderDetailProps = {
 	/** Called once an auth method has stored a credential. */
 	onConnected?: () => void;
 };
-
-const POLL_MS = 1500;
-
-/**
- * Poll a backend auth operation until it settles. Returns a stop function;
- * a closed poll is NOT a cancellation — only the explicit Cancel button
- * deletes the operation, because closing a status view must not tear down
- * a flow the user may still be completing in their browser.
- */
-function pollOperation(
-	id: string,
-	onUpdate: (operation: AuthOperation) => void,
-): () => void {
-	let stopped = false;
-	let timer: ReturnType<typeof setTimeout> | null = null;
-	const tick = async () => {
-		if (stopped) return;
-		try {
-			const operation = await desktopResult<AuthOperation>({
-				op: "auth.status",
-				id,
-			});
-			onUpdate(operation);
-			if (!isTerminalAuthState(operation.state)) {
-				timer = setTimeout(tick, POLL_MS);
-			}
-		} catch {
-			// A lost poll is a lost status read, not a failed login; keep polling
-			// so a transient network blip does not strand a waiting browser flow.
-			timer = setTimeout(tick, POLL_MS * 2);
-		}
-	};
-	void tick();
-	return () => {
-		stopped = true;
-		if (timer) clearTimeout(timer);
-	};
-}
 
 const SecretInput: FC<{
 	id: string;
@@ -220,7 +186,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				});
 				setOperation(started);
 				stopPollRef.current?.();
-				stopPollRef.current = pollOperation(started.id, (update) => {
+				stopPollRef.current = pollAuthOperation(started.id, (update) => {
 					setOperation(update);
 					if (update.state === "succeeded") refreshProviders();
 				});

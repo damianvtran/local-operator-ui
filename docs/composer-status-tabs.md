@@ -107,6 +107,8 @@ message-input's form
 ├── ComposerStatusRow            <- NEW: CHAT_MEASURE + the box's own horizontal inset
 │   ├── the goal disclosure      <- chevron + "Goal:" + a one-line snippet; expands in place
 │   └── the plan count           <- "4 to-dos open"; opens the pane at the plan
+├── RadientSessionIssueCallout   <- added later (this revision): silent unless the
+│                                   Radient sign-in is dead; carries one action
 ├── role="alert" (send error)    <- existing, unchanged
 └── COMPOSER_BOX                 <- the textarea, then the button row (which holds the readings)
 ```
@@ -131,6 +133,17 @@ numbers do not move — the box only *shifts up* by the row's height.
 that points at the composer, and its docblock's "reads as one unit" claim is
 about the box↔alert adjacency; the row is persistent ambient context, so it goes
 outboard of a transient one. Band order, top to bottom: row, alert, box.
+
+**The Radient session issue takes the same seat, for the same reason.** It is
+the band's second outboard block, below the status row and above the send-error
+alert, so the order becomes: row, session issue, alert, box. It is persistent
+ambient context rather than a transient failure — it is on screen for as long as
+the condition holds, which is what a dead sign-in is until somebody signs in —
+and it carries an action, so it is drawn with the callout primitive (`Alert`)
+rather than as one of the band's sentences. Like the row it renders `null` in
+the common state, so a healthy machine reserves no height here, and the `
+radient-session-issue.tsx` docblock records why a backend that cannot answer the
+verdict is silent rather than assumed healthy.
 
 ### 2.2 The row's own box
 
