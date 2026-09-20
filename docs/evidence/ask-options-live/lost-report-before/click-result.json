@@ -1,0 +1,97 @@
+{
+  "origin": "http://localhost:5299",
+  "session": "a1a1a1a1a1a1",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "driver": "scripts/click-proof.mjs",
+  "at": "2026-09-20T01:46:22.424Z",
+  "arm": {
+    "armed": true
+  },
+  "before": {
+    "found": true,
+    "count": 3,
+    "tags": [
+      "BUTTON",
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.Popup is not openRecommendedWalk me through opening it first.",
+      "2.Popup is open - generate the pairing codeI will read the code back to you.",
+      "3.Something else"
+    ],
+    "accessibleName": [
+      "Popup is not openRecommendedWalk me through opening it first.",
+      "Popup is open - generate the pairing codeI will read the code back to you.",
+      "Something else"
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      false,
+      false,
+      false
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  },
+  "frames": {
+    "before": "localOperatorDark.webp",
+    "after": "localOperatorDark.webp"
+  },
+  "aim": {
+    "ok": true,
+    "x": 960,
+    "y": 644,
+    "index": 1,
+    "label": "Popup is open - generate the pairing codeI will read the code back to you.",
+    "hitTested": "SPAN (the option itself)",
+    "rect": {
+      "top": 614,
+      "height": 59
+    }
+  },
+  "resolved": true,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789868803197.215,
+      "status": 200,
+      "answeredAt": 1789868803208.5261,
+      "deliveredAt": 1789868805710.352
+    }
+  ],
+  "clearedAt": 1789868803482,
+  "clearedAfterPressMs": 299,
+  "ordering": {
+    "clearedAt": 1789868803482,
+    "deliveredAt": 1789868805710.352,
+    "verdict": "the card cleared before the response was delivered"
+  },
+  "report": {
+    "settledSentence": true,
+    "notSentCopy": [],
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ]
+  },
+  "after": {
+    "found": false,
+    "count": 0,
+    "tags": [],
+    "textContent": [],
+    "accessibleName": [],
+    "ordinalHidden": false,
+    "disabled": [],
+    "pointerEvents": null,
+    "eyebrow": null,
+    "alerts": [
+      "That question was already answered somewhere else, so your answer was not sent."
+    ],
+    "incidentRow": false
+  }
+}

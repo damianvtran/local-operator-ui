@@ -1,12 +1,12 @@
 {
-  "origin": "http://localhost:5199",
+  "origin": "http://localhost:5299",
   "session": "a1a1a1a1a1a1",
   "viewport": {
     "width": 1380,
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-13T23:09:30.583Z",
+  "at": "2026-09-20T02:09:43.385Z",
   "arm": {
     "armed": true
   },
@@ -46,16 +46,37 @@
   "aim": {
     "ok": true,
     "x": 960,
-    "y": 587,
+    "y": 644,
     "index": 1,
     "label": "Popup is open - generate the pairing codeI will read the code back to you.",
     "hitTested": "SPAN (the option itself)",
     "rect": {
-      "top": 557,
+      "top": 614,
       "height": 59
     }
   },
   "resolved": true,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789870203628.8618,
+      "status": 200,
+      "answeredAt": 1789870203637.1729,
+      "deliveredAt": 1789870203638.578
+    }
+  ],
+  "clearedAt": 1789870203948,
+  "clearedAfterPressMs": 351,
+  "ordering": {
+    "clearedAt": 1789870203948,
+    "deliveredAt": 1789870203638.578,
+    "verdict": "the response was delivered before the card cleared"
+  },
+  "report": {
+    "settledSentence": false,
+    "notSentCopy": [],
+    "alerts": []
+  },
   "after": {
     "found": false,
     "count": 0,
