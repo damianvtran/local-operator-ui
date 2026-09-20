@@ -54,7 +54,6 @@
  */
 
 import { type BrowserWindow, Notification } from "electron";
-import type { ConsoleCompletionNotice } from "./console/completion";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type {
 	DesktopFeedFrame,
@@ -62,6 +61,7 @@ import type {
 	DesktopSessionFrame,
 	PendingDesktopGate,
 } from "../shared/desktop-session-contract";
+import type { ConsoleCompletionNotice } from "./console/completion";
 import type { WindowShow } from "./window-mode";
 import { type RaiseReport, raiseWindow } from "./window-raise";
 

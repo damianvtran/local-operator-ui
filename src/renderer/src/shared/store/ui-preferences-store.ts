@@ -824,7 +824,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			setConsolePaneOpen: (open: boolean) => {
 				set(
-					open ? claimRightSlot("isConsolePaneOpen") : { isConsolePaneOpen: false },
+					open
+						? claimRightSlot("isConsolePaneOpen")
+						: { isConsolePaneOpen: false },
 				);
 			},
 
@@ -872,7 +874,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						: { consoleUnseen: next };
 				});
 			},
-
 
 			setBrowserPanelWidth: (width: number) => {
 				set({

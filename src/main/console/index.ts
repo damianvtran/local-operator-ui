@@ -1,12 +1,12 @@
 import { join } from "node:path";
 import type { BrowserWindow } from "electron";
 import { localOperatorConfigDir } from "../browser/state-file";
+import { ConsoleCaptureView } from "./capture";
 import {
 	type ConsoleCompletionNotifier,
 	consoleCompletionHooks,
 } from "./completion";
 import { dispatchConsole, isConsoleDispatchMethod } from "./dispatch";
-import { ConsoleCaptureView } from "./capture";
 import { ConsoleHistory } from "./history";
 import {
 	ConsoleHost,
@@ -294,7 +294,9 @@ export async function startConsoleHost(
 		log,
 		history,
 		now: options.now,
-		captureOffscreen: capture ? (request) => capture.capture(request) : undefined,
+		captureOffscreen: capture
+			? (request) => capture.capture(request)
+			: undefined,
 		spawn:
 			options.spawn ??
 			((spawnOptions: SpawnOptions) =>

@@ -1,14 +1,14 @@
 import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import {
+	bytecodePlugin,
 	defineConfig,
 	externalizeDepsPlugin,
-	bytecodePlugin,
 } from "electron-vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
+import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
 // V8 bytecode is tied to the exact Electron (V8) version that produced it, so a
 // .jsc built here is only loadable by an Electron we control. That holds for the
