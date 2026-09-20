@@ -582,3 +582,41 @@ test("the row's hover ground belongs to the row, not to its button (design round
 	 */
 	assert.match(box, /!current &&\s*"group-hover:bg-row-hover"/);
 });
+
+test("the two container-query constants keep the shapes that make the container decide (agent review round 2, N1)", () => {
+	/*
+	 * THE CASCADE BUG THIS PINS, because it is the one that shipped on this branch:
+	 * the shared control's base was `flex` and the variant also set `flex`, so the
+	 * two display rules tied and the CASCADE decided - not the container query -
+	 * and the control drew at every width. The fix is a base `hidden` that only a
+	 * matching container can turn into `flex`.
+	 *
+	 * The rendered check in `scripts/renderer-driver.mjs` catches a regression too,
+	 * but only in a capture run, which needs a build, a stub daemon and a launch.
+	 * This is the cheap half: the constants' own values, and the base each is
+	 * combined with, asserted where they are declared.
+	 */
+	const constants = code(SIDEBAR);
+	assert.match(
+		constants,
+		/const ROW_CONTROLS_PAIR_SHED = "@max-\[\d+px\]\/chatsidebar:hidden";/,
+	);
+	assert.match(
+		constants,
+		/const ROW_CONTROLS_SHARED_SHOWN = "@max-\[\d+px\]\/chatsidebar:flex";/,
+	);
+	/*
+	 * AND EACH CONSTANT IS USED WITH THE BASE THE OTHER ONE NEEDS: the pair wrapper
+	 * is a flex box that the query HIDES, and the shared control is a `hidden`
+	 * element that the query SHOWS.
+	 */
+	const pairWrapper = between(SIDEBAR, "data-session-control-pair", "</div>");
+	assert.match(pairWrapper, /"flex items-center gap-1"/);
+	assert.match(pairWrapper, /ROW_CONTROLS_PAIR_SHED/);
+	const shared = between(
+		SIDEBAR,
+		"data-session-actions",
+		"ROW_CONTROLS_SHARED_SHOWN",
+	);
+	assert.match(shared, /"hidden size-6 shrink-0/);
+});
