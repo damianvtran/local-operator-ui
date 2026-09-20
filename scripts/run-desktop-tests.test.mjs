@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -99,8 +99,9 @@ process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
  * used to do before the value check existed — would block the suite until CI's
  * job limit rather than reddening an assertion.
  */
-function runRunner(args, extraEnv = {}) {
+function runRunner(args, extraEnv = {}, cwd = process.cwd()) {
 	const result = spawnSync(process.execPath, [RUNNER, ...args], {
+		cwd,
 		encoding: "utf8",
 		env: { ...process.env, ...extraEnv },
 		timeout: 60000,
@@ -111,6 +112,81 @@ function runRunner(args, extraEnv = {}) {
 		stderr: result.stderr,
 	};
 }
+
+/*
+ * The scope flag's own contract, as a process. The rules it applies are pinned in
+ * `desktop-test-scope.test.mjs`; what is pinned HERE is what a caller sees when
+ * one of them refuses - and every one of the four branches below decides an
+ * entire run, which is why review round 1 asked for them by name (MAJOR-2).
+ */
+
+test("--scope refuses an explicit file list instead of unioning with it", () => {
+	const { status, stderr } = runRunner(["--scope=origin/main", PASSES]);
+	// A union of "the diff's files" and "the files you named" is not a scope any
+	// rule computed, and running it would make the printed reason a lie.
+	assert.equal(status, 2, stderr);
+	assert.match(stderr, /--scope computes its own file list/);
+});
+
+test("--scope with no base refuses rather than guessing one", () => {
+	const { status, stderr } = runRunner(["--scope="]);
+	assert.equal(status, 2, stderr);
+	assert.match(stderr, /--scope needs a base ref/);
+});
+
+test("a scope that selects nothing exits 0 with the reason as its output", (t) => {
+	const repo = mkdtempSync(join(tmpdir(), "desktop-runner-scope-"));
+	t.after(() => rmSync(repo, { recursive: true, force: true }));
+	mkdirSync(join(repo, "scripts"), { recursive: true });
+	writeFileSync(
+		join(repo, "package.json"),
+		JSON.stringify({
+			scripts: {
+				"test:desktop":
+					"node scripts/run-desktop-tests.mjs scripts/quiet.test.mjs",
+			},
+		}),
+	);
+	writeFileSync(join(repo, "scripts", "quiet.test.mjs"), "// nothing\n");
+	writeFileSync(join(repo, "README.md"), "one\n");
+	for (const args of [
+		["init", "-q"],
+		["add", "-A"],
+		["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "one"],
+	]) {
+		const git = spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+		assert.equal(git.status, 0, git.stderr);
+	}
+	// A prose-only diff: the classifier sets no flag, and no suite file records the
+	// path - so nothing in the suite can be observing it, which is an ANSWER rather
+	// than a failure. It has to leave the plan line behind, because that line is
+	// the only thing distinguishing this from "the suite passed".
+	writeFileSync(join(repo, "README.md"), "one\ntwo\n");
+	const { status, stdout } = runRunner(["--scope=HEAD"], {}, repo);
+	assert.equal(status, 0, stdout);
+	assert.match(stdout, /desktop scope \[none\]/);
+	assert.match(
+		stdout,
+		/no files to run; nothing in the suite can observe this diff/,
+	);
+});
+
+test("a suite list that cannot be read refuses instead of running a subset", (t) => {
+	const repo = mkdtempSync(join(tmpdir(), "desktop-runner-nolist-"));
+	t.after(() => rmSync(repo, { recursive: true, force: true }));
+	// No git repository and no `test:desktop` list: the plan falls back to WHOLE and
+	// the list it would run cannot be spelled. The two failure modes are different,
+	// and both have to end in a refusal rather than in a green run of nothing.
+	writeFileSync(
+		join(repo, "package.json"),
+		JSON.stringify({
+			scripts: { "test:desktop": "node scripts/run-desktop-tests.mjs" },
+		}),
+	);
+	const { status, stderr } = runRunner(["--scope=origin/main"], {}, repo);
+	assert.equal(status, 2, stderr);
+	assert.match(stderr, /--scope computes|refused to narrow|could not be read/);
+});
 
 test("the runner forwards the child's exit code", () => {
 	const passing = runRunner([PASSES]);

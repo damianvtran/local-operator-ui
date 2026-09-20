@@ -156,7 +156,14 @@ const FILE_EXTENSIONS = [
 ];
 const INDEX_EXTENSIONS = [".ts", ".tsx", ".mjs", ".js", ".cjs"];
 
-/** How deep a call argument is resolved through local bindings before giving up. */
+/**
+ * How many BINDING HOPS an argument is resolved through before giving up.
+ *
+ * A hop is an identifier replaced by its initializer - the thing that can run
+ * away. Descending into a member, a call's arguments or a concatenation strictly
+ * shrinks the expression and is free, which matters because `new URL("./x",
+ * import.meta.url)` used to spend the whole budget on its own arguments.
+ */
 const BINDING_DEPTH = 3;
 
 /** Markers that ground a path in something outside the repository. */
@@ -210,10 +217,49 @@ export function aliasTable(root) {
 export function readSuiteFiles(root) {
 	const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 	const command = pkg.scripts?.["test:desktop"] ?? "";
-	const files = (command.match(/scripts\/[\w.-]+\.test\.mjs/g) ?? []).map(
-		(path) => path.replace(/\\/g, "/"),
+	/*
+	 * The pattern carries `/` so a suite file in a subdirectory is part of the list
+	 * rather than silently missing from it (review round 1, MINOR-2); the second
+	 * scan is what keeps that from having to be true by inspection - every token
+	 * that looks like a test file must come back from the first one, or the list is
+	 * not the list CI runs and the caller has to fail closed rather than call the
+	 * rest "the suite".
+	 */
+	const pattern = /scripts\/[\w./-]+\.test\.mjs/g;
+	const files = (command.match(pattern) ?? []).map((path) =>
+		path.replace(/\\/g, "/"),
 	);
-	return [...new Set(files)];
+	const mentioned = (command.match(/[^\s"']+\.test\.mjs/g) ?? []).map((path) =>
+		path.replace(/\\/g, "/"),
+	);
+	const seen = new Set(files);
+	const unparsed = [...new Set(mentioned.filter((path) => !seen.has(path)))];
+	if (unparsed.length > 0) {
+		throw new Error(
+			`the test:desktop list names test files this module cannot read as suite entries: ${unparsed.join(", ")}`,
+		);
+	}
+	return [...seen];
+}
+
+/**
+ * Whether any suite file mentions one of these paths.
+ *
+ * Deliberately textual, like the graph's own token scan, so the two cannot
+ * disagree about what "records a path" means. A hit means the graph must run; it
+ * never selects a file by itself.
+ */
+function suiteRecordsPath(root, suiteFiles, paths) {
+	for (const file of suiteFiles) {
+		let text;
+		try {
+			text = readFileSync(join(root, file), "utf8");
+		} catch {
+			continue;
+		}
+		if (paths.some((path) => text.includes(path))) return true;
+	}
+	return false;
 }
 
 /** `true` when `path` is a directory in the tree. */
@@ -235,15 +281,42 @@ function isDirectory(root, path) {
  * selects a whole test file for no reason. Node builtins (`child_process`)
  * resolve to their own name, which is also outside this repository.
  */
-function isInstalledPackage(root, specifier) {
+function isInstalledPackage(root, specifier, cache = INSTALLED_PACKAGES) {
+	const cacheKey = `${root}\u0000${specifier}`;
+	if (cache.has(cacheKey)) return cache.get(cacheKey);
+	let answer = false;
 	try {
-		const resolved = createRequire(join(root, "package.json")).resolve(
-			specifier,
-		);
-		return typeof resolved === "string" && resolved.length > 0;
+		const resolved = requireFor(root).resolve(specifier);
+		answer = typeof resolved === "string" && resolved.length > 0;
 	} catch {
-		return false;
+		answer = false;
 	}
+	cache.set(cacheKey, answer);
+	return answer;
+}
+
+/**
+ * Whether a bare specifier is installed: a fact about the filesystem, answered
+ * once per process. It is asked for every bare specifier of every module in every
+ * closure, and each answer costs a resolver walk.
+ */
+const INSTALLED_PACKAGES = new Map();
+
+/**
+ * One `createRequire` per resolved root.
+ *
+ * `resolveSpecifier` asks this question for every bare specifier of every module
+ * in the closure, and building a resolver each time walks the same directory
+ * up and back. The roots in one plan are a handful, so the instances are kept.
+ */
+const REQUIRE_FOR_ROOT = new Map();
+function requireFor(root) {
+	let require = REQUIRE_FOR_ROOT.get(root);
+	if (require === undefined) {
+		require = createRequire(join(root, "package.json"));
+		REQUIRE_FOR_ROOT.set(root, require);
+	}
+	return require;
 }
 
 /**
@@ -252,7 +325,24 @@ function isInstalledPackage(root, specifier) {
  * `external` (a bare package name) is the one answer that is not a failure: it
  * is by construction outside this repository, so nothing in the diff can be it.
  */
-export function resolveSpecifier(spec, fromFile, root, aliases) {
+export function resolveSpecifier(spec, fromFile, root, aliases, cache = null) {
+	const cacheKey =
+		cache === null ? null : `${fromFile}\u0000${spec}\u0000${root}`;
+	if (cacheKey !== null && cache.has(cacheKey)) return cache.get(cacheKey);
+	const resolved = resolveSpecifierUncached(spec, fromFile, root, aliases);
+	if (cacheKey !== null) cache.set(cacheKey, resolved);
+	return resolved;
+}
+
+/**
+ * Resolution WITHOUT the cache `resolveSpecifier` keeps around it.
+ *
+ * Split out so the memo is a wrapper rather than a conditional through the body:
+ * a resolver that returns early from six places is a resolver where a missed
+ * `cache.set` is invisible, and this module's whole claim is that a missing
+ * resolution is reported rather than assumed.
+ */
+function resolveSpecifierUncached(spec, fromFile, root, aliases) {
 	const clean = spec.split("?")[0];
 	if (!clean)
 		return { kind: "unresolved", reason: `empty specifier in ${fromFile}` };
@@ -423,7 +513,7 @@ function substituteBindings(text, bindings, depth = 0) {
 }
 
 /** Local `const`/`let` bindings of a file, for grounding call arguments. */
-function bindingsOf(text) {
+export function bindingsOf(text) {
 	const bindings = new Map();
 	for (const match of text.matchAll(BINDING_PATTERN)) {
 		if (!bindings.has(match[1])) bindings.set(match[1], match[2]);
@@ -438,27 +528,311 @@ function bindingsOf(text) {
 	return bindings;
 }
 
+/** A quoted string with no interpolation: it can only hold its own characters. */
+const QUOTED_LITERAL = /^(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')$/;
+
+/** A backtick literal, interpolated or not. */
+const TEMPLATE_LITERAL = /^`[\s\S]*`$/;
+
+/** Calls whose value is a path when every argument of them is a path. */
+const PATH_CALL_NAMES = new Set([
+	"join",
+	"resolve",
+	"fileURLToPath",
+	"dirname",
+	"normalize",
+	"realpathSync",
+	"pathToFileURL",
+]);
+
+/** `new URL(<literal>, import.meta.url)`, which several files use as a root. */
+const NEW_URL_CALL = /^new\s+URL\s*\(([\s\S]*)\)$/;
+
 /**
- * Expand a call argument through local bindings until it is grounded or not.
+ * The same call with its closing paren missing.
  *
- * Only identifiers bound IN THIS FILE are followed, and only `BINDING_DEPTH`
- * levels: the point is to see `readdirSync(HOOKS_DIR)` as the `src/...` path its
- * declaration carries, not to interpret the program. An identifier that is a
- * parameter, an import or a value computed from other data stays opaque, which
- * is the honest answer and lands the call in the unresolved class.
+ * `BINDING_PATTERN` captures a binding up to the first `;`, so a call written
+ * across lines whose last line is `);` loses its final paren:
+ * `new URL(\n\t"./_x.bundle.mjs",\n\timport.meta.url,` is what arrives. The value is
+ * still built out of the arguments that were captured - a missing piece can only
+ * leave a reference UNDER-grounded, which the caller handles by failing closed.
  */
-function expandArgument(argument, bindings, depth = 0, seen = new Set()) {
-	if (depth > BINDING_DEPTH) return argument;
-	let expanded = argument;
-	for (const match of argument.matchAll(/\b([A-Za-z_$][\w$]*)\b/g)) {
-		const name = match[1];
-		if (seen.has(name)) continue;
-		const value = bindings.get(name);
-		if (value === undefined) continue;
-		seen.add(name);
-		expanded += ` ${expandArgument(value, bindings, depth + 1, seen)}`;
+const NEW_URL_OPEN = /^new\s+URL\s*\(([\s\S]*)$/;
+
+/**
+ * A property access whose OWN text may be taken as a path or a root.
+ *
+ * Only a base that names the environment or the module's own location is here. A
+ * property of a value the file holds - `entry.path`, `list.files` - is DATA, and
+ * data is the shape review round 1's blocker arrived as, so it is refused rather
+ * than scanned for tokens.
+ */
+const RECOGNISED_PATH_BASE =
+	/^(?:import\.meta|process\.env|process|path|os|__dirname|__filename)\b/;
+
+/** A `base.split(...)`/`.slice(...)` whose value still comes from `base`. */
+const DERIVED_PATH =
+	/^([\s\S]+?)\.(?:replace|replaceAll|slice|substring|trim|toString)\s*\(/;
+
+/**
+ * The text of an expression whose VALUE must be built out of the paths written in
+ * it, or `null` when that cannot be proven.
+ *
+ * WHY THIS IS NOT A TEXT EXPANSION. Grounding a read by concatenating the source
+ * of every binding whose NAME occurs in its argument lets a repo literal in a
+ * DIFFERENT expression ground a dynamic one: with
+ * `const list = JSON.parse(readFileSync("scripts/fixtures/list.json", "utf8"))`
+ * and `readFileSync(entry.path)` inside `for (const entry of list.files)`, the
+ * fixture's own path grounded `entry.path` - so a diff to the file that test reads
+ * selected nothing, printed `[none]`, and exited 0. Review round 1, BLOCKER-1. The
+ * token has to come from the expression the read actually depends on, so this
+ * walks that expression's own chain and answers one question per node: is this
+ * value necessarily built out of path text?
+ *
+ * The rules are a WHITELIST, because `null` is the load-bearing answer: a string
+ * literal is its own value; `join`/`resolve`/`fileURLToPath`/`dirname`/`new URL`
+ * are when every argument is; `+` is when both sides are; a `.replace`/`.slice` of
+ * a path is; a `const` binding is when its initializer is; a `for…of` variable is
+ * when the thing it iterates is a listing of a directory this repository or the
+ * host knows. EVERYTHING ELSE - a call result, a parsed fixture, a property of
+ * data, a parameter, an import, a loop variable over data - is `null`, and the
+ * caller then fails closed rather than guessing. A shape nobody wrote a rule for
+ * is therefore ungrounded, not "probably fine".
+ */
+export function pathExpressionText(
+	expression,
+	bindings,
+	depth = 0,
+	seen = new Set(),
+) {
+	if (depth > BINDING_DEPTH) return null;
+	let text = expression.trim();
+	while (isWrapped(text)) text = text.slice(1, -1).trim();
+	if (text.length === 0) return null;
+	if (QUOTED_LITERAL.test(text)) return text;
+	if (TEMPLATE_LITERAL.test(text)) {
+		if (!text.includes("${")) return text;
+		return substitutePathTemplate(text, bindings, depth, seen);
 	}
-	return expanded;
+
+	// `readdirSync(dir)` and friends: every entry is a CHILD of `dir`, so the
+	// directory's own text is what grounds them - and a listing we cannot resolve
+	// leaves the entries ungrounded, which is the fixture-driven case.
+	const listing =
+		/^(?:readdirSync|readdir|globSync|glob)\s*\(([\s\S]*)\)$/.exec(text);
+	if (listing) {
+		// Same depth: this is a descent, not a hop through a binding.
+		return pathExpressionText(
+			firstTopLevelArgument(listing[1]),
+			bindings,
+			depth,
+			seen,
+		);
+	}
+
+	/*
+	 * Calls whose RESULT is outside this repository by construction - a temp
+	 * directory, the home directory. Their own text carries the marker that says so
+	 * (`tmpdir`, `mkdtemp`), which is the same evidence the rest of this module uses
+	 * for "not a path in this repository", so the answer is the call's own text.
+	 */
+	const outsideCall =
+		/^(?:[\w$.]+\s*\.\s*)?(mkdtempSync|mkdtemp|tmpdir|homedir|randomUUID)\s*\(/.exec(
+			text,
+		);
+	if (outsideCall) return text;
+
+	const url = NEW_URL_CALL.exec(text) ?? NEW_URL_OPEN.exec(text);
+	if (url) return everyArgumentText(url[1], bindings, depth, seen);
+
+	const call =
+		/^(?:([A-Za-z_$][\w$.]*)\s*\.\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/.exec(
+			text,
+		) ??
+		/^(?:([A-Za-z_$][\w$.]*)\s*\.\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)$/.exec(
+			text,
+		);
+	if (call) {
+		// A call's value is path text only for the path operations themselves. Any
+		// other call - `JSON.parse(...)`, a helper, `.map(...)` - returns something
+		// this module cannot see into, which is null.
+		if (!PATH_CALL_NAMES.has(call[2])) return null;
+		return everyArgumentText(call[3], bindings, depth, seen);
+	}
+
+	// An array literal of paths, which is how several fixtures iterate.
+	if (text.startsWith("[") && text.endsWith("]")) {
+		const parts = topLevelArguments(text.slice(1, -1)).map((part) =>
+			pathExpressionText(part, bindings, depth, seen),
+		);
+		if (parts.length === 0 || parts.some((part) => part === null)) return null;
+		return parts.join(" ");
+	}
+
+	const derived = DERIVED_PATH.exec(text);
+	if (derived) {
+		// The value still comes from the base; the replacement or the slice width is
+		// not something this module pretends to evaluate.
+		return pathExpressionText(derived[1], bindings, depth + 1, seen);
+	}
+
+	/*
+	 * A member of a path expression whose base this module CAN resolve:
+	 * `bundlePath.href` where `bundlePath` is `new URL("./_x.bundle.mjs",
+	 * import.meta.url)`, which is how most of this suite hands a built bundle to
+	 * `import()`. The base resolving is what makes this safe - `entry.path` and
+	 * `list.files` are members of DATA, and their base does not resolve.
+	 */
+	const member = /^([\s\S]+?)\.(href|pathname|path|url|toString)$/.exec(text);
+	if (member) {
+		const base = pathExpressionText(member[1], bindings, depth, seen);
+		return base === null ? null : `${base} ${text}`;
+	}
+
+	if (IDENTIFIER.test(text)) {
+		if (RECOGNISED_PATH_BASE.test(text)) return text;
+		if (seen.has(text)) return null;
+		const value = bindings.get(text);
+		if (value === undefined) return null;
+		return pathExpressionText(
+			value,
+			bindings,
+			depth + 1,
+			new Set([...seen, text]),
+		);
+	}
+
+	if (text.includes(".")) {
+		return RECOGNISED_PATH_BASE.test(text) ? text : null;
+	}
+
+	const plus = splitTopLevelPlus(text);
+	if (plus) {
+		const parts = plus.map((part) =>
+			pathExpressionText(part, bindings, depth, seen),
+		);
+		if (parts.some((part) => part === null)) return null;
+		return parts.join(" ");
+	}
+
+	return null;
+}
+
+/** The concatenated text of every top-level argument, or `null` if any fails. */
+function everyArgumentText(argumentList, bindings, depth, seen) {
+	const parts = topLevelArguments(argumentList).map((part) =>
+		pathExpressionText(part, bindings, depth, seen),
+	);
+	if (parts.length === 0 || parts.some((part) => part === null)) return null;
+	return parts.join(" ");
+}
+
+/**
+ * A `${}`-interpolated template whose holes are all path expressions.
+ *
+ * Each hole is resolved with the same rules as the argument itself, so
+ * `` `./${SOURCE}/x` `` where `SOURCE` is a string literal resolves - the value is
+ * written down one line up - while a hole holding a loop variable or a call result
+ * does not, and the template returns `null`. That is the same fail-closed answer
+ * the specifier path already gives for a `${}` that survives substitution.
+ */
+function substitutePathTemplate(text, bindings, depth, seen) {
+	const body = text.replace(/\$\{([^}]*)\}/g, (match, inner) => {
+		const resolved = pathExpressionText(inner, bindings, depth, seen);
+		return resolved === null ? match : resolved.replace(/^["'`]|["'`]$/g, "");
+	});
+	return body.includes("${") ? null : body;
+}
+
+/** Whether the text is one balanced `(...)` around everything inside it. */
+function isWrapped(text) {
+	if (!text.startsWith("(") || !text.endsWith(")")) return false;
+	let depth = 0;
+	let quote = "";
+	for (let index = 0; index < text.length; index += 1) {
+		const char = text[index];
+		if (quote) {
+			if (char === "\\") index += 1;
+			else if (char === quote) quote = "";
+			continue;
+		}
+		if (char === '"' || char === "'" || char === "`") {
+			quote = char;
+			continue;
+		}
+		if (char === "(") depth += 1;
+		if (char === ")") {
+			depth -= 1;
+			if (depth === 0) return index === text.length - 1;
+		}
+	}
+	return false;
+}
+
+/**
+ * Split an argument list at its TOP-LEVEL commas.
+ *
+ * A scan rather than a parse, for the same reason `firstArgument` is: the
+ * arguments in this suite are multi-line `join(...)` calls, and a comma inside
+ * one of them is not a separator. Splitting wrongly can only make the pieces
+ * smaller, and a piece that no longer resolves is `null`, which is the fail-closed
+ * direction.
+ */
+function topLevelArguments(argumentList) {
+	const parts = [];
+	let depth = 0;
+	let quote = "";
+	let start = 0;
+	for (let index = 0; index < argumentList.length; index += 1) {
+		const char = argumentList[index];
+		if (quote) {
+			if (char === "\\") index += 1;
+			else if (char === quote) quote = "";
+			continue;
+		}
+		if (char === '"' || char === "'" || char === "`") {
+			quote = char;
+			continue;
+		}
+		if ("([{".includes(char)) depth += 1;
+		else if (")]}".includes(char)) depth -= 1;
+		else if (char === "," && depth === 0) {
+			parts.push(argumentList.slice(start, index));
+			start = index + 1;
+		}
+	}
+	const last = argumentList.slice(start).trim();
+	if (last.length > 0) parts.push(last);
+	return parts.filter((part) => part.trim().length > 0);
+}
+
+/** Split a `+` concatenation at its top level, or `null` when there is none. */
+function splitTopLevelPlus(text) {
+	const parts = [];
+	let depth = 0;
+	let quote = "";
+	let start = 0;
+	for (let index = 0; index < text.length; index += 1) {
+		const char = text[index];
+		if (quote) {
+			if (char === "\\") index += 1;
+			else if (char === quote) quote = "";
+			continue;
+		}
+		if (char === '"' || char === "'" || char === "`") {
+			quote = char;
+			continue;
+		}
+		if ("([{".includes(char)) depth += 1;
+		else if (")]}".includes(char)) depth -= 1;
+		else if (char === "+" && depth === 0) {
+			parts.push(text.slice(start, index));
+			start = index + 1;
+		}
+	}
+	if (parts.length === 0) return null;
+	parts.push(text.slice(start));
+	return parts;
 }
 
 /**
@@ -521,17 +895,37 @@ function closedHelpers(text, bindings) {
 		if (mentions.length !== calls.length + arrows.length) continue;
 		if (calls.length === 0) continue;
 
-		const callArguments = calls.map((match) =>
-			firstArgument(text, match.index + match[0].length - 1),
+		const callArguments = calls.map((match) => {
+			const [first] = topLevelArguments(
+				firstArgument(text, match.index + match[0].length - 1),
+			);
+			return first ?? "";
+		});
+		/*
+		 * A call site grounds the helper's parameter only when the ARGUMENT IT PASSES is
+		 * itself a path expression. Scanning the argument's text for a repo-shaped token
+		 * is what let a fixture literal one expression away ground a dynamic read (review
+		 * round 1, BLOCKER-1), so an argument that does not resolve leaves the helper
+		 * open - which puts the read that uses its parameter in the unresolved class
+		 * rather than in a selection that cannot be proven.
+		 */
+		const resolvedArguments = callArguments.map((argument) =>
+			pathExpressionText(argument, bindings),
 		);
 		if (
-			!callArguments.every((argument) =>
-				argumentIsGrounded(expandArgument(argument, bindings)),
+			!resolvedArguments.every(
+				(resolved) =>
+					resolved !== null &&
+					(argumentIsGrounded(resolved) ||
+						argumentIsGrounded(firstTopLevelArgument(resolved))),
 			)
 		) {
 			continue;
 		}
-		closed.set(name, { params, callArguments });
+		// The RESOLVED arguments, not the raw ones: the evidence a read is judged
+		// against is the text that resolved, so a call site cannot smuggle a token in
+		// through a part of its argument that is not a path expression.
+		closed.set(name, { params, callArguments: resolvedArguments });
 	}
 	return closed;
 }
@@ -650,10 +1044,33 @@ export function analyseTestFile(root, file, aliases) {
 	for (const match of text.matchAll(READ_CALL_PATTERN)) {
 		const openIndex = match.index + match[0].length - 1;
 		const argument = firstArgument(text, openIndex);
-		const expanded = expandArgument(argument, bindings);
+		/*
+		 * `firstArgument` returns the WHOLE argument list (everything up to the call's
+		 * closing paren), so `readFileSync(path, "utf8")` arrives as
+		 * `path, "utf8"`. Only the first top-level argument is the read's target - the
+		 * rest are the encoding, options, or a helper's second parameter - and
+		 * resolving the list as one expression is what left a resolvable target looking
+		 * unprovable.
+		 */
+		const [firstArgumentText] = topLevelArguments(argument);
+		/*
+		 * The grounding has to come from THIS expression's own chain. `resolved` is that
+		 * chain or `null`; `null` means the value cannot be proven to be built from path
+		 * text, and it is not settled by scanning the raw argument for a repo-shaped
+		 * token - a scan that would accept `readFileSync(entry.path)` because some other
+		 * expression in the file mentions a repository path. The raw text is kept for the
+		 * closed-helper mention test below, which is about the read's shape rather than
+		 * about its value.
+		 */
+		const resolved =
+			firstArgumentText === undefined
+				? null
+				: pathExpressionText(firstArgumentText, bindings);
+		const expanded = resolved ?? argument;
 		if (
-			argumentIsGrounded(expanded) ||
-			argumentIsGrounded(firstTopLevelArgument(expanded))
+			resolved !== null &&
+			(argumentIsGrounded(resolved) ||
+				argumentIsGrounded(firstTopLevelArgument(resolved)))
 		) {
 			continue;
 		}
@@ -688,9 +1105,36 @@ export function analyseTestFile(root, file, aliases) {
  * reason `analyseTestFile` reports them: the caller must treat the owning test as
  * unprovable rather than as unaffected.
  */
-export function moduleClosure(root, entries, aliases, closure = new Set()) {
+export function moduleClosure(
+	root,
+	entries,
+	aliases,
+	closure = new Set(),
+	cache = null,
+) {
+	/*
+	 * MEMOISED BY ITS ENTRY SET. Most of this suite's files import the same shared
+	 * bundle roots, so without this the identical walk is repeated once per test
+	 * file: measured at 275 s inside one ~2 min plan on a loaded host, walking the
+	 * closures of 118 bounded files (review round 1, MAJOR-1). The cache belongs to
+	 * one plan, so it cannot go stale between runs, and a hit contributes the same
+	 * closure and the same unresolved list it would have walked.
+	 */
+	const key = cache === null ? null : [...entries].sort().join("\u0000");
+	if (key !== null && cache.has(key)) {
+		const hit = cache.get(key);
+		for (const file of hit.closure) closure.add(file);
+		return { closure, unresolved: [...hit.unresolved] };
+	}
 	const queue = [...entries];
 	const unresolved = [];
+	// One resolution cache per plan, shared with every closure walk it makes: the
+	// specifier questions are the same ones asked over and over.
+	let resolutions = null;
+	if (cache !== null) {
+		if (cache.resolutions === undefined) cache.resolutions = new Map();
+		resolutions = cache.resolutions;
+	}
 	while (queue.length > 0) {
 		const file = queue.shift();
 		if (closure.has(file)) continue;
@@ -711,7 +1155,13 @@ export function moduleClosure(root, entries, aliases, closure = new Set()) {
 				);
 				continue;
 			}
-			const resolution = resolveSpecifier(spec, file, root, aliases);
+			const resolution = resolveSpecifier(
+				spec,
+				file,
+				root,
+				aliases,
+				resolutions,
+			);
 			if (resolution.kind === "external" || resolution.kind === "prose")
 				continue;
 			if (resolution.kind === "unresolved") {
@@ -720,6 +1170,9 @@ export function moduleClosure(root, entries, aliases, closure = new Set()) {
 			}
 			if (!closure.has(resolution.path)) queue.push(resolution.path);
 		}
+	}
+	if (key !== null) {
+		cache.set(key, { closure: [...closure], unresolved: [...unresolved] });
 	}
 	return { closure, unresolved };
 }
@@ -761,30 +1214,45 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 		);
 	}
 
-	// The classifier answers the cheap end of the range, and its own reason is
-	// carried through so the two modules cannot disagree about WHY nothing ran.
-	const flags = classify(changed, "");
-	if (flags.unit !== true) {
-		return none(`classifier sets no unit flag: ${FLAG_REASONS.unit}`);
+	let suiteFiles;
+	try {
+		suiteFiles = suite === null ? readSuiteFiles(root) : [...suite];
+	} catch (error) {
+		// A suite list this module cannot read in full is not a list it may narrow
+		// against: the whole suite runs, and the reason names the read.
+		return whole(
+			`the suite list in package.json could not be read: ${error.message}`,
+		);
 	}
-
-	const suiteFiles = suite === null ? readSuiteFiles(root) : [...suite];
 	const suiteSet = new Set(suiteFiles);
 	if (suiteSet.size === 0) {
 		return whole("the suite list in package.json could not be read");
 	}
 
+	// The classifier answers the cheap end of the range, and its own reason is
+	// carried through so the two modules cannot disagree about WHY nothing ran.
+	// What it may NOT do is decide before the graph has looked: a suite file that
+	// RECORDS a path in the changed set is reading it, and `docs/**` is where that
+	// used to be skipped by category alone. The scan below is the cheap half of the
+	// graph's own reference rule - the path's text, in the suite's own files - and
+	// it decides only whether the graph has to run at all.
+	const flags = classify(changed, "");
+	if (flags.unit !== true && !suiteRecordsPath(root, suiteFiles, changed)) {
+		return none(`classifier sets no unit flag: ${FLAG_REASONS.unit}`);
+	}
+
 	const testChanges = [];
 	const sourceChanges = [];
+	const referenceChanges = [];
 	for (const path of changed) {
 		const category = categoryOf(path);
 		if (category === "docs") {
-			// Prose. The classifier treats it as inert - no job in the workflow set
-			// reads it, and the desktop suite's own `docs/` hits are comments - so a
-			// document next to code the diff ALSO touches must not drag the whole
-			// suite in with it. Failing closed on it would make every pull request
-			// that edits a README run everything, which is the cost this change
-			// exists to remove.
+			// Prose by the classifier - but the GRAPH decides, not the category: a
+			// suite file that records this path is a reader, and selecting it is both
+			// cheaper and no less safe than failing closed to the whole suite, while a
+			// document no suite file records contributes nothing at all (which is what
+			// keeps a README change free). Review round 1, MINOR-1.
+			referenceChanges.push(path);
 			continue;
 		}
 		if (category !== "other") {
@@ -813,13 +1281,6 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 			);
 		}
 		return whole(`unrecognised path: ${path} (fail closed rather than guess)`);
-	}
-
-	if (sourceChanges.length === 0 && testChanges.length === 0) {
-		return none(
-			"every changed path is classified inert and no suite test file moved",
-			{ sourceChanges, testChanges },
-		);
 	}
 
 	const aliases = aliasTable(root);
@@ -854,7 +1315,7 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 			unresolvedClasses.push(...analysis.unbounded);
 			continue;
 		}
-		const direct = sourceChanges.find(
+		const direct = [...sourceChanges, ...referenceChanges].find(
 			(path) =>
 				analysis.paths.has(path) ||
 				[...analysis.subtrees].some((prefix) => path.startsWith(prefix)),
@@ -890,11 +1351,24 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 	}
 
 	if (selected.size === 0) {
+		if (flags.unit !== true) {
+			// The classifier's own sentence, because the classifier's flag is WHY
+			// nothing ran - said after the graph has confirmed that nothing records
+			// these paths either.
+			return none(`classifier sets no unit flag: ${FLAG_REASONS.unit}`, {
+				sourceChanges,
+				testChanges,
+				referenceChanges,
+				suite: suiteSet.size,
+			});
+		}
 		return none(
-			`no suite file reaches ${sourceChanges.length} changed source path(s): ${sourceChanges
+			`no suite file reaches ${
+				sourceChanges.length + referenceChanges.length
+			} changed path(s): ${[...sourceChanges, ...referenceChanges]
 				.slice(0, 3)
 				.join(", ")}${sourceChanges.length > 3 ? ", ..." : ""}`,
-			{ sourceChanges, testChanges, suite: suiteSet.size },
+			{ sourceChanges, testChanges, referenceChanges, suite: suiteSet.size },
 		);
 	}
 
@@ -908,6 +1382,7 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 			changed,
 			sourceChanges,
 			testChanges,
+			referenceChanges,
 			suite: suiteSet.size,
 			reasons: selected,
 			alwaysSelected,
