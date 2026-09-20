@@ -28,15 +28,22 @@
  *   `503`, or the one op the plane serves without admitting anyone) is liveness
  *   evidence and never attachment evidence, so it may not clear the
  *   identity-failure count; and a probe that ANSWERED with a contradiction
- *   (`contradicted`: a different instance id, a different pid, a non-daemon) is
- *   evidence about THIS app's pairing rather than about the daemon's liveness,
- *   so other answered traffic must not excuse it either. Measured 2026-09-18: a
- *   `lop` build swap replaced the daemon under the app, the successor refused
- *   every desktop call (`503`; its plane was shut) while answering `/health` and
- *   the public capability op, those answers cleared the count on every pass, and
- *   the app sat `attached` to a pid that was gone - never re-discovering, never
- *   re-claiming - while it told the operator it was "not paired with the running
- *   Local Operator server" until the app itself was restarted;
+ *   (`contradicted`: a different pid, a non-daemon, or a different instance id
+ *   from a DIFFERENT process) is evidence about THIS app's pairing rather than
+ *   about the daemon's liveness, so other answered traffic must not excuse it
+ *   either. Measured 2026-09-18: a `lop` build swap replaced the daemon under
+ *   the app, the successor refused every desktop call (`503`; its plane was
+ *   shut) while answering `/health` and the public capability op, those answers
+ *   cleared the count on every pass, and the app sat `attached` to a pid that was
+ *   gone - never re-discovering, never re-claiming - while it told the operator
+ *   it was "not paired with the running Local Operator server" until the app
+ *   itself was restarted;
+ * - a changed `instance_id` from the SAME pid is a RELOAD of the process, not a
+ *   replacement of it (`reanchored`), and it stays attached and paired: an
+ *   identity is minted per PROCESS, and `execve` - which is how `lop-update`
+ *   moves a serving daemon - cannot hand one pid to a second live process. See
+ *   the observation's own note, and `backend-service.ts::probeAttachedDaemon`
+ *   for the proof the app holds that the pid is its own child;
  * - a daemon whose pid is gone is `detached` immediately, because that IS
  *   evidence;
  * - a daemon whose pid is ALIVE but whose published heartbeat stopped is
