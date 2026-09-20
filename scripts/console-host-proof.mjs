@@ -73,6 +73,26 @@ function argValue(flag) {
 /** The surface-handle grammar, and the two shapes this rig parses out of other
  * tools' output. Module scope: each is compiled once rather than per call, which is
  * the rule the repo's own lint enforces everywhere else. */
+/*
+ * The one `file:` page on the debugging port that is NOT the app's window.
+ *
+ * THE CAPTURE VIEW IS A SECOND RENDERER (design 13.2/13.3): a hidden `BrowserWindow`
+ * that replays a record to be photographed, created lazily by the first
+ * `console_screenshot` with no pane displaying the surface. It is therefore also a
+ * `type: "page"` target on the debugging port, and it appears BEFORE the app's own
+ * window in the list — so a rig that picked the first `file:` page silently drove the
+ * capture view instead. That is not a harmless wrong address: the capture view is
+ * deliberately not an authorized console client, and the app refuses its IPC with
+ * "This window cannot use the console" — which is what this rig reported, at the cell
+ * that opens the pane AFTER the first screenshot, until this filter existed.
+ *
+ * THE MATCH IS POSITIVE AND NAMES THE APP'S OWN DOCUMENT rather than excluding the
+ * capture view by name: the rig wants the window that serves the app, and a page that
+ * is neither is not one this rig has any business driving. The port also carries the
+ * browser host's tab views as `about:blank` pages, and a negative list would have to
+ * grow every time another renderer joins the app.
+ */
+const APP_DOCUMENT = /\/index\.html$/;
 const SURFACE_HANDLE = /^con:\d+:[A-Za-z0-9_-]+$/;
 const PLIST_EXECUTABLE =
 	/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/;
@@ -631,7 +651,7 @@ async function rendererEvaluate(expression) {
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
 	).json();
 	const page = list.find(
-		(target) => target.type === "page" && target.url.startsWith("file:"),
+		(target) => target.type === "page" && APP_DOCUMENT.test(target.url),
 	);
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
