@@ -839,8 +839,8 @@ an unattended launch can never answer.
 Capture from inside the app — `webContents.capturePage()` or CDP — never with
 macOS `screencapture`, which works only on the frontmost window and so requires
 exactly the focus theft this section exists to remove. Storybook evidence is
-unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
-Chrome.
+unaffected: `node scripts/capture-evidence.mjs <storybook-origin>` already drives a
+private `--headless=new` Chrome.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated
@@ -909,49 +909,67 @@ harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is
 the mode belongs in the harness's own spawn call and not in whatever the shell
 happened to export.
 
-### A sweep never borrows the operator's browser
+### A page that reloads on its own does not sit in the operator's browser
 
-Every rule above is about windows this repository's code *opens*. This one is
-about windows its runs must not *borrow*: **a QA, evidence or Storybook sweep does
-not run in the operator's own browser — this app's Browser pane included.** A page
-you are merely looking at is not a surface a run may drive where they are working,
-and the repository's own paths exist for exactly that: `pnpm capture:evidence`,
-`scripts/renderer-driver.mjs`, `scripts/click-proof.mjs` and the
-`docs/evidence/<surface>/harness/` scripts each launch a **private** Chrome
-(`--headless=new`, a scratch `--user-data-dir`, `--use-mock-keychain`, and `-g`
-when it goes through `open`) that no screen is attached to.
+The rules above are about windows this repository's code *opens*. This one is about
+the window a run can leave *misbehaving*: **a page whose reload cadence the run does
+not control does not get parked in the operator's browser — this app's Browser pane
+included — and a sweep of many states does not run there either.**
 
-Measured on 2026-09-19, and the reason this is a rule rather than a preference. A
-Storybook served from a user-dashboard worktree was open in this app's own Browser
-pane while the app was frontmost. The server ran token-gated (`--ci`) and its page
-had been loaded as a **bare `…/iframe.html?id=<story>&viewMode=story` URL, which
-carries no HMR token** — so Storybook refused its own websocket (`Rejecting
-WebSocket connection: Error: Invalid websocket token`, tens of lines a second in
-the server's log), and **its preview reloads itself when that channel is refused**.
-Every reload navigated the pane: **364 navigations on one port and 773 on another**,
-76 in a single minute at the peak, for half an hour. From the operator's chair the
-app had become unusable — the caret left their composer on each reload, so a
-sentence could not be finished — while the app itself did nothing wrong: it logged
-every navigation it was handed.
+That is narrower than it first sounds, because their browser is a sanctioned
+instrument in this repository and this rule does not replace it:
+`docs/agent-driver.md` sends you to the `browser` tool "when the real browser is what
+is under test", and the committed frame sets behind
+`docs/evidence/draft-splash-browser/`, `chat-image-expand/` and `chat-search/` were
+produced that way, with a re-capture recorded as owed in `manifest.json` precisely
+because a scripted headless Chromium is not the instrument there. What none of those
+passes does is leave a page looping in their browser while they work, or turn a story
+sweep into N unattended navigations of it.
 
-What follows from it:
+Measured on 2026-09-19, and the reason the sweep half is a rule. Two Storybooks were
+being looked at through this app's own Browser pane while the app was frontmost, each
+loaded as a **bare `…/iframe.html?id=<story>&viewMode=story` top-level page — the
+form that carries no server-channel token** (a dev Storybook generates that token per
+run and validates it on `/storybook-server-channel`; it is not a flag a caller can
+pass or drop). Every reload of those pages was paired in the server's log with
+`Rejecting WebSocket connection: Error: Invalid websocket token`, and the pane
+navigated continuously: **773 navigations on one port, 364 on another, 76 in a single
+minute at the peak, for half an hour.** The operator reported being unable to type
+while it ran.
 
-- **Load Storybook through the manager URL that carries the HMR token**, never a
-  bare `iframe.html?id=…`, and drop `--ci` for a server somebody is going to look
-  at by hand. A token-gated server plus a bare story URL is a page that reloads
-  itself forever.
-- **A page whose reload cadence you do not control does not go in their browser at
-  all.** That is a headless run with captures, or `renderer-driver`, not a live tab:
-  the `browser` tool is for the operator's own tasks on their own pages, never the
-  vehicle for a sweep of somebody else's stories.
-- **Sweep in a browser you launched, with a profile you own, and reap it in the
-  same command** — the same shape every harness above uses. Never a browser the
-  operator is already working in, and never on a server whose HMR channel they
-  cannot see the state of.
+What was measured, and what was not. The app's host process logged every navigation it
+was handed (`did-navigate` in `src/main/browser/index.ts` fires for page-initiated
+navigations too), no CDP client was connected to the app's debugging ports, and no file
+in those worktrees was being rewritten — so nothing outside the page was driving it.
+**Whether a pane navigation is what took the composer's keyboard focus was never
+established**, which is why the durable half is a follow-up rather than a claim here:
+park a pane that navigates in a loop, and never let a background pane's load take the
+keyboard focus. The pairing between the refused channel and each reload is likewise an
+observation rather than a sourced mechanism, so the rule below is written to avoid the
+pairing rather than to explain it.
+
+What follows for a run:
+
+- **Open a story through the manager URL that carries the token**, never a bare
+  `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
+  channel refuses, and that refusal is what each reload was paired with.
+- **A sweep belongs in a browser the run launched and reaped itself, in one of the two
+  shapes this repository already has.** `scripts/capture-evidence.mjs` and
+  `scripts/click-proof.mjs` spawn their own private `--headless=new` Chrome with a
+  scratch `--user-data-dir`, argv routed through `scripts/chrome-keychain.mjs`;
+  `scripts/renderer-driver.mjs` launches no Chrome at all — it boots the built app in
+  `--window-mode=headless` and photographs it with `capturePage()`. The harnesses under
+  `docs/evidence/<surface>/harness/` are a mixture of both shapes and their READMEs say
+  which one produced their frames. Spawn the binary directly: **do not hand the URL to
+  `open`**, which delivers it to whatever Chrome is already running — the operator's.
+- **What decides is the cadence and who is watching, not whose page it is.** A
+  watched, deliberately-stepped pass in their browser is what the committed sets
+  above did — `chat-image-expand`'s was on a running Storybook — and that stays
+  sanctioned. What this rule forbids is a sweep of many states run there
+  unattended, and any page left reloading while nobody is looking at it.
 - **If you find a page looping in their pane, stop the loop and say which stop you
-  used** — close the tab, or stop the server feeding it, and record it. A reload
-  loop is not something the operator will close when they notice it; it is the
-  failure the run caused, and their UI stays unusable until somebody acts.
+  used** — close the tab, or stop the server feeding it. A loop does not end by
+  itself, and their UI stays unusable until somebody acts on it.
 
 ## The code-sealed bundle, and what may write in it
 
