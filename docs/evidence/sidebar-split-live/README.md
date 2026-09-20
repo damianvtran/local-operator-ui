@@ -44,7 +44,7 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<the same token> node scripts/renderer-driver.mjs \
 ```
 
 Run on 2026-09-19 at head `0aeccbc79`'s remediation round, `SCENE_EXIT=0`, with
-**29 checks passed and 0 failed**, ending in the driver's own leftover-process
+**31 checks passed and 0 failed**, ending in the driver's own leftover-process
 check (`[PASS] no process from this run outlived its boot`). The scratch profile
 the restart reuses is `${USER_DATA}-scene`, and the two boots were pids
 `76254 -> 76713` in that run: same profile, different process.
@@ -61,11 +61,11 @@ the restart reuses is `${USER_DATA}-scene`, and the two boots were pids
 | `split-dragged-dark.png` | the drag's result: a stored height drawn where it says, and `aria-valuenow` equal to the drawn height |
 | `split-collapsed-dark.png` | the collapse settled: the entity region fills the column, the chats region is unmounted, the restore row names what is hidden and carries its count |
 | `split-restored-dark.png` | the way back, pressed and persisted |
-| `split-keyboard-home-dark.png` | the keyboard path: the separator focused, `Home` pressed, focus still on the separator |
-| `split-swapped-dark.png` | the swap: the chats region drawn first, each region keeping its **own DOM node** and its scroll position (U2) |
+| `split-keyboard-home-dark.png` | the keyboard path: the separator focused, `Home` pressed, focus still on the separator. Since round 2 `Home` goes to the LABELLED pane's extreme (the chats list's smallest, D8) rather than to the axis's - which for this handle's default order was the same region's maximum |
+| `split-swapped-dark.png` | the swap: the chats region drawn first, each region keeping its **own DOM node** and its scroll position (U2) - subject to the region's new content height, so a position within 8px of the end is clamped by the region's own shorter content (Q-2; measured `120 -> 111`) |
 | `split-rest-240-dark.png` | the panel at its width clamp, where the boundary and its controls have the least room |
 | `split-reveal-240-dark.png` | the reveal at that width — the plate and the three glyphs still fit |
-| `split-rest-360-light.png` | the resting state in the second brand palette |
+| `split-rest-360-light.png` | the resting state in the second brand palette - the SAME state as its dark twin, on a profile whose stored height is back to auto (see below) |
 | `split-reveal-settled-light.png` | the revealed cluster in that palette |
 | `split-restart-restored-dark.png` | **the operator's own acceptance criterion**: a second boot of the app, in the same scratch profile, drawing the height AND the collapse that were stored before it |
 
@@ -78,6 +78,20 @@ the restart reuses is `${USER_DATA}-scene`, and the two boots were pids
   answer, not a synthetic event's. The keys go through `dispatchKeyEvent`.
 * **Still synthetic.** No pressure, no jitter, no trackpad momentum, no real hand.
   A frame here does not say "a person finds this".
+* **The light pair is taken on a RESET state, and that is a correction.** Taken
+  where the run had left the split, the two light frames photographed the clamped
+  top-of-range state the drag and the `Home` press had just written - a region at
+  its 72px floor under a caption that read "the resting state in the second brand
+  palette" - while their dark twins, taken first, were genuinely at rest, so the two
+  palettes were not comparable like-for-like at all (design round 2, D9). The state
+  is now reset to auto before those frames, because the palette half of D1 needs
+  the two palettes photographed in the SAME state to say anything.
+* **The travel-cancel is asserted here rather than described.** Round 2 found that
+  `CONTROL_PRESS_SLOP_PX` appeared once in the tree, at its definition: the half of
+  U1 that stops a travelling press from acting was implemented and asserted nowhere,
+  so a regression deleting it would have kept every check green (agent review round
+  2, m-3). This scene now presses a cluster control, travels 20px through CDP, and
+  asserts that neither the stored `regions` nor the drawn regions moved.
 * **The reveal's timing is read, not photographed.** `Page.captureScreenshot`
   takes longer than the 200ms intent window, so a frame taken "inside" it can show
   the plate already up — the first version of this scene reported the opposite of
