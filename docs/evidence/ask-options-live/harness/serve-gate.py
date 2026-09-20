@@ -5,6 +5,11 @@ Hold a REAL pending ``ask`` gate open for the click proof.
     python serve-gate.py --port 14391 --scratch /tmp/ask-gate-rig \
         --token-file /tmp/ask-gate-rig/token --result-file /tmp/ask-gate-rig/owner-answer.json
 
+``--answer-delay-ms N`` holds each answer's RESPONSE for N ms after the route has
+run, which is how the losing order — the owner's own state push clearing the card
+before the answer's response arrives — is FORCED instead of waited for. See
+``RigControl``'s notes for why that is the honest way to get it.
+
 This is the backend half of ``scripts/click-proof.mjs``. It exists so the live
 frames in this directory are reproducible from the repository rather than from
 whatever happened to be in a ``/tmp`` directory when they were taken: the round
@@ -39,6 +44,7 @@ import os
 import secrets
 import socket
 import sys
+import time
 from pathlib import Path
 
 
@@ -54,6 +60,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--session-id", default="a1a1a1a1a1a1")
     parser.add_argument("--token-file", type=Path, required=True)
     parser.add_argument("--result-file", type=Path, required=True)
+    parser.add_argument(
+        "--answer-delay-ms",
+        type=int,
+        default=0,
+        help=(
+            "Hold every answer route's RESPONSE this long AFTER the route itself "
+            "has run, so the owner's own state push (a websocket frame) reaches the "
+            "page before the answer's HTTP response does. See `RigControl.answer` "
+            "for why the ordering is the whole point and why it is forced here "
+            "rather than left to chance."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -104,7 +122,8 @@ async def main() -> None:
     armed = asyncio.Event()
 
     class RigControl:
-        """Arm the card on request, and note when a surface attaches.
+        """Arm the card on request, note when a surface attaches, and record the
+        answer traffic.
 
         ``ServingSessionHandle._gate_timeout_s`` denies an unanswered gate
         after ``PENDING_REQUEST_TIMEOUT_S`` (30s) when nothing can present it —
@@ -119,13 +138,39 @@ async def main() -> None:
         `.../watch` is recorded as well, because "a surface can present the
         card" is the fact the timeout policy reads and it is worth having in
         the log.
+
+        ## Why an answer's RESPONSE can be HELD, and what an answer log buys
+
+        Whether a press became the gate's answer is decided from two channels
+        that have no ordering between them: the answer's HTTP response, and the
+        owner's own state push, which is what clears the card. A run that needs
+        the interesting order — push first, so the card is already gone when the
+        response lands — cannot wait for a busy turn to produce it: the measured
+        margin is ~76 ms (a POST response at 124 ms against a card clearing at
+        200 ms), so whether a run proves anything would be a coin flip.
+
+        `--answer-delay-ms` forces that order, and forces it HONESTLY. The
+        request is delivered and the route runs untouched — the owner resolves
+        the gate and pushes state at its normal time, and `answeredAt` below is
+        that real moment — and only the DELIVERY of the response the route
+        already produced is held back. The answer itself is unchanged; its
+        response arrives late, which is exactly what a busy turn does to it.
+
+        `/rig-state` is the record of that: one entry per answer request, with
+        the epoch-ms timings a reader needs to see which channel landed first
+        and the status the route chose. The driver reads it instead of sleeping
+        and hoping, so a run that produced the wrong ordering can say so rather
+        than photographing whatever happened to be on screen.
         """
 
-        def __init__(self, inner: object) -> None:
+        def __init__(self, inner: object, delay_ms: int = 0) -> None:
             self._inner = inner
+            self._delay_s = max(0.0, delay_ms / 1000.0)
+            self._answers: list[dict[str, object]] = []
 
         async def __call__(self, scope, receive, send):
-            if scope["type"] == "http" and scope.get("path") == "/rig-arm":
+            path = str(scope.get("path", ""))
+            if scope["type"] == "http" and path == "/rig-arm":
                 armed.set()
                 await send(
                     {
@@ -138,11 +183,58 @@ async def main() -> None:
                     {"type": "http.response.body", "body": b'{"armed":true}'}
                 )
                 return
-            if scope["type"] == "http" and str(scope.get("path", "")).endswith(
-                "/watch"
-            ):
+            if scope["type"] == "http" and path == "/rig-state":
+                body = json.dumps({"answers": self._answers}).encode()
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"content-length", str(len(body)).encode()),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": body})
+                return
+            if scope["type"] == "http" and path.endswith("/watch"):
                 watching.set()
+            if (
+                scope["type"] == "http"
+                and scope.get("method") == "POST"
+                and path.endswith("/answers")
+            ):
+                await self.answer(scope, receive, send)
+                return
             await self._inner(scope, receive, send)
+
+        async def answer(self, scope, receive, send) -> None:
+            """Run the answer route, record it, then hold its response.
+
+            Public and named rather than inlined into `__call__` so the three
+            moments this rig is read against are one object per request: when
+            the request arrived, when the route answered (the owner's own
+            resolution), and when the response was actually delivered.
+            """
+            entry: dict[str, object] = {
+                "path": str(scope.get("path", "")),
+                "requestedAt": time.time() * 1000.0,
+            }
+            self._answers.append(entry)
+
+            async def held(message):
+                if message["type"] == "http.response.start":
+                    entry["status"] = message["status"]
+                    entry["answeredAt"] = time.time() * 1000.0
+                    if self._delay_s:
+                        await asyncio.sleep(self._delay_s)
+                await send(message)
+                if message["type"] == "http.response.body" and not message.get(
+                    "more_body"
+                ):
+                    entry["deliveredAt"] = time.time() * 1000.0
+
+            await self._inner(scope, receive, held)
 
     session_id = args.session_id
     workspace = scratch / "workspace"
@@ -176,7 +268,11 @@ async def main() -> None:
     # Port 0 means the OS picks one, which is the isolation this rig claims:
     # nothing can collide with the operator's own backend or with a peer's rig.
     listener.bind(("127.0.0.1", args.port))
-    server = uvicorn.Server(uvicorn.Config(RigControl(app), log_level="error"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            RigControl(app, delay_ms=args.answer_delay_ms), log_level="error"
+        )
+    )
     serving = asyncio.create_task(server.serve(sockets=[listener]))
     for _ in range(20_000):
         if server.started:
