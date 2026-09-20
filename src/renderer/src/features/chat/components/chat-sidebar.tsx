@@ -1957,6 +1957,7 @@ export function ChatSidebar({
 										 */
 										"pointer-events-none",
 										"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:duration-fast",
+										"hover:text-ink!",
 									),
 							// Colour step only, and only while this row is NOT the current
 							// one - see the block comment above. The step is the ROW's own
@@ -2084,6 +2085,21 @@ export function ChatSidebar({
 							"transition-opacity duration-base ease-out-quart",
 							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
 							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							/*
+							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
+							 * D22). The row box and both controls now declare the same
+							 * `hover:bg-row-hover`, so the ground is uniform across a hovered
+							 * row and says nothing about WHICH control the pointer is on - the
+							 * nested step D18's fix removed, one level down. A distinct control
+							 * token would be a new role across every palette for one 24px box;
+							 * the ink step is the vocabulary this file already has (a pinned
+							 * row's glyph takes `text-ink`), so the control under the pointer
+							 * darkens to full ink while its sibling stays at the revealed
+							 * `ink-muted`. The `!` is load-bearing: `group-hover:text-ink-muted`
+							 * and `hover:text-ink` are two equally specific rules that both
+							 * match, so the winner would be the stylesheet's own order.
+							 */
+							"hover:text-ink!",
 							// The hover GROUND is dropped while this row is the current one, the
 							// rule the entity row's two controls follow: a child's background
 							// paints over the row's own, so keeping it would let the pointer's
@@ -2163,6 +2179,7 @@ export function ChatSidebar({
 							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
 							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
 							"data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto",
+							"hover:text-ink!",
 							// The ROW's own state, never a ground - see the two controls above.
 							!current && "hover:bg-row-hover",
 						)}

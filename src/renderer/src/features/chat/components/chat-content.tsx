@@ -531,7 +531,33 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const sessionGone = useCanonicalSessionsStore((state) =>
 			sessionId ? state.forgotten[sessionId] !== undefined : false,
 		);
-		const gone = sessionGone || canonical?.view.missing === true;
+		/*
+		 * AND A CONVERSATION THE CATALOGUE CARRIES AGAIN IS NOT GONE, whatever an
+		 * earlier read said (QA round 3, Q12).
+		 *
+		 * `canonical.view.missing` is a TRANSPORT state: it is raised by a 404 on this
+		 * conversation's own stream and nothing on the wire takes it back - a resurrected
+		 * conversation is not re-announced on the stream the 404 killed, because that
+		 * stream is gone. So after a tombstone self-heals (the row comes back, which
+		 * `forgotten` and the row's own presence both say) the pane the reader is
+		 * ALREADY on kept drawing "This conversation is no longer on this machine" for
+		 * as long as they stayed - QA measured it holding for 16s of samples and across
+		 * a click on the row the route already names, and only the route change or a
+		 * cold start cleared it.
+		 *
+		 * The catalogue's membership is this client's freshest claim about whether the
+		 * conversation EXISTS, and it is the claim the row itself is drawn from: a row
+		 * on screen beside a notice saying it is not on this machine is the app
+		 * contradicting itself. Read here rather than folded into the view, because the
+		 * view is about the TRANSPORT and this is about membership.
+		 */
+		const listedNow = useCanonicalSessionsStore((state) =>
+			sessionId
+				? state.sessions.some((row) => row.session_id === sessionId)
+				: false,
+		);
+		const gone =
+			sessionGone || (canonical?.view.missing === true && !listedNow);
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);

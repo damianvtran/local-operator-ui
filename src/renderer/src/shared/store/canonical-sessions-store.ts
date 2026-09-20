@@ -1672,7 +1672,7 @@ type CanonicalSessionsState = {
 	 */
 	deleteSession: (
 		sessionId: string,
-	) => Promise<{ ok: true } | { ok: false; detail: string; live: boolean }>;
+	) => Promise<{ ok: true } | { ok: false; detail: string; guarded: boolean }>;
 	requestSessionDelete: (sessionId: string | null) => void;
 	fetchSessions: (limit?: number) => Promise<void>;
 	createSession: (
@@ -2667,15 +2667,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						return { ok: true };
 					}
 					/*
-					 * 409 is the live-session guard, and the backend's sentence is the one that
-					 * names it - quoted rather than paraphrased here, because a client that
-					 * re-words a guard it does not own drifts from the route the moment the
-					 * route changes. Every other failure keeps whatever sentence the transport
-					 * or the daemon authored.
+					 * 409 IS ONE ARM OF THE ROUTE'S LADDER FOR FOUR GUARDS - a live session, an
+					 * armed wake, unread mail, and a guard whose store could not be read - and
+					 * the backend's own docstring says the split is deliberate: the code
+					 * (`session_delete_refused`) "does not vary by which guard fired", while the
+					 * SENTENCE names the specific remedy. So this field is named for the
+					 * CONDITION the client can see (a guard refused) rather than for a cause it
+					 * cannot infer, which is what QA round 3's Q11 measured: a wake refusal used
+					 * to be reported as `live` and drawn with advice about stopping a session.
+					 *
+					 * The backend's sentence is the one that names the guard - quoted rather than
+					 * paraphrased here, because a client that re-words a guard it does not own
+					 * drifts from the route the moment the route changes. Every other failure
+					 * keeps whatever sentence the transport or the daemon authored.
 					 */
 					return {
 						ok: false,
-						live: status === 409,
+						guarded: status === 409,
 						detail:
 							error instanceof DesktopControlError && error.message
 								? error.message

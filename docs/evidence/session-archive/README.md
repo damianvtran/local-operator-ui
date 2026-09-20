@@ -199,10 +199,13 @@ frames this set ships, which is the provenance the earlier paragraph said it owe
 the marker's own box (`ml-1 size-3.5`) did not change, so the offset is the same,
 and it is now read off these artefacts rather than carried from the earlier set.
 
-**The row's hover ground reaches the row box's right edge (design round 3, D18).**
+**The row's hover ground reaches the row box's right edge (design round 3, D18;
+endpoints corrected in round 4, D23).**
 On `row-controls-pair/localOperatorDark.png` the hovered row's ground runs from
-device x 470 to 982 at the row's own centre line (CSS 228..491), passing under both
-control slots, with the panel ground `srgb(42,39,34)` resuming at 984. Before this
+device x **456 to 983** at the row's own centre line (CSS 228..491.5), passing under
+both control slots, with the panel ground `srgb(42,39,34)` resuming at 984. (An
+earlier line said 470..982 — 470 is CSS 235, i.e. 7px inside the box, and the run's
+own endpoints are 456 and 983.) Before this
 round's fix the same frame measured CSS 228..436 — the conversation button's own
 ground, 56px short — because the class stating it on the box was inert. The scene
 now asserts the box's own computed background, with the pointer on the row and

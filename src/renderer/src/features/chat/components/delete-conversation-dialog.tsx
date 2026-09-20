@@ -2,7 +2,7 @@ import { ConfirmationModal } from "@shared/components/common/confirmation-modal"
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef, useState } from "react";
 import {
-	DELETE_LIVE_REMEDY,
+	DELETE_GUARD_REMEDY,
 	deleteConversationMessage,
 } from "../delete-conversation";
 
@@ -53,14 +53,16 @@ export const DeleteConversationDialog: FC<{
 	 * resets on `candidate` would leave one frame in which the previous refusal is
 	 * drawn under the new question.
 	 *
-	 * `live` is carried because the CAUSE changes what has to be said: a hold the
-	 * route refuses for needs the remedy this window can actually offer, and a
-	 * transport failure does not.
+	 * `guarded` is carried because the KIND of failure changes what has to be said: a
+	 * guard the route refused for needs the remedy this window can actually offer, and
+	 * a transport failure does not. It is NOT a cause - the four guards share one code
+	 * and the client cannot tell them apart (QA round 3, Q11); `DELETE_GUARD_REMEDY`
+	 * is the sentence that holds whichever of them fired.
 	 */
 	const [refusal, setRefusal] = useState<{
 		candidate: string;
 		detail: string;
-		live: boolean;
+		guarded: boolean;
 	} | null>(null);
 	const shownRefusal =
 		refusal && refusal.candidate === candidate ? refusal : null;
@@ -118,12 +120,16 @@ export const DeleteConversationDialog: FC<{
 					)}
 					{/*
 					 * The REMEDY, in the quieter ink: the refusal above is the failure, this is
-					 * what can be done about it, and only the live refusal has one (UX round 1,
-					 * U3 - the route's own sentence sends the reader to a Stop control this pane
-					 * does not have).
+					 * what can be done about it, and only a GUARD refusal has one (UX round 1,
+					 * U3 - for the live arm the route's own sentence sends the reader to a Stop
+					 * control this pane does not have).
+					 *
+					 * `guarded` rather than a cause: the four guards share one code (QA round 3,
+					 * Q11), so this says the half that holds for all of them, and the route's own
+					 * sentence names the specific remedy above it.
 					 */}
-					{shownRefusal?.live && (
-						<p className="pt-2 text-ink-muted">{DELETE_LIVE_REMEDY}</p>
+					{shownRefusal?.guarded && (
+						<p className="pt-2 text-ink-muted">{DELETE_GUARD_REMEDY}</p>
 					)}
 				</>
 			}
@@ -150,7 +156,7 @@ export const DeleteConversationDialog: FC<{
 						setRefusal({
 							candidate,
 							detail: outcome.detail,
-							live: outcome.live,
+							guarded: outcome.guarded,
 						});
 						setRefusalSeq((seq) => seq + 1);
 					}
