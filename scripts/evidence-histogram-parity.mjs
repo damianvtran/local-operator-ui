@@ -53,6 +53,7 @@ import {
 	frameHistogram,
 	groundDistance,
 } from "./check-evidence.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -379,7 +380,14 @@ export function channelStep(left, right) {
 	return worst;
 }
 
-// Imported for `compareFrame` and the fixtures without running a sweep.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+/*
+ * Imported for `compareFrame` and the fixtures without running a sweep. The
+ * comparison goes through `scripts/entry-point.mjs` rather than a local
+ * `process.argv[1]` test: that module is the one place this repository resolves
+ * an entry point, and `entry-point.test.mjs` refuses any script that spells it
+ * out again - which is how this rig's first version was caught, on CI, in the
+ * Type Checking job.
+ */
+if (isEntryPoint(import.meta.url)) {
 	await main();
 }
