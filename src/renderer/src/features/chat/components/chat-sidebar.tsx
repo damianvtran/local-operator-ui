@@ -161,20 +161,29 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * 240/288/360 with 280 as the default (`chat-layout.tsx`), and the header row is
  * 17px narrower than the panel, so the query is on the ROW's width.
  *
- * Measured at the clamp minimum (240px panel, 223px row) on a row that carries an
- * unread mark, which is the binding case: the mark is a trailing slot OUTSIDE the
- * truncating title, so a row that is also unread has less title than a bare one at
- * the same width. See `docs/design/session-archive-delete.md` for the numbers and
- * the frames that carry them.
+ * `263` AND NOT `280`, for two reasons that are both about what a container query
+ * actually measures. A size query evaluates the container's CONTENT box, and this
+ * container is the panel root, which carries `p-2`: the content box is the panel
+ * minus its own 16px, so the shed threshold for a 280px panel is 264. And the
+ * comparison is INCLUSIVE in the direction that matters (`@max-[N]` compiles to
+ * `not (min-width: N)`), so the bound sits one pixel under 264 rather than on it -
+ * at 264 the pair is still drawn. Measured: the pair is drawn at the 280 default
+ * and shed at the 240 clamp minimum, with the frames to show both.
+ *
+ * Measured at both widths on a row that carries a status and on one that also
+ * carries an unread mark, which is the binding case: the mark is a trailing slot
+ * OUTSIDE the truncating title, so a row that is also unread has less title than a
+ * bare one at the same width. See `docs/design/session-archive-delete.md` for the
+ * numbers and the frames that carry them.
  */
-const ROW_CONTROLS_PAIR_SHED = "@max-[280px]/chatsidebar:hidden";
+const ROW_CONTROLS_PAIR_SHED = "@max-[263px]/chatsidebar:hidden";
 /**
  * The other half of the same decision: the one shared control is drawn ONLY in the
  * band the pair is shed in, so the row never carries both at once and never carries
  * neither. Same container, inverted, which is what makes the pair and the shared
  * control one rule rather than two.
  */
-const ROW_CONTROLS_SHARED_SHOWN = "@max-[280px]/chatsidebar:flex hidden";
+const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -1575,7 +1584,18 @@ export function ChatSidebar({
 			    which is that cap doing the work a floor used to. The two literal
 			    statements below cannot truncate anything: they are fixed strings
 			    with no width to run out of. */}
-				<span className="min-w-0 flex-1 truncate">
+				<span
+					/*
+					 * The title's own anchor, inert outside a driver run: the reserved slot's
+					 * cost is a claim about TITLE width, and the only honest way to state it is
+					 * to measure the element the title is drawn in rather than to subtract
+					 * control widths from a row box (`renderer-driver.mjs`'s `session-archive`
+					 * scene reads it at both panel widths, on a row that carries a status and
+					 * on one that carries an unread mark).
+					 */
+					data-session-title
+					className="min-w-0 flex-1 truncate"
+				>
 					{row.title || "Untitled chat"}
 				</span>
 				{/* In a flat list nothing else names the profile answering, so two
@@ -1641,10 +1661,12 @@ export function ChatSidebar({
 		 * inside it, and nothing else. No slot, no `group` - an absent control is the only
 		 * thing that reads one - and no `data-session-row`, which is this branch's hook for a
 		 * state only a per-row control can produce. It is entered when NEITHER capability is
-		 * advertised: with the pins present and only the archive withdrawn the row is the
-		 * pin's own box, class list included, which is what makes this branch's withdrawn
-		 * pair byte-identical to main's panel. "Byte-identical to the pre-change panel" is still the
-		 * claim this branch makes; what moved is which panel is the pre-change one.
+		 * advertised. With the pins present and only the archive withdrawn the row is NOT
+		 * this branch: it is the pin branch's own row, class list included, because `controls`
+		 * holds the pin alone and the pair wrapper - whose only job is to hold two - is not
+		 * drawn. That is what the withdrawn frames are of, and the byte-identity this branch
+		 * claims is against IT, not against a panel without pins: the earlier "identical to
+		 * the pre-change panel" sentence named a tree main has since moved past.
 		 */
 		if (!pinsEnabled && !archiveEnabled) {
 			return (
@@ -1961,9 +1983,15 @@ export function ChatSidebar({
 						data-session-actions
 						aria-label={`Actions for ${label}`}
 						className={cn(
-							"flex size-6 shrink-0 items-center justify-center rounded-md",
-							"text-ink-dim group-hover:text-ink-muted group-focus-within:text-ink-muted",
+							// THE BASE IS `hidden` AND THE QUERY ADDS `flex`, IN THAT ORDER
+							// SPECIFICALLY. Both are display utilities, so a base `flex` beside
+							// the variant's own would be two display rules of equal weight and the
+							// cascade - not the container - would decide: measured, the control
+							// drew at every width. A base `hidden` cannot lose to a variant that
+							// only ever ADDS `flex` when the container matches.
+							"hidden size-6 shrink-0 items-center justify-center rounded-md",
 							ROW_CONTROLS_SHARED_SHOWN,
+							"group-hover:text-ink-muted group-focus-within:text-ink-muted",
 							// The ROW's own state, never a ground - see the two controls above.
 							!current && "hover:bg-row-hover",
 						)}

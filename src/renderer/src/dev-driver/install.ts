@@ -388,6 +388,35 @@ export function installDevDriver(): string[] {
 		},
 
 		/**
+		 * Set the chat sidebar's width, the way the divider does.
+		 *
+		 * WHY A VERB RATHER THAN A RESIZED WINDOW. The panel's width is the USER's
+		 * preference, not a function of the window: `ChatLayout` clamps
+		 * `chatSidebarWidth` at 240/360 and every per-row control sheds against a
+		 * container query on the PANEL. So the narrow band cannot be reached by
+		 * making the window small - the panel would keep the width the user chose -
+		 * and the one honest way to photograph it is to write the same preference
+		 * the divider writes.
+		 *
+		 * The value is clamped here as well as at the render boundary, so a scene
+		 * asking for 200 is told what it actually got rather than photographing a
+		 * panel that is not the width its frame claims.
+		 */
+		setSidebarWidth: async (payload) => {
+			const asked = Number((payload as { width?: unknown } | undefined)?.width);
+			if (!Number.isFinite(asked)) {
+				throw new Error("sidebar width must be a number");
+			}
+			const width = Math.min(360, Math.max(240, asked));
+			useUiPreferencesStore.getState().setChatSidebarWidth(width);
+			await nextFrame();
+			return {
+				width: useUiPreferencesStore.getState().chatSidebarWidth,
+				clamped: width !== asked,
+			};
+		},
+
+		/**
 		 * Read one element's painted box, WITHOUT touching it.
 		 *
 		 * WHY A SCENE NEEDS THIS AND `press` CANNOT SERVE. A hover is browser state: it

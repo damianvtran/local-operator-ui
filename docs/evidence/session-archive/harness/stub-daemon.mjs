@@ -61,6 +61,7 @@ const conversations = [
 		mtime: 40,
 		preview: "Reconcile March invoices against the ledger",
 		archived: false,
+		pinned: false,
 		active: true,
 		/*
 		 * IDLE, deliberately, and the reason is a fact about the instrument: a
@@ -81,6 +82,7 @@ const conversations = [
 		mtime: 900,
 		preview: "Draft the release notes from the merged pull requests",
 		archived: false,
+		pinned: false,
 		active: false,
 		live_state: "idle",
 		pending: null,
@@ -93,6 +95,7 @@ const conversations = [
 		mtime: 4_000,
 		preview: "The steps left before the schema migration",
 		archived: false,
+		pinned: false,
 		active: false,
 		live_state: "idle",
 		pending: null,
@@ -111,11 +114,37 @@ const conversations = [
 		live_claim: true,
 	},
 	{
+		/*
+		 * THE ROW THAT CARRIES AN UNREAD MARK, which is the binding case for the
+		 * reserved slot's cost: the mark is a trailing slot OUTSIDE the truncating
+		 * title, so this row has less title than a bare one at the same width - and
+		 * it is the row a reader who wants a wide title is most likely to be reading.
+		 * `attention.unseen` plus a `complete` status is exactly what
+		 * `unreadMarkKind` reads, so the glyph is drawn rather than described.
+		 *
+		 * Oldest mtime, so it sorts LAST and none of the other frames' rows move:
+		 * every claim those frames carry is about the rows above it.
+		 */
+		id: "b3f1a09c7d52",
+		name: "Quarterly retention sweep",
+		mtime: 900_000,
+		preview: "Which transcripts the sweep kept and which it dropped",
+		archived: false,
+		pinned: false,
+		active: false,
+		live_state: "idle",
+		pending: null,
+		status: { code: "complete", label: "Complete" },
+		attention: { unseen: true },
+		binding: { agent: null, team: null },
+	},
+	{
 		id: "a91f4c7e2b60",
 		name: "Old onboarding notes",
 		mtime: 90_000,
 		preview: "What we learned onboarding the first two customers",
 		archived: true,
+		pinned: false,
 		active: false,
 		live_state: "idle",
 		pending: null,
@@ -215,6 +244,15 @@ const route = (method, pathname, query, body) => {
 				session_move: 1,
 				profile_catalogue: 1,
 				team_catalogue: 1,
+				/*
+				 * THE PIN STORE TOO, unconditionally: the per-row controls are a PAIR, and
+				 * the width rule this feature delivers is about that pair - two sibling
+				 * reserved slots above the panel's default width, one shared control below
+				 * it. A stand-in that advertised only the archive half would photograph a
+				 * row no user can reach, so the capability and the route below describe the
+				 * panel as delivered. Nothing in these frames presses the pin.
+				 */
+				session_pins: 1,
 				...(ARCHIVE ? { session_archive: 1, session_delete: 1 } : {}),
 			},
 		});
@@ -258,6 +296,20 @@ const route = (method, pathname, query, body) => {
 	if (method === "GET" && pathname === "/v1/desktop/teams") {
 		return ok({ teams: [] });
 	}
+	/*
+	 * The pin route, present because the capability above is: the fixture is a
+	 * stand-in for a daemon that HAS the pin store, and a capability without its
+	 * route would make a press answer 503 while the panel drew the control.
+	 */
+	const pinMatch = pathname.match(/^\/v1\/desktop\/sessions\/([^/]+)\/pin$/);
+	if (method === "POST" && pinMatch) {
+		const row = conversations.find((entry) => entry.id === pinMatch[1]);
+		if (!row) {
+			return { status: 404, body: { detail: "No such conversation." } };
+		}
+		row.pinned = body?.pinned === true;
+		return ok({ session_id: row.id, pinned: row.pinned === true });
+	}
 	const archiveMatch = pathname.match(
 		/^\/v1\/desktop\/sessions\/([^/]+)\/archive$/,
 	);
@@ -296,7 +348,10 @@ const route = (method, pathname, query, body) => {
 		 * running in this conversation, so the route refuses and NAMES the guard
 		 * rather than deleting a transcript a running agent is writing to.
 		 */
-		if (conversations[at].live_state === "busy" || conversations[at].live_claim) {
+		if (
+			conversations[at].live_state === "busy" ||
+			conversations[at].live_claim
+		) {
 			return {
 				status: 409,
 				body: {

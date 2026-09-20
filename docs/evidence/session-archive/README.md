@@ -13,6 +13,10 @@ withdrawn pair that is the fail-closed claim.
 `scripts/renderer-driver.mjs`, scene `session-archive`, in a headless launch
 (`--window-mode` resolves to `headless` for a rig-shaped launch: `AGENTS.md` §
 *Running the app without taking the operator's focus*), one launch per palette.
+The TWO PANEL WIDTHS the pair frames need are not viewport widths: the panel's
+width is the user's own preference (`chatSidebarWidth`, clamped 240..360), so the
+scene writes it through the divider's own store action (`setSidebarWidth`), and a
+window resize would photograph the same panel at the same width.
 **One stub per launch**, because the scene MUTATES the stub (it archives two
 conversations), so a second launch against the same process starts from a
 different store and the first row it looks for is not drawn.
@@ -36,10 +40,12 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=stub-token-archive node scripts/renderer-driver.mjs
   --backend-records /tmp/archive-stub-records --seed-onboarding-complete \
   --theme localOperatorDark --out /tmp/archive-frames-dark --window-size 1380x900
 for f in at-rest row-hover row-hover-body search-off search-on delete-dialog \
-         delete-refused archive-refused header-archived undo-offer deleted-open; do
+         delete-refused archive-refused header-archived undo-offer deleted-open \
+         pair-wide pair-narrow; do
   d=docs/evidence/session-archive/$f
   mkdir -p "$d"
-  cp /tmp/archive-frames-dark/$(echo $f | sed 's/search-off/search-live-only/;s/search-on/search-include-archived/').png \
+  cp /tmp/archive-frames-dark/$(echo $f | \
+       sed 's/search-off/search-live-only/;s/search-on/search-include-archived/;s/pair-wide/row-controls-pair/;s/pair-narrow/row-controls-shared/').png \
      "$d/localOperatorDark.png"
 done
 
@@ -66,7 +72,7 @@ cp /tmp/archive-frames-withdrawn/search-off.png \
 ```
 
 The scene asserts before it photographs. Run 1 (dark) and run 2 (light) report
-`ALL CHECKS PASSED` with eleven frames each; the withdrawn run reports the same
+`ALL CHECKS PASSED` with thirteen frames each; the withdrawn run reports the same
 with two. What the assertions cover, in the run's own words: the catalogue
 answered, the archived conversation matches nothing before the control is on and a
 row after it, the delete confirmation is open on the conversation the menu was
@@ -94,7 +100,11 @@ store, the real search, the real header, the real `ConfirmationModal`. The wire
 underneath is `harness/stub-daemon.mjs`, which answers the **frozen** contract's
 shapes (`include_archived` on both reads, `archived` on every row and hit,
 `sessions.archive`, `sessions.delete` with its 409 guard, the two capability
-keys) and nothing else. The sentences the two refusal frames show are the
+keys) and nothing else. It advertises `session_pins` and serves
+`POST .../pin` as well, because the row's per-row controls are a PAIR and the
+width rule this set photographs is about that pair: a stand-in that advertised
+only the archive half would photograph a row no user can reach. Nothing in these
+frames presses the pin. The sentences the two refusal frames show are the
 **route's own wording**, quoted in the stub from what the UX round reported
 reading against the real daemon; what the client adds around them (the remedy
 line, the register, the Retry) is what those frames are of.
@@ -104,6 +114,8 @@ line, the register, the Retry) is what those frames are of.
 | `at-rest/{dark,light}` | the panel with the capability present, nothing archived on screen | **nothing is DRAWN at rest**: no marker, no search-block chrome — while the 24px slot is still RESERVED (see the numbers below) | `--theme <palette>`, no scene step beyond `navigate("/chat")` |
 | `row-hover/{dark,light}` | the pointer parked on the archive control of a live row | the affordance appears on the pointer's row and nowhere else, without the row moving (`group-hover`, opacity only) | the scene moves the **real** pointer (`Input.dispatchMouseEvent` at the control's box, from the `measure` verb) before the shutter |
 | `row-hover-body/{dark,light}` | the same row, pointer on its TITLE | the pair with `row-hover` settles design round 1 D5: the row's own highlight is a property of the ROW, not of the control's 24px box | the same, with the pointer 60px right of the row's left edge |
+| `row-controls-pair/{dark,light}` | the panel at its **280px default**, pointer on the row that carries an unread mark | the delivered rule: **two sibling reserved slots** (pin, then archive) reveal on that row and nowhere else, at a measured title width of **180px** — and the shared control is NOT drawn | the scene writes the panel width the divider writes (`setSidebarWidth`, 280), asserts the pair's box and the shared control's ABSENCE, then moves the real pointer onto the row |
+| `row-controls-shared/{dark,light}` | the same panel at its **240px clamp minimum**, same row | the rule's other half: the pair is SHED and **one shared pin+archive control** stands in its place, at a measured title width of **168px** — the same two acts, one slot, no act lost | the same, at 240, with both controls' boxes read (`pin 0x0, archive 0x0, shared 24x24`) so "shed" is a measurement rather than a description |
 | `search-live-only/{dark,light}` | `notes` typed in the search box, `Include archived` off | the search block gains its one control only while a query exists; the archived conversation is NOT in the answer, and `[data-session-archived]` matches nothing | the scene types into the field through the input pipeline, then asserts the absence |
 | `search-include-archived/{dark,light}` | the same query, the control ON | the archived conversation is reachable from the search, carries the muted leading marker, and the sidebar has gained no section to hold it | a real click on the checkbox, then an assertion that `[data-session-archived]` now matches and is in the viewport |
 | `delete-dialog/{dark,light}` | the header's conversation menu → `Delete conversation…` | the one permanent delete asks with the danger role, names the conversation, says the transcript cannot be undone, and does nothing on its own | two real clicks (the trigger, then the item), then the dialog's box is measured |
@@ -133,36 +145,47 @@ The archive control measures 24px (`size-6`) and the wrapper's `gap-1` adds 4px,
 so 28px of the title's line box is reserved on every row, at rest, whether or not
 the pointer is near it. The arithmetic and the three panel widths:
 
-| panel | no slot | one slot (this branch) | two slots (pin + archive) |
-| --- | --- | --- | --- |
-| 240 (clamp min) | 200 px | 172 px | **144 px ≈ 20 characters** |
-| **280 (default, = these frames)** | 240 px | **212 px** | 184 px ≈ 26 characters |
-| 360 (clamp max) | 320 px | 292 px | 264 px |
+| panel | no control | the shared control (240) | one slot | two slots (280, = these frames) |
+| --- | --- | --- | --- | --- |
+| 240 (clamp min) | 196 px | **168 px — measured** | 168 px | **140 px** (shed) |
+| **280 (default)** | 236 px | 168 px | 208 px | **180 px — measured** |
+| 360 (clamp max) | 316 px | 168 px | 288 px | 260 px |
 
-The 280 column is the measured one: the design round's own rigs measured the
-title line box at **212 px** on these frames and at **240 px** with the capability
-withdrawn, and the arithmetic that reproduces both is `panel − 68` with one slot
-and `panel − 96` with two. The 240 and 360 columns are that arithmetic applied to
-the clamp's other stops, which is why the design round's ruling is **two sibling
-slots at ≥ 280, one shared control below** — at the clamp minimum the pair leaves
-a title that identifies nothing, on every row, for a reader who may never pin or
-archive anything.
-
-**The archived marker costs a ragged title column: 21.5px on these frames.**
-Measured on `search-include-archived/localOperatorDark.png`, where an archived row
-and a live row sit one above the other:
+Two columns are MEASURED, and they are the two the delivered rule turns on: at the
+280 default the pair leaves a **180 px** title, and at the 240 clamp minimum the
+single shared control leaves **168 px**. Both come from the driver's own report on
+this set's trees:
 
 ```
-magick docs/evidence/session-archive/search-include-archived/localOperatorDark.png \
-  -crop 360x30+440+1609 +repage txt:-   # archived row:  status 232.5-247, marker 256.5-269, title from 274.5
-magick docs/evidence/session-archive/search-include-archived/localOperatorDark.png \
-  -crop 360x27+440+1673 +repage txt:-   # live sibling:  status 232.5-247, title from 253.0
+# 280px panel  -> status row 180px, unread row 180px; pin 24x24, archive 24x24
+# 240px panel  -> status row 168px, unread row 168px; pin 0x0, archive 0x0, shared 24x24
 ```
-(device x ÷ 2 = CSS px). So the archived row's title starts 21.5px further right
-than its live sibling's, and the design round measured the same effect as 14px on
-its own longer title — the gap follows the first glyph's shape, which is why both
-numbers are quoted with the title they were taken on. The two candidate fixes and
-their prices are recorded in `docs/design/session-archive-delete.md`.
+
+The arithmetic that reproduces both, and predicts the rest of the table, is
+`panel − 16 (the panel's own p-2) − 28 × controls − 28 (the row's trailing status
+slot and its gap)`. The 28 per control is the `size-6` box plus the row's `gap-1`.
+The pair's own price is visible in the frame: **two slots cost 40 px of title
+against the single shared control at the same panel width** (180 against 140 is
+the pair at 280; 168 against 140 is the shared control against the pair at 240).
+
+**The row that carries an unread mark has exactly the same title width as one that
+does not** — 180 px and 168 px, both measured above. That is worth stating because
+the opposite was assumed when this set was planned: the unread mark is drawn in
+the row's reserved STATUS slot, which is laid out before the title and does not
+take width from it. What costs title width is a control slot, and only that. The
+frames carry the mark anyway (`row-controls-{pair,shared}` hover the unread row),
+so the claim and the picture are of the same row.
+
+**The archived marker still costs a ragged title column (design round 1, D4);
+the number was NOT re-measured after this fold.** The measurement stands at
+**21.5px** on the row the earlier set carried — the archived row's title starts
+21.5px further right than its live sibling's — and it is recorded here with its
+provenance rather than restated as if it were fresh: the marker's own box
+(`ml-1 size-3.5`) did not change and a control slot sits to the RIGHT of the
+title, so the offset it causes is unchanged, but the frames this set now ships
+were re-taken for the pair delivery and the crop that produced the number is not
+part of them. Re-deriving it on the shipped frames is a documented step of the
+design record's open questions, not a claim this file makes.
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
 `magick compare -metric AE` on the two `at-rest` frames reports **310 device
