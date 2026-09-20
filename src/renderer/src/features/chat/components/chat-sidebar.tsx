@@ -59,7 +59,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
-import { offerArchiveUndo } from "../archive-undo";
+import { archiveOfferedText, offerArchiveUndo } from "../archive-undo";
 import {
 	type ArchivePressRecord,
 	archivePressExpired,
@@ -171,10 +171,16 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * and shed at the 240 clamp minimum, with the frames to show both.
  *
  * Measured at both widths on a row that carries a status and on one that also
- * carries an unread mark, which is the binding case: the mark is a trailing slot
- * OUTSIDE the truncating title, so a row that is also unread has less title than a
- * bare one at the same width. See `docs/design/session-archive-delete.md` for the
- * numbers and the frames that carry them.
+ * carries an unread mark. THIS COMMENT USED TO CLAIM THE MARK COSTS TITLE WIDTH,
+ * AND IT DOES NOT (design round 2, D14; four lanes quoted the wrong premise before
+ * it was measured): the unread mark is drawn INSIDE the row's reserved LEADING
+ * status slot (`ChatSessionStatus`, `flex size-4 shrink-0`), so the title span
+ * starts at the same x on a marked row and a bare one and measures the SAME width -
+ * 180px and 180px at the 280 default, 168px and 168px at the 240 clamp minimum. See
+ * `docs/design/session-archive-delete.md` and
+ * `docs/evidence/session-archive/README.md` for the numbers and the frames: the
+ * marked row is in the pair frames precisely so the equal widths are visible rather
+ * than asserted.
  */
 const ROW_CONTROLS_PAIR_SHED = "@max-[263px]/chatsidebar:hidden";
 /**
@@ -1089,6 +1095,7 @@ export function ChatSidebar({
 	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
+	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -1917,12 +1924,6 @@ export function ChatSidebar({
 									sessionId: row.session_id,
 									title: row.title ?? undefined,
 									archived: true,
-									onUndo: () =>
-										void setSessionArchived(
-											row.session_id,
-											false,
-											row.title ?? undefined,
-										),
 								});
 							});
 						}}
@@ -1991,7 +1992,29 @@ export function ChatSidebar({
 							// only ever ADDS `flex` when the container matches.
 							"hidden size-6 shrink-0 items-center justify-center rounded-md",
 							ROW_CONTROLS_SHARED_SHOWN,
-							"group-hover:text-ink-muted group-focus-within:text-ink-muted",
+							/*
+							 * AND THE SAME REVEAL MODEL AS THE PAIR (design round 2, D10). This
+							 * control used to be drawn at rest in the row's own text ink - measured
+							 * 12.84:1 dark / 15.23:1 light - and to DIM when the pointer arrived
+							 * (7.49:1 / 7.95:1), while the pair beside it reveals from `opacity-0`.
+							 * That is backwards on the one width where the title has least room:
+							 * every row wore a title-weight glyph, and hovering the row made the
+							 * affordance fainter rather than clearer.
+							 *
+							 * So it is reserved at rest and revealed by the pointer or by focus,
+							 * exactly as the pin and archive controls are: only `opacity` and
+							 * `pointer-events` move, the box stays 24px, and nothing reflows.
+							 *
+							 * `data-[state=open]` is the third way in and it is not decoration:
+							 * Radix keeps focus on the trigger while its menu is up, but the menu
+							 * is a PORTAL - a pointer that opens it and leaves the row must not
+							 * undraw the control the menu belongs to.
+							 */
+							"text-ink-dim opacity-0 pointer-events-none",
+							"transition-opacity duration-base ease-out-quart",
+							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
+							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							"data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto",
 							// The ROW's own state, never a ground - see the two controls above.
 							!current && "hover:bg-row-hover",
 						)}
@@ -2045,6 +2068,25 @@ export function ChatSidebar({
 					// when neither is - which is what keeps the fully withdrawn panel's class
 					// list the one it had before either feature existed.
 					(pinsEnabled || archiveEnabled) && "group",
+					/*
+					 * AND THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON (design
+					 * round 2, D13). `rowStyle` carries `hover:bg-row-hover`, which fires
+					 * only while the pointer is over the BUTTON - so moving onto either
+					 * sibling control (they are inside the row's box and outside its
+					 * button) dropped the ground the pointer was standing on: a pop under
+					 * the pointer, on the row the pointer never left. The ground is stated
+					 * once more on the box, so the row reads as one hovered thing across
+					 * its whole width.
+					 *
+					 * Dropped while this row is the CURRENT one, exactly as the two
+					 * controls drop their own hover ground: the selected ground and the
+					 * hover ground are two steps off `surface` in the same direction, and
+					 * repainting the state the reader is IN as the state the pointer is in
+					 * is the substitution `rowCurrent`'s own override exists to stop.
+					 */
+					(pinsEnabled || archiveEnabled) &&
+						!current &&
+						"group-hover:bg-row-hover",
 					rowBoxStyle,
 					current && rowCurrent,
 				)}
@@ -2064,10 +2106,13 @@ export function ChatSidebar({
 				 * BROWSER control was deleted on 2026-09-18 because it "cost every title
 				 * its 28px for a control used rarely". Two reserved slots are 56px off
 				 * every title, on every row, and at the 240px clamp minimum that leaves a
-				 * bare row about eight characters - and a row that also carries an unread
-				 * mark or a status fewer still, because those are trailing slots OUTSIDE
-				 * the truncating title. Measured; the numbers and the frames that carry
-				 * them are in `docs/design/session-archive-delete.md`.
+				 * bare row about eight characters. A row that carries an unread mark is
+				 * NOT worse off than a bare one, which this comment used to claim and
+				 * which the measurement refutes (design round 2, D14): the mark is drawn
+				 * inside the row's reserved LEADING status slot, so the title measures the
+				 * same width either way (180px at 280, 168px at 240, marked or not).
+				 * Measured; the numbers and the frames that carry them are in
+				 * `docs/design/session-archive-delete.md`.
 				 *
 				 * SO THE PAIR IS CARRIED ONLY FROM THE PANEL'S DEFAULT WIDTH UP, and below
 				 * it ONE shared control opens both acts as menu items: the same two acts,
@@ -2913,6 +2958,46 @@ export function ChatSidebar({
 			 * sentence names a conversation, so a scene that selected it by text would be
 			 * asserting a copy edit rather than a state.
 			 */}
+			{/*
+			 * THE UNDO OFFER, BESIDE THE LIST RATHER THAN IN A TOAST (design round 2, D12).
+			 *
+			 * It is the same offer the module has always made - one sentence and one
+			 * press - drawn where the act happened. The toast lane was the wrong home for
+			 * two measured reasons: its box sat over the composer's Send control in both
+			 * palettes (x 1307..1339, y 803..835 inside the toast's own x
+			 * 1001..1360.5, y 789..842.5), so an offer to take an archive back could be
+			 * pressed into sending a message; and an archive is performed from THIS
+			 * panel, so the offer belongs to this panel's register and not to a lane that
+			 * floats over the pane the user did not act in.
+			 *
+			 * `action` here is the panel's own call to the store, not a closure handed
+			 * over by whichever surface offered it (`archive-undo.ts` says why): every
+			 * surface offers the same act, so the press is one line.
+			 *
+			 * `data-session-archive-undo` is the driver scene's anchor, the convention
+			 * `data-session-archive-failure` and `data-session-delete` follow.
+			 */}
+			{archiveUndo && (
+				<p
+					data-session-archive-undo
+					className="pb-2 text-meta text-ink-muted"
+				>
+					{archiveOfferedText(archiveUndo.title)}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveUndo.sessionId,
+								!archiveUndo.archived,
+								archiveUndo.title,
+							)
+						}
+					>
+						Undo
+					</button>
+				</p>
+			)}
 			{archiveFailure && (
 				<p data-session-archive-failure className="pb-2 text-meta text-warning">
 					Could not {archiveFailure.archived ? "archive" : "unarchive"} “

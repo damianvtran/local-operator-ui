@@ -455,7 +455,14 @@ test("a typed /archive writes the store, reports a refusal, and offers an undo o
 	// and one press must not be reported on two surfaces.
 	assert.match(branch, /if \(!accepted\) return "consumed";/);
 	assert.match(branch, /offerArchiveUndo\(/);
-	assert.match(branch, /onUndo:/);
+	/*
+	 * AND THE OFFER IS THE REGISTER'S, NOT A CLOSURE HANDED OVER HERE (design round
+	 * 2, D12). It used to carry `onUndo`, which made every offering surface own half
+	 * of the offer; the panel now draws it and makes the press, so the offer is a
+	 * plain record - and a `onUndo` reappearing here would be a second source of
+	 * truth about what pressing Undo does.
+	 */
+	assert.doesNotMatch(branch, /onUndo:/);
 });
 
 test("the three destinations resolve to local actions, with no control of their own", () => {
@@ -509,4 +516,65 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	assert.match(source, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
 	assert.match(source, /element\.isConnected/);
 	assert.match(source, /successor\?\.focus\(\)/);
+});
+
+test("the shared control is reserved at rest and revealed, like the pair it stands in for (design round 2, D10)", () => {
+	const control = between(
+		SIDEBAR,
+		'aria-label={`Actions for ${label}`}',
+		"</button>",
+	);
+	/*
+	 * THE MEASUREMENT THIS PINS. On the shared row the control used to be drawn at
+	 * rest in the row's own text ink - measured 12.84:1 dark / 15.23:1 light - and to
+	 * DIM when the pointer arrived (7.49:1 / 7.95:1), while the pin and archive
+	 * controls beside it reveal from `opacity-0`. That is backwards on the width where
+	 * the title has least room: every row wore a title-weight glyph at rest, and
+	 * hovering made the affordance fainter rather than clearer.
+	 */
+	assert.match(control, /opacity-0/);
+	assert.match(control, /pointer-events-none/);
+	assert.match(control, /group-hover:opacity-100/);
+	assert.match(control, /group-hover:pointer-events-auto/);
+	assert.match(control, /group-focus-within:opacity-100/);
+	/*
+	 * AND THE MENU'S OWN STATE IS A THIRD WAY IN. Radix keeps focus on the trigger
+	 * while the menu is up, but the menu is a PORTAL: a pointer that opens it and
+	 * leaves the row must not undraw the control the menu belongs to.
+	 */
+	assert.match(control, /data-\[state=open\]:opacity-100/);
+	// Still 24px in both states, so the reveal cannot reflow the row - the rule the
+	// pair is written under.
+	assert.match(control, /size-6/);
+	assert.match(control, /shrink-0/);
+	assert.equal(
+		/group-hover:[a-z-]*(scale|translate)/.test(control),
+		false,
+		"nothing lifts, scales or translates on hover",
+	);
+});
+
+test("the row's hover ground belongs to the row, not to its button (design round 2, D13)", () => {
+	const row = between(
+		SIDEBAR,
+		"data-session-row={row.session_id}",
+		"className={cn(",
+	);
+	assert.match(row, /data-session-row=\{row\.session_id\}/);
+	/*
+	 * `rowStyle` carries `hover:bg-row-hover`, which fires only while the pointer is
+	 * over the BUTTON - and the two sibling controls sit inside the row's box and
+	 * outside its button, so moving onto either one dropped the ground the pointer was
+	 * standing on: a pop under a pointer that never left the row. The ground is stated
+	 * once more on the box, where the whole row reads as one hovered thing.
+	 */
+	const box = between(SIDEBAR, "data-session-row={row.session_id}", "{rowButton}");
+	assert.match(box, /group-hover:bg-row-hover/);
+	/*
+	 * Dropped while the row is the CURRENT one, the rule the two controls follow: the
+	 * selected ground and the hover ground are two steps off `surface` in the same
+	 * direction, so repainting the state the reader is IN as the state the pointer is
+	 * in is exactly the substitution `rowCurrent`'s own override exists to stop.
+	 */
+	assert.match(box, /!current &&\s*"group-hover:bg-row-hover"/);
 });

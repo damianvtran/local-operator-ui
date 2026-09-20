@@ -707,15 +707,7 @@ export function useSlashDispatch({
 					 * transcript would put the same sentence on two surfaces about one press.
 					 */
 					if (!accepted) return "consumed";
-					offerArchiveUndo({
-						sessionId,
-						title,
-						archived,
-						onUndo: () =>
-							void useCanonicalSessionsStore
-								.getState()
-								.setSessionArchived(sessionId, !archived, title),
-					});
+					offerArchiveUndo({ sessionId, title, archived });
 					return "consumed";
 				}
 				/*

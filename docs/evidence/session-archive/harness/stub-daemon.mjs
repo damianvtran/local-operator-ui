@@ -115,12 +115,18 @@ const conversations = [
 	},
 	{
 		/*
-		 * THE ROW THAT CARRIES AN UNREAD MARK, which is the binding case for the
-		 * reserved slot's cost: the mark is a trailing slot OUTSIDE the truncating
-		 * title, so this row has less title than a bare one at the same width - and
-		 * it is the row a reader who wants a wide title is most likely to be reading.
-		 * `attention.unseen` plus a `complete` status is exactly what
-		 * `unreadMarkKind` reads, so the glyph is drawn rather than described.
+		 * THE ROW THAT CARRIES AN UNREAD MARK, and the point of it is that the mark
+		 * costs the TITLE nothing: it is drawn inside the row's reserved LEADING status
+		 * slot, not in a trailing one, so this row's title measures the same width as a
+		 * bare row's at the same width (180px at the 280 default, 168px at 240). The
+		 * frame is what shows that, and the scene asserts the glyph was actually DRAWN
+		 * rather than reading two equal widths (design round 2, D11: the earlier
+		 * `attention` shape this stub sent was not one `mergeCompletionAttention`
+		 * accepts, so no mark was drawn and the pair of equal widths proved nothing).
+		 *
+		 * `attention` carries the pair the merge reads - the conversation id and its
+		 * `[epoch, revision]` stamp - plus `unseen`, and the status is `complete`, so
+		 * `unreadMarkKind` draws the glyph instead of describing it.
 		 *
 		 * Oldest mtime, so it sorts LAST and none of the other frames' rows move:
 		 * every claim those frames carry is about the rows above it.
@@ -135,7 +141,26 @@ const conversations = [
 		live_state: "idle",
 		pending: null,
 		status: { code: "complete", label: "Complete" },
-		attention: { unseen: true },
+		/*
+		 * THE SHAPE `mergeCompletionAttention` ACCEPTS, field for field (design round
+		 * 2, D11). The first version of this fixture sent `{ unseen: true }` alone,
+		 * which the merge REJECTS - it requires `conversation_id` to be
+		 * `session/<row id>` and `revision` to be a pair of non-negative integers - so
+		 * `attention` stayed absent, `unreadMarkKind` returned null, and NO mark was
+		 * ever drawn. Two frames of equal title widths therefore proved nothing about
+		 * a marked row: they were two bare rows. The scene now asserts the mark is
+		 * DRAWN (the glyph's own box, and `unreadMarkKind`'s `text-success` ink) rather
+		 * than reading the two widths and inferring.
+		 */
+		attention: {
+			conversation_id: "session/b3f1a09c7d52",
+			completion_token: "stub-completion-b3f1a09c7d52",
+			anchor_id: null,
+			kind: "complete",
+			unseen: true,
+			revision: [1, 1],
+			supported: true,
+		},
 		binding: { agent: null, team: null },
 	},
 	{

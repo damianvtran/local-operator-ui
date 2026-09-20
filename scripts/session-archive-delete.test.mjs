@@ -562,22 +562,105 @@ test("a page in flight across a delete cannot resurrect the conversation", async
 	assert.equal(store.getState().forgotten[SESSION].title, "Doomed");
 });
 
-test("a page requested after the delete settles the tombstone", async () => {
+test("a page that does NOT carry the id is not a resurrection, and settles nothing (agent review round 2, R2-1)", async () => {
+	await seed([
+		{ session_id: SESSION, title: "Doomed", archived: false },
+		{ session_id: OTHER, title: "Kept", archived: false },
+	]);
+	/*
+	 * THE REVIEWER'S REPRO, in its order, because the order is the defect: a search
+	 * question is asked BEFORE the delete and its answer is held; the delete lands;
+	 * then a catalogue page that outranks the tombstone answers without the row. The
+	 * old rule settled the tombstone there - "the page is the read whose membership
+	 * claim is complete" - and the held answer, arriving afterwards, put the
+	 * permanently deleted conversation back through the join. Deterministic, no race
+	 * needed: `session-search.ts` caches per query for 30 s, and the store has four
+	 * page triggers.
+	 */
+	const held = store.getState().beginAnswer();
+	serve({ session_id: SESSION, deleted: true });
+	await store.getState().deleteSession(SESSION);
+	serve(page([{ session_id: OTHER, title: "Kept", archived: false }]));
+	await store.getState().fetchSessions();
+	assert.notEqual(
+		store.getState().forgotten[SESSION],
+		undefined,
+		"a page that does not carry the id says exactly what the tombstone says, so it settles nothing",
+	);
+	// And the answer that was in flight across the write still cannot draw it.
+	store.getState().applySearchAnswer(held, [{ id: SESSION, name: "Doomed" }]);
+	assert.notEqual(store.getState().forgotten[SESSION], undefined);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		[OTHER],
+	);
+});
+
+test("a page that CARRIES the id back IS the resurrection that settles the tombstone", async () => {
 	await seed([
 		{ session_id: SESSION, title: "Doomed", archived: false },
 		{ session_id: OTHER, title: "Kept", archived: false },
 	]);
 	serve({ session_id: SESSION, deleted: true });
 	await store.getState().deleteSession(SESSION);
-	// The page that answers WITHOUT the row is the read whose membership claim is
-	// complete, so the tombstone has nothing left to protect and goes.
-	serve(page([{ session_id: OTHER, title: "Kept", archived: false }]));
+	/*
+	 * The one read that really does speak about the id: something recreated the
+	 * conversation, so this window's record of its absence is now false. Without this
+	 * arm the tombstone would outlive the conversation's return and hide a row that
+	 * exists - the same class of lie, in the other direction.
+	 */
+	serve(
+		page([
+			{ session_id: SESSION, title: "Doomed again", archived: false },
+			{ session_id: OTHER, title: "Kept", archived: false },
+		]),
+	);
 	await store.getState().fetchSessions();
 	assert.equal(store.getState().forgotten[SESSION], undefined);
 	assert.deepEqual(
-		store.getState().sessions.map((row) => row.session_id),
-		[OTHER],
+		store.getState().sessions.map((row) => row.session_id).sort(),
+		[SESSION, OTHER].sort(),
 	);
+});
+
+test("a guard read that answers not-found lands the pane on the notice instead of rolling back (QA round 1, Q1)", async () => {
+	const DEAD = "a1b2c3d4e5f6";
+	await seed([{ session_id: OTHER, title: "Kept", archived: false }]);
+	/*
+	 * A DEEP LINK TO A DELETED CONVERSATION, cold — the reload leg QA measured. The
+	 * guard read is the only thing that speaks, and it answers 404: the conversation
+	 * is GONE rather than unreadable, so the rollback has no honest target (on a cold
+	 * start there is no previous session at all, which is how the route ended up
+	 * rendering the "Start a chat" landing on a URL naming a conversation).
+	 */
+	serve((request) =>
+		request.op === "sessions.get"
+			? { __failure: { status: 404, message: "no such session" } }
+			: page([{ session_id: OTHER, title: "Kept", archived: false }]),
+	);
+	const landed = await store.getState().openSession(DEAD);
+	assert.equal(landed, true, "the switch stands: the view is on the target");
+	assert.notEqual(
+		store.getState().forgotten[DEAD],
+		undefined,
+		"a 404 from the guard read is a tombstone, which is what the pane reads to reach the notice",
+	);
+	assert.equal(store.getState().activeSessionId, DEAD);
+	assert.equal(store.getState().navigationError, null);
+	/*
+	 * AND A TRANSIENT FAILURE STILL ROLLS BACK. "Could not be read" is a state the
+	 * conversation the user came from survives; only "is gone" keeps the target.
+	 */
+	store.setState({ activeSessionId: OTHER, forgotten: {} });
+	serve((request) =>
+		request.op === "sessions.get"
+			? { __failure: { status: 503, message: "the backend is not answering" } }
+			: page([{ session_id: OTHER, title: "Kept", archived: false }]),
+	);
+	await store.getState().openSession(DEAD);
+	assert.equal(store.getState().activeSessionId, OTHER);
+	assert.equal(store.getState().forgotten[DEAD], undefined);
+	assert.notEqual(store.getState().navigationError, null);
 });
 
 test("a search answer does not settle a tombstone", async () => {

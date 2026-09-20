@@ -1363,6 +1363,42 @@ async function waitForNoToasts(cdp, timeoutMs = 15_000) {
 }
 
 /**
+ * Whether a selector is DRAWN right now (a non-zero box), without throwing.
+ *
+ * The distinction `drawn` makes inside the pair scene, lifted here because a second
+ * scene needs it: an element swapped out through `display` is still in the document,
+ * so asking whether it exists answers a different question than asking whether it
+ * is on screen.
+ */
+async function drawnSelector(cdp, selector) {
+	try {
+		const box = await verb(cdp, "measure", { selector, timeoutMs: 400 });
+		return box.rect.width > 0 && box.rect.height > 0;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Wait for a selector that was on screen to go, which is how the archive OFFER is
+ * read now that it is a panel register rather than a toast (design round 2, D12).
+ *
+ * The same shape as `waitForNoToasts` and for the same reason: the property under
+ * test is that the observer outlives the answers that mention the conversation, so
+ * "it is gone" has to be waited for rather than sampled.
+ */
+async function waitForGone(cdp, selector, timeoutMs = 15_000) {
+	const started = Date.now();
+	for (;;) {
+		const drawn = await drawnSelector(cdp, selector).catch(() => false);
+		const waitedMs = Date.now() - started;
+		if (!drawn) return { waitedMs, timedOut: false };
+		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
+		await wait(200);
+	}
+}
+
+/**
  * Capture a frame the app is HOLDING, with no transient toast on it.
  *
  * WHY TWO CAPTURES, when the theme verb already waits the transitions out. The
@@ -1720,7 +1756,7 @@ async function sceneSessionArchive(cdp) {
 	 * checks - the toast is on screen and the picture is held still - rather than
 	 * being exempted from the assertions silently.
 	 */
-	const toastFrames = [];
+	const offerFrames = [];
 
 	/* 1. At rest: no query, so no control in the search block, and no slot spent. */
 	await parkPointer(cdp);
@@ -2003,11 +2039,21 @@ async function sceneSessionArchive(cdp) {
 		pill.inViewport === true && openAfter.activeSessionId === "2d5ad5da0025",
 		`${JSON.stringify(pill)} activeSessionId=${openAfter.activeSessionId}`,
 	);
-	const clearance = await waitForNoToasts(cdp, 20_000);
+	/*
+	 * THE OFFER IS A PANEL REGISTER, SO ITS CLEARANCE IS READ THERE (design round 2,
+	 * D12). The retirement rule is unchanged and so is the property this check is
+	 * about: the offer outlives the catalogue answers that mention the row and is
+	 * retired by its own ceiling, not by the first answer to arrive.
+	 */
+	const clearance = await waitForGone(
+		cdp,
+		"[data-session-archive-undo]",
+		20_000,
+	);
 	check(
 		"the archive offer outlives the catalogue answers and retires on its own ceiling",
 		clearance.timedOut === false && clearance.waitedMs >= 10_000,
-		`waited ${clearance.waitedMs}ms for the toast to go (the old rule retired it in 0.4-1.6s) `,
+		`waited ${clearance.waitedMs}ms for the offer to retire (the old rule retired it in 0.4-1.6s) `,
 	);
 	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
 
@@ -2040,21 +2086,56 @@ async function sceneSessionArchive(cdp) {
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
 		JSON.stringify(successor),
 	);
-	const offered = await toastsOnScreen(cdp);
+	/*
+	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT (design round 2, D12).
+	 *
+	 * It has to satisfy two things at once: it must sit on the surface that performed
+	 * the action, and it must never be able to sit over the composer's interactive
+	 * controls. As a toast it failed the second - measured in both palettes the toast
+	 * box (x 1001..1360.5, y 789..842.5) covered the Send control (x 1307..1339, y
+	 * 803..835), so the offer's own Undo box landed where Send had been. Both are
+	 * asserted here rather than described: the register is drawn INSIDE the panel,
+	 * and its box is disjoint from the composer's Send control.
+	 */
+	const offerBoxes = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+		};
+		return {
+			offer: box(document.querySelector("[data-session-archive-undo]")),
+			panel: box(document.querySelector('[aria-label="Chats"]')),
+			send: box(document.querySelector('[aria-label="Send message"]')),
+		};
+	})()`);
+	const disjoint = (a, b) =>
+		a === null || b === null
+			? null
+			: a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
 	check(
 		"a successful archive offers an Undo on the surface that performed it",
-		offered === 1,
-		`${offered} toasts on screen`,
+		offerBoxes.offer !== null && offerBoxes.panel !== null,
+		JSON.stringify(offerBoxes),
 	);
+	check(
+		"and the offer is inside the panel, never over the composer's Send control",
+		offerBoxes.offer !== null &&
+			offerBoxes.offer.left >= offerBoxes.panel.left &&
+			offerBoxes.offer.right <= offerBoxes.panel.right &&
+			disjoint(offerBoxes.offer, offerBoxes.send) === true,
+		JSON.stringify(offerBoxes),
+	);
+	note("the undo offer's box, and the composer's", JSON.stringify(offerBoxes));
 	const offerFirst = await capture(cdp, `undo-offer${RUN_LABEL}`);
 	await wait(200);
 	const offerSecond = await capture(cdp, `undo-offer${RUN_LABEL}`);
-	toastFrames.push({
+	offerFrames.push({
 		label: `undo-offer${RUN_LABEL}`,
 		stable: readFileSync(offerFirst.path).equals(
 			readFileSync(offerSecond.path),
 		),
-		toastOnScreen: (await toastsOnScreen(cdp)) === 1,
+		offerOnScreen: (await drawnSelector(cdp, "[data-session-archive-undo]")) === true,
 	});
 
 	/*
@@ -2129,6 +2210,42 @@ async function sceneSessionArchive(cdp) {
 	};
 
 	const wide = await titlesAt(280);
+	/*
+	 * THE MARK IS DRAWN, RATHER THAN INFERRED (design round 2, D11).
+	 *
+	 * The two equal title widths below are evidence for a claim about a MARKED row,
+	 * and the first version of this fixture could not produce one: it sent
+	 * `attention: { unseen: true }`, a shape `mergeCompletionAttention` rejects (it
+	 * requires `conversation_id` = `session/<id>` and a `[epoch, revision]` pair), so
+	 * `attention` stayed absent, `unreadMarkKind` returned null, and both measured
+	 * rows were BARE. Equal widths from two bare rows say nothing. So the glyph's own
+	 * box is asserted first - and asserted to be the only one in the list, which is
+	 * the half that makes it discriminating rather than a tautology about a class
+	 * name that happens to be in the file.
+	 */
+	const mark = await cdp.evaluate(`(() => {
+		const marked = document.querySelector('[data-session-row="b3f1a09c7d52"]');
+		const glyph = marked?.querySelector(".text-success") ?? null;
+		const r = glyph?.getBoundingClientRect() ?? null;
+		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")]
+			.filter((el) => !marked?.contains(el)).length;
+		const title = marked?.querySelector("[data-session-title]");
+		const statusSlot = marked?.firstElementChild?.getBoundingClientRect() ?? null;
+		const titleBox = title?.getBoundingClientRect() ?? null;
+		return {
+			drawn: !!r && r.width > 0 && r.height > 0,
+			width: r?.width ?? 0,
+			height: r?.height ?? 0,
+			elsewhere,
+			titleGap: titleBox && statusSlot ? Math.round(titleBox.left - statusSlot.right) : null,
+		};
+	})()`);
+	check(
+		"the unread mark is DRAWN on this row, and nowhere else in the list",
+		mark.drawn === true && mark.elsewhere === 0,
+		JSON.stringify(mark),
+	);
+	note("the unread mark", JSON.stringify(mark));
 	check(
 		"at the panel's default width the row carries the PAIR of reserved slots",
 		(await drawn("[data-session-control-pair]")) === true,
@@ -2190,11 +2307,11 @@ async function sceneSessionArchive(cdp) {
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
 	check(
-		"the offer's own frame is a still picture of a toast that was really there",
-		toastFrames.length === 1 &&
-			toastFrames[0].stable === true &&
-			toastFrames[0].toastOnScreen === true,
-		JSON.stringify(toastFrames),
+		"the offer's own frame is a still picture of a register that was really there",
+		offerFrames.length === 1 &&
+			offerFrames[0].stable === true &&
+			offerFrames[0].offerOnScreen === true,
+		JSON.stringify(offerFrames),
 	);
 	check(
 		"every capture wrote a PNG of the requested size",

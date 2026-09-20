@@ -547,12 +547,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				if (!sessionId) return;
 				const accepted = await setSessionArchived(sessionId, next, agentName);
 				if (!accepted || !next) return;
-				offerArchiveUndo({
-					sessionId,
-					title: agentName,
-					archived: true,
-					onUndo: () => void setSessionArchived(sessionId, false, agentName),
-				});
+				offerArchiveUndo({ sessionId, title: agentName, archived: true });
 			},
 			[sessionId, agentName, setSessionArchived],
 		);
