@@ -406,7 +406,7 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 		1789100009.4,
 		"session_mcp_unavailable",
 		{
-			text: "[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
+			text: "[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone for now.\nReason: /mcp reauth minerva-qa — sign-in expired\nIts tools are not callable until the user restores it, and the agent should not retry them in a loop.",
 		},
 	),
 	// The control: a relayed payload, which is genuinely bulky.
