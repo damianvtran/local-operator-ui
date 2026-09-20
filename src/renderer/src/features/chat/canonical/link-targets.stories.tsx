@@ -107,6 +107,7 @@ const record = (
 				id,
 				ts: 1_760_000_000_001,
 				text,
+				reasoning: "",
 				streaming: false,
 				stopReason: null,
 				error: false,

@@ -52,6 +52,7 @@ const assistant = (id: string, text: string): TranscriptRecord => ({
 	id,
 	ts: 1_760_000_000_000,
 	text,
+	reasoning: "",
 	streaming: false,
 	complete: true,
 	stopReason: null,

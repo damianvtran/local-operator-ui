@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  Evidence harness: the model's REASONING, streaming into the shipped
+  transcript, in a browser.
+
+  What this exists to photograph and measure: the operator's "3-5 seconds of
+  dead air" between submitting a message and seeing the model do anything. The
+  runtime has always received the model's reasoning and, until this branch, no
+  front end rendered any of it: the desktop waited for the first TEXT token,
+  measured at p50 3,067 ms from submit with 10 ms of local work in front of it.
+  The claim under test is therefore a claim about PAINT - the reasoning block
+  exists, it moves, it gives way to the answer, and the answer is unchanged
+  without it - and a claim about paint needs a rendered frame.
+
+  WHY A SCRIPTED STREAM AND NOT A BACKEND. The reasoning channel is the one
+  thing a mock backend cannot produce: `hosting: test` / `model_name: mock`
+  emits text and no reasoning at all, and the real provider is unreachable from
+  this machine (measured 2026-09-20: `curl https://api.deepseek.com/v1/models`
+  took 18.09 s to return 401). So this harness drives the SHIPPED transcript
+  with the SHIPPED reducer over a canonical frame sequence paced like a real
+  model call, and stamps the emit->paint boundary inside the page. What that
+  proves is the whole of the renderer's side: the reducer, the row, the block,
+  the scroll behaviour and the paint. What it does not prove is the transport,
+  which is `local-operator`'s own evidence (`local-operator` PR #1350's probes
+  stamp the wire and the runtime emission on the real stack).
+
+  Everything below the frame feed is production: `CanonicalTranscript`, the
+  reducer, `LiveReasoning`, the working line, the theme, the stylesheet. There
+  is no Electron main process here and no backend; see the PR body for exactly
+  what these frames do and do not prove.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Reasoning stream — the shipped transcript</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./reasoning-evidence.tsx"></script>
+	</body>
+</html>

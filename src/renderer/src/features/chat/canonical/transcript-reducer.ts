@@ -81,6 +81,36 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/**
+			 * The model's PRIVATE reasoning channel for this call, as far as this
+			 * viewer holds it. Empty is the normal case and the whole of the
+			 * no-reasoning path.
+			 *
+			 * DISPLAY-ONLY, AND THE HARNESS SAYS SO IN THREE PLACES. `ReasoningDeltaEvent`
+			 * (`local_operator/harness/types.py`) never enters a message's content —
+			 * `Content` is deliberately NOT extended with a reasoning block — is never
+			 * written back as `reasoning_content` on the wire (the echo deepseek 400s on),
+			 * and is never persisted. So this field is LIVE-ONLY by construction: no
+			 * durable row can carry it, `durableRecord` never sets it, and a resumed
+			 * conversation shows none of it. That is a property of the data rather than
+			 * a limitation of this reducer, and it is why every rule below retires the
+			 * text instead of keeping it.
+			 *
+			 * IT LIVES ON THE ASSISTANT RECORD rather than in a row of its own, because
+			 * the producer groups it that way: the event is keyed by `message_id` — "so a
+			 * consumer can group one model call's reasoning and retire it when the answer
+			 * starts" — and the record keyed by that id IS that group. It already exists
+			 * (`message_start` opens it before any I/O, so a call's reasoning has a record
+			 * to land in before its first fragment arrives), it already carries the row's
+			 * identity, avatar and gap tier, and retirement is then a field on one record
+			 * rather than a second list kept in step with this one.
+			 *
+			 * IT DOES NOT PAINT. The block that shows it is transient liveness and is
+			 * unmounted as soon as the row has prose; see `paintsSomething`
+			 * (`transcript-rows.ts`) for the one predicate that decides whether a record
+			 * is a row at all, and `LiveReasoning` for the paint.
+			 */
+			reasoning: string;
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
@@ -1635,6 +1665,10 @@ function durableRecord(
 				id: entry.id,
 				ts,
 				text: "",
+				// A durable row is the journal's, and reasoning never reaches it:
+				// `ReasoningDeltaEvent` is display-only by contract and is not
+				// persisted, so no page can carry one and this is always empty.
+				reasoning: "",
 				streaming: false,
 				stopReason: String(payload.stop_reason ?? "toolUse"),
 				error: false,
@@ -1645,6 +1679,12 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
+			// Same as above: the reasoning channel has no durable form. A reader
+			// resuming a conversation gets the answer, which is what the harness
+			// stores — the live block is liveness, and liveness does not survive a
+			// reload on any front end (the TUI's `ReasoningBlock`, the mobile row and
+			// the exec announcement all wash out with the process).
+			reasoning: "",
 			complete: true,
 			streaming: false,
 			stopReason: (payload.stop_reason as string | null) ?? null,
@@ -2045,6 +2085,14 @@ export function applyEvent(
 						...record,
 						streaming: false,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
+						/*
+						 * The same two outcomes `message_end` decides, on the ending this case is
+						 * for (a stream that died before it reported its own end): an ABORT keeps
+						 * the thinking, because nothing replaces it, and a clean end retires it,
+						 * because the turn is over and a transient block that outlives its turn is
+						 * a claim about work that has stopped.
+						 */
+						reasoning: event.aborted ? record.reasoning : "",
 					});
 				}
 				if (record.kind === "tool" && record.phase !== "done") {
@@ -2119,6 +2167,10 @@ export function applyEvent(
 				id: message.id,
 				ts: now,
 				text: "",
+				// A call that has not written anything yet has not reasoned yet: this
+				// record is opened at the TOP of the provider call, before the request
+				// is even built, so `reasoning_delta` is the only writer of this field.
+				reasoning: "",
 				streaming: true,
 				stopReason: null,
 				error: false,
@@ -2162,6 +2214,10 @@ export function applyEvent(
 					id: message.id,
 					ts: now,
 					text: body ? body + delta : delta,
+					// The chunk IS the answer, so this call never had reasoning this
+					// viewer could show: the frame that carried its first fragment is
+					// one of the frames this row was missing.
+					reasoning: "",
 					streaming: true,
 					truncated: body === "" ? "prefix" : undefined,
 					stopReason: null,
@@ -2230,6 +2286,16 @@ export function applyEvent(
 					...current,
 					text: current.text || delta,
 					/*
+					 * The same two outcomes decide the reasoning, on the same fact
+					 * (`current.text`): a row that had text has already given its
+					 * reasoning up (the append path retired it when that text landed),
+					 * while a row with none takes this delta as its answer's first text —
+					 * which is the moment the answer starts, so the reasoning goes with
+					 * it. A frame that states no new text (`text` unchanged) cannot make
+					 * that claim and carries the reasoning through untouched.
+					 */
+					reasoning: current.text || !delta ? current.reasoning : "",
+					/*
 					 * Which claim depends on the SAME fact the counter reads: a row that already
 					 * had text had a chunk withheld from the middle of what it holds, while a
 					 * row with none takes this delta as its first text and holds nothing
@@ -2262,6 +2328,30 @@ export function applyEvent(
 				...current,
 				text: next,
 				/*
+				 * THE REASONING GIVES WAY TO THE ANSWER, and this is the moment it
+				 * happens: the first text of this call's own message is what the row
+				 * now paints, and the block that was filling the dead air before it
+				 * unmounts on the same commit.
+				 *
+				 * The retirement point is the PRODUCER'S, not a choice made here:
+				 * `ReasoningDeltaEvent.message_id` exists so a consumer "can group one
+				 * model call's reasoning and retire it when the answer starts".
+				 *
+				 * It is also the only honest place for it. Reasoning is not durable
+				 * and never enters the message, so nothing can reconcile it: a block
+				 * left standing beside the answer is a claim to permanence the data
+				 * cannot support, and it is the accumulation defect the TUI review
+				 * measured (one ~7-row block per model call, no way to dismiss it,
+				 * and a live transcript that disagrees with the resumed one). And a
+				 * block that kept GROWING under an answer already on screen would
+				 * push the answer the reader is reading.
+				 *
+				 * `next` is non-empty on every path here (the two guards above return
+				 * for an empty delta and for no growth), so there is no state in which
+				 * this retires a block the answer has not actually superseded.
+				 */
+				reasoning: "",
+				/*
 				 * A frame with a body supplies the whole running text, so the row stops
 				 * being missing anything and the mark goes on the SAME frame that
 				 * supplies it (code review round 1, R1-2: keeping it here left the
@@ -2277,17 +2367,126 @@ export function applyEvent(
 			if (!message || typeof message.id !== "string") return state;
 			if (message.role !== "assistant") return state;
 			const position = state.index.get(message.id);
+			const previous =
+				position === undefined ? undefined : state.records[position];
 			const text = messageText(message);
+			const stopReason = (message.stop_reason as string | null) ?? null;
 			const settled: TranscriptRecord = {
 				kind: "assistant",
 				id: message.id,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
+				/*
+				 * The call is over, so its reasoning is over with it — except on an ABORT,
+				 * which is the one ending nothing replaces it with. A call that was stopped
+				 * mid-thought produced no answer to give way to, so its thinking is the whole
+				 * of what the turn produced, and dropping it would take the only artifact the
+				 * reader was watching off the screen while an `interrupted` receipt took its
+				 * place (`Stopped before finishing` renders under it, from `stopReason`). The
+				 * TUI's block is frozen rather than removed on the same ending, and the two
+				 * surfaces should not tell the reader different stories about one turn.
+				 *
+				 * The mark is `aborted` and not `error`: a refusal or a provider failure
+				 * happened INSTEAD of the answer rather than in place of it, and the durable
+				 * row that follows such a message is the authority either way.
+				 */
+				reasoning:
+					stopReason === "aborted" && !text
+						? previous?.kind === "assistant"
+							? previous.reasoning
+							: ""
+						: "",
 				streaming: false,
-				stopReason: (message.stop_reason as string | null) ?? null,
+				stopReason,
 				error: Boolean(message.is_error),
 			};
 			return upsert(state, settled);
+		}
+		case "reasoning_delta": {
+			/*
+			 * The model's private reasoning, streamed — the dead air this change exists
+			 * to fill.
+			 *
+			 * The channel has always existed on the wire (`StreamReasoningDelta`,
+			 * `providers/clients.py`), and until `harness/loop.py` grew a case for it the
+			 * harness dropped every fragment: the runtime emitted reasoning on 86.5% of
+			 * deepseek-flash turns, the user saw none of it, and waited for the first
+			 * TEXT token instead — measured at p50 3,067 ms to first visible text with a
+			 * 10 ms local preparation, i.e. the whole wait was the model talking to
+			 * itself with nothing on screen. The event is `{message_id, delta}`, one
+			 * fragment per token and never an accumulated body, so this case appends.
+			 *
+			 * THE SAME ID, THE SAME RECORD, THEREFORE NO SECOND ROW. Everything below
+			 * keys on `event.message_id`, which is the id `message_start` already opened
+			 * a record under; `upsert` replaces that record in place, so a viewer can
+			 * never see two rows for one model call however the frames are ordered or
+			 * replayed — the reconnect property the reducer's own contract is about
+			 * ("durable before live, and a record id is painted once") is structural here
+			 * rather than something this case has to enforce.
+			 */
+			const messageId = String(event.message_id ?? "");
+			const delta = String(event.delta ?? "");
+			if (!messageId || !delta) return state;
+			const position = state.index.get(messageId);
+			const current =
+				position === undefined ? undefined : state.records[position];
+			if (current && current.kind !== "assistant") return state;
+			/*
+			 * THE ANSWER OUTRANKS THE REASONING, FOR THE REST OF THIS CALL.
+			 *
+			 * Two refusals, and both are the same rule seen from opposite sides. A row
+			 * that already has prose has given its reasoning up (the append path
+			 * retired it on the frame that delivered that prose), so a fragment
+			 * arriving after it is refused rather than re-opening a block under an
+			 * answer already on screen — models do interleave a thought with text, and
+			 * that is the interleave this refuses. And a row that has SETTLED refuses
+			 * everything, exactly as `message_update` does: its turn is over, and a
+			 * replayed fragment cannot make it live again.
+			 *
+			 * The refusals are also what makes this case cheap enough for the chattiest
+			 * channel in the app. Reasoning is one frame per token — measured up to
+			 * 19,355 fragments in a single turn — and both guards return the SAME state
+			 * object, so a refused fragment costs one map lookup and no render.
+			 */
+			if (current && (current.text || !current.streaming)) return state;
+			if (!current) {
+				/*
+				 * A call this viewer never saw start. The only way here is a window that
+				 * lost `message_start` (the producer emits it before any I/O, so the row
+				 * normally exists before the first fragment), or a viewer that attached
+				 * mid-reasoning — the seed cannot help either: the snapshot's `live_events`
+				 * fold carries no reasoning at all, because reasoning is never persisted.
+				 *
+				 * The row is minted the way `message_update`'s join mints one, with one
+				 * deliberate difference: NO `truncated`. That mark is a claim about the
+				 * ANSWER ("no text of this message before this chunk reached me") and
+				 * renders as `Earlier text of this answer is not on screen`; a row that has
+				 * no answer yet is not missing a prefix of one, and the reasoning block
+				 * reports its own elision from the text it is handed.
+				 */
+				return upsert(state, {
+					kind: "assistant",
+					id: messageId,
+					ts: now,
+					text: "",
+					reasoning: delta,
+					streaming: true,
+					stopReason: null,
+					error: false,
+				});
+			}
+			/*
+			 * Append, never replace: the fragment is one token of a channel with no
+			 * accumulated form, so there is nothing to compare it against and nothing a
+			 * replayed duplicate could be recognised by — which is why the ordering
+			 * guarantees, and not a content rule, are what the reducer's idempotence
+			 * rests on (see `message_update`'s note on why there is no content-based
+			 * dedupe; the same reasoning applies with no answer to fall back on).
+			 */
+			return upsert(state, {
+				...current,
+				reasoning: current.reasoning + delta,
+			});
 		}
 		case "history_delta": {
 			// Settled rows that were never streamed here: same projection as a
