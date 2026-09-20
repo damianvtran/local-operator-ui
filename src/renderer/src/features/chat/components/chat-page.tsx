@@ -289,6 +289,21 @@ function SessionPanel({
 	 */
 	const liveGateKey = useRef<string | null>(null);
 	liveGateKey.current = gateKey;
+	/*
+	 * THE LIVE OWNER EPOCH, read the same way and for the same reason (code review
+	 * round 1, MAJOR-1).
+	 *
+	 * A codeless `409` from the answer route is three different events and only one
+	 * of them is a settlement; the epoch is what separates the rollover from the
+	 * other two. The press carries `canonical.ownerEpoch` — a render-closure value
+	 * — so comparing it against itself proves nothing, exactly as with the gate key
+	 * above. This ref holds the epoch the app holds NOW, so the report can see that
+	 * the runtime instance the press addressed is gone: a rollover mints a fresh
+	 * epoch and the old one is refused with the question still pending and still
+	 * answerable (measured — see `answerReport`'s note).
+	 */
+	const liveOwnerEpoch = useRef<string | null>(null);
+	liveOwnerEpoch.current = canonical.ownerEpoch;
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
 			? { sending: answerState.sending, refused: answerState.refused }
@@ -1229,29 +1244,32 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		/*
-		 * WHERE the report goes, from the press's own outcome plus one fact about the
-		 * render — see `answerReport`. Nothing here reads the gate's movement to
-		 * decide whether the press WON: a press's own success is what removes its
-		 * card, so that reading reported a win as a loss whenever the owner's state
-		 * push painted before the answer's response landed, and the two channels have
-		 * no ordering between them (`ask-answer.ts` carries the margin).
+		 * WHERE the report goes, from the press's own outcome plus the live facts —
+		 * see `answerReport`. Nothing here reads the gate's movement to decide
+		 * whether the press WON: a press's own success is what removes its card, so
+		 * that reading reported a win as a loss whenever the owner's state push
+		 * painted before the answer's response landed, and the two channels have no
+		 * ordering between them (`ask-answer.ts` carries the margin).
 		 *
-		 * `cardIsThisPress` is the live half, and it is TWO facts rather than one: an
-		 * `Answer options` card is on screen AND it is the card this press was made
-		 * on (`liveGateKey`, the value the app is painting with, against `key`, the
-		 * press's own). The identity half is what closes the deterministic hole this
-		 * arm used to have: a multi-question ask paints its next question's card in
-		 * the same place under the same `aria-label` with a different key, so a query
-		 * for "a card" answered true for a card that cannot render this refusal — the
-		 * refusal was written to a state no surface reads, and the user was told
-		 * nothing while a fresh question appeared where they had pressed. A card that
-		 * is not this press's is not a surface this report can use, so the composer
-		 * takes it, and the composer is the only surface that survives a gate change.
+		 * Every fact below is read LIVE, from the refs the render body keeps current,
+		 * rather than from the closure this handler resumed in — the closure is the
+		 * one the press STARTED in, so a value read from it is the press compared
+		 * with itself. That was the inert conjunct this branch deleted, and the
+		 * replacements for it cannot be another closure. The identity half matters as
+		 * much as the DOM half: a multi-question ask paints its next question's card
+		 * in the same place under the same `aria-label` with a different key, so a
+		 * query for "a card" answered true for a card that cannot render this refusal
+		 * — the refusal was written to a state no surface reads and the user was told
+		 * nothing while a fresh question appeared where they had pressed.
 		 */
-		const cardIsThisPress =
-			document.querySelector('[aria-label="Answer options"]') !== null &&
-			liveGateKey.current === key;
-		const report = answerReport(outcome, cardIsThisPress);
+		const report = answerReport(outcome, {
+			liveGateKey: liveGateKey.current,
+			pressedGateKey: key,
+			sentEpoch: canonical.ownerEpoch,
+			liveEpoch: liveOwnerEpoch.current,
+			cardOnScreen:
+				document.querySelector('[aria-label="Answer options"]') !== null,
+		});
 		switch (report.to) {
 			case "refused":
 				// Nothing was sent and nothing is wrong: the lock was already held by a
@@ -1277,12 +1295,14 @@ function SessionPanel({
 				return;
 			case "composer":
 				// The card is gone — or is not this press's any more — so the composer
-				// carries it: the question-moved-on sentence for the answer route's own
-				// codeless refusal, the not-sent sentence for a transport failure, in
-				// both cases in the outcome's language rather than the backend's (UX
-				// round 1, U4; UX round 2, U9). The code is always the report's own, so
-				// the alert's hint and remedies are functions of THIS failure rather
-				// than of the draft's last one (design round 1, D2).
+				// carries it, in the register the outcome is entitled to: the settled
+				// sentence where the live facts establish that another front end took
+				// the question, the moved-on sentence where the ask advanced past it,
+				// the not-knowable one where no response ever came back, and the
+				// backend's own reason where it answered and refused. The code is
+				// always the report's own, so the alert's hint and remedies are
+				// functions of THIS failure rather than of the draft's last one
+				// (design round 1, D2).
 				setAnswerState(null);
 				setSendError(report.message);
 				setSendErrorCode(report.code);

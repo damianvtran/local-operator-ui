@@ -76,6 +76,62 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--answer-log-file",
+        type=Path,
+        default=None,
+        help=(
+            "Write the answer log to this path as soon as a response is produced. "
+            "`/rig-state` is the driver's usual source, but a run that KILLS the "
+            "backend (see `--die-after-answer-ms`) takes that route down with it, "
+            "and the log is the run's whole record of what the owner did — so it "
+            "is flushed to disk before the process can die."
+        ),
+    )
+    parser.add_argument(
+        "--die-after-answer-ms",
+        type=int,
+        default=None,
+        help=(
+            "KILL the backend this long after the answer route has produced its "
+            "response, so the response is never delivered to the page. This is "
+            "the failure UX round 1 (U1) measured by killing the process "
+            "mid-request: the owner has ALREADY kept the answer (`answeredAt` is "
+            "stamped, `owner-answer.json` is written), the page gets no HTTP "
+            "response at all, and the app must not tell the user their answer was "
+            "not sent. Use with `--answer-log-file` so the record survives."
+        ),
+    )
+    parser.add_argument(
+        "--hold-answers-ms",
+        type=int,
+        default=0,
+        help=(
+            "Hold the app's answer request this long BEFORE it reaches the route, "
+            "so the request never gets a response inside the renderer's own control "
+            "deadline (25 s — `desktopRequestTimeoutMs`). This is the third shape "
+            "of \"no HTTP response\": not a dropped connection and not a dead "
+            "backend, but a server that never answered in time, with the process "
+            "still alive so nothing else on the page changes. Pair it with "
+            "`--pre-answer` when the frame wanted is the composer's."
+        ),
+    )
+    parser.add_argument(
+        "--drop-answers",
+        action="store_true",
+        help=(
+            "DROP the app's answer request without answering it: the connection "
+            "closes and the page gets no HTTP response at all. This is the "
+            "failure UX round 1 (U1) measured by killing the backend mid-request "
+            "(a 1.5s response hold, SIGKILL at +160ms): the owner had already kept "
+            "the label while the composer claimed the answer was not sent. Here "
+            "the backend stays ALIVE so `/rig-state` and `owner-answer.json` still "
+            "exist — the run's own record survives the failure it is "
+            "photographing — and only the delivery is dropped. Pair it with "
+            "`--pre-answer` when the frame wanted is the composer's: the winner's "
+            "state push clears the card first."
+        ),
+    )
+    parser.add_argument(
         "--reject-answers",
         default=None,
         help=(
@@ -201,6 +257,10 @@ async def main() -> None:
             result_file: Path | None = None,
             pre_answer: str | None = None,
             reject_answers: str | None = None,
+            drop_answers: bool = False,
+            hold_answers_ms: int = 0,
+            answer_log_file: Path | None = None,
+            die_after_answer_ms: int | None = None,
             token: str = "",
             session_id: str = "a1a1a1a1a1a1",
         ) -> None:
@@ -210,6 +270,12 @@ async def main() -> None:
             self._result_file = result_file
             self._pre_answer = pre_answer
             self._reject = reject_answers
+            self._drop = drop_answers
+            self._hold_s = max(0.0, hold_answers_ms / 1000.0)
+            self._answer_log_file = answer_log_file
+            self._die_after_s = (
+                None if die_after_answer_ms is None else die_after_answer_ms / 1000.0
+            )
             self._token = token
             self._session_id = session_id
             # Filled by the harness once the OS has chosen the port; see
@@ -358,6 +424,47 @@ async def main() -> None:
                 "requestedAt": time.time() * 1000.0,
             }
             self._answers.append(entry)
+            # The rig's OWN second front end is exempt from every mode below: a
+            # `--pre-answer` must not pre-answer itself, and a `--die-after-answer-ms`
+            # armed on the PRE-ANSWER's response would kill the process before the
+            # app's own press was ever answered (measured — the first attempt did
+            # exactly that).
+            is_rig_request = self._is_rig_request(scope)
+
+
+            if self._drop and not is_rig_request:
+                # NO RESPONSE AT ALL — see `--drop-answers`. Returning without
+                # completing the response is what closes the connection, which is
+                # the failure the page sees when the backend dies mid-request.
+                entry["dropped"] = True
+                entry["answeredAt"] = None
+                entry["deliveredAt"] = None
+                return
+
+            if self._pre_answer is not None and not is_rig_request:
+                # ANOTHER FRONT END WINS THE GATE FIRST, and only then is this
+                # request forwarded — so the request the app made is the loser
+                # the route refuses, exactly as the exclusivity probe measures
+                # it. See `--pre-answer`.
+                #
+                # The rig's OWN loopback answer carries a marker header and is
+                # skipped: without it this handler would pre-answer its own
+                # pre-answer, and the run stalls until the timeout (measured —
+                # the first attempt at this knob deadlocked exactly there).
+                entry["preAnsweredBy"] = self._pre_answer
+                entry["preAnswer"] = await asyncio.to_thread(
+                    self.other_front_end, self._pre_answer
+                )
+
+            if self._hold_s and not is_rig_request:
+                # The app's request is held past its own deadline; see
+                # `--hold-answers-ms`. The log is flushed with `held` set, so a
+                # record read while this is in flight still says what happened.
+                entry["held"] = True
+                self.flush_answer_log()
+                await asyncio.sleep(self._hold_s)
+                entry["held"] = False
+                self.flush_answer_log()
 
             if self._reject is not None:
                 # A BARE 409 the gate does not see: the owner's card stays
@@ -381,25 +488,13 @@ async def main() -> None:
                 entry["deliveredAt"] = time.time() * 1000.0
                 return
 
-            if self._pre_answer is not None and not self._is_rig_request(scope):
-                # ANOTHER FRONT END WINS THE GATE FIRST, and only then is this
-                # request forwarded — so the request the app made is the loser
-                # the route refuses, exactly as the exclusivity probe measures
-                # it. See `--pre-answer`.
-                #
-                # The rig's OWN loopback answer carries a marker header and is
-                # skipped: without it this handler would pre-answer its own
-                # pre-answer, and the run stalls until the timeout (measured —
-                # the first attempt at this knob deadlocked exactly there).
-                entry["preAnsweredBy"] = self._pre_answer
-                entry["preAnswer"] = await asyncio.to_thread(
-                    self.other_front_end, self._pre_answer
-                )
-
             async def held(message):
                 if message["type"] == "http.response.start":
                     entry["status"] = message["status"]
                     entry["answeredAt"] = time.time() * 1000.0
+                    self.flush_answer_log()
+                    if self._die_after_s is not None and not is_rig_request:
+                        asyncio.create_task(self.die_after(self._die_after_s))
                     if self._delay_s:
                         await asyncio.sleep(self._delay_s)
                 await send(message)
@@ -407,8 +502,42 @@ async def main() -> None:
                     "more_body"
                 ):
                     entry["deliveredAt"] = time.time() * 1000.0
+                    self.flush_answer_log()
 
             await self._inner(scope, receive, held)
+
+        def flush_answer_log(self) -> None:
+            """Persist the answer log, so a run that dies still has its record.
+
+            Written on every state change rather than at exit: `os._exit` skips
+            every cleanup path there is, so the last write before it is the only
+            one that survives. See `--answer-log-file`.
+            """
+            if self._answer_log_file is None:
+                return
+            try:
+                self._answer_log_file.write_text(
+                    json.dumps(
+                        {
+                            "answers": self._answers,
+                            "ownerAnswer": self.owner_answer(),
+                        },
+                        indent=2,
+                    )
+                    + "\n"
+                )
+            except OSError:
+                pass
+
+        async def die_after(self, seconds: float) -> None:
+            """Kill the process after the response was produced, undelivered.
+
+            `os._exit` rather than a signal: the point is that NO response reaches
+            the page, and an orderly shutdown would flush the held response first.
+            See `--die-after-answer-ms`.
+            """
+            await asyncio.sleep(seconds)
+            os._exit(0)
 
     session_id = args.session_id
     workspace = scratch / "workspace"
@@ -448,6 +577,10 @@ async def main() -> None:
         result_file=args.result_file,
         pre_answer=args.pre_answer,
         reject_answers=args.reject_answers,
+        drop_answers=args.drop_answers,
+        hold_answers_ms=args.hold_answers_ms,
+        answer_log_file=args.answer_log_file,
+        die_after_answer_ms=args.die_after_answer_ms,
         token=token,
         session_id=args.session_id,
     )

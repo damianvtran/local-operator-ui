@@ -37,7 +37,14 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withMockKeychain } from "./chrome-keychain.mjs";
@@ -78,6 +85,14 @@ const OLD_SETTLED_SENTENCE =
 	"That question was already answered somewhere else, so your answer was not sent.";
 const MOVED_ON_SENTENCE =
 	"That question had already been settled or moved on, so your answer was not sent.";
+const SETTLED_SENTENCE =
+	"That question was already answered somewhere else, so your answer was not sent.";
+/*
+ * The unknown-outcome sentence, for a failure that carried no HTTP response at
+ * all. Asserted from the page's own text like the others, and for the same
+ * reason: a run that never rendered it must not be able to pass as one that did.
+ */
+const UNCONFIRMED_LEAD = "Whether your answer landed is not knowable.";
 /*
  * What this run must find on the page after the press, when the caller says.
  *
@@ -135,6 +150,8 @@ const READ_REPORT = `(() => {
 	return {
 		oldSettledSentence: document.body.innerText.includes(${JSON.stringify(OLD_SETTLED_SENTENCE)}),
 		movedOnSentence: document.body.innerText.includes(${JSON.stringify(MOVED_ON_SENTENCE)}),
+		settledSentence: document.body.innerText.includes(${JSON.stringify(SETTLED_SENTENCE)}),
+		unconfirmedSentence: document.body.innerText.includes(${JSON.stringify(UNCONFIRMED_LEAD)}),
 		notSentCopy: alerts.filter((a) => a.includes(notSent)),
 		cardUp: Boolean(field),
 		/*
@@ -303,21 +320,60 @@ const record = {
  * alternative is a fixed sleep, which would be a guess about the very latency
  * the run exists to place.
  */
+/*
+ * The rig's answer log, from whichever source still has it.
+ *
+ * `/rig-state` is the rig's own route and the usual source, but a run that KILLS
+ * the backend (the U1 arm — see the harness's `--die-after-answer-ms`) takes that
+ * route down with it, and the log is the whole record of what the owner did. The
+ * harness flushes it to a file before it can die; this reads it from there, and
+ * the record says which source it came from so a reader knows whether the live
+ * route or the file was read.
+ */
+const RIG_DIR = process.env.CLICK_PROOF_RIG_DIR ?? "";
+async function readRigState() {
+	try {
+		return {
+			...(await evaluate(
+				`fetch("${ORIGIN}/rig-state").then((r) => r.json())`,
+			)),
+			from: "route",
+		};
+	} catch (error) {
+		if (!RIG_DIR) throw error;
+		const file = join(RIG_DIR, "answer-log.json");
+		if (!existsSync(file)) throw error;
+		return { ...JSON.parse(readFileSync(file, "utf8")), from: "file" };
+	}
+}
+
 async function waitForAnswer() {
 	const deadline = Date.now() + 60_000;
 	for (;;) {
-		const state = await evaluate(
-			`fetch("${ORIGIN}/rig-state").then((r) => r.json())`,
-		);
+		const state = await readRigState();
 		const answers = state.answers ?? [];
+		/*
+		 * Every request has reached its end: delivered, or dropped on purpose.
+		 *
+		 * A `--drop-answers` run has an entry with `dropped: true` and no
+		 * `deliveredAt`, and it is FINISHED — waiting for a delivery that the run
+		 * deliberately prevented would time out and report the run as broken while
+		 * the page showed exactly the failure under test. The two are separate
+		 * flags rather than one, so the record still says which happened.
+		 */
 		if (
 			answers.length > 0 &&
-			answers.every((entry) => entry.deliveredAt != null)
+			answers.every(
+				(entry) =>
+					entry.deliveredAt != null ||
+					entry.dropped === true ||
+					entry.held === true,
+			)
 		)
 			return state;
 		if (Date.now() > deadline)
 			throw new Error(
-				`the rig never recorded a delivered answer: ${JSON.stringify(state)}`,
+				`the rig never recorded a finished answer: ${JSON.stringify(state)}`,
 			);
 		await wait(250);
 	}
@@ -541,6 +597,9 @@ try {
 	 */
 	const state = await waitForAnswer();
 	record.answers = state.answers;
+	// Which source the log came from: the live route, or the file a run that
+	// killed the backend left behind. See `readRigState`.
+	record.answersFrom = state.from;
 	/*
 	 * THE VALUE THE OWNER TOOK, carried into the record rather than left in a
 	 * sibling file a reader has to know about. A press's `200` says the route took
@@ -604,6 +663,33 @@ try {
 							: "the response was delivered before the card cleared",
 				}
 			: null;
+	/*
+	 * WAIT ON THE SENTENCE THE RUN DECLARED, not on a clock.
+	 *
+	 * A failure the app can only learn about after its own control deadline (the
+	 * `--hold-answers-ms` arm) lands tens of seconds after the gate cleared, and a
+	 * fixed sleep would read the composer before the app had said anything —
+	 * reporting a run as contradicting its declaration when it was merely early.
+	 * The declaration is the event, so the run waits for it and the deadline is
+	 * only the bound.
+	 */
+	const declaredSentence = {
+		silent: null,
+		"old-settled": OLD_SETTLED_SENTENCE,
+		settled: SETTLED_SENTENCE,
+		"moved-on": MOVED_ON_SENTENCE,
+		unknown: UNCONFIRMED_LEAD,
+	}[EXPECT];
+	if (declaredSentence) {
+		const sentenceDeadline = Date.now() + 45_000;
+		for (;;) {
+			const seen = await evaluate(
+				`document.body.innerText.includes(${JSON.stringify(declaredSentence)})`,
+			);
+			if (seen || Date.now() > sentenceDeadline) break;
+			await wait(500);
+		}
+	}
 	await wait(1500);
 	record.report = await evaluate(READ_REPORT);
 	record.after = await evaluate(READ_STATE);
@@ -625,17 +711,23 @@ try {
 		EXPECT === "silent"
 			? report.oldSettledSentence ||
 				report.movedOnSentence ||
+				report.settledSentence ||
+				report.unconfirmedSentence ||
 				report.notSentCopy.length > 0 ||
 				report.cardRefusal
 			: EXPECT === "old-settled"
 				? !report.oldSettledSentence
 				: EXPECT === "moved-on"
 					? !report.movedOnSentence
-					: EXPECT === "not-sent"
-						? report.notSentCopy.length === 0
-						: EXPECT === "card-refusal"
-							? !report.cardRefusal
-							: false;
+					: EXPECT === "settled"
+						? !report.settledSentence
+						: EXPECT === "unknown"
+							? !report.unconfirmedSentence
+							: EXPECT === "not-sent"
+								? report.notSentCopy.length === 0
+								: EXPECT === "card-refusal"
+									? !report.cardRefusal
+									: false;
 	/*
 	 * And the ORDERING the run was told to force, asserted rather than merely
 	 * recorded: the verdict is computed from two timestamps and can be the other
