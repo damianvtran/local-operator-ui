@@ -138,7 +138,7 @@ trailing one, and four lanes then quoted it as the reason a row carrying an unre
 mark has a narrower title. It does not, and the edges are not interchangeable —
 the mark is drawn inside that leading slot.
 
-**The shed is a BAND, not a width (round 2, D17).** The container query is
+**The shed is a BAND, not a width (round 2, D15).** The container query is
 `@max-[263px]` on the panel's CONTENT box, and the panel carries `p-2`, so it
 matches while the user's preference is at or below **278**: the pair is shed from
 the 240 clamp minimum up to 278 (39 of the 121 selectable widths) and holds from

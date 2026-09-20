@@ -573,14 +573,25 @@ test("the row's hover ground belongs to the row, not to its button (design round
 		"data-session-row={row.session_id}",
 		"{rowButton}",
 	);
-	assert.match(box, /group-hover:bg-row-hover/);
+	assert.match(box, /hover:bg-row-hover/);
+	/*
+	 * AND NOT `group-hover:` ANYWHERE ON THAT BOX (design round 3, D18). The box is
+	 * the element that CARRIES `group`, and Tailwind compiles `group-hover:` to a
+	 * DESCENDANT rule - `:is(:where(.group):hover *)` - so a `group-hover:` ground
+	 * stated here can never match its own carrier: the class is inert. That is what
+	 * the first attempt at this fix was, and it passed every static assertion in
+	 * this file while painting nothing, so the pixel claim lives in the driver
+	 * (`the row's own ground reaches the row box's own edge`) and this line is the
+	 * cheap half that keeps the inert spelling from coming back.
+	 */
+	assert.doesNotMatch(box, /group-hover:bg-row-hover/);
 	/*
 	 * Dropped while the row is the CURRENT one, the rule the two controls follow: the
 	 * selected ground and the hover ground are two steps off `surface` in the same
 	 * direction, so repainting the state the reader is IN as the state the pointer is
 	 * in is exactly the substitution `rowCurrent`'s own override exists to stop.
 	 */
-	assert.match(box, /!current &&\s*"group-hover:bg-row-hover"/);
+	assert.match(box, /!current &&\s*"hover:bg-row-hover"/);
 });
 
 test("the two container-query constants keep the shapes that make the container decide (agent review round 2, N1)", () => {

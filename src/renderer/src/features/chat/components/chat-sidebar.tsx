@@ -170,7 +170,7 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * comparison is INCLUSIVE in the direction that matters (`@max-[N]` compiles to
  * `not (min-width: N)`), so the bound sits one pixel under 264 rather than on it -
  * at 264 the pair is still drawn. Measured, and the measurement is a BAND rather
- * than a width (design round 2, D17): the pair is shed from the 240 clamp minimum
+ * than a width (design round 2, D15): the pair is shed from the 240 clamp minimum
  * up to 278 - 39 of the 121 selectable widths - and holds from 279. The frames
  * show its two ends (280 and 240), which is what the rule turns on; the band's own
  * extent is the container query's, read off the arithmetic above rather than
@@ -2226,15 +2226,24 @@ export function ChatSidebar({
 					 * once more on the box, so the row reads as one hovered thing across
 					 * its whole width.
 					 *
+					 * A PLAIN `hover:` AND NOT `group-hover:` (design round 3, D18), and
+					 * this is the whole reason the first attempt at it was INERT: the box
+					 * is the element that CARRIES `group`, and Tailwind compiles
+					 * `group-hover:` to a DESCENDANT rule
+					 * (`.group-hover\:bg-row-hover:is(:where(.group):hover *)`), which can
+					 * never match its own carrier. Measured on the frames: the ground
+					 * still stopped 56px short of the box at 280 and was absent entirely
+					 * with the pointer on a control. `hover:` fires on the element the
+					 * pointer is actually inside, children included, which is what "the
+					 * row is one hovered thing" means.
+					 *
 					 * Dropped while this row is the CURRENT one, exactly as the two
 					 * controls drop their own hover ground: the selected ground and the
 					 * hover ground are two steps off `surface` in the same direction, and
 					 * repainting the state the reader is IN as the state the pointer is in
 					 * is the substitution `rowCurrent`'s own override exists to stop.
 					 */
-					(pinsEnabled || archiveEnabled) &&
-						!current &&
-						"group-hover:bg-row-hover",
+					(pinsEnabled || archiveEnabled) && !current && "hover:bg-row-hover",
 					rowBoxStyle,
 					current && rowCurrent,
 				)}
@@ -3126,8 +3135,16 @@ export function ChatSidebar({
 			 * `data-session-archive-undo` is the driver scene's anchor, the convention
 			 * `data-session-archive-failure` and `data-session-delete` follow.
 			 */}
+			{/*
+			 * `text-ink`, NOT `text-ink-muted` (design round 3, D20). The register's
+			 * other line - the refusal - is `text-warning`, and this one is the only
+			 * line in the panel that carries a LIVE ACTION; at muted ink (7.86:1 /
+			 * 8.21:1) it read as metadata beside it. The offer sentence is the sentence
+			 * the user is being asked to act on, so it takes the ink the panel's own
+			 * text takes, and the `Undo` link keeps its underline.
+			 */}
 			{archiveUndo && (
-				<p data-session-archive-undo className="pb-2 text-meta text-ink-muted">
+				<p data-session-archive-undo className="pb-2 text-meta text-ink">
 					{archiveOfferedText(archiveUndo.title)}{" "}
 					<button
 						type="button"
