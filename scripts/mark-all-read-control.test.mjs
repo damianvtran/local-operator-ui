@@ -79,6 +79,20 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 // jsdom implements no layout, so no scrolling: the panel's own effects would
 // throw on the first render otherwise.
 DOM.window.Element.prototype.scrollIntoView = () => {};
+/*
+ * jsdom ships no `ResizeObserver`, and the sidebar now needs one on every mount:
+ * it measures its own column to derive the split's capacity, and the list region
+ * is only sometimes mounted, so the observer is rebuilt when the layout changes
+ * shape. A no-op is the honest stub here rather than a recording one - jsdom
+ * computes no layout, so a case that wanted the capacity would be asserting
+ * against zeroes it invented. The classes below are about the bulk-read
+ * control, which never reads a height.
+ */
+globalThis.ResizeObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 
 /** The store's persistence needs this, and the transport is the only fake. */
 const values = new Map();
@@ -157,6 +171,22 @@ const STUB_PATHS = [
 	"@shared/hooks/use-canonical-session",
 	"@shared/api/local-operator/desktop-api",
 	"@shared/hooks/use-connectivity-status",
+	/*
+	 * The theme registry barrel, stubbed to the ONE constant the bundled graph
+	 * reads from it.
+	 *
+	 * WHY THIS IS HERE AT ALL: the sidebar persists its split in
+	 * `ui-preferences-store`, whose `DEFAULT_THEME` comes from the barrel, and the
+	 * barrel imports every palette plus `base-theme`/`theme-provider`, which
+	 * import `@mui/material/styles`. `packages: "external"` leaves that to Node,
+	 * and Node refuses a directory import - `ERR_UNSUPPORTED_DIR_IMPORT` on
+	 * `node_modules/@mui/material/styles` - so bundling the sidebar at all
+	 * requires the barrel to be answered by this harness rather than by MUI. The
+	 * constant is a default theme NAME and nothing here asserts on it: the real
+	 * default is `localOperatorDark` in `shared/themes/index.ts`, and this keeps
+	 * the store itself real rather than faking the thing under test.
+	 */
+	"@shared/themes",
 ];
 const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 
@@ -222,6 +252,7 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
 	"react-router-dom": "export const useNavigate = () => () => undefined;",
+	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const discardPendingEchoes = () => undefined;`,
