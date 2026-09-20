@@ -56,7 +56,45 @@ const HEIGHT = Number(process.env.CLICK_PROOF_HEIGHT ?? 900);
  * a pass cannot be an index-0 accident and cannot be the recommended option
  * either.
  */
-const TARGET = process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
+const TARGET =
+	process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
+/*
+ * The sentence the composer shows when the answer route refused because the
+ * owner had already settled the question. Duplicated from `ask-answer.ts` here
+ * deliberately: this driver is the way a reviewer checks that the shipped copy
+ * is the one the module holds, and a driver that imported it would agree with
+ * the module by construction.
+ */
+const SETTLED_SENTENCE =
+	"That question was already answered somewhere else, so your answer was not sent.";
+/*
+ * What this run must find on the page after the press, when the caller says.
+ * `silent` is the shipping contract for a press the owner TOOK: it is the
+ * user's bug, so a run that finds a sentence there must not overwrite the
+ * committed record with it. `settled` is the contract for a press the owner
+ * refused. Unset records without asserting, which is how the pair was first
+ * taken.
+ */
+const EXPECT = process.env.CLICK_PROOF_EXPECT ?? "";
+
+/*
+ * What the composer says about the press, read as the user reads it.
+ *
+ * `settledSentence` is read from the page's own TEXT rather than from the
+ * sentence this driver holds, so a run that found an empty alert area in a
+ * page that never rendered the message cannot be mistaken for one that
+ * rendered nothing.
+ */
+const READ_REPORT = `(() => {
+	const alerts = [...document.querySelectorAll('[role="alert"]')]
+		.map((n) => n.textContent.replace(/\\s+/g, " ").trim())
+		.filter(Boolean);
+	return {
+		settledSentence: document.body.innerText.includes(${JSON.stringify(SETTLED_SENTENCE)}),
+		notSentCopy: alerts.filter((a) => a.includes("Your answer was not sent.")),
+		alerts,
+	};
+})()`;
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -91,7 +129,9 @@ const wsUrl = await new Promise((resolve, reject) => {
 });
 
 const browser = new WebSocket(wsUrl);
-await new Promise((r) => (browser.onopen = r));
+await new Promise((resolve) => {
+	browser.onopen = resolve;
+});
 let nextId = 1;
 const pending = new Map();
 browser.onmessage = (event) => {
@@ -99,18 +139,33 @@ browser.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+		msg.error
+			? reject(new Error(JSON.stringify(msg.error)))
+			: resolve(msg.result);
 	}
 };
-const raw = (method, params = {}, sessionId) =>
+/* `?? {}` at the use site rather than a defaulted parameter: `useDefaultParameterLast`
+ * refuses a default before a required one, and `sessionId` is the optional one
+ * here, so the default moves to where the value is read. */
+const raw = (method, params, sessionId) =>
 	new Promise((resolve, reject) => {
 		const id = nextId++;
 		pending.set(id, { resolve, reject });
-		browser.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+		browser.send(
+			JSON.stringify({
+				id,
+				method,
+				params: params ?? {},
+				...(sessionId ? { sessionId } : {}),
+			}),
+		);
 	});
 
 const target = await raw("Target.createTarget", { url: "about:blank" });
-const attached = await raw("Target.attachToTarget", { targetId: target.targetId, flatten: true });
+const attached = await raw("Target.attachToTarget", {
+	targetId: target.targetId,
+	flatten: true,
+});
 const sessionId = attached.sessionId;
 const send = (method, params = {}) => raw(method, params, sessionId);
 
@@ -121,7 +176,9 @@ async function evaluate(expression) {
 		returnByValue: true,
 	});
 	if (res.exceptionDetails) {
-		throw new Error(res.exceptionDetails.exception?.description ?? "page error");
+		throw new Error(
+			res.exceptionDetails.exception?.description ?? "page error",
+		);
 	}
 	return res.result.value;
 }
@@ -180,6 +237,37 @@ const record = {
 	at: new Date().toISOString(),
 };
 
+/**
+ * The rig's own record of the answer request, once its response has been
+ * DELIVERED — not merely produced.
+ *
+ * `deliveredAt` is the moment the hold `harness/serve-gate.py`'s
+ * `--answer-delay-ms` imposes ends, which is the moment the app's
+ * `sessions.answer` promise settles and the moment its verdict is decided.
+ * Waiting for it is what makes the record's ordering claim a measurement: the
+ * alternative is a fixed sleep, which would be a guess about the very latency
+ * the run exists to place.
+ */
+async function waitForAnswer() {
+	const deadline = Date.now() + 60_000;
+	for (;;) {
+		const state = await evaluate(
+			`fetch("${ORIGIN}/rig-state").then((r) => r.json())`,
+		);
+		const answers = state.answers ?? [];
+		if (
+			answers.length > 0 &&
+			answers.every((entry) => entry.deliveredAt != null)
+		)
+			return state;
+		if (Date.now() > deadline)
+			throw new Error(
+				`the rig never recorded a delivered answer: ${JSON.stringify(state)}`,
+			);
+		await wait(250);
+	}
+}
+
 /* Page-side errors and console output, collected so a failed run explains
  * itself: the round-1 rig died between its two frames with nothing recorded,
  * and the frames it left behind were read as evidence. */
@@ -191,7 +279,10 @@ browser.addEventListener("message", (event) => {
 			`exception: ${msg.params.exceptionDetails?.exception?.description ?? msg.params.exceptionDetails?.text}`,
 		);
 	}
-	if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") {
+	if (
+		msg.method === "Runtime.consoleAPICalled" &&
+		msg.params.type === "error"
+	) {
 		pageProblems.push(
 			`console.error: ${msg.params.args.map((a) => a.value ?? a.description ?? a.type).join(" ")}`,
 		);
@@ -250,18 +341,28 @@ try {
 	// produces: the surface is ready, then the question arrives.
 	const shellDeadline = Date.now() + 90_000;
 	for (;;) {
-		if (await evaluate(`Boolean(document.querySelector('textarea[aria-label="Message"]'))`))
+		if (
+			await evaluate(
+				`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+			)
+		)
 			break;
 		if (Date.now() > shellDeadline)
 			throw new Error("the app shell never painted");
 		await wait(1000);
 	}
-	const armed = await evaluate(`fetch("${ORIGIN}/rig-arm").then((r) => r.json())`);
+	const armed = await evaluate(
+		`fetch("${ORIGIN}/rig-arm").then((r) => r.json())`,
+	);
 	record.arm = armed;
 
 	const deadline = Date.now() + 60_000;
 	for (;;) {
-		if (await evaluate(`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`))
+		if (
+			await evaluate(
+				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
+			)
+		)
 			break;
 		if (Date.now() > deadline) {
 			throw new Error("the gate never rendered");
@@ -326,9 +427,11 @@ try {
 		};
 	})()`);
 	record.aim = aim;
-	if (!aim.ok) throw new Error(`cannot aim at the option: ${JSON.stringify(aim)}`);
+	if (!aim.ok)
+		throw new Error(`cannot aim at the option: ${JSON.stringify(aim)}`);
 
 	// A real press and release at those pixels.
+	const pressedAt = Date.now();
 	for (const type of ["mousePressed", "mouseReleased"]) {
 		await send("Input.dispatchMouseEvent", {
 			type,
@@ -344,25 +447,79 @@ try {
 	const cleared = Date.now() + 30_000;
 	let resolved = false;
 	while (Date.now() < cleared) {
-		if (!(await evaluate(`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`))) {
+		if (
+			!(await evaluate(
+				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
+			))
+		) {
 			resolved = true;
 			break;
 		}
 		await wait(250);
 	}
 	record.resolved = resolved;
+	const clearedAt = resolved ? Date.now() : null;
+	/*
+	 * The answer's OWN record, read from the rig instead of guessed at with a
+	 * sleep.
+	 *
+	 * This is the half the DOM cannot supply. `deliveredAt` is when the response
+	 * the route produced actually reached the page, and `clearedAt` is when the
+	 * card left the screen; on the build whose verdict came from the DOM, the
+	 * press was reported lost whenever the second of those came first, whatever
+	 * the first said. The two timestamps are what let a reader see the order
+	 * rather than be told about it, and both are epoch milliseconds on this one
+	 * machine.
+	 */
+	const state = await waitForAnswer();
+	record.answers = state.answers;
+	record.clearedAt = clearedAt;
+	record.clearedAfterPressMs =
+		clearedAt === null ? null : clearedAt - pressedAt;
+	const deliveredAt = state.answers[0]?.deliveredAt ?? null;
+	record.ordering =
+		clearedAt !== null && deliveredAt !== null
+			? {
+					clearedAt,
+					deliveredAt,
+					verdict:
+						clearedAt < deliveredAt
+							? "the card cleared before the response was delivered"
+							: "the response was delivered before the card cleared",
+				}
+			: null;
 	await wait(1500);
+	record.report = await evaluate(READ_REPORT);
 	record.after = await evaluate(READ_STATE);
 	const after = await shoot("after-click");
 	record.frames.after = `${after.theme}.webp`;
 
-	if (resolved) {
+	/*
+	 * The run's own verdict on what the composer said, when the caller declared
+	 * what it must say. A contradiction is a FAILED run and takes the diagnostic
+	 * path below rather than overwriting the committed pair with a frame of the
+	 * wrong behaviour — the same rule the unresolved-gate case already follows,
+	 * and the reason `CLICK_PROOF_EXPECT` exists at all: the two runs of this pair
+	 * differ only in the build under them, so the run that produced the old
+	 * behaviour and the run that produced the new one must be told apart by the
+	 * caller and not by whoever reads the frames later.
+	 */
+	const report = record.report;
+	const contradicted =
+		EXPECT === "silent"
+			? report.settledSentence || report.notSentCopy.length > 0
+			: EXPECT === "settled"
+				? !report.settledSentence
+				: false;
+
+	if (resolved && !contradicted) {
 		writeFileSync(
 			join(OUT, "click-result.json"),
 			`${JSON.stringify(record, null, 2)}\n`,
 		);
 		console.log(
-			`click-proof: the gate resolved at ${aim.x},${aim.y} -> ${aim.label}`,
+			`click-proof: the gate resolved at ${aim.x},${aim.y} -> ${aim.label}` +
+				` (answer ${record.answers[0]?.status}, report ${EXPECT || "unasserted"})`,
 		);
 	} else {
 		/*
@@ -381,7 +538,9 @@ try {
 		 * the evidence gate. A path git knows is restored to what the tree holds; one
 		 * it does not is removed.
 		 */
-		record.error = `the gate did not resolve: nothing cleared the pending gate within 30s of the press at ${aim.x},${aim.y} (${aim.label})`;
+		record.error = resolved
+			? `the composer's report contradicted CLICK_PROOF_EXPECT=${EXPECT}: ${JSON.stringify(report)}`
+			: `the gate did not resolve: nothing cleared the pending gate within 30s of the press at ${aim.x},${aim.y} (${aim.label})`;
 		record.pageProblems = pageProblems;
 		record.frames.restored = [];
 		for (const shot of [before, after]) {
@@ -430,6 +589,11 @@ try {
 		 * failure to remove a temp directory must never replace the run's own
 		 * error, which is what hid this run's first failure. */
 		await wait(1000);
-		rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 5,
+			retryDelay: 200,
+		});
 	} catch {}
 }
