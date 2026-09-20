@@ -18,7 +18,10 @@ import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useModels } from "@shared/hooks/use-models";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
-import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import {
+	isRadientAccountFailure,
+	useRadientUserQuery,
+} from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
@@ -307,11 +310,32 @@ export const SettingsPage: FC = () => {
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
-	// Only the signed-in bit is needed here: the profile fields go read-only
-	// when the backend resolves a Radient account. The query hook is the
-	// backend-proxy source of that fact; the wrapper hook additionally syncs
-	// the user store, which this page does not need.
-	const { isAuthenticated, isLoading: isAuthLoading } = useRadientUserQuery();
+	// The Radient account read, and deliberately only three things from it.
+	//
+	// `isAuthenticated` is the fact this page needs: the profile fields go
+	// read-only when the backend resolves a Radient account, and the billing and
+	// usage blocks render under it. The query hook is the backend-proxy source
+	// of that fact; the wrapper hook additionally syncs the user store, which
+	// this page does not need.
+	//
+	// `accountRead` and `refreshUser` are here because the FAILURE of this read is
+	// a state the page has to say out loud: the profile fields render the user
+	// store's own copy, whose default is the literal name "User", so a refused
+	// read is otherwise indistinguishable from a person who has not set a name --
+	// and an UNANSWERED read renders the same placeholder, which is the state the
+	// report came from.
+	//
+	// The hook's own `isLoading` is deliberately NOT read as a gate: it is what
+	// held this whole surface (see the gate below). The classification it feeds is
+	// read instead, which keeps "not answered yet" separate from "answered with
+	// nothing" -- the two this page's fields used to render identically.
+	const {
+		isAuthenticated,
+		accountRead,
+		isFetching: isAccountFetching,
+		isRefreshing: isAccountRefreshing,
+		refreshUser,
+	} = useRadientUserQuery();
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
@@ -650,8 +674,74 @@ export const SettingsPage: FC = () => {
 		}
 	};
 
-	// Combine loading states
-	const isLoading = isConfigLoading || isAuthLoading;
+	/*
+	 * What holds this surface while it loads: the config it RENDERS, and nothing
+	 * else.
+	 *
+	 * WHY THE RADIENT ACCOUNT READ IS NOT IN THIS EXPRESSION, measured in the
+	 * built app on 2026-09-19: with the account read refused upstream (401) and
+	 * `['config']` already `success`, the page sat on `Spinner label="Loading
+	 * settings"` for the whole 30s window it was sampled over, because
+	 * `isAuthLoading` was true the entire time - the account read does not settle,
+	 * so the query stays `pending`/`fetching` for as long as it is asked.
+	 *
+	 * WHAT THAT READ ACTUALLY DOES, because round 1 read it off a 33-read sample
+	 * as a one-per-second re-issue ("33 reads in 33.4s", now retired): it is a
+	 * FINITE retry chain, three attempts, and its two cadences are the client's own
+	 * backoff and a deadline rather than a poll. THE NUMBERS ARE ANCHOR-DEPENDENT,
+	 * so here is the anchor with each (qa round 3, Q3). MEASURED AT THE BACKEND, a
+	 * refused read is 3 attempts in ~3.0s and a read that never answers is 3
+	 * attempts ~21000ms and ~22000ms apart and then silence - those gaps being the
+	 * TRANSPORT's per-op deadline (`DESKTOP_CONTROL_DEADLINE_MS`, 20s) plus React
+	 * Query's 1s/2s backoff. MEASURED AT THE RENDERER, the bound is 5s longer
+	 * (`DESKTOP_DEADLINE_MARGIN_MS`, so `desktopRequestTimeoutMs` is 25s for a
+	 * control op, measured at 25.06s), and that one fires only when main itself
+	 * never replies - this app's own IPC case, which a backend-side instrument
+	 * cannot hold open. Offsets like "+1.0s/+22.0s/+44.0s" describe the same chain
+	 * only when it is anchored at the mount, which is why the gaps are quoted
+	 * above instead. The attempt count comes from the retry policy in
+	 * `use-radient-user-query.ts`; none of these is an observer-subscribe rate,
+	 * which is a mechanism nothing samples here.
+	 *
+	 * A read that can fail forever must not decide whether a page can render, and
+	 * this page reads exactly ONE thing from it: `isAuthenticated`, for two
+	 * read-only fields and two Radient-only blocks. `isConfigLoading` is the read
+	 * the surface cannot be rendered without, and the error branch above is what
+	 * makes its failure actionable.
+	 *
+	 * The account read still gates the surfaces that genuinely depend on it -
+	 * `RadientAccountSection` renders its own waiting state and its own failure
+	 * copy - and it still decides the two profile fields' read-only bit below.
+	 */
+	const isLoading = isConfigLoading;
+	/*
+	 * The account read's own state, from ONE classification (`accountRead` in
+	 * `use-radient-user-query`). The two facts this page renders from are: is the
+	 * read still out (`checking`, which must not present the user store's
+	 * placeholder as the reader's own), and did it come back without an answer
+	 * (any failure class, which must say so beside the fields it affects).
+	 *
+	 * The distinction from `isAuthenticated`, which is false in both of those and
+	 * in the ordinary signed-out state: only two of the three are things to tell
+	 * the reader about. The classes themselves are read from the backend's own
+	 * `code`, never from a status or a sentence, because the same 401 on this
+	 * route is either Radient refusing the account's credential (sign in again)
+	 * or the desktop plane refusing this app's bearer (restart or re-pair), and
+	 * the copy below has to know which.
+	 */
+	const accountReadChecking = accountRead === "checking";
+	const accountReadFailed = isRadientAccountFailure(accountRead);
+	/*
+	 * Whether the two profile fields are locked, decided by the ONE reading above
+	 * and stated once for both of them. See the comment at the fields themselves
+	 * for why it is these two classes and not "anything but signed out" (design
+	 * round 2, ruling on B2), and why a read that is still IN FLIGHT locks them
+	 * whatever the recorded class says (qa round 3, Q4: the never-settling read
+	 * records a class while the chain is still asking, so an edit made then can be
+	 * replaced by the SAME chain's next attempt).
+	 */
+	const profileFieldsAreReadOnly =
+		accountRead === "ready" || accountRead === "checking" || isAccountFetching;
 	// Well inside the transport's deadline for these reads (the op's own derived
 	// budget), so the explanation appears while
 	// the user is still deciding whether the app is stuck rather than after they
@@ -847,6 +937,104 @@ export const SettingsPage: FC = () => {
 								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
 							>
 								{/*
+								 * The status slot above the fields, in the app's one register for "this
+								 * is not authoritative yet": `text-meta text-ink-dim`, sentence
+								 * case, no spinner, no icon, no border (`branding.md` section 8).
+								 *
+								 * WHY THE FIELDS CANNOT JUST SIT THERE WHILE THE READ IS OUT. They
+								 * render the user store's own profile, whose default is the literal
+								 * name "User" and `user@example.com`, in the same styling as a real
+								 * one -- so an unanswered read presented placeholder data as the
+								 * reader's own, and (measured 2026-09-19) the in-flight frame was
+								 * byte-identical to the ordinary signed-out frame. "Checking" costs
+								 * the reader one line and removes the claim.
+								 *
+								 * Present from the first painted frame, not on a deadline: unlike
+								 * the config gate below, the ambiguity here is not "is it hung" but
+								 * "whose data is this", and that question is unanswered from the
+								 * first frame the fields are on screen.
+								 */}
+								{accountReadChecking && (
+									<p className="text-meta text-ink-dim">
+										Checking your Radient account…
+									</p>
+								)}
+								{/*
+								 * A failed account read, said out loud. Without this the two fields
+								 * below render the user store's default - the literal name "User"
+								 * and `user@example.com` - in the same styling as a real profile,
+								 * so a person whose Radient credential was rejected sees
+								 * placeholder data and no reason for it (measured 2026-09-19: the
+								 * sidebar read "User" beside a backend that held a Radient
+								 * credential).
+								 *
+								 * ONE ALERT FOR THIS FAULT, and it is this one: the lie is visible
+								 * here, so the explanation and its Retry live here. The Radient
+								 * account section says what the read's failure means for ITS own
+								 * state in one sentence rather than rendering a second warning
+								 * 3173px below (design round 1, D1: two warnings for one fault, with
+								 * two opposite sentences 16px apart, is what the reader was shown).
+								 *
+								 * AND IT IS UNREACHABLE WHILE AN ACCOUNT IS RESOLVED (review round
+								 * 2, B3): the hook's rule puts a resolved account ahead of a failed
+								 * refetch, because these fields are then the account's own name and
+								 * email and calling them placeholders was the lie this alert
+								 * exists to prevent.
+								 *
+								 * `warning` and a Retry, matching the config branch above and the
+								 * providers grid: one fault renders at one severity, and a failure
+								 * with a retry beside it has cost the user nothing. The raw
+								 * exception stays out of the sentence for the reason
+								 * `backend-error.ts` records - the sentence has to name something
+								 * the reader can do.
+								 *
+								 * NO CAUSE IS NAMED UNLESS THE BACKEND NAMED IT. "Radient refused
+								 * the sign-in" is a statement about the ACCOUNT's credential and
+								 * is only made for the class that carries
+								 * `radient_credential_refused`; every other failure - including a
+								 * bare 401/403, which also means this app's own bearer was
+								 * refused - keeps to what was observed and the retry.
+								 */}
+								{accountReadFailed && (
+									<Alert variant="warning">
+										<div className="flex items-center justify-between gap-3">
+											<span>
+												Your Radient account could not be read, so the name and
+												email below are placeholders rather than your account
+												details.
+												{accountRead === "refused"
+													? " Retry, or sign in to Radient again."
+													: " Retry."}
+											</span>
+											{/*
+											 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
+											 * `isAccountRefreshing` is the mutation's pending state, and that mutation
+											 * awaits its refetch - so the control says "Retrying" exactly while the
+											 * re-read this press began is running, and an ordinary fetch (the client's
+											 * own retries included) leaves it saying "Retry", enabled. The first version
+											 * read `isFetching`, which is true for those retries too: for a read that
+											 * never answers the control read "Retrying", disabled, with nobody having
+											 * pressed anything, beside copy that says "Retry."
+											 *
+											 * The alert STAYS MOUNTED while that re-read is out (the hook keeps the
+											 * failure across the fetch), and this control reports that the press did
+											 * something: without it the frame after a press is pixel-identical to the
+											 * frame before it - issue 89's own "I cannot tell whether this is working or
+											 * hung", one click downstream of its fix.
+											 */}
+											<Button
+												variant="secondary"
+												size="sm"
+												className="shrink-0"
+												onClick={() => refreshUser()}
+												disabled={isAccountRefreshing}
+											>
+												{isAccountRefreshing ? "Retrying" : "Retry"}
+											</Button>
+										</div>
+									</Alert>
+								)}
+								{/*
 								 * Neither field carries a glyph. The section heading is
 								 * already a person, and a second person glyph 60px under it
 								 * on "Display name" was the same picture twice for two
@@ -854,6 +1042,33 @@ export const SettingsPage: FC = () => {
 								 * kept alone: one indented label beside one flush label is a
 								 * ragged column, and "Display name" and "Email address" are
 								 * not words that need a picture to be told apart.
+								 */}
+								{/*
+								 * LOCKED ONLY WHERE AN OVERWRITE IS ACTUALLY POSSIBLE (design round 2,
+								 * ruling on B2). The old predicate asked "is this read unresolved?"
+								 * when the governing question is "could what I type be replaced
+								 * without my knowing?", and it answered yes in two states where
+								 * nothing can replace it:
+								 *
+								 *  - `ready`: the account owns these fields - the store-sync effect in
+								 *    `use-radient-auth.ts` writes the account's name and email over
+								 *    the store's - so an edit here is one the app would undo. LOCKED.
+								 *  - `checking`: a resolution may still land WITH an account, and the
+								 *    caption above says the app is asking. LOCKED, and bounded by the
+								 *    read's own deadline rather than indefinite.
+								 *  - the failure classes (`refused`, `unavailable`, `unknown`) and
+								 *    signed out: UNLOCKED. The read has ANSWERED without an account
+								 *    and the sync effect only fires on a resolution WITH one, so
+								 *    nothing in the app's own model can overwrite an edit made here;
+								 *    the old predicate instead stranded a reader who has no Radient
+								 *    account and a failing read on two permanently dead controls whose
+								 *    only release never arrives. The alert above explains the read.
+								 *
+								 * THE RESIDUAL, named rather than hidden: a later successful read (a
+								 * retry resuming, a remount, a focus refetch) can still replace a
+								 * profile typed here. Closing that properly is a dirty flag on the
+								 * store-sync effect - the edit wins until the reader clears it -
+								 * which is a follow-up, not a reason to keep an indefinite lock.
 								 */}
 								<div className="flex flex-col gap-4">
 									<EditableField
@@ -869,7 +1084,7 @@ export const SettingsPage: FC = () => {
 												setSavingField(null);
 											}
 										}}
-										readOnly={isAuthenticated}
+										readOnly={profileFieldsAreReadOnly}
 									/>
 									<EditableField
 										value={userStore.profile.email}
@@ -884,7 +1099,7 @@ export const SettingsPage: FC = () => {
 												setSavingField(null);
 											}
 										}}
-										readOnly={isAuthenticated}
+										readOnly={profileFieldsAreReadOnly}
 									/>
 								</div>
 							</SettingsSection>
