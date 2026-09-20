@@ -24,6 +24,7 @@ import type { UserInfoResult } from "@shared/api/radient/types";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 
 // Query keys for Radient user data
 export const radientUserKeys = {
@@ -133,9 +134,12 @@ function isSignedOut(error: unknown): boolean {
 	return classifyRadientAccountFailure(error) === "signed-out";
 }
 
+/** The account read's key, as the string this module's bookkeeping is held under. */
+const ACCOUNT_READ_KEY = JSON.stringify(radientUserKeys.user());
+
 /**
  * The class each account-read failure was last produced with, held until a read
- * succeeds.
+ * ANSWERS, or until the query it describes is removed.
  *
  * WHY THIS EXISTS AT ALL, measured against the built app on 2026-09-19 with one
  * refused (typed 401) read:
@@ -157,15 +161,90 @@ function isSignedOut(error: unknown): boolean {
  *    same rig run's 500ms frame).
  *
  * So the class is recorded where it is PRODUCED - the query function's own catch
- * - and every reader of the key gets it. `failureCount` is the cache's record
- * that an attempt failed: it is in every instance's snapshot, it survives the
- * retry that clears `error`, and only a SUCCESS resets it, so a failure is never
- * invisible to a surface and never differs between two of them.
+ * - and every reader of the key gets it.
+ *
+ * WHY IT IS NOT HELD BY `failureCount`, WHICH IS WHAT THE FIRST VERSION USED
+ * (review round 2, B1). `failureCount` reads like the cache's own record that an
+ * attempt failed - it is in every instance's snapshot and only a success resets
+ * it - but on the pinned React Query (5.73.3) a NEW fetch resets it in the same
+ * breath as it clears `error`: `Query.prototype.fetch` spreads `fetchState()`
+ * into the state, and for a query with no data that is
+ * `{fetchFailureCount: 0, error: null}` with `status` back to `pending`
+ * (`query-core/build/modern/query.js`, the `fetchState()` spread). Measured with
+ * one client and a mounted observer, one refused read and then the app's own
+ * press path (`invalidateQueries` via `refreshUser`):
+ *
+ *   after the failure  : {status: "error",   fetchFailureCount: 1, error: <401>}
+ *   while the re-read
+ *   is out             : {status: "pending", fetchFailureCount: 0, error: null}
+ *
+ * so a rule gated on `failureCount` says NOTHING for the whole first attempt -
+ * ~21s for the never-answering read, the transport's own per-op deadline - and
+ * the reader who pressed Retry is told the fault is gone by the act of asking
+ * again, which is design round 1's D4 over again. Nothing about starting a fetch
+ * touches this record: it is written by the query function's catch and cleared
+ * by its ANSWER, and by the query's removal.
+ *
+ * AND WHY IT IS A SUBSCRIBED STORE RATHER THAN A BARE MAP (qa round 3, Q2). A map
+ * is invisible to React, and React Query notifies an observer only when a prop
+ * THAT OBSERVER TRACKED changes - a failed attempt dispatches `failed`, which
+ * moves `fetchFailureCount`/`fetchFailureReason` and nothing a caller reads, so
+ * no surface re-rendered when the class was recorded. Measured consequence: for
+ * the whole first attempt after a timed-out read the settings page (which
+ * re-renders for reasons of its own) stated the failure while the rail kept
+ * "Checking account…", a cold remount fixed it and a props change did not - i.e.
+ * a stale render, not two readings. So the record is read through
+ * `useSyncExternalStore`: writing it, or clearing it, re-renders every reader of
+ * the key at once, which is the property "one reading, four surfaces" was always
+ * claiming.
  */
 const accountFailureKinds = new Map<string, RadientAccountReadFailure>();
 
-/** The account read's key, as the string this module's bookkeeping is held under. */
-const ACCOUNT_READ_KEY = JSON.stringify(radientUserKeys.user());
+/**
+ * Everyone rendering the recorded class, told when it changes.
+ *
+ * Deliberately no filtering by key: one key exists today, the set is a handful
+ * of components, and a listener that re-renders on another key's change is
+ * cheaper to accept than a second key-shaped cache to keep consistent.
+ */
+const accountFailureListeners = new Set<() => void>();
+
+function announceAccountFailureChange(): void {
+	for (const listener of accountFailureListeners) listener();
+}
+
+/** The recorded class for the key, as the value every reader renders from. */
+function recordedAccountFailure(): RadientAccountReadFailure | null {
+	return accountFailureKinds.get(ACCOUNT_READ_KEY) ?? null;
+}
+
+/** Subscribe to changes of the recorded class, for `useSyncExternalStore`. */
+function subscribeToAccountFailure(listener: () => void): () => void {
+	accountFailureListeners.add(listener);
+	return () => {
+		accountFailureListeners.delete(listener);
+	};
+}
+
+/** Record the class this attempt failed with, and tell every surface. */
+function recordAccountReadFailure(kind: RadientAccountReadFailure): void {
+	if (recordedAccountFailure() === kind) return;
+	accountFailureKinds.set(ACCOUNT_READ_KEY, kind);
+	announceAccountFailureChange();
+}
+
+/**
+ * Drop the recorded class, because the read it describes has been answered (or
+ * the query holding it has been removed).
+ *
+ * One function rather than four `delete`s so the rule has one home: a recorded
+ * failure may only be forgotten by an ANSWER, never by the start of the next
+ * attempt - which is the defect this whole map exists to avoid (`failureCount`).
+ */
+function forgetAccountReadFailure(): void {
+	if (!accountFailureKinds.delete(ACCOUNT_READ_KEY)) return;
+	announceAccountFailureChange();
+}
 
 /**
  * Hook for the current Radient account, resolved by the backend.
@@ -182,22 +261,47 @@ export const useRadientUserQuery = () => {
 		queryKey: radientUserKeys.user(),
 		queryFn: async () => {
 			try {
-				return await radientProxy<UserInfoResult>({ operation: "account" });
+				const account = await radientProxy<UserInfoResult>({
+					operation: "account",
+				});
+				/*
+				 * An ANSWER is the only thing that clears a recorded failure - never the
+				 * start of the next attempt, which is what React Query resets
+				 * (`failureCount` and `error`) and what the press beneath the alert
+				 * used to erase the fault with. See `accountFailureKinds`.
+				 */
+				forgetAccountReadFailure();
+				return account;
 			} catch (error) {
+				if (isSignedOut(error)) {
+					// No stored credential is an ANSWER rather than a fault, so it
+					// clears the record instead of being kept as one: nothing about a
+					// previous episode may survive a re-classification of this key.
+					forgetAccountReadFailure();
+					return null;
+				}
 				// Recorded HERE rather than from a render, so the class is known for
 				// every reader of this key from the first failure on - see
 				// `accountFailureKinds`.
-				accountFailureKinds.set(
-					ACCOUNT_READ_KEY,
-					classifyRadientAccountFailure(error),
-				);
-				if (isSignedOut(error)) return null;
+				recordAccountReadFailure(classifyRadientAccountFailure(error));
 				throw error;
 			}
 		},
 		enabled,
 		staleTime: 30 * 1000,
 		refetchOnWindowFocus: true,
+		/*
+		 * THREE attempts, and this is the only thing that decides that number. What
+		 * the backend sees as a read "cadence" is this policy plus React Query's own
+		 * backoff, never a polling interval: a refused read is 3 attempts in ~3.0s,
+		 * and a read that never answers is 3 attempts ~21000ms and ~22000ms apart and
+		 * then silence (measured at the backend by qa round 3; those gaps are the
+		 * TRANSPORT's `DESKTOP_CONTROL_DEADLINE_MS` 20s plus the 1s/2s backoff). The
+		 * renderer's own bound is 5s longer - `desktopRequestTimeoutMs` = 20s + the
+		 * `DESKTOP_DEADLINE_MARGIN_MS` 5s, measured at 25.06s - and it is the one that
+		 * fires when main never replies at all, which is a different anchor from a
+		 * stalled backend read.
+		 */
 		retry: (failureCount, error) => !isSignedOut(error) && failureCount < 2,
 	});
 
@@ -213,19 +317,45 @@ export const useRadientUserQuery = () => {
 	 * be reported as an answer -- presenting the user store's placeholder name as
 	 * the reader's own was the defect the settings surface reported.
 	 *
-	 * `error` first (the class of the failure in hand), then the cache's own
-	 * `failureCount` with the class recorded at the failure's source, so a retry
-	 * window keeps the class it started from rather than dropping to `unknown`.
+	 * A RESOLVED ACCOUNT OUTRANKS A FAILURE (review round 2, B3). React Query keeps
+	 * `data` across a failed refetch -- measured: `{data: {...}, error: "Radient
+	 * could not complete this operation", status: "error"}` -- and
+	 * `refetchOnWindowFocus` with `staleTime: 30s` puts that state in front of any
+	 * signed-in session whose credential expires after a first success. The
+	 * previous rule let the failure win there, so ONE render read "the name and
+	 * email below are placeholders rather than your account details" while the
+	 * account section said "Connected" and the rail showed the account's real name:
+	 * the D1 defect (two statements about one fault), except this time the
+	 * placeholder claim was also false, because a resolved account's name and email
+	 * ARE the account's. So the failure is the reading only while there is no
+	 * account to read; with one resolved, every surface states what the account is.
+	 *
+	 * `error` first (the class of the failure in hand), then the class RECORDED at
+	 * the failure's source, which is what keeps the failure on screen while the
+	 * next attempt is in flight. A key with nothing recorded reads as no failure
+	 * rather than as `unknown`: `unknown` is a class the backend's own answers
+	 * produce, never a default for silence.
+	 *
+	 * The recorded class is read through `useSyncExternalStore`, so writing it
+	 * re-renders this hook in every surface that renders it (see
+	 * `accountFailureKinds`); the third argument is the value a server render sees,
+	 * which is the same module state rather than a second reading of it.
 	 */
-	const failureKind = userQuery.error
-		? classifyRadientAccountFailure(userQuery.error)
-		: userQuery.failureCount > 0
-			? (accountFailureKinds.get(ACCOUNT_READ_KEY) ?? "unknown")
-			: null;
+	const recordedFailure = useSyncExternalStore(
+		subscribeToAccountFailure,
+		recordedAccountFailure,
+		recordedAccountFailure,
+	);
+	const hasResolvedAccount = !!userQuery.data;
+	const failureKind = hasResolvedAccount
+		? null
+		: userQuery.error
+			? classifyRadientAccountFailure(userQuery.error)
+			: recordedFailure;
 	const accountRead: RadientAccountRead =
 		failureKind && failureKind !== "signed-out"
 			? failureKind
-			: userQuery.data
+			: hasResolvedAccount
 				? "ready"
 				: userQuery.isLoading
 					? "checking"
@@ -253,6 +383,12 @@ export const useRadientUserQuery = () => {
 		},
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: radientUserKeys.all });
+			/*
+			 * The recorded failure goes with the query it describes. Without this a
+			 * fault from before the sign-out would outlive the query it was recorded
+			 * against, and the next silent mount would render it as current.
+			 */
+			forgetAccountReadFailure();
 			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
 			showSuccessToast("Successfully signed out");
 			setIsSigningOut(false);
@@ -267,7 +403,18 @@ export const useRadientUserQuery = () => {
 
 	const refreshUserMutation = useMutation({
 		mutationFn: async () => {
-			queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+			/*
+			 * AWAITED, so the mutation's own pending state means "the re-read this press
+			 * began is still running" rather than "the invalidation was requested".
+			 * That is what a control reporting a press has to say (qa round 3, Q1: with
+			 * the unawaited version the page reported `isFetching`, which is true for
+			 * the retries React Query runs on its own, so the control read "Retrying"
+			 * while nobody had pressed anything). `invalidateQueries` resolves when the
+			 * refetch it starts settles - including that refetch's own retry chain -
+			 * and rejects nothing, so a read that never answers keeps this pending for
+			 * as long as the chain runs.
+			 */
+			await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 			return true;
 		},
 	});
@@ -285,6 +432,13 @@ export const useRadientUserQuery = () => {
 		 * (issue 89) and this mirrors its fix.
 		 */
 		isFetching: userQuery.isFetching,
+		/**
+		 * Whether the RE-READ A PRESS ASKED FOR is still running, which is the only
+		 * thing a control reporting a press may claim: `isFetching` is also true for
+		 * the retries React Query runs on its own, so a surface that read it said
+		 * "Retrying" beside a read nobody had asked to retry (qa round 3, Q1).
+		 */
+		isRefreshing: refreshUserMutation.isPending,
 		/** The classification every surface renders from; see `RadientAccountRead`. */
 		accountRead,
 		error: userQuery.error,
