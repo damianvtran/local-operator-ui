@@ -919,19 +919,22 @@ included — and a sweep of many states does not run there either.**
 That is narrower than it first sounds, because their browser is a sanctioned
 instrument in this repository and this rule does not replace it:
 `docs/agent-driver.md` sends you to the `browser` tool "when the real browser is what
-is under test", and the committed frame sets behind
-`docs/evidence/draft-splash-browser/`, `chat-image-expand/` and `chat-search/` were
-produced that way, with a re-capture recorded as owed in `manifest.json` precisely
-because a scripted headless Chromium is not the instrument there. What none of those
-passes does is leave a page looping in their browser while they work, or turn a story
-sweep into N unattended navigations of it.
+is under test"; `docs/evidence/draft-splash-browser/` was shot with it, `chat-search/`
+was re-shot through it, and `chat-image-expand/`'s README calls its browser pass "one
+half of the evidence" beside the rig that produced the other. The `manifest.json`
+entries that record a re-capture as OWED — `chat-run-panel/mcp-grant-confirm` and the
+`mcp-key-*` set — record it because a scripted headless Chromium is not the instrument
+there. What none of those passes does is leave a page looping in their browser while
+they work, or turn a story sweep into N unattended navigations of it.
 
 Measured on 2026-09-19, and the reason the sweep half is a rule. Two Storybooks were
 being looked at through this app's own Browser pane while the app was frontmost, each
 loaded as a **bare `…/iframe.html?id=<story>&viewMode=story` top-level page — the
-form that carries no server-channel token** (a dev Storybook generates that token per
-run and validates it on `/storybook-server-channel`; it is not a flag a caller can
-pass or drop). Every reload of those pages was paired in the server's log with
+form that carries no server-channel token** (Storybook 9 mints that token per run and
+validates it on `/storybook-server-channel`; it is not a flag a caller can pass or
+drop. This repository pins 8.6.x, where that channel is ungated, so the actionable
+half below is the URL form, which holds either way). Every reload of those pages was
+paired in the server's log with
 `Rejecting WebSocket connection: Error: Invalid websocket token`, and the pane
 navigated continuously: **773 navigations on one port, 364 on another, 76 in a single
 minute at the peak, for half an hour.** The operator reported being unable to type
@@ -958,10 +961,13 @@ What follows for a run:
   `scripts/click-proof.mjs` spawn their own private `--headless=new` Chrome with a
   scratch `--user-data-dir`, argv routed through `scripts/chrome-keychain.mjs`;
   `scripts/renderer-driver.mjs` launches no Chrome at all — it boots the built app in
-  `--window-mode=headless` and photographs it with `capturePage()`. The harnesses under
-  `docs/evidence/<surface>/harness/` are a mixture of both shapes and their READMEs say
-  which one produced their frames. Spawn the binary directly: **do not hand the URL to
-  `open`**, which delivers it to whatever Chrome is already running — the operator's.
+  `--window-mode=headless` and photographs it with `capturePage()`. Those are not the
+  only instruments in `docs/evidence/`: each set's README —
+  `docs/evidence/<surface>/README.md`, one level above its `harness/` tree — says which
+  one produced its frames, and `composer-status-clear/` records a third (the operator's
+  own browser for the story states, its own Vite-served harness for the interaction).
+  Spawn the binary directly: **do not hand the URL to `open`**, which delivers it to
+  whatever Chrome is already running — the operator's.
 - **What decides is the cadence and who is watching, not whose page it is.** A
   watched, deliberately-stepped pass in their browser is what the committed sets
   above did — `chat-image-expand`'s was on a running Storybook — and that stays
