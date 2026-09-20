@@ -121,8 +121,14 @@ because it "cost every title its 28px for a control used rarely", with the slot
 
 | panel | title, pair | title, shared control | control boxes read |
 | --- | --- | --- | --- |
-| **280 (default)** | **180 px** | 168 px | `pin 24x24, archive 24x24` |
+| **280 (default)** | **180 px** | 168 px — **240 only** | `pin 24x24, archive 24x24` |
 | **240 (clamp min)** | 140 px (shed) | **168 px** | `pin 0x0, archive 0x0, shared 24x24` |
+
+The shared control's `168 px` is measured at **240**, not at 280, and the cell says
+so rather than leaving a reader to subtract it from the wrong panel width (agent
+review round 2, N2): nothing is drawn in that column at 280, where the pair holds.
+The `140 px` in the 240 row is the arithmetic of the pair at that width — the pair
+is shed there, which is the row's whole point.
 
 so `title = panel − 16 (the panel's p-2) − 28 × controls − 28`, where the fixed 28
 is the row's own `px-1` (8) + its LEADING status slot (`ChatSessionStatus`,
