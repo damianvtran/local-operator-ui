@@ -7567,7 +7567,66 @@ async function sceneSidebarSplit(cdp, handle) {
 	);
 	await captureSettled(cdp, "split-restored-dark");
 
-	// --- 7. the keyboard path: focus, Home, and the write it makes ----------
+	// --- 7. U1's SECOND LIMB, asserted: a press that travels does not act ----
+	/*
+	 * The click-cancel is half of what U1 asked for and was asserted nowhere:
+	 * `CONTROL_PRESS_SLOP_PX` appeared once in the tree, at its definition, so a
+	 * regression that deleted the whole mechanism (leaving only the trailing-end
+	 * placement) would have kept every committed check green while a drag starting
+	 * on the plate collapsed a region again (agent review round 2, m-3). The
+	 * gesture below is the one a user makes when they reach for the divider and
+	 * land on a control: press, travel 20px, release.
+	 */
+	const travelFrom = await splitBox(cdp, '[data-sidebar-hide="chats"]');
+	require("the travel probe has a control to press", travelFrom !==
+		null, "no [data-sidebar-hide=chats] control to press");
+	const regionsBeforeTravel = (await splitPreferences(cdp)).state
+		?.chatSidebarRegions;
+	await movePointer(cdp, travelFrom.x, travelFrom.y);
+	await wait(320);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: travelFrom.x,
+		y: travelFrom.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	for (const travelled of [4, 8, 12, 16, 20]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: travelFrom.x + travelled,
+			y: travelFrom.y + travelled,
+			button: "left",
+			buttons: 1,
+		});
+		await wait(20);
+	}
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: travelFrom.x + 20,
+		y: travelFrom.y + 20,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await wait(320);
+	const afterTravel = (await splitPreferences(cdp)).state?.chatSidebarRegions;
+	check(
+		"a press that travels 20px off a boundary control does not act",
+		afterTravel === regionsBeforeTravel,
+		`regions ${regionsBeforeTravel} -> ${afterTravel} (the click-cancel is what makes this safe)`,
+	);
+	const regionsDrawn = await cdp.evaluate(
+		`document.querySelectorAll("[data-sidebar-region]").length`,
+	);
+	check(
+		"and both regions are still drawn",
+		regionsDrawn === 2,
+		`regions drawn: ${regionsDrawn}`,
+	);
+
+	// --- 8. the keyboard path: focus, Home, and the write it makes ----------
 	await cdp.evaluate(
 		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
 	);
@@ -7584,7 +7643,7 @@ async function sceneSidebarSplit(cdp, handle) {
 		String(afterHome.state?.chatSidebarListHeight),
 	);
 
-	// --- 8. the swap, and the two scroll positions it must not lose ---------
+	// --- 9. the swap, and the two scroll positions it must not lose ---------
 	/*
 	 * TWO readings, because the swap can lose two different things and only one of
 	 * them is always measurable.
@@ -7710,11 +7769,17 @@ async function sceneSidebarSplit(cdp, handle) {
 		chatSidebarOrder: "entities-first",
 	});
 
-	// --- 9. the panel at its width clamp ------------------------------------
+	// --- 10. the panel at its width clamp -----------------------------------
 	await setSplitPreferences(cdp, {
 		...narrow,
 		chatSidebarRegions: "both",
 		chatSidebarOrder: "entities-first",
+		/*
+		 * AUTO, not the extreme the keyboard step above left: this pair's claim is
+		 * about WIDTH and the room the plate has at it, and a state inherited from a
+		 * `Home` press is neither (design round 2, D9).
+		 */
+		chatSidebarListHeight: null,
 	});
 	await parkPointer(cdp);
 	await captureSettled(cdp, "split-rest-240-dark");
@@ -7725,11 +7790,23 @@ async function sceneSidebarSplit(cdp, handle) {
 		await captureSettled(cdp, "split-reveal-240-dark");
 	}
 
-	// --- 10. the second brand palette ---------------------------------------
+	// --- 11. the second brand palette ---------------------------------------
 	await setSplitPreferences(cdp, {
 		...light,
 		chatSidebarRegions: "both",
 		chatSidebarOrder: "entities-first",
+		/*
+		 * AUTO, so this pair is the RESTING state its captions claim.
+		 *
+		 * Taken as the runs before it left the split, the light frames photographed
+		 * the clamped top-of-range state the drag and the `Home` press had just
+		 * written - a region at its 72px floor while the captions said "the resting
+		 * state in the second brand palette" (design round 2, D9). The state is
+		 * reset rather than the caption weakened, because the palette half of D1
+		 * needs the two palettes photographed in the SAME state to be comparable at
+		 * all.
+		 */
+		chatSidebarListHeight: null,
 	});
 	await parkPointer(cdp);
 	await captureSettled(cdp, "split-rest-360-light");
@@ -7740,7 +7817,7 @@ async function sceneSidebarSplit(cdp, handle) {
 		await captureSettled(cdp, "split-reveal-settled-light");
 	}
 
-	// --- 11. the restart: a stored height and a collapse that SURVIVE -------
+	// --- 12. the restart: a stored height and a collapse that SURVIVE -------
 	await setSplitPreferences(cdp, {
 		...wide,
 		chatSidebarRegions: "both",
@@ -12031,6 +12108,37 @@ async function main() {
 			: "nothing listening",
 	);
 
+	/*
+	 * The scenes' own preconditions, checked BEFORE anything is launched.
+	 *
+	 * They used to sit inside the run loop, after the app had booted: a
+	 * `--scene sidebar-split` with no `--backend` started a real Electron, logged
+	 * its startup, and only then refused - a refusal that fails closed (the throw
+	 * reaches the reaping path and the app is killed by exact pid) but is not free
+	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
+	 * the same argument holds for every scene that names an instrument it needs.
+	 */
+	if (SCENE === "sidebar-split" && BACKEND === null) {
+		throw new Error(
+			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
+		);
+	}
+	if (SCENE === "pins-scroll" && BACKEND === null) {
+		throw new Error(
+			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
+		);
+	}
+	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
+		throw new Error(
+			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
+		);
+	}
+	if (SCENE === "pins" && (TUI_PYTHON === null) !== (TUI_CONFIG === null)) {
+		throw new Error(
+			"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
+		);
+	}
+
 	if (GATE_CHECK) {
 		say(
 			"\n[gate-check] four real boots: three inert (nothing set, a cwd .env asking, and an explicit off) and one armed\n",
@@ -12143,29 +12251,6 @@ async function main() {
 				note(
 					"profile seeded",
 					"onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one",
-				);
-			}
-			if (SCENE === "sidebar-split" && BACKEND === null) {
-				throw new Error(
-					"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
-				);
-			}
-			if (SCENE === "pins-scroll" && BACKEND === null) {
-				throw new Error(
-					"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
-				);
-			}
-			if (
-				SCENE === "pins-search" &&
-				(TUI_PYTHON === null || TUI_CONFIG === null)
-			) {
-				throw new Error(
-					"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
-				);
-			}
-			if (SCENE === "pins" && (TUI_PYTHON === null) !== (TUI_CONFIG === null)) {
-				throw new Error(
-					"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
 				);
 			}
 			if (SCENE === "states") await sceneStates(cdp);
