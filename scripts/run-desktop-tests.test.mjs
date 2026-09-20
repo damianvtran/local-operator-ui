@@ -147,7 +147,14 @@ test("a scope that selects nothing exits 0 with the reason as its output", (t) =
 			},
 		}),
 	);
-	writeFileSync(join(repo, "scripts", "quiet.test.mjs"), "// nothing\n");
+	writeFileSync(
+		join(repo, "scripts", "quiet.test.mjs"),
+		'import { test } from "node:test";\ntest("quiet", () => {});\n',
+	);
+	writeFileSync(
+		join(repo, "electron.vite.config.js"),
+		'export default { resolve: { alias: { "@shared": resolve("src/shared") } } };\n',
+	);
 	writeFileSync(join(repo, "README.md"), "one\n");
 	for (const args of [
 		["init", "-q"],
@@ -169,6 +176,45 @@ test("a scope that selects nothing exits 0 with the reason as its output", (t) =
 		stdout,
 		/no files to run; nothing in the suite can observe this diff/,
 	);
+});
+
+test("a plan root without the vite alias table fails closed, not over", (t) => {
+	/*
+	 * Found on CI (this repository's Desktop Tests job) rather than by reading the
+	 * diff: a fixture root with a `package.json` and nothing else made `aliasTable`
+	 * throw an uncaught ENOENT while the plan was being computed, so the runner
+	 * exited 1 with a stack instead of narrowing or refusing. A root the module
+	 * cannot reason about is a whole-suite decision, and it has to say so.
+	 */
+	const repo = mkdtempSync(join(tmpdir(), "desktop-runner-noalias-"));
+	t.after(() => rmSync(repo, { recursive: true, force: true }));
+	mkdirSync(join(repo, "scripts"), { recursive: true });
+	writeFileSync(
+		join(repo, "package.json"),
+		JSON.stringify({
+			scripts: {
+				"test:desktop":
+					"node scripts/run-desktop-tests.mjs scripts/quiet.test.mjs",
+			},
+		}),
+	);
+	writeFileSync(
+		join(repo, "scripts", "quiet.test.mjs"),
+		'import { test } from "node:test";\ntest("quiet", () => {});\n',
+	);
+	for (const args of [
+		["init", "-q"],
+		["add", "-A"],
+		["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "one"],
+	]) {
+		const git = spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+		assert.equal(git.status, 0, git.stderr);
+	}
+	writeFileSync(join(repo, "scripts", "quiet.test.mjs"), "// changed\n");
+	const { status, stdout } = runRunner(["--scope=HEAD"], {}, repo);
+	assert.match(stdout, /desktop scope \[whole\]/, stdout);
+	assert.match(stdout, /vite alias table could not be read/, stdout);
+	assert.equal(status, 0, stdout);
 });
 
 test("a suite list that cannot be read refuses instead of running a subset", (t) => {
