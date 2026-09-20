@@ -72,6 +72,14 @@ export const RUNTIME_DEPENDENCIES = [
 		name: "zod",
 		why: "src/main/backend/config.ts, src/main/desktop-media.ts, src/shared/desktop-contract.ts",
 	},
+	{
+		name: "@xterm/headless",
+		why: "src/main/console/emulator.ts — the terminal of record (design 5.4): read from main with no view present, which is R7",
+	},
+	{
+		name: "node-pty",
+		why: "src/main/console/pty.ts — the pty itself (design 5.3). A native module, so it must NOT be bundled: it is externalised and shipped under app.asar.unpacked, with the prebuilds and the exec bit handled by scripts/console-pack.mjs",
+	},
 ];
 
 /**

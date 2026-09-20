@@ -146,6 +146,82 @@ declare global {
 				) => () => void;
 			};
 			/**
+			 * The console feature's controls, and its one push channel.
+			 *
+			 * The control plane is request/response and the data plane is a
+			 * subscription: `subscribe` answers with the bytes to replay first and the
+			 * offset the live frames resume from, so the replay-then-stream step cannot
+			 * race. Main owns the grid, so `setContentRect` reports measurements and
+			 * never applies a size.
+			 */
+			console: {
+				state: (sessionId?: string | null) => Promise<unknown>;
+				/** A surface the USER asked for. Main sets the origin to `user`. */
+				createSurface: (request: {
+					sessionId: string;
+					cwd?: string;
+					command?: string;
+					cols?: number;
+					rows?: number;
+				}) => Promise<unknown>;
+				openPane: (surface: string) => Promise<unknown>;
+				closePane: () => Promise<unknown>;
+				selectSurface: (surface: string) => Promise<unknown>;
+				input: (surface: string, text: string) => Promise<unknown>;
+				keys: (surface: string, keys: string[]) => Promise<unknown>;
+				setContentRect: (
+					surface: string,
+					report: {
+						contentRect: {
+							x: number;
+							y: number;
+							width: number;
+							height: number;
+						};
+						cellWidth: number;
+						cellHeight: number;
+						visible: boolean;
+						theme?: string | null;
+					},
+				) => Promise<unknown>;
+				setSecure: (surface: string, on: boolean) => Promise<unknown>;
+				subscribe: (
+					surface: string,
+					fromByte: number,
+				) => Promise<{
+					surface: string;
+					replay_base64: string;
+					from_byte: number;
+					to_byte: number;
+					truncated: boolean;
+				}>;
+				unsubscribe: (surface: string) => Promise<unknown>;
+				/**
+				 * Main broadcast a state change — today only a grid it decided (§8.2 step
+				 * 2(c)). No payload: the mirror applies a grid only as the value main
+				 * returned, so a listener re-reads `state()` rather than trusting a number
+				 * pushed to it.
+				 */
+				onStateChanged: (callback: () => void) => () => void;
+				onOutput: (
+					callback: (payload: {
+						surface: string;
+						seq: number;
+						bytes_base64: string;
+					}) => void,
+				) => () => void;
+				onExit: (
+					callback: (payload: { surface: string; exit_code: number }) => void,
+				) => () => void;
+				onReveal: (
+					callback: (payload: {
+						surface: string;
+						session_id: string;
+						mode: "none" | "session" | "open";
+					}) => void,
+				) => () => void;
+			};
+			/**
 			 * The server-status signal, from the MAIN process.
 			 *
 			 * Not a health probe made by the renderer: main sends no Origin and holds
