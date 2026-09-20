@@ -2988,8 +2988,20 @@ export const STORIES = [
 	 * frame of it would be a picture of ground.
 	 */
 	/*
-	 * The heights the content actually draws: 741x718 for `resting-default`,
-	 * 741x661 for `dragged-split`.
+	 * ABOVE each story's natural content height, deliberately: 741x760 for
+	 * `resting-default`, 741x680 for `dragged-split`.
+	 *
+	 * This is a floor rather than a measurement, and that is the fix. The content
+	 * height is SELF-REFERENTIAL here - the entity region is a fraction of the
+	 * column, so a taller viewport draws taller content - which is why chasing the
+	 * drawn height never converged: measured across three passes it went 691 ->
+	 * 708 -> 718 -> 723, each pass's declaration landing just under the next
+	 * pass's content and the harness resizing under the caption again. A
+	 * declaration ABOVE the content inverts that: `max(scrollHeight, declared)` is
+	 * the declaration, the frame IS the declared height, and the readout - which
+	 * this round re-asserts after the layout settles - describes the viewport the
+	 * shutter opens on. So the caption cannot belong to a different viewport, which
+	 * is the whole of M-1/D4.
 	 *
 	 * The declaration is the viewport the harness resizes the content height to
 	 * (`max(scrollHeight, body, declared)`), and that resize lands AFTER the
@@ -3004,8 +3016,8 @@ export const STORIES = [
 	 * its declaration before this round. Declaring the content's own height makes
 	 * the resize a no-op and the caption true by construction.
 	 */
-	["chat-sidebar-sections--resting-default", 741, 718],
-	["chat-sidebar-sections--dragged-split", 741, 661],
+	["chat-sidebar-sections--resting-default", 741, 760],
+	["chat-sidebar-sections--dragged-split", 741, 680],
 	["chat-sidebar-sections--entities-only", 741, 420],
 	["chat-sidebar-sections--chats-only", 741, 480],
 	/*
