@@ -1,9 +1,11 @@
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
+import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
+import * as uploadActions from "./actions/upload";
 import type { ConsentDecision } from "./approvals";
 import { BrowserHostError } from "./errors";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
@@ -44,6 +46,54 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"type",
 	"scroll",
 	"logs",
+	// `download` names a control on the CURRENT document (the link or button that
+	// starts the file) and `upload` names a file input on it, so both are authorized
+	// against that document on entry and again on the result. BOTH are in the
+	// NAVIGATING_ACTIONS set below — each reaches its own control by driving the page,
+	// and an auto-submitting form turns an attach into a navigation — and NEITHER is
+	// in NAVIGATION_ACTIONS (the per-hop gate stays off for both); the set comments
+	// say why, and the pair is what replaced the single post-hoc check the round-1
+	// review refused (M2).
+	"download",
+	"upload",
+]);
+
+/**
+ * The actions whose own work may legitimately change the document the tab is
+ * showing, and so the only ones whose epoch change is ADOPTED instead of read as a
+ * race with a navigation they did not cause.
+ *
+ * `click` follows a link or submits a form and `type` can submit one; `download`
+ * reaches its click by calling the action directly (`actions/download.ts`), so it
+ * can land the tab somewhere new exactly as `click` can. Leaving it out was a real
+ * defect (review round 1, M2): its epoch change fell into the non-navigating
+ * branch, which refuses the answer with `reason: "changed"` — so the call was
+ * refused with NO ORIGIN NAMED and the tab was left sitting on the document it
+ * reached, fetched with the user's cookies.
+ *
+ * `upload` IS THE SAME CASE ON THE SIBLING VERB, and it is the round-2 review's
+ * R2-1: attaching files fires the input's `change` handler, and a form that
+ * submits itself from that handler — the standard "pick a file and it uploads"
+ * shape, and the shape PR A's QA measured failing with Chromium's raw `-32000` —
+ * navigates in the same tick. It was left in `DOCUMENT_SCOPED` alone, so an
+ * upload that navigated got `reason: "changed"`, no origin named, and no restore,
+ * which is exactly the control round 1 refused for `download` ("a control that
+ * protects the model's report and not the user's browser"). Membership here is
+ * what makes the reached document judged by `documentAllowed` instead: an
+ * APPROVED landing passes and an UNAPPROVED one refuses WITH the origin named and
+ * the landing reverted.
+ *
+ * NEITHER IS IN `NAVIGATION_ACTIONS` BELOW, and the reason is the same for both:
+ * the per-hop gate decides DOCUMENT-stage requests, and it would refuse the
+ * cross-origin URL a download is routinely fetched from (a signed S3 or CDN link)
+ * and fail the page's own subresource loads under an upload for no consent gain.
+ * See that set's own comment.
+ */
+const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
+	"click",
+	"type",
+	"download",
+	"upload",
 ]);
 
 /**
@@ -53,14 +103,34 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
  * `open` and `goto` arm it from the navigation itself (`navigateView`), so what is
  * left is the pair that navigates because a PAGE decides to: a click follows a link
  * or submits a form, a type can submit one. Arming `Fetch.enable` around the rest
- * is not free and buys nothing: they cannot change which document is current, so
- * there is no agent-initiated hop for the gate to decide, while its Document-stage
- * interception also fails the PAGE's own subresource and third-party-iframe loads
- * with `BlockedByClient` — a side effect on the page the user is watching that the
- * page can observe. Their protection is the entry and result authorization in
- * `authorizedPerform` — where the result is authorized against the document it
- * actually came from — together with this per-hop gate, which is what refuses a
- * page-initiated escape before it is fetched (review round 1, R5).
+ * is not free and buys nothing: the rest cannot change which document is current,
+ * so there is no agent-initiated hop for the gate to decide, while its
+ * Document-stage interception also fails the PAGE's own subresource and
+ * third-party-iframe loads with `BlockedByClient` — a side effect on the page the
+ * user is watching that the page can observe. Their protection is the entry and
+ * result authorization in `authorizedPerform` — where the result is authorized
+ * against the document it actually came from — together with this per-hop gate,
+ * which is what refuses a page-initiated escape before it is fetched (review round
+ * 1, R5).
+ *
+ * WHY `download` IS DELIBERATELY THE ONE NAVIGATING ACTION OUTSIDE THIS SET, which
+ * is a decision rather than an omission (review round 1, M2 weighed it and agreed
+ * with the premise): the gate decides DOCUMENT-stage requests, and a download is
+ * routinely a cross-origin URL the tab was never approved for — a signed S3 or CDN
+ * link — so arming it around the whole capture (which waits up to 600 s) would
+ * refuse exactly the downloads this feature exists to make possible, and would
+ * hold `Fetch.enable` over the page for the length of a download. WHAT REPLACES IT
+ * is the pair in `authorizedPerform`: the epoch is adopted so the document the
+ * result came from is authorized and the reached origin is NAMED in the refusal,
+ * and a refused landing is REVERTED to the document the call entered on rather
+ * than left on screen.
+ *
+ * `upload` IS THE SECOND SUCH ACTION, on the same reasoning (review round 2,
+ * R2-1): its own work does not fetch a document — it hands the browser process
+ * local paths — and the navigation an auto-submitting form performs is the PAGE's,
+ * which is judged by the same pair. Arming `Fetch.enable` around an attach would
+ * intercept that form's own POST and its subresources for no consent gain, which
+ * is the side effect this set exists to avoid.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
 
@@ -76,6 +146,13 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"logs",
 	"close",
 	"retitle",
+	// The two file verbs take the tab's lane for the same reason every other
+	// tab-addressed action does, and for one more: `download` ARMS the tab for the
+	// duration of the call, and two concurrent arms on one tab would be two captures
+	// writing into two harness directories with no way to tell which file came from
+	// which call.
+	"download",
+	"upload",
 ]);
 
 /**
@@ -207,6 +284,10 @@ export interface BrowserHostOptions {
 	cdp: BrowserActionContext["cdp"];
 	approvals: BrowserActionContext["approvals"];
 	ownership: BrowserActionContext["ownership"];
+	/** The per-tab download arm (§8). Injected rather than built here because the
+	 * `will-download` handler that feeds it is installed on the SESSION, which this
+	 * module deliberately does not own. */
+	downloads: BrowserActionContext["downloads"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -221,6 +302,7 @@ export class BrowserHost implements BrowserActionContext {
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
+	readonly downloads: BrowserActionContext["downloads"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
@@ -247,6 +329,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
+		this.downloads = options.downloads;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		this.facts = options.facts;
@@ -315,10 +398,15 @@ export class BrowserHost implements BrowserActionContext {
 		// being gated `NAVIGATION_ACTIONS`, fails before the hop is fetched rather
 		// than after it arrives.
 		let authorizedOn = record.documentEpoch;
+		// The URL this call ENTERED on, which is the one entry authorization just
+		// approved. Kept because a refused landing has to be UNDONE (review round 1,
+		// M2): refusing the answer while leaving the tab on the page it reached is a
+		// control that protects the model's report and not the user's browser.
+		const entryUrl = record.view.webContents.getURL();
 		const assertDocument = (): URL => {
 			const url = new URL(record.view.webContents.getURL() || "about:blank");
 			if (record.documentEpoch !== authorizedOn) {
-				if (!NAVIGATION_ACTIONS.has(method)) {
+				if (!NAVIGATING_ACTIONS.has(method)) {
 					// The document this action is authorized against is gone, so nothing it
 					// returns may be described as coming from it. Refused with the code the
 					// session already branches on, and a `reason` that names what happened
@@ -343,6 +431,18 @@ export class BrowserHost implements BrowserActionContext {
 				!this.approvals.documentAllowed(token, url, requester, authorizedOn)
 			) {
 				this.registry.bumpEpoch(record.tabId);
+				// A REFUSED LANDING IS PUT BACK, not merely refused (review round 1, M2).
+				// `download` and `upload` are the cases this exists for: their own work is
+				// not gated pre-fetch (see `NAVIGATION_ACTIONS`), so without this the page
+				// the click or the form's own submit reached stays rendered in the view the
+				// user is watching — cookies sent, body fetched — and the only thing that
+				// refused was the model's sentence. A `click`/`type` hop is blocked by the
+				// gate before it is fetched, so for those this is unreachable-except-by-race
+				// and harmless; it is written once, as the rule for an action that can move
+				// the tab.
+				if (NAVIGATING_ACTIONS.has(method) && url.href !== entryUrl) {
+					this.restoreApprovedDocument(record, entryUrl);
+				}
 				this.approvals.refuseDocument(url);
 			}
 			return url;
@@ -373,6 +473,23 @@ export class BrowserHost implements BrowserActionContext {
 				),
 			operation,
 		);
+	}
+
+	/** Put a tab back on the document a call entered on, after that call's work
+	 * landed it somewhere it may not hold.
+	 *
+	 * The restore is a plain load of an already-authorized URL, and it is deliberately
+	 * NOT awaited: the caller is on its way to a thrown refusal, and the answer the
+	 * model reads is about the refusal rather than about the repaint. A view that died
+	 * under the call needs no restore and must not turn into a second error. */
+	private restoreApprovedDocument(record: TabRecord, url: string): void {
+		if (!url || record.view.webContents.isDestroyed()) return;
+		const restore = record.view.webContents.loadURL(url);
+		void Promise.resolve(restore).catch((error: unknown) => {
+			this.log(
+				`[browser] could not restore tab ${record.tabId} to ${url} after refusing a navigation: ${String(error)}`,
+			);
+		});
 	}
 
 	private async perform(
@@ -407,6 +524,10 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.click(this, params);
 			case "type":
 				return inputActions.type(this, params);
+			case "download":
+				return downloadActions.download(this, params);
+			case "upload":
+				return uploadActions.upload(this, params);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,
@@ -609,6 +730,14 @@ export class BrowserHost implements BrowserActionContext {
 				loading: this.tabLoading(entry.tabId),
 			})),
 			activeTabId: activeRecord?.tabId ?? null,
+			// The download surface's facts (§16.4): what is in flight, where it went and
+			// what was refused, so the chrome row renders from the host's own state rather
+			// than from a second copy the renderer would have to keep in step. Shipped in
+			// the same projection as the strip for the reason the approvals list is: one
+			// subscription is one thing that can go stale. FOR ONE TAB (the active one),
+			// which is the round-1 D2 fix: a host-wide projection rendered a decision taken
+			// in another tab into this one's chrome.
+			transfers: this.downloads.activityFor(active?.tabId ?? null),
 			url: active ? active.view.webContents.getURL() : "",
 			title: active
 				? this.titleForChrome(active.view.webContents.getTitle())
