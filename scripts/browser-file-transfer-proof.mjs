@@ -1273,6 +1273,12 @@ async function main() {
 	await sleep(800);
 	const afterRow = await rowReading();
 	const afterSpans = (await rowSpanReadings()) ?? [];
+	// THE NAME IS THE IDENTIFIER, AND IT MUST SURVIVE THE ONE-LINE BAND (review round 6,
+	// R6-1). Nothing read this before: `B10` matches `innerText`, which a truncating span
+	// reports in full, so a row painting `receipt-…` passed every check while the frame
+	// showed the fragment. The name is `shrink-0` above the container threshold, so
+	// UNCLIPPED is the property, and its painted width rides in the payload.
+	const decidedName = afterSpans.find((span) => /\.pdf$/.test(span.text ?? ""));
 	const after = await frame(state, token, "02-receipts-after");
 	// AND THE DEFAULT WINDOW IS STILL ONE LINE (review round 5, R5-1). The wrap is gated
 	// on the row's own width, and until this check NOTHING measured the decided branch at
@@ -1283,14 +1289,23 @@ async function main() {
 	// row's own 41 px), so a wrap that leaks back to the wide window fails here rather than
 	// in a frame a reader has to measure.
 	check(
-		"B13 the decided row is ONE line at the app's default window, and its band is the height the prose quotes (round 5, R5-1)",
+		"B13 the decided row is ONE line at the app's default window, its band is the height the prose quotes, and the NAME is unclipped (rounds 5 R5-1 / 6 R6-1)",
 		afterRow.present === true &&
 			afterSpans.length > 0 &&
 			sentenceLines(afterSpans) === 1 &&
-			afterRow.rect.height <= 48,
+			afterRow.rect.height <= 48 &&
+			decidedName !== undefined &&
+			decidedName.clipped === false,
 		JSON.stringify({
 			lines: sentenceLines(afterSpans),
 			rect: afterRow.rect,
+			name: decidedName
+				? {
+						text: decidedName.text,
+						width: decidedName.width,
+						clipped: decidedName.clipped,
+					}
+				: null,
 			spans: afterSpans,
 		}),
 	);
@@ -1530,14 +1545,14 @@ async function main() {
 			uploads.every((got, index) => got.sha256 === expected[index].sha256),
 		JSON.stringify(uploads),
 	);
-	// WHAT THIS FRAME CLAIMS, AND WHAT IT DOES NOT (design round 5, D6 — the frame and the
-	// note must agree, so the note says this). It is the PAGE the server answered on, taken
-	// once the URL is `/echo`. The upload's own row is asserted by D8, which WAITS for it;
-	// this still is captured a moment before that wait resolves, so the strip in it may be
-	// empty — it was in the previous set and is not in this one, which is a timing property
-	// of when the renderer paints the note rather than a behaviour change. Do not read the
-	// `04` -> `05` pair as evidence that the row persists across the state change, and do not
-	// read an empty strip here as evidence that it went away: `D8` carries that claim.
+	// THE STRIP IN THIS FRAME IS EMPTY, AND THAT IS WHAT IT CLAIMS (design rounds 5 D6 /
+	// 6 D3, QA round 5 Q2: the still, the README and this comment have to agree). It is the
+	// PAGE the server answered on, taken once the URL is `/echo`; the upload's own row is
+	// read by D8, which WAITS for it and runs a moment later, after the digest work. The
+	// renderer paints the note after that wait resolves, so the still is a moment too early
+	// to carry it — the page area's own top edge in the frame (y=131 on this base, no 41 px row) is the
+	// evidence, and it is not a behaviour change: do not read `04` -> `05` as the row
+	// persisting, and do not read the empty strip as the row having gone away.
 	const receivedFrame = await frame(state, token, "05-upload-received");
 	check(
 		"D7 the frame was written for the page the server answered on",
@@ -2393,7 +2408,27 @@ for raw in paths:
 		),
 	);
 	const stackedRow = await rowReading();
+	const stackedSpans = (await rowSpanReadings()) ?? [];
 	const stackedFrame = await frame(state, token, "07-row-and-band");
+	// THE ONE REFUSED STATE THAT WRAPS WHEN THE GATE IS STRIPPED (review round 6, R6-3).
+	// `G8d`'s one-line assertion reads `08`, whose long-name refusal fits a flex line even
+	// ungated — the reviewer's mutation run proved it: `G8d` passed with byte-identical
+	// geometry while only `B13` turned red. This row does not fit: its rule is long enough
+	// that an ungated `flex-wrap` moves the age to a second line and takes the page area
+	// with it (design round 5 measured 41 -> 53 px here). So the refused branch gets its
+	// detector where the arrangement is actually marginal.
+	check(
+		"G9b the RUNTIME-CAP refusal is ONE line at the app's default window — the refused state that DOES wrap when the gate is stripped (review round 6, R6-3)",
+		stackedRow.present === true &&
+			stackedSpans.length > 0 &&
+			sentenceLines(stackedSpans) === 1,
+		JSON.stringify({
+			lines: sentenceLines(stackedSpans),
+			rect: stackedRow.rect,
+			row: stackedRow.text,
+			spans: stackedSpans,
+		}),
+	);
 	await clickTag("browser-consent-deny");
 	check(
 		"G9 the row and the consent band stack in the same strip, and the page keeps its own area",
