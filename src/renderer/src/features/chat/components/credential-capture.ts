@@ -131,6 +131,8 @@ export type Arrival = "typing" | "completion" | "caret" | "arrival";
 /** The cell painted in place of each character of a typed secret. */
 export const MASK_CELL = "\u2022";
 
+import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
+
 /**
  * The WORDS the arming token may be spelled with: the command and its alias.
  *
@@ -176,9 +178,21 @@ const CREDENTIAL_WORDS_PATTERN = CREDENTIAL_WORDS.join("|");
  *
  * Applied to the caret's own line, never to the whole buffer — see
  * {@link armSpan}.
+ *
+ * THE LOOKBEHIND IS PYTHON'S CLASS, SPELLED OUT (the class `slash-token.ts`
+ * defines, imported here). In the reference, `\s` IS that class — Python's — and
+ * a JavaScript `\s` is a different set in both directions, which is the mistake
+ * that reached the planner as QA round 2's Q2-1. It is not the refusal class
+ * here either: the library's arm decides whether the composer MASKS a secret the
+ * user is typing. A separator Python reads and JavaScript does not (U+0085,
+ * U+001C-U+001F) would arm the TUI and not the desktop, so the desktop would
+ * leave the value in the draft instead of routing it to the credential store;
+ * U+FEFF, which JavaScript reads and Python does not, armed the desktop where the
+ * reference would not. Both are affordance failures and neither posts a draft as
+ * prose, which is why this is a footnote to the round rather than a finding in it.
  */
 export const CREDENTIAL_ARM = new RegExp(
-	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})[ \\t]*$`,
+	`(?:^|(?<=[${SEPARATOR_CLASS}]))\\/(?:${CREDENTIAL_WORDS_PATTERN})[ \\t]*$`,
 	"i",
 );
 
@@ -193,7 +207,7 @@ export const CREDENTIAL_ARM = new RegExp(
  * `/credentials` is not a token here either.
  */
 export const CREDENTIAL_TOKEN = new RegExp(
-	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})(?!\\S)`,
+	`(?:^|(?<=[${SEPARATOR_CLASS}]))\\/(?:${CREDENTIAL_WORDS_PATTERN})(?![^${SEPARATOR_CLASS}])`,
 	"gi",
 );
 
@@ -610,8 +624,8 @@ export function standsAsToken(draft: string, run: string): boolean {
 		const before = i === 0 ? null : draft[i - 1];
 		const after = i + run.length >= draft.length ? null : draft[i + run.length];
 		if (
-			(before === null || /\s/.test(before)) &&
-			(after === null || /\s/.test(after))
+			(before === null || SEPARATOR.test(before)) &&
+			(after === null || SEPARATOR.test(after))
 		) {
 			return true;
 		}
@@ -628,7 +642,10 @@ export function pastedCredentialRun(
 		.slice(span.start, span.end)
 		.replace(/^\//, "")
 		.toLowerCase();
-	const run = pasted.slice(span.end).trim();
+	// The tail is compared to the EMPTY STRING, so the strip is the class the
+	// reference strips with: a trailing U+0085 left by `trim()` is a tail here and no
+	// tail in the TUI.
+	const run = pyTrim(pasted.slice(span.end));
 	return run === "" ? null : { word, run };
 }
 
@@ -668,7 +685,7 @@ export function tokenSpans(buffer: string): Span[] {
 function tokenBeingTypedAt(buffer: string, anchor: number): Span | null {
 	// The reference's own lookbehind, restated for a slice: a word starts a
 	// token run only at the buffer's start or after whitespace.
-	if (anchor > 0 && !/\s/.test(buffer[anchor - 1] ?? " ")) return null;
+	if (anchor > 0 && !SEPARATOR.test(buffer[anchor - 1] ?? " ")) return null;
 	const match = CREDENTIAL_TOKEN_WORD.exec(buffer.slice(anchor));
 	if (match === null) return null;
 	const word = match[0].toLowerCase();
@@ -1504,7 +1521,7 @@ export function capturePasted(args: {
 		return { kind: "masked", ...masked, payload: null };
 	}
 
-	const value = pasted.trim();
+	const value = pyTrim(pasted);
 	if (!value) {
 		// NOTHING IS CAPTURED: a zero-length credential would advertise a key that
 		// can never hold anything, and the store refuses a blank anyway. The text

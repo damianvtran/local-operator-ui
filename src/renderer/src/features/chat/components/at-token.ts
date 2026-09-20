@@ -46,8 +46,14 @@
  *     `_block_spans`/`_already_expanded`, ported below.
  */
 
-/** A boundary `@` is the line start or the cell right after whitespace. */
-const WHITESPACE = /\s/;
+import { SEPARATOR } from "./slash-token";
+
+/*
+ * A boundary `@` is the line start or the cell right after a SEPARATOR — the class
+ * `./slash-token` spells out, for the same reason it is there: the TUI's tokeniser
+ * asks it in Python's class, so a boundary the TUI has (U+0085, U+001C-U+001F) has
+ * to be one here too, and U+FEFF has to be not one (round 4, F4-1's inventory).
+ */
 
 /** The `@` token the caret sits in: `[start, end)` plus the path typed. */
 export type AtToken = { start: number; query: string; end: number };
@@ -73,7 +79,7 @@ export type AtSpan = {
  * NOT be shared: `/` ends at whitespace and `@` does not stop at `/`.
  */
 export function isBoundary(line: string, index: number): boolean {
-	return index === 0 || WHITESPACE.test(line[index - 1]);
+	return index === 0 || SEPARATOR.test(line[index - 1]);
 }
 
 /** The line the caret sits on, as `(line, whole-buffer offset of its start, column)`. */
@@ -110,7 +116,7 @@ export function tokenEnd(
 			return { end: close + 1, query: line.slice(at + 2, close) };
 	}
 	let end = at + 1;
-	while (end < line.length && !WHITESPACE.test(line[end])) end++;
+	while (end < line.length && !SEPARATOR.test(line[end])) end++;
 	return { end, query: line.slice(at + 1, end) };
 }
 

@@ -2598,6 +2598,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// `/credential`, `/stop`, `/fast` and `/move` appear in.
 					argumentCommands: slash.argumentCommands,
 					/*
+					 * The WIRE's own vocabulary, and the authority the three sets above
+					 * approximate: `argument_shape` + `argument_words` are what the messages
+					 * endpoint's admission rule is written against, so a row that publishes
+					 * them decides whether the text after it is its argument — and
+					 * `prefixes_text` is the free-text half the endpoint asks first.
+					 * Absent on a backend older than the fields, which is why the
+					 * approximations stay wired beside them rather than being replaced.
+					 */
+					argumentShapes: slash.argumentShapes,
+					prefixingCommands: slash.prefixingCommands,
+					/*
 					 * The capture's own words, so a mid-draft `/credential <secret>` plans as
 					 * the COMMAND instead of as a message. The words are the module's, not
 					 * this file's, and they are handed over unchanged: a word nobody named
@@ -2637,6 +2648,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.armedOnlyCommands,
 				slash.valueArgumentCommands,
 				slash.argumentCommands,
+				slash.argumentShapes,
+				slash.prefixingCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
