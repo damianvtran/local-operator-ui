@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import {
 	type KeyboardEvent,
+	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
@@ -3011,6 +3012,13 @@ export function ChatSidebar({
 			moved: false,
 		};
 	};
+	/*
+	 * `pointercancel` is the one release that cannot produce a click, so the record
+	 * it left is cleared here rather than left for the next activation to consume.
+	 * `pointerup` deliberately does NOT clear it: the click is dispatched after the
+	 * release, and clearing there would erase the `moved` flag before the handler
+	 * that exists to read it (agent review round 2, m-2).
+	 */
 	useEffect(() => {
 		const travel = (event: PointerEvent) => {
 			const press = controlPressRef.current;
@@ -3022,8 +3030,15 @@ export function ChatSidebar({
 				press.moved = true;
 			}
 		};
+		const cancel = () => {
+			controlPressRef.current = null;
+		};
 		window.addEventListener("pointermove", travel, true);
-		return () => window.removeEventListener("pointermove", travel, true);
+		window.addEventListener("pointercancel", cancel, true);
+		return () => {
+			window.removeEventListener("pointermove", travel, true);
+			window.removeEventListener("pointercancel", cancel, true);
+		};
 	}, []);
 	/*
 	 * THE SWAP MUST NOT COST THE USER THEIR PLACE IN A LIST.
@@ -3034,8 +3049,9 @@ export function ChatSidebar({
 	 * a scroller that is moved in the DOM is re-attached, and Chromium resets its
 	 * `scrollTop` when it is, measured here as `24 -> 0` on a region that still
 	 * overflowed on both sides of the swap. So the positions are carried across by
-	 * hand: saved at the press (the only moment both nodes are guaranteed still to
-	 * hold them) and restored after the reorder has rendered.
+	 * The positions are carried across by hand: saved in the order control's
+	 * `onClick` (a click is the only moment both nodes are known good and the
+	 * reorder has not rendered yet) and restored in the layout effect below.
 	 */
 	const savedScrollRef = useRef<Map<Element, number>>(new Map());
 	const saveRegionScroll = () => {
@@ -3059,12 +3075,25 @@ export function ChatSidebar({
 		savedScrollRef.current = new Map();
 		for (const [node, top] of saved) node.scrollTop = top;
 	});
-	const clusterAction = (act: () => void) => () => {
-		const press = controlPressRef.current;
-		controlPressRef.current = null;
-		if (press?.moved) return;
-		act();
-	};
+	/*
+	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL, and only a POINTER press can
+	 * move: a keyboard activation produces a `click` whose `detail` is 0, so it is
+	 * never weighed against a record a pointer left behind. That distinction is the
+	 * fix for two things at once - the record cannot swallow a later Enter/Space on
+	 * a focused control, and it does not have to be cleared on `pointerup`, which
+	 * would erase it BEFORE the click it exists to cancel (the click is dispatched
+	 * after the release; clearing there is the tidier-looking spelling and is
+	 * wrong). `pointercancel` is the one release that cannot produce a click, so it
+	 * clears the record outright.
+	 */
+	const clusterAction =
+		(act: () => void) =>
+		(event: ReactMouseEvent): void => {
+			const press = controlPressRef.current;
+			controlPressRef.current = null;
+			if (event.detail > 0 && press?.moved) return;
+			act();
+		};
 	/*
 	 * WHAT THE SEPARATOR ANNOUNCES WHEN THE WINDOW IS SHORT.
 	 *
@@ -3100,11 +3129,14 @@ export function ChatSidebar({
 			 * rest - it is transparent, aria-hidden, and its events are read by the
 			 * wrapper's own enter/leave.
 			 *
-			 * Its height is bounded by the region padding it sits in, which is why it
-			 * is 16px and not 24: above the line the entity region contributes only
-			 * its own 4px `p-1`, and a strip wider than that would cover the bottom of
-			 * its last row and take the row's clicks - the hit-testing regression A4
-			 * exists to catch.
+			 * Its height is bounded by the region padding it sits in, and the binding
+			 * side is BELOW: the lower region's own 8px `pt-2` (the list region when it
+			 * is the second one, the entity region when the order puts it below), so
+			 * −8/+8 is the exact bound and 16 is not an approximation of it. Above the
+			 * line there is the band's own 8px `mt-2` of dead space and then the upper
+			 * region's `p-1`, which is the tighter of the two sides but not the one
+			 * that fixes the number - a strip wider than 16 would reach 1px into a row
+			 * on the padding side (agent review round 2, NIT-3).
 			 */}
 			<div aria-hidden="true" className="absolute inset-x-0 -top-2 h-4" />
 			<ResizableDivider
@@ -3116,6 +3148,16 @@ export function ChatSidebar({
 				maxWidth={split.divider.max}
 				onDoubleClick={restoreDefaultChatSidebarListHeight}
 				label={resizeLabel}
+				/*
+				 * The APG register, passed explicitly: this separator's value, name and
+				 * bounds are all the chats list's, so Home/End are that region's extremes
+				 * rather than the axis's - which in the default order (`side="top"`) they
+				 * otherwise invert. Passed rather than defaulted so the three
+				 * `side="left"` panels in `chat-content.tsx` keep the behaviour they
+				 * ship; their divergence from the pattern is deferred on the pull
+				 * request rather than changed here (design round 2, D8).
+				 */
+				homeEnd="value"
 			/>
 			<div
 				data-sidebar-cluster
@@ -3138,9 +3180,17 @@ export function ChatSidebar({
 					 * from that same pixel did nothing at all (UX round 1, U1). Here the
 					 * whole centre of the band is the separator. `right-2` keeps the
 					 * plate clear of the scrollbar's own column.
+					 *
+					 * FOCUS IS NOT THE POINTER'S GUEST, so the `focus-within` terms are
+					 * unconditional rather than part of the revealed branch: a plate
+					 * button can hold focus while the pointer has left the band, and
+					 * hiding a focused control is how the toggle `sidebar-navigation.tsx`
+					 * copies stays usable - a keyboard user must never be able to hold
+					 * focus on something that is `opacity-0` (agent review round 2, m-1).
 					 */
 					"absolute top-0 right-2 z-[13] flex -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
 					"transition-opacity duration-fast ease-out-quart",
+					"focus-within:pointer-events-auto focus-within:opacity-100",
 					clusterRevealed
 						? "pointer-events-auto opacity-100"
 						: "pointer-events-none opacity-0",
