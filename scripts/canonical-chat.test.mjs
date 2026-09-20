@@ -115,6 +115,7 @@ const {
 	STORE_OUT_OF_SPACE_CODE,
 	STORE_UNAVAILABLE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
+	ANSWER_NOT_SENT_CODE,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
 	refusedBeforeAdmissionAttachments,
@@ -1161,6 +1162,19 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 */
 	assert.equal(withholdsRetryHint(UNREADABLE_ATTACHMENT_CODE), true);
 	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), true);
+	/*
+	 * The seventh is not a send refusal at all, and it is here for the same
+	 * reason as the others: an option press that failed says NOTHING the composer's
+	 * generic hint can act on. The question it answered has moved on, so there is
+	 * nothing to press again; the box may well hold an unrelated draft, and "Send
+	 * it again" placed after a sentence about the press reads as "re-send your
+	 * answer". It is a code rather than an absent one because `chat-page`'s alert
+	 * reads `sendErrorCode ?? draft.errorCode`: a press that left the code unset
+	 * inherited the DRAFT's last failure, which is how the hint was measured
+	 * present on this sentence in one session and absent in another (design round
+	 * 1, D2 — the same inheritance D13 measured on the attachment refusal).
+	 */
+	assert.equal(withholdsRetryHint(ANSWER_NOT_SENT_CODE), true);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
 });

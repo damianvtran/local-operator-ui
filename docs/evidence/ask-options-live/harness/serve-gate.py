@@ -61,6 +61,37 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--token-file", type=Path, required=True)
     parser.add_argument("--result-file", type=Path, required=True)
     parser.add_argument(
+        "--pre-answer",
+        default=None,
+        help=(
+            "ANOTHER FRONT END ANSWERS FIRST, with this label, through the same "
+            "route — and only then is the app's own press forwarded, so the app's "
+            "request is the LOSER the route refuses. This is the shape the "
+            "exclusivity probe measures (`probe-answer-exclusivity.py` fires the "
+            "same two requests concurrently); here it is sequenced so a run can "
+            "photograph what the page does with a refusal the owner's own state "
+            "push has already stripped of its card. Nothing is faked: the winner's "
+            "200 and the loser's 409 are the route's own answers, and "
+            "`owner-answer.json` records the value the owner kept."
+        ),
+    )
+    parser.add_argument(
+        "--reject-answers",
+        default=None,
+        help=(
+            "Refuse every answer with a BARE 409 carrying this detail, without "
+            "letting the owner see it, so the gate stays pending and its card "
+            "stays on screen. This is the refusal the reviewer measured against "
+            "the committed rig by firing the two requests that do not name the "
+            "current question ('the answer does not match the current question', "
+            "'This answer belongs to an earlier session owner'); the harness "
+            "answers it itself because the route's own epoch check cannot be "
+            "provoked from the page. The app cannot tell this refusal from the "
+            "route's, which is the point: it is the same status, the same absent "
+            "code, and a body sentence the app renders verbatim."
+        ),
+    )
+    parser.add_argument(
         "--answer-delay-ms",
         type=int,
         default=0,
@@ -163,10 +194,27 @@ async def main() -> None:
         than photographing whatever happened to be on screen.
         """
 
-        def __init__(self, inner: object, delay_ms: int = 0) -> None:
+        def __init__(
+            self,
+            inner: object,
+            delay_ms: int = 0,
+            result_file: Path | None = None,
+            pre_answer: str | None = None,
+            reject_answers: str | None = None,
+            token: str = "",
+            session_id: str = "a1a1a1a1a1a1",
+        ) -> None:
             self._inner = inner
             self._delay_s = max(0.0, delay_ms / 1000.0)
             self._answers: list[dict[str, object]] = []
+            self._result_file = result_file
+            self._pre_answer = pre_answer
+            self._reject = reject_answers
+            self._token = token
+            self._session_id = session_id
+            # Filled by the harness once the OS has chosen the port; see
+            # `--pre-answer`, which has to call this same route over loopback.
+            self.port: int | None = None
 
         async def __call__(self, scope, receive, send):
             path = str(scope.get("path", ""))
@@ -184,7 +232,12 @@ async def main() -> None:
                 )
                 return
             if scope["type"] == "http" and path == "/rig-state":
-                body = json.dumps({"answers": self._answers}).encode()
+                body = json.dumps(
+                    {
+                        "answers": self._answers,
+                        "ownerAnswer": self.owner_answer(),
+                    }
+                ).encode()
                 await send(
                     {
                         "type": "http.response.start",
@@ -208,6 +261,90 @@ async def main() -> None:
                 return
             await self._inner(scope, receive, send)
 
+        def owner_answer(self) -> object:
+            """The value the OWNER took, from the harness's own return value.
+
+            `/rig-state` carries it so a run's record can say which label won
+            rather than leaving that to a sibling file a reader has to find. The
+            file is written by the harness's `_ask_gate` task when the gate
+            resolves, so its absence means the gate has not resolved yet — never
+            that the run is wrong.
+            """
+            if self._result_file is None or not self._result_file.exists():
+                return None
+            try:
+                return json.loads(self._result_file.read_text() or "null")
+            except (OSError, ValueError):
+                return None
+
+        @staticmethod
+        def _is_rig_request(scope) -> bool:
+            """Whether this request is the rig's OWN second front end.
+
+            `--pre-answer` calls back into this same server over loopback, so
+            the marker header it sets is what stops the middleware pre-answering
+            its own pre-answer. See `other_front_end`.
+            """
+            headers = scope.get("headers") or []
+            return any(
+                name.lower() == b"x-rig-other-front-end" for name, _ in headers
+            )
+
+        def other_front_end(self, label: str) -> dict[str, object]:
+            """Answer the pending gate from ANOTHER front end, over loopback.
+
+            Used by `--pre-answer`. It reads the gate and the epoch the same way
+            any second app would — from the session's own read route with this
+            rig's bearer — and posts the label the caller named, so the request
+            that wins the gate is a real one with a real label. Run in the
+            harness's thread pool (`asyncio.to_thread`) because this object is
+            inside the app's own event loop.
+            """
+            import http.client  # noqa: PLC0415 - only this path needs it
+
+            if self.port is None:
+                return {"error": "the rig has no port yet"}
+            connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
+            try:
+                connection.request(
+                    "GET",
+                    f"/v1/desktop/sessions/{self._session_id}",
+                    headers={"Authorization": f"Bearer {self._token}"},
+                )
+                read = connection.getresponse()
+                body = json.loads(read.read() or b"{}")
+                if read.status != 200:
+                    return {"error": f"read answered {read.status}", "label": label}
+                frontend = (
+                    body.get("result", {}).get("payload", {}).get("frontend", {})
+                )
+                gate = frontend.get("snapshot", {}).get("pending_gate") or {}
+                if not gate.get("request_id"):
+                    return {"error": "no pending gate to answer", "label": label}
+                connection.request(
+                    "POST",
+                    f"/v1/desktop/sessions/{self._session_id}/answers",
+                    body=json.dumps(
+                        {
+                            "epoch": frontend.get("epoch"),
+                            "request_id": gate.get("request_id"),
+                            "value": label,
+                            "question_index": gate.get("question_index"),
+                        }
+                    ),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Content-Type": "application/json",
+                        "X-Rig-Other-Front-End": "1",
+                    },
+                )
+                answered = connection.getresponse()
+                return {"status": answered.status, "label": label}
+            except OSError as error:
+                return {"error": str(error), "label": label}
+            finally:
+                connection.close()
+
         async def answer(self, scope, receive, send) -> None:
             """Run the answer route, record it, then hold its response.
 
@@ -221,6 +358,43 @@ async def main() -> None:
                 "requestedAt": time.time() * 1000.0,
             }
             self._answers.append(entry)
+
+            if self._reject is not None:
+                # A BARE 409 the gate does not see: the owner's card stays
+                # pending, and the sentence is the same shape the route's own
+                # refusals carry. See `--reject-answers`.
+                entry["rejected"] = self._reject
+                entry["status"] = 409
+                entry["answeredAt"] = time.time() * 1000.0
+                payload = json.dumps({"detail": self._reject}).encode()
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 409,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"content-length", str(len(payload)).encode()),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": payload})
+                entry["deliveredAt"] = time.time() * 1000.0
+                return
+
+            if self._pre_answer is not None and not self._is_rig_request(scope):
+                # ANOTHER FRONT END WINS THE GATE FIRST, and only then is this
+                # request forwarded — so the request the app made is the loser
+                # the route refuses, exactly as the exclusivity probe measures
+                # it. See `--pre-answer`.
+                #
+                # The rig's OWN loopback answer carries a marker header and is
+                # skipped: without it this handler would pre-answer its own
+                # pre-answer, and the run stalls until the timeout (measured —
+                # the first attempt at this knob deadlocked exactly there).
+                entry["preAnsweredBy"] = self._pre_answer
+                entry["preAnswer"] = await asyncio.to_thread(
+                    self.other_front_end, self._pre_answer
+                )
 
             async def held(message):
                 if message["type"] == "http.response.start":
@@ -268,11 +442,16 @@ async def main() -> None:
     # Port 0 means the OS picks one, which is the isolation this rig claims:
     # nothing can collide with the operator's own backend or with a peer's rig.
     listener.bind(("127.0.0.1", args.port))
-    server = uvicorn.Server(
-        uvicorn.Config(
-            RigControl(app, delay_ms=args.answer_delay_ms), log_level="error"
-        )
+    rig = RigControl(
+        app,
+        delay_ms=args.answer_delay_ms,
+        result_file=args.result_file,
+        pre_answer=args.pre_answer,
+        reject_answers=args.reject_answers,
+        token=token,
+        session_id=args.session_id,
     )
+    server = uvicorn.Server(uvicorn.Config(rig, log_level="error"))
     serving = asyncio.create_task(server.serve(sockets=[listener]))
     for _ in range(20_000):
         if server.started:
@@ -289,6 +468,7 @@ async def main() -> None:
     # with `--port 0` the OS chose it and the Vite dev server has to be pointed
     # at the same one before the page can watch.
     chosen = listener.getsockname()[1]
+    rig.port = chosen
     (scratch / "port").write_text(f"{chosen}\n")
 
     # The turn that provoked the question, written BEFORE the driver is allowed
