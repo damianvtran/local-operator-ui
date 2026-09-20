@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -339,7 +339,10 @@ test("no composer-path module declares its own separator class (F4-1)", () => {
 	);
 	// Read from disk and asserted non-trivially large: a scan over an empty or
 	// renamed directory would pass while checking nothing.
-	assert.ok(files.length > 50, `read the composer path, not a list that can go stale (${files.length} modules)`);
+	assert.ok(
+		files.length > 50,
+		`read the composer path, not a list that can go stale (${files.length} modules)`,
+	);
 	const offenders = [];
 	for (const file of files) {
 		if (file === "slash-token.ts") continue;
@@ -361,6 +364,10 @@ test("no composer-path module declares its own separator class (F4-1)", () => {
 	);
 	for (const file of ASKERS) {
 		const source = readFileSync(`${COMPOSER_PATH}/${file}`, "utf8");
-		assert.match(source, /from "\.\/slash-token"/, `${file} reads the shared class`);
+		assert.match(
+			source,
+			/from "\.\/slash-token"/,
+			`${file} reads the shared class`,
+		);
 	}
 });
