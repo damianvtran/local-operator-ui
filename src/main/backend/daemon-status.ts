@@ -126,6 +126,36 @@ export const REATTACH_BACKOFF_CEILING_MS = 300_000;
 /** What one probe observed. */
 export type ProbeObservation =
 	| { kind: "identified" }
+	/**
+	 * The SAME process answered, wearing a new identity: it reloaded in place.
+	 *
+	 * A daemon that moves itself onto a newer build does it with `os.execve`
+	 * (`local_operator/server/reload.py`), which keeps the pid, the listener fd,
+	 * the working directory and the environment, and re-runs the ASGI lifespan -
+	 * where `instance_id` is MINTED AGAIN (`server/app.py`), and the serve record
+	 * is republished under the new one. So the app sees an answer that names a
+	 * different `instance_id` from a process that never went away.
+	 *
+	 * WHY THIS IS NOT `contradicted` (the app-side half of the defect):
+	 * `contradicted` means "the process this app holds a credential for is no
+	 * longer the process at this address", and a reload is the one shape where
+	 * that sentence is false in every clause. Measured 2026-09-20 on the
+	 * operator's machine: `lop-update` moved the daemon this app had spawned from
+	 * v0.61.1 to v0.61.4 in place twice, the app read the new `instance_id` as a
+	 * successor and published the "server was replaced" banner over a connection
+	 * that was still authenticated and still streaming (a live transcript was on
+	 * screen while the band said it was unpaired), and because the daemon was the
+	 * app's OWN child, recovery could not run either - `recoverFromDetachment`
+	 * returns at the owned-child guard - so the band's Retry was inert and only an
+	 * app restart cleared it.
+	 *
+	 * WHY THE DAEMON MUST NOT CHANGE and the identity change stays: `lop services`
+	 * confirms a reload LANDED by looking for the new `instance_id` under the same
+	 * pid (`services.py`: "instance_id is the proof and the version is not: it is
+	 * minted once per process"), so re-minting is the daemon's own contract for
+	 * this event. The premise was the app's, and this is the app's correction.
+	 */
+	| { kind: "reanchored"; identity: DaemonIdentity; detail: string }
 	| { kind: "heartbeat-stale"; detail: string }
 	| {
 			/**
@@ -265,6 +295,30 @@ export class DaemonStateMachine {
 				this.detail = this.identity
 					? `Connected to the daemon on ${this.identity.url} (pid ${this.identity.pid}, v${this.identity.version}).`
 					: "Connected to the Local Operator daemon.";
+				break;
+			case "reanchored":
+				/*
+				 * Adopt the answering identity and carry on: nothing about the connection
+				 * was lost, so nothing about the connection is reset - the counters and
+				 * any detach state are cleared exactly as a fresh `identified` clears them.
+				 *
+				 * `owned` AND `pairing` ARE LEFT ALONE, deliberately. Ownership is a fact
+				 * about who spawned the process, which a reload cannot change, and the
+				 * pairing is asserted by the PROBE SITE that established it (the same live
+				 * process answered, and its plane is governed by the token this app
+				 * spawned it with - see `backend-service.ts::probeAttachedDaemon`).
+				 * Calling `attach()` here would make this arm a SECOND producer of
+				 * `DAEMON_PAIRED`, on evidence - "a reload happened" - that does not by
+				 * itself prove a credential is admitted.
+				 */
+				this.identity = observation.identity;
+				this.failures = 0;
+				this.unanswered = 0;
+				this.capabilityStatus = null;
+				this.detachedSince = null;
+				this.backoffMs = REATTACH_BACKOFF_MS;
+				this.state = "attached";
+				this.detail = observation.detail;
 				break;
 			case "capability":
 				// A gated route refused us. The daemon is up; this app simply may
