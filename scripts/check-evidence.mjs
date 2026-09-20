@@ -153,12 +153,16 @@ export const frames = (dir) => {
  * WHY THE SUBPROCESS IS GONE. This used to shell out to
  * `magick <file> -format %c -depth 8 histogram:info:-` once per frame and read
  * the mode out of its sorted histogram. The sweep covers every committed frame -
- * 9703 of them on this tree - and on a 2760x1736 frame the same numbers decode
- * here in 0.12 s against magick's 2.1 s (measured, and re-runnable, with
- * `scripts/evidence-histogram-parity.mjs`, which also shows the two readers
- * agreeing on the mode, its count and the total). `sharp` was already a
- * devDependency and already decodes WebP for other rigs, so no dependency is
- * added.
+ * 9763 of them on this tree - and the saving is real but it is a property of the
+ * HOST, so the figures are quoted with the machine they were taken on: 8x-11x
+ * over a 24-64 frame sample at load averages 58-84 (magick 31.8 s against 2.8 s
+ * in process over 64 frames), 27x on one 1280x1404 frame at load 50 (18.5 s
+ * against 0.69 s), and 3x at load 171, where the in-process leg is starved too.
+ * `scripts/evidence-histogram-parity.mjs` is the re-runnable form of that
+ * comparison - the same frames, both readers, back to back - and it also shows
+ * the two readers agreeing on the mode, its count and the total. `sharp` was
+ * already a devDependency and already decodes WebP for other rigs, so no
+ * dependency is added.
  *
  * WHAT IS DELIBERATELY THE SAME. The verdict is still "the colour covering the
  * most pixels": one count per distinct 8-bit colour, the winner is the largest
@@ -197,9 +201,25 @@ export const frameHistogram = async (file) => {
 	 * capture cannot quietly change what the mode means.
 	 */
 	const hasAlpha = info.channels === 4;
+	/*
+	 * A buffer that is not a whole number of pixels is one this reader cannot
+	 * count: the loop below would read past the last pixel and fold `undefined`
+	 * into a key as `NaN`. Nothing produces that today, and the guard's rule is
+	 * that a read it cannot perform says so in the words the subprocess used
+	 * rather than inventing a mode (review round 1, MAJOR-1).
+	 */
+	if (info.channels < 3 || data.length % info.channels !== 0) {
+		throw new Error(
+			`${file}: could not read the image - the decode produced ${data.length} bytes across ${info.channels} channels, which is not a whole number of pixels`,
+		);
+	}
 	const counts = new Map();
 	let total = 0;
-	for (let offset = 0; offset + 2 < data.length; offset += info.channels) {
+	for (
+		let offset = 0;
+		offset + info.channels <= data.length;
+		offset += info.channels
+	) {
 		const rgb =
 			(data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2];
 		// The alpha byte is folded in only for a four-channel frame, so a
@@ -216,7 +236,21 @@ export const frameHistogram = async (file) => {
 		if (best === null || count > best.count) best = { count, key };
 	}
 	if (best === null) return null;
-	const rgb = hasAlpha ? best.key >> 8 : best.key;
+	/*
+	 * A four-channel key is `rgb * 256 + alpha`, which leaves 32-bit SIGNED range
+	 * for any mode whose red channel is at or above 0x80, and the recovery below
+	 * used to be `best.key >> 8`. That is exactly those frames: the shift returned
+	 * a negative "colour" - `#-373738` on a 4-channel probe whose mode is
+	 * `#C8C8C8` - and the count and total beside it were right, so the guard would
+	 * have measured the garbage and judged the frame on it (on the dracula palette
+	 * that reads ΔE00 29.13 against the ceiling of 25, so a legitimate frame is
+	 * reported as a paint failure, and another palette lets a bad one through).
+	 * Multiplication and `Math.floor` are exact inverses in double precision for
+	 * every key this loop can produce, which `>> 8` was not. Review round 1,
+	 * MAJOR-1; `scripts/evidence-histogram-parity.mjs` now writes a 4-channel
+	 * frame of its own so the branch is exercised by the rig rather than by hope.
+	 */
+	const rgb = hasAlpha ? Math.floor(best.key / 256) : best.key;
 	return {
 		count: best.count,
 		hex: `#${rgb.toString(16).padStart(6, "0").toUpperCase()}`,
