@@ -8151,6 +8151,664 @@ async function scenePalette(cdp) {
  * proxy on an allowed port (8080 is what QA used for the green run) and build the
  * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
  */
+/* ----------------------------------------------------- the sidebar split ---- */
+
+/** The four nodes this scene is about, and the store it writes through. */
+const SPLIT_ENTITIES = '[data-sidebar-region="entities"]';
+const SPLIT_CHATS = '[data-sidebar-region="chats"]';
+const SPLIT_SEPARATOR = '[data-sidebar-split] [role="separator"]';
+const SPLIT_CLUSTER = "[data-sidebar-cluster]";
+const SPLIT_CLUSTER_REVEALED =
+	"[data-sidebar-cluster][data-sidebar-cluster-revealed]";
+const SPLIT_STORE = "ui-preferences-storage";
+
+/** The first element matching `selector`, with the numbers a gesture needs. */
+async function splitBox(cdp, selector) {
+	return cdp.evaluate(`(() => {
+		const node = document.querySelector(${JSON.stringify(selector)});
+		if (node === null) return null;
+		const box = node.getBoundingClientRect();
+		return {
+			x: box.x + box.width / 2,
+			y: box.y + box.height / 2,
+			top: box.top,
+			bottom: box.bottom,
+			left: box.left,
+			right: box.right,
+			width: box.width,
+			height: box.height,
+		};
+	})()`);
+}
+
+/** What is under a point, named the way a hit-test can be read back. */
+async function splitHit(cdp, x, y) {
+	return cdp.evaluate(`(() => {
+		const node = document.elementFromPoint(${x}, ${y});
+		if (node === null) return null;
+		return {
+			tag: node.tagName,
+			role: node.getAttribute("role"),
+			label: node.getAttribute("aria-label") ?? node.getAttribute("data-tour-tag") ?? null,
+			inSeparator: Boolean(node.closest(${JSON.stringify(SPLIT_SEPARATOR)})),
+			inCluster: Boolean(node.closest(${JSON.stringify(SPLIT_CLUSTER)})),
+		};
+	})()`);
+}
+
+/** The sidebar's persisted preferences, exactly as the page holds them. */
+async function splitPreferences(cdp) {
+	return cdp.evaluate(`(() => {
+		const raw = window.localStorage.getItem(${JSON.stringify(SPLIT_STORE)});
+		if (raw === null) return { raw: null, state: null };
+		const parsed = JSON.parse(raw);
+		return { raw, state: parsed.state ?? parsed };
+	})()`);
+}
+
+/**
+ * Write preferences and reload, so the app BOOTS into the state under test.
+ *
+ * A reload rather than a store write from inside the page: the claim these
+ * frames carry is that the split is RESTORED, and only a fresh boot of the app
+ * against the same profile can say that. It is also how the same profile is
+ * reused for the restart step below.
+ */
+async function setSplitPreferences(cdp, patch) {
+	await cdp.evaluate(`(() => {
+		const key = ${JSON.stringify(SPLIT_STORE)};
+		const raw = window.localStorage.getItem(key);
+		const parsed = raw === null ? { state: {} } : JSON.parse(raw);
+		const state = parsed.state ?? parsed;
+		Object.assign(state, ${JSON.stringify(patch)});
+		window.localStorage.setItem(key, JSON.stringify(parsed.state ? parsed : { state }));
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await waitForBridge(cdp);
+	await wait(500);
+}
+
+/**
+ * One drag: press at `(x, y)`, travel `dy` in steps, release.
+ *
+ * The moves carry `buttons: 1`, which is what makes this a drag rather than a
+ * hover followed by a click - `movePointer` beside it sends `buttons: 0`, and a
+ * handler that read the button state would see the difference.
+ */
+async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	for (let step = 1; step <= steps; step += 1) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x,
+			y: y + (dy * step) / steps,
+			button: "left",
+			buttons: 1,
+		});
+		await wait(25);
+	}
+	if (hold !== null) await hold();
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y: y + dy,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await wait(200);
+}
+
+/**
+ * The sidebar's split, DRIVEN: the reveal and its timing, the drag, the
+ * collapse and restore, the order swap and the restart.
+ *
+ * WHY THIS SCENE EXISTS. Design review round 1's D1 is the whole reason. The
+ * collapse cluster, the boundary's hover and drag state line and the tooltips
+ * are the entire interface between a user and this feature, and a Storybook
+ * still cannot photograph any of them: `:hover` is a state only the browser can
+ * enter, the reveal's TIMING is a claim about two moments rather than one, and
+ * the restart is a claim about two boots. Both
+ * `docs/evidence/chat-sidebar-sections/README.md` and the manifest pointed at
+ * this directory before the scene existed, which is the worse failure of the
+ * two: evidence claiming coverage that does not exist.
+ *
+ * WHAT A FRAME HERE PROVES, AND WHAT IT CANNOT.
+ *   - Every gesture goes through `Input.dispatchMouseEvent`/`dispatchKeyEvent`,
+ *     so it enters Chromium's own pipeline and the element under it is found the
+ *     way a hand's would be. It is still synthetic: no pressure, no jitter, no
+ *     trackpad momentum, so no frame says "a real hand finds this".
+ *   - A window that is never shown never renders `:focus-visible` rings or
+ *     carets, so the keyboard frames are about focus LOCATION only.
+ *   - The reveal is photographed TWICE - at a point inside the intent window and
+ *     after it - because one still cannot tell "the plate appears with the line"
+ *     from "the plate appears first", which is the defect review round 1 (M-1)
+ *     measured in the shipped build.
+ *   - Two palettes and two widths, and no more: the other ten palettes and every
+ *     width between them are the design round's call, and this scene's subject is
+ *     a gesture rather than a colour.
+ *   - The rows these frames draw are whatever the backend holds. This run seeds
+ *     no conversations: the SUBJECT is the boundary, the controls on it and the
+ *     state they write, all of which exist with an empty catalogue.
+ */
+async function sceneSidebarSplit(cdp, handle) {
+	/* The live connection, which becomes a NEW one after the restart below. */
+	let link = cdp;
+	const wide = { chatSidebarWidth: 360, themeName: "localOperatorDark" };
+	const narrow = { chatSidebarWidth: 240, themeName: "localOperatorDark" };
+	const light = { chatSidebarWidth: 360, themeName: "localOperatorLight" };
+
+	// --- 1. the panel at rest, both regions, nothing revealed ---------------
+	await setSplitPreferences(cdp, { ...wide, chatSidebarRegions: "both" });
+	await parkPointer(cdp);
+	await capture(cdp, "split-rest-360-dark");
+	const atRest = await splitPreferences(cdp);
+	note("preferences at rest", JSON.stringify(atRest.state));
+
+	// --- 2. the centre of the band, and what a gesture there finds ----------
+	const separator = await splitBox(cdp, SPLIT_SEPARATOR);
+	require("the boundary is drawn at rest", separator !==
+		null, "no separator: the split needs both regions and a backend that advertises the catalogue");
+	const centre = await splitHit(cdp, separator.x, separator.y);
+	note("the element at the band's centre", JSON.stringify(centre));
+	check(
+		"the band's CENTRE is the separator rather than a control",
+		centre !== null &&
+			centre.inSeparator === true &&
+			centre.inCluster === false,
+		JSON.stringify(centre),
+	);
+
+	// --- 3. the reveal, inside the intent window and after it ---------------
+	/*
+	 * THE TIMING IS READ, NOT PHOTOGRAPHED, and that is the honest instrument for
+	 * it: `Page.captureScreenshot` takes longer than the intent window, so a frame
+	 * taken "inside" it can show the plate already up - which is what the first
+	 * version of this scene did, and it reported the opposite of the truth on one
+	 * run and the truth on the next. Two reads of the same DOM attribute, one the
+	 * moment the pointer arrives and one after the window has passed, settle it
+	 * deterministically; the frames below are then a pair of the fade itself.
+	 *
+	 * The claim being checked is review round 1's M-1: the plate and the line are
+	 * revealed by ONE intent, so the controls cannot appear a beat before the line
+	 * that says the boundary is live.
+	 */
+	await movePointer(cdp, separator.x, separator.y);
+	const arrivedCluster = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
+	);
+	check(
+		"the cluster is NOT revealed the moment the pointer arrives",
+		arrivedCluster === false,
+		`cluster revealed=${arrivedCluster}`,
+	);
+	await wait(120);
+	const insideCluster = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
+	);
+	check(
+		"120ms in - inside the intent window - it is still hidden",
+		insideCluster === false,
+		`cluster revealed=${insideCluster}`,
+	);
+	await wait(140);
+	const early = await capture(cdp, "split-reveal-early-dark");
+	note("the first reveal frame, one frame into the fade", early.path);
+	await wait(320);
+	await captureSettled(cdp, "split-reveal-settled-dark");
+	const settledCluster = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
+	);
+	check(
+		"after the intent, the cluster IS revealed",
+		settledCluster === true,
+		`cluster revealed=${settledCluster}`,
+	);
+
+	// --- 4. a tooltip, which is the only naming a sighted user gets ---------
+	const orderControl = await splitBox(cdp, "[data-sidebar-order]");
+	if (orderControl !== null) {
+		await movePointer(cdp, orderControl.x, orderControl.y);
+		await wait(900);
+		await capture(cdp, "split-tooltip-dark");
+	}
+
+	// --- 5. the drag, and the line it paints while it runs ------------------
+	await parkPointer(cdp);
+	const before = await splitPreferences(cdp);
+	await movePointer(cdp, separator.x, separator.y);
+	await dragSplit(cdp, separator.x, separator.y, 90, {
+		hold: async () => {
+			await capture(cdp, "split-drag-line-dark");
+		},
+	});
+	const afterDrag = await splitPreferences(cdp);
+	note(
+		"stored height before the drag",
+		String(before.state?.chatSidebarListHeight),
+	);
+	note(
+		"stored height after the drag",
+		String(afterDrag.state?.chatSidebarListHeight),
+	);
+	check(
+		"a drag at the band's centre WRITES a height",
+		typeof afterDrag.state?.chatSidebarListHeight === "number" &&
+			afterDrag.state.chatSidebarListHeight !==
+				before.state?.chatSidebarListHeight,
+		`${before.state?.chatSidebarListHeight} -> ${afterDrag.state?.chatSidebarListHeight}`,
+	);
+	await captureSettled(cdp, "split-dragged-dark");
+	const drawn = await splitBox(cdp, SPLIT_CHATS);
+	const announced = await cdp.evaluate(
+		`(() => {
+			const node = document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)});
+			return node === null ? null : node.getAttribute("aria-valuenow");
+		})()`,
+	);
+	check(
+		"the separator announces the height the region is drawn at",
+		drawn !== null &&
+			announced !== null &&
+			Math.abs(Number(announced) - drawn.height) <= 1,
+		`aria-valuenow ${announced} against a drawn ${drawn?.height}`,
+	);
+
+	// --- 6. the collapse, its persistence, and the way back -----------------
+	const hide = await splitBox(cdp, '[data-sidebar-hide="chats"]');
+	require("the hide control is on the revealed cluster", hide !==
+		null, "no [data-sidebar-hide=chats] control");
+	await movePointer(cdp, hide.x, hide.y);
+	await wait(320);
+	await pressPointerStationary(cdp, hide.x, hide.y);
+	await wait(320);
+	const collapsed = await splitPreferences(cdp);
+	check(
+		"the collapse is PERSISTED",
+		collapsed.state?.chatSidebarRegions === "entities",
+		String(collapsed.state?.chatSidebarRegions),
+	);
+	const chatsGone = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_CHATS)}) === null`,
+	);
+	check(
+		"the collapsed region is UNMOUNTED",
+		chatsGone === true,
+		`unmounted=${chatsGone}`,
+	);
+	await captureSettled(cdp, "split-collapsed-dark");
+
+	const restore = await splitBox(cdp, "[data-sidebar-restore]");
+	require("the restore row is drawn", restore !==
+		null, "no [data-sidebar-restore] row");
+	const restoreText = await cdp.evaluate(
+		`document.querySelector("[data-sidebar-restore]").textContent.trim()`,
+	);
+	note("the restore row reads", restoreText);
+	await pressPointerStationary(cdp, restore.x, restore.y);
+	await wait(320);
+	const restored = await splitPreferences(cdp);
+	check(
+		"the restore row brings the region back and persists it",
+		restored.state?.chatSidebarRegions === "both",
+		String(restored.state?.chatSidebarRegions),
+	);
+	await captureSettled(cdp, "split-restored-dark");
+
+	// --- 7. U1's SECOND LIMB, asserted: a press that travels does not act ----
+	/*
+	 * The click-cancel is half of what U1 asked for and was asserted nowhere:
+	 * `CONTROL_PRESS_SLOP_PX` appeared once in the tree, at its definition, so a
+	 * regression that deleted the whole mechanism (leaving only the trailing-end
+	 * placement) would have kept every committed check green while a drag starting
+	 * on the plate collapsed a region again (agent review round 2, m-3). The
+	 * gesture below is the one a user makes when they reach for the divider and
+	 * land on a control: press, travel 20px, release.
+	 */
+	const travelFrom = await splitBox(cdp, '[data-sidebar-hide="chats"]');
+	require("the travel probe has a control to press", travelFrom !==
+		null, "no [data-sidebar-hide=chats] control to press");
+	const regionsBeforeTravel = (await splitPreferences(cdp)).state
+		?.chatSidebarRegions;
+	await movePointer(cdp, travelFrom.x, travelFrom.y);
+	await wait(320);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: travelFrom.x,
+		y: travelFrom.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	for (const travelled of [4, 8, 12, 16, 20]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: travelFrom.x + travelled,
+			y: travelFrom.y + travelled,
+			button: "left",
+			buttons: 1,
+		});
+		await wait(20);
+	}
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: travelFrom.x + 20,
+		y: travelFrom.y + 20,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await wait(320);
+	const afterTravel = (await splitPreferences(cdp)).state?.chatSidebarRegions;
+	check(
+		"a press that travels 20px off a boundary control does not act",
+		afterTravel === regionsBeforeTravel,
+		`regions ${regionsBeforeTravel} -> ${afterTravel} (the click-cancel is what makes this safe)`,
+	);
+	const regionsDrawn = await cdp.evaluate(
+		`document.querySelectorAll("[data-sidebar-region]").length`,
+	);
+	check(
+		"and both regions are still drawn",
+		regionsDrawn === 2,
+		`regions drawn: ${regionsDrawn}`,
+	);
+
+	// --- 8. the keyboard path: focus, Home, and the write it makes ----------
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
+	);
+	const focused = await cdp.evaluate(
+		`document.activeElement === document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)})`,
+	);
+	check("the separator can take focus", focused === true, `focused=${focused}`);
+	await pressChord(cdp, { key: "Home", code: "Home", virtualKeyCode: 36 });
+	await wait(250);
+	await captureSettled(cdp, "split-keyboard-home-dark");
+	const afterHome = await splitPreferences(cdp);
+	note(
+		"stored height after Home",
+		String(afterHome.state?.chatSidebarListHeight),
+	);
+
+	// --- 9. the swap, and the two scroll positions it must not lose ---------
+	/*
+	 * TWO readings, because the swap can lose two different things and only one of
+	 * them is always measurable.
+	 *
+	 * The mechanism review round 1 (U2) found is NODE IDENTITY: unkeyed, React
+	 * reconciles the two positions in place, so the element that was the entity
+	 * region becomes the chats region and inherits its content. That is measurable
+	 * whatever the content is, so each node is tagged before the swap and asked
+	 * again after it.
+	 *
+	 * The user-visible consequence is the scroll position, and that one is only
+	 * measurable when BOTH regions overflow - a region given more height than its
+	 * content simply clamps to 0 at any scrollTop, which is a true reading of a
+	 * layout with nothing to scroll rather than a lost position. This run's backend
+	 * has six conversations and no agents, so the chats region is the one that
+	 * overflows; the entity region's reading is reported either way.
+	 */
+	const beforeSwap = await cdp.evaluate(`(() => {
+		const entities = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)});
+		const chats = document.querySelector(${JSON.stringify(SPLIT_CHATS)});
+		if (entities) {
+			entities.dataset.splitProbe = "entities-node";
+			entities.scrollTop = 24;
+		}
+		if (chats) {
+			chats.dataset.splitProbe = "chats-node";
+			chats.scrollTop = 12;
+		}
+		return {
+			probe: {
+				entities: entities?.dataset.splitProbe ?? null,
+				chats: chats?.dataset.splitProbe ?? null,
+			},
+			scroll: { entities: entities?.scrollTop ?? null, chats: chats?.scrollTop ?? null },
+			overflow: {
+				entities: entities ? entities.scrollHeight > entities.clientHeight : null,
+				chats: chats ? chats.scrollHeight > chats.clientHeight : null,
+			},
+		};
+	})()`);
+	const swap = await splitBox(cdp, "[data-sidebar-order]");
+	require("the order control is on the cluster", swap !==
+		null, "no [data-sidebar-order]");
+	await movePointer(cdp, swap.x, swap.y);
+	await wait(320);
+	await pressPointerStationary(cdp, swap.x, swap.y);
+	await wait(400);
+	const swapped = await splitPreferences(cdp);
+	check(
+		"the swap is PERSISTED",
+		swapped.state?.chatSidebarOrder === "chats-first",
+		String(swapped.state?.chatSidebarOrder),
+	);
+	const order = await cdp.evaluate(`(() => {
+		const regions = [...document.querySelectorAll("[data-sidebar-region]")];
+		return regions.map((node) => node.dataset.sidebarRegion);
+	})()`);
+	check(
+		"the chats region is drawn FIRST after the swap",
+		Array.isArray(order) && order[0] === "chats" && order[1] === "entities",
+		JSON.stringify(order),
+	);
+	const afterSwap = await cdp.evaluate(`(() => {
+		const entities = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)});
+		const chats = document.querySelector(${JSON.stringify(SPLIT_CHATS)});
+		return {
+			probe: {
+				entities: entities?.dataset.splitProbe ?? null,
+				chats: chats?.dataset.splitProbe ?? null,
+			},
+			scroll: { entities: entities?.scrollTop ?? null, chats: chats?.scrollTop ?? null },
+			overflow: {
+				entities: entities ? entities.scrollHeight > entities.clientHeight : null,
+				chats: chats ? chats.scrollHeight > chats.clientHeight : null,
+			},
+		};
+	})()`);
+	note(
+		"node identity across the swap",
+		`${JSON.stringify(beforeSwap.probe)} -> ${JSON.stringify(afterSwap.probe)}`,
+	);
+	check(
+		"each region keeps its OWN DOM node across the swap",
+		afterSwap.probe.entities === "entities-node" &&
+			afterSwap.probe.chats === "chats-node",
+		`${JSON.stringify(beforeSwap.probe)} -> ${JSON.stringify(afterSwap.probe)}`,
+	);
+	note(
+		"scroll positions across the swap",
+		`${JSON.stringify(beforeSwap.scroll)} -> ${JSON.stringify(afterSwap.scroll)} (overflowing: ${JSON.stringify(beforeSwap.overflow)})`,
+	);
+	/*
+	 * PER REGION, and conditioned on the region still overflowing: a region given
+	 * more height than its content holds is not a lost position, it is a clamp - it
+	 * has nowhere left to scroll. The first version of this check asserted the
+	 * CHATS region's number alone, which passed because that region is the one with
+	 * a single row's worth of content; the reading it threw away
+	 * (`entities: 24 -> 0` with the entity region overflowing before the swap) is
+	 * the one that says whether a real position was lost, so it is read on both
+	 * sides now.
+	 */
+	for (const region of ["entities", "chats"]) {
+		const stillOverflows =
+			beforeSwap.overflow[region] === true &&
+			afterSwap.overflow[region] === true;
+		check(
+			`a ${region} region that still overflows keeps its scroll position`,
+			!stillOverflows || afterSwap.scroll[region] === beforeSwap.scroll[region],
+			`${region} ${beforeSwap.scroll[region]} -> ${afterSwap.scroll[region]}, ` +
+				`overflow ${beforeSwap.overflow[region]} -> ${afterSwap.overflow[region]}`,
+		);
+	}
+	await captureSettled(cdp, "split-swapped-dark");
+	/*
+	 * Back to the SHIPPED ORDER as well as the wide width, because the frames that
+	 * follow are captioned as the default layout: left swapped, they would be
+	 * photographs of `chats-first` under an `entities-first` caption, which is the
+	 * evidence defect this whole directory exists to avoid.
+	 */
+	await setSplitPreferences(cdp, {
+		...wide,
+		chatSidebarRegions: "both",
+		chatSidebarOrder: "entities-first",
+	});
+
+	// --- 10. the panel at its width clamp -----------------------------------
+	await setSplitPreferences(cdp, {
+		...narrow,
+		chatSidebarRegions: "both",
+		chatSidebarOrder: "entities-first",
+		/*
+		 * AUTO, not the extreme the keyboard step above left: this pair's claim is
+		 * about WIDTH and the room the plate has at it, and a state inherited from a
+		 * `Home` press is neither (design round 2, D9).
+		 */
+		chatSidebarListHeight: null,
+	});
+	await parkPointer(cdp);
+	await captureSettled(cdp, "split-rest-240-dark");
+	const narrowSeparator = await splitBox(cdp, SPLIT_SEPARATOR);
+	if (narrowSeparator !== null) {
+		await movePointer(cdp, narrowSeparator.x, narrowSeparator.y);
+		await wait(420);
+		await captureSettled(cdp, "split-reveal-240-dark");
+	}
+
+	// --- 11. the second brand palette ---------------------------------------
+	await setSplitPreferences(cdp, {
+		...light,
+		chatSidebarRegions: "both",
+		chatSidebarOrder: "entities-first",
+		/*
+		 * AUTO, so this pair is the RESTING state its captions claim.
+		 *
+		 * Taken as the runs before it left the split, the light frames photographed
+		 * the clamped top-of-range state the drag and the `Home` press had just
+		 * written - a region at its 72px floor while the captions said "the resting
+		 * state in the second brand palette" (design round 2, D9). The state is
+		 * reset rather than the caption weakened, because the palette half of D1
+		 * needs the two palettes photographed in the SAME state to be comparable at
+		 * all.
+		 */
+		chatSidebarListHeight: null,
+	});
+	await parkPointer(cdp);
+	await captureSettled(cdp, "split-rest-360-light");
+	const lightSeparator = await splitBox(cdp, SPLIT_SEPARATOR);
+	if (lightSeparator !== null) {
+		await movePointer(cdp, lightSeparator.x, lightSeparator.y);
+		await wait(420);
+		await captureSettled(cdp, "split-reveal-settled-light");
+	}
+
+	// --- 12. the restart: a stored height and a collapse that SURVIVE -------
+	await setSplitPreferences(cdp, {
+		...wide,
+		chatSidebarRegions: "both",
+		chatSidebarOrder: "entities-first",
+	});
+	const heightBefore = await splitPreferences(cdp);
+	await movePointer(
+		cdp,
+		(await splitBox(cdp, SPLIT_SEPARATOR)).x,
+		(await splitBox(cdp, SPLIT_SEPARATOR)).y,
+	);
+	await dragSplit(
+		cdp,
+		(await splitBox(cdp, SPLIT_SEPARATOR)).x,
+		(await splitBox(cdp, SPLIT_SEPARATOR)).y,
+		64,
+	);
+	const hideAgain = await splitBox(cdp, '[data-sidebar-hide="chats"]');
+	if (hideAgain !== null) {
+		await movePointer(cdp, hideAgain.x, hideAgain.y);
+		await wait(320);
+		await pressPointerStationary(cdp, hideAgain.x, hideAgain.y);
+		await wait(320);
+	}
+	const beforeRestart = await splitPreferences(cdp);
+	note("before the restart", JSON.stringify(beforeRestart.state));
+
+	/*
+	 * The second boot, in the SAME scratch profile. `launchApp` reuses the run's
+	 * profile and home by construction, and the earlier handle is stopped by exact
+	 * pid first - a restart is two processes, and the second must be the one this
+	 * run owns.
+	 */
+	const firstPid = handle.pid;
+	await stopApp(handle);
+	/*
+	 * THE SAME TAG, and therefore the same `--user-data-dir`: `launchApp` builds the
+	 * profile as `${USER_DATA}-${tag}`, so a restart under a new tag is a restart
+	 * into a NEW profile - which is what the first version of this scene did, and it
+	 * read an empty store on the second boot and failed its own claim. The tag is
+	 * what pins the profile, and the single-instance lock it also carries is free
+	 * because the first boot has been stopped, by exact pid, one line above.
+	 */
+	const profile = `${USER_DATA}-scene`;
+	const again = await launchApp({
+		armed: true,
+		logName: "app-scene-restart.log",
+		tag: "scene",
+	});
+	/*
+	 * The module-level handle moves to the SECOND boot, because that is the
+	 * process this run must reap: the first was stopped by exact pid just above,
+	 * and the teardown's own check is "nothing is left carrying this run's tag".
+	 * `link` is a local rather than a reassignment of the parameter, which the
+	 * repo's lint refuses and which would also leave the caller's variable stale.
+	 */
+	app = again;
+	await waitForDevtools(again);
+	link.close();
+	link = await CdpClient.attach(again.port, "out/renderer/index.html");
+	await waitForBridge(link);
+	await wait(900);
+	await parkPointer(link);
+	const afterRestart = await splitPreferences(link);
+	note("the restart's profile, unchanged by construction", profile);
+	note("the restart's pid", `${firstPid} -> ${again.pid}`);
+	note("after the restart", JSON.stringify(afterRestart.state));
+	check(
+		"the restart is a different process",
+		again.pid !== firstPid,
+		`${firstPid} -> ${again.pid}`,
+	);
+	check(
+		"the stored height survives the restart",
+		afterRestart.state?.chatSidebarListHeight ===
+			beforeRestart.state?.chatSidebarListHeight,
+		`${beforeRestart.state?.chatSidebarListHeight} -> ${afterRestart.state?.chatSidebarListHeight}`,
+	);
+	check(
+		"the collapse survives the restart",
+		afterRestart.state?.chatSidebarRegions === "entities",
+		String(afterRestart.state?.chatSidebarRegions),
+	);
+	const stillCollapsed = await link.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) !== null && document.querySelector(${JSON.stringify(SPLIT_CHATS)}) === null`,
+	);
+	check(
+		"the restarted app DRAWS the collapsed state",
+		stillCollapsed === true,
+		`collapsed again drawn=${stillCollapsed}`,
+	);
+	await captureSettled(link, "split-restart-restored-dark");
+	return link;
+}
+
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -12346,6 +13004,37 @@ async function main() {
 			: "nothing listening",
 	);
 
+	/*
+	 * The scenes' own preconditions, checked BEFORE anything is launched.
+	 *
+	 * They used to sit inside the run loop, after the app had booted: a
+	 * `--scene sidebar-split` with no `--backend` started a real Electron, logged
+	 * its startup, and only then refused - a refusal that fails closed (the throw
+	 * reaches the reaping path and the app is killed by exact pid) but is not free
+	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
+	 * the same argument holds for every scene that names an instrument it needs.
+	 */
+	if (SCENE === "sidebar-split" && BACKEND === null) {
+		throw new Error(
+			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
+		);
+	}
+	if (SCENE === "pins-scroll" && BACKEND === null) {
+		throw new Error(
+			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
+		);
+	}
+	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
+		throw new Error(
+			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
+		);
+	}
+	if (SCENE === "pins" && (TUI_PYTHON === null) !== (TUI_CONFIG === null)) {
+		throw new Error(
+			"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
+		);
+	}
+
 	if (GATE_CHECK) {
 		say(
 			"\n[gate-check] four real boots: three inert (nothing set, a cwd .env asking, and an explicit off) and one armed\n",
@@ -12460,24 +13149,6 @@ async function main() {
 					"onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one",
 				);
 			}
-			if (SCENE === "pins-scroll" && BACKEND === null) {
-				throw new Error(
-					"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
-				);
-			}
-			if (
-				SCENE === "pins-search" &&
-				(TUI_PYTHON === null || TUI_CONFIG === null)
-			) {
-				throw new Error(
-					"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
-				);
-			}
-			if (SCENE === "pins" && (TUI_PYTHON === null) !== (TUI_CONFIG === null)) {
-				throw new Error(
-					"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
-				);
-			}
 			if (SCENE === "states") await sceneStates(cdp);
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
@@ -12491,6 +13162,8 @@ async function main() {
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
+			else if (SCENE === "sidebar-split")
+				cdp = await sceneSidebarSplit(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
