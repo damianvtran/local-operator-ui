@@ -136,6 +136,10 @@ declare global {
 							| "credential-not-offered";
 					}) => void,
 				) => () => void;
+				/** Reveal the host's own download directory (§16.4). Takes no path, and
+				 * ANSWERS whether it opened: `shell.openPath` returns its failure rather than
+				 * throwing, so the answer is what a caller needs to show one. */
+				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

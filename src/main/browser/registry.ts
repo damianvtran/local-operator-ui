@@ -317,6 +317,25 @@ export class TabRegistry {
 		);
 	}
 
+	/** The tab a webContents belongs to, or null.
+	 *
+	 * WHY THIS EXISTS: `will-download` is a SESSION-level handler (Electron's own
+	 * split, see `profile.ts`), and the only thing it hands the handler that names a
+	 * tab is the WebContents that started the download. Without this lookup the
+	 * host could not tell an armed tab from an unarmed one, and every download would
+	 * have to be refused — which is what it did before the file-transfer feature.
+	 *
+	 * A linear scan is deliberate: the set is bounded by the agent-tab cap plus the
+	 * user's own tabs, it runs once per download, and a second index keyed by
+	 * webContents id is one more thing that can go stale when a view dies. */
+	byWebContents(webContentsId: number): TabRecord | null {
+		if (!Number.isSafeInteger(webContentsId)) return null;
+		for (const record of this.tabs.values()) {
+			if (record.view.webContents.id === webContentsId) return record;
+		}
+		return null;
+	}
+
 	get activeTab(): TabRecord | null {
 		return this.activeTabId === null
 			? null

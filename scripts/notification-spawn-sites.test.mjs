@@ -281,6 +281,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-file-transfer-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless and drives a real download into the harness-composed quarantine directory and a real upload to a local form, so a missing switch here banners the operator about file transfers they did not start",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/session-cookie-restart-proof.mjs",
 		"spawn",
 		1,
