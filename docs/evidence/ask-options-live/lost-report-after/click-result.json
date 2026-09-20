@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T02:10:56.946Z",
+  "at": "2026-09-20T02:43:25.593Z",
   "arm": {
     "armed": true
   },
@@ -59,17 +59,17 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789870276603.1348,
+      "requestedAt": 1789872221937.664,
       "status": 200,
-      "answeredAt": 1789870276622.835,
-      "deliveredAt": 1789870279149.224
+      "answeredAt": 1789872221944.338,
+      "deliveredAt": 1789872224445.854
     }
   ],
-  "clearedAt": 1789870276904,
-  "clearedAfterPressMs": 336,
+  "clearedAt": 1789872222021,
+  "clearedAfterPressMs": 105,
   "ordering": {
-    "clearedAt": 1789870276904,
-    "deliveredAt": 1789870279149.224,
+    "clearedAt": 1789872222021,
+    "deliveredAt": 1789872224445.854,
     "verdict": "the card cleared before the response was delivered"
   },
   "report": {
