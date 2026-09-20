@@ -382,7 +382,15 @@ const api = {
 		},
 		onBackendUpdateProgress: (
 			callback: (progress: {
-				phase: "installing" | "restarting";
+				/**
+				 * `draining` is the WAIT before anything is installed or restarted: the app
+				 * holds the update back while sessions on this machine finish the turns they
+				 * are running (`backend/fleet-drain.ts`). It is its own phase rather than
+				 * part of `installing` because it can last minutes and no install has begun
+				 * - reporting it as installing would make the panel's "this can take a minute
+				 * or two" the wrong sentence for the whole of it.
+				 */
+				phase: "draining" | "installing" | "restarting";
 				/**
 				 * True when the running attempt is the checkout REBUILD rather than the
 				 * release path. The two promise different things while they run - the

@@ -219,12 +219,20 @@ test("a uv-tool SOURCE BUILD is managed by `lop-update` when the machine has it,
 	 * consent the decision recorded - the app ships to people who did not make it, so
 	 * nobody may meet the consequence by surprise. The ALLOWANCE is pinned for the same
 	 * reason: it read "a few minutes" beside a 30-minute budget until round 4.
+	 *
+	 * AND THE WAIT IS PINNED BESIDE IT, because it is what makes the in-place clause
+	 * survivable: the app drains the fleet before it starts this route, so the hazard
+	 * the sentence still names is a turn STARTED while the rebuild runs rather than a
+	 * turn that was running when the press landed.
 	 */
 	assert.match(
 		managed.remedy,
-		/Rebuilds this checkout with `lop-update`. The rebuild happens in place/,
+		/Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first/,
 	);
-	assert.match(managed.remedy, /sessions on this machine can be interrupted/);
+	assert.match(
+		managed.remedy,
+		/a turn started while it runs can still be interrupted/,
+	);
 	assert.match(managed.remedy, /up to half an hour/);
 	assert.match(managed.remedy, /keeps reporting the checkout's version/);
 	/*
@@ -304,9 +312,15 @@ test("a generation install is managed, and the layout is the licence - not the v
 	 * line that told the user to leave the app on the one path where the app runs
 	 * the command itself - and which no renderer branch rendered at all
 	 * (reviews D7, U7).
+	 *
+	 * THE COST IS NO LONGER A DROPPED TURN. On this layout the install lands beside
+	 * the running build and the server adopts it at its own next idle, so what the
+	 * sentence has to say is the sequence and the fact that nothing in flight is cut
+	 * off - a promise the old wording made and the new behaviour cannot incur.
 	 */
-	assert.match(plan.remedy, /restarts the server it started/);
-	assert.match(plan.remedy, /minute or two/);
+	assert.match(plan.remedy, /installs the new build beside the one in use/);
+	assert.match(plan.remedy, /nothing in flight is cut off/);
+	assert.doesNotMatch(plan.remedy, /turn that is in flight is dropped/);
 	assert.doesNotMatch(plan.remedy, /your terminal/);
 	assert.doesNotMatch(plan.remedy, /:$/);
 	assert.doesNotMatch(plan.detail, /rewrites the shared environment in place/);
