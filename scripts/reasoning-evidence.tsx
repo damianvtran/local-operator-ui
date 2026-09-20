@@ -48,6 +48,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 } from "@features/chat/canonical/transcript-reducer";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { ThemeProvider } from "@shared/themes/theme-provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -95,9 +96,25 @@ const LONG_REASONING = [
 	"Arrival 20:00, and the derivation is stable under repetition.",
 ].join("");
 
+/**
+ * The worst case for the painted window (design D1): one long tail with no
+ * newline in it, so every wrap the column decides is a row the block has to
+ * bound. ~7,200 characters against a 2,000-character window, which is what makes
+ * the elision mark and the height clamp both real in one state.
+ */
+const ELISION_REASONING = "Re-checking the second leg, because that is the one that bites. ".repeat(
+	120,
+);
+
 const ANSWER = "The arrival time is 20:00.";
 
-type Mode = "reasoning" | "long" | "none" | "cancel";
+type Mode = "reasoning" | "long" | "elision" | "none" | "cancel";
+
+/**
+ * The three columns design D1 was measured at: the app's cap, a narrow pane and
+ * the floor `chat-measure.ts` documents with the canvas open.
+ */
+const SWEEP_WIDTHS = [900, 420, 220] as const;
 
 type Sample = {
 	mode: Mode;
@@ -197,7 +214,7 @@ const EMPTY_VIEW: View = {
  */
 const geometry = (container: HTMLDivElement | null): string => {
 	if (!container) return "no transcript";
-	const block = container.querySelector('[data-lo-reasoning="live"]');
+	const block = container.querySelector("[data-lo-reasoning]");
 	const line = container.querySelector("[data-lo-working-line]");
 	/*
 	 * The prose, not the row that holds it: `data-lo-streaming` is on
@@ -210,9 +227,29 @@ const geometry = (container: HTMLDivElement | null): string => {
 		element
 			? `${Math.round(element.getBoundingClientRect().top)}px top / ${Math.round(element.getBoundingClientRect().height)}px tall`
 			: "absent";
+	/*
+	 * THE HEIGHT BOUND, MEASURED (design D1). The character cap does not bound
+	 * height, so the question a reader has to be able to answer from the frame is
+	 * "how many ROWS does the window paint, and is the newest line inside it" —
+	 * numbers a still cannot carry. `rowsPainted` is the clamp divided by the
+	 * block's own line box, so it is the painted row count and not a guess at one.
+	 */
+	const rows = (() => {
+		const box = container.querySelector("[data-lo-reasoning-window]");
+		const text = container.querySelector("[data-lo-reasoning-text]");
+		if (!box || !text) return "reasoning window: absent";
+		const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight) || 1;
+		const boxRect = box.getBoundingClientRect();
+		const textRect = text.getBoundingClientRect();
+		return [
+			`reasoning window : ${Math.round(boxRect.height)}px tall / ${Math.round(boxRect.height / lineHeight)} rows of ${lineHeight.toFixed(1)}px (window holds ${Math.round(textRect.height)}px of text)`,
+			`newest line      : ${Math.round(textRect.bottom)}px vs window bottom ${Math.round(boxRect.bottom)}px (tail visible: ${Math.abs(textRect.bottom - boxRect.bottom) <= 1})`,
+		].join("\n");
+	})();
 	return [
 		`viewport ${window.innerWidth}x${window.innerHeight} @dpr${window.devicePixelRatio}`,
 		`scroller scrollTop ${Math.round(container.scrollTop)} / scrollHeight ${Math.round(container.scrollHeight)} / clientHeight ${container.clientHeight}`,
+		rows,
 		`reasoning block : ${rect(block)}`,
 		`working line    : ${rect(line)}`,
 		`streaming prose : ${rect(prose)}`,
@@ -225,6 +262,23 @@ const Harness = () => {
 	const [status, setStatus] = useState("idle");
 	const [phase, setPhase] = useState("");
 	const [busy, setBusy] = useState(false);
+	/*
+	 * The frame's WIDTH, which is the column the block wraps at — the variable
+	 * design D1 turns on. 900 is the app's own cap; `SWEEP_WIDTHS` adds the pane a
+	 * reader on a laptop gets and the floor with the canvas open.
+	 */
+	const [frameWidth, setFrameWidth] = useState<number>(SWEEP_WIDTHS[0]);
+	/*
+	 * The reasoning-display preference, driven in the REAL store rather than by a
+	 * prop, because that is how the app reads it: a rig that passed a prop would
+	 * be photographing a component the product does not have. It is pushed into
+	 * the store on every change so a screenshot of the off state is a screenshot
+	 * of the switch being off.
+	 */
+	const [liveReasoning, setLiveReasoning] = useState(true);
+	useEffect(() => {
+		useUiPreferencesStore.setState({ showLiveReasoning: liveReasoning });
+	}, [liveReasoning]);
 	const [reads, setReads] = useState<string>("");
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -374,7 +428,7 @@ const Harness = () => {
 	const hasReasoning = useCallback(
 		() =>
 			Boolean(
-				containerRef.current?.querySelector('[data-lo-reasoning="live"]'),
+				containerRef.current?.querySelector('[data-lo-reasoning]'),
 			),
 		[],
 	);
@@ -386,7 +440,7 @@ const Harness = () => {
 
 	const paintedReasoningChars = useCallback(() => {
 		const block = containerRef.current?.querySelector(
-			'[data-lo-reasoning="live"] p',
+			'[data-lo-reasoning] p',
 		);
 		return block?.textContent?.length ?? 0;
 	}, []);
@@ -402,7 +456,12 @@ const Harness = () => {
 			pace: { fragmentMs: number; holdAt?: number },
 		): Promise<Sample> => {
 			setPhase(mode);
-			const reasoning = mode === "long" ? LONG_REASONING : REASONING;
+			const reasoning =
+				mode === "long"
+					? LONG_REASONING
+					: mode === "elision"
+						? ELISION_REASONING
+						: REASONING;
 			const pieces = mode === "none" ? [] : fragments(reasoning);
 			setView(EMPTY_VIEW);
 			setStatus(`running ${mode}`);
@@ -683,7 +742,7 @@ const Harness = () => {
 			 */
 			const inView = () => {
 				const box = scroller.getBoundingClientRect();
-				const block = scroller.querySelector('[data-lo-reasoning="live"]');
+				const block = scroller.querySelector('[data-lo-reasoning]');
 				if (!block) return false;
 				const rect = block.getBoundingClientRect();
 				return rect.bottom > box.top + 1 && rect.top < box.bottom - 1;
@@ -794,6 +853,56 @@ const Harness = () => {
 		}
 	}, [feed, say, submit, waitFor, hasReasoning, hasText]);
 
+	/**
+	 * Design D1's measurement: the same block at three column widths.
+	 *
+	 * The character cap is width-blind and `pre-wrap` wraps, so the height of the
+	 * painted window used to be whatever the column decided — 15 rows at 900px,
+	 * 39 at 420px and 106 at 220px on a 2,000-character tail with no newline in
+	 * it, with the newest reasoning 1,854px below the fold at the floor. This
+	 * drives ONE state whose tail has no newline anywhere in it (the worst case
+	 * for wrapping) at each width and prints the window's height in rows, so the
+	 * bound is a number a reader can check against the clamp rather than a claim
+	 * in a comment.
+	 */
+	const sweep = useCallback(async () => {
+		setBusy(true);
+		setLog([]);
+		try {
+			for (const width of SWEEP_WIDTHS) {
+				setFrameWidth(width);
+				setView(EMPTY_VIEW);
+				await waitFor(() => !hasReasoning(), 500);
+				const pieces = fragments(ELISION_REASONING);
+				submit();
+				feed([agentStart, userFrame, assistantStart]);
+				setView((current) => ({ ...current, waiting: true }));
+				for (const piece of pieces) {
+					feed([
+						{ type: "reasoning_delta", message_id: MESSAGE_ID, delta: piece },
+					]);
+				}
+				await waitFor(hasReasoning, 1000);
+				await sleep(160);
+				const container = containerRef.current;
+				if (!container) throw new Error("no transcript");
+				const text = container.querySelector("[data-lo-reasoning-text]");
+				say(
+					[
+						`D1 SWEEP - column ${width}px`,
+						`  painted characters : ${text?.textContent?.length ?? 0} of ${ELISION_REASONING.length} fed`,
+						geometry(container)
+							.split("\n")
+							.filter((line) => /reasoning window|newest line|scroller/.test(line))
+							.join("\n"),
+					].join("\n"),
+				);
+			}
+		} finally {
+			setBusy(false);
+		}
+	}, [feed, say, submit, waitFor, hasReasoning]);
+
 	const frontend = useMemo(
 		() =>
 			view.waiting
@@ -824,7 +933,7 @@ const Harness = () => {
 	return (
 		<div className="lo-harness">
 			<div className="lo-harness__stage">
-				<div className="lo-harness__frame">
+				<div className="lo-harness__frame" style={{ width: frameWidth }}>
 					<CanonicalTranscript
 						transcript={view.transcript}
 						frontend={frontend}
@@ -958,13 +1067,66 @@ const Harness = () => {
 					>
 						Scroll check
 					</button>
+					<button
+						type="button"
+						id="btn-elision"
+						disabled={busy}
+						onClick={() =>
+							run(
+								"elision",
+								{ fragmentMs: 0, holdAt: 160 },
+								"ELISION - a tail with no newline in it, held mid-stream",
+							)
+						}
+					>
+						Elision (hold mid-stream)
+					</button>
+					{/*
+					 * The two controls the remediation round added.
+					 *
+					 * `#btn-pref` drives the REAL preference, so the off state is a
+					 * screenshot of the switch being off rather than of a component
+					 * receiving a prop. `#btn-width` re-lays the SAME state out at
+					 * the next column width, which is how D1's three frames are
+					 * taken without re-running the turn between them.
+					 */}
+					<button
+						type="button"
+						id="btn-pref"
+						onClick={() => setLiveReasoning((current) => !current)}
+					>
+						{`Reasoning display: ${liveReasoning ? "ON" : "OFF"}`}
+					</button>
+					<button
+						type="button"
+						id="btn-width"
+						onClick={() =>
+							setFrameWidth(
+								SWEEP_WIDTHS[
+									(SWEEP_WIDTHS.indexOf(frameWidth as (typeof SWEEP_WIDTHS)[number]) + 1) %
+										SWEEP_WIDTHS.length
+								],
+							)
+						}
+					>
+						{`Column width: ${frameWidth}px`}
+					</button>
+					<button
+						type="button"
+						id="btn-sweep"
+						disabled={busy}
+						onClick={sweep}
+					>
+						D1 sweep (900/420/220)
+					</button>
 				</div>
 				<div className="lo-harness__probe" id="probe-status">
 					<h2>Harness</h2>
 					<div id="probe-state">{`state: ${status}`}</div>
 					<div id="probe-phase">{`phase: ${phase || "-"}`}</div>
 					<div id="probe-rows">{`rows on screen: ${view.transcript.records.length}`}</div>
-					<div id="probe-reasoning">
+					<div id="probe-pref">{`reasoning display: ${liveReasoning ? "on" : "off"} / column ${frameWidth}px`}</div>
+				<div id="probe-reasoning">
 						{`reasoning block: ${hasReasoning() ? "streaming" : "absent"}`}
 					</div>
 					<h2>Geometry</h2>

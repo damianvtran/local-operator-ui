@@ -40,8 +40,25 @@ body,
 	/* The stage plus the probe column, so neither is squeezed by a narrow window:
 	   the rig's own boxes are fixed above and this keeps them from being clipped
 	   into each other. */
-	min-width: 1360px;
-	height: 100%;
+	/*
+	 * 1280 is the driving window's CSS width, and the two boxes are sized to fit
+	 * inside it: the stage is the app's own 900px column plus its own padding and
+	 * the probe takes what is left. `min-width` used to be 1360, which pushed the
+	 * probe column off the right edge of every frame (design N1) — a readout that
+	 * is cropped out of the picture is a readout nobody can check.
+	 */
+	width: 1280px;
+	/*
+	 * A PINNED HEIGHT, for the same reason the boxes above are pinned and measured
+	 * the same way: the operator's window is not this rig's to size. It has been
+	 * measured at 1280x720 and at 0x0 within one afternoon, and `height: 100%` of a
+	 * 0-height body collapsed every box in the stage — the transcript's
+	 * `clientHeight` went to 32px and the window under test to 20px, so the D1
+	 * numbers read as "one row" for a layout that was not laid out at all. Pinned,
+	 * the rig lays out at the driving window's own CSS size whatever the window is
+	 * doing, and the `viewport` line in the readout still says which it was.
+	 */
+	height: 720px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11px;
 	background: #101014;
@@ -68,6 +85,21 @@ body,
 .lo-harness__frame {
 	display: flex;
 	/*
+	 * THE APP'S GROUND, not the rig's (design D3).
+	 *
+	 * The frame is a photograph of the product surface, so its background has to
+	 * be the theme's canvas role and not a colour of the harness's own: measured on
+	 * the first round, the ground came out `#101015` against the app's
+	 * `bg-canvas` `#22201c`, which inflated every dark-theme contrast ratio the
+	 * review read off the frame (10.03:1 where the app gives 8.60:1) and, on
+	 * `localOperatorLight`, put the ink at 2.11:1 where the app gives 7.66:1 —
+	 * i.e. it made the light half of the acceptance criteria unverifiable. The rig
+	 * CHROME around it keeps its own monospace colours on purpose (see
+	 * `.lo-harness`), because that part is not pretending to be the product.
+	 */
+	background: var(--color-canvas);
+	color: var(--color-ink);
+	/*
 	 * A FIXED size, deliberately, and not a responsive one.
 	 *
 	 * The window this rig runs in is the operator's own, so its geometry is not
@@ -79,7 +111,7 @@ body,
 	 * is doing, so the frames are comparable across runs.
 	 */
 	width: 900px;
-	height: 620px;
+	height: 430px;
 	flex-direction: column;
 	overflow: hidden;
 	border: 1px solid #2a2a32;
@@ -106,8 +138,11 @@ body,
 }
 .lo-harness__probe {
 	display: flex;
-	width: 360px;
-	min-width: 360px;
+	/* The remainder of the window rather than a fixed 360px: with the frame pinned
+	   to the app's own 900px column, a fixed probe width is what pushed the last
+	   lines of the readout off the right edge (design N1). */
+	flex: 1;
+	min-width: 0;
 	flex-direction: column;
 	gap: 6px;
 	overflow: auto;

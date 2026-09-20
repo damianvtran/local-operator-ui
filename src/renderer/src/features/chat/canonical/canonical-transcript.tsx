@@ -45,6 +45,7 @@ import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	CircleAlert,
 	Info,
@@ -475,12 +476,22 @@ const AssistantRow = memo(function AssistantRow({
 	showAvatar,
 	closesTurn,
 	conversationId,
+	showLiveReasoning,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	closesTurn: boolean;
 	conversationId?: string;
+	/**
+	 * `showLiveReasoning`, threaded rather than read in here.
+	 *
+	 * The predicate below decides row-ness and the block decides what paints, and
+	 * both have to answer to the same value in one frame: a row whose paint is
+	 * gated off while `buildRows` still counted it is an avatar and a gap standing
+	 * over nothing. One read at the top of the transcript is one answer.
+	 */
+	showLiveReasoning: boolean;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
@@ -510,7 +521,7 @@ const AssistantRow = memo(function AssistantRow({
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
 	// stays as the component's own contract for any other caller.
-	if (!paintsSomething(record)) return null;
+	if (!paintsSomething(record, showLiveReasoning)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
 	return (
 		<MessageContainer
@@ -549,7 +560,19 @@ const AssistantRow = memo(function AssistantRow({
 				 * The one ending that keeps it is an abort, where the thinking is the whole
 				 * of what the turn produced and `Stopped before finishing` renders under it.
 				 */}
-				{record.reasoning ? <LiveReasoning text={record.reasoning} /> : null}
+				{showLiveReasoning && record.reasoning ? (
+					<LiveReasoning
+						text={record.reasoning}
+						/*
+						 * Streaming exactly while the CALL is writing, which is the same fact
+						 * `data-lo-streaming` above states with a different subject: that one is
+						 * about the row's prose. An interrupted turn keeps its thinking, and
+						 * `record.streaming` is false by then, so the block says `frozen`
+						 * rather than claiming a liveness the receipt beside it contradicts.
+						 */
+						state={record.streaming ? "streaming" : "frozen"}
+					/>
+				) : null}
 				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				{/*
 				 * AN HONEST ROW FOR A MESSAGE THIS VIEWER ONLY PARTLY RECEIVED.
@@ -1243,12 +1266,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
+	showLiveReasoning,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** Passed through to `AssistantRow`; see its own note for why it is threaded. */
+	showLiveReasoning: boolean;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1272,6 +1298,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					closesTurn={row.closesTurn}
 					conversationId={conversationId}
+					showLiveReasoning={showLiveReasoning}
 				/>
 			);
 			break;
@@ -1415,11 +1442,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// they had been looking at the whole time.
 	useCompletionView(frontend, status === "live" && !waiting, containerRef);
 	const previousRows = useRef<Row[]>([]);
+	/*
+	 * The reasoning-display preference, read ONCE per frame and threaded to the
+	 * two places that must agree about it: this builder, which decides whether a
+	 * record is a row at all, and `AssistantRow`, which decides what the row
+	 * paints. Two reads could disagree inside one frame; one read cannot. See
+	 * `paintsSomething` for why the preference changes row-ness rather than only
+	 * the paint.
+	 */
+	const showLiveReasoning = useUiPreferencesStore(
+		(state) => state.showLiveReasoning,
+	);
 	const rows = useMemo(() => {
-		const next = buildRows(painted.records, previousRows.current);
+		const next = buildRows(
+			painted.records,
+			previousRows.current,
+			showLiveReasoning,
+		);
 		previousRows.current = next;
 		return next;
-	}, [painted.records]);
+	}, [painted.records, showLiveReasoning]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	const [windowSize, setWindowSize] = useState(WINDOW);
@@ -2062,6 +2104,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									nameColumn={nameColumn}
 									scope={mediaScope}
 									conversationId={conversationId}
+									showLiveReasoning={showLiveReasoning}
 								/>
 							))}
 						</CanvasPaneProvider>
