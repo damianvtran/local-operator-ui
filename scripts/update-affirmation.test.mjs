@@ -1465,19 +1465,30 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	/*
 	 * WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used to be the
 	 * one commit control in the component with no cost line above it: the price - the
-	 * server going down and in-flight work being dropped - was stated only in the
-	 * in-flight panel, one batch later, when it could no longer be withdrawn. The
-	 * sentence is asserted as the same one the restart phase uses, so the two cannot
-	 * drift apart.
+	 * server going down, and the wait for the turns already running to finish - was
+	 * stated only in the in-flight panel, one batch later, when it could no longer be
+	 * withdrawn. The sentence is asserted as the same one the restart phase uses, so
+	 * the two cannot drift apart.
+	 *
+	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18): the press drains the fleet
+	 * before it restarts anything, so the sentence prices the WAIT and promises that
+	 * nothing in flight is cut off. The assertion is the promise, because a later
+	 * reader who "restores" the old clause would be promising work loss the app no
+	 * longer inflicts.
 	 */
 	assert.ok(
 		copy.some(
 			(text) =>
 				/offline while it comes back - usually a few seconds, up to half a minute/.test(
 					text,
-				) && /drops anything that is in flight/.test(text),
+				) && /nothing in flight is cut off/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
+	);
+	assert.equal(
+		copy.some((text) => /drops anything that is in flight/.test(text)),
+		false,
+		`no surface may price this press in dropped work: ${JSON.stringify(copy)}`,
 	);
 	/*
 	 * DISMISS FIRST, COMMIT LAST (design D4), which is this component's own rule and
@@ -1897,15 +1908,22 @@ test("a restart that came back on the new build is still the success toast", () 
  * The managed arm's sentence comes from the plan, and the plan is an install
  * classification: it cannot know whether the daemon serving this app is one the
  * app started. On a machine where discovery adopted a server the offer therefore
- * promised "restarts the server it started, so a turn that is in flight is
- * dropped" - a cost that cannot be incurred there, denied four minutes later by the
+ * promised a cost that cannot be incurred there, denied four minutes later by the
  * app's own completion notice. The event now carries `restartable`, and this case
  * pins both directions off the SAME payload: only the ownership reading differs.
+ *
+ * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE. It used to
+ * promise a dropped turn ("...so a turn that is in flight is dropped while the
+ * server comes back"); a restart now waits for the running turns to finish first,
+ * so no surface may describe one as dropping work in flight - and the sentence
+ * below is the plan's own, kept verbatim because that is the whole subject of this
+ * case.
  */
 test("the offer names the restart cost only where the app may restart the server", () => {
 	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.
 	const PLAN_MANAGED_SENTENCE =
-		"The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two.";
+		"The app installs the new build beside the one in use and leaves the server you are using on the build it loaded, so nothing in flight is cut off. The server moves onto the new build when it is next idle.";
+	const PLAN_MANAGED_CLAUSE = /installs the new build beside the one in use/;
 
 	const owned = mountNotification();
 	updater.emit("backend-update-available", {
@@ -1915,8 +1933,17 @@ test("the offer names the restart cost only where the app may restart the server
 	});
 	owned.render();
 	const ownedCopy = allCopy(owned).join(" ");
-	assert.match(ownedCopy, /then restarts the server it started/, ownedCopy);
-	assert.match(ownedCopy, /a turn that is in flight is dropped/, ownedCopy);
+	assert.match(ownedCopy, PLAN_MANAGED_CLAUSE, ownedCopy);
+	/*
+	 * AND NO SURFACE HERE MAY PROMISE A DROPPED TURN. This is the assertion the
+	 * operator's own priority turns into a test: the string existed, it was true of
+	 * the behaviour, and the behaviour is what changed.
+	 */
+	assert.equal(
+		/a turn that is in flight is dropped/.test(ownedCopy),
+		false,
+		`no offer copy may describe a dropped turn: ${ownedCopy}`,
+	);
 
 	const adopted = mountNotification();
 	updater.emit("backend-update-available", {
@@ -1932,10 +1959,15 @@ test("the offer names the restart cost only where the app may restart the server
 		adoptedCopy,
 	);
 	assert.match(adoptedCopy, /nothing in flight is dropped/, adoptedCopy);
+	/*
+	 * The plan's own sentence is not what an adopted machine is told: the two
+	 * describe opposite things about the server the reader is using, and the whole
+	 * point of the reading is that the panel picks the true one.
+	 */
 	assert.equal(
-		/restarts the server it started/.test(adoptedCopy),
+		PLAN_MANAGED_CLAUSE.test(adoptedCopy),
 		false,
-		`an adopted daemon's offer must not promise a restart: ${adoptedCopy}`,
+		`an adopted daemon's offer must not carry the app-owned sentence: ${adoptedCopy}`,
 	);
 
 	// An older main process sends no ownership reading at all. The app-owned
@@ -1946,10 +1978,7 @@ test("the offer names the restart cost only where the app may restart the server
 		remedy: PLAN_MANAGED_SENTENCE,
 	});
 	unstated.render();
-	assert.match(
-		allCopy(unstated).join(" "),
-		/then restarts the server it started/,
-	);
+	assert.match(allCopy(unstated).join(" "), PLAN_MANAGED_CLAUSE);
 });
 
 /**

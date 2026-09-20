@@ -3152,7 +3152,73 @@ export const STORIES = [
 	 */
 	["common-updatenotification--backend-update-installing", 1280, 900],
 	["common-updatenotification--backend-update-restarting", 1280, 900],
+	/*
+	 * THE WAIT BEFORE ANYTHING MOVES, and the one in-flight state this branch adds
+	 * (design round 1, D3). It was undeclared until now, so the repo's own rig could
+	 * not photograph it - a `--only=common-updatenotification--` run matched nothing
+	 * for it and threw - which is why the design round had to drive Storybook with a
+	 * rig of its own. Declared here, so the state the PR adds is in the committed set
+	 * and the next design round re-captures it the ordinary way.
+	 */
+	[
+		"common-updatenotification--backend-update-draining",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Waiting for the turns running on this machine to finish",
+				/*
+				 * AND THE READING UNDER IT (design round 2, D8). The entry guarded only the
+				 * sentence, so a frame with NO elapsed line - which the shipped producer cannot
+				 * produce and the story's own mock used to, because it sent the phase without
+				 * `waitedMs` - was admitted as evidence for the state D3 added. The mock now
+				 * carries the fixture number and this claim is what refuses the shutter if it
+				 * stops reaching the screen.
+				 */
+				"Waiting 12 seconds so far",
+			],
+		},
+	],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE REFUSAL, which is not the failure above it (design round 1, D1/D5). The
+	 * fleet did not drain, so the app waited its bounded time and left the server
+	 * alone - a deliberate, bounded decision that used to be painted in the failure
+	 * panel's clothes, with `Try again` as the emphasized control on a frame whose
+	 * own sentence said the app would offer the update again. Both arms are declared
+	 * because they say different things about what happened: a measured busy fleet,
+	 * and a fleet nothing could read.
+	 */
+	[
+		"common-updatenotification--backend-update-refused-busy-fleet",
+		1280,
+		900,
+		{ expectSentence: "The app waited 10 minutes for them to finish" },
+	],
+	[
+		"common-updatenotification--backend-update-refused-unreadable-fleet",
+		1280,
+		900,
+		{ expectSentence: "The server refused this app's credentials" },
+	],
+	/*
+	 * AND THE THIRD ARM, WHICH IS A DIFFERENT HEADING (design round 2, D6): this press
+	 * published the build and was refused the bounce, so the panel may not say "The
+	 * update did not start" over a sentence that says the install has landed. Declared
+	 * as its own story rather than injected into a page, which is how the round-2 review
+	 * had to judge it.
+	 */
+	[
+		"common-updatenotification--backend-update-refused-landed-install",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"The update didn't finish restarting",
+				"The install itself has landed",
+			],
+		},
+	],
 	/*
 	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
 	 * is the published release, the daemon SERVING this app is the previous build,
@@ -6997,6 +7063,13 @@ const main = async () => {
 			 * guard stops guarding.
 			 */
 			/*
+			 * A LIST IS ALLOWED, and the draining entry is why: the state it exists for is a
+			 * sentence AND the reading under it, and a single substring claim about the
+			 * sentence cannot refuse a shutter on a frame that lost the reading (design round
+			 * 2, D8). One claim, one meaning - each string is a sentence the reader is meant
+			 * to read.
+			 */
+			/*
 			 * WAITED FOR, not read once, because a story is allowed to fill a line LATE and a
 			 * shutter that can beat it will eventually beat it (review round 2's MAJOR 1: the
 			 * `wedged-owner` readout is written by a 200ms poll, and a frame was committed
@@ -7007,22 +7080,26 @@ const main = async () => {
 			 * must not be committed silently. Two seconds is ten poll ticks — the interval is
 			 * the story's own 200ms — and it costs a passing sweep nothing.
 			 */
-			if (options?.expectSentence) {
-				/*
-				 * SCOPED TO A PLACE, NOT TO THE DOCUMENT (round 3, found by the reader
-				 * re-taking this very frame). The first version of this check searched
-				 * `document.body.innerText`, and the `sr-only` remedy span is RENDERED —
-				 * clipped to a pixel rather than `display: none` — so its text is in the
-				 * document's innerText whatever the readout says. The gate therefore passed
-				 * on a frame reading `Row tooltips: (none on screen)`: it asserted that the
-				 * sentence existed SOMEWHERE, which is not the claim. A subject gate has to
-				 * name the surface the frame was sized for, so the sentence form below is
-				 * `{ selector, includes }` and the subject is that element's own text.
-				 */
-				const claim = options.expectSentence;
-				const scoped = typeof claim === "string" ? null : claim.selector;
-				const wanted = typeof claim === "string" ? claim : claim.includes;
-				const paintedIn = async () => {
+			/*
+			 * SCOPED TO A PLACE, NOT TO THE DOCUMENT (round 3, found by the reader
+			 * re-taking this very frame). The first version of this check searched
+			 * `document.body.innerText`, and the `sr-only` remedy span is RENDERED —
+			 * clipped to a pixel rather than `display: none` — so its text is in the
+			 * document's innerText whatever the readout says. The gate therefore passed
+			 * on a frame reading `Row tooltips: (none on screen)`: it asserted that the
+			 * sentence existed SOMEWHERE, which is not the claim. A subject gate has to
+			 * name the surface the frame was sized for, so the sentence form below is
+			 * `{ selector, includes }` and the subject is that element's own text.
+			 *
+			 * EACH CLAIM IN A LIST GETS ITS OWN SURFACE, because the two forms are one gate:
+			 * an entry may name several sentences, and the frame is refused until every one
+			 * of them is on the screen it names.
+			 */
+			const declared = options?.expectSentence;
+			if (declared) {
+				const claims = Array.isArray(declared) ? declared : [declared];
+				const paintedIn = async (claim) => {
+					const scoped = typeof claim === "string" ? null : claim.selector;
 					const { result: claimRead } = await cdp.send("Runtime.evaluate", {
 						expression: scoped
 							? `(() => { const el = document.querySelector(${JSON.stringify(scoped)}); return el ? (el.innerText || "") : "\\u0000missing"; })()`
@@ -7037,13 +7114,23 @@ const main = async () => {
 					}
 					return value;
 				};
-				let painted = await paintedIn();
-				for (let waited = 0; waited < 2000; waited += 100) {
-					if (painted.includes(wanted)) break;
+				const outstanding = async () => {
+					const unmet = [];
+					for (const claim of claims) {
+						const wanted = typeof claim === "string" ? claim : claim.includes;
+						const painted = await paintedIn(claim);
+						if (!painted.includes(wanted)) unmet.push({ claim, wanted });
+					}
+					return unmet;
+				};
+				let unmet = await outstanding();
+				for (let waited = 0; unmet.length > 0 && waited < 2000; waited += 100) {
 					await sleep(100);
-					painted = await paintedIn();
+					unmet = await outstanding();
 				}
-				if (!painted.includes(wanted)) {
+				if (unmet.length > 0) {
+					const { claim, wanted } = unmet[0];
+					const scoped = typeof claim === "string" ? null : claim.selector;
 					throw new Error(
 						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
 					);

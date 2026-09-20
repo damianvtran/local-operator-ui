@@ -66,30 +66,56 @@ const skewKey = (notice: {
  * no longer be withdrawn: "the server is offline while it comes back ... and
  * anything in flight is dropped".
  *
+ * THAT LAST CLAUSE IS NO LONGER TRUE AND NO LONGER SAID. A restart now waits for
+ * the fleet to drain first, so what a reader gives up is TIME rather than work in
+ * flight; the sentence here says the wait, and the in-flight copy says the wait
+ * again in its own phase.
+ *
  * ONE LEAF, TWO STATES, AND THE DIFFERENCE IS THE CLAUSE RATHER THAN A SECOND
  * SENTENCE (design D13). Two sentences would drift, so what the two arms SHARE is
  * the bound - `RESTART_OUTAGE_BOUND` - and each arm states its own half around it.
  * That split exists because the shared sentence billed a cost already paid on one
  * of the arms: the panel whose own heading is "The server did not come back after
- * the restart" was telling the reader the restart "puts the server offline ... and
- * drops anything that is in flight" about a server that is already offline and
- * work that was already dropped. Spelled once is still achieved - twice, not twice
- * stated.
+ * the restart" was pricing the outage and the wait for a server that is already
+ * offline. Spelled once is still achieved - twice, not twice stated.
  */
 const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
 
 /**
  * The cost of the restart for a server that is UP and behind the install: this
- * press is what takes it offline, and in-flight work is what it drops.
+ * press is what takes it offline, and the wait is what it costs.
+ *
+ * IT NO LONGER PRICES DROPPED WORK. The press drains the fleet first
+ * (`backend/fleet-drain.ts`), so what a reader gives up is the time the running
+ * turns take to finish - stated, because a panel that promises a prompt restart
+ * and then holds the button for minutes is the silence this component keeps
+ * removing - and nothing in flight is cut off.
+ *
+ * AND IT NOW STATES THE BOUND THE PRESS IMPOSES (design D3). The offer used to
+ * price the wait without saying how long it could be, so the ten-minute wait -
+ * and the refusal that can follow it - appeared only AFTER the press, one batch
+ * later, when neither could be withdrawn. `RESTART_DRAIN_BOUND` is the same
+ * sentence fragment the draining phase carries, so the promise before the press
+ * and the promise during it cannot drift into two numbers.
+ *
+ * AND THE SUBJECT IS NAMED (design D4). "It waits for the turns..." followed
+ * three clauses about the server and read as the SERVER waiting; "The restart
+ * waits" is the actor the press actually starts.
  */
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND} - and drops anything that is in flight.`;
+const RESTART_DRAIN_BOUND =
+	"The app waits up to ten minutes for the turns running on this machine to finish, then stops rather than cutting a turn short, so nothing in flight is cut off";
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. ${RESTART_DRAIN_BOUND}.`;
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
- * outage and the dropped work are already facts, so the only thing left to price is
- * the wait for it to come back - which is the half the two arms share.
+ * outage is already a fact, so the only thing left to price is the wait for it to
+ * come back - which is the half the two arms share.
+ *
+ * IT DOES NOT CLAIM DROPPED WORK. It used to, and the claim is not available any
+ * more: the press drains the fleet before it restarts anything, so a server in this
+ * state went offline over an idle machine.
  */
-const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline and anything in flight has already been dropped, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
+const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -127,6 +153,33 @@ const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 	targetVersion
 		? `The server update to ${targetVersion} did not complete.`
 		: "The server update did not complete.";
+
+/**
+ * How long the press has been waiting for the fleet, in words.
+ *
+ * THE READING IS THE POINT, not its typography (design D3): the draining phase can
+ * run to ten minutes with no other pixel on the frame moving, and the number the
+ * main process already logs (`waitedMs` on the progress event) is what tells a
+ * reader the app is working rather than wedged.
+ *
+ * WORDS RATHER THAN `12s` / `2m 10s` (design round 2, N1). The abbreviation was the
+ * only one on a panel whose every other duration is spelled out - "up to ten
+ * minutes" in the sentence directly above it, "a few seconds, up to half a minute"
+ * in the family's restarting arm - so the one line a person reads under a wait was
+ * speaking the log's shorthand beside copy that does not. The log keeps the short
+ * spelling: this is the reader's line, that is the machine's.
+ */
+const waitElapsedLabel = (waitedMs: number): string => {
+	const seconds = Math.max(1, Math.round(waitedMs / 1000));
+	const unit = (value: number, name: string) =>
+		`${value} ${name}${value === 1 ? "" : "s"}`;
+	if (seconds < 60) return `Waiting ${unit(seconds, "second")} so far`;
+	const rest = seconds % 60;
+	const minutes = Math.floor(seconds / 60);
+	return rest === 0
+		? `Waiting ${unit(minutes, "minute")} so far`
+		: `Waiting ${unit(minutes, "minute")} ${unit(rest, "second")} so far`;
+};
 
 type BackendUpdateInfo = {
 	currentVersion: string;
@@ -173,6 +226,14 @@ type BackendUpdateInfo = {
 	 * takes the app-owned answer - see `serverRestartsWithInstall`.
 	 */
 	restartable?: boolean;
+	/**
+	 * Whether the press behind this offer restarts the server (see the main process's
+	 * own field of the same name). Distinct from `restartable`, which answers whether
+	 * the app STARTED the daemon: on a generation install the press installs beside
+	 * the running build and does not bounce anything, so the sentences that promise a
+	 * restart ask this one.
+	 */
+	restartsServer?: boolean;
 	/**
 	 * Whether the environment `update-backend` would move is the app's OWN one.
 	 *
@@ -657,24 +718,25 @@ const serverRestartsWithInstall = (
 	info:
 		| {
 				restartable?: boolean;
+				restartsServer?: boolean;
 		  }
 		| null
 		| undefined,
-): boolean => info?.restartable !== false;
+): boolean => info?.restartsServer ?? info?.restartable !== false;
 
 /**
  * WHAT THE CLICK COSTS, chosen by who would actually be restarted (UX U9).
  *
  * The sentence the plan carries is the app-owned one, and the plan cannot know
  * ownership: it classifies the INSTALL. On a machine where discovery adopted a
- * server, the offer therefore promised "restarts the server it started, so a turn
- * that is in flight is dropped" - a cost that cannot be incurred there, and one
- * the app's own completion notice denies four minutes later ("Local Operator does
- * not restart a server it did not start"). So the arm reads the ownership flag the
- * event carries (`restartable`) and says what happens to the server the reader is
+ * server, the offer therefore promised a restart and its cost - a cost that cannot
+ * be incurred there, and one the app's own completion notice denies four minutes
+ * later ("Local Operator does not restart a server it did not start"). So the arm
+ * reads the ownership flag the event carries (`restartable`, and the press's own
+ * `restartsServer` beside it) and says what happens to the server the reader is
  * talking to:
  *
- * - app-owned: the restart and its cost, before the press (review U3).
+ * - app-owned: the wait and the restart, before the press (review U3).
  * - adopted: the install moves, the server keeps serving the old build until it
  *   restarts on its own, and nothing in flight is dropped.
  * - unstated (an older main process sends no reading): see
@@ -689,7 +751,7 @@ const managedCostSentence = (info: {
 	}
 	return (
 		info.remedy ??
-		"The app updates this install and then restarts the server it started."
+		"The app updates this install, waits for the turns running on this machine to finish, and then restarts the server it started, so nothing in flight is cut off."
 	);
 };
 
@@ -831,6 +893,32 @@ export const UpdateNotification = ({
 		 * (review U5).
 		 */
 		logPath?: string;
+		/**
+		 * Set when this is a REFUSAL rather than a failure (design D1): the fleet did
+		 * not drain and the app chose not to touch the server. The two land on the
+		 * same panel and are different events, so the producer says which it sent
+		 * rather than a renderer guessing it from the wording.
+		 */
+		refusal?: {
+			because: "busy" | "unknown";
+			/**
+			 * How long the PRESS waited before it stopped - the same number the reading
+			 * showed while it waited, not the leg's own share of it (design round 2, D9).
+			 */
+			waitedMs: number;
+			command: string | null;
+			credentialsRefused: boolean;
+			/**
+			 * Whether the install had already landed when the refusal was composed.
+			 *
+			 * The restart-leg refusals happen after the build is on disk and only the
+			 * bounce was held back, so the heading keys on this rather than claiming the
+			 * update never started (design round 2, D6). Optional, so an older producer's
+			 * report still renders - as the install-less arm, which is the arm whose
+			 * sentence an absent field has always accompanied.
+			 */
+			installLanded?: boolean;
+		};
 	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
@@ -906,7 +994,20 @@ export const UpdateNotification = ({
 	const dismissedSkewRef = useRef<string | null>(null);
 	/** Which phase the running update is in, announced as it changes (UX U4). */
 	const [backendUpdatePhase, setBackendUpdatePhase] = useState<
-		"installing" | "restarting" | null
+		"draining" | "installing" | "restarting" | null
+	>(null);
+	/**
+	 * How long the press has been waiting for the fleet, in milliseconds.
+	 *
+	 * THE ONE THING THAT MOVES ON A DRAINING FRAME (design D3). The wait can run to
+	 * ten minutes while the panel is otherwise byte-identical from the first second
+	 * to the last - same heading, same rule, same ink - so a reader cannot tell a
+	 * working wait from a hung app. The main process logs this number already; the
+	 * panel had none of it. Null when no wait has been reported (every other phase,
+	 * and an older producer).
+	 */
+	const [backendUpdateWaitedMs, setBackendUpdateWaitedMs] = useState<
+		number | null
 	>(null);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
 	const [manualUpdateInfo, setManualUpdateInfo] =
@@ -1818,17 +1919,30 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
-				setBackendUpdatePhase(phase);
-				/*
-				 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
-				 * release path's reassurance is false for a checkout rebuild: that run rewrites the
-				 * install in place, which is exactly what can interrupt a session here. The event
-				 * carries it because the offer that named the cost unmounted the moment the press
-				 * landed - this is the only place left that can say it.
-				 */
-				setRebuildInFlight(sourceRebuild === true);
-			});
+			window.api.updater.onBackendUpdateProgress(
+				({ phase, sourceRebuild, waitedMs }) => {
+					setBackendUpdatePhase(phase);
+					/*
+					 * The elapsed reading travels with the phase (design D3), and it is
+					 * cleared on every phase that does not carry one: a `restarting` frame
+					 * still showing "waiting 6m 12s" would be the previous phase's number
+					 * left standing, which is the drift this panel keeps removing.
+					 */
+					setBackendUpdateWaitedMs(
+						phase === "draining" && typeof waitedMs === "number"
+							? waitedMs
+							: null,
+					);
+					/*
+					 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
+					 * release path's reassurance is false for a checkout rebuild: that run rewrites the
+					 * install in place, which is exactly what can interrupt a session here. The event
+					 * carries it because the offer that named the cost unmounted the moment the press
+					 * landed - this is the only place left that can say it.
+					 */
+					setRebuildInFlight(sourceRebuild === true);
+				},
+			);
 
 		/**
 		 * A server update that failed, with the main process's own reason.
@@ -1877,6 +1991,12 @@ export const UpdateNotification = ({
 						// rather than being re-derived from the sentence here (review round 5, M1).
 						installerOutput: report.installerOutput,
 						logPath: report.logPath,
+						/*
+						 * AND WHETHER THIS WAS A REFUSAL RATHER THAN A FAILURE (design round 1,
+						 * D1). The producer says which it sent, so the panel does not have to
+						 * guess it from the wording of a sentence it does not own.
+						 */
+						refusal: report.refusal,
 					});
 					setBackendUpdatePhase(null);
 					setChecking(false);
@@ -2131,7 +2251,14 @@ export const UpdateNotification = ({
 						? backendUpdatePhase === "installing"
 							? rebuildInFlight
 								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
-									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+									/*
+										The WAIT is named because it is the app's own answer to the one hazard
+										this route has: a rebuild rewrites a tree a live runtime is reading,
+										so the app drains the fleet before it starts. The residue - a turn
+										STARTED while the rebuild runs - is real and is not dressed up; it is
+										what the second half of the sentence still warns about.
+									*/
+									`Rebuilding the server from this machine's checkout. The app waited for the turns running on this machine to finish first, and the rebuild reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
 								: /*
 									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
 									 * ~47 s cold, against ~15 s for the restart - and the old single
@@ -2154,12 +2281,50 @@ export const UpdateNotification = ({
 											: ""
 									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
-								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
-								: serverRestartsWithInstall(backendUpdateInfo)
-									? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
-									: "Please wait while the server is being updated. The update can't be interrupted once it has started."
+								? /*
+									 * THE SENTENCE COVERS THE WHOLE restarting PHASE, WHICH IS LONGER THAN
+									 * THE BOUNCE (review round 2, R2-m3 = the copy half of round 1's n1).
+									 * This phase is on screen across the re-engage too - the app waits
+									 * for the pre-swap runtimes to retire and then starts a runtime for
+									 * each session they left behind, one at a time - so a promise of
+									 * "a few seconds" was the frame's own claim, contradicted by a wait
+									 * of up to a minute that the frame itself was in. The bounce keeps
+									 * its number; the repair says it is running, which is what the reader
+									 * watching a static panel needs to know.
+									 */
+									"The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
+								: backendUpdatePhase === "draining"
+									? /*
+										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
+										 * "it is refused rather than cutting a turn short" - passive, no actor, and a
+										 * double negative in one clause. It also dropped the interruption clause its
+										 * two siblings carry (design D3), so the one phase whose length the reader
+										 * cannot see was the only one that did not say whether it could be stopped.
+										 */
+										"Waiting for the turns running on this machine to finish. The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off - and the update can't be interrupted while it waits."
+									: serverRestartsWithInstall(backendUpdateInfo)
+										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
+										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
+				{/*
+				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
+				 * rest of this frame does not move: without this line a working wait and a
+				 * hung app are the same pixels, and the main process has the number already
+				 * (it logs it). Rendered only for the phase that carries one - a `restarting`
+				 * frame showing a stale count is the drift this panel keeps removing.
+				 *
+				 * AT `text-ink-muted`, level with the sentence it qualifies (design round 2,
+				 * N2). It was `text-ink-dim`, the dimmest ink on the card - legible, and the
+				 * wrong hierarchy for the one element that proves a ten-minute wait is alive:
+				 * D3's whole argument is that a working wait must not look like a hung app.
+				 */}
+				{backendUpdatePhase === "draining" &&
+					backendUpdateWaitedMs !== null && (
+						<p className="mt-1 text-body-sm text-ink-muted tabular-nums">
+							{waitElapsedLabel(backendUpdateWaitedMs)}
+						</p>
+					)}
 				<ProgressContainer>
 					<Progress />
 				</ProgressContainer>
@@ -2518,6 +2683,121 @@ export const UpdateNotification = ({
 					output: backendUpdateFailure.installerOutput,
 				}
 			: splitInstallerOutput(backendUpdateFailure.message);
+		/*
+		 * A REFUSAL IS NOT A FAILURE (design round 1, D1).
+		 *
+		 * The fleet did not drain, so the app declined to touch the server - a
+		 * deliberate, bounded choice whose copy already said so ("the app waited ten
+		 * minutes rather than cut off work in flight") - and the frame it landed on
+		 * said the opposite: a red triangle, the failure heading, and `Try again` as
+		 * the emphasized control, which re-enters the same ten-minute wait. Nothing on
+		 * it said the server was untouched or that the wait was the price of that.
+		 *
+		 * WHAT THIS ARM CHANGES, and why it is a branch rather than a reworded
+		 * sentence: an update that FAILED and an update that was HELD BACK are two
+		 * different events on one surface, so the heading, the announcement (this is
+		 * `status`, not `alert`), the ink and the control order all differ. The one
+		 * thing that must NOT differ is the repetition it makes easy: `Update later`
+		 * is the emphasized action, because the app will offer this update again by
+		 * itself - and the repeating action is the one that must not be the primary.
+		 */
+		const refusal = backendUpdateFailure.refusal;
+		if (refusal) {
+			return withErrorToast(
+				<UpdateContainer>
+					{/*
+					 * THE HEADING SAYS WHICH REFUSAL THIS IS (design round 2, D6). Two of the
+					 * three refusal sites happen AFTER the build landed - the restart was held
+					 * back, the install was not - and the sentence under this heading says so in
+					 * its own words, so a fixed "The update didn't start" made the frame
+					 * contradict itself in one paragraph. The producer knows which arm it is and
+					 * travels the fact as a field rather than leaving the renderer to infer it.
+					 *
+					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). These two
+					 * strings shipped un-contracted beside "The server update didn't finish" and
+					 * "The update wasn't installed" - the failure headings on this same surface,
+					 * and the two a reader meets a scroll apart. The file mixes both spellings
+					 * ("The server did not come back after the restart" is un-contracted), so this
+					 * is a consistency call rather than a correctness one, decided the way the
+					 * refusal's own neighbours are: one voice per panel. The story's own wait and
+					 * the capturer's claim both name this literal, so the three move together.
+					 */}
+					<UpdateHeading>
+						{refusal.installLanded
+							? "The update didn't finish restarting"
+							: "The update didn't start"}
+					</UpdateHeading>
+					{/*
+					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
+					 * still working, and which. It used to sit in parentheses halfway down a
+					 * muted five-line paragraph while the waiting panel spoke in full ink, so the
+					 * panel asking for a decision was the quieter of the two. It is rendered at
+					 * `text-ink`; the explanation below it stays muted, because it is context
+					 * rather than something a reader can act on.
+					 */}
+					<p className="mb-2 text-body text-ink">{failure.sentence}</p>
+					{failure.output && (
+						<p className="text-body-sm text-ink-muted">{failure.output}</p>
+					)}
+					{/*
+					 * THE REMEDY IS A COMMAND, SO IT RENDERS AS ONE (design D2). It used to
+					 * be a clause inside the sentence, printed with literal backticks and no
+					 * way to copy it, one panel away from `backend-update-non-managed` doing
+					 * exactly this with the app's own `CommandBlock`. The label is copy the
+					 * renderer owns; the COMMAND is the plan's and arrives as a field, so an
+					 * install the app could not classify still names none.
+					 */}
+					{refusal.command && (
+						<div className="mt-2">
+							<p className="text-body-sm text-ink-muted">
+								To update now, run this yourself in a terminal:
+							</p>
+							<CommandBlock command={refusal.command} />
+						</div>
+					)}
+					{backendUpdateFailure.logPath && (
+						<div className="mt-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									void window.api.showItemInFolder(
+										backendUpdateFailure.logPath as string,
+									);
+								}}
+							>
+								Reveal update log
+							</Button>
+						</div>
+					)}
+					{/*
+					 * DISMISS FIRST, COMMIT LAST - the order every other footer in this release
+					 * uses, and the slot a hand learns as the committing one (design round 2,
+					 * D7). Round 1 asked for the FILL to move to `Update later`; this commit
+					 * moved the fill and the position, which put the only control that costs
+					 * anything (`Try again` re-enters the ten-minute wait) in the slot that reads
+					 * as "go". Both signals now agree on the safe action: the outline demoted to
+					 * the left, the fill on the right.
+					 */}
+					<UpdateActions>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void updateBackend()}
+						>
+							Try again
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={handleDismissBackendUpdateFailure}
+						>
+							Update later
+						</Button>
+					</UpdateActions>
+				</UpdateContainer>,
+			);
+		}
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
@@ -2839,8 +3119,8 @@ export const UpdateNotification = ({
 										 * the difference between an outcome and a paragraph the reader can only
 										 * tell apart from the one they pressed by memory. The arm exists
 										 * because the app's own restart did not take, the only control offered
-										 * is the one just pressed, and pressing it again costs a second outage
-										 * with in-flight work dropped. Its sibling arm - the restart that left
+										 * is the one just pressed, and pressing it again costs a second outage and
+										 * another wait for the fleet to drain. Its sibling arm - the restart that left
 										 * NOTHING answering - got a heading of its own for the same reason; this
 										 * is the clause that closes the asymmetry, and it needs no new guard:
 										 * `landed` plus this branch's non-unattended, `restartable` reading is
@@ -2866,9 +3146,9 @@ export const UpdateNotification = ({
 					 *
 					 * AND WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used
 					 * to be the one commit control in this component with no cost line above it:
-					 * the price - the server going down and in-flight work being dropped - was
-					 * stated only in the in-flight panel, one batch later, when it could no
-					 * longer be withdrawn. The same press is offered in two states - the server
+					 * the price - the server going down, and the wait for the turns already
+					 * running to finish - was stated only in the in-flight panel, one batch later,
+					 * when it could no longer be withdrawn. The same press is offered in two states - the server
 					 * behind the install, and the server that did not come back - and each has
 					 * its own sentence over the bound they share (`RESTART_COST_SENTENCE`,
 					 * `RESTART_COST_SENTENCE_SERVER_DOWN` and `RESTART_OUTAGE_BOUND` above,
