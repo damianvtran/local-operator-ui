@@ -537,8 +537,13 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	 * assertion is about what is left: any assignment to either ref outside the
 	 * commit is the hazard the layout effect replaces, whatever it looks like.
 	 */
-	const effectBody = code.match(/useLayoutEffect\(\(\) => \{[\s\S]*?\}\);/)?.[0];
-	assert.ok(effectBody, "the live-fact effect must be findable for this pin to mean anything");
+	const effectBody = code.match(
+		/useLayoutEffect\(\(\) => \{[\s\S]*?\}\);/,
+	)?.[0];
+	assert.ok(
+		effectBody,
+		"the live-fact effect must be findable for this pin to mean anything",
+	);
 	assert.doesNotMatch(
 		code.replace(effectBody, ""),
 		/liveGateKey\.current =|liveOwnerEpoch\.current =/,

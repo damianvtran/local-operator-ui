@@ -20,22 +20,30 @@
  * driver with a typo.
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const DRIVER = "scripts/click-proof.mjs";
 const RUNNER = "docs/evidence/ask-options-live/harness/run-rig.sh";
 
+const LIST_RE = /const KNOWN_EXPECTS = \[([\s\S]*?)\];/;
+const MAP_RE = /const declaredSentence = \{([\s\S]*?)\}\[EXPECT\];/;
+const MAP_KEY_RE = /^\s*"?([a-z-]+)"?:/gm;
+const ARM_RE = /EXPECT === "([a-z-]+)"/g;
+const USAGE_RE = /# <expect>\s+([\s\S]*?)# <order>/;
+const WORD_RE = /([a-z-]+)/g;
+const TYPO_RE = /card-refusals/;
+const MEANT_RE = /card-refusal/;
+const CARD_ARM_RE = /EXPECT === "card-unknown"/;
+
 const driver = readFileSync(DRIVER, "utf8");
 const runner = readFileSync(RUNNER, "utf8");
 
 /** The driver's list, read from the shipped source. */
-const known = [
-	...driver
-		.match(/const KNOWN_EXPECTS = \[([\s\S]*?)\];/)[1]
-		.matchAll(/"([a-z-]*)"/g),
-].map(([, value]) => value);
+const known = [...driver.match(LIST_RE)[1].matchAll(/"([a-z-]*)"/g)].map(
+	([, value]) => value,
+);
 
 test("the driver refuses an unrecognised expectation instead of asserting nothing", () => {
 	/*
@@ -58,10 +66,10 @@ test("the driver refuses an unrecognised expectation instead of asserting nothin
 		0,
 		"a mistyped CLICK_PROOF_EXPECT must not exit 0: that is a run which prints success while asserting nothing",
 	);
-	assert.match(run.stderr, /card-refusals/);
+	assert.match(run.stderr, TYPO_RE);
 	assert.match(
 		run.stderr,
-		/card-refusal/,
+		MEANT_RE,
 		"the refusal must name the value that was probably meant, so the fix is one word",
 	);
 });
@@ -74,19 +82,15 @@ test("the list, the sentence map and the runner's usage line are one vocabulary"
 	 * whose check waits on body text (a `not-sent` or `card-refusal` run is read
 	 * from the alert band and the card's own flags instead).
 	 */
-	const arms = [...driver.matchAll(/EXPECT === "([a-z-]+)"/g)].map(
-		([, value]) => value,
-	);
+	const arms = [...driver.matchAll(ARM_RE)].map(([, value]) => value);
 	assert.deepEqual(
 		[...new Set(arms)].sort(),
 		known.filter((v) => v !== "" && v !== "-").sort(),
 		"every value the driver accepts needs an arm that can contradict the run",
 	);
-	const mapKeys = [
-		...driver
-			.match(/const declaredSentence = \{([\s\S]*?)\}\[EXPECT\];/)[1]
-			.matchAll(/^\s*"?([a-z-]+)"?:/gm),
-	].map(([, key]) => key);
+	const mapKeys = [...driver.match(MAP_RE)[1].matchAll(MAP_KEY_RE)].map(
+		([, key]) => key,
+	);
 	for (const key of mapKeys)
 		assert.ok(
 			known.includes(key),
@@ -99,8 +103,8 @@ test("the list, the sentence map and the runner's usage line are one vocabulary"
 	 * than trusted. Its two lines wrap, which is why this reads the block and not
 	 * one line.
 	 */
-	const usage = runner.match(/# <expect>\s+([\s\S]*?)# <order>/)[1];
-	const listed = [...usage.matchAll(/([a-z-]+)/g)]
+	const usage = runner.match(USAGE_RE)[1];
+	const listed = [...usage.matchAll(WORD_RE)]
 		.map(([, value]) => value)
 		.filter((value) => value !== "or");
 	assert.deepEqual(
@@ -111,11 +115,17 @@ test("the list, the sentence map and the runner's usage line are one vocabulary"
 });
 
 test("unset and `-` are legitimate declarations, and both mean record without asserting", () => {
-	assert.ok(known.includes(""), "an unset declaration is how the set was first taken");
-	assert.ok(known.includes("-"), "`-` is the documented way to record without asserting");
+	assert.ok(
+		known.includes(""),
+		"an unset declaration is how the set was first taken",
+	);
+	assert.ok(
+		known.includes("-"),
+		"`-` is the documented way to record without asserting",
+	);
 	assert.match(
 		driver,
-		/EXPECT === "card-unknown"/,
+		CARD_ARM_RE,
 		"the card register's own arm must exist, or its declaration would assert nothing",
 	);
 });
