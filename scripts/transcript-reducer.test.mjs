@@ -2149,18 +2149,22 @@ test("a harness statement paints its fact, and puts its instruction to the model
 	assert.ok(rows[0].headline.includes("deepseek-v4.1-flash (was"));
 });
 
-test("the MCP-unavailable warning is a statement, not an incident and not a relay", () => {
+test("the MCP-unavailable warning puts the operator's remedy on the row, and discloses only the model's tail", () => {
 	// The harness gives this its own record type instead of routing it through
 	// `session_incident`: the classifier's `mcp` rule matches the row's own
 	// subject, and the incident renderer's tail claims the previous TURN ended —
 	// false for a server that failed to connect or whose grant expired, neither
-	// of which ends a turn. Membership of INLINE_CUSTOM_TYPES is what keeps the
-	// row from falling to `relayRow`, which would put the reason the tools
-	// disappeared behind a chevron on a notice that is only three lines long.
+	// of which ends a turn. The row has its own builder rather than membership of
+	// INLINE_CUSTOM_TYPES, because it is the one statement whose second line is
+	// addressed to the OPERATOR.
+	const FIXTURE =
+		"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.";
+	const TAIL =
+		"Do not call that server's tools in a tight loop; tell the user which server is down rather than retrying.";
+	const SENTENCE =
+		"MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.";
 	const [row] = replay([
-		custom("mcp-unavailable", "session_mcp_unavailable", {
-			text: "[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
-		}),
+		custom("mcp-unavailable", "session_mcp_unavailable", { text: FIXTURE }),
 	]);
 	assert.equal(row.kind, "custom");
 	assert.equal(
@@ -2172,18 +2176,71 @@ test("the MCP-unavailable warning is a statement, not an incident and not a rela
 	assert.equal(row.provider, null, "and only an incident names a provider");
 	// The leading bracket tag is a register marker, not content — the row's own
 	// label already says what kind of row this is — so the headline starts at
-	// the sentence.
+	// the sentence. The remedy follows it: collapsed, the sentence alone promises
+	// the tools return on their own, which is false for the expired grant this row
+	// exists for, and `/mcp reauth <server>` is the only clause anyone can act on
+	// (design round 1, D1).
 	assert.equal(
 		row.headline,
-		"MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.",
+		`${SENTENCE} Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired`,
 	);
-	assert.equal(
-		row.detail,
-		"Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
-	);
+	// What is behind the chevron is the MODEL's half and nothing else.
+	assert.equal(row.detail, TAIL);
 	// Nothing on the row may claim a turn ended. That false tail is the whole
 	// reason the harness stopped emitting a `session_incident` here.
 	assert.ok(!/previous turn ended/i.test(row.headline + (row.detail ?? "")));
+
+	// A blank reason is OMITTED by the formatter, not printed empty: the row is
+	// the sentence again, and it keeps its disclosure for the model's half.
+	const [noReason] = replay([
+		custom("mcp-unavailable-bare", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(noReason.headline, SENTENCE);
+	assert.equal(noReason.detail, TAIL);
+
+	// A reason the row cannot fit is HOISTED to its `/mcp …` clause — a plain
+	// tail-cut would take the command off the line, which is the one thing the
+	// hoist exists to keep. What the cut leaves out is disclosed, not dropped.
+	const longReason =
+		"Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired; the credential store answered ECONNREFUSED 127.0.0.1:8787 and the token refresh loop gave up";
+	const [hoisted] = replay([
+		custom("mcp-unavailable-long", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${longReason}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(
+		hoisted.headline,
+		`${SENTENCE} Reason: MCP authorization failed; /mcp reauth minerva-qa`,
+	);
+	assert.ok(
+		hoisted.headline.length <= 160,
+		`hoisted headline was ${hoisted.headline.length}`,
+	);
+	assert.match(
+		hoisted.detail,
+		/^— sign-in expired; the credential store answered/,
+	);
+	assert.ok(
+		hoisted.detail.endsWith(TAIL),
+		"the model's half survives the hoist",
+	);
+
+	// A reason that names no command has nothing to hoist, so the composed line
+	// is bounded and the WHOLE reason is disclosed — the direction that hides
+	// nothing, which is the one `firstSentenceEnd` errs in too.
+	const [unhoistable] = replay([
+		custom("mcp-unavailable-nocmd", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\nReason: the transport refused every attempt — ECONNREFUSED 127.0.0.1:8787, then a timeout, then a closed stream, and no capabilities since\n${TAIL}`,
+		}),
+	]);
+	assert.ok(unhoistable.headline.endsWith("…"));
+	assert.match(
+		unhoistable.detail,
+		/^Reason: the transport refused every attempt/,
+	);
+	assert.ok(unhoistable.detail.endsWith(TAIL));
 });
 
 test("a relayed payload keeps its body behind the disclosure but is not reduced to its type name", () => {
