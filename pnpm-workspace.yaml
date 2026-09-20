@@ -5,3 +5,11 @@ onlyBuiltDependencies:
   - electron-winstaller
   - esbuild
   - sharp
+  # node-pty, for the console surface (design 5.3 / 18.1(c)). pnpm 10 does not run a
+  # dependency's install script unless it is listed here, and node-pty's is what
+  # checks for a prebuild of the running platform and, when there is none, compiles
+  # from source. The macOS case does not need it — the tarball already carries
+  # prebuilds/darwin-<arch> — but the Linux artifacts do: node-pty ships no Linux
+  # prebuild, so without this line a Linux build produces an app whose console dies
+  # at the first spawn, weeks after the change that caused it.
+  - node-pty

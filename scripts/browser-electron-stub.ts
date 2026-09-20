@@ -46,6 +46,17 @@ export const ipcMain = {
 		ipcMain.handlers.set(channel, handler);
 	},
 
+	/**
+	 * The unregistration side. A namespace that can be registered twice in one
+	 * process (the console's host can be stopped and restarted, and the evidence rig
+	 * does exactly that) has to be able to remove its handlers, and a stub without
+	 * this made that half of the shipped code untestable — which is how
+	 * `unregisterConsoleIpc` came to be called by nothing in the suite.
+	 */
+	removeHandler(channel: string): void {
+		ipcMain.handlers.delete(channel);
+	},
+
 	/** Between registrations, so one test's handlers do not answer another's. */
 	reset(): void {
 		ipcMain.handlers.clear();

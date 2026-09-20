@@ -24,6 +24,7 @@
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 import { LEGACY_RESOURCE_NAMES } from "./bundled-python-layout.mjs";
+import { prepareConsoleNative } from "./console-pack.mjs";
 import pruneAfterPack from "./prune-python-resource.mjs";
 
 /**
@@ -44,6 +45,28 @@ export default async function afterPack(context) {
 			"Cannot prepare the bundled Python: afterPack context has no packager.appInfo.productFilename",
 		);
 	}
+	/*
+	 * The console's native dependency, first and unconditionally.
+	 *
+	 * BEFORE SIGNING, which is the whole reason it is here: `afterPack` runs while
+	 * the bundle is still writable and unsigned, so a helper whose exec bit this
+	 * restores is signed with the mode it will ship with. Doing it after signing
+	 * would invalidate the seal, and doing it only at install time would miss
+	 * exactly the update path that motivated it (a ZIP drops modes and `codesign`'s
+	 * seal does not cover them).
+	 *
+	 * It does not depend on the Python prune below, and the Python prune returns
+	 * early when the resources directory cannot be resolved — so the console step
+	 * must run before that decision rather than inside it.
+	 */
+	prepareConsoleNative({
+		appOutDir: context.appOutDir,
+		productFilename,
+		arch: context.arch,
+		platform: context.electronPlatformName ?? process.platform,
+		log: (line) => console.log(line),
+	});
+
 	const pruned = await pruneAfterPack(context);
 	if (!pruned.resourcesDir) return pruned;
 
