@@ -65,6 +65,7 @@ export const CONSOLE_ERROR_CODES = [
 	"console_unavailable",
 	"invalid_grid",
 	"capture_unavailable",
+	"console_capture_full",
 ] as const;
 
 export type ConsoleErrorCode = (typeof CONSOLE_ERROR_CODES)[number];

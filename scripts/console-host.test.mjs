@@ -724,6 +724,10 @@ function hostWithWindow(options = {}) {
 			return pty;
 		},
 		onReveal: options.onReveal,
+		// The offscreen capture seam (design 13.2/13.3), injected the way the pty is:
+		// a test that wants the offscreen path asserts the HOST's contract with it
+		// without a renderer process, and the real capture view is a live rig's job.
+		captureOffscreen: options.captureOffscreen,
 	});
 	return { host, registry, spawned, window };
 }
@@ -1344,9 +1348,35 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 	const png = Buffer.from(shot.image_base64, "base64");
 	assert.ok(png.length >= MIN_FRAME_BYTES);
 
-	// No pane displaying it: refused with the typed gap rather than answered with a
-	// frame of something else. The offscreen capture view is PR B's (design 17.1).
+	// No pane displaying it: the OFFSCREEN path, which is a faithful reconstruction
+	// from the record rather than a photograph - and says so.
 	host.setDisplayed(null);
+	const demanded = [];
+	const offscreenHost = hostWithWindow({
+		captureOffscreen: async (request) => {
+			demanded.push(request);
+			return {
+				png: Buffer.alloc(MIN_FRAME_BYTES + 100, 7),
+				renderer: "dom",
+				attempts: 1,
+			};
+		},
+	});
+	const offscreen = await createSurface(offscreenHost.host);
+	const reconstructed = await offscreenHost.host.screenshot(offscreen.surface);
+	assert.equal(reconstructed.rendered, "offscreen");
+	assert.equal(reconstructed.renderer, "dom");
+	assert.equal(reconstructed.attempts, 1);
+	assert.equal(reconstructed.live, true);
+	// The seam is handed the RECORD's own bytes and the record's grid, which is what
+	// makes a frame a function of its declared inputs (design 13.3).
+	assert.equal(demanded.length, 1);
+	assert.equal(demanded[0].cols, DEFAULT_COLS);
+	assert.equal(demanded[0].rows, DEFAULT_ROWS);
+	assert.ok(demanded[0].bytes instanceof Uint8Array);
+
+	// And a host with no capture view answers the typed refusal rather than a frame
+	// of something else, which is what the pane's own tests run against.
 	await assert.rejects(
 		() => host.screenshot(created.surface),
 		(error) => error.code === "capture_unavailable",

@@ -1409,6 +1409,14 @@ function holdPresentUntilConversation(
  * report and the fallback timer call it, and whichever arrives second must be a
  * no-op rather than a second `presentWindow`.
  */
+/**
+ * The tail of the trusted renderer URL's document name, so the capture view's own
+ * document can be derived from it rather than spelled a second time (see
+ * `consoleCaptureUrl`). Module scope, like every other pattern the main process
+ * compiles once.
+ */
+const INDEX_DOCUMENT_SUFFIX = /\/?index\.html(\?.*)?$/;
+
 function releaseHeldWindow(windowId: number): boolean {
 	const held = heldForConversation.get(windowId);
 	if (!held) return false;
@@ -1820,6 +1828,19 @@ app
 		const rendererUrl =
 			process.env.ELECTRON_RENDERER_URL ||
 			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+		/*
+		 * The capture view's own document, derived from the trusted renderer URL
+		 * rather than spelled a second time: in development it is the same dev server
+		 * with a different entry, and in a packaged build it is the sibling of
+		 * `index.html` in `out/renderer`. Deriving it means a dev server on another
+		 * port, or a moved bundle, cannot leave the capture path pointing at a
+		 * document that is not there — which would fail as a blank frame rather than as
+		 * a missing file.
+		 */
+		const consoleCaptureUrl = rendererUrl.replace(
+			INDEX_DOCUMENT_SUFFIX,
+			"/console-capture.html",
+		);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -2833,6 +2854,16 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The console's completion banner is raised through this app's ONE
+					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
+					// the window state, the raise policy and the click path). It is still the
+					// notifier that decides whether a banner is delivered: this forwards it.
+					notifier: desktopNotifier,
+					// The console's offscreen capture view (design 13.2/13.3): its own
+					// document, and the preload every renderer in this app gets, which is what
+					// lets main feed the reconstruction to it.
+					consoleCaptureUrl,
+					preloadPath: join(__dirname, "../preload/index.js"),
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {

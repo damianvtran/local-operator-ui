@@ -1120,6 +1120,32 @@ const CONTROLS = [
 	 * states to one weight - the property D7 was actually about, and one no
 	 * pair-or-triple row can express.
 	 */
+	/*
+	 * The console terminal's own well (design 9.4: the pane's chrome is the app's,
+	 * and the terminal's ground is one of the app's roles).
+	 *
+	 * A ROW OF ITS OWN BECAUSE IT HAS BOTH A FILL AND A BORDER, which is what
+	 * `AGENTS.md` asks for: the terminal's ground is `sunken` - the same ground the
+	 * code editor takes - and `sunken` against the pane's `surface` measures
+	 * 1.00-1.03:1 across the palettes, so the ground step alone is NOT a boundary.
+	 * The mirror is therefore bounded by `border-control`, and this row is what says
+	 * so: the ink the terminal paints sits on a ground that meets the text floor, and
+	 * the box around it has a perceivable edge (worst `borderControl` on `surface` is
+	 * 3.26:1 in `catppuccinMocha`).
+	 *
+	 * WHAT IT CANNOT SEE, in this file's own words: the terminal's 16 ANSI colours
+	 * are the PROGRAM's palette, resolved at paint from the roles
+	 * `terminal-theme.ts` maps them to. This measures the roles; a program's own
+	 * `\x1b[38;2;...m` truecolor passes through untouched and is looked at by a
+	 * human in the design round's frames (§9.3).
+	 */
+	{
+		name: "console terminal well",
+		on: ["surface"],
+		fill: "sunken",
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /**
@@ -2218,6 +2244,60 @@ const STRUCTURAL = [
  * behind a green gate.
  */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
+
+/**
+ * The console terminal's colour pairs that no other table states (design 9.3).
+ *
+ * WHY ONLY ONE PAIR IS HERE. §9.3's list is mostly already asserted elsewhere by
+ * accident of the app's own structure: the terminal ground is `sunken`, which is
+ * one of the four `GROUNDS`, so `ink`/`inkMuted`/`inkDim` on it are in the INKS
+ * loop and the four hue roles are in `AS_TEXT` at the stricter 4.5:1 - which is
+ * the point of naming roles rather than inventing a second palette for the
+ * terminal. What is left is the one pair only a terminal has: the character the
+ * block cursor reverses into, i.e. `cursorAccent` (`surface`) sitting ON `cursor`
+ * (`accent`).
+ *
+ * `surface` rather than `onAccent` is the design's mapping (§9.1) and it is
+ * measured rather than assumed: the worst palette is 4.98:1 (`tokyoNight`), so the
+ * role the mapping names clears the text floor without an exception pin.
+ */
+const TERMINAL_PAIRS = [
+	{
+		fg: "surface",
+		on: "accent",
+		floor: FLOOR.text,
+		name: "the console terminal's cursor ink on its own cursor (9.1)",
+	},
+];
+
+/**
+ * The terminal's ANSI slots, as `terminal-theme.ts` maps them.
+ *
+ * HELD HERE FOR THE HONEST GAP, not for a floor: §9.2 states that six chromatic
+ * slots cannot be sourced one-for-one from four gated hue roles, so two pairs are
+ * deliberately the same role. This table is what makes that MEASURED - the run
+ * prints how many distinct colours the sixteen slots resolve to, per palette - and
+ * `scripts/console-theme.test.mjs` pins it to the module itself, so the two cannot
+ * drift into disagreeing about what the terminal shows.
+ */
+const TERMINAL_ANSI = [
+	["black", "inkDim"],
+	["red", "danger"],
+	["green", "success"],
+	["yellow", "warning"],
+	["blue", "info"],
+	["magenta", "danger"],
+	["cyan", "info"],
+	["white", "ink"],
+	["brightBlack", "inkMuted"],
+	["brightRed", "danger"],
+	["brightGreen", "success"],
+	["brightYellow", "warning"],
+	["brightBlue", "info"],
+	["brightMagenta", "danger"],
+	["brightCyan", "info"],
+	["brightWhite", "ink"],
+];
 
 /**
  * Sub-floor pairs accepted with a reason, pinned to their measured ratio.
@@ -3996,6 +4076,15 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/*
+	 * The console terminal's own pair (§9.3), after the component triples because
+	 * it is a pair between two ROLES rather than a control's boundary: the block
+	 * cursor's ink on the block cursor.
+	 */
+	for (const row of TERMINAL_PAIRS) {
+		assertPair(id, p, row.fg, row.on, row.floor, row.name);
+	}
+
 	/* Graphic objects against the ground they are drawn on. */
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
@@ -5690,6 +5779,26 @@ console.log(
 		.slice(1, 5)
 		.map((e) => `${e.id} ${e.d}`)
 		.join(", ")}.`,
+);
+
+/*
+ * AND DESIGN 9.2's HONEST GAP, MEASURED RATHER THAN PROSE.
+ *
+ * Six chromatic ANSI slots cannot come from four gated hue roles, so the terminal
+ * maps blue and cyan to `info`, magenta to `danger`, and every bright variant to
+ * its base role. That is a decision the design states; this line is what makes it
+ * countable, so a reader can see how many colours a program actually gets on each
+ * palette instead of taking the prose's word for it. A palette where the number
+ * drops is a palette where more of the program's vocabulary collapsed.
+ */
+const ansiDistinct = palettes.map(({ id, palette: p }) => ({
+	id,
+	n: new Set(
+		TERMINAL_ANSI.map(([, role]) => p[role]).filter((v) => isHex(v)),
+	).size,
+}));
+console.log(
+	`Console terminal: ${TERMINAL_ANSI.length} ANSI slots resolve to ${Math.min(...ansiDistinct.map((e) => e.n))}-${Math.max(...ansiDistinct.map((e) => e.n))} distinct colours across ${palettes.length} palettes (design 9.2's stated gap, measured); fewest in ${ansiDistinct.sort((a, b) => a.n - b.n).slice(0, 3).map((e) => `${e.id} ${e.n}`).join(", ")}.`,
 );
 
 console.log(

@@ -90,6 +90,25 @@ export default defineConfig({
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
 					installer: resolve(__dirname, "src/renderer/installer.html"),
+					/*
+					 * The console's capture view (design 13.2/13.3): a third document, for
+					 * the same reason the installer is one. A renderer that exists to be
+					 * photographed must mount nothing that reaches the app's stores or
+					 * streams, so it cannot be a route inside the app's shell - but it IS
+					 * the same component the pane mounts, which is what keeps the two from
+					 * drifting in font, theme or renderer.
+					 *
+					 * It is here, in `rollupOptions.input`, rather than in the renderer's own
+					 * `input` above: that one tells the dev server what it may serve, and this
+					 * one is what the BUILD emits. Declaring it only above produced a config
+					 * that served the page in development and shipped no such document, which
+					 * fails at the first offscreen capture as a 404 — measured, and the reason
+					 * the two lists are asserted to agree below.
+					 */
+					consoleCapture: resolve(
+						__dirname,
+						"src/renderer/console-capture.html",
+					),
 				},
 			},
 		},

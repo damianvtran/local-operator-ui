@@ -1061,20 +1061,53 @@ async function main() {
 		},
 	);
 
-	// With no pane on it, the frame is refused with the typed gap rather than answered
-	// with a photograph of something else. The offscreen capture view is PR B's.
+	/*
+	 * With no pane on it, the frame is a RECONSTRUCTION from the record rather than a
+	 * photograph (design 13.2's second row): the capture view replays this surface's
+	 * bytes into a fresh terminal in a renderer nobody can see, photographs it with
+	 * the DOM renderer pinned, and answers `rendered: "offscreen"` so a consumer can
+	 * tell that difference rather than having to trust it.
+	 *
+	 * THE THREE MEASURED TRAPS ARE ASSERTED HERE, in the live app rather than in a
+	 * unit test: the frame is not blank (the design's own 9,866 B stale frame against
+	 * a 27,869 B settled one is what the floor discriminates), the renderer is the
+	 * DOM one rather than a WebGL canvas whose pixels cannot be read back, and the
+	 * grid is the record's. The retry is the capture view's own (§13.3); a run that
+	 * needed one says so in its log line, which the rig reads for the `attempt` count.
+	 */
 	await rendererEvaluate("window.api.console.closePane()");
-	const noPane = await rpc(state, "console_screenshot", { surface });
+	const offscreen = await rpcOk(state, "console_screenshot", { surface });
+	const offscreenPng = Buffer.from(offscreen.image_base64, "base64");
+	const offscreenPath = join(
+		OUT_DIR,
+		`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}-offscreen.png`,
+	);
+	writeFileSync(offscreenPath, offscreenPng);
+	record("offscreen capture", {
+		rendered: offscreen.rendered,
+		renderer: offscreen.renderer,
+		attempts: offscreen.attempts,
+		cols: offscreen.cols,
+		rows: offscreen.rows,
+		bytes: offscreenPng.length,
+		sha256: createHash("sha256").update(offscreenPng).digest("hex"),
+		file: offscreenPath,
+	});
 	check(
-		"a capture with no displayed pane is refused, and says which gap it is",
-		noPane.json?.error?.code === "capture_unavailable" &&
-			// The code is KEPT rather than renamed to something an older peer knows
-			// (§10.6's taxonomy has no honest value for "no pane is displaying this
-			// surface"): saying "unsupported_method" would tell the model the app is
-			// older than it is. PR C adds the document row and the tool's enum and
-			// copy in the same window.
-			typeof noPane.json?.error?.message === "string",
-		noPane.json,
+		"a capture with no displayed pane is a DOM-rendered reconstruction from the record",
+		offscreen.rendered === "offscreen" &&
+			offscreen.renderer === "dom" &&
+			offscreen.cols === 94 &&
+			offscreen.rows === 25 &&
+			offscreenPng.length > 2000,
+		{
+			rendered: offscreen.rendered,
+			renderer: offscreen.renderer,
+			attempts: offscreen.attempts,
+			cols: offscreen.cols,
+			rows: offscreen.rows,
+			bytes: offscreenPng.length,
+		},
 	);
 
 	// ---- the grid broadcast (§8.2 step 2(c)) -------------------------------

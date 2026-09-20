@@ -54,6 +54,7 @@
  */
 
 import { type BrowserWindow, Notification } from "electron";
+import type { ConsoleCompletionNotice } from "./console/completion";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type {
 	DesktopFeedFrame,
@@ -1079,6 +1080,84 @@ export class DesktopNotifier {
 	}
 
 	/**
+	 * Raise the banner for a console surface's completion (design 12.3, R14).
+	 *
+	 * THE ONE PUBLIC ENTRY THIS FEATURE ADDS, routing into the same `show(...)`
+	 * choke point every other banner uses rather than constructing its own
+	 * `Notification`. A second raiser would duplicate the TTL dedupe map, the window
+	 * state, the raise policy and the click path - four things this feature has no
+	 * opinion about - so it borrows all four and states only its own two facts: what
+	 * it says, and which surface a click should select.
+	 *
+	 * THE ELIGIBILITY LADDER (§12.3), in order, mirroring the backend's so the two
+	 * cannot disagree about the same user:
+	 *
+	 *  1. this run may present nothing (`windowRaise === "never"`, i.e. `headless`)
+	 *     -> nothing. The same single gate `observe` uses, ahead of any claim, so a
+	 *     banner that will not be shown never burns a completion claim.
+	 *  2. the console pane is displayed ON THIS SURFACE and the window is focused ->
+	 *     no banner. The user is looking at the thing the banner would announce, and
+	 *     the in-app blip is already the whole signal there.
+	 *  3. otherwise -> the banner.
+	 *
+	 * `displayed` arrives from the console host rather than from the renderer,
+	 * because that is the half of the question this process actually owns (the
+	 * renderer reports its own focus through the presence heartbeat, which is a
+	 * session-level fact and not a surface-level one).
+	 *
+	 * ONE BANNER PER COMPLETION, claimed before delivery (§12.3). The key is the
+	 * caller's, minted from the completion's own identity - see
+	 * `console/completion.ts` for what it is built from and why the design's
+	 * `exit_epoch` is not readable here.
+	 */
+	consoleCompletion(notice: ConsoleCompletionNotice): void {
+		if (!this.canNotify) return;
+		if (this.windowRaise === "never") return;
+		if (notice.displayed && this.windowFocused()) return;
+		if (!this.claim(notice.key)) return;
+		/*
+		 * The banner names the SURFACE, which is what the pane's own marker names
+		 * (§6.5's rule that a person looking at the screen and an agent reading a
+		 * listing describe the same object), and never a byte of the terminal's
+		 * content (§11.6.2). The design's shape leads with the session's name; main has
+		 * no session catalogue to read one from, so the surface's command is the
+		 * identification this app can honestly make, and the click is what lands the
+		 * user in the right conversation - reported as a divergence in the PR.
+		 */
+		this.show(
+			notice.sessionId,
+			notice.surfaceName,
+			"",
+			notice.exitCode === null
+				? "Console finished"
+				: `Console exited with code ${notice.exitCode}`,
+			false,
+			false,
+			notice.surface,
+		);
+	}
+
+	/**
+	 * Whether the app's own window is on screen AND focused.
+	 *
+	 * The console's suppression rule reads this directly rather than through the
+	 * renderer's reported presence, and the difference is the question being asked:
+	 * presence answers "which conversation does this app have on screen", which is
+	 * session-level, while this one needs to know whether the WINDOW the user is in
+	 * is the one displaying the surface. A window that is visible but behind another
+	 * app is not a user looking at it.
+	 */
+	private windowFocused(): boolean {
+		const target = this.window();
+		return Boolean(
+			target &&
+				!target.isDestroyed() &&
+				target.isVisible() &&
+				target.isFocused(),
+		);
+	}
+
+	/**
 	 * Legacy completion toast: canned copy, reached only against a backend that
 	 * does not advertise `notification_contract`. Keyed on `session:epoch:seq`
 	 * as it always was — an old backend mints no `dedupe_key` to key on.
@@ -1164,6 +1243,14 @@ export class DesktopNotifier {
 		body: string,
 		isSnippet = false,
 		isFailure = false,
+		/*
+		 * The console surface this banner is about, when it is about one (design
+		 * 12.3). ADDITIVE on a channel that already carries an explicit `null`, so a
+		 * renderer that predates this field opens the conversation exactly as it does
+		 * today and a renderer that has it also claims the right slot for the console
+		 * pane and selects the surface.
+		 */
+		surface: string | null = null,
 	): void {
 		const lead = (isSnippet || isFailure) && status ? `${status} — ` : "";
 		const notification = new Notification({
@@ -1205,7 +1292,10 @@ export class DesktopNotifier {
 			 * forward is already correct — the same "switch first, then focus"
 			 * rule the backend's own click client states.
 			 */
-			target.webContents.send("desktop-open-conversation", { sessionId });
+			target.webContents.send("desktop-open-conversation", {
+				sessionId,
+				...(surface ? { surface } : {}),
+			});
 			raiseWindow(target, this.windowRaise, {
 				trigger: "banner-click",
 				report: this.raiseReport,

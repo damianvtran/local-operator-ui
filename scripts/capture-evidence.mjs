@@ -939,6 +939,29 @@ export const STORIES = [
 	 * feature has. The header rows are 84 = the 56px bar plus the 28px caption that
 	 * carries the reported rectangle.
 	 */
+	/*
+	 * The console pane (`docs/design/ui-console-tab.md` §6, §7, §9, §12), captured
+	 * at the pane's OWN width rather than at a window's: 843 is the pane's default
+	 * width, which is the design's 100-column grid at the shipped face's measured
+	 * advance plus the pane's chrome (`DEFAULT_CONSOLE_PANEL_WIDTH`), so an evidence
+	 * frame of this pane IS the grid the design names.
+	 *
+	 * The extra height on the ended, restored and secure frames is their banner: the
+	 * pane grows a 28px row in those states, and a frame that cropped it would hide
+	 * the one thing the state is about.
+	 */
+	["console-pane--populated", 843, 520],
+	["console-pane--two-surfaces", 843, 520],
+	["console-pane--empty", 843, 520],
+	["console-pane--draft-conversation", 843, 520],
+	["console-pane--loading", 843, 520],
+	["console-pane--unavailable", 843, 520],
+	["console-pane--ended", 843, 560],
+	["console-pane--restored", 843, 560],
+	["console-pane--secure", 843, 560],
+	["console-pane--blip-pulsing", 843, 520],
+	["console-pane--blip-resting", 843, 520],
+	["console-pane--other-conversation-mark", 843, 520],
 	["browser-pane--this-conversation", 640, 460],
 	["browser-pane--all-tabs", 640, 460],
 	/*

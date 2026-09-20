@@ -170,6 +170,24 @@ export interface ConsoleHostOptions {
 	/** Persistence, or null when the app has no config root to write into. */
 	history: ConsoleHistory | null;
 	/**
+	 * How to photograph a surface with no displayed pane (§13.2's second and third
+	 * rows): the capture view, which PR B owns.
+	 *
+	 * Injected rather than imported because the capture view is a hidden RENDERER —
+	 * a second process with its own lifecycle, its own one-at-a-time rule and its
+	 * own teardown — and a host that constructed one would make `console_screenshot`
+	 * a different kind of operation from every other method here. A host with no
+	 * capture view answers the honest typed refusal instead, which is what the pane's
+	 * own tests do.
+	 */
+	captureOffscreen?: (request: {
+		surface: string;
+		cols: number;
+		rows: number;
+		theme: string | null;
+		bytes: Uint8Array;
+	}) => Promise<{ png: Buffer; renderer: string; attempts: number }>;
+	/**
 	 * How to start a surface's process.
 	 *
 	 * Injected so this class never imports node-pty: the native load and the
@@ -183,6 +201,23 @@ export interface ConsoleHostOptions {
 	/** Called for each OSC 133 mark (§12.1 rung 2). PR B's blip and notifier are
 	 * its consumers; nothing in this file acts on a mark itself. */
 	onMark?: (surface: string, mark: Osc133Mark) => void;
+	/**
+	 * Called once per surface when its process exits (§12.1 rung 1), which is the
+	 * one completion signal that is always available.
+	 *
+	 * SEPARATE FROM `onChanged`, WHICH ALSO FIRES HERE, and that is the whole
+	 * reason it exists: the app's banner needs the exit's own facts — which
+	 * surface, which session, which code — and a consumer that had to recover them
+	 * by diffing two listings would be a second reader of state this call already
+	 * holds, wrong for exactly one frame in the case where the surface is dropped
+	 * between the two reads. It is delivered after the record is updated and after
+	 * the subscribers have been told, so every reader of the surface sees the same
+	 * exit. */
+	onExit?: (event: {
+		surface: string;
+		sessionId: string;
+		exitCode: number;
+	}) => void;
 	/** Called whenever something a listing or the record reports has changed. */
 	onChanged?: () => void;
 	/**
@@ -622,19 +657,16 @@ export class ConsoleHost {
 
 	/**
 	 * `console_screenshot`: the app's own window, cropped to the pane's reported
-	 * rect, photographed with `capturePage` (design 13.2's first row).
-	 *
-	 * WHAT THIS DOES NOT DO, and it is the design's own first cut item (§17.3): the
-	 * offscreen capture view — a hidden renderer replaying the record — is PR B's
-	 * (§17.1), so a surface with no displayed pane is refused with
-	 * `capture_unavailable` rather than answered with a frame that would not be of
-	 * that surface. The `rendered` field is kept so the gap is visible instead of
-	 * implied.
+	 * rect, photographed with `capturePage` (design 13.2's first row); or, when no
+	 * pane is displaying the surface, the capture view's reconstruction from the
+	 * record (the second and third rows), which is what makes the `rendered` field a
+	 * distinction rather than a label nothing produces.
 	 *
 	 * The assert-and-retry is the spike's measured trap and not a hopeful
 	 * `setTimeout`: on a hidden window the FIRST `capturePage` came back blank
 	 * (9,866 B against 27,869 B for the settled frame), and a headless rig — which
-	 * is what every capture in this repo runs in — is exactly that case.
+	 * is what every capture in this repo runs in — is exactly that case. The
+	 * offscreen path repeats the same discipline in its own module.
 	 */
 	async screenshot(surface: string): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
@@ -642,11 +674,47 @@ export class ConsoleHost {
 		this.refuseWhenSecure(entry);
 		const report = runtime.rect;
 		if (this.displayed !== surface || !report || !report.visible) {
-			throw new ConsoleError(
-				"capture_unavailable",
-				"no pane is displaying this surface, and this app version cannot reconstruct a frame offscreen",
-				{ rendered: null },
-			);
+			/*
+			 * No pane is looking at this surface, so there is nothing to photograph: the
+			 * honest answer is a faithful reconstruction from the record, and the result
+			 * says so (`rendered: "offscreen"`) rather than passing itself off as a
+			 * photograph of a screen.
+			 *
+			 * The BYTES ARE THE RECORD'S OWN retained log, read at the moment of the
+			 * call: the capture view replays them into a fresh terminal, which is the
+			 * design's "replay, not serialize" (§7.3) and the only representation that
+			 * survives a relaunch. What is NOT done here is re-reading a live surface — a
+			 * frame has to be a function of the bytes it declares, or two captures of the
+			 * same surface are not comparable and cannot be evidence.
+			 */
+			const capture = this.options.captureOffscreen;
+			if (!capture) {
+				throw new ConsoleError(
+					"capture_unavailable",
+					"no pane is displaying this surface, and this host has no capture view to reconstruct a frame with",
+					{ rendered: null },
+				);
+			}
+			const grid = runtime.emulator.grid;
+			const frame = await capture({
+				surface,
+				cols: grid.cols,
+				rows: grid.rows,
+				theme: runtime.theme,
+				bytes: runtime.log.read(0).bytes,
+			});
+			return {
+				image_base64: frame.png.toString("base64"),
+				cols: grid.cols,
+				rows: grid.rows,
+				rendered: "offscreen",
+				theme: runtime.theme,
+				live: entry.record.live,
+				// Which renderer painted the reconstruction, reported rather than
+				// assumed: the DOM pin is what makes an offscreen frame possible at all.
+				renderer: frame.renderer,
+				attempts: frame.attempts,
+			};
 		}
 		const window = this.options.window();
 		if (!window || window.isDestroyed()) {
@@ -1097,6 +1165,13 @@ export class ConsoleHost {
 			`[console] surface ${redactSurface(surface)} exited ${exitCode}`,
 		);
 		this.options.onChanged?.();
+		// The app's own completion seam, after every other reader has the exit. See
+		// `ConsoleHostOptions.onExit` for why this is not left to `onChanged`.
+		this.options.onExit?.({
+			surface,
+			sessionId: entry.record.sessionId,
+			exitCode,
+		});
 	}
 
 	/** Apply a grid change: clamp, compare, and only then touch the record and the

@@ -9,6 +9,7 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
+import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import {
@@ -160,6 +161,14 @@ const App: FC = () => {
 	 */
 	useCommandPaletteShortcut();
 
+	/*
+	 * The console's blip, watched where the WINDOW is (design 12.2). R14's whole case
+	 * is a command finishing while the pane is closed, and the pane is unmounted then
+	 * - so the watcher cannot live inside it. It writes one thing: the marks the
+	 * header's dot and the pane's rows paint.
+	 */
+	useConsoleAttention();
+
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
@@ -174,9 +183,17 @@ const App: FC = () => {
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
+	/* The console pane's slot claim, for a banner click that names a surface (design
+	 * 12.3): the click lands the conversation AND the pane that shows it. */
+	const setConsolePaneOpen = useUiPreferencesStore(
+		(state) => state.setConsolePaneOpen,
+	);
+	const setConsoleActiveSurface = useUiPreferencesStore(
+		(state) => state.setConsoleActiveSurface,
+	);
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
-			(sessionId) => {
+			(sessionId, surface) => {
 				/*
 				 * The START of the latency trace the design asks to report rather than
 				 * to describe: the sibling mark is at the first painted transcript row
@@ -195,11 +212,24 @@ const App: FC = () => {
 				// exactly this, so a digest click lands where all the burst's
 				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
+				//
+				// A CONSOLE BANNER'S CLICK ALSO NAMES ITS SURFACE (design 12.3). Claiming the
+				// slot for the console pane and selecting that surface is what makes the
+				// click land on the terminal that finished rather than on the conversation
+				// with whichever pane the user left open. A surface that no longer exists
+				// (the app restarted) selects the pane anyway: `pickActiveSurface` falls back
+				// to the session's own most recent surface, which for a retained one is its
+				// recorded history with the "ended" state - an honest landing rather than a
+				// no-op (§7.3).
+				if (surface !== undefined && sessionId !== null) {
+					setConsoleActiveSurface(surface);
+					setConsolePaneOpen(true);
+				}
 				navigate("/chat");
 			},
 		);
 		return () => unsubscribe?.();
-	}, [navigate, setActiveSession]);
+	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
 
 	// A consent banner's click, handled where the ROUTES are.
 	//

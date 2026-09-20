@@ -1,5 +1,5 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { contextBridge, ipcRenderer } from "electron";
+import { type IpcRendererEvent, contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type {
 	BackendUpdateCompletion,
@@ -105,17 +105,32 @@ const api = {
 				};
 			},
 		},
-		onOpenConversation: (callback: (sessionId: string | null) => void) => {
+		onOpenConversation: (
+			callback: (sessionId: string | null, surface?: string) => void,
+		) => {
 			/*
 			 * `null` is a TARGET, not a malformed payload: a burst digest's click
 			 * names several conversations and opens the catalogue, which the store
 			 * models as "no active session". Dropping it here would turn that click
 			 * back into the silent no-op this path exists to remove, so the filter
 			 * admits an explicit null and refuses only a value that is neither.
+			 *
+			 * `surface` is the console's half of the same click (design 12.3): one
+			 * additive optional field on this payload, so an older renderer opens the
+			 * conversation exactly as before and a newer one also claims the right slot
+			 * for the console pane and selects that surface. It is passed through only
+			 * when it is a string - absent and malformed are the same thing here, and the
+			 * caller's second argument is optional for exactly that reason.
 			 */
-			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
-				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
-				else if (payload?.sessionId === null) callback(null);
+			const handler = (
+				_event: unknown,
+				payload: { sessionId?: unknown; surface?: unknown },
+			) => {
+				const surface =
+					typeof payload?.surface === "string" ? payload.surface : undefined;
+				if (typeof payload?.sessionId === "string")
+					callback(payload.sessionId, surface);
+				else if (payload?.sessionId === null) callback(null, surface);
 			};
 			ipcRenderer.on("desktop-open-conversation", handler);
 			return () => {
@@ -959,6 +974,74 @@ const api = {
 			return () => {
 				ipcRenderer.removeListener("console-reveal", handler);
 			};
+		},
+		/**
+		 * Something about the surfaces changed: refetch `state()`.
+		 *
+		 * A SIGNAL, NOT THE STATE, and that is the design's own division (10.2/10.3):
+		 * `console-state` is the projection and there is exactly one of it, so this
+		 * channel carries no payload at all. It fires on the host's own changes - a
+		 * surface created, closed, resized, its input gone secure, its process exited,
+		 * its shell emitting a completion mark - which is why the renderer's blip can be
+		 * data from a listing rather than a second description of the same events.
+		 *
+		 * One listener per subscriber, and the caller unsubscribes by calling the
+		 * returned function; nothing is filtered here, because a busy console's
+		 * refetches are what keeps the pane honest and the payload is one `state()` read.
+		 */
+		onStateChanged: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("console-state-changed", handler);
+			return () => {
+				ipcRenderer.removeListener("console-state-changed", handler);
+			};
+		},
+	},
+	/*
+	 * The capture view's bridge (design 13.2/13.3).
+	 *
+	 * SEPARATE FROM `console` ON PURPOSE, and the reason is authority rather than
+	 * tidiness: every console op authorizes the app's OWN window's main frame, so a
+	 * renderer that exists to be photographed could not call one even if the
+	 * namespace were shared. What this carries is the whole of a reconstruction -
+	 * a measurement request, the record's bytes, and two answers - and nothing that
+	 * could read, type into or resize a surface.
+	 */
+	desktopCapture: {
+		onMeasure: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("console-capture-measure", handler);
+			return () => {
+				ipcRenderer.removeListener("console-capture-measure", handler);
+			};
+		},
+		measured: (report: {
+			cellWidth: number;
+			cellHeight: number;
+		}): void => {
+			ipcRenderer.send("console-capture-measured", report);
+		},
+		onFeed: (
+			callback: (payload: {
+				nonce?: number;
+				surface?: string;
+				cols: number;
+				rows: number;
+				theme: string | null;
+				bytes_base64: string;
+			}) => void,
+		): (() => void) => {
+			// The payload is main's, and this channel's only sender is main; the
+			// callback validates what it needs before using any of it.
+			const handler = (_event: IpcRendererEvent, payload: unknown) =>
+				callback(payload as Parameters<typeof callback>[0]);
+			ipcRenderer.on("console-capture-feed", handler);
+			return () => {
+				ipcRenderer.removeListener("console-capture-feed", handler);
+			};
+		},
+		settled: (report: { renderer: string }): void => {
+			ipcRenderer.send("console-capture-settled", report);
 		},
 	},
 
