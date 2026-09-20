@@ -20,6 +20,22 @@ export type DesktopCommandMetadata = {
 	arguments: "none" | "optional" | "required";
 	echo: boolean;
 	consumes_prompt: boolean;
+	/*
+	 * THE ENDPOINT'S OWN ADMISSION RULE, and the reason the composer can stop
+	 * approximating it. All three are ADDITIVE: a renderer that reads none of them
+	 * keeps its own derivation (the booleans above plus the inline argument lists),
+	 * and one that reads them answers a draft the way the endpoint will.
+	 *
+	 * `prefixes_text` is the free-text half as the SERVER computes it;
+	 * `argument_shape` is the third source of "text after this word is the
+	 * command's argument", which neither boolean expresses; `argument_words` is the
+	 * vocabulary that argument's first token must come from (empty = any). They are
+	 * the fields `command_argument_is_used` is written against, so reading them is
+	 * integrating with released backend behaviour rather than a new contract.
+	 */
+	prefixes_text?: boolean;
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	argument_words?: string[];
 	destination: string;
 	execution: "owner" | "native";
 };

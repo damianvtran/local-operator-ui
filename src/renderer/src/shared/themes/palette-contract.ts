@@ -244,97 +244,130 @@ export type ThemePalette = {
 	 * and the panel's + 4 chroma still only reaches the floor on 1 of 41, whereas
 	 * the accent's hue at C* 4 reaches it on 35 of 41.
 	 *
-	 * ## THE HUE IS THE PALETTE'S OWN `accent`
+	 * ## THE HUE IS THE BACKDROP'S
 	 *
-	 * The hue the theme already spends on its primary action, its links and its
-	 * focus ring - so the mark cannot become a colour the theme does not have. It
-	 * must sit within **12 degrees** of `accent` (or, where the accent is greyscale
-	 * - `obsidian` alone, `#FAFAFA` at C* 0 - of the panel's own hue). An earlier
-	 * round shipped rows rotated 155-160 degrees off the panel and the operator
-	 * reported the cast as wrong.
+	 * The PANEL's own hue. A row state is a state OF the surface it is painted on,
+	 * so the one hue that cannot be off-colour is that surface's own. It must sit
+	 * within **12 degrees** of `surface` - or, where the panel has no cast at all
+	 * (C* < 2.0: `githubLight`, `gruvbox`, `highContrastLight`, `iceberg`, `linen`,
+	 * `oneLight`, `tokyoNightDay`), of `accent`, which is the only hue such a
+	 * palette has to speak with. `obsidian`'s accent is #FAFAFA at C* 0, so it falls
+	 * back to its panel's hue and stays neutral.
+	 *
+	 * IT USED TO BE THE `accent`'S, AND THAT IS THE OPERATOR'S REPORT MEASURED: on
+	 * **25 of the 59** palettes the accent's hue (as this contract measures it, Lab
+	 * `atan2(b, a)`) is more than 45 degrees off the panel it is painted on -
+	 * worst `kanagawaLotus` **176**, `solarizedLight` **168**, `arcade` **158**,
+	 * `cyberpunk` **155**, `alucard` **154** - so the fill read as a different
+	 * colour from the thing it was a state of: a green plane with a green leading
+	 * bar on `localOperatorDark`'s warm brown panel, a maroon one on `synth`'s
+	 * violet, an olive one on `cyberpunk`'s violet-black. The accent keeps every
+	 * other job it has, including the two popup bars.
 	 *
 	 * ## THE RULE
 	 *
-	 * Take the `accent`'s hue; a whisper of strength - the SMALLEST chroma at or
-	 * above C* 4 that reaches ΔE00 **4.0** off `surface`, at an `L*` step of
-	 * **1.5** in the mode's raised direction (lighter on a dark palette, darker on
-	 * a light one) - and bound the chroma above at min(0.6 x C*(accent), 24). The
-	 * value is authored as the hex the triple resolves to, with its measurement
-	 * beside it, never computed at runtime and never derived from a mix percentage.
+	 * Per palette, in this order. Every value in `palettes/*.ts` is authored as the
+	 * hex the final triple resolves to, with its measurement beside it - never
+	 * computed at runtime and never derived from a mix percentage:
 	 *
-	 * Chroma is NOT a fixed quantity: it is the smallest that clears the floor,
-	 * and on the 58 palettes that hold this rule it lands at C* 4-12.4. The
-	 * chroma is a TINT, never a fill, and the ceiling is what keeps a state from
-	 * growing into a saturated plane beside the panel - the 3.60x over-cast an
-	 * earlier port shipped.
+	 * ```
+	 * HUE      the panel's own; the `accent`'s where C*(surface) < 2.0
+	 * CAST     C*(rowHover)    = clamp(0.60 x C*(surface), 2.5, 24)
+	 *          C*(rowSelected) = clamp(C*(surface) + 4.0, 5.0, 24)
+	 * CEILING  step_selected  = min(H, 5.0), where H is the largest raised `L*`
+	 *          step at which ink / inkMuted / inkDim still read 7.0 / 5.5 / 5.0
+	 *          on the fill
+	 * HOVER    step_hover     = clamp(0.65 x step_selected, 1.5,
+	 *          step_selected - 1.15), walked DOWN in 0.02 steps until the pair's
+	 *          rank clears 1.0 `L*` on the AUTHORED hexes
+	 * ```
+	 *
+	 * The procedure is deterministic: it reads only `surface`, `accent`, `ink`,
+	 * `inkMuted`, `inkDim` and the mode. It is why a hover can no longer be a grey
+	 * wash of the panel it sits on (the shipped `tokyoNight` hover carried C* 4.79
+	 * against a panel of 13.44, and the ΔE00 7.05 band it was scored on *was* that
+	 * removal) and no longer a louder plane than it (the shipped
+	 * `tokyoNightStorm` hover sat at C* 22.4 on a panel of 16.3 - 1.4x its own
+	 * backdrop's cast).
+	 *
+	 * A STEP THE RULE ASKS FOR IS NOT ALWAYS A HEX THAT EXISTS, which is why the
+	 * authored value is the rung and not the target: two 0.02 steps apart can
+	 * resolve to the same 8-bit colour, and a target between two rungs is on
+	 * neither. `ayuLight` is the fleet's one case — the direction asked a hover
+	 * step of 3.88 at that panel's hue and chroma, and the 8-bit lattice's rungs
+	 * either side of that target on that same hue and chroma (C* 2.59) are 3.86
+	 * (`#E7EDF0`, the shipped value) and 4.21 (`#E6ECEF`), where 4.21 is over the
+	 * window's top (`step_selected - 1.15` = 3.89). So 3.86 is the largest
+	 * achievable step and 2.36 is the band that goes with it, which is the value
+	 * the file carries and the QA round measured independently.
 	 *
 	 * ## FLOORS, and what is not one
 	 *
-	 * Asserted: the ΔE00 band above; an `L*` floor of 1.5 in the raised direction;
-	 * the hue bound; the chroma ceiling; and the three ink weights at their own
-	 * floors on the fill (`ink` 7.0:1, `inkMuted` 5.5:1, `inkDim` 5.0:1 - the caps
-	 * and the `· lopdev` binding INSIDE a row are drawn in `inkDim`, which is the
-	 * binder). NOT asserted: any luminance ratio between the fill and its panel.
-	 * WCAG contrast is luminance-only, and the default palette once passed a
-	 * ΔE00 7.14 band while reading **1.003:1** "because the entire difference was
-	 * hue" - the axis this design deliberately spends.
+	 * Asserted: the `L*` step's DIRECTION, its 1.5 floor and its SHARE of the
+	 * selection's step (at least 0.5 - the operator's clause 2, stated as the
+	 * relationship it is, and 2.1x the 30% the shipped hover spent); the cast floor
+	 * `max(2.5, 0.5 x C*(surface))` and the cast ceiling `max(C*(surface), 2.5)`;
+	 * the hue bound; the field floor off `surface` (ΔE00 2.0); and the three ink
+	 * weights at their own floors on the fill (`ink` 7.0:1, `inkMuted` 5.5:1,
+	 * `inkDim` 5.0:1 - the caps and the `· lopdev` binding INSIDE a row are drawn
+	 * in `inkDim`, which is the binder). NOT asserted: any luminance ratio between
+	 * the fill and its panel. WCAG contrast is luminance-only, and the default
+	 * palette once passed a ΔE00 7.14 band while reading **1.003:1** "because the
+	 * entire difference was hue" - the axis this design no longer spends. NOT
+	 * asserted on these two roles either: the `canvas`/`elevated`/`sunken`
+	 * collision floor, because a backdrop-relative fill IS a rung of the ladder it
+	 * sits on (measured: 7 of the 59 sit under ΔE00 1.0 from one of them, where the
+	 * values this round replaced escaped only by being rotated to another hue).
 	 */
 	rowHover: string;
 
 	/**
-	 * The row the READER is on. The same accent hue as `rowHover`, one strength
-	 * on, plus a NON-COLOUR mark: the leading-edge bar below.
+	 * The row the READER is on. A step of the same panel, further up it, with a
+	 * larger cast - plus `font-medium` as the one NON-COLOUR mark.
 	 *
-	 * ## WHICH CHANNEL CARRIES THE RANKING, and it is the bar rather than the fill
+	 * ## WHICH CHANNEL CARRIES THE RANKING, and it is the FILL
 	 *
 	 * `rowHover` is the POINTER's mark and is LOAD-BEARING: a hovered row gets no
-	 * other signal, so it keeps the full field floor. THIS role is SUPPORTING. What
-	 * says "you are here" is the 2px `accent` bar plus `font-medium` - two
-	 * non-colour marks - so the selection's fill only has to be FINDABLE, not
-	 * rankable. The ranking is the bar's job, not the colour's.
+	 * other signal. THIS role is the one the reader scans for, and since the
+	 * refinement round it ranks ITSELF: the fill carries an `L*` rank of at least
+	 * **1.0** above the hover and a `C*` rank of at least **2.0** of cast, and
+	 * `font-medium` is the non-colour half. The second rank is the one that costs
+	 * nothing: `L*` determines relative luminance, so contrast ratios are blind to
+	 * chroma and a pair can be ranked on cast without spending a single `L*` of the
+	 * ink budget - which is how every palette ranks when the ink floors leave no
+	 * lightness room (`catppuccinMacchiato`, whose 2.68 `L*` budget cannot separate
+	 * the pair on lightness at all: it ranks 6.96 ΔE00 and 4.9 `C*`).
+	 *
+	 * THE RANKING USED TO BE THE BAR'S. It was SUPPORTING: what said "you are
+	 * here" was a 2px `accent` bar on the row's leading edge, so the fill only had
+	 * to be FINDABLE. The bar is REMOVED (see below), which is why the two rank
+	 * floors above exist at all.
 	 *
 	 * ## THE SHAPE
 	 *
-	 * The smallest chroma at or above C* 8 that clears ΔE00 **4.0** off `surface`,
-	 * at the largest `L*` step in [1.5, 5.0] the inks allow at that chroma, and at
-	 * least 0.5 `L*` beyond the hover's on the same raised side. Its chroma ceiling
-	 * is min(0.75 x C*(accent), 24). The pair's separation is a COLLISION floor
-	 * (ΔE00 2.0) rather than a field floor: all the colour has to do is not be the
-	 * same mark twice.
+	 * The panel's hue; the panel's own cast plus a bounded rise of 4 (capped at 24,
+	 * floored at 5.0 for a panel with no cast); at the largest `L*` step in
+	 * [1.5, 5.0] the inks allow at that cast, and at least 1.0 `L*` beyond the
+	 * hover's on the same raised side, with at least 2.0 more cast than the hover.
+	 * The pair's separation is a COLLISION floor (ΔE00 2.0) rather than a field
+	 * floor: the two ranks above are what order the pair, so all the colour has to
+	 * do is not be the same mark twice.
 	 *
-	 * THE MEASUREMENT BEHIND THE RELAXATION, because it was first argued for on a
-	 * mechanism that turned out to be the wrong one. Raising the panel until no
-	 * legal selection fill exists, on the 11 palettes the legibility pass
-	 * compressed:
-	 *
-	 *     band 6.0, step >= 3.0 (what shipped)   0.50 - 2.75 `L*` of room
-	 *     band 4.0, step >= 3.0                  0.50 - 2.75  (IDENTICAL)
-	 *     band 6.0, step >= 2.0                  1.50 - 3.75
-	 *     band 4.0, step >= 1.5                  2.00 - 4.25
-	 *
-	 * The BAND contributes nothing to that cap and the STEP contributes all of it,
-	 * on 41 of 41 dark palettes: a hue-and-chroma fill reaches ΔE00 4.0-9.5 off the
-	 * panel at a 1.5 `L*` step, because a hue difference does not consume the
-	 * lightness budget. The step was 3.0 `L*` only because the fill had to
-	 * out-DISTANCE the hover. Once the bar ranks the pair it does not.
-	 *
-	 * ## THE BAR IS THE SECOND SIGNAL, and it is not decoration
-	 *
-	 * Both fills are one hue at two strengths, so their last increment of
-	 * legibility is a non-colour one:
+	 * ## WHY THE BAR WAS REMOVED
 	 *
 	 *     before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent
 	 *
 	 * a 2px `accent` bar on the row's leading edge, drawn with a `before:`
-	 * pseudo-element so it costs no layout and cannot shift the label, plus the
-	 * `font-medium` the row already carried. `accent` measures 4.23-11.48:1 against
-	 * its own selected ground across all 59, so the 3:1 non-text floor holds
-	 * everywhere, and its tightest is `tokyoNight`'s while its strongest is
-	 * `obsidian`'s - the palette whose bar is the whole of its mark. The same idiom
-	 * and the same argument are already in
-	 * `at-picker.tsx` and `slash-commands.tsx`, where the popup's active row takes
-	 * the bar precisely because "the row Enter will apply was carried by hue
-	 * alone". The sidebar was the only selection in the app without one.
+	 * pseudo-element. The operator asked for it to go, and the design reason it
+	 * could is the one above: the bar existed to rank the pair because both fills
+	 * were one hue at two strengths, and under this rule they are not - the fill
+	 * ranks them on `L*` and on cast, and the bar's square overlay painted over
+	 * `rowStyle`'s `rounded-md`, which is what squared the row's leading edge. So
+	 * removing the bar is what restored the left rounding; the 6px radius never
+	 * moved. The SAME idiom in `slash-commands.tsx` and `at-picker.tsx` STAYS:
+	 * there the active row is the one Enter will apply, in a transient popup over
+	 * the composer where the keyboard has no other mark, and it is not a list a
+	 * reader scans for a persistent "you are here".
 	 *
 	 * The row must ALSO restate `hover:bg-row-selected` on the selected element:
 	 * a `hover:` variant outranks a bare background in the cascade, so without it
@@ -348,30 +381,35 @@ export type ThemePalette = {
 	 * and `outline-control` is the sole boundary of a control), or an `accentAlt`
 	 * tint (a state stays on the primary accent; `docs/branding.md` section 2).
 	 *
-	 * ## THE NEUTRAL CLASS, and there is no exception ledger any more
+	 * A fill that is the panel's own colour one step up IS a rung of the ladder,
+	 * and that is accepted rather than hidden: the collision floor against
+	 * `canvas`, `elevated` and `sunken` is NOT asserted on either row role
+	 * (measured: 7 of the 59 sit under ΔE00 1.0 from one of them). The risk it
+	 * accepts is that a selected row can be the same colour as a dialog's ground or
+	 * an input well; they are never adjacent inside one list - the sidebar's own
+	 * `elevated` use is the `· lopdev` cap and the `⋯` button, both text-sized
+	 * rather than full-width rows - and the `sunken`-vs-row pair in
+	 * `scripts/contrast-contract.mjs` is withdrawn with it.
 	 *
-	 * A palette whose `accent` carries less chroma than `ROW_HOVER_CHROMA_FLOOR`
-	 * has no colour channel to state a row in, so it is a CLASS rather than a
-	 * ledger of shortfalls: the fills take the neutral step at the ink cap, the
-	 * bands fall to the field floor, the pair to the collision floor, and the
-	 * chroma ceilings, the step ceiling and the wash proximity are not asserted -
-	 * a monochrome theme has no cast to separate its neutral row fill from its
-	 * neutral wash, and its ink cap IS its step ceiling. `obsidian` alone is in it
-	 * (`#FAFAFA` at C* 0), and the class is keyed on the derivation rather than the
-	 * name. Measured there: hover ΔE00 4.05 at +4.99 `L*` (`inkDim` 5.13:1),
-	 * selected 4.22 (`inkDim` 5.01:1), pair 3.56, bar at 11.48:1. The pair clears
-	 * the FLEET's 2.0 separation, so no palette uses the class's relaxed pair
-	 * floor today - the wash proximity is the relaxation it still carries.
+	 * ## THE NEUTRAL CLASS, and the two ledgers
 	 *
-	 * THE THIRTEEN LEDGER ROWS THE PREVIOUS ROUND CARRIED ARE GONE, and that is a
-	 * result rather than a relaxation. They reconcile as 4 + 3 + 1 + 4 + 1 = 13:
-	 * four were separation-only and hold at 2.0 with room; three were
-	 * chroma-ceiling breaches of +0.24, +0.30 and +0.41 that existed ONLY because
-	 * the value was chasing 6.0 of separation; one was a step-ceiling overshoot of
-	 * 0.06 `L*` for the same reason; four were `obsidian`'s, which is the class
-	 * above; and one was `nightfox`'s selection band, 0.35 short of the 6.0 then
-	 * in force. A floor is still never widened to fit a palette - what changed is
-	 * which channel answers the pair question.
+	 * A palette whose PANEL carries less chroma than C* 2.0 has no cast of its own
+	 * for a state to be a state OF, so it is a CLASS keyed on the derivation rather
+	 * than the name: the fill takes the `accent`'s hue and the rule's own absolute
+	 * cast floors, and the wash proximity is not asserted (there is no cast with
+	 * which to be a different colour from the wash). The seven members are
+	 * `githubLight`, `gruvbox`, `highContrastLight`, `iceberg`, `linen`, `oneLight`
+	 * and `tokyoNightDay`, and NONE of them uses the class's relaxed pair floor:
+	 * their measured pairs run 2.15-3.71 ΔE00, clear of the fleet's own 2.0.
+	 *
+	 * `ROW_STATE_FLOOR_UNREACHABLE` and `ROW_STATE_MEASURED_SHORTFALL` in
+	 * `scripts/contrast-contract.mjs` carry the seven palettes the rule genuinely
+	 * cannot hold - one geometry row (`synth`, whose panel carries C* 26.83 against
+	 * the flat cap of 24, so its selection sits at the cap) and six measured
+	 * shortfalls with the reading and the floor that refuses each. Every row is
+	 * re-measured on every run and FAILS if it is no longer needed, so a row cannot
+	 * outlive its cause - which is how an earlier round's thirteen pins survived
+	 * their values. A floor is still never widened to fit a palette.
 	 */
 	rowSelected: string;
 
@@ -571,13 +609,42 @@ export type ThemePalette = {
 	 *   moved rather than accepted, because the faithful port of a theme's own
 	 *   token is not an argument against the reader's ability to tell a
 	 *   decoration from a failure.
-	 * - **ΔE00 >= 8 from `info`**, deliberately the lighter floor. `info` is the
-	 *   cool counterweight the port mapped `signal` onto, so on the palettes whose
-	 *   second hue is in that family 15 would fail BY CONSTRUCTION rather than by
-	 *   defect: the tightest are `catppuccinMocha` 8.01, `catppuccinMacchiato`
-	 *   8.58 and `catppuccinFrappe` 8.60 - the three whose second hue sits in
-	 *   `info`'s own family (2.68, 19.42 and 17.02 degrees off it, in that order) -
-	 *   then `localOperatorDark` 12.57 and `ayuLight` 13.57. 8 is the file's
+	 * - **ΔE00 >= 15 from `info`, as the ledger's two CATEGORY inks.** The tool
+	 *   row draws this role as the settled `meta` row's identity ink and `info` as
+	 *   `read`'s, one line apart in one column, so the two are compared as text and
+	 *   the bound is the contract's own "difference of category, not of shade". The
+	 *   reduced 8 below the decorative sites is the OLD bound for this pair, argued
+	 *   for the sites the role had then (a 1px bar in a 40px miniature, a 6px mark
+	 *   in a diagram) and not for two 12px inks on one rail. FIVE PALETTES CANNOT
+	 *   REACH THE 15 and are pinned in `contrast-contract.mjs`'s `PAIR_PINS` with
+	 *   the constraint that refuses each - they are the palettes whose second hue
+	 *   sits in `info`'s own family. Re-measure, do not re-quote: the run's
+	 *   `Identity pairs:` line prints the tightest pair the fleet holds, from the
+	 *   same `deltaE` the floor uses, because this figure ran in three places and
+	 *   disagreed in three ways (the contract's 8.01 was the pair's value BEFORE
+	 *   the register re-solve moved both of its values; the shipped pair measured
+	 *   8.19).
+	 *
+	 *   THE FIVE PINS ARE ACCEPTED RESIDUALS, NOT FIXES, and this note says so
+	 *   where the pins are explained rather than only in a review thread, because a
+	 *   later reader skims labels: on a pinned palette the row still paints `read`
+	 *   and `meta` as one hue at two weights (the three `catppuccin*` palettes) or
+	 *   as the same ink outright (the palettes whose `info` IS their `accent`), and
+	 *   re-seating was MEASURED and refused rather than postponed. What tells the
+	 *   two families apart on those palettes is the row's own GLYPH — the channel
+	 *   that survives when the ink cannot spend a second hue: `read` draws the page
+	 *   (`tool-glyphs.ts`'s `FileText`) while the coordination family draws its own
+	 *   marks (`Users` for `task`/`agent`, `Send`, `Clock`, `ListChecks`, and the
+	 *   wrench the TUI itself gives `hub`/`ask` — the SAME wrench `tool-glyphs.ts`
+	 *   gives any tool it has no entry for, so `team` and an unknown tool wear it
+	 *   too: on a pinned palette a `hub` row and an unknown-tool row are the same
+	 *   ink AND the same shape), and `mcp__*` draws the plug. A
+	 *   pinned palette should send the reader to where the answer IS — the row's
+	 *   shape — rather than leave the note saying only that a floor is waived.
+	 * - **ΔE00 >= 8 from `info`, at the role's decorative sites** — the reduced
+	 *   floor, deliberately lighter: `info` is the cool counterweight the port
+	 *   mapped `signal` onto, so on the palettes whose second hue is in that family
+	 *   15 would fail BY CONSTRUCTION rather than by defect. 8 is the file's
 	 *   "reliably take different names rather than scraping the side-by-side
 	 *   threshold" floor (`SYNTAX_COMMENT_FLOOR`).
 	 * - **C* >= 15.** The second accent has to be a hue and not a second grey.
@@ -596,11 +663,14 @@ export type ThemePalette = {
 	 * ## What may spend it — and the may-not list, which is the longer one
 	 *
 	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
-	 * `bg-accent-alt` bar beside the `bg-accent` one) and mermaid's categorical
-	 * fills (`accentAltWash` at index 1 of the wash cycle). The sibling legibility
-	 * spec's identity sites — an agent/entity glyph, a provider label, a
-	 * tab-strip mark — are the same kind of use and each brings its own `CONTROLS`
-	 * row when it lands.
+	 * `bg-accent-alt` bar beside the `bg-accent` one), mermaid's categorical fills
+	 * (`accentAltWash` at index 1 of the wash cycle), and the settled trace row's
+	 * IDENTITY ink — `tool-row.tsx`'s `CATEGORY_INK.meta`, the name and glyph of a
+	 * `task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake` row in the shared name column.
+	 * The sibling legibility spec's identity sites — an agent/entity glyph, a
+	 * provider label, a tab-strip mark — are the same kind of use and each brings
+	 * its own `CONTROLS` row when it lands; the trace row's brought the text floor
+	 * on a state ground below, and the ten re-seated values with it.
 	 *
 	 * MAY NOT, and the reason fits in a sentence: **interaction, selection and
 	 * semantics stay on `accent`.** Every selection and hover ground, the focus

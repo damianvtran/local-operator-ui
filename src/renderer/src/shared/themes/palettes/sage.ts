@@ -69,20 +69,24 @@ export const sage: ThemeDefinition = {
 		sunken: "#E8E1CF",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #ECF4EC  accent hue, C* 5.01, +1.51 L*, ΔE00 5.44 off `surface`,
-		 *                       `inkDim` 5.87:1 on the fill, hue 0.78° off `accent`.
-		 * rowSelected #DBEDDB  accent hue, C* 11.38, +4.90 L*, ΔE00 10.24 off
-		 *                       `surface` and 6.06 off `rowHover`, `inkDim` 5.38:1, and the
-		 *                       2px `accent` bar at 4.83:1 against it.
+		 * rowHover    #EFEDE6  panel hue, C* 3.66,
+		 *                       the rule's 0.60 x the panel's 5.78; +3.19 L*,
+		 *                       ΔE00 2.60 off `surface`, `inkDim` 5.62:1.
+		 * rowSelected #EEE8D5  panel hue, C* 10.03,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.92 L*,
+		 *                       ΔE00 4.34 off `surface` and 5.00 off
+		 *                       `rowHover`; the pair ranks 1.73 `L*` and 6.4 `C*`,
+		 *                       `inkDim` 5.38:1.
 		 */
-		rowHover: "#ECF4EC",
-		rowSelected: "#DBEDDB",
+		rowHover: "#EFEDE6",
+		rowSelected: "#EEE8D5",
 
 		ink: "#222C1F",
 		/*

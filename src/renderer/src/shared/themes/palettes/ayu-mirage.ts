@@ -66,20 +66,24 @@ export const ayuMirage: ThemeDefinition = {
 		sunken: "#191D27",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #2F393F  accent hue, C* 5.71, +1.70 L*, ΔE00 5.91 off `surface`,
-		 *                       `inkDim` 5.69:1 on the fill, hue 1.30° off `accent`.
-		 * rowSelected #274251  accent hue, C* 13.39, +4.90 L*, ΔE00 8.54 off
-		 *                       `surface` and 6.13 off `rowHover`, `inkDim` 5.10:1, and the
-		 *                       2px `accent` bar at 6.15:1 against it.
+		 * rowHover    #373B44  panel hue, C* 6.13,
+		 *                       the rule's 0.60 x the panel's 9.75; +3.21 L*,
+		 *                       ΔE00 3.53 off `surface`, `inkDim` 5.41:1.
+		 * rowSelected #343F54  panel hue, C* 14.16,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.91 L*,
+		 *                       ΔE00 4.57 off `surface` and 5.68 off
+		 *                       `rowHover`; the pair ranks 1.70 `L*` and 8.0 `C*`,
+		 *                       `inkDim` 5.10:1.
 		 */
-		rowHover: "#2F393F",
-		rowSelected: "#274251",
+		rowHover: "#373B44",
+		rowSelected: "#343F54",
 
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.
@@ -132,7 +136,25 @@ export const ayuMirage: ThemeDefinition = {
 		 * from `accent`, 15.02 from its nearest semantic (`warning`), 4.76:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#CA973E",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.22:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 78.97 -> 72.80 deg, L* 65.78 -> 68.39, C* 53.57 -> 75.46):
+		 * 4.58:1 on `elevated`, 5.17:1 on `surface`, 6.98:1 on `sunken`,
+		 * 6.02:1 on `canvas` - ΔE00 49.61 from `info` (the 8 floor intact),
+		 * 51.63 from `accent`, 29.25 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 4.96:1.
+		 */
+		accentAlt: "#E79509",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 23.34 and C* 11.85, with the hue moved to

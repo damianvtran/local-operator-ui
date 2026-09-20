@@ -756,13 +756,21 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	// what the spawn site has to correct rather than merely fill.
 	process.env.PYTHONPYCACHEPREFIX = INSIDE_BUNDLE_PREFIX;
 	/*
-	 * An empty config root, so discovery cannot decide this test's branch.
-	 * `start()` runs discovery before it spawns, and discovery reads serve
-	 * records - on this machine the operator's own daemon publishes one, and a
-	 * live record this app may not attach to is exactly the state that makes
-	 * `start()` refuse to spawn a second daemon. That guard is right, and it is
-	 * not what this test is about: the subject here is the spawn ENVIRONMENT.
-	 * Redirecting the root rather than stubbing the method keeps discovery real.
+	 * A config root with nothing in it. The RECORD-backed half of discovery is
+	 * isolated in this test by the `checkExistingBackend` stub below, NOT by this
+	 * redirect: with that stub in place the class method never runs, so changing
+	 * this value changes nothing about this test's execution - measured by
+	 * deleting the line and re-running, which still passes. It is kept because the
+	 * redirect, not a stub, is what keeps discovery real for any path that does
+	 * reach it, and because it is how the record path was RULED OUT as this
+	 * test's cause: with it set, `discoverDaemons()` reports `noRecordsAtAll:
+	 * true, blocksSpawn: false` on a machine that publishes a live serve record,
+	 * so a refusal could only have come from a gate that is not record-based.
+	 *
+	 * It did. The occupancy probe against the app's configured address is that
+	 * gate, it is isolated below, and it is the measured reason this test went
+	 * 34 pass / 1 fail for three runs of three on the operator's machine while
+	 * passing in CI.
 	 */
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = join(PATHS.home, "config");
 
@@ -790,6 +798,29 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			manager.checkLocalOperatorExists = async () => globalInstall;
 			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
 			manager.checkHealth = async () => true;
+			/*
+			 * The spawn gate's OTHER source of truth, and the measured reason this
+			 * test was red on the operator's machine while green in CI. `start()`
+			 * asks two independent questions before it may spawn: the record-backed
+			 * discovery the redirect above isolates, and
+			 * `configuredOriginOccupancy()` - a real `/health` probe against
+			 * `this.backendUrl`. The constructor derives that URL from
+			 * `backendConfig.VITE_LOCAL_OPERATOR_API_URL`, a module-level singleton
+			 * `backend/config.ts` evaluates at first import, so it stays
+			 * `http://127.0.0.1:1111` whatever a test body writes into
+			 * `process.env` afterwards. The operator's own `lop serve` daemon serves
+			 * exactly that address, so the probe finds an occupant, the gate declines
+			 * rather than spawning onto a bound port, and `start()` returns false
+			 * without ever reaching a spawn. No config ROOT can isolate that: it is
+			 * an address, not a record.
+			 *
+			 * Stubbed with the rest of this synthetic machine, for the reason the
+			 * stubs above are: what answers on that address is a fact about the host,
+			 * not about the code path under test. Nothing this test exists for is
+			 * lost - both spawn sites below are still reached, and the spawn
+			 * environment is still asserted at the spawn, unchanged.
+			 */
+			manager.configuredOriginOccupancy = async () => null;
 
 			assert.equal(
 				manager.shellEnv.PYTHONPYCACHEPREFIX,
@@ -1398,15 +1429,32 @@ test("every python-running runCommand call site in the update service passes the
 	// and the update path's own `python -m venv` are the ones that run python, beside
 	// `codesign` and the installer list probe below.
 	/*
-	 * FIVE, not six: the global install's update child LEFT this inventory when this
-	 * branch moved it to `runInOwnProcessGroup` - the group stop is that module's
-	 * whole point - so it is asserted by name below, where this scan cannot see it.
+	 * EIGHT since the staged-artifact signature probe: two `unzip` calls (the
+	 * archive's listing and the one member it extracts) and the `codesign -d` that
+	 * reads that member's entitlements. None of the three runs python — they are the
+	 * same kind of macOS tool this file already spawns for the seal probe — so they
+	 * carry no guard, and they are asserted by name below rather than left to hide
+	 * inside a total that grew by three.
 	 */
 	assert.equal(
 		calls.length,
-		5,
-		`expected the file's five runCommand call sites, found ${calls.length}`,
+		8,
+		`expected the file's eight runCommand call sites, found ${calls.length}`,
 	);
+	const stagedSignatureCalls = calls.filter(({ text }) =>
+		/STAGED_SIGNATURE_PROBE_TIMEOUT_MS/.test(text),
+	);
+	assert.equal(
+		stagedSignatureCalls.length,
+		3,
+		`expected the staged-artifact probe's three runCommand call sites, found ${stagedSignatureCalls.length}`,
+	);
+	for (const call of stagedSignatureCalls)
+		assert.doesNotMatch(
+			call.text,
+			/env:/,
+			`the archive and signature probes spawn macOS tools rather than python, so they inherit the environment: ${call.text.replace(/\s+/g, " ")}`,
+		);
 	/*
 	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
 	 * are python programs - but its command is a PARAMETER, so the text test above
@@ -2204,12 +2252,25 @@ const SPAWN_SITES = [
 		/"\/bin\/launchctl"/,
 		"removes ShipIt's launchd job",
 	),
-	runsCommand(
+	passThrough(
 		"src/main/update-service.ts",
 		"spawn",
 		1,
-		/"sh"/,
-		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
+		"the update extraction (`runExtraction`): the command is `/usr/bin/ditto` by default and the caller's only in a test, and the argv is `update-shipit.ts`'s `extractionArguments`. No interpreter runs under it; it is spawned detached so the bound can take its whole process group down, and its environment is inherited because `ditto` reads nothing from ours",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		2,
+		/plan\.script/,
+		"the relaunch watchdog: a shell script that waits for the swap and starts the app again, or for the installer this app spawned to go. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		3,
+		/plan\.args/,
+		"the installer spawner: a shell that waits for this process's pid to go and then `exec`s Apple's ShipIt. It runs no interpreter - the process it becomes is Apple's installer - and its `env` is the inherited one plus the plan's four variables (`update-shipit.ts`'s `buildInstallerSpawn`)",
 	),
 	passThrough(
 		"src/main/webauthn.ts",

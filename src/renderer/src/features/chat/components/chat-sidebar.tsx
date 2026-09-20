@@ -3,6 +3,7 @@ import { compatibilityBannerShown } from "@shared/api/local-operator/backend-err
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -21,6 +22,7 @@ import {
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
 import { Label } from "@shared/components/ui/label";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
@@ -232,10 +234,13 @@ const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
  * `catppuccinMacchiato` 0.80, then tokyoNight 1.05), and on **6 of 41** dark
  * themes it is a WEAKER mark than the hover beside it — `obsidian` 2.02 against
  * 3.42, `tokyoNight` 2.04 against 3.41 — which is the exact arrangement the
- * retired role existed to fix. The wash is not broken everywhere — the app rail
- * paints it on `sunken`, where it measures 9.6 — which is why this is a call-site
- * ground and NOT a wash: strengthening `accentWash` for the panels that draw it
- * on `surface` would make every hover tint in the app louder. (The SETTINGS rail
+ * retired role existed to fix. The wash is not broken everywhere — on the rail's
+ * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
+ * and NOT a wash: strengthening `accentWash` for the panels that draw it on
+ * `surface` would make every hover tint in the app louder. (The rail no longer
+ * paints a ground of its own at all: it is `surface` with a `border-r
+ * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
  * declaration below.)
@@ -352,13 +357,23 @@ const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
  * One literal, deliberately: this role is the one thing a guard reads out of the
  * tree (`scripts/chat-sidebar-selection.test.mjs` resolves it and every call site
  * through the shipped `cn`), and a literal assembled from parts would be a role a
- * reader of that file cannot get in one piece. `relative` is IN here rather than
- * at each call site because the bar is `absolute`: the element that carries the
- * role is the bar's containing block, and a consumer that forgot `relative` would
- * let the bar escape its row.
+ * reader of that file cannot get in one piece.
+ *
+ * THE 2px `accent` BAR IS GONE (row-state refinement, 2026-09-18), and `relative`
+ * with it. The bar was the row's non-colour second signal because both fills used
+ * to be one hue at two strengths; the refined roles rank the pair on `L*` and on
+ * cast, so the fill carries the ranking and `font-medium` is the non-colour half.
+ * The bar also squared the row's leading edge (its square overlay painted over
+ * `rowStyle`'s `rounded-md`), so removing it is what restores the left rounding
+ * the operator asked for - the radius itself never moved. The two POPUP bars
+ * (`slash-commands.tsx`, `at-picker.tsx`) stay: their row is the one Enter
+ * applies, in a transient popup, and the keyboard has no other mark there.
+ *
+ * `relative` existed ONLY to be the bar's containing block, so it goes with the
+ * bar rather than staying as a stray positioning context on every current row.
  */
 export const rowCurrent =
-	"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";
+	"bg-row-selected font-medium text-ink hover:bg-row-selected";
 
 import {
 	type FocusedSlot,
@@ -397,6 +412,57 @@ const CATALOGUE_SAFETY_POLL_MS = 30_000;
  * the word "Include archived" rather than a checkbox called that.
  */
 const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
+/**
+ * THE REMEDY FOR A ROW THAT IS NOT ANSWERING, appended to its own sentence.
+ *
+ * A wedged row asks something different of a reader than a failed or a working
+ * one — a session whose owner has stopped reporting is one to STOP, not one to
+ * reopen, and the operator's report said so in one breath with the mark — and
+ * the row is where their attention already is, so the hint belongs here rather
+ * than only in `/info` two steps away.
+ *
+ * THE REMEDY IS CLIENT-OWNED AND THE STATE'S WORDS ARE NOT, which is the whole
+ * division: `row.status.label` comes off the wire and is read, never re-written
+ * (the contract forbids a client deriving status — `SessionCatalogueRow.status`
+ * in `desktop-session-contract.ts`), while `/stop` is an affordance only this
+ * client has. That is not drift: drift would be two spellings of the STATE.
+ *
+ * ONLY ON `wedged`, deliberately: an `error` row is one to reopen and a busy row
+ * one to wait for, so a remedy printed on each of them would be advice about the
+ * wrong state.
+ *
+ * TWO CHANNELS, AND THE HOVER ONE IS NOT ENOUGH ON ITS OWN (UX round 1, U2, with
+ * review round 1's MINOR 1). This used to justify the pointer-only placement
+ * with "a clause a reader hears on every arrow-key stop through the list" — which
+ * is false as written, because the clause is appended on `wedged` rows alone: a
+ * reader walking the list hears it once, on the one row it is about. What
+ * replaced the claim is a measurement — over the whole document `title` was the
+ * ONLY carrier of the clause, no accessible name held it, no row pointed at it
+ * with `aria-describedby`, and Chromium does not present `title` on focus — so
+ * for the modality this file already renders an `sr-only` name for, the remedy
+ * did not exist at all. It now rides BOTH channels: the tooltip for a pointer,
+ * and `aria-describedby` (the row's, below) for a reader who reaches the row by
+ * keyboard, which announces the clause on focus WITHOUT putting it in the name —
+ * the name still carries the state's sentence and nothing else, which is design
+ * D2's call and still holds.
+ *
+ * ONE HOME FOR THE WORDS. The constant is the clause alone and the tooltip's own
+ * expression adds the separator, rather than a second copy of the sentence in a
+ * form only a tooltip can use: a description is announced straight after the
+ * name, where a leading " · " would be read as a separator that is already
+ * implied.
+ */
+const SILENT_REMEDY = "/stop if it stays silent";
+
+/**
+ * The id of a row's remedy sentence, WHEN that row renders one.
+ *
+ * Derived from the session id rather than from a `useId()` call because the rows
+ * are built by a plain render function (`sessionRow`), where a hook would run a
+ * different number of times per render. Rows are keyed by this id, so it is
+ * unique in the document by construction.
+ */
+const silentRemedyId = (sessionId: string) => `chat-row-remedy-${sessionId}`;
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -500,11 +566,28 @@ export function ChatSidebar({
 	 */
 	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const error = useCanonicalSessionsStore((s) => s.error);
-	const ready = desktopFeatureEnabled(
+	/*
+	 * The TRI-STATE, because the gate owes two different sentences and can only pick
+	 * between them if it is told which half closed: an unavailable plane is a pairing
+	 * condition this app can act on, while a backend that does not advertise
+	 * `session_catalogue` is a version gap (design § 4).
+	 */
+	const catalogueState = desktopFeatureState(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
+	const ready = catalogueState === "enabled";
+	/*
+	 * Main's pairing cause, read for the same reason the pane reads it: the sentence
+	 * for an unavailable plane comes from the one shared table, selected by the cause
+	 * main published (design § 5.2, § 11.1).
+	 */
+	const { data: serverHealth } = useServerHealth();
+	const pairingCause =
+		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
+			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
+			: null;
 	/*
 	 * Losing the backend mid-session must not look like an empty catalogue, and
 	 * neither must losing the GATE. Once the sidebar has been ready we keep its
@@ -551,7 +634,8 @@ export function ChatSidebar({
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
 	const { stale, showList, notice } = catalogueGate({
-		ready,
+		state: catalogueState,
+		cause: pairingCause,
 		failed: Boolean(capabilities.error),
 		answered: Boolean(capabilities.data),
 		wasReady: wasReady.current,
@@ -561,7 +645,10 @@ export function ChatSidebar({
 		storeFailed: Boolean(error),
 		// The banner's own condition, read through the same predicate it uses, so
 		// the two cannot drift into stating one condition twice (design round 1, D3).
-		coveredByCompatibilityBanner: compatibilityBannerShown(capabilities.data),
+		coveredByCompatibilityBanner: compatibilityBannerShown(
+			capabilities.data,
+			pairingCause,
+		),
 	});
 	/*
 	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
@@ -1427,6 +1514,13 @@ export function ChatSidebar({
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
 		 * what let the deleted browser mark paint its hover fill over the selected row). */
 		const current = selectedConversation === row.session_id && !activeDraftKey;
+		/**
+		 * WHETHER THIS ROW OFFERS THE REMEDY, read once for the same reason `current` is —
+		 * it decides three things now (the tooltip's tail, the `aria-describedby` and the
+		 * sentence that id names), and three copies of the predicate would be three
+		 * chances for the row to point at a sentence it is not rendering.
+		 */
+		const silent = row.status?.code === "wedged";
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
@@ -1527,7 +1621,29 @@ export function ChatSidebar({
 				   busy or gated row's tooltip claim a mark its own spinner and gate were
 				   nowhere drawing — the reported defect, in the channel a reader reaches
 				   by hovering, and the row that most needs the tooltip to be true. */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+				/*
+				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
+				 * this is the keyboard's, and it is the one a person using the `sr-only` name
+				 * beside the mark can actually reach — Chromium does not present a `title` on
+				 * focus, so before this the advice existed for hover alone. It points at the
+				 * clause rather than carrying it in the NAME, which is the design's call: the
+				 * name stays the state's sentence, and a description is announced after it, on
+				 * focus, on the rows that carry one.
+				 *
+				 * THAT REQUIRES THE TARGET TO SIT OUTSIDE THIS BUTTON — the association alone
+				 * does not keep a sentence out of the name, and the first version of this
+				 * shipped it as a child of the button, where name-from-content collected it
+				 * too (round 2's MAJOR 2). See the span below the `</button>` for the
+				 * measurement; what this attribute needs to be true is that its target renders
+				 * and renders outside the named element.
+				 *
+				 * `undefined` on every other code, and on a row with no status at all — an
+				 * `aria-describedby` naming an element nobody rendered resolves to no
+				 * description at all, which is a worse outcome than not pointing (the same
+				 * rule `setting-control.tsx` states for its own help sentence).
+				 */
+				aria-describedby={silent ? silentRemedyId(row.session_id) : undefined}
 				onClick={(event) => {
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
@@ -1675,6 +1791,33 @@ export function ChatSidebar({
 		 * claims is against IT, not against a panel without pins: the earlier "identical to
 		 * the pre-change panel" sentence named a tree main has since moved past.
 		 */
+		/*
+		 * THE SENTENCE `aria-describedby` NAMES, AND IT IS OUT HERE ON PURPOSE (review round 2's
+		 * MAJOR 2, design D5, QA Q-4 and UX U6 - all four roles measured the same thing).
+		 *
+		 * It shipped INSIDE the button, and a button takes its accessible name from its contents
+		 * (AccName 1.2 § 4.3.1 step 2F, "name from each child"): the clause was collected into
+		 * the NAME as well as into the description, so a reader heard the advice twice per pass
+		 * over the row while the name stopped being the state's sentence. Measured in Chromium's
+		 * own tree, the shipped row read `name: "Not answering · process alive (last heartbeat
+		 * 15m ago) /stop if it stays silent Quiet owner (stale beat)"`.
+		 *
+		 * ONE LEVEL OUT, and both channels are what they claim: `aria-describedby` resolves by id
+		 * anywhere in the document, so the description survives, and the name is the state's
+		 * sentence again. It is rendered BESIDE the button rather than collapsed into it - the
+		 * placement `directory-indicator.tsx` uses for the same job - and at BOTH row shapes
+		 * below, because the remedy is about the session's state and not about the pin
+		 * capability: a row that offers no pin still offers the stop.
+		 *
+		 * `sr-only` rather than `hidden`: a `display: none` element is out of the accessibility
+		 * tree altogether, which is exactly the failure the association exists to avoid.
+		 */
+		const silentRemedy = silent ? (
+			<span id={silentRemedyId(row.session_id)} className="sr-only">
+				{SILENT_REMEDY}
+			</span>
+		) : null;
+
 		if (!pinsEnabled && !archiveEnabled) {
 			return (
 				<div
@@ -1682,6 +1825,7 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{silentRemedy}
 				</div>
 			);
 		}
@@ -2092,6 +2236,7 @@ export function ChatSidebar({
 				)}
 			>
 				{rowButton}
+				{silentRemedy}
 				{/*
 				 * THE PAIR, OR THE ONE CONTROL THAT STANDS IN FOR IT WHEN THE PANEL IS AT
 				 * ITS NARROWEST. Both controls are siblings of the row's button, never
@@ -2978,10 +3123,7 @@ export function ChatSidebar({
 			 * `data-session-archive-failure` and `data-session-delete` follow.
 			 */}
 			{archiveUndo && (
-				<p
-					data-session-archive-undo
-					className="pb-2 text-meta text-ink-muted"
-				>
+				<p data-session-archive-undo className="pb-2 text-meta text-ink-muted">
 					{archiveOfferedText(archiveUndo.title)}{" "}
 					<button
 						type="button"

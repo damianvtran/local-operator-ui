@@ -57,20 +57,24 @@ export const oneDark: ThemeDefinition = {
 		sunken: "#21252B",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #293948  accent hue, C* 11.46, +1.65 L*, ΔE00 4.63 off `surface`,
-		 *                       `inkDim` 5.71:1 on the fill, hue 1.85° off `accent`.
-		 * rowSelected #1A425F  accent hue, C* 21.54, +5.00 L*, ΔE00 10.75 off
-		 *                       `surface` and 6.27 off `rowHover`, `inkDim` 5.09:1, and the
-		 *                       2px `accent` bar at 4.57:1 against it.
+		 * rowHover    #383B41  panel hue, C* 4.14,
+		 *                       the rule's 0.60 x the panel's 6.36; +3.23 L*,
+		 *                       ΔE00 2.93 off `surface`, `inkDim` 5.41:1.
+		 * rowSelected #363F4E  panel hue, C* 10.30,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.85 L*,
+		 *                       ΔE00 4.53 off `surface` and 4.81 off
+		 *                       `rowHover`; the pair ranks 1.62 `L*` and 6.2 `C*`,
+		 *                       `inkDim` 5.11:1.
 		 */
-		rowHover: "#293948",
-		rowSelected: "#1A425F",
+		rowHover: "#383B41",
+		rowSelected: "#363F4E",
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.
@@ -154,7 +158,25 @@ export const oneDark: ThemeDefinition = {
 		 * tokens. Measured: ΔE00 33.97 from `accent`, 25.83 from its nearest
 		 * semantic (`danger`), 4.53:1 on the tightest ground (`surface`).
 		 */
-		accentAlt: "#CC7DE3",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.08:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue held at 320 deg, L* 64.20 -> 67.62, C* 61.57 -> 61.75):
+		 * 4.55:1 on `elevated`, 5.06:1 on `surface`, 6.23:1 on `sunken`,
+		 * 5.66:1 on `canvas` - ΔE00 35.55 from `info` (the 8 floor intact),
+		 * 33.75 from `accent`, 23.34 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.22:1.
+		 */
+		accentAlt: "#D686ED",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 20.62 and C* 7.46, with the hue moved to

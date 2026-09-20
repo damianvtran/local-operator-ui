@@ -304,9 +304,17 @@ export const ConnectivityBanner = ({
 					</div>
 
 					<div className="flex shrink-0 items-center gap-2">
-						<Button variant="ghost" size="sm" onClick={handleRetry}>
-							Retry
-						</Button>
+						{/*
+						 * The control follows the SAME rule as the compatibility band
+						 * below it: offered only where a re-pairing act exists that could
+						 * change the state (`serverBannerCopy` answers that from main's
+						 * pairing record, so the two bands cannot disagree).
+						 */}
+						{serverIssue?.retry !== false && (
+							<Button variant="ghost" size="sm" onClick={handleRetry}>
+								Retry
+							</Button>
+						)}
 						{isInternetIssue && (
 							<Button
 								variant="ghost"

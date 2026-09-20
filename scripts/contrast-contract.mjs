@@ -1943,8 +1943,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'export const rowCurrent =\n\t"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";',
-		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `rowSelected` is the role authored for the row the reader is ON, `font-medium` and the 2px `accent` bar are the non-colour half, and a bare background loses to `rowStyle`'s `hover:bg-row-hover` on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
+		must: 'export const rowCurrent =\n\t"bg-row-selected font-medium text-ink hover:bg-row-selected";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `rowSelected` is the role authored for the row the reader is ON, and a bare background loses to `rowStyle`'s `hover:bg-row-hover` on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving. The second signal is `font-medium` ALONE since the refinement round: the 2px `accent` bar was removed from this constant (the operator asked for it, and its square leading edge was what squared the row's 6px corner), and the fill now ranks the pair on `L*` and on cast - which is what the role's own doc says and what `scripts/chat-sidebar-selection.test.mjs` resolves this literal for",
 	},
 	{
 		/*
@@ -2296,6 +2296,204 @@ const findPerceptibleException = (theme, role, ground, got) => {
 };
 
 /*
+ * THE TOOL ROW'S TWO IDENTITY PAIRS, and why each is asked where it is.
+ *
+ * The trace's settled ledger draws TWO inks as text in ONE column: the tool's
+ * CATEGORY ink (`read` -> `info`, `meta` -> `accentAlt`) and, on a running row,
+ * the LIVENESS ink (`accent`). Both pairs are new SITES for roles whose floors
+ * were written for other ones, and each pair is named with the bound its own
+ * site needs.
+ *
+ * 1. `accentAlt` vs `info`, at 15 and not the reduced 8 the pair was previously
+ *    asserted at. The 8 was argued for the sites the role HAD - a 1px bar in a
+ *    40px miniature, a 6px mark in a diagram - where recall at a size too small
+ *    to resolve is the question. This site is the opposite one: two ~12px inks a
+ *    line apart in one column, which is the "difference of category, not of
+ *    shade" case the 15 exists for. A reader scanning the ledger has to tell
+ *    "this call read" from "this call was meta", and at 8 the two take the same
+ *    name.
+ *
+ *    FIVE PALETTES CANNOT REACH IT, and they are RECORDED rather than silently
+ *    exempted, with the constraint that refuses each named on the pin. Re-seating
+ *    was measured first and refused, and the SEARCH SPACE is named here because
+ *    this figure has been mis-quoted twice: on `catppuccinMocha` - the binding
+ *    value, and the palette whose second hue sits 2.68 degrees off `info`'s -
+ *    lifting `L*` to the ground the row paints the ink on (the 4.5:1 text floor
+ *    on `elevated`, which lands on the hex `#7AA3DD` at the held hue 272.6 and
+ *    `C*` 33.97) walks the value into `info`: it reads ΔE00 6.08 there, BELOW
+ *    the 8 it already held. Every value that clears both is instead drained to
+ *    the chroma floor (C* 15 at L* 89-90), which is the one way
+ *    `ALT_ACCENT_CHROMA_FLOOR`'s own comment says the role stops being a hue.
+ *    So the palette cannot move and the assertion keeps its bound; the five are
+ *    pinned at their measured ΔE00 with the reason, and the pins are ACCEPTED
+ *    RESIDUALS rather than fixes. RECOMPUTED ONCE, because the two records
+ *    disagreed: 6.00 was the crossing read one stop too far (`L*` 66.4, the
+ *    shipped value's own lightness) and 6.24 was a read on unquantized `Lab`
+ *    values (which recompute to 6.22); 6.08 is the hex read at the crossing,
+ *    reproducible with this file's own `deltaE`, and it is what both records
+ *    now state.
+ *
+ * 2. `info` vs `accent`, at 8: the settled `read` ink against the ink a RUNNING
+ *    row wears. The bound is the file's "reliably take different names rather
+ *    than scraping the side-by-side threshold" floor and not the 15, because this
+ *    pair is NOT the ledger's side-by-side comparison - the two inks are never in
+ *    one row, and the state they disagree about is carried three other ways at
+ *    once (the running row's raised ground, its live clock where a settled row
+ *    has its outcome mark, and the mark's own shape). What it catches is the
+ *    direction the palette file already recorded in prose: `info` IS `accent` in
+ *    `dune`, `neon`, `radient` and `obsidian`, so a settled `read` row and a
+ *    running row wore the same ink. Pinned for the same reason as above: on those
+ *    palettes the second hue IS the role, and moving `info` there is a different
+ *    change - `info` is also what the port mapped the TUI's `signal` onto.
+ *
+ * Both are declared HERE rather than beside the constants they equal, because
+ * `const` does not hoist and `PAIR_PINS` below is written against them; the
+ * check that they still ARE those constants is at the foot of the run, beside the
+ * fleet figure, so a change to either canonical floor cannot leave these two
+ * behind.
+ */
+const IDENTITY_PAIR_FLOOR = 15; /* == SEPARATION_FLOOR */
+const LIVENESS_PAIR_FLOOR = 8; /* == SYNTAX_COMMENT_FLOOR */
+
+/**
+ * Identity PAIRS accepted below their floor, pinned to their measured ΔE00.
+ *
+ * The same instrument as `PERCEPTIBLE_EXCEPTIONS` one table up and the same
+ * contract: a pin is a DECISION with a measurement attached, not a mute. The
+ * palette moving makes the recorded ΔE00 stop matching and the gate fails until
+ * a human re-approves it, and an entry the walk never reaches is itself a failure
+ * (the staleness check at the foot of the run), so a palette that stops needing
+ * its pin cannot leave a hole behind.
+ *
+ * BOTH ENTRY FAMILIES LIVE HERE because they are the same question asked of two
+ * pairs the tool row newly draws as TEXT: the category ink against its sibling
+ * category (`accentAlt` vs `info`, floor `IDENTITY_PAIR_FLOOR`) and the settled
+ * category ink against the LIVENESS ink (`info` vs `accent`, floor
+ * `LIVENESS_PAIR_FLOOR`). See the floors' own comment for why each bound is what
+ * it is. `a`/`b` are palette roles, `got` is the measured ΔE00, and `why` names
+ * the constraint that REFUSES the palette rather than restating the number.
+ *
+ * @type {{theme: string, a: string, b: string, floor: number, got: number, why: string}[]}
+ */
+const PAIR_PINS = [
+	/*
+	 * The five palettes whose second hue IS the `info` family. Every one of the
+	 * three `catppuccin*` palettes took its `accentAlt` from the TUI's `label`
+	 * token, and on those the scheme's lavender and its blue are two steps of one
+	 * ramp: the shipped values sit 2.68, 19.42 and 17.02 degrees off `info`'s hue.
+	 * `localOperatorDark` and `ayuLight` have no `label` token to port - they are
+	 * desktop-only, and their second hue is a rotation of their own `accent` - so
+	 * the rotation lands where the floors put it, which is beside `info`.
+	 */
+	{
+		theme: "catppuccinMocha",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.58,
+		why: "the second hue sits 2.68 degrees off `info`'s; re-seating was measured and refused - lifting `L*` to the ground the row paints it on (the 4.5:1 text floor on `elevated`, hex `#7AA3DD`) drops it to ΔE00 6.08 from `info` (below the 8 it already held) and every value clearing both AT THIS HUE is at C* 15, the chroma floor that makes the role a second grey",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.58,
+		why: "the second hue sits 19.42 degrees off `info`'s, in its own family by construction",
+	},
+	{
+		theme: "catppuccinFrappe",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 8.6,
+		why: "the second hue sits 17.02 degrees off `info`'s, in its own family by construction",
+	},
+	{
+		theme: "localOperatorDark",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 12.57,
+		why: "desktop-only palette with no `label` to port: its second hue is a rotation of `accent`, and the rotation that clears every other floor lands 12.57 from `info`",
+	},
+	{
+		theme: "ayuLight",
+		a: "accentAlt",
+		b: "info",
+		floor: IDENTITY_PAIR_FLOOR,
+		got: 13.57,
+		why: "desktop-only palette with no `label` to port; the rotation lands 13.57 from `info`",
+	},
+	/*
+	 * And the four palettes whose `info` IS their `accent`, plus the light one whose
+	 * two Primer blues are 5.87 apart. Three of the four are already recorded in
+	 * this file's prose (`COMMAND_TOKEN`'s note: "`info` is the accent's twin in
+	 * dune, neon and radient (0.0) and the ink's twin in obsidian (0.0)"); what
+	 * changes here is that the recording is now ASSERTED, so a palette edit that
+	 * moves either role re-litigates the pin instead of quietly re-opening the
+	 * state confusion. Pinned rather than re-authored because on these palettes the
+	 * second hue IS the role: moving `info` there is a different change, and `info`
+	 * is the TUI's `signal` mapping on top of that.
+	 */
+	{
+		theme: "dune",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#FF8C38`), the palette's single warm hue; a settled `read` row and a running row separate by their ground, their mark and their clock",
+	},
+	{
+		theme: "neon",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#00EFFF`), the palette's single cyan",
+	},
+	{
+		theme: "obsidian",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "the app's recorded MONOCHROME palette: `info` IS `ink` IS `accent` (`#FAFAFA`), which `code-mirror-theme.ts` and the command-token pins already state; hue is not the channel here and never was",
+	},
+	{
+		theme: "radient",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 0,
+		why: "`info` IS `accent` (`#91B7E9`), the palette's single steel blue",
+	},
+	{
+		theme: "githubLight",
+		a: "info",
+		b: "accent",
+		floor: LIVENESS_PAIR_FLOOR,
+		got: 5.87,
+		why: "two Primer blues: `accent` is 0969DA deepened to clear its own text floor and `info` is 0550AE kept as the scheme's factual chrome tone, so the two sit one shade apart by construction; separating them means re-authoring one of them, which is a palette round and not this change",
+	},
+];
+
+/** `PAIR_PINS` entries consulted during the run, for the same staleness guard. */
+const pairPinSeen = new Set();
+
+const findPairPin = (theme, a, b, got) => {
+	const hit = PAIR_PINS.find(
+		(e) =>
+			e.theme === theme &&
+			e.a === a &&
+			e.b === b &&
+			Math.abs(e.got - got) < 0.01,
+	);
+	if (hit) pairPinSeen.add(hit);
+	return hit;
+};
+
+/*
  * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
  *
  * A session's row has always put live chips (`inkMuted`) beside inert readings
@@ -2460,6 +2658,38 @@ const assertPair = (theme, p, fg, bg, floor, label) => {
 	if (findException(theme, fg, bg, got)) return;
 	fail(
 		`${theme}: ${label} — ${fg} ${a} on ${bg} ${b} = ${got}:1, need ${floor}:1`,
+	);
+};
+
+/**
+ * Two ROLES that must be told apart, rather than an ink on a ground.
+ *
+ * The other instrument, and the one the pair floors need: `ratio` is
+ * luminance-only, so two roles can be equally legible on every ground and still
+ * be the same colour to a reader — which is the whole of the tool row's
+ * defect. `label` comes from the floors' own constants, so a pin records the
+ * FLOOR it was granted under and not just a number: a pin whose floor no longer
+ * matches the assertion reaching it fails here rather than quietly relaxing a
+ * bound that was raised since it was written.
+ */
+const assertIdentityPair = (theme, p, a, b, floor, label) => {
+	const va = p[a];
+	const vb = p[b];
+	if (!isHex(va) || !isHex(vb)) return;
+	assertions++;
+	const got = r2(deltaE(va, vb));
+	if (got >= floor) return;
+	const pin = findPairPin(theme, a, b, got);
+	if (pin) {
+		if (pin.floor !== floor) {
+			fail(
+				`${theme}: \`${a}\`/\`${b}\` is pinned at floor ${pin.floor} but this assertion asks for ${floor} — a pin records the bound it was granted under, so the pin and the floor have to be raised together`,
+			);
+		}
+		return;
+	}
+	fail(
+		`${theme}: ${label} — \`${a}\` ${va} and \`${b}\` ${vb} are ΔE00 ${got} apart (need ${floor}) — two roles a reader has to tell apart at this site cannot be one colour at two weights; move the palette value, or pin the palette in \`PAIR_PINS\` with the constraint that refuses it`,
 	);
 };
 
@@ -2657,6 +2887,13 @@ const SEPARATION_FLOOR = 15;
  * its ΔE00 on the wrong axis - so the axis is asserted, not just the distance.
  */
 const ALT_ACCENT_CHROMA_FLOOR = 15;
+
+/*
+ * `IDENTITY_PAIR_FLOOR` and `LIVENESS_PAIR_FLOOR` are declared beside
+ * `PAIR_PINS`, above, because `const` does not hoist; the check that they are
+ * still this file's `SEPARATION_FLOOR` and `SYNTAX_COMMENT_FLOOR` sits at the
+ * foot of the run.
+ */
 /* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
    the same number and for why five palettes are recorded below it instead of
    being moved. Declared here rather than beside the list because `const` does
@@ -2753,66 +2990,146 @@ const ELEVATED_PANEL_DELTA_E = 2.0;
  * WHICH CHANNEL CARRIES WHAT, and it is the whole of this relaxation.
  *
  * `rowHover` is the POINTER's mark and it is LOAD-BEARING: it is the only
- * signal a hovered row gets, so it keeps the full field floor.
+ * signal a hovered row gets, so it keeps the field floor.
  *
- * `rowSelected` is SUPPORTING. What says "you are here" is the 2px `accent`
- * bar on the leading edge plus `font-medium` - two NON-COLOUR marks - so the
- * selection's fill only has to be FINDABLE, not rankable. That is why its band
- * is the hover's own, and why the pair's separation is a collision floor rather
- * than a field floor: the ranking is the bar's job, not the colour's.
+ * `rowSelected` IS RANKABLE NOW, and that is the refinement round's change of
+ * contract. It used to be SUPPORTING: what said "you are here" was the 2px
+ * `accent` bar on the row's leading edge plus `font-medium`, so the selection's
+ * fill only had to be FINDABLE. The bar is GONE from the chat sidebar's rows -
+ * the operator asked for it, and it also squared the row's leading edge, since
+ * its square overlay painted over `rowStyle`'s `rounded-md` - so the FILL carries
+ * the ranking, on the two axes a reader has: an `L*` rank (`ROW_STATE_HOVER_RANK`)
+ * and a `C*` rank (`ROW_STATE_CHROMA_RANK`). `font-medium` stays as the one
+ * non-colour mark, and the two POPUP bars (`slash-commands.tsx`,
+ * `at-picker.tsx`) stay: their row is the one Enter applies, in a transient
+ * popup where the keyboard has no other mark, and neither is a list a reader
+ * scans for a persistent "you are here".
  *
- * MEASURED, because the relaxation was first argued for on a mechanism that
- * turned out to be the wrong one. Raising the panel until no legal selection
- * fill exists, on the 11 palettes the legibility pass compressed:
+ * THE BAND OFF `surface` IS WITHDRAWN RATHER THAN LOWERED, and it is a
+ * measurement rather than a relaxation. With the hue and the chroma held at the
+ * panel's own, the band the role was written for (ΔE00 4.0) is UNREACHABLE on
+ * lightness: at the largest step the three ink floors allow it reaches 4.0 on 40
+ * of the 59 palettes and bottoms at 2.08. The shipped rule only met its own band
+ * by leaving the panel's colour family - the hue was the `accent`'s, and on 25
+ * of the 59 that is more than 45 degrees off the panel - which is the operator's
+ * report restated. What replaces it is the file's own field floor, ΔE00 >= 2.0
+ * off `surface` (`FIELD_SEPARATION_FLOOR`, so a fill indistinguishable from its
+ * own panel still fails), plus the two step floors and the two rank floors.
  *
- *   band 6.0, step >= 3.0 (what shipped)   0.50 - 2.75 L* of room
- *   band 4.0, step >= 3.0                  0.50 - 2.75  (IDENTICAL)
- *   band 6.0, step >= 2.0                  1.50 - 3.75
- *   band 4.0, step >= 1.5                  2.00 - 4.25
- *
- * The BAND contributes nothing to that cap and the STEP contributes all of it,
- * on 41 of 41 dark palettes: a hue-and-chroma fill reaches ΔE00 4.0-9.5 off the
- * panel at a 1.5 `L*` step, because a hue difference does not consume the
- * lightness budget. The step was 3.0 `L*` only because the fill had to
- * out-DISTANCE the hover. Once the bar ranks the pair it does not, and that -
- * not the band - is the relaxation the bar buys. A reader who takes the lowered
- * band as the operative change will relax the wrong constant next time.
+ * THE CONSEQUENCE, stated so it is not discovered later: the achieved band's
+ * median falls from 6.50 to 3.81 on the hover and from 10.95 to 4.26 on the
+ * selection, and the pair's separation median from 6.78 to 6.01 - because 6.78
+ * was bought by hue rotation. What rises with the withdrawal is what a reader
+ * actually scans by: the `L*` rank goes from a median 1.30 to 1.62 and the `C*`
+ * rank from an often-INVERTED sign to 2.50-11.46.
  */
-const ROW_HOVER_BAND = 4.0;
-const ROW_SELECTED_BAND = 4.0;
 const ROW_PAIR_SEPARATION = 2.0;
 /* How much further out the selection must sit than the hover, in `L*`. */
-const ROW_STATE_HOVER_RANK = 0.5;
+const ROW_STATE_HOVER_RANK = 1.0;
+/* ... and in `C*`, the axis the lightness budget cannot spend. */
+const ROW_STATE_CHROMA_RANK = 2.0;
 const ROW_STATE_WASH_FLOOR = 2.0;
 /*
- * The floor against the three ELEVATION grounds is a COLLISION floor and not the
- * field floor, and the measurement is why. A state sits one step off `surface`,
- * while the ladder's own steps are asserted at ΔE00 >= 2.0 (`GROUND_STEP_DELTA_E`,
- * `ELEVATED_PANEL_DELTA_E`) - so on the palettes whose ladder is at its floor the
- * state is INSIDE that gap by construction and no value can be 2.0 clear of it
- * while also holding its own band. Measured: requiring 2.0 there makes the pair
- * unsatisfiable on 19 of the 59 and the rule's own worked values violate it. What
- * IS asserted is that the state is not the same colour as a ground, at the same
- * hard floor the fleet asserts for two canvases.
+ * How much of the selection's step the hover has to spend, as a SHARE. Clause 2
+ * of the operator's ask ("more should be a brightening against the backdrop") is
+ * a relationship, not an absolute, and the measurement is why: the hover's step
+ * is bounded by the budget the ink floors leave the SELECTION, so an absolute
+ * floor high enough to state the clause would force the pair's rank under
+ * `ROW_STATE_HOVER_RANK` on `catppuccinMacchiato`, `rosePine` and `palenight`
+ * rather than buy anything. Today's hover spends 30% of its own available
+ * headroom; the rule spends 65% of the selection's step, and the fleet's
+ * achieved minimum is 0.56.
  */
-const ROW_STATE_COLLISION_FLOOR = 1.0;
+const ROW_HOVER_STEP_SHARE_FLOOR = 0.5;
+/*
+ * The hover's step is AUTHORED one 0.02 grid step above this floor, and the
+ * relationship is stated because authoring AT the floor does not survive the
+ * measurement: this file asserts the step on the AUTHORED HEX, and the 8-bit
+ * round trip can land a value authored at exactly 1.50 at 1.49 - a value that
+ * satisfies the rule and fails the gate that measures it. So § 4 authors
+ * `step_hover` at `max(1.5 + 0.02, 0.65 x step_selected)`, the floor stays 1.5
+ * here, and a rule-faithful value cannot land under it. The alternative (slack
+ * on the floor assertion, the way the cast floors carry it) was refused: the
+ * step is what a reader scans by, so the assertion stays sharp and the authoring
+ * rule carries the grid rather than the gate carrying the slack. The fleet's
+ * achieved hover minimum is 1.53, one grid step above this floor, which is what
+ * that rule produces.
+ */
 const ROW_HOVER_STEP_FLOOR = 1.5;
 /*
  * The hover's floor, and now the selection's too. The selection sat at 3.0
- * while it had to out-rank the hover ON THE L* AXIS; the bar and the weight
- * rank it instead, so the only floors left are the two that make the fill
- * findable at all. This is the constant that moves the row window (above).
+ * while it had to out-rank the hover ON THE L* AXIS; the fill ranks it on BOTH
+ * axes now, so the only floors left are the two that make the fill findable at
+ * all, plus the share floor above. This is the constant that moves the row
+ * window (above).
  */
 const ROW_SELECTED_STEP_FLOOR = 1.5;
 const ROW_SELECTED_STEP_CEILING = 5.0;
-const ROW_HOVER_CHROMA_FLOOR = 4;
-const ROW_SELECTED_CHROMA_FLOOR = 8;
-const ROW_HOVER_CHROMA_OUTER = 0.6;
-const ROW_SELECTED_CHROMA_OUTER = 0.75;
+/*
+ * THE CAST, and both halves of it are now asserted - which is the defect this
+ * round inherits and fixes. Both floors below were declared and asserted
+ * NOWHERE before it: the only chroma assertion on a row role was the ceiling,
+ * so a state could desaturate to zero and pass every check. `tokyoNight`
+ * measured it: `C*` 4.79 against a panel of 13.44 - 64% of the panel's cast
+ * removed - and the ΔE00 7.05 the old band was scored on *was* that removal
+ * (ΔL* +1.72 against ΔC* -8.65). A row less saturated than the surface it sits
+ * on reads as a grey wash of that surface, which is the operator's report.
+ *
+ * BOTH HALVES ARE PANEL-RELATIVE, and the reference is the whole rule: the row
+ * sits ON the surface, so the backdrop is what a reader compares it to. The
+ * hover takes a FRACTION of the panel's cast and never more than the panel's;
+ * the selection takes the panel's cast and up to 4 MORE - the one axis on which
+ * a row may be more coloured than its backdrop, bounded, and what buys the
+ * pair's rank where the ink floors leave no `L*` room. The absolute terms are the
+ * cast-less panel's case and only that case: a panel with no cast to hold has no
+ * hue to be faithful to (§ THE HUE below) and takes the rule's own floor.
+ *
+ * The accent's chroma is NOT a reference for either half any more. It was, and
+ * `min(0.6 x C*(accent), 24)` permitted C* 24 on `tokyoNightStorm` (accent C*
+ * 48.1 against a panel of 16.3) where the shipped hover sat at 22.4 - 1.4x its
+ * own panel's cast, the loudest fill in the fleet, bought entirely on the chroma
+ * axis so the band could be met without lighting the row.
+ */
+const ROW_HOVER_CHROMA_FLOOR = 2.5;
+/*
+ * The hover's cast as a SHARE of the panel's: the rule authors it at 0.60 of the
+ * panel's own cast, and this is the floor it may not fall below. Stated as the
+ * fraction rather than as a chroma because the panel is the reference: a fill
+ * less saturated than the surface it sits on reads as a grey wash of that surface
+ * (`fix/row-state-cast-floor` measured exactly that at C* 4.79 on a panel of
+ * 13.44, with the ΔE00 7.05 the old band was scored on *being* that removal).
+ * Authored at 0.60 and floored at 0.50 is the margin the ink floors cannot eat:
+ * the gap is worth 0.1 x C*(surface) of chroma, and the hex round trip's own
+ * error is the slack beside it below.
+ */
+const ROW_HOVER_CAST_FLOOR_SHARE = 0.5;
+const ROW_SELECTED_CHROMA_FLOOR = 5.0;
+const ROW_SELECTED_CHROMA_RISE = 4.0;
 const ROW_STATE_CHROMA_CAP = 24;
 const ROW_STATE_HUE_LIMIT = 12;
-const ROW_STATE_BAR_FLOOR = 3.0;
-const ROW_STATE_BAR_DELTA_E = 2.0;
+/*
+ * THE HEX ROUND TRIP'S OWN SLACK, one term per side, because the authored value
+ * is the hex the rule's triple RESOLVES to and 8-bit quantisation is not a
+ * no-op. Measured over the 118 values this round authors:
+ *
+ *   - the FLOOR loses at most 0.40 of chroma (tokyoNightDay's hover, target 2.50
+ *     measured 2.10, where the panel has no cast and the whole cast is the rule's
+ *     own floor, so the grid is coarse relative to it);
+ *   - the CAP gains at most 0.69 (highContrastLight's selection, target 4.00
+ *     measured 4.69), and the same term covers the four palettes whose selection
+ *     sits at the flat 24 (outrun 24.47);
+ *   - the STEP ceiling gains at most 0.16 `L*` on the 15 palettes whose selection
+ *     target is the whole 5.0.
+ *
+ * These are SLACK, not floors: a state that desaturates past the floor by more
+ * than the grid can (the probe in the round's tests takes one to zero) still
+ * fails, and the desaturations this round exists to fix - 60-77% below the panel's
+ * own cast, measured across 39 of the 59 themes before it - fail by an order of
+ * magnitude.
+ */
+const ROW_STATE_CHROMA_FLOOR_SLACK = 0.45;
+const ROW_STATE_CHROMA_CAP_SLACK = 0.75;
+const ROW_STATE_STEP_SLACK = 0.25;
 
 /*
  * THE AUTHORING HEADROOM, recorded rather than asserted.
@@ -2829,73 +3146,143 @@ const ROW_STATE_BAR_DELTA_E = 2.0;
 /*
  * THE NEUTRAL CLASS, and it is a class rather than a ledger of exemptions.
  *
- * A palette whose `accent` carries less chroma than `ROW_HOVER_CHROMA_FLOOR`
- * has no colour channel to state a row in: the chroma floors measure
- * quantisation noise rather than a cast, and the fill can only ever be a step of
- * the ladder it sits on. Exactly one palette is in it - `obsidian`, whose
- * `accent` is #FAFAFA at C* 0, the app's recorded monochrome case - so the class
- * is keyed on the DERIVATION and not on the name, and a second such palette
- * would join it with no code change.
+ * A palette whose PANEL carries less chroma than `ROW_STATE_NEUTRAL_PANEL` has no
+ * cast of its own for a state to be a state OF: the cast floors and ceilings
+ * measure quantisation noise rather than a colour, and there is no panel hue to
+ * be faithful to, so the fill takes the ACCENT's hue and the rule's own absolute
+ * floors. That is the class, and it is the refinement round's re-keying: the
+ * class used to be keyed on the ACCENT's chroma, which is a different question -
+ * `obsidian` was its one member (an accent of #FAFAFA at C* 0) while its panel
+ * carries C* 2.08, so obsidian is on the colour rule now and the class has seven
+ * members, all by derivation rather than by name: `githubLight`, `gruvbox`,
+ * `highContrastLight`, `iceberg`, `linen`, `oneLight`, `tokyoNightDay`.
  *
- * Inside the class the fills take the neutral step at the ink cap, the bands
- * fall to `FIELD_SEPARATION_FLOOR`, the pair to `ROW_STATE_COLLISION_FLOOR`, and
- * the chroma ceilings, the step ceiling and the wash proximity are not asserted:
- * a monochrome theme has no cast to separate its neutral row fill from its
- * neutral wash, and its ink cap IS its step ceiling. The `accent` bar and
- * `font-medium` are the whole of the mark - which is the same channel split the
- * rest of the fleet uses, taken to the one palette where the colour channel does
- * not exist.
+ * KEYS THE HUE AND THE WASH EXEMPTION, and nothing else any more. The chroma
+ * floors and ceilings are absolute at the bottom of the range for every palette
+ * (`max(2.5, ...)`, `max(C*(surface), 2.5)`), the step ceiling is asserted on
+ * all 59 (the rule authors to it), and the band is the same field floor
+ * everywhere. What the class still carries is exactly what a cast-less palette
+ * cannot do:
  *
- * MEASURED ON `obsidian`, AND THE PAIR FLOOR IS THE ONE RELAXATION THE CLASS
- * STILL NEEDS: at the re-authored pair the hover reads ΔE00 4.05 at +4.99 L*
- * (`inkDim` 5.13:1), the selection 4.22 (`inkDim` 5.01:1), the pair 3.56 apart -
- * above the FLEET's 2.0, so the class's relaxed pair floor is not being used by
- * any palette today, only the wash proximity (0.75 ΔE00 off the fill) and the
- * two band floors. That is worth stating as the CHOICE it is rather than as a
- * derivation: the earlier pair (#313134 / #36363A, 2.23 / 3.90, 1.75 apart) sat
- * at that floor only because its two greys were 2.32 L* apart inside a 3.68 L*
- * window - a placement, not a ceiling - and the relaxed floor is what let the
- * hover sit 1.19 BELOW the `elevated` step it replaced.
+ *   - the HUE falls back to the accent's, which is the reference the operator's
+ *     clause 3 asks for and the only one this palette has;
+ *   - the WASH proximity is not asserted, because a palette with no cast has no
+ *     cast with which to be a different colour from its own wash - the class no
+ *     longer covers `obsidian`, and that is a ledger row below rather than a
+ *     widening here.
  *
- * THERE IS NO PIN TABLE IN THIS FILE ANY MORE, and the thirteen rows the
- * previous round carried are why. They reconcile as four + three + one + four +
- * one, and the arithmetic is stated because the row that was never under its
- * floor is the one a reader most needs to see classified:
+ * THE PAIR FLOOR IS NO LONGER RELAXED FOR THE CLASS. It was: the class's pair
+ * floor was a collision floor (1.0) where the fleet asserts `ROW_PAIR_SEPARATION`
+ * (2.0), and the seven members' pairs run 2.15-3.71 - every one of them clear of
+ * the fleet's own floor, so the relaxation was DEAD CODE that a future cast-less
+ * palette would have landed in as a silent escape rather than as a failure. It is
+ * retired rather than left standing (design D8): the pair floor is the fleet's
+ * for every palette, and a cast-less palette that cannot hold it is a ledger row
+ * with a reading, which is the shape this file uses for every other bound a
+ * palette genuinely cannot hold.
  *
- *   - FOUR were separation-only (`rosePineDawn` 3.45, `ayuLight` 3.87,
- *     `githubLight` 4.87, `kanagawaWave` 5.31) and all four hold at 2.0 with
- *     room;
- *   - THREE were chroma-ceiling breaches of +0.24, +0.30 and +0.41
- *     (`catppuccinMacchiato`, `kanagawaWave`, `nightfox`) that existed ONLY
- *     because the value was chasing 6.0 of separation;
- *   - ONE was a step-ceiling overshoot of 0.06 L* (`iceberg`) for the same
- *     reason - the 8-bit round trip, not the authoring;
- *   - FOUR were `obsidian`'s, which is this class: its two band floors, its wash
- *     proximity and its own step ceiling, which on a monochrome palette IS the
- *     ink cap;
- *   - ONE was `nightfox`'s selection band (5.65 against the 6.0 then in force),
- *     the row that reads as "never under its floor" only when the floor is read
- *     at today's value. It was 0.35 short WHEN RECORDED, which is the whole
- *     reason a ledger quotes the constant it was measured against and not the
- *     one that replaced it.
- *
- * 4 + 3 + 1 + 4 + 1 = 13. Every one dissolved into a rule, and all 59 palettes
- * now hold every bound the rule states - 58 on the colour rule and `obsidian` on
- * this class - where it was 51 of 59 behind thirteen ledger rows. A floor is
- * still never widened to fit a palette: what changed is which channel answers the
- * pair question.
+ * THERE IS STILL NO PIN TABLE FOR A PALETTE THAT MERELY MISSES A BOUND, and the
+ * thirteen rows the earlier round carried are why: they reconciled as four
+ * separation-only, three chroma-ceiling breaches, one step-ceiling overshoot,
+ * four `obsidian`'s and one `nightfox`'s band, and every one of them dissolved
+ * into this rule. What exists below is not that: it is the two ledgers for what
+ * the rule genuinely CANNOT hold, each row re-measured every run so a row cannot
+ * outlive its cause (see `pinClaims`).
  */
-const ROW_STATE_NEUTRAL_ACCENT = 4;
-const ROW_STATE_NEUTRAL_BAND = 2.0;
+const ROW_STATE_NEUTRAL_PANEL = 2.0;
+/* An accent below this chroma has no hue to speak with either. */
+const ROW_STATE_ACCENTLESS = 2.0;
 /*
- * The same derivation the role loop reads as `neutral`, in a form the
- * pair-separation check (which sits outside that loop) can call for itself. The
- * class is keyed on the accent's chroma and never on a palette's name.
+ * The same derivation the role loop reads, in a form the pair-separation check
+ * (which sits outside that loop) can call for itself. Keyed on the PANEL's
+ * chroma and never on a palette's name.
  */
 const isNeutralClass = (palette) => {
-	const [, a, b] = toLab(palette.accent);
-	return Math.hypot(a, b) < ROW_STATE_NEUTRAL_ACCENT;
+	const [, a, b] = toLab(palette.surface);
+	return Math.hypot(a, b) < ROW_STATE_NEUTRAL_PANEL;
 };
+
+/*
+ * THE TWO LEDGERS, and they are LEDGERS rather than exemptions: every row names
+ * the bound a palette cannot hold, and the assertion that would have failed
+ * FAILS anyway unless the row is there - so a palette in this position cannot
+ * arrive silently, and a row whose cause has gone is a failure too (the fleet
+ * section at the end reads `pinClaims` for exactly that).
+ *
+ * THE FIRST TABLE IS GEOMETRY: the role's cast floor is ABOVE its cast ceiling,
+ * so no value can hold both and the ceiling is the closest reachable. One row:
+ * `synth`'s panel carries C* 26.83 against the rule's FLAT cap of 24, because a
+ * panel can be louder than a row is allowed to be.
+ *
+ * THE SECOND TABLE IS A MEASURED SHORTFALL: the palette holds every bound the
+ * rule states except ONE, and the row carries the reading. Three of the six are
+ * the light family's `S_l` compression - CIEDE2000 divides a step at L* 90+ by
+ * ~1.67, so a legal 2.8 `L*` step is worth ΔE00 1.67-1.95 off the panel - and
+ * each one's row says which floor refuses it.
+ */
+const ROW_STATE_FLOOR_UNREACHABLE = [
+	{
+		id: "synth",
+		role: "rowSelected",
+		reason:
+			"the panel carries C* 26.83 against the rule's FLAT cap of 24, so the selection's cast floor (the panel's own cast) is above its ceiling and no authored value can hold both. The value sits at the cap, 3.45 chroma under the floor, and the ceiling is the constraint that refuses it - this palette's cast is louder than a row is allowed to be",
+	},
+];
+const ROW_STATE_MEASURED_SHORTFALL = [
+	{
+		id: "catppuccinMacchiato",
+		role: "rowSelected",
+		bound: "rank",
+		measured: 0.94,
+		reason:
+			"the INK FLOORS are what refuse the rank: this palette's whole legal step is 2.68 L*, so the selection cannot rise past it and the hover cannot fall without putting `inkDim` under its floor on the hover instead. The pair still separates by ΔE00 6.96 and ranks 4.9 C*, so this is the one palette in the fleet whose pair is ranked by cast rather than by lightness - which is the point of adding the C* rank at all",
+	},
+	{
+		id: "rosePineDawn",
+		role: "rowHover",
+		bound: "band",
+		measured: 1.67,
+		reason:
+			"the fleet's minimum band, and it is the light family's compression at its worst: C* 2.7 puts the fill at the rule's own floor of 2.5, and at L* 94 the S_l term divides the 2.79 L* step down to 1.67. ITS CEILING IS 1.88, measured on this rule's own window: with the hover's cast held at the panel's own (C* 2.70, the rule's 2.5 floor), the largest hover the rule can author is bounded by its own clamp (`step_selected - 1.15` = 2.99 at the shipped selection step of 4.14, where `inkDim` is 5.02), and both that target and the looser rank bound above it (`step_selected - 1.0` = 3.14) resolve to the SAME 8-bit rung, `#F0EBE7` - a measured step of 3.14 and ΔE00 1.880 off `surface`. Raising the selection does not widen it either, because this palette's largest ink-legal step and the whole 4.10-4.30 band below it also resolve to one hex, `#F3E7DD`. Clearing the 2.0 field floor here needs the hover's cast OUTSIDE the window the rule names, and that is reachable at EITHER end, which is why this row's cause is not the ceiling alone: past it (C* 3.23 at step 2.99 measures ΔE00 2.03, 0.53 over the ceiling) or under its floor (C* 2.31 at step 2.94 is `#EFECE8`, ΔE00 2.01, 0.19 under the 2.5 floor) - both inside the slack the cap carries, which is the hex round trip's error and not a licence to sit outside the bound. So the class's floor on this palette is 1.9 and not 2.0, and if 2.0 is to hold here what changes is the floor's statement, not the value. The band's frame is committed and the disposition is a look judgement: at 1.67 it still reads as a mark",
+	},
+	{
+		id: "gruvboxLight",
+		role: "rowSelected",
+		bound: "wash",
+		measured: 1.44,
+		reason:
+			"the wash proximity: this palette's `accentWash` is accent-derived and carries C* 20.6 at L* 93, which is inside the window the selection's own cast (the panel's 15.5 plus 4) may occupy. The palette has a cast in both the panel and the accent, so it is not in the neutral class, and the two fills are the same kind of thing at the same depth",
+	},
+	{
+		id: "obsidian",
+		role: "rowHover",
+		bound: "wash",
+		measured: 1.38,
+		reason:
+			"the wash proximity on the palette the class was written for and no longer covers: `obsidian`'s panel carries C* 2.08, one hair INSIDE the colour rule where the class's threshold is 2.0, while its accent is #FAFAFA at C* 0 and its wash C* 1.36. There is no cast anywhere in this palette with which to separate two near-neutral fills, which is the class's own argument arriving at a palette the class's key no longer names - recorded here rather than widened there",
+	},
+];
+
+/* A ledger row is a CLAIM, and a claim that is not needed any more is a defect:
+   these read the tables above and refuse to let one outlive its cause. */
+const floorUnreachablePin = (id, role) => {
+	const row = ROW_STATE_FLOOR_UNREACHABLE.find(
+		(r) => r.id === id && r.role === role,
+	);
+	return row ?? null;
+};
+const shortfallPin = (id, role, bound) => {
+	const row = ROW_STATE_MEASURED_SHORTFALL.find(
+		(r) => r.id === id && r.role === role && r.bound === bound,
+	);
+	return row ?? null;
+};
+/*
+ * What the per-palette assertions CLAIM as they run: one key per ledger row,
+ * `id:role:bound`. The fleet section at the end reads it, so a ledger row that
+ * no longer describes anything fails the gate instead of sitting there.
+ */
+const pinClaims = new Set();
 
 const CHART_HOVER_SEPARATION_FLOOR = 10;
 const CHART_HOVER_GROUND = "surface";
@@ -2978,157 +3365,302 @@ for (const { id, palette: p } of palettes) {
 	 * Every bound in the constants above is applied here, per palette and per
 	 * role, and every failure names the rule and the number. The order is the
 	 * order a reader debugging a value needs it in: what the value IS (hue,
-	 * chroma, direction), then how far it is from the panel, then how far from
-	 * its sibling state, then how far from the grounds it must not merge with.
+	 * cast), then how far it is from the panel in both channels, then how far
+	 * from its sibling state, then how far from the wash it must not merge with.
 	 *
-	 * NO PALETTE IS PINNED HERE ANY MORE, and the thirteen rows the previous
-	 * round carried are why. They reconcile as 4 + 3 + 1 + 4 + 1 = 13: four were
-	 * separation-only (`rosePineDawn` 3.45, `ayuLight` 3.87, `githubLight` 4.87,
-	 * `kanagawaWave` 5.31) and hold at 2.0 with room; three were chroma-ceiling
-	 * breaches of +0.24, +0.30 and +0.41 that existed ONLY because the value was
-	 * chasing 6.0 of separation; one was a step-ceiling overshoot of 0.06 `L*`
-	 * (`iceberg`) for the same reason; four were `obsidian`'s - its two band
-	 * floors, its wash proximity and its own step ceiling - which is
-	 * `ROW_STATE_NEUTRAL_ACCENT` above; and one was `nightfox`'s selection band
-	 * (5.65 against the 6.0 then in force), a row that reads as never having been
-	 * under its floor only when the floor is read at today's value rather than at
-	 * the one it was measured against. All of them dissolved into a rule, and all
-	 * 59 palettes now hold every bound the rule states - 58 on the colour rule,
-	 * `obsidian` on this class - where it was 51 of 59 behind thirteen ledger rows.
+	 * WHAT THIS LOOP NO LONGER ASSERTS, and why. Two of the three were collision
+	 * floors, and both are the direction's structural consequence rather than a
+	 * relaxation of convenience:
+	 *
+	 *   - the ΔE00 band off `surface` at 4.0 - withdrawn rather than lowered. A
+	 *     fill at the panel's own hue and cast reaches it on 40 of the 59 palettes
+	 *     and bottoms at 2.08, so it is not a floor a backdrop-relative fill can
+	 *     hold; the shipped values only met it by leaving the panel's colour
+	 *     family. `FIELD_SEPARATION_FLOOR` is what replaces it, plus the two step
+	 *     floors and the two rank floors.
+	 *   - the `canvas` / `elevated` / `sunken` collision floor (ΔE00 1.0). A fill
+	 *     that is the panel's own colour one step up IS a rung of the ladder -
+	 *     the sentence this contract already carried for the neutral class,
+	 *     generalised to every palette - and 7 of the 59 breach it under the rule
+	 *     (`alucard` 0.44 against `sunken`, `arcade` 0.0 against `elevated`,
+	 *     `duskfox` 0.47, `kanagawaLotus` 0.83, `rosePine` 0.85, `tokyoNightDay`
+	 *     0.51) where the shipped values escaped only by being rotated to a
+	 *     different hue. THE WITHDRAWAL'S ARGUMENT USED TO BE THAT THESE PAIRS
+	 *     NEVER OCCUR INSIDE ONE LIST, AND THAT SENTENCE WAS FALSE: the app rail's
+	 *     own `<nav>` was `bg-sunken` and the agent-hub categories rail was on
+	 *     `canvas`, and both of them are LISTS whose rows carry these two roles, so
+	 *     the row sat directly on the rung - measured at ΔE00 0.44 (`alucard`, the
+	 *     rail) and 0.83 (`kanagawaLotus`, categories), and on 13 of the 59 the
+	 *     hovered row read at least as far off the rail's ground as the row the
+	 *     reader was ON. THE FIX IS THE RULE THE DIRECTION STATES, not a value: a
+	 *     surface that paints these two roles wears `surface`, so both of those
+	 *     surfaces were re-grounded (`shared/components/navigation/
+	 *     sidebar-navigation.tsx`, and the categories column in
+	 *     `features/agent-hub/agent-hub-page.tsx`), the rail taking
+	 *     `border-r border-hairline` for the boundary the tonal step used to carry.
+	 *     All six `rowCurrent` surfaces are therefore on `surface`: the chat
+	 *     sidebar, the settings rail, the app rail, the categories rail, the agents
+	 *     sidebar and the agents page's roster.
+	 *     WHAT THE WITHDRAWAL STILL ACCEPTS is the one ground class that is not a
+	 *     row's backdrop at all: a SELECTED ROW CAN BE THE SAME COLOUR AS A
+	 *     DIALOG'S GROUND OR AN INPUT WELL. `elevated` keeps its exemption because
+	 *     a menu, popover, tooltip, dialog or drawn card is not a row's plane and
+	 *     no row is painted on one; this panel's own `elevated` use is the
+	 *     `· lopdev` cap and the `⋯` button, both text-sized rather than full-width
+	 *     rows. The two `hover`-only sites that still ride a rung are recorded
+	 *     rather than re-grounded, with their numbers, in
+	 *     `scripts/chat-sidebar-selection.test.mjs`'s `HOVER_STATES_ON_A_RUNG`:
+	 *     the canvas document-tab strip and the schedules page's legacy annex.
+	 *   - the two `accent`-bar ratios (`ROW_STATE_BAR_FLOOR`,
+	 *     `ROW_STATE_BAR_DELTA_E`) - retired with the bar. They never measured the
+	 *     bar being visible; they measured the FILL being distinct enough for a bar
+	 *     to sit on, and the fill now has to rank the pair itself.
 	 */
-	for (const [role, band, stepFloor, chromaFloor, chromaRatio] of [
-		[
-			"rowHover",
-			ROW_HOVER_BAND,
-			ROW_HOVER_STEP_FLOOR,
-			ROW_HOVER_CHROMA_FLOOR,
-			ROW_HOVER_CHROMA_OUTER,
-		],
-		[
-			"rowSelected",
-			ROW_SELECTED_BAND,
-			ROW_SELECTED_STEP_FLOOR,
-			ROW_SELECTED_CHROMA_FLOOR,
-			ROW_SELECTED_CHROMA_OUTER,
-		],
-	]) {
+	const ROW_ROLE_RULES = [
+		{
+			role: "rowHover",
+			/*
+			 * The hover's cast: a FRACTION of the panel's, floored at the rule's
+			 * own 2.5 for a panel with no cast to take a fraction of. Its ceiling
+			 * is the panel's own cast, with the same absolute term underneath: a
+			 * hover may be lighter than its ground, it may not be a more coloured
+			 * plane than it.
+			 */
+			castFloor: (panelChroma) =>
+				Math.max(
+					ROW_HOVER_CHROMA_FLOOR,
+					ROW_HOVER_CAST_FLOOR_SHARE * panelChroma,
+				),
+			castCeiling: (panelChroma) =>
+				Math.max(panelChroma, ROW_HOVER_CHROMA_FLOOR),
+			stepFloor: ROW_HOVER_STEP_FLOOR,
+			stepCeiling: null,
+		},
+		{
+			role: "rowSelected",
+			/*
+			 * The selection's cast: the panel's own plus a bounded rise of 4 - the
+			 * one axis on which a row may be more coloured than its backdrop, and
+			 * what buys the pair's rank where the ink floors leave no `L*` room -
+			 * floored at 5.0 for a cast-less panel and capped at the flat 24. The
+			 * ceiling is the rule's own clamp rather than `C*(surface) + 4` alone:
+			 * on a panel with no cast the formula yields the 5.0 FLOOR, so a
+			 * ceiling written as `min(C*(surface) + 4, 24)` would sit below its own
+			 * floor on two palettes (`oneLight` and `highContrastLight`, both panels
+			 * at C* 0.00).
+			 */
+			castFloor: (panelChroma) =>
+				Math.max(ROW_SELECTED_CHROMA_FLOOR, panelChroma),
+			castCeiling: (panelChroma) =>
+				Math.min(
+					Math.max(
+						panelChroma + ROW_SELECTED_CHROMA_RISE,
+						ROW_SELECTED_CHROMA_FLOOR,
+					),
+					ROW_STATE_CHROMA_CAP,
+				),
+			stepFloor: ROW_SELECTED_STEP_FLOOR,
+			stepCeiling: ROW_SELECTED_STEP_CEILING,
+		},
+	];
+	for (const rowRule of ROW_ROLE_RULES) {
+		const role = rowRule.role;
 		const value = p[role];
 		if (!isHex(value)) continue;
 		const [l, a, b] = toLab(value);
 		const [panelL, panelA, panelB] = toLab(p.surface);
 		const [, accentA, accentB] = toLab(p.accent);
 		const accentChroma = Math.hypot(accentA, accentB);
-		const chromaCeiling = Math.min(
-			chromaRatio * accentChroma,
-			ROW_STATE_CHROMA_CAP,
-		);
-		/* The NEUTRAL CLASS, derived from the accent rather than named. */
-		const neutral = accentChroma < ROW_STATE_NEUTRAL_ACCENT;
+		const panelChroma = Math.hypot(panelA, panelB);
+		const chroma = Math.hypot(a, b);
+		const castFloor = rowRule.castFloor(panelChroma);
+		const castCeiling = rowRule.castCeiling(panelChroma);
+		/* The NEUTRAL CLASS, derived from the panel rather than named. */
+		const neutral = panelChroma < ROW_STATE_NEUTRAL_PANEL;
 
-		/* 1. The hue, and where it is allowed to come from. A greyscale accent
-		      (C* < ROW_STATE_NEUTRAL_ACCENT) has no hue to speak with, so `obsidian` takes the panel's -
-		      the one routing the role's own doc names. */
+		/* 1. The hue, and where it is allowed to come from. The PANEL's, because
+		      a state of a row has to be a colour the row's own backdrop has; the
+		      `accent`'s only where the panel has no cast of its own (C* <
+		      ROW_STATE_NEUTRAL_PANEL) AND the accent has one to speak with. The
+		      authored values sit at the source hue exactly; the hex round trip
+		      costs up to 8.57 degrees of it (measured, `autumn`'s hover), which is
+		      why the limit is not the thing the values press against. */
 		assertions++;
 		const hueSource =
-			accentChroma < ROW_STATE_NEUTRAL_ACCENT
+			panelChroma >= ROW_STATE_NEUTRAL_PANEL
 				? { name: "the panel's", hue: Math.atan2(panelB, panelA) }
-				: { name: "`accent`'s", hue: Math.atan2(accentB, accentA) };
+				: accentChroma >= ROW_STATE_ACCENTLESS
+					? { name: "`accent`'s", hue: Math.atan2(accentB, accentA) }
+					: { name: "the panel's", hue: Math.atan2(panelB, panelA) };
 		const rowHue = Math.atan2(b, a);
 		const hueOff = Math.abs(
 			((((rowHue - hueSource.hue) * 180) / Math.PI + 540) % 360) - 180,
 		);
-		const chroma = Math.hypot(a, b);
-		if (chroma >= 2 && hueOff > ROW_STATE_HUE_LIMIT) {
+		if (chroma >= ROW_STATE_NEUTRAL_PANEL && hueOff > ROW_STATE_HUE_LIMIT) {
 			fail(
-				`${id}: \`${role}\` ${value} sits ${r2(hueOff)} degrees off ${hueSource.name} hue (the limit is ${ROW_STATE_HUE_LIMIT}) — a row state has to be a colour the theme already has, and an earlier round shipped rows rotated 155-160 degrees off the panel and the operator reported the cast as wrong. Take the hue from ${hueSource.name} and re-author the value at it`,
+				`${id}: \`${role}\` ${value} sits ${r2(hueOff)} degrees off ${hueSource.name} hue (the limit is ${ROW_STATE_HUE_LIMIT}) — a row state has to be the colour of the backdrop it is a state of, and the values this round replaced took the \`accent\`'s hue instead, which is more than 45 degrees off the panel on 25 of the 59 palettes and is the off-colour the operator reported. Take the hue from ${hueSource.name} and re-author the value at it`,
 			);
 		}
 
-		/* 2. The chroma ceiling. A tint, never a fill: past this the row becomes
-		      a saturated plane beside the panel, which is the 3.60x over-cast an
-		      earlier port shipped. */
+		/* 2a. The cast FLOOR - the bound this file was missing, and the reason the
+		      operator's report was possible. A row state carries AT LEAST half its
+		      panel's cast (and never less than the rule's own floor), so a fill can
+		      no longer read as a grey wash of the surface it sits on while passing
+		      the gate: the shipped hover measured C* 4.79 against `tokyoNight`'s
+		      panel of 13.44, and the ΔE00 7.05 it was scored on *was* that removal
+		      (ΔL* +1.72 against ΔC* -8.65). */
 		assertions++;
-		/* The NEUTRAL CLASS has no chroma to bound, so the ceiling is not
-		   asserted on it: the derivation is `ROW_STATE_NEUTRAL_ACCENT` above, and
-		   the floors that hold there instead are the ink floors on the fill. */
-		if (
-			accentChroma >= ROW_STATE_NEUTRAL_ACCENT &&
-			chroma > chromaCeiling + 0.05
-		) {
+		if (castFloor > castCeiling + 1e-9) {
+			/*
+			 * The floor is ABOVE the ceiling: no authored value can hold both, so
+			 * the value sits at the ceiling and the row is a LEDGER entry rather
+			 * than an exemption. A palette in this position with no entry is a
+			 * palette that has to be re-authored.
+			 */
+			pinClaims.add(`${id}:${role}:floor`);
+			assertions++;
+			const pin = floorUnreachablePin(id, role);
+			if (!pin) {
+				fail(
+					`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, and its cast floor ${r2(castFloor)} is ABOVE its ceiling ${r2(castCeiling)} — the panel's own cast is louder than this role is allowed to be, so the value has to sit at the ceiling and \`${id}\`'s \`${role}\` has to be in ROW_STATE_FLOOR_UNREACHABLE naming the constraint that refuses the floor (the flat cap, the rise, or the role's absolute term)`,
+				);
+			}
+			assertions++;
+			if (chroma < castCeiling - ROW_STATE_CHROMA_CAP_SLACK) {
+				fail(
+					`${id}: \`${role}\` ${value} carries C* ${r2(chroma)} where its cast floor ${r2(castFloor)} is above its ceiling ${r2(castCeiling)} — the floor cannot be held, but the CEILING is reachable and is what the ledger row promises this value sits at`,
+				);
+			}
+		} else if (chroma < castFloor - ROW_STATE_CHROMA_FLOOR_SLACK) {
 			fail(
-				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, past the ${r2(chromaCeiling)} this file allows (${chromaRatio} x \`accent\`'s ${r2(accentChroma)}, capped at ${ROW_STATE_CHROMA_CAP}) — the state stops being a tint of the theme's own accent and becomes a separate saturated plane beside it. Search the chroma downward from the role's floor of ${chromaFloor} and let the accent bar carry what the fill no longer can`,
+				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, under the cast floor ${r2(castFloor)} — a row state has to carry the cast of the panel it sits on, and a fill quieter than its own backdrop reads as a grey wash of that backdrop. This is the defect that was reachable because the two \`ROW_*_CHROMA_FLOOR\` constants were declared and asserted NOWHERE, and the measurement that found it was a hover at C* 4.79 on a panel of 13.44. Author the value at the panel's own hue, at the cast the rule names and the step the inks allow`,
 			);
 		}
 
-		/* 3. The step, its DIRECTION, and - for the selection - its rank. */
+		/* 2b. The cast CEILING. A tint, never a saturated plane beside the panel
+		      - the 1.4x over-cast of the shipped `tokyoNightStorm`, bought
+		      entirely on the chroma axis so the band could be met without
+		      lighting the row. The reference is the PANEL's cast, not the
+		      `accent`'s: `min(0.6 x C*(accent), 24)` permitted C* 24 against a
+		      panel of 16.3. */
+		assertions++;
+		if (chroma > castCeiling + ROW_STATE_CHROMA_CAP_SLACK) {
+			fail(
+				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, past the ${r2(castCeiling)} this file allows — ${
+					role === "rowHover"
+						? "the hover may be lighter than its ground, it may not be a MORE coloured plane than it"
+						: `the selection may carry the panel's cast and the rule's rise of ${ROW_SELECTED_CHROMA_RISE} above it, and no more`
+				}, and the flat cap is ${ROW_STATE_CHROMA_CAP}. Search the chroma back toward the panel and let the step and the pair's cast rank carry what the fill no longer can`,
+			);
+		}
+
+		/* 3. The step, its DIRECTION, its ceiling, and - for the selection - its
+		      rank above the hover on BOTH channels. */
 		assertions++;
 		const rawStep = l - panelL;
 		const step = p.mode === "dark" ? rawStep : -rawStep;
-		if (step < stepFloor - 1e-9) {
+		if (step < rowRule.stepFloor - 1e-9) {
 			fail(
-				`${id}: \`${role}\` ${value} sits ${r2(Math.abs(rawStep))} \`L*\` ${p.mode === "dark" ? "above" : "below"} \`surface\` ${p.surface}, so the step is ${p.mode === "dark" ? "LIGHTER" : "DARKER"}-by-${r2(step)} where the floor is ${stepFloor} \`L*\` in the mode's raised direction — ΔE00 is a budget a chroma-only step can spend while moving the wrong way in lightness, and the three palettes that did exactly that were the same report answered twice. Take the step first, at the accent's own hue, and buy only the shortfall to the band on the chroma axis`,
+				`${id}: \`${role}\` ${value} sits ${r2(Math.abs(rawStep))} \`L*\` ${p.mode === "dark" ? "above" : "below"} \`surface\` ${p.surface}, so the step is ${p.mode === "dark" ? "LIGHTER" : "DARKER"}-by-${r2(step)} where the floor is ${rowRule.stepFloor} \`L*\` in the mode's raised direction — ΔE00 is a budget a chroma-only step can spend while moving the wrong way in lightness, and the three palettes that did exactly that were the same report answered twice`,
 			);
 		}
-		assertions++;
-		/* The NEUTRAL CLASS's ceiling is its INK CAP instead. A monochrome fill
-		   has no chroma to buy the band with, so the whole of its mark is a
-		   lightness step, and the step goes as far as the ink floors allow - which
-		   is what the retired ledger recorded as `obsidian`'s step `ceiling` miss. */
-		if (
-			role === "rowSelected" &&
-			!neutral &&
-			step > ROW_SELECTED_STEP_CEILING + 1e-9
-		) {
-			fail(
-				`${id}: \`rowSelected\` ${value} sits ${r2(step)} \`L*\` from \`surface\`, past the ${ROW_SELECTED_STEP_CEILING} \`L*\` ceiling — the step is taken as far as the inks allow and no further, because every L* the row rises is ink headroom spent on the caps drawn inside it: above this the row's own meta text stops clearing its floor on the palettes where the inks bind. A NEUTRAL-CLASS palette is measured against its ink cap here instead`,
-			);
+		if (rowRule.stepCeiling !== null) {
+			assertions++;
+			if (step > rowRule.stepCeiling + ROW_STATE_STEP_SLACK + 1e-9) {
+				fail(
+					`${id}: \`${role}\` ${value} sits ${r2(step)} \`L*\` from \`surface\`, past the ${rowRule.stepCeiling} \`L*\` ceiling — every L* the row rises is ink headroom spent on the caps drawn inside it, so the step is taken as far as the inks allow and no further`,
+				);
+			}
 		}
 		if (role === "rowSelected" && isHex(p.rowHover)) {
-			assertions++;
-			const [hoverL] = toLab(p.rowHover);
+			const [hoverL, hoverA, hoverB] = toLab(p.rowHover);
 			const hoverStep = p.mode === "dark" ? hoverL - panelL : panelL - hoverL;
+			const hoverChroma = Math.hypot(hoverA, hoverB);
+			/* 3a. The `L*` rank. The fill ranks the pair now that the bar is
+			      gone, and this is the axis a reader scans by. */
+			assertions++;
 			if (step < hoverStep + ROW_STATE_HOVER_RANK - 1e-9) {
+				const pin = shortfallPin(id, "rowSelected", "rank");
+				pinClaims.add(`${id}:rowSelected:rank`);
+				assertions++;
+				if (!pin) {
+					fail(
+						`${id}: \`rowSelected\` ${value} is ${r2(step)} \`L*\` from \`surface\` where \`rowHover\` ${p.rowHover} is ${r2(hoverStep)} — the selection has to be at least ${ROW_STATE_HOVER_RANK} \`L*\` further out than the hover, or a reader scanning sees one mark at two strengths rather than two states. A palette that cannot reach it has its whole legal step consumed by the ink floors, and that is a ledger row rather than a relaxed floor`,
+					);
+				} else if (Math.abs(step - hoverStep - pin.measured) > 0.05) {
+					fail(
+						`${id}: the rank row in ROW_STATE_MEASURED_SHORTFALL is stale — it records ${pin.measured} and the pair now ranks ${r2(step - hoverStep)}. A ledger row is a claim about a value, so it is re-measured every run`,
+					);
+				}
+			} else if (shortfallPin(id, "rowSelected", "rank")) {
 				fail(
-					`${id}: \`rowSelected\` ${value} is ${r2(step)} \`L*\` from \`surface\` where \`rowHover\` ${p.rowHover} is ${r2(hoverStep)} — the selection has to be at least ${ROW_STATE_HOVER_RANK} \`L*\` further out than the hover, or the two states are ranked by chroma alone and a reader scanning sees one mark at two strengths rather than two states`,
+					`${id}: the rank row in ROW_STATE_MEASURED_SHORTFALL is stale — the pair ranks ${r2(step - hoverStep)} \`L*\`, clear of the ${ROW_STATE_HOVER_RANK} the row claims it misses. Remove the row`,
+				);
+			}
+			/* 3b. The `C*` rank, and it is the axis that costs nothing: `L*`
+			      determines relative luminance, so the contrast floors are blind
+			      to chroma and the pair can be ranked on cast at zero ink cost. */
+			assertions++;
+			if (chroma < hoverChroma + ROW_STATE_CHROMA_RANK - 1e-9) {
+				fail(
+					`${id}: \`rowSelected\` ${value} carries C* ${r2(chroma)} where \`rowHover\` ${p.rowHover} carries ${r2(hoverChroma)} — the selection has to carry at least ${ROW_STATE_CHROMA_RANK} chroma more than the hover. This is the rank that costs nothing: a fill may be ranked on cast without spending a single L* of the ink budget, and the shipped fleet's chroma rank was INVERTED on 14 palettes because the hover desaturated while the selection did not`,
+				);
+			}
+			/* 3c. How much of the selection's step the hover SPENDS, which is
+			      clause 2 of the ask stated as the relationship it is. */
+			assertions++;
+			if (hoverStep < ROW_HOVER_STEP_SHARE_FLOOR * step - 1e-9) {
+				fail(
+					`${id}: \`rowHover\` ${p.rowHover} takes ${r2(hoverStep)} \`L*\` of the ${r2(step)} the selection takes (${Math.round((hoverStep / step) * 100)}%), under the ${Math.round(ROW_HOVER_STEP_SHARE_FLOOR * 100)}% this file requires — the operator asked for MORE of the brightening than the shipped 30%, and an absolute hover floor cannot state that on a fleet whose budgets differ by 2.5x`,
 				);
 			}
 		}
 
-		/* 4. How far it is from the panel, and how far from the wash it must not
-		      merge with. Both are state-distinctions at the FIELD floor. */
-		for (const g of GROUNDS) {
+		/* 4. The band off `surface`, at the file's own field floor now that the
+		      4.0 band is withdrawn: a fill indistinguishable from its own panel
+		      still fails, and a palette that cannot clear even this one is a
+		      ledger row naming the floor that refuses it. */
+		assertions++;
+		const panelGap = deltaE(value, p.surface);
+		if (panelGap < FIELD_SEPARATION_FLOOR - 1e-9) {
+			const pin = shortfallPin(id, role, "band");
+			pinClaims.add(`${id}:${role}:band`);
 			assertions++;
-			const got = deltaE(value, p[g]);
-			/* A NEUTRAL-CLASS fill is necessarily a step of the ladder it sits on,
-			   so it is exempt from the `elevated` collision: there is no cast with
-			   which to be a different colour at the same depth. */
-			if (accentChroma < ROW_STATE_NEUTRAL_ACCENT && g === "elevated") continue;
-			if (got < ROW_STATE_COLLISION_FLOOR) {
+			if (!pin) {
 				fail(
-					`${id}: \`${role}\` ${value} is within ΔE00 ${r2(got)} of the ground \`${g}\` ${p[g]} (the collision floor is ${ROW_STATE_COLLISION_FLOOR}) — a state that is the same colour as an elevation step is not a state, and the ladder is where the row stops being one`,
+					`${id}: \`${role}\` ${value} is ΔE00 ${r2(panelGap)} from \`surface\` ${p.surface} (the field floor is ${FIELD_SEPARATION_FLOOR}) — below this the mark is not findable while scanning, which is the operator's report restated. The band this role used to be held to was 4.0 and is WITHDRAWN because a backdrop-faithful fill cannot reach it on lightness; this floor is what is left, and a palette that misses even it needs a ledger row with the floor that refuses it`,
+				);
+			} else if (Math.abs(panelGap - pin.measured) > 0.05) {
+				fail(
+					`${id}: the band row in ROW_STATE_MEASURED_SHORTFALL is stale — it records ${pin.measured} and the palette now measures ${r2(panelGap)}. A ledger row is a claim about a value, so it is re-measured every run`,
 				);
 			}
-		}
-		assertions++;
-		const washGap = deltaE(value, p.accentWash);
-		/* Not asserted on the NEUTRAL CLASS: a monochrome theme has no cast
-		   with which to separate its neutral row fill from its neutral wash, and
-		   the wash there measures 0.75 ΔE00 off the fill. */
-		if (!neutral && washGap < ROW_STATE_WASH_FLOOR) {
+		} else if (shortfallPin(id, role, "band")) {
 			fail(
-				`${id}: \`${role}\` ${value} is ΔE00 ${r2(washGap)} from \`accentWash\` ${p.accentWash} (need ${ROW_STATE_WASH_FLOOR}) — a hovered row beside a hovered button would merge into one mark, and they are a row state and a control state, so they have to be two`,
+				`${id}: the band row in ROW_STATE_MEASURED_SHORTFALL is stale — \`${role}\` ${value} is ΔE00 ${r2(panelGap)} from \`surface\`, clear of the ${FIELD_SEPARATION_FLOOR} the row claims it misses. Remove the row`,
 			);
 		}
 
-		/* 5. The band off `surface`. The NEUTRAL CLASS measures against the
-		      field floor instead, because a neutral fill has no chroma to reach a
-		      colour band with - and the bar, not the fill, is its identity. */
+		/* 5. How far from the wash it must not merge with: a state-distinction at
+		      the FIELD floor, not asserted where the palette has no cast at all. */
 		assertions++;
-		const panelGap = deltaE(value, p.surface);
-		const bandFloor = neutral ? ROW_STATE_NEUTRAL_BAND : band;
-		if (panelGap < bandFloor - 1e-9) {
+		const washGap = deltaE(value, p.accentWash);
+		if (!neutral && washGap < ROW_STATE_WASH_FLOOR) {
+			const pin = shortfallPin(id, role, "wash");
+			pinClaims.add(`${id}:${role}:wash`);
+			assertions++;
+			if (!pin) {
+				fail(
+					`${id}: \`${role}\` ${value} is ΔE00 ${r2(washGap)} from \`accentWash\` ${p.accentWash} (need ${ROW_STATE_WASH_FLOOR}) — a hovered row beside a hovered button would merge into one mark, and they are a row state and a control state, so they have to be two. A backdrop-relative fill and an accent-derived wash are the same kind of rung, so this can bite on a palette with a strong cast in both; that is a ledger row with the reading, not a widened floor`,
+				);
+			} else if (Math.abs(washGap - pin.measured) > 0.05) {
+				fail(
+					`${id}: the wash row in ROW_STATE_MEASURED_SHORTFALL is stale — it records ${pin.measured} and the palette now measures ${r2(washGap)}. A ledger row is a claim about a value, so it is re-measured every run`,
+				);
+			}
+		} else if (!neutral && shortfallPin(id, role, "wash")) {
 			fail(
-				`${id}: \`${role}\` ${value} is ΔE00 ${r2(panelGap)} from \`surface\` ${p.surface} (need ${bandFloor}) — below this band the mark is not findable while scanning, which is the operator's report restated. Author the value at the palette's own \`accent\` hue: the smallest chroma at or above ${chromaFloor} that reaches the band, at a ${stepFloor} \`L*\` step, bounded by min(${chromaRatio} x C*(accent), ${ROW_STATE_CHROMA_CAP}). Where the ceiling refuses that, the CHANNEL is the problem rather than the floor - the pair separation rides the accent bar, so relax the separation before you lower this band - and in the NEUTRAL CLASS the bar and \`font-medium\` are the whole of the mark`,
+				`${id}: the wash row in ROW_STATE_MEASURED_SHORTFALL is stale — \`${role}\` ${value} is ΔE00 ${r2(washGap)} from \`accentWash\`, clear of the ${ROW_STATE_WASH_FLOOR} the row claims it misses. Remove the row`,
 			);
 		}
 	}
@@ -3139,35 +3671,104 @@ for (const { id, palette: p } of palettes) {
 	if (isHex(p.rowHover) && isHex(p.rowSelected)) {
 		assertions++;
 		const apart = deltaE(p.rowSelected, p.rowHover);
-		/* The pair's separation is a COLLISION floor, not a field floor. What
-		   ranks the two states is the accent bar and `font-medium`, so all the
+		/* The pair's separation is the FLEET's floor on every palette, including the
+		   cast-less class: this used to be a collision floor (1.0) for that class
+		   and no palette ever used it (their pairs run 2.15-3.71), so the waiver is
+		   retired - see the note beside `ROW_HOVER_STEP_FLOOR`. What ranks the two
+		   states is the fill's own two ranks above plus `font-medium`, so all the
 		   colour has to do is not be the same mark twice. */
-		const apartFloor = isNeutralClass(p)
-			? ROW_STATE_COLLISION_FLOOR
-			: ROW_PAIR_SEPARATION;
+		const apartFloor = ROW_PAIR_SEPARATION;
 		if (apart < apartFloor - 1e-9) {
 			fail(
-				`${id}: \`rowHover\` ${p.rowHover} and \`rowSelected\` ${p.rowSelected} are ΔE00 ${r2(apart)} apart (need ${apartFloor}) — the reader sees two marks and cannot rank them. This was the second half of the operator's report: on \`neon\` the shipped pair sat 1.80 ΔE apart while each was ~6.2 ΔE off the panel. The ranking is the accent bar's and \`font-medium\`'s now, so a palette that misses this is missing because the two fills are the SAME MARK - give the selection more step or more chroma than the hover, or take one of them back to the neutral ladder`,
+				`${id}: \`rowHover\` ${p.rowHover} and \`rowSelected\` ${p.rowSelected} are ΔE00 ${r2(apart)} apart (need ${apartFloor}) — the reader sees two marks and cannot rank them. This was the second half of the operator's report: on \`neon\` the shipped pair sat 1.80 ΔE apart while each was ~6.2 ΔE off the panel. The ranking is the fill's now, so a palette that misses this is missing because the two fills are the SAME MARK — give the selection more step or more cast than the hover`,
 			);
 		}
 	}
 
-	/* 7. The bar - the non-colour mark the selected row carries. SC 1.4.11
-	      applies to a 2px graphic, and this is the one ratio on the pair. */
-	if (isHex(p.rowSelected) && isHex(p.accent)) {
+	/*
+	 * THE PLATE INSIDE A ROW, and the half of its guard a class cannot carry.
+	 *
+	 * The rail's account row hovers on `rowHover` and contains an element with a
+	 * ground of its own: the avatar plate, `bg-elevated` with a `border-control`
+	 * edge (`shared/components/navigation/user-profile-sidebar.tsx`). The pair
+	 * under the pointer collapses on the shipped values - `elevated` against
+	 * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field
+	 * floor on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90, so hovering
+	 * the row turns the plate into a disc of the row's own hover colour - and it is
+	 * not a value to re-solve, because a row state IS a step of the panel it sits
+	 * on and some palette's state will always land on some rung.
+	 *
+	 * So the plate is legal the way a control here is: ONE OF ITS TWO EDGES
+	 * PERCEIVABLE, fill or boundary. The arms are different instruments and are
+	 * measured as such - the fill as a FIELD at `FIELD_SEPARATION_FLOOR` (the same
+	 * floor every other "is this fill distinguishable" pair in this file uses) and
+	 * the 1px boundary as a LINE at the non-text floor, because ΔE00 credits
+	 * chroma that a one-pixel edge cannot spend (the argument beside
+	 * `HAIRLINE_RATIO_FLOOR`). Either arm clearing is enough, and on exactly the
+	 * four palettes the fill fails the boundary is what clears: `borderControl` on
+	 * `rowHover` measures 3.18 (`arcade`), 3.13 (`gruvbox`), 3.27 (`obsidian`) and
+	 * 3.10 (`everforest`).
+	 *
+	 * The class half of this - that the plate still wears `border-control` rather
+	 * than a fill alone - is asserted in `scripts/chat-sidebar-selection.test.mjs`,
+	 * because a palette gate cannot see which class an element paints. The pair is
+	 * `rowHover` and not `rowSelected`: the account row is not a destination, so it
+	 * never paints `rowCurrent` (that file asserts it), which is also why
+	 * `rowSelected` may stay inside 2.0 of `elevated` on 16 palettes here without
+	 * this block saying anything about them.
+	 */
+	if (isHex(p.elevated) && isHex(p.rowHover) && isHex(p.borderControl)) {
 		assertions++;
-		const bar = ratio(p.accent, p.rowSelected);
-		if (bar < ROW_STATE_BAR_FLOOR) {
+		const plateField = deltaE(p.elevated, p.rowHover);
+		const plateEdge = ratio(p.borderControl, p.rowHover);
+		if (plateField < FIELD_SEPARATION_FLOOR && plateEdge < FLOOR.nonText) {
 			fail(
-				`${id}: the \`accent\` bar ${p.accent} on \`rowSelected\` ${p.rowSelected} reads ${r2(bar)}:1, under the ${ROW_STATE_BAR_FLOOR}:1 non-text floor — the bar is the selected row's only non-colour signal, so it cannot be the thing that disappears. Measured across the fleet it runs 4.23-11.48:1 (tightest tokyoNight, strongest obsidian)`,
+				`${id}: the account row's plate has no perceivable edge under the pointer — \`elevated\` ${p.elevated} is ΔE00 ${r2(plateField)} from \`rowHover\` ${p.rowHover} (need ${FIELD_SEPARATION_FLOOR}) and its \`borderControl\` edge ${p.borderControl} is ${r2(plateEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the plate the pointer reveals is a disc of the row's own hover colour. Give the plate an edge the row's fill cannot overrun, or a fill the row's own step cannot land on`,
 			);
 		}
-		assertions++;
-		const barGap = deltaE(p.accent, p.rowSelected);
-		if (barGap < ROW_STATE_BAR_DELTA_E) {
-			fail(
-				`${id}: the \`accent\` bar and \`rowSelected\` ${p.rowSelected} are ΔE00 ${r2(barGap)} apart (need ${ROW_STATE_BAR_DELTA_E}) — a mark in the same colour as the ground it marks is not a mark`,
-			);
+	}
+
+	/*
+	 * THE SECOND PLATE INSIDE A ROW, and the state the account row's pair does not
+	 * have to answer: the agents sidebar's own row IS a destination, so it paints
+	 * `rowCurrent` under a selection as well as `hover:bg-row-hover` under the
+	 * pointer (`features/agents/components/agents-sidebar.tsx`; both are asserted
+	 * from that call site in `scripts/chat-sidebar-selection.test.mjs`). Its avatar
+	 * plate is `sunken` with the same `border-control` edge, and the same two-arm
+	 * pair is asked of BOTH states the row can be in — `sunken` at the field floor
+	 * OR the edge at the non-text floor, per state, per palette.
+	 *
+	 * The pair is what makes this satisfiable rather than a flat 3:1 on the edge:
+	 * `borderControl` against `rowSelected` bottoms at 2.77 (`vaporwave`, tied with
+	 * `catppuccinMocha` - the two are the joint minimum, so neither is "the" worst)
+	 * and against
+	 * `rowHover` at 2.92 (`catppuccinMocha`), so an edge-only floor would fail 12 and
+	 * 5 palettes respectively — and on every one of those the FILL clears the field
+	 * floor. The other arm fails in the other direction: `sunken` misses the field
+	 * floor against the selection on seven palettes (the tightest `alucard` 0.44) and
+	 * against the hover on one (`iceberg` 1.86), and on every one of those the edge
+	 * clears, 3.02-4.66 against the selection and 3.35 against the hover. No palette
+	 * fails both arms on either state, which is what this asserts.
+	 *
+	 * The class half — that the plate still wears the edge, and that the class of
+	 * "an object inside a row state with a ground of its own" is enumerated rather
+	 * than assumed — is in `scripts/chat-sidebar-selection.test.mjs`.
+	 */
+	if (
+		isHex(p.sunken) &&
+		isHex(p.rowHover) &&
+		isHex(p.rowSelected) &&
+		isHex(p.borderControl)
+	) {
+		for (const state of ["rowHover", "rowSelected"]) {
+			assertions++;
+			const avatarField = deltaE(p.sunken, p[state]);
+			const avatarEdge = ratio(p.borderControl, p[state]);
+			if (avatarField < FIELD_SEPARATION_FLOOR && avatarEdge < FLOOR.nonText) {
+				fail(
+					`${id}: the agents sidebar's avatar plate has no perceivable edge against \`${state}\` — its \`sunken\` fill ${p.sunken} is ΔE00 ${r2(avatarField)} from it (need ${FIELD_SEPARATION_FLOOR}) and the plate's \`borderControl\` edge ${p.borderControl} is ${r2(avatarEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the row's own ${state === "rowHover" ? "hover" : "selection"} turns the avatar into a disc of the row's fill. Give the plate an edge the row's state cannot overrun, or a fill that state cannot land on`,
+				);
+			}
 		}
 	}
 
@@ -3442,30 +4043,47 @@ for (const { id, palette: p } of palettes) {
 	 *   legitimate pair in the tree is `dune`'s `danger`/`info` at 18.4, and a new
 	 *   role asked to clear more than the semantics clear against each other is a
 	 *   gate that fails by design.
-	 * - `info` is EXCLUDED from that family and given the reduced
-	 *   `SYNTAX_COMMENT_FLOOR` (8) instead, because `info` is the cool
-	 *   counterweight the port mapped the TUI's `signal` onto: on the palettes
-	 *   whose second hue is in that family the two are the same colour by
-	 *   construction, and 15 would fail them for being what they are rather than for
-	 *   a defect. Measured on the values this branch ships, the five that need the
-	 *   lower floor are `catppuccinMocha` 8.01 (the binding one),
-	 *   `catppuccinMacchiato` 8.58, `catppuccinFrappe` 8.60, `localOperatorDark`
-	 *   12.57 and `ayuLight` 13.57, and on the three `catppuccin*` the cause is
-	 *   legible from the hues (`catppuccinMocha`'s second hue sits 2.68 degrees off
-	 *   `info`'s, `catppuccinFrappe` 17.02, `catppuccinMacchiato` 19.42). The two
-	 *   palettes this line used to name, `catppuccinLatte` and `radient`, measure
-	 *   25.48 and 15.09 and are not near the floor.
+	 * - `info` is treated as its own family rather than as a semantic: the floors
+	 *   this role holds against it are argued at the two SITES that draw the two
+	 *   together, and they are different bounds for different jobs.
+	 *
+	 *   As the ledger's two CATEGORY inks - `accentAlt` is the settled `meta` row's
+	 *   identity and `info` is `read`'s, one line apart in one column - the pair is
+	 *   asked at `SEPARATION_FLOOR` (15) below, the contract's own "difference of
+	 *   category, not of shade". Five palettes cannot reach it and are pinned in
+	 *   `PAIR_PINS` with the constraint that refuses each: the three `catppuccin*`
+	 *   palettes, whose second hue sits in `info`'s own family (2.68, 17.02 and
+	 *   19.42 degrees off it), and the two desktop-only palettes whose second hue is
+	 *   a rotation of their accent rather than a `label` token to port
+	 *   (`localOperatorDark` 12.57, `ayuLight` 13.57).
+	 *
+	 *   At the role's DECORATIVE sites - a 1px bar in the 40px miniature, a 6px mark
+	 *   in a diagram - the same pair takes the reduced `SYNTAX_COMMENT_FLOOR` (8),
+	 *   because recall at a size too small to resolve is the question there.
+	 *
+	 *   NO FIGURE IS TYPED INTO THIS COMMENT, deliberately. The number that ran in
+	 *   three places and disagreed in three ways is this pair's: the contract
+	 *   carried 8.01, which was its value BEFORE the register re-solve moved both of
+	 *   its values (measured on the pre-values `#719AD4`/`#89B4FA`, which is what
+	 *   8.01 is), a PR body carried 8.19, and a reviewer's independent computation
+	 *   carried 8.70. The run now PRINTS the fleet's tightest pair from the same
+	 *   `deltaE` the assertion uses - the `Identity pairs:` line, beside the pin
+	 *   count - so there is one number and one source, and a reader who wants it
+	 *   reads the run rather than a document that cannot go red.
 	 * - `ALT_ACCENT_CHROMA_FLOOR` (15) asserts the AXIS: all three floors above
 	 *   can be satisfied by draining the hue toward the ink, which turns the second
 	 *   accent into a second grey. See the constant.
 	 *
-	 * The text floor is asserted below, on the three grounds its sites paint it on.
-	 * It is NOT the `AS_TEXT` loop's six: the alt hue is never drawn on a dialog's
-	 * `elevated`, on the selection wash or on the current row, and asserting it
-	 * there would demand 28 palette values this change does not need - measured,
-	 * `monokai`'s alt reads 3.95:1 on `accentWash` and `oneDark`'s 3.78:1 on
-	 * `elevated`. The rule that keeps it honest is the role's own: no text is
-	 * painted on `accentAlt`, and none of those pairs can arise.
+	 * The text floor is asserted below, on the three grounds its own decorative sites
+	 * paint it on PLUS the row's state ground (`elevated`), which the trace row
+	 * added. It is NOT the `AS_TEXT` loop's six: the alt hue is never drawn on a
+	 * dialog's `elevated`, on the selection wash or on the current row, and the
+	 * ledger's settled-row hover is the ONE state ground it reaches — asserting the
+	 * `rowHover`/`rowSelected` fills here would demand palette values for a pair no
+	 * site paints (they are a sibling pass's roles; if the trace row's hover moves
+	 * to `rowHover`, this pair moves with it, which is why the comment above the
+	 * call says so). The rule that keeps the list honest is the role's own: no text
+	 * is painted on `accentAlt`, and none of those pairs can arise.
 	 */
 	if (isHex(p.accentAlt)) {
 		if (isHex(p.accent)) {
@@ -3489,6 +4107,13 @@ for (const { id, palette: p } of palettes) {
 		}
 		if (isHex(p.info)) {
 			assertions++;
+			/*
+			 * The DECORATIVE-site floor, and the ledger's own pair is asserted
+			 * separately below (`assertIdentityPair`) at 15: this one is the 1px bar in
+			 * the miniature and the 6px mark in the diagram, where recall at a size too
+			 * small to resolve is the question. The comment above the block carries the
+			 * argument for the two bounds and for why no figure is typed into it.
+			 */
 			const got = deltaE(p.accentAlt, p.info);
 			if (got < SYNTAX_COMMENT_FLOOR) {
 				fail(
@@ -3508,7 +4133,72 @@ for (const { id, palette: p } of palettes) {
 		for (const g of ["canvas", "surface", "sunken"]) {
 			assertPair(id, p, "accentAlt", g, FLOOR.text, "second accent as text");
 		}
+		/*
+		 * AND THE FOURTH, which is the one the tool row added and the reason this
+		 * block grew a ground at all.
+		 *
+		 * `accentAlt` is the settled `meta` row's identity ink (`tool-row.tsx`'s
+		 * `CATEGORY_INK`), and a settled row's hover paints `bg-elevated`
+		 * (`tool-row.tsx:633`) — so hovering a `hub`/`task`/`todo` row draws this
+		 * role as 12px TEXT on `elevated`. Neither prior site did: the theme picker's
+		 * miniature is 1px-2.5px bars and mermaid's categorical fill carries `ink`
+		 * labels, so the role's text floor was asserted on the three grounds a CHIP
+		 * paints it on and no state ground was ever measured. That is exactly the
+		 * scope gap this asserts shut, and it is asserted rather than pinned: 4.5:1
+		 * on text is the floor the whole file is for, and ten palettes were below it
+		 * before the palette pass beside this assertion (worst `kanagawaWave`
+		 * 4.05:1).
+		 *
+		 * The `meta` ink's own re-seat is recorded in the palettes: where the role was
+		 * seated at its floor on `surface` (catppuccinMocha 4.51:1) an added ground
+		 * had no headroom to spend, so those ten values were re-seated at their own
+		 * hue — measured, `elevated` 4.05-4.23:1 -> 4.55-4.60:1 — which is the
+		 * palette moving rather than the floor.
+		 *
+		 * COORDINATION, stated because the ground is not this change's to own:
+		 * `rowHover`/`rowSelected` are a sibling pass's roles (PR #386) and a row's
+		 * hover is heading for `rowHover` there. This asserts the ground the row
+		 * RESOLVES TO today — `elevated`, the class in `tool-row.tsx` — so if that
+		 * class moves, this pair moves with it and re-measures against the new fill
+		 * rather than silently asserting a ground nothing paints any more.
+		 */
+		assertPair(
+			id,
+			p,
+			"accentAlt",
+			"elevated",
+			FLOOR.text,
+			"second accent as text on a row's state ground",
+		);
 	}
+
+	/*
+	 * ------------------------------------------------------------------
+	 * THE TOOL ROW'S TWO IDENTITY PAIRS, as text in one column.
+	 *
+	 * Both are new SITES for roles whose floors were written for other ones, and
+	 * both are asserted here rather than left to the prose that already described
+	 * the failure. See the two floors' own comment for the bound each pair takes
+	 * and the argument for it; the shape below is the same for both: measure, and
+	 * accept a below-floor pair ONLY through a `PAIR_PINS` entry whose recorded
+	 * value still matches and whose reason names the refusing constraint.
+	 */
+	assertIdentityPair(
+		id,
+		p,
+		"accentAlt",
+		"info",
+		IDENTITY_PAIR_FLOOR,
+		"the tool row's two category inks",
+	);
+	assertIdentityPair(
+		id,
+		p,
+		"info",
+		"accent",
+		LIVENESS_PAIR_FLOOR,
+		"the settled read ink against the liveness ink",
+	);
 
 	/*
 	 * And the two washes may sit adjacent in one ramp.
@@ -3908,15 +4598,25 @@ for (const { id, palette: p } of palettes) {
 	 * grounds: measured at the old scope, `tokyoNightDay` rendered it at ΔE00
 	 * 1.13 on `accentWash` and `ayuLight` at 1.81 - a cap whose ground disappears
 	 * under it. The cap's SHAPE and its ink are other rows; this is its ground.
+	 *
+	 * THE TWO ROW STATES ARE NO LONGER IN THIS PAIR (row-state refinement,
+	 * 2026-09-18), by the same argument that withdrew the row roles' own
+	 * `canvas`/`elevated`/`sunken` collision floor: a row fill that is the panel's
+	 * own colour one step up IS a rung of the ladder, and `sunken` is the rung one
+	 * below it - so on the 9 palettes whose ladder is at its own 2.0 floor the
+	 * measured gap runs 0.44 (`alucard`) to 1.86 (`iceberg`), and no legal fill
+	 * can clear it, because clearing it would mean leaving the ladder the fill
+	 * has just been put on. The premise moved too: the cap carries NO fill of its
+	 * own any more (the `bg-sunken` cap was removed by the operator's report in
+	 * `keyboard-shortcut.tsx`), so what a cap needs on a row is its INK against
+	 * that row, which is asserted for all four ink weights where the rows are
+	 * grounds in `GROUNDS6`. The risk this accepts: a `bg-sunken` box placed
+	 * INSIDE a selected or hovered row would merge with it on those 9 palettes.
+	 * Nothing in the tree does that today - the rail's current rows are
+	 * `rowSelected` and the caps on them are fill-less text - and it is stated
+	 * here rather than left for a reviewer to discover.
 	 */
-	for (const g of [
-		"canvas",
-		"surface",
-		"elevated",
-		"accentWash",
-		"rowHover",
-		"rowSelected",
-	]) {
+	for (const g of ["canvas", "surface", "elevated", "accentWash"]) {
 		if (!isHex(p.sunken) || !isHex(p[g])) continue;
 		assertions++;
 		const got = deltaE(p.sunken, p[g]);
@@ -4090,13 +4790,13 @@ const FLEET_NEAR_NEUTRAL_PAIRS_CEILING = 9;
  * the 1 degree term only ever adds strictness below the chroma where the lattice
  * allows less than a degree; and the chroma clause is exercised by no shipped value
  * either, because the move set's single spend is `tokyoNight.ink` at 0.800 x - and
- * that role has no in-gamut re-solve, so it takes the `GAMUT_EDGE_MOVES` branch
+ * that role has no in-gamut re-solve, so it takes the `MOVED_BEYOND_LIGHTNESS` branch
  * before the clause is reached. The channel step is the clause that decides, and the
  * two clauses beside it are kept for the spec's sake rather than as coverage.
  *
  * Where the pure-L* re-solve is outside sRGB there is no candidate to compare, so
  * the role is named with its reason instead of being waved through - the two
- * entries in `GAMUT_EDGE_MOVES` are the whole set, asserted in both directions.
+ * entries it did not have to walk past are asserted in both directions, so an entry nothing needs fails rather than sitting there.
  *
  * WHAT THIS RULE COVERS, because an unasserted coverage claim is how the last
  * version of it passed review while holding 44 of the 168 values (review round 2,
@@ -4376,12 +5076,16 @@ const REGISTER_MOVES = [
  * neither could be looked up and the rule held 44 of the 168 moved values while its
  * comment claimed the whole set.
  */
-const GAMUT_EDGE_MOVES = new Set([
-	"tokyoNight.ink", // C* 22.95 -> 18.36: at L* 88.23 this hue sustains C* 18.37
-	"tokyoNight.chartBarHover",
+const MOVED_BEYOND_LIGHTNESS = new Set([
+	"tokyoNight.ink", // no in-gamut re-solve: C* 22.95 -> 18.36, as at L* 88.23 this hue sustains C* 18.37
+	"tokyoNight.chartBarHover", // no in-gamut re-solve, same cast
+	// A SECOND PASS, not a gamut edge: the tool row's state ground re-solved
+	// `accentAlt` on the chroma axis, because the pure-L* re-solve exists and is
+	// refused by a floor the same role holds (measured below).
+	"catppuccinMocha.accentAlt",
 ]);
 /** The entries above that the walk consults; a dead exemption fails the check below. */
-const gamutEdgeSeen = new Set();
+const movedBeyondLightnessSeen = new Set();
 
 /** Hue in degrees, in `[0, 360)`, from a Lab triple. */
 const hueDeg = ([, a, b]) => {
@@ -4656,21 +5360,36 @@ for (const move of REGISTER_MOVES) {
 		 */
 		if (!reSolved) {
 			assertions++;
-			if (!GAMUT_EDGE_MOVES.has(role)) {
+			if (!MOVED_BEYOND_LIGHTNESS.has(role)) {
 				fail(
-					`the fleet: \`${role}\` ${post} has no in-gamut pure-L* re-solve at L* ${r2(postL)} on ${pre}'s cast, and it is not named in \`GAMUT_EDGE_MOVES\` - name it with its reason or re-author the value`,
+					`the fleet: \`${role}\` ${post} has no in-gamut pure-L* re-solve at L* ${r2(postL)} on ${pre}'s cast, and it is not named in \`MOVED_BEYOND_LIGHTNESS\` - name it with its reason or re-author the value`,
 				);
 			} else {
-				gamutEdgeSeen.add(role);
+				movedBeyondLightnessSeen.add(role);
 			}
 			continue;
 		}
 		const step = channelStep(post, reSolved);
 		assertions++;
+		/*
+		 * The table is consulted HERE as well as in the no-re-solve branch above,
+		 * because "the move is not a single pure-L* re-solve" has two causes and the
+		 * walk can only see the second one by measurement: the re-solve may not EXIST
+		 * in sRGB (`tokyoNight`), or it may exist and be REFUSED by another floor the
+		 * role holds (`catppuccinMocha.accentAlt`, whose pure-`L*` lift toward the
+		 * tool row's state ground drops it below the ΔE00 8 it holds against `info`,
+		 * so the second pass spent chroma instead). Both are decisions with a reason,
+		 * and the floors are asserted either way - what the entry buys is that the
+		 * reason is written down rather than the clause being loosened.
+		 */
 		if (step > MOVED_CHANNEL_STEP_TOLERANCE) {
-			fail(
-				`the fleet: \`${role}\` ${pre} -> ${post} sits ${step} 8-bit channel step(s) from its pure-L* re-solve ${reSolved} (max ${MOVED_CHANNEL_STEP_TOLERANCE}) - the role's own file says only lightness moved, so a value past one step has been re-authored in hue or chroma as well`,
-			);
+			if (MOVED_BEYOND_LIGHTNESS.has(role)) {
+				movedBeyondLightnessSeen.add(role);
+			} else {
+				fail(
+					`the fleet: \`${role}\` ${pre} -> ${post} sits ${step} 8-bit channel step(s) from its pure-L* re-solve ${reSolved} (max ${MOVED_CHANNEL_STEP_TOLERANCE}) - the role's own file says only lightness moved, so a value past one step has been re-authored in hue or chroma as well`,
+				);
+			}
 		}
 
 		/* Chroma may be scaled by quantisation, but it may not be spent. */
@@ -4689,12 +5408,12 @@ for (const move of REGISTER_MOVES) {
  * a re-solve that is back inside sRGB, or a role that is no longer a moved value,
  * and either way it is coverage the run cannot claim (review round 2, MAJOR).
  */
-const staleGamutEdge = [...GAMUT_EDGE_MOVES].filter(
-	(r) => !gamutEdgeSeen.has(r),
+const staleBeyondLightness = [...MOVED_BEYOND_LIGHTNESS].filter(
+	(r) => !movedBeyondLightnessSeen.has(r),
 );
-if (staleGamutEdge.length > 0) {
+if (staleBeyondLightness.length > 0) {
 	fail(
-		`the fleet: \`GAMUT_EDGE_MOVES\` names ${staleGamutEdge.join(", ")} and the walk never consulted ${staleGamutEdge.length === 1 ? "it" : "them"} - the pure-L* re-solve is back inside sRGB, or the role is no longer a moved value; delete the entry rather than carrying an exemption nothing needs`,
+		`the fleet: \`MOVED_BEYOND_LIGHTNESS\` names ${staleBeyondLightness.join(", ")} and the walk never consulted ${staleBeyondLightness.length === 1 ? "it" : "them"} - the pure-L* re-solve is back inside sRGB, or the role is no longer a moved value; delete the entry rather than carrying an exemption nothing needs`,
 	);
 }
 
@@ -4709,6 +5428,34 @@ if (movedValuesSeen !== MOVED_VALUE_COUNT) {
 	fail(
 		`the fleet: the re-solve rule walked ${movedValuesSeen} moved value(s) and the move set it is written against is ${MOVED_VALUE_COUNT} - the table and the claim have parted`,
 	);
+}
+
+/*
+ * THE ROW-STATE LEDGER, read from outside the per-palette loop.
+ *
+ * The two tables above it are claims about the fleet - that these palettes, and
+ * only these, cannot hold these bounds - and a claim nobody re-reads is how the
+ * previous round's thirteen pins grew: each one was true when it was filed and
+ * three of them were still being carried after the value that needed them had
+ * moved. So every row has to be CLAIMED by the assertion it excuses, and a row
+ * that is not is the failure here. The assertion count is the fleet's, not a
+ * palette's, because that is the population the tables cover.
+ */
+for (const row of ROW_STATE_FLOOR_UNREACHABLE) {
+	assertions++;
+	if (!pinClaims.has(`${row.id}:${row.role}:floor`)) {
+		fail(
+			`the fleet: the floor row for \`${row.id}\`'s \`${row.role}\` is stale — the cast floor is no longer above the ceiling there, so the row is excusing a bound the palette now holds. Re-author the value to the floor, or delete the row (${row.reason})`,
+		);
+	}
+}
+for (const row of ROW_STATE_MEASURED_SHORTFALL) {
+	assertions++;
+	if (!pinClaims.has(`${row.id}:${row.role}:${row.bound}`)) {
+		fail(
+			`the fleet: the ${row.bound} row for \`${row.id}\`'s \`${row.role}\` is stale — it records ${row.measured} and the palette no longer misses that bound (${row.reason})`,
+		);
+	}
 }
 
 /* ---- 6. report ---------------------------------------------------------- */
@@ -4818,8 +5565,83 @@ if (stalePerceptible.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * The same guard for the identity pairs: a pin the walk never asked about is a
+ * pair that clears its floor on its own now, and leaving it would keep a hole in
+ * the table that the next reader would read as a live defect.
+ */
+const stalePairPins = PAIR_PINS.filter((e) => !pairPinSeen.has(e));
+if (stalePairPins.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${stalePairPins.length} identity-pair pin(s) were not needed (${stalePairPins.map((e) => `${e.theme} ${e.a}/${e.b}`).join(", ")}) - the pair clears its floor now; delete the pin.`,
+	);
+	process.exit(1);
+}
+
+if (
+	IDENTITY_PAIR_FLOOR !== SEPARATION_FLOOR ||
+	LIVENESS_PAIR_FLOOR !== SYNTAX_COMMENT_FLOOR
+) {
+	fail(
+		`the fleet: the pair floors are declared beside \`PAIR_PINS\` (\`IDENTITY_PAIR_FLOOR\` ${IDENTITY_PAIR_FLOOR}, \`LIVENESS_PAIR_FLOOR\` ${LIVENESS_PAIR_FLOOR}) and have to equal \`SEPARATION_FLOOR\` ${SEPARATION_FLOOR} and \`SYNTAX_COMMENT_FLOOR\` ${SYNTAX_COMMENT_FLOOR}; raise them together, or the pins stop describing the bound they were granted under`,
+	);
+}
+
+/*
+ * AND THE NUMBER THE PROSE QUOTES, computed here rather than typed there.
+ *
+ * The figure that ran in three places and disagreed in three ways is this one:
+ * the `accentAlt`/`info` separation the tool row's two identity inks live with.
+ * The README's 8.19, the contract's 8.01 and a reviewer's independent 8.70 were
+ * three instruments' answers to one question, and nothing in the run could tell
+ * which one the fleet actually holds. So the number is not restated in prose any
+ * more: this line IS the figure, printed from the same `deltaE` the assertion
+ * above uses, and the two documents that quote it quote this line.
+ *
+ * The count is asserted against `PAIR_PINS` in the same breath, because a table
+ * of pins is a CLAIM about the fleet: if a palette drifts under the floor with no
+ * pin, or a pin survives a palette that no longer needs it, the two numbers stop
+ * agreeing and the run says so rather than printing a figure nobody checks.
+ */
+const altInfoPairs = palettes
+	.filter(({ palette }) => isHex(palette.accentAlt) && isHex(palette.info))
+	.map(({ id, palette }) => ({
+		id,
+		d: r2(deltaE(palette.accentAlt, palette.info)),
+	}))
+	.sort((a, b) => a.d - b.d);
+const identityFloorPins = PAIR_PINS.filter(
+	(e) => e.floor === IDENTITY_PAIR_FLOOR,
+);
+const belowIdentityFloor = altInfoPairs.filter(
+	(e) => e.d < IDENTITY_PAIR_FLOOR,
+);
+if (belowIdentityFloor.length !== identityFloorPins.length) {
+	fail(
+		`the fleet: ${belowIdentityFloor.length} palette(s) sit under the ${IDENTITY_PAIR_FLOOR} identity floor (${belowIdentityFloor.map((e) => `${e.id} ${e.d}`).join(", ") || "none"}) while \`PAIR_PINS\` records ${identityFloorPins.length} - the pinned set and the measured set are the same claim and have to agree`,
+	);
+}
+const infoAccentPairs = palettes
+	.filter(({ palette }) => isHex(palette.info) && isHex(palette.accent))
+	.map(({ id, palette }) => ({
+		id,
+		d: r2(deltaE(palette.info, palette.accent)),
+	}))
+	.sort((a, b) => a.d - b.d);
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepPinSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s).`,
+	`Identity pairs: tightest \`accentAlt\`/\`info\` (the tool row's two identity inks, floor ${IDENTITY_PAIR_FLOOR}) is ${altInfoPairs[0].d} in ${altInfoPairs[0].id}, then ${altInfoPairs
+		.slice(1, 5)
+		.map((e) => `${e.id} ${e.d}`)
+		.join(
+			", ",
+		)}; ${identityFloorPins.length} palette(s) pinned below it. Tightest \`info\`/\`accent\` (settled read ink vs liveness ink, floor ${LIVENESS_PAIR_FLOOR}) is ${infoAccentPairs[0].d} in ${infoAccentPairs[0].id}, then ${infoAccentPairs
+		.slice(1, 5)
+		.map((e) => `${e.id} ${e.d}`)
+		.join(", ")}.`,
+);
+
+console.log(
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepPinSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s), ${pairPinSeen.size} pinned identity pair(s).`,
 );
 /*
  * And the FLEET's own line, because these are the numbers that ran in prose and a

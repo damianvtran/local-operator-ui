@@ -120,11 +120,16 @@ test("the grid and the banner agree on the remedy for every status", () => {
 
 test("a rejected bearer is never told to install a newer backend", () => {
 	// The specific defect: at 401 the grid sent the user through a backend
-	// install while the banner told them to restart and re-pair.
+	// install while the banner told them to restart and re-pair. Round 2's U2
+	// removes the second half of that pair as well: the restart instruction asked
+	// the user to make the app own a plane it may only adopt, so the grid states
+	// the refusal and names no install AND no restart.
 	for (const status of [401, 403]) {
 		const error = new DesktopControlError(status, "unauthorized");
 		const grid = providerLoadErrorMessage(error);
-		assert.match(grid, /Restart the app/);
+		assert.match(grid, /cannot authenticate/);
+		assert.doesNotMatch(grid, /own server/);
+		assert.doesNotMatch(grid, /Restart the app/);
 		assert.doesNotMatch(grid, /update/i);
 		assert.equal(
 			backendUpdateIsRemedy({
@@ -143,8 +148,15 @@ test("an unreachable backend is reported as offline, not as needing an update", 
 	// The remedy names an action the USER can take. "Retry once it has started."
 	// asked them to wait for an event they cannot cause, on the most common of
 	// the five conditions, while the app starts the server itself (design D5).
+	/*
+	 * The remedy clause is GONE from this composition, and that is the assertion:
+	 * every one of these surfaces used to end with "Restart the app so it can start
+	 * its own server.", an instruction to make the app own a plane this change
+	 * exists to let it adopt (UX round 2, U2). The diagnosis stays; the ownership
+	 * instruction may not appear on any pairing-cause surface.
+	 */
 	const OFFLINE =
-		"Providers could not be loaded. The Local Operator server is not answering. Restart the app so it can start its own server.";
+		"Providers could not be loaded. The Local Operator server is not answering.";
 	assert.equal(
 		providerLoadErrorMessage(new DesktopControlError(null, "unreachable")),
 		OFFLINE,
@@ -220,14 +232,21 @@ test("both surfaces render the selected message rather than a hardcoded string",
 });
 
 test("no surface asks the user to wait for an event they cannot cause", () => {
-	// Design D5. Every remedy must name a user action; "Retry once it has
-	// started" named an event with no agent, on the most common condition of the
-	// five, while the unauthorized string beside it says the app starts the
-	// server itself. `unknown` is the deliberate empty: no established remedy,
-	// so no sentence at all.
+	/*
+	 * Design D5, extended by round 2's U2.
+	 *
+	 * The rule has two halves now. A remedy that exists must name an action the
+	 * USER takes - "Retry once it has started" named an event with no agent. And
+	 * the three pairing-sensitive kinds must name NO action at all, because the
+	 * only action they carried was "Restart the app so it can start its own
+	 * server.", an instruction to make the app own a plane it may only adopt.
+	 * Settings printed it in every state this change introduces, including two
+	 * where restarting the app cannot reach the daemon (UX round 2, U2).
+	 */
+	const NO_REMEDY = ["unknown", "unreachable", "deadline", "unauthorized"];
 	for (const [kind, remedy] of Object.entries(BACKEND_ERROR_REMEDY)) {
-		if (kind === "unknown") {
-			assert.equal(remedy, "", "unknown must assert no remedy");
+		if (NO_REMEDY.includes(kind)) {
+			assert.equal(remedy, "", `${kind} must assert no remedy`);
 			continue;
 		}
 		assert.match(
@@ -235,6 +254,20 @@ test("no surface asks the user to wait for an event they cannot cause", () => {
 			/^(Restart|Update) /,
 			`the ${kind} remedy "${remedy}" does not open with an action the user takes`,
 		);
+	}
+	// And the composition may not smuggle it back in for those kinds.
+	for (const status of [null, 503, 401, 403]) {
+		const error = new DesktopControlError(status, "probe");
+		for (const [surface, text] of [
+			["grid", providerLoadErrorMessage(error)],
+			["banner", bannerMessage(error)],
+		]) {
+			assert.doesNotMatch(
+				text,
+				/start its own server|starts and pairs with its own server/,
+				`status ${status}: the ${surface} still prints the app-managed remedy`,
+			);
+		}
 	}
 });
 

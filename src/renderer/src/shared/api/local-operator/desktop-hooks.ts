@@ -364,19 +364,65 @@ export type DesktopFeature =
 	| "session_delete";
 
 /**
+ * WHY a negotiated feature surface may not be offered.
+ *
+ * `desktopFeatureEnabled` answers one boolean for two conditions - the desktop
+ * plane not being available, and the backend not advertising the feature's
+ * version - and every surface that read only the boolean had to guess which half
+ * had closed. Two guessed DIFFERENTLY and both were wrong in the operator's own
+ * screenshot: the chat pane told them their server was out of date when the fact
+ * was that this app held no credential for it, while the sidebar had already been
+ * corrected to one cause-neutral sentence (design § 1.3).
+ *
+ * So the decision is a tri-state with an `unknown` that is a real member rather
+ * than a default: `unknown` means no capability answer has arrived, where a
+ * surface must not assert either cause. `desktopFeatureEnabled` stays as this
+ * function's `=== "enabled"` projection, so no existing call site changes
+ * meaning and there is one predicate rather than a fifth copy of it.
+ */
+export type DesktopFeatureState =
+	| "enabled"
+	| "unpaired"
+	| "below-version"
+	| "unknown";
+
+/**
+ * WHICH of the two conditions closed a surface, or `unknown` before an answer.
+ *
+ * Pairing is asked FIRST and it is not an ordering nicety: the same payload
+ * carries both answers, and a daemon this app holds no credential for is a
+ * pairing fact no matter what its feature list says - reporting the feature
+ * version for it is the sentence the operator was shown for a pairing condition.
+ */
+export function desktopFeatureState(
+	capabilities: DesktopCapabilities | null | undefined,
+	feature: DesktopFeature,
+	minimumVersion = 1,
+): DesktopFeatureState {
+	if (!capabilities) return "unknown";
+	if (!capabilities.desktop_available) return "unpaired";
+	return (capabilities.features?.[feature] ?? 0) >= minimumVersion
+		? "enabled"
+		: "below-version";
+}
+
+/**
  * Resolve whether a negotiated feature surface may be offered.
  *
  * A feature requires BOTH the backend advertising its version AND the managed
  * pairing being available: the routes sit behind the desktop bearer, so a
- * surface without `desktop_available` would render a wall of 401s.
+ * surface without `desktop_available` would render a wall of 401s. Kept as
+ * {@link desktopFeatureState}'s projection rather than as the predicate itself,
+ * so the surfaces that need the CAUSE now have it without a second definition.
  */
 export function desktopFeatureEnabled(
 	capabilities: DesktopCapabilities | null | undefined,
 	feature: DesktopFeature,
 	minimumVersion = 1,
 ): boolean {
-	if (!capabilities || !capabilities.desktop_available) return false;
-	return (capabilities.features?.[feature] ?? 0) >= minimumVersion;
+	return (
+		desktopFeatureState(capabilities, feature, minimumVersion) === "enabled"
+	);
 }
 
 /** Canonical provider registry rows, including aliases folded into methods. */

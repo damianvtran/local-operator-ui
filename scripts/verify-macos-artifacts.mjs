@@ -29,13 +29,17 @@ import {
 	rmSync,
 	statSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
 	seedResourceDir,
 } from "./bundled-python-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	EMBEDDED_PROVISIONING_PROFILE_PATH,
+	profileBackedEntitlementKeys,
+} from "./macos-entitlement-policy.mjs";
 import {
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
@@ -52,6 +56,18 @@ import {
 const CODESIGN = "/usr/bin/codesign";
 const SPCTL = "/usr/sbin/spctl";
 const XCRUN = "/usr/bin/xcrun";
+const SECURITY = "/usr/bin/security";
+
+/**
+ * How long the spawn probe is given before its child counts as never-exited.
+ *
+ * The probe runs the main executable in Electron's node mode, whose whole job
+ * is `process.exit(0)`; on this machine that answers in well under a second.
+ * The bound is generous because it is not a performance expectation but the
+ * third refusal shape: a spawn the OS neither completes nor refuses. Anything
+ * the bound catches is red, which is the direction a release gate must fail in.
+ */
+export const SPAWN_PROBE_TIMEOUT_MS = 60_000;
 
 /**
  * The rendered WebAuthn keychain access group, as it appears in a signed app's
@@ -124,6 +140,97 @@ export function hasWebauthnEntitlement(plistText, bundleId) {
 }
 
 /**
+ * Whether an embedded provisioning profile's entitlements authorize a claim.
+ *
+ * `group` is the specific value being asked about when the question is about
+ * one group (the WebAuthn case), and `null` when any value of `key` will do —
+ * the general form `app-profile-authorization` asks. The profile's dumped
+ * `Entitlements` dict spells a claim exactly the way a signature's does, so the
+ * same bounded array scan reads both (`security cms -D` prints the profile as a
+ * plist, TN3125 "Profile location").
+ *
+ * A missing profile, an unreadable one, or one that does not carry the key is
+ * `false`: the direction of that error is the safe one, since every caller here
+ * treats `false` as a failure.
+ */
+export function profileAuthorizes(
+	profileEntitlements,
+	key,
+	bundleId = null,
+	group = null,
+) {
+	if (!profileEntitlements) return false;
+	/*
+	 * Two questions from one predicate, because they are the same fact read at two
+	 * granularities: with a `group` in hand the profile has to authorize THAT
+	 * value (the WebAuthn case, where a profile carrying a different group is a
+	 * passkey feature that can never work), and with only a `key` the profile has
+	 * to carry the entitlement at all (the general case, where the value is not
+	 * something this gate can judge).
+	 */
+	if (group != null && key === "keychain-access-groups") {
+		return webauthnEntitlementGroup(profileEntitlements, bundleId) === group;
+	}
+	return profileDeclaresKey(profileEntitlements, key);
+}
+
+/** Whether a plist declares an entitlement key at all, whatever its value. */
+function profileDeclaresKey(plistText, key) {
+	return plistText.includes(`<key>${key}</key>`);
+}
+
+/**
+ * The main executable of a bundle, from `CFBundleExecutable`.
+ *
+ * Read from the bundle's own `Info.plist` rather than assumed from the
+ * directory name: the two agree in every artifact this repository has built —
+ * `Contents/MacOS/Local Operator` — but the plist is what launchd reads, and a
+ * probe that ran a different file would answer a question about the wrong one.
+ * The fallback is the bundle's basename with the `.app` suffix removed, which is
+ * the same spelling electron-builder gives the executable — the suffix has to
+ * come off, since `basename("/Applications/Local Operator.app")` is
+ * `Local Operator.app` and joining that under `Contents/MacOS` names a file that
+ * cannot exist (review round 1, finding 4).
+ */
+export function mainExecutablePath(appPath) {
+	let executable = null;
+	try {
+		const plist = readFileSync(join(appPath, "Contents", "Info.plist"), "utf8");
+		executable = plist
+			.match(/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/)?.[1]
+			?.trim();
+	} catch {
+		// The bundle is not readable, which the checks above already report.
+	}
+	return join(
+		appPath,
+		"Contents",
+		"MacOS",
+		executable || basename(appPath, ".app"),
+	);
+}
+
+/**
+ * The entitlements an embedded provisioning profile authorizes, if it has one.
+ *
+ * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
+ * is a CMS-signed container, not a plist, and the tool is the OS's own way to
+ * unwrap it. Its failure is not a check failure of its own — the profile's
+ * presence is what `app-profile-authorization` asserts, and an unreadable
+ * profile authorizes nothing, which is the same verdict and is read out of
+ * `entitlements: null`.
+ */
+export function readEmbeddedProfileEntitlements(appPath, run) {
+	const profilePath = join(appPath, EMBEDDED_PROVISIONING_PROFILE_PATH);
+	if (!existsSync(profilePath)) return { present: false, entitlements: null };
+	const result = run(SECURITY, ["cms", "-D", "-i", profilePath]);
+	return {
+		present: true,
+		entitlements: result.status === 0 ? result.stdout : null,
+	};
+}
+
+/**
  * The checks, in the order a user's machine performs them.
  *
  * `expect` is a predicate over the raw result rather than an exit code: `spctl`
@@ -131,9 +238,10 @@ export function hasWebauthnEntitlement(plistText, bundleId) {
  * everything else, and both of those can exit 0 - so the verdict has to read
  * the output, not the status that reports whether spctl itself ran.
  */
-export function artifactChecks({ appPath, dmgPath }) {
+export function artifactChecks({ appPath, dmgPath, profile = null }) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
+	const embedded = profile ?? { present: false, entitlements: null };
 	if (appPath) {
 		checks.push(
 			{
@@ -163,23 +271,117 @@ export function artifactChecks({ appPath, dmgPath }) {
 				args: ["stapler", "validate", appPath],
 				expect: (result) => result.status === 0,
 			},
+			/*
+			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.29.6 BRICK.
+			 *
+			 * Why executing the binary rather than verifying its signature: the
+			 * refusal that bricked 0.29.6 is decided by amfid AT EXEC, and it is
+			 * invisible to every static check this file already runs. Measured on
+			 * this machine against the real broken bundle and a re-signed sibling:
+			 * `codesign --verify --deep --strict` exits 0, `spctl -a -vvv -t exec`
+			 * answers "accepted / Notarized Developer ID", `stapler validate`
+			 * passes — and the binary is killed at spawn (the shell reports
+			 * "Killed: 9", i.e. SIGKILL, with no output; `open -a` instead answers
+			 * `RBSRequestErrorDomain Code=5` / `NSPOSIXErrorDomain Code=163
+			 * "Launchd job spawn failed"`). Only a spawn observes what the OS does.
+			 *
+			 * Why node mode: `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`
+			 * reaches the same exec — and therefore the same AMFI decision — with
+			 * no window, no display, no user data directory and nothing left
+			 * running, which is what makes it usable as a release gate on a build
+			 * runner. Measured: the broken bundle's executable exits 137 (SIGKILL);
+			 * the same bundle re-signed without `keychain-access-groups` exits 0.
+			 *
+			 * All three refusal shapes are red: a non-zero status, a terminating
+			 * signal, and a child that never exits within the bound (the third
+			 * arrives as `timedOut`, so a hung spawn is not mistaken for a pass).
+			 */
+			{
+				id: "app-spawn",
+				scope: "app",
+				target: mainExecutablePath(appPath),
+				description:
+					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
+				command: mainExecutablePath(appPath),
+				args: ["-p", "process.exit(0)"],
+				env: { ELECTRON_RUN_AS_NODE: "1" },
+				timeoutMs: SPAWN_PROBE_TIMEOUT_MS,
+				expect: (result) =>
+					result.status === 0 && !result.signal && !result.timedOut,
+			},
+			/*
+			 * THE CAUSE, and it is a walk rather than a command.
+			 *
+			 * A restricted claim with no profile behind it is the arrangement that
+			 * cannot launch. It used to be one `codesign` call against the bundle path
+			 * here, which reads the MAIN EXECUTABLE's entitlements only — so a bundle
+			 * whose launcher was clean and whose helpers were not passed this gate,
+			 * passed the app's pre-flight, and died at the relaunch leg. That is not a
+			 * hypothetical: the operator's 0.29.6 bundle carries the group on eight
+			 * executables, `ShipIt` and the bundled python among them, and both are
+			 * killed at spawn while a launcher-only check reports them clean (review
+			 * round 1, finding 1). The check that answers the question for the whole
+			 * bundle is `profileAuthorizationCheck`, next to the other bundle walks
+			 * below, and it keeps this id — `verify-signed-update.mjs` treats it as the
+			 * candidate's own failure rather than a host capability, and that is still
+			 * exactly what it is.
+			 */
+			/*
+			 * `app-webauthn-entitlement`, BIDIRECTIONAL.
+			 *
+			 * It used to REQUIRE the group, and that is half of how a brick got out:
+			 * it made an entitled build with no profile look green, and it would fail
+			 * a correct, group-free, launchable build — which is precisely what the
+			 * release path has to ship while no profile exists. Electron's touchID
+			 * authenticator needs the group on the MAIN EXECUTABLE and nowhere else
+			 * (Chromium's `TouchIdAvailableImpl`), and with the group absent the app
+			 * is inert by design (`decideWebauthnGate`, `src/main/webauthn.ts`): one
+			 * log line, no `configureWebAuthn`, no passkey offered. So the two
+			 * acceptable states are "absent" and "present AND authorized", and the
+			 * shape check still runs whenever it is present — a group for a different
+			 * bundle id is a passkey feature that can never work.
+			 */
 			{
 				id: "app-webauthn-entitlement",
 				scope: "app",
 				target: appPath,
 				description: bundleId
-					? `the signature carries a WebAuthn keychain access group for ${bundleId}`
-					: "the signature carries a WebAuthn keychain access group (shape only: the app's Info.plist did not name a bundle id)",
+					? `the signature's WebAuthn keychain access group, if claimed, is for ${bundleId} and is authorized by an embedded profile (absent is the shipped default: passkeys inert)`
+					: "the signature's WebAuthn keychain access group, if claimed, is authorized by an embedded profile (absent is the shipped default: passkeys inert)",
 				// `-` writes to stdout and `--xml` keeps it an XML plist: measured on
 				// an ad-hoc bundle signed with the committed plist, `-` alone prints a
 				// human-readable `[Dict] [Key] [Value]` dump the pattern below cannot
 				// read, and `:-` prints the XML but warns that the `:` path spelling is
 				// deprecated (QA round 2, Q1 — the warning is real, the suggested
-				// spelling was not the fix). It exits 0 with empty output for a
-				// signature that has none — which is exactly the failure this catches.
+				// spelling was not the fix). It exits 0 with EMPTY output for a
+				// signature that carries no entitlements at all, which is the shipped
+				// default here — the group absent, passkeys inert — and a PASS.
 				command: CODESIGN,
 				args: ["-d", "--entitlements", "-", "--xml", appPath],
-				expect: (result) => hasWebauthnEntitlement(result.stdout, bundleId),
+				expect: (result) => {
+					// "We could not ask" is not "nothing is claimed", and an empty
+					// plist must not pass just because `[].every()` is true: a read
+					// that failed is red (review round 1, finding 3). `app-codesign`
+					// reds such a bundle too, but relying on a neighbour to answer
+					// this question is how the two drift apart.
+					if (result.status !== 0) return false;
+					const group = webauthnEntitlementGroup(result.stdout, bundleId);
+					if (group === null) {
+						// Absent. Nothing claimed, so nothing to authorize — and a
+						// signature that carries `keychain-access-groups` for ANOTHER
+						// bundle id reads as absent here and is caught by
+						// `app-profile-authorization`, whose walk covers every
+						// executable and every restricted key rather than this one
+						// value.
+						return !/\.webauthn<\/string>/.test(result.stdout);
+					}
+					return profileAuthorizes(
+						embedded.entitlements,
+						"keychain-access-groups",
+						bundleId,
+						group,
+					);
+				},
 			},
 		);
 	}
@@ -612,6 +814,142 @@ export function bundledBytecodeCheck(appPath, options = {}) {
 	};
 }
 
+/**
+ * Every Mach-O the bundle can EXEC, relative to it.
+ *
+ * The launcher, the four `Local Operator Helper` apps, the crashpad handler, the
+ * Squirrel `ShipIt` the updater relaunches with, and the bundled python — 16
+ * files on a real 0.29.6 bundle, measured. Dylibs are excluded by the execute
+ * bit, which is the distinction that matters here: a dylib's entitlement claims
+ * are read by whatever loads it, while these are the files the OS SPAWNS, and
+ * the spawn is where the 0.29.6 refusal happened.
+ */
+export function bundleExecutables(appPath) {
+	return machOFiles(appPath).filter((relative) => {
+		const stat = lstatSync(join(appPath, relative), { throwIfNoEntry: false });
+		return Boolean(stat?.isFile() && (stat.mode & 0o111) !== 0);
+	});
+}
+
+/**
+ * Every restricted entitlement ANY executable in the bundle claims, judged
+ * against the profile the bundle embeds.
+ *
+ * Why a walk rather than one `codesign -d` on the bundle path: that call reports
+ * the MAIN EXECUTABLE's entitlements, and the 0.29.6 brick put the group on eight
+ * of the sixteen executables — `ShipIt`, the four helpers, the crashpad handler
+ * and the bundled python among them. A launcher-only check calls such a bundle
+ * clean, the app's pre-flight accepts it, and the failure lands where the
+ * operator's did: the relaunch leg, after the app has already quit (review round
+ * 1, finding 1).
+ *
+ * Both directions are failures. An unauthorized claim is the refusal; a claim
+ * that could not be READ is `unreadable` and red too, because "we could not ask"
+ * is not "nothing is claimed" (finding 3). The cost is one `codesign` per
+ * executable — 16 calls, tens of milliseconds each — which is noise against a
+ * gate that already spawns the app and mounts its disk image.
+ */
+export function profileAuthorizationCheck(
+	appPath,
+	{ run = spawnRunner, profile = null } = {},
+) {
+	const embedded = profile ?? readEmbeddedProfileEntitlements(appPath, run);
+	const bundleId = bundleIdentifierFromInfoPlist(appPath);
+	// A walk that cannot run is a third outcome, and it must not escape as a stack
+	// trace: the gate reports rows, and `require-report.sh` wants a report even when
+	// the thing it was pointed at could not be read.
+	let executables = [];
+	let walkError = null;
+	try {
+		executables = bundleExecutables(appPath);
+	} catch (error) {
+		walkError = error.message ?? String(error);
+	}
+	const unauthorized = [];
+	const unreadable = [];
+	for (const relative of executables) {
+		const result = run(CODESIGN, [
+			"-d",
+			"--entitlements",
+			"-",
+			"--xml",
+			join(appPath, relative),
+		]);
+		if (result.status !== 0) {
+			unreadable.push(relative);
+			continue;
+		}
+		for (const key of profileBackedEntitlementKeys(result.stdout)) {
+			const group =
+				key === "keychain-access-groups"
+					? webauthnEntitlementGroup(result.stdout, bundleId)
+					: null;
+			if (!profileAuthorizes(embedded.entitlements, key, bundleId, group))
+				unauthorized.push(
+					`${relative} claims ${key}${group ? ` (${group})` : ""}`,
+				);
+		}
+	}
+	const reasons = [];
+	if (walkError != null)
+		reasons.push(
+			`the bundle could not be walked for executables (${walkError}), so no claim in it was judged`,
+		);
+	if (walkError == null && executables.length === 0)
+		reasons.push(
+			"no executable was found in the bundle to judge, and a bundle with no Mach-O the walk can find is not one a launcher-only read would have covered either",
+		);
+	if (unauthorized.length > 0)
+		reasons.push(
+			`${unauthorized.length} of ${executables.length} executable(s) claim a restricted entitlement the embedded profile does not authorize: ${unauthorized.slice(0, 4).join("; ")}${unauthorized.length > 4 ? ` (and ${unauthorized.length - 4} more)` : ""}`,
+		);
+	/*
+	 * TWO ROWS, because the two failure modes have different owners and
+	 * `verify-signed-update.mjs` classifies by id. An unauthorized claim is the
+	 * CANDIDATE's own defect — the 0.29.6 class — and stays out of
+	 * `SIGNATURE_CHECK_IDS` so it FAILS that job. A signature this host could not
+	 * read at all is the HOST's capability question (an unsigned candidate built by
+	 * a runner with no signing identity), so it gets its own id and rides the
+	 * BLOCKED bucket beside `app-codesign`. One row for both would have put "we could
+	 * not check" into the FAIL bucket, which is the confusion that bucket exists to
+	 * prevent (review round 2).
+	 */
+	const authorization = {
+		id: "app-profile-authorization",
+		scope: "app",
+		target: appPath,
+		description: embedded.present
+			? "every restricted entitlement any executable in the bundle claims is authorized by the embedded provisioning profile"
+			: "no executable in the bundle claims a restricted entitlement the bundle has no profile to authorize",
+		passed: reasons.length === 0,
+		output:
+			reasons.length === 0
+				? `${executables.length} executable(s) inspected, none claim a restricted entitlement`
+				: reasons.join(" | "),
+	};
+	const readability = {
+		id: "app-entitlements-readable",
+		scope: "app",
+		target: appPath,
+		description:
+			"the entitlements of every executable in the bundle can be read from its signature",
+		// Fail-closed on an EMPTY population too: `[].every()` passing over a bundle
+		// the walk could not enumerate is the vacuous pass this check exists to
+		// refuse (review round 2, finding 3).
+		passed:
+			walkError == null && executables.length > 0 && unreadable.length === 0,
+		output:
+			walkError != null
+				? `the bundle could not be walked for executables: ${walkError}`
+				: unreadable.length > 0
+					? `the entitlements of ${unreadable.length} executable(s) could not be read: ${unreadable.slice(0, 4).join(", ")}`
+					: executables.length === 0
+						? "no executable was found to read"
+						: `the entitlements of ${executables.length} executable(s) were read`,
+	};
+	return [authorization, readability];
+}
+
 /*
  * The bundled-interpreter seal check that used to live here is gone with the
  * mechanism it asserted. It was a write probe over `Contents/Resources/python
@@ -624,26 +962,89 @@ export function bundledBytecodeCheck(appPath, options = {}) {
  * tree in the bundle for a venv to resolve into.
  */
 
-/** Run each check with the given runner and judge it. */
-export function runChecks({ appPath, dmgPath, run }) {
-	return artifactChecks({ appPath, dmgPath }).map((check) => {
-		const result = run(check.command, check.args);
-		const passed = check.expect(result);
-		return {
-			id: check.id,
-			scope: check.scope,
-			description: check.description,
-			target: check.target,
-			passed,
-			output: [result.stdout, result.stderr]
+/**
+ * Run one check with the check's own `env` applied to THIS process for the call.
+ *
+ * Why not only hand it to the runner: `env` is the runner's fourth parameter, and
+ * a runner that does not forward it drops the switch SILENTLY — and for the spawn
+ * probe that switch is `ELECTRON_RUN_AS_NODE=1`, the only thing that makes
+ * `app-spawn` a probe instead of a real app launch. QA round 2 measured exactly
+ * that from a four-parameter runner in a scratch harness: five stray launches of
+ * the app binary, every one of them raising and focusing the operator's window.
+ * The check owns its environment here, so any runner that inherits the process
+ * environment — which is the default for `spawnSync`, and what `spawnRunner`
+ * does — applies it whether it forwards the parameter or not.
+ *
+ * Scoped to the call and restored in a `finally`: these checks run one at a time,
+ * so nothing else can observe the variable, and a check that threw cannot leave
+ * `ELECTRON_RUN_AS_NODE` behind for the next one.
+ */
+function withCheckEnv(env, work) {
+	if (!env) return work();
+	const saved = new Map();
+	for (const [key, value] of Object.entries(env)) {
+		saved.set(key, process.env[key]);
+		process.env[key] = value;
+	}
+	try {
+		return work();
+	} finally {
+		for (const [key, value] of saved) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	}
+}
+
+/** Run each check with the runner, and judge it.
+ *
+ * `profile` is the embedded-profile read, passed in by a caller that already has
+ * it: two of the checks ask whether the signature's claims are authorized, and
+ * both have to answer from the same profile dump. Reading it per check would run
+ * `security cms -D` twice and could answer two halves of one question from two
+ * different reads — which is why the read happens once here when the caller has
+ * none to hand in (review round 1, finding 5).
+ */
+export function runChecks({ appPath, dmgPath, run, profile = null }) {
+	const embedded = appPath
+		? (profile ?? readEmbeddedProfileEntitlements(appPath, run))
+		: { present: false, entitlements: null };
+	return artifactChecks({ appPath, dmgPath, profile: embedded }).map(
+		(check) => {
+			const result = withCheckEnv(check.env, () =>
+				run(check.command, check.args, check.input, check.env, check.timeoutMs),
+			);
+			const passed = check.expect(result);
+			const output = [result.stdout, result.stderr]
 				.join("\n")
 				.trim()
 				.split("\n")
 				.filter((line) => line.trim().length > 0)
 				.slice(0, 4)
-				.join(" | "),
-		};
-	});
+				.join(" | ");
+			return {
+				id: check.id,
+				scope: check.scope,
+				description: check.description,
+				target: check.target,
+				passed,
+				// A check that died without printing anything — the shape an OS refusal
+				// takes, since the process never ran — would otherwise report an empty
+				// reason, which reads as "no detail" rather than "killed at spawn".
+				output:
+					output ||
+					[
+						result.status === null
+							? "no exit status (the child never ran to an exit)"
+							: `exit ${result.status}`,
+						result.signal ? `killed by ${result.signal}` : null,
+						result.timedOut ? "did not exit within the check's bound" : null,
+					]
+						.filter(Boolean)
+						.join("; "),
+			};
+		},
+	);
 }
 
 export function summarize(results) {
@@ -724,13 +1125,40 @@ export function discoverDmg(distDir, options = {}) {
  * `hdiutil` reads from stdin and refuses to mount without - and is threaded
  * through rather than worked around with a `yes |` shell, so the checker keeps
  * spawning the tool it names and nothing else.
+ *
+ * `status` is `null`, not `1`, when the child never exited. The coercion to `1`
+ * used to make every signal death report as "exit 1", which reads as "the
+ * process ran and chose to fail" — the opposite of what a SIGKILL at exec means,
+ * and the one line a support thread quotes for this class (QA round 1, Q1).
+ * `runChecks` builds the human sentence from `status`/`signal`/`timedOut`.
  */
-export function spawnRunner(command, args, input = undefined) {
-	const result = spawnSync(command, args, { encoding: "utf8", input });
+export function spawnRunner(
+	command,
+	args,
+	input = undefined,
+	env = undefined,
+	timeoutMs = undefined,
+) {
+	const result = spawnSync(command, args, {
+		encoding: "utf8",
+		input,
+		// `env` is spread over the inherited environment rather than replacing it:
+		// a check adds one switch (the spawn probe's `ELECTRON_RUN_AS_NODE`), and a
+		// bare `env: {...}` would take PATH away from every tool it spawns.
+		env: env ? { ...process.env, ...env } : process.env,
+		timeout: timeoutMs,
+	});
+	const timedOut = result.error?.code === "ETIMEDOUT";
 	return {
-		status: result.status ?? 1,
+		status: result.status ?? null,
+		signal: result.signal ?? null,
+		timedOut,
 		stdout: result.stdout ?? "",
-		stderr: result.stderr ?? result.error?.message ?? "",
+		stderr:
+			result.stderr ??
+			(timedOut
+				? `the process did not exit within ${timeoutMs} ms`
+				: (result.error?.message ?? "")),
 	};
 }
 
@@ -778,26 +1206,42 @@ export function verifyArtifacts({
 	 * there is.
 	 */
 	const results = [];
-	const checkApp = (path, arch = null) => [
-		...runChecks({ appPath: path, dmgPath: null, run }),
-		bundledBytecodeCheck(path),
-		bundledPythonCheck(path, { run, expectArch: arch }),
-		privatePythonSeedCheck(path, { expectArch: arch }),
-		// The three halves of the seed's weight, each asserted where the build
-		// assembled it: the content nothing imports, the execute bits that mean
-		// nothing in a bundle, and the venv bootstrap the pruning must not have
-		// reached.
-		prunedSeedCheck(path),
-		seedModeCheck(path),
-		seedBootstrapCheck(path),
-	];
+	const checkApp = (path, arch = null) => {
+		// Read the profile ONCE per app and hand it to everything that asks. Three
+		// checks answer from it - two inside `runChecks`, and the authorization walk
+		// below - and two reads could answer two halves of one question from two
+		// different reads (review round 1, finding 5).
+		const profile = readEmbeddedProfileEntitlements(path, run);
+		return [
+			...runChecks({ appPath: path, dmgPath: null, run, profile }),
+			...profileAuthorizationCheck(path, { run, profile }),
+			bundledBytecodeCheck(path),
+			bundledPythonCheck(path, { run, expectArch: arch }),
+			privatePythonSeedCheck(path, { expectArch: arch }),
+			// The three halves of the seed's weight, each asserted where the build
+			// assembled it: the content nothing imports, the execute bits that mean
+			// nothing in a bundle, and the venv bootstrap the pruning must not have
+			// reached.
+			prunedSeedCheck(path),
+			seedModeCheck(path),
+			seedBootstrapCheck(path),
+		];
+	};
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {
 			log(`No packaged app at ${appPath}`);
 			return { ok: false, results: [] };
 		}
-		log(`Checking app: ${appPath}`);
-		results.push(...runChecks({ appPath, dmgPath: null, run }));
+		// The profile's presence is printed rather than left implicit: it is the fact
+		// that decides whether a restricted entitlement is authorized, and a release
+		// whose log does not say which of the two states it was in cannot be read
+		// afterwards to explain either verdict.
+		const profile = readEmbeddedProfileEntitlements(appPath, run);
+		log(
+			`Checking app: ${appPath} (embedded provisioning profile: ${profile.present ? "present" : "absent"})`,
+		);
+		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
+		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
 		// Neither of the next six is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
@@ -859,6 +1303,24 @@ export function verifyArtifacts({
 		if (interpreters) {
 			log(
 				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
+			);
+		}
+		// The refusal this gate most needed and did not have: a bundle macOS will not
+		// spawn. Its remedy is in the signing arrangement rather than in the build,
+		// so it is named here — the raw output is a signal death or an empty line,
+		// neither of which says what to change.
+		const spawn = failures.find((result) => result.id === "app-spawn");
+		if (spawn) {
+			log(
+				`The app does not spawn: ${spawn.output}. macOS decides this at exec, not at verification — a restricted entitlement with no embedded provisioning profile is refused by amfid (measured: -413 "No matching profile found", SIGKILL at spawn) while codesign, spctl and stapler all pass. Embed the profile that authorizes the claim, or remove the claim; see scripts/macos-entitlement-policy.mjs.`,
+			);
+		}
+		const authorization = failures.find(
+			(result) => result.id === "app-profile-authorization",
+		);
+		if (authorization) {
+			log(
+				`The signature claims an entitlement no embedded profile authorizes: ${authorization.output}. A restricted claim must be authorized by a provisioning profile (Apple TN3125), or macOS refuses to spawn the app; ship the claim with the profile, or ship neither.`,
 			);
 		}
 		// Both remedies below are in the seeding step rather than in the signing

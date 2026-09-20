@@ -74,20 +74,24 @@ export const rosewood: ThemeDefinition = {
 		sunken: "#251C1D",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #383033  accent hue, C* 4.28, +2.00 L*, ΔE00 4.07 off `surface`,
-		 *                       `inkDim` 5.42:1 on the fill, hue 2.16° off `accent`.
-		 * rowSelected #493039  accent hue, C* 13.02, +4.29 L*, ΔE00 6.48 off
-		 *                       `surface` and 8.41 off `rowHover`, `inkDim` 5.03:1, and the
-		 *                       2px `accent` bar at 5.32:1 against it.
+		 * rowHover    #3B3232  panel hue, C* 4.29,
+		 *                       the rule's 0.60 x the panel's 7.43; +2.93 L*,
+		 *                       ΔE00 3.97 off `surface`, `inkDim` 5.26:1.
+		 * rowSelected #483133  panel hue, C* 11.19,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.24 L*,
+		 *                       ΔE00 4.52 off `surface` and 6.84 off
+		 *                       `rowHover`; the pair ranks 1.31 `L*` and 6.9 `C*`,
+		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#383033",
-		rowSelected: "#493039",
+		rowHover: "#3B3232",
+		rowSelected: "#483133",
 
 		ink: "#EEE0DC",
 		/*

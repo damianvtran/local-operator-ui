@@ -54,28 +54,31 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		sunken: "#1E2132",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #333136  accent hue, C* 3.52, +1.63 L*, ΔE00 8.23 off `surface`,
-		 *                       `inkDim` 5.21:1 on the fill, hue 3.02° off `accent`.
-		 * rowSelected #38323E  accent hue, C* 8.53, +2.77 L*, ΔE00 5.96 off
-		 *                       `surface` and 4.80 off `rowHover`, `inkDim` 5.03:1, and the
-		 *                       2px `accent` bar at 5.76:1 against it.
+		 * rowHover    #30313D  panel hue, C* 8.14,
+		 *                       the rule's 0.60 x the panel's 14.41; +1.62 L*,
+		 *                       ΔE00 4.46 off `surface`, `inkDim` 5.22:1.
+		 * rowSelected #2E324E  panel hue, C* 18.86,
+		 *                       the panel's cast + 4.0, floored at 5.0; +2.56 L*,
+		 *                       ΔE00 3.18 off `surface` and 6.96 off
+		 *                       `rowHover`; the pair ranks 0.94 `L*` and 10.7 `C*`,
+		 *                       `inkDim` 5.06:1.
 		 *
-		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 24.24 - past the
-		 * min(0.75 x C*(accent), 24) ceiling - because the old 6.0 separation made
-		 * the fill chase chroma to out-rank the hover. The separation rides the
-		 * `accent` bar and `font-medium` now, so the value is authored by the rule's
-		 * own order instead: the largest `L*` step the inks allow, then the smallest
-		 * chroma that reaches the 4.0 band. `inkDim` binds at 5.03:1 on the fill.
-		 * (The comment this replaces recorded the bar at 0.00:1; it measures 5.76:1.)
+		 * THE PAIR'S RANK IS 0.94 L*, under the 1.0 floor, and the ink floors are
+		 * what refuse it: this palette's whole legal step is 2.68 L*, so the selection
+		 * cannot rise further and the hover cannot fall without breaking
+		 * `inkDim`'s floor on the hover instead. The pair still separates by
+		 * ΔE00 6.96 and ranks 4.9 C*, so the marks are told apart by cast on the one
+		 * palette where lightness has no room.
 		 */
-		rowHover: "#333136",
-		rowSelected: "#38323E",
+		rowHover: "#30313D",
+		rowSelected: "#2E324E",
 
 		ink: "#CAD3F5",
 		/*

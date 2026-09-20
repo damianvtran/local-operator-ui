@@ -538,6 +538,40 @@ const api = {
 				ipcRenderer.removeListener("update-install-in-flight", handler);
 			};
 		},
+		/**
+		 * The step an install is on, while it runs before the app quits.
+		 *
+		 * The wait the person actually sits through: the pre-flight hashes the
+		 * artifact and runs `codesign` over the installed bundle, and the staging
+		 * extracts it and probes the result. Three phases rather than a percentage,
+		 * because each step is one indivisible call the app gets no progress out of.
+		 */
+		onUpdateInstallProgress: (
+			callback: (info: {
+				phase: "verifying" | "staging" | "starting";
+			}) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-progress", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-progress", handler);
+			};
+		},
+		/**
+		 * An install that landed, reported once on the launch after it.
+		 *
+		 * The fast path's window is seconds, so the app coming back is no longer the
+		 * report that the update went in - this is.
+		 */
+		onUpdateInstallSucceeded: (
+			callback: (info: { version: string }) => void,
+		) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-install-succeeded", handler);
+			return () => {
+				ipcRenderer.removeListener("update-install-succeeded", handler);
+			};
+		},
 		onBeforeQuitForUpdate: (callback: () => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("before-quit-for-update", handler);
@@ -728,6 +762,189 @@ const api = {
 			ipcRenderer.on("browser-popup-blocked", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-popup-blocked", handler);
+			};
+		},
+	},
+
+	/**
+	 * The console feature's controls, and its one push channel.
+	 *
+	 * A namespace of its own rather than more operations on `desktop`, for the
+	 * browser namespace's own reason: `desktop`'s vocabulary maps to BACKEND HTTP
+	 * paths, and a console operation routed through that allowlist would give the
+	 * renderer a way to name a local surface through a channel designed for the
+	 * backend. Every handler behind these channels checks the sender in main.
+	 *
+	 * THE TWO HALVES ARE DIFFERENT SHAPES ON PURPOSE. The control plane is
+	 * request/response (`invoke`): state, create, the pane's own lifecycle, typing,
+	 * keys, the reported rect, the secure toggle. The DATA plane is a subscription —
+	 * `subscribe` answers with the bytes to replay and the offset to resume from, and
+	 * the frames then arrive on `console-output`/`console-exit`, keyed by surface so
+	 * a late frame from a stream nobody is watching cannot land on another surface's
+	 * consumer. A pty is a byte stream; `desktop-request` is the wrong size class and
+	 * the wrong direction, which is why this namespace exists at all.
+	 */
+	console: {
+		state: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("console-state", sessionId ?? null),
+		/** Create a surface the USER asked for. Main sets the origin to `user`; the
+		 * renderer cannot name it, because provenance is not a renderer's to claim. */
+		createSurface: (request: {
+			sessionId: string;
+			cwd?: string;
+			command?: string;
+			cols?: number;
+			rows?: number;
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("console-create-surface", request),
+		/** A pane is now showing this surface. Never resizes it. */
+		openPane: (surface: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-open-pane", surface),
+		/** No pane is showing any surface. Never resizes anything. */
+		closePane: (): Promise<unknown> => ipcRenderer.invoke("console-close-pane"),
+		/** The pane switched to another surface. Never resizes either of them. */
+		selectSurface: (surface: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-select-surface", surface),
+		/** Human typing. Never persisted, never logged, never readable back. */
+		input: (surface: string, text: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-input", surface, text),
+		keys: (surface: string, keys: string[]): Promise<unknown> =>
+			ipcRenderer.invoke("console-keys", surface, keys),
+		/** The pane's own measurements. Main decides the grid from them. */
+		setContentRect: (
+			surface: string,
+			report: {
+				contentRect: { x: number; y: number; width: number; height: number };
+				cellWidth: number;
+				cellHeight: number;
+				visible: boolean;
+				theme?: string | null;
+			},
+		): Promise<unknown> =>
+			ipcRenderer.invoke("console-content-rect", surface, report),
+		setSecure: (surface: string, on: boolean): Promise<unknown> =>
+			ipcRenderer.invoke("console-secure-toggle", surface, on),
+		/**
+		 * Subscribe to one surface's stream, replaying from `fromByte`.
+		 *
+		 * Answers with the bytes to replay FIRST (base64) and the offset the live
+		 * frames resume from, so the two-step cannot race: a read and a subscribe
+		 * issued as two calls would leave a window in which a byte is lost or doubled.
+		 */
+		subscribe: (
+			surface: string,
+			fromByte: number,
+		): Promise<{
+			surface: string;
+			replay_base64: string;
+			from_byte: number;
+			to_byte: number;
+			truncated: boolean;
+		}> => ipcRenderer.invoke("console-subscribe", surface, fromByte),
+		unsubscribe: (surface: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-unsubscribe", surface),
+		/**
+		 * Main broadcast something about a surface's state — today only a grid it
+		 * decided (§8.2 step 2(c)).
+		 *
+		 * The frame carries no payload on purpose: the mirror applies a grid "only as
+		 * the value main returned", so the pane re-reads `state()` and applies that.
+		 * A listener therefore acts by re-reading, never by trusting a number that
+		 * arrived on a push channel.
+		 */
+		onStateChanged: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("console-state-changed", handler);
+			return () => {
+				ipcRenderer.removeListener("console-state-changed", handler);
+			};
+		},
+		/** One coalesced frame of pty output, base64-encoded. */
+		onOutput: (
+			callback: (payload: {
+				surface: string;
+				seq: number;
+				bytes_base64: string;
+			}) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { surface?: unknown; seq?: unknown; bytes_base64?: unknown },
+			) => {
+				if (
+					typeof payload?.surface === "string" &&
+					typeof payload.seq === "number" &&
+					typeof payload.bytes_base64 === "string"
+				) {
+					callback({
+						surface: payload.surface,
+						seq: payload.seq,
+						bytes_base64: payload.bytes_base64,
+					});
+				}
+			};
+			ipcRenderer.on("console-output", handler);
+			return () => {
+				ipcRenderer.removeListener("console-output", handler);
+			};
+		},
+		/** The surface's process ended. Delivered once per surface. */
+		onExit: (
+			callback: (payload: { surface: string; exit_code: number }) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { surface?: unknown; exit_code?: unknown },
+			) => {
+				if (
+					typeof payload?.surface === "string" &&
+					typeof payload.exit_code === "number"
+				) {
+					callback({ surface: payload.surface, exit_code: payload.exit_code });
+				}
+			};
+			ipcRenderer.on("console-exit", handler);
+			return () => {
+				ipcRenderer.removeListener("console-exit", handler);
+			};
+		},
+		/**
+		 * An agent asked for a pane (`console_create` with `reveal`).
+		 *
+		 * The renderer owns the two rules main cannot apply: `session` opens the pane
+		 * only when the app is already displaying that session, and `open` claims the
+		 * right slot without ever raising the window. Main has already applied the
+		 * rule it owns — an `open` that would have needed a raise was downgraded
+		 * before this frame was sent.
+		 */
+		onReveal: (
+			callback: (payload: {
+				surface: string;
+				session_id: string;
+				mode: "none" | "session" | "open";
+			}) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { surface?: unknown; session_id?: unknown; mode?: unknown },
+			) => {
+				if (
+					typeof payload?.surface === "string" &&
+					typeof payload.session_id === "string" &&
+					(payload.mode === "none" ||
+						payload.mode === "session" ||
+						payload.mode === "open")
+				) {
+					callback({
+						surface: payload.surface,
+						session_id: payload.session_id,
+						mode: payload.mode,
+					});
+				}
+			};
+			ipcRenderer.on("console-reveal", handler);
+			return () => {
+				ipcRenderer.removeListener("console-reveal", handler);
 			};
 		},
 	},

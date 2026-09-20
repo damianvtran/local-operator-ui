@@ -2112,7 +2112,10 @@ async function sceneSessionArchive(cdp) {
 	const disjoint = (a, b) =>
 		a === null || b === null
 			? null
-			: a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+			: a.right <= b.left ||
+				b.right <= a.left ||
+				a.bottom <= b.top ||
+				b.bottom <= a.top;
 	check(
 		"a successful archive offers an Undo on the surface that performed it",
 		offerBoxes.offer !== null && offerBoxes.panel !== null,
@@ -2135,7 +2138,8 @@ async function sceneSessionArchive(cdp) {
 		stable: readFileSync(offerFirst.path).equals(
 			readFileSync(offerSecond.path),
 		),
-		offerOnScreen: (await drawnSelector(cdp, "[data-session-archive-undo]")) === true,
+		offerOnScreen:
+			(await drawnSelector(cdp, "[data-session-archive-undo]")) === true,
 	});
 
 	/*
@@ -11125,16 +11129,26 @@ async function sceneComposer(cdp) {
 	 * was dead code that claimed two rows paint that do not, and the scene passed
 	 * them with `with no command vocabulary the field keeps its native ink` — a
 	 * message whose stated cause is false wherever a backend answers (39 options are
-	 * offered for a bare `/`). The three `false` rows are the rule's own answers,
-	 * measured on this scene's drafts: `/compact` with text after it is a draft the
-	 * planner sends as written (so nothing paints and Enter posts prose), and
-	 * `/team …` with a newline is the multi-line kill. Asserting paint ⇔ the plan is
-	 * what would have caught the round-2 gap this scene exists to close, so it is
-	 * asserted here instead of tabulated.
+	 * offered for a bare `/`). Each row below is the rule's own answer for THAT
+	 * draft, and every one of them has been re-measured against the planner since
+	 * the wire's argument vocabulary landed: the `false` rows are the drafts the
+	 * planner SENDS as written (so nothing paints and Enter posts prose) —
+	 * `/compact` with text after it, a slash token inside a sentence, and prose that
+	 * merely opens with a command word. Asserting paint ⇔ the plan is what would have
+	 * caught the round-2 gap this scene exists to close, so it is asserted here
+	 * instead of tabulated.
+	 *
+	 * `start-name-instruction` FLIPPED TO `true` WITH THE LEADING-LINE RULE, and the
+	 * flip is the point rather than an adjustment: `/team …` with a NEWLINE used to
+	 * be the multi-line kill (plan `send` at an end-of-draft caret, so the tint was
+	 * withheld and Enter posted the draft as a message), and now the leading line is
+	 * read when no token sits at the caret, the plan is `reassemble`, and the app
+	 * paints the run and stages the draft on one line instead. Leaving it `false`
+	 * would have asserted the behaviour this change removed.
 	 */
 	const EXPECTS_PAINT = {
 		"command-alone": true,
-		"start-name-instruction": false,
+		"start-name-instruction": true,
 		"mid-sentence-token": false,
 		"prose-leading-command-word": false,
 		"wrapped-command-line": false,

@@ -618,7 +618,10 @@ test("a page that CARRIES the id back IS the resurrection that settles the tombs
 	await store.getState().fetchSessions();
 	assert.equal(store.getState().forgotten[SESSION], undefined);
 	assert.deepEqual(
-		store.getState().sessions.map((row) => row.session_id).sort(),
+		store
+			.getState()
+			.sessions.map((row) => row.session_id)
+			.sort(),
 		[SESSION, OTHER].sort(),
 	);
 });

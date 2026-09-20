@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	appendFileSync,
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -47,7 +48,8 @@ import { build } from "esbuild";
  */
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/main/update-install";',
+		contents:
+			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -88,6 +90,7 @@ const {
 	installLaunchHoldNotice,
 	installStartedText,
 	installedBundleSealBlock,
+	installLivenessNow,
 	isInstallInFlight,
 	isPythonBytecodePath,
 	isSourceBuildRef,
@@ -98,6 +101,7 @@ const {
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
+	serverUpdateFailureSentence,
 	parseSealViolations,
 	pendingInstallAgeSeconds,
 	pendingInstallMarkerPath,
@@ -227,10 +231,17 @@ const {
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
+	mainExecutablePath,
+	profileAuthorizationCheck,
+	profileAuthorizes,
 	runChecks,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+// The policy module the GATE reads, imported beside the bundle the APP reads from
+// (`install` above): the two implementations of one rule are only allowed to stay
+// separate because a test asserts they agree, and that test needs both in scope.
+const policy = await import("./macos-entitlement-policy.mjs");
 
 const tempDirs = [];
 function tempDir(prefix) {
@@ -921,6 +932,9 @@ test("pending marker survives a write, detects failure or success, and clears", 
 		artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 		startedAt: "2026-09-11T22:36:48.000Z",
 		watchdogPid: 4242,
+		// The pid of an install the app started itself. Null is Squirrel's own
+		// path, which is what this case is about.
+		installerPid: null,
 	});
 	assert.deepEqual(readPendingInstallMarker(dir), marker);
 
@@ -1006,7 +1020,7 @@ test("a superseded marker is stale, not a failed update", () => {
  * update had not completed, two seconds before ShipIt aborted the install on its
  * own final check.
  */
-test("an install still in flight is not a failure, and a loaded job alone is not an install", () => {
+test("an install still in flight is not a failure, and a live installer signal alone is not an install", () => {
 	const started = "2026-09-13T09:39:00.991Z";
 	const marker = {
 		targetVersion: "0.19.5",
@@ -1018,7 +1032,15 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
 	const now = Date.parse(started) + 280 * 1000;
 
-	assert.equal(isInstallInFlight({ marker, jobState: "running", now }), true);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobState: "running",
+			installerRunning: true,
+			now,
+		}),
+		true,
+	);
 	assert.equal(
 		evaluatePendingInstall({
 			marker,
@@ -1028,14 +1050,28 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		"in-flight",
 	);
 
-	// Every fact is needed, and each one alone is wrong. A job with no marker, a
-	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
-	// runs=3114) are all decided by the version: that is a failure.
+	// Every fact is needed, and each one alone is wrong. A live installer signal
+	// with no marker, a marker with no live installer signal, and the signal an old
+	// failure left behind for hours (0.17.0: a job loaded with runs=3114) are all
+	// decided by the version: that is a failure.
 	assert.equal(
-		isInstallInFlight({ marker: null, jobState: "running", now }),
+		isInstallInFlight({
+			marker: null,
+			jobState: "running",
+			installerRunning: true,
+			now,
+		}),
 		false,
 	);
-	assert.equal(isInstallInFlight({ marker, jobState: "absent", now }), false);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobState: "absent",
+			installerRunning: false,
+			now,
+		}),
+		false,
+	);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
@@ -1068,6 +1104,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
 		}),
 		true,
@@ -1076,6 +1113,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
 		}),
 		true,
@@ -1084,6 +1122,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
 		}),
 		false,
@@ -1099,6 +1138,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker: { ...marker, startedAt: "" },
 			jobState: "running",
+			installerRunning: true,
 			now,
 		}),
 		false,
@@ -1431,8 +1471,42 @@ test("a failure after an install was in flight names the relaunch as the cause",
  * the three committed frames rendered a sentence the app does not ship (reviews
  * R6 and D9; R1 for the same drift in the in-flight fixture). The frames cannot
  * be checked against the payload by a test because they are pixels - the
- * fixtures can, and the frames are a function of them.
+ * fixtures can, and the frames are a function of them. The server-update failure
+ * sentence is the newest entry in the list below for exactly that reason: it was
+ * the one fixture this case did not cover, and it had drifted (design review
+ * round 2, D2).
  */
+/**
+ * The facts the failure fixture stands for, in one place so the sentence and the
+ * output under it cannot be composed from different ones.
+ *
+ * The diagnosis is the same value the composer turns into its pointer clause and
+ * the producer sends as `installerOutput` (`update-service.ts`), which is what makes
+ * the pairing below a property rather than two independent strings.
+ */
+const SERVER_UPDATE_FAILURE_SENTENCE_INPUTS = (() => {
+	const diagnosis = [
+		"uv tool upgrade local-operator",
+		"Resolved 55 packages in 1.02s",
+		"Installed 1 package in 12ms",
+		" + local-operator==0.55.10",
+	].join("\n");
+	return {
+		diagnosis,
+		sentence: serverUpdateFailureSentence({
+			rebuildRoute: false,
+			ran: true,
+			exitCode: 0,
+			groupSurvived: false,
+			diagnosis,
+			target: "0.55.10",
+			after: "0.55.9",
+			before: "0.55.9",
+			updateCommand: "lop update",
+		}),
+	};
+})();
+
 test("the story fixtures carry the payload strings verbatim", () => {
 	const stories = readFileSync(
 		join(
@@ -1458,6 +1532,32 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		null,
 		"startup",
 	);
+	// The other refusal on this panel, and the one the 0.29.6 incident produced:
+	// the artifact macOS refuses to spawn. It is built by a different producer
+	// (`stagedSignatureBlock`), so its fixture has to be held to that producer's
+	// strings for the same reason as the two above - the design round signs off on
+	// pixels, and a fixture that drifted renders a sentence the app never sends.
+	const unlaunchable = install.stagedSignatureBlock({
+		entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.ok(unlaunchable, "the 0.29.6 signature must still be refused");
+	// The OTHER arm of the same code, which no fixture covered until design round 1
+	// (D3): a signature that could not be read, so the app knows only that it cannot
+	// tell. Its heading, message and remedy are asserted the same way, because the
+	// frame is the only place a reader sees which of the two states they are in.
+	const unchecked = install.stagedSignatureBlock({
+		entitlementsPlist: null,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.ok(
+		unchecked,
+		"an unreadable signature with no profile must be refused",
+	);
 	for (const [what, text] of [
 		["the in-flight message", inFlight.message],
 		["the cancelled-by-relaunch message", cancelled.message],
@@ -1471,6 +1571,24 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		["the start-up refusal message", startup.message],
 		["the start-up refusal heading", startup.heading],
 		["the start-up refusal dismiss label", startup.dismissLabel],
+		/*
+		 * THE SERVER-UPDATE FAILURE SENTENCE AND THE OUTPUT IT POINTS AT, which
+		 * this list never covered and which is why it drifted: the fixture stood for
+		 * a payload whose sentence no arm of `serverUpdateFailureSentence` emits, and
+		 * then for a pairing no shipped path composes - the "output is below" pointer
+		 * with no output (design review round 2, D2; round 3, R3-1 = D4).
+		 */
+		[
+			"the server-update failure message",
+			SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence,
+		],
+		["the unlaunchable-artifact message", unlaunchable.message],
+		["the unlaunchable-artifact remedy", unlaunchable.remedy.text],
+		["the unlaunchable-artifact dismiss label", unlaunchable.dismissLabel],
+		["the unchecked-artifact heading", unchecked.heading],
+		["the unchecked-artifact message", unchecked.message],
+		["the unchecked-artifact remedy", unchecked.remedy.text],
+		["the unchecked-artifact dismiss label", unchecked.dismissLabel],
 	]) {
 		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
@@ -1488,6 +1606,83 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// app is what an unhealed break leads to, not something this pass can assert
 	// about a bundle it has only just measured (review R2).
 	assert.doesNotMatch(startup.message, /will refuse/);
+
+	/*
+	 * D1's own regression guard, which the verbatim list cannot express because it is
+	 * about a field that must be ABSENT. The refusal's remedy used to carry
+	 * `DOWNLOAD_PAGE_URL`, whose every affordance resolves to `releases/latest` —
+	 * the channel that staged the artifact being refused — so the primary action
+	 * handed the reader the bundle the app had just declined to install. A frame
+	 * cannot show that the button is wrong (it looks the same as the sibling's), so
+	 * the guard is on the fixture's shape: no url in this state, and the dismiss
+	 * label that does not promise a retry (design round 1, D1 and D6).
+	 */
+	const cannotLaunchBody = stories.slice(
+		stories.indexOf("if (window.triggerUpdateInstallBlockedCannotLaunch)"),
+	);
+	const cannotLaunchFixture = cannotLaunchBody.slice(
+		0,
+		cannotLaunchBody.indexOf(
+			"if (window.triggerUpdateInstallBlockedCannotCheck)",
+		),
+	);
+	assert.ok(
+		cannotLaunchFixture.length > 0,
+		"the unlaunchable-artifact fixture was not found in the story file",
+	);
+	assert.doesNotMatch(
+		cannotLaunchFixture,
+		/url:/,
+		"the refusal fixture must not offer the download page: it serves the artifact this state refused",
+	);
+	assert.match(cannotLaunchFixture, /dismissLabel: "Not now"/);
+
+	/*
+	 * The installer output is a shell transcript in the fixture - an array joined
+	 * with "\n" - so it is matched line by line rather than as one literal, which is
+	 * also what makes a line dropped from the transcript a failure rather than a
+	 * still-passing substring.
+	 */
+	for (const line of SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.diagnosis.split(
+		"\n",
+	)) {
+		assert.ok(
+			stories.includes(line),
+			`the installer output line ${JSON.stringify(line)} is not in the story fixture - the block the sentence points at must carry the producer's own words`,
+		);
+	}
+
+	/*
+	 * THE PAIRING THE SENTENCE PROMISES (review round 3, R3-1 = design D4). The
+	 * composer emits the "output is below" pointer only for a non-empty diagnosis,
+	 * and the producer sends that same value as `installerOutput` - so a payload
+	 * carrying that sentence without the output is a report the app cannot build,
+	 * and the frame it renders promises a block nothing paints. The two are asserted
+	 * together here, in the payload the frame is captured from.
+	 */
+	const sentence = SERVER_UPDATE_FAILURE_SENTENCE_INPUTS.sentence;
+	assert.match(
+		sentence,
+		/The installer's own output is below\.$/,
+		"this fixture stands for the arm whose pointer names the block beside it",
+	);
+	const failurePayload = stories.slice(
+		stories.indexOf("if (window.triggerBackendUpdateError)"),
+	);
+	const payloadBody = failurePayload.slice(
+		0,
+		failurePayload.indexOf("return false;"),
+	);
+	assert.match(
+		payloadBody,
+		/message:\s*SERVER_UPDATE_FAILURE_MESSAGE/,
+		"the failure listener must send the pinned sentence",
+	);
+	assert.match(
+		payloadBody,
+		/installerOutput:\s*SERVER_UPDATE_FAILURE_OUTPUT/,
+		"the frame must carry the installer output its sentence points at - a pointer with no block is a pairing no shipped payload composes (R3-1)",
+	);
 	assert.doesNotMatch(startup.message, /the next time you start it/);
 	// The remedy is stated ONCE, by the remedy line. D1: the message used to end
 	// with the same instruction, 7px above the line that repeats it - measured, so
@@ -1589,12 +1784,28 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		executableName: "Local Operator",
 		appPid: 4242,
 		shipItJob: "com.local-operator.ShipIt",
+		// The identity pair the script's second liveness question needs (review
+		// R2-1). Synthetic paths, and they matter for the assertion below: they
+		// travel in the environment like every other path here, so a listing the
+		// script reads cannot match its own command line through them.
+		shipItPath:
+			"/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+		stagingRoot:
+			"/Users/someone/Library/Application Support/Local Operator/update-staging",
 	});
 
 	// The paths travel in the environment: `sh -c` exposes the script text as the
 	// process's own command line, and the old pgrep-based check would then match
 	// the watchdog itself through the very check that waits for the app to exit.
 	assert.equal(plan.script.includes("/Applications/Local Operator.app"), false);
+	assert.equal(
+		plan.script.includes(plan.env.LO_UPDATE_WATCHDOG_SHIPIT_PATH),
+		false,
+	);
+	assert.equal(
+		plan.script.includes(plan.env.LO_UPDATE_WATCHDOG_STAGING_ROOT),
+		false,
+	);
 	assert.equal(plan.env.LO_UPDATE_WATCHDOG_APP_PID, "4242");
 	assert.equal(
 		plan.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB,
@@ -1621,9 +1832,20 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// deadline path falls through to it (review Q1), and the decision it waits on
 	// is made of the job going AND the swap landing on disk (review R11).
 	assert.match(plan.script, /deadline=\$\(\( \$\(now\) \+ 600 \)\)/);
+	/*
+	 * The activation at the end, and what now stands in front of it (UX U7): a
+	 * landed swap is the installer's to bring back - ShipIt relaunches the app
+	 * itself - so the script must not front a window the user already has. The
+	 * order is asserted, not just the presence, because "open -a anyway" is the
+	 * defect: the swap check has to come first, and the old-pid check after it.
+	 */
 	assert.match(
 		plan.script,
-		/if app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/,
+		/if swap_landed; then\n\tif \[ -n "\$NAME" \] && \[ -x "\$BUNDLE\/Contents\/MacOS\/\$NAME" \]; then\n\t\topen -g -a "\$BUNDLE"/,
+	);
+	assert.match(
+		plan.script,
+		/\nfi\nif app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/,
 	);
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
@@ -1668,7 +1890,34 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 */
 	assert.equal(plan.hardTimeoutSeconds, WATCHDOG_HARD_TIMEOUT_SECONDS);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
-	assert.match(plan.script, /&& shipit_loaded; then\n\t\t\tholding=1/);
+	// The hold is keyed on `install_live`, which is the installer's own pid for an
+	// install this app started itself and `shipit_loaded` for one Squirrel
+	// submitted - and NOT on the job when there is a pid, because this machine
+	// keeps the job registered long after a successful install.
+	assert.match(plan.script, /&& install_live; then\n\t\t\tholding=1/);
+	/*
+	 * And the script's own reader of the installer's pid asks the same second
+	 * question the app does before it declares the installer gone (review R2-1):
+	 * the pid, then a process listing matched on this app's ShipIt path AND this
+	 * app's staging root. One fact alone is not enough - the machine runs other
+	 * applications' ShipIt processes - and the two facts travel in the environment,
+	 * like every other path here.
+	 */
+	assert.match(
+		plan.script,
+		/installer_running\(\) \{\n\t\[ -n "\$INSTALLER_PID" \] \|\| return 1/,
+	);
+	assert.match(
+		plan.script,
+		/if kill -0 "\$INSTALLER_PID" 2>\/dev\/null; then return 0; fi/,
+	);
+	assert.match(plan.script, /\tshipit_elsewhere\n\}/);
+	assert.match(
+		plan.script,
+		/ps -Ao command= -ww 2>\/dev\/null \| grep -F "\$SHIPIT_PATH" \| grep -F "\$STAGING_ROOT"/,
+	);
+	assert.match(plan.env.LO_UPDATE_WATCHDOG_SHIPIT_PATH, /\/ShipIt$/);
+	assert.match(plan.env.LO_UPDATE_WATCHDOG_STAGING_ROOT, /update-staging/);
 	assert.match(plan.script, /if \[ "\$holding" -eq 1 \]; then/);
 	assert.match(plan.script, /notify\(\) \{/);
 	assert.match(plan.script, /osascript -e 'on run argv'/);
@@ -1698,13 +1947,19 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// Without a label there is no job to ask about, and the script still waits on
 	// the pid alone rather than falling back to a name.
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB, "");
+	// The installer's pid is the second signal, and empty is what "this install has
+	// no installer of ours" means - which is what makes the script's liveness
+	// signal the job here, exactly as it was before this field existed.
+	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_INSTALLER_PID, "");
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_TARGET_VERSION, "0.18.0");
-	// And with no label the appear window is skipped rather than spent pretending
-	// to observe a job it cannot see, which used to end in a relaunch carrying no
-	// evidence about the install at all (review R14).
+	// And the appear window is only for an install that has not STARTED yet, which
+	// is a question only the launchd path asks (review R14, UX U6): with no label
+	// there is nothing to appear, and an installer this app spawned itself exists
+	// before the quit, so "nothing there" is already an answer for it rather than
+	// ${appearSeconds}s of pretending that ends in a relaunch with no evidence.
 	assert.match(
 		bounded.script,
-		/if \[ "\$job_known" -eq 1 \]; then\n\tappear_deadline=/,
+		/if \[ "\$signal_known" -eq 1 \] && \[ -z "\$INSTALLER_PID" \]; then\n\tappear_deadline=/,
 	);
 
 	assert.equal(
@@ -2396,18 +2651,26 @@ test("an unanswerable job probe holds rather than starting the app into the inst
  * not happen, or a non-zero exit the app's log would report as a failed watch.
  * The shim fails every call here (a missing notifier is the same case, since the
  * script drops the status either way) and the relaunch still happens.
+ *
+ * The install has to be LIVE at the moment of the announcement for this case to
+ * mean anything, which is why the plan carries an installer pid here: since UX U1
+ * the notice is raised only while an install is genuinely running, so a scenario
+ * with nothing installing is a scenario in which no notifier is called at all -
+ * and the assertion below would pass vacuously. The installer is killed mid-wait,
+ * which is also what ends the wait: the pid going IS the install being over.
  */
 test("a failed notification does not change the watchdog's decision or its exit status", async () => {
 	const dir = tempDir("lo-watchdog-notify-");
 	const fixture = makeWatchdogFixture(dir);
-	// No job: the first path, where the app is started as soon as it is gone.
 	fixture.setNotifierExit(1);
 	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
 	const plan = buildWatchdogPlan({
 		appBundlePath: fixture.bundle,
 		executableName: "Fixture",
 		appPid: app.pid,
 		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
@@ -2419,13 +2682,186 @@ test("a failed notification does not change the watchdog's decision or its exit 
 	const before = fixture.launches().length;
 	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
 	app.kill();
-	const result = await watchdog.exit;
-	assert.equal(result.code, 0);
-	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	// Past the announcement, and past the poll that follows it: the failing
+	// notifier has been called by now, and nothing has been decided by it.
+	await new Promise((resolve) => setTimeout(resolve, 2500));
 	assert.ok(
 		fixture.notifications().length > 0,
 		"the failing notifier was never called, so this proves nothing",
 	);
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"a failed notification turned into a launch into a live install",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+/**
+ * A job launchd is late to submit still gets the notice that says stay closed.
+ *
+ * WHY THIS IS DRIVEN RATHER THAN READ (QA round 2, Q1). `launchctl` answers 113
+ * for the first seconds of every Squirrel install - the job is submitted as part
+ * of the quit - so a notice whose gate is evaluated once, at the announcement,
+ * can be suppressed by the very lateness the appear window exists to absorb. The
+ * state file here is that lateness: it appears AFTER the announcement was due, so
+ * a script that decided once at the announcement has nothing to say, and the one
+ * banner the person was going to get ("the window vanished, don't reopen it")
+ * never arrives.
+ *
+ * The assertion is the notice, not a call: the notifier shim writes what it was
+ * asked to say, and the case also pins that nothing was launched while the
+ * install was live - a notice bought with a relaunch into the swap would be a
+ * worse bug than the silence it replaces.
+ */
+test("the stay-closed notice follows a job that launchd submits late", async () => {
+	const dir = tempDir("lo-watchdog-late-job-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 30,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 20,
+		announceSeconds: 2,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+	// The ordinary late submission: nothing is loaded when the announcement is
+	// due, and the job appears a second or two into the appear window.
+	await new Promise((resolve) => setTimeout(resolve, 3000));
+	assert.equal(
+		fixture.notifications().length,
+		0,
+		"nothing should be claimed before the job appears",
+	);
+	writeFileSync(fixture.stateFile, "loaded\n", "utf8");
+	const deadline = Date.now() + 8000;
+	const stayClosed = /Keep Local Operator closed until it opens again/;
+	while (Date.now() < deadline) {
+		if (fixture.notifications().some((line) => stayClosed.test(line))) break;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	assert.ok(
+		fixture.notifications().some((line) => stayClosed.test(line)),
+		`the job appeared late and the notice never followed: ${JSON.stringify(fixture.notifications())}`,
+	);
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"the app was started into an install that was still running",
+	);
+
+	// And the install ending is what ends the wait: the job goes, the app returns.
+	rmSync(fixture.stateFile, { force: true });
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+/**
+ * The watchdog's own reader of "is the installer gone" is the app's reader.
+ *
+ * WHY THIS EXISTS (review R2-1). The script answered a marker's installer pid
+ * with `kill -0` alone, while the app answers it with `installerIsAlive ||
+ * installerElsewhere` - and `installerElsewhere` exists because one pid is a
+ * snapshot: the spawner `exec`s ShipIt, so the common case keeps the pid, but a
+ * ShipIt that re-execs or forks internally leaves the recorded pid dead while the
+ * install it is carrying out continues. In that case the script read "the install
+ * is over", the swap check failed, and it ran a plain `open -a` into the install
+ * still running - the Code=-9 abort this change exists to remove. The pid here is
+ * genuinely gone (started, killed, reaped); the install is a process whose
+ * command line carries this app's own ShipIt AND a state plist under this app's
+ * own staging root, which is the pair the app's predicate requires.
+ *
+ * The second half is the other direction, and it is why BOTH facts and not
+ * either: a process naming only the ShipIt path is not this install's, so the
+ * script must treat the install as over and bring the app back.
+ */
+test("a dead installer pid with this app's ShipIt still at work is a live install", async () => {
+	const dir = tempDir("lo-watchdog-elsewhere-");
+	const fixture = makeWatchdogFixture(dir);
+	const shipItPath = join(
+		fixture.bundle,
+		"Contents",
+		"Frameworks",
+		"Squirrel.framework",
+		"Versions",
+		"A",
+		"Resources",
+		"ShipIt",
+	);
+	const stagingRoot = join(dir, "update-staging");
+	mkdirSync(dirname(shipItPath), { recursive: true });
+	/*
+	 * The install's own installer, as a process: the resolved ShipIt path with a
+	 * state plist under this app's staging root as its argument, which is the shape
+	 * an installer's own argv has. Spawned DIRECTLY rather than through `sh -c`
+	 * with the facts in a comment, and that is not a detail: `sh -c "sleep 30"`
+	 * execs the sleep, so the process's own line is `sleep 30` and the two facts
+	 * never reach a listing (measured - the first version of this case asserted a
+	 * hold against a process that no longer named either).
+	 */
+	writeFileSync(shipItPath, "#!/bin/sh\nsleep 30\n", "utf8");
+	spawnSync("/bin/chmod", ["+x", shipItPath]);
+	const elsewhere = startProcess(shipItPath, [
+		join(stagingRoot, "0.28.5-abc", "state.plist"),
+	]);
+	// The pid the marker names, genuinely gone: started, killed, reaped.
+	const installer = startProcess("/bin/sleep", ["30"]);
+	installer.kill();
+	await new Promise((resolve) => installer.on("exit", resolve));
+	const app = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		shipItPath,
+		stagingRoot,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 20,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+	await new Promise((resolve) => setTimeout(resolve, 4000));
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"the app was launched into an install a ShipIt was still carrying out",
+	);
+
+	/*
+	 * And one fact alone is not this install's installer: the same ShipIt path with
+	 * an argument outside our staging root is another application's install, so the
+	 * script declares this install over and brings the app back even though that
+	 * process is running.
+	 */
+	elsewhere.kill();
+	const foreign = startProcess(shipItPath, [
+		join(dir, "not-our-staging", "state.plist"),
+	]);
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+	foreign.kill();
 });
 
 /**
@@ -2797,7 +3233,7 @@ test("size, sha512 and free space are each required before the install is offere
 	 */
 	assert.equal(
 		needed,
-		ARTIFACT.size + INSTALLED * 2 + INSTALL_DISK_SLACK_BYTES,
+		ARTIFACT.size + INSTALLED * 3 + INSTALL_DISK_SLACK_BYTES,
 	);
 	assert.ok(needed > ARTIFACT.size * 3);
 
@@ -2805,7 +3241,7 @@ test("size, sha512 and free space are each required before the install is offere
 	assert.equal(full.ok, false);
 	assert.equal(full.block.code, "insufficient-disk-space");
 	assert.match(full.block.message, /version 0\.18\.0/);
-	assert.match(full.block.detail, /two 1\.0 GiB app copies/);
+	assert.match(full.block.detail, /three 1\.0 GiB app copies/);
 
 	// The old boundary would have passed here and failed inside the install.
 	assert.equal(staged(ARTIFACT.size * 3).ok, false);
@@ -3481,9 +3917,22 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			"app-codesign",
 			"app-spctl",
 			"app-stapler",
+			// The question no other check in this list asks, and the one that
+			// bricked 0.29.6: will macOS actually spawn what we are about to ship?
+			// Honoured only by executing the binary — amfid's refusal is invisible to
+			// codesign, spctl and stapler alike (both measured on the real bundle).
+			"app-spawn",
+			// The cause behind it — a restricted entitlement with no profile to
+			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
+			// which walks every executable in the bundle rather than reading the
+			// launcher's signature once (review round 1, finding 1). Keeping the id
+			// while widening the population is deliberate: a failure is still the
+			// candidate's own, which is what `verify-signed-update.mjs` acts on.
 			// The passkey entitlement, asserted on the SIGNED bundle: every failure
 			// downstream of it is silent by design, so the release gate reads it off
 			// the artifact rather than trusting the build (review round 1, finding 6).
+			// Bidirectional since 0.29.6: absent is the shipped default, and present
+			// is only acceptable when a profile authorizes it.
 			"app-webauthn-entitlement",
 			"dmg-spctl",
 			"dmg-stapler",
@@ -3532,6 +3981,17 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// notarized and stapled, and the image itself is none of those.
 	const shippedV0170 = (command, args) => {
 		const joined = args.join(" ");
+		// The spawn probe executes the bundle's own main executable; a stub has to
+		// answer for it like any other command this file runs.
+		if (joined === "-p process.exit(0)") {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		}
 		if (command === "/usr/bin/codesign") {
 			return { status: 0, stdout: "", stderr: "" };
 		}
@@ -3567,29 +4027,41 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
 		failing.failures.map((result) => result.id),
-		// The app's own WebAuthn entitlement is the first thing wrong here: 0.17.0's
-		// signature carries no keychain access group, and the release gate reads that
-		// off the artifact rather than trusting the build (review round 1, finding 6).
-		["app-webauthn-entitlement", "dmg-spctl", "dmg-stapler"],
+		// The image is the only thing wrong here. 0.17.0's app signature carries no
+		// WebAuthn group, which the gate reads off the artifact rather than trusting
+		// the build (review round 1, finding 6) — and since 0.29.6 "no group" is the
+		// SHIPPED arrangement rather than a failure, so that check passes here.
+		["dmg-spctl", "dmg-stapler"],
 	);
 	assert.match(
 		failing.failures.find((result) => result.id === "dmg-spctl").output,
 		/no usable signature/,
 	);
 
-	// The same artifacts after the fix: image signed, notarized and stapled.
+	// The same artifacts after the fix: image signed, notarized and stapled, app
+	// group-free — which is what the release path ships while no provisioning
+	// profile exists, and what a user can actually launch.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
+		if (joined === "-p process.exit(0)") {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		}
 		if (joined.includes("stapler validate")) {
 			return { status: 0, stdout: "The validate action worked!", stderr: "" };
 		}
 		if (joined.includes("--entitlements")) {
-			// The signed, entitled app: the group the release renderer writes into the
-			// build's entitlements plist, read back off the artifact.
+			// The committed plist, read back off the artifact: sandbox and
+			// hardened-runtime keys only, no restricted claim.
 			return {
 				status: 0,
 				stdout:
-					"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+					"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
 				stderr: "",
 			};
 		}
@@ -3606,6 +4078,607 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
 		true,
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The 0.29.6 class: a restricted entitlement with no profile behind it
+// ---------------------------------------------------------------------------
+
+/**
+ * The real v0.29.6 release signature's entitlements, with the team id replaced.
+ *
+ * Captured with `codesign -d --entitlements - --xml` from the bundle the
+ * operator's machine updated itself into on 2026-09-19, and sanitized in exactly
+ * one respect: the team id is a release secret this repository does not publish,
+ * so it is the synthetic id the other fixtures use. Everything else is what
+ * shipped — thirteen unrestricted sandbox/hardened-runtime keys, and
+ * `keychain-access-groups` carrying `<TEAM_ID>.<BUNDLE_ID>.webauthn`.
+ *
+ * This is the negative fixture both directions are asserted against. The same
+ * signature answers `codesign --verify --deep --strict` with exit 0, `spctl -a
+ * -vvv -t exec` with "accepted / Notarized Developer ID" and `stapler validate`
+ * with success (all measured on the real bundle), which is why the checks below
+ * have to ask a different question than the ones already in this file.
+ */
+const V0296_SIGNATURE_ENTITLEMENTS = `<plist version="1.0"><dict><key>com.apple.security.cs.allow-dyld-environment-variables</key><true/><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/><key>com.apple.security.device.audio-input</key><true/><key>com.apple.security.device.camera</key><true/><key>com.apple.security.device.microphone</key><true/><key>com.apple.security.device.screen-capture</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.downloads.read-write</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/><key>com.apple.security.network.client</key><true/><key>com.apple.security.network.server</key><true/><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></plist>`;
+
+/** A bundle laid out enough for the gate: an Info.plist naming the executable and
+ * the bundle id, and a file where that executable would be.
+ *
+ * The "executables" are four bytes of Mach-O magic with the execute bit, not the
+ * literal word `fixture`, and that is load-bearing: `profileAuthorizationCheck`
+ * finds the files it judges by walking for Mach-O headers, so a fixture holding
+ * text would make the walk inspect nothing and pass for the wrong reason. The set
+ * can be widened with `helpers` — the shape that matters here, since a bundle
+ * whose launcher is clean and whose helpers are not is what 0.29.6 shipped.
+ */
+function gateFixtureBundle(prefix, { profile = null, helpers = [] } = {}) {
+	const dir = tempDir(prefix);
+	const app = join(dir, "Local Operator.app");
+	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+	);
+	writeMachO(join(app, "Contents", "MacOS", "Local Operator"));
+	for (const helper of helpers) {
+		const path = join(app, helper);
+		mkdirSync(dirname(path), { recursive: true });
+		writeMachO(path);
+	}
+	if (profile != null)
+		writeFileSync(join(app, "Contents", "embedded.provisionprofile"), profile);
+	return app;
+}
+
+/** The four bytes `machOFiles` reads, 64-bit little-endian (`cffaedfe`), plus
+ * the execute bit that makes it a file the bundle can spawn. */
+function writeMachO(path) {
+	writeFileSync(path, Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0, 0, 0, 0]));
+	chmodSync(path, 0o755);
+}
+
+/**
+ * A `run` that answers for a bundle everything except the spawn probe says yes
+ * to, with the signature's entitlements supplied per case.
+ *
+ * The probe's answer is the one measured on the real 0.29.6 bundle: killed by a
+ * signal at exec, no output (a shell reports that as `Killed: 9`, exit 137).
+ * `spawnRunner` turns it into `status: null, signal: "SIGKILL"`; the stub
+ * produces that same shape rather than a fabricated exit code, because the
+ * predicate's whole point is that this shape is red — and because a signal death
+ * has no exit status to report (QA round 1, Q1).
+ *
+ * `entitlements` is a plist string, or a function of the file being read when a
+ * case needs to differ per executable: the authorization walk reads every
+ * Mach-O in the bundle, and "the launcher is clean and the helper is not" is the
+ * case that tells the walk apart from the single `codesign` call it replaced.
+ */
+function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
+	const claimedIn = (path) =>
+		typeof entitlements === "function" ? entitlements(path) : entitlements;
+	return (command, args) => {
+		const joined = args.join(" ");
+		if (joined === "-p process.exit(0)") {
+			return spawnFails
+				? {
+						status: null,
+						signal: "SIGKILL",
+						timedOut: false,
+						stdout: "",
+						stderr: "",
+					}
+				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+		}
+		if (command.endsWith("/security")) {
+			return {
+				status: profileDump ? 0 : 1,
+				stdout: profileDump ?? "",
+				stderr: "",
+			};
+		}
+		if (joined.includes("--entitlements")) {
+			return {
+				status: 0,
+				stdout: claimedIn(args[args.length - 1]),
+				stderr: "",
+			};
+		}
+		if (command === "/usr/bin/codesign")
+			return { status: 0, stdout: "", stderr: "" };
+		if (joined.includes("-t exec"))
+			return {
+				status: 0,
+				stdout: "accepted\nsource=Notarized Developer ID",
+				stderr: "",
+			};
+		if (joined.includes("stapler validate"))
+			return { status: 0, stdout: "The validate action worked!", stderr: "" };
+		throw new Error(`unexpected command: ${command} ${joined}`);
+	};
+}
+
+test("every executable's claim is judged, not only the launcher's", () => {
+	/*
+	 * The shape this test exists for is the one 0.29.6 actually shipped and the
+	 * first version of this gate got wrong: the launcher clean, the helpers not.
+	 * Measured on the operator's real bundle, the group is on EIGHT of its sixteen
+	 * executables — `ShipIt`, the four helpers, the crashpad handler and the
+	 * bundled python among them — and `ShipIt` is the one the updater execs to
+	 * relaunch, so a launcher-only check passes a bundle that dies exactly where
+	 * 0.29.6 died. The assertion has to name the helper, not just fail.
+	 */
+	const helper =
+		"Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt";
+	const launcherClean = gateFixtureBundle("lo-gate-helper-", {
+		helpers: [helper],
+	});
+	const clean = "<key>com.apple.security.cs.allow-jit</key><true/>";
+	// `[authorization, readability]`, in that order. The split is not cosmetic:
+	// `verify-signed-update.mjs` classifies by id, and the read half is the host's
+	// capability question while the authorization half is the candidate's own
+	// (review round 2).
+	const [twoClaims, twoClaimsReadable] = profileAuthorizationCheck(
+		launcherClean,
+		{
+			run: gateRunner({
+				entitlements: (path) =>
+					path.endsWith("ShipIt") ? V0296_SIGNATURE_ENTITLEMENTS : clean,
+			}),
+		},
+	);
+	assert.equal(twoClaims.passed, false);
+	assert.equal(twoClaims.id, "app-profile-authorization");
+	assert.match(twoClaims.output, /ShipIt claims keychain-access-groups/);
+	// "1 of 2" rather than "an executable is suspicious": the launcher's clean signature
+	// was read and PASSED in the same walk, which is what makes this a walk rather
+	// than a lucky single read — the old single-`codesign` call saw the launcher only
+	// and called this bundle clean.
+	assert.match(twoClaims.output, /1 of 2 executable\(s\)/);
+	// Every signature WAS readable, so the read row passes: the two are independent
+	// questions and a bundle can only fail one of them.
+	assert.equal(twoClaimsReadable.passed, true);
+	assert.equal(twoClaimsReadable.id, "app-entitlements-readable");
+
+	// The same bundle with the claim removed everywhere: the shipped default, and
+	// green — the walk is not simply "helpers are suspicious".
+	const [groupFree] = profileAuthorizationCheck(launcherClean, {
+		run: gateRunner({ entitlements: clean }),
+	});
+	assert.equal(groupFree.passed, true);
+	assert.match(groupFree.output, /2 executable\(s\) inspected/);
+
+	// A profile that authorizes the claim: the passkey arrangement done right, and
+	// the one state in which `ShipIt` may carry the group.
+	const authorized = gateFixtureBundle("lo-gate-auth-", {
+		helpers: [helper],
+		profile: "synthetic\n",
+	});
+	const [withProfile] = profileAuthorizationCheck(authorized, {
+		run: gateRunner({
+			entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+			profileDump:
+				"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+		}),
+	});
+	assert.equal(withProfile.passed, true);
+
+	// "We could not ask" is not "nothing is claimed": a signature whose
+	// entitlements cannot be read is red here rather than an empty plist that
+	// passes because `[].every()` is true (review round 1, finding 3) — and it is
+	// the READ row that carries it, so the harness can bucket it as BLOCKED rather
+	// than as a candidate failure (review round 2).
+	const [unreadableClaim, unreadableRead] = profileAuthorizationCheck(
+		launcherClean,
+		{
+			run: (command, args) =>
+				args.join(" ").includes("--entitlements")
+					? { status: 1, stdout: "", stderr: "bundle format unrecognized" }
+					: gateRunner({ entitlements: clean })(command, args),
+		},
+	);
+	assert.equal(unreadableRead.passed, false);
+	assert.match(unreadableRead.output, /could not be read/);
+	// An unreadable signature claims nothing this walk can see, so the
+	// authorization row is silent: the two rows must not both shout about one cause.
+	assert.equal(unreadableClaim.passed, true);
+
+	// Fail-closed on an EMPTY population (review round 2, finding 3): a bundle
+	// whose executables the walk cannot find has not been answered about, and
+	// `[].every()` is how that reads as a pass. Measured case: the app directory
+	// exists and holds no Mach-O at all.
+	const emptyApp = join(tempDir("lo-gate-empty-"), "Local Operator.app");
+	mkdirSync(join(emptyApp, "Contents", "Resources"), { recursive: true });
+	const [noPopulation, noPopulationRead] = profileAuthorizationCheck(emptyApp, {
+		run: () => ({ status: 0, stdout: "", stderr: "" }),
+	});
+	assert.equal(noPopulation.passed, false);
+	assert.match(
+		noPopulation.output,
+		/no executable was found in the bundle to judge/,
+	);
+	assert.equal(noPopulationRead.passed, false);
+	assert.match(noPopulationRead.output, /no executable was found to read/);
+
+	// A bundle that cannot be walked reports a row rather than throwing out of the
+	// gate: the release step asks for a report, and a stack trace is not one.
+	const [unwalkable, unwalkableRead] = profileAuthorizationCheck(
+		join(tempDir("lo-gate-missing-"), "Local Operator.app"),
+		{ run: () => ({ status: 0, stdout: "", stderr: "" }) },
+	);
+	assert.equal(unwalkable.passed, false);
+	assert.match(unwalkable.output, /could not be walked for executables/);
+	assert.equal(unwalkableRead.passed, false);
+	assert.match(unwalkableRead.output, /could not be walked for executables/);
+});
+
+test("the spawn probe owns its env, whatever signature the runner has", () => {
+	/*
+	 * Why this is asserted here rather than left to the runner: `env` is a parameter
+	 * the runner has to forward, and a runner that does not forward it drops
+	 * `ELECTRON_RUN_AS_NODE` SILENTLY — which turns the probe into a real app launch.
+	 * QA round 2 measured that from a scratch harness: five stray executions of the
+	 * app binary, every one of them raising and FOCUSING the operator's window (the
+	 * app's own `[window-raise]` line for each). The check applies its own
+	 * environment, so a runner of any signature — including one that ignores the
+	 * parameters it is handed and inherits the process environment, which is what
+	 * `spawnSync` does by default — sees the switch the probe depends on.
+	 */
+	const app = gateFixtureBundle("lo-gate-env-");
+	const probeSaw = [];
+	// A runner that takes the first three arguments and nothing else: the shape that
+	// dropped the switch. It reads the process environment, which is what a
+	// `spawnSync`-based runner does by default.
+	const threeArgumentRunner = (command, args, input) => {
+		void command;
+		void input;
+		if (args.join(" ").includes("process.exit(0)"))
+			probeSaw.push(process.env.ELECTRON_RUN_AS_NODE ?? null);
+		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	};
+	const rows = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run: threeArgumentRunner,
+	});
+	assert.ok(rows.length > 0, "the checks did not run at all");
+	// Exactly once, and with the switch: the probe is the only check that carries it,
+	// so a null here is the switch being dropped on the way to the child.
+	assert.deepEqual(
+		probeSaw,
+		["1"],
+		"ELECTRON_RUN_AS_NODE did not reach the runner: a drop-in runner would launch the real app",
+	);
+	// And it is restored afterwards, so no later check inherits node mode.
+	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+});
+
+test("the gate's own results carry the bundle-walk rows", () => {
+	/*
+	 * The walk left the censused `artifactChecks` list when it became a scan of the
+	 * bundle, so nothing in the census asserts it any more — and dropping one of the
+	 * three call sites (`checkApp`, the app loop, `verify-signed-update.mjs`) would
+	 * leave a green suite, a step still printing plenty of output, and a gate that
+	 * quietly stopped asking the question this change exists for. `require-report.sh`
+	 * cannot see that either: it reads that a report was produced, not which
+	 * questions it asked (review round 2, finding 1).
+	 */
+	const dist = tempDir("lo-dist-walk-");
+	const app = join(dist, "mac-arm64", "Local Operator.app");
+	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+	);
+	writeMachO(join(app, "Contents", "MacOS", "Local Operator"));
+	writeFileSync(join(dist, "local-operator-ui-0.0.0-arm64.dmg"), "x");
+
+	const result = verifyArtifacts({
+		dist,
+		run: () => ({ status: 0, stdout: "accepted", stderr: "" }),
+		log: () => {},
+	});
+	const ids = new Set(result.results.map((row) => row.id));
+	// Both halves by id: the authorization row is what makes a candidate FAIL this
+	// job, and the read row is what makes an unsigned one BLOCKED instead.
+	for (const id of ["app-profile-authorization", "app-entitlements-readable"]) {
+		assert.ok(
+			ids.has(id),
+			`${id} is declared but never reached: the gate ran ${JSON.stringify([...ids])}`,
+		);
+	}
+	const walkRows = result.results.filter((row) =>
+		["app-profile-authorization", "app-entitlements-readable"].includes(row.id),
+	);
+	assert.equal(
+		walkRows.filter((row) => row.passed).length,
+		walkRows.length,
+		`a fixture bundle claiming no restricted entitlement must pass both rows: ${JSON.stringify(walkRows)}`,
+	);
+});
+
+test("the gate's policy predicate and the app's agree on every key", () => {
+	/*
+	 * The JSON is shared, so a SPELLING can only be wrong once — but the PREDICATE
+	 * (`includes` plus the prefix loop, and the empty-string-means-nothing rule)
+	 * exists twice, in `scripts/macos-entitlement-policy.mjs` and in the app's
+	 * `update-install.ts`, and nothing tied the two together: a change to one copy
+	 * alone would leave the gate and the pre-flight disagreeing about which claims
+	 * need a profile, which is the drift the shared file's own docstring says it
+	 * exists to prevent (review round 1, finding 2). This is the tie.
+	 */
+	const keys = [
+		...policy.POLICY.unrestrictedEntitlementKeys,
+		...policy.POLICY.unrestrictedEntitlementPrefixes.map(
+			(prefix) => `${prefix}something`,
+		),
+		// The real 0.29.6 claim, a synthetic restricted one, and one nobody has
+		// invented yet — the fail-closed direction.
+		"keychain-access-groups",
+		"com.apple.developer.associated-domains",
+		"com.apple.some.future.thing",
+		"",
+	];
+	for (const key of keys) {
+		assert.equal(
+			install.isProfileBackedEntitlement(key),
+			policy.isProfileBackedEntitlement(key),
+			`the app and the gate disagree about ${JSON.stringify(key)}`,
+		);
+	}
+	// The scan, over the same plist: both sides must pick the same keys out.
+	assert.deepEqual(
+		install.profileBackedEntitlementKeys(V0296_SIGNATURE_ENTITLEMENTS),
+		policy.profileBackedEntitlementKeys(V0296_SIGNATURE_ENTITLEMENTS),
+	);
+	assert.deepEqual(
+		install.profileBackedEntitlementKeys(""),
+		policy.profileBackedEntitlementKeys(""),
+	);
+});
+
+test("the gate refuses the 0.29.6 signature and passes the group-free one", () => {
+	const bricked = gateFixtureBundle("lo-gate-brick-");
+	// The real broken signature: a restricted claim, no profile, and a spawn the OS
+	// refuses. Two findings from `runChecks` — the third question this bundle raises,
+	// whether EVERY executable's claim is authorized rather than just the launcher's,
+	// is the walk asserted on its own below.
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: bricked,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					spawnFails: true,
+				}),
+			}),
+		).failures.map((result) => result.id),
+		["app-spawn", "app-webauthn-entitlement"],
+	);
+
+	// The shipped default: the committed plist, no restricted claim at all. This
+	// is the bundle the release path produces while no profile exists, and it has
+	// to pass — the old `app-webauthn-entitlement` failed exactly here.
+	const groupFree = gateFixtureBundle("lo-gate-free-");
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: groupFree,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements:
+						"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
+				}),
+			}),
+		).ok,
+		true,
+	);
+
+	// The passkey arrangement done right: the claim is present AND the embedded
+	// profile authorizes exactly that group, which is the only state in which the
+	// group may be signed in.
+	const authorized = gateFixtureBundle("lo-gate-auth-", {
+		profile: "synthetic\n",
+	});
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: authorized,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					profileDump:
+						"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+				}),
+			}),
+		).failures.map((result) => result.id),
+		[],
+	);
+
+	// A profile that authorizes a DIFFERENT group is the other half of the rule: the
+	// claim is authorized, so macOS spawns the app and `app-profile-authorization`
+	// passes — what is wrong is the feature, which can never work because Chromium
+	// asks for the exact group in the signature. That is `app-webauthn-entitlement`'s
+	// job, and it is why the two checks are not one.
+	const wrongProfile = gateFixtureBundle("lo-gate-wrong-", {
+		profile: "synthetic\n",
+	});
+	assert.deepEqual(
+		summarize(
+			runChecks({
+				appPath: wrongProfile,
+				dmgPath: null,
+				run: gateRunner({
+					entitlements: V0296_SIGNATURE_ENTITLEMENTS,
+					profileDump:
+						"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.somebody-else.webauthn</string></array></dict></dict></plist>",
+				}),
+			}),
+		).failures.map((result) => result.id),
+		["app-webauthn-entitlement"],
+	);
+
+	// The predicate itself, so the cases above are not the only statement of it.
+	assert.equal(
+		profileAuthorizes(
+			"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+			"keychain-access-groups",
+			"com.local-operator",
+			"AB12CD34EF.com.local-operator.webauthn",
+		),
+		true,
+	);
+	assert.equal(profileAuthorizes(null, "keychain-access-groups"), false);
+	assert.equal(
+		profileAuthorizes("", "com.apple.developer.associated-domains"),
+		false,
+	);
+});
+
+test("the update pre-flight refuses the artifact macOS would not launch", () => {
+	const block = install.stagedSignatureBlock({
+		entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+		embeddedProfile: false,
+		artifactName: "local-operator-ui-0.29.6-arm64.zip",
+		version: "0.29.6",
+	});
+	assert.equal(block.code, "artifact-cannot-launch");
+	assert.match(block.message, /update to version 0\.29\.6 can't be launched/);
+	// The remedy is NOT the download page (design round 1, D1). Every affordance
+	// behind `DOWNLOAD_PAGE_URL` resolves to `releases/latest`, which is the channel
+	// that staged this artifact: sending the reader there hands them the bundle this
+	// check just refused and asks them to install it by hand, past every gate added
+	// to stop it. It names the version to avoid instead, which is true both when
+	// `latest` is the broken build and when it is fine.
+	assert.equal(block.remedy.url, undefined);
+	assert.equal(block.remedy.command, undefined);
+	assert.match(block.remedy.text, /skip version 0\.29\.6/);
+	assert.match(block.remedy.text, /next release will be offered/);
+	// The dismiss control must not promise a retry this state says cannot happen
+	// (design round 1, D6), and this arm needs no heading override: it established
+	// the refusal, so the renderer's heading map is the right one.
+	assert.equal(block.dismissLabel, "Not now");
+	assert.equal(block.heading, undefined);
+	// The detail names the cause, not just the symptom: it is what a support thread
+	// has to quote, and the entitlement alone would not say why it matters. Trimmed
+	// to the facts a reader can check (design round 1, D4) — which archive, which
+	// claim, which file is missing — because the full rule made the details block
+	// 44% of the panel.
+	assert.match(block.detail, /keychain-access-groups/);
+	assert.match(block.detail, /embedded\.provisionprofile/);
+	assert.ok(
+		block.detail.length < 160,
+		`detail is ${block.detail.length} characters; the panel's mono column is ~10 lines at 250`,
+	);
+
+	// The positive direction: the committed, group-free signature is what the
+	// release path ships now, and it must install.
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist:
+				"<key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.network.client</key><true/>",
+			embeddedProfile: false,
+			artifactName: "local-operator-ui-0.30.0-arm64.zip",
+			version: "0.30.0",
+		}),
+		null,
+	);
+	// Passkeys enabled, profile embedded: the arrangement that works.
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist: V0296_SIGNATURE_ENTITLEMENTS,
+			embeddedProfile: true,
+			artifactName: "local-operator-ui-0.30.0-arm64.zip",
+			version: "0.30.0",
+		}),
+		null,
+	);
+	// "We could not read the signature" is not "nothing is claimed": refused when
+	// no profile is embedded, allowed when one is. It is also a DIFFERENT state from
+	// the arm above, so it carries its own heading and its own remedy: the body
+	// declines to assert that macOS refused anything, and a heading asserting it
+	// would contradict the sentence under it (design round 1, D3).
+	const unchecked = install.stagedSignatureBlock({
+		entitlementsPlist: null,
+		embeddedProfile: false,
+		artifactName: "unknown.zip",
+		version: "0.29.6",
+	});
+	assert.equal(unchecked?.code, "artifact-cannot-launch");
+	assert.equal(unchecked?.heading, "The update couldn't be checked");
+	assert.match(unchecked?.message, /can't be checked for launch/);
+	assert.match(unchecked?.remedy.text, /Check for updates again/);
+	assert.equal(unchecked?.remedy.url, undefined);
+	assert.equal(unchecked?.dismissLabel, "Not now");
+	assert.equal(
+		install.stagedSignatureBlock({
+			entitlementsPlist: null,
+			embeddedProfile: true,
+			artifactName: "unknown.zip",
+		}),
+		null,
+	);
+
+	// The policy the app and the gate share, stated once: the sandbox and
+	// hardened-runtime families need no profile, and anything else does — including
+	// spellings nobody has invented yet, which is the fail-closed direction.
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.security.cs.allow-jit"),
+		false,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.security.device.camera"),
+		false,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("keychain-access-groups"),
+		true,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement(
+			"com.apple.developer.associated-domains",
+		),
+		true,
+	);
+	assert.equal(
+		install.isProfileBackedEntitlement("com.apple.some.future.thing"),
+		true,
+	);
+});
+
+test("the artifact's own members decide, and the wrong binary is not read", () => {
+	// A listing shaped like the real 0.29.6 archive: the helper bundles' own
+	// Contents/MacOS entries come FIRST, and only the top-level app's executable is
+	// the one launchd would run. Reading a helper would answer about the wrong
+	// binary — and in this incident the helpers were refused too, for the same
+	// reason, so a check bound to the wrong file could still look right.
+	const listing = [
+		"Local Operator.app/",
+		"Local Operator.app/Contents/Frameworks/",
+		"Local Operator.app/Contents/Frameworks/Local Operator Helper (GPU).app/Contents/MacOS/Local Operator Helper (GPU)",
+		"Local Operator.app/Contents/Frameworks/Local Operator Helper (Renderer).app/Contents/MacOS/Local Operator Helper (Renderer)",
+		"Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+		"Local Operator.app/Contents/Info.plist",
+		"Local Operator.app/Contents/MacOS/",
+		"Local Operator.app/Contents/MacOS/Local Operator",
+	].join("\n");
+	assert.equal(
+		install.zipMainExecutableEntry(listing),
+		"Local Operator.app/Contents/MacOS/Local Operator",
+	);
+	assert.equal(install.zipListingHasEmbeddedProfile(listing), false);
+	assert.equal(
+		install.zipListingHasEmbeddedProfile(
+			`${listing}\nLocal Operator.app/Contents/embedded.provisionprofile`,
+		),
+		true,
+	);
+	assert.equal(
+		install.zipMainExecutableEntry("Local Operator.app/Contents/MacOS/"),
+		null,
+	);
+	assert.equal(install.zipListingHasEmbeddedProfile(""), false);
 });
 
 test("missing artifacts fail rather than passing vacuously", () => {
@@ -4970,7 +6043,11 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 										return globalThis.__loTestAppIsPackaged ?? true;
 									},
 									getPath: (name) => paths[name] ?? paths.userData,
-									getVersion: () => "0.0.0-test",
+									// A getter rather than a literal, so a case that is about the
+									// version the app REPORTS (the retire rule's own input) can
+									// set it; the default is unchanged for every other case.
+									getVersion: () =>
+										globalThis.__loTestAppVersion ?? "0.0.0-test",
 									getName: () => "Local Operator",
 									getAppPath: () => process.cwd(),
 									whenReady: async () => {},
@@ -10753,10 +11830,40 @@ test("a launch is held only for an install that is live, and never past the watc
 
 	const running = "0.19.4";
 
+	/*
+	 * The two facts the installer's identity check matches on, spelled the way the
+	 * app spells them: its OWN ShipIt, resolved from the running bundle rather than
+	 * from a constant, and its own staging root. Both are required together, which is
+	 * what keeps another application's ShipIt from being read as this one's.
+	 */
+	const SHIPIT_IN_BUNDLE =
+		"/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/Current/Resources/ShipIt";
+	const STAGING_ROOT =
+		"/Users/someone/Library/Application Support/Local Operator/update-staging";
+
+	/*
+	 * The machine's two liveness answers, gathered the way production gathers them
+	 * (`installLivenessNow`, management MAJOR-1): a case states the facts it is
+	 * about - the marker's own installer pid, its command line, whether some other
+	 * process is this app's installer, and what launchd says - and the classifier
+	 * decides what they mean. Stating them here rather than inside the classifier is
+	 * what makes the two paths assertable side by side.
+	 */
+	const livenessFor = (input) =>
+		installLivenessNow({
+			marker: input.marker ?? null,
+			installerCommandLine: () => input.commandLine ?? null,
+			installerElsewhere: () => input.elsewhere === true,
+			shipItPath: SHIPIT_IN_BUNDLE,
+			stagingRoot: STAGING_ROOT,
+			jobState: () => input.jobState ?? "unread",
+		});
+	const liveness = (input) => livenessFor(input);
+
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: null,
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: running,
 			now,
 		}),
@@ -10767,7 +11874,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "absent",
+			liveness: liveness({ jobState: "absent" }),
 			runningVersion: running,
 			now,
 		}),
@@ -10778,7 +11885,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: { ...marker(""), startedAt: "" },
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: running,
 			now,
 		}),
@@ -10788,7 +11895,72 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(pastHold),
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+
+	/*
+	 * THE SEAM WITH AN INSTALL THIS APP STARTED (management MAJOR-1, UX U2). Such an
+	 * install has NO launchd job, so before this the hold read `jobState: "absent"`
+	 * and opened the app straight into the swap - the 2026-09-18 cancellation, made
+	 * likelier by a window that is now seconds long rather than minutes. The marker
+	 * names the installer it spawned instead, and that pid is what holds the launch.
+	 */
+	const directMarker = { ...marker(fresh), installerPid: 998877 };
+	const pidLine = `${SHIPIT_IN_BUNDLE} ${STAGING_ROOT}/0.19.5-abc/state.plist`;
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({
+				marker: directMarker,
+				commandLine: pidLine,
+				// The job is not consulted for this marker at all, so a leftover
+				// registration is stated here precisely to prove it cannot decide.
+				jobState: "registered",
+			}),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "hold", marker: directMarker },
+	);
+	// The same install with its installer gone: nothing is installing, so the
+	// launch opens and recovery explains what happened.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({ marker: directMarker, jobState: "registered" }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// A pid that stopped being the installer while an install it started is still
+	// running: `installerElsewhere` finds it by the ShipIt path AND this staging
+	// root, and the launch is held (review MINOR-3).
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: directMarker,
+			liveness: livenessFor({ marker: directMarker, elsewhere: true }),
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "hold", marker: directMarker },
+	);
+	// A COMPLETED direct install: the target is the running version, so the pid
+	// that is still winding down must not hold anything - the app has to open so
+	// recovery can clear the marker. This is the rule that made the app unreachable
+	// after every successful update, kept intact through the pid (management
+	// MAJOR-1).
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: { ...directMarker, targetVersion: running },
+			liveness: livenessFor({
+				marker: { ...directMarker, targetVersion: running },
+				commandLine: pidLine,
+			}),
 			runningVersion: running,
 			now,
 		}),
@@ -10803,7 +11975,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "running",
+			liveness: liveness({ jobState: "running" }),
 			runningVersion: "0.19.5",
 			now,
 		}),
@@ -10820,7 +11992,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 2000).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -10830,7 +12002,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 6430).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -10840,7 +12012,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 13320).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -10850,7 +12022,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: running,
 			now,
 		}).kind,
@@ -10864,7 +12036,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(
 		evaluateLaunchDuringInstall({
 			marker: marker(new Date(now - 280_000).toISOString()),
-			jobState: "registered",
+			liveness: liveness({ jobState: "registered" }),
 			runningVersion: "0.19.5",
 			now,
 		}).kind,
@@ -10873,7 +12045,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	// And a live install, which is the case this exists for.
 	const held = evaluateLaunchDuringInstall({
 		marker: marker(fresh),
-		jobState: "running",
+		liveness: liveness({ jobState: "running" }),
 		runningVersion: running,
 		now,
 	});
@@ -10881,7 +12053,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(held.marker.targetVersion, "0.19.5");
 	const heldLate = evaluateLaunchDuringInstall({
 		marker: marker(withinHold),
-		jobState: "running",
+		liveness: liveness({ jobState: "running" }),
 		runningVersion: running,
 		now,
 	});
@@ -10910,9 +12082,15 @@ test("the hold's notice names the version and the wait, states the click, and as
 	assert.match(notice.title, /still updating/);
 	assert.ok(notice.body.includes("0.19.5"), notice.body);
 	assert.match(notice.body, /will open by itself when the install finishes/);
-	// The duration, in the words the install's own notice already used (review U4):
-	// one wait, one expectation.
-	assert.match(notice.body, /this can take a few minutes/);
+	/*
+	 * And NO duration, which is the one thing this copy had to lose (QA round 2,
+	 * Q2): it carried "this can take a few minutes" - the words the watchdog's own
+	 * notice used, and that notice dropped them for exactly this reason (UX U1).
+	 * The path this banner is raised on cannot tell a seconds-long direct install
+	 * from a minutes-long fallback one, so a figure here is either an overstatement
+	 * by two orders of magnitude or a promise about a path it cannot see.
+	 */
+	assert.doesNotMatch(notice.body, /minute|second|hour/i);
 	// What a click does (review U5): macOS activates the app, which is held again,
 	// so the copy says so rather than leaving a control with no readable outcome.
 	assert.match(notice.body, /Clicking this notice will not open it any sooner/);
@@ -10926,6 +12104,9 @@ test("the hold's notice names the version and the wait, states the click, and as
 	});
 	assert.match(noRelaunch.body, /start Local Operator by hand/);
 	assert.doesNotMatch(noRelaunch.body, /will open by itself/);
+	// No duration on this branch either: the sentence that says the app
+	// will not come back must not also promise a wait it cannot know.
+	assert.doesNotMatch(noRelaunch.body, /minute|second|hour/i);
 });
 
 /**
@@ -12346,6 +13527,7 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 			},
 		},
 	];
+
 	for (const route of routes) {
 		const sentence = producer.serverUpdateFailureSentence(route.input);
 		/*
@@ -12770,4 +13952,438 @@ test("no attempt-scoped evidence read resolves an install of its own", async () 
 		1,
 		"exactly one caller may fall back to the shim: a record an older build wrote",
 	);
+});
+
+/**
+ * A GENERATION INSTALL CANNOT MOVE UNDER AN EVIDENCE READ, SO THE READ FOLLOWS THE POINTER.
+ *
+ * The operator's report of 2026-09-18: the press ran the serving install's own updater,
+ * that updater created `generations/20260918T233919Z-0.59.7` and flipped `<stable>/current`
+ * to it, and the app then told the user "The server update to 0.59.7 did not take effect:
+ * the install still reports 0.59.6" - while Settings, reading the same install through the
+ * shim one second later, printed 0.59.7.
+ *
+ * The mechanism was the layout's own point: the tree `/health` reports as the install root
+ * is the generation the DAEMON started from, an install lands beside it and never touches
+ * it, so `before` and `after` were two photographs of one frozen tree. `installPointerPath`
+ * names the same install through `<stable>/current`, which is the one spelling that moves.
+ *
+ * These cases drive the SHIPPED press against a real generation layout (`realEvidenceReads`,
+ * so the verdict comes from dist-info on disk and not from a scripted reading) and flip the
+ * pointer from inside the run, which is exactly what `lop update` does.
+ */
+
+/** One generation of the install layout: the venv under `tools/local-operator`, and its own `bin`. */
+const generationInstall = (stable, id, version) => {
+	const root = join(stable, "generations", id);
+	const venv = join(root, "tools", "local-operator");
+	mkdirSync(join(venv, "bin"), { recursive: true });
+	writeFileSync(join(venv, "bin", "local-operator"), "#!/bin/sh\nexit 0\n", {
+		mode: 0o755,
+	});
+	writeFileSync(join(venv, "pyvenv.cfg"), "home = /usr/bin\n");
+	writeFileSync(
+		join(venv, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+	);
+	writeFileSync(join(venv, ".lop-source"), `pypi ${version}\n`, "utf8");
+	const site = join(venv, "lib", "python3.13", "site-packages");
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	// The generation's console script is a symlink into its own venv (the layout's
+	// § 2), so `<generation>/bin/local-operator` and the venv's script are one file.
+	mkdirSync(join(root, "bin"), { recursive: true });
+	symlinkSync(
+		join("..", "tools", "local-operator", "bin", "local-operator"),
+		join(root, "bin", "local-operator"),
+	);
+	return { root, venv, script: join(venv, "bin", "local-operator") };
+};
+
+/** Point `<stable>/current` at a generation, staged-then-renamed as `lop update` does. */
+const flipPointer = (stable, root) => {
+	const staged = join(stable, `current.tmp-${process.pid}`);
+	symlinkSync(root, staged);
+	renameSync(staged, join(stable, "current"));
+};
+
+test("a landed install behind a generation pointer is not reported as a failed update", async () => {
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-stable-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const after = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	let markerDuring = null;
+	const run = await driveGlobalUpdate({
+		before: "0.59.6",
+		after: "0.59.7",
+		target: "0.59.7",
+		// The install root `/health` reports: the generation the daemon came from.
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+		runGate: ({ markerPath }) => {
+			// What the installer does while the app waits: build beside, then flip.
+			markerDuring = JSON.parse(readFileSync(markerPath, "utf8"));
+			flipPointer(stable, after.root);
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.59.7"), true);
+		assert.deepEqual(
+			backendErrors(run.sent),
+			[],
+			"an install that landed must not be reported as one that did not",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		/*
+		 * The record the reconciliation reads later carries the POINTER spelling: a
+		 * generation this attempt superseded is unreferenced and therefore prunable
+		 * (`design-install-generations.md` § 3.3), and a record naming a pruned tree
+		 * would read as "nothing moved" for an install that landed.
+		 */
+		assert.equal(
+			markerDuring?.installPath,
+			join(
+				stable,
+				"current",
+				"tools",
+				"local-operator",
+				"bin",
+				"local-operator",
+			),
+		);
+	} finally {
+		run.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+test("the unattended reconciliation follows the pointer a record names", async () => {
+	/*
+	 * The same seam on the launch-time path, where there is no press in scope. The
+	 * record this case writes carries the CONCRETE generation path, deliberately: that
+	 * is the spelling every record written before this fix holds, so the case is about
+	 * a marker an older build left as much as about one this build writes.
+	 */
+	const stable = realpathSync(
+		mkdtempSync(join(tmpdir(), "lo-generation-record-")),
+	);
+	const before = generationInstall(stable, "20260918T233135Z-0.59.6", "0.59.6");
+	flipPointer(stable, before.root);
+	const landed = generationInstall(stable, "20260918T233919Z-0.59.7", "0.59.7");
+	const drive = await driveGlobalUpdate({
+		servingPrefix: before.venv,
+		daemonReports: "0.59.7",
+		realEvidenceReads: true,
+	});
+	try {
+		// The install landed with nothing watching: the new generation exists and the
+		// pointer names it, and the record was written before the flip.
+		flipPointer(stable, landed.root);
+		writeFileSync(
+			drive.markerPath,
+			JSON.stringify({
+				before: "0.59.6",
+				target: "0.59.7",
+				startedAt: new Date().toISOString(),
+				deadlineAt: new Date(Date.now() - 60_000).toISOString(),
+				groupPid: null,
+				groupStartedAt: null,
+				installPath: before.script,
+			}),
+		);
+		await drive.updateService.reportUnattendedServerUpdate();
+		const completed = backendCompletion(drive.sent);
+		assert.ok(
+			completed,
+			`a landed unattended update must be reported: ${JSON.stringify(drive.sent.map((c) => c.channel))}`,
+		);
+		assert.equal(completed.payload.installVersion, "0.59.7");
+		assert.equal(completed.payload.unattended, true);
+		assert.equal(existsSync(drive.markerPath), false);
+	} finally {
+		drive.dispose();
+		rmSync(stable, { recursive: true, force: true });
+	}
+});
+
+/**
+ * THE RECORDED INSTALL FAILURE RETIRES ONCE THE MACHINE HAS ARRIVED.
+ *
+ * `last-update-install.json` outlives the notice by design (a dismissal must not be an
+ * information loss), and nothing retired it when the install it complained about was
+ * later reached: on 2026-09-18 the app ran 0.29.1 while the record still named a 0.28.3
+ * install, so Settings printed "The last update to version 0.28.3 didn't finish. Version
+ * 0.28.2 is running." - two versions stale, about a state the machine had left hours
+ * earlier. The operator's rule is the rule here: cleared whenever the UI updates to a
+ * newer version, successfully.
+ */
+test("the recorded install failure retires when the running version has reached its target", async () => {
+	const recordFor = (targetVersion) => ({
+		targetVersion,
+		runningVersion: "0.28.2",
+		startedAt: "2026-09-18T13:37:09.507Z",
+		detectedAt: "2026-09-18T14:12:16.975Z",
+		detail:
+			"Install started. Squirrel cancels an install when an instance runs.",
+		attempts: 1,
+	});
+
+	const at = async (appVersion, targetVersion) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-last-install-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const markerDir = userData;
+		writeFileSync(
+			join(markerDir, "last-update-install.json"),
+			`${JSON.stringify(recordFor(targetVersion), null, 2)}\n`,
+		);
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		return {
+			updateService,
+			path: join(markerDir, "last-update-install.json"),
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The operator's own state: a 0.28.3 record on a 0.29.1 app. Retired at the read,
+	// and the FILE goes with it - a later launch, a `cat` and the panel agree.
+	const stale = await at("0.29.1", "0.28.3");
+	try {
+		assert.equal(stale.updateService.lastInstallAttempt(), null);
+		assert.equal(
+			existsSync(stale.path),
+			false,
+			"the retirement is a removal, not a read-time mask",
+		);
+	} finally {
+		stale.dispose();
+	}
+
+	// An install that reached its target exactly is the same fact: the record describes
+	// a version this app is running.
+	const exact = await at("0.29.0", "0.29.0");
+	try {
+		assert.equal(exact.updateService.lastInstallAttempt(), null);
+	} finally {
+		exact.dispose();
+	}
+
+	// The record still has something to say: the target is AHEAD of what is running, so
+	// the failure it names is the state of this machine and the attempts count stands.
+	const live = await at("0.29.1", "0.30.0");
+	try {
+		const record = live.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.attempts, 1);
+		assert.equal(existsSync(live.path), true);
+	} finally {
+		live.dispose();
+	}
+
+	/*
+	 * AND THE PRE-RELEASE PAIR STAYS (review round 1, R1-2). `compareVersions` reads
+	 * TRIPLES, so a target `0.1.2` against a running `0.1.2-beta.9` orders EQUAL -
+	 * and the first spelling of the retire rule treated `order <= 0` as arrival, so
+	 * the launch that had just written "the install of 0.1.2 didn't finish" deleted
+	 * its own record on the way out, while the marker rule called that same pair a
+	 * failure. The stand-in app version here IS the shape: this repository has shipped
+	 * a `-beta.N` stamp, so it is a pair the update flow really produces.
+	 */
+	const prerelease = await at("0.1.2-beta.9", "0.1.2");
+	try {
+		const record = prerelease.updateService.lastInstallAttempt();
+		assert.equal(
+			record?.targetVersion,
+			"0.1.2",
+			"a machine reporting 0.1.2-beta.9 is not running 0.1.2, so the record must stay",
+		);
+		assert.equal(existsSync(prerelease.path), true);
+	} finally {
+		prerelease.dispose();
+	}
+
+	/*
+	 * And nothing is dropped on a guess: a target the module cannot order is not
+	 * evidence that the install landed, which is the direction `evaluatePendingInstall`
+	 * takes for a marker it cannot order either.
+	 */
+	const unorderable = await at("0.29.1", "nightly");
+	try {
+		assert.equal(
+			unorderable.updateService.lastInstallAttempt()?.targetVersion,
+			"nightly",
+		);
+		assert.equal(existsSync(unorderable.path), true);
+	} finally {
+		unorderable.dispose();
+	}
+});
+
+test("a start-up that observes an install arrived retires the record, and a failed one keeps it", async () => {
+	/*
+	 * The event-driven half of the same rule: the launch that observes the install
+	 * having succeeded (or being superseded) is the moment the fact becomes true, and
+	 * the two arms that report it are where the record is cleared. The arms that do
+	 * NOT report arrival - an install still in flight, and one that failed - must leave
+	 * it alone, or the record loses its only purpose.
+	 */
+	/*
+	 * THE FILES ARE SEEDED AFTER THE SERVICE IS CONSTRUCTED, on purpose (QA Q-1).
+	 * `UpdateService`'s own constructor calls `recoverPendingInstall()`, so a
+	 * record written first would be retired by CONSTRUCTION and the case would
+	 * assert about the constructor rather than about the call it narrates. Seeded
+	 * after, the arms below are pinned by the explicit call, and each case asserts
+	 * the record is still on disk before that call - which is what fails if the
+	 * seeding order is ever reversed again.
+	 */
+	const scenario = async ({ markerTarget, appVersion, recordTarget }) => {
+		const userData = mkdtempSync(join(tmpdir(), "lo-recover-userdata-"));
+		globalThis.__loTestPaths = {
+			home: userData,
+			userData,
+			appData: userData,
+			temp: tmpdir(),
+		};
+		globalThis.__loTestAppVersion = appVersion;
+		const { service, serviceDir } = await loadUpdateServiceModule();
+		const recordPath = join(userData, "last-update-install.json");
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					// The launch-time recovery schedules the failure notice against the
+					// load event, so the stub window carries the registration surface it
+					// reaches for rather than a send-only object.
+					once: () => {},
+					on: () => {},
+					removeListener: () => {},
+				},
+			},
+			null,
+		);
+		/*
+		 * The seam that decides "is this target's install still running" is
+		 * `installJobStateProbe` (the four-state probe `installJobState` answers);
+		 * `absent` is a launchd with no job for this app, which is what lets the
+		 * marker be judged by version alone. The stub this case used to install -
+		 * `shipItInstallJobLoaded` - is not a member of the class at all, so it
+		 * armed nothing (QA Q-1, measured).
+		 */
+		updateService.installJobStateProbe = () => "absent";
+		writeFileSync(
+			recordPath,
+			JSON.stringify({
+				targetVersion: recordTarget,
+				runningVersion: "0.28.2",
+				startedAt: "2026-09-18T13:37:09.507Z",
+				detectedAt: "2026-09-18T14:12:16.975Z",
+				detail:
+					"Install started. Squirrel cancels an install when an instance runs.",
+				attempts: 1,
+			}),
+		);
+		writeFileSync(
+			join(userData, "pending-update-install.json"),
+			JSON.stringify({
+				targetVersion: markerTarget,
+				artifactPath: join(userData, "staged.zip"),
+				startedAt: new Date().toISOString(),
+				watchdogPid: null,
+			}),
+		);
+		return {
+			updateService,
+			recordPath,
+			dispose: () => {
+				clearInterval(updateService.updateCheckInterval);
+				// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means to the fixture's getters.
+				delete globalThis.__loTestPaths;
+				globalThis.__loTestAppVersion = undefined;
+				rmSync(serviceDir, { recursive: true, force: true });
+				rmSync(userData, { recursive: true, force: true });
+			},
+		};
+	};
+
+	// The install arrived: the marker's target is what this app is running.
+	const arrived = await scenario({
+		markerTarget: "0.29.0",
+		appVersion: "0.29.0",
+		recordTarget: "0.29.0",
+	});
+	try {
+		// The record is there BEFORE the call: construction alone must not have
+		// touched it, or the assertion below would be about the constructor.
+		assert.match(
+			readFileSync(arrived.recordPath, "utf8"),
+			/"targetVersion":"0.29.0"/,
+			"the constructor's own recovery may not retire a record written after it",
+		);
+		arrived.updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(arrived.recordPath),
+			false,
+			"the launch that observed the install arrive is the end of the record",
+		);
+	} finally {
+		arrived.dispose();
+	}
+
+	// And a failure is still a failure: the record it writes survives its own report,
+	// with the attempts count the panel reads. The arm REPLACES the record with this
+	// attempt's (that is what the count is for) - what it may not do is remove it,
+	// which is the clearing the two arms above perform and this one must not.
+	const failed = await scenario({
+		markerTarget: "0.30.0",
+		appVersion: "0.29.1",
+		recordTarget: "0.28.3",
+	});
+	try {
+		assert.equal(existsSync(failed.recordPath), true);
+		failed.updateService.recoverPendingInstall();
+		const record = failed.updateService.lastInstallAttempt();
+		assert.equal(record?.targetVersion, "0.30.0");
+		assert.equal(record?.runningVersion, "0.29.1");
+	} finally {
+		failed.dispose();
+	}
 });

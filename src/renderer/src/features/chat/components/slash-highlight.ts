@@ -53,7 +53,10 @@
  * by an indent somebody re-counted.
  */
 
+import { SEPARATOR, pyTrim, pyTrimStart } from "./slash-token";
+
 /** One painted span of the draft. `kind` names a ROLE, never a colour. */
+
 export type SlashHighlightRun = {
 	start: number;
 	end: number;
@@ -84,8 +87,17 @@ export type SlashHighlightArgs = {
 	picking: boolean;
 };
 
-/** Any whitespace, matching the TUI's `ch.isspace()` for the token split. */
-const WHITESPACE = /\s/;
+/*
+ * THE SEPARATOR, THE STRIP AND THE LEADING-STRIP ALL COME FROM `slash-token`
+ * (QA round 3, Q3-1). This file read `\s` — JavaScript's class, not the one the
+ * TUI's `ch.isspace()` is — and the gap it left was user-visible: a draft whose
+ * separator is one of Python's five extra characters (`/mcp logout<U+0085>srv`,
+ * or the leading form) RUNS as a command while the highlighter painted no tint
+ * for it. A command that executes with no colour affordance is not the refusal
+ * class — nothing is refused and nothing goes to the wrong host — but it is the
+ * same mistake one consumer over, so its count is measured and pinned rather
+ * than argued about.
+ */
 
 /** The reserved first argument of `/team`: `chart` is a subcommand, not a name. */
 const RESERVED_TEAM_ARGUMENT = "chart";
@@ -116,9 +128,9 @@ export function firstContentLine(draft: string): FirstContentLine | null {
 		const newline = draft.indexOf("\n", lineStart);
 		const lineEnd = newline === -1 ? draft.length : newline;
 		const line = draft.slice(lineStart, lineEnd);
-		if (line.trim() !== "") {
+		if (pyTrim(line) !== "") {
 			return {
-				start: lineStart + (line.length - line.trimStart().length),
+				start: lineStart + (line.length - pyTrimStart(line).length),
 				end: lineEnd,
 			};
 		}
@@ -151,7 +163,7 @@ export function slashHighlightRuns({
 	 */
 	let wordEnd = text.length;
 	for (let index = 1; index < text.length; index++) {
-		if (WHITESPACE.test(text[index])) {
+		if (SEPARATOR.test(text[index])) {
 			wordEnd = index;
 			break;
 		}
@@ -194,7 +206,15 @@ export function slashHighlightRuns({
 	const space = text.indexOf(" ");
 	if (space === -1) return runs;
 	const argument = text.slice(space + 1);
-	const lead = argument.length - argument.trimStart().length;
+	/*
+	 * The SPLIT is a literal space, which is the TUI's own partition — but the
+	 * STRIP before the name is `pyTrimStart`, because the reference's `lstrip()` is
+	 * Python's class (round 3's inventory: this was `trimStart()`, the last
+	 * JavaScript-class strip outside the deliberate literal-space splits). A
+	 * separator Python strips and JavaScript does not therefore moved the name's
+	 * start by one cell, painting the name over a character that is not in it.
+	 */
+	const lead = argument.length - pyTrimStart(argument).length;
 	const name = argument.slice(lead).split(" ")[0];
 	if (!name) return runs;
 	const reserved =
@@ -237,7 +257,7 @@ export function runsMatchingPlan(
 	return runs.filter(
 		(run) =>
 			run.kind !== "unknown" ||
-			draft.slice(run.start, run.end).trim() === draft.trim(),
+			pyTrim(draft.slice(run.start, run.end)) === pyTrim(draft),
 	);
 }
 

@@ -51,8 +51,8 @@ import { loadPalettes } from "./palette-source.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
 const ARGS = process.argv.slice(2);
-const flag = (name) => {
-	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
+const flag = (name, args = ARGS) => {
+	const hit = args.find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3) : null;
 };
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
@@ -134,6 +134,107 @@ const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
  * It is opt-in per run, and it never applies to a full sweep.
  */
 const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
+
+/*
+ * How long the theme guard waits for the story's decorator to apply the
+ * palette it was navigated with, before it gives up and fails the run.
+ *
+ * The guard POLLS `document.documentElement.dataset.theme` rather than
+ * sleeping once, for the reason its own comment gives at the call site: the
+ * wait is paid only by the story that needs it instead of by all 372 frames.
+ * 10 s is a correct budget on an idle machine.
+ *
+ * IT IS TOO SHORT ON A LOADED ONE, and that is a measurement rather than a
+ * guess (2026-09-18, this host, load averages 144-233): driving the rig's own
+ * story over CDP, `chat-canonical-links--detected-targets` reaches
+ * `tokyoNight` at **72.1 s**, and even the default `localOperatorDark` at
+ * 30-66 s, while this window is 40 x 250 ms plus the 900 ms post-navigation
+ * settle, ~10.9 s - a 3-7x shortfall. The rig could not take a SINGLE frame at
+ * that load: three runs died at the set's first entry with `document carries
+ * theme "" after 10s`.
+ *
+ * So the budget is a knob. IT DEFAULTS TO THE VALUE THE RIG USES TODAY, so the
+ * gate's determinism, the committed frames and every existing capture are
+ * unaffected; a run on a busy box raises it and says so. Opt in with
+ * `--theme-settle-ms=<ms>` or `LOCAL_OPERATOR_UI_THEME_SETTLE_MS` in the
+ * environment (the flag wins). A MALFORMED VALUE IS REFUSED rather than
+ * silently replaced by the default: a run that quietly reverted to 10 s would
+ * reproduce exactly the failure this knob exists to avoid, on a machine where
+ * it is already known not to fit. The space-separated spelling
+ * (`--theme-settle-ms 300000`) is refused BY NAME rather than falling through to
+ * the default, because the file's own `flag()` shape matches only the `=` form
+ * (round 5, R5-8). The flag is not restricted to narrow runs, but a full sweep
+ * should keep the shipped budget.
+ *
+ * THIS KNOB IS THE THEME GUARD'S ALONE, and the guard next door keeps its own
+ * fixed ~10 s (`evaluateUntil`'s 50 x 200 ms) deliberately rather than by
+ * oversight: that wait is for a selector or a text aim inside a story that has
+ * already settled its theme, it is bounded by the same 10 s the theme window
+ * always had, and the round-3 and round-4 passes both fitted inside it. A
+ * reader raising this number does not thereby raise that one - if a future pass
+ * finds a box where the aim times out, the honest fix is a budget for that
+ * wait, measured the way this one was.
+ */
+/*
+ * A whole number of milliseconds, for `resolveThemeSettleMs`'s validation.
+ *
+ * At the top level rather than inline because that is the rule this file is
+ * held to (`lint/performance/useTopLevelRegex`, the same one `DEBUG_PORT_LINE`
+ * below is hoisted for): a literal inside a function is re-created on every
+ * call. It must also sit ABOVE the resolver's own module-scope call, which is
+ * why it is here rather than beside `API_URL_LINE` where the rest of the flag
+ * parsing lives: a `const` used before its declaration in that path throws a
+ * `ReferenceError` from the temporal dead zone, which reads as a load failure
+ * rather than as the refusal the caller wrote.
+ */
+const WHOLE_MILLISECONDS = /^\d+$/;
+
+export const THEME_SETTLE_DEFAULT_MS = 10_000;
+/** The guard's poll interval, which is what turns the budget into attempts. */
+export const THEME_SETTLE_POLL_MS = 250;
+export const THEME_SETTLE_ENV = "LOCAL_OPERATOR_UI_THEME_SETTLE_MS";
+
+/**
+ * The theme guard's budget, resolved from argv then the environment.
+ *
+ * Read as a function of its inputs rather than straight off `process` so the
+ * three properties that matter are testable without a capture: the flag is
+ * honoured, the default is the shipped 10 s, and a value that is not a
+ * positive whole number of milliseconds THROWS. Failing closed is the point -
+ * see the constant's note above for what a silent default costs here.
+ */
+export const resolveThemeSettleMs = (args = ARGS, env = process.env) => {
+	/*
+	 * The value is read through this file's own `flag()`, so the knob cannot
+	 * drift from the shape every other flag here has - and that shape's one trap
+	 * is refused BY NAME rather than left to fall through: a space-separated
+	 * `--theme-settle-ms 300000` matches no `--theme-settle-ms=`, so the run
+	 * would quietly take the 10 s default on the machine that has already shown
+	 * 10 s does not fit, which is the one outcome the constant's note says must
+	 * not happen silently (round 5, R5-8).
+	 */
+	if (args.includes("--theme-settle-ms")) {
+		throw new Error(
+			`--theme-settle-ms takes its value joined with '=': write --theme-settle-ms=<ms>, not "--theme-settle-ms <ms>"`,
+		);
+	}
+	const raw = flag("theme-settle-ms", args) ?? env[THEME_SETTLE_ENV];
+	if (raw === undefined) return THEME_SETTLE_DEFAULT_MS;
+	const text = String(raw).trim();
+	const value = Number(text);
+	if (
+		!WHOLE_MILLISECONDS.test(text) ||
+		!Number.isSafeInteger(value) ||
+		value <= 0
+	) {
+		throw new Error(
+			`--theme-settle-ms / ${THEME_SETTLE_ENV} must be a positive whole number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	}
+	return value;
+};
+
+const THEME_SETTLE_MS = resolveThemeSettleMs();
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
@@ -1030,6 +1131,29 @@ export const STORIES = [
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
 	   where the hierarchy that must SURVIVE the tightening is judged. */
 	["chat-tool-rows--operator-spacing-cases", 1024, 860],
+	/*
+	 * The HOVERED frame, and the pair it exists for.
+	 *
+	 * A settled row's identity ink is painted on the row's own hover ground
+	 * (`tool-row.tsx`'s `hover:bg-elevated`), and that pair — `accentAlt` as 12px
+	 * text on `elevated` — was the one nothing measured until PR #391's round 1:
+	 * the role's text floor was asserted on `canvas`/`surface`/`sunken` only,
+	 * because neither of its two sites had ever painted a state ground, and ten
+	 * palettes sat under 4.5:1 there. The design round could not photograph it —
+	 * a synthetic click leaves the capture on the plain canvas ground — so the
+	 * pair was argued from tokens.
+	 *
+	 * `b1` is a settled `hub` row (the `(b)` frame of this story), which is the
+	 * ink's own category on the ink's own ground. It is a `hover`-only entry, one
+	 * frame per theme, and the coordinate the pointer lands on is the ROW — the
+	 * same element a reader's pointer meets, not a parent of it.
+	 */
+	[
+		"chat-tool-rows--operator-spacing-cases",
+		1024,
+		860,
+		{ hover: '[data-record-id="b1"]', dir: "operator-spacing-cases-hovered" },
+	],
 	["chat-tool-rows--turn-boundary-and-working-line", 1024, 700],
 	/* Where the 2px `trace` hairline applies and where it does not: a lone call,
 	   a notice inside a run, and a run that opens a turn. `operator-spacing-cases`
@@ -1580,8 +1704,22 @@ export const STORIES = [
 	 * every code twice at one size, where `chat-sidebar-status-feed--*` below shows
 	 * three of them in their own rows, which is what a transition needs and not what
 	 * a vocabulary needs.
+	 *
+	 * TALLER THAN IT WAS, because the story now opens with the `error`/`wedged`
+	 * PAIR above the matrix: the marking change is a separation, and a separation
+	 * is not visible in the fixed state it produced — the two rows have to be in
+	 * the frame together. 120px is the pair's own two rows plus its rule and the
+	 * gap the matrix below them keeps.
 	 */
-	["chat-session-status--neighbours", 860, 600],
+	["chat-session-status--neighbours", 860, 720],
+	/*
+	 * THE AMBER CLASS IN ONE COLUMN (design round 1, D4), which the set could not
+	 * answer before: the four marks a reader meets in one list were legible only by
+	 * cross-referencing the matrix's two columns, and the closest pair — the waves
+	 * against `Pause`'s bars — never appeared together. One column, four rows, ~300px
+	 * tall.
+	 */
+	["chat-session-status--amber-class", 520, 300],
 	/*
 	 * The conversation sidebar's row status, delivered by the machine-wide feed
 	 * rather than by a catalogue read. THREE frames, and the pair they are half of
@@ -1597,6 +1735,42 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-answered", 780, 560],
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
+	/*
+	 * The state the operator reported, in the sidebar that draws it, with the
+	 * failed row directly under it: `wedged` and `error` used to share one mark in
+	 * one ink, and this frame is where the separation is visible. 600px rather than
+	 * the 560 the states above take, because the readout now prints the rows'
+	 * COMPOSED tooltips - the remedy clause lives only in a native `title`, which
+	 * is not photographable - and the caption is a line taller for it.
+	 *
+	 * `expectSentence` ON THE CLAUSE, AND IT IS THE SUBJECT OF THE FRAME (review
+	 * round 2's MAJOR 1, QA Q-5, UX U8). The readout fills from a 200ms poll
+	 * (`chat-sidebar-status-feed.stories.tsx`), so a shutter that lands before the
+	 * tick that saw the rows writes `Row tooltips: (none on screen)` - which is
+	 * exactly what the fold re-captured here and what `check-evidence` could not
+	 * see, because its predicate is paint plus the manifest stamps and never the
+	 * content. Height was bought for that line, so the line has to be in the frame:
+	 * this entry now refuses to commit one whose readout does not carry the clause.
+	 */
+	[
+		"chat-sidebar-status-feed--wedged-owner",
+		780,
+		600,
+		{
+			/*
+			 * SCOPED TO THE READOUT, because the clause is RENDERED elsewhere on the page
+			 * too: the row's own `sr-only` remedy span is in the document's text whatever
+			 * this paragraph says, so a document-wide search would pass on
+			 * `(none on screen)` - which is exactly how a subject-less frame got committed
+			 * here once. The subject of this frame is the READOUT LINE, and the gate names
+			 * it.
+			 */
+			expectSentence: {
+				selector: "[data-readout-titles]",
+				includes: "/stop if it stays silent",
+			},
+		},
+	],
 	/*
 	 * A row re-filing INSIDE its section (local-operator #1224's renderer half).
 	 * Five states rather than five transitions: the same four-row roster once with
@@ -2482,6 +2656,17 @@ export const STORIES = [
 	["settings-app-updates-section--all-current", 900, 572],
 
 	/*
+	 * THE STATE THE RECORD IS KEPT IN (design review round 1, D1), and the one
+	 * whose sentence this round's fix changes: the record's target (0.30.0) is
+	 * still AHEAD of the app, so the record stays - correctly - and the sentence
+	 * must print the version that IS running (0.29.5, the card's own live reading)
+	 * rather than the version captured when the failure was written (0.29.2). The
+	 * two differ on this frame on purpose: a fixture whose record agreed with the
+	 * machine could not tell the two readings apart, which is the whole defect.
+	 */
+	["settings-app-updates-section--record-kept-while-target-ahead", 900, 572],
+
+	/*
 	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
 	 * app-managed server three releases behind its published release, reported as
 	 * up to date.
@@ -2872,6 +3057,30 @@ export const STORIES = [
 	// the running bundle was already broken and no update was in play, so the copy
 	// has to describe that instead of an update that never happened (review R2).
 	["common-updatenotification--install-blocked-at-startup", 1280, 900],
+	/*
+	 * The OTHER refusal, and the one the 0.29.6 incident produced: the artifact the
+	 * updater downloaded is signed, notarized, `codesign --verify`-clean and
+	 * `spctl`-accepted, and macOS refuses to spawn it because it claims the
+	 * restricted `keychain-access-groups` entitlement with no provisioning profile
+	 * to authorize it (amfid -413, SIGKILL at exec). The panel is the seal
+	 * refusal's shape on purpose - same subject (an update that will not be
+	 * installed), same remedy - so what a reader compares across the two frames is
+	 * the heading, not the layout, and the mechanism stays in the details block.
+	 *
+	 * The remedy is a retry with no download page (design round 1, D1), which is why
+	 * this state's frame differs from its sibling's below the message: the sibling
+	 * sends the reader to a fresh copy, and this one must not.
+	 */
+	["common-updatenotification--install-blocked-cannot-launch", 1280, 900],
+	/*
+	 * The other arm of the same code, which had no fixture and therefore no frame
+	 * until design round 1 (D3): the staged archive's signature could not be read and
+	 * no profile is embedded, so the app refuses without being able to say macOS
+	 * refused anything. The heading differs from its sibling's above because the
+	 * heading map is keyed by code - that is the whole finding, so it has to be
+	 * photographed rather than argued.
+	 */
+	["common-updatenotification--install-blocked-cannot-check", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the
@@ -3704,16 +3913,19 @@ export const STORIES = [
 	 * trigger-hover frames use - and the toolbar is raised by the shipped
 	 * `pointerover` handler reacting to it.
 	 *
-	 * `DetectedTargets` is the resting half and carries the eight admission shapes
+	 * `DetectedTargets` is the resting half and carries the nine admission shapes
 	 * in one frame (a `~` path, the operator's own report; a backticked path; a
 	 * `file://` URL; a bare https URL that remark-gfm already linked, which must not
 	 * be linked twice; a path in a table cell; a directory; a path that is not
-	 * there; and one long enough to wrap). There is NO `main`-side before half for it,
-	 * and there cannot be: the story file is ADDED by this branch, so no frame of it
-	 * exists on `main` at all. What the set does have is the story's own RESTING
-	 * state - the same text with no pointer on it and no highlight in it - and the
-	 * change it is the "before" of is "the previous behaviour was no anchor at
-	 * all", which round 1 (review M5) corrected in this file and in the design doc.
+	 * there; one long enough to wrap; and the ninth, the operator's own report of
+	 * this defect - a slash command in prose and a second one in backticks, neither
+	 * a file, beside an extensionless token that is a real directory). There is NO
+	 * `main`-side before half for it, and there cannot be: the story file is ADDED
+	 * by this branch, so no frame of it exists on `main` at all. What the set does
+	 * have is the story's own RESTING state - the same text with no pointer on it
+	 * and no highlight in it - and the change it is the "before" of is "the previous
+	 * behaviour was no anchor at all", which round 1 (review M5) corrected in this
+	 * file and in the design doc.
 	 *
 	 * `hover-file` is the file case (Copy, Open in canvas, Open in default app, Open
 	 * folder), which is the operator's ask in one frame: a canvas-openable file
@@ -3816,6 +4028,31 @@ export const STORIES = [
 			hoverText: "is gone, and",
 			hoverSettleMs: 500,
 			dir: "hover-prose",
+		},
+	],
+	/*
+	 * THE AFTER HALF'S CENTRAL CLAIM, as an assertion rather than a picture
+	 * (design D2): a slash command raises NO strip. `hoverText` is the instrument
+	 * because the token is prose - no selector can name a text node - and
+	 * `expectGone` is what makes the frame falsifiable: a still of an absent
+	 * toolbar is otherwise indistinguishable from one of the resting state.
+	 *
+	 * SELF-ASSERTING ACROSS THE TWO HEADS, which is why it is not filed as a resting
+	 * frame under a hover name: on the BEFORE head (`3b625b4a2`, the story-fixture-
+	 * only commit whose frames are the `chat-canonical-links-before` set) EVERY
+	 * `/new` run in this paragraph is inside an anchor, so the aim throws with
+	 * `no text run matching "/new" outside a link or a button` - measured by design
+	 * round 1 on that head - and this entry cannot produce a frame there at all.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverText: "/new",
+			hoverSettleMs: 500,
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-command-prose",
 		},
 	],
 	[
@@ -4914,20 +5151,25 @@ const main = async () => {
 			   CodeMirror - can still be mounting when a single read lands. A
 			   fixed sleep long enough for the slowest story would be paid by
 			   all 372 frames, so wait for the condition instead of for a
-			   duration. The throw still fires if it never becomes true. */
+			   duration. The throw still fires if it never becomes true.
+
+			   The budget is THEME_SETTLE_MS (10 s shipped, `--theme-settle-ms`
+			   or its env var to raise it on a loaded machine - see that
+			   constant for the 72.1 s measurement that made it a knob). */
 			let applied = "";
-			for (let attempt = 0; attempt < 40; attempt++) {
+			const settleAttempts = Math.ceil(THEME_SETTLE_MS / THEME_SETTLE_POLL_MS);
+			for (let attempt = 0; attempt < settleAttempts; attempt++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: "document.documentElement.dataset.theme || ''",
 				});
 				applied = result.value;
 				if (applied === theme) break;
-				await sleep(250);
+				await sleep(THEME_SETTLE_POLL_MS);
 			}
 			if (applied !== theme) {
 				throw new Error(
-					`${story} @ ${theme}: document carries theme "${applied}" after 10s`,
+					`${story} @ ${theme}: document carries theme "${applied}" after ${THEME_SETTLE_MS / 1000}s`,
 				);
 			}
 
@@ -6727,15 +6969,56 @@ const main = async () => {
 			 * and not a sentence the reader is meant to read: one name for two meanings is how a
 			 * guard stops guarding.
 			 */
+			/*
+			 * WAITED FOR, not read once, because a story is allowed to fill a line LATE and a
+			 * shutter that can beat it will eventually beat it (review round 2's MAJOR 1: the
+			 * `wedged-owner` readout is written by a 200ms poll, and a frame was committed
+			 * reading `Row tooltips: (none on screen)` — the sentence that frame exists to
+			 * evidence, absent, with the height still paid for the line). The claim is about
+			 * what a reader sees, so the run waits for the subject to appear and FAILS if it
+			 * never does: a frame without its subject is evidence for something else, and it
+			 * must not be committed silently. Two seconds is ten poll ticks — the interval is
+			 * the story's own 200ms — and it costs a passing sweep nothing.
+			 */
 			if (options?.expectSentence) {
-				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
-					expression: "document.body.innerText || ''",
-					returnByValue: true,
-				});
-				const painted = String(claimRead?.value ?? "");
-				if (!painted.includes(options.expectSentence)) {
+				/*
+				 * SCOPED TO A PLACE, NOT TO THE DOCUMENT (round 3, found by the reader
+				 * re-taking this very frame). The first version of this check searched
+				 * `document.body.innerText`, and the `sr-only` remedy span is RENDERED —
+				 * clipped to a pixel rather than `display: none` — so its text is in the
+				 * document's innerText whatever the readout says. The gate therefore passed
+				 * on a frame reading `Row tooltips: (none on screen)`: it asserted that the
+				 * sentence existed SOMEWHERE, which is not the claim. A subject gate has to
+				 * name the surface the frame was sized for, so the sentence form below is
+				 * `{ selector, includes }` and the subject is that element's own text.
+				 */
+				const claim = options.expectSentence;
+				const scoped = typeof claim === "string" ? null : claim.selector;
+				const wanted = typeof claim === "string" ? claim : claim.includes;
+				const paintedIn = async () => {
+					const { result: claimRead } = await cdp.send("Runtime.evaluate", {
+						expression: scoped
+							? `(() => { const el = document.querySelector(${JSON.stringify(scoped)}); return el ? (el.innerText || "") : "\\u0000missing"; })()`
+							: "document.body.innerText || ''",
+						returnByValue: true,
+					});
+					const value = String(claimRead?.value ?? "");
+					if (value.includes("\u0000missing")) {
+						throw new Error(
+							`${story} @ ${theme}: expectSentence names the surface ${JSON.stringify(scoped)}, which is not in the document — the gate cannot vouch for a frame whose subject never rendered`,
+						);
+					}
+					return value;
+				};
+				let painted = await paintedIn();
+				for (let waited = 0; waited < 2000; waited += 100) {
+					if (painted.includes(wanted)) break;
+					await sleep(100);
+					painted = await paintedIn();
+				}
+				if (!painted.includes(wanted)) {
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
 					);
 				}
 			}

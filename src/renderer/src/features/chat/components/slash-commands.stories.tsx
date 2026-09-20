@@ -360,6 +360,11 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// argument chosen from a list.
 	valueArgumentCommands: new Set(),
 	argumentCommands: new Set(),
+	// A hand-built state carries no WIRE rows, which is the older backend's case:
+	// the empty map and set are what the planner's own fallback is exercised
+	// against, and a story that wants the shape's answer passes real rows.
+	argumentShapes: new Map(),
+	prefixingCommands: new Set(),
 	nameListCommands: new Set(),
 	// No roster in a hand-built state: a story that wants a NAME run painted passes
 	// the names it checks (`slash-highlight.stories.tsx` is where that lives).
