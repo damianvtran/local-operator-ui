@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T15:43:46.808Z",
+  "at": "2026-09-20T16:03:17.377Z",
   "arm": {
     "armed": true
   },
@@ -61,10 +61,10 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789919054151.225,
+      "requestedAt": 1789920215747.2498,
       "status": 200,
-      "answeredAt": 1789919054167.295,
-      "deliveredAt": 1789919056683.425
+      "answeredAt": 1789920215777.7979,
+      "deliveredAt": 1789920218301.902
     }
   ],
   "answersFrom": "route",
@@ -74,16 +74,16 @@
     ]
   },
   "tree": {
-    "head": "8bd31e28b8009fc8918820f9362c9869acffc315",
-    "srcTree": "1309138d077bc8a5b00a0417d7d76ae5a8ab4edc",
+    "head": "0c1d4cc957be6cf4f665e1adf2310c3afbe5d5ea",
+    "srcTree": "1d00dfbaa8736816b8781873b07f898270c4f75e",
     "srcDirty": true,
     "srcStatus": "M  src/renderer/src/features/chat/ask-answer.ts\nM  src/renderer/src/features/chat/components/chat-page.tsx"
   },
-  "clearedAt": 1789919054429,
-  "clearedAfterPressMs": 332,
+  "clearedAt": 1789920215822,
+  "clearedAfterPressMs": 104,
   "ordering": {
-    "clearedAt": 1789919054429,
-    "deliveredAt": 1789919056683.425,
+    "clearedAt": 1789920215822,
+    "deliveredAt": 1789920218301.902,
     "verdict": "the card cleared before the response was delivered"
   },
   "report": {
