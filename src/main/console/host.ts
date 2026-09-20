@@ -17,6 +17,7 @@ import type {
 	SurfaceOrigin,
 } from "./protocol";
 import {
+	type ConsoleActor,
 	type ConsoleRegistry,
 	type ConsoleRegistryEntry,
 	redactSurface,
@@ -592,7 +593,30 @@ export class ConsoleHost {
 			last_activity: record.lastActivity,
 			live: record.live,
 			agent_owned: record.origin === "agent",
+			// The co-pilot cell (§13.4): who touched the pty last, which `origin`
+			// deliberately does not answer.
+			last_actor: record.lastActor,
 		};
+	}
+
+	/**
+	 * Record who drove the pty, and push a change ONLY on a transition.
+	 *
+	 * The push is what the pane's listing refetches on, and a push per keystroke
+	 * would be one IPC frame for every character a user types. The mark only has
+	 * two values, so a comparison is the whole of the coalescing it needs.
+	 *
+	 * A REFUSED OR MISSING ACTOR IS THE AGENT PATH, which is the default rather
+	 * than a guess: every caller inside main other than the renderer's own IPC is
+	 * the RPC dispatch, and the renderer's path names `"user"` explicitly.
+	 */
+	private markActor(
+		entry: ConsoleRegistryEntry<SurfaceRuntime>,
+		actor: ConsoleActor,
+	): void {
+		if (entry.record.lastActor === actor) return;
+		entry.record.lastActor = actor;
+		this.options.onChanged?.();
 	}
 
 	/** `console_status`. */
@@ -763,10 +787,12 @@ export class ConsoleHost {
 	async input(
 		surface: string,
 		payload: { text?: string; bytes?: Uint8Array; paste?: boolean },
+		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
 		this.requireRunning(entry);
+		this.markActor(entry, actor);
 		const raw = payload.bytes ?? ENCODER.encode(payload.text ?? "");
 		if (raw.length > MAX_INPUT_BYTES) {
 			// Refused BEFORE anything reaches the pty, so "accepted: 0 bytes" is the
@@ -792,10 +818,12 @@ export class ConsoleHost {
 	async keys(
 		surface: string,
 		names: string[],
+		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
 		this.requireRunning(entry);
+		this.markActor(entry, actor);
 		await runtime.emulator.whenIdle();
 		const modes = runtime.emulator.grid.modes;
 		// Encode the WHOLE list before writing any of it. A refusal halfway through a

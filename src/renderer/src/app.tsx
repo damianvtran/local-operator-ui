@@ -29,7 +29,10 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelSessionIdOfView,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 // The other five routes are split out so a cold start neither downloads nor
@@ -183,6 +186,27 @@ const App: FC = () => {
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
+
+	/*
+	 * The conversation the app is DISPLAYING, which is not the same question as
+	 * "which session is active" while a draft is staged: `stageDraft` leaves
+	 * `activeSessionId` at the session the reader came from, so a reviewer that
+	 * read only that field would answer with the old id on both sides of a draft
+	 * and an agent's `reveal: "session"` would claim a pane over a draft.
+	 * `panelSessionIdOfView` is the app's own answer to this question and is read
+	 * here rather than re-derived (design §10.4's "the pane opens only if the app
+	 * is displaying that session").
+	 */
+	const displayedSessionId = useCanonicalSessionsStore((state) => {
+		const draft = state.activeDraftKey
+			? state.drafts[state.activeDraftKey]
+			: undefined;
+		return panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		);
+	});
 	/* The console pane's slot claim, for a banner click that names a surface (design
 	 * 12.3): the click lands the conversation AND the pane that shows it. */
 	const setConsolePaneOpen = useUiPreferencesStore(
@@ -230,6 +254,48 @@ const App: FC = () => {
 		);
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
+
+	/*
+	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
+	 * which conversation is on screen (design §10.4).
+	 *
+	 * The push exists in main and had no client: `console_create {reveal:"session"}`
+	 * answered `{revealed:true}` and the pane stayed closed, which is a lie the
+	 * caller cannot see through. Two modes, and the difference is the whole of
+	 * §10.4's focus-intent allowlist:
+	 *
+	 *   - `"session"` claims the pane ONLY when that session is the one being
+	 *     displayed, so an agent cannot yank the user's viewport to another
+	 *     conversation. It does not navigate, and that is the point of the mode.
+	 *   - `"open"` was downgraded by main to `"none"` unless the app's window was
+	 *     already focused — main owns that half because focus is a fact only it can
+	 *     read — so what arrives here is an open request the app may honour. It
+	 *     selects the conversation it names, for the same reason the banner's click
+	 *     does: a pane claimed for a conversation the user is not looking at would
+	 *     be a claim they cannot see.
+	 *
+	 * NEITHER MODE RAISES A WINDOW: `show`/`showInactive`/`focus` live in
+	 * `window-raise.ts` alone, and the focus rule was already applied in main.
+	 */
+	useEffect(() => {
+		const unsubscribe = window.api?.console?.onReveal?.((payload) => {
+			if (payload.mode === "none") return;
+			if (
+				payload.mode === "session" &&
+				payload.session_id !== displayedSessionId
+			)
+				return;
+			if (payload.mode === "open") setActiveSession(payload.session_id);
+			setConsoleActiveSurface(payload.surface);
+			setConsolePaneOpen(true);
+		});
+		return () => unsubscribe?.();
+	}, [
+		displayedSessionId,
+		setActiveSession,
+		setConsolePaneOpen,
+		setConsoleActiveSurface,
+	]);
 
 	// A consent banner's click, handled where the ROUTES are.
 	//

@@ -2400,3 +2400,67 @@ test("a wiring the caller did not supply fails the start by name, before any con
 		);
 	}
 });
+
+/*
+ * A REFUSED START STILL ANSWERS THE RENDERER, and the reason it refuses is the
+ * answer, not a crash report.
+ *
+ * This is the round-1 UX finding's U4 turned into a cell: with the console switched
+ * off, the namespace was never registered at all, so the pane's first read rejected
+ * with Electron's own "No handler registered for 'console-state'" and the pane put
+ * that underneath a sentence telling the user to update Local Operator — advice to
+ * reinstall an app that was working exactly as configured. The handler now exists on
+ * every path and answers `available: false` with the refusal's own reason, which is
+ * what lets the pane pick the right sentence.
+ */
+test("a refused start still answers a state read, with the reason it refused", async () => {
+	// The frame object is the SAME reference the window reports, because that identity
+	// is one of the checks: the shipped gate compares `event.senderFrame` with
+	// `owner.webContents.mainFrame` rather than their urls.
+	const mainFrame = { url: "http://localhost/index.html" };
+	const webContents = { mainFrame };
+	const window_ = { isDestroyed: () => false, webContents };
+	ipcMain.handlers.clear();
+	const started = await startConsoleHost({
+		window: window_,
+		expectedUrl: "http://localhost/index.html",
+		appVersion: "0.0.0-test",
+		log: () => {},
+	});
+	assert.equal(started.ok, false);
+
+	const handler = ipcMain.handlers.get("console-state");
+	assert.ok(
+		handler,
+		"the namespace is registered even though no host started, which is the whole point: an unregistered namespace is what produced the machine line",
+	);
+	const answer = await handler(
+		{ sender: webContents, senderFrame: mainFrame },
+		"session-1",
+	);
+	assert.equal(answer.available, false);
+	assert.equal(answer.reason, started.reason);
+	assert.equal(answer.detail, started.detail);
+	assert.deepEqual(answer.surfaces, []);
+
+	/*
+	 * AND THE SENDER CHECK IS UNCHANGED: answering without a host must not become a
+	 * way for a window that is not this app's to read the projection.
+	 */
+	await assert.rejects(
+		// An ASYNC thunk, because the sender check throws BEFORE the handler returns a
+		// promise: a synchronous throw from the argument is not something
+		// `assert.rejects` compares, it is a failure of the assertion instead.
+		async () =>
+			await handler(
+				{
+					sender: { mainFrame: {} },
+					senderFrame: { url: "https://elsewhere.example/" },
+				},
+				"session-1",
+			),
+		(error) => error.message.includes("cannot use the console"),
+		"a stranger frame is refused even in the unanswered state",
+	);
+	await started.stop?.();
+});

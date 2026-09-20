@@ -88,6 +88,11 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		() => pickActiveSurface(session.snapshot, sessionId, stored),
 		[session.snapshot, sessionId, stored],
 	);
+	/* Whether main says a console can exist at all (§15). Read once and used in two
+	   places — the body's state choice and the header's `+` — because a `+` that is
+	   offered where none can be created is the pane's own "a control with nothing to
+	   act on lies". */
+	const available = session.snapshot.available;
 
 	/*
 	 * The lens follows what is actually shown, and that write is what makes the
@@ -132,12 +137,29 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		return (
 			<div className={cn("flex h-full flex-col bg-surface")}>
 				{/* The slot's bar at the slot's height, so the pane's own bar does not move
-				    between a draft and a conversation. */}
+				    between a draft and a conversation — and the CLOSE control is in it for
+				    the same reason every other occupant of this slot has one: a pane the
+				    user cannot close from inside is a pane they have to find the trigger
+				    for, and a draft carries the control even though a draft has no session
+				    for its `+` to act on. */}
 				<div
-					className={cn("flex h-10 shrink-0 items-center gap-2 bg-sunken px-2")}
+					className={cn(
+						"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					)}
 					data-tour-tag="console-pane-header"
 				>
 					<span className={cn("shrink-0 text-meta text-ink-dim")}>Console</span>
+					<Tooltip content="Close console">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Close console"
+							onClick={onClose}
+							data-tour-tag="console-pane-close"
+						>
+							<PanelRightClose aria-hidden="true" />
+						</Button>
+					</Tooltip>
 				</div>
 				<ConsoleNotice
 					title="A console needs a conversation"
@@ -148,10 +170,24 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	}
 
 	const body = () => {
-		if (session.error && !session.snapshot.available) {
-			return <ConsoleUnavailable message={session.error} />;
-		}
+		/*
+		 * LOADING FIRST, THEN UNAVAILABLE, THEN EMPTY — and the order is load-bearing
+		 * now that main ANSWERS an unavailable state rather than throwing: `available`
+		 * is false in the snapshot a pane starts with, so a check on it before the
+		 * loading branch would flash "the console is not available" for one frame on
+		 * every mount. `session.error` is ORed in because a window that cannot reach
+		 * main at all never gets an answer to read.
+		 */
 		if (session.loading && surfaces.length === 0) return <ConsoleLoading />;
+		if (!session.snapshot.available || session.error) {
+			return (
+				<ConsoleUnavailable
+					reason={session.snapshot.reason}
+					detail={session.snapshot.detail}
+					message={session.error}
+				/>
+			);
+		}
 		if (!surface) {
 			return (
 				<ConsoleEmpty
@@ -168,29 +204,39 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				{!surface.running ? (
 					<ConsoleEndedBar exitCode={surface.exitCode} live={surface.live} />
 				) : null}
-				{surface.secure ? <ConsoleSecureBar /> : null}
 				{/*
-				 * `key` ON THE SURFACE, and it is the re-attach rule rather than a
-				 * micro-optimisation: one mirror holds one subscription and one terminal,
-				 * so switching surfaces in this pane must dispose the old one — which is
-				 * also what drops the old subscription in main (`unsubscribeAll` is
-				 * addressed by surface) instead of leaving a stream nobody reads.
+				 * `relative` FOR THE SECURE MARKER ONLY: it is an overlay so that
+				 * flipping the toggle cannot move the mirror's content box and send the
+				 * running program a `SIGWINCH` (§8.2's box is the pane's content box,
+				 * and a marker the user flips is not allowed to resize their program).
 				 */}
-				<ConsoleMirror
-					key={surface.surface}
-					surface={surface.surface}
-					/* The pane is open and this is the surface it is showing, so this
+				<div className={cn("relative flex min-h-0 grow flex-col")}>
+					{/*
+					 * `key` ON THE SURFACE, and it is the re-attach rule rather than a
+					 * micro-optimisation: one mirror holds one subscription and one terminal,
+					 * so switching surfaces in this pane must dispose the old one — which is
+					 * also what drops the old subscription in main (`unsubscribeAll` is
+					 * addressed by surface) instead of leaving a stream nobody reads.
+					 */}
+					<ConsoleMirror
+						key={surface.surface}
+						surface={surface.surface}
+						/* The pane is open and this is the surface it is showing, so this
 					   mirror is on screen: `visible: true` is what lets main derive a grid
 					   from its report at all (§8.2/8.3). A pane that is mounted but
 					   hidden — a slot being animated, a window behind another app — is not
 					   a case this component can observe, and the design's answer is that
 					   only a DISPLAYED pane reports, which is the mount itself. */
-					visible={true}
-					cols={surface.cols}
-					rows={surface.rows}
-					onReport={(report) => session.reportContent(surface.surface, report)}
-					onExit={() => session.refresh()}
-				/>
+						visible={true}
+						cols={surface.cols}
+						rows={surface.rows}
+						onReport={(report) =>
+							session.reportContent(surface.surface, report)
+						}
+						onExit={() => session.refresh()}
+					/>
+					{surface.secure ? <ConsoleSecureBar /> : null}
+				</div>
 			</div>
 		);
 	};
@@ -235,12 +281,23 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					{/* The `+` in the pane's own chrome, beside the surface list (§6.1). It
 					    is present in the empty state too, where it is the control a
 					    first-run user actually uses. */}
-					<Tooltip content="New console">
+					<Tooltip
+						content={
+							available
+								? "New console"
+								: "The console is not available in this app"
+						}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							aria-label="New console"
 							onClick={session.createSurface}
+							/* DISABLED WHEN THERE IS NOTHING TO ACT ON, which is the pane's
+							   own stated principle ("a control with nothing to act on lies"):
+							   in the unavailable state the `+` rendered identically to the
+							   empty state's and did nothing when pressed. */
+							disabled={!available}
 							data-tour-tag="console-new-surface"
 						>
 							<Plus aria-hidden="true" />
@@ -327,12 +384,31 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							>
 								{/* The agent marker says who ELSE is using this surface, exactly
 								    as the browser strip's does (§6.5's "the pane's visible marker"
-								    is the human half of the provenance the listing carries). */}
-								{row.agentOwned ? (
-									<Bot
-										aria-hidden="true"
-										className={cn("size-3.5 shrink-0 text-accent")}
-									/>
+								    is the human half of the provenance the listing carries) — and
+								    §13.4's co-pilot cell is the second reason it can appear: an
+								    agent typing into a surface the USER opened left this row
+								    unchanged, because `origin` is fixed at create and never moves.
+								    `lastActor` is the fact that does move, so the mark follows it
+								    and the title says which of the two happened. `size-4` is the
+								    browser strip's own size, taken so the same glyph in two panes
+								    of one slot is one size. */}
+								{row.agentOwned || row.lastActor === "agent" ? (
+									/* The `title` rides a wrapper: a lucide icon is a `<svg>`, and
+									   the attribute is a tooltip for a reader who wants to know
+									   WHICH of the two facts this mark is reporting. */
+									<span
+										className={cn("flex shrink-0 items-center")}
+										title={
+											row.agentOwned
+												? "An agent opened this console"
+												: "An agent has typed into this console"
+										}
+									>
+										<Bot
+											aria-hidden="true"
+											className={cn("size-4 shrink-0 text-accent")}
+										/>
+									</span>
 								) : null}
 								<span className={cn("max-w-[12rem] truncate")}>
 									{surfaceTitle(row)}

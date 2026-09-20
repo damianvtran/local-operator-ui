@@ -429,3 +429,114 @@ test("a mark for a surface the host no longer has banners nothing", () => {
 	 * effect end to end.
 	 */
 });
+
+/*
+ * THE FRAME WIDTH IS THE SHIPPED DEFAULT, PINNED TO BOTH COPIES.
+ *
+ * Design round 1's D2: the sweep captured this pane at a literal `843` while the
+ * store shipped ~804, so every console frame showed a pane no user has and the body
+ * quoted the default's arithmetic. The frame is now rendered at the store's constant
+ * and the sweep carries a restatement of it — because the sweep is JavaScript and
+ * cannot import the store's TypeScript. This test is what makes the restatement a
+ * copy rather than a second opinion: it reads the number out of the script's own
+ * source and compares it with the store's.
+ */
+test("the sweep's console width is the store's own default, not a second number", () => {
+	/*
+	 * THE ARITHMETIC IS THE SHIPPED ONE and only its two inputs are read from the
+	 * store's source, because the store itself cannot be imported here: it pulls in
+	 * zustand's `persist`, which reaches for a `localStorage` this process does not
+	 * have, and a bundle of it fails at import rather than at a useful line. So the
+	 * formula comes from `measureCell` (the same function the pane reports to main)
+	 * and the two constants it multiplies are read out of the file that owns them —
+	 * a change to either breaks this test instead of silently re-cropping frames.
+	 */
+	const storeSource = readFileSync(
+		"src/renderer/src/shared/store/ui-preferences-store.ts",
+		"utf8",
+	);
+	const columns = Number(
+		storeSource.match(/const CONSOLE_GRID_COLUMNS = (\d+);/)?.[1],
+	);
+	const chrome = Number(
+		storeSource.match(/const CONSOLE_PANE_CHROME_PX = (\d+);/)?.[1],
+	);
+	assert.ok(
+		Number.isFinite(columns) && Number.isFinite(chrome),
+		"the store still states the grid and its chrome as named constants",
+	);
+	// `measureCell` with no document is the shipped face's ratio (0.6em), which is the
+	// same branch the store's own default is computed from before a render exists.
+	const expected = Math.ceil(columns * measureCell().cellWidth) + chrome;
+
+	const source = readFileSync("scripts/capture-evidence.mjs", "utf8");
+	const declared = source.match(/const CONSOLE_PANE_WIDTH = (\d+);/);
+	assert.ok(
+		declared,
+		"the sweep declares its console width as a named constant to pin",
+	);
+	assert.equal(
+		Number(declared[1]),
+		expected,
+		"a font step or a column count that moves upstream must break this test rather than silently re-crop every console frame",
+	);
+	// And the rows must USE it: a constant nothing reads would pass the check above
+	// while every frame stayed at the old number.
+	const rows =
+		source.match(/\["console-pane--[a-z-]+", ([A-Za-z_0-9]+), \d+\]/g) ?? [];
+	assert.equal(rows.length, 12, "every console-pane story is in the sweep");
+	assert.ok(
+		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
+		"and every one of them is captured at that width",
+	);
+});
+
+/*
+ * THE TWO FIELDS THE PANE'S OWN ROUND ADDED, both of which fail silently when the
+ * projection drops them: a dropped `last_actor` is an agent marker that never
+ * appears (§13.4's co-pilot cell), and a dropped `reason` is an unavailable pane
+ * telling a user to update an app that is working as configured (§15).
+ */
+test("the snapshot carries the refusal's reason and the surface's last actor", () => {
+	const refused = readConsoleSnapshot({
+		available: false,
+		surfaces: [],
+		reason: "disabled",
+		detail: "LOCAL_OPERATOR_UI_CONSOLE_HOST is off",
+	});
+	assert.equal(refused.available, false);
+	assert.equal(refused.reason, "disabled");
+	assert.equal(refused.detail, "LOCAL_OPERATOR_UI_CONSOLE_HOST is off");
+
+	const state = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			{
+				surface: "con:1:aaaa",
+				session_id: "s",
+				origin: "user",
+				agent_owned: false,
+				last_actor: "agent",
+			},
+			{
+				surface: "con:2:bbbb",
+				session_id: "s",
+				origin: "agent",
+				agent_owned: true,
+				last_actor: "user",
+			},
+			// A row from an older host, with no `last_actor` at all: null rather than a
+			// guess, because "nobody has typed" and "the user typed" are different facts.
+			{ surface: "con:3:cccc", session_id: "s", origin: "user" },
+		],
+	});
+	assert.equal(state.surfaces[0].lastActor, "agent");
+	assert.equal(state.surfaces[0].agentOwned, false);
+	assert.equal(
+		state.surfaces[1].lastActor,
+		"user",
+		"a surface an agent CREATED and the user then typed into reports the user, which is the fact that moves",
+	);
+	assert.equal(state.surfaces[2].lastActor, null);
+	assert.equal(state.reason, null);
+});

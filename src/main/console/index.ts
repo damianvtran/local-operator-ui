@@ -218,15 +218,36 @@ export async function startConsoleHost(
 		);
 	}
 	const { log } = options;
+	/*
+	 * THE NAMESPACE EXISTS EVEN WHEN THE HOST DOES NOT.
+	 *
+	 * A console that is off is a state a user meets, and the renderer's only way to
+	 * ask about it is this namespace — so leaving it unregistered turned "this run
+	 * has the console switched off" into Electron's `No handler registered for
+	 * 'console-state'`, displayed as the machine line of a sentence about updating
+	 * the app. Registering it with no host and the refusal's own reason is what
+	 * lets the pane say the true thing (§15), and it costs one handler that answers
+	 * a fixed projection.
+	 */
+	const registerRefusal = (reason: string, detail: string): void => {
+		registerConsoleIpc({
+			window: () => options.window,
+			expectedUrl: options.expectedUrl,
+			host: () => null,
+			unavailable: { reason, detail },
+			log,
+		});
+	};
 	if (!consoleHostEnabled()) {
 		log(
 			`[console] disabled by ${CONSOLE_HOST_ENV}; no surfaces will be created and the record carries console: false`,
 		);
+		registerRefusal("disabled", `${CONSOLE_HOST_ENV} is off`);
 		return {
 			ok: false,
 			reason: "disabled",
 			detail: `${CONSOLE_HOST_ENV} is off`,
-			stop: async () => {},
+			stop: async () => unregisterConsoleIpc(),
 		};
 	}
 
@@ -236,11 +257,12 @@ export async function startConsoleHost(
 		// answer to a native module that will not load is that the capability is
 		// absent and the reason is visible, never that the app is broken.
 		log(`[console] node-pty is unavailable: ${load.reason}`);
+		registerRefusal("pty_unavailable", load.reason);
 		return {
 			ok: false,
 			reason: "pty_unavailable",
 			detail: load.reason,
-			stop: async () => {},
+			stop: async () => unregisterConsoleIpc(),
 		};
 	}
 

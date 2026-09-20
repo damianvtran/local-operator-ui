@@ -81,23 +81,57 @@ export const ConsoleLoading: FC = () => (
 /**
  * The console is off, or its native dependency did not load (§15's two rows).
  *
- * The sentence names the feature, the detail says what to do, and the machine line
- * carries main's own words — which is what distinguishes "the kill switch is off in
- * this run" from "this build's terminal support failed to load", two conditions the
- * user can only tell apart by reading the message.
+ * THREE SENTENCES, NOT ONE, and the reason is the remedies are opposite. This state
+ * shipped with a single paragraph whose remedy was "update Local Operator", shown
+ * for every cause including the run the user (or their launcher) had deliberately
+ * switched the console off with `LOCAL_OPERATOR_UI_CONSOLE_HOST=0` — advice to
+ * reinstall an app that was working exactly as configured. The switch is the
+ * difference between a setting and a broken install, so it is the thing the copy is
+ * keyed on: `reason` is main's own word for why the host is absent, and only the
+ * "native support did not load" row gets the update sentence.
+ *
+ * The machine line carries main's own `detail` (or the transport error when the
+ * bridge itself is unreachable) because that is the line a bug report quotes, and
+ * because it is what distinguishes the two rows for a reader who skips the prose.
  */
-export const ConsoleUnavailable: FC<{ message: string | null }> = ({
-	message,
-}) => (
-	<ConsoleNotice
-		icon={
-			<AlertTriangle aria-hidden="true" className={cn("size-5 text-warning")} />
-		}
-		title="The console is not available in this app"
-		detail="Terminal support did not load for this run. Updating Local Operator restores it, and the app's log names the reason."
-		machine={message ?? undefined}
-	/>
-);
+const UNAVAILABLE_COPY: Record<string, { title: string; detail: string }> = {
+	disabled: {
+		title: "The console is switched off for this run",
+		detail:
+			"LOCAL_OPERATOR_UI_CONSOLE_HOST is set to 0 in this app's environment, so no terminal is started and no surface can be created. Removing that setting turns the console back on.",
+	},
+	pty_unavailable: {
+		title: "The console is not available in this app",
+		detail:
+			"Terminal support did not load for this run. Updating Local Operator restores it, and the app's log names the reason.",
+	},
+	unknown: {
+		title: "The console is not available in this app",
+		detail:
+			"This window could not reach the console, and did not say why. The app's log carries the reason.",
+	},
+};
+
+export const ConsoleUnavailable: FC<{
+	reason: string | null;
+	detail: string | null;
+	message: string | null;
+}> = ({ reason, detail, message }) => {
+	const copy = UNAVAILABLE_COPY[reason ?? ""] ?? UNAVAILABLE_COPY.unknown;
+	return (
+		<ConsoleNotice
+			icon={
+				<AlertTriangle
+					aria-hidden="true"
+					className={cn("size-5 text-warning")}
+				/>
+			}
+			title={copy.title}
+			detail={copy.detail}
+			machine={detail ?? message ?? undefined}
+		/>
+	);
+};
 
 /** No surface in this session yet — and the `+` control lives HERE as well as in
  * the header, because this is the state a first-run user actually meets. */
@@ -169,9 +203,24 @@ export const ConsoleEndedBar: FC<{
  * being recorded.
  */
 export const ConsoleSecureBar: FC = () => (
+	/*
+	 * AN OVERLAY, AND THAT IS A CORRECTION RATHER THAN A STYLE. In the flex column
+	 * this banner used to cost the terminal ~2 rows, so flipping the toggle moved the
+	 * mirror's content box and main re-derived the grid from it — one `SIGWINCH` on a
+	 * user's own switch, sent to whatever program they were running. A control the
+	 * user flips is not allowed to resize their program (design 8.2's box is the
+	 * pane's CONTENT box, and this is chrome over it), so the marker is painted over
+	 * the top rows instead: the grid never moves, and because it is a marker rather
+	 * than a place, it is `pointer-events-none` so a click on the row behind it still
+	 * reaches the terminal.
+	 *
+	 * The ENDED banner keeps the layout row it had, and the difference is which one
+	 * can move a live program: by the time that banner appears there is no process
+	 * left to reflow (§7.3), and it stands over a history that is no longer changing.
+	 */
 	<div
 		className={cn(
-			"flex shrink-0 items-center gap-2 border-hairline border-b bg-accent-wash px-3 py-1.5",
+			"pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-hairline border-b bg-accent-wash px-3 py-1.5",
 		)}
 		data-tour-tag="console-secure"
 	>

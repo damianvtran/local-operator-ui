@@ -49,6 +49,11 @@ export interface ConsoleSurface {
 	/** The browser's own spelling of `origin === "agent"`, kept because the
 	 * listings carry both (§6.5). */
 	agentOwned: boolean;
+	/** Who drove the pty last (§13.4's co-pilot cell): `"agent"` once an agent has
+	 * typed into this surface — including one the USER opened — `"user"` once the
+	 * pane has, and `null` until either does. `agentOwned` cannot answer this: it
+	 * reports who CREATED the surface and never changes. */
+	lastActor: "user" | "agent" | null;
 	/** Secure input (§11.4): the surface's bytes reach the record, and nothing
 	 * else — no case is retained in the byte log while it is on. */
 	secure: boolean;
@@ -88,6 +93,19 @@ export interface ConsoleSnapshot {
 	agent: number;
 	/** Which surface main believes a pane is showing, or null. */
 	displayedSurface: string | null;
+	/** WHY there is no console, when there is none (§15's two rows plus anything
+	 * main reports later): `"disabled"` for the run's own switch,
+	 * `"pty_unavailable"` for native terminal support that did not load, anything
+	 * else passed through as-is. Null when the console is available.
+	 *
+	 * The pane's sentence follows this rather than the mere absence of a host,
+	 * because the two conditions have opposite remedies — one is a switch the user
+	 * (or their launcher) turned off, the other is a broken install — and the
+	 * version of this that read a load-failure sentence into both told a user with
+	 * the console switched OFF to update the app. */
+	reason: string | null;
+	/** Main's own words for the refusal, quoted as the machine line. */
+	detail: string | null;
 	surfaces: ConsoleSurface[];
 }
 
@@ -96,6 +114,8 @@ export const EMPTY_SNAPSHOT: ConsoleSnapshot = {
 	total: 0,
 	agent: 0,
 	displayedSurface: null,
+	reason: null,
+	detail: null,
 	surfaces: [],
 };
 
@@ -131,6 +151,10 @@ export const readConsoleSurface = (value: unknown): ConsoleSurface | null => {
 		lastActivity: numberOr(row.last_activity),
 		live: booleanOr(row.live, true),
 		agentOwned: booleanOr(row.agent_owned, origin === "agent"),
+		lastActor:
+			row.last_actor === "agent" || row.last_actor === "user"
+				? row.last_actor
+				: null,
 		secure: booleanOr(row.secure),
 		retain: booleanOr(row.retain),
 		displayed: booleanOr(row.displayed),
@@ -150,6 +174,8 @@ export const readConsoleSnapshot = (value: unknown): ConsoleSnapshot => {
 		: [];
 	return {
 		available: booleanOr(state.available),
+		reason: typeof state.reason === "string" ? state.reason : null,
+		detail: typeof state.detail === "string" ? state.detail : null,
 		total: numberOr(state.total, surfaces.length),
 		agent: numberOr(state.agent, surfaces.filter((s) => s.agentOwned).length),
 		displayedSurface:
