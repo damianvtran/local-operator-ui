@@ -752,6 +752,43 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
 });
 
 /**
+ * The note's own quoted stamp values, held to the values the file ships.
+ *
+ * WHY THIS EXISTS. A prose restatement of a value cannot check itself, and the
+ * round-4 review found this exact failure: `settingsGateRestampNote` named
+ * `da3045b32`/`56c63c486` - a sentence describing a TRANSITION - while
+ * `srcTree`/`scriptsTree` had moved on and the file shipped `2a0c52d50`/
+ * `9982fa27b`. Read on its own, the sentence looked like a claim about the
+ * shipped value and was the opposite of one.
+ *
+ * THE CONVENTION THIS PINS: inside that note, a backticked `srcTree`/
+ * `scriptsTree` token is ALWAYS the value this file ships, and the round's
+ * history is written as bare SHAs. Scoped to that note deliberately -
+ * `headNote` quotes a pair belonging to the fold it records, which is a
+ * historical identity by design, not a stamp claim.
+ */
+test("the settings-gate note quotes the stamp values the file ships", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	const quoted = [
+		...String(manifest.settingsGateRestampNote).matchAll(
+			/`(srcTree|scriptsTree)`\s*`([0-9a-f]{7,40})`/g,
+		),
+	];
+	assert.ok(
+		new Set(quoted.map(([, key]) => key)).size === 2,
+		"the settings-gate note must quote both stamps it ships, so a reader can compare them without leaving the note",
+	);
+	for (const [, key, value] of quoted) {
+		assert.ok(
+			manifest[key].startsWith(value),
+			`the settings-gate note quotes ${key} ${value} while the file ships ${manifest[key]}`,
+		);
+	}
+});
+
+/**
  * Whether the checkout has history to ask the ancestry question against.
  *
  * A one-commit-deep clone - every CI checkout, `actions/checkout`'s default -
