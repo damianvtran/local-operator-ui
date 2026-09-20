@@ -57,6 +57,19 @@ export interface BrowserHostStateFile {
 	agent_tabs: number;
 	heartbeat_at: number;
 	started_at: number;
+	/**
+	 * The console capability, and how many surfaces it is holding (design 10.1's
+	 * "the record gains console fields").
+	 *
+	 * The boolean is the feature's own gate: the harness's console tool is offered
+	 * only when a FRESH record says `console: true`, so a host whose node-pty failed
+	 * to load offers no tool rather than one whose every call errors (design 15).
+	 * Additive fields with defaults, so an older reader — which parses this file with
+	 * `extra="ignore"` — is unaffected.
+	 */
+	console: boolean;
+	console_surfaces: number;
+	console_agent_surfaces: number;
 }
 
 /** What the record reports about the live host, read fresh on every write. */
@@ -64,6 +77,12 @@ export interface BrowserHostFacts {
 	tabs: number;
 	agentTabs: number;
 	profileDir: string;
+	/** Whether the console capability is up, and what it holds. Both default to
+	 * false/0 in `write()` so a caller that knows nothing about the console (an
+	 * older test, a stripped-down host) publishes an honest "no console". */
+	console?: boolean;
+	consoleSurfaces?: number;
+	consoleAgentSurfaces?: number;
 }
 
 /**
@@ -191,6 +210,9 @@ export class BrowserStateWriter {
 				profile_dir: facts.profileDir,
 				tabs: facts.tabs,
 				agent_tabs: facts.agentTabs,
+				console: facts.console ?? false,
+				console_surfaces: facts.consoleSurfaces ?? 0,
+				console_agent_surfaces: facts.consoleAgentSurfaces ?? 0,
 				heartbeat_at: this.now() / 1000,
 				started_at: this.startedAt || this.now() / 1000,
 			};
