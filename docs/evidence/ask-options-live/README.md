@@ -16,13 +16,18 @@ They are **two pairs**, and the second is the reason this set was re-taken:
   the **build before the fix** (the sentence), the second the build **after** it
   (silence). Nothing else differs between them.
 
+All six frames are of the FOLDED lineage: main's window (up to `60c1dc615`)
+rewrote `src/` — including `message-input.tsx`, the composer band these frames
+photograph — so every run was re-taken on the folded tree rather than carried,
+and the pair's two trees differ only by this branch's two files.
+
 ## What each frame shows
 
 | frame | what it is |
 | --- | --- |
 | `before-click/localOperatorDark.webp` | **The card, live.** A real pending gate in the shipped renderer: three `<BUTTON>` options with a fill and an edge, the `Recommended` mark beside the **first** option's label in sentence case and the row's own ink (the harness arms `recommended: 1` and `AskQuestion._shape` hoists it to the front), and the hint `Choose an option, type 1-9 and send, or type your own answer below.` The only frame in the repository of the real card rather than a story fixture. The same card appears in both `lost-report-*` runs' `before-click/` frames, because it is the state a press starts from in all three. |
 | `after-click/localOperatorDark.webp` | **The resolution, ordinary ordering.** The same run, after a real `Input.dispatchMouseEvent` press and release at the option's hit-tested centre (`x 960, y 644`, `elementFromPoint` resolving to the option itself). The card is **gone** — the gate cleared rather than the page failing — focus is on the composer, and the composer says nothing, because the owner took this answer. |
-| `lost-report-before/after-click/localOperatorDark.webp` | **The bug.** The gate cleared, the owner took the pressed label, the answer route answered **200**, and the composer carries `That question was already answered somewhere else, so your answer was not sent.` while the model is already acting on the answer. Taken on `origin/main`'s renderer, with no part of this branch's fix in the tree. |
+| `lost-report-before/after-click/localOperatorDark.webp` | **The bug.** The gate cleared, the owner took the pressed label, the answer route answered **200**, and the composer carries `That question was already answered somewhere else, so your answer was not sent.` while the model is already acting on the answer. Taken on `origin/main`'s renderer at `60c1dc615` with this branch's two files checked out of the working tree (`git checkout 60c1dc615 -- src/renderer/src/features/chat/ask-answer.ts src/renderer/src/features/chat/components/chat-page.tsx`), so no part of this branch's fix is in it. |
 | `lost-report-after/after-click/localOperatorDark.webp` | **The same run against the fixed build.** Byte-for-byte the same ordering and the same 200 (`lost-report-after/click-result.json`'s `ordering` says so), with the composer band empty: a press the owner took is not reported at all. |
 
 **The pair evidences the clearing, and the run's own record is what says so.**
