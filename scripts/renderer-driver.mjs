@@ -271,17 +271,6 @@ const BACKEND = argValue("--backend", null);
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
 /*
- * The palette a run photographs, when a scene's frames are per-theme files.
- *
- * One launch per theme rather than one launch that sets both: `setTheme` waits
- * out the `transition-colors` the change starts, so a second frame in the same
- * launch is a state the app had to travel through - and a frame whose NAME says
- * which palette it is has to be that palette and nothing else. The run reports
- * which one it used, so a reader comparing a frame against a fresh capture knows
- * what they are comparing.
- */
-const THEME = argValue("--theme", null);
-/*
  * A suffix on every frame's file name, for a scene that is run twice against two
  * backends (`session-archive`'s withdrawn pair: the same app against a daemon
  * that advertises the capability and one that has never heard of it).
@@ -1609,17 +1598,6 @@ async function hoverOver(cdp, selector) {
 	return box;
 }
 
-/** Park the pointer off every surface, so the next frame is a rest state. */
-async function parkPointer(cdp) {
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mouseMoved",
-		x: 2,
-		y: 2,
-		button: "none",
-		buttons: 0,
-	});
-}
-
 /**
  * Click an element with the REAL pointer, and wait for it to exist first.
  *
@@ -2103,6 +2081,108 @@ async function sceneSessionArchive(cdp) {
 		`${JSON.stringify(notice)} activeSessionId=${afterDelete.activeSessionId}`,
 	);
 	frames.push(await captureSettled(cdp, `deleted-open${RUN_LABEL}`));
+
+	/*
+	 * 7. THE PAIR, AND THE BAND IT SHEDS IN (the round-1 design ruling, delivered
+	 *    now that the pin control is in `main`).
+	 *
+	 * The rule is a width decision, so it is photographed as one: at the panel's
+	 * DEFAULT width the row carries two sibling reserved slots, and at the clamp
+	 * MINIMUM it carries one shared control instead. Both frames are taken with the
+	 * pointer parked away from the list, because the reserved boxes are the claim -
+	 * a revealed control would photograph the reveal instead.
+	 *
+	 * The COST is measured rather than asserted in prose: the title element's own
+	 * painted width at each panel width, on two rows - the first row, which carries
+	 * a status trailing slot, and the row that also carries an UNREAD mark, which is
+	 * the binding case because that mark is a trailing slot OUTSIDE the truncating
+	 * title. `--width` cannot reach this band: the panel's width is the USER's
+	 * preference (`chatSidebarWidth`, clamped 240..360), not a function of the
+	 * window, so the scene writes the same preference the divider writes.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat");
+	await wait(400);
+
+	const titlesAt = async (width) => {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		await wait(400);
+		const plain = await verb(cdp, "measure", "[data-session-title]");
+		const marked = await verb(cdp, "measure", {
+			selector: '[data-session-row="b3f1a09c7d52"] [data-session-title]',
+		});
+		return { applied, plain, marked };
+	};
+	/*
+	 * DRAWN, not merely PRESENT IN THE DOM, and the distinction is the check's
+	 * whole content: the two controls swap through `display`, so the one that is
+	 * shed is still in the document - `measure` finds it and reports a 0x0 box.
+	 * Asking for a non-zero box is what makes this an assertion about pixels.
+	 */
+	const drawn = async (selector) => {
+		try {
+			const box = await verb(cdp, "measure", { selector, timeoutMs: 400 });
+			return box.rect.width > 0 && box.rect.height > 0;
+		} catch {
+			return false;
+		}
+	};
+
+	const wide = await titlesAt(280);
+	check(
+		"at the panel's default width the row carries the PAIR of reserved slots",
+		(await drawn("[data-session-control-pair]")) === true,
+		"no drawn [data-session-control-pair] at 280",
+	);
+	check(
+		"and the single shared control is not drawn there",
+		(await drawn("[data-session-actions]")) === false,
+		"the shared control was drawn at 280",
+	);
+	/*
+	 * BOTH CONTROLS' OWN BOXES, not only the wrapper's: the pair claim is that TWO
+	 * reserved slots sit side by side, and a wrapper that measured 52px would be
+	 * one slot wide however many children it had. Read at the same time as the
+	 * title widths, so the arithmetic in the design record (`which box costs what`)
+	 * is reproducible from this line.
+	 */
+	const pinWide = await verb(cdp, "measure", "[data-session-pin]");
+	const archiveWide = await verb(cdp, "measure", "[data-session-archive]");
+	note(
+		"title width, pair (280px panel)",
+		`status row ${wide.plain.rect.width}px, unread row ${wide.marked.rect.width}px; pin ${pinWide.rect.width}x${pinWide.rect.height}, archive ${archiveWide.rect.width}x${archiveWide.rect.height}`,
+	);
+	/*
+	 * THE POINTER IS PUT ON THE ROW for the capture, and that is the whole of what
+	 * these two frames are OF: the pair is reserved at rest and REVEALED by the
+	 * pointer, so a parked frame would photograph two empty boxes and prove nothing
+	 * about whether either control is there. The row chosen is the one that also
+	 * carries an unread mark, so one frame carries the reveal, the marker and the
+	 * width claim together.
+	 */
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
+
+	const narrow = await titlesAt(240);
+	check(
+		"at the clamp minimum the pair is shed and ONE shared control stands in",
+		(await drawn("[data-session-actions]")) === true &&
+			(await drawn("[data-session-control-pair]")) === false,
+		"the pair and the shared control are not in the states the shed rule promises at 240",
+	);
+	const pinNarrow = await verb(cdp, "measure", "[data-session-pin]");
+	const archiveNarrow = await verb(cdp, "measure", "[data-session-archive]");
+	const sharedNarrow = await verb(cdp, "measure", "[data-session-actions]");
+	note(
+		"title width, shared control (240px panel)",
+		`status row ${narrow.plain.rect.width}px, unread row ${narrow.marked.rect.width}px; pin ${pinNarrow.rect.width}x${pinNarrow.rect.height}, archive ${archiveNarrow.rect.width}x${archiveNarrow.rect.height}, shared ${sharedNarrow.rect.width}x${sharedNarrow.rect.height}`,
+	);
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
+	await verb(cdp, "setSidebarWidth", { width: 280 });
+	await wait(300);
 
 	check(
 		"every capture is a frame the app held still for, with no toast on it",

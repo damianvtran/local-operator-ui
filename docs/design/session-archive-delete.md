@@ -98,30 +98,63 @@ back. The frames measure what that does and does not mean
 archived conversation is now listed, and a 690x60 band around a live row is
 byte-identical.
 
-## The reserved slot, and the rule for the pair (round 1, design ruling)
+## The per-row controls, and the rule for the pair (delivered)
 
-The design round ruled the **first** slot stays at every width and verified the
-no-reflow claim rather than accepting it. The second slot — the pin control's,
-which this branch does not carry — is where the ruling binds: **two sibling slots
-at ≥ 280px, one shared hover-revealed control holding pin + archive below 280.**
-The numbers the ruling rests on, all of them from the frames (the sidebar occupies
-device `x 440..999`, i.e. **280 CSS px**, the default; the clamp is 240–360):
+The row's pin and archive controls are TWO SIBLING RESERVED SLOTS above the
+panel's default width and ONE SHARED CONTROL below it. That is delivered, not
+planned: `main` carries the pin control (its own feature, merged), this branch
+carries the archive control, and the shed is one container query on the panel
+(`ROW_CONTROLS_PAIR_SHED` / `ROW_CONTROLS_SHARED_SHOWN`, `@max-[263px]` on the
+panel's content box) driving both.
 
-| panel | no slot | one slot (this branch) | two slots (pin + archive) |
+**Why the pair is a cost worth a rule.** Each slot is `size-6` (24px) plus the
+row's own `gap-1` (4px): 28px off EVERY title, on every row, at rest, whether or
+not the pointer is anywhere near it. The panel has refused this price once
+already, and the record quotes it rather than re-deriving it — `chat-sidebar.tsx`
+carries the note that the per-row BROWSER control was deleted on 2026-09-18
+because it "cost every title its 28px for a control used rarely", with the slot
+"wanted for the hover-revealed pin he asked for in the same breath". Two slots is
+56px. The shed below the default width is the guard that deletion lacked.
+
+**The measured numbers**, from the driver's own report on the committed frames
+(`docs/evidence/session-archive/README.md` has the commands):
+
+| panel | title, pair | title, shared control | control boxes read |
 | --- | --- | --- | --- |
-| 240 (clamp min) | 200 px | 172 px | **144 px ≈ 20 characters** |
-| 280 (default, = these frames) | 240 px | **212 px — measured** | 184 px ≈ 26 characters |
-| 360 (clamp max) | 320 px | 292 px | 264 px |
+| **280 (default)** | **180 px** | 168 px | `pin 24x24, archive 24x24` |
+| **240 (clamp min)** | 140 px (shed) | **168 px** | `pin 0x0, archive 0x0, shared 24x24` |
 
-The arithmetic is one reservation of 28px (24px control + the wrapper's 4px gap)
-per slot, subtracted from the panel: `panel − 68` with one slot, `panel − 96` with
-two. At the clamp minimum the pair leaves a title that identifies nothing, paid on
-every row whether or not the reader ever pins or archives — which is why the rule
-sheds a slot below 280 rather than reserving both everywhere.
+so `title = panel − 16 (the panel's p-2) − 28 × controls − 28 (the row's trailing
+status slot)`, with the shed firing below a 280px panel. The clamp is 240/360 with
+280 as the default (`chat-layout.tsx`), so the pair is drawn at every width a user
+reaches by default and shed at the one they reach by dragging all the way in.
 
-**A correction this record owes**: an earlier draft of the evidence README said
-the frames were taken at a "shipped 320px panel". They were not — the panel is
-**280px in every frame**, which is `DEFAULT_CHAT_SIDEBAR_WIDTH`.
+**A correction, and it is a correction of the round's own assumption.** The pair
+was expected to be worst on a row that ALSO carries an unread mark, on the reading
+that the mark is a trailing slot outside the truncating title. It is not: the mark
+is drawn inside the row's reserved STATUS slot, so the title measures the SAME
+width on a marked row and an unmarked one (180 px and 168 px at the two panel
+widths, both measured). Only a control slot costs title width. The frames hover the
+marked row anyway, so the claim and the picture are of one row.
+
+**A correction this record owes, and it carried into the README**: an earlier
+draft said the frames were taken at a "shipped 320px panel". They were not — the
+panel is **280px**, which is `DEFAULT_CHAT_SIDEBAR_WIDTH`.
+
+**The archive control's own geometry** is the pin's, deliberately: the same
+`size-6 shrink-0` box, the same opacity-only reveal (`group-hover` /
+`group-focus-within`), the same `data-chat-row`-free Tab reach and arrow-key
+skipping, and the same row-state hover step rather than a ground. Two controls in
+one 24px box would occlude each other's reveal — only the top one could ever be
+pressed — and an overlapping reveal would hide the title of the very row the
+pointer is on, which is why the pair is reserved side by side rather than shared.
+
+**The shared control, below the shed.** One 24px box cannot hold two controls, so
+the narrow band would otherwise lose an act: the shared control opens both as menu
+items (`Pin/Unpin conversation`, `Archive/Unarchive conversation`). It is
+deliberately NOT a second glyph and deliberately has no repeat-press guard — both
+of its acts are two clicks from the list (open, then choose), so the reflex the
+row guards protect against cannot reach a menu item.
 
 ## What was deliberately NOT built
 
@@ -193,13 +226,20 @@ guarantees.
 
 ## Open for the design round
 
-- **The pair rule** above is the design round's ruling and is carried to the pin
-  pull request; this branch ships one slot, which is what the ruling keeps at
-  every width.
-- **The marker's ragged title column** (~14px, archived rows only) is recorded
-  above rather than fixed: the two candidate fixes cost more than the defect.
+- **The marker's ragged title column** (design round 1, D4; ~21.5px, archived rows
+  only) is recorded rather than fixed, because the two candidate fixes cost more
+  than the defect and both fight the trailing slot's one-statement rule. It is NOT
+  re-measured on the frames this branch now ships — the marker's own box did not
+  change, so the offset it causes is the same, but the number's provenance is the
+  earlier frame set and the evidence README says so beside it. A ruling that wants
+  it fixed should ask for the measurement first.
 - **The withdrawn panel is not DOM-identical**, and the earlier claim that it was
-  is corrected here and in the source comments: with no capability nothing is
-  hidden, so an archived conversation is LISTED where an enabled panel hides it.
-  What is byte-identical is the 690×60 band around a live row, which is what the
-  `cmp` in the evidence README compares.
+  is corrected here and in the source comments. What the withdrawn PAIR now
+  measures is narrower than it was: with `main`'s pin control in the row, the
+  withdrawn panel is the PIN-ONLY panel (this branch's archive surface absent,
+  nothing else), so the pair's byte-identity claim moved with the row. The frames
+  are still the fail-closed evidence; the `cmp` they support is the one the README
+  states, on the frames as they ship.
+- **Nothing else is open.** This branch's reviews (agent round 1, design round 1,
+  UX round 1) are answered in the pull request, and this fold answered only the
+  rebase, the pair delivery and the stamps.
