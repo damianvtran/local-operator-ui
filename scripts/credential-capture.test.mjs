@@ -2552,3 +2552,29 @@ test("the clear control's name and the composer chip's title are per-reference c
 		"the transient channel must not repeat the durable one (U9)",
 	);
 });
+
+/*
+ * ROUND 3, THE ARM'S OWN CLASS: `CREDENTIAL_ARM`'s lookbehind is Python's `\s` —
+ * the class `slash-token.ts` spells out — not JavaScript's. The reference is
+ * `editor.py:551`, and Python's `\s` is a wider set than JavaScript's in the one
+ * direction that matters here (U+0085, U+001C-U+001F) and narrower in the other
+ * (U+FEFF). Two rows, one per direction, so a relapse to `\s` fails whichever way
+ * it moves. It is not the refusal class — the arm decides whether the composer
+ * MASKS a secret being typed, and nothing here posts a draft as prose — which is
+ * why it is a footnote to the round and not a finding in it.
+ */
+test("the arm's lookbehind is the Python class, not `\\s` (round 3)", () => {
+	const nel = "\u0085/credential ";
+	assert.ok(
+		armSpan(nel, nel.length),
+		"U+0085 is a boundary the reference has, so the token arms after it",
+	);
+	const feff = "\ufeff/credential ";
+	assert.equal(
+		armSpan(feff, feff.length),
+		null,
+		"U+FEFF is not a boundary the reference has, so the token does not arm after it",
+	);
+	const space = " /credential ";
+	assert.ok(armSpan(space, space.length), "and a plain space still arms");
+});

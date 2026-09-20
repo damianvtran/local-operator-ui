@@ -868,8 +868,13 @@ export const SeededNameInstruction: Story = {
  * (`node scripts/capture-evidence.mjs <origin> --only=name-instruction-multiline
  * --allow-backend`), which is the one state this change repaints. The manifest
  * records that run itself rather than the sentence that used to stand here:
- * `captureOrigin.wireVocabularyReShoot`, the `partialCapture` fields that moved
- * with it, and the two tree stamps that name the tree the frames came from. A
+ * `captureOrigin.wireVocabularyReShoot` carries the run's own record — `head` and
+ * `capturedAt` for when it ran, and the `srcTree`/`scriptsTree` of the tree the
+ * frames came from. The manifest's two TOP-LEVEL stamps are a different pair and
+ * mean something else: they are re-derived for the tree that SHIPS, which is why
+ * they move at every rebase and the `captureOrigin` entry does not (round 3,
+ * R3-2 — this sentence used to call them the capture's, which is the mistake that
+ * costs a re-stamp cycle). A
  * still that contradicts the story it sits under is the defect class this
  * paragraph exists to keep visible, so if this rule moves again, the frames move
  * with it.

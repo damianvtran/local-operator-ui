@@ -34,6 +34,7 @@ const {
 	boundarySlashes,
 	activeSlash,
 	claimingCommand,
+	commandWordOpensDraft,
 	lineOfCursor,
 	slashContext,
 	slashTokenSpan,
@@ -216,4 +217,41 @@ test("a mid-draft command word opens no list, because the planner reads it as pr
 	assert.equal(caretPhase("/model ", 7, VOCAB, ARGUMENT_COMMANDS), "argument");
 	// Leading whitespace is still the start of the draft, not a position after it.
 	assert.equal(caretPhase("  /team", 7, VOCAB, ARGUMENT_COMMANDS), "command");
+});
+
+/*
+ * R3-1: THE PRE-WORD PREFIX IS MEASURED IN PYTHON'S CLASS, not JavaScript's.
+ * `commandWordOpensDraft` asks whether everything before the word is separators —
+ * the endpoint's own question, since its `strip()` must leave the word starting
+ * with `/` — and the row that discriminates is U+FEFF, which `trim()` removes and
+ * Python keeps. Without these two, the predicate could go back to `trim()` and
+ * every other test here would still pass: the sweep that found it moved 264 rows
+ * of a 3,652-draft corpus out of the reverse direction.
+ */
+test("the pre-word prefix is Python separators, not JavaScript's (R3-1)", () => {
+	assert.equal(
+		commandWordOpensDraft("\u0085/team ops", 1),
+		true,
+		"U+0085 is a separator for the TUI, so the word does open the draft",
+	);
+	assert.equal(
+		commandWordOpensDraft("\u001c/team ops", 1),
+		true,
+		"U+001C likewise",
+	);
+	assert.equal(
+		commandWordOpensDraft("\ufeff/team ops", 1),
+		false,
+		"U+FEFF is NOT a separator, so the word does not open the draft",
+	);
+	assert.equal(
+		commandWordOpensDraft(" \t/team ops", 2),
+		true,
+		"space and tab still do",
+	);
+	assert.equal(
+		commandWordOpensDraft(" /team ops", 2),
+		false,
+		"a space AND a slash are not separators",
+	);
 });

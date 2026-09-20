@@ -89,6 +89,9 @@ const EDGE_SEPARATORS = new RegExp(
 	"g",
 );
 
+/** A separator at the START of a string — Python's `str.lstrip()`. */
+const LEADING_SEPARATORS = new RegExp(`^[${SEPARATOR_CLASS}]+`);
+
 /** The first character that is not a separator. */
 export const NON_SEPARATOR = new RegExp(`[^${SEPARATOR_CLASS}]`);
 
@@ -102,6 +105,17 @@ export const NON_SEPARATOR = new RegExp(`[^${SEPARATOR_CLASS}]`);
  */
 export function pyTrim(text: string): string {
 	return text.replace(EDGE_SEPARATORS, "");
+}
+
+/**
+ * `str.lstrip()`: Python's class, leading end only.
+ *
+ * The same reason as {@link pyTrim}, one side of it: `String.prototype.trimStart()`
+ * strips JavaScript's class, so a caller measuring how much of a line is leading
+ * separator — the highlighter's own start offset — gets JavaScript's answer.
+ */
+export function pyTrimStart(text: string): string {
+	return text.replace(LEADING_SEPARATORS, "");
 }
 
 function isBoundary(line: string, index: number): boolean {
@@ -308,7 +322,19 @@ export function slashArgument(
  * rather than re-deriving the same fact from the spliced text.
  */
 export function commandWordOpensDraft(draft: string, start: number): boolean {
-	return draft.slice(0, start).trim() === "";
+	/*
+	 * `pyTrim` and not `trim()`: this asks whether everything before the word is
+	 * SEPARATORS, which is the endpoint's own question (its `strip()` before the
+	 * word must start with `/`), and `String.prototype.trim()` is JavaScript's
+	 * class rather than Python's — it removes a leading U+FEFF Python keeps and
+	 * keeps a leading U+0085 that Python strips. Round 3's R3-1: it cannot produce
+	 * the refusal class (`wholeDraft = pyTrim(spliced.text) === ""` is decided
+	 * before this is consulted, and a multi-line draft is never the endpoint's
+	 * command), but it moved 162 of a 4,029-draft sweep out of the reverse
+	 * direction once the class landed, and one question reading a second class is
+	 * how the first one came back.
+	 */
+	return pyTrim(draft.slice(0, start)) === "";
 }
 
 /**
