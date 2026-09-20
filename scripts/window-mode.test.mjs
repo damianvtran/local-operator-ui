@@ -1799,6 +1799,33 @@ test("no rig script asks the operating system for window focus", () => {
 	 * Between them they cover what a rig needs, which is why this is a ban on the
 	 * three calls that leave the page rather than on focus assertions.
 	 *
+	 * THE RECEIVER IS A FAMILY, NOT A NAME (review round 1 on #406, MINOR R1-1).
+	 * `self` IS `window` in a renderer, and `top`, `parent`, `defaultView` and
+	 * `frames[n]` are the same WindowProxy under their own spellings — measured
+	 * on `d109863e2`: with `self.focus()`, `top.focus()`, `parent.focus()`,
+	 * `document.defaultView.focus()` and `frames[0].focus()` appended to a rig,
+	 * the literal-`window.` version of this pattern passed, so the ban closed at
+	 * one spelling and reopened at the next.
+	 *
+	 * THE NEAR-SPELLINGS TOO (review round 2, MINOR R2-1), because a guard that
+	 * misses them undercuts the class it exists to close: optional chaining
+	 * (`window?.focus()` — the defensive style this codebase already writes for
+	 * element focus) and bracket access (`window["focus"]()`) are the same call,
+	 * and both passed the widened pattern before this round.
+	 *
+	 * WHAT A RED SCAN MIGHT BE INSTEAD (review round 2, NIT R2-2): the receiver
+	 * alternation matches by NAME, so it also matches a Node-side local that
+	 * happens to be called `self`, `top`, `parent` or `frames[n]` —
+	 * `const parent = node.parentElement; parent.focus()` fails closed, and no
+	 * such use exists under the scanned trees today (the reviewer's grep, re-run
+	 * here). A red line from this test may therefore be a name collision rather
+	 * than an activation, which is worth knowing before one is diagnosed.
+	 *
+	 * AND WHAT IT STILL CANNOT BOUND: a name it never sees — an ALIAS
+	 * (`const w = window; w.focus()`) or a COMPUTED key
+	 * (`window["fo" + "cus"]()`). Both are review's business rather than this
+	 * test's; the alternation's job is to leave no cheap spelling of the call open.
+	 *
 	 * WHAT THIS TEST DOES NOT CLAIM: that a rig caused the activation measured
 	 * above. The mechanism was never identified, and the instance that took the
 	 * front ran a driver whose only focus calls were element-level. The rule
@@ -1807,7 +1834,7 @@ test("no rig script asks the operating system for window focus", () => {
 	 * keep that request out of the tree, not to explain that afternoon.
 	 */
 	const LEAVES_THE_PAGE =
-		/window\.focus\(\)|Page\.bringToFront|Target\.activateTarget/;
+		/window\??\.focus\(\)|\b(window|self|top|parent|defaultView|frames\s*\[\s*\d+\s*\])\s*(?:\??\.\s*focus\s*\(|\[\s*["']focus["']\s*\]\s*\()|Page\.bringToFront|Target\.activateTarget/;
 	/*
 	 * COMMENTS ARE BLANKED, NOT FILTERED BY PREFIX (review round 1, F2). The first
 	 * version skipped any line whose leading characters looked like a comment, and
@@ -1902,6 +1929,33 @@ test("no rig script asks the operating system for window focus", () => {
 		offSite,
 		[],
 		"these lines ask the operating system to bring a window forward, which takes the operator's focus whatever window mode the run declared",
+	);
+	/*
+	 * And the pattern FIRES on every spelling it names. A widened alternation that
+	 * quietly stopped matching would leave the ban green while covering nothing —
+	 * the one failure a green scan cannot show by itself — so each spelling is
+	 * asserted against the pattern directly rather than left to a rig in this
+	 * tree happening to contain one.
+	 */
+	const SPELLINGS = [
+		"window.focus()",
+		"window?.focus()",
+		'window["focus"]()',
+		"self.focus()",
+		"self?.focus()",
+		"self['focus']()",
+		"top.focus()",
+		"parent.focus()",
+		"document.defaultView.focus()",
+		"document.defaultView?.focus()",
+		"frames[0].focus()",
+		"Page.bringToFront",
+		"Target.activateTarget",
+	];
+	assert.deepEqual(
+		SPELLINGS.filter((spelling) => !LEAVES_THE_PAGE.test(spelling)),
+		[],
+		"the pattern must fire on every spelling of the request this ban names",
 	);
 	// Pins the width of the scan the way its `src/main` sibling does, and pins the
 	// three ways it can silently narrow: too few files at all, a walk that stopped
