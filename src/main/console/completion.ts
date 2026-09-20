@@ -1,4 +1,3 @@
-import type { BrowserWindow } from "electron";
 import type { ConsoleHost, ConsoleHostOptions, SurfaceRuntime } from "./host";
 import type { Osc133Mark } from "./osc133";
 import type { ConsoleRegistry } from "./registry";

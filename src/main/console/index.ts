@@ -85,6 +85,21 @@ export const CONSOLE_DEFAULTED_OPTIONS = [
 	"restoreHistory",
 	/** Defaults to the real pty; every test injects a fake. */
 	"spawn",
+	/*
+	 * The three fields this branch added, each optional for its own reason:
+	 *
+	 *  - `notifier` is the app's ONE notifier (design 12.3). Absent means the
+	 *    completions are still watched and still pushed; nothing raises a banner, which
+	 *    is exactly what a rig that asserts the RPC path wants.
+	 *  - `consoleCaptureUrl` and `preloadPath` are the offscreen capture view's
+	 *    document and bridge (design 13.2/13.3). Absent means no capture view, and
+	 *    `console_screenshot` answers the typed `capture_unavailable` refusal rather
+	 *    than a blank frame — a real condition, not a wiring bug, because the capture
+	 *    path is one this host is allowed not to have.
+	 */
+	"notifier",
+	"consoleCaptureUrl",
+	"preloadPath",
 ] as const;
 
 /** Which required options a caller left out, by name. */

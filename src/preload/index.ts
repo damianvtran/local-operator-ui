@@ -879,6 +879,10 @@ const api = {
 		 * the value main returned", so the pane re-reads `state()` and applies that.
 		 * A listener therefore acts by re-reading, never by trusting a number that
 		 * arrived on a push channel.
+		 *
+		 * It is also what the pane's blip rides (design 12.2): a completion arrives as
+		 * this signal plus the listing it is re-read from, rather than as a second
+		 * description of the same event on a channel of its own.
 		 */
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
@@ -973,27 +977,6 @@ const api = {
 			ipcRenderer.on("console-reveal", handler);
 			return () => {
 				ipcRenderer.removeListener("console-reveal", handler);
-			};
-		},
-		/**
-		 * Something about the surfaces changed: refetch `state()`.
-		 *
-		 * A SIGNAL, NOT THE STATE, and that is the design's own division (10.2/10.3):
-		 * `console-state` is the projection and there is exactly one of it, so this
-		 * channel carries no payload at all. It fires on the host's own changes - a
-		 * surface created, closed, resized, its input gone secure, its process exited,
-		 * its shell emitting a completion mark - which is why the renderer's blip can be
-		 * data from a listing rather than a second description of the same events.
-		 *
-		 * One listener per subscriber, and the caller unsubscribes by calling the
-		 * returned function; nothing is filtered here, because a busy console's
-		 * refetches are what keeps the pane honest and the payload is one `state()` read.
-		 */
-		onStateChanged: (callback: () => void): (() => void) => {
-			const handler = () => callback();
-			ipcRenderer.on("console-state-changed", handler);
-			return () => {
-				ipcRenderer.removeListener("console-state-changed", handler);
 			};
 		},
 	},

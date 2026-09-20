@@ -5793,12 +5793,15 @@ console.log(
  */
 const ansiDistinct = palettes.map(({ id, palette: p }) => ({
 	id,
-	n: new Set(
-		TERMINAL_ANSI.map(([, role]) => p[role]).filter((v) => isHex(v)),
-	).size,
+	n: new Set(TERMINAL_ANSI.map(([, role]) => p[role]).filter((v) => isHex(v)))
+		.size,
 }));
 console.log(
-	`Console terminal: ${TERMINAL_ANSI.length} ANSI slots resolve to ${Math.min(...ansiDistinct.map((e) => e.n))}-${Math.max(...ansiDistinct.map((e) => e.n))} distinct colours across ${palettes.length} palettes (design 9.2's stated gap, measured); fewest in ${ansiDistinct.sort((a, b) => a.n - b.n).slice(0, 3).map((e) => `${e.id} ${e.n}`).join(", ")}.`,
+	`Console terminal: ${TERMINAL_ANSI.length} ANSI slots resolve to ${Math.min(...ansiDistinct.map((e) => e.n))}-${Math.max(...ansiDistinct.map((e) => e.n))} distinct colours across ${palettes.length} palettes (design 9.2's stated gap, measured); fewest in ${ansiDistinct
+		.sort((a, b) => a.n - b.n)
+		.slice(0, 3)
+		.map((e) => `${e.id} ${e.n}`)
+		.join(", ")}.`,
 );
 
 console.log(

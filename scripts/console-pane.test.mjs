@@ -272,7 +272,11 @@ test("the pane's lens recalls a surface, and falls back to the most recent", () 
 	// 3. and nothing at all on a draft, which is the empty state.
 	assert.equal(pickActiveSurface(snapshot, null, null), null);
 	assert.equal(
-		pickActiveSurface(readConsoleSnapshot({ available: true }), "session-1f4c", null),
+		pickActiveSurface(
+			readConsoleSnapshot({ available: true }),
+			"session-1f4c",
+			null,
+		),
 		null,
 	);
 	assert.equal(surfaceTitle({ command: "npm", argvTail: "run dev" }), "npm");
@@ -293,37 +297,36 @@ const recorder = () => {
 };
 
 const completionFixture = ({ displayed = null } = {}) => {
-	const sent = [];
-	const window_ = {
-		isDestroyed: () => false,
-		webContents: { send: (channel) => sent.push(channel) },
-	};
 	const records = new Map([
-		[
-			"con:1:7f3a",
-			{ record: { sessionId: "session-1f4c", command: "zsh" } },
-		],
+		["con:1:7f3a", { record: { sessionId: "session-1f4c", command: "zsh" } }],
 	]);
 	const notifier = recorder();
 	const logged = [];
 	const hooks = consoleCompletionHooks({
 		host: () => ({ state: () => ({ displayed_surface: displayed }) }),
 		registry: { find: (surface) => records.get(surface) ?? undefined },
-		window: () => window_,
 		notifier: () => notifier,
 		log: (message) => logged.push(message),
 	});
-	return { hooks, notifier, sent, logged };
+	/*
+	 * NO WINDOW IN THIS FIXTURE, deliberately. The state push is not the completion
+	 * seam's: `console/index.ts` sends it through the host's ONE pusher
+	 * (`broadcastConsoleState`, wired as `onChanged`) so a mark cannot produce two
+	 * copies of the same frame, and `onChanged` fires for a mark and an exit as well.
+	 * What is asserted here is therefore what this module owes — the banners and their
+	 * suppressions — and the push is exercised where it lives, by the live rig
+	 * (`scripts/console-host-proof.mjs`).
+	 */
+	return { hooks, notifier, logged };
 };
 
-test("a command mark banners once, and the renderer is told to refetch", () => {
-	const { hooks, notifier, sent } = completionFixture();
+test("a command mark banners once", () => {
+	const { hooks, notifier } = completionFixture();
 	hooks.onMark("con:1:7f3a", {
 		kind: "command-finished",
 		exitCode: 0,
 		offset: 120,
 	});
-	assert.equal(sent.length, 1, "one state-change push per mark");
 	assert.equal(notifier.notices.length, 1);
 	assert.equal(notifier.notices[0].surface, "con:1:7f3a");
 	assert.equal(notifier.notices[0].exitCode, 0);
@@ -333,17 +336,36 @@ test("a command mark banners once, and the renderer is told to refetch", () => {
 
 	// The OTHER three marks are the shell's prompt and command boundaries: they are
 	// not completions and must not banner.
-	hooks.onMark("con:1:7f3a", { kind: "prompt-start", exitCode: null, offset: 200 });
-	hooks.onMark("con:1:7f3a", { kind: "command-start", exitCode: null, offset: 210 });
-	hooks.onMark("con:1:7f3a", { kind: "output-start", exitCode: null, offset: 220 });
+	hooks.onMark("con:1:7f3a", {
+		kind: "prompt-start",
+		exitCode: null,
+		offset: 200,
+	});
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-start",
+		exitCode: null,
+		offset: 210,
+	});
+	hooks.onMark("con:1:7f3a", {
+		kind: "output-start",
+		exitCode: null,
+		offset: 220,
+	});
 	assert.equal(notifier.notices.length, 1);
-	assert.equal(sent.length, 4, "each mark is still a reason to refetch");
 });
 
 test("a process exit banners with its own key, and never twice", () => {
 	const { hooks, notifier } = completionFixture();
-	hooks.onExit({ surface: "con:1:7f3a", sessionId: "session-1f4c", exitCode: 0 });
-	hooks.onExit({ surface: "con:1:7f3a", sessionId: "session-1f4c", exitCode: 0 });
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
 	assert.equal(notifier.notices.length, 2);
 	assert.notEqual(
 		notifier.notices[0].key,
@@ -359,8 +381,16 @@ test("a shell that exits from its own prompt is ONE completion, not two", () => 
 		exitCode: 0,
 		offset: 120,
 	});
-	hooks.onExit({ surface: "con:1:7f3a", sessionId: "session-1f4c", exitCode: 0 });
-	assert.equal(notifier.notices.length, 1, "the mark and the exit are one event");
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
+	assert.equal(
+		notifier.notices.length,
+		1,
+		"the mark and the exit are one event",
+	);
 	assert.ok(
 		logged.some((line) => line.includes("one banner, not two")),
 		"the suppression is stated in the log rather than silent",
@@ -384,12 +414,18 @@ test("a mark's own offset is what makes two commands two banners", () => {
 });
 
 test("a mark for a surface the host no longer has banners nothing", () => {
-	const { hooks, notifier, sent } = completionFixture();
+	const { hooks, notifier } = completionFixture();
 	hooks.onMark("con:9:gone", {
 		kind: "command-finished",
 		exitCode: 1,
 		offset: 10,
 	});
 	assert.equal(notifier.notices.length, 0);
-	assert.equal(sent.length, 1, "the refetch still happens: the listing did change");
+	/*
+	 * AND NO PUSH IS ASSERTED HERE, which is the point of the single-pusher wiring:
+	 * the renderer still learns about the change, but through the host's own
+	 * `onChanged` (and therefore `broadcastConsoleState`) rather than through a second
+	 * frame this module would have to keep in step. The live rig asserts the push's
+	 * effect end to end.
+	 */
 });

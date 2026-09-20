@@ -179,3 +179,37 @@ export const ipcRenderer = {
  * object is the honest model rather than a set of methods that pretend to work.
  */
 export const webFrame = {};
+
+/**
+ * `BrowserWindow`, which the console's capture view CONSTRUCTS (design 13.3).
+ *
+ * It is the one Electron class in this suite that is instantiated rather than
+ * merely called, and the console host builds one lazily — so a bundle that
+ * includes `console/capture.ts` needs the class to exist even when no capture is
+ * ever taken. Every member here is one the capture view actually reads, and
+ * nothing else is modelled: `loadURL` resolves immediately, `capturePage` returns
+ * a blank image (which the view's own non-blank assert is what rejects), and the
+ * lifecycle members are honest no-ops, because the point of this stub is that the
+ * MODULE loads and the RULES around it can be driven.
+ */
+export class BrowserWindow {
+	private destroyed = false;
+	readonly webContents = {
+		capturePage: async () => ({
+			toPNG: () => Buffer.alloc(0),
+			toBitmap: () => Buffer.alloc(0),
+		}),
+		send(): void {},
+		on(): void {},
+		removeListener(): void {},
+	};
+	constructor(readonly options: Record<string, unknown> = {}) {}
+	async loadURL(): Promise<void> {}
+	setContentSize(): void {}
+	isDestroyed(): boolean {
+		return this.destroyed;
+	}
+	destroy(): void {
+		this.destroyed = true;
+	}
+}
