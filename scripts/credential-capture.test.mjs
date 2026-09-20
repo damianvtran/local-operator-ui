@@ -2085,12 +2085,16 @@ test("every citation the app writes comes back as ONE citation segment", () => {
 			reason,
 		);
 	}
-	for (const sentence of [
-		describeUnstored("unconfirmed", "LOP_SECRET_4CE3Y48G"),
-		describeUnstored("unconfirmed"),
-	]) {
+	/*
+	 * The unresolved register carries the reference its sentence names (design round
+	 * 1, D1: the chip labels itself with it), and the key-less arm carries `""` — so
+	 * one shape covers both, and a reader of the frames can tell WHICH credential the
+	 * sentence is about.
+	 */
+	for (const key of [payload.key, ""]) {
+		const sentence = describeUnstored("unconfirmed", key);
 		assert.deepEqual(citationSegments(sentence), [
-			{ kind: "unconfirmed", text: sentence },
+			{ kind: "unconfirmed", text: sentence, key },
 		]);
 	}
 });
@@ -2227,13 +2231,26 @@ test("the chip's URL round-trips, and a URL this app did not write is not a cita
 	assert.deepEqual(citationFromHref(citationHref({ kind: "unstored" })), {
 		kind: "unstored",
 	});
+	/*
+	 * The unresolved register has TWO shapes now, because its sentence may or may not
+	 * name a key — D1 means the URL carries whichever it is.
+	 */
 	assert.deepEqual(citationFromHref(citationHref({ kind: "unconfirmed" })), {
 		kind: "unconfirmed",
+		key: "",
 	});
+	const unconfirmedKey = chipPayload(2, "x".repeat(5)).key;
+	assert.deepEqual(
+		citationFromHref(
+			citationHref({ kind: "unconfirmed", key: unconfirmedKey }),
+		),
+		{ kind: "unconfirmed", key: unconfirmedKey },
+	);
 	for (const other of [
 		"https://example.com/x",
 		"#lo-credential",
 		"#lo-credential/not a key/73",
+		"#lo-credential/unconfirmed/not a key",
 		"#lo-credential/LOP_SECRET_4CE3Y48G/seven",
 		undefined,
 	]) {
@@ -2566,10 +2583,21 @@ test("only a link whose visible text IS the citation is chipped", () => {
 	// The unconfirmed register is a citation too, and its sentence is recognised by
 	// form: the two chips are what tells a reader whether the app wrote "nothing is
 	// there" or "nobody knows".
-	const unconfirmed = describeUnstored("unconfirmed", "LOP_SECRET_4CE3Y48G");
+	const unconfirmedKey = chipPayload(3, "y".repeat(5)).key;
+	const unconfirmed = describeUnstored("unconfirmed", unconfirmedKey);
 	assert.deepEqual(
+		citationFromLink(
+			citationHref({ kind: "unconfirmed", key: unconfirmedKey }),
+			unconfirmed,
+		),
+		{ kind: "unconfirmed", key: unconfirmedKey },
+	);
+	// And the pair has to AGREE in this register too: a sentence that names a key
+	// behind a URL that names none is not one citation.
+	assert.equal(
 		citationFromLink(citationHref({ kind: "unconfirmed" }), unconfirmed),
-		{ kind: "unconfirmed" },
+		null,
+		"the URL and the sentence have to name the same key",
 	);
 	assert.equal(
 		citationFromLink(citationHref({ kind: "unconfirmed" }), unstored),

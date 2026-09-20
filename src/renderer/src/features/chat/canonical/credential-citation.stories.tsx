@@ -37,6 +37,11 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
+import {
+	type CredentialPayload,
+	credentialCitation,
+	describeUnstored,
+} from "../components/credential-capture";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
@@ -58,25 +63,34 @@ const transcriptOf = (records: TranscriptRecord[]): TranscriptState =>
 	}) as TranscriptState;
 
 /*
- * THE THREE SENTENCES ARE THE APP'S OWN, character for character, so the frames
- * photograph what the renderer is actually handed rather than a paraphrase of
- * it. The stored form is `credentialCitation`'s output for a 73-character value
- * named `LOP_SECRET_4CE3Y48G`; the not-stored form is `describeUnstored("lost")`.
- * The value itself is nowhere, which is the point of the whole feature: the
+ * THE THREE SENTENCES ARE THE APP'S OWN OUTPUT, CALLED rather than copied (code
+ * review round 1, NIT-1). They used to be hand-typed copies of what
+ * `credentialCitation` and `describeUnstored` write, which left the frames
+ * photographing words this app no longer writes the moment a copy changed, with
+ * nothing failing: the functions are exported and the frames are a Storybook
+ * fixture, so calling them costs nothing and makes the frame and the copy one
+ * authority.
+ *
+ * The stored form is built from a PAYLOAD rather than a literal key, so the key
+ * and the length the frames show are ones the composer could have minted. The
+ * value itself is nowhere, which is the point of the whole feature: the
  * transcript never held it.
  */
 const SENT_KEY = "LOP_SECRET_4CE3Y48G";
-const STORED_CITATION = `[credential ${SENT_KEY} (73 chars) — available to bash and eval as $${SENT_KEY}; its value cannot be read]`;
-const NOT_STORED_CITATION =
-	"[credential NOT stored — its value did not survive; ask the operator to paste it again]";
+const SENT_PAYLOAD: CredentialPayload = {
+	index: 1,
+	key: SENT_KEY,
+	value: "v".repeat(73),
+	marker: "[Credential #1, 73 chars]",
+};
+const STORED_CITATION = credentialCitation(SENT_PAYLOAD);
+const NOT_STORED_CITATION = describeUnstored("lost");
 /*
- * The third sentence, built from the SAME constant the two above use, so the
- * frames cannot photograph a key the app would not have written. It is
- * `describeUnstored("unconfirmed", …)`'s output, and it exists because the
- * operator's own session was handed the sentence above while its store held the
- * key (report, 2026-09-19).
+ * The third sentence, and the one the operator's own session never got: the store
+ * held the key while the model was handed the sentence above (report,
+ * 2026-09-19). Its chip names the key too, which is design round 1's D1.
  */
-const UNCONFIRMED_CITATION = `[credential unconfirmed — it may be held as $${SENT_KEY}, so check list_variables before assuming it is missing]`;
+const UNCONFIRMED_CITATION = describeUnstored("unconfirmed", SENT_KEY);
 
 const SENT_MID_SENTENCE = record(
 	"u1",

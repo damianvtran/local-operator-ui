@@ -1076,12 +1076,15 @@ test("a credential minted in a NEW chat is stored by the send that creates the s
  *  - an answer that was LOST while the write landed;
  *  - a 5xx that a re-issue repaired;
  *  - a session that never answered at all, where the citation must say so;
- *  - a 4xx the plane answered, where the not-stored citation is still right.
+ *  - a 4xx whose session HOLDS the key, which is the reviewer's own counterexample
+ *    and the reason a 4xx is no longer a verdict (round 1, MAJOR-1);
+ *  - a 4xx whose session does NOT hold it, where the not-stored citation stands;
+ *  - a 4xx whose witness read cannot answer either, where nothing may be asserted.
  *
- * The first three are the same assertion from three directions — no citation
- * may claim the store refused a write the store actually holds — and the fourth
- * is the guard on the other side: resolving an inconclusive outcome must not
- * soften a refusal that was actually made.
+ * The first four are the same assertion from four directions — no citation may
+ * claim the store refused a write the store actually holds — and the last two are
+ * the guard on the other side: resolving an inconclusive outcome must not soften a
+ * refusal that was actually made, and must not invent one either.
  */
 
 /**
@@ -1249,31 +1252,191 @@ test("a store nobody answered is cited as unconfirmed, never as NOT stored", asy
 	assert.equal(opCount("list"), 1, "the list read was attempted and gave up");
 });
 
-test("a store the plane REFUSED keeps the not-stored citation, and is not resolved", async () => {
+test("a 409 whose session does NOT hold the key keeps the not-stored citation", async () => {
 	/*
-	 * THE OTHER SIDE OF THE LINE. A 4xx is an ANSWER: the route reached the store
-	 * (or refused to), so the not-stored citation is not a guess and must not be
-	 * weakened into "unconfirmed" — that would trade one false statement for
-	 * another. Nothing is resolved either: resolution exists to settle a silence,
-	 * and there is none to settle. The 409 is the shape the route really uses
-	 * (`desktop_lifecycle.py:161-172` collapses every store refusal into it).
+	 * THE OTHER SIDE OF THE LINE, with the witness read now in the path (code review
+	 * round 1, MAJOR-1). A 409 proves that something ANSWERED; it does not prove the
+	 * value is absent, because the route raises the same status for the store's own
+	 * refusal AND for the owner's `disconnected` answer to a store it already applied
+	 * (`desktop_lifecycle.py` → `attached.py`'s `credential_op`, which returns that
+	 * shape both when the viewer is away and when the client RAISED).
+	 *
+	 * Here the session's own list answers and does not name the key: two pieces of
+	 * evidence agree, the refusal stands, and it is not weakened into "unconfirmed" —
+	 * that would trade one false statement for another.
 	 */
 	const rendered = await sendFirstMessage("REFUSED-SECRET", (request) => {
-		if (request.op !== "sessions.credential" || request.action !== "store")
-			return undefined;
-		return transportSays(409, {
-			detail: {
-				code: "store_failed",
-				message: "The credential operation did not complete.",
-			},
-		});
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		if (request.action === "list")
+			return credentialResult({ data: { ok: true, credentials: [] } });
+		return undefined;
 	});
 
-	assert.equal(opCount("store"), 1, "an answered refusal is an answer");
-	assert.equal(opCount("list"), 0);
+	assert.equal(opCount("store"), 1, "an answered refusal needs no re-issue");
+	assert.equal(opCount("list"), 1, "and it does need the witness read");
 	assert.match(
 		rendered,
 		/\[credential NOT stored — its value did not survive; ask the operator to paste it again\]/,
+	);
+});
+
+test("a 409 whose session HOLDS the key is cited as stored, not as a lost value", async () => {
+	/*
+	 * THE REVIEWER'S COUNTEREXAMPLE (round 1, MAJOR-1), and the reason the 4xx arm is
+	 * no longer a verdict. The probe they ran against the shipped component answered
+	 * the store with the route's real 409 shape while offering a list that held the
+	 * key — and the head before this round cited
+	 * `[credential NOT stored — its value did not survive…]` with ONE store op and
+	 * ZERO list ops. That is the operator's own defect one status class over: the
+	 * write landed, and the model was told it had not.
+	 */
+	let landed = "";
+	const rendered = await sendFirstMessage("PROBE-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store") {
+			// The write lands and the owner's own answer is lost, which is what the
+			// route turns into this 409.
+			landed = request.key;
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		}
+		if (request.action === "list")
+			return credentialResult({
+				data: {
+					ok: true,
+					credentials: landed ? [{ key: landed, source: "command" }] : [],
+				},
+			});
+		return undefined;
+	});
+
+	assert.equal(
+		opCount("store"),
+		1,
+		"the refusal is an answer, so nothing is re-issued",
+	);
+	assert.equal(
+		opCount("list"),
+		1,
+		"and the witness read is what tells this 409 apart",
+	);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a key the store holds was cited as missing: ${rendered}`,
+	);
+	assert.match(rendered, STORED_CITATION_SHAPE);
+});
+
+test("a 409 whose witness read cannot answer is cited as unconfirmed", async () => {
+	/*
+	 * THE THIRD ARM, and the one that keeps the other two honest: the store answered a
+	 * 4xx (which may be a refusal or a lost reply) and the read that would settle it
+	 * cannot answer either. Neither outcome is proven, so neither may be cited — the
+	 * seam says what it knows.
+	 */
+	const rendered = await sendFirstMessage("BLIND-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return transportSays(409, {
+				detail: { code: "store_failed", message: "Did not complete." },
+			});
+		if (request.action === "list")
+			return Promise.reject(new Error("socket closed"));
+		return undefined;
+	});
+
+	assert.equal(opCount("store"), 1);
+	assert.equal(opCount("list"), 1);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`an unproven outcome was published: ${rendered}`,
+	);
+	assert.match(
+		rendered,
+		/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+	);
+});
+
+test("two cited credentials pay the resolution ONCE, not twice", async () => {
+	/*
+	 * THE WORST CASE IS SHARED (code review round 1, MINOR-1). One credential that
+	 * nothing ever answers costs the transport's 25 s plus two 5 s resolution steps,
+	 * and the loop this replaces awaited that PER PAYLOAD — so the operator's own
+	 * two-key message parked the composer behind ~70 s. Both credentials here are
+	 * silent (their stores reject outright and their reads hang for the 5 s bound), so
+	 * the measured wall time is the discriminator: ~one resolution concurrently,
+	 * ~two if the sequence ever comes back.
+	 */
+	const started = Date.now();
+	calls.length = 0;
+	let rendered;
+	let handed;
+	const pageSent = new Promise((resolve) => {
+		handed = resolve;
+	});
+	let settled = null;
+	const frame = await mount({
+		conversationId: undefined,
+		onSendMessage: async (_content, _attachments, _echo, _typed, seam) => {
+			handed(seam ?? null);
+			if (seam) settled = seam("draft-session-id");
+			return true;
+		},
+	});
+	transportOverride = (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return Promise.reject(new Error("socket closed"));
+		if (request.action === "list") return new Promise(() => {});
+		return undefined;
+	};
+	await openCapture(frame);
+	await paste(frame, "FIRST-SILENT-SECRET");
+	await type(frame, "/credential ");
+	await paste(frame, "SECOND-SILENT-SECRET");
+	await clickSend(frame);
+	await pageSent;
+	if (settled) rendered = await settled;
+	const elapsed = Date.now() - started;
+	transportOverride = null;
+
+	assert.equal(
+		opCount("store"),
+		4,
+		"both credentials were attempted twice — the re-issue rides every silent store",
+	);
+	assert.equal(
+		opCount("list"),
+		2,
+		"and both credentials got their witness read",
+	);
+	assert.equal(
+		(String(rendered).match(/\[credential unconfirmed/g) ?? []).length,
+		2,
+		String(rendered),
+	);
+	/*
+	 * The discriminator, with its arithmetic: each credential spends the 5 s
+	 * resolution bound on its hanging read, so SERIAL resolution costs two of those
+	 * (~10 s), plus the mount (~2 s) — while concurrent resolution costs one (~5 s)
+	 * plus the mount. 11 s separates them with room for a loaded machine, and the
+	 * mount is inside the measurement deliberately, so a regression that serialises
+	 * the loop cannot hide in the overhead.
+	 */
+	assert.ok(
+		elapsed < 11_000,
+		`two silent credentials took ${elapsed} ms: the resolution bound is being paid per credential`,
 	);
 });
 

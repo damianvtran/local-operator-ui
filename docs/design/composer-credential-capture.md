@@ -882,21 +882,39 @@ At submit, with the TUI's `_capture_inline_credentials` as the reference:
 
 8. **An outcome the store never reported is RESOLVED, and never guessed** —
    the correction the operator's own session forced (report, 2026-09-19; see
-   § 9.1). A store is only ever CITED as unstored when something ANSWERED and
-   said no: `ok: false`, or a 4xx. Silence — a transport failure, a 5xx, this
-   composer's own bound expiring — proves nothing and is followed by a re-issue
-   of the same store (idempotent for one key and value, so it repairs as well as
-   asks) and then, if that is silent too, by a read of the session's own name
-   list. A key found there is cited exactly as a successful store is; only a
-   session that never answered at all produces the fourth sentence, which
-   asserts no outcome and hands the agent `list_variables` to settle it. The
-   read is a POSITIVE witness only: absence proves nothing (a first request can
-   still be in flight behind the same cold engage), so it can never produce the
-   unstored citation either. THE SEND STILL GOES OUT: the message is the
-   operator's, the citation under it is honest, and the agent has a route to the
-   truth, so holding the send back would cost them their message to buy nothing.
-   The repair the notice names is the one that always works — arm `/credential`
-   and paste again.
+   § 9.1). NOTHING on the store op is trusted as a verdict on its own:
+
+   - a **4xx** proves that something ANSWERED. It does NOT prove the value is
+     absent, and believing it did was review round 1's MAJOR-1: the route raises
+     one 409 for every non-ok answer (`server/routes/desktop_lifecycle.py`), and
+     `AttachedSession.credential_op` returns that shape both when the viewer is
+     away and when the client RAISED — i.e. for a LOST reply to a store it had
+     already applied (`run_credential_verb` stores before it returns). So a 4xx is
+     resolved exactly like a silence, by the session's own name list;
+   - a **silence** — a transport failure, a 5xx, this composer's own bound
+     expiring — proves nothing at all, and is followed by a re-issue of the same
+     store (idempotent for one key and value, so it repairs as well as asks) and
+     then by that same list read.
+
+   The read is asked of EVERY non-store outcome, and it decides:
+
+   | list answer | citation |
+   | --- | --- |
+   | names the key | the confident one, exactly as a successful store gets |
+   | answered, no key | the refusal sentence stands (`lost`), or — after a silence — the fourth sentence, because a silence plus an absent name is still not a refusal |
+   | could not answer | the fourth sentence: neither outcome is proven |
+
+   So the fourth sentence (`unconfirmed`, § 9.4's notice) is the only one that
+   asserts no outcome, and it hands the agent `list_variables` to settle it. THE
+   SEND STILL GOES OUT: the message is the operator's, the citation under it is
+   honest, and the agent has a route to the truth, so holding the send back would
+   cost them their message to buy nothing. The repair the notice names is the one
+   that always works — arm `/credential` and paste again.
+
+   THE COST IS STATED RATHER THAN HIDDEN. One credential that nothing ever answers
+   spends the transport's own bound (25 s) plus two 5 s resolution steps; the
+   credentials in one message resolve CONCURRENTLY, so N citations cost one
+   resolution rather than N. § 9.1 has the arithmetic and the measurements.
 
 ### 9.1 Why the seam waits as long as the transport does
 
@@ -907,13 +925,20 @@ reasoning that "the two products give up at the same moment". They do not: the
 TUI's store is an IN-PROCESS call to a session that is already live, where five
 seconds can only mean a hung socket.
 
-Measured against a real isolated backend on 2026-09-19, with a keyless mock
-provider so the runtime really engages: a cold store answered **200 OK in 4.2 s**;
-six concurrent cold stores answered **200 OK in 5.6 s, 7.6 s, 7.7 s, 7.7 s, 7.9 s
-and 8.2 s**; the same sessions' next store, warm, answered in **0.19-0.51 s**. The
-operator's failing send landed behind an engage whose boot lines arrived ~13 s
-after the spawn. Every one of those writes WAS stored, and every one of them was
-past the 5 s at which the seam used to publish `NOT stored`.
+Measured twice, on two days, through two different rigs, and the difference is
+worth stating rather than averaging: against a real isolated backend on
+2026-09-19, with a keyless mock provider so the runtime really engages, a cold
+store answered **200 OK in 4.2 s** and six concurrent cold stores answered **200
+OK in 5.6-8.2 s** (warm: 0.19-0.51 s). QA's own round measured the same shapes
+through the app's fault-injecting proxy at load 80-123 on 2026-09-20 and saw
+**1.09-1.47 s** cold, **1.33-3.51 s** for six in flight and **0.037-0.19 s** warm.
+The band is HOST- AND LOAD-DEPENDENT, both readings are real, and the bound is
+sized for the slower one: the transport's own 25 s leaves 3x margin over the 8.2 s
+worst case measured here and 6x over QA's worst.
+
+The operator's failing send landed behind an engage whose boot lines arrived ~13 s
+after the spawn. Every write in those runs WAS stored, and every one of them past
+the 5 s at which the seam used to publish `NOT stored`.
 
 So the attempt is bounded by `desktopRequestTimeoutMs("sessions.credential")` —
 the transport's own deadline for this op, which is the rule `desktop-api.ts`
@@ -921,8 +946,17 @@ already states for its own margin: the composer must not be the layer that gives
 up first, because the layer that knows the HTTP status is the one that can tell a
 refusal from a silence. The wait is not added latency either: the runtime the
 store needs is the runtime the message will run on, so the send is waiting for it
-in any case. The two resolution steps that follow a silent attempt keep a shorter
-bound (they are retries, and the first attempt already spent the op's budget).
+in any case.
+
+AND THE WHOLE SEAM IS BOUNDED — 25 s + 5 s + 5 s = **35 s** per credential that
+nothing ever answers, which is the worst case and is paid only when the alternative
+would be asserting something false. What is NOT paid per credential is the
+resolution: the payloads resolve concurrently, so the operator's own two-key
+message costs one resolution rather than two (measured in
+`scripts/credential-composer.test.mjs`'s `two cited credentials pay the resolution
+ONCE, not twice`). The two resolution steps keep the shorter bound because they
+are retries: the first attempt already spent the op's budget, and a runtime that
+has not answered by then is not going to.
 
 The `/credential` argument must stay stripped from any command dispatch
 (`slash-dispatch.ts`: `/credential` is refused so a secret can never land in

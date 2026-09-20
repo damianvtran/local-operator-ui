@@ -1662,6 +1662,24 @@ const CREDENTIAL_CITATION_UNCONFIRMED =
 	/\[credential unconfirmed \u2014 [^\]\n]*\]/y;
 
 /**
+ * The key a sentence NAMES, as `$KEY`, or `""` when it names none.
+ *
+ * The unconfirmed sentence is the one citation whose key has to be read back out
+ * of its own prose, and the reason is the chip: its label carries the reference
+ * (design round 1, D1 — see `unconfirmedChipLabel`), so the URL the plugin writes
+ * has to carry the key, and the URL is built from this segment. Constrained by
+ * `CREDENTIAL_KEY_PATTERN` rather than by a looser word rule, so the same
+ * predicate that validates a store name validates what a chip is allowed to
+ * claim: a `$` that is not a store key is prose and stays prose.
+ */
+const namedCredentialKey = (sentence: string): string => {
+	const named = /\$([A-Z0-9_]+)/.exec(sentence);
+	return named !== null && CREDENTIAL_KEY_PATTERN.test(named[1])
+		? named[1]
+		: "";
+};
+
+/**
  * One citation as the transcript holds it, or one run of ordinary prose.
  *
  * Shaped like {@link PaintSegment} — a `kind` and the text it covers — because
@@ -1676,7 +1694,7 @@ export type CitationSegment =
 	   different claims about the same message ("nothing is there" against "nobody
 	   knows"), and a transcript that drew them the same way would put the app's own
 	   uncertainty behind the failure's face. */
-	| { kind: "unconfirmed"; text: string };
+	| { kind: "unconfirmed"; text: string; key: string };
 
 /**
  * The citation starting at exactly `at`, or `null`.
@@ -1712,7 +1730,17 @@ function citationAt(text: string, at: number): CitationSegment | null {
 	const unconfirmed = CREDENTIAL_CITATION_UNCONFIRMED.exec(text);
 	CREDENTIAL_CITATION_UNCONFIRMED.lastIndex = 0;
 	if (unconfirmed !== null)
-		return { kind: "unconfirmed", text: unconfirmed[0] };
+		return {
+			kind: "unconfirmed",
+			text: unconfirmed[0],
+			/*
+			 * The key the sentence names, carried on the segment so the chip can label
+			 * itself with it (D1). `""` when the sentence names none — that arm is
+			 * `describeUnstored("unconfirmed")` without a key, and its chip then says
+			 * only the register.
+			 */
+			key: namedCredentialKey(unconfirmed[0]),
+		};
 	return null;
 }
 
@@ -2197,6 +2225,58 @@ export function unstoredNotice(keys: readonly string[]): string {
 }
 
 /**
+ * The chip's words for the unresolved register, in the two shapes it has.
+ *
+ * TWO DECISIONS ARE IN THIS STRING, both settled in review round 1.
+ *
+ * THE REFERENCE IS ON THE LABEL (D1). This is the only citation whose sentence
+ * names a key, and the review's point is that a reader of the transcript has to be
+ * able to tell WHICH credential is unresolved — a message citing two credentials
+ * can now render one stored chip that names its key and one unconfirmed chip that
+ * named nothing, with only a hover to tell them apart. Every other citation chip
+ * either names its reference (the stored form's label IS the key) or has no name
+ * to lose, so the fix is the stored form's own treatment: the label carries it.
+ * What it costs was measured by the design round before this was written — the
+ * key-bearing stored chip already fills the 440px line box exactly and ellipsises
+ * there (248.00px of 248px) and bleeds 77.41px at 300px, so this label inherits
+ * that ceiling and creates no new one.
+ *
+ * THE NOUN IS THE STORE'S (D4). "Credential unconfirmed" reads as a claim about
+ * the value; the sentence is about whether the write landed, and the label now
+ * says so — 213.75px measured for these words at the 14px step, before the key.
+ */
+export const UNCONFIRMED_CHIP_WORDS = "Credential store unconfirmed";
+
+/** {@link UNCONFIRMED_CHIP_WORDS} with the reference the sentence named, if any. */
+export const unconfirmedChipLabel = (key: string): string =>
+	key === "" ? UNCONFIRMED_CHIP_WORDS : `${UNCONFIRMED_CHIP_WORDS} · ${key}`;
+
+/**
+ * The move that works, in the operator's own terms — ONE wording, two surfaces.
+ *
+ * The refusal notice has ended with this clause since the capture was ported; the
+ * unresolved notice and the chip's hover both need the same sentence, and a second
+ * spelling of it beside the first is exactly the drift the notice module exists to
+ * prevent. `unconfirmedNotice` and `unconfirmedHover` compose it rather
+ * than repeating it (design round 1, D2).
+ */
+export const UNCONFIRMED_OPERATOR_MOVE =
+	"Paste the value again after /credential to store it again.";
+
+/**
+ * What HOVERING an unresolved chip says (design round 1, D2).
+ *
+ * The chip's title used to be the citation verbatim, which is the MODEL's half:
+ * it ends by telling the reader to run `list_variables`, a verb only the agent
+ * has. The transcript is the operator's surface, and the toast that carried their
+ * move is gone by the time the chip is the only thing left — so the title appends
+ * the operator's own sentence to the record of what the model received. Both
+ * halves stay in this module because this module owns the spellings.
+ */
+export const unconfirmedHover = (citation: string): string =>
+	`${citation} ${UNCONFIRMED_OPERATOR_MOVE}`;
+
+/**
  * The notice for a store the session never confirmed EITHER WAY (§9.4).
  *
  * The operator's half of {@link describeUnstored}'s `"unconfirmed"` arm, and the
@@ -2214,7 +2294,7 @@ export function unstoredNotice(keys: readonly string[]): string {
  */
 export function unconfirmedNotice(keys: readonly string[]): string {
 	const noun = keys.length === 1 ? "credential" : "credentials";
-	return `${keys.length} ${noun} could not be confirmed as stored (${[...keys].sort().join(", ")}); the agent has been told to check before using it. Paste the value again after /credential to store it again.`;
+	return `${keys.length} ${noun} could not be confirmed as stored (${[...keys].sort().join(", ")}); the agent has been told to check before using it. ${UNCONFIRMED_OPERATOR_MOVE}`;
 }
 
 /** Shown while the token is seated and the secret has not started arriving. */

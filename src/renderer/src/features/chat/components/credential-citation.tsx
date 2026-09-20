@@ -1,5 +1,6 @@
 import type { FC, ReactNode } from "react";
 import type { Components } from "react-markdown";
+import { unconfirmedChipLabel, unconfirmedHover } from "./credential-capture";
 import { CredentialChip } from "./credential-chip";
 import {
 	type CitationRef,
@@ -36,6 +37,13 @@ import {
  *   can say; the WORDS are what separate them, and the full sentence that
  *   separates them is in the title.
  *
+ * THE ONE ASYMMETRY, and review round 1's D1 is why it is not one any more: the
+ * `unconfirmed` sentence names the key it is about, so its chip carries the
+ * reference too (`unconfirmedChipLabel`) — the same treatment the stored chip
+ * gives its own reference — because a message may cite several credentials and the
+ * transcript is the only surface left after the toast. See that function for the
+ * measured cost, which is the stored chip's existing ceiling.
+ *
  * NO CLEAR CONTROL, deliberately. A sent message cannot be un-sent: the
  * transcript is a record of what the model was given, and the credential store
  * on the runtime already holds the value under that name. An `x` here would have
@@ -48,21 +56,48 @@ import {
  * The composer's chip has one because there the reference has not been sent yet
  * and nothing else holds it.
  */
+/**
+ * The chip's own text, per register.
+ *
+ * The stored register's label IS its reference (the name the model was told to
+ * use). The two warning registers share a face and are told apart by their words;
+ * the unresolved one carries its reference as well, for the reason
+ * `unconfirmedChipLabel` gives.
+ */
+const citationLabel = (citation: CitationRef): string => {
+	if (citation.kind === "stored") return citation.key;
+	if (citation.kind === "unconfirmed")
+		return unconfirmedChipLabel(citation.key);
+	return "Credential not stored";
+};
+
+/**
+ * What the chip says on hover: the record, plus the operator's move where the
+ * record is about a state the operator can still do something about (D2).
+ *
+ * The `title` is the citation sentence verbatim — what the model was given — and
+ * for the two RESOLVED registers that is the whole of what a reader needs (a
+ * stored key, or a value that did not survive). The unresolved register is the one
+ * whose sentence ends by naming a verb only the AGENT has (`list_variables`), so
+ * its title appends the move that works for the person reading the transcript.
+ */
+const citationTitle = (
+	citation: CitationRef,
+	sentence: string | undefined,
+): string | undefined =>
+	citation.kind === "unconfirmed" && sentence !== undefined
+		? unconfirmedHover(sentence)
+		: sentence;
+
 export const CredentialCitationChip: FC<{
 	citation: CitationRef;
 	title?: string;
 }> = ({ citation, title }) => (
 	<CredentialChip
 		tone={citation.kind === "stored" ? "live" : "warning"}
-		label={
-			citation.kind === "stored"
-				? citation.key
-				: citation.kind === "unstored"
-					? "Credential not stored"
-					: "Credential unconfirmed"
-		}
+		label={citationLabel(citation)}
 		chars={citation.kind === "stored" ? citation.chars : null}
-		title={title}
+		title={citationTitle(citation, title)}
 		// Inline flow, which is the whole requirement: a citation mid-sentence must
 		// stay inside its paragraph. `align-middle` keeps the chip's box on the
 		// text's own baseline band instead of lifting the line, and the leading is

@@ -678,6 +678,17 @@ export const STORIES = [
 	["chat-canonical-credential-citation--citation-unconfirmed", 1024, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
+	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on
+	 * a narrow window, and the size design round 1's D3 asked for. The unresolved
+	 * notice carries a key name and two sentences and had no frame at all; the
+	 * refusal's is beside it so the pair reads as the two registers they are.
+	 *
+	 * `chat/credential-notice` drives the shipped notice functions through the
+	 * shipped toast manager, so what is photographed is the copy the app raises.
+	 */
+	["chat-credential-notice--unconfirmed", 440, 620],
+	["chat-credential-notice--unstored", 440, 620],
+	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
 	 * the named state for a conversation this machine no longer has.

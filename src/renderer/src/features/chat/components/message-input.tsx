@@ -788,10 +788,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * be running yet, and the route has to engage one before it can answer
  * (`desktop_lifecycle.py` → `bridge.remote.bind_runtime()`). Measured on this host
  * against a real isolated backend, `2026-09-19`: a cold store answered 200 in
- * 4.2 s, six concurrent cold stores answered 200 in 5.6-8.2 s, and the operator's
- * own first message landed behind an engage whose boot lines arrived ~13 s after
- * the spawn. Abandoning those at 5 s is exactly the bug: the write landed, and
- * the model was told it had not.
+ * 4.2 s, and six concurrent cold stores answered 200 in 5.6-8.2 s; the resolution
+ * round's own independent measurement through the app's proxy the next day saw
+ * 1.09-1.47 s cold and 1.33-3.51 s for six in flight, and the operator's own
+ * first message landed behind an engage whose boot lines arrived ~13 s after the
+ * spawn. Every one of those writes was past the old 5 s bound, and all of them
+ * landed.
  *
  * So the bound is `desktopRequestTimeoutMs`, the transport's own deadline for
  * this op (main's 20 s control budget plus its 5 s renderer margin) — the same
@@ -800,20 +802,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * knows the HTTP status is the one that can tell a refusal from a silence. The
  * wait is not wasted either: the message cannot be sent before the runtime the
  * store needs is up, so this is the send's own wait, reported rather than hidden.
+ *
+ * THE WHOLE SEAM'S WAIT IS THIS PLUS TWO SHORTER ONES, and saying so is the
+ * point of the number being a constant rather than an expression: one credential
+ * that nothing ever answers costs 25 s here, then a 5 s re-issue, then a 5 s list
+ * read — **35 s** at worst, and every second of it is a second the alternative
+ * spends asserting something false. A credential that answers at all costs a
+ * fraction of that (a refusal pays only the list read; the measured rows came in
+ * between 6.9 s and 30 s end to end). Credentials resolve CONCURRENTLY, so N
+ * cited in one message cost that same worst case rather than N times it.
  */
 const CREDENTIAL_STORE_TIMEOUT_MS = desktopRequestTimeoutMs(
 	"sessions.credential",
 );
 
 /**
- * How long a RESOLUTION attempt may take, once the first attempt proved nothing.
+ * How long a RESOLUTION step may take, once a first attempt proved nothing.
  *
  * Shorter than the attempt above on purpose. A resolution runs only after the
  * store already spent the op's full budget without an answer, and its job is to
  * catch a response that was LOST while the write landed — an engaged runtime
  * answers it in milliseconds. Waiting the whole budget again would not find more
  * truth; it would only park the send, which is the failure the seam's bound
- * exists to prevent.
+ * exists to prevent. Both resolution steps (the re-issue and the list read) are
+ * bounded by this one value, so the seam's own worst case is the attempt above
+ * plus two of these — see that constant for the arithmetic.
  */
 const CREDENTIAL_RESOLVE_TIMEOUT_MS = 5000;
 
@@ -825,25 +838,28 @@ type CredentialStoreAttempt =
 /**
  * One store attempt, and the classification of every way it can end.
  *
- * WHICH CAUSE, and how little this transport can say about it. The route
- * collapses the store's own refusal into one 409 (`server/routes/
- * desktop_lifecycle.py`), so the store's `reason` never crosses the wire; what a
- * 4xx DOES prove is that something ANSWERED — the store said no, or the route
- * refused the request before it could reach one (`422` for a body it would not
- * accept, `404` for an address that is not there). That is a confirmed
- * non-store, and with a key this composer minted against
- * `CREDENTIAL_KEY_PATTERN` the reachable refusal is a blank VALUE, exactly the
- * restored draft whose bytes do not survive (§6), hence `"lost"`.
+ * WHAT THE WIRE CAN AND CANNOT SAY, because this is where the last false
+ * citation lived. `{ kind: "stored" }` is an answer that the store took the
+ * value. `{ kind: "fate" }` is an answer that says the value is NOT there — and
+ * it is a CANDIDATE, not a verdict, which is the correction the first round of
+ * review forced: the route collapses the store's own refusal AND the owner's own
+ * `disconnected` answer into ONE 409 with no reason in the body
+ * (`server/routes/desktop_lifecycle.py` raises it whenever
+ * `bridge.remote.credential_op` returns `not result.get("ok")`, and
+ * `session/attached.py`'s `credential_op` returns exactly that shape both when
+ * the viewer is not connected and when the client RAISED — i.e. for a lost reply
+ * over a landed write, `run_credential_verb` having applied the store before it
+ * returned). So a 4xx proves that something ANSWERED; it does not prove the value
+ * is absent, and the caller therefore confirms every non-store answer against the
+ * session's own list before citing it (`sessionHoldsCredential`).
  *
- * Everything else proves NOTHING about the write and returns `null` for the
- * caller to resolve: a transport failure or this composer's bound expiring
- * (`status: null`), and any 5xx, including the transport's own `504` when a slow
- * op runs out of its budget.
- *
- * That last group is the correction rather than a detail: it used to be reported
- * as `"unreachable"`, i.e. as `[credential NOT stored — the session could not be
- * reached]`, on the strength of a silence — and the operator's own session is the
- * measured proof that a store can be silent here and still land.
+ * `null` is the third answer and the one this change exists for: a transport
+ * failure or this composer's bound expiring (`status: null`), and any 5xx
+ * including the transport's own `504` — none of which says anything about the
+ * write. It used to be reported as `"unreachable"`, i.e. as `[credential NOT
+ * stored — the session could not be reached]`, on the strength of a silence, and
+ * the operator's own session is the measured proof that a store can be silent
+ * here and still land.
  */
 async function attemptCredentialStore(
 	sessionId: string,
@@ -876,23 +892,31 @@ async function attemptCredentialStore(
 }
 
 /**
- * Whether the session's own store holds `key` — a POSITIVE witness only.
+ * Whether the session's own store holds `key`: present, absent, or unreadable.
+ *
+ * Three answers rather than a boolean, because the two callers need different
+ * halves of the same read and collapsing them is how the last false citation got
+ * in:
+ *
+ *  - `true` — a POSITIVE WITNESS. The list names the key, so the write landed and
+ *    the citation can be the confident one the model needs, whatever the store op
+ *    itself said (or failed to say);
+ *  - `false` — the read ANSWERED and the key is not there. Enough to confirm a
+ *    refusal, because a store answer plus an absent name is two pieces of
+ *    evidence agreeing; never enough on its own to confirm a non-store, because
+ *    the store request that preceded it may still be in flight behind the same
+ *    cold engage, or may have landed under a runtime that has since retired;
+ *  - `null` — the read itself could not answer. Proves nothing in either
+ *    direction, so the caller may not cite either outcome.
  *
  * The one reader of the store's name list this seam is allowed to use is
- * `credentialNamesFrom` (§9.7), and the answer is read in one direction on
- * purpose. A key FOUND here is proof the write landed, so the citation can be
- * the confident one the model needs; a key NOT found here is proof of nothing at
- * all — the first store request may still be in flight behind the same cold
- * engage that made this read fail, and a runtime that retires takes its unnamed
- * values with it — so absence never produces a not-stored sentence. It costs one
- * bounded read and it is only reached when two store attempts have already been
- * silent, which is why the bound is the resolution one.
+ * `credentialNamesFrom` (§9.7).
  */
 async function sessionHoldsCredential(
 	sessionId: string,
 	key: string,
 	timeoutMs: number,
-): Promise<boolean> {
+): Promise<boolean | null> {
 	try {
 		const answer = await withTimeout(
 			desktopResult<unknown>({
@@ -904,8 +928,63 @@ async function sessionHoldsCredential(
 		);
 		return credentialNamesFrom(answer).includes(key);
 	} catch {
-		return false;
+		return null;
 	}
+}
+
+/**
+ * Everything this seam can find out about one credential, cheapest proof first.
+ *
+ * THE DECISION TABLE, and each row is a thing the wire can and cannot say:
+ *
+ * | first attempt | re-issue | list read | citation |
+ * | --- | --- | --- | --- |
+ * | `ok` | — | — | stored |
+ * | a refusal | — | names the key | stored — the 409 was a lost reply |
+ * | a refusal | — | answered, no key | the refusal stands |
+ * | a refusal | — | unreadable | unconfirmed |
+ * | silent | `ok` | — | stored |
+ * | silent | refusal | names the key | stored |
+ * | silent | refusal | answered, no key | unconfirmed — silence proved nothing |
+ * | silent | silent | anything | unconfirmed |
+ *
+ * The re-issue runs only when the first attempt was SILENT, because that is the
+ * only state a second attempt can repair: a refusal is an answer, and repeating it
+ * changes nothing on the wire. The list read runs after either, because a positive
+ * witness settles both states, and it is the only step that can tell a refusal
+ * from a lost reply about a write that landed.
+ */
+async function resolveCredentialStore(
+	sessionId: string,
+	payload: CredentialPayload,
+): Promise<CredentialStoreAttempt | null> {
+	const first = await attemptCredentialStore(
+		sessionId,
+		payload,
+		CREDENTIAL_STORE_TIMEOUT_MS,
+	);
+	if (first?.kind === "stored") return first;
+	let attempt: CredentialStoreAttempt | null = first;
+	if (attempt === null)
+		attempt = await attemptCredentialStore(
+			sessionId,
+			payload,
+			CREDENTIAL_RESOLVE_TIMEOUT_MS,
+		);
+	if (attempt?.kind === "stored") return attempt;
+	const holds = await sessionHoldsCredential(
+		sessionId,
+		payload.key,
+		CREDENTIAL_RESOLVE_TIMEOUT_MS,
+	);
+	if (holds === true) return { kind: "stored" };
+	if (holds === false && attempt !== null) return attempt;
+	/*
+	 * Either nothing answered at all, or the store answered and the list could not —
+	 * and in both cases the seam knows of no key it may cite. `null` is that state,
+	 * and the caller renders it as the one citation that claims nothing.
+	 */
+	return null;
 }
 
 /**
@@ -1601,56 +1680,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				const fates = new Map<number, CredentialFate>();
 				const stored: string[] = [];
-				for (const payload of cited) {
-					if (!sessionId) {
-						/*
-						 * No session to reach (a draft pane with no seam). The one pass through
-						 * this loop that needs no round trip, and the only one where the composer
-						 * does not have to GUESS: it is holding the proof itself — there is no
-						 * address to write to — so this is a confirmed non-store, not an unknown.
-						 */
-						fates.set(payload.index, "unreachable");
-						continue;
-					}
-					/*
-					 * THE ATTEMPT, AND THEN THE RESOLUTION (operator report, 2026-09-19).
-					 *
-					 * The store is idempotent for one key and value, so a second attempt is a
-					 * repair as well as a question: if it answers `ok`, the value is in the store
-					 * — including the case the first attempt was cut off mid-engage and landed
-					 * anyway — and the citation is the confident one the model needs. The name
-					 * list is the last resort, and it is read in ONE direction (see
-					 * `sessionHoldsCredential`).
-					 *
-					 * The order follows what each step can PROVE: the second attempt can prove
-					 * either outcome, the list read can only prove presence, and the first attempt
-					 * already spent the op's whole budget — so the two resolution steps get the
-					 * shorter bound.
-					 */
-					let attempt = await attemptCredentialStore(
-						sessionId,
-						payload,
-						CREDENTIAL_STORE_TIMEOUT_MS,
-					);
-					if (attempt === null)
-						attempt = await attemptCredentialStore(
-							sessionId,
+				/*
+				 * EVERY CITED CREDENTIAL RESOLVES AT ONCE, and that is not an optimisation.
+				 * One credential that nothing ever answers costs up to 35 s of dead wait
+				 * (the arithmetic is at `CREDENTIAL_STORE_TIMEOUT_MS`), and the loop this
+				 * replaces awaited that PER PAYLOAD — so the operator's own two-key message
+				 * would have parked the composer behind ~70 s and a four-key one behind
+				 * ~2.3 min, all of it inside `beforeAdmission`. The ops are independent (one
+				 * key each, one idempotent verb, one session), so N citations now cost one
+				 * resolution rather than N (code review round 1, MINOR-1).
+				 *
+				 * `resolveCredentialStore` is the whole decision table for one credential —
+				 * attempt, re-issue, positive-witness read — so the ordering that matters is
+				 * in one place rather than spread across a loop body.
+				 */
+				const verdicts = await Promise.all(
+					cited.map(
+						async (
 							payload,
-							CREDENTIAL_RESOLVE_TIMEOUT_MS,
-						);
-					if (
-						attempt === null &&
-						(await sessionHoldsCredential(
-							sessionId,
-							payload.key,
-							CREDENTIAL_RESOLVE_TIMEOUT_MS,
-						))
-					)
-						attempt = { kind: "stored" };
+						): Promise<{
+							payload: CredentialPayload;
+							attempt: CredentialStoreAttempt | null;
+						}> => ({
+							payload,
+							attempt: sessionId
+								? await resolveCredentialStore(sessionId, payload)
+								: /*
+									 * No session to reach (a draft pane with no seam). The one case
+									 * that needs no round trip, and the only one where the composer does
+									 * not have to GUESS: it is holding the proof itself — there is no
+									 * address to write to — so this is a confirmed non-store, not an
+									 * unknown.
+									 */
+									{ kind: "fate", fate: "unreachable" },
+						}),
+					),
+				);
+				for (const { payload, attempt } of verdicts) {
 					if (attempt === null) {
 						/*
-						 * NOTHING ON THE WIRE ANSWERED, so the fate is `"unconfirmed"` and NOT
-						 * `"unreachable"`: the value may be in the store this instant — the
+						 * NOTHING CONFIRMED EITHER OUTCOME, so the fate is `"unconfirmed"` and
+						 * NOT `"unreachable"`: the value may be in the store this instant — the
 						 * operator's own session is the measurement — and asserting otherwise is
 						 * the lie this resolution exists to make unreachable.
 						 */
