@@ -195,7 +195,16 @@ const OUTSIDE_MARKERS = [
  * are still found.
  */
 export function aliasTable(root) {
-	const text = readFileSync(join(root, "electron.vite.config.js"), "utf8");
+	let text;
+	try {
+		text = readFileSync(join(root, ALIAS_SOURCE), "utf8");
+	} catch {
+		// Not every root this module is asked about is a checkout of this
+		// repository - the runner's own tests plan inside temp fixtures - and an
+		// unreadable alias source is a reason to refuse to narrow, never a crash
+		// halfway through planning.
+		return null;
+	}
 	const aliases = [];
 	for (const match of text.matchAll(
 		/^\s*"(@[\w-]+)":\s*resolve\("([^"]+)"\)/gm,
@@ -697,6 +706,9 @@ export function pathExpressionText(
 
 	return null;
 }
+
+/** The one file this module reads for the vite alias table. */
+const ALIAS_SOURCE = "electron.vite.config.js";
 
 /** The concatenated text of every top-level argument, or `null` if any fails. */
 function everyArgumentText(argumentList, bindings, depth, seen) {
@@ -1290,6 +1302,17 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 	}
 
 	const aliases = aliasTable(root);
+	// A root whose alias source cannot be read is not a root this module can reason
+	// about: every unresolved-specifier question would be answered against the wrong
+	// table, and the answer is a narrowed run built on it. Fail closed, with the
+	// reason printed - the alternative is an uncaught ENOENT that takes the caller
+	// down mid-plan rather than running the suite (found on CI, where a fixture
+	// repository had a `package.json` and nothing else).
+	if (aliases === null) {
+		return whole(
+			`the vite alias table could not be read under the plan root (${ALIAS_SOURCE} is missing)`,
+		);
+	}
 	const selected = new Map();
 	const alwaysSelected = [];
 	const unresolvedClasses = [];
