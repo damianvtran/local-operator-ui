@@ -91,6 +91,23 @@ export function consoleHostEnabled(
 	return !(flag === "0" || flag === "false" || flag === "off");
 }
 
+/**
+ * §8.2 step 2(c)'s broadcast, in one place.
+ *
+ * A pane learns a grid from its OWN `console-content-rect` reply today, so a grid
+ * an AGENT changed (`console_resize`) reaches no mounted pane at all and the mirror
+ * keeps painting the old wrapping and cursor row until a remount.
+ *
+ * The frame carries NO payload, deliberately: §8.2 step 3 says the mirror applies
+ * the grid "only as the value main returned", so the pane re-reads `console-state`
+ * after this and applies what main says — a pushed number would be a second
+ * authority on the one thing the design gives main.
+ */
+export function broadcastConsoleState(window: BrowserWindow): void {
+	if (window.isDestroyed()) return;
+	window.webContents.send("console-state-changed");
+}
+
 export async function startConsoleHost(
 	options: StartConsoleHostOptions,
 ): Promise<ConsoleStartup> {
@@ -151,7 +168,9 @@ export async function startConsoleHost(
 						`[console] restored the exec bit on ${report.path ?? "spawn-helper"}`,
 					);
 				})),
-		onChanged: () => {},
+		onChanged: () => {
+			broadcastConsoleState(options.window);
+		},
 		onReveal: (request) => {
 			// The renderer's half of `reveal` (design 10.4): whether the session an
 			// agent named is the one on screen is a question only the renderer can

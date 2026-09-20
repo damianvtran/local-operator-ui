@@ -219,7 +219,7 @@ async function packagedProof(appPath) {
 	});
 	const read = await readUntil(state, created.surface, "packaged-marker");
 	check(
-		"the packaged app forks a real pty and reads it back (P11)",
+		"the packaged app forks a real pty and reads it back (P11, UNSIGNED --dir build)",
 		read.text.includes("packaged-marker"),
 		{ surface: created.surface, pid: created.pid, viewport: read.text },
 	);
@@ -839,14 +839,99 @@ async function main() {
 		{ resize: resized, viewport: stty.text },
 	);
 
+	// ---- non-ASCII, both directions (the defect a byte-shaped test cannot see) --
+	/*
+	 * The pty's socket is decoded as UTF-8 by node-pty, so `printf '日本'` arrives as
+	 * a decoded string; reading it as latin1 truncated each code point to its low
+	 * byte and the loss was SILENT (no error, no `truncated` flag) — every non-ASCII
+	 * byte a program printed. `printf 'ABC'` passes either way, which is why nothing
+	 * before this cell noticed.
+	 *
+	 * The command is passed as an ARGV rather than typed into the surface's line
+	 * editor, so the cell measures the byte path and not whether a shell in whatever
+	 * locale this host runs in chose to keep a multi-byte character.
+	 */
+	const cjkSurface = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: ["-c", "printf '日本\\n'"],
+		cols: 80,
+		rows: 24,
+		sizing: "fixed",
+	});
+	const cjkRead = await readUntil(state, cjkSurface.surface, "日本");
+	check(
+		"non-ASCII output reaches the record intact",
+		cjkRead.text.includes("日本"),
+		{ text: cjkRead.text.slice(-120) },
+	);
+	// A character SPLIT ACROSS TWO WRITES is the half a per-chunk decode gets wrong:
+	// the three bytes of `日` are written in two reads 300 ms apart, and the record
+	// must still hold the character rather than two replacement halves.
+	const splitSurface = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: ["-c", "printf '\\346\\227'; sleep 0.3; printf '\\245\\n'"],
+		cols: 80,
+		rows: 24,
+		sizing: "fixed",
+	});
+	const splitRead = await readUntil(state, splitSurface.surface, "日");
+	check(
+		"a character split across two pty reads is still one character",
+		splitRead.text.includes("日") && !splitRead.text.includes("\ufffd"),
+		{ tail: splitRead.text.slice(-120) },
+	);
+
+	// INPUT. The same defect ran the other way: a payload was decoded to a string and
+	// node-pty re-encoded it as UTF-8, doubling every byte above 0x7F. The program's
+	// own file is the witness — `cat` writes exactly what it received.
+	const roundTrip = join(OUT_DIR, "input-roundtrip.bin");
+	rmSync(roundTrip, { force: true });
+	const catcher = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: ["-c", `stty -echo; cat > ${roundTrip}`],
+		cols: 80,
+		rows: 24,
+	});
+	await sleep(700);
+	await rpcOk(state, "console_input", { surface: catcher.surface, text: "日本" });
+	await rpcOk(state, "console_input", {
+		surface: catcher.surface,
+		bytes: [...Buffer.from("日\n", "utf8")],
+	});
+	await sleep(900);
+	await rpcOk(state, "console_close", { surface: catcher.surface, kill: true });
+	await sleep(300);
+	const written = existsSync(roundTrip) ? readFileSync(roundTrip) : Buffer.alloc(0);
+	const expectedInput = Buffer.concat([
+		// The `text` path: the host encodes it once and the pty receives those bytes.
+		Buffer.from("日本", "utf8"),
+		// The `bytes` path: what the caller sent, unchanged.
+		Buffer.from("日\n", "utf8"),
+	]);
+	check(
+		"a non-ASCII payload reaches the program byte for byte, on both paths",
+		written.equals(expectedInput),
+		{
+			expected: expectedInput.toString("hex"),
+			got: written.toString("hex"),
+			file: roundTrip,
+		},
+	);
+
 	// Keys go through main's encoder, and the surface survives them.
 	const keys = await rpcOk(state, "console_keys", {
 		surface,
 		keys: ["up", "ctrl+c"],
 	});
 	check(
-		"named keys are encoded and accepted",
-		keys.accepted === true && keys.encoded.length === 2,
+		"named keys are encoded and accepted, and `encoded` is the SEQUENCES",
+		keys.accepted === true &&
+			keys.encoded.length === 2 &&
+			keys.encoded[0] === "\u001b[A" &&
+			keys.encoded[1] === "\u0003",
 		keys,
 	);
 	await readUntil(state, surface, "marker-424242");
@@ -894,12 +979,18 @@ async function main() {
 	 * The window observation, independent of the mode this rig named.
 	 *
 	 * A headless launch CREATES the window and never shows it, so the renderer must
-	 * report itself hidden and unfocused. Neither call touches focus — `focus()` is
-	 * deliberately absent from this rig, because a peer measured a headless,
-	 * windowless agent instance holding the frontmost application for ~8 s and named
-	 * `window.focus()` over CDP as the leading (unproven) suspect. Keys reach the pty
-	 * through `console_keys`/`console_input` and are read back from the record, so no
-	 * cell here needs the window to hold key focus.
+	 * report itself hidden and unfocused. No call in this rig asks the window to take
+	 * focus — that request is what `scripts/window-mode.test.mjs` scans these trees
+	 * for, by TEXT, because it is the one call that reaches the operating system and
+	 * orders the window. It is absent here for its own reason and not because removing
+	 * it fixed a measurement: a peer measured a headless, windowless agent instance
+	 * holding the frontmost application for ~8 s and named that call as the leading
+	 * suspect, and the suspect was later CLEARED — the instance that took the front
+	 * ran a driver whose only focus calls were element-level. So the rule stands on
+	 * its own terms (a rig has no business asking for the keyboard) and this rig makes
+	 * no claim about that measurement. Keys reach the pty through
+	 * `console_keys`/`console_input` and are read back from the record, so no cell here
+	 * needs the window to hold key focus.
 	 */
 	const windowState = await rendererEvaluate(
 		"JSON.stringify({ visibility: document.visibilityState, focused: document.hasFocus() })",
@@ -971,8 +1062,57 @@ async function main() {
 	const noPane = await rpc(state, "console_screenshot", { surface });
 	check(
 		"a capture with no displayed pane is refused, and says which gap it is",
-		noPane.json?.error?.code === "capture_unavailable",
+		noPane.json?.error?.code === "capture_unavailable" &&
+			// The code is KEPT rather than renamed to something an older peer knows
+			// (§10.6's taxonomy has no honest value for "no pane is displaying this
+			// surface"): saying "unsupported_method" would tell the model the app is
+			// older than it is. PR C adds the document row and the tool's enum and
+			// copy in the same window.
+			typeof noPane.json?.error?.message === "string",
 		noPane.json,
+	);
+
+	// ---- the grid broadcast (§8.2 step 2(c)) -------------------------------
+	/*
+	 * A pane learned the grid only from its OWN `console-content-rect` reply, so a grid
+	 * an AGENT changed reached no mounted pane at all and the mirror kept painting the
+	 * old wrapping and cursor row until a remount. The listener here is the preload's
+	 * own subscriber, so what is measured is the whole chain: main's `onChanged` →
+	 * `console-state-changed` → a real renderer's listener → a re-read of the state
+	 * main owns.
+	 */
+	await rendererEvaluate(
+		`window.api.console.openPane(${JSON.stringify(surface)})`,
+	);
+	const armed = await rendererEvaluate(`
+		(() => {
+			window.__consoleStateChanges = 0;
+			window.api.console.onStateChanged(() => { window.__consoleStateChanges += 1; });
+			return 'armed';
+		})()
+	`);
+	check("the preload exposes a state-change subscriber", armed === "armed", armed);
+	const broadcastResize = await rpcOk(state, "console_resize", {
+		surface,
+		cols: 110,
+		rows: 33,
+	});
+	await sleep(400);
+	const frames = Number(
+		await rendererEvaluate("String(window.__consoleStateChanges)"),
+	);
+	const paneState = await rendererEvaluate("window.api.console.state()");
+	check(
+		"an agent's resize reaches a mounted pane as a broadcast, not only as its own reply",
+		broadcastResize.cols === 110 &&
+			frames >= 1 &&
+			paneState.surfaces.find((entry) => entry.surface === surface).cols === 110,
+		{
+			frames,
+			resize: broadcastResize,
+			paneGrid:
+				paneState.surfaces.find((entry) => entry.surface === surface) ?? null,
+		},
 	);
 
 	// ---- secure input -------------------------------------------------------
@@ -989,6 +1129,64 @@ async function main() {
 		{ read: secureRead.json?.error, screenshot: secureShot.json?.error },
 	);
 	await rpcOk(state, "console_secure", { surface, on: false });
+
+	// ---- and what the span must NOT do (§11.4.4) ---------------------------
+	/*
+	 * "bytes already retained are kept … otherwise turning the toggle on and off would
+	 * be a way to erase the log, which is the opposite of what it is for". The live log
+	 * and the durable file are asserted separately, because they were the two halves
+	 * that disagreed: the switch emptied the log while the file kept the bytes.
+	 */
+	const locked = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: ["-c", "printf 'before-lock\\n'; sleep 30"],
+		cols: 80,
+		rows: 24,
+		retain: true,
+	});
+	await readUntil(state, locked.surface, "before-lock");
+	const lockedLog = join(
+		HISTORY_DIR,
+		SESSION,
+		`${locked.surface.replace(/[^A-Za-z0-9_-]/g, "_")}.log`,
+	);
+	let beforeToggle = Buffer.alloc(0);
+	for (let attempt = 0; attempt < 12; attempt += 1) {
+		if (existsSync(lockedLog)) {
+			const candidate = readFileSync(lockedLog);
+			if (candidate.toString("utf8").includes("before-lock")) {
+				beforeToggle = candidate;
+				break;
+			}
+		}
+		await sleep(250);
+	}
+	await rpcOk(state, "console_secure", { surface: locked.surface, on: true });
+	const whileSecure = await rpcOk(state, "console_status", {
+		surface: locked.surface,
+	});
+	await rpcOk(state, "console_secure", { surface: locked.surface, on: false });
+	const reopened = await rpcOk(state, "console_read", {
+		surface: locked.surface,
+		mode: "viewport",
+	});
+	const afterToggle = existsSync(lockedLog) ? readFileSync(lockedLog) : Buffer.alloc(0);
+	check(
+		"the secure span keeps the bytes already retained, live and on disk (§11.4.4)",
+		beforeToggle.length > 0 &&
+			whileSecure.truncated === false &&
+			reopened.text.includes("before-lock") &&
+			afterToggle.subarray(0, beforeToggle.length).equals(beforeToggle),
+		{
+			bytesBefore: beforeToggle.length,
+			bytesAfter: afterToggle.length,
+			truncatedWhileSecure: whileSecure.truncated,
+			reopenedHoldsMarker: reopened.text.includes("before-lock"),
+			file: lockedLog,
+		},
+	);
+	await rpcOk(state, "console_close", { surface: locked.surface, kill: true });
 
 	// ---- typed refusals -----------------------------------------------------
 	const missing = await rpc(state, "console_status", {
@@ -1033,9 +1231,21 @@ async function main() {
 	});
 	const exited = await waitForExit(state, quick.surface, 5);
 	check(
-		"a surface's process exit is observed once, with its code",
-		exited.running === false && exited.exit_code === 5,
+		"a surface's process exit is observed once, with its code and its generation",
+		exited.running === false &&
+			exited.exit_code === 5 &&
+			// §10.2 lists `exit_epoch` in `console_status`'s return shape and §7.3
+			// makes the retention layer own it: a field the frozen table names but the
+			// code never emits is exactly the class of defect this round caught.
+			exited.exit_epoch === 1,
 		exited,
+	);
+	// A live surface is generation 0: the counter is a count of EXITS, not a flag.
+	const liveStatus = await rpcOk(state, "console_status", { surface });
+	check(
+		"a surface that has not exited reports generation 0",
+		liveStatus.exit_epoch === 0,
+		{ exit_epoch: liveStatus.exit_epoch, running: liveStatus.running },
 	);
 	const afterExit = await rpc(state, "console_read", {
 		surface: quick.surface,
@@ -1067,6 +1277,22 @@ async function main() {
 		retain: true,
 	});
 	await waitForExit(state, retained.surface, 0);
+	// The generation's DURABLE half: the sidecar is what makes it outlive the
+	// process, and it is the file the notifier's §12.3 key is read from.
+	const retainedSidecar = JSON.parse(
+		readFileSync(
+			`${join(HISTORY_DIR, SESSION, retained.surface.replace(/[^A-Za-z0-9_-]/g, "_"))}.json`,
+			"utf8",
+		),
+	);
+	check(
+		"the exit generation is on disk in the sidecar (§7.3)",
+		retainedSidecar.exit_epoch === 1,
+		{
+			exit_epoch: retainedSidecar.exit_epoch,
+			exit_code: retainedSidecar.exit_code,
+		},
+	);
 	await rpcOk(state, "console_close", { surface: retained.surface });
 	const historyFile = join(
 		HISTORY_DIR,
@@ -1093,6 +1319,63 @@ async function main() {
 			{ mode: (statSync(historyFile).mode & 0o777).toString(8) },
 		);
 	}
+
+	// ---- P3: does a byte flood starve the main thread? ---------------------
+	/*
+	 * §19.1's P3, never run before this pass, and the probe §18.3's risk-3 names: `yes`
+	 * into a surface for 30 s while main's responsiveness is sampled as the round trip
+	 * of a call main has to serve (`console_status`), with the surface's dropped-byte
+	 * count read from the record afterwards.
+	 *
+	 * RETAIN IS ON, which is the case that matters: §7.2 gives a user's surface retain
+	 * by default, and a retained surface used to pay `appendFileSync` + `statSync` +
+	 * chmods per pty chunk plus a staged sidecar rewrite — measured independently at
+	 * ~6-7 ms per 8 KiB chunk on the thread that draws the app's windows.
+	 */
+	const floodSurface = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: ["-c", "yes"],
+		cols: 100,
+		rows: 30,
+		retain: true,
+	});
+	const sample = async () => {
+		const startedAt = Date.now();
+		await rpcOk(state, "console_status", { surface: floodSurface.surface });
+		return Date.now() - startedAt;
+	};
+	const baseline = [];
+	for (let index = 0; index < 10; index += 1) baseline.push(await sample());
+	const samples = [];
+	const floodStartedAt = Date.now();
+	while (Date.now() - floodStartedAt < 30_000) {
+		samples.push(await sample());
+		await sleep(200);
+	}
+	const flooded = await rpcOk(state, "console_status", {
+		surface: floodSurface.surface,
+	});
+	const sorted = [...samples].sort((a, b) => a - b);
+	const median = sorted[Math.floor(sorted.length / 2)];
+	const worst = sorted.at(-1) ?? null;
+	check(
+		"a 30 s `yes` flood with retention ON leaves main answering (§19.1 P3)",
+		flooded.running === true && worst !== null && worst < 2_500,
+		{
+			baselineMs: { max: Math.max(...baseline), median: baseline[0] },
+			floodMs: {
+				count: samples.length,
+				median,
+				p95: sorted[Math.floor(sorted.length * 0.95)] ?? null,
+				max: worst,
+			},
+			truncated: flooded.truncated,
+			exit_epoch: flooded.exit_epoch,
+			surface: floodSurface.surface,
+		},
+	);
+	await rpcOk(state, "console_close", { surface: floodSurface.surface, kill: true });
 
 	// ---- the caps -----------------------------------------------------------
 	// Up to the cap rather than eight more: the session already holds the surfaces

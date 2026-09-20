@@ -65,7 +65,10 @@ export async function dispatchConsole(
 				throw new ConsoleError(
 					"invalid_grid",
 					`${cols}x${rows} is outside the supported grid; the clamp would be ${clamped.cols}x${clamped.rows}`,
-					{ requested: { cols, rows }, clamp: clamped },
+					// §10.6's key for this code is the nested `clamp`, which is what a
+					// consumer's sentence names — the requested grid is already in the
+					// message above it.
+					{ clamp: clamped },
 				);
 			}
 			// Spread rather than returned directly: the host's result is an interface,
@@ -166,7 +169,7 @@ export async function dispatchConsole(
 				throw new ConsoleError(
 					"invalid_grid",
 					`${cols}x${rows} is outside the supported grid; the clamp would be ${clamped.cols}x${clamped.rows}`,
-					{ requested: { cols, rows }, clamp: clamped },
+					{ clamp: clamped },
 				);
 			}
 			return host.resize(surface, cols, rows);

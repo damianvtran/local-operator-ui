@@ -29,7 +29,16 @@ export const SURFACE_PREFIX = "con";
 
 /** How many surfaces one session's *agent* may hold, mirroring the browser's
  * `MAX_AGENT_TABS = 8` and its reasoning: nothing else bounds how many an agent
- * fleet can open. A user's own surfaces are not capped within the app total. */
+ * fleet can open. A user's own surfaces are not capped within the app total.
+ *
+ * THIS IS THE SOFTER OF THE TWO BOUNDS, and saying so is part of enforcing it: a
+ * per-session cap is only as strong as the session identity the caller carries,
+ * and an RPC caller carries none (§10.1 — the key is per-host, which
+ * `requireOwned` states at its own call site). A caller that varies `session_id`
+ * therefore walks past this 8 and arrives at the app-wide 32 below, which is the
+ * only bound nothing can name its way around. §6.3's numbers are enforced as
+ * written; this is the note that says which of them is a guarantee rather than a
+ * policy. */
 export const MAX_AGENT_SURFACES_PER_SESSION = 8;
 
 /** The app-wide bound, user and agent surfaces together. This is a resource

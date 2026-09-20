@@ -25,9 +25,17 @@ import type { SurfaceOrigin } from "./protocol";
  * TWO FILES PER SURFACE, and the split is the same one §7.1 makes in memory: the
  * `.log` is the byte log (lossless, replayable), and the `.json` sidecar is what
  * the surface *was* — argv, cwd, grid, timestamps, exit code, whether the log was
- * truncated. Reconstruction is replay, so nothing needs a serialised terminal
- * state, which the headless build could not produce anyway (no `addon-serialize`,
- * §5.4).
+ * truncated, and its exit GENERATION (`exit_epoch`, §7.3). Reconstruction is
+ * replay, so nothing needs a serialised terminal state, which the headless build
+ * could not produce anyway (no `addon-serialize`, §5.4).
+ *
+ * WHY `exit_epoch` LIVES HERE AND NOT ON THE RECORD (§7.3): the counter's job is
+ * to outlive the process. A retained surface is replayed under its own handle and
+ * may be RUN AGAIN, and only a generation that survived the relaunch can tell
+ * that second exit from the first — which is what the dedupe key in §12.3
+ * (`(surface, exit_epoch)`) needs. A counter that lived in the live registry
+ * would restart at 0 on every launch and make the second exit look like the
+ * first.
  *
  * A READ CREATES NOTHING. Every path helper here is pure arithmetic, and the
  * directory is made by the writer that needs it — the rule the bridge's and the UI
@@ -77,6 +85,10 @@ export interface ConsoleHistoryMeta {
 	last_seen_at: number;
 	exit_code: number | null;
 	truncated: boolean;
+	/** The exit GENERATION of this surface: incremented once per `process_exited`
+	 * (§7.3, §10.6). A sidecar written before this field existed reads as 0, which
+	 * is why every reader normalises it rather than trusting the file. */
+	exit_epoch: number;
 }
 
 export interface ConsoleHistoryOptions {
@@ -212,14 +224,26 @@ export class ConsoleHistory {
 		const metaPath = sidecarPath(this.root, sessionId, surface);
 		if (!existsSync(metaPath)) return null;
 		try {
-			const meta = JSON.parse(
-				readFileSync(metaPath, "utf8"),
-			) as ConsoleHistoryMeta;
+			const meta = parseMeta(readFileSync(metaPath, "utf8"));
 			const logFile = logPath(this.root, sessionId, surface);
 			const bytes = existsSync(logFile)
 				? readFileSync(logFile)
 				: Buffer.alloc(0);
 			return { meta, bytes: new Uint8Array(bytes) };
+		} catch {
+			return null;
+		}
+	}
+
+	/** One sidecar, or null. Never creates anything, and never throws. */
+	private loadSidecar(
+		sessionId: string,
+		surface: string,
+	): ConsoleHistoryMeta | null {
+		const path = sidecarPath(this.root, sessionId, surface);
+		if (!existsSync(path)) return null;
+		try {
+			return parseMeta(readFileSync(path, "utf8"));
 		} catch {
 			return null;
 		}
@@ -247,9 +271,7 @@ export class ConsoleHistory {
 			for (const file of files) {
 				if (!file.endsWith(".json")) continue;
 				try {
-					const meta = JSON.parse(
-						readFileSync(join(dir, file), "utf8"),
-					) as ConsoleHistoryMeta;
+					const meta = parseMeta(readFileSync(join(dir, file), "utf8"));
 					const logFile = join(dir, `${file.slice(0, -".json".length)}.log`);
 					const bytes = existsSync(logFile)
 						? readFileSync(logFile)
@@ -262,6 +284,32 @@ export class ConsoleHistory {
 			}
 		}
 		return loaded;
+	}
+
+	/**
+	 * The exit generation this sidecar currently records, or 0 when nothing has
+	 * exited yet (§7.3).
+	 *
+	 * Read from the FILE rather than from a field the caller carries: the durable
+	 * record is the only place a generation can outlive the process, and a caller
+	 * that has just restored a surface is holding exactly the meta this reads.
+	 */
+	exitEpoch(sessionId: string, surface: string): number {
+		const loaded = this.loadSidecar(sessionId, surface);
+		return loaded?.exit_epoch ?? 0;
+	}
+
+	/**
+	 * The generation the surface's NEXT exit will carry (§7.3).
+	 *
+	 * `live` is what the running host has seen in this process, and it is combined
+	 * with the sidecar rather than replacing it: a write that failed, or a surface
+	 * replayed from history and run again, must never move the generation
+	 * backwards — two exits sharing one generation is exactly the collision the
+	 * counter exists to make impossible (§12.3).
+	 */
+	nextExitEpoch(sessionId: string, surface: string, live: number): number {
+		return Math.max(this.exitEpoch(sessionId, surface), live) + 1;
 	}
 
 	/** Remove one surface's history, log and sidecar. */
@@ -279,7 +327,16 @@ export class ConsoleHistory {
 		}
 	}
 
-	/** Remove a session's whole history, for the session-deleted path (§6.7). */
+	/**
+	 * Remove a session's whole history, for the session-deleted path (§6.7).
+	 *
+	 * CALLED BY NOTHING YET, and that is the deferred row rather than dead code:
+	 * §6.7's session-deleted row is disclosed as unimplemented (there is no
+	 * session-lifecycle signal for main to subscribe to in this PR), so this is the
+	 * seam the wiring will call from. It lives here rather than in the caller
+	 * because the GC and this method are the only two things that remove a
+	 * DIRECTORY, and one implementation of that is the point.
+	 */
 	removeSession(sessionId: string): void {
 		try {
 			rmSync(sessionDir(this.root, sessionId), {
@@ -337,6 +394,22 @@ export class ConsoleHistory {
 			return [];
 		}
 	}
+}
+
+/**
+ * Parse a sidecar, defaulting the fields this build added after a file may already
+ * have been written.
+ *
+ * `exit_epoch` is the only one today, and it is read here rather than at each
+ * call site because a sidecar from an older build is a NORMAL state (the field
+ * arrived after the first retained surfaces existed) — a reader that had to
+ * remember the default would be a reader that eventually forgets it, and the
+ * observable failure is a surface whose generation silently restarts at 0.
+ */
+function parseMeta(raw: string): ConsoleHistoryMeta {
+	const meta = JSON.parse(raw) as ConsoleHistoryMeta;
+	if (typeof meta.exit_epoch !== "number") meta.exit_epoch = 0;
+	return meta;
 }
 
 /** Re-assert the modes on a path that already exists. Needed because

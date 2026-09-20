@@ -37,6 +37,14 @@
  * APPEND-PER-READ, never a batch. Coalescing is a concern of the *delivery* path
  * (the push channel may batch frames); the log appends exactly what it was given,
  * because a log that batched would make `from_byte` a lie.
+ *
+ * THERE IS NO `clear()`, and that is a design decision rather than an omission
+ * (§11.4.4): the only caller a clear ever had dropped the retained bytes when
+ * secure input was switched on, which that section forbids in as many words —
+ * "otherwise turning the toggle on and off would be a way to erase the log, which
+ * is the opposite of what it is for". A log leaves service by being TRIMMED by
+ * its cap and by its file being removed with its session, never by being emptied
+ * in place.
  */
 
 /** The replay window: a trim never leaves fewer retained bytes than this. */
@@ -158,17 +166,6 @@ export class ByteLog {
 			to: this.end,
 			truncated: wanted < this.start,
 		};
-	}
-
-	/** Empty the log (a surface whose session was deleted). */
-	clear(): void {
-		// Counted as dropped rather than forgotten: the log's contract is that
-		// `truncated` means "this log is not the whole history", and a cleared log is
-		// the extreme of that rather than a log that never had history.
-		this.dropped += this.retained;
-		this.chunks = [];
-		this.retained = 0;
-		this.start = this.end;
 	}
 
 	/**

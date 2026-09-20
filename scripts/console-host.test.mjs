@@ -56,6 +56,10 @@ const bundle = await build({
 			'export * from "./src/main/console/dispatch";',
 			'export * from "./src/main/console/pty";',
 			'export * from "./src/main/console/ipc";',
+		// The entry point itself, for the one thing only it can be asked: that a grid
+		// change is BROADCAST to the renderer (§8.2 step 2(c)), which is wiring rather
+		// than a rule and lives in `startConsoleHost`.
+		'export * from "./src/main/console/index";',
 			// The wire, and the record. `rpc.ts` is here so the console methods are
 			// driven through the REAL endpoint — the same envelope, the same key check,
 			// the same dispatch the app runs — rather than through a direct call into
@@ -121,6 +125,9 @@ const {
 	HISTORY_FILE_MODE,
 	HISTORY_DIR_MODE,
 	HISTORY_ROTATE_BYTES,
+	PERSIST_FLUSH_MS,
+	PERSIST_FLUSH_BYTES,
+	broadcastConsoleState,
 	CONSOLE_METHODS,
 	CONSOLE_ERROR_CODES,
 	CONSOLE_COMMAND_TIMEOUTS_S,
@@ -223,6 +230,21 @@ class FakePty {
 	exit(code) {
 		for (const listener of this.exitListeners) listener({ exitCode: code });
 	}
+}
+
+/**
+ * What the pty was asked to write, as text.
+ *
+ * The seam hands over BYTES for anything that arrived as bytes (a UTF-8 decode
+ * followed by node-pty's own UTF-8 encode cannot round-trip every payload), so an
+ * assertion about what a program receives decodes what was written rather than
+ * comparing a string the seam no longer carries. A string entry is the create-time
+ * `input`, which node-pty encodes itself.
+ */
+function writtenText(pty) {
+	return pty.written.map((entry) =>
+		typeof entry === "string" ? entry : Buffer.from(entry).toString("utf8"),
+	);
 }
 
 function makeHost({ env = shadowEnv(), history = null, now, spawn } = {}) {
@@ -411,11 +433,6 @@ test("the byte log keeps absolute offsets, and says when a read is short", () =>
 	assert.equal(new TextDecoder().decode(short.bytes), "abcdefghij");
 	// A reader that is current is not told the log is short.
 	assert.equal(log.read(20).truncated, false);
-
-	log.clear();
-	assert.equal(log.endOffset, 20);
-	assert.equal(log.retainedBytes, 0);
-	assert.equal(log.truncated, true);
 });
 
 test("the log's defaults are the design's numbers, and an empty append is a no-op", () => {
@@ -902,25 +919,209 @@ test("input is written as bytes, and paste is bracketed only when the record say
 	const created = await createSurface(host);
 	const pty = spawned[0].pty;
 	await host.input(created.surface, { text: "ls\r" });
-	assert.deepEqual(pty.written, ["ls\r"]);
+	assert.deepEqual(writtenText(pty), ["ls\r"]);
 
 	// The mode is read from the RECORD at the moment of the call, which is why this
 	// is a main-side decision (design 10.5).
 	pty.emit("\x1b[?2004h");
 	await ticks(20);
 	await host.input(created.surface, { text: "pasted", paste: true });
-	assert.equal(pty.written[1], "\x1b[200~pasted\x1b[201~");
+	assert.equal(writtenText(pty)[1], "\x1b[200~pasted\x1b[201~");
 	await host.input(created.surface, { text: "typed", paste: true });
-	assert.equal(pty.written[2], "\x1b[200~typed\x1b[201~");
+	assert.equal(writtenText(pty)[2], "\x1b[200~typed\x1b[201~");
 	pty.emit("\x1b[?2004l");
 	await ticks(20);
 	await host.input(created.surface, { text: "plain", paste: true });
-	assert.equal(pty.written[3], "plain");
+	assert.equal(writtenText(pty)[3], "plain");
 	const bytes = await host.input(created.surface, {
 		bytes: Uint8Array.from([3]),
 	});
 	assert.equal(bytes.bytes, 1);
-	assert.equal(pty.written[4], "\x03");
+	assert.equal(writtenText(pty)[4], "\x03");
+});
+
+test("non-ASCII survives BOTH directions, byte for byte", async () => {
+	const dir = scratch();
+	const history = new ConsoleHistory(historyRoot(dir));
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: true, origin: "user" });
+	const pty = spawned[0].pty;
+	const cjk = "日本";
+
+	// OUTPUT. node-pty's socket is set to decode UTF-8, so this is what it hands over
+	// for `printf '日本'`; what the log and the file must hold is those SAME bytes.
+	// Reading the string as latin1 turned `日本` into `e5 2c` — every code point
+	// truncated to its low byte, silently, with no error and no `truncated` flag.
+	pty.emit(`${cjk}\r\n`);
+	await ticks(30);
+	const read = await host.read(created.surface, "viewport");
+	assert.ok(read.text.includes(cjk), `the record holds ${JSON.stringify(read.text)}`);
+	host.flush(created.surface);
+	const onDisk = readFileSync(
+		logPath(historyRoot(dir), "session-1", created.surface),
+	);
+	assert.equal(
+		onDisk.subarray(0, 6).toString("hex"),
+		"e697a5e69cac",
+		"the retained history is the pty's own UTF-8",
+	);
+
+	// INPUT, both paths. A decode-then-re-encode round trip doubled every byte above
+	// 0x7F on the way TO the program (`e6 97 a5 0a` arrived as `c3 a6 c2 97 c2 a5 0a`),
+	// which is why the seam hands bytes over as bytes.
+	await host.input(created.surface, { text: cjk });
+	await host.input(created.surface, {
+		bytes: Uint8Array.from([0xe6, 0x97, 0xa5, 0x0a]),
+	});
+	const sent = pty.written.filter((entry) => typeof entry !== "string");
+	assert.equal(Buffer.from(sent[0]).toString("hex"), "e697a5e69cac");
+	assert.equal(Buffer.from(sent[1]).toString("hex"), "e697a50a");
+	// The create-time `input` is a STRING and stays one: node-pty encodes it itself,
+	// so the only lossy path was the byte-shaped one.
+	const withInput = await createSurface(host, {
+		retain: false,
+		input: `${cjk}\n`,
+	});
+	assert.equal(typeof withInput.surface, "string");
+
+	// A character SPLIT ACROSS TWO READS is node-pty's half to join, and it does
+	// (measured: two writes 300 ms apart arrive as one well-formed character), so the
+	// rig proves that against a real pty rather than this fake, which has no decoder
+	// to split in the first place.
+});
+
+test("a retained surface's writes are coalesced, and its sidecar is not rewritten per chunk", async () => {
+	const dir = scratch();
+	const history = new ConsoleHistory(historyRoot(dir));
+	const appends = [];
+	const metas = [];
+	const realAppend = history.append.bind(history);
+	const realWriteMeta = history.writeMeta.bind(history);
+	history.append = (sessionId, surface, bytes, meta) => {
+		appends.push(bytes.length);
+		return realAppend(sessionId, surface, bytes, meta);
+	};
+	history.writeMeta = (meta) => {
+		metas.push(meta.exit_code ?? null);
+		return realWriteMeta(meta);
+	};
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: true, origin: "user" });
+	const pty = spawned[0].pty;
+
+	// The reviewer's own probe shape: 400 × 8 KiB. What is asserted is the CALL COUNT
+	// rather than a wall time (a number on this host is a number about this host), and
+	// the count is the defect: one append and one staged sidecar write per pty chunk
+	// was ~6-7 ms of synchronous I/O each, on the thread drawing the app's windows.
+	const chunk = "x".repeat(8 * 1024);
+	for (let index = 0; index < 400; index += 1) pty.emit(chunk);
+	// The claim is the SHAPE rather than a wall time (a number here would be a number
+	// about this host): the writes are bounded by the flushed window and not by the
+	// number of chunks. One append per chunk was ~6-7 ms of synchronous I/O each, on
+	// the thread drawing the app's windows.
+	const ceiling = Math.ceil((400 * 8 * 1024) / PERSIST_FLUSH_BYTES) + 1;
+	assert.ok(
+		appends.length >= 1 && appends.length <= ceiling,
+		`${appends.length} append(s) for 400 chunks (bound ${ceiling}) — the flush is not coalescing`,
+	);
+	assert.ok(
+		metas.length <= 2,
+		`${metas.length} sidecar write(s) for 400 chunks in one second`,
+	);
+
+	// THE TIMER'S HALF, and the reason the bound is not a hole in the durability
+	// contract: a trickle flushes on its own, with no further byte arriving.
+	const pending = appends.length;
+	pty.emit("tail\r\n");
+	assert.equal(appends.length, pending, "one small chunk waits for the timer");
+	await ticks(PERSIST_FLUSH_MS + 60);
+	assert.equal(appends.length, pending + 1, "the timer flushed it");
+
+	// NOTHING WAS LOST by any of it: the file holds every byte the surface emitted.
+	const expected = 400 * 8 * 1024 + "tail\r\n".length;
+	const size = statSync(
+		logPath(historyRoot(dir), "session-1", created.surface),
+	).size;
+	assert.equal(size, expected);
+	assert.equal(history.load("session-1", created.surface).bytes.length, expected);
+	// And the record's own log still holds all of it in memory, so a read is not
+	// answered from a buffer the flush emptied.
+	assert.ok(host.status(created.surface).cols > 0);
+	assert.ok(PERSIST_FLUSH_BYTES < 400 * 8 * 1024);
+});
+
+test("a surface that asked not to be retained writes nothing, even when a flush is asked for", async () => {
+	const dir = scratch();
+	const history = new ConsoleHistory(historyRoot(dir));
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: false });
+	spawned[0].pty.emit("not retained\r\n");
+	await ticks(30);
+	// EVERY internal caller reaches `flush` — a secure toggle, a close, the byte
+	// threshold — so a flush that ignored `retain` would hand a non-retained surface a
+	// byte log and a sidecar the moment its lock moved, which is the opposite of what
+	// §7.2's `retain: false` asks for. (It did, for exactly as long as it took to run
+	// this cell: the coalescing change introduced it, and this is the assertion that
+	// closes it.)
+	host.flush(created.surface);
+	host.setSecure(created.surface, true);
+	host.setSecure(created.surface, false);
+	await ticks(PERSIST_FLUSH_MS + 60);
+	assert.equal(existsSync(join(historyRoot(dir), fileStem("session-1"))), false);
+	assert.deepEqual(history.list(), []);
+});
+
+test("a grid change is broadcast to the renderer, and the frame carries no payload", async () => {
+	const frames = [];
+	const window = {
+		isDestroyed: () => false,
+		webContents: { send: (...args) => frames.push(args) },
+	};
+	const registry = new ConsoleRegistry();
+	/*
+	 * THE PRODUCTION WIRING, spelled here because `startConsoleHost` cannot run
+	 * in-process: its node-pty load resolves through `import.meta.url`, which in this
+	 * in-memory bundle is a `data:` URL, so the load refuses and the host never
+	 * starts. What this cell proves is the host's grid-change path reaching the
+	 * broadcast helper with no payload; what the rig proves (against the built app) is
+	 * the rest of the chain — the frame arriving in a real renderer and the preload's
+	 * `onStateChanged` handing it to a listener.
+	 */
+	const host = new ConsoleHost(registry, {
+		window: () => window,
+		log: () => {},
+		env: shadowEnv(),
+		spawn: (options) => new FakePty(options),
+		onChanged: () => broadcastConsoleState(window),
+	});
+	const created = await host.create({
+		sessionId: "session-1",
+		origin: "agent",
+		command: "/bin/zsh",
+		args: [],
+	});
+	host.setDisplayed(created.surface);
+	frames.length = 0;
+	// §8.2 step 2(c): the grid an AGENT changed has to reach the pane showing it.
+	host.resize(created.surface, 120, 40);
+	assert.ok(
+		frames.length >= 1,
+		"a grid change sent no console-state-changed frame",
+	);
+	// No payload, on purpose: the pane re-reads `console-state` and applies what MAIN
+	// says, which is what keeps main the only authority on the grid (§8.2 step 3).
+	assert.deepEqual(frames[0], ["console-state-changed"]);
+	assert.equal(
+		CONSOLE_PUSH_CHANNELS.includes("console-state-changed"),
+		true,
+	);
+	// And the state the pane would read carries the new grid.
+	const state = host.state();
+	assert.equal(
+		state.surfaces.find((entry) => entry.surface === created.surface).cols,
+		120,
+	);
+	host.dispose();
 });
 
 test("the wire's cursor is the emulator's {x, y}, and not the tool's {row, col}", async () => {
@@ -976,12 +1177,16 @@ test("keys go through the encoder, and an unknown name is refused before anythin
 	const { host, spawned } = hostWithWindow();
 	const created = await createSurface(host);
 	const pty = spawned[0].pty;
-	await host.keys(created.surface, ["up", "ctrl+c"]);
-	assert.deepEqual(pty.written, ["\x1b[A", "\x03"]);
+	const encoded = await host.keys(created.surface, ["up", "ctrl+c"]);
+	assert.deepEqual(writtenText(pty), ["\x1b[A", "\x03"]);
+	// `encoded` is the SEQUENCES, not the names the caller sent (§10.2). A caller that
+	// gets its own input back has learned nothing; it asked what this surface's live
+	// modes make of the chord.
+	assert.deepEqual(encoded.encoded, ["\x1b[A", "\x03"]);
 	pty.emit("\x1b[?1h");
 	await ticks(20);
 	await host.keys(created.surface, ["up"]);
-	assert.equal(pty.written[2], "\x1bOA");
+	assert.equal(writtenText(pty)[2], "\x1bOA");
 
 	const before = pty.written.length;
 	await assert.rejects(
@@ -1025,7 +1230,7 @@ test("an exited surface still reads, and answers input with the typed refusal", 
 	assert.equal(listing.exit_code, 3);
 });
 
-test("secure input refuses reads and captures, and the bytes in the window never reach the log", async () => {
+test("secure input refuses reads and captures, and the bytes already retained are KEPT", async () => {
 	const dir = scratch("console-secure-");
 	const history = new ConsoleHistory(historyRoot(dir));
 	const { host, spawned } = hostWithWindow({ history });
@@ -1036,11 +1241,23 @@ test("secure input refuses reads and captures, and the bytes in the window never
 	assert.equal(host.status(created.surface).truncated, false);
 	host.setDisplayed(created.surface);
 	host.setContentRect(created.surface, contentReport());
+	// The pre-toggle bytes are on disk before the window opens, so what follows
+	// measures the TOGGLE rather than a pending flush.
+	host.flush(created.surface);
+	const before = readFileSync(
+		logPath(historyRoot(dir), "session-1", created.surface),
+	);
 
 	host.setSecure(created.surface, true);
-	// The window's opening drops the byte log, which is why the surface now reports
-	// its history as incomplete rather than pretending it is whole.
-	assert.equal(host.status(created.surface).truncated, true);
+	// §11.4.4: "bytes already retained are kept … otherwise turning the toggle on and
+	// off would be a way to erase the log, which is the opposite of what it is for".
+	// So the log is neither emptied nor marked short by the switch — `truncated` is
+	// the CAP's flag (§7.2), and a switch that set it made the field mean two
+	// different things.
+	const afterToggle = host.status(created.surface);
+	assert.equal(afterToggle.truncated, false);
+	assert.equal(afterToggle.secure, true);
+
 	pty.emit("private\r\n");
 	await ticks(30);
 
@@ -1052,17 +1269,24 @@ test("secure input refuses reads and captures, and the bytes in the window never
 		() => host.screenshot(created.surface),
 		(error) => error.code === "secure_input_active",
 	);
-	assert.equal(host.status(created.surface).secure, true);
 
-	// WHAT WAS RETAINED, asserted on the artifact rather than on the intent: the
-	// bytes a program printed while the window was open are not in the file the next
-	// launch replays. This is the design's "never persist keystrokes / drop the byte
-	// log for that window" checked by reading what is on disk.
+	// What the span DOES do, asserted on both representations §7.1 promises are the
+	// same history: the bytes a program printed while the window was open reach
+	// neither the live log nor the file the next launch replays, and the bytes that
+	// were already there are still in both.
+	host.flush(created.surface);
 	const persisted = readFileSync(
 		logPath(historyRoot(dir), "session-1", created.surface),
 	).toString("utf8");
 	assert.ok(persisted.includes("public"));
 	assert.ok(!persisted.includes("private"));
+	// The file is a PREFIX-extended copy of the pre-toggle bytes: nothing the toggle
+	// did rewrote or removed what was already retained.
+	assert.ok(
+		readFileSync(
+			logPath(historyRoot(dir), "session-1", created.surface),
+		).subarray(0, before.length).equals(before),
+	);
 
 	// The residual the design states rather than hides: the RECORD still holds what a
 	// person can see, because main is its only writer and a record that skipped bytes
@@ -1071,6 +1295,8 @@ test("secure input refuses reads and captures, and the bytes in the window never
 	host.setSecure(created.surface, false);
 	const read = await host.read(created.surface, "viewport");
 	assert.ok(read.text.includes("private"));
+	// And turning the span OFF does not erase anything either.
+	assert.ok(read.text.includes("public"));
 });
 
 test("a capture photographs the app's own window, crop to the pane's rect, and retries once", async () => {
@@ -1202,6 +1428,7 @@ test("history round-trips a surface's bytes and its parameters", () => {
 		last_seen_at: 2,
 		exit_code: null,
 		truncated: false,
+		exit_epoch: 0,
 	};
 	history.writeMeta(meta);
 	history.append(
@@ -1261,6 +1488,7 @@ test("a log past the rotate bound is rewritten to the retained window, and says 
 		last_seen_at: 1,
 		exit_code: null,
 		truncated: false,
+		exit_epoch: 0,
 	};
 	history.writeMeta(meta);
 	// One append past the rotate bound, which is twice the retained window.
@@ -1351,7 +1579,8 @@ test("the dispatcher validates params at the boundary", async () => {
 	assert.equal(isConsoleDispatchMethod("console_create"), true);
 
 	// An out-of-range grid is refused WITH the clamp it would have applied: a caller
-	// that asked for 10 columns is told, not silently given 40.
+	// that asked for 10 columns is told, not silently given 40. §10.6's key for this
+	// code is the nested `clamp`; the requested grid is in the message.
 	await assert.rejects(
 		() =>
 			dispatchConsole(host, "console_resize", {
@@ -1362,7 +1591,7 @@ test("the dispatcher validates params at the boundary", async () => {
 		(error) =>
 			error.code === "invalid_grid" &&
 			error.data.clamp.cols === MIN_COLS &&
-			error.data.requested.cols === 10,
+			error.message.includes("10x40"),
 	);
 	await assert.rejects(
 		() =>
@@ -1891,6 +2120,56 @@ test("node-pty is required by NAME, because its own archive rewrite is not idemp
 
 /* ---------------------------------------------------------------- retention */
 
+test("the exit generation is bumped by the retention layer and survives a relaunch", async () => {
+	const dir = scratch();
+	const history = new ConsoleHistory(historyRoot(dir));
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: true, origin: "user" });
+	const pty = spawned[0].pty;
+	// §10.2 lists `exit_epoch` in `console_status`'s return shape and §7.3 says the
+	// RETENTION LAYER owns the counter. A field the frozen table names but the code
+	// never emits is the defect this cell exists to keep closed.
+	assert.equal(host.status(created.surface).exit_epoch, 0);
+	pty.emit("first\r\n");
+	await ticks(30);
+	pty.exit(5);
+	await ticks(30);
+	assert.equal(host.status(created.surface).exit_epoch, 1);
+
+	// The counter's home is the sidecar, so it is asserted on the DOCUMENT the next
+	// launch reads rather than on the running host's own field: a generation that
+	// does not outlive the process cannot tell the second exit from the first.
+	const sidecar = JSON.parse(
+		readFileSync(
+			sidecarPath(historyRoot(dir), "session-1", created.surface),
+			"utf8",
+		),
+	);
+	assert.equal(sidecar.exit_epoch, 1);
+	host.dispose();
+
+	// A relaunch: a fresh host restoring the same root, which is the state §7.3 is
+	// about. It reads generation 1 rather than 0, and the retention layer's own
+	// arithmetic for that surface's NEXT exit is 2 — which is what B's reopen path
+	// resolves to when it runs a replayed surface again, and what §12.3's
+	// `(surface, exit_epoch)` dedupe key depends on.
+	const restored = hostWithWindow({ history });
+	const loaded = history.list();
+	assert.equal(loaded.length, 1);
+	restored.host.restore(loaded[0].meta, loaded[0].bytes);
+	assert.equal(restored.host.status(created.surface).exit_epoch, 1);
+	assert.equal(history.nextExitEpoch("session-1", created.surface, 1), 2);
+	// A generation can never move BACKWARDS, even if the sidecar write was lost: the
+	// live value wins the max, so two exits cannot share one generation.
+	assert.equal(history.nextExitEpoch("session-1", created.surface, 7), 8);
+	// And a sidecar written before this field existed reads as 0 rather than NaN —
+	// the normal state on a machine that ran an earlier build.
+	const legacy = { ...loaded[0].meta };
+	delete legacy.exit_epoch;
+	history.writeMeta(legacy);
+	assert.equal(history.exitEpoch("session-1", created.surface), 0);
+});
+
 test("a retained surface is replayed into a fresh record, and reads as not live", async () => {
 	const dir = scratch();
 	const root = historyRoot(dir);
@@ -1916,6 +2195,22 @@ test("a retained surface is replayed into a fresh record, and reads as not live"
 	const read = await restored.host.read(created.surface, "viewport");
 	assert.ok(read.text.includes("history line"));
 	assert.equal(read.live, false);
+	// A restore seeds the two facts only the sidecar has. `created_at` is the durable
+	// record of when this surface was made, and a persist() that did not know it
+	// rewrote "now" over it on the NEXT write — so the assertion is on the sidecar
+	// after a close, not on the restore's own return value.
+	const createdAt = loaded[0].meta.created_at;
+	assert.ok(Number.isFinite(createdAt));
+	restored.host.flush(created.surface);
+	assert.equal(
+		JSON.parse(
+			readFileSync(
+				sidecarPath(historyRoot(dir), "session-1", created.surface),
+				"utf8",
+			),
+		).created_at,
+		createdAt,
+	);
 	// A restored surface has no pty, so input is refused rather than silently
 	// swallowed.
 	await assert.rejects(

@@ -843,6 +843,22 @@ const api = {
 		}> => ipcRenderer.invoke("console-subscribe", surface, fromByte),
 		unsubscribe: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-unsubscribe", surface),
+		/**
+		 * Main broadcast something about a surface's state — today only a grid it
+		 * decided (§8.2 step 2(c)).
+		 *
+		 * The frame carries no payload on purpose: the mirror applies a grid "only as
+		 * the value main returned", so the pane re-reads `state()` and applies that.
+		 * A listener therefore acts by re-reading, never by trusting a number that
+		 * arrived on a push channel.
+		 */
+		onStateChanged: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("console-state-changed", handler);
+			return () => {
+				ipcRenderer.removeListener("console-state-changed", handler);
+			};
+		},
 		/** One coalesced frame of pty output, base64-encoded. */
 		onOutput: (
 			callback: (payload: {

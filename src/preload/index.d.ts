@@ -196,6 +196,13 @@ declare global {
 					truncated: boolean;
 				}>;
 				unsubscribe: (surface: string) => Promise<unknown>;
+				/**
+				 * Main broadcast a state change — today only a grid it decided (§8.2 step
+				 * 2(c)). No payload: the mirror applies a grid only as the value main
+				 * returned, so a listener re-reads `state()` rather than trusting a number
+				 * pushed to it.
+				 */
+				onStateChanged: (callback: () => void) => () => void;
 				onOutput: (
 					callback: (payload: {
 						surface: string;
