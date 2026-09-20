@@ -52,9 +52,26 @@ import { ConsoleError } from "./errors";
  * for a session that has stopped asking. */
 const DEFAULT_IDLE_MS = 30_000;
 
-/** How long main waits for the page to say it has painted. Bounded so a wedged
- * renderer cannot hold a tool call open; a tripped bound is a typed refusal. */
-const SETTLE_TIMEOUT_MS = 8_000;
+/**
+ * How long main waits for the page to say it has painted. Bounded so a wedged
+ * renderer cannot hold a tool call open; a tripped bound is a typed refusal.
+ *
+ * IT IS A COLD-RENDERER BOOT BUDGET, NOT A PAINT DEADLINE, and 30 s is what that
+ * measurement supports. The wait covers a whole new process: a `BrowserWindow` is
+ * constructed, its document loads, React mounts and xterm boots and measures — then
+ * the feed is written and two animation frames elapse. Nothing in that chain is
+ * warm on the first call, and none of it is the app's own window's work.
+ *
+ * MEASURED, and the reason this number is not 8 s: on this machine at a fleet load
+ * of ~200 (the repo is worked through ~20 concurrent worktrees), an 8 s bound fired
+ * on the FIRST capture — `the capture view did not report console-capture-settled
+ * within 8000 ms`, with the app and its console host otherwise healthy and 19 of the
+ * live rig's other cells already passing. A bound that trips on a busy machine is a
+ * bound that reports a product failure where there is only a queue, which is the one
+ * thing a typed refusal must not do. The 30 s idle window that reaps the view is the
+ * floor this cannot exceed and stay coherent, so it lands there.
+ */
+const SETTLE_TIMEOUT_MS = 30_000;
 
 /** The frame's size floor, in bytes, below which a PNG is treated as blank. The
  * design's measurement is the calibration: 9,866 B was the stale frame and 27,869 B

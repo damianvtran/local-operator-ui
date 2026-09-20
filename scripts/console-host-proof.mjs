@@ -78,6 +78,47 @@ const PLIST_EXECUTABLE =
 	/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/;
 const PS_LINE = /^\s*(\d+)\s+(.*)$/;
 
+/*
+ * HOW LONG THE RIG WAITS FOR THE APP, in one number.
+ *
+ * The default stays where the rig put it, because a bound is a claim about the app
+ * and loosening it for everyone would hide a slow boot. But the app's boot is not
+ * only the app's: this repo is worked through ~20 concurrent worktrees, and a fleet
+ * at load 200+ stretches a 10-second boot past a minute — measured here, on this
+ * machine, where the console host was ready 65 s after launch and the rig's own 60 s
+ * bound had already fired. `--wait-ms <ms>` (or `--wait-ms=<ms>`, or
+ * `LOCAL_OPERATOR_UI_PROOF_WAIT_MS`) raises it for one run, which is the difference
+ * between "the app is broken" and "the fleet is busy"; nothing else about the run
+ * changes.
+ */
+const WAIT_MS = (() => {
+	/*
+	 * BOTH SPELLINGS, because the two are indistinguishable to a reader and only one
+	 * of them works: this rig's own `argValue` takes the SPACE-separated form, while
+	 * the repo's other rigs (`capture-evidence.mjs`) take `--flag=<value>`. A run that
+	 * wrote `--wait-ms=300000` therefore silently got the default and failed with a
+	 * message about a state file — which is exactly what happened while writing this.
+	 * `--wait-ms=missing` is refused too: a flag whose value is absent must not read
+	 * as "use the default".
+	 */
+	const equals = argv.find((entry) => entry.startsWith("--wait-ms="));
+	const raw =
+		(equals === undefined ? undefined : equals.slice("--wait-ms=".length)) ||
+		argValue("--wait-ms") ||
+		process.env.LOCAL_OPERATOR_UI_PROOF_WAIT_MS;
+	if (raw === undefined) return null;
+	const value = Number(raw);
+	if (!Number.isFinite(value) || value <= 0) {
+		throw new Error(
+			`--wait-ms / LOCAL_OPERATOR_UI_PROOF_WAIT_MS must be a positive whole number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	}
+	return value;
+})();
+/** The bound for one wait: the caller's own, or this run's override, or the rig's
+ * own default. Named so every wait site reads the same way. */
+const bounded = (own, fallback) => WAIT_MS ?? own ?? fallback;
+
 const SCRATCH = join(
 	tmpdir(),
 	`lo-console-proof-${PACKAGED ? "packaged-" : ""}${process.pid}`,
@@ -325,7 +366,7 @@ function pickDevtoolsPort() {
 	return 9400 + (process.pid % 400);
 }
 
-async function freeDevtoolsPort(timeoutMs = 10_000) {
+async function freeDevtoolsPort(timeoutMs = bounded(null, 10_000)) {
 	const started = Date.now();
 	for (let port = pickDevtoolsPort(); ; port += 1) {
 		try {
@@ -507,7 +548,7 @@ function stateFilePath() {
 	return join(CONFIG_DIR, "run", "ui-browser", "host.json");
 }
 
-async function waitForState(timeoutMs = 60_000) {
+async function waitForState(timeoutMs = bounded(null, 60_000)) {
 	const started = Date.now();
 	while (Date.now() - started < timeoutMs) {
 		if (existsSync(stateFilePath())) {
@@ -666,7 +707,7 @@ function startFocusWatch(pid) {
 /** Wait until the renderer's preload has exposed the console namespace: the state
  * file appears before the window's first paint, so everything the renderer does has
  * to wait for it. */
-async function waitForRenderer(timeoutMs = 60_000) {
+async function waitForRenderer(timeoutMs = bounded(null, 60_000)) {
 	const started = Date.now();
 	for (;;) {
 		const ready = await rendererEvaluate(
