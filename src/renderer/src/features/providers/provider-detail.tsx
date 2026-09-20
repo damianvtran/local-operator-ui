@@ -17,7 +17,10 @@ import type {
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
 import { openAuthorization } from "@shared/api/local-operator/desktop-api";
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import {
+	desktopKeys,
+	useRadientLoginVerdict,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -25,7 +28,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTerminalAuthState, primaryMethod } from "./provider-labels";
+import {
+	isTerminalAuthState,
+	loginRefused,
+	primaryMethod,
+	providerReadiness,
+} from "./provider-labels";
 
 /**
  * Reachability for a local provider, stated only after it has been checked.
@@ -177,6 +185,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	onConnected,
 }) => {
 	const queryClient = useQueryClient();
+	/*
+	 * The verdict on this machine's Radient sign-in. This panel rendered its
+	 * "Signed in" badge from `provider.configured` alone, which is a fact about
+	 * the credential store: a revoked grant kept the row, kept that flag, and
+	 * left the panel telling the user they were signed in while the sentence
+	 * directly above it said they were not (UX U1). Called before the panel's
+	 * early returns, so the hook order is the same for every provider.
+	 */
+	const login = useRadientLoginVerdict();
+	/**
+	 * The badge's own words, from the same predicate the grid's cards use, so one
+	 * credential cannot be called two things on one screen.
+	 */
+	const readiness = providerReadiness(
+		provider,
+		loginRefused(provider.id, login.data),
+	);
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [operation, setOperation] = useState<AuthOperation | null>(null);
 	const [starting, setStarting] = useState(false);
@@ -407,8 +432,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 								{starting ? <Spinner size="sm" /> : null}
 								{method.label}
 							</Button>
+							{/* The row's own badge, keyed on the login verdict rather than on
+							    the credential row -- see the `readiness` above. */}
 							{provider.configured && (
-								<Badge variant="success">Signed in</Badge>
+								<Badge variant={readiness.tone}>{readiness.label}</Badge>
 							)}
 						</div>
 					)}

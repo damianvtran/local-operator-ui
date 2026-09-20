@@ -9,7 +9,10 @@
  * typing.
  */
 
-import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
+import {
+	useDesktopProviders,
+	useRadientLoginVerdict,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
@@ -18,6 +21,7 @@ import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
 import {
+	loginRefused,
 	providerLoadErrorMessage,
 	providerMethodLabel,
 	providerReadiness,
@@ -41,6 +45,14 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	initialProviderId = null,
 }) => {
 	const providers = useDesktopProviders(true);
+	/*
+	 * The verdict on this machine's Radient sign-in, which is the one input that
+	 * can tell a credential ROW from a working sign-in (see `loginRefused`). Read
+	 * HERE rather than passed down, because the row's own facts cannot answer it:
+	 * the card is the surface that claims a sign-in, so it is the surface that
+	 * has to ask.
+	 */
+	const login = useRadientLoginVerdict();
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialProviderId,
 	);
@@ -148,7 +160,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			) : (
 				<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{filtered.map((provider) => {
-						const readiness = providerReadiness(provider);
+						const readiness = providerReadiness(
+							provider,
+							loginRefused(provider.id, login.data),
+						);
 						return (
 							<li key={provider.id}>
 								<button
