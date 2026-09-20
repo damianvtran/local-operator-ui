@@ -2227,29 +2227,39 @@ export function unstoredNotice(keys: readonly string[]): string {
 /**
  * The chip's words for the unresolved register, in the two shapes it has.
  *
- * TWO DECISIONS ARE IN THIS STRING, both settled in review round 1.
+ * THE REFERENCE COMES FIRST, AND THAT IS DESIGN ROUND 2's CORRECTION (D1, still
+ * a MAJOR at the end of round 1). Round 1 put the reference at the END of a label
+ * this long, and measured live it was a worse defect than the one it fixed: the
+ * stored chip's label is a single long token that the chip's own clamp ellipsises
+ * from the end, so `KEY · the rest` keeps the key visible when the label is cut —
+ * while `the words · KEY` loses exactly the key the reader needs, and with the
+ * long label the chip stopped clamping at all (405.78px at every pane from 1024
+ * down to 300, spilling +157.78px past a 440 line box and cutting mid-key with no
+ * ellipsis). So the order is the stored chip's own: the REFERENCE, then the rest.
+ * The clamp that makes the ellipsis fire is the chip's (`min-w-0` on the label),
+ * documented there.
  *
- * THE REFERENCE IS ON THE LABEL (D1). This is the only citation whose sentence
- * names a key, and the review's point is that a reader of the transcript has to be
- * able to tell WHICH credential is unresolved — a message citing two credentials
- * can now render one stored chip that names its key and one unconfirmed chip that
- * named nothing, with only a hover to tell them apart. Every other citation chip
- * either names its reference (the stored form's label IS the key) or has no name
- * to lose, so the fix is the stored form's own treatment: the label carries it.
- * What it costs was measured by the design round before this was written — the
- * key-bearing stored chip already fills the 440px line box exactly and ellipsises
- * there (248.00px of 248px) and bleeds 77.41px at 300px, so this label inherits
- * that ceiling and creates no new one.
- *
- * THE NOUN IS THE STORE'S (D4). "Credential unconfirmed" reads as a claim about
- * the value; the sentence is about whether the write landed, and the label now
- * says so — 213.75px measured for these words at the 14px step, before the key.
+ * THE NOUN IS THE STORE'S (round 1, D4): "unconfirmed" alone reads as a claim
+ * about the value, and the sentence is about whether the write landed. The words
+ * alone measure 230.42px, inside a 440 line box; with the reference in front the
+ * label clamps at the narrow rungs and the key survives the ellipsis, which is the
+ * property round 2 asked to be able to read off a frame.
  */
-export const UNCONFIRMED_CHIP_WORDS = "Credential store unconfirmed";
+export const UNCONFIRMED_CHIP_WORDS = "store unconfirmed";
 
-/** {@link UNCONFIRMED_CHIP_WORDS} with the reference the sentence named, if any. */
+/**
+ * The words on their own, for the one arm whose sentence names no key.
+ *
+ * There is nothing to lead with there, so the label says what the whole of it is —
+ * the same words the TUI parity comment used before the reference joined them.
+ */
+export const UNCONFIRMED_CHIP_WORDS_ALONE = "Credential store unconfirmed";
+
+/** {@link UNCONFIRMED_CHIP_WORDS} with the reference its sentence named, if any. */
 export const unconfirmedChipLabel = (key: string): string =>
-	key === "" ? UNCONFIRMED_CHIP_WORDS : `${UNCONFIRMED_CHIP_WORDS} · ${key}`;
+	key === ""
+		? UNCONFIRMED_CHIP_WORDS_ALONE
+		: `${key} · ${UNCONFIRMED_CHIP_WORDS}`;
 
 /**
  * The move that works, in the operator's own terms — ONE wording, two surfaces.

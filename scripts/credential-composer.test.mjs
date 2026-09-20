@@ -1378,7 +1378,52 @@ test("two cited credentials pay the resolution ONCE, not twice", async () => {
 	 * the measured wall time is the discriminator: ~one resolution concurrently,
 	 * ~two if the sequence ever comes back.
 	 */
-	const started = Date.now();
+	let inFlight = 0;
+	let peakInFlight = 0;
+	/*
+	 * THE DISCRIMINATOR IS THE OVERLAP, NOT THE CLOCK (code review round 2, R2-n1).
+	 * The case used to assert a wall-clock ceiling, which is a proxy that can go red
+	 * on a loaded box — this host runs ~25 sessions. What the fix actually promises
+	 * is that the cited credentials resolve AT THE SAME TIME, so the instrument is a
+	 * counter of ops in flight at once: `Promise.all` issues both first attempts in
+	 * one tick, so a concurrent resolution peaks at 2 and a serial one can only ever
+	 * reach 1. `tracked` wraps each op's promise and decrements on either outcome.
+	 */
+	const tracked = (promise) => {
+		inFlight += 1;
+		peakInFlight = Math.max(peakInFlight, inFlight);
+		const settledOne = () => {
+			inFlight -= 1;
+		};
+		return promise.then(
+			(value) => {
+				settledOne();
+				return value;
+			},
+			(error) => {
+				settledOne();
+				throw error;
+			},
+		);
+	};
+	/*
+	 * THE INSTRUMENT IS CHECKED BEFORE IT IS TRUSTED: two ops issued one after the
+	 * other must peak at ONE, so the assertion at the end is about the seam's own
+	 * behaviour rather than about a counter that reads 2 for anything. It runs FIRST
+	 * because the seam's hanging list reads never settle — run afterwards, the
+	 * control would be measuring their residue rather than a sequential pair.
+	 */
+	{
+		const control = peakInFlight;
+		await tracked(Promise.resolve("first"));
+		await tracked(Promise.resolve("second"));
+		assert.equal(
+			peakInFlight,
+			1,
+			"the in-flight counter reads a SEQUENTIAL pair as one, so it can tell the two apart",
+		);
+		peakInFlight = control;
+	}
 	calls.length = 0;
 	let rendered;
 	let handed;
@@ -1397,8 +1442,8 @@ test("two cited credentials pay the resolution ONCE, not twice", async () => {
 	transportOverride = (request) => {
 		if (request.op !== "sessions.credential") return undefined;
 		if (request.action === "store")
-			return Promise.reject(new Error("socket closed"));
-		if (request.action === "list") return new Promise(() => {});
+			return tracked(Promise.reject(new Error("socket closed")));
+		if (request.action === "list") return tracked(new Promise(() => {}));
 		return undefined;
 	};
 	await openCapture(frame);
@@ -1408,7 +1453,6 @@ test("two cited credentials pay the resolution ONCE, not twice", async () => {
 	await clickSend(frame);
 	await pageSent;
 	if (settled) rendered = await settled;
-	const elapsed = Date.now() - started;
 	transportOverride = null;
 
 	assert.equal(
@@ -1426,18 +1470,95 @@ test("two cited credentials pay the resolution ONCE, not twice", async () => {
 		2,
 		String(rendered),
 	);
-	/*
-	 * The discriminator, with its arithmetic: each credential spends the 5 s
-	 * resolution bound on its hanging read, so SERIAL resolution costs two of those
-	 * (~10 s), plus the mount (~2 s) — while concurrent resolution costs one (~5 s)
-	 * plus the mount. 11 s separates them with room for a loaded machine, and the
-	 * mount is inside the measurement deliberately, so a regression that serialises
-	 * the loop cannot hide in the overhead.
-	 */
 	assert.ok(
-		elapsed < 11_000,
-		`two silent credentials took ${elapsed} ms: the resolution bound is being paid per credential`,
+		peakInFlight >= 2,
+		`two cited credentials never overlapped (peak ${peakInFlight} in flight): the resolution is serial again`,
 	);
+});
+
+test("a refusal after a SILENT attempt is not a refusal: the citation stays unconfirmed", async () => {
+	/*
+	 * CODE REVIEW ROUND 2's R2-m1, and the one row of the decision table the shipped
+	 * code did not agree with. `withTimeout` clears its timer but does NOT cancel the
+	 * request it wrapped, so a silent first attempt leaves a write that can still be
+	 * in flight — or land — after anything read afterwards. So the re-issue's 4xx
+	 * (which is also the status the route raises for the owner's own `disconnected`
+	 * answer to a write it applied) plus a name list that does not carry the key
+	 * proves nothing: the refusal citation needs an ANSWER and nothing outstanding.
+	 *
+	 * The round-1 code returned the refusal here. The TABLE was right and the code
+	 * was wrong, which is the opposite of what a documentation-only fix assumes.
+	 */
+	let stores = 0;
+	const rendered = await sendFirstMessage("SILENT-THEN-REFUSED", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store") {
+			stores += 1;
+			// The first attempt is destroyed with nothing forwarded; the RE-ISSUE is
+			// answered with the route's refusal while the first may still be out there.
+			if (stores === 1) return Promise.reject(new Error("socket closed"));
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		}
+		if (request.action === "list")
+			return credentialResult({ data: { ok: true, credentials: [] } });
+		return undefined;
+	});
+
+	assert.equal(opCount("store"), 2, "the silence is re-issued");
+	assert.equal(opCount("list"), 1);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a refusal after a silence was published as an outcome: ${rendered}`,
+	);
+	assert.match(
+		rendered,
+		/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+	);
+});
+
+test("a list answer with nothing readable in it is unreadable, not an absence", async () => {
+	/*
+	 * CODE REVIEW ROUND 2's R2-m2, which is MAJOR-1's class one layer down:
+	 * `credentialNamesFrom` is deliberately total (it returns `[]` for a body it
+	 * cannot parse), so reading the answer through it alone made "a list that does
+	 * not name the key" and "a list I could not read" the same `false` — and a
+	 * `false` after an ANSWERED refusal is what confirms the not-stored citation.
+	 *
+	 * Both shapes below are 2xx answers that carry no name list, and neither is an
+	 * absence: the seam may not claim the write failed on the strength of either.
+	 */
+	for (const [what, answer] of [
+		["a 2xx with no credentials array", { data: { ok: true } }],
+		[
+			"a 2xx whose own answer is not ok",
+			{ data: { ok: false, reason: "disconnected" } },
+		],
+	]) {
+		const rendered = await sendFirstMessage("BLIND-LIST-SECRET", (request) => {
+			if (request.op !== "sessions.credential") return undefined;
+			if (request.action === "store")
+				return transportSays(409, {
+					detail: { code: "store_failed", message: "Did not complete." },
+				});
+			if (request.action === "list") return credentialResult(answer);
+			return undefined;
+		});
+		assert.equal(opCount("list"), 1, what);
+		assert.ok(
+			!rendered.includes("NOT stored"),
+			`${what}: an unreadable list was read as an absence: ${rendered}`,
+		);
+		assert.match(
+			rendered,
+			/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+			what,
+		);
+	}
 });
 
 /* ------------------------------------------------------------------ */

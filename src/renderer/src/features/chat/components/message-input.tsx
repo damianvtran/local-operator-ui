@@ -901,13 +901,24 @@ async function attemptCredentialStore(
  *  - `true` — a POSITIVE WITNESS. The list names the key, so the write landed and
  *    the citation can be the confident one the model needs, whatever the store op
  *    itself said (or failed to say);
- *  - `false` — the read ANSWERED and the key is not there. Enough to confirm a
- *    refusal, because a store answer plus an absent name is two pieces of
- *    evidence agreeing; never enough on its own to confirm a non-store, because
- *    the store request that preceded it may still be in flight behind the same
- *    cold engage, or may have landed under a runtime that has since retired;
- *  - `null` — the read itself could not answer. Proves nothing in either
- *    direction, so the caller may not cite either outcome.
+ *  - `false` — the read ANSWERED with a name list and the key is not in it. Enough
+ *    to confirm a refusal **when nothing was left in flight** (see
+ *    `resolveCredentialStore`, which is where that condition lives); never enough on
+ *    its own, because the store request that preceded it may still be in flight
+ *    behind the same cold engage, or may have landed under a runtime that has since
+ *    retired;
+ *  - `null` — the read itself could not answer, OR answered with nothing this
+ *    function can read as a name list. Proves nothing in either direction, so the
+ *    caller may not cite either outcome.
+ *
+ * WHAT COUNTS AS UNREADABLE, and why it is checked here rather than left to the
+ * parser (code review round 2, R2-m2). `credentialNamesFrom` is deliberately total
+ * — it returns `[]` for a body it cannot parse — so reading THIS answer through it
+ * alone collapsed "a list that does not name the key" and "a list I could not read"
+ * into the same `false`, which is the same class of mistake as a 4xx being read as a
+ * verdict, one layer down. A 2xx carrying no `credentials` array, or carrying
+ * `ok: false` (the owner's own `disconnected` answer to a list it never performed),
+ * is therefore `null`.
  *
  * The one reader of the store's name list this seam is allowed to use is
  * `credentialNamesFrom` (§9.7).
@@ -926,6 +937,12 @@ async function sessionHoldsCredential(
 			}),
 			timeoutMs,
 		);
+		const data = (
+			answer as {
+				data?: { ok?: boolean; credentials?: unknown };
+			} | null
+		)?.data;
+		if (data?.ok === false || !Array.isArray(data?.credentials)) return null;
 		return credentialNamesFrom(answer).includes(key);
 	} catch {
 		return null;
@@ -940,13 +957,24 @@ async function sessionHoldsCredential(
  * | first attempt | re-issue | list read | citation |
  * | --- | --- | --- | --- |
  * | `ok` | — | — | stored |
- * | a refusal | — | names the key | stored — the 409 was a lost reply |
- * | a refusal | — | answered, no key | the refusal stands |
- * | a refusal | — | unreadable | unconfirmed |
+ * | a refusal | not re-issued — an answer is an answer | names the key | stored — the 409 was a lost reply |
+ * | a refusal | not re-issued | answered, no key | the refusal stands: two agreements, and nothing left in flight |
+ * | a refusal | not re-issued | unreadable | unconfirmed |
  * | silent | `ok` | — | stored |
- * | silent | refusal | names the key | stored |
- * | silent | refusal | answered, no key | unconfirmed — silence proved nothing |
+ * | silent | a refusal | names the key | stored |
+ * | silent | a refusal | answered, no key | unconfirmed — and this row is review round 2's R2-m1 |
  * | silent | silent | anything | unconfirmed |
+ *
+ * THE SILENT ROW ABOVE IS THE ONE THAT MOVED IN ROUND 2, and the mechanism is why:
+ * `withTimeout` clears its own timer but does NOT cancel the request it wrapped, so a
+ * silent first attempt's write can still be in flight — or land — after the list has
+ * answered. An absent name at that moment is therefore not a name that will never
+ * arrive, and the re-issue's 4xx is that same 409 the route also raises for the
+ * owner's own `disconnected` reply to a write it applied. The refusal citation needs
+ * an ANSWER and nothing outstanding; with a silence in the history it has neither,
+ * so the seam says only what it knows. The round-1 code returned the refusal here
+ * while this table said `unconfirmed`; the table was right and the CODE was wrong —
+ * the opposite of what a documentation-only fix would have assumed.
  *
  * The re-issue runs only when the first attempt was SILENT, because that is the
  * only state a second attempt can repair: a refusal is an answer, and repeating it
@@ -964,6 +992,12 @@ async function resolveCredentialStore(
 		CREDENTIAL_STORE_TIMEOUT_MS,
 	);
 	if (first?.kind === "stored") return first;
+	/*
+	 * Whether the FIRST attempt was silent decides what a refusal is worth below,
+	 * and the reason is in the table above: a silence leaves a write that nothing
+	 * here cancelled, so a no-name answer taken afterwards cannot settle it.
+	 */
+	const silentFirst = first === null;
 	let attempt: CredentialStoreAttempt | null = first;
 	if (attempt === null)
 		attempt = await attemptCredentialStore(
@@ -978,11 +1012,13 @@ async function resolveCredentialStore(
 		CREDENTIAL_RESOLVE_TIMEOUT_MS,
 	);
 	if (holds === true) return { kind: "stored" };
-	if (holds === false && attempt !== null) return attempt;
+	if (holds === false && attempt !== null && !silentFirst) return attempt;
 	/*
-	 * Either nothing answered at all, or the store answered and the list could not —
-	 * and in both cases the seam knows of no key it may cite. `null` is that state,
-	 * and the caller renders it as the one citation that claims nothing.
+	 * Either nothing answered at all, the store answered after a silence (which is
+	 * not proof of anything while that silence's write may still land), or the list
+	 * could not answer — and in every one of them the seam knows of no key it may
+	 * cite as missing. `null` is that state, and the caller renders it as the one
+	 * citation that claims nothing.
 	 */
 	return null;
 }

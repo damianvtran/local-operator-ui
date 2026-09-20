@@ -676,6 +676,15 @@ export const STORIES = [
 	 * hue a monochrome reading cannot carry.
 	 */
 	["chat-canonical-credential-citation--citation-unconfirmed", 1024, 620],
+	/*
+	 * THE SAME CITATION AT THE NARROW RUNG (design round 2, D1). The label this
+	 * change added is long enough to pass a 440 line box, so the width where the
+	 * chip has to clamp is the one that has to be on the record — its absence is
+	 * how the cost of a key-bearing label went unmeasured for a round. 440 is the
+	 * rung the notice frames use, and the story takes the card's small-view
+	 * treatment from the pane width, as the app's own rule does.
+	 */
+	["chat-canonical-credential-citation--citation-unconfirmed-narrow", 440, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
 	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on

@@ -27,15 +27,9 @@
 
 import { resetToastDedup, showWarningToast } from "@shared/utils/toast-manager";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
 import "../../../styles/index.css";
+import { useEffect, useState } from "react";
 import { unconfirmedNotice, unstoredNotice } from "./credential-capture";
-
-/*
- * The window timer, taken once at module scope: the story's cleanup must call the
- * real one even where a test has swapped the global.
- */
-const realSetTimeout = globalThis.setTimeout;
 
 const meta: Meta = { title: "chat/credential-notice" };
 export default meta;
@@ -52,30 +46,75 @@ const SESSION_KEY = ["LOP", "SECRET", "4CE3Y48G"].join("_");
  * for, and a busier page would put the toast against content it never meets in
  * practice — the submit-time notice lands over the transcript.
  */
+/*
+ * HOW LONG THE TOAST IS HELD, and why it is a large FINITE number rather than
+ * `Infinity`: a toast that auto-closes cannot be re-photographed, so the hold has to
+ * outlast the capture by a wide margin — and a day does that while staying a value
+ * the container and sonner each read the same way.
+ */
+const TOAST_HOLD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Push one notice through the real toast manager, over the caption that names it.
+ *
+ * THE STORY WAITS FOR ITS OWN SUBJECT, which is the second half of this fixture's
+ * correction (2026-09-20). Raising the notice from an effect photographed the page
+ * with NO toast in it twice — once with a delay, and once across all twelve themes
+ * of a whole set — because the rig's shutter fires as soon as the story has drawn
+ * enough of its own elements, and the caption alone is enough of them. A frame of a
+ * notice surface with no notice on it is not evidence of anything, so the ground is
+ * deliberately bare (one element, under the rig's floor) until the container has
+ * actually put the toast on the page: the poll watches for sonner's own
+ * `[data-sonner-toast]`, and only then does the caption — seven elements, over the
+ * floor — appear, which is what lets the shutter fire. A selector that stops
+ * matching therefore FAILS the capture loudly rather than quietly photographing an
+ * empty state.
+ *
+ * The ground is otherwise plain on purpose: a toast's own measure is what these
+ * frames are for, and a busier page would put the toast against content it never
+ * meets in practice — the submit-time notice lands over the transcript.
+ */
 const Notice = ({ caption, note, raise }: NoticeProps) => {
+	const [drawn, setDrawn] = useState(false);
 	useEffect(() => {
+		let raised = false;
 		/*
-		 * ONE TASK LATER, and that is a measurement rather than a precaution: raised in
-		 * the effect's own tick the toast did not reach the frame at all (2026-09-20 —
-		 * the rig photographed the page with no toast in it), while the pull-outcome
-		 * frames, whose toast comes from an ASYNC mutation, carry theirs. A toast is a
-		 * state update sonner owns, and a story's first commit is earlier than the
-		 * container's own subscription.
+		 * TWO CONDITIONS, POLLED IN ORDER, because raising too early is what made this
+		 * fixture unreliable: a notice pushed before the container has subscribed is
+		 * simply not there (measured: a story that raises in its own effect tick
+		 * photographs a page with no toast on it, and so does one that raises at the
+		 * first render — the container takes a task or two to arrive). So the poll
+		 * waits for sonner's container, raises ONCE, and then waits for the toast
+		 * element itself; only after both does the caption appear.
+		 *
+		 * THE FIRST SELECTOR IS THE STABLE ONE, and that is not a style choice: sonner
+		 * attaches `data-sonner-toaster` to the inner `<ol>` that it renders ONLY when
+		 * a toast exists, so waiting on that attribute deadlocks (measured: a poll
+		 * that waited on it raised nothing for 60s and the capture failed loudly, which
+		 * is the failure mode this fixture is built to have). The container itself is
+		 * the always-mounted `<section aria-label="Notifications …">`.
 		 */
-		const raised = realSetTimeout(() => {
-			// Module state, cleared for the fixture rather than for the product: the
-			// manager deduplicates identical notices, so a second capture of the same
-			// story would photograph nothing at all.
-			resetToastDedup();
-			// The duration rides the call as well as the container: the container's own
-			// prop is what the pull-outcome frames rely on, and this is the same number
-			// passed where sonner reads it for a toast raised after mount.
-			showWarningToast(raise(), {
-				duration: Number.POSITIVE_INFINITY,
-			});
-		}, 250);
-		return () => clearTimeout(raised);
+		const poll = setInterval(() => {
+			if (!raised) {
+				if (!document.querySelector('section[aria-label^="Notifications"]'))
+					return;
+				raised = true;
+				// Module state, cleared for the fixture rather than for the product: the
+				// manager deduplicates identical notices, so a second capture of the same
+				// story would photograph nothing at all.
+				resetToastDedup();
+				showWarningToast(raise(), { duration: TOAST_HOLD_MS });
+				return;
+			}
+			if (document.querySelector("[data-sonner-toast]")) {
+				clearInterval(poll);
+				setDrawn(true);
+			}
+		}, 30);
+		return () => clearInterval(poll);
 	}, [raise]);
+	if (!drawn)
+		return <div className="min-h-[320px] bg-canvas font-sans text-ink" />;
 	return (
 		<div className="min-h-[320px] bg-canvas p-4 font-sans text-ink">
 			<ul className="space-y-2 text-sm">
@@ -114,7 +153,7 @@ export const Unconfirmed: Story = {
 			raise={() => unconfirmedNotice([SESSION_KEY])}
 		/>
 	),
-	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	parameters: { toastDuration: TOAST_HOLD_MS },
 };
 
 /**
@@ -129,5 +168,5 @@ export const Unstored: Story = {
 			raise={() => unstoredNotice([SESSION_KEY])}
 		/>
 	),
-	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	parameters: { toastDuration: TOAST_HOLD_MS },
 };
