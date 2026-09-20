@@ -78,6 +78,33 @@ export type KeyboardTargetInput = {
 	min: number;
 	max: number;
 	side: DividerSide;
+	/**
+	 * Which extremes `Home`/`End` answer to.
+	 *
+	 * `"axis"` (the default, and every call site that passes nothing) keeps the
+	 * shipped meaning: Home is the size the panel has when the handle sits at the
+	 * AXIS's start, which is `min` for a right/bottom-anchored panel and `max` for
+	 * a left/top-anchored one.
+	 *
+	 * `"value"` is the APG register for a separator whose VALUE is a pane's size:
+	 * Home is that pane's smallest and End its largest, whichever edge of it the
+	 * handle sits on. The chat sidebar's boundary is exactly that separator - its
+	 * value is the chats list's height, its name is `Resize the chats list`, and
+	 * its `aria-valuemin`/`max` are that region's bounds - and in the default order
+	 * (the handle on the list region's TOP edge) the axis register put Home at the
+	 * list's MAXIMUM, inverting it against both the pattern and this app's own
+	 * `Resize chat sidebar` (design round 2, D8).
+	 *
+	 * A REGISTER RATHER THAN A NEW RULE, because the two registers disagree only
+	 * for a handle on a pane's left/top edge: `side="right"` reads the same under
+	 * both, so the sidebar's own width divider is unaffected, while the three
+	 * `side="left"` panels in `chat-content.tsx` (canvas, run, browser) would have
+	 * their Home/End silently swapped by making `"value"` the default. That is a
+	 * user-visible behaviour change on three surfaces this change has no business
+	 * touching; those call sites keep `"axis"` and their divergence from the
+	 * pattern is recorded on the pull request as deferred.
+	 */
+	homeEnd?: "axis" | "value";
 };
 
 /**
@@ -105,15 +132,34 @@ export type KeyboardTargetInput = {
  */
 export const keyboardTarget = (
 	key: string,
-	{ shiftKey, value, min, max, side }: KeyboardTargetInput,
+	{ shiftKey, value, min, max, side, homeEnd = "axis" }: KeyboardTargetInput,
 ): number | null | undefined => {
 	const step = shiftKey ? KEYBOARD_STEP_COARSE : KEYBOARD_STEP;
 	const axisStart = growSign(side) === 1 ? min : max;
 	const axisEnd = growSign(side) === 1 ? max : min;
 	/*
+	 * `homeEnd` decides the EXTREMES and nothing else: the arrows stay axis-based
+	 * in both registers, because those move the HANDLE and the handle's travel is
+	 * a fact about the layout rather than about which pane is named. See the input
+	 * type for why the two registers disagree and why the default is `"axis"`.
+	 */
+	const homeValue = homeEnd === "value" ? min : axisStart;
+	const endValue = homeEnd === "value" ? max : axisEnd;
+	/*
 	 * Positive is the axis's own positive direction, so the arrow that points
 	 * that way moves the size that way - and "the size that way" already
 	 * carries the anchored-edge sign through `dragTarget`.
+	 *
+	 * WHAT THE NUMBER DOES DEPENDS ON THE ORDER, and the recorded rationale for
+	 * keeping this register has to say so (UX round 1's U6 kept it; agent review
+	 * round 2's NIT-4 found the note one fact short): the announced value is the
+	 * CHATS REGION's height, and `chats-first` puts that region ABOVE this
+	 * boundary, so the same `ArrowDown` raises the advertised number in one
+	 * persisted order and lowers it in the other. That is the labelled pane's
+	 * position rather than a defect - the arrows move the HANDLE, and the handle's
+	 * travel is a fact about the layout - but a reader weighing the alternative
+	 * (an arrow that raises the advertised number in both orders) needs the fact
+	 * in front of them rather than an assertion that the register is consistent.
 	 */
 	if (isHorizontal(side)) {
 		if (key === "ArrowDown") return dragTarget(value, step, side, min, max);
@@ -122,8 +168,8 @@ export const keyboardTarget = (
 		if (key === "ArrowRight") return dragTarget(value, step, side, min, max);
 		if (key === "ArrowLeft") return dragTarget(value, -step, side, min, max);
 	}
-	if (key === "Home") return axisStart;
-	if (key === "End") return axisEnd;
+	if (key === "Home") return homeValue;
+	if (key === "End") return endValue;
 	/* The caller's own default, which only it can restore. */
 	if (key === "Enter") return null;
 	return undefined;

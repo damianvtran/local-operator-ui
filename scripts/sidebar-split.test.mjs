@@ -281,16 +281,27 @@ test("below two floors in AUTO, the announced value is what is drawn", () => {
 	 * layout does not have. Probed at 100/140/143 before the fix (review round 1,
 	 * m-3).
 	 */
-	for (const [capacity, expected] of [
-		[100, 28],
-		[140, 68],
-		[143, 71],
+	/*
+	 * Three columns: the capacity, the height the list's CONTENT is drawn at, and
+	 * the value the separator must announce. The middle column is what makes the
+	 * case falsifiable rather than circular (agent review round 2, m-5): passing
+	 * the cap's own result as `drawnListHeight` means a regression that announced
+	 * `listMax` alone - dropping the `Math.min(drawn, cap)` - would satisfy every
+	 * assertion here, because the two numbers would be the same one. The last row
+	 * separates them: a SHORT list in a sub-threshold panel draws 40 under a 71px
+	 * cap, and the separator must announce 40.
+	 */
+	for (const [capacity, drawn, expected] of [
+		[100, 28, 28],
+		[140, 68, 68],
+		[143, 71, 71],
+		[143, 40, 40],
 	]) {
 		const out = resolveSidebarSplit(
 			inputs({
 				capacity,
 				listHeight: null,
-				drawnListHeight: expected,
+				drawnListHeight: drawn,
 				panelContentHeight: 900,
 			}),
 		);
@@ -302,7 +313,7 @@ test("below two floors in AUTO, the announced value is what is drawn", () => {
 		assert.equal(
 			out.divider.value,
 			expected,
-			`capacity ${capacity} announces the drawn height`,
+			`capacity ${capacity} with ${drawn} drawn announces what is drawn`,
 		);
 		assert.equal(out.divider.min, expected);
 		assert.equal(out.divider.max, expected);
@@ -499,7 +510,8 @@ test("the key map, asserted against the clamped write rather than a constant", (
 	assert.equal(write("ArrowUp", { shiftKey: true }), 264);
 	assert.equal(write("ArrowDown", { shiftKey: true }), 136);
 	// Home is the axis's start: the handle at the top is the region at its
-	// tallest, and End is the mirror.
+	// tallest, and End is the mirror. This is the register the four pre-existing
+	// call sites use, because they pass nothing (design round 2, D8).
 	assert.equal(write("Home"), max);
 	assert.equal(write("End"), min);
 	assert.equal(
@@ -545,4 +557,47 @@ test("the key map, asserted against the clamped write rather than a constant", (
 	assert.equal(left("ArrowLeft"), 216);
 	assert.equal(left("Home"), max);
 	assert.equal(left("End"), min);
+
+	/*
+	 * THE EXPLICIT VALUE REGISTER (design round 2, D8). A separator whose value,
+	 * name and `aria-valuemin`/`max` all describe one PANE answers Home/End with
+	 * that pane's extremes, whichever edge of it the handle sits on - so the key is
+	 * invariant under the order swap that moves this boundary from the list
+	 * region's top edge to its bottom.
+	 */
+	const valued = (key, { side = "top" } = {}) =>
+		keyboardTarget(key, { shiftKey: false, value: 200, min, max, side, homeEnd: "value" });
+	assert.equal(valued("Home"), min, "Home is the named pane's smallest");
+	assert.equal(valued("End"), max, "End is its largest");
+	assert.equal(
+		valued("Home", { side: "bottom" }),
+		min,
+		"and the swap does not invert them",
+	);
+	assert.equal(valued("End", { side: "bottom" }), max);
+	/*
+	 * The register is a CHOICE PER CALL SITE, not a new default: the axis register
+	 * is what the `side="left"` panels keep, and the two must disagree there for
+	 * this to be containment rather than a silent global change.
+	 */
+	assert.equal(
+		keyboardTarget("Home", {
+			shiftKey: false,
+			value: 200,
+			min,
+			max,
+			side: "left",
+		}),
+		max,
+		"a left-anchored handle without the register keeps the axis meaning",
+	);
+	assert.equal(valued("Home", { side: "left" }), min);
+	/*
+	 * The arrows are NOT in the register: they move the handle in both, because
+	 * the handle's travel is a fact about the layout (NIT-4 records that the
+	 * advertised number therefore rises with one arrow in one order and falls in
+	 * the other).
+	 */
+	assert.equal(valued("ArrowUp"), write("ArrowUp"));
+	assert.equal(valued("ArrowDown"), write("ArrowDown"));
 });
