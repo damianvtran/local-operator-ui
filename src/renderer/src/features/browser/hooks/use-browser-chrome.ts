@@ -1,4 +1,5 @@
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	browserBridge as bridge,
@@ -113,9 +114,116 @@ export interface BrowserChromeState {
 	canGoForward: boolean;
 	pendingConsent: PendingConsentView[];
 	approvals: ApprovalView[];
+	/** The file-transfer surface (§16.4): what the host is writing now, where, and
+	 * the last few decisions OF THIS TAB.
+	 *
+	 * WHY IT IS PART OF THIS PROJECTION rather than a channel of its own: it is
+	 * chrome state the host owns, it changes for the same reason the tab list does
+	 * (something happened in the browser), and `browser-projection-store.ts`'s rule
+	 * is one event and one read rather than two projections that can disagree. The
+	 * renderer never computes any of it: `dir` is the path MAIN opened, and the
+	 * notes are main's decisions.
+	 *
+	 * WHY IT CARRIES BOTH DIRECTIONS AND IS SCOPED TO THE ACTIVE TAB (review round
+	 * 1, D2 and U3): the host used to project the whole host's notes into every
+	 * tab's chrome, so the strip of the tab the user was watching could narrate a
+	 * decision taken in another one — which the published frames did. An upload now
+	 * has a note here too, because the round-1 walk showed three files leaving the
+	 * machine with nothing on screen at all.
+	 *
+	 * Optional because a host that predates the feature answers without it — the row
+	 * then simply never renders, which is the honest degrade for a build that cannot
+	 * transfer anything. */
+	transfers?: TransferActivityView;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
+}
+
+/** One transfer decision, as the host reports it.
+ *
+ * IT CARRIES A DIRECTION AND A RULE (review round 1, D1, D2, U3): the direction is
+ * what stops one strip's copy from being readable as a statement about the other
+ * verb, and the rule plus its numbers is what lets the row write a HUMAN sentence —
+ * the host's `reason` is written for the tool result, where exact byte counts are
+ * the right thing and two of them one apart are unreadable. */
+export interface TransferNoteView {
+	name: string;
+	/** How many files this decision covered (an upload call attaches several). */
+	count: number;
+	/** Where a download went. "" for an upload. */
+	dir: string;
+	outcome: "saved" | "refused" | "sent";
+	/** The tool result's own sentence. The row does not print it (see the row's
+	 * header); it is here so a debugging renderer or a test can compare the two. */
+	reason: string;
+	at: number;
+	direction: "download" | "upload";
+	/** The site an upload went to. */
+	site: string;
+	/** The tab whose decision this was. The row renders the decision either way and
+	 * LABELS it when it belongs to another tab (see `TransferActivityView`). */
+	tabId: number;
+	/** Which rule refused it, and the numbers the row's sentence needs. */
+	refusal: TransferRefusalView | null;
+	/** Who owned the tab this decision was taken on, as the HOST recorded it (review
+	 * round 2, U10). The renderer resolves the tab's live record when it has one, and
+	 * falls back to this when it does not: a tab can be CLOSED while its note is
+	 * still on screen, and the marker must not then name a tab that is gone. `null`
+	 * is "the host could not say", which renders the generic fallback rather than a
+	 * guess. */
+	ownerKind: "user" | "agent" | null;
+}
+
+/** The rule a refusal came from, and its own units. */
+export interface TransferRefusalView {
+	rule:
+		| "executable"
+		| "limit"
+		| "count"
+		| "write"
+		| "interrupted"
+		| "deadline"
+		// The runtime cap: a write that was already on disk when it was cancelled, so
+		// the row says the partial was discarded rather than that nothing was saved
+		// (review round 2, R2-5).
+		| "overrun";
+	/** The file's own size in bytes, 0 where unknown. */
+	bytes: number;
+	/** The cap that fired: bytes for `limit`, files for `count`, seconds for
+	 * `deadline`. */
+	limit: number;
+}
+
+/** The transfer in flight, with the progress the row needs (U6). `total` is 0 for
+ * a response that declared no length. */
+export interface ActiveTransferView {
+	name: string;
+	received: number;
+	total: number;
+	/** The tab it belongs to, so a row beside another tab can say so. */
+	tabId: number;
+}
+
+/** What the transfer row renders: the transfer in flight, the folder the host
+ * writes into, the last few decisions newest-first, and WHICH TAB's chrome this
+ * is.
+ *
+ * `notes` are host-wide and each carries its `tabId` (review round 1, D2). Filtering
+ * them to the active tab was this change's first attempt and it broke the case the
+ * feature exists for — an agent tab is created INACTIVE (`tabs.ts`), so the agent's
+ * own downloads would have left no trace at all. What the row must not do is appear
+ * to describe the page on screen, which is what `activeTabId` is for. */
+export interface TransferActivityView {
+	active: ActiveTransferView | null;
+	dir: string | null;
+	notes: TransferNoteView[];
+	activeTabId: number | null;
+	/** The newest file saved into the download directory, and how many have been saved
+	 * in this app run, for the durable control's own label (review round 2, U12: once
+	 * the row has retired, the folder control is the only thing on screen that knows
+	 * anything arrived). */
+	recent: { name: string; count: number } | null;
 }
 
 export type ConsentDecision = "once" | "session" | "site" | "domain" | "deny";
@@ -221,6 +329,21 @@ export interface BrowserChrome {
 	revokeAllApprovals: () => Promise<void>;
 	forgetSite: (origin: string) => Promise<void>;
 	clearData: (what: "cookies" | "cache" | "everything") => Promise<void>;
+	/**
+	 * Open the host's download directory in the OS file manager (§16.4).
+	 *
+	 * A HUMAN ACTION BY CONSTRUCTION, and this is the design's line rather than a
+	 * UI preference: §11.4 forbids "reveal in Finder" FROM THE TOOL, so the agent has
+	 * no route to this — it is a button the user presses, and the path it opens is
+	 * the one main chose, never one this side named.
+	 *
+	 * IT REPORTS ITS OWN FAILURE (review round 1, U4): `shell.openPath` RETURNS its
+	 * error rather than throwing, so the earlier `runVoid` discarded it and a press
+	 * that opened nothing looked exactly like one that worked — the same defect
+	 * `link-open.ts` exists to prevent one hop over. Main answers `{opened, message}`
+	 * and the message is what a toast has to say.
+	 */
+	revealDownloads: () => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -477,6 +600,18 @@ export function useBrowserChrome(): BrowserChrome {
 			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
 			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
 			clearData: (what) => runVoid(() => api?.clearData(what)),
+			revealDownloads: () =>
+				runVoid(async () => {
+					const answer = await api?.revealDownloads();
+					// Main answers `{opened, message}`: `shell.openPath` returns its failure as a
+					// string rather than throwing, so a discarded answer is how a press that
+					// opened nothing came to look like one that worked (review round 1, U4).
+					const message = (answer as { message?: unknown } | undefined)
+						?.message;
+					if (typeof message === "string" && message) {
+						showErrorToast(`Could not open the downloads folder. ${message}`);
+					}
+				}),
 		}),
 		[
 			state,

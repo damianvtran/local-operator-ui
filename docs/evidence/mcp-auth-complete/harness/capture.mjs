@@ -66,7 +66,9 @@ if (TREE !== "after" && TREE !== "before") {
 	console.error(`--tree must be \`after\` or \`before\`, not \`${TREE}\``);
 	process.exit(2);
 }
-const THEMES = flag("themes", "localOperatorDark,localOperatorLight").split(",");
+const THEMES = flag("themes", "localOperatorDark,localOperatorLight").split(
+	",",
+);
 const PORT = Number(flag("port", "5213"));
 const OUT = resolve(flag("out", SURFACE));
 /** The scrim kept around the dialog so the panel reads as a modal, not a crop. */
@@ -90,7 +92,8 @@ const CASES =
 				{ status: "cancelled", retry: true },
 			];
 
-const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+const sleep = (ms) =>
+	new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
 /** A minimal CDP client, the same shape `scripts/capture-evidence.mjs` uses. */
 class Cdp {
@@ -239,11 +242,17 @@ async function launchChrome() {
 
 async function main() {
 	mkdirSync(OUT, { recursive: true });
-	console.log(`tree ${TREE}: ${CASES.length * THEMES.length} frames into ${OUT}`);
+	console.log(
+		`tree ${TREE}: ${CASES.length * THEMES.length} frames into ${OUT}`,
+	);
 
 	vite = spawn(
 		"pnpm",
-		["vite", "--config", join(import.meta.dirname, "mcp-auth-complete.vite.mjs")],
+		[
+			"vite",
+			"--config",
+			join(import.meta.dirname, "mcp-auth-complete.vite.mjs"),
+		],
 		{
 			cwd: ROOT,
 			env: { ...process.env, MCP_AUTH_EVIDENCE_PORT: String(PORT) },
@@ -345,7 +354,16 @@ async function main() {
 			mkdirSync(dir, { recursive: true });
 			const frame = join(dir, `${theme}.png`);
 			writeFileSync(frame, Buffer.from(data, "base64"));
-			assertFramePaints(frame, theme);
+			/*
+			 * AWAITED, and that is the whole point of the line: `assertFramePaints`
+			 * decodes the frame through `sharp`, so it is async, and an unawaited
+			 * call does not stop this loop. The refusal would arrive as an unhandled
+			 * rejection after the frame had been written and logged - on the last
+			 * frame, after `process.exit(0)` had already been reached. Awaiting it is
+			 * what keeps "the capture failed" from looking like "the capture
+			 * finished".
+			 */
+			await assertFramePaints(frame, theme);
 			console.log(
 				`${testCase.status}-${TREE}/${theme}.png: footer ${JSON.stringify(state.footer)}, ` +
 					`body ${JSON.stringify(state.sentence)}, dialog ${width}x${height} at ${x},${y}, ` +

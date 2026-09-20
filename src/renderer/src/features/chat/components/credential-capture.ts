@@ -465,18 +465,6 @@ export const planPaintsAnything = (plan: PaintSegment[]): boolean =>
 	plan.some((segment) => segment.kind !== "plain");
 
 /**
- * How long the submit seam will wait for one inline-credential store to answer.
- *
- * A live round-trip is milliseconds (an in-memory store write behind a loopback
- * socket), so anything that takes this long is a hung or dead connection — and
- * because this wait sits on the submit seam, the honest answer to a hung one is
- * the loud degrade, not a parked composer. The TUI's own number (`app.py`
- * `CREDENTIAL_STORE_TIMEOUT_S`), kept identical so the two products give up at
- * the same moment.
- */
-export const CREDENTIAL_STORE_TIMEOUT_MS = 5000;
-
-/**
  * Random-name alphabet, ported exactly (`editor.py:182`): Crockford-ish base32
  * WITHOUT the letters that read as digits, and without `U` (which `V` and `2`
  * are misread as). THIRTY symbols, not the 31 the design document's §8 states
@@ -1658,9 +1646,38 @@ export function citationSpan(
 const CREDENTIAL_CITATION_STORED =
 	/\[credential ([A-Za-z_][A-Za-z0-9_]*) \((\d+) chars\) \u2014 available to bash and eval as \$([A-Za-z_][A-Za-z0-9_]*); its value cannot be read\]/y;
 
-/** One of {@link describeUnstored}'s three sentences, likewise whole. */
+/** One of {@link describeUnstored}'s unstored sentences, likewise whole. */
 const CREDENTIAL_CITATION_UNSTORED =
 	/\[credential NOT stored \u2014 [^\]\n]*\]/y;
+
+/**
+ * The unconfirmed sentence, matched as a form rather than by its exact words.
+ *
+ * A form and not a literal, for {@link CREDENTIAL_CITATION_UNSTORED}'s own
+ * reason: the sentence names the key, so the two are one shape with one variable
+ * in it, and a reader that pinned today's wording would silently stop
+ * recognising tomorrow's.
+ */
+const CREDENTIAL_CITATION_UNCONFIRMED =
+	/\[credential unconfirmed \u2014 [^\]\n]*\]/y;
+
+/**
+ * The key a sentence NAMES, as `$KEY`, or `""` when it names none.
+ *
+ * The unconfirmed sentence is the one citation whose key has to be read back out
+ * of its own prose, and the reason is the chip: its label carries the reference
+ * (design round 1, D1 — see `unconfirmedChipLabel`), so the URL the plugin writes
+ * has to carry the key, and the URL is built from this segment. Constrained by
+ * `CREDENTIAL_KEY_PATTERN` rather than by a looser word rule, so the same
+ * predicate that validates a store name validates what a chip is allowed to
+ * claim: a `$` that is not a store key is prose and stays prose.
+ */
+const namedCredentialKey = (sentence: string): string => {
+	const named = /\$([A-Z0-9_]+)/.exec(sentence);
+	return named !== null && CREDENTIAL_KEY_PATTERN.test(named[1])
+		? named[1]
+		: "";
+};
 
 /**
  * One citation as the transcript holds it, or one run of ordinary prose.
@@ -1672,7 +1689,12 @@ const CREDENTIAL_CITATION_UNSTORED =
 export type CitationSegment =
 	| { kind: "text"; text: string }
 	| { kind: "stored"; text: string; key: string; chars: number }
-	| { kind: "unstored"; text: string };
+	| { kind: "unstored"; text: string }
+	/* A third register rather than a second spelling of `unstored`: the two are
+	   different claims about the same message ("nothing is there" against "nobody
+	   knows"), and a transcript that drew them the same way would put the app's own
+	   uncertainty behind the failure's face. */
+	| { kind: "unconfirmed"; text: string; key: string };
 
 /**
  * The citation starting at exactly `at`, or `null`.
@@ -1704,6 +1726,21 @@ function citationAt(text: string, at: number): CitationSegment | null {
 	const unstored = CREDENTIAL_CITATION_UNSTORED.exec(text);
 	CREDENTIAL_CITATION_UNSTORED.lastIndex = 0;
 	if (unstored !== null) return { kind: "unstored", text: unstored[0] };
+	CREDENTIAL_CITATION_UNCONFIRMED.lastIndex = at;
+	const unconfirmed = CREDENTIAL_CITATION_UNCONFIRMED.exec(text);
+	CREDENTIAL_CITATION_UNCONFIRMED.lastIndex = 0;
+	if (unconfirmed !== null)
+		return {
+			kind: "unconfirmed",
+			text: unconfirmed[0],
+			/*
+			 * The key the sentence names, carried on the segment so the chip can label
+			 * itself with it (D1). `""` when the sentence names none — that arm is
+			 * `describeUnstored("unconfirmed")` without a key, and its chip then says
+			 * only the register.
+			 */
+			key: namedCredentialKey(unconfirmed[0]),
+		};
 	return null;
 }
 
@@ -1772,6 +1809,23 @@ export function citedPayloads(
 export type UnstoredReason = "unreachable" | "rejected-key" | "lost";
 
 /**
+ * What the submit seam PROVED about one cited credential.
+ *
+ * The three {@link UnstoredReason} arms all assert the same thing — there is no
+ * usable credential here — and each is only ever written from an ANSWER: the
+ * store said no (a 4xx, or `ok: false`), or the composer knows there was no
+ * session to send to. `"unconfirmed"` is the fourth and opposite kind, and it
+ * exists because silence is not an answer: a transport that never replied, a
+ * 5xx, or this composer's own bound expiring says nothing at all about whether
+ * the write landed. It got its own sentence because the operator's own session
+ * is the proof that guessing the other way is a lie the model then acts on — the
+ * value WAS stored, every bash child saw it, and the message the model read said
+ * `NOT stored` (operator report, 2026-09-19). A state this product cannot
+ * observe must never be reported as one it has.
+ */
+export type CredentialFate = UnstoredReason | "unconfirmed";
+
+/**
  * The citation a credential gets when its value did NOT reach the store.
  *
  * ONE AUTHORITY for these phrases, because two paths write them — the per-key
@@ -1789,19 +1843,39 @@ export type UnstoredReason = "unreachable" | "rejected-key" | "lost";
  * the TUI's. `POST /v1/desktop/sessions/{id}/credentials` collapses every store
  * refusal into one 409 (`server/routes/desktop_lifecycle.py:161-172`): the
  * store's own `reason` never crosses the wire. So this end infers:
- * `"unreachable"` when there is no session to reach or the call did not land,
- * and `"lost"` when there is no value to hand over at all. `"lost"` is the
- * sentence two different ways of losing the value share, deliberately: a store
- * that was reached and said no — which, for a key this composer minted against
- * `CREDENTIAL_KEY_PATTERN`, is a blank VALUE, i.e. the restored draft whose bytes
- * do not survive (§6) — and a MARKER no payload backs any more, which never
- * reached a store because there was nothing to send (design round 2, D2). Both
- * are the same thing to the agent: no usable credential, and the operator is the
- * one who has to supply it. `"rejected-key"` is kept in the vocabulary because
- * the phrase is the TUI's and a future transport that reports the reason must
- * not have to invent a fourth sentence; nothing in this port produces it.
+ * `"unreachable"` when there is no session to reach, and `"lost"` when the
+ * store ANSWERED and refused the write (a 4xx) or there is no value to hand over
+ * at all. `"lost"` is the sentence two different ways of losing the value share,
+ * deliberately: a store that was reached and said no — which, for a key this
+ * composer minted against `CREDENTIAL_KEY_PATTERN`, is a blank VALUE, i.e. the
+ * restored draft whose bytes do not survive (§6) — and a MARKER no payload backs
+ * any more, which never reached a store because there was nothing to send
+ * (design round 2, D2). Both are the same thing to the agent: no usable
+ * credential, and the operator is the one who has to supply it. `"rejected-key"`
+ * is kept in the vocabulary because the phrase is the TUI's and a future
+ * transport that reports the reason must not have to invent another sentence;
+ * nothing in this port produces it.
+ *
+ * `"unconfirmed"` IS THE ONE SENTENCE THAT ASSERTS NO OUTCOME, and that is its
+ * whole purpose. Every other form here is written from an answer, so it can
+ * state one; this one is written when the store was never heard from, and the
+ * value may be sitting in the session's store exactly as the operator's own
+ * session found it (`list_variables` listing the key while the model had been
+ * told there was none). So it says what is true — the outcome is unknown — and
+ * hands the agent the one route to the truth this harness has: `list_variables`
+ * lists a session's credentials BY NAME, which is how the operator's own session
+ * recovered a key the citation had denied. Naming the key is therefore not
+ * optional decoration: the agent has to match one name against the list, and
+ * without the name the sentence would send it to a page of strangers. The TUI has
+ * no fourth sentence because it has no fourth state: its store is an in-process
+ * call to a session that is already live, so it can never be silent about a write
+ * the way a cold runtime's engage can.
  */
-export function describeUnstored(reason: UnstoredReason): string {
+export function describeUnstored(reason: CredentialFate, key = ""): string {
+	if (reason === "unconfirmed")
+		return key
+			? `[credential unconfirmed — it may be held as $${key}, so check list_variables before assuming it is missing]`
+			: "[credential unconfirmed — the session may hold it, so check list_variables before assuming it is missing]";
 	if (reason === "unreachable")
 		return "[credential NOT stored — the session could not be reached; try again]";
 	if (reason === "rejected-key")
@@ -1831,9 +1905,9 @@ export const credentialCitation = (payload: CredentialPayload): string =>
  * EVERY citation is rewritten, whether it stored or not: a marker left alone
  * would send a composer-local `[Credential #1, 52 chars]` that the model cannot
  * use, and a name it cannot use is the silent failure this whole path exists to
- * remove. A refused one gets {@link describeUnstored} instead of the confident
- * form, PER PAYLOAD — one refusal among several successes must not advertise a
- * key nothing holds (`substitute_credentials`, `editor.py:777-834`).
+ * remove. A refused or unresolved one gets {@link describeUnstored} instead of
+ * the confident form, PER PAYLOAD — one refusal among several successes must not
+ * advertise a key nothing holds (`substitute_credentials`, `editor.py:777-834`).
  *
  * Spliced DESCENDING, so an earlier replacement cannot invalidate a later
  * offset. A marker that appears twice in the buffer is rewritten ONCE, at its
@@ -1858,7 +1932,7 @@ export const credentialCitation = (payload: CredentialPayload): string =>
 export function substituteCredentials(
 	text: string,
 	payloads: readonly CredentialPayload[],
-	refused: Map<number, UnstoredReason> = new Map(),
+	fates: Map<number, CredentialFate> = new Map(),
 ): string {
 	/*
 	 * The payload list is indexed TWICE below (once to take the backed spans, once
@@ -1883,10 +1957,10 @@ export function substituteCredentials(
 	for (const { span, payload } of spans.sort(
 		(a, b) => b.span.start - a.span.start,
 	)) {
-		const reason = payload === null ? "lost" : refused.get(payload.index);
+		const fate = payload === null ? "lost" : fates.get(payload.index);
 		const named =
-			payload === null || reason !== undefined
-				? describeUnstored(reason ?? "lost")
+			payload === null || fate !== undefined
+				? describeUnstored(fate ?? "lost", payload?.key)
 				: credentialCitation(payload);
 		out = out.slice(0, span.start) + named + out.slice(span.end);
 	}
@@ -2131,7 +2205,7 @@ export const storedNotice = (keys: readonly string[]): string =>
 	`Stored ${keys.join(", ")}. Injected into every bash command as an environment variable; the agent cannot read the value.`;
 
 /**
- * The notice for a store that refused or could not be reached (§9.4), naming
+ * The notice for a store that ANSWERED and refused the write (§9.4), naming
  * the retry that actually WORKS.
  *
  * It has to be followable, unlike the notice this replaces: typing
@@ -2139,10 +2213,98 @@ export const storedNotice = (keys: readonly string[]): string =>
  * opens a masked capture and the KEY NAME is minted as a short secret. Arming
  * `/credential` and pasting the value again is the one gesture that retries a
  * store (`app.py:33815-33836`).
+ *
+ * This is the CONFIRMED half of the old single notice: it is raised only for a
+ * store that answered, or for a pane the composer knows has no session to reach.
+ * The unresolved outcome has its own sentence below, because "could not be
+ * stored" is a claim this one may not make on silence's behalf.
  */
 export function unstoredNotice(keys: readonly string[]): string {
 	const noun = keys.length === 1 ? "credential" : "credentials";
 	return `${keys.length} ${noun} could not be stored (${[...keys].sort().join(", ")}); the agent has been told so. Paste the value again after /credential to retry.`;
+}
+
+/**
+ * The chip's words for the unresolved register, in the two shapes it has.
+ *
+ * THE REFERENCE COMES FIRST, AND THAT IS DESIGN ROUND 2's CORRECTION (D1, still
+ * a MAJOR at the end of round 1). Round 1 put the reference at the END of a label
+ * this long, and measured live it was a worse defect than the one it fixed: the
+ * stored chip's label is a single long token that the chip's own clamp ellipsises
+ * from the end, so `KEY · the rest` keeps the key visible when the label is cut —
+ * while `the words · KEY` loses exactly the key the reader needs, and with the
+ * long label the chip stopped clamping at all (405.78px at every pane from 1024
+ * down to 300, spilling +157.78px past a 440 line box and cutting mid-key with no
+ * ellipsis). So the order is the stored chip's own: the REFERENCE, then the rest.
+ * The clamp that makes the ellipsis fire is the chip's (`min-w-0` on the label),
+ * documented there.
+ *
+ * THE NOUN IS THE STORE'S (round 1, D4): "unconfirmed" alone reads as a claim
+ * about the value, and the sentence is about whether the write landed. The words
+ * alone measure 230.42px, inside a 440 line box; with the reference in front the
+ * label clamps at the narrow rungs and the key survives the ellipsis, which is the
+ * property round 2 asked to be able to read off a frame.
+ */
+export const UNCONFIRMED_CHIP_WORDS = "store unconfirmed";
+
+/**
+ * The words on their own, for the one arm whose sentence names no key.
+ *
+ * There is nothing to lead with there, so the label says what the whole of it is —
+ * the same words the TUI parity comment used before the reference joined them.
+ */
+export const UNCONFIRMED_CHIP_WORDS_ALONE = "Credential store unconfirmed";
+
+/** {@link UNCONFIRMED_CHIP_WORDS} with the reference its sentence named, if any. */
+export const unconfirmedChipLabel = (key: string): string =>
+	key === ""
+		? UNCONFIRMED_CHIP_WORDS_ALONE
+		: `${key} · ${UNCONFIRMED_CHIP_WORDS}`;
+
+/**
+ * The move that works, in the operator's own terms — ONE wording, two surfaces.
+ *
+ * The refusal notice has ended with this clause since the capture was ported; the
+ * unresolved notice and the chip's hover both need the same sentence, and a second
+ * spelling of it beside the first is exactly the drift the notice module exists to
+ * prevent. `unconfirmedNotice` and `unconfirmedHover` compose it rather
+ * than repeating it (design round 1, D2).
+ */
+export const UNCONFIRMED_OPERATOR_MOVE =
+	"Paste the value again after /credential to store it again.";
+
+/**
+ * What HOVERING an unresolved chip says (design round 1, D2).
+ *
+ * The chip's title used to be the citation verbatim, which is the MODEL's half:
+ * it ends by telling the reader to run `list_variables`, a verb only the agent
+ * has. The transcript is the operator's surface, and the toast that carried their
+ * move is gone by the time the chip is the only thing left — so the title appends
+ * the operator's own sentence to the record of what the model received. Both
+ * halves stay in this module because this module owns the spellings.
+ */
+export const unconfirmedHover = (citation: string): string =>
+	`${citation} ${UNCONFIRMED_OPERATOR_MOVE}`;
+
+/**
+ * The notice for a store the session never confirmed EITHER WAY (§9.4).
+ *
+ * The operator's half of {@link describeUnstored}'s `"unconfirmed"` arm, and the
+ * reason it is not folded into the sentence above: the operator's own session is
+ * where a landed-but-unconfirmed store was found to be a lie — the warning said
+ * the credential had not been stored while every bash child carried it (operator
+ * report, 2026-09-19) — so this one says only what is known (the session did not
+ * confirm the write), names the check that settles it, and keeps the reliable
+ * repair at the end of the sentence.
+ *
+ * WARNING RATHER THAN SUCCESS, for the reason the refusal notice is: it reports a
+ * gesture that did not do what it looked like it did. Success would be the other
+ * lie — the value may be nowhere, and the operator is the one who can supply it
+ * again.
+ */
+export function unconfirmedNotice(keys: readonly string[]): string {
+	const noun = keys.length === 1 ? "credential" : "credentials";
+	return `${keys.length} ${noun} could not be confirmed as stored (${[...keys].sort().join(", ")}); the agent has been told to check before using it. ${UNCONFIRMED_OPERATOR_MOVE}`;
 }
 
 /** Shown while the token is seated and the secret has not started arriving. */

@@ -35,6 +35,14 @@ import { build } from "esbuild";
  *    option on every legacy ask. Absent, null, out-of-range and non-integer all
  *    have to mark nothing.
  *
+ * 4. **A press is reported from its own outcome, never from its card.** The
+ *    verdict used to be a DOM read — "is the card still on screen?" — so a press
+ *    the owner took was reported lost whenever its own success had already
+ *    removed that card (the response and the owner's state push have no ordering
+ *    between them; the measured margin is ~76 ms). `answerReport` is asserted in
+ *    all four of its cases here, including the one the bug was: a `2xx` says
+ *    nothing at all.
+ *
  * ## Why the component is exercised as an element tree, not through a DOM
  *
  * There is no jsdom in this repo's tree and this change is not the place to
@@ -52,8 +60,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, lostAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
-			'export { buildSendPayload } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { buildSendPayload, ANSWER_NOT_SENT_CODE, UNCONFIRMED_SEND_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
@@ -80,7 +90,6 @@ const bundle = await build({
 	// two React copies would give the component a different dispatcher than the
 	// renderer this test imports.
 	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
-	write: false,
 });
 
 // Written to a real file rather than imported as a `data:` URL: React DOM's
@@ -96,13 +105,26 @@ const {
 	AskOptions,
 	resolveNumericAnswer,
 	answerValue,
-	lostAnswerMessage,
+	answerReport,
+	answerRefusedWithoutACode,
+	answerOutcomeIsUnknown,
+	SETTLED_ELSEWHERE_MESSAGE,
+	QUESTION_MOVED_ON_MESSAGE,
+	answerUnconfirmedMessage,
+	ANSWER_UNCONFIRMED_LEAD,
+	ANSWER_LOST_TO_RECONNECT_MESSAGE,
+	unsentAnswerMessage,
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
 	createSendLock,
 	answerGateOption,
 	errorCodeOf,
+	DesktopControlError,
+	UserFacingError,
 	buildSendPayload,
+	ANSWER_NOT_SENT_CODE,
+	UNCONFIRMED_SEND_CODE,
+	DESKTOP_LOST_SIGHT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
 	CanonicalTranscript,
@@ -141,7 +163,8 @@ function accessibleText(node, out = []) {
 	// Decoration is excluded exactly as a screen reader excludes it, which is
 	// what makes the ordinal assertion below meaningful.
 	if (node.props?.["aria-hidden"] === true) return out;
-	if (node.props?.children !== undefined) accessibleText(node.props.children, out);
+	if (node.props?.children !== undefined)
+		accessibleText(node.props.children, out);
 	return out;
 }
 
@@ -213,7 +236,9 @@ test("a pressed option answers with its label, and that label is what the wire c
 	// Half one: the button's OWN handler, on the tree the shipped component
 	// returns. This is what a click does after React's event plumbing.
 	const answered = [];
-	const buttons = buttonsOf(render({ onAnswer: (label) => answered.push(label) }));
+	const buttons = buttonsOf(
+		render({ onAnswer: (label) => answered.push(label) }),
+	);
 	assert.equal(buttons.length, 3, "one control per option");
 
 	// The SECOND option, so a passing assertion cannot be an index-0 accident.
@@ -263,7 +288,11 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 		[first.outcome.status, second.outcome.status],
 		["sent", "refused"],
 	);
-	assert.equal(sent.length, 1, "one answer in flight is one answer on the wire");
+	assert.equal(
+		sent.length,
+		1,
+		"one answer in flight is one answer on the wire",
+	);
 	assert.equal(sent[0].value, OPTIONS[1].label);
 
 	// The loser sends nothing at all: a refusal is not a failed request.
@@ -279,7 +308,11 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 test("a question that cannot be addressed is never sent", async () => {
 	const lock = createSendLock();
 	for (const deps of [
-		{ gate: gate({ kind: "approval", options: [] }), sessionId: SESSION, epoch: EPOCH },
+		{
+			gate: gate({ kind: "approval", options: [] }),
+			sessionId: SESSION,
+			epoch: EPOCH,
+		},
 		{ gate: gate(), sessionId: null, epoch: EPOCH },
 		{ gate: gate(), sessionId: SESSION, epoch: null },
 	]) {
@@ -352,7 +385,11 @@ test("only a bare, in-range numeral on an options ask is resolved", () => {
 		"1,",
 		"1..",
 	]) {
-		assert.equal(resolveNumericAnswer(g, text), text, `must not rewrite ${text}`);
+		assert.equal(
+			resolveNumericAnswer(g, text),
+			text,
+			`must not rewrite ${text}`,
+		);
 	}
 	// Out of range falls through unchanged: answering the seventh of three is
 	// not something this can invent.
@@ -384,10 +421,7 @@ test("a staged reply's bare ordinal still resolves to the option's label", () =>
 	const payload = buildSendPayload("2", [
 		{ text: "Is the extension popup open?" },
 	]);
-	assert.equal(
-		payload,
-		"<reply-to>Is the extension popup open?</reply-to>\n2",
-	);
+	assert.equal(payload, "<reply-to>Is the extension popup open?</reply-to>\n2");
 	assert.equal(answerValue(g, "2", payload), OPTIONS[1].label);
 	assert.equal(answerValue(g, " 1. ", payload), OPTIONS[0].label);
 });
@@ -457,6 +491,110 @@ test("the gate branch resolves the TYPED text at the call site the app ships", (
 	);
 });
 
+test("the press's report is routed by the LIVE card's identity, at the call site the app ships", () => {
+	/*
+	 * Two things the `answerReport` assertions above cannot see, and both left this
+	 * file green when they were sabotaged (code review round 1, m1 and m2):
+	 *
+	 * - the SWITCH that consumes the report. `chat-page.tsx` is unreachable from
+	 *   this bundle's entry points, so swapping the `card` and `composer` arms —
+	 *   writing the refusal where nothing renders — changed nothing here. The same
+	 *   hole the `answerValue` call-site pin above was written for.
+	 * - the VALUE handed to it. `document.querySelector('[aria-label="Answer
+	 *   options"]') !== null` is true for ANY options card, including the card of
+	 *   the NEXT question in the same ask, which cannot render this press's refusal
+	 *   (design round 1, D1). The unit assertions take that boolean as an argument,
+	 *   so they cannot see what the app passes.
+	 *
+	 * Pinned by reading the shipped source, comments stripped first so a quotation
+	 * cannot satisfy it — the `window-mode.test.mjs` pattern this file already uses.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+	// The live facts the report is built from, read from the refs the layout effect
+	// keeps current — never from the closure this handler resumed in, which is the
+	// value the deleted conjunct compared with itself. Both writes sit INSIDE a
+	// `useLayoutEffect`: the render-body spelling ran inside commits React can
+	// discard (StrictMode, Suspense), and a leaked newer key would render the
+	// moved-on sentence for a question still on screen (agent review round 2,
+	// MINOR-3). The effect is what keeps the liveness — it runs inside the commit,
+	// after DOM mutation and before paint — without that hazard.
+	assert.match(
+		code,
+		/useLayoutEffect\(\(\) => \{\s*\n\s*liveGateKey\.current = gateKey;\s*\n\s*liveOwnerEpoch\.current = canonical\.ownerEpoch;\s*\n\s*\}\);/,
+		"both live facts must be written together, inside the commit and not during a render React can discard",
+	);
+	/*
+	 * And the write is INSIDE that effect and nowhere else. Anchoring on the
+	 * indentation of one spelling would miss a re-spelled or one-lined write
+	 * (agent review round 3, G), so the effect's own body is removed first and the
+	 * assertion is about what is left: any assignment to either ref outside the
+	 * commit is the hazard the layout effect replaces, whatever it looks like.
+	 */
+	const effectBody = code.match(
+		/useLayoutEffect\(\(\) => \{[\s\S]*?\}\);/,
+	)?.[0];
+	assert.ok(
+		effectBody,
+		"the live-fact effect must be findable for this pin to mean anything",
+	);
+	assert.doesNotMatch(
+		code.replace(effectBody, ""),
+		/liveGateKey\.current =|liveOwnerEpoch\.current =/,
+		"the live facts must be written inside the commit and nowhere else - a render-body write lands even when React discards the render",
+	);
+	// The frame: the DOM read, the live key against the press's own key, and the
+	// two epochs. `sentEpoch` is the closure value ON PURPOSE (it is what the press
+	// sent); everything else is live.
+	assert.match(
+		code,
+		/liveGateKey: liveGateKey\.current,\s*\n\s*pressedGateKey: key,\s*\n\s*sentEpoch: canonical\.ownerEpoch,\s*\n\s*liveEpoch: liveOwnerEpoch\.current,\s*\n\s*cardOnScreen:/,
+		"the report must be given the live key, the press's own key, the epoch it SENT and the live one",
+	);
+	assert.match(
+		code,
+		/cardOnScreen:\s*\n?\s*document\.querySelector\('\[aria-label="Answer options"\]'\) !== null,/,
+		"the DOM read is the frame's cardOnScreen, and the identity is decided by the keys rather than by the query alone",
+	);
+	// The composer arm: the sentence AND the report's own code, in that arm.
+	assert.match(
+		code,
+		/case "composer":[\s\S]{0,1200}?setSendError\(report\.message\);\s*\n\s*setSendErrorCode\(report\.code\);/,
+		"the composer arm must write the report's message AND its code - the code is what stops the alert inheriting the draft's failure",
+	);
+	// The card arm writes to the card's own hold, and only with this press's key.
+	// `report.refused` and not a sentence composed here: the register is the
+	// outcome's, so the card carries the same string the composer would (UX round
+	// 2, U7 / QA Q1).
+	assert.match(
+		code,
+		/case "card":[\s\S]{0,600}?setAnswerState\(\{ key, sending: false, refused: report\.refused \}\);/,
+		"the card arm must write the report's own sentence onto the press's card state",
+	);
+	assert.doesNotMatch(
+		code,
+		/refused:\s*unsentAnswerMessage\(/,
+		"the card arm must not compose the definite sentence itself - that is what made an unknowable outcome claim a loss",
+	);
+	// The sent arm says nothing: no sentence is written on the winning path.
+	assert.match(
+		code,
+		/case "sent":[\s\S]{0,900}?setAnswerState\(\{ key, sending: false, refused: null \}\);\s*\n\s*return;/,
+		"the sent arm settles the card's hold and returns without a sentence",
+	);
+	assert.doesNotMatch(
+		code,
+		/setSendError\(\s*(?:QUESTION_MOVED_ON_MESSAGE|SETTLED_ELSEWHERE_MESSAGE|ANSWER_UNCONFIRMED_LEAD)/,
+		"the sentence is chosen by `answerReport`, never written by the call site",
+	);
+});
+
 test("the gate's focus restore refuses a composer the user has taken", () => {
 	/*
 	 * The delta's one new decision, and the one it added the hard way: handing
@@ -485,9 +623,15 @@ test("the gate's focus restore refuses a composer the user has taken", () => {
 	// Focus is somewhere else entirely.
 	assert.equal(composerFocusIsOurs(box(), other, false), false);
 	// A follow-up typed during the hold - the case round 3's guard caught.
-	assert.equal(composerFocusIsOurs(box({ value: "follow up" }), focused, false), false);
+	assert.equal(
+		composerFocusIsOurs(box({ value: "follow up" }), focused, false),
+		false,
+	);
 	// Whitespace is content: the user is in the box, whatever they typed.
-	assert.equal(composerFocusIsOurs(box({ value: "   " }), focused, false), false);
+	assert.equal(
+		composerFocusIsOurs(box({ value: "   " }), focused, false),
+		false,
+	);
 	// U13: clicked into during the hold, still empty, still focused. The caret is
 	// theirs, so the restore must leave it alone.
 	assert.equal(composerFocusIsOurs(focused, focused, true), false);
@@ -555,32 +699,415 @@ test("the card prints no ordinal a user could not type against", () => {
 	}
 });
 
-test("an answer that lost the gate is reported, whichever status carried it", () => {
+test("a press is reported from its OWN outcome, never from its card", () => {
 	/*
-	 * The two shapes a press can lose in, and the two it must stay quiet in.
+	 * The cases that discriminate, and the bug this replaces.
 	 *
-	 * The second of the losing shapes is the defect: the backend accepts an answer
-	 * for a gate another front end already answered and returns 200, so the
-	 * transport status cannot be the test — the gate having moved is. Revert the
-	 * `sent` half and the user is told nothing at all, which is what the round
-	 * measured (24 samples over 12s, all empty; QA round 2, F-A, UX round 2, U9).
+	 * The old verdict asked the DOM whether the card was still on screen, so a
+	 * press the owner TOOK was reported lost whenever its own success had already
+	 * removed that card — which is the ordering a busy turn produces, because the
+	 * answer's response and the owner's state push have no ordering between them.
+	 * The `sent` assertions below are that bug: they used to demand the sentence.
+	 *
+	 * `frame()` builds the live facts the caller reads at the moment the outcome
+	 * lands, and its defaults are the state a refused press usually leaves: the
+	 * card gone, no gate pending, and the epoch unmoved. Every arm below overrides
+	 * only the fact it is about, so a sentence can only change for the reason its
+	 * own case names.
 	 */
-	const refusal = lostAnswerMessage({ status: "sent" }, false);
-	assert.match(refusal ?? "", /already answered somewhere else/);
-	assert.match(
-		lostAnswerMessage({ status: "failed", error: new Error("409") }, false) ?? "",
-		/already answered somewhere else/,
+	const UNSENT =
+		"Your answer was not sent. The request could not be completed.";
+	const EPOCH = "40d350af1fb84884833ad3a3e84a2c8d";
+	const frame = (over = {}) => ({
+		liveGateKey: null,
+		pressedGateKey: "req-1:0",
+		sentEpoch: EPOCH,
+		liveEpoch: EPOCH,
+		cardOnScreen: false,
+		...over,
+	});
+	/*
+	 * The owner's own refusal: 409, and no typed code. ALL THREE of the route's
+	 * codeless refusals take this shape, which is why the status alone cannot pick
+	 * the sentence and the live facts must (code review round 1, MAJOR-1): a
+	 * settlement, an ask that advanced, and an epoch the previous runtime minted.
+	 * The bodies are the route's own, measured.
+	 */
+	const settled = new DesktopControlError(
+		409,
+		"This question or approval is no longer pending",
 	);
-	// Quiet while the gate this press belonged to still stands: the card owns the
-	// outcome there — the refusal sentence on a failure, the held card on a send.
-	assert.equal(lostAnswerMessage({ status: "sent" }, true), null);
+	const advanced = new DesktopControlError(
+		409,
+		"the answer does not match the current question",
+	);
+	const rolledOver = new DesktopControlError(
+		409,
+		"This answer belongs to an earlier session owner",
+	);
+
+	// (i) 2xx, with the store AND the card already cleared before the response
+	// resolves. The owner has our value, so the composer says nothing at all —
+	// the report is the same whatever the frame holds.
+	assert.deepEqual(answerReport({ status: "sent" }, frame()), { to: "sent" });
+	assert.deepEqual(
+		answerReport({ status: "sent" }, frame({ cardOnScreen: true })),
+		{ to: "sent" },
+	);
+
+	// (ii) all three refusals ARE the answer route's codeless refusal — the
+	// predicate is about the shape, and the sentence is about the state.
+	for (const error of [settled, advanced, rolledOver]) {
+		assert.equal(
+			answerRefusedWithoutACode(error),
+			true,
+			`${error.message} is the answer route refusing without a code`,
+		);
+	}
+
+	// (iii) the SPLIT, which is the fix for MAJOR-1: the same status, three
+	// states, three sentences — and each of them true of the state it renders in.
+	// A. No gate pending and the epoch unmoved: something settled it, and it was
+	// not this press (a press the owner took answers 2xx), so "somewhere else" is a
+	// fact.
+	assert.deepEqual(
+		answerReport({ status: "failed", error: settled }, frame()),
+		{
+			to: "composer",
+			message: SETTLED_ELSEWHERE_MESSAGE,
+			code: ANSWER_NOT_SENT_CODE,
+		},
+	);
+	// B. A gate pending that is a DIFFERENT question: the ask advanced past the
+	// question this press answered.
+	assert.deepEqual(
+		answerReport(
+			{ status: "failed", error: advanced },
+			frame({ liveGateKey: "req-1:1" }),
+		),
+		{
+			to: "composer",
+			message: QUESTION_MOVED_ON_MESSAGE,
+			code: ANSWER_NOT_SENT_CODE,
+		},
+	);
+	// C. The epoch MOVED: the press was addressed to a runtime instance that is
+	// gone, so nothing about who answered the question is established and the app
+	// must not claim another front end did. The honest sentence carries the
+	// backend's own reason — and this is the state the reviewer measured with the
+	// question still pending and still answerable, which the old wording got wrong.
+	assert.deepEqual(
+		answerReport(
+			{ status: "failed", error: rolledOver },
+			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
+		),
+		{
+			to: "composer",
+			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			code: ANSWER_NOT_SENT_CODE,
+		},
+	);
+	// D. The epoch moved with a gate still pending under the SAME key: the same
+	// arm, because the rollover is checked first and it is the fact that makes
+	// every other reading unusable. This is the state the reviewer measured.
+	assert.deepEqual(
+		answerReport(
+			{ status: "failed", error: rolledOver },
+			frame({
+				liveEpoch: "ffffffffffffffffffffffffffffffff",
+				liveGateKey: "req-1:0",
+				cardOnScreen: false,
+			}),
+		),
+		{
+			to: "composer",
+			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			code: ANSWER_NOT_SENT_CODE,
+		},
+	);
+
+	// (iv) the card carries the sentence only while it is the PRESSED card: on
+	// screen AND the pressed question. Either half alone is a card this report
+	// cannot use.
+	const onPressedCard = (error, over = {}) =>
+		answerReport(
+			{ status: "failed", error },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:0", ...over }),
+		);
+	// The card is on screen but it is the NEXT question's (design round 1, D1):
+	// the sentence goes to the composer, which is the surface that survives.
 	assert.equal(
-		lostAnswerMessage({ status: "failed", error: new Error("x") }, true),
-		null,
+		answerReport(
+			{ status: "failed", error: settled },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:1" }),
+		).to,
+		"composer",
 	);
-	// And quiet for a refused press whatever the gate did: nothing was sent, and
-	// the holder of the lock is the surface that reports it.
-	assert.equal(lostAnswerMessage({ status: "refused" }, false), null);
+	// The pressed question is live but no card has painted it yet.
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: settled },
+			frame({ cardOnScreen: false, liveGateKey: "req-1:0" }),
+		).to,
+		"composer",
+	);
+
+	// (v) THE REGISTER IS THE OUTCOME'S, NOT THE SURFACE'S (UX round 2, U7; QA
+	// round 2, Q1). The deadline shape leaves the card up *precisely because* the
+	// request is still in flight, so this is what a plain press reaches — and it
+	// used to be told "Your answer was not sent" and then denied it in the next
+	// clause. One error class, one claim, on whichever surface carries it.
+	const deadline = new DesktopControlError(
+		504,
+		"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it.",
+		undefined,
+		"deadline_exceeded",
+	);
+	assert.deepEqual(onPressedCard(deadline), {
+		to: "card",
+		refused: answerUnconfirmedMessage(deadline),
+	});
+	// The card's copy does not assert a loss, which is the whole finding.
+	assert.doesNotMatch(
+		onPressedCard(deadline).refused,
+		/your answer was not sent/i,
+		"the card must not claim a loss for an outcome the module calls unknowable",
+	);
+
+	// (vi) THE ROLLOVER SENTENCE IS THE APP'S OWN, ON BOTH SURFACES (UX round 2,
+	// U8; design round 2, D9). A rollover refusal arrives with the gate still
+	// painted, so the card arm is the one a plain press reaches while the composer
+	// arm is the one a race reaches; rendering the backend's raw `detail` on one and
+	// an authored sentence on the other made the copy a function of a race the user
+	// cannot see. Same string, both surfaces, and it is the app's voice rather than
+	// the route's — the route's sentence names an owner the user has never met.
+	assert.deepEqual(
+		onPressedCard(rolledOver, {
+			liveEpoch: "ffffffffffffffffffffffffffffffff",
+		}),
+		{
+			to: "card",
+			refused: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		},
+	);
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: rolledOver },
+			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
+		).message,
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+	);
+	assert.doesNotMatch(
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		/earlier session owner|session owner/i,
+		"the rollover sentence must not carry the backend's own vocabulary",
+	);
+	assert.match(
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		/\.$/,
+		"the family's sentences end in a full stop, and this one did not",
+	);
+
+	// (vii) THE SIXTH STATE the enumeration used to leave unnamed (agent review
+	// round 2, NIT-4): a codeless `409` with the pressed question STILL LIVE and its
+	// card painted. A `409` never settled OUR value, so the not-sent half holds, and
+	// with the gate still current the app has nothing better to say than what the
+	// route said.
+	assert.deepEqual(onPressedCard(settled), {
+		to: "card",
+		refused: `Your answer was not sent. ${settled.message}`,
+	});
+
+	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
+	// so rather than asserting a loss (UX round 1, U1 — the owner HAD kept the
+	// pressed label while the composer claimed it was not sent). The code is the
+	// app's existing one for an unconfirmable send.
+	for (const error of [
+		new DesktopControlError(
+			null,
+			"Desktop controls could not reach the backend process.",
+		),
+		new Error("409"),
+	]) {
+		assert.equal(
+			answerOutcomeIsUnknown(error),
+			true,
+			`${String(error.message)} carries no HTTP response, so the outcome is unknown`,
+		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: answerUnconfirmedMessage(error),
+			code: UNCONFIRMED_SEND_CODE,
+		});
+	}
+	/*
+	 * And the same arm for the failures the MAIN process and the DAEMON author: main's
+	 * deadline (a `504` it synthesises, whose own sentence already says "It may or may
+	 * not have reached the server; check the result before repeating it"), main's
+	 * transport failure, and the daemon's own hop failure. All three are measured —
+	 * `--hold-answers-ms` rendered the first against the committed rig — and all
+	 * three would otherwise land in the definite arm on their status alone, which is
+	 * the false claim this arm exists to stop (UX round 1, U1).
+	 *
+	 * The third is round 2's MAJOR-1: the answer route hands the value to the
+	 * session's owner over a WRITE-THEN-AWAIT-ACK frame, so a lost or slow ack
+	 * answers `503 {"code": "runtime_unreachable"}` — and the write happens before
+	 * the wait, so the request may have arrived and settled with only its ack lost.
+	 * That is the same fact `transport.failed` carries one hop up, and treating the
+	 * two differently produced the definite sentence for an answer the owner kept.
+	 */
+	for (const error of [
+		new DesktopControlError(
+			504,
+			"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it.",
+			undefined,
+			"deadline_exceeded",
+		),
+		new DesktopControlError(
+			503,
+			"Desktop controls could not reach the backend process.",
+			undefined,
+			"transport.failed",
+		),
+		new DesktopControlError(
+			503,
+			"Session owner is unavailable. Reconnect and reconcile before retrying.",
+			undefined,
+			DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
+		),
+	]) {
+		assert.equal(
+			answerOutcomeIsUnknown(error),
+			true,
+			`${String(error.message)} is the app losing sight of the request, not the owner refusing it`,
+		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: answerUnconfirmedMessage(error),
+			code: UNCONFIRMED_SEND_CODE,
+		});
+	}
+	/*
+	 * The two the BACKEND authors are NOT this arm, whatever their status: a `503`
+	 * the daemon sent (`pairing.plane-closed`) was answered and refused, and
+	 * `pairing.no-credential` is main refusing to send the request at all.
+	 */
+	for (const error of [
+		new DesktopControlError(
+			503,
+			"The daemon is running with its desktop plane shut.",
+			undefined,
+			"pairing.plane-closed",
+		),
+		new DesktopControlError(
+			503,
+			"This app holds no token for the daemon it can see.",
+			undefined,
+			"pairing.no-credential",
+		),
+	]) {
+		assert.equal(
+			answerOutcomeIsUnknown(error),
+			false,
+			`${String(error.message)} was a refusal, not a lost request`,
+		);
+	}
+
+	// (vi) a status the backend really sent: it was heard and it refused, so
+	// "your answer was not sent" is what the backend just said. A coded 409 keeps
+	// its own code and its own remedies.
+	for (const error of [
+		new DesktopControlError(503, "Session owner is unavailable."),
+		new DesktopControlError(
+			409,
+			"That message is too large to send.",
+			undefined,
+			"request_too_large",
+		),
+	]) {
+		assert.equal(
+			answerRefusedWithoutACode(error),
+			false,
+			`${String(error.message)} must not be read as the answer route's bare refusal`,
+		);
+		assert.equal(
+			answerOutcomeIsUnknown(error),
+			false,
+			`${String(error.message)} is a response the backend sent`,
+		);
+		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
+			to: "composer",
+			message: unsentAnswerMessage(error),
+			// The transport's own code where it carried one — `desktopResult`
+			// attaches one for the statuses it classifies — and the report's own
+			// otherwise, because the alert's hint must be a function of THIS
+			// failure rather than of the draft's last one.
+			code: errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE,
+		});
+	}
+	/*
+	 * And the SETTLED sentence must not be rendered for a refusal the live facts
+	 * do not establish — the wording is true only of the arm that has no gate
+	 * pending, which is what the split above is for. Pinned here so a reinstatement
+	 * is caught by the instrument rather than by a reader who would have to know
+	 * the route's three bodies (code review round 1, MAJOR-1).
+	 *
+	 * The rollover's own sentence is the app's, not the route's (design round 2,
+	 * D9), so the pin is also that the backend's `detail` never reaches a user here.
+	 */
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: rolledOver },
+			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
+		).message,
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		"the settled sentence must not be reached when the epoch moved",
+	);
+	/*
+	 * The COPY of the two remaining sentences, pinned for what each may claim.
+	 * A comparison against the imported constant cannot see a rewording, so these
+	 * are the assertions that catch one — and each is about the arm the sentence
+	 * actually renders in:
+	 *
+	 *   - the moved-on sentence must not name a cause it cannot establish. The ask
+	 *     ADVANCING produces it too, and there is no other front end in that case.
+	 *   - the unknown-outcome sentence must not assert a loss at all. That is the
+	 *     whole reason it exists (UX round 1, U1).
+	 */
+	assert.doesNotMatch(
+		QUESTION_MOVED_ON_MESSAGE,
+		/somewhere else|another front end|other (?:device|window|tab)/i,
+		"the moved-on sentence must not name a cause the ask advancing cannot establish",
+	);
+	assert.doesNotMatch(
+		ANSWER_UNCONFIRMED_LEAD,
+		/your answer was not sent/i,
+		"the unknown-outcome sentence must not assert a loss the app cannot know",
+	);
+
+	// The reason is carried, and only authored copy is: a `UserFacingError` is a
+	// sentence we wrote, while a runtime exception's `message` is not copy at all.
+	assert.equal(
+		unsentAnswerMessage(
+			new UserFacingError("That message is too large to send."),
+		),
+		"Your answer was not sent. That message is too large to send.",
+	);
+	assert.equal(
+		unsentAnswerMessage(new TypeError("fetch failed")),
+		UNSENT,
+		"a stack-trace fragment must never become the user's copy",
+	);
+
+	// And refused stays silent whatever the frame holds: nothing was sent, and the
+	// holder of the lock is the surface that reports it.
+	assert.deepEqual(answerReport({ status: "refused" }, frame()), {
+		to: "refused",
+	});
+	assert.deepEqual(
+		answerReport({ status: "refused" }, frame({ cardOnScreen: true })),
+		{ to: "refused" },
+	);
 });
 
 test("recommended is optional, and marks only a real index", () => {
@@ -672,10 +1199,7 @@ test("the production transcript renders options as real controls", () => {
 	// restating it.
 	assert.ok(markup.includes("<fieldset"), "the options are a labelled group");
 	assert.ok(markup.includes('aria-label="Answer options"'));
-	assert.ok(
-		markup.includes("Popup is not open"),
-		"every option label paints",
-	);
+	assert.ok(markup.includes("Popup is not open"), "every option label paints");
 	assert.ok(markup.includes("Recommended"), "the recommended option is marked");
 	// The multi-question prefix survives, and the hint names the affordances
 	// while keeping the free-text path honest. The digits are named because they
@@ -750,7 +1274,8 @@ test("an answer in flight says so, and the card holds itself after a press", () 
 			...base,
 			answer: {
 				sending: false,
-				refused: "Your answer was not sent. The request could not be completed.",
+				refused:
+					"Your answer was not sent. The request could not be completed.",
 			},
 		}),
 	);

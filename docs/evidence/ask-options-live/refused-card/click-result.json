@@ -1,0 +1,121 @@
+{
+  "origin": "http://localhost:5301",
+  "session": "a1a1a1a1a1a1",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "driver": "scripts/click-proof.mjs",
+  "at": "2026-09-20T19:33:17.419Z",
+  "arm": {
+    "armed": true
+  },
+  "before": {
+    "found": true,
+    "count": 3,
+    "tags": [
+      "BUTTON",
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.Popup is not openRecommendedWalk me through opening it first.",
+      "2.Popup is open - generate the pairing codeI will read the code back to you.",
+      "3.Something else"
+    ],
+    "accessibleName": [
+      "Popup is not openRecommendedWalk me through opening it first.",
+      "Popup is open - generate the pairing codeI will read the code back to you.",
+      "Something else"
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      false,
+      false,
+      false
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  },
+  "frames": {
+    "before": "localOperatorDark.webp",
+    "after": "localOperatorDark.webp"
+  },
+  "aim": {
+    "ok": true,
+    "x": 960,
+    "y": 644,
+    "index": 1,
+    "label": "Popup is open - generate the pairing codeI will read the code back to you.",
+    "hitTested": "SPAN (the option itself)",
+    "rect": {
+      "top": 614,
+      "height": 59
+    }
+  },
+  "resolved": true,
+  "resolution": "refused",
+  "gateCleared": false,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789932805574.6392,
+      "rejected": "This answer belongs to an earlier session owner",
+      "status": 409,
+      "answeredAt": 1789932805574.678,
+      "deliveredAt": 1789932805575.432
+    }
+  ],
+  "answersFrom": "route",
+  "ownerAnswer": null,
+  "tree": {
+    "head": "7fbee5e7d230dc91bb489ae2b716903f8d8a660d",
+    "srcTree": "f7ca3a76a19ae2cb6ea3463fc1c14663c5e15a52",
+    "srcDirty": false,
+    "srcStatus": null
+  },
+  "clearedAt": null,
+  "clearedAfterPressMs": null,
+  "ordering": null,
+  "report": {
+    "movedOnSentence": false,
+    "settledSentence": false,
+    "unconfirmedSentence": false,
+    "notSentCopy": [],
+    "cardUp": true,
+    "cardRefusal": true,
+    "cardUnknown": false,
+    "alerts": []
+  },
+  "after": {
+    "found": true,
+    "count": 3,
+    "tags": [
+      "BUTTON",
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.Popup is not openRecommendedWalk me through opening it first.",
+      "2.Popup is open - generate the pairing codeI will read the code back to you.",
+      "3.Something else"
+    ],
+    "accessibleName": [
+      "Popup is not openRecommendedWalk me through opening it first.",
+      "Popup is open - generate the pairing codeI will read the code back to you.",
+      "Something else"
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      true,
+      true,
+      true
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  }
+}

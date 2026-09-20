@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { PROTO_VERSION } from "./protocol";
+import { HOST_CAPABILITIES, PROTO_VERSION } from "./protocol";
 
 /**
  * The discovery state file, and the key inside it.
@@ -53,6 +53,15 @@ export interface BrowserHostStateFile {
 	host: "ui";
 	app_version: string;
 	profile_dir: string;
+	/** The wire methods this build serves (design §6.3), read by the harness BEFORE
+	 * it dispatches: a record with no `capabilities` key is an old app host, and the
+	 * tool degrades with a typed `capability_unsupported` naming "update the desktop
+	 * app" instead of sending a method that would burn its whole budget. Additive
+	 * because `UiHostState` is `extra="ignore"` — an old harness ignores the key.
+	 *
+	 * A list and not a version, because version arithmetic cannot tell "older" from
+	 * "current but wedged", whose remedies are opposite (§6.3). */
+	capabilities: string[];
 	tabs: number;
 	agent_tabs: number;
 	heartbeat_at: number;
@@ -208,6 +217,10 @@ export class BrowserStateWriter {
 				host: "ui",
 				app_version: this.appVersion,
 				profile_dir: facts.profileDir,
+				// Advertised from the ONE list the `/health` route also reads (§6.3), so the
+				// record a session reads and the probe Python acquits a stale record with
+				// cannot name different capabilities.
+				capabilities: [...HOST_CAPABILITIES],
 				tabs: facts.tabs,
 				agent_tabs: facts.agentTabs,
 				console: facts.console ?? false,

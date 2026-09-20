@@ -50,6 +50,19 @@ export interface RegisterBrowserIpcOptions {
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
 	clearData: (what: ClearWhat) => Promise<void>;
+	/** Reveal the quarantine directory the host is writing into (§16.4).
+	 *
+	 * WHY IT TAKES NO ARGUMENT, which is the whole design of this channel: the
+	 * directory is composed by the HARNESS (`browser_files.session_dir`) and this
+	 * host must never open a path a caller named — a renderer-supplied path in an
+	 * IPC handler is a disclosure primitive, and the download root is the one place in
+	 * this feature where a string could have become a directory. The renderer asks
+	 * for "the download directory"; the host answers with the one it used.
+	 *
+	 * It returns `shell.openPath`'s own contract — "" on success, a message
+	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
+	 * Finder problem, not a fault in the agent's download. */
+	revealDownloads: () => Promise<string>;
 	log: (message: string) => void;
 }
 
@@ -75,6 +88,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-clear-data",
 	"browser-webauthn-respond",
 	"browser-webauthn-pending",
+	"browser-reveal-downloads",
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -262,6 +276,19 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		await options.clearData(what);
 		options.log(`[browser] cleared browsing data: ${what}`);
 		return { cleared: what };
+	});
+
+	// The user's own click, on a human action: the agent has no way to reach this
+	// channel (§11.4's "no auto-open ... from the tool"). It carries no argument, so
+	// there is nothing for a caller to point somewhere else.
+	ipcMain.handle("browser-reveal-downloads", async (event) => {
+		authorize(event);
+		const message = await options.revealDownloads();
+		if (message)
+			options.log(
+				`[browser] could not reveal the download directory: ${message}`,
+			);
+		return { opened: message === "", message };
 	});
 }
 

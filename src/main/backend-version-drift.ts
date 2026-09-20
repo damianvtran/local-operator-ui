@@ -371,9 +371,11 @@ export function driftInstallReading(input: {
 /**
  * What the app can tell about the daemon's own work, from its session roster.
  *
- * `unknown` is a real state and it is NOT `idle`: a read that failed, or a
- * daemon whose rows predate `live_state`, must not license a restart that could
- * land on a running turn. See `servingWorkStateFromSessions`.
+ * `unknown` is a real state and it is NOT `idle`: a read that failed, a
+ * listing whose own liveness read failed (`rosterLivenessDegraded`), a daemon
+ * whose rows predate `live_state`, or a row whose spelling this app cannot
+ * interpret must not license a restart that could land on a running turn. See
+ * `servingWorkStateFromSessions`.
  */
 export type ServingWorkState = "idle" | "busy" | "unknown";
 
@@ -396,23 +398,186 @@ export type ServingWorkState = "idle" | "busy" | "unknown";
  * A `wedged` row does not hold the restart either - a wedged row is a live pid
  * that stopped reporting, i.e. somebody else's silence rather than this
  * daemon's work, and holding on it would make the repair inert forever.
+ *
+ * AND A ROW IT CANNOT READ IS NOT A QUIET ONE. The verdict is `idle` only when
+ * every row is readable and none is busy; anything else - a listing whose scan
+ * failed, a row with no `live_state` at all, a `live_state` this build has never
+ * heard of - is `unknown`, which the restart gates treat as a reason to WAIT
+ * (and, at the end of a bounded wait, to refuse). A defaulted or unreadable
+ * verdict may not be spent as a negative about work: that is the whole reason
+ * the route publishes `degraded` (`DEGRADED_LIVENESS_SOURCE`).
  */
-export function servingWorkStateFromSessions(body: unknown): ServingWorkState {
+/**
+ * One session row of a `sessions.list` answer, reduced to what a reader outside
+ * the chat surface needs.
+ *
+ * The ROW rather than only the verdict, because two callers ask two questions
+ * of the same read and must not answer them from two parses: the version-drift
+ * gate asks whether anything is running (`servingWorkStateFromSessions`), and
+ * the update path's fleet gate names who was running and re-engages the
+ * sessions a restart displaced (`backend/fleet-drain.ts`).
+ *
+ * `liveState` is `null` when the daemon does not publish `live_state` AT ALL -
+ * which is a fact about the build rather than about the session, and the
+ * difference between that and a cold row is what stops this being read as
+ * "idle" on a server too old to say.
+ */
+export type FleetRosterRow = {
+	sessionId: string;
+	/** The row's own display name, for a sentence that has to name somebody. */
+	name: string;
+	/** The record's own kind: "tui", "exec", "daemon", or "" for a cold row. */
+	kind: string;
+	/** `live_state`, or null when the daemon predates the field. */
+	liveState: string | null;
+};
+
+/**
+ * The catalogue's own name for the decoration an update gate may not shrug off.
+ *
+ * The route lifts the sources that could not be read onto the LISTING as
+ * `degraded` (`server/routes/desktop_sessions.py`), and it exists because a
+ * defaulted verdict is indistinguishable from a measured one at the client:
+ * when `registry.scan()` raises, `decorate_rows` leaves every row at its
+ * default `live_state: ""` and names this source, and `""` is a real string -
+ * so a guard that looks for the field's ABSENCE (see the old-daemon rule in
+ * `servingWorkStateFromSessions`) does not see it. `""` is also the catalogue's
+ * spelling for a COLD row, a conversation with no record at all, which is why
+ * the listing-level marker is the only thing that can tell a failed scan from a
+ * quiet machine.
+ */
+export const DEGRADED_LIVENESS_SOURCE = "liveness";
+
+/**
+ * Whether the listing says its own LIVENESS read failed.
+ *
+ * Only liveness. `wakes` and `attention` are other decorations on the same rows,
+ * and a listing missing either of them still answers the only question a restart
+ * gate asks.
+ */
+export function rosterLivenessDegraded(body: unknown): boolean {
+	const degraded = (body as { result?: { degraded?: unknown } } | null)?.result
+		?.degraded;
+	return Array.isArray(degraded) && degraded.includes(DEGRADED_LIVENESS_SOURCE);
+}
+
+/**
+ * The `live_state` spellings the daemon publishes, from the producer itself
+ * (`server/utils/desktop_feed.py::_row_for`, and `session/catalog.py`'s
+ * `decorate_rows` for the same set on the list route): `""` for a row with no
+ * record at all, then `wedged`, `busy`, `attached`, `idle`.
+ *
+ * WHY A CLOSED SET IS THE RIGHT SHAPE FOR A SAFETY GATE. A word this list does
+ * not know is a word whose meaning this app cannot state, and the gate's whole
+ * job is to not assert "nothing is running" on evidence it cannot read: a
+ * future daemon that publishes `starting` must be added here deliberately by
+ * somebody who knows what it means about a turn, rather than being silently
+ * read as quiet. The cost of being wrong in this direction is a refused press
+ * with a sentence that says so; the other direction restarts a daemon under
+ * work.
+ */
+const KNOWN_LIVE_STATES = new Set(["", "wedged", "busy", "attached", "idle"]);
+
+/**
+ * The roster `sessions.list` answered with, or null when there is no roster.
+ *
+ * Null is a read that could not be taken - a body that is not the answer to
+ * this route, a response whose `sessions` is not an array, or a listing whose
+ * own liveness read failed - and it is NOT an empty fleet. Every caller treats
+ * the two differently, and `null` is the one arm that already means "unknown"
+ * everywhere: the verdict below, and the fleet gate's snapshot, which declines
+ * to infer a displace list from a roster it could not read.
+ */
+export function fleetRosterFromSessions(
+	body: unknown,
+): FleetRosterRow[] | null {
 	const sessions = (body as { result?: { sessions?: unknown } } | null)?.result
 		?.sessions;
-	if (!Array.isArray(sessions)) return "unknown";
-	const rows = sessions.filter(
-		(row): row is Record<string, unknown> =>
-			typeof row === "object" && row !== null,
-	);
-	if (rows.some((row) => row.live_state === "busy")) return "busy";
+	if (!Array.isArray(sessions)) return null;
 	/*
-	 * No row carrying `live_state` at all is a daemon predating the field, not a
-	 * quiet machine: `_row_for` always sets it ("" for a cold row), so the key's
-	 * absence is a fact about the build rather than about the work. Reading that
-	 * as idle would restart under work this app cannot see.
+	 * A DEGRADED LIVENESS READ IS NOT A ROSTER (review round 1, B1 = QA Q-1).
+	 * Every row it carries may be defaulted, so this is the one listing whose
+	 * rows must not be believed: returning null puts every caller on the arm it
+	 * already handles, which is why the fix is here rather than in the busy
+	 * predicate - a second notion of "this row cannot be trusted" beside the
+	 * "this read cannot be trusted" one is how the two would drift.
 	 */
-	if (rows.length > 0 && rows.every((row) => !("live_state" in row)))
+	if (rosterLivenessDegraded(body)) return null;
+	return sessions
+		.filter(
+			(row): row is Record<string, unknown> =>
+				typeof row === "object" && row !== null,
+		)
+		.map((row) => ({
+			sessionId: typeof row.id === "string" ? row.id : "",
+			name: typeof row.name === "string" ? row.name : "",
+			kind: typeof row.kind === "string" ? row.kind : "",
+			liveState: typeof row.live_state === "string" ? row.live_state : null,
+		}));
+}
+
+/**
+ * The rows whose session is running a turn, i.e. the ones a restart may not cut
+ * off.
+ *
+ * THE busy SPELLING, stated once for both readers of this roster. A `wedged`
+ * row is deliberately NOT in here - see `servingWorkStateFromSessions` for why
+ * somebody else's silence must not hold a repair forever.
+ */
+export function busyRosterRows(
+	rows: readonly FleetRosterRow[],
+): FleetRosterRow[] {
+	return rows.filter((row) => row.liveState === "busy");
+}
+
+/**
+ * The daemon's work state, read from the roster `sessions.list` answers with.
+ *
+ * WHY THIS SIGNAL. The app has no turn-in-flight signal of its own: the daemon
+ * knows whether a turn is running and main does not. What the daemon does
+ * publish is `live_state` on every session row, set from the session record's
+ * own `busy` bit (`server/utils/desktop_feed.py::_row_for`), which is published
+ * by the runtime's turn-boundary hook and therefore means exactly "a turn is
+ * running in this conversation". That is a real signal about work in flight,
+ * which a count of open renderer subscriptions is not: a mounted chat holds a
+ * subscription while it sits idle, and a background turn in a conversation
+ * nobody has open holds none - the correlation the old guard had backwards.
+ *
+ * WHAT IT DOES NOT COVER, stated rather than implied: work the daemon owns
+ * outside any session (its scheduler's own tick) is not on this roster, and the
+ * daemon's finer-grained predicates are not reachable over the desktop surface.
+ * A `wedged` row does not hold the restart either - a wedged row is a live pid
+ * that stopped reporting, i.e. somebody else's silence rather than this
+ * daemon's work, and holding on it would make the repair inert forever.
+ */
+export function servingWorkStateFromSessions(body: unknown): ServingWorkState {
+	const rows = fleetRosterFromSessions(body);
+	if (rows === null) return "unknown";
+	if (busyRosterRows(rows).length > 0) return "busy";
+	/*
+	 * IDLE IS A CLAIM ABOUT EVERY ROW, so every row has to be readable before it
+	 * may be made (review round 1, B1): a row whose `live_state` is ABSENT (a
+	 * daemon predating the field - `_row_for` always sets it, "" for a cold row,
+	 * so the key's absence is a fact about the build rather than about the work)
+	 * or UNRECOGNISED (a spelling this app cannot interpret) is not a row this
+	 * gate can call quiet, and one such row makes the whole roster unreadable
+	 * rather than just itself: the alternative is a count of known-idle rows
+	 * licensing a restart under the one row nobody could read.
+	 *
+	 * BLANK IS NOT IN THAT SET, and the distinction is load-bearing rather than
+	 * a loosening: `""` is the catalogue's own spelling for a row with NO RECORD
+	 * AT ALL, which is what most rows of a real store are (5,267 sessions on the
+	 * operator's, nearly all cold), and refusing on it would make the gate inert
+	 * on every machine. What makes the defaulted blank of a failed scan safe to
+	 * distinguish from a cold one is the LISTING's own `degraded` marker, which
+	 * `fleetRosterFromSessions` has already applied above: a roster whose scan
+	 * raised never reaches this line.
+	 */
+	if (
+		rows.some(
+			(row) => row.liveState === null || !KNOWN_LIVE_STATES.has(row.liveState),
+		)
+	)
 		return "unknown";
 	return "idle";
 }

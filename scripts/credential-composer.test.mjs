@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile, unlink, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -172,6 +173,29 @@ const calls = [];
 const credentialStoreReply = { ok: true };
 const credentialList = [{ key: "LOP_SECRET_ABCDEFGH", source: "command" }];
 
+/*
+ * THE TRANSPORT'S ANSWER FOR THIS CASE, when the healthy fixture above is not
+ * what the case is about.
+ *
+ * The store's outcome is the subject of the M3b cases below, and every one of
+ * them needs a transport that answers — or refuses to answer — DIFFERENTLY for
+ * the store than for everything else the composer asks in the same mount. An
+ * override that returns `undefined` leaves the default fixture in charge, so a
+ * case only has to name the requests it is changing. It is cleared by the
+ * `after` hook so one case's transport cannot leak into the next.
+ */
+let transportOverride = null;
+
+/** A response the way the mocked bridge builds one, for an override to return. */
+const transportSays = (status, result) => ({
+	ok: status >= 200 && status < 300,
+	status,
+	json: async () => ({ status, body: { result } }),
+});
+
+/** The op result the fixture answers with, wrapped as the transport wraps it. */
+const credentialResult = (result) => transportSays(200, result);
+
 const COMMANDS = [
 	{
 		name: "credential",
@@ -245,6 +269,15 @@ const answer = (request) => {
 	return {};
 };
 
+/**
+ * The REAL fetch, kept before the fixture below replaces the global one.
+ *
+ * One case drives a real loopback HTTP server instead of a stub — the same
+ * instrument `desktop-contract.test.mjs` uses on the main-process half — and it
+ * needs a way to reach the socket that is not the composer's own stubbed one.
+ */
+const nodeFetch = globalThis.fetch.bind(globalThis);
+
 globalThis.fetch = async (url, init) => {
 	let request = {};
 	try {
@@ -259,11 +292,7 @@ globalThis.fetch = async (url, init) => {
 	 * mock that answers the inner envelope directly leaves every desktop query
 	 * in an error state — which is a silent way to make a test prove nothing.
 	 */
-	return {
-		ok: true,
-		status: 200,
-		json: async () => ({ status: 200, body: { result: answer(request) } }),
-	};
+	return transportOverride?.(request) ?? transportSays(200, answer(request));
 };
 
 /* ------------------------------------------------------------------ */
@@ -343,6 +372,7 @@ let root;
 after(() => {
 	root?.unmount();
 	client.clear();
+	transportOverride = null;
 	for (const id of liveTimers) {
 		clearTimeout(id);
 		clearInterval(id);
@@ -1015,6 +1045,585 @@ test("a credential minted in a NEW chat is stored by the send that creates the s
 	assert.ok(store, "the value was stored on the session the send created");
 	assert.equal(store.request.sessionId, "draft-session-id");
 	assert.equal(store.request.value, "FIRST-MESSAGE-SECRET");
+});
+
+/* ------------------------------------------------------------------ */
+/* M3b — a store the session never answered is RESOLVED, not guessed    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE OPERATOR'S DEFECT, 2026-09-19, and the invariant these cases pin: the
+ * model is never told "NOT stored" when the session's store holds the key.
+ *
+ * What they reported: an API key pasted into the composer through the inline
+ * capture, a chip drawn correctly, a send — and a message that reached the model
+ * reading `[credential NOT stored — the session could not be reached; try
+ * again]`, while `list_variables` in that same session listed the key and every
+ * bash child carried it in its environment. The value was stored; the app said
+ * it was not.
+ *
+ * The mechanism was measured rather than inferred. The store has to ENGAGE the
+ * session's runtime before it can answer (`desktop_lifecycle.py` →
+ * `bridge.remote.bind_runtime()`), and on a real isolated backend that cost
+ * 4.2 s cold and 5.6-8.2 s with six cold sessions in flight — every one of them
+ * answering 200 OK afterwards. The seam abandoned the store at 5 s (the TUI's
+ * in-process bound, copied onto a transport that is not in-process) and wrote a
+ * not-stored citation on the strength of that silence alone.
+ *
+ * So these cases drive the seam's own wire responses, one arm of the
+ * classification each:
+ *
+ *  - an answer that was LOST while the write landed;
+ *  - a 5xx that a re-issue repaired;
+ *  - a session that never answered at all, where the citation must say so;
+ *  - a 4xx whose session HOLDS the key, which is the reviewer's own counterexample
+ *    and the reason a 4xx is no longer a verdict (round 1, MAJOR-1);
+ *  - a 4xx whose session does NOT hold it, where the not-stored citation stands;
+ *  - a 4xx whose witness read cannot answer either, where nothing may be asserted.
+ *
+ * The first four are the same assertion from four directions — no citation may
+ * claim the store refused a write the store actually holds — and the last two are
+ * the guard on the other side: resolving an inconclusive outcome must not soften a
+ * refusal that was actually made, and must not invent one either.
+ */
+
+/**
+ * Send one first message that cites a freshly pasted secret, and return what the
+ * seam handed the send.
+ *
+ * The M3 gesture exactly, because that is where this defect happened: a NEW chat
+ * has no session until the send creates one, so the store runs inside
+ * `beforeAdmission` with the id the create resolved — the window in which a cold
+ * runtime is engaged. The arming read the composer makes when the capture opens
+ * is a no-op here (`credentialSessionId` is undefined on a draft pane), which is
+ * what lets the call counts below be read as the SEND's own.
+ */
+async function sendFirstMessage(value, override = null) {
+	calls.length = 0;
+	transportOverride = override;
+	let rendered;
+	let handed;
+	const pageSent = new Promise((resolve) => {
+		handed = resolve;
+	});
+	let settled = null;
+	const frame = await mount({
+		conversationId: undefined,
+		onSendMessage: async (_content, _attachments, _echo, _typed, seam) => {
+			handed(seam ?? null);
+			if (seam) settled = seam("draft-session-id");
+			return true;
+		},
+	});
+	await openCapture(frame);
+	await paste(frame, value);
+	await clickSend(frame);
+	/*
+	 * THE GESTURE IS NOT OVER WHEN THE CLICK RETURNS, which is the composer's own
+	 * shape rather than the rig's: the store runs inside the seam the page's send
+	 * calls, so the click can settle while the store is still waiting on a cold
+	 * runtime. A case that asserts the CITATION has to wait for the promise that
+	 * seam returned, not for the click — and the editor cases above get away with
+	 * not doing so only because their store answers immediately.
+	 */
+	const seam = await pageSent;
+	if (settled) rendered = await settled;
+	assert.equal(
+		seam === null || typeof seam === "function",
+		true,
+		"the draft send offered the store seam",
+	);
+	transportOverride = null;
+	return String(rendered);
+}
+
+/** How many times one credential op crossed the transport in this test. */
+const opCount = (action) =>
+	calls.filter(
+		(call) =>
+			call.request.op === "sessions.credential" &&
+			call.request.action === action,
+	).length;
+
+/** The stored citation, which is what a landed key must produce. */
+const STORED_CITATION_SHAPE =
+	/\[credential LOP_SECRET_[A-Z2-9]{8} \(\d+ chars\)/;
+
+test("a store whose answer was lost, but whose write landed, cites the name", async () => {
+	/*
+	 * THE OPERATOR'S CASE. The transport loses the response and the write lands
+	 * anyway — which is not a hypothesis here: the operator's own session is the
+	 * one that stored the key and told the model it had not. The seam may not
+	 * publish that silence as an outcome, and the session's own list is what
+	 * settles it.
+	 */
+	let landed = "";
+	const rendered = await sendFirstMessage("FIRST-MESSAGE-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store") {
+			// The write lands and the answer never comes back.
+			landed = request.key;
+			return Promise.reject(new Error("socket closed"));
+		}
+		if (request.action === "list")
+			return credentialResult({
+				data: {
+					ok: true,
+					credentials: landed ? [{ key: landed, source: "command" }] : [],
+				},
+			});
+		return undefined;
+	});
+
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a stored key was cited as missing: ${rendered}`,
+	);
+	assert.match(rendered, STORED_CITATION_SHAPE);
+	assert.equal(opCount("store"), 2, "the silent attempt was re-issued");
+	assert.equal(opCount("list"), 1, "the session's own list answered it");
+});
+
+test("a store that failed once and answered on the re-issue is cited as stored", async () => {
+	/*
+	 * The re-issue is a REPAIR as well as a question: the same key and value are
+	 * idempotent, so an attempt that answers `ok` has put the value in the store
+	 * whether or not the first one did — and the model gets the confident citation
+	 * it needs to use the name. A 5xx is the arm that reaches this without a lost
+	 * socket (the relay saying it could not), and it needs no list read at all.
+	 */
+	let attempts = 0;
+	const rendered = await sendFirstMessage(
+		"SECOND-ATTEMPT-SECRET",
+		(request) => {
+			if (request.op !== "sessions.credential" || request.action !== "store")
+				return undefined;
+			attempts += 1;
+			if (attempts === 1)
+				return transportSays(503, {
+					detail: {
+						code: "runtime_unreachable",
+						message: "The runtime is not up.",
+					},
+				});
+			return credentialResult({ data: { ok: true, key: request.key } });
+		},
+	);
+
+	assert.equal(opCount("store"), 2);
+	assert.equal(opCount("list"), 0, "an answered re-issue needs no list read");
+	assert.ok(!rendered.includes("NOT stored"), rendered);
+	assert.match(rendered, STORED_CITATION_SHAPE);
+});
+
+test("a store nobody answered is cited as unconfirmed, never as NOT stored", async () => {
+	/*
+	 * THE HONEST FLOOR, and the one case where the sentence must not name an
+	 * outcome at all: both store attempts and the list read are silent, so nothing
+	 * on the wire ever said whether the write landed. The citation has to say what
+	 * is true (nobody knows), name the key it is talking about, and hand the agent
+	 * the check that settles it — `list_variables`, which is how the operator's own
+	 * session recovered a key a citation had denied.
+	 *
+	 * The list read is left hanging rather than refused, which is also the one
+	 * place in this file that exercises the seam's RESOLUTION bound: a retry that
+	 * never answers has to give up and reach this arm rather than park the send.
+	 */
+	const rendered = await sendFirstMessage(
+		"NOBODY-ANSWERED-SECRET",
+		(request) => {
+			if (request.op !== "sessions.credential") return undefined;
+			if (request.action === "store")
+				return Promise.reject(new Error("socket closed"));
+			if (request.action === "list") return new Promise(() => {});
+			return undefined;
+		},
+	);
+
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`silence was published as an outcome: ${rendered}`,
+	);
+	assert.match(
+		rendered,
+		/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+	);
+	assert.equal(opCount("store"), 2);
+	assert.equal(opCount("list"), 1, "the list read was attempted and gave up");
+});
+
+test("a 409 whose session does NOT hold the key keeps the not-stored citation", async () => {
+	/*
+	 * THE OTHER SIDE OF THE LINE, with the witness read now in the path (code review
+	 * round 1, MAJOR-1). A 409 proves that something ANSWERED; it does not prove the
+	 * value is absent, because the route raises the same status for the store's own
+	 * refusal AND for the owner's `disconnected` answer to a store it already applied
+	 * (`desktop_lifecycle.py` → `attached.py`'s `credential_op`, which returns that
+	 * shape both when the viewer is away and when the client RAISED).
+	 *
+	 * Here the session's own list answers and does not name the key: two pieces of
+	 * evidence agree, the refusal stands, and it is not weakened into "unconfirmed" —
+	 * that would trade one false statement for another.
+	 */
+	const rendered = await sendFirstMessage("REFUSED-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		if (request.action === "list")
+			return credentialResult({ data: { ok: true, credentials: [] } });
+		return undefined;
+	});
+
+	assert.equal(opCount("store"), 1, "an answered refusal needs no re-issue");
+	assert.equal(opCount("list"), 1, "and it does need the witness read");
+	assert.match(
+		rendered,
+		/\[credential NOT stored — its value did not survive; ask the operator to paste it again\]/,
+	);
+});
+
+test("a 409 whose session HOLDS the key is cited as stored, not as a lost value", async () => {
+	/*
+	 * THE REVIEWER'S COUNTEREXAMPLE (round 1, MAJOR-1), and the reason the 4xx arm is
+	 * no longer a verdict. The probe they ran against the shipped component answered
+	 * the store with the route's real 409 shape while offering a list that held the
+	 * key — and the head before this round cited
+	 * `[credential NOT stored — its value did not survive…]` with ONE store op and
+	 * ZERO list ops. That is the operator's own defect one status class over: the
+	 * write landed, and the model was told it had not.
+	 */
+	let landed = "";
+	const rendered = await sendFirstMessage("PROBE-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store") {
+			// The write lands and the owner's own answer is lost, which is what the
+			// route turns into this 409.
+			landed = request.key;
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		}
+		if (request.action === "list")
+			return credentialResult({
+				data: {
+					ok: true,
+					credentials: landed ? [{ key: landed, source: "command" }] : [],
+				},
+			});
+		return undefined;
+	});
+
+	assert.equal(
+		opCount("store"),
+		1,
+		"the refusal is an answer, so nothing is re-issued",
+	);
+	assert.equal(
+		opCount("list"),
+		1,
+		"and the witness read is what tells this 409 apart",
+	);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a key the store holds was cited as missing: ${rendered}`,
+	);
+	assert.match(rendered, STORED_CITATION_SHAPE);
+});
+
+test("a 409 whose witness read cannot answer is cited as unconfirmed", async () => {
+	/*
+	 * THE THIRD ARM, and the one that keeps the other two honest: the store answered a
+	 * 4xx (which may be a refusal or a lost reply) and the read that would settle it
+	 * cannot answer either. Neither outcome is proven, so neither may be cited — the
+	 * seam says what it knows.
+	 */
+	const rendered = await sendFirstMessage("BLIND-SECRET", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return transportSays(409, {
+				detail: { code: "store_failed", message: "Did not complete." },
+			});
+		if (request.action === "list")
+			return Promise.reject(new Error("socket closed"));
+		return undefined;
+	});
+
+	assert.equal(opCount("store"), 1);
+	assert.equal(opCount("list"), 1);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`an unproven outcome was published: ${rendered}`,
+	);
+	assert.match(
+		rendered,
+		/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+	);
+});
+
+test("two cited credentials pay the resolution ONCE, not twice", async () => {
+	/*
+	 * THE WORST CASE IS SHARED (code review round 1, MINOR-1). One credential that
+	 * nothing ever answers costs the transport's 25 s plus two 5 s resolution steps,
+	 * and the loop this replaces awaited that PER PAYLOAD — so the operator's own
+	 * two-key message parked the composer behind ~70 s. Both credentials here are
+	 * silent (their stores reject outright and their reads hang for the 5 s bound), so
+	 * the measured wall time is the discriminator: ~one resolution concurrently,
+	 * ~two if the sequence ever comes back.
+	 */
+	let inFlight = 0;
+	let peakInFlight = 0;
+	/*
+	 * THE DISCRIMINATOR IS THE OVERLAP, NOT THE CLOCK (code review round 2, R2-n1).
+	 * The case used to assert a wall-clock ceiling, which is a proxy that can go red
+	 * on a loaded box — this host runs ~25 sessions. What the fix actually promises
+	 * is that the cited credentials resolve AT THE SAME TIME, so the instrument is a
+	 * counter of ops in flight at once: `Promise.all` issues both first attempts in
+	 * one tick, so a concurrent resolution peaks at 2 and a serial one can only ever
+	 * reach 1. `tracked` wraps each op's promise and decrements on either outcome.
+	 */
+	const tracked = (promise) => {
+		inFlight += 1;
+		peakInFlight = Math.max(peakInFlight, inFlight);
+		const settledOne = () => {
+			inFlight -= 1;
+		};
+		return promise.then(
+			(value) => {
+				settledOne();
+				return value;
+			},
+			(error) => {
+				settledOne();
+				throw error;
+			},
+		);
+	};
+	/*
+	 * THE INSTRUMENT IS CHECKED BEFORE IT IS TRUSTED: two ops issued one after the
+	 * other must peak at ONE, so the assertion at the end is about the seam's own
+	 * behaviour rather than about a counter that reads 2 for anything. It runs FIRST
+	 * because the seam's hanging list reads never settle — run afterwards, the
+	 * control would be measuring their residue rather than a sequential pair.
+	 */
+	{
+		const control = peakInFlight;
+		await tracked(Promise.resolve("first"));
+		await tracked(Promise.resolve("second"));
+		assert.equal(
+			peakInFlight,
+			1,
+			"the in-flight counter reads a SEQUENTIAL pair as one, so it can tell the two apart",
+		);
+		peakInFlight = control;
+	}
+	calls.length = 0;
+	let rendered;
+	let handed;
+	const pageSent = new Promise((resolve) => {
+		handed = resolve;
+	});
+	let settled = null;
+	const frame = await mount({
+		conversationId: undefined,
+		onSendMessage: async (_content, _attachments, _echo, _typed, seam) => {
+			handed(seam ?? null);
+			if (seam) settled = seam("draft-session-id");
+			return true;
+		},
+	});
+	transportOverride = (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store")
+			return tracked(Promise.reject(new Error("socket closed")));
+		if (request.action === "list") return tracked(new Promise(() => {}));
+		return undefined;
+	};
+	await openCapture(frame);
+	await paste(frame, "FIRST-SILENT-SECRET");
+	await type(frame, "/credential ");
+	await paste(frame, "SECOND-SILENT-SECRET");
+	await clickSend(frame);
+	await pageSent;
+	if (settled) rendered = await settled;
+	transportOverride = null;
+
+	assert.equal(
+		opCount("store"),
+		4,
+		"both credentials were attempted twice — the re-issue rides every silent store",
+	);
+	assert.equal(
+		opCount("list"),
+		2,
+		"and both credentials got their witness read",
+	);
+	assert.equal(
+		(String(rendered).match(/\[credential unconfirmed/g) ?? []).length,
+		2,
+		String(rendered),
+	);
+	assert.ok(
+		peakInFlight >= 2,
+		`two cited credentials never overlapped (peak ${peakInFlight} in flight): the resolution is serial again`,
+	);
+});
+
+test("a refusal after a SILENT attempt is not a refusal: the citation stays unconfirmed", async () => {
+	/*
+	 * CODE REVIEW ROUND 2's R2-m1, and the one row of the decision table the shipped
+	 * code did not agree with. `withTimeout` clears its timer but does NOT cancel the
+	 * request it wrapped, so a silent first attempt leaves a write that can still be
+	 * in flight — or land — after anything read afterwards. So the re-issue's 4xx
+	 * (which is also the status the route raises for the owner's own `disconnected`
+	 * answer to a write it applied) plus a name list that does not carry the key
+	 * proves nothing: the refusal citation needs an ANSWER and nothing outstanding.
+	 *
+	 * The round-1 code returned the refusal here. The TABLE was right and the code
+	 * was wrong, which is the opposite of what a documentation-only fix assumes.
+	 */
+	let stores = 0;
+	const rendered = await sendFirstMessage("SILENT-THEN-REFUSED", (request) => {
+		if (request.op !== "sessions.credential") return undefined;
+		if (request.action === "store") {
+			stores += 1;
+			// The first attempt is destroyed with nothing forwarded; the RE-ISSUE is
+			// answered with the route's refusal while the first may still be out there.
+			if (stores === 1) return Promise.reject(new Error("socket closed"));
+			return transportSays(409, {
+				detail: {
+					code: "store_failed",
+					message: "The credential operation did not complete.",
+				},
+			});
+		}
+		if (request.action === "list")
+			return credentialResult({ data: { ok: true, credentials: [] } });
+		return undefined;
+	});
+
+	assert.equal(opCount("store"), 2, "the silence is re-issued");
+	assert.equal(opCount("list"), 1);
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a refusal after a silence was published as an outcome: ${rendered}`,
+	);
+	assert.match(
+		rendered,
+		/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+	);
+});
+
+test("a list answer with nothing readable in it is unreadable, not an absence", async () => {
+	/*
+	 * CODE REVIEW ROUND 2's R2-m2, which is MAJOR-1's class one layer down:
+	 * `credentialNamesFrom` is deliberately total (it returns `[]` for a body it
+	 * cannot parse), so reading the answer through it alone made "a list that does
+	 * not name the key" and "a list I could not read" the same `false` — and a
+	 * `false` after an ANSWERED refusal is what confirms the not-stored citation.
+	 *
+	 * Both shapes below are 2xx answers that carry no name list, and neither is an
+	 * absence: the seam may not claim the write failed on the strength of either.
+	 */
+	for (const [what, answer] of [
+		["a 2xx with no credentials array", { data: { ok: true } }],
+		[
+			"a 2xx whose own answer is not ok",
+			{ data: { ok: false, reason: "disconnected" } },
+		],
+	]) {
+		const rendered = await sendFirstMessage("BLIND-LIST-SECRET", (request) => {
+			if (request.op !== "sessions.credential") return undefined;
+			if (request.action === "store")
+				return transportSays(409, {
+					detail: { code: "store_failed", message: "Did not complete." },
+				});
+			if (request.action === "list") return credentialResult(answer);
+			return undefined;
+		});
+		assert.equal(opCount("list"), 1, what);
+		assert.ok(
+			!rendered.includes("NOT stored"),
+			`${what}: an unreadable list was read as an absence: ${rendered}`,
+		);
+		assert.match(
+			rendered,
+			/\[credential unconfirmed — it may be held as \$LOP_SECRET_[A-Z2-9]{8}, so check list_variables before assuming it is missing\]/,
+			what,
+		);
+	}
+});
+
+/* ------------------------------------------------------------------ */
+/* M3c — the same store, over REAL loopback HTTP, at the latency the    */
+/* operator's machine measured                                          */
+/* ------------------------------------------------------------------ */
+
+test("a store slower than the TUI's five seconds is cited for what it did", async (t) => {
+	/*
+	 * WHY REAL HTTP AND WHY SIX SECONDS. The mechanism this change corrects was
+	 * measured, not inferred: a store has to engage the session's runtime before it
+	 * can answer, and against a real isolated backend that cost 4.2 s cold, 5.6-8.2 s
+	 * with six cold sessions in flight, and ~13 s on the operator's loaded host —
+	 * every one of those writes landing. The stubs in the cases above pin the
+	 * CLASSIFICATION for each wire shape; this one pins the BOUND, on a socket.
+	 *
+	 * Six seconds is chosen to sit in that measured band and just past the TUI's
+	 * 5 s, so the pre-fix seam abandons a store that then answers `ok`: the citation
+	 * says NOT stored about a key the server holds. With the bound the transport
+	 * itself allows for this op, the same six seconds is simply the answer arriving.
+	 *
+	 * The route's own shape is reproduced rather than simplified — the `{status,
+	 * body:{result}}` envelope `desktopRequest` reads, answered by a real server on a
+	 * real port — because a stub that answered the inner result directly would leave
+	 * the composer in an error state and prove nothing.
+	 */
+	const server = createServer(async (req, res) => {
+		const chunks = [];
+		for await (const chunk of req) chunks.push(chunk);
+		let request = {};
+		try {
+			request = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+		} catch {
+			request = {};
+		}
+		const reply = (result) => {
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ status: 200, body: { result } }));
+		};
+		if (request.action === "store") {
+			// The cold engage the operator's own send waited behind.
+			await new Promise((resolve) => realSetTimeout(resolve, 6000));
+			return reply({ data: { ok: true, key: request.key } });
+		}
+		if (request.action === "list")
+			return reply({ data: { ok: true, credentials: [] } });
+		return reply(answer(request));
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	t.after(() => server.close());
+	const { port } = server.address();
+
+	const rendered = await sendFirstMessage("SLOW-STORE-SECRET", (request) =>
+		nodeFetch(`http://127.0.0.1:${port}/__desktop`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(request),
+		}),
+	);
+
+	assert.ok(
+		!rendered.includes("NOT stored"),
+		`a store that took 6 s and landed was published as missing: ${rendered}`,
+	);
+	assert.match(rendered, STORED_CITATION_SHAPE);
 });
 
 /* ------------------------------------------------------------------ */

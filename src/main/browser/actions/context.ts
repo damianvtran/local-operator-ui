@@ -1,5 +1,6 @@
 import type { ApprovalStore } from "../approvals";
 import type { CdpPool } from "../cdp";
+import type { DownloadArmer } from "../downloads";
 import type { OwnershipLedger } from "../ownership";
 import type { TabRegistry } from "../registry";
 
@@ -16,6 +17,11 @@ export interface BrowserActionContext {
 	readonly cdp: CdpPool;
 	readonly approvals: ApprovalStore;
 	readonly ownership: OwnershipLedger;
+	/** The per-tab download arming state and the `will-download` decision behind
+	 * it (design §8). A member of the context rather than of the registry because
+	 * the capture owns an Electron `DownloadItem`'s lifecycle, which is knowledge
+	 * the registry deliberately does not have. */
+	readonly downloads: DownloadArmer;
 	/** Put a line in the app's log. Never model-facing. */
 	readonly log: (message: string) => void;
 	/** Ask the chrome surface to re-render (tabs changed, a prompt moved). */

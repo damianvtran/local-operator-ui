@@ -948,6 +948,41 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The transfer row (design §16.4): the chrome band's line about a file the
+		 * agent downloaded, sent or refused.
+		 *
+		 * WHY IT NEEDS A ROW OF ITS OWN rather than inheriting the consent band above it.
+		 * The SAVED state is the band's own pairing (`surface` fill, `borderControl` edge,
+		 * `ink`), and that row already covers it. The REFUSED state is not: it takes
+		 * `dangerWash` as its fill and keeps `borderControl` as its edge, which is a
+		 * pairing no row asserted before this one - the app's other `dangerWash` surface
+		 * is the browser error line, and a wash is exactly the case the consent band's
+		 * own comment says must not be added without a row, because the urgency has to
+		 * live on a role the contract measures rather than on a colour nobody checks.
+		 *
+		 * `ink` IS THE ROLE THE COMPONENT PAINTS, and review round 1's D5 is why that
+		 * sentence is here rather than assumed: the row declared `ink` while the component
+		 * painted `ink-muted`, so this row's green output described a pairing that did
+		 * not ship - and `inkMuted` on `dangerWash` measures 5.49:1 in kanagawaLotus,
+		 * 0.01 under the 5.5 floor this file sets for that role. The component paints
+		 * `ink` now (min 7.03:1) for the refusal's copy and its glyph, so the declaration
+		 * and the pixels agree; `dangerWash` is deliberately NOT in `GROUNDS6`, whose ink
+		 * loop would then assert every ink on it including the two that fail.
+		 *
+		 * `on` names every ground rather than one, and that is the measured fact rather
+		 * than caution: the row is a sibling of the consent band and the popup notice in
+		 * the same strip, and the ground behind the strip is whichever one the route
+		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
+		 * asserted against all four.
+		 */
+		name: "browser file-transfer row (refused)",
+		on: GROUNDS,
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The user's message bubble in the transcript.
 		 *
 		 * `on` names `canvas` because that is the ground the bubble is drawn on
@@ -1594,6 +1629,23 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/shared/components/common/update-error-alert.tsx",
 		must: 'variant="primary"',
 		why: "an outlined control's only boundary is its own edge against `dangerWash`, which is below the 3:1 floor in three palettes; the palette rows cannot see which variant a component uses, so green output about the pair would outlive the fix",
+	},
+	{
+		/*
+		 * The download row's own edge, in the state that carries a fill.
+		 *
+		 * The SAVED state is the consent band's pairing and the band's row covers it. The
+		 * REFUSED state is a `dangerWash` row in the same strip, and its edge is what
+		 * separates two stacked rows of chrome that are otherwise the same shape: this
+		 * row, and the error line under it, are both washes above the page's area. The
+		 * palette row above proves `borderControl` clears its floor on the wash's
+		 * neighbours; only this pin sees the edit that drops the row's edge to `hairline`
+		 * (no floor at all) and lets two washes read as one band.
+		 */
+		what: "browser file-transfer row edge",
+		file: "src/renderer/src/features/browser/components/browser-file-transfer-row.tsx",
+		must: "border-control border-b bg-danger-wash",
+		why: "the refused row's edge is the only boundary between it and the row below it, both washes; `hairline` has no floor and removing it merges them, and no palette assertion can see either edit",
 	},
 	{
 		/*

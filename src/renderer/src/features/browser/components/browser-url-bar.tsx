@@ -3,6 +3,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	ArrowLeft,
 	ArrowRight,
+	FolderOpen,
 	Loader2,
 	RotateCw,
 	ShieldCheck,
@@ -76,6 +77,51 @@ export interface BrowserUrlBarProps {
 	 * closes the dock. A ref rather than a callback because the surface owns both
 	 * ends of that exchange. */
 	triggerRef?: Ref<HTMLButtonElement>;
+	/**
+	 * The directory the host writes downloads into, or null when it has never
+	 * written one.
+	 *
+	 * WHY THE FOLDER IS REACHABLE FROM HERE AT ALL (review round 1, U2, D2). The
+	 * strip's row is a NOTIFICATION: it is dismissed by a press and it retires by
+	 * age (U7), and both of those are right for a line about what just happened —
+	 * but until this control existed, the row was also the ONLY route to the files,
+	 * so dismissing it made the user's download unreachable from inside the app.
+	 * The row carries the path now, and this is the durable half: one control that
+	 * opens the same directory main opens, for as long as the host has written
+	 * anything, whether or not any row is on screen.
+	 *
+	 * It renders ONLY when a directory exists: a control that opens a folder a build
+	 * cannot have written is a promise the app cannot keep, and the honest degrade
+	 * for a host that predates the feature is no control at all.
+	 */
+	downloadsDir: string | null;
+	/** The newest save into that directory, and how many have been saved in this app
+	 * run (review round 2, U12; the count's premise corrected in round 3, M-1). Rides
+	 * the same projection as `downloadsDir` so the control cannot describe a save the
+	 * row does not have; `null` when nothing has been saved yet, which leaves the label
+	 * as it was. */
+	downloadsRecent?: { name: string; count: number } | null;
+	/** Open that directory. Takes no path — main decides which one. */
+	onOpenDownloads: () => void;
+}
+
+/** What the durable folder control says it opens (review round 2, U12).
+ *
+ * WHY IT IS A SENTENCE AND NOT A LIST: §16.4's rule is against a per-file list with
+ * per-file actions, and this control has one action — open the folder. Naming the
+ * newest file and how many have been saved in this app run is what turns an icon
+ * into an answer to "did anything arrive while I was reading Chat", which is the
+ * state U12 is about. The count is the host's own SESSION total rather than a window
+ * over its note buffer, which is why the wording can promise "this session" — the
+ * first draft derived it from the notes and the summary vanished after four later
+ * decisions, which is exactly when a user would be looking for it. */
+function downloadsLabel(
+	recent: { name: string; count: number } | null,
+): string {
+	if (!recent) return "Open downloads folder";
+	return recent.count > 1
+		? `Open downloads folder — ${recent.name} was the newest saved there (${recent.count} this session)`
+		: `Open downloads folder — ${recent.name} was saved there`;
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -100,6 +146,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenApprovals,
 	waitingCount,
 	triggerRef,
+	downloadsDir,
+	downloadsRecent,
+	onOpenDownloads,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
 	/**
@@ -200,6 +249,41 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						data-tour-tag="browser-reload"
 					>
 						<RotateCw aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{downloadsDir && (
+				// The durable route to the files (review round 1, U2): the strip's row can
+				// be dismissed or age out, and this is what makes that allowed. Placed with
+				// the navigation controls rather than beside Approvals because it is a
+				// browser affordance, not a consent one.
+				//
+				// AND IT CARRIES THE NEWEST SAVE (review round 2, U12). An icon-only control
+				// answers "where do downloads go" and nothing else, so a user who was in Chat
+				// when the transfer happened had no way in the app to learn that anything
+				// arrived — the row is the only account of it and the row retires. The label
+				// now names the newest file and how many this session has saved, on HOVER and on
+				// FOCUS (the same tooltip mechanism the rest of the toolbar uses, so a keyboard
+				// user reaches it by tabbing). It is still not a per-file list (§16.4) and it
+				// still opens the same directory: the sentence is the row's own facts, moved to
+				// the one surface that outlives it.
+				//
+				// AND THE COUNT IS THE SESSION TOTAL, not the note window this first draft of
+				// the sentence was worded for (review round 3, M-1). The host keeps its summary
+				// for the life of the process and writes it from the same call that writes the
+				// note (`downloads.ts`, the `note` writer), so the tooltip can promise "this
+				// session" and does — `downloadsLabel` below states the same premise. The
+				// draft's "recently rather than this session" rationale was left behind when the
+				// count moved, and it contradicted the copy the user reads.
+				<Tooltip content={downloadsLabel(downloadsRecent ?? null)}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Open downloads folder"
+						onClick={onOpenDownloads}
+						data-tour-tag="browser-downloads-folder"
+					>
+						<FolderOpen aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
 			)}

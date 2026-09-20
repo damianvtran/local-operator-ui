@@ -102,6 +102,56 @@ const SOURCE_BUILD_REFUSAL_OUTPUT = [
 const ORPHANED_UPDATER_SENTENCE =
 	"The server update did not finish: the installer could not be run to a verdict. The updater was stopped; something it started may still be replacing the install. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
+/**
+ * THE REFUSAL, in the producer's own two-part shape (design round 1, D1/D5).
+ *
+ * Lead line then blank line then body: the lead is the fact a reader can act on
+ * and the body is the explanation - see `fleetDrainRefusalSentence`, whose
+ * sentences these are, transcribed rather than composed so the frame shows what
+ * the app sends. It is the state `update-service.ts` calls "A REFUSAL, NOT A
+ * FAILURE": the wait was deliberate and the server was never touched.
+ */
+const DRAIN_REFUSAL_BUSY_MESSAGE = [
+	"4 sessions are still running a turn on this machine: canonical-chat, refactor-tui, support-replies and 1 more.",
+	"The app waited 10 minutes for them to finish and then stopped rather than cut a turn short. Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.",
+].join("\n\n");
+
+/** The other unreadable: the server answered and refused this app's credentials. */
+const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
+	"The server refused this app's credentials, so the app could not read which sessions are running on this machine.",
+	"Reading an unreadable fleet as idle could cut off a turn that is in flight, so the app waited 10 minutes and then stopped. Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.",
+].join("\n\n");
+
+/**
+ * The refusal's OTHER arm: the same wait, on a press whose install has landed.
+ *
+ * WHY THIS IS A STORY RATHER THAN A PAGE PATCH (design round 2, D6). Both
+ * restart-leg refusals happen after the build is on disk and only the bounce was
+ * held back, so their heading is not "The update didn't start" - the producer
+ * states the fact and the panel keys on it. The design round had to inject this
+ * payload into the shipped component from a CDP pre-document script to judge it,
+ * which is not a state the repo's own rig can re-photograph; declared here, the
+ * landed arm is captured the ordinary way.
+ */
+const DRAIN_REFUSAL_LANDED_MESSAGE = [
+	"4 sessions are still running a turn on this machine: canonical-chat, refactor-tui, support-replies and 1 more.",
+	"The app waited 10 minutes for them to finish and then stopped rather than cut a turn short. The install itself has landed, and the server keeps running the build it loaded until it can restart onto it; the app will offer this update again.",
+].join("\n\n");
+
+/**
+ * The wait the draining frame shows, as a fixture the entry's claim asserts.
+ *
+ * 12 s rather than a round ten minutes: the reading is the claim (design round 2,
+ * D8 - the declared entry could be satisfied by a frame with no reading at all), and
+ * a value inside the seconds spelling also pins the `12 seconds` wording rather than
+ * a minutes form where two spellings could look the same.
+ */
+const DRAIN_WAITED_MS = 12_000;
+
+const DRAIN_REFUSAL_COMMAND = "uv tool upgrade local-operator";
+const DRAIN_REFUSAL_LOG_PATH =
+	"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log";
+
 const ORPHANED_UPDATER_OUTPUT = [
 	"lop-update: mobile web bundle: built",
 	"Resolved 55 packages in 1.25s",
@@ -110,7 +160,7 @@ const ORPHANED_UPDATER_OUTPUT = [
 ].join("\n");
 
 const SOURCE_BUILD_REMEDY =
-	"Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+	"Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
 
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
@@ -232,6 +282,51 @@ const mockUpdaterApi = () => {
 						phase: "update",
 						logPath:
 							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
+				}
+				return false;
+			}
+			/*
+			 * THE FLEET REFUSAL (design round 1, D1). The report carries the `refusal`
+			 * field as well as the sentence, because that is what makes it a refusal
+			 * rather than a failure on the panel - and because the command and the wait
+			 * it names are the parts a reader acts on.
+			 */
+			if (
+				window.triggerBackendUpdateRefusedBusy ||
+				window.triggerBackendUpdateRefusedUnreadable ||
+				window.triggerBackendUpdateRefusedLanded
+			) {
+				const unreadable =
+					window.triggerBackendUpdateRefusedUnreadable === true;
+				const landed = window.triggerBackendUpdateRefusedLanded === true;
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({
+						message: unreadable
+							? DRAIN_REFUSAL_UNREADABLE_MESSAGE
+							: landed
+								? DRAIN_REFUSAL_LANDED_MESSAGE
+								: DRAIN_REFUSAL_BUSY_MESSAGE,
+						phase: "update",
+						logPath: DRAIN_REFUSAL_LOG_PATH,
+						refusal: {
+							because: unreadable ? "unknown" : "busy",
+							/*
+							 * THE PRESS'S TOTAL (design round 2, D9), which is the number the reading
+							 * under the sentence showed while it waited - the producer sends the same
+							 * one, so a fixture that sent a leg would make the frame's two numbers
+							 * disagree in a way the shipped app cannot.
+							 */
+							waitedMs: 600_000,
+							command: DRAIN_REFUSAL_COMMAND,
+							credentialsRefused: unreadable,
+							/*
+							 * WHICH REFUSAL THIS IS (design round 2, D6): the install-less arm for the
+							 * busy and unreadable stories, the after-the-install arm for the landed one -
+							 * the panel's heading is keyed on it.
+							 */
+							installLanded: landed,
+						},
 					});
 				}
 				return false;
@@ -749,7 +844,14 @@ const mockUpdaterApi = () => {
 		},
 		onBackendUpdateProgress: (
 			callback: (progress: {
-				phase: "installing" | "restarting";
+				phase: "draining" | "installing" | "restarting";
+				/**
+				 * The press's own elapsed wait, on the `draining` frame (design D3). Part of
+				 * the shipped event's shape, so the mock has to carry it: the reading under
+				 * the sentence renders only when this is a number, and a fixture that sent the
+				 * phase alone produced a frame the product cannot reach (design round 2, D8).
+				 */
+				waitedMs?: number;
 				sourceRebuild?: boolean;
 			}) => void,
 		) => {
@@ -769,7 +871,21 @@ const mockUpdaterApi = () => {
 			 * capture's exit code.
 			 */
 			if (window.triggerBackendUpdatePhase) {
-				callback({ phase: window.triggerBackendUpdatePhase });
+				/*
+				 * THE ELAPSED READING RIDES WITH THE PHASE (design round 2, D8). The
+				 * shipped producer sends `waitedMs` on every `draining` frame, and the
+				 * component renders the reading only when it is a number - so a mock that
+				 * sent the phase alone produced a frame with no reading under the sentence,
+				 * which is a state the product cannot reach. The value is a fixture: the
+				 * entry's own claim is what asserts it reached the screen.
+				 */
+				callback({
+					phase: window.triggerBackendUpdatePhase,
+					waitedMs:
+						window.triggerBackendUpdatePhase === "draining"
+							? DRAIN_WAITED_MS
+							: undefined,
+				});
 			}
 			/*
 			 * AND WHICH ROUTE IS RUNNING (review round 3, D2 = U3). The release path's
@@ -839,6 +955,9 @@ declare global {
 		triggerUpdateNpxAvailable?: boolean;
 		triggerBackendUpdateSourceBuildFailed?: boolean;
 		triggerBackendUpdateFailedOrphan?: boolean;
+		triggerBackendUpdateRefusedBusy?: boolean;
+		triggerBackendUpdateRefusedUnreadable?: boolean;
+		triggerBackendUpdateRefusedLanded?: boolean;
 		triggerBackendUpdateSourceBuild?: boolean;
 		triggerBackendUpdateSourceBuildAdopted?: boolean;
 		triggerBackendUpdateSourceBuildInFlight?: boolean;
@@ -893,7 +1012,7 @@ declare global {
 		 * `installing` while the environment lands, `restarting` while the daemon
 		 * comes back onto it.
 		 */
-		triggerBackendUpdatePhase?: "installing" | "restarting";
+		triggerBackendUpdatePhase?: "draining" | "installing" | "restarting";
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
@@ -1693,21 +1812,29 @@ const PressUpdateServer = ({
 	phase = null,
 	variant = "default",
 }: {
-	outcome: "inflight" | "failed";
+	outcome: "inflight" | "failed" | "refused";
 	/**
 	 * WHICH OFFER the press is made on. `default` is the release-install payload (the entry-point
 	 * route); `source-build` is the checkout rebuild, whose offer carries a different consequence
 	 * sentence and provenance line while the state - a press, and the panel that answers it - is
 	 * the same one; `orphan` is the default offer whose failure is the timeout that left something
-	 * running, so the state differs only in the sentence the main process sends.
+	 * running, so the state differs only in the sentence the main process sends;
+	 * `refused-unreadable` is the refusal arm where nothing could be read at all and
+	 * `refused-landed` the one where the install had already landed (the default refusal is
+	 * the measured busy fleet, before anything was installed).
 	 */
-	variant?: "default" | "source-build" | "orphan";
+	variant?:
+		| "default"
+		| "source-build"
+		| "orphan"
+		| "refused-unreadable"
+		| "refused-landed";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
 	 * phase-null fallback the older frame showed.
 	 */
-	phase?: "installing" | "restarting" | null;
+	phase?: "draining" | "installing" | "restarting" | null;
 }) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
@@ -1724,6 +1851,19 @@ const PressUpdateServer = ({
 		} else if (variant === "orphan") {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateFailedOrphan = outcome === "failed";
+		} else if (outcome === "refused") {
+			/*
+			 * A REFUSAL IS REACHED BY PRESSING, not by a flag that paints the panel:
+			 * the report arrives from `updateBackend` after the gate has waited and
+			 * declined, and this is the only path that produces the state the design has
+			 * to judge (design round 1, D1/D5).
+			 */
+			window.triggerBackendUpdateAvailable = true;
+			window.triggerBackendUpdateRefusedUnreadable =
+				variant === "refused-unreadable";
+			window.triggerBackendUpdateRefusedBusy =
+				variant !== "refused-unreadable" && variant !== "refused-landed";
+			window.triggerBackendUpdateRefusedLanded = variant === "refused-landed";
 		} else {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateInFlight = outcome === "inflight";
@@ -1739,7 +1879,16 @@ const PressUpdateServer = ({
 		const expected =
 			outcome === "inflight"
 				? "Updating server"
-				: "The server update didn't finish";
+				: outcome === "refused"
+					? /*
+						 * THE HEADING IS THE ARM (design round 2, D6): the refusal's two arms are two
+						 * different events about the same ten-minute wait, so the story waits for the
+						 * heading it is a story about rather than for one arm's.
+						 */
+						variant === "refused-landed"
+						? "The update didn't finish restarting"
+						: "The update didn't start"
+					: "The server update didn't finish";
 		const settle = async () => {
 			/* The offer is raised by the mount effect, so the control exists only
 			   after a pass - poll for it rather than assume the timing. */
@@ -1769,7 +1918,17 @@ const PressUpdateServer = ({
 			cancelled = true;
 			delete document.documentElement.dataset.capturePending;
 		};
-	}, [ready, outcome]);
+		/*
+		 * `variant` IS A DEPENDENCY BECAUSE THE EFFECT READS IT (round 4). The D6 arm
+		 * above made `expected` depend on which refusal arm this story is, and the deps
+		 * list still named only `ready`/`outcome` - so the hook read a value it did not
+		 * declare, which is exactly what `lint/correctness/useExhaustiveDependencies`
+		 * reports. Nothing local could see it: `pnpm lint` is red on this branch and on
+		 * `main` for an unrelated pre-existing error, and the CI job that reports the
+		 * exit code never ran, because GitHub creates no workflow run for a conflicting
+		 * head. Caught on the first run the rebase made possible.
+		 */
+	}, [ready, outcome, variant]);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
 };
 
@@ -1800,10 +1959,20 @@ export const BackendUpdateInFlight: Story = {
  * about what a reader is told cannot be checked without the frame they are told it
  * in.
  *
+ * `BackendUpdateDraining` is the third and newest: the press is waiting for the
+ * turns running on this machine to finish before it touches anything, which is the
+ * state the fleet gate creates and the state the old copy described as a dropped
+ * turn instead.
+ *
  * Driven through the press, as the shipped component reaches them: the offer is
  * raised, `Update server` is pressed, the attempt stays in flight, and the phase is
  * the one the main process announces for that step (`update-service.ts`).
  */
+export const BackendUpdateDraining: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="draining" />,
+};
+
 export const BackendUpdateInstalling: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="inflight" phase="installing" />,
@@ -1917,6 +2086,52 @@ export const BackendUpdateOfferSourceBuildAdopted: Story = {
 export const BackendUpdateFailedOrphan: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" variant="orphan" />,
+};
+
+/**
+ * THE REFUSAL, which is not a failure (design round 1, D1). The fleet did not
+ * drain, so the app waited its bounded time and then left the server alone; the
+ * frame has to read as that choice rather than as a broken update.
+ *
+ * This state had NO story before this round, which is why the design review had
+ * to build a rig of its own to photograph it - and a state that cannot be
+ * re-captured is a state whose fix cannot be re-reviewed. It is driven through
+ * the press, as the app reaches it: the panel is mounted, `Update server` is
+ * pressed, and the producer's own report arrives with the `refusal` field on it.
+ */
+export const BackendUpdateRefusedBusyFleet: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="refused" />,
+};
+
+/**
+ * The same refusal with nothing readable at all - the arm whose next step is NOT
+ * "wait for the server", and the one that says so when the server answered and
+ * refused the app's credentials (QA round 1, observation b).
+ */
+export const BackendUpdateRefusedUnreadableFleet: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<PressUpdateServer outcome="refused" variant="refused-unreadable" />
+	),
+};
+
+/**
+ * The refusal's third arm, and the one whose heading the round-2 design review had
+ * to inject into the shipped component from outside the app: the press reached the
+ * restart with the build already published, the fleet did not drain, and what was
+ * held back is the BOUNCE rather than the install.
+ *
+ * The wait, the count and the sessions are the busy arm's; the fact this story exists
+ * for is that "The update didn't start" is false here, and the sentence above the
+ * heading says so in its own words - which is exactly the contradiction the frame
+ * carried before the producer started sending the fact (design round 2, D6).
+ */
+export const BackendUpdateRefusedLandedInstall: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<PressUpdateServer outcome="refused" variant="refused-landed" />
+	),
 };
 
 /**

@@ -18,7 +18,7 @@ import { BrowserUrlBar } from "./browser-url-bar";
  * `browser approvals badge` row in `scripts/contrast-contract.mjs`.
  */
 
-const bar = (waitingCount: number) => ({
+const bar = (waitingCount: number, downloadsDir: string | null = null) => ({
 	url: "https://login.example.com/session",
 	pendingUrl: null,
 	loading: false,
@@ -32,6 +32,11 @@ const bar = (waitingCount: number) => ({
 	onStop: () => {},
 	onOpenApprovals: () => {},
 	waitingCount,
+	// One state with the folder reachable and one without: the control renders only
+	// when the host has written a directory (review round 1, U2), so both are worth a
+	// frame.
+	downloadsDir,
+	onOpenDownloads: () => {},
 });
 
 const meta = {
@@ -78,4 +83,19 @@ export const ThreeWaiting: Story = {
  */
 export const TwoDigits: Story = {
 	args: bar(12),
+};
+
+/**
+ * WITH A DOWNLOAD FOLDER, which is the state that carries the second control.
+ *
+ * The folder is reachable from the chrome for as long as the host has written one
+ * (review round 1, U2): the strip's row can be dismissed or age out, and the
+ * directory must still be one press away. This frame is what shows the two
+ * controls sitting together without the badge or the address field losing room.
+ */
+export const WithDownloadsFolder: Story = {
+	args: bar(
+		0,
+		"/Users/someone/Library/Application Support/Local Operator/browser/downloads/20260919-120000-session1",
+	),
 };

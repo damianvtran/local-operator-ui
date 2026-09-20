@@ -172,7 +172,25 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		// two settings render two accessibility trees for one component, and the
 		// composer's half is the one that must not diverge from the transcript's.
 		className={cn(
-			"inline-flex items-center justify-between gap-1.5 px-3 text-ink",
+			/*
+			 * `max-w-full` IS THE CLAMP, AND IT IS WHAT LETS THE LABEL ELLIPSISE (design
+			 * round 2, D1). `truncate` on the name is only half of an ellipsis: the other
+			 * half is a box to truncate INTO, and an `inline-flex` with no bound takes its
+			 * width from its content — so a name long enough to pass the line box made the
+			 * chip refuse to narrow (measured: 405.78px at every pane from 1024 down to
+			 * 300, +157.78px past a 440 line box, with `clientWidth == scrollWidth` on the
+			 * label in all twelve themes, i.e. the ellipsis never fired and the chip ran out
+			 * through the bubble's edge and sliced flat). The stored register always looked
+			 * clamped because its own name is a single long token AND the transcript's card
+			 * gives it a line box to fit; the bound is now the chip's own, so every long
+			 * name behaves the same way.
+			 *
+			 * It bounds the chip to its containing block and nothing else: every chip whose
+			 * content already fits — which is every composer chip, and the stored chip at
+			 * any pane wider than ~280px — measures exactly as it did before, because
+			 * `max-width` only bites when the content exceeds it.
+			 */
+			"inline-flex max-w-full items-center justify-between gap-1.5 px-3 text-ink",
 			tone === "warning" ? CREDENTIAL_NOT_STORED_ROLE : CREDENTIAL_CHIP_ROLE,
 			small ? "text-body-sm" : "text-body",
 			className,
@@ -185,7 +203,7 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		) : (
 			<Key aria-hidden="true" className="size-3 shrink-0" />
 		)}
-		<span className="truncate">{label}</span>
+		<span className="min-w-0 truncate">{label}</span>
 		{chars !== null && (
 			// NO `ml-auto` HERE IN EITHER REGISTER (design round 1, D1; round 2, D8).
 			// The composer's chip is painted in a box the MINT fixed
