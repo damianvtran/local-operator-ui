@@ -18,11 +18,11 @@ Storybook, driving the **production components**: the story renders
 `applyHistoryPage` reducer** from persisted payloads quoted verbatim out of
 `~/.local-operator/sessions/…/transcript.jsonl` — one per category the
 classifier emits (`mcp`, `auth`, `rate-limit`, `context-length`, `provider`,
-`network`, `unknown`, `cut-off`), the three harness statements
-(`session_model_switch`, `session_mcp_recovery`, `session_credential`), a
-`raw`-less row for the fallback path, and a relayed `hub_message` as the bulky
-control. They are the same records the app paints, so the frame judges what the
-row is GIVEN as well as what it paints.
+`network`, `unknown`, `cut-off`), the four harness statements
+(`session_model_switch`, `session_mcp_recovery`, `session_credential`,
+`session_mcp_unavailable`), a `raw`-less row for the fallback path, and a relayed
+`hub_message` as the bulky control. They are the same records the app paints, so
+the frame judges what the row is GIVEN as well as what it paints.
 
 Captured over raw CDP by `scripts/capture-evidence.mjs` (private headless
 Chrome on a fresh user-data-dir, killed on exit), narrowed the sanctioned way:
@@ -59,7 +59,7 @@ head and timestamp; they do not relabel the historical capture.
 | Directory | Tree | What it shows |
 | --- | --- | --- |
 | [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the provider the incident names, the vendor's message in place and wrapping, the harness's advice behind the disclosure. |
-| [`session-incidents-narrow`](session-incidents-narrow/) | this change | The same 17 rows at 560, where a row wraps hardest — the width the wrapped-mark defect was measured at. |
+| [`session-incidents-narrow`](session-incidents-narrow/) | this change | The same rows at 560, where a row wraps hardest — the width the wrapped-mark defect was measured at. **The frame holds 17 rows; the story renders 18 at this head**, because the `session_mcp_unavailable` fixture landed after this set was taken — see the deferral below. |
 | [`notice-lengths`](notice-lengths/) | this change | The notice register's own length cases, including the bulky one that used to render as the literal word "Notice". |
 | [`../session-incident-rows-before`](../session-incident-rows-before/) | unmodified `origin/main` (`73977340a`) | The defect, from the same story and the same payloads: ten rows reading `session incident`, the info ink, no message anywhere but behind the chevrons. |
 
@@ -84,6 +84,18 @@ stale claim about it, and the pair's other rows — the incidents, the statement
 the relayed payloads — are what this branch still paints. Labelled and not
 recaptured: a fresh sweep would rewrite both sets to photograph a row this branch
 no longer owns. `notice-lengths` carries no wake or peer row and is unaffected.
+
+**The set is one row behind the story, and the recapture is deferred.** The
+`session_mcp_unavailable` fixture landed after these frames were taken, so
+`session-incidents` and `session-incidents-narrow` hold 17 of the 18 rows the
+story renders at this head — the frame is a capture of the register as it stood,
+not a claim about the row that is missing from it. The frames for that change are
+attached to its pull request rather than committed here: re-taking the set is a
+narrowed recapture (`node scripts/capture-evidence.mjs --only=session-incidents`,
+append mode) that rewrites frames under the shared `manifest.json` aggregate, and
+folding it into a four-file reducer change would bury it in an evidence diff. The
+deferred work is the recapture, this paragraph's own numbers, and the story's row
+in both frames.
 
 ## What to look for
 
@@ -194,11 +206,15 @@ moved in them, and what did not:
   exist at this head. From there on both rows are upstream's: `receipt-row-model`,
   painted by `PeerRow`/`WakeRow` in the transcript and pinned by
   `scripts/tool-row.test.mjs`.
-- **A statement states its fact, not its instruction (UX U2).** The three
+- **A statement states its fact, not its instruction (UX U2).** Three of the four
   statement types split at the first sentence, so a model switch reads
   `You are now running as X (was Y).` on the row and the agent-directed tail is
   behind the chevron. Measured: all 227 real model-switch rows carried that tail
-  inline before.
+  inline before. The exception is `session_mcp_unavailable`, whose second line is
+  the OPERATOR's remedy rather than the model's instruction: it paints the fact
+  **and the `Reason:` line** on the row and discloses only the tail, because the
+  fact alone promises the tools return by themselves, which is false for the
+  expired grant that row exists for (design round 1, D1).
 - **A long notice states its own first line (design D5).** The `notice` branch
   used to paint the literal word "Notice" for anything over 400 characters or one
   line; `notice-lengths` is the frame that judges it, and the `notice` row's pitch
@@ -210,7 +226,7 @@ moved in them, and what did not:
   Reverted, with the numbers in the PR thread.
 
 The reducer rules above are pinned by tests (`scripts/transcript-reducer.test.mjs`,
-**55 tests at this head**; the 47 cited here before was that file's own count when
+**80 tests at this head**; the 47 cited here before was that file's own count when
 the sentence was written, and the number moves with main's receipt-row tests as
 much as with this branch's) and measured store-wide through the shipped
 `applyHistoryPage` over
