@@ -2149,6 +2149,43 @@ test("a harness statement paints its fact, and puts its instruction to the model
 	assert.ok(rows[0].headline.includes("deepseek-v4.1-flash (was"));
 });
 
+test("the MCP-unavailable warning is a statement, not an incident and not a relay", () => {
+	// The harness gives this its own record type instead of routing it through
+	// `session_incident`: the classifier's `mcp` rule matches the row's own
+	// subject, and the incident renderer's tail claims the previous TURN ended —
+	// false for a server that failed to connect or whose grant expired, neither
+	// of which ends a turn. Membership of INLINE_CUSTOM_TYPES is what keeps the
+	// row from falling to `relayRow`, which would put the reason the tools
+	// disappeared behind a chevron on a notice that is only three lines long.
+	const [row] = replay([
+		custom("mcp-unavailable", "session_mcp_unavailable", {
+			text: "[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
+		}),
+	]);
+	assert.equal(row.kind, "custom");
+	assert.equal(
+		row.level,
+		"info",
+		"a missing capability is not a failed turn, so it never takes the danger ink",
+	);
+	assert.equal(row.category, null, "only an incident carries a classification");
+	assert.equal(row.provider, null, "and only an incident names a provider");
+	// The leading bracket tag is a register marker, not content — the row's own
+	// label already says what kind of row this is — so the headline starts at
+	// the sentence.
+	assert.equal(
+		row.headline,
+		"MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.",
+	);
+	assert.equal(
+		row.detail,
+		"Reason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
+	);
+	// Nothing on the row may claim a turn ended. That false tail is the whole
+	// reason the harness stopped emitting a `session_incident` here.
+	assert.ok(!/previous turn ended/i.test(row.headline + (row.detail ?? "")));
+});
+
 test("a relayed payload keeps its body behind the disclosure but is not reduced to its type name", () => {
 	// Measured over the operator's store, these run to 18,259 characters, so the
 	// body stays one click away — and the first line that says something is on

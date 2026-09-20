@@ -246,9 +246,12 @@ export const NoticeLengths: Story = {
  * - The `older row without raw` is the fallback: the message comes from the
  *   head line's remainder when the producer persisted no `raw` (every row in
  *   the store today has one, so this row is constructed; see below).
- * - The three harness STATEMENTS — a model switch, an MCP recovery, a stored
- *   credential — are informational, not errors, and their message is likewise
- *   the row.
+ * - The four harness STATEMENTS — a model switch, an MCP recovery, a stored
+ *   credential, and an MCP server that has gone away — are informational, not
+ *   errors, and their message is likewise the row. The MCP-unavailable row is
+ *   the one that used to arrive as a `session_incident` (the `mcp` classifier
+ *   rule matched its own subject), so it is the case where the wrong ink and a
+ *   false "this is why the previous turn ended" tail were both visible.
  * - The relayed rows are the other direction: a payload is genuinely bulky, so
  *   its body stays behind the disclosure — but the row states the message
  *   rather than the envelope's manners, stepping over the opening tag AND the
@@ -368,7 +371,7 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 	custom("constructed-no-raw", 1789100007.1, "session_incident", {
 		text: "[session incident (anthropic/claude-opus-5)] unknown: provider returned an unclassified error envelope\nThis is why the previous turn ended. Take it into account before repeating the same request.",
 	}),
-	// The three harness statements. Their text is the formatter's own output.
+	// The four harness statements. Their text is the formatter's own output.
 	custom(
 		"a1f8e0b7c3d94a2e8f6b5c4d3e2f1a09",
 		1789100008.1,
@@ -389,6 +392,18 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 		action: "stored",
 		replaced: false,
 	}),
+	// The harness's second MCP verdict: the server has gone away. Its own
+	// record type, so no surface has to decide the tier — and it is a
+	// capability warning, never an incident. The row paints the first sentence;
+	// the reason and the instruction to the model are behind the disclosure.
+	custom(
+		"constructed-mcp-unavailable",
+		1789100009.4,
+		"session_mcp_unavailable",
+		{
+			text: "[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone until it reconnects.\nReason: MCP authorization failed; /mcp reauth minerva-qa — sign-in expired\nDo not call that server's tools in a tight loop; tell the user which server is down rather than retrying.",
+		},
+	),
 	// The control: a relayed payload, which is genuinely bulky.
 	custom("110e891fd4004f6faf251d47a64700dd", 1789100011.1, "hub_message", {
 		text: "<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nCorrection: rebase onto the CURRENT origin/main, not the ref I named. main has moved twice while you worked: origin/main is now `0ae91825c` (v0.54.21, released 09:27). Fetch again, then rebase the branch onto `origin/main` and report the resulting head SHA.\n</parent-message>",

@@ -260,6 +260,15 @@ export type TranscriptRecord =
 			 * the harness telling the reader that something changed (a model switch,
 			 * a recovered MCP server, a stored credential) or relaying a message,
 			 * which is informational.
+			 *
+			 * `session_mcp_unavailable` is the row that makes the boundary worth
+			 * stating, because it is one keystroke from the wrong tier. An MCP server
+			 * that fails to connect, or whose OAuth grant expires, does NOT end a
+			 * turn — it takes a capability away — so it rides the info tier with the
+			 * other statements and never borrows the incident's danger ink. Only a
+			 * `session_incident` may claim a turn died, and that claim is the
+			 * harness's to make: it emits this warning under its own record type for
+			 * exactly that reason.
 			 */
 			level: "info" | "error";
 			/**
@@ -1118,11 +1127,30 @@ const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * Custom rows whose TEXT is the message, not a payload to disclose.
  *
- * The three types here are the harness telling the reader that something changed
- * mid-session (a model switch, a recovered MCP server, a stored credential).
- * Each is a short statement a reader has to be able to read, and the TUI paints
- * it as a wrapping line for the same reason
+ * The four types here are the harness telling the reader that something changed
+ * mid-session (a model switch, a recovered MCP server, a stored credential, an
+ * MCP server that has gone away). Each is a short statement a reader has to be
+ * able to read, and the TUI paints it as a wrapping line for the same reason
  * (`tui/widgets/transcript.py::NoticeBlock`).
+ *
+ * `session_mcp_unavailable` is the clearest case of the rule, and the one worth
+ * a sentence of its own. Its `details.text` IS the message — three lines whose
+ * first sentence is the fact
+ * (`MCP server 'x' is unavailable: its tools are gone until it reconnects.`)
+ * and whose remainder is the harness's instruction to the MODEL (the `Reason:`
+ * line, then `Do not call that server's tools in a tight loop; …`) — which is
+ * exactly the split `splitStatement` exists to make. A custom type ABSENT from
+ * this set falls through to `relayRow` instead, where the same text is read as
+ * a bulky relayed payload: its first substantive line becomes the headline and
+ * the body goes behind a chevron. On a fixed three-line notice that shape is
+ * simply wrong — the reason the reader's tools disappeared is the half hidden.
+ *
+ * The harness gives this warning its own record type and its own formatter
+ * (`local_operator/incidents.py::format_mcp_unavailable_message`) rather than
+ * reusing `session_incident`, because an MCP server failing to connect — or its
+ * grant expiring — never ends a turn, and an incident's rendered tail says it
+ * did. A surface that decided the tier for itself is how one event came to read
+ * as a failed turn on every surface at once.
  *
  * `session_incident` is deliberately NOT in this set even though it is painted
  * the same way: it takes its own path through `incidentRow`, which is reached
@@ -1140,12 +1168,13 @@ const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
  * this branch or this set: `durableRecord` projects each to its own kind first
  * (see the receipts branch there), because upstream's `receipt-row-model` owns
  * both rows and derives their headline and prompt at paint time. Correcting this
- * paragraph rather than the code is the point — it used to name four types, two
- * of which can no longer arrive here, which is how the next reader ends up
- * "fixing" machinery that cannot run (round 7's R33).
+ * paragraph rather than the code is the point — it used to list those two among
+ * the types here, and neither can arrive at this branch now, which is how the
+ * next reader ends up "fixing" machinery that cannot run (round 7's R33).
  */
 const INLINE_CUSTOM_TYPES = new Set([
 	"session_mcp_recovery",
+	"session_mcp_unavailable",
 	"session_model_switch",
 	"session_credential",
 ]);
