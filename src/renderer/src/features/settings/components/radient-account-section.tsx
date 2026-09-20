@@ -182,10 +182,17 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 *
 				 * Not rendered while SIGNING OUT: that is not a read in flight, and the
 				 * caption would name the wrong state.
+				 *
+				 * AND ITS WORDS BELONG TO THIS SCOPE (review round 2, m2). The profile
+				 * fields two screens above carry the page's own sentence for the same
+				 * read ("Checking your Radient account…", design round 1, D2), and two
+				 * IDENTICAL sentences for one read is one fault stated twice - the
+				 * property D1 decided. This caption says what this box is waiting for;
+				 * the page's says what the read means for the fields beside it.
 				 */}
 				{!isSigningOut && (
 					<p className="text-meta text-ink-dim">
-						Checking your Radient account…
+						Loading your Radient account details…
 					</p>
 				)}
 			</div>
