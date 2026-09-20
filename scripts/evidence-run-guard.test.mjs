@@ -7,6 +7,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	realpathSync,
 	rmSync,
 	statSync,
@@ -80,6 +81,26 @@ async function holder(t, lock, code) {
 		assert.ok(event);
 	}
 	return { child, closed };
+}
+
+/**
+ * The pid the admitted guard wrote into the lease, or `null` while it is unwritten.
+ *
+ * The guard truncates the file, writes `pid=<its own pid>` and `exec`s the asked
+ * command in place - so for the CLI under test this is the GUARD's pid, one hop
+ * below the node process this test spawns, and it is not comparable to `child.pid`.
+ * What is readable is that the value CHANGES when a new admission happens, which is
+ * how this test waits for one without probing or locking anything itself. The lease
+ * file outlives a sweep on purpose ("normal exit preserves inode"), so a value left
+ * by an earlier arm is the reason the comparison is against the previous pid.
+ */
+function leasePid(lock) {
+	try {
+		const match = /pid=(\d+)/.exec(readFileSync(lock, "utf8"));
+		return match ? Number(match[1]) : null;
+	} catch {
+		return null;
+	}
 }
 
 const waitForStdin =
@@ -387,12 +408,29 @@ test(
 				env: sweepFixture.cliEnv,
 				stdio: ["ignore", "pipe", "pipe"],
 			});
+			const admittedBefore = leasePid(lock);
 			let stdout = "";
 			sweep.stdout.on("data", (chunk) => {
 				stdout += chunk;
 			});
+			/*
+			 * Wait for THIS sweep to be admitted before asking a contender. Asking
+			 * first is a race the sweep can lose: the contender's own ask takes
+			 * admission, the sweep is deferred and exits 75, and the case then reports
+			 * on a sweep that never ran - which is how this case first failed after the
+			 * fold, at `lastExit=75` with an empty stdout. The lease is the signal, and
+			 * the pid in it is the process the guard exec'd, which is the one spawned
+			 * here.
+			 */
 			const deadline = Date.now() + 30000;
-			while (sweep.exitCode === null && Date.now() < deadline) {
+			while (
+				sweep.exitCode === null &&
+				Date.now() < deadline &&
+				leasePid(lock) === admittedBefore
+			) {
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			if (sweep.exitCode === null && leasePid(lock) !== admittedBefore) {
 				if (sweepFixture.cli().status === 75) {
 					decided = {
 						frames,
@@ -402,7 +440,6 @@ test(
 					};
 					break;
 				}
-				await new Promise((resolve) => setTimeout(resolve, 20));
 			}
 			if (decided) break;
 			// Finished before a contender could ask; re-run with a bigger frame set.
@@ -495,3 +532,127 @@ test("an unavailable POSIX locking module names the platform, not a module", (t)
 	assert.doesNotMatch(blocked.stdout, /UNSAFE/);
 	assert.equal(existsSync(lock), false);
 });
+
+/**
+ * A frame that is one colour start to finish, with no ground/body split.
+ *
+ * `writeFrame` deliberately sits just under the uniformity ceiling (60% ground,
+ * 40% white) so it PASSES; this is its opposite, the shape the guard refuses. The
+ * two together are what make the refusal cases meaningful: a suite that only ever
+ * fed the guard passing frames would not know the difference.
+ */
+async function writeFlatFrame(file, size) {
+	const pixels = Buffer.alloc(size * size * 3, 0);
+	await sharp(pixels, { raw: { width: size, height: size, channels: 3 } })
+		.webp({ lossless: true })
+		.toFile(file);
+}
+
+/**
+ * Every CALL site of `name` in a flattened source text, with whether the call is
+ * awaited.
+ *
+ * A definition cannot match: `const name = async (…)` has ` = async ` between the
+ * name and the parenthesis, so only `name(` with the opening paren immediately
+ * after the name is found. Comments are stripped by the caller, because a
+ * docstring naming the function is not a call site.
+ */
+function callSites(text, name) {
+	const found = [];
+	let at = text.indexOf(`${name}(`);
+	while (at !== -1) {
+		const before = text.slice(Math.max(0, at - 60), at);
+		found.push({ before, awaited: /await\s*$/.test(before) });
+		at = text.indexOf(`${name}(`, at + 1);
+	}
+	return found;
+}
+
+test("every call site of the guard's async readers awaits them", () => {
+	/*
+	 * QA round 1, Q-1: `assertFramePaints` became async in this change and one call
+	 * site in a committed harness was left without `await`. That is not a loud
+	 * failure - the rejected promise surfaces as an unhandled rejection AFTER the
+	 * next statement has run, so the rig writes the frame the guard refused, logs
+	 * it, and reaches `process.exit(0)`: the sweep's refusal is reported as a
+	 * successful capture.
+	 *
+	 * The instance is fixed with an `await`; this is the class. It is the same
+	 * shape the window-mode "present sites" scan uses, and the reason it has to be a
+	 * scan rather than a case: the bug is an omission in a file the suite does not
+	 * otherwise execute (the rigs need Electron and a real Chrome), so only reading
+	 * every call site can find the next one.
+	 *
+	 * The rule is deliberately the strict one - the call must be awaited where it is
+	 * written. `const p = assertFramePaints(...); await p;` would be correct and is
+	 * flagged; if a future caller needs that shape, this test is where the
+	 * conversation happens rather than in a silent omission.
+	 */
+	const roots = ["scripts", "docs", "src", "bin"].filter((root) =>
+		existsSync(root),
+	);
+	const files = roots
+		.flatMap((root) =>
+			readdirSync(root, { recursive: true }).map((f) => join(root, String(f))),
+		)
+		.filter((file) => /\.(?:mjs|js|ts|tsx)$/.test(file))
+		.filter((file) => !file.includes("node_modules"))
+		.filter((file) => file !== "scripts/evidence-run-guard.test.mjs");
+	const offenders = [];
+	let sites = 0;
+	for (const file of files) {
+		const text = readFileSync(file, "utf8")
+			.replace(/\/\*[\s\S]*?\*\//g, " ")
+			.replace(/\/\/[^\n]*/g, " ");
+		for (const name of ["assertFramePaints", "frameHistogram"]) {
+			for (const site of callSites(text, name)) {
+				sites += 1;
+				if (!site.awaited) offenders.push(`${file}: ${name} without await`);
+			}
+		}
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		`these call sites do not await an async reader: ${offenders.join(", ")}`,
+	);
+	// A scan that matched nothing would pass, so the sites it did find are counted:
+	// four rig call sites plus the guard's own two.
+	assert.ok(
+		sites >= 6,
+		`expected the tree's awaited call sites, found ${sites}`,
+	);
+});
+
+test(
+	"a frame the paint guard refuses reddens the sweep rather than passing it",
+	{ timeout: 30000 },
+	async (t) => {
+		/*
+		 * The end-to-end half of Q-1: the guard was silently downgraded by the
+		 * sync-to-async conversion, so what has to hold is that a REFUSED frame - not
+		 * merely an unreadable one, which the case above covers - stops the sweep and
+		 * is reported. The frame is flat, in a subdirectory whose file name still
+		 * resolves the fixture's palette, so the sweep reaches the verdict rather
+		 * than the "no palette named" check.
+		 */
+		const lock = fixture(t);
+		const { cli, evidence } = await realSweep(t, lock, { frames: 1 });
+		mkdirSync(join(evidence, "flat"), { recursive: true });
+		await writeFlatFrame(join(evidence, "flat", "synthetic.webp"), 10);
+		const refused = cli();
+		assert.equal(refused.status, 1, refused.stdout);
+		/*
+		 * A VERDICT failure is a `FAIL  …` line on stdout, not the stderr path the
+		 * unreadable-frame case above uses: that one is the reader throwing, this one
+		 * is the sweep judging a frame it could read. The sweep also carries its own
+		 * wording ("this frame is a ground with nothing on it") rather than
+		 * `assertFramePaints`'s ("the story painted its ground and nothing else"),
+		 * because the two answer the same question for different audiences - which is
+		 * why the assertion is about the sweep REPORTING a refused frame, not about
+		 * which sentence it borrows.
+		 */
+		assert.match(refused.stdout, /FAIL .*is a ground with nothing on it/);
+		assert.doesNotMatch(refused.stdout, /Evidence holds/);
+	},
+);
