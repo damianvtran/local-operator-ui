@@ -278,6 +278,9 @@ const APP_SPAWN_SITES = [
 		1,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the built app headless and forks a REAL pty inside it, driving the console host over the app's own /rpc - and with `--packaged` it launches an electron-builder bundle the same way, so this rig is two separate chances to banner the operator",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-file-transfer-proof.mjs",
 		"spawn",
 		1,

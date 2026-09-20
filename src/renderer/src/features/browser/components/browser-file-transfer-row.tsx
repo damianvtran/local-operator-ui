@@ -319,8 +319,19 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					    branch colliding at the app's minimum window for the same reason the
 					    refusal did: an absolute `max-w-[32ch] shrink-0` holds 237.5 px there and
 					    leaves the sentence no way to break, so the name takes the refusal's
-					    proportional cap and floor, and this paragraph wraps like its sibling. */}
-					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
+					    proportional cap and floor, and this paragraph wraps like its sibling.
+					    THE PROPORTIONAL SHAPE APPLIES ONLY WHERE THE SENTENCE NEEDS IT, and
+					    `shrink` is what the name must not be above the container threshold:
+					    `min(6ch,20%)` is the floor the MINIMUM window needs, and at the app's
+					    DEFAULT window the shared flex-shrink was taking ~29 px off the name —
+					    painting the state's own identifier as `receipt-…` beside a path that is
+					    itself clipped. That is design round 6's D1 and review round 6's R6-1,
+					    measured from the committed frames. So the name is `shrink-0` back above
+					    64rem and yields only under it, which is the arrangement the last
+					    pre-gate head shipped at that width. `B13` asserts it: the name is
+					    UNCLIPPED at the default window, and its painted width rides in the
+					    check's payload so the state is visible even when it passes. */}
+					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm @min-[64rem]/browserrow:shrink-0">
 						{name}
 					</span>
 					{sending && (latest?.count ?? 1) > 1 && (

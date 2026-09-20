@@ -492,8 +492,19 @@ test("the DECIDED branch's name takes the refusal's cap, and its sentence wraps 
 		"and its floor keeps the name from vanishing when it yields",
 	);
 	assert.ok(
-		!/shrink-0/.test(name.className),
-		"and it YIELDS: `shrink-0` is what left this branch with nothing to give at the app's minimum window",
+		/\bshrink\b/.test(name.className),
+		"and it YIELDS: `shrink` is what gives the name something to give at the app's minimum window",
+	);
+	assert.match(
+		name.className,
+		/@min-\[64rem\]\/browserrow:shrink-0/,
+		"and above the container threshold it is `shrink-0`, because an identifier clipped beside a path that is already clipping is the state design round 6's D1 was filed about (review R6-1)",
+	);
+	assert.ok(
+		!/\bshrink-0\b/.test(
+			name.className.replace(/@min-\[64rem\]\/browserrow:shrink-0/g, ""),
+		),
+		"with no UNGATED `shrink-0` left anywhere in the class list: that is the shape design round 4's D16 was filed about, and it is what would leave the minimum window with nothing to give",
 	);
 	assert.match(
 		container.querySelector("p").className,
