@@ -314,6 +314,31 @@ export type DesktopFeature =
 	 */
 	| "references"
 	/**
+	 * This machine's remote-access state and the verdict on the Radient login
+	 * that owns it: `GET /v1/desktop/tunnel`, plus `radient_login` and
+	 * `tunnel_remedy` on `GET /v1/auth/status`.
+	 *
+	 * ITS OWN key rather than a bump of `auth` or `radient`, on the rule
+	 * `references` states above and for a sharper version of it: the two keys it
+	 * sits beside gate surfaces that ALREADY WORK, and this one gates one narrow
+	 * thing - whether the app may tell a user that their stored Radient sign-in
+	 * is no longer accepted, and whether it may offer the sign-in that fixes it.
+	 * The account section must keep its current wording against a backend that
+	 * cannot answer, because a surface that reads an ABSENT verdict as "the login
+	 * is fine" is the silent-health lie the whole change exists to remove - and
+	 * one that reads it as "the login is dead" sends an offline machine to a
+	 * sign-in it does not need. Both halves of that pair are why the gate is
+	 * `enabled`-shaped and fails closed in `useRadientSessionIssue` rather than
+	 * defaulting either way.
+	 *
+	 * WHAT HAS TO HAPPEN FOR THE SURFACE TO APPEAR: the harness advertises
+	 * `"tunnel": 1` in `local_operator/server/routes/capabilities.py`, which is
+	 * what PR #1342 (`fix/tunnel-login-resilience`, in review when this landed)
+	 * does. Named here where a reader will meet it, exactly as `references` names
+	 * its own counterpart on the other side of this contract.
+	 */
+	| "tunnel"
+	/**
 	 * `attention.seen`: marking MANY completions read in one gesture
 	 * (`POST /v1/desktop/attention/seen`), which the sidebar's "Mark all as read"
 	 * control rides.

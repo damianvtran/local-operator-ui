@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -6766,6 +6766,243 @@ async function sceneBrowserPane(cdp) {
 	}
 }
 
+/**
+ * `--scene radient-issue`: the session issue, and the one action that clears it.
+ *
+ * REQUIRES `--backend`, and it is not a convenience. This surface is gated on a
+ * capability the backend advertises (`tunnel`) and speaks a verdict only the
+ * backend can give (`GET /v1/auth/status`'s `radient_login`), so a run with no
+ * backend photographs the absence of the feature - which is why the scene
+ * refuses rather than capturing an app that could not have shown it either way.
+ *
+ * TWO RUNS, TWO CLAIMS, the shape `browser-pane` and `new-chat` use:
+ *
+ * - BACKEND SAYS THE LOGIN IS DEAD: the callout is raised with its one action;
+ *   pressing it moves the band to the in-flight state (the connector restarts
+ *   when the sign-in completes, with the Cancel that releases the one loopback
+ *   port the flow holds); and once the flow settles and the verdict is re-read
+ *   the callout clears.
+ * - BACKEND SAYS THE LOGIN IS FINE: nothing is raised at all, which is as much
+ *   a claim as the callout is - a nag on a working login is the same class of
+ *   lie, told in the other direction, as the silent-health bug this surface
+ *   exists to remove.
+ *
+ * The scene WAITS on the product rather than driving it, and fails naming what
+ * it saw. Completing the sign-in is the RIG's job, not this harness's: the app
+ * is the initiator of a Radient sign-in and never the callback receiver (the
+ * loopback callback is on the harness host), so a run that presses the action
+ * needs a backend whose owner finishes the browser leg - see the PR's
+ * walkthrough for the two rig commands.
+ */
+async function sceneRadientIssue(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown",
+		facts.visible === false,
+		`visible=${facts.visible} focused=${facts.focused} minimized=${facts.minimized}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * OPEN A DRAFT FIRST, and this is not incidental. With no conversation
+	 * selected the chat route renders the "Start a chat" screen, which has no
+	 * composer at all - measured against this run's own backend, where the
+	 * capture was that screen and the callout could not have been anywhere,
+	 * because there is no band to put it in. The sidebar's New chat row stages
+	 * the untargeted draft, and it is pressed AT THE BOX IT PAINTS, the way a
+	 * user presses it.
+	 */
+	/*
+	 * THE COMPOSER IS A HARD PRECONDITION, and the press is RETRIED until it
+	 * exists. Two failures taught this shape.
+	 *
+	 * The row carries `disabled` until the catalogue answers, and a press
+	 * dispatched at a disabled button is accepted by the pointer path and does
+	 * nothing - so an early cut of this scene captured the "Start a chat" screen
+	 * with the band the frames are about never mounted.
+	 *
+	 * And a single press is not enough even when the row is enabled: on a loaded
+	 * host the draft took longer than the wait that followed it, and the run then
+	 * reported "a login the backend still accepts raises nothing" as a PASS over a
+	 * screen that has no composer at all. That is a FALSE pass - there was no
+	 * callout to find because there was no band to carry one - which is why this
+	 * scene now refuses to read the absence of the issue until the band is
+	 * actually on screen.
+	 */
+	const bandSelector = 'document.querySelector("[data-lo-composer-band]")';
+	const newChatRow = `Array.from(document.querySelectorAll("button[data-chat-row]")).find(
+		(button) =>
+			!button.disabled &&
+			button.textContent.replace(/\\s+/g, " ").trim().startsWith("New chat"),
+	)`;
+	let bandPresent = false;
+	for (let attempt = 1; attempt <= 3 && !bandPresent; attempt++) {
+		await waitForScene(cdp, `Boolean(${newChatRow})`);
+		const row = await cdp.evaluate(`(() => {
+			const found = ${newChatRow};
+			if (!found) return null;
+			const box = found.getBoundingClientRect();
+			return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+		})()`);
+		if (!row) break;
+		if (attempt === 1) {
+			check(
+				"the sidebar's New chat row is on screen",
+				true,
+				JSON.stringify(row),
+			);
+		}
+		await pressPointer(cdp, row.x, row.y);
+		// The draft is staged by the app's own store, so what is waited on is the
+		// band the composer renders into - the product's answer, not a timeout.
+		bandPresent = await waitForScene(cdp, `Boolean(${bandSelector})`, 200);
+	}
+	check(
+		"the composer band is on screen (the precondition for every reading below)",
+		bandPresent,
+		`${bandPresent} after retrying the draft press`,
+	);
+	if (!bandPresent) {
+		/*
+		 * STOP rather than continue. Every assertion below is about a callout
+		 * INSIDE this band, so on a screen without one "the issue is absent" is not
+		 * evidence about the issue - it is evidence that the scene never reached the
+		 * state it is about.
+		 */
+		note(
+			"the scene stopped before the issue readings",
+			"no composer band, so an absent callout would prove nothing",
+		);
+		return;
+	}
+
+	const raised = await readUntil(
+		() => readRadientIssue(cdp),
+		(reading) => reading.present,
+		30_000,
+	);
+	note("issue at first paint", JSON.stringify(raised));
+
+	if (!raised.present) {
+		check(
+			"a login the backend still accepts raises nothing (no false nag)",
+			raised.kind === null,
+			JSON.stringify(raised),
+		);
+		const frame = await captureSettled(cdp, "issue-absent");
+		note("frame", JSON.stringify(frame));
+		return;
+	}
+
+	check(
+		"the backend's verdict raised the session issue",
+		raised.kind === "needs-sign-in",
+		JSON.stringify(raised),
+	);
+	check(
+		"the issue carries exactly one action",
+		raised.buttons.length === 1 && raised.buttons[0] === "Sign in to Radient",
+		JSON.stringify(raised.buttons),
+	);
+	const raisedFrame = await captureSettled(cdp, "issue-raised");
+	note("frame", JSON.stringify(raisedFrame));
+
+	const press = await verb(cdp, "press", {
+		selector: "[data-lo-radient-issue] button",
+	});
+	note("press", JSON.stringify(press));
+	check(
+		"the action was hit-tested where it is painted",
+		press.hitTest === true,
+		JSON.stringify({ hitTest: press.hitTest, hit: press.hit }),
+	);
+
+	const signingIn = await readUntil(
+		() => readRadientIssue(cdp),
+		(reading) => reading.kind === "signing-in" || reading.kind === "settled",
+		30_000,
+	);
+	check(
+		"pressing the action moves the issue to the sign-in in flight",
+		signingIn.kind === "signing-in",
+		JSON.stringify(signingIn),
+	);
+	check(
+		"the in-flight state says what the connector does next, and offers the cancel",
+		/connector restarts when it completes/.test(signingIn.text) &&
+			signingIn.buttons.includes("Cancel"),
+		JSON.stringify(signingIn),
+	);
+	const signingFrame = await captureSettled(cdp, "issue-signing-in");
+	note("frame", JSON.stringify(signingFrame));
+
+	/*
+	 * The clear is the whole point of the surface: the credential lands, the
+	 * verdict is re-read, and the issue goes away on its own. Bounded and
+	 * reported, because a callout that stays up after a successful sign-in is
+	 * the failure this scene exists to catch.
+	 */
+	const cleared = await readUntil(
+		() => readRadientIssue(cdp),
+		(reading) => !reading.present,
+		120_000,
+	);
+	check(
+		"the issue clears once the sign-in settles and the verdict is re-read",
+		cleared.present === false,
+		JSON.stringify(cleared),
+	);
+	const clearedFrame = await captureSettled(cdp, "issue-cleared");
+	note("frame", JSON.stringify(clearedFrame));
+
+	for (const pair of [
+		["issue-raised", raisedFrame, "issue-signing-in", signingFrame],
+		["issue-signing-in", signingFrame, "issue-cleared", clearedFrame],
+	]) {
+		check(
+			`${pair[0]} and ${pair[2]} are the same screen at the same size`,
+			pair[1].viewport.width === pair[3].viewport.width &&
+				pair[1].viewport.height === pair[3].viewport.height &&
+				pair[1].route === pair[3].route,
+			`${pair[1].route} ${JSON.stringify(pair[1].viewport)} vs ${pair[3].route} ${JSON.stringify(pair[3].viewport)}`,
+		);
+	}
+}
+
+/**
+ * What the composer band says about the Radient sign-in right now.
+ *
+ * Read from the kind ATTRIBUTE rather than from the copy: the sentence is not a
+ * contract a scene should key on, and the attribute is the same one the
+ * component documents for exactly this.
+ */
+function readRadientIssue(cdp) {
+	return cdp.evaluate(`(() => {
+		const issue = document.querySelector("[data-lo-radient-issue]");
+		if (!issue) return { present: false, kind: null, text: "", buttons: [] };
+		return {
+			present: true,
+			kind: issue.getAttribute("data-lo-radient-issue"),
+			text: issue.textContent.replace(/\\s+/g, " ").trim(),
+			buttons: Array.from(issue.querySelectorAll("button")).map((button) =>
+				button.textContent.trim(),
+			),
+		};
+	})()`);
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -13138,6 +13375,11 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "radient-issue" && BACKEND === null) {
+		throw new Error(
+			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
+		);
+	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
 		throw new Error(
 			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
@@ -13266,6 +13508,7 @@ async function main() {
 			if (SCENE === "states") await sceneStates(cdp);
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
+			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);

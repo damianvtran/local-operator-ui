@@ -20,6 +20,7 @@ import {
 	refusedSplitNotice,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
+import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
 import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
@@ -217,6 +218,7 @@ import {
 	type DirectoryWritePath,
 } from "./directory-indicator";
 import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
+import { RadientSessionIssueCallout } from "./radient-session-issue";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
@@ -5281,6 +5283,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [sendError, newMessage, replies, attachments, heldCopyOnScreen]);
 
 		/*
+		 * The session issue: the state of this machine's Radient sign-in, and the one
+		 * action that starts it again when it is dead.
+		 *
+		 * Read HERE rather than in the transcript because the composer band is the
+		 * session's own surface: every other standing fact about a session - its goal,
+		 * the size of its plan, a held message, an interrupted turn - is stated in this
+		 * band too, and the operator's report was that they had to go looking for this
+		 * one at all.
+		 *
+		 * It renders NOTHING in the healthy case, which is the common one, and nothing
+		 * for a backend that cannot answer the verdict either (see the hook's own
+		 * capability gate), so a healthy machine and an older server both draw the
+		 * composer exactly as they did before.
+		 */
+		const radientIssue = useRadientSessionIssue();
+
+		/*
 		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
 		 * button variants carry `[&_svg]:size-4` / `size-3.5`, which override an
 		 * SVG's own width and height - so a `size` prop on these icons states an
@@ -5349,6 +5368,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						onFocusComposer={() => textareaRef.current?.focus()}
 					/>
 				</ErrorBoundary>
+				{/*
+				 * The session issue, between the persistent status row and the transient
+				 * send-error alert: ambient context sits outboard of the alert that points
+				 * at the box, which is the rule that put the row above it
+				 * (`docs/composer-status-tabs.md` § 2.1, amended with this block).
+				 *
+				 * It is NOT inside the box, for the alert's own reason: the box is one
+				 * control with one focus ring, and this block carries prose and two
+				 * controls.
+				 */}
+				<RadientSessionIssueCallout
+					issue={radientIssue.issue}
+					onSignIn={radientIssue.start}
+					onCancel={radientIssue.cancel}
+					isSmallView={isSmallView}
+				/>
 				{(abandonNotice ||
 					refusedNotice ||
 					(!sendError && heldNotice) ||
