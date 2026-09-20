@@ -43,11 +43,15 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<the same token> node scripts/renderer-driver.mjs \
   --out docs/evidence/sidebar-split-live
 ```
 
-Run on 2026-09-19 at head `0aeccbc79`'s remediation round, `SCENE_EXIT=0`, with
-**31 checks passed and 0 failed**, ending in the driver's own leftover-process
-check (`[PASS] no process from this run outlived its boot`). The scratch profile
-the restart reuses is `${USER_DATA}-scene`, and the two boots were pids
-`76254 -> 76713` in that run: same profile, different process.
+Re-run on 2026-09-20 for round 2's remediation, at head `eb2947a69`, `SCENE_EXIT=0`,
+with **33 checks passed and 0 failed**, ending in the driver's own leftover-process
+check (`[PASS] no process from this run outlived its boot`). The two new checks are
+the travel-cancel this round added (`m-3`): a press on a cluster control that
+travels 20px through CDP leaves the store's `regions` and the drawn regions
+unchanged. The scratch profile the restart reuses is
+`${USER_DATA}-scene`; the run's own restart checks are the proof that the second
+boot is a second boot (`the stored height survives the restart`, `the collapse
+survives the restart`, `the restarted app DRAWS the collapsed state`).
 
 ## The frames
 
