@@ -78,6 +78,14 @@ export interface RpcServerOptions {
 	dispatch: RpcDispatcher;
 	/** Called for anything worth putting in the app log. */
 	log?: (message: string) => void;
+	/**
+	 * Extra facts `/health` reports about this process's capabilities.
+	 *
+	 * A getter rather than a value because the console host starts beside this
+	 * server and can be restarted under it; a snapshot taken at listen time would
+	 * answer "no console" forever after the first restart.
+	 */
+	capabilities?: () => { console: boolean };
 }
 
 export interface RpcServer {
@@ -127,6 +135,25 @@ function readBody(req: IncomingMessage): Promise<string> {
 		req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
 		req.on("error", reject);
 	});
+}
+
+/** The console-namespace grammar, which is what makes "a console method I do not
+ * know" decidable from a name alone. */
+const CONSOLE_NAME = /^console_[a-z0-9_]+$/;
+
+/** The id and name of a console-namespaced method this host does not answer, or
+ * null. Deliberately narrow: it only fires for a name in the console's own
+ * grammar, so every other unknown method keeps the envelope's 422. */
+function unknownConsoleMethod(
+	raw: unknown,
+): { id: string; method: string } | null {
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+	const envelope = raw as Record<string, unknown>;
+	if (typeof envelope.id !== "string" || !envelope.id) return null;
+	const method = envelope.method;
+	if (typeof method !== "string" || !CONSOLE_NAME.test(method)) return null;
+	if (isMethod(method)) return null;
+	return { id: envelope.id, method };
 }
 
 /** A `Response` error arm for a typed failure, with the code narrowed to one the
@@ -263,6 +290,11 @@ async function handle(
 				host: "ui",
 				proto: PROTO_VERSION,
 				pid: process.pid,
+				// Additive: an older reader requires `host` and `pid` and ignores the
+				// rest, and a newer one learns whether the console is up without a
+				// second probe (design 10.1). `false` when nobody reported a
+				// capability, which is the honest answer for a host that has none.
+				console: options.capabilities?.().console ?? false,
 			};
 			send(res, 200, body);
 			return;
@@ -299,6 +331,30 @@ async function handle(
 		try {
 			request = validateRequest(raw);
 		} catch (error) {
+			// A CONSOLE-NAMESPACED NAME THIS HOST DOES NOT KNOW IS A VERSION SKEW,
+			// not a malformed envelope, and it gets the typed refusal the design asks
+			// for rather than a transport status (design 10.6): the console namespace
+			// is new, so "a client newer than this app" is the expected direction, and
+			// a caller that can read a code can tell it from a typo. The BROWSER's
+			// closed list keeps its existing behaviour — an unknown browser method is
+			// still a 422 — because a released extension's expectations are the one
+			// thing a new host may not change unannounced.
+			const skew = unknownConsoleMethod(raw);
+			if (skew) {
+				send(
+					res,
+					200,
+					errorResponse(
+						skew.id,
+						new BrowserHostError(
+							"unsupported_method",
+							`this app version has no console method ${JSON.stringify(skew.method)}; update Local Operator`,
+							{ method: skew.method },
+						),
+					),
+				);
+				return;
+			}
 			// A malformed ENVELOPE is the caller's mistake, not a command failure,
 			// so it is a transport status rather than a `Response` error arm. An
 			// empty id is the honest answer here: there is no id to echo.

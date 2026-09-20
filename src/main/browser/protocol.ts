@@ -1,3 +1,9 @@
+import {
+	CONSOLE_COMMAND_TIMEOUTS_S,
+	CONSOLE_ERROR_CODES,
+	CONSOLE_METHODS,
+} from "../console/protocol";
+
 /**
  * The session-leg wire envelope, mirrored for the UI host.
  *
@@ -44,7 +50,16 @@ export const PROTO_VERSION = 1;
 export const ORIGIN_PROMPT_TIMEOUT_MS = 60_000;
 
 /**
- * Every RPC method this host answers, in the Python source's order.
+ * Every RPC method this host answers, in the Python source's order, followed by
+ * the console namespace.
+ *
+ * ONE LIST, TWO SOURCES. The console's names live in `console/protocol.ts` and
+ * are spread in here rather than copied, because this list is the wire's closed
+ * gate: `isMethod` is what stands between a request and the dispatcher, so a
+ * second hand-kept copy is exactly how a method ends up reachable on one side and
+ * refused on the other. Adding a host does not move `PROTO_VERSION`: the console's
+ * names are additive, and an older peer simply never sends them (design 10.2's
+ * proto rule).
  *
  * `retitle` is present because the wire carries it and the session may send it;
  * the host answers it as a no-op (design 4: the UI has no tab groups, and the
@@ -71,6 +86,7 @@ export const METHODS = [
 	"owner_finish",
 	"owner_retain",
 	"owner_release",
+	...CONSOLE_METHODS,
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -111,6 +127,7 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	await_access: 25.0,
 	cancel_access: 20.0,
 	retitle: 20.0,
+	...CONSOLE_COMMAND_TIMEOUTS_S,
 };
 
 /**
@@ -140,6 +157,11 @@ export const ERROR_CODES = [
 	"owner_refused",
 	"extension_unresponsive",
 	"internal",
+	// The console namespace's own additions (design 10.6). Spread rather than copied
+	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
+	// code against, and an unknown code is silently dropped by the session's model —
+	// a command that hangs rather than one that fails.
+	...CONSOLE_ERROR_CODES,
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -193,4 +215,15 @@ export interface HealthBody {
 	host: "ui";
 	proto: number;
 	pid: number;
+	/**
+	 * Whether the console capability is up (design 10.1: `/health` reports the
+	 * console capability as well as host/pid).
+	 *
+	 * OPTIONAL AND ADDITIVE, which is what keeps the probe's contract intact: the
+	 * Python side's `_health_ok` requires `host` and `pid` and ignores everything
+	 * else, so an older reader is unaffected and a newer one learns one more fact
+	 * from a request it was already making. `/health` stays UNKEYED and answers only
+	 * facts that identify this process — never anything readable from the jar.
+	 */
+	console?: boolean;
 }
