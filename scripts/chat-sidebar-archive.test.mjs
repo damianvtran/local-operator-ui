@@ -341,7 +341,7 @@ test("the dialog is the app's one delete confirmation, and it stays open to refu
 	// the sentence belongs to the candidate it was about.
 	assert.match(
 		source,
-		/setRefusal\(\{\s*candidate,\s*detail: outcome\.detail,\s*live: outcome\.live,?\s*\}\)/,
+		/setRefusal\(\{\s*candidate,\s*detail: outcome\.detail,\s*guarded: outcome\.guarded,?\s*\}\)/,
 	);
 	assert.match(source, /refusal\.candidate === candidate/);
 	assert.match(source, /text-danger/);
@@ -355,8 +355,8 @@ test("the dialog is the app's one delete confirmation, and it stays open to refu
 	 */
 	assert.match(source, /focusCancelSignal=\{refusalSeq\}/);
 	assert.match(source, /setRefusalSeq\(\(seq\) => seq \+ 1\)/);
-	assert.match(source, /shownRefusal\?\.live && \(/);
-	assert.match(source, /DELETE_LIVE_REMEDY/);
+	assert.match(source, /shownRefusal\?\.guarded && \(/);
+	assert.match(source, /DELETE_GUARD_REMEDY/);
 	// And closing the dialog hands the keyboard back to whatever opened it (the
 	// header's trigger when the menu that hosted the item is gone).
 	assert.match(source, /data-conversation-actions/);

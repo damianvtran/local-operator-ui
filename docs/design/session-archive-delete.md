@@ -222,6 +222,39 @@ while the conversation still holds the state the offer was taken from. The drive
 asserts both halves on the frames (the register is inside the panel, and disjoint
 from Send).
 
+**The pointer's own control reads at full ink, and the uniform ground is intended
+(round 4, D22).** With the ground stated on the row's box (D18), the row box and both
+controls declare the same `hover:bg-row-hover`, so a hovered row's ground is uniform
+and says nothing about which control the pointer is on — D18's failure mode one level
+down, in the direction of too little signal rather than too much. The ruling is a
+deliberate one between two costs: a DISTINCT control hover token is a new role to
+author and check across every palette for one 24px box, while the ink step is
+vocabulary this panel already uses (a pinned row's glyph is `text-ink`). So the
+control under the pointer takes `hover:text-ink`, its sibling stays at the revealed
+`ink-muted`, and the nested GROUND step is gone for good. The `!` on that utility is
+load-bearing and measured: `group-hover:text-ink-muted` and `hover:text-ink` are two
+equally specific rules that both match a hovered control, so without it the winner
+is the stylesheet's own order rather than the pointer.
+
+**A guard refusal names no single cause (round 4, Q11).** `409` is ONE arm of the
+route's ladder for four guards — a live session, an armed wake, unread mail, and a
+guard whose store could not be read — and the backend's own docstring says that is
+deliberate: the code does not vary by guard while the sentence names the remedy. The
+client therefore cannot attribute the refusal, and the sentence that used to be drawn
+under every 409 ("This window cannot stop a session that is running…") followed an
+armed-wake refusal with advice about a session. It now says the half that holds for
+all four — the guard is the daemon's, nothing in this window clears it, clear it where
+the session runs — and the route's sentence above names the specific remedy.
+
+**The pane stops contradicting the row it draws (round 4, Q12).** `view.missing` is a
+TRANSPORT state: raised by a 404 on the conversation's own stream, and never taken
+back, because the stream that would carry the return is the one the 404 killed. After
+a tombstone self-heals, the pane the reader was already on kept drawing "This
+conversation is no longer on this machine" over a row the catalogue had gone back to
+listing. The surface now reads the catalogue's membership beside it — a conversation
+this client lists is not gone, whatever an earlier read said — so the notice clears
+when the conversation comes back rather than on the next navigation.
+
 **The confirmation's Cancel carries its ring on `:focus`, not only
 `:focus-visible` (round 2, D6).** The dialog moves focus to Cancel on purpose and
 the app's ring is `:focus-visible`-only, which a programmatic focus does not
