@@ -41,6 +41,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
+import { consoleWiringDrift } from "./console-wiring.mjs";
 
 const bundle = await build({
 	stdin: {
@@ -145,6 +146,9 @@ const {
 	BrowserHostError,
 	registerConsoleIpc,
 	unregisterConsoleIpc,
+	startConsoleHost,
+	CONSOLE_REQUIRED_OPTIONS,
+	CONSOLE_DEFAULTED_OPTIONS,
 	CONSOLE_IPC_CHANNELS,
 	CONSOLE_PUSH_CHANNELS,
 	ensureSpawnHelperExecutable,
@@ -2224,4 +2228,56 @@ test("a retained surface is replayed into a fresh record, and reads as not live"
 		() => restored.host.input(created.surface, { text: "x" }),
 		(error) => error.code === "process_exited",
 	);
+});
+
+/**
+ * WHY THIS CELL IS A SOURCE READ AND NOT A SEAM INJECTION.
+ *
+ * Every other cell in this file builds the host's options itself, so it tests the
+ * host against a wiring the app might never produce; that is the gap that let a
+ * dropped option reach a built app. `consoleWiringDrift` reads the fields
+ * `StartConsoleHostOptions` actually declares, and the keys the app's single call
+ * site actually forwards, and fails by name on either half of the rule: a declared
+ * field nobody decided about (it will default silently), or a field that must be
+ * forwarded and is not. Run against the capture-view branch's pre-fix bytes this
+ * cell fails naming `consoleCaptureUrl, preloadPath` — the two fields whose absence
+ * made the live app answer `capture_unavailable` for every screenshot instead of
+ * photographing a surface with no displayed pane.
+ */
+test("the app's one construction site forwards every console option the host must be given", () => {
+	const drift = consoleWiringDrift({
+		hostSource: readFileSync("src/main/console/index.ts", "utf8"),
+		appSource: readFileSync("src/main/browser/index.ts", "utf8"),
+		requiredOptions: [...CONSOLE_REQUIRED_OPTIONS],
+		defaultedOptions: [...CONSOLE_DEFAULTED_OPTIONS],
+	});
+	assert.deepEqual(drift, { unclassified: [], missingAtCallSite: [] });
+});
+
+/**
+ * The runtime half of the same rule, driven through the REAL entry point the app
+ * calls rather than through the host's constructor: with a complete wiring it starts
+ * (and here reports only this harness's own condition, node-pty resolving through
+ * `import.meta.url`, which in the in-memory bundle is a `data:` URL), and each
+ * omitted field fails the start by name instead of being tolerated.
+ */
+test("a wiring the caller did not supply fails the start by name, before any condition", async () => {
+	const wiring = {
+		window: { isDestroyed: () => false },
+		expectedUrl: "local-operator://desktop",
+		appVersion: "0.0.0-test",
+		log: () => {},
+	};
+	const started = await startConsoleHost(wiring);
+	assert.equal(started.ok, false);
+	assert.equal(started.reason, "pty_unavailable");
+	for (const field of CONSOLE_REQUIRED_OPTIONS) {
+		const partial = { ...wiring };
+		delete partial[field];
+		await assert.rejects(
+			() => startConsoleHost(partial),
+			(error) => error.message.includes(`needs ${field}:`),
+			`omitting ${field} started the host instead of failing`,
+		);
+	}
 });

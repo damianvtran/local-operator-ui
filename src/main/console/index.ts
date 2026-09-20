@@ -38,6 +38,59 @@ import { ConsoleRegistry, MAX_SURFACES_PER_APP } from "./registry";
  * host's flag so the browser host cannot take the console down with it. */
 export const CONSOLE_HOST_ENV = "LOCAL_OPERATOR_UI_CONSOLE_HOST";
 
+/**
+ * The option fields a caller MUST supply, in one place, because "absent" here has
+ * a plausible reading that is not a failure.
+ *
+ * WHY THIS LIST EXISTS AND THE TYPE ALONE IS NOT ENOUGH. A required field is only
+ * required where the type is checked, and the two ways a field goes missing do not
+ * go through a type: a `.mjs` harness or rig calls this with a plain object, and a
+ * field added as OPTIONAL (a URL only some builds have) is dropped by the typed call
+ * site with no compile error at all — which is exactly how a built app shipped a
+ * console host that constructed no capture view and answered `capture_unavailable`
+ * for every screenshot: a typed and plausible condition rather than a failed start.
+ *
+ * So the list is checked at runtime in `startConsoleHost`, and the app's single
+ * construction site is pinned against it by a test (`scripts/console-wiring.mjs`,
+ * driven from `scripts/console-host.test.mjs`). Adding a field that a caller must
+ * supply means adding it here, and the test then fails until the call site forwards
+ * it.
+ */
+export const CONSOLE_REQUIRED_OPTIONS = [
+	"window",
+	"expectedUrl",
+	"appVersion",
+	"log",
+] as const;
+
+/**
+ * The option fields this host is allowed to see absent, each because it has a
+ * default or a seam that the app is not the only possible source of.
+ *
+ * The other half of the rule above: a field that is neither required nor listed
+ * here is a field nobody decided about, and the wiring test fails on it by name
+ * rather than letting it default to a plausible wrong answer.
+ */
+export const CONSOLE_DEFAULTED_OPTIONS = [
+	/** Defaults to `Date.now`; a test pins the clock. */
+	"now",
+	/** Defaults to the root the discovery record uses; a rig relocates it. */
+	"configDir",
+	/** Defaults to on (design 7.3); a rig turns it off to assert a fresh app. */
+	"restoreHistory",
+	/** Defaults to the real pty; every test injects a fake. */
+	"spawn",
+] as const;
+
+/** Which required options a caller left out, by name. */
+export function missingConsoleOptions(
+	options: Partial<StartConsoleHostOptions>,
+): string[] {
+	return CONSOLE_REQUIRED_OPTIONS.filter(
+		(field) => options[field] === undefined,
+	);
+}
+
 export interface StartConsoleHostOptions {
 	window: BrowserWindow;
 	/** The trusted renderer URL, for the IPC sender check. */
@@ -111,6 +164,20 @@ export function broadcastConsoleState(window: BrowserWindow): void {
 export async function startConsoleHost(
 	options: StartConsoleHostOptions,
 ): Promise<ConsoleStartup> {
+	/*
+	 * A THROW, NOT A TYPED REFUSAL, and deliberately before the two refusals below.
+	 * `disabled` and `pty_unavailable` are conditions of the app's environment and
+	 * are answered as results a caller can read; a missing wiring field is a bug in
+	 * the caller, and answering it as a capability would hand back a plausible
+	 * condition that no reader could distinguish from the real one — the failure mode
+	 * `CONSOLE_REQUIRED_OPTIONS` records.
+	 */
+	const missing = missingConsoleOptions(options);
+	if (missing.length > 0) {
+		throw new Error(
+			`startConsoleHost needs ${missing.join(", ")}: without it the host starts into a condition it invented rather than a failure`,
+		);
+	}
 	const { log } = options;
 	if (!consoleHostEnabled()) {
 		log(
