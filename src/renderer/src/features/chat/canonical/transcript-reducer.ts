@@ -1125,37 +1125,34 @@ function collapseRecords(state: TranscriptState): TranscriptState {
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
+ * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
+ *
+ * Named here rather than inlined at the branch because two docblocks and the
+ * row builder all refer to it, and a wire name spelled in four places is four
+ * places to get it wrong. The harness writes it under its own record type rather
+ * than as a `session_incident`, so that no surface has to derive the tier for an
+ * event that takes a capability away without ending a turn.
+ */
+const MCP_UNAVAILABLE_CUSTOM_TYPE = "session_mcp_unavailable";
+/**
  * Custom rows whose TEXT is the message, not a payload to disclose.
  *
- * The four types here are the harness telling the reader that something changed
- * mid-session (a model switch, a recovered MCP server, a stored credential, an
- * MCP server that has gone away). Each is a short statement a reader has to be
- * able to read, and the TUI paints it as a wrapping line for the same reason
+ * The three types here are the harness telling the reader that something changed
+ * mid-session (a model switch, a recovered MCP server, a stored credential).
+ * Each is a short statement a reader has to be able to read, and the TUI paints
+ * it as a wrapping line for the same reason
  * (`tui/widgets/transcript.py::NoticeBlock`).
  *
- * `session_mcp_unavailable` is the clearest case of the rule, and the one worth
- * a sentence of its own. Its `details.text` IS the message — three lines whose
- * first sentence is the fact
- * (`MCP server 'x' is unavailable: its tools are gone until it reconnects.`)
- * and whose remainder is the harness's instruction to the MODEL (the `Reason:`
- * line, then `Do not call that server's tools in a tight loop; …`) — which is
- * exactly the split `splitStatement` exists to make. A custom type ABSENT from
- * this set falls through to `relayRow` instead, where the same text is read as
- * a bulky relayed payload: its first substantive line becomes the headline and
- * the body goes behind a chevron. On a fixed three-line notice that shape is
- * simply wrong — the reason the reader's tools disappeared is the half hidden.
+ * TWO types that are read the same way are deliberately NOT here, because a type
+ * with its own path is not listed in a set it can never reach — and a member that
+ * can never match is configuration a later reader will try to "fix":
  *
- * The harness gives this warning its own record type and its own formatter
- * (`local_operator/incidents.py::format_mcp_unavailable_message`) rather than
- * reusing `session_incident`, because an MCP server failing to connect — or its
- * grant expiring — never ends a turn, and an incident's rendered tail says it
- * did. A surface that decided the tier for itself is how one event came to read
- * as a failed turn on every surface at once.
- *
- * `session_incident` is deliberately NOT in this set even though it is painted
- * the same way: it takes its own path through `incidentRow`, which is reached
- * before this set is read, so listing it here would be configuration that can
- * never fire.
+ * - `session_incident` takes `customRow`'s other arm before this set is read, and
+ *   brings a classification and a provider with it;
+ * - `session_mcp_unavailable` takes `mcpUnavailableRow`, for the reason that
+ *   builder's docblock gives: its second line is the OPERATOR's remedy rather
+ *   than the model's instruction, so it must not be split on the first sentence
+ *   the way these three are.
  *
  * Any other custom type that reaches this branch is a RELAYED payload — a
  * `hub_message`, a job result — whose body belongs behind the disclosure:
@@ -1174,7 +1171,6 @@ const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
  */
 const INLINE_CUSTOM_TYPES = new Set([
 	"session_mcp_recovery",
-	"session_mcp_unavailable",
 	"session_model_switch",
 	"session_credential",
 ]);
@@ -1221,8 +1217,31 @@ const RELAY_INSTRUCTIONS = new Set([
 	"this is a note, not a question. no reply is needed unless it changes what you should do.",
 ]);
 
-/** The bracket the harness prefixes its statement texts with (`[model switch]`). */
+/**
+ * The bracket the harness prefixes its statement texts with (`[model switch]`).
+ *
+ * THE `{1,32}` IS A SILENT BEHAVIOUR CHANGE ABOVE 32: a tag longer than that does
+ * not strip, so the tag rides into the headline and the row re-quotes its own
+ * label (`[session warning about the mcp layer] …` reads as the fact). Measured:
+ * 32 inner characters strip, 33 do not. The shipped tags are 15-16 characters, so
+ * the margin is wide — but the bound is what it is because the harness's own
+ * labels are bounded, not because 33 is a shape anyone meant to exclude, and a
+ * future head that exceeds it would move every statement row at once.
+ */
 const STATEMENT_TAG = /^\[[^\]]{1,32}\]\s*/;
+
+/**
+ * The prefix the harness's `format_mcp_unavailable_message` gives the reason line,
+ * and the separators that end the remedy clause inside it.
+ *
+ * The clause is what `mcpUnavailableRow` hoists when the fact and the reason do
+ * not both fit the row: everything up to and including the command the operator
+ * has to run, cut before the diagnostic that follows it. Hoisted to module scope
+ * for the reason the linter names (a literal inside the builder is re-created per
+ * record) rather than for style.
+ */
+const REASON_PREFIX = "Reason:";
+const REMEDY_CLAUSE_END = /[\n;,(]| [—–] /;
 
 /*
  * The sentence scan's two conditions (round 2's R7). Module constants rather than
@@ -1268,23 +1287,157 @@ function customRow(
 	Extract<TranscriptRecord, { kind: "custom" }>,
 	"level" | "headline" | "detail" | "category" | "provider"
 > {
-	if (customType !== "session_incident") {
-		// The statement's own bracket tag repeats the row's label
-		// ("session model switch: [model switch] …"), so the headline starts at
-		// the sentence — and the harness's instruction to the MODEL, which follows
-		// that sentence, is not a headline at all. A RELAYED payload keeps its
-		// whole body as the detail, because what makes it bulky is the payload
-		// itself rather than an instruction appended to a fact.
-		return {
-			level: "info",
-			category: null,
-			provider: null,
-			...(INLINE_CUSTOM_TYPES.has(customType)
-				? splitStatement(text.trim().replace(STATEMENT_TAG, ""))
-				: relayRow(text)),
-		};
+	if (customType === "session_incident") {
+		return { level: "error", ...incidentRow(text, details) };
 	}
-	return { level: "error", ...incidentRow(text, details) };
+	/*
+	 * The statement's own bracket tag repeats the row's label
+	 * ("session model switch: [model switch] …"), so the headline starts at
+	 * the sentence — and the harness's instruction to the MODEL, which follows
+	 * that sentence, is not a headline at all. A RELAYED payload keeps its
+	 * whole body as the detail, because what makes it bulky is the payload
+	 * itself rather than an instruction appended to a fact.
+	 *
+	 * `session_mcp_unavailable` is the one custom type whose text carries a line
+	 * addressed to the OPERATOR instead, so it takes the arm above this comment
+	 * rather than this split — see `mcpUnavailableRow`. It is deliberately not a
+	 * member of the set below: a type with its own path is not listed in a set it
+	 * can never reach.
+	 */
+	let body: Pick<
+		Extract<TranscriptRecord, { kind: "custom" }>,
+		"headline" | "detail"
+	>;
+	if (customType === MCP_UNAVAILABLE_CUSTOM_TYPE) {
+		body = mcpUnavailableRow(text);
+	} else if (INLINE_CUSTOM_TYPES.has(customType)) {
+		body = splitStatement(text.trim().replace(STATEMENT_TAG, ""));
+	} else {
+		body = relayRow(text);
+	}
+	return { level: "info", category: null, provider: null, ...body };
+}
+
+/**
+ * The harness's MCP-unavailable warning: the fact AND the operator's remedy on
+ * the row, the model-directed tail behind the disclosure.
+ *
+ * WHY THIS IS NOT `splitStatement`. For every other statement, everything after
+ * the first sentence is the harness talking to the MODEL — `This applies from now
+ * on.`, `never echo, print, or write it` — which is exactly what the disclosure
+ * is for. This warning is the one statement whose SECOND line is addressed to the
+ * reader: `Reason: MCP authorization failed; /mcp reauth <server> — sign-in
+ * expired` is the remedy, the only clause on the row anyone can act on. Split at
+ * the first sentence, the collapsed row promises the tools "are gone until it
+ * reconnects", which for the expired grant this row exists for is false — the
+ * capability comes back when the operator runs the command, not when something
+ * reconnects, and the TUI's live notice says so in its own words ("the tools are
+ * gone until someone runs `/mcp reauth <server>`"). Measured on the rendered row:
+ * collapsed, it sat in the same ink, pitch and label column as the
+ * `session mcp recovery` row directly above it, which needs no action from
+ * anyone (design round 1, D1).
+ *
+ * THE BOUND APPLIES TO THE FACT PLUS THE REASON, and a reason that does not fit is
+ * HOISTED to its `/mcp …` clause rather than cut at its tail: a plain tail-cut
+ * eats the command first, because the diagnostics that make a reason long
+ * (`ECONNREFUSED 127.0.0.1:8787`) sit AFTER it. The hoist keeps the most of the
+ * reason the bound allows — the whole reason up to and including the command, then
+ * the command alone — and whatever a cut leaves out moves into the disclosure
+ * ahead of the tail, so nothing the harness wrote is dropped. That is also what
+ * the last resort owes a reader: if even the command alone will not fit beside a
+ * very long server name, the composed line is bounded and the WHOLE reason goes
+ * behind the disclosure, because a truncated line's disclosure is exactly the
+ * place a reader is finished off rather than a repeat of what is on the row.
+ *
+ * The harness's own words are painted as-is; nothing is rewritten around them.
+ *
+ * The formatter OMITS the `Reason:` line when the reason is blank, so a two-line
+ * text is the ordinary shape too, and its tail is disclosed exactly as above.
+ */
+function mcpUnavailableRow(
+	text: string,
+): Pick<Extract<TranscriptRecord, { kind: "custom" }>, "headline" | "detail"> {
+	const lines = text
+		.trim()
+		.replace(STATEMENT_TAG, "")
+		.split("\n")
+		.map((line) => line.trim());
+	const fact = lines[0] ?? "";
+	// The fact is the formatter's first line and the reason is its second, when
+	// there is one: this row is built from the shape the harness documents, not
+	// from a sentence scan (`firstSentenceEnd` would split inside a server name
+	// that contains ". ", and does not apply to this type).
+	const reason = lines[1]?.startsWith(REASON_PREFIX) ? lines[1] : null;
+	const tail = lines
+		.slice(reason ? 2 : 1)
+		.filter(Boolean)
+		.join("\n");
+	const composed = (reason ? `${fact} ${reason}` : fact).trim();
+	if (composed.length <= HEADLINE_MAX) {
+		return { headline: composed, detail: tail || null };
+	}
+	const split = reason === null ? null : remedySplit(reason);
+	if (split !== null) {
+		/*
+		 * A reason portion is `Reason: <leading> <command>`, with either half
+		 * possibly empty — a reason that opens with the command has no leading
+		 * text, and one that names no command never reaches here (`null` above).
+		 */
+		const portion = (leading: string, command: string) =>
+			`${REASON_PREFIX} ${[leading, command].filter(Boolean).join(" ")}`;
+		const disclosure = (dropped: string) =>
+			[dropped, tail].filter(Boolean).join("\n") || null;
+		const throughCommand = `${fact} ${portion(split.leading, split.clause)}`;
+		if (throughCommand.length <= HEADLINE_MAX) {
+			return { headline: throughCommand, detail: disclosure(split.rest) };
+		}
+		const commandAlone = `${fact} ${portion("", split.clause)}`;
+		if (commandAlone.length <= HEADLINE_MAX) {
+			return {
+				headline: commandAlone,
+				detail: disclosure(
+					[split.leading, split.rest].filter(Boolean).join(" "),
+				),
+			};
+		}
+	}
+	return {
+		headline: bounded(composed),
+		detail: [reason, tail].filter(Boolean).join("\n") || null,
+	};
+}
+
+/**
+ * The remedy inside a `Reason:` line, in its three parts: the text before the
+ * `/mcp …` command, the command itself, and what follows it — or `null` when the
+ * reason names no command.
+ *
+ * `null` rather than a guess: the hoist exists to keep a command the row cannot
+ * otherwise fit, so a reason with no command in it has nothing to hoist and
+ * bounding the whole composed line is then the honest answer. The three parts are
+ * returned together because they are ONE cut — recomputing the boundary from the
+ * clause's text would land on the wrong occurrence if the reason repeated it.
+ */
+function remedySplit(
+	reason: string,
+): { leading: string; clause: string; rest: string } | null {
+	// The prefix is this function's business rather than the caller's: `leading`
+	// is what the row re-wraps after its own `Reason: `, so a caller that passed
+	// the line with the prefix still in it would paint it twice.
+	const body = reason.startsWith(REASON_PREFIX)
+		? reason.slice(REASON_PREFIX.length)
+		: reason;
+	const at = body.indexOf("/mcp");
+	if (at < 0) return null;
+	const from = body.slice(at);
+	const end = from.search(REMEDY_CLAUSE_END);
+	const clause = (end < 0 ? from : from.slice(0, end)).trim();
+	if (!clause) return null;
+	return {
+		leading: body.slice(0, at).trim(),
+		clause,
+		rest: (end < 0 ? "" : from.slice(end)).trim(),
+	};
 }
 
 /**

@@ -251,7 +251,11 @@ export const NoticeLengths: Story = {
  *   errors, and their message is likewise the row. The MCP-unavailable row is
  *   the one that used to arrive as a `session_incident` (the `mcp` classifier
  *   rule matched its own subject), so it is the case where the wrong ink and a
- *   false "this is why the previous turn ended" tail were both visible.
+ *   false "this is why the previous turn ended" tail were both visible. It is
+ *   also the one statement whose second line is addressed to the OPERATOR rather
+ *   than to the model, so it paints its fact and the `Reason:` line on the row
+ *   and discloses only the model-directed tail (`mcpUnavailableRow`), where the
+ *   other three split at the first sentence (`splitStatement`).
  * - The relayed rows are the other direction: a payload is genuinely bulky, so
  *   its body stays behind the disclosure — but the row states the message
  *   rather than the envelope's manners, stepping over the opening tag AND the
@@ -392,10 +396,11 @@ const HISTORY: DesktopHistoryPage["entries"] = [
 		action: "stored",
 		replaced: false,
 	}),
-	// The harness's second MCP verdict: the server has gone away. Its own
-	// record type, so no surface has to decide the tier — and it is a
-	// capability warning, never an incident. The row paints the first sentence;
-	// the reason and the instruction to the model are behind the disclosure.
+	// The harness's second MCP verdict: the server has gone away. Its own record
+	// type, so no surface has to decide the tier — and it is a capability warning,
+	// never an incident. The row paints the fact AND the operator's remedy (`/mcp
+	// reauth <server>` is the only clause anyone can act on); only the
+	// model-directed tail is behind the disclosure.
 	custom(
 		"constructed-mcp-unavailable",
 		1789100009.4,
