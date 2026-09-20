@@ -292,14 +292,24 @@ The window is not watched by hand:
 * **Growing the window** gives the extra pixels to the entity region, because it
   is the `flex-1` one. The user's chats height is unchanged, which is what a
   stored pixel value is for.
-* **Shrinking the window** is bounded in CSS, not in JavaScript: the list region
-  carries `maxHeight: calc(100% - 72px)` (its own height can never squeeze the
-  entity region past its floor) and `minHeight: 0`, and the entity region keeps
-  `min-h-0 flex-1`. Below the point where both floors fit, the **entity region
-  yields first — exactly as it does today**, where it is already the region that
-  can be squeezed to nothing by a short window. That is a stated consequence
-  rather than an accident: the region the user set a number for is the one the
-  layout defends.
+* **Shrinking the window** is bounded by a MEASURED cap rather than a CSS one:
+  the list region carries `listMax`, resolved by `resolveSidebarSplit` from the
+  capacity and the same 45% fraction the shipped `max-h-[45%]` used, and
+  `minHeight: 0`, and the entity region keeps `min-h-0 flex-1`. The cap is a
+  number the module computed because the number is also what the boundary
+  ANNOUNCES, and a `calc` in a class is not a number any of this can read back
+  (review round 1, NIT-1). The capacity is the split container MINUS the children
+  that are not regions - the boundary's own band and the pin-failure line - so a
+  floor of 72px is 72px for the region rather than 64px for the region and 8px for
+  the rule above it (m-1, U3, D5's arithmetic, fixed after review round 1).
+* **Below the point where both floors fit, the entity region yields first**, as
+  it does today. ABOVE that point it does not: a stored height is honoured, so a
+  short window can leave the entities at their floor while both floors fit
+  comfortably, and today's auto rule cannot reach that state. The clamp is the
+  right contract - the stored number survives for a window that can honour it -
+  so the state is stated instead of removed: the separator's own accessible name
+  becomes `Resize the chats list - showing 352 of 900 pixels in this window`
+  whenever the drawn height differs from the stored one (review round 1, D5).
 * **The stored number is never rewritten by a resize.** The render clamps; the
   prefence survives for a window that can honour it (the U6 rule,
   `chat-content.tsx:678-696`). `chat-layout.tsx:28-31` clamps `chatSidebarWidth`
@@ -469,7 +479,26 @@ explain); disabling the control when the other region is hidden (a control that
 refuses is worse than one that does the only sensible thing, and it needs its own
 explanation on screen).
 
-### S9 — Reorder is deferred, and the follow-up's gesture is named
+### S9 — Reorder SHIPS in this change, as the swap glyph this section specified
+
+**Amended after review round 1 (design D2, agent review's addition to it, UX
+U2/U5).** The paragraphs below were written when the recommendation was "not in
+this change", and the manager put reorder IN scope on the operator's behalf, in
+the shape this section itself described: a third `icon-sm` ghost glyph in the same
+hover-revealed cluster, toggling a persisted `chatSidebarOrder:
+"entities-first" | "chats-first"`. Everything this section said about the cost is
+true and was paid rather than avoided - the frame set grew (two swapped-order
+states at two widths, both brand palettes, and a driven swap frame), the state
+field is a third one rather than the two S10 describes, and the at-rest ledger is
+four tab stops rather than three. What it said about the LAYOUT is why the frames
+were the price: the regions' `flex-1`/`shrink-0` roles invert, the boundary's
+`side` flips to `"bottom"`, and the rule above the lower region moves from the
+list to the entities; and driving it found a defect no still would have (U2: the
+scrolled region lost its position, because the two regions reconciled
+positionally - they are keyed now, and the scene checks node identity across the
+swap).
+
+The original recommendation, kept as the record of what was weighed:
 
 **Recommend: not in this change.** The operator's phrasing makes it optional
 ("even to drag+drop and reorder … if desired"), and the honest reading is that it
@@ -587,9 +616,11 @@ sticky-heading comment records at 1863-1868 ("padding is not a clip"). At 10px n
 row's last pixels become a drag handle. QA tests exactly this (§ 9 A4).
 
 The at-rest ledger, stated so it can be falsified: zero pixels changed, zero lines
-added, no new motion, and **three new tab stops** (the separator and the cluster's
-two buttons, which are focusable while invisible by design). If a reviewer finds a
-fourth thing, it is a finding.
+added, no new motion, and **four new tab stops** (the separator and the cluster's
+three buttons, which are focusable while invisible by design). The ledger said
+three until review round 1: it was written before S9's swap control shipped inside
+this change, and its own falsification test caught the fourth (design D6, UX U5).
+If a reviewer finds a fifth thing, it is a finding.
 
 ---
 
@@ -1038,7 +1069,11 @@ double-click, Enter) checked as part of the flow rather than as separate control
 6. **The evidence stamp.** The restart step is a `scripts/` change; a stamp derived
    before the merge names the pre-merge trees and looks right (`AGENTS.md:136-145`).
    Watch: derive after the merge commit exists.
-7. **The reorder temptation.** If someone adds the S9 swap control as a
+7. **The reorder temptation.** *This happened, deliberately, and the cost below
+   was paid rather than avoided - the frames, the third store field and the fourth
+   tab stop all exist, and driving the swap found a scroll-position defect no
+   still would have (U2).* The warning, kept for the record: if someone adds the
+   S9 swap control as a
    "small addition" inside this PR, the frame set, the UX round and the state field
    all grow with it. It is a separate PR on purpose.
 
@@ -1046,7 +1081,8 @@ double-click, Enter) checked as part of the flow rather than as separate control
 
 ## 11. Non-goals
 
-1. No drag-and-drop reorder (S9) and no new dependency (ground truth 13).
+1. No drag-and-drop reorder: S9's swap glyph ships instead, which is what the
+   manager put in scope. No new dependency (ground truth 13).
 2. No change to what each region lists: not the grouping, the pins, the search, the
    receipt, or the sort.
 3. No collapse of the nav rail, and no change to `chatSidebarWidth`.
@@ -1064,7 +1100,10 @@ double-click, Enter) checked as part of the flow rather than as separate control
 I made the call on each of these and implemented the consequence in the design
 above; they are listed because the operator would reasonably want the last word.
 
-1. **Whether reorder ships in this window or the follow-up.** I recommend the
+1. **Whether reorder ships in this window or the follow-up.** RESOLVED after
+   review round 1: it ships here, as the glyph S9 specified, with its own frames,
+   its own driven scene and its own findings (design D2, UX U2). My recommendation
+   was the
    follow-up (S9) with a named gesture. This is the one item the operator raised
    himself, so it is his.
 2. **What "collapse the last visible region" does.** I recommend hide-one-shows-the-
