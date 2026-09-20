@@ -341,10 +341,25 @@ const layoutSettled = () =>
 			const separator = document.querySelector<HTMLElement>(
 				'[data-sidebar-split] [role="separator"]',
 			);
+			/*
+			 * The sample includes the READOUT's own two attributes, not just the
+			 * layout: the caption is a 200ms sample of a DOM this harness resizes
+			 * after it, and three identical geometry samples can complete inside one
+			 * poll window while the caption still describes the pre-resize viewport
+			 * - which is how the light half of `resting-default` printed a 660-tall
+			 * page's arithmetic into a 691-tall frame through two rounds and a
+			 * re-capture (agent review round 2, M-1; design round 2, D4). Agreeing on
+			 * the readout's values as well makes "the caption is stable" a check
+			 * rather than a hope.
+			 */
+			const drawn = document.querySelector<HTMLElement>("[data-readout-drawn]");
+			const now = document.querySelector<HTMLElement>("[data-readout-now]");
 			return [
 				panel ? Math.round(panel.getBoundingClientRect().height) : -1,
 				entities ? Math.round(entities.getBoundingClientRect().height) : -1,
 				separator?.getAttribute("aria-valuenow") ?? "none",
+				drawn?.dataset.readoutDrawn ?? "none",
+				now?.dataset.readoutNow ?? "none",
 			].join("/");
 		};
 		(globalThis as { __sidebarSamples?: string[] }).__sidebarSamples = [
@@ -431,6 +446,17 @@ const Readout = () => {
 				separator
 					? `Separator: ${separator.getAttribute("aria-orientation")}, now ${separator.getAttribute("aria-valuenow")}, min ${separator.getAttribute("aria-valuemin")}, max ${separator.getAttribute("aria-valuemax")}`
 					: "Separator: (no boundary)",
+				/*
+				 * The separator's ACCESSIBLE NAME, printed because an `aria-label` is
+				 * otherwise unphotographable and D5's fix lives in it: when the window is
+				 * too short for the stored height, this is the only place the clamped
+				 * state says so - `Resize the chats list - showing 344 of 900 pixels in
+				 * this window` - and a claim that appears in no frame is the shape of
+				 * evidence round 1 was about (design round 2, D10).
+				 */
+				separator
+					? `Separator label: “${separator.getAttribute("aria-label")}”`
+					: "Separator label: (no boundary)",
 				`Chats region drawn at: ${
 					list
 						? `${Math.round(list.getBoundingClientRect().height)}px`
@@ -568,6 +594,15 @@ export const RestingDefault: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -588,6 +623,15 @@ export const DraggedSplit: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -610,6 +654,15 @@ export const EntitiesOnly: Story = {
 		});
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -627,6 +680,15 @@ export const ChatsOnly: Story = {
 		await settled({ entities: "absent", chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -650,6 +712,15 @@ export const ShortWindow: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -667,6 +738,15 @@ export const Narrow240: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -692,6 +772,15 @@ export const ChatsFirst: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -709,6 +798,15 @@ export const ChatsFirstNarrow: Story = {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };
 
@@ -748,5 +846,14 @@ export const QueryWhileCollapsed: Story = {
 		);
 		await readoutSettled();
 		await layoutSettled();
+		/*
+		 * And the readout AGAIN, after the layout has settled: the first pass
+		 * asserts the caption agrees with the DOM, the second asserts it still
+		 * agrees once the DOM has stopped moving. The harness resizes the
+		 * content height after the last sample, so a caption checked only
+		 * before the stability wait is a caption checked against a viewport
+		 * that is about to change (agent review round 2, M-1).
+		 */
+		await readoutSettled();
 	},
 };

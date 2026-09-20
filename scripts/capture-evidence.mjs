@@ -2987,7 +2987,19 @@ export const STORIES = [
 	 * states are: `entities-only` is a filled column and a 28px row, and a 900px
 	 * frame of it would be a picture of ground.
 	 */
-	["chat-sidebar-sections--resting-default", 741, 660],
+	/*
+	 * 741x691 for `resting-default`, NOT 741x660. The declaration is the viewport
+	 * the harness resizes the content height to (`max(scrollHeight, body, declared)`),
+	 * and that resize lands AFTER the readout's last DOM sample - so a story whose
+	 * content is taller than its declaration gets a caption written for the
+	 * pre-resize viewport and a frame shot at the post-resize one. This state's
+	 * content is 691 tall (its readout is the longest of the set), so 660 made the
+	 * harness resize it by 31px under the caption: the light frame printed a
+	 * 660-tall page's arithmetic into a 691-tall frame through two rounds (agent
+	 * review round 2, M-1; design round 2, D4). Declaring the content's own height
+	 * makes the resize a no-op and the caption true by construction.
+	 */
+	["chat-sidebar-sections--resting-default", 741, 691],
 	["chat-sidebar-sections--dragged-split", 741, 660],
 	["chat-sidebar-sections--entities-only", 741, 420],
 	["chat-sidebar-sections--chats-only", 741, 480],
