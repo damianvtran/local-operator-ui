@@ -280,6 +280,12 @@ export const SettingsPage: FC = () => {
 	const setShowAgentReasoning = useUiPreferencesStore(
 		(state) => state.setShowAgentReasoning,
 	);
+	const showLiveReasoning = useUiPreferencesStore(
+		(state) => state.showLiveReasoning,
+	);
+	const setShowLiveReasoning = useUiPreferencesStore(
+		(state) => state.setShowLiveReasoning,
+	);
 	const {
 		data: config,
 		isLoading: isConfigLoading,
@@ -1061,9 +1067,32 @@ export const SettingsPage: FC = () => {
 								 * the row got written twice.
 								 */}
 								<ToggleSetting
+									value={showLiveReasoning}
+									label="Show reasoning while it runs"
+									description="Streams the model's thinking into the conversation while a call is running, and replaces it with the answer as soon as the answer starts. Turn it off to leave only the working line during a call."
+									onChange={async (next) => setShowLiveReasoning(next)}
+								/>
+								{/*
+								 * The two switches are SEPARATE SUBJECTS, and their copy says so
+								 * (review M-1, design D2).
+								 *
+								 * This one governs what a call PAINTS WHILE IT IS RUNNING — the
+								 * block that fills the wait and retires at the first answer token.
+								 * The one below governs what the transcript KEEPS afterwards. The
+								 * copy used to read "Adds the agent's Reasoning and Thinking rows to
+								 * conversations" on a default-OFF switch, which a reader would
+								 * reasonably take as the control for everything they can see the
+								 * word reasoning on — including the row above, which it never
+								 * touched.
+								 *
+								 * Order matters: the switch that governs what a live turn shows
+								 * sits above the one that governs what settled turns keep, in the
+								 * order the reader meets them in a conversation.
+								 */}
+								<ToggleSetting
 									value={showAgentReasoning}
-									label="Show agent reasoning"
-									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
+									label="Show stored agent reasoning"
+									description="Adds the agent's saved Reasoning and Thinking rows to conversations, closed until you open one. This is what a turn leaves behind, not what it shows while it is running."
 									onChange={async (next) => setShowAgentReasoning(next)}
 								/>
 							</div>

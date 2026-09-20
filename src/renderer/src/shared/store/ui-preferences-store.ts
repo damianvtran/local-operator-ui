@@ -229,13 +229,22 @@ type UiPreferencesState = {
 	isSidebarCollapsed: boolean;
 
 	/**
-	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
+	 * Whether the agent's STORED reasoning is shown — the `thinking` field, and
+	 * `plan` / `reflection` turns.
 	 *
 	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
 	 * itself, and rendering it at prose weight is what makes the app read as a
 	 * developer tool. When false, reasoning turns are hidden entirely — a
 	 * collapsed "Reasoning" disclosure would still be chrome on every turn,
 	 * which is the weight this preference exists to remove.
+	 *
+	 * WHAT IT DOES NOT GOVERN, because its copy used to imply otherwise (review
+	 * M-1, design D2): the LIVE block a call paints while it is reasoning, which
+	 * is `showLiveReasoning` below. The two are different subjects — a durable
+	 * field the transcript keeps versus a transient claim that retires at the
+	 * answer's first token — and the operator's ticket is precisely about the
+	 * second one, so folding them into a single default-OFF switch would ship a
+	 * still screen by default and this preference would be the cause.
 	 */
 	showAgentReasoning: boolean;
 
@@ -252,6 +261,34 @@ type UiPreferencesState = {
 	 * @param show - Whether reasoning turns should be visible
 	 */
 	setShowAgentReasoning: (show: boolean) => void;
+
+	/**
+	 * Whether the model's reasoning is painted while a call is running.
+	 *
+	 * DEFAULT TRUE, and that is the whole point of it being a preference of its
+	 * own. The wait it fills is dead air — p50 3,067 ms from submit to the first
+	 * visible text on the operator's own ledger, of which 10 ms is local — and the
+	 * runtime now streams the reasoning through the whole of it, so the default has
+	 * to show it or the ticket is a no-op. What the switch buys is the reader's way
+	 * OUT: a turn that reasons for a minute paints a minute of prose they may not
+	 * want, and the row is open by default, so off must exist as well as on.
+	 *
+	 * This mirrors the TUI's convention for a DISPLAY channel rather than a stored
+	 * field — a `display.*`-shaped key that defaults ON, registered beside the ones
+	 * that hide things that would otherwise be permanent
+	 * (`local_operator/tui/settings.py`). The desktop's archival reasoning is the
+	 * opposite case and keeps its own default-OFF preference above.
+	 */
+	showLiveReasoning: boolean;
+
+	/**
+	 * Set whether the live reasoning block is painted.
+	 *
+	 * Written only by the Appearance switch in `settings-page.tsx`.
+	 *
+	 * @param show - Whether the live reasoning block should be visible
+	 */
+	setShowLiveReasoning: (show: boolean) => void;
 
 	/**
 	 * The currently selected theme
@@ -440,6 +477,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
 			showAgentReasoning: false,
+			showLiveReasoning: true,
 			themeName: DEFAULT_THEME,
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
@@ -497,6 +535,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setShowAgentReasoning: (show: boolean) => {
 				set({
 					showAgentReasoning: show,
+				});
+			},
+
+			setShowLiveReasoning: (show: boolean) => {
+				set({
+					showLiveReasoning: show,
 				});
 			},
 

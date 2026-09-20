@@ -780,10 +780,21 @@ test("the transcript no longer renders a Writing row", () => {
 		"utf8",
 	);
 	assert.ok(!/>\s*Writing\s*</.test(transcript), "no Writing row is rendered");
+	/*
+	 * The guard now carries the reasoning-display preference, and the point is
+	 * unchanged plus one: the ROW and the BUILDER must answer to the same value, or
+	 * the row is dropped by one and painted by the other. So this asserts the guard
+	 * passes the preference, and that the transcript reads it exactly once.
+	 */
 	assert.match(
 		transcript,
-		/if \(!paintsSomething\(record\)\) return null;/,
-		"AssistantRow guards on the shared predicate",
+		/if \(!paintsSomething\(record, showLiveReasoning\)\) return null;/,
+		"AssistantRow guards on the shared predicate, with the preference the builder was given",
+	);
+	assert.equal(
+		(transcript.match(/state\.showLiveReasoning/g) ?? []).length,
+		1,
+		"the preference is read once per frame, then threaded",
 	);
 });
 
@@ -2968,7 +2979,7 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
  * The model's reasoning block: what a row paints of it, and when the row exists
  * at all.
  *
- * Both are rules with a right answer — `reasoning-rows.ts` ports the TUI's
+ * Both are rules with a right answer — `transcript-rows.ts` ports the TUI's
  * bounded tail, and `paintsSomething` decides whether a record becomes a row —
  * so they are asserted here rather than only looked at in a frame. The failures
  * they guard are the two visible ones: a block that paints from the FIRST
@@ -2980,12 +2991,19 @@ test("a reasoning tail is bounded by characters and by rows, and says when it is
 	assert.deepEqual(short, {
 		text: "The train leaves at 14:05.",
 		elided: false,
+		// Nothing was dropped, so the mark has nothing to count and the block
+		// paints no mark at all.
+		droppedChars: 0,
 	});
 
 	// Exactly at the cap is not yet a cut: the mark is what tells the reader the
 	// block is a window, and a false one on a complete block is a lie.
 	const exact = "a".repeat(REASONING_TAIL_CHARS);
-	assert.deepEqual(reasoningTail(exact), { text: exact, elided: false });
+	assert.deepEqual(reasoningTail(exact), {
+		text: exact,
+		elided: false,
+		droppedChars: 0,
+	});
 
 	// Over the cap: the last cap-sized slice, cut at a word boundary so the
 	// window does not open mid-word.
@@ -3003,6 +3021,13 @@ test("a reasoning tail is bounded by characters and by rows, and says when it is
 		"the window opens at a boundary, not inside a word",
 	);
 	assert.equal(capped.text.startsWith("alpha"), true);
+	/*
+	 * And the cut is COUNTED, because the mark now states it (design N2). The
+	 * number has to be the characters between the reasoning's start and the
+	 * window's, or the mark overstates what the reader has already read.
+	 */
+	assert.equal(capped.droppedChars, long.length - capped.text.length);
+	assert.ok(capped.droppedChars > 0, "a cut with a mark must count something");
 
 	// A row window on top of the character cap: the painted block cannot exceed
 	// the line budget however long the model thinks, which is what keeps the
@@ -3060,6 +3085,102 @@ test("a reasoning block is a row; a settled record with nothing in it still is n
 		buildRows([{ ...live, reasoning: "", streaming: false }], []),
 		[],
 	);
+});
+
+test("the reasoning-display preference decides row-ness, not just the paint", () => {
+	/*
+	 * The bug this prevents is a row standing over nothing.
+	 *
+	 * `LiveReasoning` can return null on its own, but a row is an avatar plus a
+	 * gap: gating only the leaf would leave that chrome on screen for a call whose
+	 * whole content the reader has asked not to see — a row that says a model said
+	 * something they cannot read. So the preference is applied where row-ness is
+	 * decided (`paintsSomething`, reached through `buildRows`), which is the same
+	 * place the settled tool-only row is dropped.
+	 */
+	const reasoningOnly = {
+		kind: "assistant",
+		id: "a1",
+		ts: 1,
+		text: "",
+		reasoning: "Weighing two options.",
+		streaming: true,
+		stopReason: null,
+		error: false,
+	};
+	// Default on, which is what every other caller and test sees.
+	assert.equal(paintsSomething(reasoningOnly), true);
+	assert.equal(paintsSomething(reasoningOnly, true), true);
+	// Off: no row at all while the call has nothing else to show...
+	assert.equal(paintsSomething(reasoningOnly, false), false);
+	assert.deepEqual(buildRows([reasoningOnly], [], false), []);
+	/*
+	 * ...and the ANSWER is untouched by the preference. A row with prose is a row
+	 * whether or not reasoning is shown, which is what keeps the off state from
+	 * being a silent filter over the conversation.
+	 */
+	const answered = { ...reasoningOnly, text: "The arrival time is 20:00." };
+	assert.equal(paintsSomething(answered, false), true);
+	assert.deepEqual(
+		buildRows([answered], [], false).map((row) => row.record.id),
+		["a1"],
+	);
+	/*
+	 * And the reasoning a reader has turned off is not DELETED: turning it back on
+	 * repaints the row from the record, which still holds it. A hidden thing that
+	 * comes back is a preference; a hidden thing that is gone is a bug.
+	 */
+	assert.deepEqual(
+		buildRows([reasoningOnly], [], true).map((row) => row.record.id),
+		["a1"],
+	);
+});
+
+test("a reasoning-only row takes no caption tier, because it has no caption", () => {
+	/*
+	 * Review m-2, reproduced: `mark` is the tier that buys room above the
+	 * "Earlier text of this answer is missing" caption, and the caption renders
+	 * only over prose. A reasoning-only row marked `truncated` (a gap can mark one,
+	 * and an interrupted turn keeps its thinking) therefore took 12px of extra air
+	 * with no line under it — `mt-2` became `mt-3` for nothing.
+	 */
+	const marked = {
+		kind: "assistant",
+		id: "a1",
+		ts: 1,
+		text: "",
+		reasoning: "Weighing two options.",
+		streaming: false,
+		truncated: "gap",
+		stopReason: "aborted",
+		error: false,
+	};
+	const rows = buildRows(
+		[
+			// A TOOL row ahead of it, because the tier only shows where the gap would
+			// otherwise be `item`/`trace`: behind a user turn the gap is `turn`
+			// already, and a test in that shape passes whatever `marked` decides.
+			toolRecord("t1"),
+			marked,
+		],
+		[],
+	);
+	// By id, not by index: `buildRows` decides for itself which records become
+	// rows, and this test is about the assistant row's tier.
+	const row = rows.find((candidate) => candidate.record.id === "a1");
+	if (!row) throw new Error("the reasoning-only row was dropped");
+	assert.equal(
+		row.gap,
+		"item",
+		"a reasoning-only row keeps the plain tier: no caption, so no raised gap",
+	);
+	// The same record WITH text still takes it — the tier is not disabled, it is
+	// conditioned on the thing it exists for.
+	const withText = { ...marked, text: "Earlier text of this answer is missing." };
+	const answered = buildRows([toolRecord("t1"), withText], []).find(
+		(candidate) => candidate.record.id === "a1",
+	);
+	assert.equal(answered?.gap, "mark");
 });
 
 test("a row whose only content is reasoning does not close a turn", () => {

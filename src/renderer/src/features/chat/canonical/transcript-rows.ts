@@ -92,6 +92,18 @@ const LEADING_WHITESPACE = /^\s+/;
 export function reasoningTail(reasoning: string): {
 	text: string;
 	elided: boolean;
+	/**
+	 * Characters between the start of the reasoning and the start of `text`, so
+	 * the row can say HOW MUCH it is not showing (`… 1,196 earlier characters`).
+	 *
+	 * It is what the ROW can know: the height clamp in `LiveReasoning` crops the
+	 * window further at a narrow column, by an amount that depends on measured
+	 * text metrics rather than on this string. So the number is a FLOOR on what is
+	 * above the reader - never an understatement of the cut's existence, which is
+	 * what the mark is for - and the block says "earlier characters" rather than
+	 * "the characters this block dropped" for exactly that reason.
+	 */
+	droppedChars: number;
 } {
 	const capped =
 		reasoning.length > REASONING_TAIL_CHARS
@@ -112,12 +124,14 @@ export function reasoningTail(reasoning: string): {
 	const lines = text.split("\n");
 	const rows = lines.slice(-REASONING_VISIBLE_ROWS);
 	const elided = dropped || rows.length !== lines.length;
+	const painted = rows.join("\n").replace(LEADING_WHITESPACE, "");
 	return {
 		// Leading blank lines are dropped with the head they belonged to: a tail
 		// whose first painted line is empty spends a line of the window on
 		// nothing, and mid-stream the model's own paragraph breaks land there.
-		text: rows.join("\n").replace(LEADING_WHITESPACE, ""),
+		text: painted,
 		elided,
+		droppedChars: reasoning.length - painted.length,
 	};
 }
 
@@ -337,7 +351,22 @@ export function isStatementRow(record: TranscriptRecord): boolean {
  * this same predicate rather than on a copy of the condition, because two
  * copies of it are how the row comes back.
  */
-export function paintsSomething(record: TranscriptRecord): boolean {
+export function paintsSomething(
+	record: TranscriptRecord,
+	/**
+	 * `showLiveReasoning`, the reasoning-display preference. Defaults to on, which
+	 * is the state every other caller and every test that does not care sees.
+	 *
+	 * It is read here rather than inside `LiveReasoning` because this function is
+	 * the ONE predicate that decides whether a record is a row at all, and row-ness
+	 * is what the preference actually changes: with the paint off, a call whose
+	 * only content is reasoning has nothing left to paint, exactly like the settled
+	 * tool-only row below. Gating only the leaf would leave an avatar and a gap
+	 * standing over an empty box - a row that says a model said something the
+	 * reader cannot see.
+	 */
+	showLiveReasoning = true,
+): boolean {
 	if (record.kind !== "assistant") return true;
 	/*
 	 * Reasoning paints, and it is the one addition to the rule that is not a
@@ -356,8 +385,13 @@ export function paintsSomething(record: TranscriptRecord): boolean {
 	 * watching it vanish. On a settled row with neither prose nor reasoning — the
 	 * tool-only assistant row the invisible-row trap is about — this is still
 	 * false, and the row still paints nothing.
+	 *
+	 * SO THE ANSWER IS `text || reasoning`, NOT `text`: the row paints its prose OR
+	 * its reasoning, and `showLiveReasoning` decides whether the second arm counts.
+	 * An earlier version of this comment said the row paints only its text, which
+	 * the body never did.
 	 */
-	return Boolean(record.text || record.reasoning);
+	return Boolean(record.text || (showLiveReasoning && record.reasoning));
 }
 
 /**
@@ -408,6 +442,7 @@ export function ledgerName(record: TranscriptRecord): string {
 export function buildRows(
 	records: TranscriptRecord[],
 	previousRows: Row[],
+	showLiveReasoning = true,
 ): Row[] {
 	const reusable = new Map(previousRows.map((row) => [row.record.id, row]));
 	const rows: Row[] = [];
@@ -417,7 +452,7 @@ export function buildRows(
 	// nor downgrade the gap tier of the row after it.
 	let previous: TranscriptRecord | null = null;
 	for (const record of records) {
-		if (!paintsSomething(record)) continue;
+		if (!paintsSomething(record, showLiveReasoning)) continue;
 		const traceLike = isTraceLike(record);
 		const previousTrace = previous !== null && isTraceLike(previous);
 		const agentSide = record.kind !== "user";
@@ -438,7 +473,18 @@ export function buildRows(
 		 * above it at all, so neither is touched: the tier is raised, never lowered.
 		 */
 		const marked =
-			record.kind === "assistant" && record.truncated !== undefined;
+			record.kind === "assistant" &&
+			record.truncated !== undefined &&
+			/*
+			 * AND IT MUST HAVE TEXT, which is review m-2. `mark` exists to give the
+			 * caption "Earlier text of this answer is missing" room above the prose it
+			 * describes; a row whose only content is reasoning renders no caption (the
+			 * caption is a statement about prose), so the tier bought nothing and cost
+			 * a visible one: an interrupted reasoning-only row took 12px of extra air
+			 * with no line under it to justify the gap. Same condition as the paint,
+			 * because it is the same question — is there an answer here to caption.
+			 */
+			record.text !== "";
 		if (marked && (gap === "item" || gap === "trace")) gap = "mark";
 		const closesTurn = closingAnswers.has(record.id);
 		const prior = reusable.get(record.id);
