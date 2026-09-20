@@ -97,7 +97,7 @@ if (!SESSION || !ANCHOR) {
 			"",
 			"  node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>",
 			"",
-			"`--session` is a directory under `--store` (default " + STORE + ")",
+			`\`--session\` is a directory under \`--store\` (default ${STORE})`,
 			"and `--anchor` is an entry `id` from that session's `transcript.jsonl`.",
 		].join("\n"),
 	);
@@ -310,7 +310,7 @@ async function main() {
 			mkdirSync(dir, { recursive: true });
 			const framePath = join(dir, `${theme}.webp`);
 			writeFileSync(framePath, Buffer.from(data, "base64"));
-			assertFramePaints(framePath, theme);
+			await assertFramePaints(framePath, theme);
 
 			const theme_ = await send("Runtime.evaluate", {
 				returnByValue: true,

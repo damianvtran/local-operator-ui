@@ -4605,27 +4605,35 @@ export function resolveGlobalInstallPlan(input: {
 			 * Managed - what the app is about to do TO THEM. This arm used to tell the
 			 * user to go to a terminal on the one path where the app runs the command
 			 * itself, which no surface rendered (reviews D7, U7), and the offer named
-			 * no cost at all before the click (review U3). The restart is the one
-			 * destructive thing this path does, so it is stated here rather than in
-			 * the in-flight panel the user reaches only after pressing.
+			 * no cost at all before the click (review U3). It named the restart as its
+			 * cost for the same reason - it was the one destructive thing this path
+			 * did. It no longer is: on the generation layout the install lands beside
+			 * the running build and the server keeps serving the build it loaded until
+			 * its own next idle, so the cost is the install and the wait, and no
+			 * sentence here may describe a turn being dropped.
 			 *
 			 * Source build - the same disclosure with the one difference that matters:
-			 * what is rebuilt is THEIR checkout, and the version they end up on is the
-			 * checkout's rather than the release the app offered.
+			 * this route DOES rewrite a tree a live runtime is reading, so its sentence
+			 * keeps saying so. What it adds is the half it was silent about: the app
+			 * now waits for the fleet to drain before it starts
+			 * (`drainFleetForUpdate`), which is the operator's own rule - nothing may
+			 * kill runtimes en masse - applied to the one route that can.
 			 *
 			 * Legacy - WHY the app will not press the button, which is what the user
 			 * is choosing between (reviews U8, N1). It lived only in the mono Details
-			 * line, trailing a resolved path and a classification.
+			 * line, trailing a resolved path and a classification. Its warning is
+			 * about the OLD INSTALLER the reader would run themselves, not about
+			 * anything this app does, which is why it still says a turn can be lost.
 			 *
 			 * NEITHER ENDS IN A COLON: the well below is visually distinct in both
 			 * panels, and in the by-hand panel the next line was the version sentence,
 			 * so the promise landed on the wrong line (review D5).
 			 */
 			remedy: managed
-				? "The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two."
+				? "The app installs the new build beside the one in use and leaves the server you are using on the build it loaded, so nothing in flight is cut off. The server moves onto the new build when it is next idle."
 				: sourceRebuildRoute
-					? "Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
-					: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
+					? "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
+					: "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that.",
 			detail: `${detail}${
 				managed
 					? provenance
