@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:10:00.250Z",
+  "at": "2026-09-20T19:10:46.067Z",
   "arm": {
     "armed": true
   },
@@ -56,67 +56,63 @@
     }
   },
   "resolved": true,
-  "resolution": "cleared",
-  "gateCleared": true,
+  "resolution": "refused",
+  "gateCleared": false,
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931405824.4211,
-      "preAnsweredBy": "Popup is not open",
-      "preAnswer": {
-        "status": 200,
-        "label": "Popup is not open"
-      },
+      "requestedAt": 1789931452319.4492,
       "held": true
-    },
-    {
-      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931405839.8,
-      "status": 200,
-      "answeredAt": 1789931405848.969,
-      "deliveredAt": 1789931405849.954
     }
   ],
   "answersFrom": "route",
-  "ownerAnswer": {
-    "PAIRING": [
-      "Popup is not open"
-    ]
-  },
+  "ownerAnswer": null,
   "tree": {
     "head": "e40d4933e0451892ccc372db309e14692c324600",
     "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789931406149,
-  "clearedAfterPressMs": 369,
+  "clearedAt": null,
+  "clearedAfterPressMs": null,
   "ordering": null,
   "report": {
     "movedOnSentence": false,
     "settledSentence": false,
     "unconfirmedSentence": true,
     "notSentCopy": [],
-    "cardUp": false,
+    "cardUp": true,
     "cardRefusal": false,
-    "cardUnknown": false,
-    "alerts": [
-      "Whether your answer landed is not knowable. The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-    ]
+    "cardUnknown": true,
+    "alerts": []
   },
   "after": {
-    "found": false,
-    "count": 0,
-    "tags": [],
-    "textContent": [],
-    "accessibleName": [],
-    "ordinalHidden": false,
-    "disabled": [],
-    "pointerEvents": null,
-    "eyebrow": null,
-    "alerts": [
-      "Whether your answer landed is not knowable. The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+    "found": true,
+    "count": 3,
+    "tags": [
+      "BUTTON",
+      "BUTTON",
+      "BUTTON"
     ],
+    "textContent": [
+      "1.Popup is not openRecommendedWalk me through opening it first.",
+      "2.Popup is open - generate the pairing codeI will read the code back to you.",
+      "3.Something else"
+    ],
+    "accessibleName": [
+      "Popup is not openRecommendedWalk me through opening it first.",
+      "Popup is open - generate the pairing codeI will read the code back to you.",
+      "Something else"
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      true,
+      true,
+      true
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
     "incidentRow": false
   }
 }

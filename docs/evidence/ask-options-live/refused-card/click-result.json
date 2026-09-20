@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T15:57:38.129Z",
+  "at": "2026-09-20T19:08:40.756Z",
   "arm": {
     "armed": true
   },
@@ -61,18 +61,18 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789919891004.0232,
+      "requestedAt": 1789931327380.309,
       "rejected": "This answer belongs to an earlier session owner",
       "status": 409,
-      "answeredAt": 1789919891004.113,
-      "deliveredAt": 1789919891008.065
+      "answeredAt": 1789931327380.327,
+      "deliveredAt": 1789931327383.6028
     }
   ],
   "answersFrom": "route",
   "ownerAnswer": null,
   "tree": {
-    "head": "0c1d4cc957be6cf4f665e1adf2310c3afbe5d5ea",
-    "srcTree": "1d00dfbaa8736816b8781873b07f898270c4f75e",
+    "head": "e40d4933e0451892ccc372db309e14692c324600",
+    "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
     "srcDirty": false,
     "srcStatus": null
   },
@@ -86,6 +86,7 @@
     "notSentCopy": [],
     "cardUp": true,
     "cardRefusal": true,
+    "cardUnknown": false,
     "alerts": []
   },
   "after": {

@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T16:03:17.377Z",
+  "at": "2026-09-20T19:11:53.192Z",
   "arm": {
     "armed": true
   },
@@ -61,10 +61,10 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789920215747.2498,
+      "requestedAt": 1789931518498.7148,
       "status": 200,
-      "answeredAt": 1789920215777.7979,
-      "deliveredAt": 1789920218301.902
+      "answeredAt": 1789931518549.1782,
+      "deliveredAt": 1789931521058.129
     }
   ],
   "answersFrom": "route",
@@ -74,16 +74,16 @@
     ]
   },
   "tree": {
-    "head": "0c1d4cc957be6cf4f665e1adf2310c3afbe5d5ea",
-    "srcTree": "1d00dfbaa8736816b8781873b07f898270c4f75e",
+    "head": "e40d4933e0451892ccc372db309e14692c324600",
+    "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
     "srcDirty": true,
     "srcStatus": "M  src/renderer/src/features/chat/ask-answer.ts\nM  src/renderer/src/features/chat/components/chat-page.tsx"
   },
-  "clearedAt": 1789920215822,
-  "clearedAfterPressMs": 104,
+  "clearedAt": 1789931518830,
+  "clearedAfterPressMs": 353,
   "ordering": {
-    "clearedAt": 1789920215822,
-    "deliveredAt": 1789920218301.902,
+    "clearedAt": 1789931518830,
+    "deliveredAt": 1789931521058.129,
     "verdict": "the card cleared before the response was delivered"
   },
   "report": {
@@ -93,6 +93,7 @@
     "notSentCopy": [],
     "cardUp": false,
     "cardRefusal": false,
+    "cardUnknown": false,
     "alerts": [
       "That question was already answered somewhere else, so your answer was not sent."
     ]
