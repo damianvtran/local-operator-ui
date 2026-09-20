@@ -120,7 +120,34 @@ export const readTerminalTheme = (
 		const value = resolveTerminalRole(styles, TERMINAL_THEME_ROLES[role]);
 		if (value) theme[role] = value;
 	}
+	/*
+	 * LOUD WHEN NOTHING RESOLVES, once per document theme.
+	 *
+	 * The omitted-role behaviour above is deliberate and stays: xterm keeps its own
+	 * default for a key, which shows up in a frame as an unthemed cell rather than as
+	 * a crash. What was wrong was the silence — a document wearing a `data-theme` no
+	 * palette answers renders the WHOLE terminal in xterm's `#000000`/`#ffffff`, and
+	 * nothing anywhere said so. The condition is "no role resolved at all" rather than
+	 * "some are missing", because a single missing role is a defect this warning
+	 * cannot distinguish from a stylesheet that is still loading, while zero is
+	 * unambiguous and is the case that produced an unthemed screenshot.
+	 */
+	if (Object.keys(theme).length === 0) {
+		warnUnresolvedTheme(root);
+	}
 	return theme as ITheme;
+};
+
+/** Warned-once bookkeeping, keyed by the document's own theme attribute. */
+const warnedThemes = new Set<string>();
+
+const warnUnresolvedTheme = (root: HTMLElement): void => {
+	const name = root.dataset.theme ?? "(none)";
+	if (warnedThemes.has(name)) return;
+	warnedThemes.add(name);
+	console.warn(
+		`[console] no terminal role resolved for theme "${name}": the terminal is painting xterm's own defaults, not this app's palette`,
+	);
 };
 
 /** Which of the table's roles the document does not currently resolve. Empty in
@@ -209,7 +236,7 @@ export const terminalFontFamily = (
  * it is reported to main rather than used to size anything here.
  */
 export const measureCell = (
-	fontFamily: string = terminalFontFamily(),
+	fontFamily?: string,
 	fontSize: number = TERMINAL_FONT_SIZE,
 ): { cellWidth: number; cellHeight: number } => {
 	const cellHeight = fontSize * 1.2;
@@ -223,9 +250,18 @@ export const measureCell = (
 	if (typeof document === "undefined") {
 		return { cellWidth: fontSize * 0.6, cellHeight };
 	}
+	/*
+	 * THE FONT IS RESOLVED HERE, AFTER the no-DOM guard, rather than as a default
+	 * argument — which is a correction: `fontFamily = terminalFontFamily()` evaluated
+	 * its default BEFORE the guard ran, and `terminalFontFamily()` reads
+	 * `document.documentElement`, so the branch below that exists to return a ratio
+	 * "rather than an exception" threw a ReferenceError in every Node process. The
+	 * ratio is now what a process without a document actually gets.
+	 */
+	const family = fontFamily ?? terminalFontFamily();
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
-	const font = `${fontSize}px ${fontFamily}`;
+	const font = `${fontSize}px ${family}`;
 	let cellWidth = fontSize * 0.6;
 	if (context) {
 		context.font = font;

@@ -1075,16 +1075,31 @@ async function main() {
 	await rendererEvaluate(
 		`window.api.console.openPane(${JSON.stringify(surface)})`,
 	);
+	/*
+	 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a
+	 * measured defect: this rig reported `theme: "proof"`, a name no palette answers,
+	 * so the capture view wrote `data-theme="proof"`, resolved no role variables at
+	 * all, and the offscreen frame came back as xterm's own `#000000`/`#ffffff` with
+	 * zero role-coloured pixels. The rig was reporting a theme the app was not
+	 * wearing, and the pane's whole claim is that it follows the app's palette.
+	 */
+	const themeName = await rendererEvaluate(
+		"document.documentElement.dataset.theme || ''",
+	);
+	check(
+		"the app is wearing a named theme (the capture view is fed its name)",
+		typeof themeName === "string" && themeName.length > 0,
+		themeName,
+	);
+	const report = {
+		contentRect: { x: 20, y: 20, width: 800, height: 400 },
+		cellWidth: 8.425,
+		cellHeight: 16,
+		visible: true,
+		theme: themeName,
+	};
 	const reported = await rendererEvaluate(
-		`window.api.console.setContentRect(${JSON.stringify(surface)}, ${JSON.stringify(
-			{
-				contentRect: { x: 20, y: 20, width: 800, height: 400 },
-				cellWidth: 8.425,
-				cellHeight: 16,
-				visible: true,
-				theme: "proof",
-			},
-		)})`,
+		`window.api.console.setContentRect(${JSON.stringify(surface)}, ${JSON.stringify(report)})`,
 	);
 	check(
 		"the renderer reports a rect and main decides the grid from it",

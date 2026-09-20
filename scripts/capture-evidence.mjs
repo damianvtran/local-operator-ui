@@ -109,6 +109,18 @@ const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
  * that ignored the rejection would file a resting frame under a key its claim
  * says was pressed - the same trap the mouse options in this file document.
  */
+/**
+ * The console pane's shipped default width, in px.
+ *
+ * `DEFAULT_CONSOLE_PANEL_WIDTH` from `ui-preferences-store.ts` — `ceil(100 columns
+ * x 7.8px) + 24px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
+ * this file is JavaScript and cannot import the store's TypeScript. The restatement
+ * is pinned by `scripts/console-pane.test.mjs`, which imports both and fails when
+ * they differ, so a font step or a column count that moves upstream breaks a test
+ * rather than silently re-cropping every console frame.
+ */
+const CONSOLE_PANE_WIDTH = 804;
+
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
 	Tab: { code: "Tab", keyCode: 9 },
@@ -941,27 +953,35 @@ export const STORIES = [
 	 */
 	/*
 	 * The console pane (`docs/design/ui-console-tab.md` §6, §7, §9, §12), captured
-	 * at the pane's OWN width rather than at a window's: 843 is the pane's default
-	 * width, which is the design's 100-column grid at the shipped face's measured
-	 * advance plus the pane's chrome (`DEFAULT_CONSOLE_PANEL_WIDTH`), so an evidence
-	 * frame of this pane IS the grid the design names.
+	 * at the pane's OWN width rather than at a window's — and at the pane's SHIPPED
+	 * default, not at a number typed here.
 	 *
-	 * The extra height on the ended, restored and secure frames is their banner: the
-	 * pane grows a 28px row in those states, and a frame that cropped it would hide
-	 * the one thing the state is about.
+	 * THE NUMBER MOVED, and the reason is design round 1's D2: these rows read `843`,
+	 * which was neither the store's `DEFAULT_CONSOLE_PANEL_WIDTH` (~804, derived from
+	 * the shipped face at `TERMINAL_FONT_SIZE = 13`) nor the design's 100-column grid
+	 * — measured off the frame, 843 painted ~108 columns. The frames therefore showed
+	 * a pane no user has, while the PR body quoted the default's own arithmetic.
+	 * `CONSOLE_PANE_WIDTH` below is that default, and `scripts/console-pane.test.mjs`
+	 * pins it against the store's constant so the two cannot drift apart again (the
+	 * story renders the pane at the same imported width).
+	 *
+	 * The extra height on the ended and restored frames is their banner: those states
+	 * still grow a 28px row (§7.3, and D6 keeps it — there is no process left to
+	 * reflow by the time it appears). `secure` no longer does: its marker is an
+	 * overlay since D6, so a secure toggle cannot resize a running program.
 	 */
-	["console-pane--populated", 843, 520],
-	["console-pane--two-surfaces", 843, 520],
-	["console-pane--empty", 843, 520],
-	["console-pane--draft-conversation", 843, 520],
-	["console-pane--loading", 843, 520],
-	["console-pane--unavailable", 843, 520],
-	["console-pane--ended", 843, 560],
-	["console-pane--restored", 843, 560],
-	["console-pane--secure", 843, 560],
-	["console-pane--blip-pulsing", 843, 520],
-	["console-pane--blip-resting", 843, 520],
-	["console-pane--other-conversation-mark", 843, 520],
+	["console-pane--populated", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--two-surfaces", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--empty", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--draft-conversation", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--loading", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--unavailable", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--ended", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--restored", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--secure", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-pulsing", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-resting", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--other-conversation-mark", CONSOLE_PANE_WIDTH, 520],
 	["browser-pane--this-conversation", 640, 460],
 	["browser-pane--all-tabs", 640, 460],
 	/*
@@ -1032,6 +1052,14 @@ export const STORIES = [
 	/* The badge drawn with the canvas button unmounted: the reservation's room is
 	   owed for the box that button owns, so this state must stay at the 8px step. */
 	["chat-header-cluster--canvas-open-badge", 560, 84],
+	/*
+	 * The console trigger's attention dot (design 12.2), in the same band and at the
+	 * same size as the cluster's other frames so the pair can be held against them.
+	 * They exist because the design round's D1 could not find the header dot in any
+	 * frame: the pane's row mark and this dot are two halves of one rule.
+	 */
+	["chat-header-cluster--console-blip", 560, 84],
+	["chat-header-cluster--console-blip-resting", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is

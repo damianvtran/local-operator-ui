@@ -95,6 +95,23 @@ export const ConsoleCapture: FC = () => {
 			"dark",
 			feed.theme.toLowerCase().includes("light") === false,
 		);
+		/*
+		 * AN UNKNOWN THEME NAME IS LOUD, and this check exists because it was silent
+		 * and that silence was measured: a rig that reported `theme: "proof"` set a
+		 * `data-theme` no palette answers, every role variable resolved to nothing,
+		 * and the frame came back as xterm's own `#000000`/`#ffffff` — a capture that
+		 * looks like a terminal and is a picture of no theme at all, with nothing in
+		 * the log to say so. Verification is on the RESOLVED TOKEN rather than on a
+		 * name list, so a renamed or newly added palette cannot make this check wrong.
+		 */
+		const resolved = getComputedStyle(document.documentElement)
+			.getPropertyValue("--color-sunken")
+			.trim();
+		if (!resolved) {
+			console.warn(
+				`[console] the capture view was fed theme "${feed.theme}", which resolves no role variables; the frame will not be this app's colours`,
+			);
+		}
 	}, [feed?.theme]);
 
 	if (!feed) return null;

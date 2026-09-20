@@ -1,3 +1,4 @@
+import { DEFAULT_CONSOLE_PANEL_WIDTH } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
@@ -43,6 +44,16 @@ const toBase64 = (text: string): string => {
 	return btoa(binary);
 };
 
+/**
+ * THE PANE'S OWN DEFAULT WIDTH, imported rather than typed.
+ *
+ * The frames used to be captured at a literal `843`, which is not the default the
+ * store ships (`DEFAULT_CONSOLE_PANEL_WIDTH`, derived from the shipped face at
+ * `TERMINAL_FONT_SIZE`) and not the design's 100-column grid either: measured off the
+ * frame it was ~108 columns at 7.79px, so the frames showed a pane three to eight
+ * columns wider than a user's, while the PR body quoted the default's arithmetic.
+ * One number, from the code that ships it, is the fix (design round 1, D2).
+ */
 const NOW = Math.floor(Date.now() / 1000);
 
 /** The conversation the pane is scoped to, and one it is not. */
@@ -105,14 +116,23 @@ const SAMPLE = [
 	"\u001b[90mbright black\u001b[0m \u001b[91mred\u001b[0m \u001b[92mgreen\u001b[0m \u001b[93myellow\u001b[0m \u001b[94mblue\u001b[0m \u001b[95mmagenta\u001b[0m \u001b[96mcyan\u001b[0m",
 	"\u001b[2mdim\u001b[0m \u001b[1mbold\u001b[0m \u001b[4munderline\u001b[0m \u001b[7mreverse\u001b[0m",
 	"",
+	/*
+	 * 31 COLUMNS, COUNTED RATHER THAN EYEBALLED. The closing bar sat two cells
+	 * outside its own frame in every theme, which is a design-round finding about the
+	 * FIXTURE and not about the pane: each cell here is 14 display cells between its
+	 * bars (the CJK pair and the emoji are two cells each under Unicode 11), so the
+	 * three rows line up at 1+14+1+14+1.
+	 */
 	"┌──────────────┬──────────────┐",
-	"│ box drawing  │ 当 CJK 幅      │",
+	"│ box drawing  │ 当 CJK 幅    │",
 	"└──────────────┴──────────────┘",
 	"",
 	"$ npm run build",
 	"built in 4.2s → dist/",
 	"\u001b[38;2;120;180;255m24-bit truecolor passes through untouched\u001b[0m",
-	"🛠 emoji width is two cells under Unicode 11",
+	/* Two spaces after the emoji, so the cell it eats is visible as a gap rather
+	   than as the text closing up around it. */
+	"🛠  emoji width is two cells under Unicode 11",
 ].join("\r\n");
 
 /**
@@ -141,8 +161,15 @@ const installFixture = (options: {
 	surfaces: SurfaceFixture[];
 	/** Never answers, for the loading state. */
 	hang?: boolean;
-	/** Refuses every call, for the unavailable state. */
-	fail?: boolean;
+	/**
+	 * The projection main answers when no console can exist (§15), which is a RESULT
+	 * rather than a rejection since the round-1 fix: the namespace is registered on
+	 * every path and `console-state` answers `available: false` with the refusal's own
+	 * reason. The story used to install a promise that rejected, which photographed
+	 * the fallback sentence rather than the two real ones — the reason the design
+	 * round's U4 could not find §15's `disabled` copy anywhere in the app.
+	 */
+	unavailable?: { reason: string; detail: string };
 	bytes?: string;
 }): (() => void) => {
 	const previous = REAL_API;
@@ -160,9 +187,14 @@ const installFixture = (options: {
 		(op: string) =>
 		(...args: unknown[]) => {
 			calls.push({ op, args });
-			if (options.fail) return Promise.reject(new Error("console unavailable"));
 			if (options.hang) return new Promise(() => {});
-			if (op === "state") return Promise.resolve(state());
+			if (op === "state" && options.unavailable)
+				return Promise.resolve({
+					available: false,
+					surfaces: [],
+					reason: options.unavailable.reason,
+					detail: options.unavailable.detail,
+				});
 			if (op === "subscribe")
 				return Promise.resolve({
 					surface: args[0],
@@ -201,7 +233,7 @@ const Frame: FC<{
 	surfaces: SurfaceFixture[];
 	sessionId?: string | null;
 	hang?: boolean;
-	fail?: boolean;
+	unavailable?: { reason: string; detail: string };
 	unseen?: string[];
 	/** How old the marks are, so the blip's two states are the RULE rather than two
 	 * hand-picked colours: `0` pulses, a minute rests (§12.2). */
@@ -209,18 +241,23 @@ const Frame: FC<{
 	/** The session the marks belong to, for the frame that shows a mark from
 	 * ANOTHER conversation not appearing here. */
 	unseenSession?: string;
+	/** The pane box's height, for the two states that still carry a layout row: the
+	 * ended and restored banners (§7.3, D6). Every other state is the same box, so a
+	 * difference between two frames is a difference in the pane. */
+	height?: number;
 }> = ({
 	surfaces,
 	sessionId = THIS_CONVERSATION,
 	hang,
-	fail,
+	unavailable,
 	unseen,
 	unseenAgeMs = 0,
 	unseenSession,
+	height = 520,
 }) => {
 	// Installed during render: see `installFixture` for why an effect is one commit
 	// too late for a component whose input is the projection.
-	installFixture({ surfaces, hang, fail });
+	installFixture({ surfaces, hang, unavailable });
 	useEffect(() => {
 		useUiPreferencesStore.setState({
 			consoleUnseen: (unseen ?? []).map((surface) => ({
@@ -232,7 +269,10 @@ const Frame: FC<{
 		return () => useUiPreferencesStore.setState({ consoleUnseen: [] });
 	}, [unseen, sessionId, unseenAgeMs, unseenSession]);
 	return (
-		<div className="h-[520px] w-[843px] bg-surface p-0">
+		<div
+			className="bg-surface p-0"
+			style={{ width: DEFAULT_CONSOLE_PANEL_WIDTH, height }}
+		>
 			<ConsolePane sessionId={sessionId} onClose={() => {}} />
 		</div>
 	);
@@ -296,10 +336,26 @@ export const Loading: Story = {
 	render: () => <Frame surfaces={[]} hang />,
 };
 
-/** The console off, or its native module absent: §15's copy, including the
- * machine line a bug report would quote. */
+/**
+ * The console switched off for this run: §15's first row, and the machine line a bug
+ * report would quote.
+ *
+ * THIS IS THE `LOCAL_OPERATOR_UI_CONSOLE_HOST=0` STATE, photographed as main really
+ * answers it. That is the correction: the pane used to render the "terminal support
+ * did not load" sentence for it — whose remedy is to update the app — beside a machine
+ * line reading `No handler registered for 'console-state'`, for a run that was working
+ * exactly as configured.
+ */
 export const Unavailable: Story = {
-	render: () => <Frame surfaces={[]} fail />,
+	render: () => (
+		<Frame
+			surfaces={[]}
+			unavailable={{
+				reason: "disabled",
+				detail: "LOCAL_OPERATOR_UI_CONSOLE_HOST is off",
+			}}
+		/>
+	),
 };
 
 /** Ended over recorded history (§7.3), with the exit code it was observed to
@@ -339,18 +395,45 @@ export const Restored: Story = {
 /** Secure input: the surface still paints, nothing is recorded, and an agent's
  * read is refused with `secure_input_active` (§11.4). */
 export const Secure: Story = {
+	// SAME BOX AS `populated` since design round 1's D6: the secure marker is an
+	// overlay, so this state no longer costs the grid a row and the pair differs only
+	// in the marker.
 	render: () => (
 		<Frame surfaces={[surface({ surface: "con:1:7f3a", secure: true })]} />
 	),
 };
 
-/** The blip, fresh: the surface's row pulses in the accent because something
+/*
+ * THE TWO BLIP STORIES PICTURE A MARK THE PANE DOES NOT CLEAR, and that is the
+ * correction this pair carries rather than a detail of how they are built.
+ *
+ * §12.2's clearing rule is "the pane is displayed AND focused on that surface", and
+ * the pane implements it as `document.hasFocus()` plus "this is the surface I am
+ * showing". A Storybook document reports `hasFocus() === true`, so a one-surface
+ * fixture had its mark cleared at mount and BOTH of these stories rendered the
+ * `populated` frame byte for byte (md5 `fac4404b…`, all twelve themes) while the PR
+ * body claimed they showed the two states.
+ *
+ * The fix is to photograph a state the product actually holds the mark in: TWO
+ * surfaces, the pane showing the first, the completion on the second. That is the
+ * ordinary case the blip exists for — something finished in another console while
+ * you were reading this one — and it is the case the rule deliberately keeps.
+ */
+
+/** The blip, fresh: another surface's row pulses in the accent because something
  * finished and nobody has looked at it (§12.2). */
 export const BlipPulsing: Story = {
 	render: () => (
 		<Frame
-			surfaces={[surface({ surface: "con:1:7f3a" })]}
-			unseen={["con:1:7f3a"]}
+			surfaces={[
+				surface({ surface: "con:1:7f3a" }),
+				surface({
+					surface: "con:2:91bc",
+					command: "npm",
+					argv_tail: "run dev",
+				}),
+			]}
+			unseen={["con:2:91bc"]}
 		/>
 	),
 };
@@ -363,8 +446,15 @@ export const BlipResting: Story = {
 	// would not be evidence about the rule.
 	render: () => (
 		<Frame
-			surfaces={[surface({ surface: "con:1:7f3a" })]}
-			unseen={["con:1:7f3a"]}
+			surfaces={[
+				surface({ surface: "con:1:7f3a" }),
+				surface({
+					surface: "con:2:91bc",
+					command: "npm",
+					argv_tail: "run dev",
+				}),
+			]}
+			unseen={["con:2:91bc"]}
 			unseenAgeMs={60_000}
 		/>
 	),
