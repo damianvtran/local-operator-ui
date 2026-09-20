@@ -530,10 +530,19 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		/useLayoutEffect\(\(\) => \{\s*\n\s*liveGateKey\.current = gateKey;\s*\n\s*liveOwnerEpoch\.current = canonical\.ownerEpoch;\s*\n\s*\}\);/,
 		"both live facts must be written together, inside the commit and not during a render React can discard",
 	);
+	/*
+	 * And the write is INSIDE that effect and nowhere else. Anchoring on the
+	 * indentation of one spelling would miss a re-spelled or one-lined write
+	 * (agent review round 3, G), so the effect's own body is removed first and the
+	 * assertion is about what is left: any assignment to either ref outside the
+	 * commit is the hazard the layout effect replaces, whatever it looks like.
+	 */
+	const effectBody = code.match(/useLayoutEffect\(\(\) => \{[\s\S]*?\}\);/)?.[0];
+	assert.ok(effectBody, "the live-fact effect must be findable for this pin to mean anything");
 	assert.doesNotMatch(
-		code,
-		/^\tliveGateKey\.current = gateKey;$/m,
-		"the render-body write is the hazard the layout effect replaces",
+		code.replace(effectBody, ""),
+		/liveGateKey\.current =|liveOwnerEpoch\.current =/,
+		"the live facts must be written inside the commit and nowhere else - a render-body write lands even when React discards the render",
 	);
 	// The frame: the DOM read, the live key against the press's own key, and the
 	// two epochs. `sentEpoch` is the closure value ON PURPOSE (it is what the press

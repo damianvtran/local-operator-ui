@@ -122,6 +122,44 @@ const cardSentence = () =>
  */
 const EXPECT = process.env.CLICK_PROOF_EXPECT ?? "";
 const EXPECT_ORDER = process.env.CLICK_PROOF_EXPECT_ORDER ?? "";
+/**
+ * EVERY VALUE `CLICK_PROOF_EXPECT` MAY TAKE, and the reason it is a LIST here
+ * rather than only the chain of comparisons further down.
+ *
+ * An unrecognised value used to fall through that chain to `contradicted = false`
+ * (`: false` is its last arm), so a mistyped declaration produced a run that
+ * printed `report card-refusals`, wrote a `click-result.json`, and asserted
+ * NOTHING about the sentence - the exact failure the knob exists to prevent, and
+ * the reason round 2's D8 said the vocabulary must be the driver's own rather
+ * than a hand-kept copy (agent review round 3, C; QA round 3, Q3, with a repro).
+ *
+ * So the list is the authority: it is checked before anything else runs (no
+ * browser, no rig, no writes), the arms below are keyed off it, and
+ * `scripts/click-proof-expect.test.mjs` holds it to `declaredSentence`'s keys and
+ * to `run-rig.sh`'s usage line so the three cannot drift.
+ *
+ * `""` (unset) and `-` are legitimate: they mean "record without asserting",
+ * which is how the set was first taken and what `EXPECT_ORDER`'s own `-` means.
+ */
+const KNOWN_EXPECTS = [
+	"",
+	"-",
+	"silent",
+	"settled",
+	"moved-on",
+	"unknown",
+	"not-sent",
+	"card-refusal",
+	"card-unknown",
+];
+if (!KNOWN_EXPECTS.includes(EXPECT)) {
+	console.error(
+		`click-proof: CLICK_PROOF_EXPECT=${JSON.stringify(EXPECT)} is not a value this driver asserts.\n` +
+			`Known values: ${KNOWN_EXPECTS.filter((v) => v !== "").join(" | ")} | - (or unset) to record without asserting.\n` +
+			"An unrecognised value would print success while asserting nothing, so this run stops here.",
+	);
+	process.exit(2);
+}
 const ORDER_VERDICTS = {
 	"cleared-first": "the card cleared before the response was delivered",
 	"delivered-first": "the response was delivered before the card cleared",
