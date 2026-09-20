@@ -242,26 +242,6 @@ export function readSuiteFiles(root) {
 	return [...seen];
 }
 
-/**
- * Whether any suite file mentions one of these paths.
- *
- * Deliberately textual, like the graph's own token scan, so the two cannot
- * disagree about what "records a path" means. A hit means the graph must run; it
- * never selects a file by itself.
- */
-function suiteRecordsPath(root, suiteFiles, paths) {
-	for (const file of suiteFiles) {
-		let text;
-		try {
-			text = readFileSync(join(root, file), "utf8");
-		} catch {
-			continue;
-		}
-		if (paths.some((path) => text.includes(path))) return true;
-	}
-	return false;
-}
-
 /** `true` when `path` is a directory in the tree. */
 function isDirectory(root, path) {
 	try {
@@ -1066,6 +1046,22 @@ export function analyseTestFile(root, file, aliases) {
 			firstArgumentText === undefined
 				? null
 				: pathExpressionText(firstArgumentText, bindings);
+		/*
+		 * A read whose target is a QUOTED LITERAL is a fixed path in this
+		 * repository - the suite runs from the repository root - and recording it
+		 * is what makes such a file selectable by the path it reads instead of
+		 * merely "grounded". Without this, a test that reads `"README.md"` is
+		 * bounded by nothing the graph can name, and a change to that file would
+		 * select no test at all.
+		 */
+		const literal = resolved?.trim() ?? "";
+		if (
+			(QUOTED_LITERAL.test(literal) || TEMPLATE_LITERAL.test(literal)) &&
+			!literal.includes("${")
+		) {
+			const value = literal.slice(1, -1);
+			if (isRelativeRepoPath(value)) paths.add(value);
+		}
 		const expanded = resolved ?? argument;
 		if (
 			resolved !== null &&
@@ -1177,6 +1173,19 @@ export function moduleClosure(
 	return { closure, unresolved };
 }
 
+/**
+ * Whether a literal read target names a file in this repository.
+ *
+ * Relative and not a URL: `"./docs/x.png"`, `"src/main/index.ts"` and `"README.md"`
+ * are all repo paths because the suite runs from the repository root, while
+ * `/tmp/x`, `file:///x` and `https://x` are not paths here at all.
+ */
+function isRelativeRepoPath(value) {
+	if (value.length === 0) return false;
+	if (value.startsWith("/") || value.startsWith("~")) return false;
+	return !/^[a-zA-Z][\w+.-]*:/.test(value);
+}
+
 /** A path the diff changed, normalised to repo-relative POSIX form. */
 function normalisePath(path) {
 	const trimmed = String(path ?? "")
@@ -1229,17 +1238,14 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 		return whole("the suite list in package.json could not be read");
 	}
 
-	// The classifier answers the cheap end of the range, and its own reason is
-	// carried through so the two modules cannot disagree about WHY nothing ran.
+	// The classifier still answers the cheap end of the range and its own reason is
+	// carried through, so the two modules cannot disagree about WHY nothing ran.
 	// What it may NOT do is decide before the graph has looked: a suite file that
 	// RECORDS a path in the changed set is reading it, and `docs/**` is where that
-	// used to be skipped by category alone. The scan below is the cheap half of the
-	// graph's own reference rule - the path's text, in the suite's own files - and
-	// it decides only whether the graph has to run at all.
+	// used to be settled by category alone (review round 1, MINOR-1). So the flags
+	// are read here and the NONE decision moved below the graph, where it is taken
+	// on the graph's own evidence rather than on a textual guess about it.
 	const flags = classify(changed, "");
-	if (flags.unit !== true && !suiteRecordsPath(root, suiteFiles, changed)) {
-		return none(`classifier sets no unit flag: ${FLAG_REASONS.unit}`);
-	}
 
 	const testChanges = [];
 	const sourceChanges = [];
@@ -1350,7 +1356,20 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 		}
 	}
 
-	if (selected.size === 0) {
+	/*
+	 * A file selected because the DIFF reaches it is the difference between "run
+	 * this" and "run the always-selected class again". Those files are in every
+	 * scoped plan by construction - their own reads are unbounded - so counting them
+	 * as evidence that a diff is observable would run 68 files for a README change
+	 * that nothing reads.
+	 */
+	const reached = [...selected.values()].filter(
+		(why) =>
+			why.startsWith("references ") ||
+			why.startsWith("imports ") ||
+			why === "the test file itself changed",
+	);
+	if (selected.size === 0 || (reached.length === 0 && flags.unit !== true)) {
 		if (flags.unit !== true) {
 			// The classifier's own sentence, because the classifier's flag is WHY
 			// nothing ran - said after the graph has confirmed that nothing records
@@ -1368,7 +1387,13 @@ export function planDesktopTestScope({ paths, root, suite = null }) {
 			} changed path(s): ${[...sourceChanges, ...referenceChanges]
 				.slice(0, 3)
 				.join(", ")}${sourceChanges.length > 3 ? ", ..." : ""}`,
-			{ sourceChanges, testChanges, referenceChanges, suite: suiteSet.size },
+			{
+				sourceChanges,
+				testChanges,
+				referenceChanges,
+				suite: suiteSet.size,
+				alwaysSelected,
+			},
 		);
 	}
 
