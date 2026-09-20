@@ -566,7 +566,14 @@ test("the key map, asserted against the clamped write rather than a constant", (
 	 * region's top edge to its bottom.
 	 */
 	const valued = (key, { side = "top" } = {}) =>
-		keyboardTarget(key, { shiftKey: false, value: 200, min, max, side, homeEnd: "value" });
+		keyboardTarget(key, {
+			shiftKey: false,
+			value: 200,
+			min,
+			max,
+			side,
+			homeEnd: "value",
+		});
 	assert.equal(valued("Home"), min, "Home is the named pane's smallest");
 	assert.equal(valued("End"), max, "End is its largest");
 	assert.equal(
