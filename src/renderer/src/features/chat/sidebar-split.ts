@@ -205,7 +205,17 @@ export type SidebarSplitInput = {
 	showList: boolean;
 	/** a query is active. It overrides the collapse and writes nothing. */
 	query: boolean;
-	/** the measured height of the box the two regions share, px. */
+	/**
+	 * The measured height of the box the two regions SHARE, px.
+	 *
+	 * Not the split container's own height: the boundary and the pin-failure line
+	 * are flex children of that container too, and every number below is a claim
+	 * about what the REGIONS get. Handing this the whole container is how the
+	 * 72px floor was really 64px - the boundary's own 8px `mt-2` came out of the
+	 * other region's 72 - so the caller measures the container and subtracts the
+	 * children that are not regions (design round 1's D5, the architecture pass's
+	 * m-1 and UX round 1's U3 were one defect seen three times).
+	 */
 	capacity: number;
 	/** the list region's measured border-box height, px. `0` before it is known. */
 	drawnListHeight: number;
@@ -367,6 +377,24 @@ export function resolveSidebarSplit({
 			: storedHeight === null
 				? autoRegionCap(panelContentHeight, capacity)
 				: value;
+	/*
+	 * WHAT THE SEPARATOR ANNOUNCES, which is not always what a drag would write.
+	 *
+	 * When the range is live the announced value IS the height the region is
+	 * drawn at: a stored height is a box, and the auto rule's number is the cap
+	 * the render applies. When the range is collapsed (`resizable` false) the
+	 * announced number must still be the drawn one, or the contract this module
+	 * exists for - "the separator reports the height it is drawn at" - is broken
+	 * exactly where it is hardest to check. In AUTO that means the SMALLER of the
+	 * drawn height and the cap: at capacity 100 the cap is 28 and the region is
+	 * drawn at 28 while `value` (the clamp of the drawn height to `[72, 72]`) is
+	 * 72, so announcing `value` promises 44px the layout does not have (review
+	 * round 1, m-3, probed at 100/140/143).
+	 */
+	const announced =
+		resizable || !measured || storedHeight !== null
+			? value
+			: Math.min(drawnListHeight, listMax ?? drawnListHeight);
 
 	return {
 		regions: stored,
@@ -382,10 +410,15 @@ export function resolveSidebarSplit({
 			? listVisible
 				? resizable
 					? { value, min: SIDEBAR_MIN_REGION_PX, max: liveMax, resizable: true }
-					: // The range collapses onto what is drawn and a write is
+					: // The range collapses onto what is DRAWN and a write is
 						// refused, so a preference the window cannot host survives
 						// for one that can (`chat-content.tsx`'s `runPanelResizable`).
-						{ value, min: value, max: value, resizable: false }
+						{
+							value: announced,
+							min: announced,
+							max: announced,
+							resizable: false,
+						}
 				: null
 			: null,
 	};

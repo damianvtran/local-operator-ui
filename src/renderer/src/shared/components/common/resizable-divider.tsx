@@ -58,8 +58,15 @@
  * How long the pointer must rest in the gap before the handle lights up.
  * Long enough to ignore a pass-through, short enough to feel immediate when
  * you are actually reaching for it.
+ *
+ * EXPORTED because the chat sidebar's collapse cluster is revealed on the same
+ * intent, one level up: the cluster is a sibling of this separator rather than
+ * a child, so it cannot inherit the state, and a second delay written beside
+ * the first is two numbers a later change can put out of step (review round 1,
+ * M-1: the shipped build revealed the plate after 120ms of CSS while this line
+ * waited 200ms, and the PR body claimed the delay was already there).
  */
-const HOVER_INTENT_MS = 200;
+export const HOVER_INTENT_MS = 200;
 
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -69,9 +76,11 @@ let cursorOverlay: HTMLDivElement | null = null;
 
 /*
  * The overlay is one node for the whole document, created on the first drag and
- * removed when it ends, so its cursor is re-stated per drag rather than fixed
- * at creation: a vertical drag and a horizontal one in the same session would
- * otherwise leave whichever ran first's cursor on screen for the second.
+ * removed when it ends. The CURSOR is assigned on every drag rather than on the
+ * node's creation: the node is created fresh each time (its teardown nulls the
+ * module reference), so the assignment is what gives the new node its cursor -
+ * and stating it per drag is also what keeps a missed `mouseup` from leaving the
+ * previous drag's cursor in place for the next one.
  */
 const addResizeCursorOverlay = (cursor: "col-resize" | "row-resize"): void => {
 	if (!cursorOverlay) {

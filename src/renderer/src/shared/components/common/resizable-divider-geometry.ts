@@ -86,9 +86,10 @@ export type KeyboardTargetInput = {
  *
  * THREE answers rather than two, and the third is load-bearing: a separator
  * that returned only a number could not tell a caller whether it may
- * `preventDefault()`, and the walk that moves focus between rows in the panel
- * around it checks only `defaultPrevented` - so a key this separator does not
- * own must come back as "not mine" rather than as "unchanged".
+ * `preventDefault()`, and the panel's own walk does not consult
+ * `defaultPrevented` at all - it reads the key itself on `[data-chat-row]` and
+ * on the disclosures - so a key this separator does not own must be left
+ * UNTOUCHED, not merely reported unchanged.
  *
  * The key set is AXIS-MATCHED. A vertical separator owns Left/Right; a
  * horizontal one owns Up/Down. It must not own both: `chat-sidebar.tsx`'s

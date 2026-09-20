@@ -13,7 +13,10 @@ import {
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
-import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import {
+	HOVER_INTENT_MS,
+	ResizableDivider,
+} from "@shared/components/common/resizable-divider";
 import { Button } from "@shared/components/ui/button";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
@@ -47,6 +50,7 @@ import {
 import {
 	type KeyboardEvent,
 	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
 	type Ref,
 	useEffect,
 	useLayoutEffect,
@@ -760,6 +764,17 @@ export function ChatSidebar({
 	 * measured the recovery at 8 px, which is the first move that clears this record.
 	 */
 	const PIN_PRESS_SLOP_PX = 6;
+
+	/**
+	 * How far a pointer may travel on a boundary control before the click it would
+	 * produce is treated as a drag rather than as a press.
+	 *
+	 * It is NOT `PIN_PRESS_SLOP_PX` beside it: that one is about the reflex of
+	 * pressing a row twice, and this one is about a 28px control sitting on a 10px
+	 * drag band. Four pixels is above the jitter of a click that was meant as a
+	 * click and below the travel of a gesture that was meant as a drag.
+	 */
+	const CONTROL_PRESS_SLOP_PX = 4;
 	/**
 	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
 	 *
@@ -2048,6 +2063,18 @@ export function ChatSidebar({
 	 */
 	const navRef = useRef<HTMLElement | null>(null);
 	const splitRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * The two children of the split container that are NOT regions.
+	 *
+	 * They exist so `capacity` can mean what every number below treats it as: the
+	 * box the two regions share. The boundary carries its own `mt-2` and the pin
+	 * failure line is a paragraph, both inside the same flex container, so a
+	 * container-height capacity silently charged their space to the region that
+	 * is not sized - which is how a 72px floor measured 64px and 8px more when a
+	 * pin failed (review round 1, m-1; design D5; UX U3).
+	 */
+	const bandRef = useRef<HTMLDivElement | null>(null);
+	const pinRef = useRef<HTMLParagraphElement | null>(null);
 	const [splitCapacity, setSplitCapacity] = useState(0);
 	const [splitPanelHeight, setSplitPanelHeight] = useState(0);
 	const [drawnListHeight, setDrawnListHeight] = useState(0);
@@ -2106,8 +2133,26 @@ export function ChatSidebar({
 			 * which is the property the divider's live range needs, and the
 			 * reason a derived sum would be circular in a window too short to
 			 * host both floors.
+			 *
+			 * The container's height MINUS the children that are not regions: the
+			 * boundary's own band (its `h-0` box plus the `mt-2` that separates it
+			 * from the region above) and the pin failure line when one renders.
+			 * Measured from the DOM rather than named as constants, so a class
+			 * change moves the arithmetic with it, and summed with the margins
+			 * because a margin is main-axis space in a flex column.
 			 */
-			const capacity = container.getBoundingClientRect().height;
+			const reservations = (node: HTMLElement | null) => {
+				if (!node) return 0;
+				const style = getComputedStyle(node);
+				const margin =
+					Number.parseFloat(style.marginTop || "0") +
+					Number.parseFloat(style.marginBottom || "0");
+				return node.offsetHeight + (Number.isFinite(margin) ? margin : 0);
+			};
+			const capacity =
+				container.getBoundingClientRect().height -
+				reservations(bandRef.current) -
+				reservations(pinRef.current);
 			/*
 			 * The panel's own content box, which is what the shipped
 			 * `max-h-[45%]` resolved against before the regions moved into this
@@ -2136,6 +2181,13 @@ export function ChatSidebar({
 		measure();
 		const nodes: Element[] = [nav, container];
 		if (listPanelRef.current) nodes.push(listPanelRef.current);
+		/*
+		 * Observed too, because their own heights move the capacity: the band is
+		 * fixed but the pin line appears and disappears, and its appearing is a
+		 * layout change the regions' own resizes would not report.
+		 */
+		if (bandRef.current) nodes.push(bandRef.current);
+		if (pinRef.current) nodes.push(pinRef.current);
 		const observed = observedRef.current;
 		const sameShape =
 			observed.length === nodes.length &&
@@ -2188,10 +2240,15 @@ export function ChatSidebar({
 	 */
 	const hideLabel = (region: SidebarRegionName) =>
 		region === "entities" ? "Hide agents and teams" : "Hide the chats list";
+	/*
+	 * One label for both channels: the row's visible text IS this string, and its
+	 * accessible name is the same string (plus the count where there is one). A
+	 * terse visible version beside an action-shaped accessible one was the shipped
+	 * state and it named the row after the panel's own heading (design round 1,
+	 * D3) - so there is one string, and it says what pressing it does.
+	 */
 	const showLabel = (region: SidebarRegionName) =>
 		region === "entities" ? "Show agents and teams" : "Show the chats list";
-	const regionName = (region: SidebarRegionName) =>
-		region === "entities" ? "Agents and teams" : "Chats";
 	/*
 	 * The chats list is the region the ORDER control moves, and its name states
 	 * the outcome rather than the mechanism: `Move the chats list to the top`
@@ -2252,6 +2309,16 @@ export function ChatSidebar({
 		 * declaration takes.
 		 */
 		<div
+			/*
+			 * KEYED, both regions, so the swap MOVES these nodes rather than
+			 * re-filling them. Unkeyed, React reconciles the two positions in place:
+			 * the element that was the entity region becomes the chats region and
+			 * inherits its content, so the scroller the user had scrolled loses its
+			 * position (measured: 30 -> 0 and 40 -> 0 on the two runs, UX round 1,
+			 * U2). A key makes the node travel with its region, and its scrollTop
+			 * travels with it.
+			 */
+			key="entities"
 			ref={entityPanelRef}
 			onScroll={() =>
 				refreshFocusedInside(entityPanelRef.current, entitySlotRef)
@@ -2456,7 +2523,13 @@ export function ChatSidebar({
 	 * intact and only this row's pin did not move.
 	 */
 	const pinFailureLine = pinFailure ? (
-		<p className="pb-2 text-meta text-warning">
+		/*
+		 * The pin failure, and the reason it carries a ref: it is a flex child of the
+		 * split container like the boundary, so its height comes out of the space the
+		 * two regions share and has to be measured rather than assumed (review round
+		 * 1, m-1).
+		 */
+		<p ref={pinRef} className="pb-2 text-meta text-warning">
 			Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button
@@ -2526,6 +2599,7 @@ export function ChatSidebar({
 		 * on screen at all when the change landed.
 		 */
 		<div
+			key="chats"
 			ref={listPanelRef}
 			onScroll={() => refreshFocusedInside(listPanelRef.current, listSlotRef)}
 			id={CHAT_REGION_ID}
@@ -2872,8 +2946,159 @@ export function ChatSidebar({
 	 * rows) rather than the rail's groundless shape: these buttons sit across
 	 * the boundary, so without a ground their hover wash would paint over a row.
 	 */
+	/*
+	 * ---- The boundary's controls, and the intent behind them -----------------
+	 *
+	 * THE REVEAL IS INTENT-GATED, which is S4's contract rather than a taste call.
+	 * The boundary is 10px of hit band on a line the pointer crosses every time it
+	 * moves between the two halves of the panel, and a plate of three glyph buttons
+	 * that appears on the way past is exactly the clutter the operator's request
+	 * owns up to not wanting. `HOVER_INTENT_MS` is the SEPARATOR's own constant,
+	 * imported rather than copied: its state line and this plate are one affordance
+	 * arriving together, and two delays that happen to agree today are two numbers a
+	 * later change can disagree (review round 1, M-1 - the shipped build revealed
+	 * the plate after 120ms of CSS while the line waited 200ms, and the PR body
+	 * claimed the delay was already there).
+	 *
+	 * FOCUS DOES NOT WAIT. A keyboard arrival is a decision rather than a crossing,
+	 * so `focus` reveals the plate at once - and, before this change, focus was the
+	 * ONLY path that did, because the CSS reveal was on `group-hover` alone.
+	 */
+	const [clusterRevealed, setClusterRevealed] = useState(false);
+	const intentTimer = useRef<number | null>(null);
+	const armCluster = () => {
+		if (intentTimer.current !== null) return;
+		intentTimer.current = window.setTimeout(() => {
+			intentTimer.current = null;
+			setClusterRevealed(true);
+		}, HOVER_INTENT_MS);
+	};
+	const disarmCluster = () => {
+		if (intentTimer.current !== null) {
+			window.clearTimeout(intentTimer.current);
+			intentTimer.current = null;
+		}
+		setClusterRevealed(false);
+	};
+	useEffect(
+		() => () => {
+			if (intentTimer.current !== null)
+				window.clearTimeout(intentTimer.current);
+		},
+		[],
+	);
+	/*
+	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL.
+	 *
+	 * The plate sits on the boundary, so the two gestures a user can make there are
+	 * one pixel apart: reach for the divider and land on a button. Travel past a
+	 * few pixels therefore cancels the control's click - the panel neither
+	 * collapses nor reorders under a gesture that was asking for something else, and
+	 * the pixel the gesture started on is free to be a drag instead (UX round 1, U1,
+	 * whose second limb the trailing-end placement answers and whose first this
+	 * answers). The record is a REF because the click that has to be cancelled is
+	 * the one already in flight.
+	 */
+	const controlPressRef = useRef<{
+		x: number;
+		y: number;
+		moved: boolean;
+	} | null>(null);
+	const armControlPress = (event: ReactPointerEvent) => {
+		controlPressRef.current = {
+			x: event.clientX,
+			y: event.clientY,
+			moved: false,
+		};
+	};
+	useEffect(() => {
+		const travel = (event: PointerEvent) => {
+			const press = controlPressRef.current;
+			if (press === null || press.moved) return;
+			if (
+				Math.hypot(event.clientX - press.x, event.clientY - press.y) >
+				CONTROL_PRESS_SLOP_PX
+			) {
+				press.moved = true;
+			}
+		};
+		window.addEventListener("pointermove", travel, true);
+		return () => window.removeEventListener("pointermove", travel, true);
+	}, []);
+	/*
+	 * THE SWAP MUST NOT COST THE USER THEIR PLACE IN A LIST.
+	 *
+	 * The two regions are keyed, so React MOVES the nodes rather than re-filling
+	 * them in place - which is what review round 1 (U2) asked for and what the
+	 * driven scene now checks by node identity. It is not sufficient on its own:
+	 * a scroller that is moved in the DOM is re-attached, and Chromium resets its
+	 * `scrollTop` when it is, measured here as `24 -> 0` on a region that still
+	 * overflowed on both sides of the swap. So the positions are carried across by
+	 * hand: saved at the press (the only moment both nodes are guaranteed still to
+	 * hold them) and restored after the reorder has rendered.
+	 */
+	const savedScrollRef = useRef<Map<Element, number>>(new Map());
+	const saveRegionScroll = () => {
+		const saved = new Map<Element, number>();
+		for (const node of [entityPanelRef.current, listPanelRef.current]) {
+			if (node) saved.set(node, node.scrollTop);
+		}
+		savedScrollRef.current = saved;
+	};
+	useLayoutEffect(() => {
+		const saved = savedScrollRef.current;
+		if (saved.size === 0) return;
+		savedScrollRef.current = new Map();
+		for (const [node, top] of saved) node.scrollTop = top;
+	}, [split.order]);
+	const clusterAction = (act: () => void) => () => {
+		const press = controlPressRef.current;
+		controlPressRef.current = null;
+		if (press?.moved) return;
+		act();
+	};
+	/*
+	 * WHAT THE SEPARATOR ANNOUNCES WHEN THE WINDOW IS SHORT.
+	 *
+	 * A stored height is clamped for the render and kept for the window that can
+	 * honour it, and the clamp is otherwise invisible: the entity region is at its
+	 * floor, the panel looks deliberate, and nothing says the user's own number is
+	 * 900 rather than the 352 on screen (design round 1, D5). The name is where it
+	 * is cheapest to say, on the control the user would reach for next.
+	 */
+	const resizeLabel =
+		split.divider !== null &&
+		split.listHeight !== null &&
+		Math.round(split.divider.value) !== Math.round(split.listHeight)
+			? `Resize the chats list - showing ${Math.round(
+					split.divider.value,
+				)} of ${Math.round(split.listHeight)} pixels in this window`
+			: "Resize the chats list";
+
 	const boundary = split.divider ? (
-		<div data-sidebar-split className="group relative mt-2 h-0 shrink-0">
+		<div
+			data-sidebar-split
+			ref={bandRef}
+			onPointerEnter={armCluster}
+			onPointerLeave={disarmCluster}
+			className="group relative mt-2 h-0 shrink-0"
+		>
+			{/*
+			 * A HOVER-ONLY strip, declared before the separator so the drag band wins
+			 * every pixel it and this share. It exists because the reveal surface and
+			 * the drag surface are not the same size: the separator's band is the
+			 * 10px the design pins, and finding a 10px band is the affordance's whole
+			 * cost (UX round 1, U4). This adds nothing to the drag and nothing at
+			 * rest - it is transparent, aria-hidden, and its events are read by the
+			 * wrapper's own enter/leave.
+			 *
+			 * Its height is bounded by the region padding it sits in, which is why it
+			 * is 16px and not 24: above the line the entity region contributes only
+			 * its own 4px `p-1`, and a strip wider than that would cover the bottom of
+			 * its last row and take the row's clicks - the hit-testing regression A4
+			 * exists to catch.
+			 */}
+			<div aria-hidden="true" className="absolute inset-x-0 -top-2 h-4" />
 			<ResizableDivider
 				orientation="horizontal"
 				side={split.side}
@@ -2882,15 +3107,35 @@ export function ChatSidebar({
 				minWidth={split.divider.min}
 				maxWidth={split.divider.max}
 				onDoubleClick={restoreDefaultChatSidebarListHeight}
-				label="Resize the chats list"
+				label={resizeLabel}
 			/>
 			<div
 				data-sidebar-cluster
+				data-sidebar-cluster-revealed={clusterRevealed ? "" : undefined}
+				onPointerDown={armControlPress}
+				onFocus={() => setClusterRevealed(true)}
+				onBlur={(event) => {
+					if (
+						!event.currentTarget.contains(event.relatedTarget as Node | null)
+					) {
+						disarmCluster();
+					}
+				}}
 				className={cn(
-					"pointer-events-none absolute top-0 left-1/2 z-[13] flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
-					"opacity-0 transition-opacity duration-fast ease-out-quart",
-					"group-hover:pointer-events-auto group-hover:opacity-100",
-					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+					/*
+					 * AT THE TRAILING END rather than across the middle, and that is a
+					 * hit-testing decision rather than a taste one: centred, the plate
+					 * owned 36% of the band's width, so a press at the most natural
+					 * grab point - the panel's centre - collapsed a region, and a drag
+					 * from that same pixel did nothing at all (UX round 1, U1). Here the
+					 * whole centre of the band is the separator. `right-2` keeps the
+					 * plate clear of the scrollbar's own column.
+					 */
+					"absolute top-0 right-2 z-[13] flex -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
+					"transition-opacity duration-fast ease-out-quart",
+					clusterRevealed
+						? "pointer-events-auto opacity-100"
+						: "pointer-events-none opacity-0",
 				)}
 			>
 				<Tooltip content={hideLabel(topRegion)}>
@@ -2903,9 +3148,9 @@ export function ChatSidebar({
 						aria-controls={
 							topRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
 						}
-						onClick={() =>
-							setChatSidebarRegions(hideRegion(chatSidebarRegions, topRegion))
-						}
+						onClick={clusterAction(() =>
+							setChatSidebarRegions(hideRegion(chatSidebarRegions, topRegion)),
+						)}
 					>
 						<ChevronUp aria-hidden="true" />
 					</Button>
@@ -2920,11 +3165,11 @@ export function ChatSidebar({
 						aria-controls={
 							bottomRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
 						}
-						onClick={() =>
+						onClick={clusterAction(() =>
 							setChatSidebarRegions(
 								hideRegion(chatSidebarRegions, bottomRegion),
-							)
-						}
+							),
+						)}
 					>
 						<ChevronDown aria-hidden="true" />
 					</Button>
@@ -2935,13 +3180,14 @@ export function ChatSidebar({
 						size="icon-sm"
 						data-sidebar-order
 						aria-label={orderLabel}
-						onClick={() =>
+						onClick={clusterAction(() => {
+							saveRegionScroll();
 							setChatSidebarOrder(
 								split.order === "entities-first"
 									? "chats-first"
 									: "entities-first",
-							)
-						}
+							);
+						})}
 					>
 						<ArrowUpDown aria-hidden="true" />
 					</Button>
@@ -2963,7 +3209,35 @@ export function ChatSidebar({
 		<button
 			type="button"
 			data-sidebar-restore={split.restore}
-			aria-label={showLabel(split.restore)}
+			/*
+			 * THE VISIBLE LABEL IS THE ACTION, and it has to be, because the row sits
+			 * under the panel's own `<h2>` reading "Chats": a row that says "Chats"
+			 * two rows below a heading that says "Chats" leaves the reader to work out
+			 * which one is missing, and in form it is a twin of the panel's group
+			 * headings rather than a control (design round 1, D3). The count stays, so
+			 * the collapsed state still says how many chats there are; the accessible
+			 * name carries it in words for the same reason.
+			 */
+			aria-label={
+				split.restore === "chats" && matching.length > 0
+					? `${showLabel(split.restore)}, ${matching.length} chats`
+					: showLabel(split.restore)
+			}
+			/*
+			 * The `⌘N` clause is the one hint this row carries, and it exists because
+			 * collapsing the chats list removes the app's only visible way to start a
+			 * conversation: `New chat` lives in the region that is gone, and the
+			 * operator's own constraint - no new controls on this row - rules out
+			 * putting one back (design round 1, D7). A title is not chrome, and it
+			 * names the keyboard path for a sighted user who is looking at the way
+			 * back. The entities row carries no such clause: its own region is the one
+			 * holding `New chat` whenever this row renders.
+			 */
+			title={
+				split.restore === "chats"
+					? "Show the chats list - ⌘N starts a new chat"
+					: undefined
+			}
 			className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
 			onClick={() => setChatSidebarRegions("both")}
 		>
@@ -2978,7 +3252,7 @@ export function ChatSidebar({
 				<ChevronUp className="size-3.5" aria-hidden="true" />
 			)}
 			<span className="min-w-0 flex-1 truncate text-left">
-				{regionName(split.restore)}
+				{showLabel(split.restore)}
 			</span>
 			{/*
 			 * The list region's own count, from the same predicate its `All

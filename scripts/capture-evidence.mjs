@@ -2996,6 +2996,13 @@ export const STORIES = [
 	 * preference in one frame, which is the pair `resting-default` cannot show.
 	 */
 	["chat-sidebar-sections--short-window", 741, 520],
+	/*
+	 * The swap, in both orders' widths: the one layout in this change where the
+	 * regions' roles invert, the rule above the lower region moves to the other
+	 * region, and the boundary changes which edge of the list it sits on (D2).
+	 */
+	["chat-sidebar-sections--chats-first", 741, 660],
+	["chat-sidebar-sections--chats-first-narrow", 621, 760],
 	/* The panel at its own width clamp, where the boundary and the restore row
 	   have the least room they ever get - and the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
