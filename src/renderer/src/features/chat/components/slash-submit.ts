@@ -137,7 +137,13 @@
  */
 
 import {
+	NON_SEPARATOR,
+	SEPARATOR,
+	SEPARATOR_CLASS,
+	SEPARATOR_RUN,
+	SEPARATOR_RUN_ALL,
 	commandWordOpensDraft,
+	pyTrim,
 	replaceSpan,
 	slashTokenSpan,
 } from "./slash-token";
@@ -375,18 +381,20 @@ export type SlashSubmissionArgs = {
 	gesture?: "typed" | "pick";
 };
 
-/** The name/argument separator: the first whitespace character of a token. */
-const WHITESPACE = /\s/;
-
 /**
- * A RUN of whitespace, which is what Python's `str.split()` collapses — the
- * endpoint's own tokenisation, and the count `argumentFits` has to agree with.
+ * A slash token: `/` then at least one character that is neither a separator nor
+ * a slash. Read on the run the app put back but this vocabulary can no longer
+ * find, so it asks the same separator question as the scan above it.
  *
- * Hoisted for the same reason `WHITESPACE` is: a regex literal inside a function
- * that runs on every plan is the shape this file's lint rule rejects, and the
- * difference between the two constants is the whole of round 1's F1.
+ * The CLASS lives in `./slash-token` — where a token's boundaries are decided,
+ * and where the reason it is Python's set rather than `\s` is written down — and
+ * this is the one pattern here that needs the class's source rather than one of
+ * the forms built from it.
  */
-const WHITESPACE_RUN = /\s+/;
+const BROKEN_RUN = new RegExp(`\\/[^${SEPARATOR_CLASS}/]+`);
+
+/** A leading `/`, taken off a recorded word before it is compared. */
+const LEADING_SLASH = /^\//;
 
 /**
  * The lower-cased command word of a token's text, `/team ops` → `team`.
@@ -400,9 +408,10 @@ const WHITESPACE_RUN = /\s+/;
  * dispatched `/goal and more` over a draft the footer had just told the user
  * would be sent as prose (review F1: 126 of 261 fall-through states, every one of
  * them a PASTE shape — a TSV tab, an NBSP or a thin space lifted off a web page).
- * `\s` is the class `slash-token.ts` ends its word on and the class the
+ * `SEPARATOR_CLASS` is the class `slash-token.ts` ends its word on and the class the
  * dispatcher posts, and two answers to "what is this token's word" have to be
- * the same answer.
+ * the same answer. That class is PYTHON's and not JavaScript's — round 2's Q2-1
+ * was this same sentence with `\s` in it.
  */
 /** The default for an input a caller has not wired yet; never mutated. */
 const EMPTY_COMMANDS: ReadonlySet<string> = new Set<string>();
@@ -426,11 +435,11 @@ function wordOf(commandText: string): string {
  */
 function invocationOf(commandText: string): SlashCommandInvocation {
 	const body = commandText.slice(1);
-	const separator = body.search(WHITESPACE);
+	const separator = body.search(SEPARATOR);
 	if (separator === -1) return { name: body, args: "" };
 	return {
 		name: body.slice(0, separator),
-		args: body.slice(separator + 1).trim(),
+		args: pyTrim(body.slice(separator + 1)),
 	};
 }
 
@@ -480,7 +489,7 @@ function stagedLine(
  * invariant on `stagedLine` above.
  */
 function oneLine(text: string): string {
-	return text.replace(/\s+/g, " ").trim();
+	return pyTrim(text.replace(SEPARATOR_RUN_ALL, " "));
 }
 
 /**
@@ -631,17 +640,25 @@ export function prefixingVocabulary(
  * than on being the command the user asked for.
  */
 export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
-	const trimmed = args.trim();
+	const trimmed = pyTrim(args);
 	if (trimmed === "") return false;
 	/*
-	 * `\s+` AND NOT `\s`, because this must count what the endpoint counts: Python's
-	 * `str.split()` collapses a run of separators, while splitting per separator
-	 * emits an empty token for each extra one. For `subcommand` — the one shape that
-	 * admits two tokens — that turns `/mcp logout  srv` into three tokens here and
-	 * two there, so the composer plans prose for a draft the endpoint runs, posts
-	 * it, and the message route refuses it (round 1 F1).
+	 * PYTHON'S SPLIT, ON PYTHON'S CLASS. Two things this has to agree with, and
+	 * they are the two halves of the same claim:
+	 *
+	 * `SEPARATOR_RUN` and not a single separator, because Python's `str.split()`
+	 * collapses a run while splitting per separator emits an empty token for each
+	 * extra one. For `subcommand` — the one shape that admits two tokens — that
+	 * turns `/mcp logout  srv` into three tokens here and two there, so the
+	 * composer plans prose for a draft the endpoint runs, posts it, and the message
+	 * route refuses it (round 1 F1).
+	 *
+	 * And the CLASS is Python's rather than `\s`, because the run's members are:
+	 * a separator `\s` does not know about leaves the mark INSIDE the token, which
+	 * is how `/mcp logout<U+001C>srv` failed the name check below and went out as
+	 * prose (round 2 Q2-1, the same permanent refusal one character class over).
 	 */
-	const tokens = trimmed.split(WHITESPACE_RUN);
+	const tokens = trimmed.split(SEPARATOR_RUN);
 	/*
 	 * Matched AS PUBLISHED and case included, for the reason
 	 * `argumentShapeVocabulary` states where the words are built: the endpoint's arms
@@ -685,13 +702,13 @@ export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
  * `planSlashSubmission` still decide whether the word owns what follows.
  */
 function draftOpeningCaret(draft: string): number | null {
-	const first = draft.search(/\S/);
+	const first = draft.search(NON_SEPARATOR);
 	if (first === -1 || draft[first] !== "/") return null;
 	const lineEnd = draft.indexOf("\n", first);
 	const line = draft.slice(first, lineEnd === -1 ? draft.length : lineEnd);
 	// A bare `/` is the popup's own opener, not a word: a span over it names no
 	// command, so there is nothing to offer.
-	if (line.trim() === "/") return null;
+	if (pyTrim(line) === "/") return null;
 	// Just inside the leading word: the span it yields is that LINE's, so the exact
 	// offset within the word does not matter.
 	return first + 1;
@@ -722,8 +739,9 @@ function draftOpeningCaret(draft: string): number | null {
  * FOUR CONJUNCTS, each narrowing rather than decorating:
  *
  *   - the word is one the CALLER locked, and it is spelled as a token (a
- *     boundary `/`, the word, then whitespace or the end: `/credentials` is not
- *     one — the matcher's `(?!\S)` draws the same line as `CREDENTIAL_TOKEN`);
+ *     boundary `/`, the word, then a python separator or the end: `/credentials`
+ *     is not one — the matcher's trailing `(?=[…]|$)` draws the same line as
+ *     `CREDENTIAL_TOKEN`);
  *   - a NON-EMPTY TAIL, because the invocation being planned is `/credential
  *     <secret>`: a bare mid-draft token is the composer's own arming gesture, and
  *     the capture owns it rather than this planner;
@@ -810,10 +828,9 @@ function lockedWordPlan(
 	 * was built for (its own spelling, `/` and separator included when it arrives that
 	 * way), and `undefined` for every other draft.
 	 */
-	const runWord = (unmaskedRunWord ?? "")
-		.toLowerCase()
-		.replace(/^\//, "")
-		.trim();
+	const runWord = pyTrim(
+		(unmaskedRunWord ?? "").toLowerCase().replace(LEADING_SLASH, ""),
+	);
 	// An unwired or empty vocabulary, on a draft the app never un-masked, is the whole
 	// of "no other caller can acquire this by accident": the walk below never runs. A
 	// draft that DOES carry a run is the one exception, because the spelling of the
@@ -827,9 +844,9 @@ function lockedWordPlan(
 	 * place where an in-word slash cannot be punctuation: the app itself un-masked
 	 * characters for a word, and the user is editing them.
 	 */
-	const boundary = runWord === "" ? "(?:^|(?<=\\s))" : "";
+	const boundary = runWord === "" ? `(?:^|(?<=[${SEPARATOR_CLASS}]))` : "";
 	const token = new RegExp(
-		`${boundary}\\/(?:${[...words].map(literalWord).join("|")})(?!\\S)`,
+		`${boundary}\\/(?:${[...words].map(literalWord).join("|")})(?=[${SEPARATOR_CLASS}]|$)`,
 		"gi",
 	);
 	for (
@@ -839,7 +856,7 @@ function lockedWordPlan(
 	) {
 		const index = match.index;
 		const end = tokenLineEnd(draft, index);
-		const typed = invocationOf(draft.slice(index, end).trim());
+		const typed = invocationOf(pyTrim(draft.slice(index, end)));
 		const word = typed.name.toLowerCase();
 		if (!words.has(word)) continue;
 		// A bare token is NOT this rule's: `/credential ` is the composer's own
@@ -888,11 +905,11 @@ function lockedWordPlan(
 	 * alternative was measured too: the secret in a provider body.
 	 */
 	if (runWord === "") return null;
-	const broken = /\/[^\s/]+/.exec(draft);
+	const broken = BROKEN_RUN.exec(draft);
 	if (broken === null) return null;
 	const brokenIndex = broken.index;
 	const brokenEnd = tokenLineEnd(draft, brokenIndex);
-	const brokenTyped = invocationOf(draft.slice(brokenIndex, brokenEnd).trim());
+	const brokenTyped = invocationOf(pyTrim(draft.slice(brokenIndex, brokenEnd)));
 	return runPlan(
 		draft,
 		caret,
@@ -934,7 +951,7 @@ function runPlan(
 	 * it is not, because a catalogue that cannot resolve the word must not be able
 	 * to destroy the user's whole draft either.
 	 */
-	if (rest.text.trim() === "")
+	if (pyTrim(rest.text) === "")
 		return known
 			? { kind: "whole", command, locked: true }
 			: { kind: "unrecognised", command };
@@ -1065,7 +1082,7 @@ export function planSlashSubmission({
 	if (span === null) return { kind: "send" };
 
 	const spliced = replaceSpan(draft, span.start, span.end, "");
-	const commandText = draft.slice(span.start, span.end).trim();
+	const commandText = pyTrim(draft.slice(span.start, span.end));
 	const command = invocationOf(commandText);
 	const word = wordOf(commandText);
 
@@ -1080,7 +1097,7 @@ export function planSlashSubmission({
 	 * order because the whole-draft form is the stricter one and has sub-rules of
 	 * its own.
 	 */
-	const wholeDraft = spliced.text.trim() === "";
+	const wholeDraft = pyTrim(spliced.text) === "";
 	const opensDraft = commandWordOpensDraft(draft, span.start);
 
 	// Slash-shaped but not a command this host knows. The misspelling is the
@@ -1146,7 +1163,7 @@ export function planSlashSubmission({
 		args: string,
 		branch: "whole" | "led" | "hoist",
 	): boolean => {
-		const trimmed = args.trim();
+		const trimmed = pyTrim(args);
 		if (branch === "hoist") {
 			if (wireShape) return wireShape.shape === "any";
 			return promptCommands.has(word);
@@ -1212,9 +1229,9 @@ export function planSlashSubmission({
 		// already completed the word to `/team ` and opened the roster list;
 		// leaving it open is the whole interaction, and reassembly happens when
 		// a NAME row is chosen (TUI `editor.py:8219-8222`).
-		if (nameListCommands.has(word) && !typedArgument.trim())
+		if (nameListCommands.has(word) && !pyTrim(typedArgument))
 			return { kind: "list-open", command };
-		const rest = spliced.text.trim();
+		const rest = pyTrim(spliced.text);
 		// The staged line is one line, both halves collapsed — see the invariant on
 		// `stagedLine`. A two-line draft staged here put the command's span on its
 		// first line, so the next Enter answered `send` and the literal `/loop …`
@@ -1291,7 +1308,7 @@ export function planSlashArming({
 }: SlashArmingArgs): SlashArmingPlan {
 	const span = slashTokenSpan(draft, caret, commandNames);
 	if (span === null) return { kind: "none" };
-	const commandText = draft.slice(span.start, span.end).trim();
+	const commandText = pyTrim(draft.slice(span.start, span.end));
 	/*
 	 * The word is checked here as well as at the row (`pickArmsCommand`) because
 	 * this is the function that decides what gets HOISTED: a caller that reached
@@ -1301,7 +1318,7 @@ export function planSlashArming({
 	 * the row that was picked.
 	 */
 	if (!armedOnlyCommands.has(wordOf(commandText))) return { kind: "none" };
-	const rest = replaceSpan(draft, span.start, span.end, "").text.trim();
+	const rest = pyTrim(replaceSpan(draft, span.start, span.end, "").text);
 	if (!rest) return { kind: "none" };
 	// `stagedLine` collapses both halves, which is what keeps the staged line one
 	// line whatever shape the draft had — see the invariant on it. The flattening

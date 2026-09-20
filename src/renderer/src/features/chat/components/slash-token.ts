@@ -43,11 +43,69 @@
 /** The pure parser's default vocabulary: an empty set disables claiming. */
 const EMPTY: ReadonlySet<string> = new Set<string>();
 
-/** A boundary `/` is the line start or the cell right after whitespace. */
-const WHITESPACE = /\s/;
+/**
+ * PYTHON'S WHITESPACE, WHICH IS NOT JAVASCRIPT'S — the one separator class both
+ * this parser and the planner behind it ask their questions through.
+ *
+ * The endpoint separates and strips with Python's own class
+ * (`local_operator/slash_commands.py`: `args.split()`, `args.strip()`, and
+ * `any(char.isspace() for char in token)`), which is the 29 code points where
+ * `str.isspace()` is true. JavaScript's `\s` is a DIFFERENT set, and it differs in
+ * both directions — each one shipped a defect, both measured at app level after
+ * round 1's F1 aligned the separator RUN but not the CLASS (QA round 2, Q2-1):
+ *
+ *  - Python separates on U+001C-U+001F and U+0085; `\s` does not. `/mcp
+ *    logout<U+001C>srv` was therefore ONE token, the second-token server-name
+ *    check read `logout<U+001C>srv` and rejected it, and a draft the endpoint runs
+ *    as a command was planned as prose and posted — a 422 the user cannot
+ *    resend, which is the exact outcome round 1's F1 was about. The same class
+ *    one position over: `\s` did not read a LEADING U+0085 as a boundary either,
+ *    so no token was found at all on a draft both hosts run.
+ *  - Python does NOT separate on U+FEFF; `\s` does. A draft the endpoint reads as
+ *    one word was read here as name-plus-argument, and the planner planned a
+ *    command for text the endpoint refuses.
+ *
+ * Spelled out rather than taken from `\s`, because `\s` cannot be adjusted into
+ * this set: it carries U+FEFF and misses the five control separators. Written
+ * once, here, because a boundary that is a boundary for the token scan and not
+ * for the planner is a rule that disagrees with itself as well as with the host
+ * that owns the answer.
+ */
+export const SEPARATOR_CLASS =
+	"\\t\\n\\v\\f\\r\\u001C-\\u001F \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
+
+/** A boundary `/` is the line start or the cell right after a Python separator. */
+export const SEPARATOR = new RegExp(`[${SEPARATOR_CLASS}]`);
+
+/** A RUN of separators, which is what Python's `str.split()` collapses. */
+export const SEPARATOR_RUN = new RegExp(`[${SEPARATOR_CLASS}]+`);
+
+/** The same run, for the pass that collapses every run in a string. */
+export const SEPARATOR_RUN_ALL = new RegExp(`[${SEPARATOR_CLASS}]+`, "g");
+
+/** A separator at either END of a string — Python's `str.strip()`. */
+const EDGE_SEPARATORS = new RegExp(
+	`^[${SEPARATOR_CLASS}]+|[${SEPARATOR_CLASS}]+$`,
+	"g",
+);
+
+/** The first character that is not a separator. */
+export const NON_SEPARATOR = new RegExp(`[^${SEPARATOR_CLASS}]`);
+
+/**
+ * `str.strip()`: Python's class, both ends.
+ *
+ * `String.prototype.trim()` strips JavaScript's class instead, which is the same
+ * mismatch in the same two directions: it removes a leading U+FEFF Python keeps,
+ * and keeps a trailing U+0085 Python removes. Everything in this pair of files
+ * that feeds a comparison the endpoint also makes strips through here.
+ */
+export function pyTrim(text: string): string {
+	return text.replace(EDGE_SEPARATORS, "");
+}
 
 function isBoundary(line: string, index: number): boolean {
-	return index === 0 || WHITESPACE.test(line[index - 1]);
+	return index === 0 || SEPARATOR.test(line[index - 1]);
 }
 
 /** Indices of every boundary `/` on `line`. */
@@ -146,7 +204,7 @@ export function slashContext(
 	const slash = activeSlash(line, column, commands);
 	if (slash === null) return null;
 	let wordEnd = slash + 1;
-	while (wordEnd < line.length && !WHITESPACE.test(line[wordEnd])) wordEnd++;
+	while (wordEnd < line.length && !SEPARATOR.test(line[wordEnd])) wordEnd++;
 	// A space between the slash and the caret means the word is already
 	// terminated and the caret is out in argument (or message) territory.
 	if (column > wordEnd) return null;

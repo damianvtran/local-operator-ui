@@ -29,11 +29,14 @@ const bundle = await build({
 			 */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
 			/*
-			 * The tokenizer's own span, so the case below can assert that the planner and
-			 * the span agree about where a token's WORD ends (review F1 is exactly the
-			 * two of them disagreeing about the separator).
+			 * The tokenizer's own span AND its separator class, so the cases below can
+			 * assert that the planner and the span agree about where a token's WORD ends
+			 * (review F1 is exactly the two of them disagreeing about the separator) and
+			 * that the class both of them read is Python's rather than one the suite keeps
+			 * for itself (QA round 2, Q2-1: a local `\s` here would have pinned the two
+			 * modules to a class neither of them uses).
 			 */
-			'export { slashTokenSpan } from "./src/renderer/src/features/chat/components/slash-token";',
+			'export { slashTokenSpan, SEPARATOR } from "./src/renderer/src/features/chat/components/slash-token";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -50,6 +53,7 @@ const {
 	planSlashArming,
 	planSlashSubmission,
 	prefixingVocabulary,
+	SEPARATOR,
 	slashTokenSpan,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -461,10 +465,177 @@ test("the word/argument separator is the whitespace class, not a literal space",
 	assert.deepEqual(plan("prose /goal and more", 11), { kind: "send" });
 });
 
-/* The tokenizer's separator class, as the planner and the dispatcher read it;
-   top-level because the lint rule that keeps regexes out of hot paths applies
-   here too (the repo's `useTopLevelRegex`). */
-const SEPARATOR = /\s/;
+/*
+ * The tokenizer's separator class is IMPORTED above rather than restated here:
+ * the planner, the tokenizer and this suite read one definition, which is the
+ * whole of round 2's Q2-1 (a second, JavaScript copy in this file would have
+ * pinned the modules to a class neither of them reads).
+ */
+
+/*
+ * THE SEPARATOR *CLASS*, WHICH ROUND 1'S F1 ALIGNED THE RUN BUT NOT THE SET OF
+ * (QA round 2, Q2-1). The endpoint separates and strips on Python's class; the
+ * composer read JavaScript's `\s`, which is a DIFFERENT set in both directions.
+ * Both are pinned here, through the planner AND through the shape test, so a
+ * revert to `\s` in either module fails a row that names the character it broke
+ * on rather than one that only reports "a mismatch".
+ */
+test("the separator class is Python's, in both directions", () => {
+	/*
+	 * The shape the endpoint gives `/mcp` — a subcommand and an optional server
+	 * name — is wired here because this suite's catalogue is a reduced one, and
+	 * these are TWO-TOKEN rows: the shape where a separator RUN and a separator
+	 * CLASS each change the count the endpoint counts.
+	 */
+	const over = {
+		commandNames: new Set([...COMMAND_NAMES, "mcp"]),
+		valueArgumentCommands: new Set([...VALUE_ARGUMENT_COMMANDS, "mcp"]),
+		argumentShapes: new Map([
+			["mcp", { shape: "subcommand", words: new Set(["logout"]) }],
+		]),
+	};
+	const typed = (draft) => plan(draft, draft.length, over);
+	const mcp = { shape: "subcommand", words: new Set(["logout"]) };
+	// The 29 code points Python calls whitespace, and the JavaScript-only
+	// characters that must not be in the class.
+	const pythonWhitespace = [
+		"\u0009",
+		"\u000a",
+		"\u000b",
+		"\u000c",
+		"\u000d",
+		"\u001c",
+		"\u001d",
+		"\u001e",
+		"\u001f",
+		"\u0020",
+		"\u0085",
+		"\u00a0",
+		"\u1680",
+		"\u2000",
+		"\u2001",
+		"\u2002",
+		"\u2003",
+		"\u2004",
+		"\u2005",
+		"\u2006",
+		"\u2007",
+		"\u2008",
+		"\u2009",
+		"\u200a",
+		"\u2028",
+		"\u2029",
+		"\u202f",
+		"\u205f",
+		"\u3000",
+	];
+	/*
+	 * PYTHON SEPARATES, `\s` DOES NOT: five characters, and the whole-draft command
+	 * is the row that was planned as prose, posted, and refused with a 422 the user
+	 * could not resend.
+	 */
+	for (const [name, separator] of [
+		["U+001C", "\u001c"],
+		["U+001D", "\u001d"],
+		["U+001E", "\u001e"],
+		["U+001F", "\u001f"],
+		["U+0085", "\u0085"],
+	]) {
+		assert.equal(
+			typed(`/mcp logout${separator}srv`).kind,
+			"whole",
+			`${name} between the subcommand and its name is the separator the endpoint reads`,
+		);
+		/*
+		 * THE EDGES TOO, because the endpoint strips with MOVE class: a leading
+		 * separator is stripped and the command still runs, and a trailing one leaves
+		 * the argument its one token. Those are the same class, one position over.
+		 */
+		assert.equal(
+			typed(`${separator}/mcp logout srv`).kind,
+			"whole",
+			`${name} leading the draft is stripped, not read as prose`,
+		);
+		assert.equal(
+			typed(`/mcp logout srv${separator}`).kind,
+			"whole",
+			`${name} trailing the argument leaves one token`,
+		);
+		// The shape test itself, because `argumentFits` is the endpoint's own arm and
+		// the planner reaches it through the wire's row.
+		assert.equal(
+			argumentFits(mcp, `logout${separator}srv`),
+			true,
+			`${name} separates the two tokens for the shape test as well`,
+		);
+	}
+	/*
+	 * `\s` SEPARATES, PYTHON DOES NOT: U+FEFF. It is a character IN the token, so
+	 * reading it as a separator planned a command for one unknown word — the
+	 * reverse direction, and the one that ran something the endpoint refuses.
+	 */
+	for (const draft of [
+		"/mcp logout\ufeffsrv",
+		"/login\ufeffopenai",
+		"/compact\ufeff",
+	]) {
+		/*
+		 * NOT `whole`, which is the claim: the composer must not RUN this draft. Which
+		 * of the other two outcomes it takes is the catalogue's business — `send` when
+		 * the word resolves and its argument does not fit, the dispatcher's unknown-word
+		 * note when the word itself is one it cannot resolve (`/compact\ufeff`, and every
+		 * one of these on the shipped catalogue, where `/mcp\ufefflogout` resolves to
+		 * nothing) — and both are the endpoint's own refusal to run it.
+		 */
+		assert.notEqual(
+			typed(draft).kind,
+			"whole",
+			`${JSON.stringify(draft)} is one word the endpoint does not resolve`,
+		);
+	}
+	assert.equal(
+		argumentFits(mcp, "logout\ufeffsrv"),
+		false,
+		"U+FEFF stays inside the token it was written in",
+	);
+	/*
+	 * AND THE CLASS ITSELF, asserted rather than described: `\s` carries U+FEFF and
+	 * misses the five, so a class that still matched the first or still missed the
+	 * second is a class that is not this one.
+	 */
+	assert.equal(
+		SEPARATOR.test("\ufeff"),
+		false,
+		"U+FEFF is not a separator here",
+	);
+	for (const separator of ["\u001c", "\u001d", "\u001e", "\u001f", "\u0085"]) {
+		assert.equal(
+			SEPARATOR.test(separator),
+			true,
+			`U+${separator.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")} is a separator here`,
+		);
+	}
+	/*
+	 * AND THE WHOLE OF PYTHON'S CLASS, because a class that matched only the six
+	 * characters QA found would be a list rather than a class. This list is Python's
+	 * own (`str.isspace()` over U+0000..U+10FFFF), so a member dropped from the
+	 * class or a JavaScript-only character creeping into it fails here.
+	 */
+	for (const separator of pythonWhitespace) {
+		assert.equal(
+			SEPARATOR.test(separator),
+			true,
+			`U+${separator.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")} is Python whitespace`,
+		);
+	}
+	for (const character of ["\ufeff", "\u200b", "\u180e", "a", "/"]) {
+		assert.equal(
+			SEPARATOR.test(character),
+			false,
+			`U+${character.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")} is NOT Python whitespace`,
+		);
+	}
+});
 
 /**
  * The same question asked of the TOKENIZER, so the two answers cannot drift

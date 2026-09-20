@@ -860,13 +860,19 @@ export const SeededNameInstruction: Story = {
  * what says so; with no wire at all the free-text half of the registry answers
  * instead, so an older backend reaches the same plan here.
  *
- * THE FRAMES BESIDE THIS STORY ARE THE PRE-CHANGE ONES, stated rather than left to
- * be discovered: `docs/evidence/chat-slash-highlight/name-instruction-multiline/`
- * was captured while the planner still answered `send` for this draft, so those
- * stills depict the interaction this change removed. They need a re-capture from
- * this tree (`--only=name-instruction-multiline`), which the round-1 remediation
- * recorded as `deferred` rather than claiming: the set is produced by the Storybook
- * sweep, and re-shooting it means re-deriving the manifest's declared set with it.
+ * THE FRAMES BESIDE THIS STORY WERE RE-SHOT, and they now show what this docblock
+ * says. `docs/evidence/chat-slash-highlight/name-instruction-multiline/` was first
+ * captured while the planner still answered `send` for this draft, so those stills
+ * depicted the interaction this change removed; the round that closed the deferral
+ * re-took all twelve themes from this tree
+ * (`node scripts/capture-evidence.mjs <origin> --only=name-instruction-multiline
+ * --allow-backend`), which is the one state this change repaints. The manifest
+ * records that run itself rather than the sentence that used to stand here:
+ * `captureOrigin.wireVocabularyReShoot`, the `partialCapture` fields that moved
+ * with it, and the two tree stamps that name the tree the frames came from. A
+ * still that contradicts the story it sits under is the defect class this
+ * paragraph exists to keep visible, so if this rule moves again, the frames move
+ * with it.
  */
 export const NameInstructionMultiline: Story = {
 	name: "name-instruction-multiline",
