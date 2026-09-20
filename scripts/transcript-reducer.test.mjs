@@ -2149,6 +2149,132 @@ test("a harness statement paints its fact, and puts its instruction to the model
 	assert.ok(rows[0].headline.includes("deepseek-v4.1-flash (was"));
 });
 
+test("the MCP-unavailable warning puts the operator's remedy on the row, and discloses only the model's tail", () => {
+	// The harness gives this its own record type instead of routing it through
+	// `session_incident`: the classifier's `mcp` rule matches the row's own
+	// subject, and the incident renderer's tail claims the previous TURN ended —
+	// false for a server that failed to connect or whose grant expired, neither
+	// of which ends a turn. The row has its own builder rather than membership of
+	// INLINE_CUSTOM_TYPES, because it is the one statement whose second line is
+	// addressed to the OPERATOR.
+	const FIXTURE =
+		"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone for now.\nReason: /mcp reauth minerva-qa — sign-in expired\nIts tools are not callable until the user restores it, and the agent should not retry them in a loop.";
+	const TAIL =
+		"Its tools are not callable until the user restores it, and the agent should not retry them in a loop.";
+	const SENTENCE =
+		"MCP server 'minerva-qa' is unavailable: its tools are gone for now.";
+	const [row] = replay([
+		custom("mcp-unavailable", "session_mcp_unavailable", { text: FIXTURE }),
+	]);
+	assert.equal(row.kind, "custom");
+	assert.equal(
+		row.level,
+		"info",
+		"a missing capability is not a failed turn, so it never takes the danger ink",
+	);
+	assert.equal(row.category, null, "only an incident carries a classification");
+	assert.equal(row.provider, null, "and only an incident names a provider");
+	// The leading bracket tag is a register marker, not content — the row's own
+	// label already says what kind of row this is — so the headline starts at
+	// the sentence. The remedy follows it: the fact alone says the tools are gone
+	// and nothing about what brings them back, and `/mcp reauth <server>` is the
+	// only clause anyone can act on (design round 1, D1). The harness writes that
+	// clause COMMAND-FIRST so it cannot wrap away from its own command.
+	assert.equal(
+		row.headline,
+		`${SENTENCE} Reason: /mcp reauth minerva-qa — sign-in expired`,
+	);
+	// What is behind the chevron is the MODEL's half and nothing else.
+	assert.equal(row.detail, TAIL);
+	// Nothing on the row may claim a turn ended. That false tail is the whole
+	// reason the harness stopped emitting a `session_incident` here.
+	assert.ok(!/previous turn ended/i.test(row.headline + (row.detail ?? "")));
+
+	// A blank reason is OMITTED by the formatter, not printed empty: the row is
+	// the sentence again, and it keeps its disclosure for the model's half.
+	const [noReason] = replay([
+		custom("mcp-unavailable-bare", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(noReason.headline, SENTENCE);
+	assert.equal(noReason.detail, TAIL);
+
+	// A reason the row cannot fit is HOISTED to its `/mcp …` clause — a plain
+	// tail-cut would take the command off the line, which is the one thing the
+	// hoist exists to keep. What the cut leaves out is disclosed, not dropped.
+	const longReason =
+		"Reason: /mcp reauth minerva-qa — sign-in expired; the credential store answered ECONNREFUSED 127.0.0.1:8787 and the token refresh loop gave up";
+	const [hoisted] = replay([
+		custom("mcp-unavailable-long", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${longReason}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(hoisted.headline, `${SENTENCE} Reason: /mcp reauth minerva-qa`);
+	assert.ok(
+		hoisted.headline.length <= 160,
+		`hoisted headline was ${hoisted.headline.length}`,
+	);
+	assert.match(
+		hoisted.detail,
+		/^— sign-in expired; the credential store answered/,
+	);
+	assert.ok(
+		hoisted.detail.endsWith(TAIL),
+		"the model's half survives the hoist",
+	);
+
+	// THE SHAPE THE HOIST EXISTS FOR, pinned (round 2, R5). The shipping reasons
+	// are command-first, so for them a tail-cut costs the diagnostics — but a reason
+	// whose LEADING CLAUSE runs long puts the command itself past the bound, and
+	// there a tail-cut leaves the row quoting a cause and drops the only clause
+	// anyone can run. Composed, this line runs 258 characters with the command at
+	// char 237, so the two halves of that hazard are asserted as well as its repair:
+	// the cut really would take the command, and the row does not cut it.
+	const lateCommandReason =
+		"Reason: the transport refused every attempt after the grant lapsed — ECONNREFUSED 127.0.0.1:8787, then a timeout, then a closed stream, and the store answered nothing. /mcp reauth minerva-qa";
+	assert.equal(
+		`${SENTENCE} ${lateCommandReason}`.slice(0, 160).includes("/mcp"),
+		false,
+		"this case must not be one the tail-cut would keep the command in",
+	);
+	const [lateCommand] = replay([
+		custom("mcp-unavailable-late-command", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${lateCommandReason}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(
+		lateCommand.headline,
+		`${SENTENCE} Reason: /mcp reauth minerva-qa`,
+		"the command survives the bound even when everything before it does not",
+	);
+	assert.ok(
+		lateCommand.headline.length <= 160,
+		`late-command headline was ${lateCommand.headline.length}`,
+	);
+	assert.match(
+		lateCommand.detail,
+		/^the transport refused every attempt/,
+		"the clause the cut dropped is disclosed, not dropped",
+	);
+	assert.ok(lateCommand.detail.endsWith(TAIL));
+
+	// A reason that names no command has nothing to hoist, so the composed line
+	// is bounded and the WHOLE reason is disclosed — the direction that hides
+	// nothing, which is the one `firstSentenceEnd` errs in too.
+	const [unhoistable] = replay([
+		custom("mcp-unavailable-nocmd", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\nReason: the transport refused every attempt — ECONNREFUSED 127.0.0.1:8787, then a timeout, then a closed stream, and no capabilities since\n${TAIL}`,
+		}),
+	]);
+	assert.ok(unhoistable.headline.endsWith("…"));
+	assert.match(
+		unhoistable.detail,
+		/^Reason: the transport refused every attempt/,
+	);
+	assert.ok(unhoistable.detail.endsWith(TAIL));
+});
+
 test("a relayed payload keeps its body behind the disclosure but is not reduced to its type name", () => {
 	// Measured over the operator's store, these run to 18,259 characters, so the
 	// body stays one click away — and the first line that says something is on
