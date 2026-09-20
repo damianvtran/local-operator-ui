@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:10:00.250Z",
+  "at": "2026-09-20T19:34:25.716Z",
   "arm": {
     "armed": true
   },
@@ -61,7 +61,7 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931405824.4211,
+      "requestedAt": 1789932873408.436,
       "preAnsweredBy": "Popup is not open",
       "preAnswer": {
         "status": 200,
@@ -71,10 +71,10 @@
     },
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931405839.8,
+      "requestedAt": 1789932873483.754,
       "status": 200,
-      "answeredAt": 1789931405848.969,
-      "deliveredAt": 1789931405849.954
+      "answeredAt": 1789932873525.096,
+      "deliveredAt": 1789932873529.325
     }
   ],
   "answersFrom": "route",
@@ -84,13 +84,13 @@
     ]
   },
   "tree": {
-    "head": "e40d4933e0451892ccc372db309e14692c324600",
-    "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
+    "head": "7fbee5e7d230dc91bb489ae2b716903f8d8a660d",
+    "srcTree": "f7ca3a76a19ae2cb6ea3463fc1c14663c5e15a52",
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789931406149,
-  "clearedAfterPressMs": 369,
+  "clearedAt": 1789932873770,
+  "clearedAfterPressMs": 425,
   "ordering": null,
   "report": {
     "movedOnSentence": false,
