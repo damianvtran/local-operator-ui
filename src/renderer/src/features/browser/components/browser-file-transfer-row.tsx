@@ -12,9 +12,13 @@ import type {
 /**
  * The file-transfer row: what the host is downloading or sent, where it went, and
  * what it refused.
- * Design: docs/design/browser-file-transfer.md §16.4 (the smallest honest surface),
- * §11.4 (no reveal from the tool), and docs/design/ui-browser-tab.md §9.2 (why this
- * lives in the strip and not over the page).
+ * Design: the harness repository's `docs/design/browser-file-transfer.md` §16.4 (the
+ * smallest honest surface), §11.4 (no reveal from the tool), and this repo's
+ * `docs/design/ui-browser-tab.md` §9.2 (why this lives in the strip and not over the
+ * page). THE REPOSITORY IS NAMED because round 5's Q9 was filed on citations that read
+ * as if the feature's design document lived here: it lives in `local-operator`, under
+ * that path, and the audit trail this row's boundedness rests on is written there
+ * (`local_operator/browser_files.py`, `AUDIT_FILENAME`).
  *
  * WHY A ROW AND NOT A LIST WITH PER-FILE ACTIONS (§16.4's recommendation, which
  * this implements): the app's browser tab has no file-list UI, and adding one is a
@@ -161,8 +165,8 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 			data-tour-tag="browser-file-transfer-row"
 			className={
 				refusing
-					? "flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5"
-					: "flex items-center gap-2 border-control border-b bg-surface px-3 py-1.5"
+					? "flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5 @container/browserrow"
+					: "flex items-center gap-2 border-control border-b bg-surface px-3 py-1.5 @container/browserrow"
 			}
 		>
 			{refusing ? (
@@ -198,7 +202,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// minimum window, so it rides the row's own `title` — the same fact, stated
 				// where the row can afford it.
 				<p
-					className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink-muted"
+					className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted @max-[64rem]/browserrow:flex-wrap"
 					title={transfers.dir ?? undefined}
 				>
 					<span className="shrink-0">Downloading</span>
@@ -219,8 +223,9 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// round 2 measured the rule span at 74 px with the clipped word `is an exec…`,
 				// and that clause is the only statement of WHY the file was refused — so
 				// clipping it to a fragment costs the sentence its reason. The saved branch
-				// already caps its own name (`max-w-[32ch] shrink-0 truncate`) so the path keeps
-				// its room; the refusal caps its own for the same reason.
+				// capped its own name so the path kept its room (`max-w-[32ch] shrink-0`, the
+				// absolute shape round 4 replaced); the refusal caps its own for the same
+				// reason.
 				//
 				// AND THE NAME IS THE SPAN THAT YIELDS (design round 3, D14). The cap on its
 				// own was an ABSOLUTE one: `max-w-[32ch] shrink-0` measured 237.5 logical px at
@@ -247,8 +252,21 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// 800 px the label and the name take the first line, the reason takes its own
 				// measure on the second (168 px of clause in a 268.7 px box, uncut — `G8c`
 				// asserts exactly that), and the consequence and the age share the third.
-				// Nothing moves at the app's default window, where the parts fit one line and
-				// a break only happens between parts that cannot share one.
+				//
+				// AND THE WRAP IS GATED ON THE ROW'S OWN WIDTH (`@max-[64rem]/browserrow`,
+				// the container-query idiom `tool-row.tsx` uses for this class of decision).
+				// An ungated `flex-wrap` did not stay at the minimum window: `flex-wrap`
+				// breaks on each item's CONTENT size, so the decided row's truncating path
+				// cannot yield inside its line and the age moves instead — at the app's
+				// DEFAULT window that turned the motivating case into three lines and a 77 px
+				// band where the surface is one quiet line (review round 5, R5-1, and design
+				// round 5's D1, both measured from the frames). The threshold is the row width
+				// at which this sentence still fits one line: the paragraph is the row minus
+				// ~311 px of icon, owner label, controls and padding, and the five clauses need
+				// ~720 px of paragraph, so 64rem (1024 px) is the row width below which the
+				// break is the only arrangement left. `G8`/`B13` assert the one-line default on
+				// both the refused and the decided branch, so a wrap that leaks back to the
+				// wide window fails a check rather than a reader's eye.
 				//
 				// AND THE RULE'S OWN FLOOR IS GONE, which is the other half of that finding.
 				// `min-w-[min(24ch,50%)]` resolved to 196.5 px at the default window while
@@ -261,7 +279,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// with `truncate` still keeps it from overflowing a paragraph narrower than
 				// the clause, and the whole clause rides the span's own `title`, because a
 				// rule clipped by such a width is otherwise unrecoverable.
-				<p className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink">
+				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink @max-[64rem]/browserrow:flex-wrap">
 					<span className="shrink-0">Download refused —</span>
 					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
 						{name}
@@ -291,7 +309,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					)}
 				</p>
 			) : (
-				<p className="flex min-w-0 grow flex-wrap items-baseline gap-1 text-body-sm text-ink-muted">
+				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted @max-[64rem]/browserrow:flex-wrap">
 					{/* THE PATH IS THE PART THAT GIVES WAY HERE, which is where this row's layout
 					    differs from the refusal's: a DECIDED transfer is one quiet line (§7 of
 					    the branding notes) and the file's name is what the reader is looking
@@ -338,8 +356,20 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					>
 						<bdi dir="ltr">{sending ? latest?.site : latest?.dir}</bdi>
 					</span>
+					{/* THE SEPARATOR IS ITS OWN SPAN, AND IT GOES WHEN THE AGE IS ALONE ON A
+					    LINE (design round 5, D4). At the app's minimum window the decided row's
+					    age wraps onto a line of its own, where a leading `·` reads as a stray
+					    mark rather than as a separator — the refusal's age never lands alone,
+					    because its line always carries the consequence first. Dropping the mark
+					    there costs no words and no state. */}
+					<span
+						aria-hidden
+						className="shrink-0 text-ink-dim @max-[64rem]/browserrow:hidden"
+					>
+						·
+					</span>
 					<span aria-hidden className="shrink-0 text-ink-dim">
-						· {ageCopy(now, latest?.at ?? now)}
+						{ageCopy(now, latest?.at ?? now)}
 					</span>
 				</p>
 			)}

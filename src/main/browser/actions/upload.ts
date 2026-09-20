@@ -12,7 +12,8 @@ import { resolveNode } from "./input";
 
 /**
  * `upload`: attach real local files to a page's file input.
- * Design: docs/design/browser-file-transfer.md §6.1, §9.2, §9.3, §9.4.
+ * Design: the harness repository's `docs/design/browser-file-transfer.md` §6.1, §9.2,
+ * §9.3, §9.4 (`local-operator`, not this repo — round 5, Q9).
  *
  * WHY `DOM.setFileInputFiles` AND NOTHING ELSE. It is the CDP primitive Puppeteer
  * and Playwright use, it is available over the tab-scoped session the browser

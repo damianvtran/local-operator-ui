@@ -445,10 +445,21 @@ test("the refusal's NAME is the span that yields and its RULE keeps its room (re
 		"is an executable/script type.",
 		"the full rule rides the span's own title, so a clipped clause is still recoverable",
 	);
+	const paragraph = container.querySelector("p");
 	assert.match(
-		container.querySelector("p").className,
-		/flex-wrap/,
-		"and the sentence WRAPS: at the app's minimum window the clauses take their own lines instead of sharing columns (design round 4, D16)",
+		paragraph.className,
+		/@max-\[64rem\]\/browserrow:flex-wrap/,
+		"and the sentence WRAPS — but only under the row's own width (design round 5, R5-1/D1): an ungated `flex-wrap` tripled this row at the app's DEFAULT window, because `flex-wrap` breaks on each item's content size and a truncating span cannot yield inside its line",
+	);
+	assert.ok(
+		!/(^|\s)flex-wrap(\s|$)/.test(paragraph.className),
+		"and the wrap is not also unconditional: the two together would mean the gate does nothing",
+	);
+	assert.match(
+		container.querySelector('[data-tour-tag="browser-file-transfer-row"]')
+			.className,
+		/@container\/browserrow/,
+		"the row is the container the gate measures, which is what makes the threshold the row's own width rather than the window's",
 	);
 });
 
@@ -486,8 +497,18 @@ test("the DECIDED branch's name takes the refusal's cap, and its sentence wraps 
 	);
 	assert.match(
 		container.querySelector("p").className,
-		/flex-wrap/,
-		"and the decided sentence wraps as well, so its clauses share no columns at 800 px",
+		/@max-\[64rem\]\/browserrow:flex-wrap/,
+		"and the decided sentence wraps as well, so its clauses share no columns at 800 px — under the same gate, so the app's default window keeps its one quiet line (round 5, R5-1)",
+	);
+	// D4: the age can land ALONE on a line at the minimum window, where the leading
+	// separator is a stray mark rather than a separator — so the mark is its own span and
+	// the narrow row hides it. The words are untouched.
+	const separator = spans().find((span) => span.text === "·");
+	assert.ok(separator, "the decided row's separator is its own span");
+	assert.match(
+		separator.className,
+		/@max-\[64rem\]\/browserrow:hidden/,
+		"and it is hidden at the narrow width, because the refused branch's age never lands alone (its line carries the consequence) while the decided branch's does",
 	);
 });
 

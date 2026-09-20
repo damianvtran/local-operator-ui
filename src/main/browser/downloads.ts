@@ -12,7 +12,11 @@ import { CAPS } from "./vendor/driver/file-transfer.tables.gen";
 
 /**
  * The app host's download path: `will-download` -> a save path the HARNESS chose.
- * Design: docs/design/browser-file-transfer.md §5.2, §6.1, §8, §10.3, §11.4, §16.4.
+ * Design: the harness repository's `docs/design/browser-file-transfer.md` §5.2, §6.1,
+ * §8, §10.3, §11.4, §16.4 — `local-operator`, not this repo (round 5, Q9: the bare path
+ * read as a document in this tree, and the file has never lived here). The audit trail
+ * §10.5 names is written by that same repository (`local_operator/browser_files.py`,
+ * `AUDIT_FILENAME = "audit.jsonl"`), which is why the strip can be bounded by it.
  *
  * WHY THIS EXISTS AT ALL, and it is the one thing that makes this host different
  * from the extension: an extension cannot serve `download` at all. Measured
