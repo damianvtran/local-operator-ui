@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import type { IPty } from "node-pty";
 
 /**
- * The pty seam, and the two measured packing traps it exists to survive.
+ * The pty seam, and the measured packing traps it exists to survive.
  *
  * Design: docs/design/ui-console-tab.md 5.3 (node-pty is the one native
  * dependency, and it is a packaging decision), 18.1 (the three traps and the
@@ -22,6 +22,27 @@ import type { IPty } from "node-pty";
  * re-asserts file modes — and `codesign`'s seal does not cover modes, so a
  * helper delivered 0644 passes every signature check and fails only at
  * `posix_spawn`.
+ *
+ * THE HELPER IS macOS-ONLY, which is the half of trap 1 that has to be stated or
+ * the check reads as universally true. node-pty's `binding.gyp` declares the
+ * `spawn-helper` target inside `['OS==\"mac\"', {...}]` and nowhere else, and
+ * `src/unix/pty.cc` execs it only under `#if defined(__APPLE__)` — it
+ * `pty_posix_spawn`s the helper there and takes `forkpty(3)` everywhere else, where
+ * the helper path is assigned and never read. So a helper is REQUIRED on darwin and
+ * EXPECTED ABSENT on linux and win32, and a check that demands one on every platform
+ * fails a platform no toolchain can satisfy: that is exactly how
+ * `scripts/console-pack.mjs` failed the Linux publish of v0.29.12, and why the
+ * platform question here is a field of the report (`required`) rather than an
+ * assumption.
+ *
+ * AND THE HELPER'S PATH IS NOT OURS TO CHOOSE. node-pty forks
+ * `native.dir + '/spawn-helper'` (`lib/unixTerminal.js:29`), where `native.dir` is
+ * whichever directory its loader took the native module from — `build/Release`,
+ * then `build/Debug`, then `prebuilds/<platform>-<arch>` (`lib/utils.js:19`). A
+ * packaged macOS app is rebuilt for the Electron ABI by `@electron/rebuild`, so on
+ * a shipped artifact that is usually `build/Release` — the prebuild directory the
+ * pre-fix heal repaired is not always, and on a rebuilt tree is not, the file that
+ * is exec'd. See `nativeDirs`.
  *
  * TRAP 2 — `prebuilds/` must be UNPACKED from the asar, not merely rewritten.
  * node-pty's own `lib/unixTerminal.js` rewrites `app.asar` to
@@ -56,20 +77,30 @@ export const SPAWN_HELPER_MODE = 0o755;
 /** `0o100` is the owner-execute bit, and its absence is the whole failure. */
 const OWNER_EXECUTE = 0o100;
 
+/** The native module whose directory decides which helper is forked. */
+const NATIVE_MODULE_NAME = "pty.node";
+
 export interface PtyPlatform {
 	platform: NodeJS.Platform | string;
 	arch: string;
 }
 
 export interface SpawnHelperReport {
-	/** The helper's path, or null when the platform has none (or the package is
-	 * not where this module expects it). */
+	/** The helper's path, or null when one is not there - which on the platforms that
+	 * fork none is the expected state and not a defect (`required` tells the two
+	 * apart), and when the check itself could not run (`reason`). */
 	path: string | null;
 	/** The mode found before any heal, or null when the check could not run. */
 	mode: number | null;
-	/** Whether this call had to chmod it. */
+	/** Whether this call had to chmod a helper. */
 	healed: boolean;
-	/** Why the check could not run, when it could not. */
+	/** Whether this platform's pty forks a helper at all. False on linux and win32,
+	 * where `path: null` is how the console works there rather than a missing file. */
+	required: boolean;
+	/** Every helper a searched directory held, in the order the loader would take
+	 * them, with the mode found and whether this call had to fix it. */
+	helpers: { path: string; mode: number; healed: boolean }[];
+	/** Why there is no usable helper, when there is not. */
 	reason?: string;
 }
 
@@ -100,9 +131,47 @@ export function prebuildDir(root: string, target: PtyPlatform): string {
 	return join(root, "prebuilds", `${target.platform}-${target.arch}`);
 }
 
-/** The helper's path for one platform/arch, whether or not it exists. */
-export function spawnHelperPath(root: string, target: PtyPlatform): string {
-	return join(prebuildDir(root, target), SPAWN_HELPER_NAME);
+/**
+ * The platforms whose pty forks a `spawn-helper`.
+ *
+ * macOS only, and measured from node-pty rather than assumed: `binding.gyp`
+ * declares that target inside `['OS==\"mac\"', {...}]` alone, and `src/unix/pty.cc`
+ * execs the helper only under `#if defined(__APPLE__)`. A Linux or Windows
+ * artifact forks the user's shell directly and has no helper to lose. */
+export function forksSpawnHelper(platform: PtyPlatform["platform"]): boolean {
+	return platform === "darwin";
+}
+
+/**
+ * Where node-pty loads its native module from, in node-pty's own order.
+ *
+ * `lib/utils.js` tries `build/Release`, then `build/Debug`, then
+ * `prebuilds/<platform>-<arch>`, and `lib/unixTerminal.js` forks the helper out of
+ * whichever of those it took the module from (`native.dir + '/spawn-helper'`). So
+ * the helper's directory is the module's directory, and a heal that repairs only the
+ * prebuild copy misses the file a rebuilt macOS app actually execs.
+ *
+ * MIRRORED FROM `scripts/console-pack.mjs` rather than imported: that tree is build
+ * tooling and this module ships inside the app bundle. Both copies are pinned against
+ * `lib/utils.js`'s own literal - this one by `scripts/console-host.test.mjs`, that one by
+ * `scripts/console-pack.test.mjs` - so they cannot drift apart without a test failing.
+ *
+ * And like that copy it is the package-root spelling only: the loader also probes these
+ * names relative to `lib/` itself (`relative = ['..', '.']`), which a packed node-pty
+ * does not need. Missing that spelling can only produce a false "no helper" on a tree
+ * no pack produces, never a false pass.
+ */
+export function nativeDirs(root: string, target: PtyPlatform): string[] {
+	return [
+		join(root, "build", "Release"),
+		join(root, "build", "Debug"),
+		prebuildDir(root, target),
+	];
+}
+
+/** The helper in each of those directories, whether or not it exists. */
+export function spawnHelperPaths(root: string, target: PtyPlatform): string[] {
+	return nativeDirs(root, target).map((dir) => join(dir, SPAWN_HELPER_NAME));
 }
 
 /**
@@ -124,13 +193,27 @@ export function resolvePtyRoot(): string {
 }
 
 /**
- * Assert, and if necessary restore, the helper's exec bit.
+ * Assert, and if necessary restore, the exec bit on every helper the loader could fork.
  *
  * Called before every spawn, because the failure it heals is delivered by an
  * installer or an updater rather than by a developer's checkout: a process that
  * only checked once at startup would still be holding a stale answer after an
- * in-app update replaced the bundle under it. The check is one `statSync`, which
- * is nothing beside the `fork` it precedes.
+ * in-app update replaced the bundle under it. The checks are one `statSync` per
+ * directory, which is nothing beside the `fork` they precede.
+ *
+ * EVERY helper a searched directory holds is healed, and the directory list is the
+ * loader's own (`nativeDirs`), not the prebuild directory alone. On a macOS artifact
+ * rebuilt for the Electron ABI the module loads from `build/Release`, so that is the
+ * file `posix_spawn` execs — a heal that repaired only `prebuilds/darwin-<arch>/`
+ * reported a fixed helper and left the forked one at whatever mode the tarball or the
+ * updater gave it. Every present copy is healed because the loader's choice depends on
+ * which `.node` the running Electron can `dlopen`, which is not decidable from here.
+ *
+ * An absent helper is REPORTED and not thrown, and `reason` says which kind of absence
+ * it is: on darwin it is the packaging defect that fails the first spawn, on linux and
+ * win32 it is how the console works there at all (`forksSpawnHelper`). `loadNodePty`
+ * never throws over this by design — a broken native dependency turns the console
+ * capability off with one log line rather than taking the app down.
  *
  * The PACKAGED tree is also fixed at build time (`scripts/console-pack.mjs`, from
  * `afterPack`), and both exist because neither covers the other: the build step
@@ -142,25 +225,66 @@ export function ensureSpawnHelperExecutable(
 	root: string,
 	target: PtyPlatform,
 ): SpawnHelperReport {
-	const path = spawnHelperPath(root, target);
+	const required = forksSpawnHelper(target.platform);
 	try {
-		if (!existsSync(path)) {
-			return { path: null, mode: null, healed: false, reason: "no helper" };
+		const helpers = spawnHelperPaths(root, target)
+			.filter((path) => existsSync(path))
+			.map((path) => {
+				const mode = statSync(path).mode & 0o777;
+				if ((mode & OWNER_EXECUTE) !== 0) return { path, mode, healed: false };
+				chmodSync(path, SPAWN_HELPER_MODE);
+				return { path, mode, healed: true };
+			});
+		if (helpers.length === 0) {
+			return {
+				path: null,
+				mode: null,
+				healed: false,
+				required,
+				helpers,
+				reason: required
+					? "no helper"
+					: `no helper, and ${target.platform}-${target.arch} forks none`,
+			};
 		}
-		const mode = statSync(path).mode & 0o777;
-		if ((mode & OWNER_EXECUTE) !== 0) {
-			return { path, mode, healed: false };
-		}
-		chmodSync(path, SPAWN_HELPER_MODE);
-		return { path, mode, healed: true };
+		const loaded = nativeDirs(root, target).find((dir) =>
+			existsSync(join(dir, NATIVE_MODULE_NAME)),
+		);
+		const primary =
+			helpers.find((helper) => dirname(helper.path) === loaded) ?? helpers[0];
+		return {
+			path: primary.path,
+			mode: primary.mode,
+			healed: helpers.some((helper) => helper.healed),
+			required,
+			helpers,
+		};
 	} catch (error) {
 		return {
-			path,
+			path: null,
 			mode: null,
 			healed: false,
+			required,
+			helpers: [],
 			reason: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+/**
+ * What the start-up line says about the helper.
+ *
+ * A probe that answered "the helper is not at this one path" as "there is no helper"
+ * is how a Linux start printed `node-pty without a helper` on every run: true of the
+ * path it looked at, false about the artifact, and a reading this project treats as a
+ * defect in its own right. The distinction it was missing is the platform's, so the
+ * answer is a function of the report rather than of the mode alone.
+ */
+export function helperStatus(report: SpawnHelperReport): string {
+	if (report.path !== null) return "ready";
+	return report.required
+		? "without a helper"
+		: "no helper needed on this platform";
 }
 
 /** What `loadNodePty` returns: the module, or the reason it is unusable. */

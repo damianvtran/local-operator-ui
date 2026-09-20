@@ -10,7 +10,7 @@ import {
 	type SurfaceRuntime,
 } from "./host";
 import { registerConsoleIpc, unregisterConsoleIpc } from "./ipc";
-import { type PtyModule, loadNodePty, spawnPty } from "./pty";
+import { type PtyModule, helperStatus, loadNodePty, spawnPty } from "./pty";
 import { ConsoleRegistry, MAX_SURFACES_PER_APP } from "./registry";
 
 /**
@@ -284,7 +284,7 @@ export async function startConsoleHost(
 	});
 
 	log(
-		`[console] host ready on the existing endpoint: ${registry.count()} surface(s) (node-pty ${load.helper.mode === null ? "without a helper" : "ready"})`,
+		`[console] host ready on the existing endpoint: ${registry.count()} surface(s) (node-pty ${helperStatus(load.helper)})`,
 	);
 
 	return {

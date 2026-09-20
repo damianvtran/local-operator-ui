@@ -48,8 +48,9 @@ after(() => {
 	for (const dir of scratchDirs) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A tree shaped like the published package: the helper at 0644, three platform
- * prebuild directories, and a `.pdb` file in the batch that gets pruned. */
+/** A tree shaped like the published package: `pty.node` in each prebuild directory,
+ * a `spawn-helper` beside the darwin ones at 0644, and a `.pdb` file in the batch
+ * that gets pruned. */
 function fakePackage(
 	root,
 	{
@@ -81,8 +82,10 @@ function fakePackage(
 }
 
 /** The prebuild directories the published tarball carries, measured from the
- * installed package rather than written from memory: there is no `linux-*` one,
- * which is the whole reason a Linux artifact compiles its helper from source. */
+ * installed package rather than written from memory: `darwin-*` and `win32-*`,
+ * and no `linux-*` one - node-pty ships no Linux prebuild, so a Linux artifact
+ * compiles from source with the same `binding.gyp`, whose `spawn-helper` target is
+ * declared inside `['OS=="mac"', {...}]` alone. */
 const TARBALL_PREBUILDS = [
 	"darwin-arm64",
 	"darwin-x64",
@@ -90,19 +93,35 @@ const TARBALL_PREBUILDS = [
 	"win32-x64",
 ];
 
-/** A tree shaped like a source build: node-pty's own install script compiles one on
- * a platform the tarball ships no prebuild for, and `@electron/rebuild` does the
- * same to a tree being packed for the Electron ABI. The helper arrives executable
- * from gyp/make, and the mode is a parameter because the ZIP-delivered update is
- * the case the heal exists for. */
-function sourceBuild(root, { helperMode = 0o755, debug = false } = {}) {
+/**
+ * A tree shaped like a build node-pty's own gyp rules produce on one platform.
+ *
+ * `helper` is the whole platform question: gyp builds `spawn-helper` only for macOS,
+ * so a source build on Linux (`node scripts/prebuild.js || node-gyp rebuild`) leaves
+ * `pty.node` in `build/Release` with nothing beside it, while a macOS tree rebuilt by
+ * `@electron/rebuild` leaves both. The helper arrives executable from gyp/make, and its
+ * mode is a parameter because the ZIP-delivered update is the case the heal exists for.
+ */
+function sourceBuild(
+	root,
+	{ helperMode = 0o755, helper = true, debug = false } = {},
+) {
 	const dir = join(root, "build", debug ? "Debug" : "Release");
 	mkdirSync(dir, { recursive: true });
 	// The module whose directory decides where the helper is forked from.
 	writeFileSync(join(dir, "pty.node"), Buffer.alloc(1024));
+	if (!helper) return dir;
 	writeFileSync(join(dir, "spawn-helper"), "#!/bin/sh\n");
 	chmodSync(join(dir, "spawn-helper"), helperMode);
 	return dir;
+}
+
+/** The unpacked-package root inside a scratch app output directory, so a fixture can be
+ * handed to the hook the way `afterPack` hands it its own tree. */
+function packedRoot(appOutDir, platform = "darwin") {
+	return consoleNativeRoot(
+		resourcesDirFor({ appOutDir, productFilename: "Local Operator", platform }),
+	);
 }
 
 test("the unpack list moves the native files, and never the whole package", () => {
@@ -119,6 +138,10 @@ test("the unpack list moves the native files, and never the whole package", () =
 	assert.ok(
 		unpack.some((entry) => entry.includes("node-pty/prebuilds")),
 		"the native files must be unpacked",
+	);
+	assert.ok(
+		unpack.some((entry) => entry.includes("node-pty/build/Release")),
+		"the directory a source build puts its output in must be unpacked too: it is where the loader looks first, and where the helper of a Linux artifact comes from if the platform ever wants one",
 	);
 	assert.ok(
 		!unpack.some((entry) => /node-pty\/\*\*$/.test(entry)),
@@ -212,30 +235,35 @@ test("the exec bit is asserted in the packed tree, and set only when it is missi
 	assert.equal(ensureSpawnHelperMode(root, target).healed, false);
 });
 
-test("a linux artifact's helper is found where the compiler put it, not only in prebuilds", () => {
-	// THE FAILURE THIS PINS, measured on the publish of v0.29.12: the tarball ships
-	// no `prebuilds/linux-x64`, so node-pty's install script compiles the helper into
-	// `build/Release`, and a prebuild-only probe threw `The packaged app has no
-	// node-pty spawn-helper for linux-x64 at .../prebuilds/linux-x64/spawn-helper`
-	// after `@electron/rebuild` had built exactly the file it called missing.
+test("a linux artifact needs no helper, and the guard says so instead of demanding one", () => {
+	// THE FAILURE THIS PINS, measured on the publish of v0.29.12: node-pty's
+	// `binding.gyp` declares the `spawn-helper` target inside `['OS=="mac"', {...}]`
+	// and nowhere else - gyp evaluated with `-DOS=linux` generates `pty.target.mk`
+	// alone, with `-DOS=mac` it also generates `spawn-helper.target.mk` - and
+	// `src/unix/pty.cc` execs it only under `#if defined(__APPLE__)`, taking
+	// `forkpty(3)` everywhere else. A Linux build therefore produces
+	// `build/Release/pty.node` and NO helper, and the guard that demanded one threw
+	// after `@electron/rebuild` had finished cleanly, so no Linux artifact shipped.
 	const root = fakePackage(scratch(), { plugins: TARBALL_PREBUILDS });
 	assert.equal(
 		existsSync(prebuildDir(root, { platform: "linux", arch: "x64" })),
 		false,
 	);
-	const builtDir = sourceBuild(root, { helperMode: 0o644 });
-	const target = { platform: "linux", arch: "x64" };
-	const helper = ensureSpawnHelperMode(root, target);
-	assert.equal(helper.path, join(builtDir, "spawn-helper"));
-	assert.equal(helper.healed, true);
-	assert.deepEqual(
-		helper.helpers.map((entry) => entry.path),
-		[helper.path],
-	);
-	assert.equal(statSync(helper.path).mode & 0o777, SPAWN_HELPER_MODE);
-	// The mode fix is the same one the prebuild case gets, and it is idempotent here
-	// too, so a rebuild in place does not report a heal it did not make.
-	assert.equal(ensureSpawnHelperMode(root, target).healed, false);
+	const builtDir = sourceBuild(root, { helper: false });
+	const helper = ensureSpawnHelperMode(root, {
+		platform: "linux",
+		arch: "x64",
+	});
+	assert.equal(helper.required, false);
+	assert.equal(helper.path, null);
+	assert.equal(helper.mode, null);
+	assert.equal(helper.healed, false);
+	assert.deepEqual(helper.helpers, []);
+	assert.match(helper.reason, /forks none/);
+	// The module is there with nothing beside it: the real Linux shape, reported
+	// rather than "fixed" by healing a file this platform never forks.
+	assert.equal(existsSync(join(builtDir, "pty.node")), true);
+	assert.equal(helper.moduleDirWithoutHelper, null);
 });
 
 test("the helper asserted is the one node-pty's own loader forks", () => {
@@ -309,61 +337,81 @@ test("the search order is node-pty's, read from the package rather than assumed"
 	);
 });
 
-test("a build with no helper fails loudly on the platforms that need one", () => {
+test("a platform that forks a helper and has none still fails loudly", () => {
+	// A foreign prebuild directory does not satisfy this target: `prebuilds/darwin-x64`
+	// holds a helper for another architecture, and it is not in the list the loader for
+	// arm64 searches. This is the throw that caught the defect before a user did, and it
+	// stays fatal on exactly the platforms whose pty forks one.
 	const root = fakePackage(scratch(), { plugins: ["darwin-x64"] });
-	assert.throws(
-		() => ensureSpawnHelperMode(root, { platform: "darwin", arch: "arm64" }),
-		/no node-pty spawn-helper/,
-	);
-	// Linux is the platform the same throw landed on in a real publish, and it is
-	// asserted separately because its search list is the one with no prebuild
-	// directory to fall back to: a throw here means the source build's helper was not
-	// found either, which is still a broken artifact.
-	let linuxError;
+	let error;
 	try {
-		ensureSpawnHelperMode(root, { platform: "linux", arch: "x64" });
-	} catch (error) {
-		linuxError = error;
+		ensureSpawnHelperMode(root, { platform: "darwin", arch: "arm64" });
+	} catch (thrown) {
+		error = thrown;
 	}
-	assert.match(linuxError?.message ?? "", /no node-pty spawn-helper/);
-	// The message names every directory searched, not just one of them: "the helper is
-	// not where this looked" and "the helper is nowhere" are different failures, and
-	// the second one is what a build must stop on.
-	for (const dir of nativeDirs(root, { platform: "linux", arch: "x64" })) {
+	assert.match(error?.message ?? "", /no node-pty spawn-helper/);
+	for (const dir of nativeDirs(root, { platform: "darwin", arch: "arm64" })) {
 		assert.ok(
-			linuxError.message.includes(join(dir, "spawn-helper")),
+			error.message.includes(join(dir, "spawn-helper")),
 			`the failure names ${dir}`,
 		);
 	}
-	// Windows has no helper — its binaries run by extension — so the absence there is
-	// reported rather than fatal.
-	const windows = ensureSpawnHelperMode(root, {
-		platform: "win32",
+});
+
+test("a directory holding the module and no helper beside it is reported", () => {
+	// The one shape a filesystem can show and the loader's choice cannot be read from:
+	// the tarball's prebuild answers while `build/Release` holds a module with nothing
+	// to fork. Reported in the report and on the hook's second line, never thrown - a
+	// `pty.node` the running Electron cannot `dlopen` falls through at run time, so which
+	// directory wins is not this step's to decide.
+	const root = fakePackage(scratch());
+	const builtDir = sourceBuild(root, { helper: false });
+	const report = ensureSpawnHelperMode(root, {
+		platform: "darwin",
 		arch: "arm64",
 	});
-	assert.deepEqual(
-		{ path: windows.path, mode: windows.mode, missing: windows.missing },
-		{ path: null, mode: null, missing: false },
+	assert.equal(
+		report.path,
+		join(
+			prebuildDir(root, { platform: "darwin", arch: "arm64" }),
+			"spawn-helper",
+		),
 	);
+	assert.equal(report.moduleDirWithoutHelper, builtDir);
+});
+
+test("a platform that forks no helper reports the absence rather than failing", () => {
+	// win32 is asserted beside linux because it is the same answer for the same
+	// reason: both fork the user's shell directly, so an artifact with no helper is a
+	// complete artifact and not a build to stop.
+	const root = fakePackage(scratch(), { plugins: ["darwin-x64"] });
+	for (const platform of ["linux", "win32"]) {
+		const report = ensureSpawnHelperMode(root, { platform, arch: "x64" });
+		assert.deepEqual(
+			{
+				path: report.path,
+				mode: report.mode,
+				required: report.required,
+				healed: report.healed,
+			},
+			{ path: null, mode: null, required: false, healed: false },
+		);
+	}
 });
 
 test("a linux pack prepares its console-native tree end to end", () => {
 	// The whole hook against the tree a Linux pack produces: the tarball's four
-	// foreign prebuild directories, no `prebuilds/linux-x64`, and the helper under
-	// `build/Release`. The prune must still reclaim the foreign prebuilds, the helper
-	// must be found and healed, and the one report line must name where it came from —
-	// a reader checking this line against an artifact cannot tell a source build from a
-	// tarball prebuild otherwise.
+	// foreign prebuild directories, no `prebuilds/linux-x64`, and `build/Release`
+	// holding the module gyp built for it - and nothing beside it, because this
+	// platform forks no helper. The prune must still reclaim the foreign prebuilds,
+	// the step must pass, and its one line must say what the absence is: a reader
+	// comparing it against the artifact cannot otherwise tell "this platform needs
+	// none" from "the helper went missing".
 	const appOutDir = scratch();
-	const resources = resourcesDirFor({
-		appOutDir,
-		productFilename: "Local Operator",
-		platform: "linux",
-	});
-	const root = fakePackage(consoleNativeRoot(resources), {
+	const root = fakePackage(packedRoot(appOutDir, "linux"), {
 		plugins: TARBALL_PREBUILDS,
 	});
-	sourceBuild(root, { helperMode: 0o644 });
+	sourceBuild(root, { helper: false });
 	const lines = [];
 	const report = prepareConsoleNative({
 		appOutDir,
@@ -375,12 +423,41 @@ test("a linux pack prepares its console-native tree end to end", () => {
 	assert.equal(report.found, true);
 	assert.deepEqual(report.prune.kept, []);
 	assert.deepEqual(report.prune.removed.sort(), [...TARBALL_PREBUILDS].sort());
-	assert.equal(report.helper.healed, true);
+	assert.equal(report.helper.path, null);
+	assert.equal(report.helper.required, false);
+	assert.equal(report.helper.healed, false);
+	// ONE line: the module-without-a-helper warning is a question for the platforms
+	// that fork one, and Linux is not one of them.
 	assert.equal(lines.length, 1);
 	assert.match(lines[0], /kept prebuilds\/\(none\)/);
+	assert.match(lines[0], /spawn-helper \(none, and linux-x64 forks none\)/);
+});
+
+test("the hook adds a line when a directory holds the module and no helper", () => {
+	// macOS, where a helper IS required: a `build/Release/pty.node` with nothing to
+	// fork is the state that would fail the first spawn if the loader took it, so the
+	// build says so in a second line rather than passing quietly.
+	const appOutDir = scratch();
+	const root = fakePackage(packedRoot(appOutDir), {
+		plugins: ["darwin-arm64"],
+	});
+	sourceBuild(root, { helper: false });
+	const lines = [];
+	const report = prepareConsoleNative({
+		appOutDir,
+		productFilename: "Local Operator",
+		arch: "arm64",
+		platform: "darwin",
+		log: (line) => lines.push(line),
+	});
+	assert.equal(
+		report.helper.moduleDirWithoutHelper,
+		join(root, "build", "Release"),
+	);
+	assert.equal(lines.length, 2);
 	assert.match(
-		lines[0],
-		/spawn-helper build\/Release\/spawn-helper mode 0644 -> 0755/,
+		lines[1],
+		/native module is at build\/Release with no spawn-helper beside it/,
 	);
 });
 
