@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T19:09:25.225Z",
+  "at": "2026-09-20T19:34:00.130Z",
   "arm": {
     "armed": true
   },
@@ -61,22 +61,22 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931386263.201,
+      "requestedAt": 1789932844994.3318,
       "preAnsweredBy": "Popup is not open",
       "preAnswer": {
         "status": 200,
         "label": "Popup is not open"
       },
       "status": 409,
-      "answeredAt": 1789931386330.976,
-      "deliveredAt": 1789931386332.418
+      "answeredAt": 1789932845124.24,
+      "deliveredAt": 1789932845130.557
     },
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789931386289.4568,
+      "requestedAt": 1789932845060.086,
       "status": 200,
-      "answeredAt": 1789931386311.7239,
-      "deliveredAt": 1789931386314.344
+      "answeredAt": 1789932845109.001,
+      "deliveredAt": 1789932845113.876
     }
   ],
   "answersFrom": "route",
@@ -86,16 +86,16 @@
     ]
   },
   "tree": {
-    "head": "e40d4933e0451892ccc372db309e14692c324600",
-    "srcTree": "0d6104e25e5a84ef319be9aaece3e460205788a3",
+    "head": "7fbee5e7d230dc91bb489ae2b716903f8d8a660d",
+    "srcTree": "f7ca3a76a19ae2cb6ea3463fc1c14663c5e15a52",
     "srcDirty": false,
     "srcStatus": null
   },
-  "clearedAt": 1789931386579,
-  "clearedAfterPressMs": 350,
+  "clearedAt": 1789932845365,
+  "clearedAfterPressMs": 402,
   "ordering": {
-    "clearedAt": 1789931386579,
-    "deliveredAt": 1789931386332.418,
+    "clearedAt": 1789932845365,
+    "deliveredAt": 1789932845130.557,
     "verdict": "the response was delivered before the card cleared"
   },
   "report": {
