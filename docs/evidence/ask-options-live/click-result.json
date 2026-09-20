@@ -1,12 +1,12 @@
 {
-  "origin": "http://localhost:5199",
+  "origin": "http://localhost:5301",
   "session": "a1a1a1a1a1a1",
   "viewport": {
     "width": 1380,
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-13T23:09:30.583Z",
+  "at": "2026-09-20T19:32:00.301Z",
   "arm": {
     "armed": true
   },
@@ -46,16 +46,56 @@
   "aim": {
     "ok": true,
     "x": 960,
-    "y": 587,
+    "y": 644,
     "index": 1,
     "label": "Popup is open - generate the pairing codeI will read the code back to you.",
     "hitTested": "SPAN (the option itself)",
     "rect": {
-      "top": 557,
+      "top": 614,
       "height": 59
     }
   },
   "resolved": true,
+  "resolution": "cleared",
+  "gateCleared": true,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1789932726992.419,
+      "status": 200,
+      "answeredAt": 1789932727051.759,
+      "deliveredAt": 1789932727063.19
+    }
+  ],
+  "answersFrom": "route",
+  "ownerAnswer": {
+    "PAIRING": [
+      "Popup is open - generate the pairing code"
+    ]
+  },
+  "tree": {
+    "head": "7fbee5e7d230dc91bb489ae2b716903f8d8a660d",
+    "srcTree": "f7ca3a76a19ae2cb6ea3463fc1c14663c5e15a52",
+    "srcDirty": false,
+    "srcStatus": null
+  },
+  "clearedAt": 1789932727389,
+  "clearedAfterPressMs": 423,
+  "ordering": {
+    "clearedAt": 1789932727389,
+    "deliveredAt": 1789932727063.19,
+    "verdict": "the response was delivered before the card cleared"
+  },
+  "report": {
+    "movedOnSentence": false,
+    "settledSentence": false,
+    "unconfirmedSentence": false,
+    "notSentCopy": [],
+    "cardUp": false,
+    "cardRefusal": false,
+    "cardUnknown": false,
+    "alerts": []
+  },
   "after": {
     "found": false,
     "count": 0,
