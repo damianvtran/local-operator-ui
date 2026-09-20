@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { blankComments } from "./chrome-keychain.mjs";
 
 /**
  * Contract checks for the launch-window policy.
@@ -1772,4 +1773,205 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 		scanned.some((file) => file.includes(sep)),
 		`the scan reached subdirectories (scanned ${scanned.length} modules)`,
 	);
+});
+
+test("no rig script asks the operating system for window focus", () => {
+	/*
+	 * The RIG-side half of the scan above, and the half that was missing while
+	 * the operator's focus was still being taken with the mode policy holding.
+	 *
+	 * Measured on the operator's machine (2026-09-19): 46 app instances launched
+	 * by rigs, 227 window samples, ZERO windows — the mode policy working exactly
+	 * as documented — and one of those windowless, unfocusable instances was
+	 * still the FRONTMOST APPLICATION for about eight seconds. "Never shown" and
+	 * "cannot take the operator's focus" are different properties: the launch
+	 * decides the first one, and the requests the rig makes afterwards decide the
+	 * second. The `src/main` scan cannot see a request made from the renderer
+	 * side, and that is precisely where a rig reaches the operating system.
+	 *
+	 * The calls named here are the ones that leave the page: `window.focus()`
+	 * asks macOS to order the window and activate the app, and
+	 * `Page.bringToFront` / `Target.activateTarget` are the CDP spellings of the
+	 * same request. Element focus (`input.focus()`, `document.body.focus()`) is
+	 * deliberately NOT matched — moving a caret inside the page is the supported
+	 * way to arrange a focus assertion, and `Emulation.setFocusEmulationEnabled`
+	 * is the supported way to make a page that is not on screen read as focused.
+	 * Between them they cover what a rig needs, which is why this is a ban on the
+	 * three calls that leave the page rather than on focus assertions.
+	 *
+	 * THE RECEIVER IS A FAMILY, NOT A NAME (review round 1 on #406, MINOR R1-1).
+	 * `self` IS `window` in a renderer, and `top`, `parent`, `defaultView` and
+	 * `frames[n]` are the same WindowProxy under their own spellings — measured
+	 * on `d109863e2`: with `self.focus()`, `top.focus()`, `parent.focus()`,
+	 * `document.defaultView.focus()` and `frames[0].focus()` appended to a rig,
+	 * the literal-`window.` version of this pattern passed, so the ban closed at
+	 * one spelling and reopened at the next.
+	 *
+	 * THE NEAR-SPELLINGS TOO (review round 2, MINOR R2-1), because a guard that
+	 * misses them undercuts the class it exists to close: optional chaining
+	 * (`window?.focus()` — the defensive style this codebase already writes for
+	 * element focus) and bracket access (`window["focus"]()`) are the same call,
+	 * and both passed the widened pattern before this round.
+	 *
+	 * WHAT A RED SCAN MIGHT BE INSTEAD (review round 2, NIT R2-2): the receiver
+	 * alternation matches by NAME, so it also matches a Node-side local that
+	 * happens to be called `self`, `top`, `parent` or `frames[n]` —
+	 * `const parent = node.parentElement; parent.focus()` fails closed, and no
+	 * such use exists under the scanned trees today (the reviewer's grep, re-run
+	 * here). A red line from this test may therefore be a name collision rather
+	 * than an activation, which is worth knowing before one is diagnosed.
+	 *
+	 * AND WHAT IT STILL CANNOT BOUND: a name it never sees — an ALIAS
+	 * (`const w = window; w.focus()`) or a COMPUTED key
+	 * (`window["fo" + "cus"]()`). Both are review's business rather than this
+	 * test's; the alternation's job is to leave no cheap spelling of the call open.
+	 *
+	 * WHAT THIS TEST DOES NOT CLAIM: that a rig caused the activation measured
+	 * above. The mechanism was never identified, and the instance that took the
+	 * front ran a driver whose only focus calls were element-level. The rule
+	 * stands on its own terms — a rig has no business asking the operating system
+	 * for the keyboard, whatever mode the run declared — so the scan exists to
+	 * keep that request out of the tree, not to explain that afternoon.
+	 */
+	const LEAVES_THE_PAGE =
+		/window\??\.focus\(\)|\b(window|self|top|parent|defaultView|frames\s*\[\s*\d+\s*\])\s*(?:\??\.\s*focus\s*\(|\[\s*["']focus["']\s*\]\s*\()|Page\.bringToFront|Target\.activateTarget/;
+	/*
+	 * COMMENTS ARE BLANKED, NOT FILTERED BY PREFIX (review round 1, F2). The first
+	 * version skipped any line whose leading characters looked like a comment, and
+	 * that also skipped a real call that followed one: a line whose leading
+	 * characters were a block-comment opener and closer and then the CDP call, a
+	 * line led by a comment terminator, and a line led by a bare asterisk all left
+	 * this suite green while carrying the call. `blankComments` is this repository's own helper (scripts/chrome-keychain.mjs,
+	 * the one the keychain rigs use): it preserves line structure, so a finding
+	 * still reports the line it came from, and it copies template CONTENT through
+	 * rather than blanking it, so a call inside a template literal — the shape
+	 * these rigs actually use — is still seen.
+	 */
+	const SCANNED_TREES = [
+		{
+			/*
+			 * Every executable a driver in this tree is written in today: `.mjs` and
+			 * `.js` for the proofs, `.cjs` for the Electron scenario driver, `.ts` for
+			 * the vite plugins, `.tsx` for the evidence components that speak CDP,
+			 * `.html` for the viewports whose inline scripts click and focus. The
+			 * `.mjs`-only filter let four real driver shapes through (round 1, F3).
+			 */
+			root: "scripts",
+			extensions: /\.(mjs|js|cjs|ts|tsx|html)$/,
+			include: () => true,
+		},
+		{
+			/*
+			 * The CDP harnesses that live beside the evidence they produced. They are
+			 * the other half of "a rig" in this repository, and leaving them out is
+			 * how the ban would hold for the proofs and not for the harnesses (F3).
+			 */
+			root: "docs/evidence",
+			extensions: /\.(mjs|js|cjs)$/,
+			include: (name) => name.split(sep).includes("harness"),
+		},
+		{ root: "bin", extensions: /\.(mjs|js|cjs)$/, include: () => true },
+	];
+	/*
+	 * This file is skipped, the same way the scan above skips `window-raise.ts`:
+	 * its subject matter is these three call sites, so it necessarily contains
+	 * them, and a scan that flagged its own pattern list would only teach the
+	 * next author to obfuscate the pattern.
+	 */
+	const SELF = "window-mode.test.mjs";
+	/*
+	 * HTML IS NOT JAVASCRIPT, and blanking it as if it were is wrong in both
+	 * directions (review round 2, R2-1): an HTML comment that merely MENTIONS the
+	 * call became a finding, and a real call sharing a line with an unquoted `//`
+	 * — a URL in markup — was blanked away. HTML comments are stripped here with
+	 * line structure preserved, and the rest is read verbatim, so both the markup
+	 * and the inline script are seen without either artefact.
+	 */
+	const blankHtmlComments = (source) =>
+		source.replace(/<!--[\s\S]*?-->/g, (hit) => hit.replace(/[^\n]/g, " "));
+	const offSite = [];
+	const scanned = [];
+	/*
+	 * The name RELATIVE to its tree is what the recursion pin reads, and the count
+	 * is kept PER TREE so a walked root that silently vanished fails instead of
+	 * passing on the strength of the others (review round 2, R1-F4: the first
+	 * version pinned the `scanned` entries, which are `${root}/${file}` and
+	 * therefore contain a separator whether or not the walk descended, so a flat
+	 * readdir passed both pins).
+	 */
+	const relativeNames = [];
+	const perTree = new Map();
+	for (const tree of SCANNED_TREES) {
+		let reached = 0;
+		if (existsSync(tree.root)) {
+			for (const file of readdirSync(tree.root, { recursive: true }).filter(
+				(name) => tree.extensions.test(name) && tree.include(name),
+			)) {
+				reached += 1;
+				scanned.push(`${tree.root}/${file}`);
+				relativeNames.push(file);
+				if (file.endsWith(SELF)) continue;
+				const source = readFileSync(join(tree.root, file), "utf8");
+				(file.endsWith(".html")
+					? blankHtmlComments(source)
+					: blankComments(source)
+				)
+					.split("\n")
+					.forEach((line, index) => {
+						if (!LEAVES_THE_PAGE.test(line)) return;
+						offSite.push(`${tree.root}/${file}:${index + 1}: ${line.trim()}`);
+					});
+			}
+		}
+		perTree.set(tree.root, reached);
+	}
+	assert.deepEqual(
+		offSite,
+		[],
+		"these lines ask the operating system to bring a window forward, which takes the operator's focus whatever window mode the run declared",
+	);
+	/*
+	 * And the pattern FIRES on every spelling it names. A widened alternation that
+	 * quietly stopped matching would leave the ban green while covering nothing —
+	 * the one failure a green scan cannot show by itself — so each spelling is
+	 * asserted against the pattern directly rather than left to a rig in this
+	 * tree happening to contain one.
+	 */
+	const SPELLINGS = [
+		"window.focus()",
+		"window?.focus()",
+		'window["focus"]()',
+		"self.focus()",
+		"self?.focus()",
+		"self['focus']()",
+		"top.focus()",
+		"parent.focus()",
+		"document.defaultView.focus()",
+		"document.defaultView?.focus()",
+		"frames[0].focus()",
+		"Page.bringToFront",
+		"Target.activateTarget",
+	];
+	assert.deepEqual(
+		SPELLINGS.filter((spelling) => !LEAVES_THE_PAGE.test(spelling)),
+		[],
+		"the pattern must fire on every spelling of the request this ban names",
+	);
+	// Pins the width of the scan the way its `src/main` sibling does, and pins the
+	// three ways it can silently narrow: too few files at all, a walk that stopped
+	// descending, and a tree that stopped contributing anything.
+	assert.ok(
+		scanned.length > 20,
+		`the scan reached the rig trees (scanned ${scanned.length} files)`,
+	);
+	assert.ok(
+		relativeNames.some((name) => name.includes(sep)),
+		`the walk descended into subdirectories (${relativeNames.length} files scanned)`,
+	);
+	for (const tree of SCANNED_TREES) {
+		assert.ok(
+			(perTree.get(tree.root) ?? 0) > 0,
+			`the scan reached ${tree.root}`,
+		);
+	}
 });

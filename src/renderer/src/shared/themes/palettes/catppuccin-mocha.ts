@@ -77,20 +77,24 @@ export const catppuccinMocha: ThemeDefinition = {
 		sunken: "#242432",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #38353B  accent hue, C* 4.25, +1.58 L*, ΔE00 5.85 off `surface`,
-		 *                       `inkDim` 5.62:1 on the fill, hue 0.18° off `accent`.
-		 * rowSelected #43394E  accent hue, C* 14.46, +4.68 L*, ΔE00 5.63 off
-		 *                       `surface` and 8.53 off `rowHover`, `inkDim` 5.06:1, and the
-		 *                       2px `accent` bar at 5.34:1 against it.
+		 * rowHover    #3A3943  panel hue, C* 6.64,
+		 *                       the rule's 0.60 x the panel's 11.52; +3.33 L*,
+		 *                       ΔE00 4.39 off `surface`, `inkDim` 5.30:1.
+		 * rowSelected #3C3B53  panel hue, C* 15.77,
+		 *                       the panel's cast + 4.0, floored at 5.0; +4.81 L*,
+		 *                       ΔE00 4.43 off `surface` and 6.52 off
+		 *                       `rowHover`; the pair ranks 1.48 `L*` and 9.1 `C*`,
+		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#38353B",
-		rowSelected: "#43394E",
+		rowHover: "#3A3943",
+		rowSelected: "#3C3B53",
 
 		/*
 		 * Register re-solve: `ink`
@@ -184,7 +188,45 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * from `accent`, 35.69 from its nearest semantic (`danger`), 5.15:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#739CD6",
+		/*
+		 * Register re-solve (second pass): `accentAlt`, on the TOOL ROW's state ground.
+		 *
+		 * The settled `meta` row's identity ink IS this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` — so the
+		 * role is now drawn as 12px TEXT on a state ground, which none of its authored
+		 * sites did (a 1px bar in the picker's miniature, a diagram mark, a chip label).
+		 * Seated at its floor on `surface` (4.51:1 here) it had no headroom to spend,
+		 * and it read 4.16:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Contrast is luminance-only, so only `L*` buys the ground and the lift is the
+		 * one axis this cannot avoid. The CHROMA comes up with it, and that is the part
+		 * worth being exact about, because this is the one palette in the fleet's ten
+		 * that spends it: the register re-solve above seated the value 2.68 degrees off
+		 * `info`, so a pure-`L*` lift walks it INTO `info` — measured at the crossing the
+		 * row's own text floor sets (`L*` 66.03 at the held hue 272.6 and `C*` 33.97,
+		 * i.e. the hex `#7AA3DD`, where the value first clears 4.5:1 on `elevated`) it
+		 * reads ΔE00 6.08 from `info`, below the 8 this role has held since the port —
+		 * while every value that clears both at the authored chroma does so by
+		 * darkening, which is the same hue at another weight rather than a colour a
+		 * reader can tell from `info`'s. (An earlier revision of this record carried
+		 * 6.00, which is that crossing read one stop too far — `L*` 66.4, the SHIPPED
+		 * value's own lightness — and `contrast-contract.mjs` carried 6.24, the same
+		 * crossing read on unquantized `Lab` values; 6.08 is the figure both records
+		 * state, and it is what this file's own `deltaE` returns on the hex.) Raising
+		 * the chroma at the held hue is what
+		 * buys the ground WITHOUT giving up the separation, which is why this value is
+		 * recorded in `contrast-contract.mjs`'s move-set carve-out rather than passing
+		 * the walk's "lightness only" clause: it is a second pass on a role the first
+		 * one already moved, and the pure-`L*` re-solve of its pre-value is refused by a
+		 * floor this role also holds.
+		 *
+		 * Measured (hue held at 272.6 deg, `L*` 63.57 -> 66.50, C* 33.97 -> 52.00):
+		 * 4.56:1 on `elevated`, 4.94:1 on `surface`, 5.95:1 on `sunken`, 5.48:1 on
+		 * `canvas` — ΔE00 8.58 from `info` (the 8 floor intact, and above the 8.19 this
+		 * palette shipped), 27.32 from `accent`, 22.90 from `ink` — and the alt-wash
+		 * chip's own ink floor improves with it, 4.52:1 -> 4.96:1.
+		 */
+		accentAlt: "#48A6FF",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 20.82 and C* 15.59, with the hue moved to

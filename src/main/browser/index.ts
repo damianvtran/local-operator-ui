@@ -7,6 +7,9 @@ import {
 	app,
 	webContents,
 } from "electron";
+import { startConsoleHost } from "../console";
+import { isConsoleDispatchMethod } from "../console/dispatch";
+import { ConsoleError } from "../console/errors";
 import {
 	WebauthnChooser,
 	type WebauthnRequestSource,
@@ -523,21 +526,63 @@ export async function startBrowserHost(
 		);
 	}
 
+	/*
+	 * The console rides THIS endpoint, THIS record and THIS key (design 10.1), so it
+	 * starts beside the server rather than behind one of its own. Two consequences
+	 * worth naming:
+	 *
+	 *  - the dispatch below is the only place the two namespaces meet, and it routes
+	 *    by the console's own predicate rather than by a prefix match, so a browser
+	 *    method can never be answered by a console result;
+	 *  - a console that is off (the kill switch, or node-pty failing to load) is
+	 *    still a TYPED answer to a console method — `console_unavailable` naming
+	 *    which of the conditions failed — rather than a transport error, because the
+	 *    tool's gate and the record's `console` field are what keep the agent from
+	 *    calling in the first place, and a caller that got through anyway deserves
+	 *    the reason.
+	 */
+	const consoleStartup = await startConsoleHost({
+		window: options.window,
+		expectedUrl: options.expectedUrl,
+		appVersion: options.appVersion,
+		log,
+	});
+
 	const sessionKey = mintSessionKey();
 	const server: RpcServer = await startRpcServer({
 		key: sessionKey,
-		dispatch: (method, params, requestId) =>
-			host.dispatch(method, params, requestId),
+		dispatch: async (method, params, requestId) => {
+			if (!isConsoleDispatchMethod(method)) {
+				return host.dispatch(method, params, requestId);
+			}
+			if (!consoleStartup.ok) {
+				throw new ConsoleError(
+					"console_unavailable",
+					`this app's console is not available (${consoleStartup.reason}): ${consoleStartup.detail}`,
+					{ reason: consoleStartup.reason },
+				);
+			}
+			return consoleStartup.dispatch(method, params);
+		},
 		log,
+		capabilities: () => ({ console: consoleStartup.ok }),
 	});
 
 	stateWriter = new BrowserStateWriter(
 		stateFilePath(),
-		() => ({
-			tabs: registry.count(),
-			agentTabs: registry.agentTabCount(),
-			profileDir,
-		}),
+		() => {
+			const consoleCounts = consoleStartup.ok
+				? consoleStartup.counts()
+				: { total: 0, agent: 0 };
+			return {
+				tabs: registry.count(),
+				agentTabs: registry.agentTabCount(),
+				profileDir,
+				console: consoleStartup.ok,
+				consoleSurfaces: consoleCounts.total,
+				consoleAgentSurfaces: consoleCounts.agent,
+			};
+		},
 		{
 			appVersion: options.appVersion,
 			onError: (error) => log(`[browser] state file: ${String(error)}`),
@@ -555,7 +600,7 @@ export async function startBrowserHost(
 	});
 
 	log(
-		`[browser] host on ${server.address}:${server.port} (proto ${facts.proto}), profile ${profileDir || "(in-memory)"}, agent tabs ${registry.agentTabCount()}/${8}`,
+		`[browser] host on ${server.address}:${server.port} (proto ${facts.proto}), profile ${profileDir || "(in-memory)"}, agent tabs ${registry.agentTabCount()}/${8}, console ${consoleStartup.ok ? `on (${consoleStartup.counts().total} surface(s))` : `off (${consoleStartup.reason})`}`,
 	);
 
 	const handle: BrowserHostHandle = {
@@ -603,6 +648,10 @@ export async function startBrowserHost(
 			registry.destroyAll();
 			await cdp.close();
 			await server.close();
+			// Before the browser namespace's own teardown, and after the socket is
+			// closed: no new command can arrive, so every pty this stops is one nobody
+			// is mid-call on. The console flushes retained history inside its own stop.
+			await consoleStartup.stop();
 			unregisterBrowserIpc();
 			// Before the views go: a pending chooser's callback is the page's promise,
 			// and the page is about to stop existing. The listener goes with it, so a

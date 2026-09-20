@@ -574,37 +574,44 @@ test("mac signing uses imported keychain without CSC_LINK, keeps notarization", 
 	for (const job of ["build-windows", "build-linux"])
 		assert.ok(!JSON.stringify(jobs[job]).includes("forceCodeSigning"));
 });
-test("the macOS app is codesigned with a RENDERED entitlements plist carrying the WebAuthn access group", () => {
-	// The group is `<TEAM_ID>.<BUNDLE_ID>.webauthn` and the team id is a secret, so
-	// the committed plist cannot carry it: the render step is what puts it in, and
-	// the build has to consume the rendered file for both the app and the helpers
-	// it inherits (`entitlementsInherit`).
+test("the macOS app is codesigned with the committed, group-free entitlements plist", () => {
+	/*
+	 * WHY THIS SHAPE, and what it replaced. The build used to render
+	 * `build/entitlements.mac.plist` plus the WebAuthn access group into
+	 * `$RUNNER_TEMP` and pass that file to BOTH `-c.mac.entitlements` and
+	 * `-c.mac.entitlementsInherit` (`entitlementsInherit` is what gave the group to
+	 * the helpers and ShipIt). The group is a RESTRICTED entitlement that needs a
+	 * provisioning profile behind it (Apple TN3125), no profile secret exists, and
+	 * v0.29.6 shipped exactly that — so macOS refused to spawn every executable in
+	 * the bundle and the app could never be launched, while codesign, spctl and
+	 * stapler all passed.
+	 *
+	 * So the assertion is now the inverse: nothing in this job overrides the
+	 * entitlements, no secret-bearing plist reaches the build, and the committed
+	 * plist carries no group. Re-enabling passkeys is one secret wide and is
+	 * documented in the step's own comment rather than wired half-built — which is
+	 * why `provisioningProfile` is asserted ABSENT here.
+	 */
 	const macSteps = steps("build-macos").map((s) => s.name);
-	const render = step("build-macos", "Render the macOS entitlements plist");
-	assert.ok(render, "the entitlements render step exists");
 	assert.ok(
-		macSteps.indexOf("Render the macOS entitlements plist") <
-			macSteps.indexOf("Build macOS app"),
-		"the plist is rendered before the build that consumes it",
+		!macSteps.includes("Render the macOS entitlements plist"),
+		"no entitlements render step runs in the release path",
 	);
-	assert.deepEqual(
-		render.env,
-		{ APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID }}" },
-		"the team id comes from the secret and from nothing else",
-	);
-	assert.match(
-		render.run,
-		/node scripts\/render-mac-entitlements\.mjs --out "\$RUNNER_TEMP\/entitlements\.mac\.plist"/,
-	);
-	assert.match(
-		render.run,
-		/echo "ENTITLEMENTS_PLIST=\$RUNNER_TEMP\/entitlements\.mac\.plist" >> "\$GITHUB_ENV"/,
+	assert.doesNotMatch(
+		JSON.stringify(jobs["build-macos"]),
+		/ENTITLEMENTS_PLIST/,
+		"no rendered plist path reaches the build",
 	);
 	const build = step("build-macos", "Build macOS app");
-	assert.match(build.run, /-c\.mac\.entitlements="\$ENTITLEMENTS_PLIST"/);
-	assert.match(
+	assert.doesNotMatch(
 		build.run,
-		/-c\.mac\.entitlementsInherit="\$ENTITLEMENTS_PLIST"/,
+		/mac\.entitlements/,
+		"the entitlements config stays at its committed value",
+	);
+	assert.doesNotMatch(
+		build.run,
+		/mac\.provisioningProfile/,
+		"the profile path is documented, not wired: a dormant branch that has never had its secret is a behaviour nobody can test",
 	);
 	// The committed plist stays secret-free and carries no group: every local build
 	// signs with it, and a group there would be a team id in the repository plus a

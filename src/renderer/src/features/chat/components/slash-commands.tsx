@@ -85,9 +85,18 @@ import {
 } from "./slash-contract";
 import { firstContentLine } from "./slash-highlight";
 import { commandSuggestions, matchChoices } from "./slash-rank";
-import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
 import {
+	type ArgumentShapeRow,
+	type ArmingCatalogueRow,
+	argumentShapeVocabulary,
+	armedOnlyVocabulary,
+	prefixingVocabulary,
+} from "./slash-submit";
+import {
+	SEPARATOR,
+	SEPARATOR_RUN,
 	caretPhase,
+	pyTrim,
 	replaceSpan,
 	slashArgumentContext,
 	slashContext,
@@ -111,6 +120,16 @@ export type SlashCommandMeta = {
 	arguments: "none" | "optional" | "required";
 	echo: boolean;
 	consumes_prompt: boolean;
+	/*
+	 * The endpoint's own admission vocabulary, optional and additive — see the
+	 * contract's `DesktopCommandMetadata`, which is where the wire declares them.
+	 * Read here rather than only there because this is the row type the catalogue
+	 * query is read as, so the fields have to survive the fetch to reach the
+	 * planner that answers with them.
+	 */
+	prefixes_text?: boolean;
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	argument_words?: string[];
 	destination: string;
 	execution: "owner" | "native";
 };
@@ -126,11 +145,15 @@ const MAX_VISIBLE_ROWS = 6;
  */
 const ROW_PITCH = 36;
 
-/**
- * Any whitespace. Top-level so the "a name is one word" check below builds no
- * regex per keystroke; the popup re-renders on every character.
+/*
+ * NO CLASS OF ITS OWN: every separator question in this file reads the one
+ * `slash-token.ts` spells out — Python's set, which is what the TUI's
+ * `ch.isspace()` is and what the endpoint splits on. A second class here was the
+ * fifth instance of the same bug (round 4, F4-1): the popup asked the word of
+ * `/team<U+0085>ops review` as `team<U+0085>ops` while the planner asked `team`,
+ * so which row completed and which command ran came from two rules. The
+ * top-level-hoisting reason the old constant carried is now `slash-token.ts`'s.
  */
-const WHITESPACE = /\s/;
 
 /** One row of the listbox. Both phases share one geometry and one
  *  `aria-activedescendant` contract, so they also share one row shape. */
@@ -271,6 +294,19 @@ export type SlashCompletionState = {
 	 * their whole-draft forms as prose (review round 1, R1).
 	 */
 	argumentCommands: ReadonlySet<string>;
+	/**
+	 * The wire's own `argument_shape` / `argument_words`, keyed by primary and
+	 * alias, and the `prefixes_text` half of the same publication.
+	 *
+	 * THE AUTHORITY THE THREE SETS ABOVE APPROXIMATE. They are derived from the same
+	 * catalogue rows the popup renders, so a row can neither be in the registry and
+	 * missing here nor the reverse. A row that publishes no shape is absent from the
+	 * map on purpose — that is a backend older than the field, and
+	 * `argumentShapeVocabulary` states why a default would be worse than the
+	 * fallback it would replace.
+	 */
+	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
+	prefixingCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/**
 	 * Lower-cased roster names the list's own query holds, for the syntax
@@ -467,6 +503,21 @@ export function useSlashCompletion({
 		}
 		return names;
 	}, [registry]);
+	/*
+	 * The wire's own vocabulary, read off the SAME rows — and deliberately an
+	 * ADDITION beside the three derivations above rather than a replacement for
+	 * them: the planner needs the fallback for a backend that predates these
+	 * fields, so both are carried and the planner states which one is the
+	 * authority.
+	 */
+	const argumentShapes = useMemo(
+		() => argumentShapeVocabulary(registry),
+		[registry],
+	);
+	const prefixingCommands = useMemo(
+		() => prefixingVocabulary(registry),
+		[registry],
+	);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -499,7 +550,7 @@ export function useSlashCompletion({
 		if (line === null) return null;
 		const text = inputValue.slice(line.start, line.end);
 		if (!text.startsWith("/")) return null;
-		const word = text.slice(1).split(WHITESPACE)[0]?.toLowerCase() ?? "";
+		const word = text.slice(1).split(SEPARATOR_RUN)[0]?.toLowerCase() ?? "";
 		if (!vocabulary.nameList.has(word)) return null;
 		const spec = resolveCommand(registry, word);
 		const inline = spec ? inlineArgumentFor(spec.destination) : undefined;
@@ -569,6 +620,12 @@ export function useSlashCompletion({
 		const line = inputValue
 			.slice(argumentContext.tokenStart + 1)
 			.split("\n")[0];
+		/*
+		 * A LITERAL SPACE, deliberately: this is the TUI's own `partition(" ")` on the
+		 * inline argument — the same partition `slash-token.ts`'s argument context
+		 * draws — and it answers "the argument's first word", not the separator the
+		 * command's own tokens are cut on.
+		 */
 		return line.split(" ")[0]?.toLowerCase() ?? null;
 	}, [argumentContext, inputValue]);
 
@@ -593,7 +650,9 @@ export function useSlashCompletion({
 	const hoists = useMemo(() => {
 		const span = slashTokenSpan(inputValue, selectionStart, commandNames);
 		if (!span) return false;
-		return replaceSpan(inputValue, span.start, span.end, "").text.trim() !== "";
+		return (
+			pyTrim(replaceSpan(inputValue, span.start, span.end, "").text) !== ""
+		);
 	}, [inputValue, selectionStart, commandNames]);
 
 	const commandMatches = useMemo(() => {
@@ -676,7 +735,7 @@ export function useSlashCompletion({
 	const nameComplete =
 		inline?.nameThenMessage === true &&
 		argumentContext !== null &&
-		WHITESPACE.test(argumentContext.value);
+		SEPARATOR.test(argumentContext.value);
 	const phase: SlashCompletionState["phase"] =
 		purePhase === "argument"
 			? inline && !nameComplete
@@ -816,6 +875,8 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		valueArgumentCommands,
 		argumentCommands,
+		argumentShapes,
+		prefixingCommands,
 		nameListCommands: vocabulary.nameList,
 		nameChoices,
 		argumentWords: vocabulary.words,

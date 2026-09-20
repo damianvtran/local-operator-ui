@@ -156,6 +156,7 @@ const STUB_PATHS = [
 	"react-router-dom",
 	"@shared/hooks/use-canonical-session",
 	"@shared/api/local-operator/desktop-api",
+	"@shared/hooks/use-connectivity-status",
 ];
 const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 
@@ -192,7 +193,7 @@ export const desktopResult = request => globalThis.__ack(request);`,
 	 * here. `desktopFeatureEnabled` is re-exported from the shipped module rather
 	 * than re-implemented, so the gate under test is the app's own.
 	 */
-	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({
@@ -208,6 +209,16 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 		"export const useChatSearch = () => ({ data: undefined, refused: false, isError: false, refetch: async () => undefined });",
 	"@shared/hooks/use-desktop-feed":
 		"export const useDesktopFeed = () => ({ available: false, connected: true, catalogueRevision: 0 });",
+	/*
+	 * The sidebar's status read is stubbed like the rest of the surfaces' data - it
+	 * is where main's pairing record arrives (`DaemonStatusSnapshot.pairing`), and
+	 * these cases are about the control's own copy, not about the record. Without
+	 * this stub the graph pulls the real hook, and with it the renderer's config
+	 * module and a `backend-error` export the stub below does not carry: measured as
+	 * a build failure rather than a failing assertion.
+	 */
+	"@shared/hooks/use-connectivity-status":
+		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
 	"react-router-dom": "export const useNavigate = () => () => undefined;",
@@ -685,6 +696,146 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 			"Migrate the deploy script: Approval needed",
 		);
 	} finally {
+		await harness.unmount();
+	}
+});
+
+/*
+ * THE STORE'S OWN ERROR VALUE, which is where the daemon's prose used to become
+ * this app's diagnosis (review round 2 U1/D14, and round 3's note that the fix was
+ * credited to a test that does not cover it).
+ *
+ * The window measured in the built app was 18.3 s, and its shape was: a re-pair
+ * replaces the daemon, the app's catalogue read is refused with the NEW daemon's
+ * 503 prose, and the sidebar and the pane render the stored `error` verbatim. So
+ * the assertion is on the VALUE the store stores - not on a frame, and not on the
+ * transport in isolation.
+ */
+test("the store composes the refusal's own sentence instead of storing the server's", async () => {
+	try {
+		const prose =
+			"Desktop controls require a backend started by the desktop app.";
+		window.api = {
+			desktop: {
+				/*
+				 * A DesktopControlError, because that is what the transport throws for a
+				 * refusal: the store keeps the message of anything else (its own "Unknown
+				 * session." is not a refusal), so a plain Error here would test the wrong
+				 * branch.
+				 */
+				request: () => Promise.reject(new DesktopControlError(503, prose)),
+			},
+		};
+		await store.getState().fetchSessions({ silent: true });
+		const stored = store.getState().error;
+		assert.ok(stored, "a refused catalogue read must store an error");
+		assert.doesNotMatch(
+			String(stored),
+			/started by the desktop app/,
+			"the server's own sentence about itself is not this app's diagnosis",
+		);
+		assert.doesNotMatch(String(stored), /503|request failed/);
+		/*
+		 * THE OTHER HALF LIVES IN `session-switch`, and deliberately: a rejection at
+		 * the BRIDGE is turned into a transport error by the client before the store
+		 * ever sees it, so a domain error cannot be produced from here. What proves
+		 * the distinction is the pair of suites together - a `DesktopControlError`
+		 * composed into our sentence here, and a domain error keeping its own
+		 * ("Unknown session.") in `session-switch`'s three cases, which failed when
+		 * `storeErrorMessage` was not there.
+		 */
+	} finally {
+		window.api = undefined;
+	}
+});
+
+test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
+	const SILENT = "d4e5f6a7b8c9";
+	const FAILED = "e5f6a7b8c9d0";
+	const rows = [
+		{
+			session_id: SILENT,
+			title: "Quiet owner (stale beat)",
+			active: true,
+			status: {
+				code: "wedged",
+				label: "Not answering · process alive (last heartbeat 4m ago)",
+			},
+		},
+		{
+			session_id: FAILED,
+			title: "Failed turn",
+			active: true,
+			status: { code: "error", label: "Failed" },
+		},
+	];
+	/*
+	 * Staged through the app's own read as well as the store: the sidebar issues
+	 * `sessions.list` on mount and the stub answers every other op with the bulk
+	 * receipt, so a case that only calls `mount` gets its roster replaced by one
+	 * junk row before an attribute can be read.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	try {
+		const row = (name) =>
+			harness.ring().find((element) => element.textContent?.includes(name));
+		const silent = row("Quiet owner (stale beat)");
+		const failed = row("Failed turn");
+		assert.ok(silent, "the not-answering row did not render");
+		assert.ok(failed, "the failed row did not render");
+		// The pointer channel: the composed tooltip ends with the clause, so the
+		// row itself still carries it where a pointer lands.
+		assert.match(
+			silent.getAttribute("title") ?? "",
+			/· \/stop if it stays silent$/,
+		);
+		// The keyboard channel: the row POINTS at the sentence, which is what
+		// makes it announced on focus when the name is read.
+		const id = silent.getAttribute("aria-describedby");
+		assert.ok(id, "the not-answering row points at no remedy");
+		const clause = document.getElementById(id);
+		assert.ok(
+			clause,
+			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
+		);
+		assert.equal(clause.textContent, "/stop if it stays silent");
+		assert.ok(
+			clause.textContent && !clause.textContent.includes("·"),
+			"the description kept the tooltip's separator, which is read aloud as punctuation",
+		);
+		/*
+		 * AND THE TARGET IS OUTSIDE THE ROW, which is the half that decides whether the
+		 * clause is ALSO in the accessible name (review round 2's MAJOR 2, measured in
+		 * Chromium's tree by all four roles). A button takes its name from its contents,
+		 * so an `sr-only` span inside it is collected into the name as well as pointed at
+		 * by the description — the reader heard the advice twice, and the name stopped
+		 * being the state's sentence. This harness has no accessibility tree, so it
+		 * asserts the STRUCTURAL fact the property rests on rather than the property:
+		 * the named element is not a descendant of the named element's owner. The tree
+		 * reading itself is in the round's evidence, and `directory-indicator.tsx` places
+		 * its own sentence the same way.
+		 */
+		assert.equal(
+			silent.querySelector(`#${id}`),
+			null,
+			"the remedy is inside the row button, so name-from-content collects it into the accessible name as well",
+		);
+		assert.ok(
+			silent.parentElement?.querySelector(`#${id}`),
+			"the remedy is not beside the row either — `aria-describedby` resolves by id, so it has to render somewhere",
+		);
+		// The control: the state next door offers no stop.
+		assert.equal(failed.getAttribute("aria-describedby"), null);
+		assert.doesNotMatch(failed.getAttribute("title") ?? "", /\/stop/);
+	} finally {
+		globalThis.__ack = undefined;
 		await harness.unmount();
 	}
 });

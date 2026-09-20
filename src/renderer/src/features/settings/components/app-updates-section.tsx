@@ -52,7 +52,14 @@ const daemonAddress = (url: string | null): string | null => {
  * us — the tooltip is what tells them which number to quote.
  */
 export const AppUpdatesSection: FC = () => {
-	const [appVersion, setAppVersion] = useState<string>("Loading...");
+	/*
+	 * Null while unknown rather than the string "Loading...", because this value is
+	 * handed to the update card and printed as the version that IS running (design
+	 * D1): a sentence that named the placeholder would be the same class of untrue
+	 * statement the hand-off removes, and the row below supplies the placeholder at
+	 * the one place it is a display concern.
+	 */
+	const [appVersion, setAppVersion] = useState<string | null>(null);
 	const [serverVersion, setServerVersion] = useState<ServerVersionReading>({
 		value: "Loading...",
 		detail: null,
@@ -286,7 +293,7 @@ export const AppUpdatesSection: FC = () => {
 				<InfoGrid>
 					{renderInfoItem(
 						"Application version",
-						appVersion,
+						appVersion ?? "Loading...",
 						"The version of the Local Operator user interface application.",
 					)}
 					{renderInfoItem(
@@ -325,7 +332,7 @@ export const AppUpdatesSection: FC = () => {
 					)}
 				</InfoGrid>
 
-				<AppUpdates />
+				<AppUpdates appVersion={appVersion} />
 			</div>
 		</SettingsSection>
 	);

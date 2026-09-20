@@ -1065,6 +1065,17 @@ export type ClaimOutcome =
 	| { outcome: "claimed"; origins: string[] }
 	| { outcome: "already-claimed"; status: number }
 	| { outcome: "wrong-key"; status: number }
+	/**
+	 * The route is absent: this daemon predates the pairing handshake.
+	 *
+	 * Its own outcome rather than one more `refused`, because `404` is the ONE
+	 * refusal a status names unambiguously - the daemon's own contract for
+	 * `/v1/desktop/claim` lists 403/400/409/503/401 and never 404
+	 * (`local_operator/server/desktop.py`) - and because it is the fact that
+	 * separates "this server is old" from "this server refused me", which are two
+	 * different sentences with two different remedies (design § 1.6, § 2 S3).
+	 */
+	| { outcome: "no-handshake"; status: number }
 	| { outcome: "refused"; status: number; detail: string }
 	| { outcome: "unreachable"; detail: string };
 
@@ -1119,6 +1130,11 @@ export async function claimDesktopPlane(
 		if (response.status === 409)
 			return { outcome: "already-claimed", status: 409 };
 		if (response.status === 401) return { outcome: "wrong-key", status: 401 };
+		// The route itself is missing, which names an INSTALL, not a credential: the
+		// daemon is older than the handshake. `desktop.py`'s own contract for this
+		// route never answers 404, so nothing else can be meant by it.
+		if (response.status === 404)
+			return { outcome: "no-handshake", status: 404 };
 		return {
 			outcome: "refused",
 			status: response.status,

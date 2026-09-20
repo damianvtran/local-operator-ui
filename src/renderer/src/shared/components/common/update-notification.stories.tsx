@@ -78,6 +78,8 @@ const createEmptyUpdaterMethods = () => {
 			onUpdateInstallBlocked: noop,
 			onUpdateInstallFailed: noop,
 			onUpdateInstallInFlight: noop,
+			onUpdateInstallProgress: noop,
+			onUpdateInstallSucceeded: noop,
 		};
 	}
 };
@@ -119,8 +121,48 @@ const APP_OWNED_REMEDY =
 const APP_OWNED_DETAIL =
 	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
 
+/*
+ * THE SENTENCE MAIN COMPOSES FOR THIS STATE, not a paraphrase of it (design
+ * review round 2, D2).
+ *
+ * WHY IT CHANGED. This fixture is a stand-in for the payload `backend-update-error`
+ * carries, and the story is the only committed frame for "a genuine failure still
+ * reads as a failure". It used to read "...the server is still on 0.55.9. See the
+ * update service log for pip's output, then try again.", which NO arm of
+ * `serverUpdateFailureSentence` can produce - so the frame a reviewer would cite
+ * for that claim was a picture of wording this build cannot emit, the class the
+ * alert's own comment names ("a fixture drifts from the component it stands for").
+ *
+ * It is now the composer's own non-rebuild, ran-true, exit-0 arm at these two
+ * versions, and `scripts/update-robustness.test.mjs` composes the same facts
+ * through the real module and fails if this literal drifts from it again - the
+ * composer lives in the main process, so the story cannot import it and a test is
+ * what holds the two together.
+ */
 const SERVER_UPDATE_FAILURE_MESSAGE =
-	"The server update to 0.55.10 did not take effect: the server is still on 0.55.9. See the update service log for pip's output, then try again.";
+	"The server update to 0.55.10 did not take effect: the install still reports 0.55.9. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
+
+/*
+ * THE INSTALLER'S OWN WORDS FOR THAT ATTEMPT, and they are not decoration: the
+ * sentence above points at them.
+ *
+ * WHY THEY HAVE TO BE HERE (review round 3, R3-1 = design D4). The composer picks
+ * the "output is below" pointer only when the diagnosis is non-empty
+ * (`server-update-copy.ts`), and the producer sends `installerOutput: diagnosis ||
+ * undefined` from that same value (`update-service.ts`), while the panel renders
+ * the block only when the payload carries it (`update-notification.tsx`). A
+ * payload with that sentence and no output is therefore a pairing no shipped path
+ * composes - and the twelve committed frames showed exactly that: "The installer's
+ * own output is below." over nothing, on the one frame for "a genuine failure still
+ * reads as a failure". The pin in `scripts/update-robustness.test.mjs` now asserts
+ * the pairing, so the sentence and the block cannot part company again.
+ */
+const SERVER_UPDATE_FAILURE_OUTPUT = [
+	"uv tool upgrade local-operator",
+	"Resolved 55 packages in 1.02s",
+	"Installed 1 package in 12ms",
+	" + local-operator==0.55.10",
+].join("\n");
 
 /**
  * The listeners `onBackendUpdateError` has registered for the current story.
@@ -196,7 +238,15 @@ const mockUpdaterApi = () => {
 			}
 			if (window.triggerBackendUpdateError) {
 				for (const listener of [...backendUpdateErrorListeners]) {
-					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
+					listener({
+						message: SERVER_UPDATE_FAILURE_MESSAGE,
+						// The diagnosis the sentence above points at, from the same value
+						// the producer derives both from (review round 3, R3-1 = D4).
+						installerOutput: SERVER_UPDATE_FAILURE_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
 				}
 				return false;
 			}
@@ -563,6 +613,57 @@ const mockUpdaterApi = () => {
 						"/Applications/Local Operator.app: errSecCSBadBundleFormat: a sealed resource is missing or invalid",
 				});
 			}
+			// The 0.29.6 class: the artifact the updater downloaded carries a restricted
+			// entitlement (`keychain-access-groups`) with no provisioning profile to
+			// authorize it, so macOS refuses to spawn it and installing it would leave
+			// the user with no app at all. Production builds this one in
+			// `stagedSignatureBlock` (`src/main/update-install.ts`), and the drift guard in
+			// `scripts/update-robustness.test.mjs` asserts the strings below equal that
+			// builder's own - a frame captured from this fixture has to show the copy
+			// the app would really send.
+			if (window.triggerUpdateInstallBlockedCannotLaunch) {
+				callback({
+					code: "artifact-cannot-launch",
+					version: "0.29.6",
+					message:
+						"The update to version 0.29.6 can't be launched by macOS, so it wasn't installed.",
+					// No URL, and that is the point of this fixture (design round 1, D1): every
+					// affordance behind the download page resolves to `releases/latest`, the
+					// channel that staged this artifact, so the primary action would hand the
+					// reader the bundle the app just refused. The sentence names the version to
+					// avoid and says the next release arrives the ordinary way.
+					remedy: {
+						text: "Keep using this copy, and skip version 0.29.6 if you download one by hand — the next release will be offered here as usual.",
+					},
+					// "Not now" rather than the shared "Update later": this state says the
+					// update cannot be installed, so a label promising it will happen later
+					// contradicts the panel (design round 1, D6).
+					dismissLabel: "Not now",
+					detail:
+						"local-operator-ui-0.29.6-arm64.zip claims keychain-access-groups and carries no Contents/embedded.provisionprofile.",
+				});
+			}
+			// The same code, the other arm: the staged archive's signature could not be
+			// READ at all and no profile is embedded, so the app refuses rather than
+			// guess - and it must not paint "The update can't be launched", which is the
+			// one thing this state does not know (design round 1, D3). Production builds
+			// it in the same `stagedSignatureBlock`, whose `entitlementsPlist == null`
+			// branch carries the heading below.
+			if (window.triggerUpdateInstallBlockedCannotCheck) {
+				callback({
+					code: "artifact-cannot-launch",
+					version: "0.29.6",
+					heading: "The update couldn't be checked",
+					message:
+						"The update to version 0.29.6 can't be checked for launch, so it wasn't installed.",
+					remedy: {
+						text: "Check for updates again to re-download the release.",
+					},
+					dismissLabel: "Not now",
+					detail:
+						"local-operator-ui-0.29.6-arm64.zip carries no Contents/embedded.provisionprofile and its signature could not be read.",
+				});
+			}
 			return () => {};
 		},
 		onUpdateInstallFailed: (
@@ -682,6 +783,36 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
+		/**
+		 * The step a pre-quit install is on, as the panel reports it.
+		 *
+		 * A string flag rather than a boolean, like `triggerBackendUpdatePhase`:
+		 * there are three phases and a story has to say which one, and the phase is
+		 * exactly what the sentence on screen is derived from.
+		 */
+		onUpdateInstallProgress: (
+			callback: (info: { phase: "verifying" | "staging" | "starting" }) => void,
+		) => {
+			if (window.triggerInstallProgress) {
+				callback({ phase: window.triggerInstallProgress });
+			}
+			return () => {};
+		},
+		/**
+		 * An install that landed, with the version it landed on.
+		 *
+		 * The signal only exists once the work it describes is over, so unlike the
+		 * phase flags it carries no state to set up: the story says which version, and
+		 * nothing else about the launch matters.
+		 */
+		onUpdateInstallSucceeded: (
+			callback: (info: { version: string }) => void,
+		) => {
+			if (window.triggerInstallSucceeded) {
+				callback({ version: window.triggerInstallSucceeded });
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -769,9 +900,14 @@ declare global {
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
+		triggerUpdateInstallBlockedCannotLaunch?: boolean;
+		triggerUpdateInstallBlockedCannotCheck?: boolean;
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
+		/** Which phase the pre-quit install reports, and the version that landed. */
+		triggerInstallProgress?: "verifying" | "staging" | "starting";
+		triggerInstallSucceeded?: string;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -810,6 +946,10 @@ const meta = {
 					context.parameters.triggerUpdateInstallBlocked;
 				window.triggerUpdateInstallBlockedAtStartup =
 					context.parameters.triggerUpdateInstallBlockedAtStartup;
+				window.triggerUpdateInstallBlockedCannotLaunch =
+					context.parameters.triggerUpdateInstallBlockedCannotLaunch;
+				window.triggerUpdateInstallBlockedCannotCheck =
+					context.parameters.triggerUpdateInstallBlockedCannotCheck;
 				window.triggerUpdateInstallFailed =
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
@@ -818,6 +958,10 @@ const meta = {
 					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
+				window.triggerInstallProgress =
+					context.parameters.triggerInstallProgress;
+				window.triggerInstallSucceeded =
+					context.parameters.triggerInstallSucceeded;
 			}, [
 				context.parameters.triggerUpdateAvailable,
 				context.parameters.triggerUpdateNotAvailable,
@@ -826,10 +970,14 @@ const meta = {
 				context.parameters.triggerUpdateProgress,
 				context.parameters.triggerUpdateInstallBlocked,
 				context.parameters.triggerUpdateInstallBlockedAtStartup,
+				context.parameters.triggerUpdateInstallBlockedCannotLaunch,
+				context.parameters.triggerUpdateInstallBlockedCannotCheck,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
 				context.parameters.triggerBackendUpdateNonManaged,
+				context.parameters.triggerInstallProgress,
+				context.parameters.triggerInstallSucceeded,
 			]);
 
 			return (
@@ -1244,6 +1392,8 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"
 	| "triggerUpdateInstallBlocked"
 	| "triggerUpdateInstallBlockedAtStartup"
+	| "triggerUpdateInstallBlockedCannotLaunch"
+	| "triggerUpdateInstallBlockedCannotCheck"
 	| "triggerUpdateInstallFailed"
 	| "triggerUpdateInstallFailedCancelledByRelaunch"
 	| "triggerUpdateInstallInFlight"
@@ -1299,6 +1449,42 @@ export const InstallBlockedAtStartup: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallBlockedAtStartup: true },
 	render: () => <Triggered flag="triggerUpdateInstallBlockedAtStartup" />,
+};
+
+/**
+ * The other refusal, and not a seal question at all: the update the app
+ * downloaded would not launch once installed. macOS refuses to spawn a bundle
+ * whose signature claims a restricted entitlement with no provisioning profile
+ * behind it, and it does so at exec - so `codesign --verify`, `spctl` and the
+ * notarization staple all pass on the artifact while the app never comes back.
+ * The panel is deliberately the same shape as the seal refusal: the subject is
+ * the same (an update that will not be installed), and only the mechanism and
+ * the remedy differ.
+ *
+ * The remedy is NOT the download page (design round 1, D1). Every affordance
+ * behind it resolves to `releases/latest`, which is where this artifact came
+ * from, so the primary action would hand the reader the bundle the app just
+ * refused; the sentence names the version to avoid instead, which is true both
+ * when `latest` is broken and when it is fine.
+ */
+export const InstallBlockedCannotLaunch: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedCannotLaunch: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedCannotLaunch" />,
+};
+
+/**
+ * The same code, the arm that knows less: the staged archive's signature could
+ * not be read and no profile is embedded, so the app refuses rather than guess.
+ * It carries its own heading, because the panel's heading map would paint "The
+ * update can't be launched" over a body that declines to say macOS refused
+ * anything (design round 1, D3) - and its remedy is a retry, since nothing was
+ * established about this artifact.
+ */
+export const InstallBlockedCannotCheck: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedCannotCheck: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedCannotCheck" />,
 };
 
 /**

@@ -50,20 +50,24 @@ export const everforest: ThemeDefinition = {
 		sunken: "#232A2E",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
+		 * step of THIS palette's own panel at the panel's own hue; they used to be
+		 * tints of `accent`, whose hue is more than 45 degrees off the panel on 25 of
+		 * the 59 themes - the off-colour the operator reported. The rule, and why the
+		 * fill now carries the ranking the 2px `accent` bar used to, are in the two
+		 * roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #3F423B  accent hue, C* 4.74, +1.62 L*, ΔE00 7.80 off `surface`,
-		 *                       `inkDim` 6.00:1 on the fill, hue 2.26° off `accent`.
-		 * rowSelected #444B39  accent hue, C* 11.83, +4.91 L*, ΔE00 13.19 off
-		 *                       `surface` and 6.26 off `rowHover`, `inkDim` 5.33:1, and the
-		 *                       2px `accent` bar at 4.78:1 against it.
+		 * rowHover    #3F4649  panel hue, C* 3.50,
+		 *                       the rule's 0.60 x the panel's 5.56; +3.34 L*,
+		 *                       ΔE00 3.16 off `surface`, `inkDim` 5.64:1.
+		 * rowSelected #374C55  panel hue, C* 9.71,
+		 *                       the panel's cast + 4.0, floored at 5.0; +5.10 L*,
+		 *                       ΔE00 5.22 off `surface` and 5.57 off
+		 *                       `rowHover`; the pair ranks 1.76 `L*` and 6.2 `C*`,
+		 *                       `inkDim` 5.29:1.
 		 */
-		rowHover: "#3F423B",
-		rowSelected: "#444B39",
+		rowHover: "#3F4649",
+		rowSelected: "#374C55",
 
 		// fg D3C6AA is 5.57:1 on `elevated`, under the 7:1 floor; lifted.
 		/*
@@ -161,7 +165,25 @@ export const everforest: ThemeDefinition = {
 		 * from `accent`, 15.56 from its nearest semantic (`danger`), 4.76:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#CE9DC3",
+		/*
+		 * Register re-solve: `accentAlt`, on the TOOL ROW's state ground.
+		 * The settled `meta` row's identity ink is this value (the desktop port's
+		 * `CATEGORY_INK.meta`), and a settled row's hover paints `bg-elevated` -
+		 * so the role is now drawn as 12px TEXT on a state ground, which none of
+		 * its authored sites did (a 1px miniature bar, a diagram mark, a chip
+		 * label). Seated at its floor on `surface` it had no headroom to spend,
+		 * and it read 4.14:1 on `elevated` against the 4.5:1 text floor.
+		 *
+		 * Re-seated on LIGHTNESS and chroma at its own hue, because contrast is
+		 * luminance-only: only `L*` buys the ground, and the chroma comes up with
+		 * it where the lift would otherwise walk the value toward `info` and break
+		 * the ΔE00 8 this role holds against it. Measured (hue 332.95 -> 332.04 deg, L* 70.30 -> 73.42, C* 27.41 -> 31.58):
+		 * 4.55:1 on `elevated`, 5.24:1 on `surface`, 7.05:1 on `sunken`,
+		 * 6.03:1 on `canvas` - ΔE00 32.67 from `info` (the 8 floor intact),
+		 * 49.60 from `accent`, 31.70 from `ink`, and the alt-wash chip's own ink
+		 * floor improves with it, 5.00:1.
+		 */
+		accentAlt: "#DBA3D0",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
 		 * receives: `accentWash`'s own L* 32.37 and C* 5.11, with the hue moved to

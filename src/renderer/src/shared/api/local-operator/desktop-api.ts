@@ -8,7 +8,13 @@ import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	DESKTOP_REFUSAL_SENTENCE,
+	desktopEndpoint,
+	desktopRefusalCodeForStatus,
 	desktopRequestDeadlineMs,
+	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 
@@ -240,10 +246,64 @@ export class UserFacingError extends Error {
  * how a raw exception finds its way back to the screen.
  */
 export function userFacingMessage(error: unknown, fallback: string): string {
-	return error instanceof DesktopControlError ||
+	if (
+		error instanceof DesktopControlError ||
 		error instanceof UserFacingError
-		? error.message
-		: fallback;
+	) {
+		/*
+		 * A REFUSAL of the pairing family is composed from its code, never echoed.
+		 *
+		 * `error.message` for one of these is whatever the DAEMON chose to say about
+		 * it - the photographed sidebar line was the server's own prose about the
+		 * desktop app's ownership - and rendering that as this app's diagnosis is the
+		 * defect § 5.1 exists to remove. The code is the machine fact; the sentence is
+		 * this app's. Every one of the nine surfaces that can receive a desktop error
+		 * reaches the sentence through HERE, which is why the translator lives here
+		 * rather than at nine call sites.
+		 */
+		if (isDesktopRefusalCode(error.code))
+			return DESKTOP_REFUSAL_SENTENCE[error.code];
+		return error.message;
+	}
+	return fallback;
+}
+
+/**
+ * The refusal code a non-2xx answer carries, from the answer itself.
+ *
+ * A code the TRANSPORT declared (main's own two synthesised refusals) wins, and
+ * otherwise the status names one only on a route the desktop plane has to admit:
+ * a 503 on `/v1/desktop/` is the plane refusing to serve this app, while the
+ * same status on `/v1/tools/speech` is that route's own failure. Telling those
+ * apart is the whole point of asking the path - and an app-authored 503 whose
+ * sentence we recognise is translated as the app's own fact rather than as the
+ * daemon's, which the development proxy (which does not declare a code) needs.
+ */
+function desktopErrorMessageCode(
+	request: DesktopRequest,
+	status: number,
+	detail: string | null,
+	declared: string | undefined,
+): string | undefined {
+	/*
+	 * A code the transport DECLARED always wins, whatever it is: the envelope's
+	 * `detail.code` is the server's own category (`unresolved_attachment`, a
+	 * `store_busy`, the deadline's `deadline_exceeded`), and re-deriving one from the
+	 * status instead would throw away a distinction the answering process made -
+	 * which is how a profile conflict's category was lost. The status names a code
+	 * only on a route the desktop plane has to admit, and only for the two statuses
+	 * that plane uses to refuse this app.
+	 *
+	 * The app's own two machine sentences are recognised as well, because the
+	 * development proxy forwards a refusal body without declaring a code, and "this
+	 * app holds no credential" must not be read as "the plane is shut".
+	 */
+	if (typeof declared === "string") return declared;
+	if (detail === DESKTOP_MACHINE_DETAIL.noCredential)
+		return DESKTOP_REFUSAL_CODE.noCredential;
+	if (detail === DESKTOP_MACHINE_DETAIL.transportFailed)
+		return DESKTOP_REFUSAL_CODE.transportFailed;
+	return desktopRefusalCodeForStatus(desktopEndpoint(request).path, status);
 }
 
 export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
@@ -253,15 +313,32 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 		detail?: string | { code?: string; message?: string };
 	} | null;
 	if (response.status < 200 || response.status >= 300) {
-		throw new DesktopControlError(
-			response.status,
+		const detail =
 			typeof envelope?.detail === "string"
 				? envelope.detail
 				: typeof envelope?.detail?.message === "string"
 					? envelope.detail.message
-					: "This backend does not support the requested desktop control. Update the backend and try again.",
+					: null;
+		throw new DesktopControlError(
+			response.status,
+			/*
+			 * A refusal whose body carried neither a code nor a message. It used to
+			 * say "Update the backend and try again", which is the one instruction
+			 * this whole change removes for a pairing condition - and a bare 404 from
+			 * a server that predates a route is exactly that (design round 1, D7).
+			 * The app states what it observed and stops.
+			 */
+			detail ??
+				"This server did not answer the request for its desktop controls.",
 			undefined,
-			typeof envelope?.detail === "object" ? envelope.detail?.code : undefined,
+			desktopErrorMessageCode(
+				request,
+				response.status,
+				detail,
+				typeof envelope?.detail === "object"
+					? envelope.detail?.code
+					: undefined,
+			),
 		);
 	}
 	return envelope?.result as T;
@@ -488,7 +565,19 @@ export async function desktopMedia(
 				// Keep the generic detail.
 			}
 		}
-		return { status: response.status, kind: "error", detail };
+		return {
+			status: response.status,
+			kind: "error",
+			detail,
+			// The development proxy forwards a refusal body without declaring a code, so
+			// only the app's OWN machine sentence can be recognised here - and telling
+			// "this app holds no credential" apart from "the plane is shut" is exactly
+			// the distinction the code exists for (see `desktopErrorMessageCode`).
+			code:
+				detail === DESKTOP_MACHINE_DETAIL.noCredential
+					? DESKTOP_REFUSAL_CODE.noCredential
+					: undefined,
+		};
 	}
 	if (type.includes("application/json")) {
 		return {
@@ -507,6 +596,21 @@ export async function desktopMedia(
 
 /** Throws a user-readable error for a non-success media result. */
 export function mediaError(result: DesktopMediaResponse): Error {
-	if (result.kind === "error") return new Error(result.detail);
+	if (result.kind === "error") {
+		/*
+		 * A media refusal of the pairing family is composed from its code, exactly as
+		 * the JSON transport's is: the two media ops under `/v1/desktop/` are refused
+		 * by the same plane, and the app's own no-credential refusal is a pairing fact
+		 * ("this app holds no token") rather than a media failure. Everything else
+		 * keeps the server's own detail, which is where a media-specific reason
+		 * belongs.
+		 */
+		if (isDesktopRefusalCode(result.code))
+			return new UserFacingError(
+				DESKTOP_REFUSAL_SENTENCE[result.code],
+				result.code,
+			);
+		return new Error(result.detail);
+	}
 	return new Error("The media request returned an unexpected response.");
 }

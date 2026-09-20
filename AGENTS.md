@@ -301,6 +301,33 @@ now arms instead of printing a refusal, and the browser host takes the plan's
 `show` to suppress consent banners. Both directions are the safe one, and both
 are why an assumed mode is reported on stdout rather than left implicit.
 
+**The mode governs the WINDOW; it cannot promise what the rig does afterwards.**
+A launch that resolves `headless` is never shown and is unfocusable — that is the
+property the mode owns. The property an operator actually feels is a different
+one: whether anything the run does *afterwards* asks the OS to make it frontmost.
+Measured on this machine while the policy was holding exactly as documented —
+zero windows across every rig launch sampled, and one windowless, unfocusable
+instance still the frontmost application for seconds at a time — so "never shown"
+is not "cannot take the operator's focus". Re-derive it rather than take that on
+faith: `docs/evidence/window-mode/harness/run.sh` prints the
+`frontmost application in <STOLE> of <TOTAL> samples` line for a run, which is
+where this section's other numbers come from too.
+
+So a rig never calls `window.focus()` (which asks macOS to order the window *and*
+activate the app) and never sends `Page.bringToFront` or `Target.activateTarget`
+over CDP. Element focus — `input.focus()`, `document.body.focus()` — moves a
+caret inside the page, and `Emulation.setFocusEmulationEnabled` makes a page that
+is not on screen read as focused; between them they cover every focus assertion a
+rig needs, which is why the rule bans the three calls that leave the page rather
+than focus itself. `scripts/window-mode.test.mjs` scans for those three the same
+way it scans `src/main` for off-site raises: `scripts/` in every executable a
+driver is written in (`.mjs`, `.js`, `.cjs`, `.ts`, `.tsx`, `.html`), the CDP
+harnesses under `docs/evidence/*/harness/`, and `bin/` — because the `src/main`
+scan cannot see a request a rig makes from the renderer side, which is where a rig
+reaches the OS. Comments are blanked with the repository's own `blankComments`
+helper, so the rule can be documented in prose while a call hiding behind a
+comment is still found.
+
 ```bash
 # The built app, driven over CDP at an exact size, with no window at all.
 #
@@ -812,8 +839,8 @@ an unattended launch can never answer.
 Capture from inside the app — `webContents.capturePage()` or CDP — never with
 macOS `screencapture`, which works only on the frontmost window and so requires
 exactly the focus theft this section exists to remove. Storybook evidence is
-unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
-Chrome.
+unaffected: `node scripts/capture-evidence.mjs <storybook-origin>` already drives a
+private `--headless=new` Chrome.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated
@@ -881,6 +908,74 @@ CDP capture scripts run headless Chrome. The windows come from live-app
 harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is why
 the mode belongs in the harness's own spawn call and not in whatever the shell
 happened to export.
+
+### A page that reloads on its own does not sit in the operator's browser
+
+The rules above are about windows this repository's code *opens*. This one is about
+the window a run can leave *misbehaving*: **a page whose reload cadence the run does
+not control does not get parked in the operator's browser — this app's Browser pane
+included — and a sweep of many states does not run there either.**
+
+That is narrower than it first sounds, because their browser is a sanctioned
+instrument in this repository and this rule does not replace it:
+`docs/agent-driver.md` sends you to the `browser` tool "when the real browser is what
+is under test"; `docs/evidence/draft-splash-browser/` was shot with it, `chat-search/`
+was re-shot through it, and `chat-image-expand/`'s README calls its browser pass "one
+half of the evidence" beside the rig that produced the other. The `manifest.json`
+entries that record a re-capture as OWED — `chat-run-panel/mcp-grant-confirm` and the
+`mcp-key-*` set — record it because a scripted headless Chromium is not the instrument
+there. What none of those passes does is leave a page looping in their browser while
+they work, or turn a story sweep into N unattended navigations of it.
+
+Measured on 2026-09-19, and the reason the sweep half is a rule. Two Storybooks were
+being looked at through this app's own Browser pane while the app was frontmost, each
+loaded as a **bare `…/iframe.html?id=<story>&viewMode=story` top-level page — the
+form that carries no server-channel token** (Storybook 9 mints that token per run and
+validates it on `/storybook-server-channel`; it is not a flag a caller can pass or
+drop. This repository pins 8.6.x, where that channel is ungated, so the actionable
+half below is the URL form, which holds either way). Every reload of those pages was
+paired in the server's log with
+`Rejecting WebSocket connection: Error: Invalid websocket token`, and the pane
+navigated continuously: **773 navigations on one port, 364 on another, 76 in a single
+minute at the peak, for half an hour.** The operator reported being unable to type
+while it ran.
+
+What was measured, and what was not. The app's host process logged every navigation it
+was handed (`did-navigate` in `src/main/browser/index.ts` fires for page-initiated
+navigations too), no CDP client was connected to the app's debugging ports, and no file
+in those worktrees was being rewritten — so nothing outside the page was driving it.
+**Whether a pane navigation is what took the composer's keyboard focus was never
+established**, which is why the durable half is a follow-up rather than a claim here:
+park a pane that navigates in a loop, and never let a background pane's load take the
+keyboard focus. The pairing between the refused channel and each reload is likewise an
+observation rather than a sourced mechanism, so the rule below is written to avoid the
+pairing rather than to explain it.
+
+What follows for a run:
+
+- **Open a story through the manager URL that carries the token**, never a bare
+  `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
+  channel refuses, and that refusal is what each reload was paired with.
+- **A sweep belongs in a browser the run launched and reaped itself, in one of the two
+  shapes this repository already has.** `scripts/capture-evidence.mjs` and
+  `scripts/click-proof.mjs` spawn their own private `--headless=new` Chrome with a
+  scratch `--user-data-dir`, argv routed through `scripts/chrome-keychain.mjs`;
+  `scripts/renderer-driver.mjs` launches no Chrome at all — it boots the built app in
+  `--window-mode=headless` and photographs it with `capturePage()`. Those are not the
+  only instruments in `docs/evidence/`: each set's README —
+  `docs/evidence/<surface>/README.md`, one level above its `harness/` tree — says which
+  one produced its frames, and `composer-status-clear/` records a third (the operator's
+  own browser for the story states, its own Vite-served harness for the interaction).
+  Spawn the binary directly: **do not hand the URL to `open`**, which delivers it to
+  whatever Chrome is already running — the operator's.
+- **What decides is the cadence and who is watching, not whose page it is.** A
+  watched, deliberately-stepped pass in their browser is what the committed sets
+  above did — `chat-image-expand`'s was on a running Storybook — and that stays
+  sanctioned. What this rule forbids is a sweep of many states run there
+  unattended, and any page left reloading while nobody is looking at it.
+- **If you find a page looping in their pane, stop the loop and say which stop you
+  used** — close the tab, or stop the server feeding it. A loop does not end by
+  itself, and their UI stays unusable until somebody acts on it.
 
 ## The code-sealed bundle, and what may write in it
 

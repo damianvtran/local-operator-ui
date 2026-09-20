@@ -373,6 +373,71 @@ export function diffCount(value: unknown): number {
 	return value;
 }
 
+/** The ledger categories a settled row's identity ink is chosen from. */
+export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
+
+/**
+ * `_TOOL_CATEGORY` (tool_card.py:218-238) — which category a tool name belongs
+ * to. The axis is what the call DID to the machine, which is the question a
+ * ledger is scanned for: reading is safe, mutating is not, and executing is the
+ * one you re-read before trusting.
+ *
+ * Looked up case-insensitively because `toolName` is MODEL-controlled: a
+ * provider that echoes `Bash` back has to land in `exec` beside `bash`, exactly
+ * as `toolIcon` already reasons about its own table.
+ *
+ * Anything unlisted — an `mcp__*` call, or a builtin this table has not
+ * classified — is `plain`, the neutral the name column has always used. A tool
+ * nobody has filed is QUIET, never guessed into a category it does not belong
+ * to. The TUI states the same rule and it is the rule a new tool follows: add
+ * an entry here when the category is a decision someone has made, and otherwise
+ * leave it plain.
+ */
+const CATEGORIES: Record<string, ToolCategory> = {
+	read: "read",
+	glob: "read",
+	grep: "read",
+	web_fetch: "read",
+	web_search: "read",
+	browser: "read",
+	list_variables: "read",
+	read_variable: "read",
+	write: "mutate",
+	edit: "mutate",
+	bash: "exec",
+	eval: "exec",
+	task: "meta",
+	agent: "meta",
+	hub: "meta",
+	todo: "meta",
+	send: "meta",
+	wake: "meta",
+	ask: "meta",
+};
+
+/**
+ * The category `toolName` belongs to, or `plain` when nothing has filed it.
+ *
+ * An OWN-property lookup, and NOT a bare `CATEGORIES[key] ?? "plain"`. An object
+ * literal inherits from `Object.prototype`, so a subscript reads the prototype
+ * CHAIN: `toolCategory("constructor")` answered `Object`, and `"toString"`,
+ * `"hasOwnProperty"` and `"__proto__"` answer functions the same way. A tool name
+ * is MODEL-controlled, so a provider naming a tool `constructor` is reachable — and
+ * that row then rendered with NO ink class at all, which is the opposite of the
+ * documented neutral this fallback exists to give it.
+ *
+ * `Object.prototype.hasOwnProperty.call` rather than `Object.hasOwn`, which reads
+ * better but needs an ES2022 lib this tsconfig does not target — the constraint and
+ * the idiom `toast-manager.ts` records for its own `RAW_TRANSPORT_ERRORS` table. The
+ * TUI's lookup is `dict.get`, which has no chain to read.
+ */
+export function toolCategory(toolName: string): ToolCategory {
+	const key = toolName.trim().toLowerCase();
+	return Object.prototype.hasOwnProperty.call(CATEGORIES, key)
+		? CATEGORIES[key]
+		: "plain";
+}
+
 /**
  * The shared name column's floor and ceiling, in characters.
  *

@@ -16,10 +16,12 @@
  * chat sidebar's `surface` and 1.20-1.55:1 against the footer's `elevated` — a
  * step too small to read as elevation, and still a visible BOX, because a shape
  * with an edge is legible at ratios a colour step is not. It also made one thing
- * into three treatments: the app rail could not draw a cap at all (its ground IS
- * `sunken`, so the cap's fill vanished into it, ΔE00 0.00), and the New chat row's
- * caps needed a caller-supplied `outline-control` edge while that row was current,
- * for the same collapse.
+ * into three treatments: the app rail could not draw a cap at all (its ground was
+ * `sunken`, so the cap's fill vanished into it, ΔE00 0.00 — the rail is `surface`
+ * since the row-state refinement, and the fill stays gone either way, because a
+ * fill-less cap needs no ground of its own), and the New chat row's caps needed a
+ * caller-supplied `outline-control` edge while that row was current, for the same
+ * collapse.
  *
  * ## The geometry IS the consistency
  *
@@ -41,8 +43,11 @@
  * ## One ink, and why it is `ink-dim`
  *
  * Chosen by measurement rather than by eye, because a cap lands on four different
- * grounds: `surface` (the chat sidebar), `highlight` (a row that is current),
- * `sunken` (the app rail) and `elevated` (the command palette's footer). The
+ * grounds: `surface` (the chat sidebar, and the app rail since the row-state
+ * refinement re-grounded it), `highlight` (a row that is current), `sunken` (the
+ * well a cap can be drawn inside — the app rail's own ground until that
+ * refinement, which is what the fill's removal answered) and `elevated` (the
+ * command palette's footer). The
  * contract in `scripts/contrast-contract.mjs` asserts `ink-dim` at the 4.5:1 text
  * floor on the four grounds a cap renders on in every palette, and it measures
  * **4.51:1** at its worst over the twelve palettes the port started from (dracula

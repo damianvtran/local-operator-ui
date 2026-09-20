@@ -555,10 +555,16 @@ test("health identifies the process without the key, and only the process", asyn
 	const response = await fetch(rpcUrl("/health"));
 	assert.equal(response.status, 200);
 	const body = await response.json();
+	// The console capability rides this same probe (design 10.1), and it is a
+	// CAPABILITY rather than content: the probe still answers only facts that
+	// identify this process. A server built with no capabilities provider reports
+	// `console: false` rather than omitting the key, because an absent field would
+	// read as "unknown" to a reader that only knows the newer shape.
 	assert.deepEqual(body, {
 		host: "ui",
 		proto: PROTO_VERSION,
 		pid: process.pid,
+		console: false,
 	});
 	assert.equal(response.headers.get("access-control-allow-origin"), null);
 	const wrongPath = await post(

@@ -237,6 +237,8 @@ const UPDATER_STUB = {
 	onUpdateInstallFailed: noopUnsubscribe,
 	onUpdateInstallInFlight: noopUnsubscribe,
 	onBeforeQuitForUpdate: noopUnsubscribe,
+	onUpdateInstallProgress: noopUnsubscribe,
+	onUpdateInstallSucceeded: noopUnsubscribe,
 };
 
 /**

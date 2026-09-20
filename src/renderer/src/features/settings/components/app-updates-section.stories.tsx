@@ -159,9 +159,26 @@ type StoryWorld = {
 	offer?: Record<string, unknown>;
 	/** Fired on `backend-update-not-available` when present. */
 	skew?: Record<string, unknown>;
+	/**
+	 * What `get-last-install-attempt` answers, for the story about the record the
+	 * card keeps and prints.
+	 *
+	 * It is a WORLD field because the record is main's answer, not a detail of the
+	 * component: the sentence's own correctness is about which VERSION it names, and
+	 * that comparison is between this payload and `numbers.app` - the two readings a
+	 * real machine supplies - rather than between two strings a story can pick
+	 * independently.
+	 */
+	lastInstallAttempt?: Record<string, unknown> | null;
 };
 
-const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
+const scriptedUpdater = ({
+	verdict,
+	numbers,
+	offer,
+	skew,
+	lastInstallAttempt,
+}: StoryWorld) => {
 	const appCurrent: Array<(info: UpdateInfo) => void> = [];
 	const serverOffered: Array<ServerOfferListener> = [];
 	const serverNotAvailable: Array<(info: Record<string, unknown>) => void> = [];
@@ -219,7 +236,7 @@ const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
 		downloadUpdate: async () => [],
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
-		getLastInstallAttempt: async () => null,
+		getLastInstallAttempt: async () => lastInstallAttempt ?? null,
 		onUpdateAvailable: noop,
 		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) =>
 			hold(appCurrent, callback),
@@ -247,6 +264,8 @@ const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
 		onUpdateInstallFailed: noop,
 		onUpdateInstallInFlight: noop,
 		onBeforeQuitForUpdate: noop,
+		onUpdateInstallProgress: noop,
+		onUpdateInstallSucceeded: noop,
 		/*
 		 * Not part of the real bridge: the story below waits for the panel's own
 		 * subscription before it presses, because the components subscribe in
@@ -340,6 +359,14 @@ const pressCheckForUpdates = () => {
 /**
  * The press, and the shutter.
  *
+ * `press: false` IS FOR A STATE WHOSE SUBJECT IS ALREADY ON SCREEN WITHOUT ONE
+ * (design review round 2, D3). In a production build the press raises the
+ * "Server update available" panel, and at this surface's own 900x572 that panel
+ * sits over the card's top-right - including the tail of the retained-record
+ * banner's meta line, which is the sentence such a state is photographed for. The
+ * shutter still waits for `expect`, so a frame taken without a press is a frame
+ * whose sentence was read, not a frame taken early.
+ *
  * `expect` is the text this verdict's own press is supposed to put on screen -
  * the notification's offer when the server trails, the affirmation sentence
  * when the whole check proved both channels current - and the shutter waits for
@@ -347,33 +374,38 @@ const pressCheckForUpdates = () => {
  * photograph a press that produced nothing, and the wait is a property of the
  * story's script rather than of how long the harness happened to sleep.
  */
-const ReportFrame: FC<{ expect: string }> = ({ expect }) => {
+const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
+	expect,
+	press = true,
+}) => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
 		const settle = async () => {
-			/*
-			 * `UpdateNotification` and the button both subscribe in passive
-			 * effects. Pressing before those land would fire the events into an
-			 * empty registry, which is a frame of the harness rather than of the
-			 * app, and it would look like the bug being absent rather than like
-			 * the fixture being early.
-			 */
-			for (let i = 0; i < 200; i++) {
-				const counts = updaterRef()?.listenerCounts();
-				if ((counts?.serverOffered ?? 0) > 0) break;
-				await new Promise((resolve) => setTimeout(resolve, 20));
+			if (press) {
+				/*
+				 * `UpdateNotification` and the button both subscribe in passive
+				 * effects. Pressing before those land would fire the events into an
+				 * empty registry, which is a frame of the harness rather than of the
+				 * app, and it would look like the bug being absent rather than like
+				 * the fixture being early.
+				 */
+				for (let i = 0; i < 200; i++) {
+					const counts = updaterRef()?.listenerCounts();
+					if ((counts?.serverOffered ?? 0) > 0) break;
+					await new Promise((resolve) => setTimeout(resolve, 20));
+				}
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => resolve(null)),
+				);
+				/*
+				 * The press is the subject, so it happens before anything is
+				 * photographed, and the shutter waits for the text the verdict produces.
+				 * On the pre-fix tree the affirmation is committed in the same pass as
+				 * the panel, so both are up by the time the offer lands.
+				 */
+				await pressCheckForUpdates();
 			}
-			await new Promise((resolve) =>
-				requestAnimationFrame(() => resolve(null)),
-			);
-			/*
-			 * The press is the subject, so it happens before anything is
-			 * photographed, and the shutter waits for the text the verdict produces.
-			 * On the pre-fix tree the affirmation is committed in the same pass as
-			 * the panel, so both are up by the time the offer lands.
-			 */
-			await pressCheckForUpdates();
 			for (let i = 0; i < 100; i++) {
 				if (document.body.textContent?.includes(expect)) {
 					break;
@@ -395,7 +427,7 @@ const ReportFrame: FC<{ expect: string }> = ({ expect }) => {
 			cancelled = true;
 			delete document.documentElement.dataset.capturePending;
 		};
-	}, [expect]);
+	}, [expect, press]);
 
 	return (
 		<div className="min-h-screen bg-canvas p-6 font-sans text-body text-ink">
@@ -444,6 +476,10 @@ const meta = {
 					REPORTED_MACHINE) as MachineNumbers,
 				offer: context.parameters.offer as Record<string, unknown> | undefined,
 				skew: context.parameters.skew as Record<string, unknown> | undefined,
+				lastInstallAttempt: context.parameters.lastInstallAttempt as
+					| Record<string, unknown>
+					| null
+					| undefined,
 			});
 			return <Story />;
 		},
@@ -624,5 +660,50 @@ export const ServingServerBehindInstall: Story = {
 	},
 	render: () => (
 		<ReportFrame expect="The server is on an older build than the install" />
+	),
+};
+
+/**
+ * THE STATE THE BANNER IS KEPT IN, and the one design D1 is about.
+ *
+ * The record's target (0.30.0) is still AHEAD of the app, so the record is kept -
+ * correctly, because the failure it names is still true and retiring it would
+ * delete information the operator asked to keep. What may not be kept is the
+ * VERSION it printed: the record's own `runningVersion` is what was running when
+ * the failure was WRITTEN (0.29.2), while this machine has since gained a version
+ * by a route other than that install (0.29.5). The card's "Application version"
+ * row prints the live 0.29.5, so the banner two rows below it prints 0.29.5 as
+ * well; before that fix the same frame carried "Version 0.29.2 is running" under a
+ * row reading 0.29.5, which is the class of untrue statement this change exists to
+ * remove.
+ *
+ * The two versions are deliberately different AND both on the frame: a fixture
+ * whose record agreed with the machine could not tell the two readings apart.
+ */
+export const RecordKeptWhileTargetAhead: Story = {
+	parameters: {
+		verdict: REPORTED_VERDICT,
+		numbers: {
+			app: "0.29.5",
+			server: INSTALLED_SERVER,
+			published: PUBLISHED_SERVER,
+		},
+		lastInstallAttempt: {
+			targetVersion: "0.30.0",
+			runningVersion: "0.29.2",
+			startedAt: "2026-09-18T13:37:09.507Z",
+			detectedAt: "2026-09-18T14:12:16.975Z",
+			detail:
+				"Install started /Users/someone/Library/Caches/local-operator-updater/pending/local-operator-ui-0.30.0-arm64.zip. Squirrel cancels an install when an instance of the app is running.",
+			attempts: 2,
+		},
+	},
+	/*
+	 * NO PRESS: the banner this state exists for is on screen from the mount read, and
+	 * a press would put the offer panel over the card's top-right and the banner's meta
+	 * tail in the production build (design review round 2, D3).
+	 */
+	render: () => (
+		<ReportFrame expect="Version 0.29.5 is running" press={false} />
 	),
 };

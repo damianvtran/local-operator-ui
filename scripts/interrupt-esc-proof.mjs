@@ -980,7 +980,22 @@ try {
 	// The real session, by the route the app uses for one.
 	await cdp.evaluate(`location.hash = "#/chat/${sessionId}"; true`);
 	await sleep(1500);
-	await cdp.evaluate("window.focus(); document.body.focus(); true");
+	/*
+	 * ELEMENT FOCUS. This line led with `window.focus()`, which is not a page
+	 * call at all: it asks the OPERATING SYSTEM to order the window and activate
+	 * the app, and it is the one request a rig in this repository may never make
+	 * — the window-mode policy exists to stop exactly that, and a rig that asks
+	 * for it leaves the policy with nothing to enforce. It was also unnecessary
+	 * here: this run is `headless` (the window is never shown and is
+	 * unfocusable), and `Emulation.setFocusEmulationEnabled` above is what makes
+	 * a page that is not on screen read as focused, which is what the composer
+	 * and the Escape rows below actually read. `document.body.focus()` is kept
+	 * because it is a page call and this change is about the OS-facing half only:
+	 * nothing below reads `activeElement` or `hasFocus`, and the keystrokes the
+	 * interrupt rows send reach the composer whether the body or the field holds
+	 * the caret.
+	 */
+	await cdp.evaluate("document.body.focus(); true");
 
 	// Armed before the first turn, read at the end: every transition of the Stop,
 	// the box and the composer's own placeholder for the whole run (see the sampler

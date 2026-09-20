@@ -521,7 +521,7 @@ test("the row's press is the same act as the typed command, and keeps the reader
 test("the shared control is reserved at rest and revealed, like the pair it stands in for (design round 2, D10)", () => {
 	const control = between(
 		SIDEBAR,
-		'aria-label={`Actions for ${label}`}',
+		"aria-label={`Actions for ${label}`}",
 		"</button>",
 	);
 	/*
@@ -568,7 +568,11 @@ test("the row's hover ground belongs to the row, not to its button (design round
 	 * standing on: a pop under a pointer that never left the row. The ground is stated
 	 * once more on the box, where the whole row reads as one hovered thing.
 	 */
-	const box = between(SIDEBAR, "data-session-row={row.session_id}", "{rowButton}");
+	const box = between(
+		SIDEBAR,
+		"data-session-row={row.session_id}",
+		"{rowButton}",
+	);
 	assert.match(box, /group-hover:bg-row-hover/);
 	/*
 	 * Dropped while the row is the CURRENT one, the rule the two controls follow: the
