@@ -39,7 +39,7 @@ for this round, because the sentences themselves changed with the remediation
 no-response arm has its own register) and because `click-proof.mjs` now records
 the tree it ran on (`head`, `srcTree`, `srcDirty`) and the owner's own answer
 inside the record (code review round 1, m3). The records below carry
-`head = aa3b645af`, `srcTree = 7e967edd6`, and `lost-report-before`'s carries
+`head = 8bd31e28b`, `srcTree = 1309138d0`, and `lost-report-before`'s carries
 `srcDirty: true` — that run is the pair's whole claim, and it is taken with
 `origin/main`'s two renderer files checked out over this branch's, exactly as its
 row says.
