@@ -66,27 +66,22 @@ const HEIGHT = Number(process.env.CLICK_PROOF_HEIGHT ?? 900);
 const TARGET =
 	process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
 /*
- * The two sentences the composer can show under a press, and which run shows
- * which.
+ * The sentences the composer can show under a press, and which run shows which.
  *
  * They are duplicated from `ask-answer.ts` here deliberately: this driver is how
  * a reviewer checks that the SHIPPED copy is the one the module holds, and a
  * driver that imported the module would agree with it by construction.
  *
- *   - `OLD_SETTLED_SENTENCE` is the pre-fix wording (`origin/main` at
- *     `60c1dc615`). It is kept so the BEFORE runs of this evidence can assert
- *     what they found: a run on the old build must not be able to pass by
- *     quietly rendering the new copy.
- *   - `MOVED_ON_SENTENCE` is what this branch renders for a codeless 409 — a
- *     settlement, an ask that advanced, or a runtime rollover (code review
- *     round 1, MAJOR-1).
+ * `SETTLED_SENTENCE` is the wording the pre-fix build rendered for EVERY failed
+ * press, and the one this branch renders only where the live facts establish it
+ * (no gate pending — see `answerReport`). So the BEFORE run of the forced pair
+ * asserts it and the AFTER run asserts silence, and the two runs differ by the
+ * tree alone.
  */
-const OLD_SETTLED_SENTENCE =
+const SETTLED_SENTENCE =
 	"That question was already answered somewhere else, so your answer was not sent.";
 const MOVED_ON_SENTENCE =
 	"That question had already been settled or moved on, so your answer was not sent.";
-const SETTLED_SENTENCE =
-	"That question was already answered somewhere else, so your answer was not sent.";
 /*
  * The unknown-outcome sentence, for a failure that carried no HTTP response at
  * all. Asserted from the page's own text like the others, and for the same
@@ -99,9 +94,11 @@ const UNCONFIRMED_LEAD = "Whether your answer landed is not knowable.";
  * `silent` is the shipping contract for a press the owner TOOK — the user's bug
  * — so a run that finds a sentence there must not overwrite the committed
  * record with it. `moved-on` is the contract for a press the answer route
- * refused without a code, `not-sent` for any other failure, and `old-settled`
- * for the pre-fix build the BEFORE run photographs. Unset records without
- * asserting, which is how the set was first taken.
+ * refused without a code, `unknown` for a failure that carried no response, and
+ * `not-sent` for any other failure. The BEFORE run of the forced pair asserts
+ * `settled`, because the pre-fix build rendered that sentence for every failed
+ * press rather than only where it is true. Unset records without asserting, which
+ * is how the set was first taken.
  *
  * `CLICK_PROOF_EXPECT_ORDER` is the same idea for the ordering the run exists
  * to force: `cleared-first` (the card left the screen before the response was
@@ -148,7 +145,6 @@ const READ_REPORT = `(() => {
 	const notSent = "Your answer was not sent.";
 	const inAlerts = alerts.some((a) => a.includes(notSent));
 	return {
-		oldSettledSentence: document.body.innerText.includes(${JSON.stringify(OLD_SETTLED_SENTENCE)}),
 		movedOnSentence: document.body.innerText.includes(${JSON.stringify(MOVED_ON_SENTENCE)}),
 		settledSentence: document.body.innerText.includes(${JSON.stringify(SETTLED_SENTENCE)}),
 		unconfirmedSentence: document.body.innerText.includes(${JSON.stringify(UNCONFIRMED_LEAD)}),
@@ -334,9 +330,7 @@ const RIG_DIR = process.env.CLICK_PROOF_RIG_DIR ?? "";
 async function readRigState() {
 	try {
 		return {
-			...(await evaluate(
-				`fetch("${ORIGIN}/rig-state").then((r) => r.json())`,
-			)),
+			...(await evaluate(`fetch("${ORIGIN}/rig-state").then((r) => r.json())`)),
 			from: "route",
 		};
 	} catch (error) {
@@ -675,7 +669,6 @@ try {
 	 */
 	const declaredSentence = {
 		silent: null,
-		"old-settled": OLD_SETTLED_SENTENCE,
 		settled: SETTLED_SENTENCE,
 		"moved-on": MOVED_ON_SENTENCE,
 		unknown: UNCONFIRMED_LEAD,
@@ -709,25 +702,23 @@ try {
 	const report = record.report;
 	const contradicted =
 		EXPECT === "silent"
-			? report.oldSettledSentence ||
+			? report.settledSentence ||
 				report.movedOnSentence ||
 				report.settledSentence ||
 				report.unconfirmedSentence ||
 				report.notSentCopy.length > 0 ||
 				report.cardRefusal
-			: EXPECT === "old-settled"
-				? !report.oldSettledSentence
-				: EXPECT === "moved-on"
-					? !report.movedOnSentence
-					: EXPECT === "settled"
-						? !report.settledSentence
-						: EXPECT === "unknown"
-							? !report.unconfirmedSentence
-							: EXPECT === "not-sent"
-								? report.notSentCopy.length === 0
-								: EXPECT === "card-refusal"
-									? !report.cardRefusal
-									: false;
+			: EXPECT === "moved-on"
+				? !report.movedOnSentence
+				: EXPECT === "settled"
+					? !report.settledSentence
+					: EXPECT === "unknown"
+						? !report.unconfirmedSentence
+						: EXPECT === "not-sent"
+							? report.notSentCopy.length === 0
+							: EXPECT === "card-refusal"
+								? !report.cardRefusal
+								: false;
 	/*
 	 * And the ORDERING the run was told to force, asserted rather than merely
 	 * recorded: the verdict is computed from two timestamps and can be the other
