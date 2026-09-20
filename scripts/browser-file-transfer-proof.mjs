@@ -54,7 +54,7 @@ import {
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import sharp from "sharp";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -1285,7 +1285,9 @@ async function main() {
 	// the app's default window: `G8`/`G8c` read the refused row at 1380 and both branches
 	// at 800, so an ungated `flex-wrap` tripled this row's band and passed the whole suite
 	// — `B12` asks only that the page moved BY AT LEAST the row's height, which a taller
-	// row satisfies. The band's height is also the number the prose quotes (78 -> 119, the
+	// row satisfies. The band's height is also the number the prose quotes (78 -> 119 in a
+	// run without the unpaired-server banner, 131 -> 172 in the round-6 frames that carry
+	// it - see the evidence README's provenance block; the
 	// row's own 41 px), so a wrap that leaks back to the wide window fails here rather than
 	// in a frame a reader has to measure.
 	check(
@@ -1550,7 +1552,8 @@ async function main() {
 	// PAGE the server answered on, taken once the URL is `/echo`; the upload's own row is
 	// read by D8, which WAITS for it and runs a moment later, after the digest work. The
 	// renderer paints the note after that wait resolves, so the still is a moment too early
-	// to carry it — the page area's own top edge in the frame (y=131 on this base, no 41 px row) is the
+	// to carry it — the page area's own top edge in the frame (y=131 with this run's 53 px
+	// unpaired-server banner above the chrome, 78 without it, and no 41 px row) is the
 	// evidence, and it is not a behaviour change: do not read `04` -> `05` as the row
 	// persisting, and do not read the empty strip as the row having gone away.
 	const receivedFrame = await frame(state, token, "05-upload-received");
@@ -1592,14 +1595,27 @@ async function main() {
 	// harness can, on the RESOLVED path). This exercises Python's own check from the
 	// harness tree so the refusal is shown rather than asserted in prose; it is
 	// labelled as the harness's rule because that is whose rule it is.
-	const harnessPython = join(
-		process.env.HOME ?? "",
-		"local-operator-worktrees/browser-file-transfer/.venv/bin/python",
+	//
+	// THE PATH IS DERIVED RATHER THAN SPELLED, because a literal one can only ever be
+	// right in the tree its author sat in (QA round 6, Q2): this rig lives in a UI
+	// worktree, so the harness checkout is a SIBLING of the worktrees directory -
+	// `<worktrees>/../local-operator/.venv` - and `LOCAL_OPERATOR_HARNESS_VENV` is
+	// honoured first for a layout that is neither. Both candidates are named in the
+	// block's own reason, so a reader of a BLOCKED bucket can see what was tried
+	// rather than inferring a broken machine.
+	const harnessCandidates = [
+		process.env.LOCAL_OPERATOR_HARNESS_VENV,
+		join(dirname(dirname(ROOT)), "local-operator", ".venv", "bin", "python"),
+	].filter(
+		(candidate) => typeof candidate === "string" && candidate.length > 0,
 	);
-	if (!existsSync(harnessPython)) {
+	const harnessPython = harnessCandidates.find((candidate) =>
+		existsSync(candidate),
+	);
+	if (harnessPython === undefined) {
 		blocked(
 			"F1 a credential file is refused before it can be attached",
-			`the harness venv is not at ${harnessPython}, so the policy authority could not be run from here`,
+			`no harness venv at ${harnessCandidates.join(", ")} (tried in that order: LOCAL_OPERATOR_HARNESS_VENV, then the sibling checkout of this worktrees directory), so the harness's own policy check could not be run from here`,
 		);
 	} else {
 		const { execFileSync } = await import("node:child_process");

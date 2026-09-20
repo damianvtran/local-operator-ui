@@ -11,11 +11,11 @@ at all.
 
 | frame | what it is for |
 |---|---|
-| `01-receipts-before.webp` | the state the row appears FROM: seven receipt links and a "Download all" button, no row, the page area at y=131 with height 737 |
-| `02-receipts-after.webp` | the motivating case, after ONE click started seven downloads: every receipt landed in the harness-composed quarantine directory, and the row reports the newest one, the folder it went into, and how long ago. The page area's y is **172** — 131 + the row's own 41 — which is the number that says the strip reflowed rather than covering the page. (The chrome band above the page is 131 px on this base where it was 78 on the last one: upstream's console surface adds a strip up there, so the absolute y moves with main while the row's own 41 px and the 41 px offset do not.) The row reads `receipt-6.pdf was saved to …<stamp>-<session>/ · just now · on the agent's tab`: the NAME is whole at this width (`@min-[64rem]/browserrow:shrink-0` holds it at its cap, which is design round 6's D1 / review round 6's R6-1 — before that class the same frame painted `receipt-…`), and the PATH is the part that clips, from the left, so its identifying tail survives. RECORDED, NOT FIXED (design round 6's observation): on a destination past ~100 characters the path's clip and the name's cap are two cuts in one line, which is a property of a one-line band with two long runs rather than of this delta |
+| `01-receipts-before.webp` | the state the row appears FROM: seven receipt links and a "Download all" button, no row, the page area at y=131 with height 737 — **131 because this run's frames carry the 53 px unpaired-server banner**; without it this frame's page area is at 78, which is what round 4's and round 5's sets measure |
+| `02-receipts-after.webp` | the motivating case, after ONE click started seven downloads: every receipt landed in the harness-composed quarantine directory, and the row reports the newest one, the folder it went into, and how long ago. The page area's y is **172** — 131 + the row's own 41 — which is the number that says the strip reflowed rather than covering the page. (The 131 is this run's 53 px unpaired-server banner above the chrome rather than anything the base moved: `c1fe1e8bf` changed no renderer file, and a run without the banner reads 78. The row's own 41 px and its 41 px offset are the same either way — review round 7's R7-1, and see the provenance block above.) The row reads `receipt-6.pdf was saved to …<stamp>-<session>/ · just now · on the agent's tab`: the NAME is whole at this width (`@min-[64rem]/browserrow:shrink-0` holds it at its cap, which is design round 6's D1 / review round 6's R6-1 — before that class the same frame painted `receipt-…`), and the PATH is the part that clips, from the left, so its identifying tail survives. RECORDED, NOT FIXED (design round 6's observation): on a destination past ~100 characters the path's clip and the name's cap are two cuts in one line, which is a property of a one-line band with two long runs rather than of this delta |
 | `03-refused-exe.webp` | the refusal: a page offering `setup.exe` is refused by NAME before anything lands, and the row reads `Download refused — setup.exe is an executable/script type. Nothing was saved. · just now` on `danger-wash`. Nothing is on disk behind it, which the transcript's `C2` asserts rather than this frame. The age is there because round 2's U9 found the loud half was the only row that could not say whether it happened now or five minutes ago |
 | `04-upload-form.webp` | the upload case, holding the three attached files (`Choose Files · 3 files`), with the strip carrying the upload's OWN line — the state round 1 found with `notes: []` and nothing on screen while three files left the machine (U3). It NAMES the files rather than only counting them (round 2, U11): `brief.pdf + 2 more were attached to 127.0.0.1:<port>`, because a user whose assistant attached three files out of a twelve-file folder could not otherwise tell which three left. The port in that sentence is the fixture's own, ephemeral per run — design round 5's D3 measured `63328` in one run and `49198` in an earlier set, so the row here is quoted with `<port>` and the frame is what carries the number. The evidence that the bytes ARRIVED is the next frame and `D6`, not this one |
-| `05-upload-received.webp` | the page the receiving server answered on: the browser's own view of `{"received":3}` from `/echo`. This is the server's word for what it got, and `D6` is the digest comparison that makes it evidence of the right bytes rather than of a count. THE STRIP IN THIS FRAME IS EMPTY, AND THE ROW'S OWN LINE IS CHECKED ELSEWHERE (design round 5, D6): the still is captured once the tab is on `/echo`, a moment before `D8`'s wait resolves, and the renderer paints the upload's note after that — the previous set's `05` carried `brief.pdf + 2 more were attached to … · just now` for the same code, so its presence here is a timing property of when the note is painted, not a behaviour that changed. `D8` is the claim (it reads the line, on this head, as `brief.pdf + 2 more were attached to 127.0.0.1:<port> · just now · on the agent's tab`), and the `04` -> `05` pair is NOT evidence that the row persists across the state change |
+| `05-upload-received.webp` | the page the receiving server answered on: the browser's own view of `{"received":3}` from `/echo`. This is the server's word for what it got, and `D6` is the digest comparison that makes it evidence of the right bytes rather than of a count. THE STRIP IN THIS FRAME IS EMPTY — page area at **y=131** (this run's 53 px unpaired-server banner; 78 without it), and no 41 px band between the chrome boundary and the page — AND THE ROW'S OWN LINE IS CHECKED ELSEWHERE (design rounds 5 D6 / 6 D3 / 7 D4): the still is captured once the tab is on `/echo`, a moment before `D8`'s wait resolves, and the renderer paints the upload's note after that, so the empty strip is a timing property of when the note is painted rather than a behaviour that changed. (Design round 8's D1: this sentence used to say the PREVIOUS set's `05` carried `brief.pdf + 2 more … · just now`. It did not — the last set whose `05` carried that line is round 3's, `8e6e49f08`; round 4's, round 5's, round 6's and this one's are all empty, which is what the first clause of this row says and what the artifact measures.) `D8` is the claim (it reads the line, on this head, as `brief.pdf + 2 more were attached to 127.0.0.1:<port> · just now · on the agent's tab`), and the `04` -> `05` pair is NOT evidence that the row persists across the state change |
 | `06-downloading.webp` | a transfer IN FLIGHT, which §12.3 asks for and no earlier version of these frames showed: the row reports the percentage and the bytes rather than one static line (D6, U6). THE PAGE HALF OF THIS FRAME IS TAKEN AFTER THE TRANSFER FINISHES, and that is the host's own structure rather than a shortcut: `screenshot` is tab-scoped, so it waits on the tab's command lane — the lane the `download` call holds until it answers — and asking for the page in flight comes back empty (the first version of this case did exactly that and shipped a blank page area). The page does not change while the transfer runs, and the row's pixels are the mid-flight ones |
 | `07-row-and-band.webp` | the row STACKED with the consent band — the composition worst case (three strips above one page), and the arrangement the "it reflowed rather than overlapped" claim had not been shown for (D6). The row in it is the RUNTIME-CAP refusal (`G12`), which round 2 split out as its own rule so the consequence reads "The partial file was discarded." rather than "Nothing was saved." The frame is taken BEFORE `G13` opens the folder control's own tooltip (design round 3, D15): an open tooltip is painted across the alert glyph, `Download refused —`, the file name and the first clause, so the row's own sentence would be the one part of the picture a reader could not read |
 | `08-long-name-refused.webp` | a refusal whose NAME cannot fit: the name elides and `Nothing was saved.` does not. The transcript's `G8` measures which span is the clipped one rather than leaving it to the eye (D3), and `G8b` measures the half round 2 added — the name is now CAPPED rather than merely shrinkable, so it can shorten the reason without clipping it to a fragment (round 2, D11: the rule span used to be 74 px of `is an exec…`, and reads `is an executable/script type.` in full here). The rule carries no floor since design round 4 (D17): the floor round 3 added resolved to 196.5 px around the 170.0 px clause it protects and held a 26.5 px HOLE mid-sentence at this width, and `G8d` asserts the consequence still follows the rule by the row's own 4 px gap. The clause also rides the span's own `title` (round 3), so it is recoverable wherever a narrower row clips it |
@@ -35,22 +35,24 @@ column at 2x and looked at, and counted: over the rail's own device columns 0..4
 rows 0..1736 (`440 x 1736 = 763,840` pixels, each compared on all three channels)
 **27 pixels differ by more than 8** and **7,386** by more than 0 — and a
 tolerance-0 count over a LOSSY pair is WebP decode noise, which is what the second
-number is (its 27 above-tolerance pixels are scattered singletons, no changed glyph).
+number is (its 27 above-tolerance pixels are **scattered pixels, no changed glyph** — design
+round 7's D3: 14 of them have a neighbour within 3 device px and they sit on the rail's
+selected `Browser` item, device rows 536-551, where the highlight's edge and the icon's
+autialiasing live; no pixel differs by more than 16 on any channel against ~150 units
+between the rail's ink and its background).
 
 **That reverses what this paragraph said for one round, and the history is the point.**
 Round 5's prose claimed the pair showed the profile resolving (`01` `U` / `User`, `02`
 `DT` / the account's name and the address) because THAT pair did — but the next run of
 the same head did not, and neither does this round's, so the resolution is a
 **boot-timing property** of when the profile lands, not a rule of the before/after pair:
-it appeared in round 4's pair and in round 5's first run (45,467 above-tolerance-0 /
-7,278 above 8 on those rails, with the changed ink in device rows 1568-1707, the rail's
-foot) and in neither of the two runs since. What the pair DOES differ in is what the
+it appeared in round 4's pair and in round 5's first run — those two pairs measure
+**41,511 / 7,243** (round 4's, `0114b6e3d`) and **45,467 / 7,278** (round 5's,
+`078fcc703`), each above-tolerance-0 then above-8 on its own rails, with the changed ink
+in device rows 1568-1707, the rail's foot — and in neither of the two runs since. What the pair DOES differ in is what the
 frames are for — the row, and the page area's own top edge (131 -> 172, measured inside
 each frame from the row's 41 px band). A reader who wants the other state should read
 round 5's pair in the PR thread rather than look for it here.
-
-does not rest on it at all (the page area's top edge is 131 -> 172 measured inside each
-frame, from the row's own 41 px band).
 
 The refusal's copy in `03` is worth reading against the host's own words, and the
 relationship is the change this round made: the host's `reason` is written for the
@@ -70,18 +72,37 @@ node scripts/browser-file-transfer-proof.mjs --out /tmp/ft-frames
 # the rig writes PNGs (the composited frame plus its two layers); the committed
 # `.webp` frames are those PNGs through sharp at quality 90, one per frame name.
 #
-# THE FRAMES IN THIS DIRECTORY ARE FROM THE ROUND-5 RUNS ON THIS HEAD: `origin/main` =
-# `60c1dc615` (`chore(release): bump version to 0.29.11`, #412 — `d109863e2`, PR #407's
-# rig-focus change, is its ANCESTOR, not the base) plus this round's one commit — the
-# wrap GATED on the row's own width (R5-1 / D1), which is what puts the default window's
-# row back to one line, plus the nits that came with it. All TEN frames were re-taken on
-# a REBUILT app (`out/` is gitignored, and the row's own classes changed, so a stale
-# bundle would photograph the previous layout). Five of the ten differ from round 4's
-# set byte for byte (`02`, `04`, `05`, `07`, `10`); the other five are identical, which
-# is the determinism the two runs of this head also show. The frames committed are the
-# FIRST run's; the transcript quoted below is that run's, and the second run of the same
-# head — run for QA's Q6, on the same script — recorded the same 69 checks, the same 0
+# THE FRAMES IN THIS DIRECTORY ARE FROM THE ROUND-6 RUNS ON THIS HEAD: `origin/main` =
+# `c1fe1e8bf` (the console surface host, #405) plus this round's one commit — the DECIDED
+# NAME held at its cap above the container threshold (`@min-[64rem]/browserrow:shrink-0`,
+# R6-1 / D1), which is what stops the identifier painting as `receipt-…` beside a path
+# that is itself clipping. The wrap gate the commit below it added is unchanged. All TEN
+# frames were re-taken on a REBUILT app (`out/` is gitignored, and the row's own classes
+# changed, so a stale bundle would photograph the previous layout), and every one of them
+# is a different file from round 4's set — 0 of 10 match — so what moved is stated per
+# row rather than as a count: `02`'s ROW changed (the name is whole, the path is 28.5 px
+# shorter by its left clip); `04` and `06` re-photograph their own variable tokens (the
+# fixture's ephemeral port; the live progress figure); and `01`, `03`, `05`, `07`, `08`,
+# `09`, `10` — their ROWS are ink-identical to the previous head's (design round 8's D4: the
+# FRAMES are not, because every wide frame's header carries its own ephemeral port). The frames committed are
+# the FIRST run's; the transcript quoted below is that run's, and the second run of the
+# same head — sequential, on the same script — recorded the same 70 checks, the same 0
 # FAIL and the same three BLOCKED, label for label.
+#
+# AND THE WIDE FRAMES CARRY A 53 px BAND THAT IS NOT THIS CHANGE'S (review round
+# 7, R7-1, and design round 8's D2 for its width on the narrow pair): the app's own unpaired-server banner — "This app is not paired with the
+# running Local Operator server…", the pre-existing copy in
+# `src/renderer/src/shared/api/local-operator/backend-error.ts` — which is a PER-RUN
+# RACE (absent in the reviewer's fresh `01`, present from `02` onward in the same run,
+# and absent in round 4's and round 5's committed pairs). So the page area reads y=131 in
+# these frames where it reads 78 without it. ON THE 800 px PAIR THE SAME BAND WRAPS: `09`
+# and `10` measure it at 64 px, with the page area at 228 / 226 in the committed frames and
+# 164 / 162 in the same states without it — the same copy, wrapped at that width, which is
+# why the figure is stated per width rather than as one number. `c1fe1e8bf` changed no
+# renderer file and the base did not move it. The row's own contribution is the same 41 px band it
+# always was, so the pair reads **78 -> 119** in a run without the banner (what round 4's
+# and round 5's sets measure) and **131 -> 172** in this one. Round 7's D1 and D4 and
+# review R7-1 are this one number, recorded once, here.
 ```
 
 
@@ -99,7 +120,7 @@ renderer before `debugger.attach` — timed out at its then-5 s vendored ceiling
 why `policy/adapter.ts` gives that bound its own measured 15 s
 (`WEB_CONTENTS_DEADLINE_MS`) instead of aliasing the driver's browser-IPC number.
 
-The rig prints its own transcript to stdout — **69 checks recorded, 0 FAIL, 3 BLOCKED**
+The rig prints its own transcript to stdout — **70 checks recorded, 0 FAIL, 3 BLOCKED**
 on the first of the two runs this round's frames came from (the second run of the same
 head agrees check for check; the frames in this directory are the FIRST run's) — and
 writes `transcript.json` beside
@@ -125,12 +146,14 @@ recorded rather than bent to fit, with the measurement that says why:
   (`scripts/browser-host.test.mjs`, both marked "review round 2"): one drives the epoch
   change at exactly the point `perform` returns, and the other makes the read fail and
   asserts the marker, the facts and the answer.
-- `F1` (a credential file is refused before it can be attached) is blocked because the
-  check drives the harness's own policy path through this worktree's `.venv`, and this
-  worktree has none: it is a UI checkout with no Python environment, and the check
-  reports the missing interpreter rather than a pass. It is the third blocked case
-  round 5's R5-7 caught this section undercounting — the run has recorded three since
-  the venv was absent, and the two above are the ones this section explains.
+- `F1` (a credential file is refused before it can be attached) drives the harness's own
+  policy check, which needs the HARNESS's interpreter rather than this worktree's. The rig
+  derives the path (`LOCAL_OPERATOR_HARNESS_VENV`, else the sibling checkout of this
+  worktrees directory) and blocks, naming every candidate it tried, when none exists — so a
+  run records **two** blocked cases (`G10`, `G11`) wherever that interpreter is found, and
+  three only where it is not. The three-blocked runs quoted in rounds 4–6 were taken before
+  the derivation existed (QA round 6's Q2 asked for it); a re-run with the harness checkout
+  present records the two above.
 
 **THE RUNTIME CAP'S ASSERTION IS THE RULE AND THE DISCARD, and the byte readings
 beside it are reported rather than gated** (`G12`, and this changed in round 3 for QA
