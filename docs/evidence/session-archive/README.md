@@ -190,16 +190,14 @@ take width from it. What costs title width is a control slot, and only that. The
 frames carry the mark anyway (`row-controls-{pair,shared}` hover the unread row),
 so the claim and the picture are of the same row.
 
-**The archived marker still costs a ragged title column (design round 1, D4);
-the number was NOT re-measured after this fold.** The measurement stands at
-**21.5px** on the row the earlier set carried — the archived row's title starts
-21.5px further right than its live sibling's — and it is recorded here with its
-provenance rather than restated as if it were fresh: the marker's own box
-(`ml-1 size-3.5`) did not change and a control slot sits to the RIGHT of the
-title, so the offset it causes is unchanged, but the frames this set now ships
-were re-taken for the pair delivery and the crop that produced the number is not
-part of them. Re-deriving it on the shipped frames is a documented step of the
-design record's open questions, not a claim this file makes.
+**The archived marker costs a ragged title column of 21.5px (design round 1 D4;
+re-derived on THIS set by design round 3).** In `search-include-archived/{dark,light}`
+the archived row's title starts at **CSS 274.5** and its live sibling's at **253.0**
+— 21.5px, the marker being a 13 × 12 CSS box glyph at `--lo-ink-dim` (5.70:1 dark /
+5.74:1 light on the panel). The number is the design round's measurement on the
+frames this set ships, which is the provenance the earlier paragraph said it owed:
+the marker's own box (`ml-1 size-3.5`) did not change, so the offset is the same,
+and it is now read off these artefacts rather than carried from the earlier set.
 
 **The row's hover ground reaches the row box's right edge (design round 3, D18).**
 On `row-controls-pair/localOperatorDark.png` the hovered row's ground runs from
