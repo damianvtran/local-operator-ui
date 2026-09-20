@@ -280,15 +280,24 @@ function SessionPanel({
 	 * comparing them compares the press with itself. That is exactly the inert
 	 * conjunct this branch deleted (`stillThisGate`), and the replacement for it
 	 * cannot be another closure. This ref carries the key of the card the app is
-	 * actually painting, updated on every render, so the arm can compare the live
-	 * card's identity rather than the press's own. It is assigned in the render
-	 * body, not in an effect: an effect lags a commit, and the commit that matters
-	 * here is the one that REPLACED the card (a multi-question ask advancing, or
-	 * another front end settling the question while a press is in flight), which is
-	 * precisely the render the press's handler has to see.
+	 * actually painting, so the arm can compare the live card's identity rather than
+	 * the press's own.
+	 *
+	 * IT IS WRITTEN IN A `useLayoutEffect`, NOT IN THE RENDER BODY (agent review
+	 * round 2, MINOR-3). The liveness the render-body write was protecting is real —
+	 * an effect must not lag a commit — but `useLayoutEffect` runs INSIDE the commit,
+	 * after the DOM is mutated and before paint, and the read that matters (the
+	 * promise continuation below) can never interleave with a commit. So the layout
+	 * effect keeps every bit of that liveness and drops the one hazard the
+	 * render-body write has: React may render a state it then DISCARDS (this app
+	 * runs under `<React.StrictMode>` and behind Suspense boundaries), and a write
+	 * made in a discarded render still lands. The consequence is not symmetric — a
+	 * leaked NEWER key while the committed tree still paints the pressed card would
+	 * render the moved-on sentence for a question that is still on screen and still
+	 * unanswered, which is a new false copy of the kind this branch exists to
+	 * remove.
 	 */
 	const liveGateKey = useRef<string | null>(null);
-	liveGateKey.current = gateKey;
 	/*
 	 * THE LIVE OWNER EPOCH, read the same way and for the same reason (code review
 	 * round 1, MAJOR-1).
@@ -303,7 +312,10 @@ function SessionPanel({
 	 * answerable (measured — see `answerReport`'s note).
 	 */
 	const liveOwnerEpoch = useRef<string | null>(null);
-	liveOwnerEpoch.current = canonical.ownerEpoch;
+	useLayoutEffect(() => {
+		liveGateKey.current = gateKey;
+		liveOwnerEpoch.current = canonical.ownerEpoch;
+	});
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
 			? { sending: answerState.sending, refused: answerState.refused }
@@ -1244,23 +1256,30 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		/*
-		 * WHERE the report goes, from the press's own outcome plus the live facts —
-		 * see `answerReport`. Nothing here reads the gate's movement to decide
+		 * WHAT the press reports and WHERE, from its own outcome plus the live facts
+		 * — see `answerReport`. Nothing here reads the gate's movement to decide
 		 * whether the press WON: a press's own success is what removes its card, so
 		 * that reading reported a win as a loss whenever the owner's state push
 		 * painted before the answer's response landed, and the two channels have no
 		 * ordering between them (`ask-answer.ts` carries the margin).
 		 *
-		 * Every fact below is read LIVE, from the refs the render body keeps current,
-		 * rather than from the closure this handler resumed in — the closure is the
-		 * one the press STARTED in, so a value read from it is the press compared
-		 * with itself. That was the inert conjunct this branch deleted, and the
-		 * replacements for it cannot be another closure. The identity half matters as
-		 * much as the DOM half: a multi-question ask paints its next question's card
-		 * in the same place under the same `aria-label` with a different key, so a
-		 * query for "a card" answered true for a card that cannot render this refusal
-		 * — the refusal was written to a state no surface reads and the user was told
-		 * nothing while a fresh question appeared where they had pressed.
+		 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
+		 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
+		 * meant this arm took the definite not-sent sentence for every failure, so an
+		 * outcome the module calls unknowable — the deadline shape, which leaves the
+		 * card up *precisely because* the request is still in flight — was told
+		 * "your answer was not sent" and then denied it in the next clause.
+		 *
+		 * Every fact below is read LIVE, from the refs the layout effect keeps
+		 * current, rather than from the closure this handler resumed in — the closure
+		 * is the one the press STARTED in, so a value read from it is the press
+		 * compared with itself. That was the inert conjunct this branch deleted, and
+		 * the replacements for it cannot be another closure. The identity half matters
+		 * as much as the DOM half: a multi-question ask paints its next question's
+		 * card in the same place under the same `aria-label` with a different key, so
+		 * a query for "a card" answered true for a card that cannot carry this press's
+		 * sentence — the sentence was written to a state no surface reads and the user
+		 * was told nothing while a fresh question appeared where they had pressed.
 		 */
 		const report = answerReport(outcome, {
 			liveGateKey: liveGateKey.current,
@@ -1289,8 +1308,12 @@ function SessionPanel({
 				setAnswerState({ key, sending: false, refused: null });
 				return;
 			case "card":
-				// The refusal belongs on the surface the press was made on, where it
-				// cannot be missed and cannot be repeated.
+				// The sentence belongs on the surface the press was made on, where it
+				// cannot be missed and cannot be repeated. It is the SAME string the
+				// composer would have carried — the register is the outcome's — and
+				// the hold stays, so the card cannot repeat an answer whose fate is
+				// unknown (UX round 2, U9: the composer arm used to release the hold
+				// while leaving three live options under an unknowable outcome).
 				setAnswerState({ key, sending: false, refused: report.refused });
 				return;
 			case "composer":

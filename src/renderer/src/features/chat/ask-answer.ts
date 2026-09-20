@@ -86,6 +86,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
 } from "../../../../shared/desktop-contract";
 import type { DesktopRequest } from "../../../../shared/desktop-contract";
@@ -326,6 +327,33 @@ export const QUESTION_MOVED_ON_MESSAGE =
 	"That question had already been settled or moved on, so your answer was not sent.";
 
 /**
+ * The sentence for a press addressed to a runtime instance that is gone.
+ *
+ * The app's own voice, and both halves of that are deliberate (design round 2,
+ * D9; UX round 2, U8).
+ *
+ * The app HOLDS the fact it needs: the press carried an owner epoch, the live
+ * epoch is different, so the runtime that would have answered it has been
+ * replaced. It does not need the backend's sentence — "This answer belongs to an
+ * earlier session owner" names an owner the user has never met, says nothing
+ * they can picture, and reads as alarming on a first pass in a way nothing on
+ * screen supports. The family's other sentences name a cause the reader can see
+ * ("already answered somewhere else", "already been settled or moved on") and
+ * close on the same consequence; this one now does too.
+ *
+ * AND IT IS THE SAME SENTENCE ON BOTH SURFACES. A rollover refusal arrives with
+ * the gate still painted (measured: the question is still pending and still
+ * answerable), so the card arm is the one a plain press reaches — while the
+ * composer arm is the one a race reaches. Rendering the backend's raw `detail` on
+ * one and an authored sentence on the other made the copy a function of whether
+ * the state push beat the refusal, which is a fact no user can see (UX round 2,
+ * U8). `answerReport` now chooses the sentence from the outcome class first and
+ * the surface second, so this string is what both surfaces carry.
+ */
+export const ANSWER_LOST_TO_RECONNECT_MESSAGE =
+	"Your answer was not sent. The app reconnected to a new runtime instance, so the question was not answered here.";
+
+/**
  * The sentence for a press whose fate is genuinely UNKNOWN.
  *
  * A failure that carried no HTTP response at all — the transport died, the
@@ -348,6 +376,18 @@ export const QUESTION_MOVED_ON_MESSAGE =
  *
  * `--drop-answers` (a response that never starts) and `--hold-answers-ms` (a
  * request the app gives up on) are the two rig knobs that reach it.
+ *
+ * ## Why it is the sentence the CARD arm carries too (UX round 2, U7; QA Q1)
+ *
+ * The register is a property of the OUTCOME, not of the surface that happens to
+ * be painted. The card arm used to take the definite not-sent sentence for every
+ * failure, so the deadline shape — which leaves the card up *precisely because*
+ * the request is still in flight — printed "Your answer was not sent" and then
+ * denied it in the next clause ("It may or may not have reached the server"),
+ * and then the card unmounted with the report. One error class, two opposite
+ * claims, decided by a render fact. `answerReport` now picks the sentence first
+ * and the destination second, so an unknowable outcome says so wherever it is
+ * reported.
  */
 export const ANSWER_UNCONFIRMED_LEAD =
 	"Whether your answer landed is not knowable.";
@@ -433,12 +473,19 @@ export const unsentAnswerMessage = (error: unknown): string =>
  * lost whenever its own success had already removed that card — which is the
  * case, not a corner: the two channels have no ordering between them. Resolving
  * the gate makes the owner push frontend state, which unmounts the card, and the
- * answer POST settles on its own schedule; measured on this rig a normal POST
- * response led the card clearing by 0.95 ms, and the card cleared 328 ms after
- * the delivery; a busy turn inverts a margin that size, and the earlier round's
- * reading of the same race (124 ms against 200 ms) was the same race measured on
- * a quieter one. Inverted, it told the user their answer was not sent while the
- * model was already acting on it.
+ * answer POST settles on its own schedule. The margin is a few hundred
+ * milliseconds either way and it is a FRESH SAMPLE every time the rig is run — the
+ * committed records have read the delivery leading the clearing, and the clearing
+ * leading the delivery by a quarter of a second — so the point is not the number
+ * but that no number is stable: any margin that size inverts under load, and
+ * inverted it told the user their answer was not sent while the model was already
+ * acting on it.
+ *
+ * `answeredAt` and `deliveredAt` in each `click-result.json` are the measurements,
+ * and they are the ones to read rather than a figure quoted here: prose that names
+ * the millisecond figures is wrong the moment the set is re-taken, which is what
+ * round 2's MINOR-2 caught in this very comment (it had quoted one sweep's
+ * numbers).
  *
  * The outcome cannot be raced that way and needs no proxy for it — see
  * `answerRefusedWithoutACode` for the measurement that shows a `2xx` is our
@@ -502,7 +549,11 @@ export type AnswerReport =
 	| { readonly to: "refused" }
 	/** The owner took this press: say nothing, and settle the card's hold. */
 	| { readonly to: "sent" }
-	/** The pressed card is still on screen, so it owns the refusal. */
+	/**
+	 * The pressed card is still on screen, so it carries the sentence — the same
+	 * one the composer would carry, chosen from the outcome rather than from the
+	 * surface (see `answerReport`).
+	 */
 	| { readonly to: "card"; readonly refused: string }
 	/** The card is gone, so the composer carries the report. */
 	| {
@@ -551,12 +602,13 @@ export type PressFrame = {
 const TRANSPORT_LOST_SIGHT_CODES: ReadonlySet<string> = new Set([
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REFUSAL_CODE.transportFailed,
+	DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
 ]);
 
 /**
  * Whether this failure says nothing at all about what the owner did.
  *
- * Three shapes, and each is a way the app can lose sight of the request without
+ * Four shapes, and each is a way the app can lose sight of the request without
  * the OWNER refusing it:
  *
  * - **No HTTP response at all** — a runtime exception, or a `DesktopControlError`
@@ -567,11 +619,20 @@ const TRANSPORT_LOST_SIGHT_CODES: ReadonlySet<string> = new Set([
  *   result before repeating it" (measured: `--hold-answers-ms` renders it).
  * - **The app's own TRANSPORT failure** (`transport.failed`) — main could not
  *   complete the request, so nothing was established about whether it arrived.
+ * - **The DAEMON's own hop failure** (`runtime_unreachable`) — the daemon could
+ *   not hand the answer to the session's owner, and that frame is write-then-await
+ *   -ack, so the request may have arrived and settled with only its ack lost
+ *   (`DESKTOP_LOST_SIGHT_CODE` carries the path). This is the same fact
+ *   `transport.failed` carries one hop up, and treating the two differently was
+ *   round 2's MAJOR-1: the app classified main's lost request as unknowable and
+ *   the daemon's as a refusal, so an owner that kept the answer and lost its ack
+ *   produced the definite sentence.
  *
- * What is deliberately NOT here is any status the BACKEND chose: a `503` with
- * `pairing.plane-closed`, a `401/403`, a coded `409` — those were answered, and
- * the answer was a refusal. `pairing.no-credential` is excluded for the opposite
- * reason to the two above: main refused to send the request at all.
+ * What is deliberately NOT here is a status the BACKEND chose as a REFUSAL: a
+ * `503` with `pairing.plane-closed` (the daemon will not admit this app), a
+ * `401/403`, a coded `409` — those were answered, and the answer was a refusal.
+ * `pairing.no-credential` is excluded for the opposite reason to the three codes
+ * above: main refused to send the request at all.
  */
 export const answerOutcomeIsUnknown = (error: unknown): boolean =>
 	!(error instanceof DesktopControlError) ||
@@ -581,14 +642,24 @@ export const answerOutcomeIsUnknown = (error: unknown): boolean =>
 /**
  * The report for one option press, from its outcome plus the live facts.
  *
- * The outcome decides WHETHER the press is reported and the frame decides WHERE,
- * which is the split this branch exists to make: the pressed card is removed BY
- * the press that won, so no reading of the card can decide whether a press won.
- * The frame's own two halves are asserted together (`cardOnScreen &&
- * liveGateKey === pressedGateKey`) rather than separately, because either alone
- * is satisfied by a state this report cannot use: a card on screen may be the
- * NEXT question's (design round 1, D1), and a live gate with the card gone is a
- * render that has not painted yet.
+ * ## The sentence is chosen by the OUTCOME, the destination by the FRAME
+ *
+ * That order is the whole of round 2's U7/Q1, and it is why this function reads
+ * as two steps rather than one: the register a failure is entitled to is a
+ * property of the failure, and a surface that happens to be painted cannot change
+ * it. Deciding the destination first meant the card arm took the definite not-sent
+ * sentence for every failure — so the deadline shape, which leaves the card up
+ * *precisely because* the request is still in flight, printed "Your answer was not
+ * sent" and then denied it in its next clause ("It may or may not have reached the
+ * server").
+ *
+ * The frame still decides WHETHER a failure is reported and WHERE, which is the
+ * split this branch exists to make: the pressed card is removed BY the press that
+ * won, so no reading of the card can decide whether a press won. Its two halves are
+ * asserted together (`cardOnScreen && liveGateKey === pressedGateKey`) rather than
+ * separately, because either alone is satisfied by a state this report cannot use:
+ * a card on screen may be the NEXT question's (design round 1, D1), and a live gate
+ * with the card gone is a render that has not painted yet.
  */
 export const answerReport = (
 	outcome: AnswerOutcome,
@@ -596,44 +667,51 @@ export const answerReport = (
 ): AnswerReport => {
 	if (outcome.status === "refused") return { to: "refused" };
 	if (outcome.status === "sent") return { to: "sent" };
+	const sentence = pressSentenceFor(outcome.error, frame);
 	if (frame.cardOnScreen && frame.liveGateKey === frame.pressedGateKey)
-		return { to: "card", refused: unsentAnswerMessage(outcome.error) };
+		return { to: "card", refused: sentence };
 	return {
 		to: "composer",
-		message: composerMessageFor(outcome.error, frame),
+		message: sentence,
 		code: composerCodeFor(outcome.error),
 	};
 };
 
 /**
- * What the composer says about a press the card could not carry.
+ * What a press that did not land says, whichever surface carries it.
  *
- * The order of the three tests is the argument, not an implementation detail:
+ * The order of the tests is the argument, not an implementation detail:
  *
- * 1. **A codeless `409` from a DIFFERENT epoch** — the press was addressed to a
- *    runtime instance that is gone, so nothing about who answered the question
- *    is established and the app must not claim another front end did. The honest
- *    sentence is the not-sent one carrying the backend's own reason
- *    (`This answer belongs to an earlier session owner`), which the route sends
- *    as the body's `detail` and `userFacingMessage` renders verbatim.
- * 2. **A codeless `409` with no gate pending** — something settled the question,
+ * 1. **An outcome the app cannot know** — no HTTP response at all, its own
+ *    `deadline_exceeded` or `transport.failed`, or the daemon's
+ *    `runtime_unreachable` — says so and nothing more (`answerOutcomeIsUnknown`).
+ * 2. **A codeless `409` from a DIFFERENT epoch** — the press was addressed to a
+ *    runtime instance that is gone, so nothing about who answered the question is
+ *    established and the app must not claim another front end did. It says what it
+ *    knows in its own voice (`ANSWER_LOST_TO_RECONNECT_MESSAGE`), which is also
+ *    what the card carries for the same refusal (UX round 2, U8).
+ * 3. **A codeless `409` with no gate pending** — something settled the question,
  *    and it was not this press (a press the owner took answers `2xx`).
- * 3. **A codeless `409` with a gate that is not the pressed question** — the ask
+ * 4. **A codeless `409` with a gate that is not the pressed question** — the ask
  *    advanced past the question this press answered.
- * 4. **No HTTP response at all** — the outcome is unknown, and the sentence says
- *    so rather than asserting a loss (`answerOutcomeIsUnknown`).
- * 5. Everything else — a status the backend really sent (a `503`, a coded `409`
- *    from the relay or attachment ladders), where "your answer was not sent" is
- *    what the backend just said.
+ * 5. **A codeless `409` with the pressed question STILL LIVE** — the one state the
+ *    first four do not name, and the one that falls through to the backend's own
+ *    reason below. A `409` never settled OUR value, so the not-sent half holds; and
+ *    with the gate still current the app has nothing better to say than what the
+ *    route said (agent review round 2, NIT-4).
+ * 6. Everything else — a status the backend really sent as a refusal (a `503` with
+ *    `pairing.plane-closed`, a coded `409` from the relay or attachment ladders),
+ *    where "your answer was not sent" is what the backend just said.
  */
-const composerMessageFor = (error: unknown, frame: PressFrame): string => {
+const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
+	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
-		if (frame.liveEpoch !== frame.sentEpoch) return unsentAnswerMessage(error);
+		if (frame.liveEpoch !== frame.sentEpoch)
+			return ANSWER_LOST_TO_RECONNECT_MESSAGE;
 		if (frame.liveGateKey === null) return SETTLED_ELSEWHERE_MESSAGE;
 		if (frame.liveGateKey !== frame.pressedGateKey)
 			return QUESTION_MOVED_ON_MESSAGE;
 	}
-	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	return unsentAnswerMessage(error);
 };
 
