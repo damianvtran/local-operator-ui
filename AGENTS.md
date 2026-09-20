@@ -909,6 +909,50 @@ harnesses — `pnpm dev`, `npx electron .`, `npx local-operator-ui` — which is
 the mode belongs in the harness's own spawn call and not in whatever the shell
 happened to export.
 
+### A sweep never borrows the operator's browser
+
+Every rule above is about windows this repository's code *opens*. This one is
+about windows its runs must not *borrow*: **a QA, evidence or Storybook sweep does
+not run in the operator's own browser — this app's Browser pane included.** A page
+you are merely looking at is not a surface a run may drive where they are working,
+and the repository's own paths exist for exactly that: `pnpm capture:evidence`,
+`scripts/renderer-driver.mjs`, `scripts/click-proof.mjs` and the
+`docs/evidence/<surface>/harness/` scripts each launch a **private** Chrome
+(`--headless=new`, a scratch `--user-data-dir`, `--use-mock-keychain`, and `-g`
+when it goes through `open`) that no screen is attached to.
+
+Measured on 2026-09-19, and the reason this is a rule rather than a preference. A
+Storybook served from a user-dashboard worktree was open in this app's own Browser
+pane while the app was frontmost. The server ran token-gated (`--ci`) and its page
+had been loaded as a **bare `…/iframe.html?id=<story>&viewMode=story` URL, which
+carries no HMR token** — so Storybook refused its own websocket (`Rejecting
+WebSocket connection: Error: Invalid websocket token`, tens of lines a second in
+the server's log), and **its preview reloads itself when that channel is refused**.
+Every reload navigated the pane: **364 navigations on one port and 773 on another**,
+76 in a single minute at the peak, for half an hour. From the operator's chair the
+app had become unusable — the caret left their composer on each reload, so a
+sentence could not be finished — while the app itself did nothing wrong: it logged
+every navigation it was handed.
+
+What follows from it:
+
+- **Load Storybook through the manager URL that carries the HMR token**, never a
+  bare `iframe.html?id=…`, and drop `--ci` for a server somebody is going to look
+  at by hand. A token-gated server plus a bare story URL is a page that reloads
+  itself forever.
+- **A page whose reload cadence you do not control does not go in their browser at
+  all.** That is a headless run with captures, or `renderer-driver`, not a live tab:
+  the `browser` tool is for the operator's own tasks on their own pages, never the
+  vehicle for a sweep of somebody else's stories.
+- **Sweep in a browser you launched, with a profile you own, and reap it in the
+  same command** — the same shape every harness above uses. Never a browser the
+  operator is already working in, and never on a server whose HMR channel they
+  cannot see the state of.
+- **If you find a page looping in their pane, stop the loop and say which stop you
+  used** — close the tab, or stop the server feeding it, and record it. A reload
+  loop is not something the operator will close when they notice it; it is the
+  failure the run caused, and their UI stays unusable until somebody acts.
+
 ## The code-sealed bundle, and what may write in it
 
 Four mechanisms keep CPython's bytecode cache out of an installed app, and they
