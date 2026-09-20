@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T14:58:30.189Z",
+  "at": "2026-09-20T14:51:46.077Z",
   "arm": {
     "armed": true
   },
@@ -56,60 +56,65 @@
     }
   },
   "resolved": true,
-  "resolution": "cleared",
-  "gateCleared": true,
+  "resolution": "refused",
+  "gateCleared": false,
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789916341878.26,
-      "status": 200,
-      "answeredAt": 1789916341906.52,
-      "deliveredAt": 1789916344414.8281
+      "requestedAt": 1789915938381.731,
+      "rejected": "This answer belongs to an earlier session owner",
+      "status": 409,
+      "answeredAt": 1789915938381.762,
+      "deliveredAt": 1789915938382.7341
     }
   ],
   "answersFrom": "route",
-  "ownerAnswer": {
-    "PAIRING": [
-      "Popup is open - generate the pairing code"
-    ]
-  },
+  "ownerAnswer": null,
   "tree": {
     "head": "aa3b645afcd8828fafe4c61e6b04bd3d810e5c68",
     "srcTree": "7e967edd649710e5f9432cc5c719200817d7f1cd",
-    "srcDirty": true,
-    "srcStatus": "M  src/renderer/src/features/chat/ask-answer.ts\nM  src/renderer/src/features/chat/components/chat-page.tsx"
+    "srcDirty": false,
+    "srcStatus": null
   },
-  "clearedAt": 1789916342022,
-  "clearedAfterPressMs": 332,
-  "ordering": {
-    "clearedAt": 1789916342022,
-    "deliveredAt": 1789916344414.8281,
-    "verdict": "the card cleared before the response was delivered"
-  },
+  "clearedAt": null,
+  "clearedAfterPressMs": null,
+  "ordering": null,
   "report": {
     "movedOnSentence": false,
-    "settledSentence": true,
+    "settledSentence": false,
     "unconfirmedSentence": false,
     "notSentCopy": [],
-    "cardUp": false,
-    "cardRefusal": false,
-    "alerts": [
-      "That question was already answered somewhere else, so your answer was not sent."
-    ]
+    "cardUp": true,
+    "cardRefusal": true,
+    "alerts": []
   },
   "after": {
-    "found": false,
-    "count": 0,
-    "tags": [],
-    "textContent": [],
-    "accessibleName": [],
-    "ordinalHidden": false,
-    "disabled": [],
-    "pointerEvents": null,
-    "eyebrow": null,
-    "alerts": [
-      "That question was already answered somewhere else, so your answer was not sent."
+    "found": true,
+    "count": 3,
+    "tags": [
+      "BUTTON",
+      "BUTTON",
+      "BUTTON"
     ],
+    "textContent": [
+      "1.Popup is not openRecommendedWalk me through opening it first.",
+      "2.Popup is open - generate the pairing codeI will read the code back to you.",
+      "3.Something else"
+    ],
+    "accessibleName": [
+      "Popup is not openRecommendedWalk me through opening it first.",
+      "Popup is open - generate the pairing codeI will read the code back to you.",
+      "Something else"
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      true,
+      true,
+      true
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
     "incidentRow": false
   }
 }

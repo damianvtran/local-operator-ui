@@ -1,12 +1,12 @@
 {
-  "origin": "http://localhost:5299",
+  "origin": "http://localhost:5301",
   "session": "a1a1a1a1a1a1",
   "viewport": {
     "width": 1380,
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-20T04:47:32.435Z",
+  "at": "2026-09-20T14:50:16.806Z",
   "arm": {
     "armed": true
   },
@@ -56,25 +56,43 @@
     }
   },
   "resolved": true,
+  "resolution": "cleared",
+  "gateCleared": true,
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1789879659220.294,
+      "requestedAt": 1789915851060.987,
       "status": 200,
-      "answeredAt": 1789879659226.9858,
-      "deliveredAt": 1789879661737.913
+      "answeredAt": 1789915851128.222,
+      "deliveredAt": 1789915853765.871
     }
   ],
-  "clearedAt": 1789879659504,
-  "clearedAfterPressMs": 296,
+  "answersFrom": "route",
+  "ownerAnswer": {
+    "PAIRING": [
+      "Popup is open - generate the pairing code"
+    ]
+  },
+  "tree": {
+    "head": "aa3b645afcd8828fafe4c61e6b04bd3d810e5c68",
+    "srcTree": "7e967edd649710e5f9432cc5c719200817d7f1cd",
+    "srcDirty": false,
+    "srcStatus": null
+  },
+  "clearedAt": 1789915851508,
+  "clearedAfterPressMs": 479,
   "ordering": {
-    "clearedAt": 1789879659504,
-    "deliveredAt": 1789879661737.913,
+    "clearedAt": 1789915851508,
+    "deliveredAt": 1789915853765.871,
     "verdict": "the card cleared before the response was delivered"
   },
   "report": {
+    "movedOnSentence": false,
     "settledSentence": false,
+    "unconfirmedSentence": false,
     "notSentCopy": [],
+    "cardUp": false,
+    "cardRefusal": false,
     "alerts": []
   },
   "after": {

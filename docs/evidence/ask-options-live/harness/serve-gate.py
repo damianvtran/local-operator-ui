@@ -473,6 +473,7 @@ async def main() -> None:
                 entry["rejected"] = self._reject
                 entry["status"] = 409
                 entry["answeredAt"] = time.time() * 1000.0
+                self.flush_answer_log()
                 payload = json.dumps({"detail": self._reject}).encode()
                 await send(
                     {
