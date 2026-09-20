@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -225,8 +226,9 @@ test("a mid-draft command word opens no list, because the planner reads it as pr
  * the endpoint's own question, since its `strip()` must leave the word starting
  * with `/` — and the row that discriminates is U+FEFF, which `trim()` removes and
  * Python keeps. Without these two, the predicate could go back to `trim()` and
- * every other test here would still pass: the sweep that found it moved 264 rows
- * of a 3,652-draft corpus out of the reverse direction.
+ * every other test here would still pass: MY OWN sweep (3,652 drafts, 7,304 rows at
+ * both carets) moved 264 of them out of the reverse direction when this line was
+ * fixed, and the review's separate 4,029-draft sweep moved 162 of its rows.
  */
 test("the pre-word prefix is Python separators, not JavaScript's (R3-1)", () => {
 	assert.equal(
@@ -254,4 +256,111 @@ test("the pre-word prefix is Python separators, not JavaScript's (R3-1)", () => 
 		false,
 		"a space AND a slash are not separators",
 	);
+});
+
+/*
+ * THE INVENTORY, AS A CHECK RATHER THAN A SENTENCE (round 4, F4-1).
+ *
+ * The class above is the only separator class on the composer path, and this is
+ * what keeps that true. Three rounds fixed the instance they were handed and the
+ * next instance appeared in a module nobody had looked at, so this reads every
+ * PRODUCT module under `components/` from disk and fails if one carries a `\s`
+ * or `\S` of its own — in CODE, since comments are stripped: a docblock quoting
+ * the old spelling is not a violation.
+ *
+ * THE QUESTIONS, module by module, so a reader does not re-derive them:
+ *
+ *   - `slash-token.ts` — the class itself, its forms, and the token boundary and
+ *     word end (it is where the definition lives, so it is the one file excluded
+ *     from the scan);
+ *   - `slash-submit.ts` — the planner's split, strips, boundary scan, argument
+ *     count and un-masked-run scan;
+ *   - `slash-highlight.ts` — the tint's word end, the first content line's strip
+ *     and start offset, and the name's leading offset;
+ *   - `slash-commands.tsx` — the popup's word, the surviving-text test and "a
+ *     name is one word" (the fifth module, round 4's F4-1);
+ *   - `at-token.ts` — the mention tokeniser's boundary and word end, the same
+ *     question for a different sigil (round 4's inventory);
+ *   - `slash-rank.ts` — the last separator-cut token of a whole-buffer string,
+ *     which ranks the completion rows (round 4's inventory);
+ *   - `credential-capture.ts` — the arming lookbehind and the three boundary
+ *     tests beside it.
+ *
+ * THE DELIBERATE OTHER CLASS: the TUI partitions the `/cmd` ARGUMENT on a LITERAL
+ * space (`editor.py`'s `partition(" ")`), and so do these, which is why they are
+ * `" "` and not the class:
+ *
+ *   - `slash-token.ts` — the argument context's own partition;
+ *   - `slash-highlight.ts` — the same partition when it reads the argument's
+ *     first word (the position arithmetic around it IS the class);
+ *   - `slash-commands.tsx` — the inline argument's first word;
+ *   - `credential-capture.ts` — the reference's `[ \t]*$` tail on the token;
+ *   - `at-contract.ts`/`at-token.ts` — the mention syntax's quoting test.
+ *
+ * The rest of the `.trim()` calls on this path (a search box, a path, a display
+ * string, the composer's own "is the box empty") are the JS class deliberately:
+ * they ask about the renderer's own state, which no other host answers, so there
+ * is no second answer for them to disagree with.
+ *
+ * MUTATION-CHECKED, not asserted: putting `\s` back into `at-token.ts` — clean
+ * since round 2 — fails this test and nothing else in the suite.
+ */
+const COMPOSER_PATH = "src/renderer/src/features/chat/components";
+const ASKERS = [
+	"at-token.ts",
+	"credential-capture.ts",
+	"slash-commands.tsx",
+	"slash-highlight.ts",
+	"slash-rank.ts",
+	"slash-submit.ts",
+];
+
+/**
+ * `[\s\S]` is "match any character" — an idiom for a span that may cross
+ * newlines, and no statement about where a word ends. Removed before the scan
+ * (as the literal two-character sequence, hence the doubled backslashes).
+ */
+const ANY_CHARACTER_IDIOM = /\[\\s\\S\]|\[\\S\\s\]/g;
+
+/**
+ * Modules whose remaining `\s` is deliberately a different question, each with
+ * the reason. One entry, and it is a DISPLAY string: the cleared-goal preview
+ * flattens a run of whitespace for the reader, on the renderer's own text, and
+ * nothing compares its output to another host's answer.
+ */
+const NOT_A_CLASS = {
+	"composer-status-row.tsx":
+		"the cleared-goal preview flattens a run for DISPLAY, on the renderer's own string",
+};
+
+test("no composer-path module declares its own separator class (F4-1)", () => {
+	const files = readdirSync(COMPOSER_PATH).filter(
+		(file) => /\.tsx?$/.test(file) && !file.endsWith(".stories.tsx"),
+	);
+	// Read from disk and asserted non-trivially large: a scan over an empty or
+	// renamed directory would pass while checking nothing.
+	assert.ok(files.length > 50, `read the composer path, not a list that can go stale (${files.length} modules)`);
+	const offenders = [];
+	for (const file of files) {
+		if (file === "slash-token.ts") continue;
+		if (file in NOT_A_CLASS) continue;
+		const code = readFileSync(`${COMPOSER_PATH}/${file}`, "utf8")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^\s*\/\/.*$/gm, "")
+			// the any-character idiom, removed before the scan
+			.replace(ANY_CHARACTER_IDIOM, "");
+		// A single backslash before s/S, so the LaTeX that `markdown-math.ts`
+		// searches for (`\\sum`) is not a hit.
+		const hit = code.match(/(?<!\\)\\[sS]/);
+		if (hit) offenders.push(`${file} (${hit[0]})`);
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		`these modules carry a separator class of their own: ${offenders.join(", ")}`,
+	);
+	for (const file of ASKERS) {
+		const source = readFileSync(`${COMPOSER_PATH}/${file}`, "utf8");
+		assert.match(source, /from "\.\/slash-token"/, `${file} reads the shared class`);
+	}
 });

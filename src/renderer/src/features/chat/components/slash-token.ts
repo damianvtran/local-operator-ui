@@ -330,9 +330,10 @@ export function commandWordOpensDraft(draft: string, start: number): boolean {
 	 * keeps a leading U+0085 that Python strips. Round 3's R3-1: it cannot produce
 	 * the refusal class (`wholeDraft = pyTrim(spliced.text) === ""` is decided
 	 * before this is consulted, and a multi-line draft is never the endpoint's
-	 * command), but it moved 162 of a 4,029-draft sweep out of the reverse
-	 * direction once the class landed, and one question reading a second class is
-	 * how the first one came back.
+	 * command), but it moves 264 rows out of the reverse direction in my own sweep
+	 * (3,652 drafts at both carets), and 162 of the review's independent 4,029-draft
+	 * corpus once the class landed. One question reading a second class is how the
+	 * first one came back.
 	 */
 	return pyTrim(draft.slice(0, start)) === "";
 }

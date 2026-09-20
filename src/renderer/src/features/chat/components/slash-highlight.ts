@@ -53,8 +53,9 @@
  * by an indent somebody re-counted.
  */
 
-/** One painted span of the draft. `kind` names a ROLE, never a colour. */
 import { SEPARATOR, pyTrim, pyTrimStart } from "./slash-token";
+
+/** One painted span of the draft. `kind` names a ROLE, never a colour. */
 
 export type SlashHighlightRun = {
 	start: number;
