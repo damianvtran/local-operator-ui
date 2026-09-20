@@ -1337,12 +1337,27 @@ function customRow(
  * anyone.
  *
  * THE BOUND APPLIES TO THE FACT PLUS THE REASON, and a reason that does not fit is
- * HOISTED to its `/mcp …` clause rather than cut at its tail: a plain tail-cut
- * eats the command first, because the diagnostics that make a reason long
- * (`ECONNREFUSED 127.0.0.1:8787`) sit AFTER it. The hoist keeps the most of the
- * reason the bound allows — the whole reason up to and including the command, then
- * the command alone — and whatever a cut leaves out moves into the disclosure
- * ahead of the tail, so nothing the harness wrote is dropped. That is also what
+ * HOISTED to its `/mcp …` clause rather than cut at its tail. WHAT A TAIL-CUT WOULD
+ * TAKE IS SETTLED BY WHERE THE PRODUCER PUTS THE COMMAND, and for the family this
+ * row is written for the command comes first: the auth-failure reason reaches here
+ * as the remedy alone (`/mcp reauth <server> …`), composed by
+ * `local_operator/mcp/manager.py::_auth_failure_text` — the one dispatcher the
+ * durable notice and the live toast both go through, and the place the
+ * `MCP authorization failed; ` prefix was dropped from so the command cannot wrap
+ * away from its own command. For that shape a tail-cut takes the diagnostics, not
+ * the remedy.
+ *
+ * THE CASE THE HOIST DEFENDS IS THEREFORE THE LONG LEADING CLAUSE: a transport
+ * reason runs its diagnostics long BEFORE any command is named
+ * (`ECONNREFUSED 127.0.0.1:8787`, retries, timeouts), and at enough of them the
+ * command clears the bound — where a tail-cut would leave the row quoting a cause
+ * and drop the one clause anyone can run. That shape is pinned by its own test case
+ * (round 2, R5); the wording this replaced argued from the pre-alignment line, where
+ * a `MCP authorization failed; ` prefix pushed the command past the bound on its
+ * own. The hoist keeps the most of the reason the bound allows — the whole reason
+ * up to and including the command, then the command alone — and whatever a cut
+ * leaves out moves into the disclosure ahead of the tail, so nothing the harness
+ * wrote is dropped. That is also what
  * the last resort owes a reader: if even the command alone will not fit beside a
  * very long server name, the composed line is bounded and the WHOLE reason goes
  * behind the disclosure, because a truncated line's disclosure is exactly the

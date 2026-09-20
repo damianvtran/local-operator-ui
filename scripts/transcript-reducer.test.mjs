@@ -2224,6 +2224,41 @@ test("the MCP-unavailable warning puts the operator's remedy on the row, and dis
 		"the model's half survives the hoist",
 	);
 
+	// THE SHAPE THE HOIST EXISTS FOR, pinned (round 2, R5). The shipping reasons
+	// are command-first, so for them a tail-cut costs the diagnostics — but a reason
+	// whose LEADING CLAUSE runs long puts the command itself past the bound, and
+	// there a tail-cut leaves the row quoting a cause and drops the only clause
+	// anyone can run. Composed, this line runs 258 characters with the command at
+	// char 237, so the two halves of that hazard are asserted as well as its repair:
+	// the cut really would take the command, and the row does not cut it.
+	const lateCommandReason =
+		"Reason: the transport refused every attempt after the grant lapsed — ECONNREFUSED 127.0.0.1:8787, then a timeout, then a closed stream, and the store answered nothing. /mcp reauth minerva-qa";
+	assert.equal(
+		`${SENTENCE} ${lateCommandReason}`.slice(0, 160).includes("/mcp"),
+		false,
+		"this case must not be one the tail-cut would keep the command in",
+	);
+	const [lateCommand] = replay([
+		custom("mcp-unavailable-late-command", "session_mcp_unavailable", {
+			text: `[session warning] ${SENTENCE}\n${lateCommandReason}\n${TAIL}`,
+		}),
+	]);
+	assert.equal(
+		lateCommand.headline,
+		`${SENTENCE} Reason: /mcp reauth minerva-qa`,
+		"the command survives the bound even when everything before it does not",
+	);
+	assert.ok(
+		lateCommand.headline.length <= 160,
+		`late-command headline was ${lateCommand.headline.length}`,
+	);
+	assert.match(
+		lateCommand.detail,
+		/^the transport refused every attempt/,
+		"the clause the cut dropped is disclosed, not dropped",
+	);
+	assert.ok(lateCommand.detail.endsWith(TAIL));
+
 	// A reason that names no command has nothing to hoist, so the composed line
 	// is bounded and the WHOLE reason is disclosed — the direction that hides
 	// nothing, which is the one `firstSentenceEnd` errs in too.
