@@ -686,3 +686,63 @@ test("a search answer does not settle a tombstone", async () => {
 	);
 	assert.deepEqual(store.getState().sessions, []);
 });
+
+test("a delete survives a reload: the tombstone is persisted, and it self-heals on a carrying page (QA round 2, Q1's reload half)", async () => {
+	await seed([
+		{ session_id: SESSION, title: "Doomed", archived: false },
+		{ session_id: OTHER, title: "Kept", archived: false },
+	]);
+	serve({ session_id: SESSION, deleted: true });
+	await store.getState().deleteSession(SESSION);
+	/*
+	 * WHAT THE RELOAD READS. The store persists through `partialize` into
+	 * localStorage under this name (the test file stubs localStorage), and the
+	 * tombstone has to be in it - otherwise a reload has nothing to tell the pane the
+	 * conversation is gone, which is exactly the state QA's second half measured: a
+	 * daemon still answering 200 for the id it was told to delete, a transcript that
+	 * hydrates, and a writable composer over a removed conversation.
+	 */
+	const persisted = JSON.parse(
+		globalThis.localStorage.getItem("canonical-sessions-storage"),
+	);
+	const held = persisted.state.forgotten ?? {};
+	assert.notEqual(
+		held[SESSION],
+		undefined,
+		`the tombstone must be persisted for a reload to read: ${JSON.stringify(persisted.state.forgotten)}`,
+	);
+	/*
+	 * AND ITS STAMP IS NOT CARRIED ACROSS. `at` orders a tombstone against reads in
+	 * flight inside one process, and a reload has none; persisted as 0, every page the
+	 * fresh process asks for outranks it, so the resurrection rule still revives a
+	 * conversation the store really does carry again.
+	 */
+	assert.equal(held[SESSION].at, 0);
+	/*
+	 * Which is what makes it SELF-HEALING rather than a permanent hiding: the same
+	 * store, restored, drops the tombstone on the first page that carries the id.
+	 */
+	store.setState({
+		forgotten: { [SESSION]: { at: 0, title: "Doomed" } },
+		sessions: [{ session_id: OTHER, title: "Kept", archived: false }],
+	});
+	serve(
+		page([
+			{ session_id: SESSION, title: "Doomed", archived: false },
+			{ session_id: OTHER, title: "Kept", archived: false },
+		]),
+	);
+	await store.getState().fetchSessions();
+	assert.equal(
+		store.getState().forgotten[SESSION],
+		undefined,
+		"a page that carries the id back settles the restored tombstone",
+	);
+	assert.deepEqual(
+		store
+			.getState()
+			.sessions.map((row) => row.session_id)
+			.sort(),
+		[SESSION, OTHER].sort(),
+	);
+});
