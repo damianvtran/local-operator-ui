@@ -18,6 +18,13 @@ for the persisted slice. Read those three by identifier rather than by line. The
 review rounds found and this branch amended three more claims that had drifted
 semantically rather than positionally: S2's `calc(100% - 72px)` and its "exactly
 as it does today", S9's "Reorder is deferred", and S12's three-tab-stop ledger.
+Round 2 amended four more, in the same way and for the same reason: S1's key row
+and S11's key list now name the Home/End REGISTER this separator passes (D8), S7's
+clamped-name example quotes the number the re-taken frames draw (344, not 352 -
+the 8px the boundary's own band gave back), A2's "the other region keeps 72px" is
+stated as exact at the extremes and a floor in between (QA Q-3), and S9's record
+of U2 carries the qualifier that a restored scroll position is clamped by the
+region's new content height (QA Q-2).
 
 Read with: `docs/branding.md` (the design contract — § 5 space/radii/motion,
 § 6 focus, § 9 *Adding something new* and its `### Disclosure` subsection),
@@ -270,7 +277,7 @@ is confined to one file:
 | `aria-orientation` (240) | `vertical` | `horizontal` |
 | drag axis (172-211) | `clientX`, `delta = clientX - startX` | `clientY` |
 | grow sign (135-141) | `side === "right" ? +delta : -delta` | `side === "right" \|\| side === "bottom" ? +delta : -delta` |
-| keys (143-170) | ArrowLeft/Right, Home→min, End→max | ArrowUp/Down (Up = the +y direction, so the *divider* moves up), Home = axis start, End = axis end |
+| keys (143-170) | ArrowLeft/Right, Home→min, End→max | ArrowUp/Down (Up = the +y direction, so the *divider* moves up), Home/End = the labelled pane's extremes when the caller passes `homeEnd="value"` (the sidebar does, D8) and the axis's extremes otherwise |
 | `side` union (140) | `"left" \| "right"` | `+ "top" \| "bottom"` |
 
 The mapping is closed under one rule: **positive delta is movement in the +axis
@@ -321,8 +328,14 @@ The window is not watched by hand:
   comfortably, and today's auto rule cannot reach that state. The clamp is the
   right contract - the stored number survives for a window that can honour it -
   so the state is stated instead of removed: the separator's own accessible name
-  becomes `Resize the chats list - showing 352 of 900 pixels in this window`
+  becomes `Resize the chats list - showing 344 of 900 pixels in this window`
   whenever the drawn height differs from the stored one (review round 1, D5).
+  That name is now PRINTED in every story frame's readout, because a claim that
+  appears in no frame is a claim a reader has to take on trust (design round 2,
+  D10). It remains an assistive-tech channel rather than an on-screen one - the
+  component renders the name with no `title`, deliberately, since the operator's
+  no-new-chrome constraint and U4 both rule a visible hint out - and the on-screen
+  half is recorded as a follow-up rather than claimed here.
 * **The stored number is never rewritten by a resize.** The render clamps; the
   prefence survives for a window that can honour it (the U6 rule,
   `chat-content.tsx:678-696`). `chat-layout.tsx:28-31` clamps `chatSidebarWidth`
@@ -509,7 +522,11 @@ were the price: the regions' `flex-1`/`shrink-0` roles invert, the boundary's
 list to the entities; and driving it found a defect no still would have (U2: the
 scrolled region lost its position, because the two regions reconciled
 positionally - they are keyed now, and the scene checks node identity across the
-swap).
+swap). That restoration is subject to the region's new content height, and the
+sentence should say so (QA Q-2): the swap moves an 8px rule from one region to the
+other, so a position within 8px of the end is clamped by the region's own shorter
+content - measured `120 -> 111` - which is a clamp rather than the reset the
+defect was.
 
 The original recommendation, kept as the record of what was weighed:
 
@@ -593,7 +610,21 @@ every new control gets a name, a focus step and no shadow.**
   `"Resize the chats list"`. Two separators 0px apart with one name is the defect
   that required prop exists for (146-155).
 * Keys: ArrowUp/ArrowDown by 16px, Shift by 64, Home to the top (max height), End
-  to the bottom (min height), Enter to restore auto. `preventDefault` as today.
+  and **Home/End to the LABELLED PANE's extremes rather than the axis's** - Home
+  is this separator's `aria-valuemin` and End its `aria-valuemax`, whichever edge
+  of that pane the boundary sits on, which is what keeps the key meaning one thing
+  before and after the order swap. This is passed EXPLICITLY (`homeEnd="value"`,
+  design round 2, D8) rather than made the component's default, because the two
+  registers disagree only for a handle on a pane's left/top edge: the three
+  `side="left"` panels in `chat-content.tsx` would have had their Home/End quietly
+  inverted by a default, and that is a behaviour change on three surfaces this
+  change has no business making. **Those three keep the axis register, and their
+  divergence from the pattern is deferred on the pull request**, with
+  `scripts/sidebar-split.test.mjs` pinning both registers so the containment is a
+  check rather than a promise. The arrows stay axis-based in both registers: they
+  move the HANDLE, whose travel is a fact about the layout - which is also why the
+  number they announce rises with one arrow in one persisted order and falls with
+  it in the other (agent review round 2, NIT-4).
 * **The divider must `stopPropagation()` on the keys it consumes.** The nav's own
   `keyDown` (1894-1945) walks `[data-chat-row]` in DOM order on ArrowDown/Up and
   jumps to the first/last row on Home/End, and it does not check
@@ -884,7 +915,9 @@ allows — 8080 or 1111, `docs/agent-driver.md:66-74`). What it asserts, in orde
    with the button held. Then assert the list region's
    `getBoundingClientRect().height` moved by the pointer delta (±1px), that the
    first move stored a px value, and capture the dragged state.
-3. **The clamp holds** at both ends, the other region keeps 72px, and
+3. **The clamp holds** at both ends, the other region keeps its 72px floor - exact
+   at the extremes, and a floor rather than an equality in between, because above
+   that point the sized region takes its stored height instead (QA Q-3) - and
    `aria-valuenow` equals the drawn height.
 4. **The collapse is real, and the restore row is the way back.** Press each
    cluster control through CDP, assert the region unmounts and the other fills the
@@ -1016,7 +1049,8 @@ existing sidebar evidence sets remain valid. Any pixel difference is either a
 finding or a stated change with a re-capture.
 **A2 — Drag.** Dragging the boundary moves it 1:1 with the pointer, the list region
 follows, and the value is stored. At both ends the clamp holds, the other region
-keeps 72px, and `aria-valuenow` equals the drawn height.
+keeps its 72px floor (exact at the extremes, a floor in between; QA Q-3), and
+`aria-valuenow` equals the drawn height.
 **A3 — Memory.** A drag and a collapse survive a restart of the built app on the
 same profile, with the persisted blob naming both values (§ 7.3 step 7).
 **A4 — Hit testing.** A press within 5px of the boundary on either side starts a
