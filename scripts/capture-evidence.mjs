@@ -669,7 +669,34 @@ export const STORIES = [
 	   frame rather than a unit test alone. */
 	["chat-canonical-credential-citation--citation-mid-sentence", 1024, 620],
 	["chat-canonical-credential-citation--citation-not-stored", 1024, 620],
+	/*
+	 * The THIRD register, beside the warning one it is most easily confused with:
+	 * a store the session never answered says so rather than claiming the outcome,
+	 * and the pair is what shows the two are separated by words rather than by a
+	 * hue a monochrome reading cannot carry.
+	 */
+	["chat-canonical-credential-citation--citation-unconfirmed", 1024, 620],
+	/*
+	 * THE SAME CITATION AT THE NARROW RUNG (design round 2, D1). The label this
+	 * change added is long enough to pass a 440 line box, so the width where the
+	 * chip has to clamp is the one that has to be on the record — its absence is
+	 * how the cost of a key-bearing label went unmeasured for a round. 440 is the
+	 * rung the notice frames use, and the story takes the card's small-view
+	 * treatment from the pane width, as the app's own rule does.
+	 */
+	["chat-canonical-credential-citation--citation-unconfirmed-narrow", 440, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
+	/*
+	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on
+	 * a narrow window, and the size design round 1's D3 asked for. The unresolved
+	 * notice carries a key name and two sentences and had no frame at all; the
+	 * refusal's is beside it so the pair reads as the two registers they are.
+	 *
+	 * `chat/credential-notice` drives the shipped notice functions through the
+	 * shipped toast manager, so what is photographed is the copy the app raises.
+	 */
+	["chat-credential-notice--unconfirmed", 440, 620],
+	["chat-credential-notice--unstored", 440, 620],
 	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
