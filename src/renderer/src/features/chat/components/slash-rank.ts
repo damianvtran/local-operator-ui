@@ -38,6 +38,8 @@
  *      primary-name label and is flagged for the design round.
  */
 
+import { SEPARATOR_RUN, pyTrim } from "./slash-token";
+
 export const SCORE_EXACT = 1000;
 export const SCORE_PREFIX = 900;
 export const SCORE_FUZZY_MAX = 40;
@@ -91,8 +93,12 @@ export function scoreCommandTextMatch(prefix: string, target: string): number {
 	return subsequenceScore(lowerPrefix, lowerTarget);
 }
 
-/** Whitespace runs, for taking the last token of a whole-buffer string. */
-const WHITESPACE_RUN = /\s+/;
+/*
+ * THE RUN IS `./slash-token`'S, not a regex of its own: this file takes the LAST
+ * separator-cut token of a whole-buffer string, which is the same question the
+ * planner and the tokenizer ask, and a second class here ranked the popup's rows
+ * against a word the composer would never run (round 4, F4-1's inventory).
+ */
 
 /**
  * The typed prefix, normalised to a single bare word.
@@ -105,8 +111,8 @@ const WHITESPACE_RUN = /\s+/;
  * that hands over the draft prefix cannot silently score the prose.
  */
 function typedWord(textBeforeCursor: string): string {
-	const trimmed = textBeforeCursor.trim();
-	const lastToken = trimmed.split(WHITESPACE_RUN).pop() ?? "";
+	const trimmed = pyTrim(textBeforeCursor);
+	const lastToken = trimmed.split(SEPARATOR_RUN).pop() ?? "";
 	return lastToken.startsWith("/") ? lastToken.slice(1) : lastToken;
 }
 

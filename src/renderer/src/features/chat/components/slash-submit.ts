@@ -137,7 +137,13 @@
  */
 
 import {
+	NON_SEPARATOR,
+	SEPARATOR,
+	SEPARATOR_CLASS,
+	SEPARATOR_RUN,
+	SEPARATOR_RUN_ALL,
 	commandWordOpensDraft,
+	pyTrim,
 	replaceSpan,
 	slashTokenSpan,
 } from "./slash-token";
@@ -289,6 +295,28 @@ export type SlashSubmissionArgs = {
 	 * rather than failing to build; the composer wires it.
 	 */
 	argumentCommands?: ReadonlySet<string>;
+	/**
+	 * Names (primaries and aliases) of commands the endpoint publishes as owning
+	 * their trailing text as FREE TEXT (`prefixes_text`).
+	 *
+	 * Optional, and the endpoint asks it ahead of the shape, so a row carrying it
+	 * owns its tail whatever the shape says. It is read for that reason rather than
+	 * because the current catalogue needs it — every row that sets it also declares
+	 * `any` — and a caller that has not wired it composes exactly as before.
+	 */
+	prefixingCommands?: ReadonlySet<string>;
+	/**
+	 * The wire's own `argument_shape` + `argument_words`, keyed by primary and by
+	 * alias (`argumentShapeVocabulary`).
+	 *
+	 * THE AUTHORITY WHEN A ROW HAS ONE, rather than a fourth source to be ORed with
+	 * the three approximations above: it is the endpoint's own admission rule, and
+	 * the rows where the two disagree are exactly the rows that shipped a mismatch.
+	 * Absent for a row the backend said nothing about, which is when the
+	 * approximations answer — see `argumentShapeVocabulary` for why absence is not
+	 * `any`.
+	 */
+	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
 	/**
@@ -353,8 +381,20 @@ export type SlashSubmissionArgs = {
 	gesture?: "typed" | "pick";
 };
 
-/** The name/argument separator: the first whitespace character of a token. */
-const WHITESPACE = /\s/;
+/**
+ * A slash token: `/` then at least one character that is neither a separator nor
+ * a slash. Read on the run the app put back but this vocabulary can no longer
+ * find, so it asks the same separator question as the scan above it.
+ *
+ * The CLASS lives in `./slash-token` — where a token's boundaries are decided,
+ * and where the reason it is Python's set rather than `\s` is written down — and
+ * this is the one pattern here that needs the class's source rather than one of
+ * the forms built from it.
+ */
+const BROKEN_RUN = new RegExp(`\\/[^${SEPARATOR_CLASS}/]+`);
+
+/** A leading `/`, taken off a recorded word before it is compared. */
+const LEADING_SLASH = /^\//;
 
 /**
  * The lower-cased command word of a token's text, `/team ops` → `team`.
@@ -368,12 +408,16 @@ const WHITESPACE = /\s/;
  * dispatched `/goal and more` over a draft the footer had just told the user
  * would be sent as prose (review F1: 126 of 261 fall-through states, every one of
  * them a PASTE shape — a TSV tab, an NBSP or a thin space lifted off a web page).
- * `\s` is the class `slash-token.ts` ends its word on and the class the
+ * `SEPARATOR_CLASS` is the class `slash-token.ts` ends its word on and the class the
  * dispatcher posts, and two answers to "what is this token's word" have to be
- * the same answer.
+ * the same answer. That class is PYTHON's and not JavaScript's — round 2's Q2-1
+ * was this same sentence with `\s` in it.
  */
 /** The default for an input a caller has not wired yet; never mutated. */
 const EMPTY_COMMANDS: ReadonlySet<string> = new Set<string>();
+
+/** The same default for the shapes, and the same reason. */
+const NO_SHAPES: ReadonlyMap<string, ArgumentShapeRow> = new Map();
 
 /** The lower-cased command word of a token's text, `/team ops` → `team`. */
 function wordOf(commandText: string): string {
@@ -391,11 +435,11 @@ function wordOf(commandText: string): string {
  */
 function invocationOf(commandText: string): SlashCommandInvocation {
 	const body = commandText.slice(1);
-	const separator = body.search(WHITESPACE);
+	const separator = body.search(SEPARATOR);
 	if (separator === -1) return { name: body, args: "" };
 	return {
 		name: body.slice(0, separator),
-		args: body.slice(separator + 1).trim(),
+		args: pyTrim(body.slice(separator + 1)),
 	};
 }
 
@@ -445,7 +489,7 @@ function stagedLine(
  * invariant on `stagedLine` above.
  */
 function oneLine(text: string): string {
-	return text.replace(/\s+/g, " ").trim();
+	return pyTrim(text.replace(SEPARATOR_RUN_ALL, " "));
 }
 
 /**
@@ -479,6 +523,198 @@ function tokenLineEnd(draft: string, index: number): number {
 }
 
 /**
+ * The shape of the text that follows a command's word, as the ENDPOINT states it:
+ * `none` takes no argument at all, `word` and `provider` take one token,
+ * `subcommand` at most two, and `any` owns whatever follows it.
+ *
+ * WHY THIS FILE READS THE WIRE'S OWN VOCABULARY INSTEAD OF DERIVING IT. These
+ * fields (`prefixes_text`, `argument_shape`, `argument_words`) are what the
+ * messages endpoint's admission rule is written against
+ * (`command_argument_is_used`, `local_operator/slash_commands.py`), and it
+ * publishes them on every catalogue row. The registry's booleans that this
+ * planner approximated that rule with — `consumes_prompt`, an inline argument
+ * list, and `arguments` — are each NARROWER than the field they stand in for, so
+ * the two hosts could disagree about one draft: `/login openai` is `required`
+ * with no inline list and no prompt, and a sentence whose first two words are a
+ * valid subcommand invocation (`/mcp logout seems to cause a crash`) reads as a
+ * command to any test that only looks at the leading token.
+ */
+export type WireArgumentShape =
+	| "none"
+	| "word"
+	| "provider"
+	| "subcommand"
+	| "any";
+
+/** One row's shape and the vocabulary its first token must come from. */
+export type ArgumentShapeRow = {
+	shape: WireArgumentShape;
+	words: ReadonlySet<string>;
+};
+
+/**
+ * The catalogue fields this module reads, structurally rather than by importing
+ * the contract's row type: this file is bundled by a test harness that cannot
+ * reach the component tree, and a caller only has to carry the fields.
+ */
+export type ArgumentShapeCatalogueRow = {
+	name: string;
+	aliases: string[];
+	argument_shape?: WireArgumentShape;
+	argument_words?: string[];
+	prefixes_text?: boolean;
+};
+
+/**
+ * The shapes, keyed by every primary and alias.
+ *
+ * A row that publishes NO `argument_shape` is LEFT OUT rather than defaulted to
+ * `any`: absence means the backend predates the field, which is the one case the
+ * planner has to answer from its own vocabulary. A default would instead make
+ * every older backend's rows claim arbitrary text, which is the direction that
+ * hands a sentence to a command.
+ */
+/**
+ * The ENDPOINT'S own server-name pattern, mirrored (`local_operator/mcp/config.py:36`:
+ * `^[A-Za-z0-9_.:-]{1,100}$`, applied to the second token by `_is_mcp_invocation`).
+ *
+ * A second copy, and deliberately so rather than by accident: the row publishes its
+ * subcommand vocabulary but not this pattern, and the alternative — accepting any
+ * second token — plans a draft the endpoint reads as prose, which its command route
+ * then refuses. If the backend ever publishes the pattern on the catalogue row,
+ * read that instead and delete this.
+ */
+const SERVER_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,100}$/;
+
+export function argumentShapeVocabulary(
+	commands: readonly ArgumentShapeCatalogueRow[],
+): Map<string, ArgumentShapeRow> {
+	const shapes = new Map<string, ArgumentShapeRow>();
+	for (const command of commands) {
+		if (!command.argument_shape) continue;
+		const row: ArgumentShapeRow = {
+			shape: command.argument_shape,
+			/*
+			 * AS PUBLISHED, case included. The endpoint's own arms are case-sensitive
+			 * (`_is_single_word` tests membership unfolded, `_is_provider` looks the token
+			 * up as written), so folding a word here makes the composer plan `/mcp LOGOUT`
+			 * as the command while the endpoint reads prose and its command route refuses
+			 * the draft — a 422 where a message send was possible (round 1 F2).
+			 */
+			words: new Set(command.argument_words ?? []),
+		};
+		shapes.set(command.name.toLowerCase(), row);
+		for (const alias of command.aliases) shapes.set(alias.toLowerCase(), row);
+	}
+	return shapes;
+}
+
+/**
+ * The words whose trailing text the endpoint publishes as FREE TEXT destined for
+ * a model (`prefixes_text`).
+ *
+ * It is the field the endpoint asks FIRST, ahead of the shape, so a row that
+ * carries it owns its trailing text whatever shape says — and it is read here for
+ * that reason rather than because the current catalogue needs it (every row that
+ * sets it also declares `any`).
+ */
+export function prefixingVocabulary(
+	commands: readonly ArgumentShapeCatalogueRow[],
+): Set<string> {
+	const names = new Set<string>();
+	for (const command of commands) {
+		if (!command.prefixes_text) continue;
+		names.add(command.name.toLowerCase());
+		for (const alias of command.aliases) names.add(alias.toLowerCase());
+	}
+	return names;
+}
+
+/**
+ * Whether `args` is a valid argument for `shape` — the per-shape test the
+ * endpoint's admission rule applies to a whole draft.
+ *
+ * The EMPTY string is deliberately not answered here: "the word and nothing
+ * else" is the whole-draft form the rule states separately, and answering it from
+ * a shape would make a bare `/mcp` or `/login` depend on its vocabulary rather
+ * than on being the command the user asked for.
+ */
+export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
+	const trimmed = pyTrim(args);
+	if (trimmed === "") return false;
+	/*
+	 * PYTHON'S SPLIT, ON PYTHON'S CLASS. Two things this has to agree with, and
+	 * they are the two halves of the same claim:
+	 *
+	 * `SEPARATOR_RUN` and not a single separator, because Python's `str.split()`
+	 * collapses a run while splitting per separator emits an empty token for each
+	 * extra one. For `subcommand` — the one shape that admits two tokens — that
+	 * turns `/mcp logout  srv` into three tokens here and two there, so the
+	 * composer plans prose for a draft the endpoint runs, posts it, and the message
+	 * route refuses it (round 1 F1).
+	 *
+	 * And the CLASS is Python's rather than `\s`, because the run's members are:
+	 * a separator `\s` does not know about leaves the mark INSIDE the token, which
+	 * is how `/mcp logout<U+001C>srv` failed the name check below and went out as
+	 * prose (round 2 Q2-1, the same permanent refusal one character class over).
+	 */
+	const tokens = trimmed.split(SEPARATOR_RUN);
+	/*
+	 * Matched AS PUBLISHED and case included, for the reason
+	 * `argumentShapeVocabulary` states where the words are built: the endpoint's arms
+	 * are case-sensitive, so folding the token here plans commands the endpoint
+	 * reads as prose (round 1 F2).
+	 */
+	const firstKnown = shape.words.size === 0 || shape.words.has(tokens[0]);
+	switch (shape.shape) {
+		case "none":
+			return false;
+		case "word":
+		case "provider":
+			return tokens.length === 1 && firstKnown;
+		case "subcommand":
+			/*
+			 * The endpoint's own `_is_mcp_invocation`: at most two tokens, the first a
+			 * published subcommand, and the SECOND a server name by its own pattern — a
+			 * check this arm used to omit, which planned `/mcp add (bad)` as the command
+			 * where the endpoint reads prose (round 1 F2/Q1-2).
+			 */
+			return (
+				tokens.length <= 2 &&
+				firstKnown &&
+				(tokens.length === 1 || SERVER_NAME_PATTERN.test(tokens[1]))
+			);
+		case "any":
+			return true;
+	}
+}
+
+/**
+ * The offset to evaluate when NO token sits at the caret: inside the draft's
+ * LEADING command word, or `null` when the draft does not open with one.
+ *
+ * WHY THIS EXISTS. `slashTokenSpan` claims the token on the CARET's own line, so a
+ * draft-opening command whose instruction spans lines has no token at a caret that
+ * has moved into the body: `/team ops fix this` with a second line planned `send`
+ * at the end of the body, while the same draft planned the command with the caret
+ * inside its word. Which of the two readings is right is the WIRE's answer and not
+ * this function's: the leading line is only OFFERED here, and the gates in
+ * `planSlashSubmission` still decide whether the word owns what follows.
+ */
+function draftOpeningCaret(draft: string): number | null {
+	const first = draft.search(NON_SEPARATOR);
+	if (first === -1 || draft[first] !== "/") return null;
+	const lineEnd = draft.indexOf("\n", first);
+	const line = draft.slice(first, lineEnd === -1 ? draft.length : lineEnd);
+	// A bare `/` is the popup's own opener, not a word: a span over it names no
+	// command, so there is nothing to offer.
+	if (pyTrim(line) === "/") return null;
+	// Just inside the leading word: the span it yields is that LINE's, so the exact
+	// offset within the word does not matter.
+	return first + 1;
+}
+
+/**
  * The splice a COMMAND-LOCKED word's token takes, or `null`.
  *
  * ASKED OF THE DRAFT ALONE, and the placement of its one call is the whole of
@@ -503,8 +739,9 @@ function tokenLineEnd(draft: string, index: number): number {
  * FOUR CONJUNCTS, each narrowing rather than decorating:
  *
  *   - the word is one the CALLER locked, and it is spelled as a token (a
- *     boundary `/`, the word, then whitespace or the end: `/credentials` is not
- *     one — the matcher's `(?!\S)` draws the same line as `CREDENTIAL_TOKEN`);
+ *     boundary `/`, the word, then a python separator or the end: `/credentials`
+ *     is not one — the matcher's trailing `(?=[…]|$)` draws the same line as
+ *     `CREDENTIAL_TOKEN`);
  *   - a NON-EMPTY TAIL, because the invocation being planned is `/credential
  *     <secret>`: a bare mid-draft token is the composer's own arming gesture, and
  *     the capture owns it rather than this planner;
@@ -591,10 +828,9 @@ function lockedWordPlan(
 	 * was built for (its own spelling, `/` and separator included when it arrives that
 	 * way), and `undefined` for every other draft.
 	 */
-	const runWord = (unmaskedRunWord ?? "")
-		.toLowerCase()
-		.replace(/^\//, "")
-		.trim();
+	const runWord = pyTrim(
+		(unmaskedRunWord ?? "").toLowerCase().replace(LEADING_SLASH, ""),
+	);
 	// An unwired or empty vocabulary, on a draft the app never un-masked, is the whole
 	// of "no other caller can acquire this by accident": the walk below never runs. A
 	// draft that DOES carry a run is the one exception, because the spelling of the
@@ -608,9 +844,9 @@ function lockedWordPlan(
 	 * place where an in-word slash cannot be punctuation: the app itself un-masked
 	 * characters for a word, and the user is editing them.
 	 */
-	const boundary = runWord === "" ? "(?:^|(?<=\\s))" : "";
+	const boundary = runWord === "" ? `(?:^|(?<=[${SEPARATOR_CLASS}]))` : "";
 	const token = new RegExp(
-		`${boundary}\\/(?:${[...words].map(literalWord).join("|")})(?!\\S)`,
+		`${boundary}\\/(?:${[...words].map(literalWord).join("|")})(?=[${SEPARATOR_CLASS}]|$)`,
 		"gi",
 	);
 	for (
@@ -620,7 +856,7 @@ function lockedWordPlan(
 	) {
 		const index = match.index;
 		const end = tokenLineEnd(draft, index);
-		const typed = invocationOf(draft.slice(index, end).trim());
+		const typed = invocationOf(pyTrim(draft.slice(index, end)));
 		const word = typed.name.toLowerCase();
 		if (!words.has(word)) continue;
 		// A bare token is NOT this rule's: `/credential ` is the composer's own
@@ -669,11 +905,11 @@ function lockedWordPlan(
 	 * alternative was measured too: the secret in a provider body.
 	 */
 	if (runWord === "") return null;
-	const broken = /\/[^\s/]+/.exec(draft);
+	const broken = BROKEN_RUN.exec(draft);
 	if (broken === null) return null;
 	const brokenIndex = broken.index;
 	const brokenEnd = tokenLineEnd(draft, brokenIndex);
-	const brokenTyped = invocationOf(draft.slice(brokenIndex, brokenEnd).trim());
+	const brokenTyped = invocationOf(pyTrim(draft.slice(brokenIndex, brokenEnd)));
 	return runPlan(
 		draft,
 		caret,
@@ -715,7 +951,7 @@ function runPlan(
 	 * it is not, because a catalogue that cannot resolve the word must not be able
 	 * to destroy the user's whole draft either.
 	 */
-	if (rest.text.trim() === "")
+	if (pyTrim(rest.text) === "")
 		return known
 			? { kind: "whole", command, locked: true }
 			: { kind: "unrecognised", command };
@@ -772,6 +1008,8 @@ export function planSlashSubmission({
 	valueArgumentCommands,
 	nameListCommands,
 	argumentCommands,
+	prefixingCommands,
+	argumentShapes,
 	commandLockedWords,
 	unmaskedRunWord,
 	enabled,
@@ -820,11 +1058,31 @@ export function planSlashSubmission({
 	 * transport as a provider name (round 1 R2 = QA Q1 = UX U1). The reference
 	 * calls `slash_token_span` first for the same reason (`editor.py:8184-8197`).
 	 */
-	const span = slashTokenSpan(draft, caret, commandNames);
+	let span = slashTokenSpan(draft, caret, commandNames);
+	/*
+	 * Whether the span below is the HOISTED leading line rather than the token the
+	 * caret sits in. The two ask different questions of a tail (see `ownsArgs`), so
+	 * which one produced the span is a fact the gates have to be told.
+	 */
+	let hoisted = false;
+	if (span === null) {
+		/*
+		 * NO TOKEN AT THE CARET, so the draft-opening branch is read off the LEADING
+		 * line instead — see `draftOpeningCaret` for the measured cases this repairs
+		 * and for why the caret must not decide an outcome it cannot express. The
+		 * span is OFFERED here and nothing else changes: the arming, name-list and
+		 * ownership gates below still decide whether that leading word is a command.
+		 */
+		const leading = draftOpeningCaret(draft);
+		if (leading !== null) {
+			span = slashTokenSpan(draft, leading, commandNames);
+			hoisted = span !== null;
+		}
+	}
 	if (span === null) return { kind: "send" };
 
 	const spliced = replaceSpan(draft, span.start, span.end, "");
-	const commandText = draft.slice(span.start, span.end).trim();
+	const commandText = pyTrim(draft.slice(span.start, span.end));
 	const command = invocationOf(commandText);
 	const word = wordOf(commandText);
 
@@ -839,7 +1097,7 @@ export function planSlashSubmission({
 	 * order because the whole-draft form is the stricter one and has sub-rules of
 	 * its own.
 	 */
-	const wholeDraft = spliced.text.trim() === "";
+	const wholeDraft = pyTrim(spliced.text) === "";
 	const opensDraft = commandWordOpensDraft(draft, span.start);
 
 	// Slash-shaped but not a command this host knows. The misspelling is the
@@ -861,7 +1119,63 @@ export function planSlashSubmission({
 	const consumesText =
 		promptCommands.has(word) ||
 		valueArgumentCommands.has(word) ||
-		(argumentCommands ?? EMPTY_COMMANDS).has(word);
+		(argumentCommands ?? EMPTY_COMMANDS).has(word) ||
+		(prefixingCommands ?? EMPTY_COMMANDS).has(word);
+	/*
+	 * THE WIRE'S OWN ANSWER, asked COMPLETELY when it published one: the shape
+	 * decides for a row that has one, and the approximations above answer only for
+	 * a row that has none. An approximation ORed with the real rule could not
+	 * subtract from it, and subtracting is the whole of what this read is for —
+	 * `/mcp logout` is a valid subcommand while `/mcp logout seems to cause a
+	 * crash` is the sentence the operator was writing.
+	 */
+	const wireShape = (argumentShapes ?? NO_SHAPES).get(word);
+	/*
+	 * AND IT IS ASKED ONCE PER READING OF THE TAIL, because the three branches ask
+	 * different questions and the difference between two of them is load-bearing.
+	 *
+	 * THE WHOLE DRAFT (`whole`): the word IS the draft, so nothing typed fits every
+	 * shape — a bare word is the command the user asked for (`/compact`, `/login`) —
+	 * and a tail is the shape's own test (`argumentFits`).
+	 *
+	 * THE CARET'S OWN TOKEN WITH TEXT SURVIVING (`led`): the word is followed on its
+	 * own line by nothing, and the draft continues on another line, so the registry's
+	 * `consumesText` alone answered here before this change and the shape alone
+	 * answers now — an empty tail is NOT a fit, which is what keeps `/usage` above a
+	 * paragraph prose (`/usage` is in none of the three vocabularies, and a bare
+	 * `usage` is not a free-text row either).
+	 *
+	 * THE HOISTED LEADING LINE (`hoist`): may this word take its argument from a line
+	 * the caret is not on? Only a word the wire says OWNS its tail whatever it says
+	 * (`any`) answers yes. A value-shaped row is validated against the text the
+	 * ENDPOINT receives, so a hoist that asked only the leading line's own tokens ran
+	 * `/mcp logout` above a paragraph as the command while the endpoint read the
+	 * paragraph — the one real defect this arm had, and why the hoist is `any`-only
+	 * rather than shape-validated.
+	 *
+	 * With NO wire — a backend older than these fields — each reading falls back to
+	 * exactly the answer this file gave before the wire existed: `consumesText`, plus
+	 * the bare-word arm of the whole-draft form. The free-text half of the registry
+	 * answers the hoist (`consumes_prompt`), because that is the half whose tail is
+	 * destined for a model.
+	 */
+	const ownsArgs = (
+		args: string,
+		branch: "whole" | "led" | "hoist",
+	): boolean => {
+		const trimmed = pyTrim(args);
+		if (branch === "hoist") {
+			if (wireShape) return wireShape.shape === "any";
+			return promptCommands.has(word);
+		}
+		if (wireShape) {
+			if (wireShape.shape === "any") return true;
+			if (branch === "whole" && trimmed === "") return true;
+			return argumentFits(wireShape, args);
+		}
+		if (branch === "whole") return trimmed === "" || consumesText;
+		return consumesText;
+	};
 	/*
 	 * And whether the word is armed ONLY by an explicit pick. This narrows the
 	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what
@@ -877,7 +1191,7 @@ export function planSlashSubmission({
 		// argument only if the command takes one (`/model gpt-5`, `/goal ship
 		// it`). A no-argument command with trailing text is the operator's own
 		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
-		if (!consumesText && command.args) return { kind: "send" };
+		if (!ownsArgs(command.args, "whole")) return { kind: "send" };
 		return { kind: "whole", command };
 	}
 
@@ -885,7 +1199,8 @@ export function planSlashSubmission({
 	// trailing text IS its argument and which a typed draft may hoist at all, is
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
-	if (!consumesText || armedOnly) return { kind: "send" };
+	if (!ownsArgs(command.args, hoisted ? "hoist" : "led") || armedOnly)
+		return { kind: "send" };
 	if (!opensDraft && gesture !== "pick") return { kind: "send" };
 
 	/*
@@ -914,9 +1229,9 @@ export function planSlashSubmission({
 		// already completed the word to `/team ` and opened the roster list;
 		// leaving it open is the whole interaction, and reassembly happens when
 		// a NAME row is chosen (TUI `editor.py:8219-8222`).
-		if (nameListCommands.has(word) && !typedArgument.trim())
+		if (nameListCommands.has(word) && !pyTrim(typedArgument))
 			return { kind: "list-open", command };
-		const rest = spliced.text.trim();
+		const rest = pyTrim(spliced.text);
 		// The staged line is one line, both halves collapsed — see the invariant on
 		// `stagedLine`. A two-line draft staged here put the command's span on its
 		// first line, so the next Enter answered `send` and the literal `/loop …`
@@ -993,7 +1308,7 @@ export function planSlashArming({
 }: SlashArmingArgs): SlashArmingPlan {
 	const span = slashTokenSpan(draft, caret, commandNames);
 	if (span === null) return { kind: "none" };
-	const commandText = draft.slice(span.start, span.end).trim();
+	const commandText = pyTrim(draft.slice(span.start, span.end));
 	/*
 	 * The word is checked here as well as at the row (`pickArmsCommand`) because
 	 * this is the function that decides what gets HOISTED: a caller that reached
@@ -1003,7 +1318,7 @@ export function planSlashArming({
 	 * the row that was picked.
 	 */
 	if (!armedOnlyCommands.has(wordOf(commandText))) return { kind: "none" };
-	const rest = replaceSpan(draft, span.start, span.end, "").text.trim();
+	const rest = pyTrim(replaceSpan(draft, span.start, span.end, "").text);
 	if (!rest) return { kind: "none" };
 	// `stagedLine` collapses both halves, which is what keeps the staged line one
 	// line whatever shape the draft had — see the invariant on it. The flattening
