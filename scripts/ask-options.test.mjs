@@ -60,9 +60,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { buildSendPayload, ANSWER_NOT_SENT_CODE, UNCONFIRMED_SEND_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
@@ -111,6 +112,7 @@ const {
 	QUESTION_MOVED_ON_MESSAGE,
 	answerUnconfirmedMessage,
 	ANSWER_UNCONFIRMED_LEAD,
+	ANSWER_LOST_TO_RECONNECT_MESSAGE,
 	unsentAnswerMessage,
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
@@ -122,6 +124,7 @@ const {
 	buildSendPayload,
 	ANSWER_NOT_SENT_CODE,
 	UNCONFIRMED_SEND_CODE,
+	DESKTOP_LOST_SIGHT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
 	CanonicalTranscript,
@@ -514,18 +517,23 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
-	// The live facts the report is built from, read from the refs the render body
+	// The live facts the report is built from, read from the refs the layout effect
 	// keeps current — never from the closure this handler resumed in, which is the
-	// value the deleted conjunct compared with itself.
+	// value the deleted conjunct compared with itself. Both writes sit INSIDE a
+	// `useLayoutEffect`: the render-body spelling ran inside commits React can
+	// discard (StrictMode, Suspense), and a leaked newer key would render the
+	// moved-on sentence for a question still on screen (agent review round 2,
+	// MINOR-3). The effect is what keeps the liveness — it runs inside the commit,
+	// after DOM mutation and before paint — without that hazard.
 	assert.match(
 		code,
-		/liveGateKey\.current = gateKey;/,
-		"the live key must be carried from the render the app painted, not read from the closure the press started in",
+		/useLayoutEffect\(\(\) => \{\s*\n\s*liveGateKey\.current = gateKey;\s*\n\s*liveOwnerEpoch\.current = canonical\.ownerEpoch;\s*\n\s*\}\);/,
+		"both live facts must be written together, inside the commit and not during a render React can discard",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		code,
-		/liveOwnerEpoch\.current = canonical\.ownerEpoch;/,
-		"the live epoch must be carried the same way - the closure's epoch is the one the press already sent, so a rollover is invisible from it",
+		/^\tliveGateKey\.current = gateKey;$/m,
+		"the render-body write is the hazard the layout effect replaces",
 	);
 	// The frame: the DOM read, the live key against the press's own key, and the
 	// two epochs. `sentEpoch` is the closure value ON PURPOSE (it is what the press
@@ -547,10 +555,18 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		"the composer arm must write the report's message AND its code - the code is what stops the alert inheriting the draft's failure",
 	);
 	// The card arm writes to the card's own hold, and only with this press's key.
+	// `report.refused` and not a sentence composed here: the register is the
+	// outcome's, so the card carries the same string the composer would (UX round
+	// 2, U7 / QA Q1).
 	assert.match(
 		code,
 		/case "card":[\s\S]{0,600}?setAnswerState\(\{ key, sending: false, refused: report\.refused \}\);/,
-		"the card arm must write the refusal onto the press's own card state",
+		"the card arm must write the report's own sentence onto the press's card state",
+	);
+	assert.doesNotMatch(
+		code,
+		/refused:\s*unsentAnswerMessage\(/,
+		"the card arm must not compose the definite sentence itself - that is what made an unknowable outcome claim a loss",
 	);
 	// The sent arm says nothing: no sentence is written on the winning path.
 	assert.match(
@@ -773,7 +789,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "composer",
-			message: `Your answer was not sent. ${rolledOver.message}`,
+			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
 		},
 	);
@@ -791,39 +807,102 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		),
 		{
 			to: "composer",
-			message: `Your answer was not sent. ${rolledOver.message}`,
+			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
 		},
 	);
 
-	// (iv) the card carries a refusal only while it is the PRESSED card: on screen
-	// AND the pressed question. Either half alone is a card this report cannot use.
-	for (const error of [settled, rolledOver]) {
-		assert.deepEqual(
-			answerReport(
-				{ status: "failed", error },
-				frame({ cardOnScreen: true, liveGateKey: "req-1:0" }),
-			),
-			{ to: "card", refused: `Your answer was not sent. ${error.message}` },
+	// (iv) the card carries the sentence only while it is the PRESSED card: on
+	// screen AND the pressed question. Either half alone is a card this report
+	// cannot use.
+	const onPressedCard = (error, over = {}) =>
+		answerReport(
+			{ status: "failed", error },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:0", ...over }),
 		);
-		// The card is on screen but it is the NEXT question's (design round 1, D1):
-		// the refusal goes to the composer, which is the surface that survives.
-		assert.equal(
-			answerReport(
-				{ status: "failed", error },
-				frame({ cardOnScreen: true, liveGateKey: "req-1:1" }),
-			).to,
-			"composer",
-		);
-		// The pressed question is live but no card has painted it yet.
-		assert.equal(
-			answerReport(
-				{ status: "failed", error },
-				frame({ cardOnScreen: false, liveGateKey: "req-1:0" }),
-			).to,
-			"composer",
-		);
-	}
+	// The card is on screen but it is the NEXT question's (design round 1, D1):
+	// the sentence goes to the composer, which is the surface that survives.
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: settled },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:1" }),
+		).to,
+		"composer",
+	);
+	// The pressed question is live but no card has painted it yet.
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: settled },
+			frame({ cardOnScreen: false, liveGateKey: "req-1:0" }),
+		).to,
+		"composer",
+	);
+
+	// (v) THE REGISTER IS THE OUTCOME'S, NOT THE SURFACE'S (UX round 2, U7; QA
+	// round 2, Q1). The deadline shape leaves the card up *precisely because* the
+	// request is still in flight, so this is what a plain press reaches — and it
+	// used to be told "Your answer was not sent" and then denied it in the next
+	// clause. One error class, one claim, on whichever surface carries it.
+	const deadline = new DesktopControlError(
+		504,
+		"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it.",
+		undefined,
+		"deadline_exceeded",
+	);
+	assert.deepEqual(onPressedCard(deadline), {
+		to: "card",
+		refused: answerUnconfirmedMessage(deadline),
+	});
+	// The card's copy does not assert a loss, which is the whole finding.
+	assert.doesNotMatch(
+		onPressedCard(deadline).refused,
+		/your answer was not sent/i,
+		"the card must not claim a loss for an outcome the module calls unknowable",
+	);
+
+	// (vi) THE ROLLOVER SENTENCE IS THE APP'S OWN, ON BOTH SURFACES (UX round 2,
+	// U8; design round 2, D9). A rollover refusal arrives with the gate still
+	// painted, so the card arm is the one a plain press reaches while the composer
+	// arm is the one a race reaches; rendering the backend's raw `detail` on one and
+	// an authored sentence on the other made the copy a function of a race the user
+	// cannot see. Same string, both surfaces, and it is the app's voice rather than
+	// the route's — the route's sentence names an owner the user has never met.
+	assert.deepEqual(
+		onPressedCard(rolledOver, {
+			liveEpoch: "ffffffffffffffffffffffffffffffff",
+		}),
+		{
+			to: "card",
+			refused: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		},
+	);
+	assert.equal(
+		answerReport(
+			{ status: "failed", error: rolledOver },
+			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
+		).message,
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+	);
+	assert.doesNotMatch(
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		/earlier session owner|session owner/i,
+		"the rollover sentence must not carry the backend's own vocabulary",
+	);
+	assert.match(
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
+		/\.$/,
+		"the family's sentences end in a full stop, and this one did not",
+	);
+
+	// (vii) THE SIXTH STATE the enumeration used to leave unnamed (agent review
+	// round 2, NIT-4): a codeless `409` with the pressed question STILL LIVE and its
+	// card painted. A `409` never settled OUR value, so the not-sent half holds, and
+	// with the gate still current the app has nothing better to say than what the
+	// route said.
+	assert.deepEqual(onPressedCard(settled), {
+		to: "card",
+		refused: `Your answer was not sent. ${settled.message}`,
+	});
 
 	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
 	// so rather than asserting a loss (UX round 1, U1 — the owner HAD kept the
@@ -848,13 +927,20 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		});
 	}
 	/*
-	 * And the same arm for the two failures the MAIN process authors: its deadline
-	 * (a `504` it synthesises, whose own sentence already says "It may or may not
-	 * have reached the server; check the result before repeating it") and its
-	 * transport failure. Both are measured — `--hold-answers-ms` rendered the first
-	 * against the committed rig — and both would otherwise land in the definite arm
-	 * on their status alone, which is the false claim this arm exists to stop (UX
-	 * round 1, U1).
+	 * And the same arm for the failures the MAIN process and the DAEMON author: main's
+	 * deadline (a `504` it synthesises, whose own sentence already says "It may or may
+	 * not have reached the server; check the result before repeating it"), main's
+	 * transport failure, and the daemon's own hop failure. All three are measured —
+	 * `--hold-answers-ms` rendered the first against the committed rig — and all
+	 * three would otherwise land in the definite arm on their status alone, which is
+	 * the false claim this arm exists to stop (UX round 1, U1).
+	 *
+	 * The third is round 2's MAJOR-1: the answer route hands the value to the
+	 * session's owner over a WRITE-THEN-AWAIT-ACK frame, so a lost or slow ack
+	 * answers `503 {"code": "runtime_unreachable"}` — and the write happens before
+	 * the wait, so the request may have arrived and settled with only its ack lost.
+	 * That is the same fact `transport.failed` carries one hop up, and treating the
+	 * two differently produced the definite sentence for an answer the owner kept.
 	 */
 	for (const error of [
 		new DesktopControlError(
@@ -868,6 +954,12 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			"Desktop controls could not reach the backend process.",
 			undefined,
 			"transport.failed",
+		),
+		new DesktopControlError(
+			503,
+			"Session owner is unavailable. Reconnect and reconcile before retrying.",
+			undefined,
+			DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
 		),
 	]) {
 		assert.equal(
@@ -945,13 +1037,16 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	 * pending, which is what the split above is for. Pinned here so a reinstatement
 	 * is caught by the instrument rather than by a reader who would have to know
 	 * the route's three bodies (code review round 1, MAJOR-1).
+	 *
+	 * The rollover's own sentence is the app's, not the route's (design round 2,
+	 * D9), so the pin is also that the backend's `detail` never reaches a user here.
 	 */
 	assert.equal(
 		answerReport(
 			{ status: "failed", error: rolledOver },
 			frame({ liveEpoch: "ffffffffffffffffffffffffffffffff" }),
 		).message,
-		`Your answer was not sent. ${rolledOver.message}`,
+		ANSWER_LOST_TO_RECONNECT_MESSAGE,
 		"the settled sentence must not be reached when the epoch moved",
 	);
 	/*
