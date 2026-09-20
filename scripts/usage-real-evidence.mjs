@@ -329,7 +329,8 @@ const main = async () => {
 		}
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
-			expression: `document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`,
+			expression:
+				"document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))",
 		});
 		const { data } = await cdp.send("Page.captureScreenshot", {
 			format: "webp",
@@ -337,7 +338,7 @@ const main = async () => {
 		});
 		const framePath = join(OUT, `${theme}.webp`);
 		writeFileSync(framePath, Buffer.from(data, "base64"));
-		assertFramePaints(framePath, theme);
+		await assertFramePaints(framePath, theme);
 		console.log(`wrote ${framePath}`);
 	}
 };

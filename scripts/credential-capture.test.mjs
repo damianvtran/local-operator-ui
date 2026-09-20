@@ -89,6 +89,7 @@ const {
 	syncCapture,
 	tokenSpans,
 	typeIntoCapture,
+	unconfirmedNotice,
 	unredactedNotice,
 	unredactedOverBuffer,
 	unstoredNotice,
@@ -1698,6 +1699,19 @@ test("the not-stored phrase names the cause that actually applied", () => {
 		describeUnstored("lost"),
 		"[credential NOT stored — its value did not survive; ask the operator to paste it again]",
 	);
+	/*
+	 * The fourth arm asserts NO outcome, which is the whole reason it exists, and
+	 * it names both things the agent needs to settle the question itself: the key
+	 * to look for and the check that lists it.
+	 */
+	assert.equal(
+		describeUnstored("unconfirmed", "LOP_SECRET_4CE3Y48G"),
+		"[credential unconfirmed — it may be held as $LOP_SECRET_4CE3Y48G, so check list_variables before assuming it is missing]",
+	);
+	assert.equal(
+		describeUnstored("unconfirmed"),
+		"[credential unconfirmed — the session may hold it, so check list_variables before assuming it is missing]",
+	);
 });
 
 test("a refused credential cites honestly beside one that landed", () => {
@@ -1897,6 +1911,21 @@ test("the notices are the TUI's own sentences", () => {
 		unstoredNotice(["B", "A"]),
 		"2 credentials could not be stored (A, B); the agent has been told so. Paste the value again after /credential to retry.",
 	);
+	/*
+	 * The unresolved outcome's notice is a DIFFERENT sentence, and that is the
+	 * operator-facing half of the same fix (operator report, 2026-09-19): the
+	 * warning they were shown claimed a credential had not been stored while every
+	 * bash child in that session carried it. "Could not be confirmed" says what was
+	 * observed, and the retry it names is the gesture that really does store again.
+	 */
+	assert.equal(
+		unconfirmedNotice(["[redacted]"]),
+		"1 credential could not be confirmed as stored ([redacted]); the agent has been told to check before using it. Paste the value again after /credential to store it again.",
+	);
+	assert.equal(
+		unconfirmedNotice(["B", "A"]),
+		"2 credentials could not be confirmed as stored (A, B); the agent has been told to check before using it. Paste the value again after /credential to store it again.",
+	);
 });
 
 /*
@@ -2056,6 +2085,54 @@ test("every citation the app writes comes back as ONE citation segment", () => {
 			reason,
 		);
 	}
+	/*
+	 * The unresolved register carries the reference its sentence names (design round
+	 * 1, D1: the chip labels itself with it), and the key-less arm carries `""` — so
+	 * one shape covers both, and a reader of the frames can tell WHICH credential the
+	 * sentence is about.
+	 */
+	for (const key of [payload.key, ""]) {
+		const sentence = describeUnstored("unconfirmed", key);
+		assert.deepEqual(citationSegments(sentence), [
+			{ kind: "unconfirmed", text: sentence, key },
+		]);
+	}
+});
+
+test("a citation whose store never answered is never written as NOT stored", () => {
+	/*
+	 * THE INVARIANT OF THE WHOLE CHANGE, at the layer that owns the words
+	 * (operator report, 2026-09-19). The operator's own session is the measurement:
+	 * the store HELD the key — `list_variables` listed it and every bash child saw
+	 * it — while the model was handed `[credential NOT stored — the session could
+	 * not be reached; try again]`. So `"unconfirmed"` must not borrow either of the
+	 * two sentences that do assert an outcome, and it has to carry the two things
+	 * that let the agent settle it: the name to look for and the check to run.
+	 */
+	const payload = chipPayload(1, "s".repeat(19));
+	const text = `deploy with ${payload.marker} to the staging box`;
+	const sentence = describeUnstored("unconfirmed", payload.key);
+	const named = substituteCredentials(
+		text,
+		[payload],
+		new Map([[payload.index, "unconfirmed"]]),
+	);
+	assert.ok(named.includes(sentence), named);
+	assert.ok(!named.includes("NOT stored"), named);
+	assert.ok(named.includes(`$${payload.key}`), named);
+	assert.match(named, /list_variables/);
+	// And the confirmed arms keep the sentence each of them already had: this
+	// change must not soften a refusal the store actually made.
+	for (const reason of ["unreachable", "rejected-key", "lost"]) {
+		assert.ok(
+			substituteCredentials(
+				text,
+				[payload],
+				new Map([[payload.index, reason]]),
+			).includes(describeUnstored(reason)),
+			reason,
+		);
+	}
 });
 
 test("a citation mid-sentence stays inside its paragraph, and two of them are two chips", () => {
@@ -2154,10 +2231,26 @@ test("the chip's URL round-trips, and a URL this app did not write is not a cita
 	assert.deepEqual(citationFromHref(citationHref({ kind: "unstored" })), {
 		kind: "unstored",
 	});
+	/*
+	 * The unresolved register has TWO shapes now, because its sentence may or may not
+	 * name a key — D1 means the URL carries whichever it is.
+	 */
+	assert.deepEqual(citationFromHref(citationHref({ kind: "unconfirmed" })), {
+		kind: "unconfirmed",
+		key: "",
+	});
+	const unconfirmedKey = chipPayload(2, "x".repeat(5)).key;
+	assert.deepEqual(
+		citationFromHref(
+			citationHref({ kind: "unconfirmed", key: unconfirmedKey }),
+		),
+		{ kind: "unconfirmed", key: unconfirmedKey },
+	);
 	for (const other of [
 		"https://example.com/x",
 		"#lo-credential",
 		"#lo-credential/not a key/73",
+		"#lo-credential/unconfirmed/not a key",
 		"#lo-credential/LOP_SECRET_4CE3Y48G/seven",
 		undefined,
 	]) {
@@ -2486,6 +2579,30 @@ test("only a link whose visible text IS the citation is chipped", () => {
 		{
 			kind: "unstored",
 		},
+	);
+	// The unconfirmed register is a citation too, and its sentence is recognised by
+	// form: the two chips are what tells a reader whether the app wrote "nothing is
+	// there" or "nobody knows".
+	const unconfirmedKey = chipPayload(3, "y".repeat(5)).key;
+	const unconfirmed = describeUnstored("unconfirmed", unconfirmedKey);
+	assert.deepEqual(
+		citationFromLink(
+			citationHref({ kind: "unconfirmed", key: unconfirmedKey }),
+			unconfirmed,
+		),
+		{ kind: "unconfirmed", key: unconfirmedKey },
+	);
+	// And the pair has to AGREE in this register too: a sentence that names a key
+	// behind a URL that names none is not one citation.
+	assert.equal(
+		citationFromLink(citationHref({ kind: "unconfirmed" }), unconfirmed),
+		null,
+		"the URL and the sentence have to name the same key",
+	);
+	assert.equal(
+		citationFromLink(citationHref({ kind: "unconfirmed" }), unstored),
+		null,
+		"a sentence's URL and its words have to agree",
 	);
 });
 
