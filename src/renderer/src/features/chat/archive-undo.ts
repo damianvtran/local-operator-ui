@@ -50,7 +50,8 @@
  * it must sit on the surface that performed the action - and the archive is
  * performed from the sidebar (a row's control, the conversation header's menu, a
  * typed slash command dispatched by the composer but acting on the chat pane),
- * never from the composer. The register lives beside the list in the panel, so it
+ * never from the composer. The register lives at the panel's ROOT, above both regions
+ * (drawn beside the pin's own failure line, so every assembly mode carries it), so it
  * cannot reach the composer at all, and the rule above is implemented exactly as
  * it was: the offer is written when the press is accepted and cleared by the same
  * subscription or the same ceiling.

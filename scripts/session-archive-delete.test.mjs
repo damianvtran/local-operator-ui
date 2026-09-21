@@ -215,7 +215,15 @@ const serve = (receipt) => {
  * class - the failure would read as "no status", which is exactly the assertion
  * these two tests exist to make.
  */
-const refuse = (status, message) => ({ __failure: { status, message } });
+/*
+ * A refusal, with the daemon's own TOKEN where a test is about a guard: the store
+ * keys `guarded` on `detail.code` rather than on the status (agent review round 4,
+ * R4-3), so a fixture that faked only the status would be testing a client that no
+ * longer exists.
+ */
+const refuse = (status, message, code) => ({
+	__failure: { status, message, code },
+});
 serve({});
 
 const storeBundle = await build({
@@ -263,7 +271,19 @@ export { DesktopControlError, UserFacingError, userFacingMessage };
 export const desktopResult = async request => {
 	const receipt = await globalThis.__archiveAnswer(request);
 	if (receipt && receipt.__failure) {
-		throw new DesktopControlError(receipt.__failure.status, receipt.__failure.message);
+		throw new DesktopControlError(
+			receipt.__failure.status,
+			receipt.__failure.message,
+			/*
+			 * The TOKEN is the FOURTH argument (status, message, cause, code), which is
+			 * the shape the transport itself uses - passing it third silently lands it on
+			 * cause, and a fixture that did that would leave the store keying on an
+			 * undefined code and reporting every guard as unclaimed. No backticks in this
+			 * block: the fixture is a template literal, and one would end it here.
+			 */
+			undefined,
+			receipt.__failure.code,
+		);
 	}
 	return receipt;
 };`,
@@ -487,7 +507,13 @@ test("a delete is sent confirmed, and drops the row only once the backend answer
 
 test("a refused delete leaves the store byte-identical and keeps the sentence", async () => {
 	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
-	serve(refuse(409, "This conversation is running. Stop it before deleting."));
+	serve(
+		refuse(
+			409,
+			"This conversation is running. Stop it before deleting.",
+			"session_delete_refused",
+		),
+	);
 	const outcome = await store.getState().deleteSession(SESSION);
 	assert.deepEqual(outcome, {
 		ok: false,
@@ -508,6 +534,7 @@ test("a refused delete leaves the store byte-identical and keeps the sentence", 
 		refuse(
 			409,
 			"That conversation has a wake armed for it. Reopen it and ask it to cancel the wake, or delete its wakes/<session-id>.json entry, before deleting it.",
+			"session_delete_refused",
 		),
 	);
 	const wake = await store.getState().deleteSession(SESSION);
@@ -533,6 +560,24 @@ test("an id the backend does not have is the outcome the user asked for", async 
 	serve(refuse(404, "Unknown session."));
 	assert.deepEqual(await store.getState().deleteSession(SESSION), { ok: true });
 	assert.deepEqual(store.getState().sessions, []);
+});
+
+test("a 409 that is not the delete guard's token does not claim one (R4-3)", async () => {
+	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
+	/*
+	 * The 409 arm is shared with unrelated refusals - an attachment, the profile
+	 * registry, a superseded completion token, and the route's generic
+	 * `HTTPException(409, ...)` - so the client must not read "a guard refused" out of
+	 * the status alone. The sentence is still kept verbatim, which is what the reader
+	 * sees; only the remedy is withheld, because the remedy is about a delete guard.
+	 */
+	serve(refuse(409, "Something else is holding this conversation."));
+	const outcome = await store.getState().deleteSession(SESSION);
+	assert.deepEqual(outcome, {
+		ok: false,
+		guarded: false,
+		detail: "Something else is holding this conversation.",
+	});
 });
 
 test("the delete candidate is the dialog's whole state", async () => {

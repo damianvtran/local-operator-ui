@@ -635,7 +635,7 @@ export function useSlashDispatch({
 				 * reason `/move` is: the backend's own catalogue presents the destination
 				 * (`sessions.archive`) and the WRITE belongs to this app's store, which owns
 				 * the row's optimistic value, the currency stamp that orders it against the
-				 * answers, and the refusal register beside the list. A round trip through the
+				 * answers, and the refusal register at the panel's root. A round trip through the
 				 * command endpoint would answer a `native_action` this branch would have to
 				 * resolve back into the same call.
 				 */

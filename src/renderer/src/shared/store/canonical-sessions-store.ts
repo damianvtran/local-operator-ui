@@ -1607,7 +1607,8 @@ type CanonicalSessionsState = {
 	/**
 	 * The last archive press the backend did not accept, or null.
 	 *
-	 * Rendered in the panel's own register beside the list rather than in a toast
+	 * Rendered in the panel's own register - at the panel's root, in the notices cluster
+	 * above its regions - rather than in a toast
 	 * (the pin's own refusal went the same way): the sentence belongs where the
 	 * control is, and the control is on the row the user just pressed.
 	 */
@@ -1626,8 +1627,8 @@ type CanonicalSessionsState = {
 	 * that performed the action - and the archive is performed from the sidebar
 	 * (a row's control, the header's menu, a typed command), never from the
 	 * composer. A sidebar register satisfies both by construction: it is inside the
-	 * panel, so it cannot reach the composer, and it is drawn beside the list the
-	 * conversation left.
+	 * panel, so it cannot reach the composer, and it is drawn above both regions - the
+	 * one place every assembly mode renders.
 	 *
 	 * The RETIREMENT RULE is unchanged and lives with the offer
 	 * (`features/chat/archive-undo.ts`): the offer stands while the conversation
@@ -2573,7 +2574,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					},
 					/*
 					 * A new press retires the refusal about the previous one: the sentence
-					 * beside the list describes the last thing the user tried, and leaving a
+					 * in the register describes the last thing the user tried, and leaving a
 					 * stale one under a press that then succeeded is a failure notice for a
 					 * failure that is no longer the state of anything.
 					 */
@@ -2654,6 +2655,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				} catch (error) {
 					const status =
 						error instanceof DesktopControlError ? error.status : null;
+					const code =
+						error instanceof DesktopControlError ? (error.code ?? null) : null;
 					/*
 					 * A 404 IS THE OUTCOME THE USER ASKED FOR, and it is not reported as a
 					 * failure: the route answers it for an id this daemon does not have, so the
@@ -2667,14 +2670,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						return { ok: true };
 					}
 					/*
-					 * 409 IS ONE ARM OF THE ROUTE'S LADDER FOR FOUR GUARDS - a live session, an
-					 * armed wake, unread mail, and a guard whose store could not be read - and
-					 * the backend's own docstring says the split is deliberate: the code
-					 * (`session_delete_refused`) "does not vary by which guard fired", while the
-					 * SENTENCE names the specific remedy. So this field is named for the
-					 * CONDITION the client can see (a guard refused) rather than for a cause it
-					 * cannot infer, which is what QA round 3's Q11 measured: a wake refusal used
-					 * to be reported as `live` and drawn with advice about stopping a session.
+					 * THE TOKEN, NOT THE STATUS (agent review round 4, R4-3). 409 is one arm of
+					 * the route's ladder for FOUR guards - a live session, an armed wake, unread
+					 * mail, and a guard whose store could not be read - and the backend's own
+					 * docstring says the split is deliberate: the code "names the condition (a
+					 * client keys on it)" while the SENTENCE names the specific remedy. That arm
+					 * is shared with unrelated refusals (`AttachmentUnavailable`,
+					 * `ProfileRegistryUnavailable`, the generic `HTTPException(409, ...)`), so
+					 * keying on the status would claim a delete guard for any of them;
+					 * `DesktopControlError.code` carries `detail.code` and `session_delete_refused`
+					 * is the daemon's own token for exactly this condition.
+					 *
+					 * So this field is named for the condition the client can see (a guard
+					 * refused) rather than for a cause it cannot infer, which is what QA round 3's
+					 * Q11 measured: a wake refusal used to be reported as `live` and drawn with
+					 * advice about stopping a session.
 					 *
 					 * The backend's sentence is the one that names the guard - quoted rather than
 					 * paraphrased here, because a client that re-words a guard it does not own
@@ -2683,7 +2693,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 */
 					return {
 						ok: false,
-						guarded: status === 409,
+						guarded: code === "session_delete_refused",
 						detail:
 							error instanceof DesktopControlError && error.message
 								? error.message

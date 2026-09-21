@@ -216,7 +216,8 @@ been, for the offer's whole life (up to 15 s). Two constraints could not both be
 met by a toast — the offer must never overlap the composer's interactive controls,
 and it must sit on the surface that performed the action — and the archive is
 performed from the sidebar (a row's control, the header's menu, a typed command),
-never from the composer. The register sits beside the list in the panel, so it
+never from the composer. The register sits at the panel's root, above both regions,
+so it
 cannot reach the composer at all, and the retirement rule is unchanged: it stands
 while the conversation still holds the state the offer was taken from. The driver
 asserts both halves on the frames (the register is inside the panel, and disjoint
