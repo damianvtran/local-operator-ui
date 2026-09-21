@@ -3204,12 +3204,26 @@ export function ChatSidebar({
 	 * `ARCHIVE_*_TOAST_MS` names, and neither toast carries `role="alert"`: what
 	 * announces a refusal is the row coming back with its control in the state the
 	 * user left it.
+	 *
+	 * NOTHING IS DISMISSED ON MOUNT, and that is a fact about the toast library rather
+	 * than a nicety. Sonner's `dismiss` reaches a bare `requestAnimationFrame`, so a
+	 * dismiss on every mount of this panel is a call with no toast behind it - and in
+	 * a DOM without `requestAnimationFrame` at all, which is the jsdom the sidebar's
+	 * own tests mount in, it is a `ReferenceError` thrown from a passive effect that
+	 * takes the whole panel down with it. The refs below are the "previous value" the
+	 * two effects need for the same reason: a toast is retired when the store's value
+	 * GOES, not when the panel mounts without one.
 	 */
+	const previousUndoRef = useRef<typeof archiveUndo>(null);
+	const previousFailureRef = useRef<typeof archiveFailure>(null);
 	useEffect(() => {
 		if (!archiveUndo) {
+			if (previousUndoRef.current === null) return;
+			previousUndoRef.current = null;
 			dismissToast(ARCHIVE_UNDO_TOAST_ID);
 			return;
 		}
+		previousUndoRef.current = archiveUndo;
 		showInfoToast(archiveOfferedText(archiveUndo.title), {
 			id: ARCHIVE_UNDO_TOAST_ID,
 			className: ARCHIVE_TOAST_CLASS,
@@ -3234,9 +3248,12 @@ export function ChatSidebar({
 
 	useEffect(() => {
 		if (!archiveFailure) {
+			if (previousFailureRef.current === null) return;
+			previousFailureRef.current = null;
 			dismissToast(ARCHIVE_FAILURE_TOAST_ID);
 			return;
 		}
+		previousFailureRef.current = archiveFailure;
 		showWarningToast(
 			`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 			{
