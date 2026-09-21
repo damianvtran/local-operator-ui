@@ -291,7 +291,7 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	// `warning`, not `danger`: the list is intact and only this row's archive state
 	// did not move.
 	assert.match(failure, /showWarningToast\(/);
-	assert.match(failure, /id: ARCHIVE_FAILURE_TOAST_ID/);
+	assert.match(failure, /id: ARCHIVE_TOAST_ID/);
 	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
 	assert.match(failure, /position: ARCHIVE_TOAST_LANE/);
 	assert.equal(
@@ -314,7 +314,7 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 */
 	assert.match(failure, /if \(previousFailureRef\.current === null\) return;/);
 	assert.match(failure, /if \(!archiveFailure\) \{/);
-	assert.match(failure, /dismissToast\(ARCHIVE_FAILURE_TOAST_ID\);/);
+	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
 });
 
 test("the offer is drawn in the sidebar's own lane, mounted at the panel's root (design D11; agent review round 4, R4-1)", () => {

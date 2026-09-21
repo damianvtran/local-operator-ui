@@ -180,11 +180,21 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * these four are the sidebar's, because the sidebar is the surface the archive was
  * performed from and the lane is its own box (design D11).
  *
- * ONE ID PER KIND, so a second archive REPLACES the first rather than stacking,
- * which matches the store's single-value model (`archiveUndo` / `archiveFailure`).
+ * ONE ID FOR THE TWO MESSAGES THE PANEL PUTS IN ITS OWN LANE, so the newest REPLACES
+ * the one before it rather than stacking under it.
+ *
+ * The design's rule is the spec's ("stable toast ids so a second archive replaces the
+ * first", `docs/design/sidebar-row-space.md` §10), and it is read here at the width the
+ * lane actually has rather than as one-id-per-kind: the lane is the panel's own box
+ * (216px of toast inside a 280px column), and sonner stacks a second toast by offsetting
+ * it against the first's height - measured, 2026-09-21, in the dark palette: a refusal
+ * raised while the offer was still up landed at y 844..1014 in an 868px viewport, i.e.
+ * `hitTest:false` and `inViewport:false`, and the frame of it was not a still. The lane
+ * is a lane, not a stack: a refusal replaces the offer it belongs to, and an offer
+ * replaces a refusal - which is also the honest reading of the store's single-value
+ * model, because only one of those two facts is ever the panel's latest word.
  */
-const ARCHIVE_UNDO_TOAST_ID = "archive-undo";
-const ARCHIVE_FAILURE_TOAST_ID = "archive-failure";
+const ARCHIVE_TOAST_ID = "archive";
 /**
  * Sonner's own `position`, and it is what routes an offer to THIS panel's lane and
  * no other: sonner hands a toast to the container whose `position` matches it, and
@@ -3220,12 +3230,18 @@ export function ChatSidebar({
 		if (!archiveUndo) {
 			if (previousUndoRef.current === null) return;
 			previousUndoRef.current = null;
-			dismissToast(ARCHIVE_UNDO_TOAST_ID);
+			/*
+			 * ONLY IF THE LANE IS STILL SHOWING THIS MESSAGE. The id is shared (one toast
+			 * at a time), so the offer's own retirement must not take down a refusal that
+			 * replaced it a moment ago - which is what a bare `dismissToast(id)` would do
+			 * from here.
+			 */
+			if (!archiveFailure) dismissToast(ARCHIVE_TOAST_ID);
 			return;
 		}
 		previousUndoRef.current = archiveUndo;
 		showInfoToast(archiveOfferedText(archiveUndo.title), {
-			id: ARCHIVE_UNDO_TOAST_ID,
+			id: ARCHIVE_TOAST_ID,
 			className: ARCHIVE_TOAST_CLASS,
 			duration: ARCHIVE_UNDO_TOAST_MS,
 			position: ARCHIVE_TOAST_LANE,
@@ -3235,7 +3251,7 @@ export function ChatSidebar({
 					/* The app's own channel for taking something it has said back, rather
 					   than a second route to the toast library (the reason `dismissToast`
 					   exists as a channel function at all). */
-					dismissToast(ARCHIVE_UNDO_TOAST_ID);
+					dismissToast(ARCHIVE_TOAST_ID);
 					void setSessionArchived(
 						archiveUndo.sessionId,
 						!archiveUndo.archived,
@@ -3250,21 +3266,23 @@ export function ChatSidebar({
 		if (!archiveFailure) {
 			if (previousFailureRef.current === null) return;
 			previousFailureRef.current = null;
-			dismissToast(ARCHIVE_FAILURE_TOAST_ID);
+			/* Symmetrically: a refusal clearing must not take down an offer that replaced
+			   it (the same shared id, the same reason). */
+			if (!archiveUndo) dismissToast(ARCHIVE_TOAST_ID);
 			return;
 		}
 		previousFailureRef.current = archiveFailure;
 		showWarningToast(
 			`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 			{
-				id: ARCHIVE_FAILURE_TOAST_ID,
+				id: ARCHIVE_TOAST_ID,
 				className: ARCHIVE_TOAST_CLASS,
 				duration: ARCHIVE_FAILURE_TOAST_MS,
 				position: ARCHIVE_TOAST_LANE,
 				action: {
 					label: "Retry",
 					onClick: () => {
-						dismissToast(ARCHIVE_FAILURE_TOAST_ID);
+						dismissToast(ARCHIVE_TOAST_ID);
 						void setSessionArchived(
 							archiveFailure.sessionId,
 							archiveFailure.archived,
