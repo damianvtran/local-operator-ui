@@ -158,6 +158,28 @@ export type ArchiveFact = {
 	archived: boolean;
 	/** The request sequence this write took, which orders it against every read. */
 	at: number;
+	/**
+	 * Whether the write this fact was written by has been ANSWERED. False between the
+	 * press and the daemon's sentence, and that window is what the offer's retirement
+	 * rule has to respect.
+	 *
+	 * WHY A FIELD RATHER THAN A SECOND RECORD: it is the same lifecycle. The press writes
+	 * the fact (optimistic, unanswered), the answer settles it (accepted) or deletes it
+	 * (refused), and a read newer than both keeps the fact exactly as it stands - so the
+	 * flag travels with the value it belongs to and cannot drift from it. A reader that
+	 * needs to know whether the client is still WAITING asks this, and the one that does is
+	 * `archive-undo.ts`'s retirement subscription.
+	 *
+	 * WHAT IT IS FOR, measured on the control beside the one U3 was about (agent review
+	 * round 2, R2-1): the retirement rule reads this fact first, so an OPTIMISTIC fact makes
+	 * the rule say "the conversation no longer holds the state the offer was taken from"
+	 * before anything has been refused. The offer is therefore retired at the press, the
+	 * lane is dismissed - and a refusal arriving in its place is raised on the id that was
+	 * just dismissed, which sonner destroys inside its own unmount window. Undo, the
+	 * header's own restore control and `/unarchive` all write this route, so the gate belongs
+	 * to the fact rather than to any one caller.
+	 */
+	answered: boolean;
 };
 /**
  * The undo offer a successful archive stands, and what pressing Undo would take
@@ -2570,7 +2592,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					answerSeq: at,
 					archiveFacts: {
 						...state.archiveFacts,
-						[sessionId]: { archived, at },
+						/* UNANSWERED until the write's own sentence arrives (`ArchiveFact.answered`). */
+						[sessionId]: { archived, at, answered: false },
 					},
 					sessions: state.sessions.map((row) =>
 						row.session_id === sessionId ? { ...row, archived } : row,
@@ -2606,19 +2629,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						archived,
 					});
 					/*
-					 * AN ACCEPTED WRITE RETIRES THE REFUSAL IT ANSWERS when nothing succeeds it.
-					 * The archive's successor is the offer, which clears it in the same update that
-					 * raises it (`offerArchiveUndo`); an unarchive has no successor at all - the row
-					 * coming back into the list is its own trace - so the stale sentence goes here,
-					 * and the panel's lane effect takes the toast down with it.
+					 * AND THE WRITE IS ANSWERED: the fact is settled, which is what retires the offer
+					 * that press raised (`ArchiveFact.answered`), and the refusal it was written over is
+					 * cleared in the same update - the two halves cannot be separated without leaving a
+					 * window in which the offer is retired and the refusal it replaced is still the
+					 * store's newest word about that conversation.
+					 *
+					 * Currency, like the refusal arm below: only the newest press for this conversation
+					 * may settle it. An older press's acceptance is an answer about a state the newer
+					 * press has already replaced.
 					 */
-					if (!archived) {
-						set((state) =>
-							state.archiveFailure?.sessionId === sessionId
-								? { archiveFailure: null }
-								: state,
-						);
-					}
+					set((state) => {
+						const fact = state.archiveFacts[sessionId];
+						const superseded = fact?.at !== at;
+						return {
+							archiveFacts: superseded
+								? state.archiveFacts
+								: {
+										...state.archiveFacts,
+										[sessionId]: { archived, at, answered: true },
+									},
+							archiveFailure:
+								!archived && state.archiveFailure?.sessionId === sessionId
+									? null
+									: state.archiveFailure,
+						};
+					});
 					return true;
 				} catch (error) {
 					set((state) => {

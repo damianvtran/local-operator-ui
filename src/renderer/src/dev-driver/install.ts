@@ -445,6 +445,31 @@ export function installDevDriver(): string[] {
 				activeSessionId: sessions.activeSessionId,
 				sessionCount: sessions.sessions.length,
 				/*
+				 * THE ARCHIVE LANE'S OWN FACTS, because a scene cannot read an in-place toast update
+				 * off the DOM (agent review round 2, R2-2).
+				 *
+				 * The lane draws both of its messages under ONE id, so the message that replaces
+				 * another is an UPDATE of the mounted element: the pixels, the text and the element
+				 * itself are identical whether the answer re-asserted the message or the previous
+				 * one simply stayed up. A check that says "the retry re-asserted the refusal"
+				 * therefore needs a fact only the new answer can move, and these are the two the
+				 * store holds: `archiveAttempts` is its write counter - each `setSessionArchived`
+				 * takes the next stamp, which is what makes a second press distinguishable from the
+				 * first - and `archiveFailure` is the refusal it is currently carrying.
+				 *
+				 * Read as a pair with the DOM: the attempt must have ADVANCED across the press and
+				 * the refusal must name the conversation the scene pressed, while the painted toast
+				 * is what proves the lane drew it (and where). Neither half is sufficient alone and
+				 * the driver's checks say so.
+				 */
+				archiveAttempts: sessions.answerSeq,
+				archiveFailure: sessions.archiveFailure
+					? {
+							sessionId: sessions.archiveFailure.sessionId,
+							archived: sessions.archiveFailure.archived,
+						}
+					: null,
+				/*
 				 * The wizard's own dialog carries this attribute
 				 * (`features/onboarding/components/onboarding-dialog.tsx`). Not
 				 * `role="dialog"`: every modal in the app renders that, so the probe would

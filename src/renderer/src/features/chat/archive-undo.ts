@@ -58,6 +58,7 @@
  */
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type { ArchiveFact } from "@shared/store/canonical-sessions-store";
 import { undoOfferStands } from "./chat-archived";
 
 /**
@@ -68,15 +69,37 @@ import { undoOfferStands } from "./chat-archived";
  */
 export const ARCHIVE_UNDO_CEILING_MS = 15_000;
 
-/** The one sentence an archive offer makes, so the toast and a test agree. */
-export function archiveOfferedText(title: string | undefined): string {
-	/*
-	 * Two spellings because a conversation this client does not list has no name to
-	 * quote: the hit that produced its row carried one, but the row may not be in
-	 * the page and an empty pair of curly quotes would read as a bug. "Conversation
-	 * archived." is the honest version of the same statement.
-	 */
-	return title ? `“${title}” archived.` : "Conversation archived.";
+/**
+ * The quoted NAME an archive offer prints, with the verb left outside it.
+ *
+ * TWO PARTS RATHER THAN ONE SENTENCE, because the card is one line and only one of the
+ * two may be cut: the name flexes and ellipsises (`truncate` in the panel's own JSX),
+ * while the verb is a fixed tail that always fits. The version that shipped put both in
+ * one string and ellipsised that string, so the operator's own 55-character title
+ * rendered as `“Quarterly retention sweep and the transc…` - the closing quote and the
+ * word `archived.` gone, i.e. a card that no longer said what had happened (agent review
+ * round 2, R2-3). The name is also the half a reader can recover in full: it is the row
+ * they just pressed, and the row's own flyout carries it untruncated.
+ *
+ * The no-name spelling is the same statement: a conversation this client does not list
+ * has no title to quote, so the name is the generic noun and the verb still follows.
+ */
+export function archiveOfferedName(title: string | undefined): string {
+	return title ? `“${title}”` : "Conversation";
+}
+
+/** The verb an archive offer prints after the name. One home for the offer's copy. */
+export const ARCHIVE_OFFERED_VERB = "archived.";
+
+/**
+ * The archive fact this window holds for a conversation, if it holds one.
+ *
+ * Separate from `knownArchived` below because the two questions are different: this one
+ * is about THIS CLIENT'S OWN WRITE (whether it has been answered), and that one is about
+ * what the client knows of the state.
+ */
+function archiveFactFor(sessionId: string): ArchiveFact | undefined {
+	return useCanonicalSessionsStore.getState().archiveFacts[sessionId];
 }
 
 /**
@@ -152,6 +175,28 @@ export function offerArchiveUndo(input: {
 		if (current?.sessionId === input.sessionId) store().setArchiveUndo(null);
 	};
 	const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
+		/*
+		 * A PRESS THAT HAS NOT BEEN ANSWERED DECIDES NOTHING (agent review round 2, R2-1).
+		 *
+		 * The rule below reads the client's own fact first, and the fact is written
+		 * OPTIMISTICALLY - so at the press it already says the conversation no longer holds
+		 * the state the offer was taken from, before the daemon has said anything. Asking the
+		 * rule then retires the offer at the press, the panel dismisses the lane, and the
+		 * refusal that a refused write produces a few milliseconds later is created on the id
+		 * that was just dismissed - which sonner destroys with the entry it is removing. That
+		 * is the lost-message mechanism U3 was about, on the Undo control beside the Retry,
+		 * and the reason the answer owns the retirement rather than the press.
+		 *
+		 * It is one gate for every writer of this route, which is why it lives here rather than
+		 * in the control that happens to be nearest: the offer's own Undo, the header's restore
+		 * control and `/unarchive` all call `setSessionArchived`, and all three would otherwise
+		 * take the lane down before their answer.
+		 *
+		 * The ceiling still bounds the offer, so an answer that never comes costs the listener
+		 * nothing but the wait it already had.
+		 */
+		const fact = archiveFactFor(input.sessionId);
+		if (fact !== undefined && !fact.answered) return;
 		// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
 		// comment and the behaviour cannot drift apart.
 		if (undoOfferStands(input.archived, knownArchived(input.sessionId))) return;

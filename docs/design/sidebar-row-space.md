@@ -328,9 +328,6 @@ a styled one is the bug this avoids).
 - Rows whose title FITS get the same flyout - it is a replacement for the native
   tooltip, not only an overflow affordance - and for those rows it is simply the
   facts, with the title in full as its first line.
-- Rows whose title FITS get the same flyout - it is a replacement for the native
-  tooltip, not only an overflow affordance - and for those rows it is simply the
-  facts, with the title in full as its first line.
 
 ## 7. Reduced motion (D8)
 
@@ -469,12 +466,17 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
 - **Width:** the lane's toasts are capped to the sidebar's content width
   (`--width: min(264px, 100% - 32px)`), so a long title wraps instead of running
   out of the column, which is also what keeps the disjointness above true.
-  **The offer's card is one line and its title is ellipsised in it** (design D3;
-  UX U5): at 216px of content box a 45-character title wrapped to three lines inside
-  its own quotation (`“Migration` / `checklist”` / `archived.`), and the card stood
-  80px tall - 134px for the longest fixture title - over the row it had just
-  archived. The ellipsis can only fall inside the quoted name; the full name is one
-  dwell away in the row's own flyout. **A refusal is deliberately still whole**: it
+  **The offer's card is one line, and only its NAME may be truncated** (design D3;
+  UX U5; the truncation's own correction in agent review round 2, R2-3): at 216px of
+  content box a 45-character title wrapped to three lines inside its own quotation
+  (`“Migration` / `checklist”` / `archived.`), and the card stood 80px tall - 134px for
+  the longest fixture title - over the row it had just archived. The sentence is now TWO
+  elements: the quoted name inside its own truncating box, and `archived.` as a fixed tail
+  outside it. A single ellipsised STRING loses its tail, and the tail here is the verb -
+  the first version of this rule rendered the operator's own longest title as
+  `“Quarterly retention sweep and the transc…`, a card that no longer said what had
+  happened. The full name is one dwell away in the row's own flyout. **A refusal is
+  deliberately still whole**: it
   carries the daemon's own sentence about why the write was refused, and truncating
   that would hide the reason the reader is being asked to retry. Its measured cost
   is stated rather than left to be discovered - 216x206 at the 280 panel, nine
@@ -505,21 +507,32 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   mounted, lane empty at +2.5s; the installed sonner 2.0.3 in jsdom: created on a
   dismissed id, painted at +50ms and gone by +600ms, while the same create 600ms
   later mounts; the store: the write does set `archiveFailure`, so the effect ran).
-  Nothing in the lane dismisses a message it is about to replace: a refusal that
-  follows a refusal is an update, an accepted archive raises the offer in the same
-  update that clears the refusal (`offerArchiveUndo`), and only a message with no
-  successor is dismissed (an accepted unarchive).
-- **Retirement is unchanged.** The register's rule - the offer stands while the
-  conversation still holds the state the offer was taken from
-  (`undoOfferStands`) - is kept, implemented with `dismissToast(id)` the moment
-  the client knows the state has moved. That is the same rule, in the mechanism
-  the toast lane already has for it. **What retires a message is the LANE's own
-  record of what it is showing**, not a fact about the store (R-1): the store's
-  `archiveFailure` outlives its message (it is cleared only by an answer to a press
-  on that conversation), and gating the offer's retirement on it let one refused
-  archive disable retirement for the rest of the session - a still-pressable Undo
-  offering to re-archive a conversation the reader had just restored. Each message
-  retires only itself.
+  Nothing in the lane dismisses a message it is about to replace, and after agent review
+  round 2 that is structural rather than a property of the paths somebody happened to
+  check. ONE effect settles the lane out of the store's two values, so no pair of effects
+  has a declaration order that decides which message wins a commit (R2-4), and neither
+  action dismisses anything before its own answer (R2-1): a refusal that follows a refusal
+  is an update, an accepted archive raises the offer in the same update that clears the
+  refusal (`offerArchiveUndo`), and only a message with no successor is dismissed (an
+  accepted unarchive). **A press that has not been answered also decides nothing** - the
+  retirement subscription skips a conversation whose own fact is still unanswered
+  (`ArchiveFact.answered`), so pressing Undo cannot retire the offer it was taken from and
+  then raise its refusal on the id that dismissal took down. That was R2-1, the same
+  mechanism as U3 on the control beside the Retry.
+- **Retirement is unchanged, and it waits for the answer it is a rule about.** The
+  register's rule - the offer stands while the conversation still holds the state the
+  offer was taken from (`undoOfferStands`) - is kept, implemented with `dismissToast(id)`
+  the moment the client knows the state has moved; a press still in flight is not
+  knowledge (`ArchiveFact.answered`), so the rule is not asked while the answer that would
+  decide it is outstanding. That is the same rule, in the mechanism the toast lane already
+  has for it. **What retires a message is the LANE's own record of what it is showing**,
+  not a fact about the store (agent review round 1, R-1): the store's `archiveFailure`
+  outlives its message (it is cleared only by an answer to a press on that conversation),
+  and gating the offer's retirement on it let one refused archive disable retirement for
+  the rest of the session - a still-pressable Undo offering to re-archive a conversation
+  the reader had just restored. **And one effect draws both messages** (agent review round
+  2, R2-4): "which message the lane shows" is one decision per commit rather than a race
+  between two effects whose declaration order is what decides it.
 - **Not in scope, named:** the pin's own failure line (`pinFailureLine`) is the
   same class of in-panel line and could move to the same lane; it belongs to the
   pin feature and is left alone here rather than changed in passing.

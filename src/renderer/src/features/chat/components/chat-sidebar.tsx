@@ -70,7 +70,11 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
-import { archiveOfferedText, offerArchiveUndo } from "../archive-undo";
+import {
+	ARCHIVE_OFFERED_VERB,
+	archiveOfferedName,
+	offerArchiveUndo,
+} from "../archive-undo";
 import {
 	type ArchivePressRecord,
 	archivePressExpired,
@@ -1790,14 +1794,17 @@ export function ChatSidebar({
 				 * description at all, which is a worse outcome than not pointing (the same
 				 * rule `setting-control.tsx` states for its own help sentence).
 				 *
-				 * AND THE KEY HAS TO BE ABSENT RATHER THAN PRESENT-AND-`undefined` (agent
-				 * review round 1, R2). This element is the tooltip TRIGGER's child, and
-				 * Radix's `Slot.mergeProps` spreads the child's props OVER the trigger's —
-				 * so a key that is present with the value `undefined` overrides the
-				 * primitive's own `aria-describedby` (the flyout's content id), which is
-				 * exactly what it did on every non-silent row. The conditional spread is
-				 * what makes the two channels coexist: this one when the row has a remedy,
-				 * the primitive's when it does not.
+				 * WHY THE KEY IS PASSED RATHER THAN SET TO `undefined` (agent review round 1, R2;
+				 * attribution corrected in round 2, R2-5). The override this guards against was
+				 * real once: the trigger USED to be this button, so Radix's `Slot.mergeProps`
+				 * spread this element's props over the trigger's, and a key present with the value
+				 * `undefined` clobbered the primitive's own `aria-describedby` on every
+				 * non-silent row. The trigger is the row's WRAPPER now (`withFlyout` above), so the
+				 * slot child is that div and nothing here can override anything - the ANCHOR MOVE is
+				 * what closed R2, not this spelling. It is kept as defence: the two channels coexist
+				 * by construction, this one whenever the row has a remedy and the primitive's
+				 * whenever it does not, and moving the trigger back onto the button would
+				 * reintroduce the clobber silently.
 				 *
 				 * THE FLYOUT ABOVE CARRIES THE SAME CLAUSE, deliberately, and the two do
 				 * not duplicate each other's channel: the tooltip is the POINTER's, this is
@@ -3346,11 +3353,14 @@ export function ChatSidebar({
 	 *    performed from the sidebar and the offer appears in the sidebar. That was the
 	 *    half a corner toast could not have.
 	 *
-	 * THE RETIREMENT RULE IS UNCHANGED, only re-spelled: the offer stands while the
-	 * conversation still holds the state the offer was taken from (`undoOfferStands`,	 * in `chat-archived.ts`), and the moment this client knows it does not, the store
-	 * clears `archiveUndo` (`archive-undo.ts`) and the effect below takes the toast
-	 * down through `dismissToast`. The mechanism is the lane's own rather than a
-	 * second copy of the rule.
+	 * THE RETIREMENT RULE IS UNCHANGED, only re-spelled, and it now waits for the ANSWER
+	 * it is a rule about: the offer stands while the conversation still holds the state the
+	 * offer was taken from (`undoOfferStands`, in `chat-archived.ts`), the store clears
+	 * `archiveUndo` when it knows it does not, and the effect below takes the toast down
+	 * through `dismissToast`. A press whose own fact is still unanswered decides nothing
+	 * (`ArchiveFact.answered` in `canonical-sessions-store.ts`), because that fact is
+	 * written optimistically and the ANSWER is what the lane is about - without the gate a
+	 * refusal replaces a message the press had already dismissed, which is R2-1.
 	 *
 	 * ONE ID FOR BOTH KINDS, `ARCHIVE_TOAST_ID`, so a second message REPLACES the first
 	 * rather than stacking - which matches the store's single-value model
@@ -3379,146 +3389,155 @@ export function ChatSidebar({
 	 * dismiss on every mount of this panel is a call with no toast behind it - and in
 	 * a DOM without `requestAnimationFrame` at all, which is the jsdom the sidebar's
 	 * own tests mount in, it is a `ReferenceError` thrown from a passive effect that
-	 * takes the whole panel down with it. The refs below are the "previous value" the
-	 * two effects need for the same reason: a toast is retired when the store's value
-	 * GOES, not when the panel mounts without one.
-	 */
-	const previousUndoRef = useRef<typeof archiveUndo>(null);
-	const previousFailureRef = useRef<typeof archiveFailure>(null);
-	/*
-	 * WHAT THE LANE IS SHOWING, which is a different question from what the STORE holds
-	 * and the one both retirements actually need to ask (agent review round 1, R-1).
-	 *
-	 * The old guard asked the store: the offer's retirement skipped its `dismissToast`
-	 * whenever `archiveFailure` was set, on the reasoning - correct in itself - that the
-	 * id is shared, so a dismissal from here would take down a refusal that had replaced
-	 * the offer. The test was what was wrong, because `archiveFailure` outlives its own
-	 * message: it is cleared only by an answer to a press on that conversation, so ONE
-	 * failed archive disabled the offer's retirement for the rest of the session.
-	 * Reachable in one sitting - archive B (refused), archive A (offered), restore A from
-	 * the header's archived pill - and the offer's fact goes, the retirement is skipped,
-	 * and a still-pressable "Undo" sits there offering to re-archive the conversation the
-	 * reader has just restored.
-	 *
-	 * This ref is set by the effect that actually DRAWS a message and consulted by the
-	 * other's retirement, so each message retires only itself. The one-at-a-time rule the
-	 * shared id implements is preserved rather than weakened: a message that has been
-	 * replaced on screen has no retirement of its own left to run.
+	 * takes the whole panel down with it. The ref below is what makes that possible: a toast is
+	 * retired when the lane's own message GOES, not when the panel mounts without one.
 	 */
 	const laneMessageRef = useRef<"offer" | "failure" | null>(null);
+	/*
+	 * ONE EFFECT SETTLES THE LANE, and that is a guarantee rather than a tidier arrangement
+	 * of two (agent review round 2, R2-4). Both messages share one id, so what the lane must
+	 * show is the store's NEWEST word about the conversation; with one effect per message,
+	 * which of the two wins a commit in which both moved is decided by the order they happen
+	 * to be declared in - and the reversed order dismisses the id and then creates into
+	 * sonner's unmount window, which is U3 restored with nothing failing. One decision per
+	 * commit removes the question instead of documenting it.
+	 *
+	 * WHAT THE LANE SHOWS is therefore a function of the store's two values and nothing
+	 * else: a refusal (which only an ANSWER ever sets) is the newest word when it is set,
+	 * and an offer stands while the rule in `archive-undo.ts` keeps it. BOTH ACTIONS BELOW
+	 * SEND THEIR WRITE AND NOTHING ELSE - neither takes its own message down first - so
+	 * "nothing in the lane dismisses a message it is about to replace" is exact: the
+	 * replacement is the next draw, on the same id, an update OF the mounted toast. A
+	 * dismissal would instead destroy a create that landed inside sonner's own unmount
+	 * window (its `requestAnimationFrame` plus the 200ms delay), which is the mechanism U3
+	 * was (agent review round 1) and the reason the id is shared at all.
+	 *
+	 * THE ONE DISMISSAL IS THE LANE GOING EMPTY, and `laneMessageRef` is what makes that
+	 * answerable: the effect asks whether it DREW a message, never what the store happens to
+	 * hold, because a store value can outlive its own message (agent review round 1, R-1:
+	 * gating the offer's retirement on `archiveFailure` let one refused archive disable
+	 * retirement for the rest of a session, leaving a still-pressable Undo over a
+	 * conversation the reader had restored).
+	 */
 	useEffect(() => {
-		if (!archiveUndo) {
-			if (previousUndoRef.current === null) return;
-			previousUndoRef.current = null;
-			/*
-			 * ONLY IF THE LANE IS STILL SHOWING THE OFFER: the id is shared (one message at
-			 * a time), so the offer's own retirement must not take down a refusal that
-			 * replaced it a moment ago - which is what a bare `dismissToast(id)` would do
-			 * from here.
-			 */
-			if (laneMessageRef.current === "offer") {
-				laneMessageRef.current = null;
-				dismissToast(ARCHIVE_TOAST_ID);
-			}
+		if (!archiveFailure && !archiveUndo) {
+			if (laneMessageRef.current === null) return;
+			laneMessageRef.current = null;
+			dismissToast(ARCHIVE_TOAST_ID);
 			return;
 		}
-		previousUndoRef.current = archiveUndo;
-		laneMessageRef.current = "offer";
-		showInfoToast(archiveOfferedText(archiveUndo.title), {
-			id: ARCHIVE_TOAST_ID,
-			className: ARCHIVE_TOAST_CLASS,
-			duration: ARCHIVE_UNDO_TOAST_MS,
-			position: ARCHIVE_TOAST_LANE,
-			action: {
-				label: "Undo",
-				onClick: () => {
-					/* The app's own channel for taking something it has said back, rather
-					   than a second route to the toast library (the reason `dismissToast`
-					   exists as a channel function at all). */
-					dismissToast(ARCHIVE_TOAST_ID);
-					void setSessionArchived(
-						archiveUndo.sessionId,
-						!archiveUndo.archived,
-						archiveUndo.title,
-					);
-				},
-			},
-		});
-	}, [archiveUndo, setSessionArchived]);
-
-	useEffect(() => {
-		if (!archiveFailure) {
-			if (previousFailureRef.current === null) return;
-			previousFailureRef.current = null;
-			/* Symmetrically: a refusal clearing must not take down an offer that replaced
-			   it (the same shared id, the same reason). */
-			if (laneMessageRef.current === "failure") {
-				laneMessageRef.current = null;
-				dismissToast(ARCHIVE_TOAST_ID);
-			}
-			return;
-		}
-		previousFailureRef.current = archiveFailure;
-		laneMessageRef.current = "failure";
-		showWarningToast(
-			`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
-			{
-				id: ARCHIVE_TOAST_ID,
-				className: ARCHIVE_TOAST_CLASS,
-				duration: ARCHIVE_FAILURE_TOAST_MS,
-				position: ARCHIVE_TOAST_LANE,
-				action: {
-					label: "Retry",
-					onClick: () => {
-						/*
-						 * THE RETRY DOES NOT TAKE ITS OWN MESSAGE DOWN FIRST, and that is the U3 fix
-						 * rather than an omission (UX report round 1, U3: "Retry on a refused
-						 * archive leaves no message at all").
-						 *
-						 * A `dismissToast(id)` here reached sonner's dismiss path, whose removal
-						 * runs through a `requestAnimationFrame` and a 200ms unmount delay; the
-						 * answer to this very press arrives in 2-4ms against a daemon that is on
-						 * this machine, and a create landing inside that window is merged into the
-						 * entry being removed and destroyed with it. Measured three ways on
-						 * 2026-09-21: in the running app (the dismiss and the re-create 2-4ms
-						 * apart, `showWarningToast` called and no toast element ever mounted -
-						 * MutationObserver, no addition, lane empty at +2.5s), against the installed
-						 * sonner 2.0.3 in jsdom (created on a dismissed id: painted at +50ms, gone
-						 * by +600ms; the same create 600ms later mounts), and in the store (the
-						 * write does set `archiveFailure`, so the effect did run).
-						 *
-						 * WHAT REACHES THE SCREEN INSTEAD: the refusal stays UP while the retry is
-						 * in flight - the last answer to a press on this conversation is still the
-						 * honest thing to show - and the answer replaces it in place, through the
-						 * same id, with no dismissal anywhere in the path. A second refusal, a
-						 * successful archive (whose offer supersedes it, below) and the retirement
-						 * effects all reach the lane the same way.
-						 */
-						void setSessionArchived(
-							archiveFailure.sessionId,
-							archiveFailure.archived,
-							archiveFailure.title,
-						).then((accepted) => {
-							if (!accepted || !archiveFailure.archived) return;
+		if (archiveFailure) {
+			laneMessageRef.current = "failure";
+			showWarningToast(
+				`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
+				{
+					id: ARCHIVE_TOAST_ID,
+					className: ARCHIVE_TOAST_CLASS,
+					duration: ARCHIVE_FAILURE_TOAST_MS,
+					position: ARCHIVE_TOAST_LANE,
+					action: {
+						label: "Retry",
+						onClick: () => {
 							/*
-							 * ONE ACT, ONE REGISTER (UX round 1, U2): an accepted retry is the same act
-							 * as the row's own press, so it makes the same offer rather than leaving
-							 * the refusal on screen beside a row that has just left the list. It is
-							 * also what retires the refusal: a retry of an unarchive has no successor,
-							 * and the store clears it there instead (see the accepted arm of
-							 * `setSessionArchived`).
+							 * THE RETRY DOES NOT TAKE ITS OWN MESSAGE DOWN FIRST (UX report round 1, U3:
+							 * "Retry on a refused archive leaves no message at all").
+							 *
+							 * A `dismissToast(id)` here reached sonner's dismiss path, whose removal
+							 * runs through a `requestAnimationFrame` and a 200ms unmount delay; the
+							 * answer to this very press arrives in 2-4ms against a daemon that is on
+							 * this machine, and a create landing inside that window is merged into the
+							 * entry being removed and destroyed with it. Measured three ways on
+							 * 2026-09-21: in the running app (the dismiss and the re-create 2-4ms
+							 * apart, `showWarningToast` called and no toast element ever mounted -
+							 * MutationObserver, no addition, lane empty at +2.5s), against the installed
+							 * sonner 2.0.3 in jsdom (created on a dismissed id: painted at +50ms, gone
+							 * by +600ms; the same create 600ms later mounts), and in the store (the
+							 * write does set `archiveFailure`, so the effect did run).
+							 *
+							 * WHAT REACHES THE SCREEN INSTEAD: the refusal stays UP while the retry is
+							 * in flight - the last answer to a press on this conversation is still the
+							 * honest thing to show - and the answer replaces it in place, through the
+							 * same id, with no dismissal anywhere in the path.
 							 */
-							offerArchiveUndo({
-								sessionId: archiveFailure.sessionId,
-								title: archiveFailure.title,
-								archived: true,
+							void setSessionArchived(
+								archiveFailure.sessionId,
+								archiveFailure.archived,
+								archiveFailure.title,
+							).then((accepted) => {
+								if (!accepted || !archiveFailure.archived) return;
+								/*
+								 * ONE ACT, ONE REGISTER (UX round 1, U2): an accepted retry is the same act
+								 * as the row's own press, so it makes the same offer rather than leaving
+								 * the refusal on screen beside a row that has just left the list. It is
+								 * also what retires the refusal: a retry of an unarchive has no successor,
+								 * and the store clears it there instead (the accepted arm of
+								 * `setSessionArchived`).
+								 */
+								offerArchiveUndo({
+									sessionId: archiveFailure.sessionId,
+									title: archiveFailure.title,
+									archived: true,
+								});
 							});
-						});
+						},
 					},
 				},
-			},
-		);
-	}, [archiveFailure, setSessionArchived]);
+			);
+			return;
+		}
+		if (archiveUndo) {
+			laneMessageRef.current = "offer";
+			showInfoToast(
+				/*
+				 * THE NAME FLEXES; THE VERB DOES NOT (agent review round 2, R2-3). The sentence is
+				 * two elements because a single string that overflows loses its TAIL - which for
+				 * `“<title>” archived.` is the verb, i.e. the half that says what happened, cut
+				 * off by the operator's own long titles. The name ellipsises inside its own box
+				 * (`truncate`) and the verb is a fixed tail that always fits; the full name is
+				 * one dwell away in the row's own flyout, so the truncation costs nothing a
+				 * reader cannot recover.
+				 */
+				<span className="flex min-w-0 items-baseline gap-1">
+					<span className="min-w-0 truncate">
+						{archiveOfferedName(archiveUndo.title)}
+					</span>
+					<span className="shrink-0">{ARCHIVE_OFFERED_VERB}</span>
+				</span>,
+				{
+					id: ARCHIVE_TOAST_ID,
+					className: ARCHIVE_TOAST_CLASS,
+					duration: ARCHIVE_UNDO_TOAST_MS,
+					position: ARCHIVE_TOAST_LANE,
+					action: {
+						label: "Undo",
+						onClick: () => {
+							/*
+							 * THE UNDO SENDS ITS WRITE AND NOTHING ELSE (agent review round 2, R2-1), and
+							 * this is U3's twin on the control beside the Retry: it used to take its own
+							 * message down before the answer, and the optimistic fact retired the offer at
+							 * the same press, so a refused unarchive raised its refusal on the id that was
+							 * just dismissed - the destroy-inside-the-unmount-window pattern, on a
+							 * refusal that is an ordinary outcome (the conversation is live, or the
+							 * transport failed).
+							 *
+							 * NOTHING HERE OR IN THE STORE RETIRES THE OFFER AT THE PRESS: the retirement
+							 * subscription skips a press whose fact is still unanswered, so the offer is
+							 * held while its own write is out, and the ANSWER settles the lane - an
+							 * accepted undo clears `archiveUndo` (the lane goes empty, which is the one
+							 * dismissal with nothing to replace it) and a refused one replaces the offer
+							 * in place with the refusal the store raises for this conversation.
+							 */
+							void setSessionArchived(
+								archiveUndo.sessionId,
+								!archiveUndo.archived,
+								archiveUndo.title,
+							);
+						},
+					},
+				},
+			);
+		}
+	}, [archiveFailure, archiveUndo, setSessionArchived]);
 
 	const pinFailureLine = pinFailure ? (
 		/*

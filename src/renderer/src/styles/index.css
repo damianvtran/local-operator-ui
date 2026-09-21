@@ -570,23 +570,33 @@ nav[aria-label="Chats"]
 }
 
 /*
- * THE OFFER'S CARD IS ONE LINE, AND THE TITLE IS ELLIPSISED IN IT.
+ * THE OFFER'S CARD IS ONE LINE, AND ONLY ITS NAME MAY BE TRUNCATED.
  *
- * WHY: the offer reads `"<title>" archived.` and at the 280 panel the card has 216px of
- * content box, so a 45-character title wrapped to three lines INSIDE its own quotation
- * (`"Migration` / `checklist"` / `archived.`) - a sentence broken in the middle of the
- * name it quotes - and the card stood 80px tall over 216 of the 256px of the very row it
- * had just archived (design round 1, D3; UX U5, which measured 134px for the longer
- * title). One line is the shape the row itself uses for a clipped title, the full name
- * is one dwell away in the row's own flyout, and the sentence's verb is never the part
- * that gets cut: the ellipsis can only fall inside the quoted name.
+ * WHY THE CARD IS ONE LINE: the offer reads `<name> archived.` and at the 280 panel the
+ * card has 216px of content box, so a 45-character title wrapped to three lines INSIDE its
+ * own quotation (`“Migration` / `checklist”` / `archived.`) - a sentence broken in the
+ * middle of the name it quotes - and the card stood 80px tall over 216 of the 256px of the
+ * very row it had just archived (design round 1, D3; UX U5, which measured 134px for the
+ * longer title). One line is the shape the row itself uses for a clipped title, and the
+ * full name is one dwell away in the row's own flyout.
+ *
+ * WHY THE TRUNCATION IS NOT DECLARED HERE (agent review round 2, R2-3). This rule used to
+ * put `nowrap` + ellipsis on the whole `[data-title]`, which truncated the SENTENCE - and a
+ * truncated string loses its TAIL, which for `“<title>” archived.` is the verb: the
+ * operator's own 55-character title rendered as `“Quarterly retention sweep and the
+ * transc…`, i.e. a card that no longer said what had happened. The offer is now TWO elements
+ * built by the panel (`chat-sidebar.tsx`: the name in its own `truncate` box, the verb as a
+ * fixed tail outside it), so what gives when the name is long is the name and the verb is
+ * never the part that gets cut. Tailwind's own `truncate` lives at the call site with the
+ * copy it belongs to; the only thing the lane's stylesheet has to do is let the flex chain
+ * shrink at all.
  *
  * `min-width: 0` ON THE CONTENT is load-bearing and not tidiness. The card is a flex row
  * (`[data-styled="true"]`) whose items are the icon, this content box and the action, and
- * a flex item's automatic minimum size is its min-content width - which, with the title
- * on one line, is the whole title. Without the zero, the content box would refuse to
- * shrink, the fixed `--width` would be overrun and the Undo would be pushed out of the
- * card. With it, the title is the only thing that gives.
+ * a flex item's automatic minimum size is its min-content width - which, with a
+ * non-wrapping name inside, is the whole name. Without the zero, the content box would
+ * refuse to shrink, the fixed `--width` would be overrun and the Undo would be pushed out
+ * of the card. With it, the name is the only thing that gives.
  *
  * THE REFUSAL IS DELIBERATELY NOT INCLUDED: it carries the daemon's own sentence about
  * why the write was refused, and truncating that would hide the reason the reader is
@@ -598,12 +608,4 @@ nav[aria-label="Chats"]
 	[data-sonner-toast].lo-archive-toast[data-type="info"]
 	[data-content] {
 	min-width: 0;
-}
-nav[aria-label="Chats"]
-	[data-sonner-toaster]
-	[data-sonner-toast].lo-archive-toast[data-type="info"]
-	[data-title] {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }

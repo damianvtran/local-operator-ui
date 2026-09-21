@@ -276,10 +276,16 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 * backend's own sentence when there is one, is routed to the panel's lane, and offers
 	 * the retry that re-sends the SAME desired state.
 	 */
+	/*
+	 * THE SLICE IS THE ONE LANE EFFECT (agent review round 2, R2-4): both messages are
+	 * settled by a single effect out of the store's two values, so the assertions below are
+	 * about ONE decision per commit rather than about two effects whose declaration order
+	 * would decide which message wins.
+	 */
 	const failure = between(
 		SIDEBAR,
-		"if (!archiveFailure) {",
-		"}, [archiveFailure, setSessionArchived]);",
+		"if (!archiveFailure && !archiveUndo) {",
+		"}, [archiveFailure, archiveUndo, setSessionArchived]);",
 	);
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
@@ -299,42 +305,38 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 		false,
 		"the sentence must not compete with the catalogue alert about a different failure",
 	);
-	/*
-	 * AND THE RETIREMENT RULE IS THE LANE'S, not a second copy of it: the store clears
-	 * `archiveFailure` when the write it describes is answered - an accepted unarchive
-	 * clears it in the store, an accepted archive is superseded by the offer that
-	 * `offerArchiveUndo` raises in the same update, and a new press leaves it alone -
-	 * and the effect takes the toast down through the app's own `dismissToast` the moment
-	 * that happens.
-	 *
-	 * A PRESS DELIBERATELY DOES NOT RETIRE IT (agent review round 1, R-1 and U3). What
-	 * retires a message is the lane's own record of what it is SHOWING (`laneMessageRef`),
-	 * not a fact about the store: `archiveFailure` outlives its message, so gating the
-	 * OFFER's retirement on it let one refused archive disable retirement for the rest of
-	 * the session - a still-pressable Undo over a conversation the reader had restored.
-	 * And the retry must not take its own message down either: a dismissal followed by a
-	 * create on the same id inside the library's unmount window destroys the message that
-	 * replaces it (the measurement is beside the Retry action).
-	 *
-	 * NOTHING IS DISMISSED ON MOUNT, which is why the effect opens with a ref rather
-	 * than going straight to `dismissToast` (agent review, the jsdom the sidebar's own
-	 * tests mount in): sonner's `dismiss` reaches a bare `requestAnimationFrame` with
-	 * no guard, so a dismiss on a mount that never showed this toast is a call with no
-	 * toast behind it - and in a DOM without `requestAnimationFrame` at all it is a
-	 * ReferenceError thrown from a passive effect. The two assertions below are the two
-	 * halves: the guard is present, and the dismissal is still inside this effect.
-	 */
-	assert.match(failure, /if \(previousFailureRef\.current === null\) return;/);
-	assert.match(failure, /if \(!archiveFailure\) \{/);
-	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
-	// The lane's own record, and the guard that reads it: a message retires only itself.
-	assert.match(failure, /if \(laneMessageRef\.current === "failure"\) \{/);
-	assert.equal(
-		failure.includes("if (!archiveUndo) dismissToast(ARCHIVE_TOAST_ID)"),
-		false,
-		"the refusal's retirement must ask the LANE what it is showing, not the store's other fact",
+	// The refusal is the newest word: it is decided before the offer in the same effect.
+	assert.match(
+		failure,
+		/if \(archiveFailure\) \{[\s\S]*laneMessageRef\.current = "failure";[\s\S]*showWarningToast\(/,
 	);
-	// The retry no longer dismisses its own message before re-sending (U3).
+	/*
+	 * AND THE ONE DISMISSAL IS THE LANE GOING EMPTY (agent review round 1, R-1, and round 2,
+	 * R2-1/R2-4). What retires a message is the lane's own record of what it DREW, never the
+	 * store's other fact - `archiveFailure` outlives its message, and gating the offer's
+	 * retirement on it let one refused archive disable retirement for the rest of a session.
+	 * The refusal itself is retired by the store answering the write it describes: an
+	 * accepted unarchive clears it, an accepted archive supersedes it with the offer
+	 * `offerArchiveUndo` raises in the same update, and a press leaves it alone.
+	 *
+	 * NOTHING IS DISMISSED ON MOUNT, which is why the effect opens with the ref rather than
+	 * going straight to `dismissToast` (the jsdom the sidebar's own tests mount in): sonner's
+	 * `dismiss` reaches a bare `requestAnimationFrame` with no guard, so a dismiss on a mount
+	 * that never showed this toast is a call with no toast behind it - and in a DOM without
+	 * `requestAnimationFrame` at all it is a ReferenceError thrown from a passive effect.
+	 */
+	assert.match(failure, /if \(laneMessageRef\.current === null\) return;/);
+	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
+	// Two effects, two "previous value" refs and a peer-fact test are all gone: the
+	// property above is now a consequence of one effect, not of two order-dependent ones.
+	assert.equal(
+		code(SIDEBAR).includes("previousFailureRef") ||
+			code(SIDEBAR).includes("previousUndoRef"),
+		false,
+		"the lane must be settled by one effect: two effects make U3's fix a matter of declaration order",
+	);
+	// The retry no longer dismisses its own message before re-sending (U3), and neither does
+	// the offer's Undo before ITS answer (R2-1): both send their write and nothing else.
 	const retry = failure.slice(failure.indexOf('label: "Retry"'));
 	assert.equal(
 		retry
@@ -342,6 +344,32 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 			.includes("dismissToast"),
 		false,
 		"a retry that takes its own message down loses the refusal its answer re-creates",
+	);
+	const offer = code(SIDEBAR).slice(code(SIDEBAR).indexOf('label: "Undo"'));
+	assert.equal(
+		offer
+			.slice(0, offer.indexOf("setSessionArchived"))
+			.includes("dismissToast"),
+		false,
+		"an undo that takes its own message down loses the refusal its answer re-creates (R2-1)",
+	);
+});
+
+test("the offer's card truncates its NAME and can never truncate the verb (agent review round 2, R2-3)", () => {
+	const offer = between(
+		SIDEBAR,
+		"if (archiveUndo) {",
+		"}, [archiveFailure, archiveUndo, setSessionArchived]);",
+	);
+	// The name and the verb are two elements: a single string that overflows loses its
+	// TAIL, and the tail of `“<title>” archived.` is the verb.
+	assert.match(offer, /archiveOfferedName\(archiveUndo\.title\)/);
+	assert.match(offer, /ARCHIVE_OFFERED_VERB/);
+	assert.match(offer, /className="min-w-0 truncate"/);
+	assert.equal(
+		offer.includes("archiveOfferedText"),
+		false,
+		"the sentence must not be one string, or a long title cuts the word that says what happened",
 	);
 });
 

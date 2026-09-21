@@ -1340,6 +1340,24 @@ const TOAST_SELECTOR = "[data-sonner-toast]";
 const SIDEBAR_TOAST =
 	'nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast].lo-archive-toast';
 
+/**
+ * The fixture row the stub REFUSES to write: a conversation a running session holds
+ * (`live_claim` in the stub, which quotes the route's own sentence).
+ *
+ * Named once because three scenes assert about it - the refusal's own frame, the retry
+ * that re-asserts it, and the undo whose refusal is R2-1's - and an id written three times
+ * is an id that can drift from the fixture it names.
+ */
+const REFUSED_ID = "7c1b0f2a4d31";
+
+/**
+ * The fixture row whose UNARCHIVE is refused once (`refuse_unarchive_once` in the stub).
+ *
+ * Its archive is accepted, so it is the row whose offer can be pressed into a refusal -
+ * the lane's Undo path, which is where agent review round 2's R2-1 lived.
+ */
+const REFUSED_UNDO_ID = "b3f1a09c7d52";
+
 /** How many toasts are on screen right now, asked of the app's own DOM. */
 function toastsOnScreen(cdp) {
 	return cdp.evaluate(
@@ -2199,7 +2217,22 @@ async function sceneSessionArchive(cdp) {
 	 *
 	 * This is the field that would have caught it: the refusal must be on screen again
 	 * after the retry, with its own action still the element a press would reach.
+	 *
+	 * AND THE PAINTED TOAST ALONE CANNOT SAY THAT (agent review round 2, R2-2), which is why
+	 * the reading below is in two halves. The retry's message is the SAME message the press
+	 * started from - same id, same sentence, same action - and the lane draws a replacement
+	 * as an UPDATE of the mounted element, so a build where the answer never reached the
+	 * lane is pixel-identical to the fixed one as long as the old refusal is still up (and
+	 * by design it is: `chat-sidebar.tsx` holds it while the retry is in flight). A DOM-only
+	 * instrument cannot tell those apart by construction.
+	 *
+	 * The freshness half is the app's own state: pressing Retry takes the store's next write
+	 * stamp and its answer leaves a refusal naming this conversation, so the attempt must
+	 * ADVANCE across the press and the refusal must be about the row that was pressed. That
+	 * is what a "the answer re-asserted it" claim needs; the painted/`hitTest` fields stay
+	 * as the placement claim, and the check requires both.
 	 */
+	const beforeRetry = await verb(cdp, "state");
 	const retryPressedAt = Date.now();
 	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
 	let retried = null;
@@ -2219,13 +2252,21 @@ async function sceneSessionArchive(cdp) {
 				hitTest: document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2) === button,
 			};
 		})()`);
-		if (retried?.painted === true) break;
+		const after = await verb(cdp, "state");
+		retried.answeredAgain =
+			typeof beforeRetry?.archiveAttempts === "number" &&
+			typeof after?.archiveAttempts === "number" &&
+			after.archiveAttempts > beforeRetry.archiveAttempts &&
+			after.archiveFailure?.sessionId === REFUSED_ID;
+		retried.attempts = `${beforeRetry?.archiveAttempts} -> ${after?.archiveAttempts}`;
+		if (retried?.painted === true && retried?.answeredAgain === true) break;
 	}
 	check(
-		"a refused retry puts the refusal back in the lane, with its Retry still pressable (UX round 1, U3)",
+		"a refused retry puts the refusal back in the lane, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)",
 		retried?.painted === true &&
 			retried?.action === "Retry" &&
-			retried?.hitTest === true,
+			retried?.hitTest === true &&
+			retried?.answeredAgain === true,
 		`${Date.now() - retryPressedAt}ms after the retry: ${JSON.stringify(retried)}`,
 	);
 	/*
@@ -2782,6 +2823,92 @@ async function sceneSessionArchive(cdp) {
 	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
 	await verb(cdp, "setSidebarWidth", { width: 280 });
 	await wait(300);
+
+	/*
+	 * AND THE LANE'S OTHER CONTROL, INTO A REFUSAL (agent review round 2, R2-1). The Retry
+	 * is walked above; this is its twin on the OFFER, and it is the one that still carried
+	 * the defect: pressing Undo writes the desired state immediately, the optimistic fact
+	 * made the retirement rule read false, the offer was therefore retired AT the press and
+	 * the lane was dismissed - and a REFUSED unarchive then raised its refusal on the id
+	 * that had just been dismissed, which sonner destroys inside its own unmount window.
+	 * The reader saw the offer vanish, the row stay archived, and no message.
+	 *
+	 * The walk is a whole sequence because the offer must exist before its Undo can be
+	 * pressed: archive the row (accepted - the stub refuses only its unarchive), press the
+	 * offer's own Undo (refused once), then require A MESSAGE TO STILL BE IN THE LANE - the
+	 * refusal this time - with its Retry hit-testable and the row still archived, because a
+	 * refused write moves nothing. The freshness half is read the way the retry's is (`state`
+	 * rather than the pixels): the refusal has to name THIS row, since an in-place
+	 * replacement leaves the element itself indistinguishable.
+	 *
+	 * THEN THE REFUSAL'S OWN RETRY, which the fixture answers by letting the unarchive land:
+	 * the scene ends with the list the fixture describes rather than with an extra archived
+	 * row for the next palette to photograph.
+	 */
+	const undoRow = `[data-session-row="${REFUSED_UNDO_ID}"]`;
+	const labelOf = async (selector) =>
+		cdp.evaluate(
+			`(() => { const node = document.querySelector(${JSON.stringify(selector)}); return node ? node.getAttribute("aria-label") : null; })()`,
+		);
+	await parkPointer(cdp);
+	await hoverOver(cdp, `${undoRow} [data-chat-row]`);
+	await wait(450);
+	await clickAt(cdp, `${undoRow} [data-session-archive]`);
+	await wait(500);
+	const offerUp = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const offerState = await verb(cdp, "state");
+	check(
+		"the offer this walk starts from is up, with no refusal in the store behind it",
+		offerUp.inViewport === true && offerState.archiveFailure == null,
+		JSON.stringify({
+			offer: offerUp.inViewport,
+			failure: offerState.archiveFailure ?? null,
+		}),
+	);
+	const undoAt = Date.now();
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	let undoRefused = null;
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		await wait(250);
+		undoRefused = await cdp.evaluate(`(() => {
+			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			if (!toast) return { painted: false };
+			const r = toast.getBoundingClientRect();
+			const button = toast.querySelector("[data-button]");
+			if (!button) return { painted: r.width > 0, action: null };
+			const b = button.getBoundingClientRect();
+			return {
+				painted: r.width > 0 && getComputedStyle(toast).display !== "none",
+				text: (toast.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 64),
+				action: (button.textContent || "").trim(),
+				hitTest: document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2) === button,
+			};
+		})()`);
+		const undoState = await verb(cdp, "state");
+		undoRefused.refusalNames = undoState?.archiveFailure?.sessionId ?? null;
+		undoRefused.rowLabel = await labelOf(`${undoRow} [data-session-archive]`);
+		if (undoRefused?.painted === true && undoRefused?.action === "Retry") break;
+	}
+	check(
+		"a REFUSED undo leaves a message in the lane, and it is the refusal for the row that was pressed: Retry hit-testable, the row still archived, the offer never left the lane empty (agent review round 2, R2-1)",
+		undoRefused?.painted === true &&
+			undoRefused?.action === "Retry" &&
+			undoRefused?.hitTest === true &&
+			undoRefused?.refusalNames === REFUSED_UNDO_ID &&
+			typeof undoRefused?.rowLabel === "string" &&
+			undoRefused.rowLabel.startsWith("Unarchive"),
+		`${Date.now() - undoAt}ms after the undo: ${JSON.stringify(undoRefused)}`,
+	);
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	const undoCleared = await waitForGone(cdp, SIDEBAR_TOAST, 8_000);
+	const restoredLabel = await labelOf(`${undoRow} [data-session-archive]`);
+	check(
+		"and the walk leaves the list as the fixture describes it: the refusal's own Retry lands the unarchive, so no row is left archived by this sequence",
+		undoCleared.timedOut === false &&
+			typeof restoredLabel === "string" &&
+			restoredLabel.startsWith("Archive"),
+		`lane cleared in ${undoCleared.waitedMs}ms, label now ${JSON.stringify(restoredLabel)}`,
+	);
 
 	check(
 		"every capture is a frame the app held still for, with no toast on it",
@@ -3689,6 +3816,22 @@ async function sceneRowSpace(cdp) {
 		const row = (reading?.rows ?? []).find((entry) => entry.id === id) ?? null;
 		return { flyout: reading?.flyout ?? null, row };
 	};
+	/*
+	 * THE IDENTITY IS A PREFIX RATHER THAN AN EQUALITY (agent review round 2, R2-N4). The
+	 * flyout's first line is the full title followed by the row's binding in parentheses when
+	 * it has one (`chat-sidebar.tsx`'s `rowTooltip`), and every fixture row carries
+	 * `binding: {agent: null, team: null}` today - so equality holds now and would start
+	 * false-failing the moment a fixture gained a binding, which is the wrong direction for
+	 * an assertion to fail in. The title is the part that identifies the row either way.
+	 */
+	const flyoutNames = (flyout, row) => {
+		const title = row?.title?.text ?? "";
+		const line = flyout?.title ?? null;
+		return (
+			line !== null &&
+			(title === "" || line === title || line.startsWith(`${title} (`))
+		);
+	};
 	check(
 		"every hovered row carries a flyout of its own - the row under the pointer, whose facts it describes, clear of that row's own acts",
 		hoveredStates.every(({ state, id }) => {
@@ -3696,7 +3839,7 @@ async function sceneRowSpace(cdp) {
 			return (
 				flyout !== null &&
 				row !== null &&
-				flyout.title === (row.title?.text ?? null) &&
+				flyoutNames(flyout, row) &&
 				row.row !== null &&
 				flyout.left >= row.row.right &&
 				(row.pin === null || flyout.left >= row.pin.right) &&
@@ -3726,9 +3869,13 @@ async function sceneRowSpace(cdp) {
 		),
 	);
 	check(
-		"and no flyout outlives the pointer: with it parked off the panel, the lane of tooltips is empty (the D2 failure was one still painted 2.5s later)",
-		geometry["flyout-closed-280"]?.flyout === null,
-		JSON.stringify(geometry["flyout-closed-280"]?.flyout ?? null),
+		"and no flyout outlives the pointer: with it parked off the panel the tooltip lane is empty, WHILE the row it was drawn on did carry one in the same run (agent review round 2, R2-N3: without that positive control this check passes in a build where the flyout never opens at all, since the sweep before it hovers for less than the dwell)",
+		geometry["hover-long-280"]?.flyout !== null &&
+			geometry["flyout-closed-280"]?.flyout === null,
+		JSON.stringify({
+			opened: geometry["hover-long-280"]?.flyout ?? null,
+			closed: geometry["flyout-closed-280"]?.flyout ?? null,
+		}),
 	);
 
 	/*
