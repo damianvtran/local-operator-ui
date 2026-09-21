@@ -45,10 +45,32 @@ through the app's console wire:
 | 1380x900 (fixed) | 643x**791** | **17** | 17 | 46 | 46 x 17 = **782** | **-9 px** |
 | 1024x700 (fixed) | 287x**591** | **17** | 17 | 34 | 34 x 17 = **578** | **-13 px** |
 
-`floor(791 / 15.6) = 50` and `floor(791 / 17) = 46`: 59 px is three and a half
+`floor(791 / 15.6) = 50` and `floor(791 / 17) = 46`: 59px is three and a half
 rows of terminal, painted outside the box. The font metrics behind the 17 are read
 from the same page, not assumed: `measureText("W")` at `13px "Geist Mono"` reports
 `fontBoundingBoxAscent 13` + `fontBoundingBoxDescent 4` at dpr 2.
+
+HOW EACH NUMBER WAS OBTAINED, because two of the four columns are read and two are
+pinned, and a reader is owed the difference:
+
+- **read directly**: the pane's box (the rect the pane's own `send` reads off its
+  host immediately before it reports — the call is wrapped, and the three reads in a
+  run are identical, so the box is stable), the terminal's painted `.xterm-screen`
+  height, the number of rows in the live DOM, and the height of one of those row
+  elements. Every one of them is in `*-geometry.json` verbatim.
+- **pinned, not read**: the reported CELL height. The report itself crosses a
+  `contextBridge` object that Electron freezes, so the argument cannot be wrapped
+  from the page — measured, and recorded in each run as `bridgePatch`
+  (`Object.isFrozen` true, an assignment that does not take, and
+  `TypeError: Cannot redefine property: setContentRect`). What main used as the
+  divisor is therefore recovered from two numbers that WERE read — main's own rows
+  and the box — against the pane's source constant: `rows = floor(box / cell)`, so
+  50 rows over a 791px box pins the BEFORE cell to `(791/51, 791/50] = (15.51,
+  15.82]`, whose only candidate is `13 * 1.2 = 15.6` (the code), and 46 rows pins
+  the AFTER cell to `(791/47, 791/46] = (16.83, 17.20]`, which is xterm's own
+  `ceil(17 * 2) / 2 = 17`. The `after` column is corroborated a second way: it is
+  the value the shipped `measureCell` now returns for those metrics, asserted in
+  `scripts/console-mirror.test.mjs`.
 
 `before-1380x900-bottom.png` / `after-1380x900-bottom.png` and the `1024x700` pair
 are the same window size, the same seeded content (`ls -la ~`, `seq 1 120`, then
