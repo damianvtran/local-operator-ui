@@ -2119,12 +2119,18 @@ async function main() {
 	 */
 	const FLOOD_DEADLINE_MS = 30_000;
 	/**
-	 * How far the app TREE's RSS may rise above its own baseline during the flood. 256 MiB
-	 * is generous against what a bounded console costs — a 1 MiB live coalescing buffer, a
-	 * 4 MiB log ring, a 5,000-line scrollback — and it is the guard that makes a future
-	 * uncapped buffer fail this cell instead of the operator's machine, which is the shape
-	 * this round exists for. The tree rather than the main process, because Electron's
-	 * renderers and utilities are where a pane's frames actually land.
+	 * How far the app TREE's RSS may rise above ITS OWN BASELINE during the flood — GROWTH,
+	 * NOT AN ABSOLUTE. That distinction is the whole reason this number is small: this app's
+	 * tree is **845 MiB at boot and 1.19-1.24 GiB in later runs** (QA round 8, measured on
+	 * this branch), so a reader who took 256 MiB for a ceiling would write a cell that aborts
+	 * on arrival. What is asserted is `rssPeak < rssBefore + FLOOD_RSS_CEILING_BYTES`, sampled
+	 * per responsiveness sample by process GROUP, because Electron's tree — main, renderer,
+	 * GPU, utilities — is where a pane's frames actually land.
+	 *
+	 * 256 MiB of growth is generous against what a bounded console costs — a 1 MiB live
+	 * coalescing buffer, a 4 MiB log ring, a 5,000-line scrollback — and it is the guard that
+	 * makes a future uncapped buffer fail this cell instead of the operator's machine. The
+	 * measured growth across QA's three runs was +0 / +60 / +109 MB.
 	 */
 	const FLOOD_RSS_CEILING_BYTES = 256 * 1024 * 1024;
 	const floodSurface = await rpcOk(state, "console_create", {
@@ -2297,10 +2303,13 @@ async function main() {
 				rssBefore !== null && rssPeak !== null ? rssPeak - rssBefore : null,
 		},
 	);
-	await rpcOk(state, "console_close", {
-		surface: floodSurface.surface,
-		kill: true,
-	});
+	/*
+	 * NO SECOND CLOSE HERE. The flood cell's own `finally` already reaped this surface, and
+	 * closing it again answered `surface_unavailable` from a call that has no tolerance for
+	 * one — which ended `main()` and took the caps and pane cells after it with it (QA round
+	 * 8: three runs, three aborts at the old close on this line). A surface has one owner of
+	 * its lifetime and it is the block that created it.
+	 */
 
 	// ---- the caps -----------------------------------------------------------
 	// Up to the cap rather than eight more: the session already holds the surfaces
