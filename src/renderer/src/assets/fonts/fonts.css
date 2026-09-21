@@ -30,6 +30,14 @@
  * is pixel-for-pixel the honest "no reading, no spend" state the strip
  * deliberately renders. A slow font turned a true empty state into a false one
  * (design review round 1, D3).
+ *
+ * THE FACES ARE REDISTRIBUTED, SO THEY CARRY THEIR LICENCES: Geist Mono is SIL
+ * OFL 1.1 and the files here are Nerd Fonts 3.4.0 derivatives (a second, MIT
+ * notice for the patch). Both texts, and the provenance read off the files' own
+ * name tables, are in `THIRD_PARTY_NOTICES.md` at the repository root, which
+ * electron-builder also ships inside the app - the OFL's condition is that the
+ * notice travel with the font, and until the console pane the app had no feature
+ * that depended on the patched face enough for anyone to notice it had not.
  */
 @font-face {
 	font-family: "Geist Mono";
