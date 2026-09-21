@@ -16,6 +16,8 @@
  * what this thing IS versus where it stands right now.
  */
 
+import { effortDisplay } from "../session-status/session-model";
+
 /** The row a list renders. Mirrors `ArgumentChoice`. */
 export type ArgumentRow = {
 	value: string;
@@ -256,6 +258,19 @@ export function argumentRows(
 				};
 			});
 		case "effort":
+			return entities.map((raw) => {
+				const value = asText((raw as ValueEntity).value);
+				// The NAME is the title-cased human form, matching the strip's chip
+				// and the `/effort` picker modal; `value` stays the raw rung the
+				// command is sent. Without this the SAME backend list rendered
+				// lowercase in this popup and Title Case in the modal - the exact
+				// drift `effortDisplay` exists to prevent (review round 1, minor 1).
+				return {
+					value,
+					name: effortDisplay(value),
+					current: current === value,
+				};
+			});
 		case "approvals":
 			return entities.map((raw) => {
 				const value = asText((raw as ValueEntity).value);

@@ -64,6 +64,7 @@ import {
 } from "../draft-selection";
 import {
 	bandReadings,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	modelSelector,
@@ -1020,7 +1021,10 @@ export const EffortPicker: FC<PickerContext> = ({
 		() =>
 			rungs.map((value) => ({
 				value,
-				label: value,
+				// `value` stays the raw lowercase rung -- it is what `/effort <rung>`
+				// is sent and what `currentRung === value` compares. Only the LABEL
+				// is the title-cased human form, matching the chip and the model name.
+				label: effortDisplay(value),
 				current: currentRung === value,
 			})),
 		[rungs, currentRung],
