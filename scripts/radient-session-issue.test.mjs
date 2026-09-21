@@ -18,8 +18,9 @@
  * on a capability answer and reads its verdict only once that gate is open, so
  * "the issue is raised" is a claim about a state the surface REACHES; asserting
  * it a fixed number of milliseconds after mount is asserting a scheduling
- * accident. `settled()` therefore waits for the read to have happened before
- * anything is asserted about silence, and `expectKind()` waits for the kind.
+ * accident. `verdictApplied()` therefore waits for the ANSWER and for the RENDER
+ * that answer produces - not for the request that carries it - before anything is
+ * asserted about silence, and `expectKind()` waits for the kind.
  *
  * WHAT THIS IS NOT: proof of layout, or of a page opening. jsdom has no layout
  * engine, so geometry and the frames are the evidence rig's business; the
@@ -54,7 +55,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useRadientSessionIssue } from "./src/renderer/src/shared/hooks/use-radient-session-issue";
+			export { radientSessionIssueKey, useRadientSessionIssue } from "./src/renderer/src/shared/hooks/use-radient-session-issue";
 			export { RadientSessionIssueCallout } from "./src/renderer/src/features/chat/components/radient-session-issue";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
@@ -83,6 +84,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	RadientSessionIssueCallout,
+	radientSessionIssueKey,
 	useRadientSessionIssue,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -113,6 +115,15 @@ const operation = (over) => ({
 	expires_in: 900,
 	...over,
 });
+
+/**
+ * One string identifying the answer a query state carries, or that none has
+ * arrived. Used to match a RENDER against the answer it was produced from.
+ */
+const appliedStamp = (state) =>
+	(state?.dataUpdatedAt ?? 0) > 0 || (state?.errorUpdatedAt ?? 0) > 0
+		? `${state.status}:${state.dataUpdatedAt}:${state.errorUpdatedAt}`
+		: "unanswered";
 
 /**
  * One mounted surface, against a transport this file scripts.
@@ -204,10 +215,25 @@ async function mount(world = {}) {
 	});
 	const container = dom.window.document.getElementById("root");
 	let latest = null;
+	/**
+	 * The verdict answer the LATEST render was produced from.
+	 *
+	 * This is what makes a silence assertion mean something (agent review round
+	 * 1's M-2). React Query applies an answer before React re-renders, so reading
+	 * `latest()` in the same turn as the answer reads the PREVIOUS render - where
+	 * `verdict` is `undefined` and every verdict draws `hidden`, including a
+	 * reversed decision. Recording the stamp at render time, with the query's own
+	 * numbers, is what lets `verdictApplied` wait for a render that was actually
+	 * produced under the answer under test.
+	 */
+	let renderedUnder = appliedStamp(undefined);
 
 	function Probe() {
 		const probe = useRadientSessionIssue();
 		latest = probe;
+		// `useSyncExternalStore` is what makes this honest rather than a guess:
+		// the hook's snapshot and the client's state agree within one render.
+		renderedUnder = appliedStamp(client.getQueryState(radientSessionIssueKey));
 		return h(
 			"div",
 			null,
@@ -216,6 +242,7 @@ async function mount(world = {}) {
 				issue: probe.issue,
 				onSignIn: probe.start,
 				onCancel: probe.cancel,
+				onDismiss: probe.dismiss,
 			}),
 		);
 	}
@@ -254,8 +281,65 @@ async function mount(world = {}) {
 
 	const expectKind = (kind) =>
 		waitFor(() => latest?.issue?.kind === kind, `issue kind "${kind}"`);
-	const verdictRead = () =>
-		waitFor(() => reads("accounts.list") > 0, "the verdict read");
+	/**
+	 * The verdict query's OWN state, which is what a silence assertion has to
+	 * look at to mean anything: see `verdictApplied` below.
+	 */
+	const query = () => client.getQueryState(radientSessionIssueKey); /**
+	 * Wait for the verdict ANSWER to have been applied, not merely requested.
+	 *
+	 * THE FLAW THIS CLOSES (agent review round 1, M-2): the mock records a
+	 * request at the TOP of its handler, before it answers, so waiting on
+	 * `reads("accounts.list") > 0` returned while the response was still in
+	 * flight and the assertion read the render from before any verdict arrived -
+	 * where `verdict` is `undefined` and therefore `hidden` whatever the backend
+	 * said. A test waiting there cannot fail on a reversed decision, which is
+	 * exactly what the round proved by reversing one.
+	 *
+	 * So this waits on the QUERY's own settled state - off `pending`, nothing in
+	 * flight - which is the fact the surface renders from, and then flushes React
+	 * so the assertion reads the render that answer produced.
+	 */
+	const verdictApplied = async () => {
+		await waitFor(() => {
+			const state = query();
+			/*
+			 * AN ANSWER, NOT A PENDING QUERY, and the distinction is not pedantry:
+			 * `useQuery` creates its cache entry while it is still DISABLED (the
+			 * capability gate stays shut until the first answer lands), and a
+			 * disabled entry reports `status: "pending"` with `fetchStatus:
+			 * "idle"` - i.e. exactly the state this predicate first accepted, one
+			 * turn after mount and before a single request had been made. Measured
+			 * with that predicate: the silence assertions below passed against a
+			 * deliberately reversed hook about half the time, which is worse than
+			 * failing.
+			 */
+			const answered =
+				(state?.dataUpdatedAt ?? 0) > 0 || (state?.errorUpdatedAt ?? 0) > 0;
+			if (!answered) return false;
+			/*
+			 * A RENDER IS ONLY WAITED FOR WHEN THERE IS DATA ONE COULD BE PRODUCED
+			 * FROM. React Query subscribes on the properties a render READ, so a
+			 * query that goes straight to an error re-renders the hook not at all -
+			 * measured here, where `renderedUnder` stayed at its initial value for
+			 * four seconds of polling while the query sat in `error`. That is the
+			 * right behaviour for this surface (its output is `hidden` either way)
+			 * and it would make a render-stamp wait unsatisfiable, so the applied
+			 * answer is the whole claim for a read that failed.
+			 */
+			if ((state?.dataUpdatedAt ?? 0) === 0) return true;
+			return renderedUnder === appliedStamp(state);
+		}, "the verdict answer to be applied, and rendered from");
+	};
+	/**
+	 * Force the read the surface's own 60 s interval would make, so a test can
+	 * change the world under a standing block without waiting a minute for it.
+	 */
+	const refresh = async () => {
+		await act(async () => {
+			await client.invalidateQueries({ queryKey: radientSessionIssueKey });
+		});
+	};
 
 	const press = async (label) => {
 		await waitFor(() => controls(label).length > 0, `the "${label}" control`);
@@ -282,7 +366,9 @@ async function mount(world = {}) {
 		reads,
 		waitFor,
 		expectKind,
-		verdictRead,
+		verdictApplied,
+		refresh,
+		query,
 		press,
 		close,
 	};
@@ -308,7 +394,19 @@ test("a backend that cannot answer the verdict draws nothing, and is not asked",
 test("only `login_required` speaks: `ok`, `unknown` and an absent key are silent", async () => {
 	for (const verdict of [HEALTHY, UNKNOWN, "absent"]) {
 		const surface = await mount({ verdict });
-		await surface.verdictRead();
+		await surface.verdictApplied();
+		/*
+		 * THE ANSWER IS ASSERTED TO HAVE LANDED, not assumed (agent review round
+		 * 1, M-2). Waiting on the request left this reading the render from before
+		 * the response arrived, where every verdict renders `hidden` - so the test
+		 * passed on a hook whose decision was reversed. Naming the applied value
+		 * here is what makes the silence below a fact about THIS verdict.
+		 */
+		assert.deepEqual(
+			surface.query()?.data?.radient_login ?? "absent",
+			verdict,
+			`the ${JSON.stringify(verdict)} verdict must have been applied before its silence is asserted`,
+		);
 		assert.equal(
 			surface.latest().issue.kind,
 			"hidden",
@@ -327,7 +425,12 @@ test("a verdict read that FAILED is not evidence the login is dead", async () =>
 	 * operator to fix an account that is not broken.
 	 */
 	const surface = await mount({ verdict: "refused" });
-	await surface.verdictRead();
+	await surface.verdictApplied();
+	assert.equal(
+		surface.query()?.status,
+		"error",
+		"the read must have been answered with its failure before silence is asserted",
+	);
 	assert.equal(surface.latest().issue.kind, "hidden");
 	assert.equal(surface.text(), "");
 	await surface.close();
@@ -357,7 +460,22 @@ test("the action starts the documented flow, and the page is opened by MAIN", as
 		0,
 		"no URL is on offer yet, so nothing may be opened",
 	);
-	assert.match(surface.text(), /The connector restarts when it completes/);
+	/*
+	 * The in-flight copy, and both halves of it are load-bearing: the connector
+	 * sentence says what happens next (design round 1's D5 wanted ONE sentence
+	 * for that one event, and it now lives here rather than being restated in
+	 * the raised state), and the unfinished-attempt clause is what actually ends
+	 * the wait - about five minutes on the browser leg's own bound, well before
+	 * the operation's 900 s (UX round 1, U4).
+	 */
+	assert.match(
+		surface.text(),
+		/The connector restarts on its own once the sign-in completes/,
+	);
+	assert.match(
+		surface.text(),
+		/an attempt left unfinished ends after a few minutes/,
+	);
 
 	/*
 	 * The desktop route deliberately opens no browser and sets `auth_url` from
@@ -449,6 +567,121 @@ test("a concurrent sign-in (409) states the backend's sentence and offers no ret
 		surface.controls("Sign in to Radient").length,
 		0,
 		"pressing again clears nothing: another flow holds the loopback port",
+	);
+	/*
+	 * AND IT OWES THE USER A POINTER AND AN EXIT (agent review round 1, M-1 and
+	 * UX round 1, N2). The sentence names an action this surface cannot take -
+	 * it only knows how to cancel a flow IT started - and nothing cleared the
+	 * phase, so this block used to be a standing sentence with no control at
+	 * all, reachable by pressing this button after starting a sign-in in
+	 * Settings, which posts the same `auth.start`.
+	 */
+	assert.match(
+		surface.text(),
+		/Finish or cancel it in Settings, under Providers\./,
+	);
+	assert.equal(
+		surface.controls("Dismiss").length,
+		1,
+		"a refusal with no retry must not be a standing block with no control",
+	);
+	await surface.close();
+});
+
+test("a refused sign-in is dismissed, and the verdict is what speaks after it", async () => {
+	const surface = await mount({
+		start: {
+			status: 409,
+			body: {
+				detail: "A sign-in is already active. Finish or cancel it first.",
+			},
+		},
+	});
+	await surface.expectKind("needs-sign-in");
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("settled");
+	await surface.press("Dismiss");
+	/*
+	 * The dispelled block is the operation's memory, not the verdict: the login
+	 * is still dead, so the surface falls back to the state that can be acted
+	 * on rather than to silence. `dismiss()` deliberately does not reach the
+	 * other flow - that one holds the machine's one loopback port.
+	 */
+	await surface.expectKind("needs-sign-in");
+	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	await surface.close();
+});
+
+test("a settled phase never outlives the verdict it reports: a failure", async () => {
+	/*
+	 * Agent review round 1, M-1. The phase was returned before the verdict gate
+	 * and nothing cleared it but a further start()/cancel(), so a failed flow
+	 * kept a stale "Sign-in failed" line - with a retry - on screen over a login
+	 * that had healed, which is a false positive of exactly the class this
+	 * surface exists to remove.
+	 */
+	const surface = await mount();
+	await surface.expectKind("needs-sign-in");
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("signing-in");
+	surface.state.operation = operation({
+		state: "failed",
+		message: "Sign-in failed. Check the provider and try again.",
+	});
+	await surface.expectKind("settled");
+	assert.match(
+		surface.text(),
+		/Sign-in failed\. Check the provider and try again\./,
+	);
+
+	// The login heals out of band; the next read is the truth about it.
+	surface.state.verdict = HEALTHY;
+	await surface.refresh();
+	await surface.expectKind("hidden");
+	assert.equal(surface.text(), "");
+	await surface.close();
+});
+
+test("a settled phase never outlives the verdict it reports: a refusal", async () => {
+	/*
+	 * The case the round photographed as a DEAD END: the 409 refusal keeps no
+	 * retry, so with the phase unconditional the block had no control and no way
+	 * out while the verdict stopped demanding anything at all.
+	 */
+	const surface = await mount({
+		start: {
+			status: 409,
+			body: {
+				detail: "A sign-in is already active. Finish or cancel it first.",
+			},
+		},
+	});
+	await surface.expectKind("needs-sign-in");
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("settled");
+
+	surface.state.verdict = HEALTHY;
+	await surface.refresh();
+	await surface.expectKind("hidden");
+	assert.equal(surface.text(), "");
+	await surface.close();
+});
+
+test("a retryable failure keeps the action and no dismissal", async () => {
+	const surface = await mount();
+	await surface.expectKind("needs-sign-in");
+	await surface.press("Sign in to Radient");
+	await surface.expectKind("signing-in");
+	surface.state.operation = operation({
+		state: "failed",
+		message: "Sign-in failed. Check the provider and try again.",
+	});
+	await surface.expectKind("settled");
+	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	assert.equal(
+		surface.controls("Dismiss").length,
+		0,
+		"a dismissal would hide the one control that can clear a failure",
 	);
 	await surface.close();
 });

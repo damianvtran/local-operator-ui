@@ -5330,6 +5330,70 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			unredactedChars !== null ? "text-warning" : "text-ink-muted",
 		);
 
+		/*
+		 * THE SESSION ISSUE, THE GAP BETWEEN IT AND THE BOX, AND THE ANNOUNCEMENT.
+		 *
+		 * IT IS AN `<output>` - the band's own element for an asynchronous line,
+		 * which is what the sentence above the box uses too - and that is the fix
+		 * for UX round 1's U2. The block ARRIVES on its own: the credential dies
+		 * out of band, the 60 s poll finds it, and the callout appears while the
+		 * operator is mid-sentence. That is news, and none of it was announced - a
+		 * screen-reader user got nothing until they happened to tab into it.
+		 * `output` carries the status role implicitly, which is also why this is an
+		 * element rather than a `role="status"` attribute on a `div` (the lint
+		 * rule the a11y set carries wants the element), and the region PERSISTS
+		 * while its contents change, which is the shape an announcement rides.
+		 * `hidden` while there is no issue keeps the healthy band reserving no
+		 * height and the region out of the accessibility tree, exactly as the
+		 * sentence above it does. The `alert` role stays wrong here for the
+		 * primitive's own reason: it is reserved for a callout rendered IN RESPONSE
+		 * to an action, which is the composer's send-error alert.
+		 *
+		 * THE GAP IS THE WRAPPER'S (design round 1, D1). Every other block above the
+		 * composer leaves its own bottom step for that gap (`px-4 pb-2` / `px-2
+		 * pb-1`, the status row's and the alert's own lists) - and the bordered
+		 * callout, which imported the alert's PADDING but not its gap, therefore sat
+		 * 0.5-1.0px above the composer's border at every width. Its ground is 1.02:1
+		 * from the box's, so there was no lightness step to read the edge by either.
+		 *
+		 * The collision is what makes it more than untidy: the composer carries a 2px
+		 * `outline-offset-2` ring whenever a draft is staged - i.e. in the DEFAULT
+		 * state - so the ring's 4px of extent was painted INSIDE the callout's
+		 * ground, drawing a green rule along its bottom edge and over its border at
+		 * the rounded corners; the callout's border read as part of the composer's
+		 * focus decoration. `branding.md` §5 gives the gap to the CONTAINER, which is
+		 * why it is here and not an `mb-*` on the callout.
+		 *
+		 * `pb-2` AT BOTH WIDTHS, deliberately unlike its siblings. `pb-1` is 4px and
+		 * the ring's extent is exactly 4px, so the compacted step that saves vertical
+		 * space in the small view would put the ring's outer edge back on the
+		 * callout's border. 8px is the band's own wide step, the minimum that clears
+		 * the ring with room to read the two edges as two, and the callout is the one
+		 * block up here that must not compact it.
+		 *
+		 * Defined once and rendered TWICE: above the box, and - on the centring band
+		 * only - mirrored below the group, so the group grows by the same height on
+		 * both sides and the arrival does not move the box. See the mirror's own
+		 * comment for why that is confined to this band.
+		 */
+		const radientIssueBlock = (
+			<output
+				className={cn(
+					CHAT_MEASURE,
+					"block pb-2",
+					radientIssue.issue.kind === "hidden" && "hidden",
+				)}
+			>
+				<RadientSessionIssueCallout
+					issue={radientIssue.issue}
+					onSignIn={radientIssue.start}
+					onCancel={radientIssue.cancel}
+					onDismiss={radientIssue.dismiss}
+					isSmallView={isSmallView}
+				/>
+			</output>
+		);
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
 				{/*
@@ -5376,14 +5440,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 *
 				 * It is NOT inside the box, for the alert's own reason: the box is one
 				 * control with one focus ring, and this block carries prose and two
-				 * controls.
+				 * controls. Its own gap to that ring is the wrapper's, above
+				 * `inputContent` - the ring is why it is 8px and not the siblings'
+				 * compacted 4px (design round 1, D1).
 				 */}
-				<RadientSessionIssueCallout
-					issue={radientIssue.issue}
-					onSignIn={radientIssue.start}
-					onCancel={radientIssue.cancel}
-					isSmallView={isSmallView}
-				/>
+				{radientIssueBlock}
 				{(abandonNotice ||
 					refusedNotice ||
 					(!sendError && heldNotice) ||
@@ -7067,6 +7128,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						{credentialNotice}
 					</output>
+				) : null}
+				{/*
+				 * THE SESSION ISSUE'S OWN MIRROR, for the arrival the operator does not
+				 * ask for (UX round 1's U5, same device as the sentence above).
+				 *
+				 * The credential dies out of band and the 60 s poll finds it, so the
+				 * callout appears while the operator is halfway through a sentence.
+				 * MEASURED on this band: the field's top moved 402 -> 468, 66px, under
+				 * the cursor - the callout's own height, halved, which is exactly what
+				 * an insertion above a CENTRED group does. Mirroring it below the group
+				 * makes the group grow by the same height on both sides, so everything
+				 * between the two copies - the box, the status row, the tip row and the
+				 * chips - stays where it was and the text the operator is typing does
+				 * not move at all.
+				 *
+				 * CONFINED TO THIS BAND, for the reason the sentence above gives: on a
+				 * populated pane the band is bottom-anchored, so a mirrored block under
+				 * the box would grow the band downward and push the typed line UP by the
+				 * block's full height. There the callout takes transcript height
+				 * instead, which is the honest move.
+				 *
+				 * It is the SAME element, not a reconstruction, so the two heights match
+				 * by construction at any width and in any state - and it is `invisible`
+				 * (which also takes its two controls out of the tab order) and
+				 * `aria-hidden`, so neither the copy nor the buttons are announced or
+				 * painted twice. The attribute on the visible block is what a driver
+				 * scene reads, and `querySelector` keeps naming the first match in
+				 * document order - the visible one above the box. Nothing extra guards
+				 * the healthy case here: the block itself carries `hidden` when there is
+				 * no issue, so the mirror of a healthy band is a `display: none` copy of
+				 * a `display: none` block and reserves nothing.
+				 */}
+				{bandCentred ? (
+					<div
+						aria-hidden="true"
+						data-lo-radient-issue-mirror=""
+						className={cn("invisible")}
+					>
+						{radientIssueBlock}
+					</div>
 				) : null}
 			</form>
 		);

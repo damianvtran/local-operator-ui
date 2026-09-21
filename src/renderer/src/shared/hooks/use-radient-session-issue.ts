@@ -123,6 +123,17 @@ export const radientSessionIssueKey = [
 ] as const;
 
 /**
+ * The two refusals that name their own remedy, and therefore keep no retry.
+ *
+ * Carried as a discriminant rather than re-read from the sentence, on the same
+ * rule `refusalKind` states below: the backend's copy is not a contract. The
+ * surface owes each one a different thing - `sign-in-active` can say where the
+ * flow holding the loopback port can be finished, and `no-browser-flow` has
+ * nowhere to send the user, because the route it names is what is missing.
+ */
+export type RadientRefusal = "sign-in-active" | "no-browser-flow";
+
+/**
  * What the surface should say, or that it should not be there at all.
  *
  * `hidden` is the healthy state and the overwhelmingly common one, so it is a
@@ -135,7 +146,18 @@ export type RadientSessionIssue =
 	| { kind: "needs-sign-in"; remedy: TunnelRemedy }
 	| { kind: "signing-in" }
 	| { kind: "input-required"; message: string }
-	| { kind: "settled"; message: string; canRetry: boolean };
+	| {
+			kind: "settled";
+			message: string;
+			canRetry: boolean;
+			/**
+			 * Set only for the refusals the surface cannot clear itself: it is what
+			 * lets the callout offer an exit (a dismissal) where it offers no action,
+			 * and it is how the callout knows WHICH refusal this is without reading
+			 * the backend's sentence.
+			 */
+			refusal?: RadientRefusal;
+	  };
 
 /**
  * What the sign-in flow is doing, if anything.
@@ -161,7 +183,18 @@ type Phase =
 	| { kind: "input-required"; message: string }
 	/** The login completed; the verdict has not caught up yet. */
 	| { kind: "settling" }
-	| { kind: "settled"; message: string; canRetry: boolean };
+	/**
+	 * What the operation ended as, and - for the refusals - which one it was.
+	 * See `RadientSessionIssue`'s `settled` member: the two carry the same
+	 * `refusal`, and this is where it is decided (it is read from the refusal's
+	 * STATUS where the operation is started).
+	 */
+	| {
+			kind: "settled";
+			message: string;
+			canRetry: boolean;
+			refusal?: RadientRefusal;
+	  };
 
 export type UseRadientSessionIssue = {
 	/** What to render, or `hidden`. */
@@ -170,6 +203,17 @@ export type UseRadientSessionIssue = {
 	start: () => void;
 	/** Cancel the sign-in this app started. */
 	cancel: () => void;
+	/**
+	 * Clear a settled refusal this surface cannot act on.
+	 *
+	 * The refusals that name their own remedy keep no retry, and nothing else
+	 * clears them: the phase outlives the operation it reports. Without this the
+	 * 409/422 block is a standing sentence with no control at all - a dead end
+	 * reachable from Settings, which starts the same `auth.start` flow (agent
+	 * review round 1, M-1). Dismissing returns the surface to the state that
+	 * describes the login, which is where the operator's next move belongs.
+	 */
+	dismiss: () => void;
 };
 
 export function useRadientSessionIssue(): UseRadientSessionIssue {
@@ -314,6 +358,7 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 					void onOperation(update);
 				});
 			} catch (error) {
+				const refusal = refusalKind(error);
 				setPhase({
 					kind: "settled",
 					// The backend's own refusal sentence, verbatim: a 409 ("A sign-in
@@ -327,10 +372,13 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 					/*
 					 * A refusal is retryable only when retrying can differ. A conflict
 					 * is another flow's hold on the one loopback port and a missing
-					 * browser flow is a backend too old to have the route, so neither
-					 * is cleared by pressing again - the copy says what clears them.
+					 * browser flow is a backend with no such route, so neither is
+					 * cleared by pressing again - the sentence says what clears them,
+					 * and `refusal` is what lets the callout offer the exit that is
+					 * not "press again".
 					 */
-					canRetry: !isRefusalWithOwnRemedy(error),
+					canRetry: refusal === null,
+					refusal: refusal ?? undefined,
 				});
 			}
 		})();
@@ -355,30 +403,68 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 		})();
 	}, []);
 
+	/**
+	 * The exit for a refusal this surface cannot act on.
+	 *
+	 * It clears the phase and nothing else: the verdict is untouched, so the
+	 * surface falls back to what it can say about the login, which is where the
+	 * operator's next move belongs. It deliberately does NOT reach the other
+	 * flow - that one holds the machine's one loopback port and is not this
+	 * app's to cancel; `refusal: "sign-in-active"` is what tells the callout
+	 * where that flow can be finished.
+	 */
+	const dismiss = useCallback(() => {
+		setPhase({ kind: "idle" });
+	}, []);
+
 	const verdict = status.data?.radient_login ?? null;
 	const issue: RadientSessionIssue = (() => {
-		if (phase.kind === "starting" || phase.kind === "running") {
+		/*
+		 * THE PHASES THAT DESCRIBE THIS APP'S OWN FLOW COME FIRST, and they are
+		 * deliberately NOT gated on the verdict. A flow in flight is an action the
+		 * user is in the middle of: withdrawing the capability, or a verdict that
+		 * has not caught up yet, must not erase the operation they started or the
+		 * pasted-code step it is waiting on.
+		 */
+		if (
+			phase.kind === "starting" ||
+			phase.kind === "running" ||
+			phase.kind === "settling"
+		) {
 			return { kind: "signing-in" };
 		}
-		if (phase.kind === "settling") return { kind: "signing-in" };
 		if (phase.kind === "input-required") {
 			return { kind: "input-required", message: phase.message };
 		}
+		/*
+		 * EVERYTHING BELOW IS A CLAIM ABOUT THE LOGIN, so both gates cover all of
+		 * it - a SETTLED phase included, which used to be returned above them and
+		 * therefore outlived the condition it reports (agent review round 1, M-1).
+		 *
+		 * `enabled` is repeated here rather than left to the query: the issue must
+		 * disappear the moment the capability is withdrawn or fails, and a cached
+		 * answer from before the withdrawal would otherwise keep a callout on
+		 * screen that the surface can no longer refetch or act on.
+		 *
+		 * AND THE VERDICT WINS OVER A SETTLED PHASE. Nothing clears that phase but
+		 * a further `start()` or a `cancel()`, so while this branch was
+		 * unconditional two dead ends were reachable: a failure left a stale
+		 * "Sign-in failed" line - with a retry - over a login that had healed, and
+		 * the 409/422 refusals, which keep no retry, left a standing sentence with
+		 * no control at all. The phase is this app's memory of one operation; the
+		 * verdict is what the backend says about the credential, and a block that
+		 * STANDS may only repeat the second. A refusal's own exit is `dismiss()`.
+		 */
+		if (!enabled) return { kind: "hidden" };
+		if (verdict?.state !== "login_required") return { kind: "hidden" };
 		if (phase.kind === "settled") {
 			return {
 				kind: "settled",
 				message: phase.message,
 				canRetry: phase.canRetry,
+				refusal: phase.refusal,
 			};
 		}
-		/*
-		 * `enabled` is repeated here rather than left to the query: the issue
-		 * must disappear the moment the capability is withdrawn or fails, and a
-		 * cached answer from before the withdrawal would otherwise keep a
-		 * callout on screen that the surface can no longer refetch or act on.
-		 */
-		if (!enabled) return { kind: "hidden" };
-		if (verdict?.state !== "login_required") return { kind: "hidden" };
 		return {
 			kind: "needs-sign-in",
 			remedy: status.data?.tunnel_remedy ?? null,
@@ -389,20 +475,28 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 		issue,
 		start,
 		cancel,
+		dismiss,
 	};
 }
 
 /**
- * Whether this refusal names its own remedy, and therefore must not offer the
- * surface's action again.
+ * Which refusal this is, for the two that name their own remedy and therefore
+ * must not offer the surface's action again.
  *
- * Read from the STATUS and the CODE rather than from the sentence, because the
- * backend's copy is not a contract: 409 is another flow holding the one
- * loopback port, 422 is a backend that has no browser sign-in route at all.
- * Everything else - including the typed `radient_*` refusals, whose messages
- * are authored for a user - keeps the retry.
+ * Read from the STATUS rather than from the sentence, because the backend's copy
+ * is not a contract: 409 is another flow holding the one loopback port, 422 is a
+ * backend that has no browser sign-in route at all. Everything else - including
+ * the typed `radient_*` refusals, whose messages are authored for a user - keeps
+ * the retry, and answers `null` here.
+ *
+ * The two are told apart because the surface owes each a different thing, and
+ * the difference is where the user can go: `sign-in-active` has a flow they can
+ * finish or release, in Settings, under Providers; `no-browser-flow` has
+ * nowhere, because the route it names is what is missing.
  */
-function isRefusalWithOwnRemedy(error: unknown): boolean {
+function refusalKind(error: unknown): RadientRefusal | null {
 	const status = (error as { status?: unknown } | null)?.status;
-	return status === 409 || status === 422;
+	if (status === 409) return "sign-in-active";
+	if (status === 422) return "no-browser-flow";
+	return null;
 }
