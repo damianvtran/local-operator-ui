@@ -72,10 +72,17 @@ const Cluster = ({
 	count,
 	details,
 	canvasOpen = false,
+	consoleUnseenCount = 0,
+	consoleUnseenPulsing = false,
 }: {
 	count: number;
 	details: ReturnType<typeof deriveRunDetails>;
 	canvasOpen?: boolean;
+	/** The console trigger's own attention dot (design 12.2), on the same principle
+	 * as the run trigger's: a dot rather than a count, because its only job is to say
+	 * there is something before the user has opened the pane. */
+	consoleUnseenCount?: number;
+	consoleUnseenPulsing?: boolean;
 }) => {
 	useEffect(() => {
 		useUiPreferencesStore.setState({
@@ -91,7 +98,10 @@ const Cluster = ({
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
 				onOpenBrowser={() => undefined}
+				onOpenConsole={() => undefined}
 				browserAttentionCount={count}
+				consoleUnseenCount={consoleUnseenCount}
+				consoleUnseenPulsing={consoleUnseenPulsing}
 				runDetails={details}
 			/>
 		</div>
@@ -138,6 +148,40 @@ export const CanvasOpenBadge: Story = {
 			count={1}
 			details={deriveRunDetails(fixtures.idle())}
 			canvasOpen={true}
+		/>
+	),
+};
+
+/**
+ * The console trigger's own attention dot, pulsing: something finished in this
+ * conversation's console and nobody has looked at it (design 12.2).
+ *
+ * A FRAME IS OWED FOR THIS PAIR because the dot and the pane's row mark are two
+ * halves of one rule and only the row mark had one: the design round found the
+ * blip's two story frames byte-identical to `populated` and could not see the header
+ * dot anywhere. This is where the header half is photographed, at the same size and
+ * in the same band as the cluster's other frames.
+ */
+export const ConsoleBlip: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={true}
+		/>
+	),
+};
+
+/** The same dot after its pulse: `inkMuted` rather than `accent`, so an unread mark
+ * that has been waiting does not animate for ever (design 12.2's second state). */
+export const ConsoleBlipResting: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={false}
 		/>
 	),
 };

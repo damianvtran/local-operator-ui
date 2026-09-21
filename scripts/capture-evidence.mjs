@@ -109,6 +109,18 @@ const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
  * that ignored the rejection would file a resting frame under a key its claim
  * says was pressed - the same trap the mouse options in this file document.
  */
+/**
+ * The console pane's shipped default width, in px.
+ *
+ * `DEFAULT_CONSOLE_PANEL_WIDTH` from `ui-preferences-store.ts` — `ceil(100 columns
+ * x 7.8px) + 16px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
+ * this file is JavaScript and cannot import the store's TypeScript. The restatement
+ * is pinned by `scripts/console-pane.test.mjs`, which imports both and fails when
+ * they differ, so a font step or a column count that moves upstream breaks a test
+ * rather than silently re-cropping every console frame.
+ */
+const CONSOLE_PANE_WIDTH = 796;
+
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
 	Tab: { code: "Tab", keyCode: 9 },
@@ -939,6 +951,46 @@ export const STORIES = [
 	 * feature has. The header rows are 84 = the 56px bar plus the 28px caption that
 	 * carries the reported rectangle.
 	 */
+	/*
+	 * The console pane (`docs/design/ui-console-tab.md` §6, §7, §9, §12), captured
+	 * at the pane's OWN width rather than at a window's — and at the pane's SHIPPED
+	 * default, not at a number typed here.
+	 *
+	 * THE NUMBER MOVED, and the reason is design round 1's D2: these rows read `843`,
+	 * which was neither the store's `DEFAULT_CONSOLE_PANEL_WIDTH` (~804, derived from
+	 * the shipped face at `TERMINAL_FONT_SIZE = 13`) nor the design's 100-column grid
+	 * — measured off the frame, 843 painted ~108 columns. The frames therefore showed
+	 * a pane no user has, while the PR body quoted the default's own arithmetic.
+	 * `CONSOLE_PANE_WIDTH` below is that default, and `scripts/console-pane.test.mjs`
+	 * pins it against the store's constant so the two cannot drift apart again (the
+	 * story renders the pane at the same imported width).
+	 *
+	 * The extra height on the ended and restored frames is their banner: those states
+	 * still grow a 28px row (§7.3, and D6 keeps it — there is no process left to
+	 * reflow by the time it appears). `secure` no longer does: its marker is an
+	 * overlay since D6, so a secure toggle cannot resize a running program.
+	 */
+	["console-pane--populated", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--two-surfaces", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--empty", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--draft-conversation", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--loading", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--unavailable", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--ended", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--restored", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--secure", CONSOLE_PANE_WIDTH, 520],
+	/*
+	 * D21's own state, and the reason it is here rather than only in the component's
+	 * stories: the selection became load-bearing this round (1.11:1 -> the accent, gated by
+	 * `check-themes`) and no frame anywhere in the set showed one, so its appearance was
+	 * measured and never SEEN. The story's `play` function performs a real drag on the real
+	 * terminal and throws when no selection layer appears, so a theme whose selection is
+	 * invisible fails the sweep rather than shipping a picture of nothing.
+	 */
+	["console-pane--selected", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-pulsing", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-resting", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--other-conversation-mark", CONSOLE_PANE_WIDTH, 520],
 	["browser-pane--this-conversation", 640, 460],
 	["browser-pane--all-tabs", 640, 460],
 	/*
@@ -1009,6 +1061,14 @@ export const STORIES = [
 	/* The badge drawn with the canvas button unmounted: the reservation's room is
 	   owed for the box that button owns, so this state must stay at the 8px step. */
 	["chat-header-cluster--canvas-open-badge", 560, 84],
+	/*
+	 * The console trigger's attention dot (design 12.2), in the same band and at the
+	 * same size as the cluster's other frames so the pair can be held against them.
+	 * They exist because the design round's D1 could not find the header dot in any
+	 * frame: the pane's row mark and this dot are two halves of one rule.
+	 */
+	["chat-header-cluster--console-blip", 560, 84],
+	["chat-header-cluster--console-blip-resting", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
@@ -6989,7 +7049,17 @@ const main = async () => {
 						.join(" "),
 				)
 				.find((text) =>
-					/^(AssertionError|TestingLibraryElementError)|Unable to perform pointer interaction/.test(
+					/*
+					 * `^Error:` IS PART OF THE PATTERN NOW, and QA round 4's Q-12 is why: this
+					 * guard knew the two shapes `@storybook/test` throws and the pointer refusal
+					 * user-event produces, so a `play` that threw its own `Error` — which is
+					 * exactly what the console pane's selection story did — was reported to the
+					 * console and IGNORED, and the sweep photographed twelve frames of a state
+					 * the play had already rejected. The comment above this block said that limit
+					 * out loud; a limit that ships a wrong frame is not a disclosure, it is the
+					 * defect. A thrown `Error:` in a story's phase now stops the sweep.
+					 */
+					/^(AssertionError|TestingLibraryElementError|Error:)|Unable to perform pointer interaction/.test(
 						text,
 					),
 				);
