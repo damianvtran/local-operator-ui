@@ -71,6 +71,12 @@ mkdirSync(RUN_DIR, { recursive: true });
 
 // An allowlist, not a copy: an inherited desktop bearer or runtime adoption flag
 // would change what this run measures.
+//
+// Read BEFORE the strip, because the strip is total: the proof failsafe below is
+// itself an inherited variable, so it is captured here rather than read at the
+// point of use - where an allowlisted environment has already removed it (found
+// by running the failsafe, which then did not fire).
+const FAIL_AFTER_SPAWN = process.env.RELOAD_EVIDENCE_FAIL_AFTER_SPAWN === "1";
 const inherited = new Set([
 	"PATH",
 	"PATHEXT",
@@ -227,6 +233,142 @@ globalThis.__evidenceUserData = APP_DATA;
 
 const children = [];
 const managers = new Set();
+
+/**
+ * The reap, wired to EVERY exit path rather than to the success one.
+ *
+ * This rig starts a real `lop serve`, and everything that makes the evidence worth
+ * having happens after it is up: the app must be shown to OWN the daemon, the
+ * reload must be shown to keep the pid, and the republish is waited on with a 90 s
+ * deadline. A failure in any of those - an assertion, a timeout, a signal - left
+ * that daemon, by then the reload target's, serving on an ephemeral port and
+ * re-parented, with its scratch root still on disk. So the reaper is registered
+ * here, where a throw, an unhandled rejection and a signal all reach it, and the
+ * ordinary path calls the same function after the manager's graceful `stop()`.
+ *
+ * KILLS ARE BY PID, AND ONLY PIDS THIS RIG CREATED. Reaping a leaked daemon by
+ * program name (`pgrep -f` + `kill`) has taken other sessions' process trees on
+ * this machine; a pid that came back from our own `spawn()` cannot.
+ *
+ * `RELOAD_EVIDENCE_FAIL_AFTER_SPAWN=1` throws once the daemon is up and owned - the
+ * same path a failed assertion takes - which is how this was checked rather than
+ * assumed: the run exits non-zero, the pid is gone and the scratch root is gone.
+ *
+ * WHY NOT `process.on("exit")` ALONE, which is the shape that looks like it covers
+ * this and measurably does not: an uncaught exception at the top level of an ES
+ * module terminates through a path that never emits `exit` (measured on Node
+ * 26.5.0 - a handler registered that way printed nothing, the process exited 1,
+ * and the scratch root was left behind). The fatal pair below is what actually
+ * runs on the paths this rig fails through; `exit` stays for the ordinary ones.
+ */
+function reap() {
+	/*
+	 * THE DESCENDANT SWEEP RUNS FIRST, and the order is load-bearing: a SIGKILLed
+	 * daemon re-parents its own children to pid 1, at which point they are no longer
+	 * descendants of this process and the walk below can no longer see them. Walking
+	 * before killing is what catches the cold-compile child on the first pass (it
+	 * outlives the daemon and keeps writing bytecode into ROOT).
+	 */
+	for (const pid of ownDescendants()) {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {
+			// Raced with the walk, or already dead.
+		}
+	}
+	for (const pid of children) {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {
+			// Already gone: the manager's own stop() reaps its child first.
+		}
+	}
+	children.length = 0;
+	/*
+	 * BOUNDED RETRIES, because the removal races processes that are still dying.
+	 * Measured on the failure path: a plain `rmSync` left an 859-file root behind
+	 * with nothing holding it, and the files were still appearing while it ran -
+	 * the daemon's own cold-compile child keeps writing bytecode into the scratch
+	 * root after the daemon it belongs to is gone (that is the `userData/
+	 * python-bytecode-cache` tree in every root this rig leaves). The sleep is
+	 * `Atomics.wait` because this also runs from a fatal-exception handler, where
+	 * nothing asynchronous would get to finish.
+	 */
+	for (let attempt = 0; attempt < 40; attempt++) {
+		try {
+			rmSync(ROOT, {
+				recursive: true,
+				force: true,
+				maxRetries: 10,
+				retryDelay: 100,
+			});
+		} catch (error) {
+			// Reported, never thrown: a reap that cannot delete must not replace
+			// the failure the run was already carrying.
+			console.error(
+				`reload-reanchor-evidence: could not remove ${ROOT}: ${error.message}`,
+			);
+		}
+		if (!existsSync(ROOT)) return true;
+		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+	}
+	return !existsSync(ROOT);
+}
+
+/**
+ * Every live process this run created, deepest first.
+ *
+ * The walk starts at OUR OWN pid rather than at a recorded one, and that is the
+ * whole point: a pid read from a record can be recycled, so killing its tree can
+ * reach a stranger's children, while a descendant of this process - which is
+ * still this process while the walk runs - cannot be anything but ours. It is
+ * what catches what a single `process.kill(pid)` leaves behind: a SIGKILLed daemon
+ * re-parents its own children, and the cold-compile child above is one of them.
+ *
+ * Kills stay bounded to this subtree for the other reason too - reaping a leaked
+ * daemon by program name (`pgrep -f` + `kill`) has taken other sessions' process
+ * trees on this machine.
+ */
+function ownDescendants() {
+	const out = execFileSync("ps", ["-eo", "pid=,ppid="], {
+		encoding: "utf8",
+		maxBuffer: 8 << 20,
+	});
+	const byParent = new Map();
+	for (const line of out.split("\n")) {
+		const [pid, ppid] = line.trim().split(/\s+/).map(Number);
+		if (!Number.isFinite(pid) || !Number.isFinite(ppid)) continue;
+		if (!byParent.has(ppid)) byParent.set(ppid, []);
+		byParent.get(ppid).push(pid);
+	}
+	const found = [];
+	const walk = (pid) => {
+		for (const child of byParent.get(pid) ?? []) {
+			walk(child);
+			found.push(child);
+		}
+	};
+	walk(process.pid);
+	return found;
+}
+
+process.on("uncaughtException", (error) => {
+	reap();
+	console.error(error);
+	process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+	reap();
+	console.error(reason);
+	process.exit(1);
+});
+process.on("exit", reap);
+for (const signal of ["SIGINT", "SIGTERM"]) {
+	process.on(signal, () => {
+		reap();
+		process.exit(1);
+	});
+}
 
 async function freePort() {
 	const probe = createServer();
@@ -416,6 +558,11 @@ assert.ok(
 );
 children.push(ownedPid);
 say("the pid this app spawned and holds a ChildProcess handle for", ownedPid);
+if (FAIL_AFTER_SPAWN) {
+	throw new Error(
+		"RELOAD_EVIDENCE_FAIL_AFTER_SPAWN: failing on purpose with the daemon up and owned, to prove the reap runs off the success path",
+	);
+}
 say(
 	"the record that pid published",
 	JSON.stringify(redact(readRecord(ownedPid)), null, 2),
@@ -500,7 +647,10 @@ line(
 		`contradictions before detach: ${DEGRADED_AFTER_FAILURES}`,
 );
 
-await manager.stop(false).catch(() => {});
+// Graceful first (the manager knows its child), then `reap()` for the pid and the
+// scratch root - the same function the failure and signal paths run.
+for (const started of managers) await started.stop(false).catch(() => {});
 await new Promise((resolve) => setTimeout(resolve, 500));
-rmSync(ROOT, { recursive: true, force: true });
+const removed = reap();
 say("teardown", `stopped the daemon this app owned and removed ${ROOT}`);
+assert.ok(removed, `the scratch root must be gone after the reap: ${ROOT}`);

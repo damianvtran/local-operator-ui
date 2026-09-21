@@ -313,7 +313,13 @@ export class DaemonStateMachine {
 				 * about who spawned the process, which a reload cannot change, and the
 				 * pairing is asserted by the PROBE SITE that established it (the same live
 				 * process answered, and its plane is governed by the token this app
-				 * spawned it with - see `backend-service.ts::probeAttachedDaemon`).
+				 * spawned it with - see `backend-service.ts::probeAttachedDaemon`). That
+				 * last half rests on a DAEMON-SIDE invariant this app cannot observe: the
+				 * reload path, `local_operator/server/reload.py`, re-execs with
+				 * `dict(os.environ)` and so preserves `LOCAL_OPERATOR_DESKTOP_TOKEN`. A
+				 * reload that rebuilt its environment would make this arm adopt an identity
+				 * on a plane this app is no longer admitted to, which is why the dependency
+				 * is named at the site that relies on it.
 				 * Calling `attach()` here would make this arm a SECOND producer of
 				 * `DAEMON_PAIRED`, on evidence - "a reload happened" - that does not by
 				 * itself prove a credential is admitted.

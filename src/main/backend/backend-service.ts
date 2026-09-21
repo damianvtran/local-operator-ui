@@ -2825,11 +2825,24 @@ export class BackendServiceManager {
 		 * `spawn()` returned to this app. It is not merely a number read off a record -
 		 * `this.process` is a live `ChildProcess` handle whose `pid` proves it belongs to
 		 * the process this app started, so pid reuse cannot produce this shape: a reused
-		 * pid means our child EXITED, and an exited handle fails the guard below. The plane
-		 * is governed by the environment this app spawned that child with, which `execve`
-		 * preserves - `LOCAL_OPERATOR_DESKTOP_TOKEN` is the same token against the same
-		 * process - which is why the accepted bearer does not change either (the record
-		 * republishes `desktop: true, claim_key: ""`, i.e. env-governed).
+		 * pid means our child EXITED, and an exited handle fails the guard below -
+		 * MODULO the window before Node RECORDS that exit, since `exitCode` and
+		 * `signalCode` are set when the process event arrives rather than when the
+		 * process dies, and a pid recycled inside that window would read as a live
+		 * handle. Reaching it also needs the successor bound to this app's own port, so
+		 * it is a residual race rather than a hole, and the recovery guard accepts the
+		 * identical window (see `holdsLiveChildProcess`).
+		 *
+		 * THE PLANE, AND WHO OWNS THAT IT SURVIVES THE RELOAD. The environment this app
+		 * spawned its child with is what governs the daemon's plane, and the reload path
+		 * is what preserves it: `local_operator/server/reload.py` hands the listener fd
+		 * across `os.execve(..., dict(os.environ))`, so `LOCAL_OPERATOR_DESKTOP_TOKEN` is
+		 * the same token against the same process and the accepted bearer does not change
+		 * either (the record republishes `desktop: true, claim_key: ""`, i.e.
+		 * env-governed). That invariant is daemon-side and cannot be observed from here,
+		 * which is why it is NAMED rather than assumed: a reload that rebuilt its
+		 * environment instead of passing it through would leave this re-anchor adopting an
+		 * identity on a plane this app is no longer admitted to.
 		 *
 		 * WHY THE DAEMON SIDE IS NOT THE FIX. Re-minting is that side's own contract for a
 		 * landed reload: `lop services` confirms one by looking for a NEW `instance_id`
@@ -2851,14 +2864,11 @@ export class BackendServiceManager {
 			attachedPid !== null &&
 			probe.identity.pid === attachedPid &&
 			this.holdsLiveChildProcess(attachedPid)
-				? {
-						url: this.backendUrl,
-						instanceId: probe.identity.instanceId,
-						pid: probe.identity.pid,
-						version: probe.identity.version,
-						prefix: probe.identity.prefix,
-						installKind: probe.identity.installKind,
-					}
+				? // Spread rather than field by field: this value IS `probe.identity` plus the
+					// address. A field added to `DaemonIdentity` later must not have to be
+					// remembered in this one literal, where it would silently take the widened
+					// type's `undefined` instead of the answering value.
+					{ ...probe.identity, url: this.backendUrl }
 				: null;
 		const answersThisApp =
 			reanchored !== null ||
@@ -3162,14 +3172,25 @@ export class BackendServiceManager {
 				// second daemon spawned over a live child, which is the one outcome
 				// that guard exists to prevent.
 				//
-				// THE OWNED CASE THAT WAS STUCK IS NOT REACHED FROM HERE AT ALL, and that
-				// is the fix rather than a gap: the shape the guard declines - the live
-				// child this app spawned - is exactly the shape that now RE-ANCHORS in
-				// `probeAttachedDaemon` instead of contradicting, so it never becomes a
-				// `contradicted` observation to arrive here with (measured from the
-				// operator's machine, 2026-09-20: `lop-update` reloaded this app's own
-				// child in place, the app published `pairing: successor` over it and the
+				// THE OWNED CASE THAT WAS STUCK IS NOT REACHED FROM HERE FOR ONE SHAPE OF
+				// CONTRADICTION, and only one: where the SAME process answers under a new
+				// `instance_id`, `probeAttachedDaemon` re-anchors instead of contradicting,
+				// so it never arrives here as a `contradicted` observation at all (measured
+				// from the operator's machine, 2026-09-20: `lop-update` reloaded this app's
+				// own child in place, the app published `pairing: successor` over it and the
 				// Retry was inert until the app was restarted).
+				//
+				// THE RESIDUE IS REAL AND DELIBERATE. A live owned child can STILL arrive
+				// here as `contradicted` - it answers `not-a-daemon`, or it names a different
+				// pid - and this guard returns before `discoverAndAttach()`, so the Retry is
+				// inert for that shape too and only a restart clears it. That is not this
+				// change's to alter: the guard exists because discovery can answer `false`
+				// and fall through to `start({ quiet: true })`, spawning a second daemon over
+				// a live child, and an owned child's contradictory answer is not proof that
+				// the process is gone. Pinned as a case in
+				// `scripts/daemon-observation.test.mjs` ("the residue: an owned child that
+				// answers as a non-daemon still reaches the guard, and the Retry cannot
+				// clear it").
 				if (!processGone && observation.kind !== "contradicted") return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
@@ -3225,7 +3246,12 @@ export class BackendServiceManager {
 	 *    this manager's own `spawn()`, so its `pid` cannot be a number read off a
 	 *    record that something else wrote, and it cannot be recycled: the OS does not
 	 *    reuse a pid while the process it names is alive, and a reused one means THIS
-	 *    child exited - which the `exitCode` clause reads;
+	 *    child exited - which the `exitCode` clause reads. That reading is Node's
+	 *    RECORDED exit, set when the process event arrives rather than when the process
+	 *    dies, so a pid recycled inside the window before it is recorded would pass
+	 *    here. It is the same window the recovery guard accepts, and the caller that
+	 *    matters (the reload re-anchor) needs the answering pid to be bound to this
+	 *    app's own port as well, which is why this is stated rather than hedged.
 	 *  - `exitCode === null && signalCode == null` is the same liveness spelling
 	 *    `stop()` and the recovery guard act on (see `ownedPid`'s note), so a process
 	 *    this app has already reaped is never treated as live by one caller and dead
