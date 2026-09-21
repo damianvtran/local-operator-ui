@@ -823,8 +823,8 @@ export type DesktopSessionFrame =
  *
  * - A feed frame is not scoped to one session. `session_id` is present only on
  *   the types that concern one conversation (`attention`, `notification`), and
- *   absent on `catalogue`, `heartbeat` and `gap` — so the session frame's
- *   `Receipt` (which requires it) cannot describe them.
+ *   absent on `catalogue`, `authoring`, `heartbeat` and `gap` — so the session
+ *   frame's `Receipt` (which requires it) cannot describe them.
  * - `open` carries no `gap` flag: there is no replay to gap on. A feed
  *   subscription takes a BASELINE and announces nothing that predates it,
  *   because the notification edge's whole value is timeliness. The feed's
@@ -853,6 +853,17 @@ export type DesktopFeedFrame =
 				lease_seconds: number;
 				watch_ttl_seconds: number;
 				catalogue_revision: number;
+				/**
+				 * The authoring catalogue's revision when this subscription took its
+				 * baseline.
+				 *
+				 * A sibling of `catalogue_revision` rather than part of it: the two lists
+				 * are published by different writers on different clocks, and a reader
+				 * seeded from one of them must not be seeded from the other. Additive and
+				 * required-on-this-version, exactly as `catalogue_revision` is - a backend
+				 * that predates the `authoring` frame does not publish the frame either.
+				 */
+				authoring_revision: number;
 			};
 	  }
 	| {
@@ -902,6 +913,35 @@ export type DesktopFeedFrame =
 			epoch: string;
 			seq: number;
 			type: "catalogue";
+			payload: { revision: number };
+	  }
+	/**
+	 * The AUTHORING catalogue changed: a reusable profile or team was created,
+	 * edited or deleted.
+	 *
+	 * Its own frame rather than a second meaning on `catalogue`, because the two
+	 * carry different subjects and share nothing but the envelope. `catalogue` is
+	 * the SESSIONS list, and the frame replaces the 5 s `sessions.list` poll that
+	 * list runs. The authoring lists (`profiles.list`/`teams.list`) have NO poll to
+	 * replace: `staleTime: 10_000` is a freshness window refetched on mount and on
+	 * window focus, not a cadence. So this frame is the ONLY event-driven refresh
+	 * those two lists will ever have, and without it a team an AGENT created on the
+	 * backend - no click in this window, nothing to invalidate a cache - stays
+	 * invisible until the operator switches tab or reloads, which is the reported
+	 * defect. An agent authoring a profile is precisely the case the renderer
+	 * cannot observe for itself.
+	 *
+	 * A LEVEL, not a notification, like `session_status`: it is idempotent, it
+	 * carries a revision and no content (the renderer's consumers invalidate their
+	 * own keys; a list the renderer does not hold is not dragged onto the wire),
+	 * and it never enters `DesktopNotifier` - main routes only `notification`
+	 * frames there. A duplicate delivery of the same revision is a no-op at the
+	 * consumer, because what is compared is the revision rather than the arrival.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "authoring";
 			payload: { revision: number };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
