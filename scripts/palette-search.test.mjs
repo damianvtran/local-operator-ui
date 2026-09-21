@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -652,4 +653,36 @@ test("a panel is found by what it shows, not only by its name", () => {
 		raw: "credits",
 	});
 	assert.deepEqual(names(outcome), ["Provider usage"]);
+});
+
+test("the palette's join is given the same tombstone view the sidebar's is (agent review round 2, R2-2)", () => {
+	/*
+	 * THE INVARIANT THIS PINS IS THE MODULE'S OWN SENTENCE. `palette-search.ts` says
+	 * the palette is "built from the sidebar's own join (`searchChats`) so the palette
+	 * and the sidebar cannot disagree about which conversations a query matches", and
+	 * the call site broke it in exactly one way: `use-palette-sources.ts` called
+	 * `searchChats(sessions, terms, hits)` - no archive view - while the sidebar passes
+	 * `archiveView`. A hit for a conversation this window had PERMANENTLY DELETED is
+	 * rebuilt by the join into a synthesized row, so the palette offered a clickable
+	 * row that opens onto the deleted conversation's notice. The hits come from the
+	 * same `useChatSearch` cache (same 30 s key), so the two surfaces disagreed for as
+	 * long as that answer lived.
+	 *
+	 * Read as an anchor rather than driven, because the call site is a React hook and
+	 * this repository's harness has no DOM: what can be pinned here without a renderer
+	 * is that the argument is passed at all and that it carries the tombstones - the
+	 * half that was missing. The join's own behaviour with a `forgotten` set is
+	 * asserted in `chat-search.test.mjs`, against the shipped module.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/searchChats\(sessions, terms, hits, \{\}, archiveView\)/,
+		"the palette's join must be given the same view the sidebar's is",
+	);
+	assert.match(source, /forgotten: new Set\(Object\.keys\(forgotten\)\)/);
+	assert.match(source, /state\.forgotten\)/);
 });

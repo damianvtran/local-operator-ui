@@ -108,7 +108,22 @@ export type DestinationEntry =
 	  } & ArgsBehavior)
 	| ({
 			kind: "direct";
-			action: "clear" | "exit" | "focus-cwd-chip" | "compact";
+			action:
+				| "clear"
+				| "exit"
+				| "focus-cwd-chip"
+				| "compact"
+				/*
+				 * The three conversation-level actions (`sessions.archive`,
+				 * `sessions.unarchive`, `sessions.delete`). Each is a LOCAL act with no UI of
+				 * its own: `archive`/`unarchive` write the store's optimistic op and offer an
+				 * undo, and `request-delete` STAGES a candidate in the store rather than
+				 * deleting anything - the confirmation dialog is the only thing in the app
+				 * that sends `confirmed: true`.
+				 */
+				| "archive"
+				| "unarchive"
+				| "request-delete";
 	  } & ArgsBehavior);
 
 /**
@@ -236,6 +251,24 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 * can never mount a picker.
 	 */
 	"session.compact": { kind: "direct", action: "compact" },
+	/*
+	 * The archive family, and why these destinations are `sessions.*` while every
+	 * other session-scoped destination in this table is `session.*`: these three
+	 * identifiers are the FROZEN wire contract's own - they arrive on the backend's
+	 * command catalogue rows, which is the vocabulary this table exists to resolve -
+	 * and renaming them here to match the neighbourhood would be this app disagreeing
+	 * with the daemon about one string. The table's job is to resolve a destination,
+	 * not to tidy it.
+	 *
+	 * All three are `direct`: none of them presents a control of its own. `/archive`
+	 * and `/unarchive` are writes with one line of feedback and an undo offer, and
+	 * `/delete`'s control is the confirmation dialog the pane already owns, which
+	 * staging a candidate opens - a picker here would be a second dialog asking the
+	 * same question in a different place.
+	 */
+	"sessions.archive": { kind: "direct", action: "archive" },
+	"sessions.unarchive": { kind: "direct", action: "unarchive" },
+	"sessions.delete": { kind: "direct", action: "request-delete" },
 	"session.approvals": {
 		kind: "picker",
 		component: ApprovalsPicker,

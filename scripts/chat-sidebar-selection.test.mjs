@@ -380,7 +380,17 @@ const CURRENT = [
 		// mention first.
 		expression: () =>
 			expressionAfter(SIDEBAR, "data-session-row={row.session_id}"),
-		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
+		stubs: {
+			revealArmed: true,
+			rowBoxStyle,
+			rowCurrent,
+			current: true,
+			// Both per-row capabilities present: the box the ground is asserted on is
+			// carried while EITHER control is mounted, and this is the delivered
+			// state (the pin and the archive control both advertised).
+			pinsEnabled: true,
+			archiveEnabled: true,
+		},
 		ground: true,
 	},
 	{
@@ -456,6 +466,33 @@ const CURRENT = [
 		stubs: { revealArmed: true, pinned: false, current: true },
 		ground: false,
 		notCurrent: { revealArmed: true, pinned: false, current: false },
+	},
+	{
+		/*
+		 * The session row's archive control, which is the row's SECOND sibling control
+		 * (the pin work lands the first). It is a row surface for the same reason the
+		 * entity row's two 24px controls are: it sits INSIDE a row's box and answers
+		 * the pointer, so `hover:bg-row-hover` is its only sanctioned ground and a
+		 * `!current` guard is what keeps the pointer from replacing the mark that says
+		 * where the reader is.
+		 *
+		 * Resolved FORWARD from the control's own `aria-label`, and NOT from a
+		 * `data-session-archived` anchor: that attribute's first occurrence in the file
+		 * is the row BUTTON's archived flag (the control's sibling), so a forward search
+		 * from it lands on the row's own class expression - which is how this entry
+		 * first reported `ReferenceError: rowStyle is not defined` instead of the
+		 * control's classes.
+		 */
+		what: "the session row's archive control",
+		file: SIDEBAR,
+		expression: () =>
+			expressionAfter(
+				SIDEBAR,
+				"aria-label={archiveControlLabel(label, archived)}",
+			),
+		stubs: { current: true },
+		ground: false,
+		notCurrent: { current: false },
 	},
 	{
 		/*
@@ -775,10 +812,35 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// is a GROUND (it is every menu, popover, tooltip and dialog in the
 				// app) and a row state is not a ground — that is the boundary the
 				// two `row*` roles exist to draw, and the test below holds it for
-				// every row surface in the tree. The pin control is the sixth because a
+				// every row surface in the tree. The pin control is the SIXTH because a
 				// control inside a row takes the ROW's own hover step, exactly as the two
 				// 24px controls beside it do: its ground is the row's state, not a menu's.
-				"hover:bg-row-hover": 6,
+				//
+				// The SEVENTH is the session row's ARCHIVE control, this branch's: a second
+				// sibling inside the row's own box, revealed by opacity and answering the
+				// pointer with the same `rowHover` step its neighbours take. It carries a
+				// `!current` guard, so it is one of the elements `CURRENT` resolves - see its
+				// entry above, which is also what keeps a new control inside a current row
+				// from being seen by nobody.
+				// SEVEN: the archive control added one more row-state step beside the pin,
+				// the entity disclosure, its name button and the two row boxes. It takes
+				// the ROW state (never a ground), which is what this expectation exists
+				// to hold.
+				// EIGHT: the archive control added one row-state step beside the pin, and the
+				// shared control the pair sheds into (the band below the panel's default
+				// width) adds the last one. All three take the ROW state, never a ground,
+				// which is what this expectation exists to hold.
+				//
+				// NINE (design round 2, D13): the ROW BOX itself carries the step, on the
+				// wrapper `data-session-row` names. `rowStyle`'s `hover:` fires only while
+				// the pointer is over the BUTTON, and the row's two sibling controls sit
+				// inside the row's box and outside its button - so the ground used to
+				// vanish the moment the pointer reached either glyph, under a pointer that
+				// never left the row. This entry is the row's own box rather than a control
+				// inside one, it is guarded by `!current`, and it therefore can never sit
+				// inside a current row: the guard is what keeps the selected ground from
+				// being repainted as the pointer's, which is this table's subject.
+				"hover:bg-row-hover": 9,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

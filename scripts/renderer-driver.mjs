@@ -273,6 +273,20 @@ const BACKEND = argValue("--backend", null);
  * daemon was started with).
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
+/*
+ * A suffix on every frame's file name, for a scene that is run twice against two
+ * backends (`session-archive`'s withdrawn pair: the same app against a daemon
+ * that advertises the capability and one that has never heard of it).
+ */
+const RUN_LABEL = argValue("--run-label", "");
+/*
+ * The withdrawn half of the fail-closed pair: the same scene against a daemon
+ * that has never heard of archiving (`stub-daemon.mjs --no-archive`). Every
+ * assertion below inverts, and the frames are byte-compared against the capable
+ * run's - which is what makes "the panel is the panel it was" a measurement
+ * rather than a promise.
+ */
+const WITHDRAWN = process.argv.includes("--capability-withdrawn");
 /**
  * The terminal's own store, for `--scene pins`' cross-surface step.
  *
@@ -1352,6 +1366,72 @@ async function waitForNoToasts(cdp, timeoutMs = 15_000) {
 }
 
 /**
+ * Which ROW BOXES paint a ground right now, and which row the pointer is on.
+ *
+ * The question is asked of the browser's own computed style rather than of the
+ * class list, and that distinction is the whole of design round 3's D18: the first
+ * attempt at this fix put `group-hover:bg-row-hover` on the element that CARRIES
+ * `group`, which Tailwind compiles to a DESCENDANT rule (`:is(:where(.group):hover
+ * *)`), so the class was in the source, every static assertion was green, and the
+ * box painted nothing. A computed-style read evaluates the compiled selector.
+ *
+ * `painted` is the discriminating half: a check that the hovered row has a ground
+ * would pass for the BUTTON's own `hover:bg-row-hover` (`rowStyle`), which is what
+ * the 56px-short measurement was. What is asked here is which ELEMENTS paint one.
+ */
+async function readRowGrounds(cdp) {
+	return cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll("[data-session-row]")];
+		return {
+			rows: rows.length,
+			painted: rows
+				.map((el) => ({
+					id: el.getAttribute("data-session-row"),
+					width: Math.round(el.getBoundingClientRect().width),
+					background: getComputedStyle(el).backgroundColor,
+				}))
+				.filter((row) => row.background !== "rgba(0, 0, 0, 0)"),
+		};
+	})()`);
+}
+
+/**
+ * Whether a selector is DRAWN right now (a non-zero box), without throwing.
+ *
+ * The distinction `drawn` makes inside the pair scene, lifted here because a second
+ * scene needs it: an element swapped out through `display` is still in the document,
+ * so asking whether it exists answers a different question than asking whether it
+ * is on screen.
+ */
+async function drawnSelector(cdp, selector) {
+	try {
+		const box = await verb(cdp, "measure", { selector, timeoutMs: 400 });
+		return box.rect.width > 0 && box.rect.height > 0;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Wait for a selector that was on screen to go, which is how the archive OFFER is
+ * read now that it is a panel register rather than a toast (design round 2, D12).
+ *
+ * The same shape as `waitForNoToasts` and for the same reason: the property under
+ * test is that the observer outlives the answers that mention the conversation, so
+ * "it is gone" has to be waited for rather than sampled.
+ */
+async function waitForGone(cdp, selector, timeoutMs = 15_000) {
+	const started = Date.now();
+	for (;;) {
+		const drawn = await drawnSelector(cdp, selector).catch(() => false);
+		const waitedMs = Date.now() - started;
+		if (!drawn) return { waitedMs, timedOut: false };
+		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
+		await wait(200);
+	}
+}
+
+/**
  * Capture a frame the app is HOLDING, with no transient toast on it.
  *
  * WHY TWO CAPTURES, when the theme verb already waits the transitions out. The
@@ -1564,6 +1644,936 @@ function connectionsTo(pid, url) {
  * driving a selector nothing renders. Its three committed frames
  * (`docs/evidence/browser-conversation-mark/live/`) went with them.
  */
+
+/*
+ * Move the REAL pointer over an element, and leave it there.
+ *
+ * A reveal that hangs off `:hover` cannot be produced by dispatching anything
+ * inside the page - `group-hover` is compositor state, not an event the element
+ * is handed - so the pointer has to come through the input pipeline this driver
+ * already speaks for keys (`Input.dispatchKeyEvent`). The app answers where the
+ * element IS (`measure`), because the layout is the app's own and the driver has
+ * no evaluation channel by design.
+ */
+async function hoverOver(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: box.centre.x,
+		y: box.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	return box;
+}
+
+/**
+ * Click an element with the REAL pointer, and wait for it to exist first.
+ *
+ * WHY NOT THE `press` VERB, which is what most scenes use: `press` dispatches
+ * synthetic pointer events straight at the element, and a synthetic
+ * `mousedown` does not move FOCUS in Chromium. A scene that then types
+ * (`Input.insertText`) would type into nothing, silently - measured here, on the
+ * search field, as a query that never arrived and a frame of an empty box.
+ * The pointer this helper moves is the trusted one the input pipeline produces,
+ * which is also the gesture a reviewer makes: focus follows the press, the
+ * element's own hover state applies, and the app's handlers are the ones it
+ * really has.
+ */
+async function clickAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	const { x, y } = box.centre;
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	return box;
+}
+
+/**
+ * `session-archive`: the sidebar and the header as the archive feature leaves them.
+ *
+ * ## What this scene is for
+ *
+ * Four of the claims this change makes are claims about PIXELS, and none of them
+ * is reachable from the unit suite: that a row spends no width at rest, that the
+ * pointer reveals the archive control without moving anything, that the search
+ * block gains its `Include archived` control only while a query exists, and that
+ * the one delete confirmation reads as the app's danger role. Each is a state
+ * this scene puts the app into and photographs.
+ *
+ * ROUND 1 ADDED FOUR STATES THE FIRST SET DID NOT CARRY, three of them surfaces of
+ * this change that had no frame at all and one a frame the design round asked for
+ * to settle a finding: the open conversation archived, with the header's pill and
+ * its restore control (D2); the delete REFUSED through the dialog that asked, with
+ * the keyboard back on the safe action (D3, UX U3); the archive refused, in the
+ * panel's own register beside the list (D3); and the row's own hover with the
+ * pointer on the title rather than on the control (D5). The undo offer a
+ * successful archive makes (D7) is photographed too - in its own frame, with its
+ * own assertion, because it is a TOAST and every other capture here asserts
+ * `toastFree`.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names the harness's own stand-in daemon
+ * (`docs/evidence/session-archive/harness/stub-daemon.mjs`), because the backend
+ * half of the feature is its own pull request and no daemon answers
+ * `session_archive` yet. The app is the real one: its own catalogue read, its own
+ * store, its own search, its own header and dialog. The README says per frame
+ * which half that is.
+ *
+ * ## The pair that is a measurement
+ *
+ * `at-rest` is captured twice - once against a daemon that advertises the two
+ * capabilities and once against `stub-daemon.mjs --no-archive` - and the two
+ * frames are byte-compared (`cmp`) in the README's table. That is the fail-closed
+ * claim stated as something a reader can check rather than as prose: with the
+ * capability absent the panel has no slot, no marker, no control and no chrome.
+ */
+async function sceneSessionArchive(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * The catalogue has to have arrived before anything is photographed: the rows
+	 * come from the daemon, and a frame taken against an empty list would be a
+	 * picture of this feature's absence rather than of its rest state.
+	 */
+	const firstRow = await verb(cdp, "measure", "[data-chat-row]");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered and the panel is drawing its rows",
+		state.sessionCount >= 4,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	note("row", JSON.stringify(firstRow));
+
+	const frames = [];
+	/*
+	 * Frames that are OF a transient, kept apart from the settled ones: the undo
+	 * offer IS a toast (design round 1, D7), so a scene whose every capture asserts
+	 * `toastFree` structurally cannot photograph it. This list carries its own
+	 * checks - the toast is on screen and the picture is held still - rather than
+	 * being exempted from the assertions silently.
+	 */
+	const offerFrames = [];
+
+	/* 1. At rest: no query, so no control in the search block, and no slot spent. */
+	await parkPointer(cdp);
+	frames.push(await captureSettled(cdp, `at-rest${RUN_LABEL}`));
+
+	if (WITHDRAWN) {
+		/*
+		 * THE WITHDRAWN RUN. Nothing below needs a press: the claims are all about
+		 * what is NOT there, and asserting absence is the whole of it.
+		 */
+		let controlPresent = true;
+		try {
+			await verb(cdp, "measure", {
+				selector: "[data-session-archive]",
+				timeoutMs: 500,
+			});
+		} catch {
+			controlPresent = false;
+		}
+		check(
+			"with the capability absent there is no archive control on any row",
+			controlPresent === false,
+			`[data-session-archive] ${controlPresent ? "matched a control" : "matched nothing"}`,
+		);
+		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		await cdp.send("Input.insertText", { text: "notes" });
+		await wait(600);
+		let togglePresent = true;
+		try {
+			await verb(cdp, "measure", {
+				selector: "#chat-search-include-archived",
+				timeoutMs: 500,
+			});
+		} catch {
+			togglePresent = false;
+		}
+		check(
+			"with the capability absent the search block gains no Include archived control",
+			togglePresent === false,
+			`#chat-search-include-archived ${togglePresent ? "matched a control" : "matched nothing"}`,
+		);
+		frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
+		check(
+			"every capture is a frame the app held still for, with no toast on it",
+			frames.every(
+				(frame) => frame.stable === true && frame.toastFree === true,
+			),
+			frames
+				.map((frame) => `${frame.label}: stable=${frame.stable}`)
+				.join(" | "),
+		);
+		return frames;
+	}
+
+	/*
+	 * 2. The pointer on a row. The reveal is the whole point of the reserved slot:
+	 * the control appears WITHOUT the row moving, which is what a reader checks by
+	 * comparing the two frames' row geometry rather than by trusting a class list.
+	 */
+	const hovered = await hoverOver(cdp, "[data-session-archive]");
+	await wait(400);
+	const revealed = await verb(cdp, "measure", "[data-session-archive]");
+	check(
+		"the archive control exists at rest and the pointer is over it",
+		revealed.inViewport === true,
+		JSON.stringify(revealed),
+	);
+	/*
+	 * The COST of the reserved slot, as a number rather than as an impression: the
+	 * control's own box plus the row wrapper's gap to the row's button is title
+	 * width the title no longer has, on every row, at rest. Reported here so the
+	 * pull request can state it and the design round can rule on it - `size-6` is
+	 * 24px, so this is the half of a two-slot reservation that exists today.
+	 */
+	note(
+		"title width cost",
+		/*
+		 * WHAT `firstRow` MEASURED, named rather than implied (review round 1, N1: the
+		 * figure this line reports was being read as a session row's, and it is not one
+		 * - `[data-chat-row]` matches a section heading first, and a heading is a
+		 * full-width button). The reservation itself is the load-bearing number here;
+		 * the row geometry the README quotes comes from the frames (`magick`), where a
+		 * session row can be measured rather than guessed.
+		 */
+		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's 4px gap, reserved on every row at rest; the first [data-chat-row] box is ${firstRow.rect.width}px of a ${hello.viewport.width}px window (that box is a section heading, not a session row)`,
+	);
+	/*
+	 * AND THE GROUND WITH THE POINTER ON A CONTROL (the arm D18 measured as "absent
+	 * entirely"): `hover:` on the row's box fires for the pointer being anywhere
+	 * inside it, children included, which is the property the group-prefixed
+	 * spelling could not express.
+	 */
+	const hoverGrounds = await readRowGrounds(cdp);
+	/*
+	 * THE ROW THE POINTER IS ON, read from the control's own ancestry, so this is an
+	 * assertion about THAT row rather than about "some row has a ground": the defect
+	 * was the ground living on the button (56px short) or, with the pointer on a
+	 * control, not being painted at all.
+	 */
+	const hoveredRowId = await cdp.evaluate(`(() => {
+		const control = document.querySelector("[data-session-archive]");
+		return (
+			control?.closest("[data-session-row]")?.getAttribute("data-session-row") ??
+			null
+		);
+	})()`);
+	check(
+		"the row's ground survives the pointer moving onto its control",
+		hoveredRowId !== null &&
+			hoverGrounds.painted.length === 1 &&
+			hoverGrounds.painted[0].id === hoveredRowId,
+		JSON.stringify({ hoveredRowId, ...hoverGrounds }),
+	);
+	note(
+		"the ground under the pointer, on a control",
+		JSON.stringify(hoverGrounds),
+	);
+	frames.push(await captureSettled(cdp, `row-hover${RUN_LABEL}`));
+
+	/*
+	 * 3. The search box with a query and the control OFF, then ON. The archived
+	 * conversation is absent from the first and present in the second, and that
+	 * difference is asserted as a MEASUREMENT (`[data-session-archived]` matches
+	 * nothing, then matches a box) rather than left to the reader's eye.
+	 */
+	await parkPointer(cdp);
+	await clickAt(cdp, '[aria-label="Search chats and agents"]');
+	await cdp.send("Input.insertText", { text: "notes" });
+	await wait(600);
+	frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
+
+	let archivedBefore = true;
+	try {
+		await verb(cdp, "measure", {
+			selector: "[data-session-archived]",
+			timeoutMs: 400,
+		});
+	} catch {
+		archivedBefore = false;
+	}
+	check(
+		"the archived conversation is NOT in the list while Include archived is off",
+		archivedBefore === false,
+		`[data-session-archived] ${archivedBefore ? "matched a row" : "matched nothing"}`,
+	);
+
+	await clickAt(cdp, "#chat-search-include-archived");
+	await wait(600);
+	const archivedAfter = await verb(cdp, "measure", "[data-session-archived]");
+	check(
+		"turning the control on puts the archived conversation in the list, marked",
+		archivedAfter.inViewport === true,
+		JSON.stringify(archivedAfter),
+	);
+	frames.push(await captureSettled(cdp, `search-on${RUN_LABEL}`));
+
+	/*
+	 * THE BOX IS CLEARED before the surfaces below, and it is a fact about the
+	 * instrument rather than a courtesy: a query FILTERS the list, so a row the next
+	 * steps press is not drawn while `notes` is still in the box - measured here as
+	 * the refusal step failing to find its control after ten seconds of waiting.
+	 */
+	await clickAt(cdp, '[aria-label="Clear search"]');
+	await wait(400);
+
+	/*
+	 * 4. The one permanent delete, through the surface that owns it: the header's
+	 * conversation menu asks, and the dialog is what confirms. Two presses, and the
+	 * frame is the state between them. The command's own confirmation is the SAME
+	 * dialog (a typed `/delete` stages the same candidate), which is why this frame
+	 * is the frame for both routes.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat/2d5ad5da0025");
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(400);
+	const dialog = await verb(cdp, "measure", '[role="dialog"]');
+	check(
+		"the delete confirmation is open on the conversation the menu was opened on",
+		dialog.inViewport === true,
+		JSON.stringify(dialog),
+	);
+	frames.push(await captureSettled(cdp, `delete-dialog${RUN_LABEL}`));
+
+	/*
+	 * 5. Closing the dialog (UX round 1, U9). The menu ITEM that opened it is
+	 *    unmounted with the menu, so the successor control of the same act is the
+	 *    header's own trigger - and the staged candidate must be gone, or the next
+	 *    route would open the same question unbidden.
+	 */
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(300);
+	const trigger = await verb(cdp, "measure", "[data-conversation-actions]");
+	check(
+		"closing the delete dialog hands the keyboard back to the control that opened it",
+		trigger.focused === true,
+		JSON.stringify(trigger),
+	);
+	let dialogStillOpen = true;
+	try {
+		await verb(cdp, "measure", {
+			selector: '[role="dialog"]',
+			timeoutMs: 400,
+		});
+	} catch {
+		dialogStillOpen = false;
+	}
+	check(
+		"and cancelling clears the staged candidate, so no dialog waits on the next route",
+		dialogStillOpen === false,
+		"a dialog was still in the document after Cancel",
+	);
+
+	/*
+	 * 6. The delete REFUSED (design round 1, D3). The stub answers the route's own
+	 *    409 for a conversation a live session claims, so the dialog that asked stays
+	 *    up over the sentence the backend authored plus the remedy this window can
+	 *    actually offer (UX round 1, U3) - and the keyboard must be back on CANCEL,
+	 *    because the press that was refused left it on the destructive button.
+	 */
+	await verb(cdp, "navigate", "/chat/7c1b0f2a4d31");
+	await wait(400);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(300);
+	await clickAt(cdp, "[data-confirm-action]");
+	await wait(600);
+	const refusedDialog = await verb(cdp, "measure", '[role="dialog"]');
+	const cancelHolds = await verb(cdp, "measure", "[data-cancel-action]");
+	check(
+		"the refused delete stays in the dialog that asked it",
+		refusedDialog.inViewport === true,
+		JSON.stringify(refusedDialog),
+	);
+	check(
+		"and the refusal leaves the keyboard on the SAFE action, not the destructive one",
+		cancelHolds.focused === true,
+		JSON.stringify(cancelHolds),
+	);
+	frames.push(await captureSettled(cdp, `delete-refused${RUN_LABEL}`));
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(300);
+
+	/*
+	 * 7. The archive REFUSED. A refused press reports in the panel's own register
+	 *    beside the list rather than in a dialog it never opened, with the Retry
+	 *    that re-sends the DESIRED state (design round 1, D3).
+	 */
+	await parkPointer(cdp);
+	/*
+	 * `previous` is EXPANDED first: a collapsed section draws no rows, and the two
+	 * rows this step and the last one press live there (measured: the refusal step
+	 * could not find its control while the section was collapsed).
+	 */
+	await clickAt(cdp, '[data-chat-section="previous"]');
+	await wait(400);
+	const claimedRow = "[aria-label='Archive “Migration checklist”']";
+	await hoverOver(cdp, claimedRow);
+	await clickAt(cdp, claimedRow);
+	await wait(600);
+	const archiveFailure = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure]",
+	);
+	check(
+		"a refused archive is reported beside the list it was made from, with its retry",
+		archiveFailure.inViewport === true,
+		JSON.stringify(archiveFailure),
+	);
+	frames.push(await captureSettled(cdp, `archive-refused${RUN_LABEL}`));
+	/*
+	 * AND IT IS REACHABLE WITH THE ENTITY REGION HIDDEN (agent review round 4,
+	 * R4-1). This is the mode the register was ABSENT from at `3e650f5f0`: the
+	 * refusal was re-parented into the entities region by the fold, and the assembly
+	 * renders only the list region in `chats-only`, so the sentence and its Retry
+	 * vanished in exactly the layout where the user is acting on chat rows. The
+	 * assertion is on the DRAWN node, not on the text beside it - the text-adjacency
+	 * assertion this replaces read the entity gate and passed while the register was
+	 * unreachable.
+	 */
+	/*
+	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE. The mode comes from the
+	 * panel's OWN collapse control, not from `setSplitPreferences`: that helper
+	 * writes localStorage and RELOADS the page, which would clear the in-memory
+	 * register this step is about (a refusal is not persisted). The control lives on
+	 * the cluster, which is inert until the pointer reveals it - so the pointer is
+	 * moved there first and the press goes to the control's own box, the idiom the
+	 * split scene uses for the same control.
+	 *
+	 * THE MODE IS ASSERTED, NOT ASSUMED: a non-empty query forces `both` regions
+	 * (`sidebar-split.ts`), so a step that merely hid nothing would pass this check
+	 * while proving nothing. `[data-sidebar-region="entities"]` must be UNMOUNTED
+	 * while the register is drawn - which is exactly the state the fold broke.
+	 */
+	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
+	require("the cluster's hide control is reachable", hideEntities !==
+		null, "no [data-sidebar-hide=entities]");
+	await movePointer(cdp, hideEntities.x, hideEntities.y);
+	await wait(320);
+	await pressPointerStationary(cdp, hideEntities.x, hideEntities.y);
+	await wait(500);
+	const entitiesUnmounted = await cdp.evaluate(
+		`document.querySelector('[data-sidebar-region="entities"]') === null`,
+	);
+	const refusalChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure]",
+	);
+	const retryChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure] button",
+	);
+	check(
+		"the entity region is unmounted, and the refused archive with its Retry is still reachable",
+		entitiesUnmounted === true &&
+			refusalChatsOnly.inViewport === true &&
+			retryChatsOnly.inViewport === true,
+		JSON.stringify({ entitiesUnmounted, refusalChatsOnly, retryChatsOnly }),
+	);
+	frames.push(
+		await captureSettled(cdp, `archive-refused-chats-only${RUN_LABEL}`),
+	);
+	const showEntities = await splitBox(cdp, '[data-sidebar-restore="entities"]');
+	require("the restore row is drawn", showEntities !==
+		null, "no restore row for the entity region");
+	await movePointer(cdp, showEntities.x, showEntities.y);
+	await wait(320);
+	await pressPointerStationary(cdp, showEntities.x, showEntities.y);
+	await wait(500);
+
+	/*
+	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
+	 *    the pair with `row-hover` is what settles whether the row's highlight
+	 *    survives the pointer leaving the control's 24px box.
+	 */
+	await parkPointer(cdp);
+	const titledRow = await verb(cdp, "measure", "[data-chat-row]");
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: titledRow.rect.x + 60,
+		y: titledRow.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	frames.push(await captureSettled(cdp, `row-hover-body${RUN_LABEL}`));
+
+	/*
+	 * 9. The open conversation archived (design round 1, D2): the header's pill and
+	 *    its restore control, with no dialog over them, and the pane still open on
+	 *    the conversation - archive hides, it does not close. The press raises the
+	 *    undo offer, so this frame is taken after that offer's OWN ceiling retires it:
+	 *    the pill's ink is what a reviewer has to judge here, and the offer has its
+	 *    own frame below.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat/2d5ad5da0025");
+	await wait(400);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-archive-action]");
+	await wait(500);
+	const pill = await verb(cdp, "measure", "[data-session-archived-pill]");
+	const openAfter = await verb(cdp, "state");
+	check(
+		"archiving the OPEN conversation adds the pill and leaves the pane open on it",
+		pill.inViewport === true && openAfter.activeSessionId === "2d5ad5da0025",
+		`${JSON.stringify(pill)} activeSessionId=${openAfter.activeSessionId}`,
+	);
+	/*
+	 * THE OFFER IS A PANEL REGISTER, SO ITS CLEARANCE IS READ THERE (design round 2,
+	 * D12). The retirement rule is unchanged and so is the property this check is
+	 * about: the offer outlives the catalogue answers that mention the row and is
+	 * retired by its own ceiling, not by the first answer to arrive.
+	 */
+	/*
+	 * THE OFFER IS REACHABLE THERE TOO (R4-1's other half): it is the same register
+	 * and it was absent for the same reason. Asserted while it is still up, before
+	 * the retirement wait below - and WITHOUT a frame, because the refusal's
+	 * chats-only frame above already carries the placement.
+	 */
+	const hideForOffer = await splitBox(cdp, '[data-sidebar-hide="entities"]');
+	require("the cluster's hide control is reachable", hideForOffer !==
+		null, "no [data-sidebar-hide=entities]");
+	await movePointer(cdp, hideForOffer.x, hideForOffer.y);
+	await wait(320);
+	await pressPointerStationary(cdp, hideForOffer.x, hideForOffer.y);
+	await wait(500);
+	const offerChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-undo]",
+	);
+	check(
+		"the archive offer is reachable in chats-only",
+		offerChatsOnly.inViewport === true,
+		JSON.stringify(offerChatsOnly),
+	);
+	const showForOffer = await splitBox(cdp, '[data-sidebar-restore="entities"]');
+	require("the restore row is drawn", showForOffer !==
+		null, "no restore row for the entity region");
+	await movePointer(cdp, showForOffer.x, showForOffer.y);
+	await wait(320);
+	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
+	await wait(500);
+	const clearance = await waitForGone(
+		cdp,
+		"[data-session-archive-undo]",
+		20_000,
+	);
+	check(
+		"the archive offer outlives the catalogue answers and retires on its own ceiling",
+		clearance.timedOut === false && clearance.waitedMs >= 10_000,
+		`waited ${clearance.waitedMs}ms for the offer to retire (the old rule retired it in 0.4-1.6s) `,
+	);
+	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
+
+	/*
+	 * 10. The row press, LAST because it is the frame that is OF a toast (design
+	 *     round 1, D7): the same act as the header's and as a typed `/archive`, so it
+	 *     makes the same offer (UX round 1, U2), and the keyboard lands on the row
+	 *     that took the place of the one that left (UX round 1, U5).
+	 */
+	await parkPointer(cdp);
+	/*
+	 * No expansion click here: `Previous chats` was opened by the refusal step above
+	 * and the sidebar PERSISTS its disclosures for the session, so a second click
+	 * would COLLAPSE the section the row lives in - which is how this step failed
+	 * the first time it ran. The order of these two steps is therefore load-bearing,
+	 * and it is why the toggle is a hoisted ancestor of the row rather than a
+	 * `data-chat-row` the scene could have scrolled to.
+	 */
+	const offeredRow = "[aria-label='Archive “Release notes for 0.29”']";
+	await hoverOver(cdp, offeredRow);
+	await clickAt(cdp, offeredRow);
+	await wait(500);
+	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
+		null,
+	);
+	check(
+		"the keyboard lands on a row rather than back on the document",
+		successor !== null &&
+			successor.focused === true &&
+			!/Release notes for 0\.29/.test(successor.target ?? ""),
+		JSON.stringify(successor),
+	);
+	/*
+	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT (design round 2, D12).
+	 *
+	 * It has to satisfy two things at once: it must sit on the surface that performed
+	 * the action, and it must never be able to sit over the composer's interactive
+	 * controls. As a toast it failed the second - measured in both palettes the toast
+	 * box (x 1001..1360.5, y 789..842.5) covered the Send control (x 1307..1339, y
+	 * 803..835), so the offer's own Undo box landed where Send had been. Both are
+	 * asserted here rather than described: the register is drawn INSIDE the panel,
+	 * and its box is disjoint from the composer's Send control.
+	 */
+	const offerBoxes = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+		};
+		return {
+			offer: box(document.querySelector("[data-session-archive-undo]")),
+			panel: box(document.querySelector('[aria-label="Chats"]')),
+			send: box(document.querySelector('[aria-label="Send message"]')),
+		};
+	})()`);
+	const disjoint = (a, b) =>
+		a === null || b === null
+			? null
+			: a.right <= b.left ||
+				b.right <= a.left ||
+				a.bottom <= b.top ||
+				b.bottom <= a.top;
+	check(
+		"a successful archive offers an Undo on the surface that performed it",
+		offerBoxes.offer !== null && offerBoxes.panel !== null,
+		JSON.stringify(offerBoxes),
+	);
+	check(
+		"and the offer is inside the panel, never over the composer's Send control",
+		offerBoxes.offer !== null &&
+			offerBoxes.offer.left >= offerBoxes.panel.left &&
+			offerBoxes.offer.right <= offerBoxes.panel.right &&
+			disjoint(offerBoxes.offer, offerBoxes.send) === true,
+		JSON.stringify(offerBoxes),
+	);
+	note("the undo offer's box, and the composer's", JSON.stringify(offerBoxes));
+	const offerFirst = await capture(cdp, `undo-offer${RUN_LABEL}`);
+	await wait(200);
+	const offerSecond = await capture(cdp, `undo-offer${RUN_LABEL}`);
+	offerFrames.push({
+		label: `undo-offer${RUN_LABEL}`,
+		stable: readFileSync(offerFirst.path).equals(
+			readFileSync(offerSecond.path),
+		),
+		offerOnScreen:
+			(await drawnSelector(cdp, "[data-session-archive-undo]")) === true,
+	});
+
+	/*
+	 * 11. Deleting the OPEN conversation (UX round 1, U1): the pane must land on the
+	 *     missing-session notice it ALREADY had rather than on a writable draft bound
+	 *     to an id that is gone. The conversation is the one this scene archived in
+	 *     step 9, which is the interesting case rather than a special one - archive
+	 *     hides, delete removes, and the notice is the same element either way.
+	 */
+	await waitForNoToasts(cdp, 20_000);
+	await parkPointer(cdp);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-delete]");
+	await wait(300);
+	await clickAt(cdp, "[data-confirm-action]");
+	await wait(700);
+	const notice = await verb(cdp, "measure", "#lo-missing-session-notice");
+	const afterDelete = await verb(cdp, "state");
+	check(
+		"deleting the open conversation lands the pane on its EXISTING missing-session notice",
+		notice.inViewport === true &&
+			afterDelete.activeSessionId === "2d5ad5da0025",
+		`${JSON.stringify(notice)} activeSessionId=${afterDelete.activeSessionId}`,
+	);
+	frames.push(await captureSettled(cdp, `deleted-open${RUN_LABEL}`));
+
+	/*
+	 * 7. THE PAIR, AND THE BAND IT SHEDS IN (the round-1 design ruling, delivered
+	 *    now that the pin control is in `main`).
+	 *
+	 * The rule is a width decision, so it is photographed as one: at the panel's
+	 * DEFAULT width the row carries two sibling reserved slots, and at the clamp
+	 * MINIMUM it carries one shared control instead. Both frames are taken with the
+	 * pointer parked away from the list, because the reserved boxes are the claim -
+	 * a revealed control would photograph the reveal instead.
+	 *
+	 * The COST is measured rather than asserted in prose: the title element's own
+	 * painted width at each panel width, on two rows - the first row, and the row
+	 * that also carries an UNREAD mark. THIS COMMENT USED TO CALL THE MARK A TRAILING
+	 * SLOT OUTSIDE THE TITLE and to call that row "the binding case" for the cost
+	 * (design round 3, D19): it is the opposite - the mark is drawn inside the row's
+	 * LEADING status slot, so a marked row's title measures the SAME width as a bare
+	 * one, and the two rows are measured here precisely to show that. The assertion
+	 * that the mark is really DRAWN is below ("the unread mark is DRAWN on this row"),
+	 * because two equal widths from two unmarked rows would prove nothing. `--width` cannot reach this band: the panel's width is the USER's
+	 * preference (`chatSidebarWidth`, clamped 240..360), not a function of the
+	 * window, so the scene writes the same preference the divider writes.
+	 */
+	await parkPointer(cdp);
+	await verb(cdp, "navigate", "/chat");
+	await wait(400);
+
+	const titlesAt = async (width) => {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		await wait(400);
+		const plain = await verb(cdp, "measure", "[data-session-title]");
+		const marked = await verb(cdp, "measure", {
+			selector: '[data-session-row="b3f1a09c7d52"] [data-session-title]',
+		});
+		return { applied, plain, marked };
+	};
+	/*
+	 * DRAWN, not merely PRESENT IN THE DOM, and the distinction is the check's
+	 * whole content: the two controls swap through `display`, so the one that is
+	 * shed is still in the document - `measure` finds it and reports a 0x0 box.
+	 * Asking for a non-zero box is what makes this an assertion about pixels.
+	 */
+	const drawn = async (selector) => {
+		try {
+			const box = await verb(cdp, "measure", { selector, timeoutMs: 400 });
+			return box.rect.width > 0 && box.rect.height > 0;
+		} catch {
+			return false;
+		}
+	};
+
+	const wide = await titlesAt(280);
+	/*
+	 * THE MARK IS DRAWN, RATHER THAN INFERRED (design round 2, D11).
+	 *
+	 * The two equal title widths below are evidence for a claim about a MARKED row,
+	 * and the first version of this fixture could not produce one: it sent
+	 * `attention: { unseen: true }`, a shape `mergeCompletionAttention` rejects (it
+	 * requires `conversation_id` = `session/<id>` and a `[epoch, revision]` pair), so
+	 * `attention` stayed absent, `unreadMarkKind` returned null, and both measured
+	 * rows were BARE. Equal widths from two bare rows say nothing. So the glyph's own
+	 * box is asserted first - and asserted to be the only one in the list, which is
+	 * the half that makes it discriminating rather than a tautology about a class
+	 * name that happens to be in the file.
+	 */
+	const mark = await cdp.evaluate(`(() => {
+		const marked = document.querySelector('[data-session-row="b3f1a09c7d52"]');
+		const glyph = marked?.querySelector(".text-success") ?? null;
+		const r = glyph?.getBoundingClientRect() ?? null;
+		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")]
+			.filter((el) => !marked?.contains(el)).length;
+		return {
+			drawn: !!r && r.width > 0 && r.height > 0,
+			width: r?.width ?? 0,
+			height: r?.height ?? 0,
+			elsewhere,
+		};
+	})()`);
+	check(
+		"the unread mark is DRAWN on this row, and nowhere else in the list",
+		mark.drawn === true && mark.elsewhere === 0,
+		JSON.stringify(mark),
+	);
+	note("the unread mark", JSON.stringify(mark));
+	check(
+		"at the panel's default width the row carries the PAIR of reserved slots",
+		(await drawn("[data-session-control-pair]")) === true,
+		"no drawn [data-session-control-pair] at 280",
+	);
+	check(
+		"and the single shared control is not drawn there",
+		(await drawn("[data-session-actions]")) === false,
+		"the shared control was drawn at 280",
+	);
+	/*
+	 * BOTH CONTROLS' OWN BOXES, not only the wrapper's: the pair claim is that TWO
+	 * reserved slots sit side by side, and a wrapper that measured 52px would be
+	 * one slot wide however many children it had. Read at the same time as the
+	 * title widths, so the arithmetic in the design record (`which box costs what`)
+	 * is reproducible from this line.
+	 */
+	const pinWide = await verb(cdp, "measure", "[data-session-pin]");
+	const archiveWide = await verb(cdp, "measure", "[data-session-archive]");
+	note(
+		"title width, pair (280px panel)",
+		`status row ${wide.plain.rect.width}px, unread row ${wide.marked.rect.width}px; pin ${pinWide.rect.width}x${pinWide.rect.height}, archive ${archiveWide.rect.width}x${archiveWide.rect.height}`,
+	);
+	/*
+	 * THE POINTER IS PUT ON THE ROW for the capture, and that is the whole of what
+	 * these two frames are OF: the pair is reserved at rest and REVEALED by the
+	 * pointer, so a parked frame would photograph two empty boxes and prove nothing
+	 * about whether either control is there. The row chosen is the one that also
+	 * carries an unread mark, so one frame carries the reveal, the marker and the
+	 * width claim together.
+	 */
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400);
+	/*
+	 * THE ROW'S OWN GROUND, READ FROM THE COMPILED RULE AND NOT FROM THE CLASS LIST
+	 * (design round 3, D18).
+	 *
+	 * This is the assertion whose absence let an INERT class ship twice: the first
+	 * attempt put `group-hover:bg-row-hover` on the element that CARRIES `group`,
+	 * which Tailwind compiles to a DESCENDANT rule - so the class was present, the
+	 * static tests were green, and the row box painted nothing. Asking the browser
+	 * for the element's own computed background is the cheapest question that
+	 * evaluates the compiled selector rather than the source text.
+	 *
+	 * THE SIBLING IS THE CONTROL, and it is what makes this discriminating: a bare
+	 * "the hovered row has a background" would pass for the button's own ground.
+	 * What is asserted is that the BOX paints it, that its width is the box's own
+	 * width (the D18 measurement was a ground 56px short of that), and that a row
+	 * the pointer is not on paints nothing.
+	 */
+	const ground = await readRowGrounds(cdp);
+	check(
+		"the ROW BOX paints the hover ground, and no other row does",
+		ground.rows > 1 &&
+			ground.painted.length === 1 &&
+			ground.painted[0].id === "b3f1a09c7d52",
+		JSON.stringify(ground),
+	);
+	note("the row's own ground", JSON.stringify(ground));
+	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
+	/*
+	 * THE PIN'S OWN HOVERED STEP (agent review round 4, R4-4). D22's ruling gives
+	 * every control the pointer's step, and for the PIN that step lands on a
+	 * RELEASED surface: main's control declared no `hover:` colour at all, so with
+	 * the pointer on it the glyph now reads `ink` where it read `ink-muted`. The
+	 * archive slot was measured and this one was only asserted by construction, so
+	 * the pointer goes on the pin beside it and the two frames carry the pair.
+	 */
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"] [data-session-pin]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-pin${RUN_LABEL}`));
+	/*
+	 * AND THE SAME ROW AT REST, with the pointer parked off the list: this is the
+	 * half of the design that has no ink (design round 2, D10, which the shared
+	 * control failed). Two reserved slots are RESERVED - the boxes are there, the
+	 * glyphs are not - and a frame with the pointer on the row cannot show that,
+	 * because the pointer is what reveals them.
+	 */
+	await parkPointer(cdp);
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-rest${RUN_LABEL}`));
+
+	const narrow = await titlesAt(240);
+	check(
+		"at the clamp minimum the pair is shed and ONE shared control stands in",
+		(await drawn("[data-session-actions]")) === true &&
+			(await drawn("[data-session-control-pair]")) === false,
+		"the pair and the shared control are not in the states the shed rule promises at 240",
+	);
+	const pinNarrow = await verb(cdp, "measure", "[data-session-pin]");
+	const archiveNarrow = await verb(cdp, "measure", "[data-session-archive]");
+	const sharedNarrow = await verb(cdp, "measure", "[data-session-actions]");
+	note(
+		"title width, shared control (240px panel)",
+		`status row ${narrow.plain.rect.width}px, unread row ${narrow.marked.rect.width}px; pin ${pinNarrow.rect.width}x${pinNarrow.rect.height}, archive ${archiveNarrow.rect.width}x${archiveNarrow.rect.height}, shared ${sharedNarrow.rect.width}x${sharedNarrow.rect.height}`,
+	);
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
+	/*
+	 * AND THE TRIGGER UNDER THE POINTER WITH NOTHING OPEN (design round 5, D25): the
+	 * only frame at this width with the pointer on it was taken after a click, so its
+	 * own step (188 -> 231 dark, 73 -> 29 light) could not be separated from whatever
+	 * an open menu paints. This frame is that arm and nothing else.
+	 */
+	await hoverOver(
+		cdp,
+		'[data-session-row="b3f1a09c7d52"] [data-session-actions]',
+	);
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-hover${RUN_LABEL}`));
+	/*
+	 * THE SHARED CONTROL AT REST, which is the state it was measured WRONG in: it
+	 * used to be drawn at rest in the row's own ink (12.84:1 dark) and to dim under
+	 * the pointer (7.49:1), so at this width every row wore a title-weight glyph.
+	 * Nothing is drawn here now, and the frame is the evidence (design round 2, D10).
+	 */
+	await parkPointer(cdp);
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-rest${RUN_LABEL}`));
+	/*
+	 * AND THE MENU ITSELF (design round 2, D10's second half): the affordance that
+	 * NAMES its two acts had no frame, so the claim that the narrow band "loses no
+	 * act" rested on the source. Opened with the real pointer through `clickAt`, and
+	 * closed again before the scene goes on.
+	 */
+	await clickAt(cdp, "[data-session-actions]");
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-menu${RUN_LABEL}`));
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+	});
+	await wait(300);
+	await verb(cdp, "setSidebarWidth", { width: 280 });
+	await wait(300);
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
+	);
+	check(
+		"the offer's own frame is a still picture of a register that was really there",
+		offerFrames.length === 1 &&
+			offerFrames[0].stable === true &&
+			offerFrames[0].offerOnScreen === true,
+		JSON.stringify(offerFrames),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio,
+		),
+		frames.map((f) => `${f.label}: ${f.bytes}B`).join(" | "),
+	);
+	return frames;
+}
 
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -12254,6 +13264,8 @@ async function main() {
 				);
 			}
 			if (SCENE === "states") await sceneStates(cdp);
+			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
+			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
