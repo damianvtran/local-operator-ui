@@ -1065,14 +1065,35 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * time the app started — which is exactly the difference between the pane
 			 * being restored and the user opening it.
 			 */
-			partialize: (state) => {
-				const {
-					runPanelReveal: _pending,
-					consoleOpenIntent: _intent,
-					...persisted
-				} = state;
-				return persisted;
-			},
+			partialize: persistedUiPreferences,
 		},
 	),
 );
+
+/**
+ * The part of the preferences that is written to disk: all of it, minus the two
+ * requests that only mean something inside the run that made them.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE CLOSURE, and the reason is a test that went
+ * red in CI rather than here: the pin over this filter used to reach the closure
+ * through `useUiPreferencesStore.persist.getOptions()`, which is zustand's own API
+ * and is not the same shape on every runtime (`Cannot read properties of undefined
+ * (reading 'getOptions')` on CI's node against this one), so the filter is exported
+ * and the test asserts the shipped function itself instead of a runtime handle on it.
+ *
+ * `runPanelReveal` is a request to open the run pane at a section; `consoleOpenIntent`
+ * is a request to give a conversation a terminal and the keyboard. Both are consumed by
+ * the pane that answers them, so persisting either would outlive the event it describes
+ * — a launch would restore a request nobody made and act on it, which for the console
+ * means running a shell in a conversation every time the app started.
+ */
+export function persistedUiPreferences<
+	T extends { runPanelReveal: unknown; consoleOpenIntent: unknown },
+>(state: T): Omit<T, "runPanelReveal" | "consoleOpenIntent"> {
+	const {
+		runPanelReveal: _pending,
+		consoleOpenIntent: _intent,
+		...persisted
+	} = state;
+	return persisted;
+}

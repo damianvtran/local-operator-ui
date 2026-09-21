@@ -34,7 +34,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/console/model/console-surfaces";',
 			// The pane's own store, for the one question a model function cannot answer:
 			// whether the open request survives being written to disk.
-			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -74,6 +74,7 @@ const {
 	measureCell,
 	consoleOpenAction,
 	useUiPreferencesStore,
+	persistedUiPreferences,
 	kebabRole,
 	readConsoleSnapshot,
 	surfacesForSession,
@@ -770,10 +771,8 @@ test("a console that cannot exist here is told so rather than given a shell", ()
 });
 
 test("the request is an event and not a preference: persisting it would run a shell on every launch", () => {
-	const { partialize } = useUiPreferencesStore.persist.getOptions();
-	assert.equal(typeof partialize, "function");
 	const state = useUiPreferencesStore.getState();
-	const persisted = partialize({
+	const persisted = persistedUiPreferences({
 		...state,
 		consoleOpenIntent: true,
 		runPanelReveal: { section: "todos" },
@@ -792,4 +791,22 @@ test("the request is an event and not a preference: persisting it would run a sh
 	 */
 	assert.equal("isConsolePaneOpen" in persisted, true);
 	assert.equal(persisted.themeName, state.themeName);
+	/*
+	 * AND IT IS THE FILTER THE STORE SHIPS, not a second copy that happens to answer
+	 * the same way: the assertion above is about an exported function, and a store whose
+	 * `partialize` stopped calling it would leave this file green. Read off the source,
+	 * the way this suite reads the contrast contract's own table.
+	 */
+	const store = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/store/ui-preferences-store.ts",
+		),
+		"utf8",
+	);
+	assert.match(
+		store,
+		/partialize: persistedUiPreferences,/,
+		"the store must persist through the filter this test pins, not through a closure beside it",
+	);
 });
