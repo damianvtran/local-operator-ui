@@ -71,6 +71,7 @@ const bundle = await build({
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 			export {
 				bandReadings,
+				effortDisplay,
 				effortLadder,
 				effortLevel,
 				effortState,
@@ -117,6 +118,7 @@ const {
 	draftPreviewKey,
 	draftPreviewQuery,
 	effortCarry,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	effortState,
@@ -741,6 +743,7 @@ const pickerDependencies = {
 	selectionSelector,
 	bandReadings,
 	effortCarry,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	effortState,
@@ -909,6 +912,14 @@ test("effort first on an unpicked resolved draft previews and records its defaul
 	assert.deepEqual(
 		picker.render().options.map((row) => row.value),
 		SPEC.reasoning_efforts,
+	);
+	// The LABEL is the title-cased human form while `value` stays the raw rung -
+	// the display-only boundary the picker's own rows must keep (review round 1,
+	// minor 2: nothing otherwise pins `row.label`, so reverting the casing in
+	// `destination-pickers.tsx` would stay green).
+	assert.deepEqual(
+		picker.render().options.map((row) => row.label),
+		["Minimal", "Low", "Medium", "High"],
 	);
 	const settled = await picker.pick("high");
 	assert.equal(picker.requests.length, 1);

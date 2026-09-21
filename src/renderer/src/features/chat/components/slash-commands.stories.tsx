@@ -570,6 +570,42 @@ export const ArgumentPhaseModels: Story = {
 };
 
 /**
+ * A populated `/effort ` inline list: the rung names come from the SAME
+ * `argumentRows` the popup renders at runtime, so the frames show the
+ * title-cased names (High, Low) beside the raw `value` the command is sent.
+ *
+ * The chip's own frames are `chat-session-status-strip--effort-states`; this is
+ * the popup half of the same reading, which had no story of its own before the
+ * casing change landed (review round 1, minor 1).
+ */
+export const ArgumentPhaseEffort: Story = {
+	render: () => (
+		<Box width={720} draft="/effort ">
+			<SlashSuggestionsPopup
+				state={state({
+					phase: "argument",
+					argumentCommand: "effort",
+					inline: { source: "effort", nameThenMessage: false, runs: true },
+					matches: argumentRowsFor(
+						"effort",
+						[
+							{
+								value: "low",
+							},
+							{ value: "medium" },
+							{ value: "high" },
+							{ value: "xhigh" },
+						],
+						"medium",
+					),
+				})}
+				onPick={noop}
+			/>
+		</Box>
+	),
+};
+
+/**
  * The honest empty state. This is the COLD OWNER case: the owner's live spec is
  * unresolved before the first turn, so a model with a full ladder answers `[]`.
  * Reading that as "this model has none" was a defect once, which is why the

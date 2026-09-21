@@ -306,6 +306,50 @@ export function effortLevel(
 	return null;
 }
 
+/**
+ * The effort LEVEL's title-cased human form for a value slot.
+ *
+ * The chip and the `/effort` picker print a level beside the model name, and
+ * the model chip already reads `Auto` (not `auto`) after the router-name fix.
+ * A value column of capitalised names with a lowercase `high`/`auto` beside
+ * them reads as a raw wire token rather than a name, so the two columns are
+ * cased alike. `Auto` in particular now names a real, SENT level on the
+ * Radient router route, so it belongs beside `Claude Opus 5`, not `claude-opus-5`.
+ *
+ * ONLY THE LEVELS ARE CASED. `effortState` also returns two STATE words that are
+ * not levels at all - `unknown` (a cold snapshot that has not reported yet) and
+ * `reasoning` (a reasoning model that exposes no rungs) - and they read the same
+ * way the rest of this file's prose reads: `Reasoning effort: unknown.` and
+ * `Reasoning effort: reasoning.` Title-casing those turns the aria sentence into
+ * nonsense (`Reasoning effort: Reasoning.`), so a word outside the level
+ * vocabulary passes through untouched rather than being cased by its first
+ * letter. The vocabulary is exactly what `/effort` accepts plus the `auto`
+ * sentinel, which is what makes the boundary the LEVEL rather than an arbitrary
+ * word list.
+ *
+ * DISPLAY ONLY. The value this describes is unchanged: `reasoning_effort` goes
+ * on the wire lowercase, the picker's `value` and its `current` comparison stay
+ * the raw rung, and nothing MATCHES on this string. One owner for the casing,
+ * so the chip and the picker cannot drift into casing the same word two ways.
+ */
+export function effortDisplay(level: string): string {
+	const trimmed = level.trim();
+	if (!trimmed) return trimmed;
+	const known: Record<string, string> = {
+		auto: "Auto",
+		none: "None",
+		minimal: "Minimal",
+		low: "Low",
+		medium: "Medium",
+		high: "High",
+		xhigh: "xHigh",
+		max: "Max",
+	};
+	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
+	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
+	return known[trimmed.toLowerCase()] ?? trimmed;
+}
+
 export type EffortState = {
 	/** The word the chip prints. */
 	label: string;
