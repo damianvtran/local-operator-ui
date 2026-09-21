@@ -819,6 +819,19 @@ Full treatment in the kit's `voice.md`. The rules that bite hardest in an app:
 - Sentence case for everything — buttons, headings, menu items, labels. Title
   Case is a marketing register and it makes a tool shout.
 
+  **The one carve-out, and why it is not a precedent.** A *value chip* that
+  prints a named setting beside the model's own name — the composer's reasoning
+  effort, `Auto` / `High` / `Low` — is Title Case. It is a value slot, not a
+  label: it sits in the same row as the model chip, which reads `Auto` for the
+  router, and a lowercase `high` beside it reads as a raw wire token rather than
+  the name of a setting. The rule above governs PROSE and CHROME (buttons,
+  headings, menu items); a machine value the owner selected is neither. This is
+  scoped to that chip and its picker, and it is an operator-directed decision
+  (2026-09-21) rather than a general licence — do not extend Title Case to
+  labels, prose or headings on its strength. `docs/branding.md` §5's
+  monospace-for-machine-voice note still holds: the value keeps its mono face,
+  and the casing does not change that it is a value.
+
 ### Implementation traps
 
 Three defects this system has already produced, each of which looked fine.
