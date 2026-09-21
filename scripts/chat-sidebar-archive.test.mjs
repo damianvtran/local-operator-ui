@@ -99,29 +99,53 @@ test("the archive control is a SIBLING of the row's button, never a child", () =
 	);
 });
 
-test("the archive control is reserved, revealed by opacity, and named by its action", () => {
+test("the archive control is absent from the layout at rest, and named by its action", () => {
 	const control = between(
 		SIDEBAR,
 		"aria-label={archiveControlLabel(label, archived)}",
 		"</button>",
 	);
-	// Reserved at rest: the box is the same size in both states, so the reveal
-	// cannot reflow the row under the pointer - and it is hidden AND inert, because
-	// an affordance the reader cannot see must not be what a press lands on.
-	assert.match(control, /size-6/);
-	assert.match(control, /shrink-0/);
-	assert.match(control, /opacity-0/);
-	assert.match(control, /pointer-events-none/);
-	// Only opacity, colour and pointer-events move on the reveal: nothing lifts,
-	// scales or translates on hover.
+	/*
+	 * AT REST THE CONTROL IS NOT IN THE LAYOUT AT ALL (design D3). The reveal used to
+	 * be `opacity: 0` plus `pointer-events-none` on a box that was always there, which
+	 * cost the title 28px on every row whether or not the pointer was anywhere near it;
+	 * the base is now `hidden` and the two group states ADD `flex`.
+	 *
+	 * THE BASE MUST BE `hidden` AND NOT `flex`, and that is the cascade bug this file
+	 * already caught once (agent review round 2, N1): `hidden` and `flex` are two
+	 * display utilities of equal specificity, so a class list carrying both is decided
+	 * by the stylesheet's order rather than by the pointer. The variant only ever
+	 * RAISES the control into the layout, which is why it cannot lose here.
+	 */
+	assert.match(
+		control,
+		/"hidden size-6 shrink-0 items-center justify-center rounded-md"/,
+	);
+	assert.match(control, /group-hover:flex/);
+	assert.match(control, /group-focus-within:flex/);
+	/*
+	 * AND THE OLD REVEAL IS GONE, both halves of it: `opacity` and `pointer-events` come
+	 * off, and so do the transition-duration tokens that paired with them - `display` is
+	 * not one of the four properties `docs/branding.md` § 5 lets animate. `display: none`
+	 * is strictly stronger than the pairing on the property it was written for: an
+	 * element that is not displayed cannot receive a press at all.
+	 */
+	assert.equal(control.includes("opacity-0"), false);
+	assert.equal(control.includes("pointer-events-none"), false);
+	assert.equal(control.includes("transition-opacity"), false);
+	// Only colour moves on the reveal: nothing lifts, scales or translates on hover.
 	assert.equal(/group-hover:[a-z-]*(scale|translate)/.test(control), false);
-	assert.match(control, /group-hover:opacity-100/);
-	assert.match(control, /group-hover:pointer-events-auto/);
-	// Reachable by keyboard: Tab into the row reveals it, and the next Tab lands on
-	// it, which is what `group-focus-within` is here for.
-	assert.match(control, /group-focus-within:opacity-100/);
-	// The action, never the state, and the conversation named - one derivation for
-	// the accessible name and the tooltip, so they cannot disagree.
+	assert.match(control, /group-hover:text-ink-muted/);
+	/*
+	 * REACHABLE BY KEYBOARD, which is why `group-focus-within` is here: Tab reaches the
+	 * row's button (the row's only tab stop at rest), which puts focus inside the row,
+	 * which displays the cluster - and the next Tab reaches the pin and then the
+	 * archive. The controls are outside the accessibility tree while hidden, which is
+	 * the honest state: on an unpinned row there is no pin control to announce.
+	 */
+	assert.match(control, /group-focus-within:text-ink-muted/);
+	// The action, never the state, and the conversation named - one derivation for the
+	// accessible name and the tooltip, so they cannot disagree.
 	assert.match(
 		control,
 		/aria-label=\{archiveControlLabel\(label, archived\)\}/,
@@ -157,7 +181,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	// The word reaches a screen reader through the `sr-only` span, and the tooltip
 	// states the same fact - the two channels agree because there is one string.
 	assert.match(marker, /sr-only/);
-	assert.match(rows, /\$\{archived \? ", archived" : ""\}/);
+	assert.match(rows, /\{archived \? ", archived" : ""\}/);
 	/*
 	 * AND IT SITS BEFORE THE TITLE, not in the trailing slot. That slot admits
 	 * exactly one statement (`rowTrailingStatement` records the three layouts that
@@ -240,16 +264,23 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	);
 });
 
-test("a refused press is reported once, in the panel's register, with a retry", () => {
+test("a refused press is reported once, in the sidebar's own toast lane, with a retry", () => {
 	/*
-	 * THE SLICE IS THE REGISTER CONSTANT, not the text next to a `&& (`: the older
-	 * form read whichever gate happened to follow, and the fold turned that gate
-	 * from the LIST's into the ENTITY REGION's, which is how a re-parented register
-	 * kept this suite green (agent review round 4, R4-1). The reachability it could
-	 * not see is asserted by the test below and, in the DOM, by the driver's
-	 * chats-only step.
+	 * THE REFUSAL IS A TOAST IN THE PANEL'S OWN LANE NOW (design D11), and the register
+	 * it replaces is DELETED rather than kept beside it: measured, the register sat 8px
+	 * above the split line and 117px above the first row of the list it was about,
+	 * because the flex column positioned it rather than the list.
+	 *
+	 * The slice is the failure EFFECT, so what is asserted here is the shape the design
+	 * depends on and no module can hold: the refusal names the conversation, carries the
+	 * backend's own sentence when there is one, is routed to the panel's lane, and offers
+	 * the retry that re-sends the SAME desired state.
 	 */
-	const failure = between(SIDEBAR, "const archiveRegister = (", "\n\t);");
+	const failure = between(
+		SIDEBAR,
+		"if (!archiveFailure) {",
+		"}, [archiveFailure, setSessionArchived]);",
+	);
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
 	// The retry sends the DESIRED state that was refused, not the state on screen.
@@ -259,58 +290,79 @@ test("a refused press is reported once, in the panel's register, with a retry", 
 	);
 	// `warning`, not `danger`: the list is intact and only this row's archive state
 	// did not move.
-	assert.match(failure, /text-warning/);
+	assert.match(failure, /showWarningToast\(/);
+	assert.match(failure, /id: ARCHIVE_FAILURE_TOAST_ID/);
+	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
+	assert.match(failure, /position: ARCHIVE_TOAST_LANE/);
 	assert.equal(
 		failure.includes('role="alert"'),
 		false,
 		"the sentence must not compete with the catalogue alert about a different failure",
 	);
+	/*
+	 * AND THE RETIREMENT RULE IS THE LANE'S, not a second copy of it: the store clears
+	 * `archiveFailure` when a new press supersedes it, and the effect takes the toast
+	 * down through the app's own `dismissToast` the moment that happens.
+	 */
+	assert.match(
+		failure,
+		/if \(!archiveFailure\) \{\s*dismissToast\(ARCHIVE_FAILURE_TOAST_ID\);/,
+	);
 });
 
-test("the register is drawn wherever the pin's failure line is drawn (agent review round 4, R4-1)", () => {
+test("the offer is drawn in the sidebar's own lane, mounted at the panel's root (design D11; agent review round 4, R4-1)", () => {
 	const source = code(SIDEBAR);
 	/*
-	 * WHY THIS SHAPE. The defect was a HOME, not a spelling: the register was a
-	 * direct child of the `<nav>`, the fold re-applied it inside the ENTITY region,
-	 * and the assembly drops that region in `chats-only` - so the sentence and its
-	 * Retry were drawn exactly when the list they belong to was hidden. No text
-	 * assertion near the register can see that; what can see it is the register's
-	 * own home being the SAME one the pin's failure line uses, which the round-4
-	 * review established as every mode (`{pinFailureLine}` appears once in each of
-	 * the assembly's three branches).
+	 * WHY THE HOME MATTERS, which is what round 4's R4-1 was about: the offer used to be
+	 * a direct child of the `<nav>` and the fold re-applied it inside the ENTITY region,
+	 * which the assembly drops in `chats-only` - so the offer and its Undo were drawn
+	 * exactly when the list they belong to was hidden. The lane inherits the register's
+	 * home and its reason: ONE container, mounted at the panel's root, so every assembly
+	 * mode carries it.
+	 *
+	 * WHAT IDENTIFIES THE OFFER NOW: sonner routes a toast to the container whose
+	 * `position` matches it, so the panel's lane declaring `bottom-left` is what puts
+	 * the offer in the sidebar and not in the viewport's corner. The register's own DOM
+	 * anchors (`data-session-archive-undo` / `-failure`) are gone with it, and the driver
+	 * reads the lane instead.
 	 */
-	assert.match(source, /const archiveRegister = \(/);
-	const definition = between(SIDEBAR, "const archiveRegister = (", "\n\t);");
-	assert.match(definition, /data-session-archive-undo/);
-	assert.match(definition, /data-session-archive-failure/);
+	assert.equal(
+		(source.match(/<ThemedToastContainer/g) ?? []).length,
+		1,
+		"the panel must mount exactly one toast lane",
+	);
+	const lane = between(SIDEBAR, "<ThemedToastContainer", "/>");
+	assert.match(lane, /position=\{ARCHIVE_TOAST_LANE\}/);
+	assert.match(lane, /style=\{ARCHIVE_TOAST_LANE_STYLE\}/);
+	/*
+	 * AND THE LANE IS THE PANEL'S BOX, which is the anchor plus the cap: `relative` on
+	 * the nav is what an absolutely positioned container is confined by, and the width
+	 * is the panel's own content width rather than sonner's 356px default.
+	 */
+	assert.match(
+		source,
+		/className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"/,
+	);
+	assert.match(source, /position: "absolute"/);
+	assert.match(source, /"--width": "min\(264px, 100% - 32px\)"/);
+	// The pins' failure line keeps its three sites; the register has none left.
 	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
-	const registers = source.match(/\{archiveRegister\}/g) ?? [];
 	assert.ok(
 		pins.length >= 3,
 		`expected the pin's failure line in every assembly branch, found ${pins.length}`,
 	);
 	assert.equal(
-		registers.length,
-		pins.length,
-		"the register must be drawn in every branch the pin's failure line is drawn in",
+		(source.match(/\{archiveRegister\}/g) ?? []).length,
+		0,
+		"the register must be deleted from the assembly, not left beside the toast",
 	);
 	assert.equal(
-		(source.match(/\{pinFailureLine\}\n\t+\{archiveRegister\}/g) ?? []).length,
-		pins.length,
-		"each branch must draw the register beside the pin's line, not merely in the file",
+		source.includes("const archiveRegister = ("),
+		false,
+		"the register's own JSX must be gone with its call sites",
 	);
-	// ONE home: the anchors live in the constant and nowhere else, so a second copy
-	// cannot appear inside a region and shadow this assertion.
-	assert.equal(
-		(source.match(/data-session-archive-failure/g) ?? []).length,
-		1,
-		"exactly one element carries the refusal anchor",
-	);
-	assert.equal(
-		(source.match(/data-session-archive-undo/g) ?? []).length,
-		1,
-		"exactly one element carries the offer anchor",
-	);
+	// One provider for the panel, so the rows' flyouts share a delay and a skip.
+	assert.match(source, /<TooltipProvider>/);
 });
 
 test("the press record expires on the pointer's own path", () => {
@@ -572,41 +624,15 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	assert.match(source, /successor\?\.focus\(\)/);
 });
 
-test("the shared control is reserved at rest and revealed, like the pair it stands in for (design round 2, D10)", () => {
-	const control = between(
-		SIDEBAR,
-		"aria-label={`Actions for ${label}`}",
-		"</button>",
-	);
-	/*
-	 * THE MEASUREMENT THIS PINS. On the shared row the control used to be drawn at
-	 * rest in the row's own text ink - measured 12.84:1 dark / 15.23:1 light - and to
-	 * DIM when the pointer arrived (7.49:1 / 7.95:1), while the pin and archive
-	 * controls beside it reveal from `opacity-0`. That is backwards on the width where
-	 * the title has least room: every row wore a title-weight glyph at rest, and
-	 * hovering made the affordance fainter rather than clearer.
-	 */
-	assert.match(control, /opacity-0/);
-	assert.match(control, /pointer-events-none/);
-	assert.match(control, /group-hover:opacity-100/);
-	assert.match(control, /group-hover:pointer-events-auto/);
-	assert.match(control, /group-focus-within:opacity-100/);
-	/*
-	 * AND THE MENU'S OWN STATE IS A THIRD WAY IN. Radix keeps focus on the trigger
-	 * while the menu is up, but the menu is a PORTAL: a pointer that opens it and
-	 * leaves the row must not undraw the control the menu belongs to.
-	 */
-	assert.match(control, /data-\[state=open\]:opacity-100/);
-	// Still 24px in both states, so the reveal cannot reflow the row - the rule the
-	// pair is written under.
-	assert.match(control, /size-6/);
-	assert.match(control, /shrink-0/);
-	assert.equal(
-		/group-hover:[a-z-]*(scale|translate)/.test(control),
-		false,
-		"nothing lifts, scales or translates on hover",
-	);
-});
+/*
+ * THE SHARED CONTROL'S OWN TEST IS DELETED WITH THE CONTROL (design D9). It pinned the
+ * narrow band's one-element stand-in for the pair - a 24px trigger whose menu named both
+ * acts - and asserted the reveal that band used. There is no narrow band any more: the
+ * pair is drawn at every width, and the two tests above assert its reveal. The frames of
+ * that behaviour stay committed under
+ * `docs/evidence/session-archive/row-controls-shared*`, which is where the reversal
+ * would start from if QA finds the 240 hover too busy.
+ */
 
 test("the row's hover ground belongs to the row, not to its button (design round 2, D13)", () => {
 	const row = between(
@@ -648,40 +674,46 @@ test("the row's hover ground belongs to the row, not to its button (design round
 	assert.match(box, /!current &&\s*"hover:bg-row-hover"/);
 });
 
-test("the two container-query constants keep the shapes that make the container decide (agent review round 2, N1)", () => {
+test("the shed is gone, and what replaced it is a display switch with no reserved box (design D9)", () => {
 	/*
-	 * THE CASCADE BUG THIS PINS, because it is the one that shipped on this branch:
-	 * the shared control's base was `flex` and the variant also set `flex`, so the
-	 * two display rules tied and the CASCADE decided - not the container query -
-	 * and the control drew at every width. The fix is a base `hidden` that only a
-	 * matching container can turn into `flex`.
+	 * THE CASCADE BUG THE OLD VERSION OF THIS TEST PINNED is still the reason the shape
+	 * below is asserted rather than described, because it is the bug that shipped on this
+	 * branch: the shared control's base was `flex` and the variant also set `flex`, so the
+	 * two display rules tied and the CASCADE decided - not the container query - and the
+	 * control drew at every width. The rule that survived is the general one: a display
+	 * switch has to be a base that the variant RAISES, never two values competing on
+	 * equal specificity.
 	 *
-	 * The rendered check in `scripts/renderer-driver.mjs` catches a regression too,
-	 * but only in a capture run, which needs a build, a stub daemon and a launch.
-	 * This is the cheap half: the constants' own values, and the base each is
-	 * combined with, asserted where they are declared.
+	 * WHAT IS RETIRED, and each of these is a `display: none`-shaped absence rather than
+	 * a spelling worth leaving to be rediscovered: the two container-query constants, the
+	 * shared control and its menu, its anchor, and the `@container/chatsidebar`
+	 * declaration on the panel root whose only reader was the query.
 	 */
-	const constants = code(SIDEBAR);
-	assert.match(
-		constants,
-		/const ROW_CONTROLS_PAIR_SHED = "@max-\[\d+px\]\/chatsidebar:hidden";/,
-	);
-	assert.match(
-		constants,
-		/const ROW_CONTROLS_SHARED_SHOWN = "@max-\[\d+px\]\/chatsidebar:flex";/,
-	);
+	const source = code(SIDEBAR);
+	for (const gone of [
+		"ROW_CONTROLS_PAIR_SHED",
+		"ROW_CONTROLS_SHARED_SHOWN",
+		"data-session-actions",
+		"@container/chatsidebar",
+		"<DropdownMenu",
+	]) {
+		assert.equal(
+			source.includes(gone),
+			false,
+			`the retired shed machinery is still in the panel: ${gone}`,
+		);
+	}
 	/*
-	 * AND EACH CONSTANT IS USED WITH THE BASE THE OTHER ONE NEEDS: the pair wrapper
-	 * is a flex box that the query HIDES, and the shared control is a `hidden`
-	 * element that the query SHOWS.
+	 * AND THE REPLACEMENT IS ONE RULE AT EVERY WIDTH, on the wrapper: `hidden` while the
+	 * row is unpinned, `flex` while it is pinned - because the pinned row's mark is a
+	 * STATE and must read without hovering, which is also the 240 fix (a pinned row there
+	 * used to draw no pin at all, because the mark lived inside the wrapper the query
+	 * hid). The reversal note that stays in the file is where the shed would go back.
 	 */
 	const pairWrapper = between(SIDEBAR, "data-session-control-pair", "</div>");
-	assert.match(pairWrapper, /"flex items-center gap-1"/);
-	assert.match(pairWrapper, /ROW_CONTROLS_PAIR_SHED/);
-	const shared = between(
-		SIDEBAR,
-		"data-session-actions",
-		"ROW_CONTROLS_SHARED_SHOWN",
+	assert.match(pairWrapper, /"items-center gap-1"/);
+	assert.match(
+		pairWrapper,
+		/pinned\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
 	);
-	assert.match(shared, /"hidden size-6 shrink-0/);
 });

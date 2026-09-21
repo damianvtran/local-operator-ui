@@ -1327,6 +1327,19 @@ function capture(cdp, label) {
  */
 const TOAST_SELECTOR = "[data-sonner-toast]";
 
+/**
+ * The PANEL'S OWN toast lane (design D11 of `docs/design/sidebar-row-space.md`).
+ *
+ * Two things make this selector precise, and both are needed. Sonner marks the
+ * container's position on the element it renders toasts into, and the panel's lane
+ * declares `bottom-left` - but the GLOBAL container also renders an `<ol>` for that
+ * position, because every mounted Toaster keeps a copy of every toast (measured; the
+ * app's stylesheet is what narrows that to the toast the reader sees). So the lane is
+ * addressed through the panel's own landmark rather than by position alone.
+ */
+const SIDEBAR_TOAST =
+	'nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast]';
+
 /** How many toasts are on screen right now, asked of the app's own DOM. */
 function toastsOnScreen(cdp) {
 	return cdp.evaluate(
@@ -1414,7 +1427,9 @@ async function drawnSelector(cdp, selector) {
 
 /**
  * Wait for a selector that was on screen to go, which is how the archive OFFER is
- * read now that it is a panel register rather than a toast (design round 2, D12).
+ * read: it is a toast in the panel's own lane (design D11 of
+ * `docs/design/sidebar-row-space.md`), and what has to be waited for - rather than
+ * sampled - is that it RETIRES.
  *
  * The same shape as `waitForNoToasts` and for the same reason: the property under
  * test is that the observer outlives the answers that mention the conversation, so
@@ -1726,11 +1741,12 @@ async function clickAt(cdp, selector) {
  * to settle a finding: the open conversation archived, with the header's pill and
  * its restore control (D2); the delete REFUSED through the dialog that asked, with
  * the keyboard back on the safe action (D3, UX U3); the archive refused, in the
- * panel's own register beside the list (D3); and the row's own hover with the
- * pointer on the title rather than on the control (D5). The undo offer a
- * successful archive makes (D7) is photographed too - in its own frame, with its
- * own assertion, because it is a TOAST and every other capture here asserts
- * `toastFree`.
+ * panel's own toast lane (D3, and design D11 of `docs/design/sidebar-row-space.md`
+ * for the lane); and the row's own hover with the pointer on the title rather than
+ * on the control (D5). The undo offer a successful archive makes (D7) is
+ * photographed too - in its own frame, with its own assertion, because it is a
+ * TOAST and every other capture here asserts `toastFree`. The REFUSED archive's two
+ * frames are in that same list for the same reason: the refusal is a toast now.
  *
  * ## What it runs against
  *
@@ -1845,12 +1861,21 @@ async function sceneSessionArchive(cdp) {
 	}
 
 	/*
-	 * 2. The pointer on a row. The reveal is the whole point of the reserved slot:
-	 * the control appears WITHOUT the row moving, which is what a reader checks by
-	 * comparing the two frames' row geometry rather than by trusting a class list.
+	 * 2. The pointer on a row. The reveal is the whole point: the two acts are absent
+	 *    from the layout until the pointer or the keyboard is inside the row (`display`,
+	 *    not `opacity` - design D3 of `docs/design/sidebar-row-space.md`), so the ROW is
+	 *    the hover target now and a control that is not displayed is not one. What a
+	 *    reader checks by comparing the two frames is that the row itself does not move:
+	 *    only the title's clip does.
+	 *
+	 *    THE WAIT IS FOR THE PAN (design D5), on this row rather than by luck: the row
+	 *    this step presses is the one whose title cannot fit, so the pointer starts a
+	 *    pan that runs for the dwell plus the pan's own ceiling. A frame captured
+	 *    mid-pan is a frame the app never held still for, and `captureSettled` refuses
+	 *    it - which is why the wait is the ceiling and not the arithmetic.
 	 */
-	const hovered = await hoverOver(cdp, "[data-session-archive]");
-	await wait(400);
+	const hovered = await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400 + 8_000);
 	const revealed = await verb(cdp, "measure", "[data-session-archive]");
 	check(
 		"the archive control exists at rest and the pointer is over it",
@@ -1870,11 +1895,18 @@ async function sceneSessionArchive(cdp) {
 		 * WHAT `firstRow` MEASURED, named rather than implied (review round 1, N1: the
 		 * figure this line reports was being read as a session row's, and it is not one
 		 * - `[data-chat-row]` matches a section heading first, and a heading is a
-		 * full-width button). The reservation itself is the load-bearing number here;
-		 * the row geometry the README quotes comes from the frames (`magick`), where a
-		 * session row can be measured rather than guessed.
+		 * full-width button). The row geometry the README quotes comes from the frames
+		 * (`magick`), where a session row can be measured rather than guessed.
+		 *
+		 * WHAT REPLACED THE OLD FIGURE. This note used to report what the two reserved
+		 * slots cost every title AT REST ("the control's own 24px plus the wrapper's
+		 * 4px gap, reserved on every row at rest"), because they were. They are not
+		 * anymore: both acts are absent from the layout at rest, so the only cost left
+		 * is the one paid UNDER THE POINTER, and it is photographed rather than
+		 * reported here - the `row-space` scene asserts the whole table (196/236/276 at
+		 * rest, 140/180/220 under the pointer) against the same row.
 		 */
-		`the archive slot is ${revealed.rect.width}px wide plus the wrapper's 4px gap, reserved on every row at rest; the first [data-chat-row] box is ${firstRow.rect.width}px of a ${hello.viewport.width}px window (that box is a section heading, not a session row)`,
+		`the archive control is ${revealed.rect.width}x${revealed.rect.height} under the pointer, and nothing is reserved at rest; the first [data-chat-row] box is ${firstRow.rect.width}px of a ${hello.viewport.width}px window (that box is a section heading, not a session row)`,
 	);
 	/*
 	 * AND THE GROUND WITH THE POINTER ON A CONTROL (the arm D18 measured as "absent
@@ -2037,9 +2069,11 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 
 	/*
-	 * 7. The archive REFUSED. A refused press reports in the panel's own register
-	 *    beside the list rather than in a dialog it never opened, with the Retry
-	 *    that re-sends the DESIRED state (design round 1, D3).
+	 * 7. The archive REFUSED. A refused press reports in the panel's own toast lane
+	 *    rather than in a dialog it never opened, with the Retry that re-sends the
+	 *    DESIRED state (design round 1, D3; the lane is design D11 of
+	 *    `docs/design/sidebar-row-space.md`, which moved this sentence out of the
+	 *    in-panel register the operator reported as "a weird awkward spot").
 	 */
 	await parkPointer(cdp);
 	/*
@@ -2053,32 +2087,37 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, claimedRow);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
-	const archiveFailure = await verb(
-		cdp,
-		"measure",
-		"[data-session-archive-failure]",
-	);
+	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
 	check(
-		"a refused archive is reported beside the list it was made from, with its retry",
+		"a refused archive is reported in the panel's own toast lane, with its retry",
 		archiveFailure.inViewport === true,
 		JSON.stringify(archiveFailure),
 	);
-	frames.push(await captureSettled(cdp, `archive-refused${RUN_LABEL}`));
 	/*
-	 * AND IT IS REACHABLE WITH THE ENTITY REGION HIDDEN (agent review round 4,
-	 * R4-1). This is the mode the register was ABSENT from at `3e650f5f0`: the
-	 * refusal was re-parented into the entities region by the fold, and the assembly
-	 * renders only the list region in `chats-only`, so the sentence and its Retry
-	 * vanished in exactly the layout where the user is acting on chat rows. The
-	 * assertion is on the DRAWN node, not on the text beside it - the text-adjacency
-	 * assertion this replaces read the entity gate and passed while the register was
-	 * unreachable.
+	 * A TOAST CANNOT BE PHOTOGRAPHED BY `captureSettled`, whose contract is a frame
+	 * with no toast on it: the two frames this set takes OF the toast carry their own
+	 * checks in `offerFrames` instead of being exempted from the assertions silently.
+	 */
+	offerFrames.push({
+		label: `archive-refused${RUN_LABEL}`,
+		...(await captureWithToast(cdp, `archive-refused${RUN_LABEL}`)),
+		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+	});
+	/*
+	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).
+	 * This is the mode the REGISTER was absent from at `3e650f5f0`: it had been
+	 * re-parented into the entities region, and the assembly renders only the list
+	 * region in `chats-only`, so the sentence and its Retry vanished in exactly the
+	 * layout where the user is acting on chat rows. The lane cannot inherit that
+	 * defect - it is mounted by the panel's root, above both regions - and this step
+	 * is what keeps the claim a measurement rather than a reading of the JSX. The
+	 * assertion is on the DRAWN node.
 	 */
 	/*
 	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE. The mode comes from the
 	 * panel's OWN collapse control, not from `setSplitPreferences`: that helper
 	 * writes localStorage and RELOADS the page, which would clear the in-memory
-	 * register this step is about (a refusal is not persisted). The control lives on
+	 * refusal this step is about (a refusal is not persisted). The control lives on
 	 * the cluster, which is inert until the pointer reveals it - so the pointer is
 	 * moved there first and the press goes to the control's own box, the idiom the
 	 * split scene uses for the same control.
@@ -2086,7 +2125,7 @@ async function sceneSessionArchive(cdp) {
 	 * THE MODE IS ASSERTED, NOT ASSUMED: a non-empty query forces `both` regions
 	 * (`sidebar-split.ts`), so a step that merely hid nothing would pass this check
 	 * while proving nothing. `[data-sidebar-region="entities"]` must be UNMOUNTED
-	 * while the register is drawn - which is exactly the state the fold broke.
+	 * while the refusal is drawn - which is exactly the state the fold broke.
 	 */
 	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
 	require("the cluster's hide control is reachable", hideEntities !==
@@ -2098,15 +2137,11 @@ async function sceneSessionArchive(cdp) {
 	const entitiesUnmounted = await cdp.evaluate(
 		`document.querySelector('[data-sidebar-region="entities"]') === null`,
 	);
-	const refusalChatsOnly = await verb(
-		cdp,
-		"measure",
-		"[data-session-archive-failure]",
-	);
+	const refusalChatsOnly = await verb(cdp, "measure", SIDEBAR_TOAST);
 	const retryChatsOnly = await verb(
 		cdp,
 		"measure",
-		"[data-session-archive-failure] button",
+		`${SIDEBAR_TOAST} [data-button]`,
 	);
 	check(
 		"the entity region is unmounted, and the refused archive with its Retry is still reachable",
@@ -2115,9 +2150,11 @@ async function sceneSessionArchive(cdp) {
 			retryChatsOnly.inViewport === true,
 		JSON.stringify({ entitiesUnmounted, refusalChatsOnly, retryChatsOnly }),
 	);
-	frames.push(
-		await captureSettled(cdp, `archive-refused-chats-only${RUN_LABEL}`),
-	);
+	offerFrames.push({
+		label: `archive-refused-chats-only${RUN_LABEL}`,
+		...(await captureWithToast(cdp, `archive-refused-chats-only${RUN_LABEL}`)),
+		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+	});
 	const showEntities = await splitBox(cdp, '[data-sidebar-restore="entities"]');
 	require("the restore row is drawn", showEntities !==
 		null, "no restore row for the entity region");
@@ -2165,15 +2202,18 @@ async function sceneSessionArchive(cdp) {
 		`${JSON.stringify(pill)} activeSessionId=${openAfter.activeSessionId}`,
 	);
 	/*
-	 * THE OFFER IS A PANEL REGISTER, SO ITS CLEARANCE IS READ THERE (design round 2,
-	 * D12). The retirement rule is unchanged and so is the property this check is
-	 * about: the offer outlives the catalogue answers that mention the row and is
-	 * retired by its own ceiling, not by the first answer to arrive.
+	 * THE OFFER IS THE PANEL'S OWN TOAST NOW, IN THE PANEL'S OWN LANE (design D11),
+	 * so its clearance is read there. The retirement rule is unchanged and so is the
+	 * property this check is about: the offer outlives the catalogue answers that
+	 * mention the row and is retired by its own ceiling, not by the first answer to
+	 * arrive. The wait below is the same wait; what changed is the element it waits
+	 * on - and with it, the fact that the lane is mounted by the panel's root, so
+	 * there is no assembly mode in which the offer is not drawn.
 	 */
 	/*
-	 * THE OFFER IS REACHABLE THERE TOO (R4-1's other half): it is the same register
-	 * and it was absent for the same reason. Asserted while it is still up, before
-	 * the retirement wait below - and WITHOUT a frame, because the refusal's
+	 * THE OFFER IS REACHABLE THERE TOO (R4-1's other half): it used to be the same
+	 * register and it was absent for the same reason. Asserted while it is still up,
+	 * before the retirement wait below - and WITHOUT a frame, because the refusal's
 	 * chats-only frame above already carries the placement.
 	 */
 	const hideForOffer = await splitBox(cdp, '[data-sidebar-hide="entities"]');
@@ -2183,11 +2223,7 @@ async function sceneSessionArchive(cdp) {
 	await wait(320);
 	await pressPointerStationary(cdp, hideForOffer.x, hideForOffer.y);
 	await wait(500);
-	const offerChatsOnly = await verb(
-		cdp,
-		"measure",
-		"[data-session-archive-undo]",
-	);
+	const offerChatsOnly = await verb(cdp, "measure", SIDEBAR_TOAST);
 	check(
 		"the archive offer is reachable in chats-only",
 		offerChatsOnly.inViewport === true,
@@ -2200,15 +2236,11 @@ async function sceneSessionArchive(cdp) {
 	await wait(320);
 	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
 	await wait(500);
-	const clearance = await waitForGone(
-		cdp,
-		"[data-session-archive-undo]",
-		20_000,
-	);
+	const clearance = await waitForGone(cdp, SIDEBAR_TOAST, 20_000);
 	check(
-		"the archive offer outlives the catalogue answers and retires on its own ceiling",
-		clearance.timedOut === false && clearance.waitedMs >= 10_000,
-		`waited ${clearance.waitedMs}ms for the offer to retire (the old rule retired it in 0.4-1.6s) `,
+		"the archive offer outlives the catalogue answers and is taken down by the lane's own duration",
+		clearance.timedOut === false && clearance.waitedMs >= 6_000,
+		`waited ${clearance.waitedMs}ms for the offer to retire (the answers that mention the row arrive in 0.4-1.6s, and the lane's duration is ${8_000}ms) `,
 	);
 	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
 
@@ -2242,15 +2274,17 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(successor),
 	);
 	/*
-	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT (design round 2, D12).
+	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT OUT OF THE CORNER (design round 2,
+	 * D12, answered in design D11).
 	 *
 	 * It has to satisfy two things at once: it must sit on the surface that performed
 	 * the action, and it must never be able to sit over the composer's interactive
-	 * controls. As a toast it failed the second - measured in both palettes the toast
-	 * box (x 1001..1360.5, y 789..842.5) covered the Send control (x 1307..1339, y
-	 * 803..835), so the offer's own Undo box landed where Send had been. Both are
-	 * asserted here rather than described: the register is drawn INSIDE the panel,
-	 * and its box is disjoint from the composer's Send control.
+	 * controls. As a viewport-corner toast it failed the second - measured in both
+	 * palettes the toast box (x 1001..1360.5, y 789..842.5) covered the Send control
+	 * (x 1307..1339, y 803..835), so the offer's own Undo box landed where Send had
+	 * been. It is a toast again, but in the PANEL'S OWN LANE: both properties are
+	 * asserted here rather than described, and the second is now structural - the
+	 * lane is inside the panel's box, and the composer is in another column.
 	 */
 	const offerBoxes = await cdp.evaluate(`(() => {
 		const box = (el) => {
@@ -2259,18 +2293,12 @@ async function sceneSessionArchive(cdp) {
 			return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
 		};
 		return {
-			offer: box(document.querySelector("[data-session-archive-undo]")),
+			offer: box(document.querySelector(${JSON.stringify(SIDEBAR_TOAST)})),
 			panel: box(document.querySelector('[aria-label="Chats"]')),
 			send: box(document.querySelector('[aria-label="Send message"]')),
 		};
 	})()`);
-	const disjoint = (a, b) =>
-		a === null || b === null
-			? null
-			: a.right <= b.left ||
-				b.right <= a.left ||
-				a.bottom <= b.top ||
-				b.bottom <= a.top;
+	const disjoint = disjointBoxes;
 	check(
 		"a successful archive offers an Undo on the surface that performed it",
 		offerBoxes.offer !== null && offerBoxes.panel !== null,
@@ -2293,8 +2321,7 @@ async function sceneSessionArchive(cdp) {
 		stable: readFileSync(offerFirst.path).equals(
 			readFileSync(offerSecond.path),
 		),
-		offerOnScreen:
-			(await drawnSelector(cdp, "[data-session-archive-undo]")) === true,
+		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
 	});
 
 	/*
@@ -2323,26 +2350,30 @@ async function sceneSessionArchive(cdp) {
 	frames.push(await captureSettled(cdp, `deleted-open${RUN_LABEL}`));
 
 	/*
-	 * 7. THE PAIR, AND THE BAND IT SHEDS IN (the round-1 design ruling, delivered
-	 *    now that the pin control is in `main`).
+	 * 7. THE PAIR, AT EVERY WIDTH (the round-1 design ruling, kept; the narrow band
+	 *    it used to shed in is deleted by design D9 of `docs/design/sidebar-row-space.md`).
 	 *
-	 * The rule is a width decision, so it is photographed as one: at the panel's
-	 * DEFAULT width the row carries two sibling reserved slots, and at the clamp
-	 * MINIMUM it carries one shared control instead. Both frames are taken with the
-	 * pointer parked away from the list, because the reserved boxes are the claim -
-	 * a revealed control would photograph the reveal instead.
+	 * The row now carries the pair at EVERY panel width and reserves NOTHING at rest:
+	 * the two acts are absent from the layout until the pointer or the keyboard is in
+	 * the row (`display`, not `opacity`), so the shipped comment this step was written
+	 * about - "56px off every title, on every row, at rest" - describes a cost that no
+	 * longer exists, and the container query that shed the pair below 279px is gone
+	 * with it. What is photographed is therefore the rule itself: the row at rest with
+	 * nothing drawn, the same row with the pointer on it carrying both acts, and the
+	 * clamp minimum following the same rule as every other width.
 	 *
 	 * The COST is measured rather than asserted in prose: the title element's own
-	 * painted width at each panel width, on two rows - the first row, and the row
-	 * that also carries an UNREAD mark. THIS COMMENT USED TO CALL THE MARK A TRAILING
-	 * SLOT OUTSIDE THE TITLE and to call that row "the binding case" for the cost
-	 * (design round 3, D19): it is the opposite - the mark is drawn inside the row's
-	 * LEADING status slot, so a marked row's title measures the SAME width as a bare
-	 * one, and the two rows are measured here precisely to show that. The assertion
-	 * that the mark is really DRAWN is below ("the unread mark is DRAWN on this row"),
-	 * because two equal widths from two unmarked rows would prove nothing. `--width` cannot reach this band: the panel's width is the USER's
-	 * preference (`chatSidebarWidth`, clamped 240..360), not a function of the
-	 * window, so the scene writes the same preference the divider writes.
+	 * painted width, on two rows - the first row, and the row that also carries an
+	 * UNREAD mark. THIS COMMENT USED TO CALL THE MARK A TRAILING SLOT OUTSIDE THE
+	 * TITLE and to call that row "the binding case" for the cost (design round 3, D19):
+	 * it is the opposite - the mark is drawn inside the row's LEADING status slot, so a
+	 * marked row's title measures the SAME width as a bare one, and the two rows are
+	 * measured here precisely to show that. The assertion that the mark is really
+	 * DRAWN is below ("the unread mark is DRAWN on this row"), because two equal widths
+	 * from two unmarked rows would prove nothing. `--width` cannot reach this band: the
+	 * panel's width is the USER's preference (`chatSidebarWidth`, clamped 240..360),
+	 * not a function of the window, so the scene writes the same preference the divider
+	 * writes.
 	 */
 	await parkPointer(cdp);
 	await verb(cdp, "navigate", "/chat");
@@ -2358,10 +2389,10 @@ async function sceneSessionArchive(cdp) {
 		return { applied, plain, marked };
 	};
 	/*
-	 * DRAWN, not merely PRESENT IN THE DOM, and the distinction is the check's
-	 * whole content: the two controls swap through `display`, so the one that is
-	 * shed is still in the document - `measure` finds it and reports a 0x0 box.
-	 * Asking for a non-zero box is what makes this an assertion about pixels.
+	 * DRAWN, not merely PRESENT IN THE DOM, and the distinction is the check's whole
+	 * content now that the acts are display-switched: a control that is not displayed
+	 * is still in the document, `measure` finds it and reports a 0x0 box. Asking for a
+	 * non-zero box is what makes this an assertion about pixels.
 	 */
 	const drawn = async (selector) => {
 		try {
@@ -2405,39 +2436,52 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(mark),
 	);
 	note("the unread mark", JSON.stringify(mark));
+	/*
+	 * AT REST, WITH THE POINTER PARKED AWAY FROM THE LIST: nothing is reserved. This is
+	 * the half that replaces the old "two reserved slots" claim, and it is the whole of
+	 * the change - the title has the row, and a frame with the pointer on the row
+	 * cannot show it, because the pointer is what draws the acts.
+	 */
 	check(
-		"at the panel's default width the row carries the PAIR of reserved slots",
-		(await drawn("[data-session-control-pair]")) === true,
-		"no drawn [data-session-control-pair] at 280",
-	);
-	check(
-		"and the single shared control is not drawn there",
-		(await drawn("[data-session-actions]")) === false,
-		"the shared control was drawn at 280",
+		"at rest the row reserves nothing: neither act is drawn, and the pair's own box is empty",
+		(await drawn("[data-session-control-pair]")) === false &&
+			(await drawn("[data-session-pin]")) === false &&
+			(await drawn("[data-session-archive]")) === false,
+		`pair ${await drawn("[data-session-control-pair]")}, pin ${await drawn("[data-session-pin]")}, archive ${await drawn("[data-session-archive]")}`,
 	);
 	/*
-	 * BOTH CONTROLS' OWN BOXES, not only the wrapper's: the pair claim is that TWO
-	 * reserved slots sit side by side, and a wrapper that measured 52px would be
-	 * one slot wide however many children it had. Read at the same time as the
-	 * title widths, so the arithmetic in the design record (`which box costs what`)
-	 * is reproducible from this line.
+	 * AND THE RETIRED BAND'S OWN CONTROL IS GONE FROM THE DOCUMENT, not merely
+	 * undrawn: the shared trigger was the narrow band's answer to a rest cost that no
+	 * longer exists, and its anchor is deleted from the panel (design D9).
 	 */
+	check(
+		"and the narrow band's shared control is not in the document at all",
+		(await drawn("[data-session-actions]")) === false,
+		"the shared control is still drawn somewhere",
+	);
 	const pinWide = await verb(cdp, "measure", "[data-session-pin]");
 	const archiveWide = await verb(cdp, "measure", "[data-session-archive]");
 	note(
 		"title width, pair (280px panel)",
 		`status row ${wide.plain.rect.width}px, unread row ${wide.marked.rect.width}px; pin ${pinWide.rect.width}x${pinWide.rect.height}, archive ${archiveWide.rect.width}x${archiveWide.rect.height}`,
 	);
+	frames.push(await captureSettled(cdp, `pair-rest${RUN_LABEL}`));
+
 	/*
-	 * THE POINTER IS PUT ON THE ROW for the capture, and that is the whole of what
-	 * these two frames are OF: the pair is reserved at rest and REVEALED by the
-	 * pointer, so a parked frame would photograph two empty boxes and prove nothing
-	 * about whether either control is there. The row chosen is the one that also
-	 * carries an unread mark, so one frame carries the reveal, the marker and the
-	 * width claim together.
+	 * THE POINTER IS PUT ON THE ROW for the two frames that ARE the reveal, and that is
+	 * the whole of what they are OF: the acts exist in the layout only under the
+	 * pointer or under focus, so a parked frame would photograph a row with no
+	 * controls at all. The row chosen is the one that also carries an unread mark, so
+	 * one frame carries the reveal, the marker and the width claim together.
+	 *
+	 * WAITING FOR THE PAN, because this row's title cannot fit and the pointer starts
+	 * one (design D5): `captureSettled` requires two byte-identical captures, and a
+	 * frame taken mid-pan is a frame the app never held still for. The pan stops at the
+	 * title's own overflow and holds there, which IS a still state - so the wait is for
+	 * the dwell plus the pan's own ceiling, exactly as the `row-space` scene waits.
 	 */
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
-	await wait(400);
+	await wait(400 + 8_000);
 	/*
 	 * THE ROW'S OWN GROUND, READ FROM THE COMPILED RULE AND NOT FROM THE CLASS LIST
 	 * (design round 3, D18).
@@ -2464,6 +2508,13 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(ground),
 	);
 	note("the row's own ground", JSON.stringify(ground));
+	check(
+		"and under the pointer BOTH acts are drawn, at the panel's default width",
+		(await drawn("[data-session-control-pair]")) === true &&
+			(await drawn("[data-session-pin]")) === true &&
+			(await drawn("[data-session-archive]")) === true,
+		`pair ${await drawn("[data-session-control-pair]")}, pin ${await drawn("[data-session-pin]")}, archive ${await drawn("[data-session-archive]")}`,
+	);
 	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
 	/*
 	 * THE PIN'S OWN HOVERED STEP (agent review round 4, R4-4). D22's ruling gives
@@ -2476,77 +2527,31 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"] [data-session-pin]');
 	await wait(400);
 	frames.push(await captureSettled(cdp, `pair-pin${RUN_LABEL}`));
-	/*
-	 * AND THE SAME ROW AT REST, with the pointer parked off the list: this is the
-	 * half of the design that has no ink (design round 2, D10, which the shared
-	 * control failed). Two reserved slots are RESERVED - the boxes are there, the
-	 * glyphs are not - and a frame with the pointer on the row cannot show that,
-	 * because the pointer is what reveals them.
-	 */
-	await parkPointer(cdp);
-	await wait(400);
-	frames.push(await captureSettled(cdp, `pair-rest${RUN_LABEL}`));
 
+	/*
+	 * THE CLAMP MINIMUM FOLLOWS THE SAME RULE AS EVERY OTHER WIDTH (design D9). It used
+	 * to carry ONE shared 24px control instead of the pair; the shed is deleted, so
+	 * what this step asserts is that 240 draws the pair - and that the deleted
+	 * control's anchor is not in the document at any width.
+	 */
 	const narrow = await titlesAt(240);
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+	await wait(400 + 8_000);
 	check(
-		"at the clamp minimum the pair is shed and ONE shared control stands in",
-		(await drawn("[data-session-actions]")) === true &&
-			(await drawn("[data-session-control-pair]")) === false,
-		"the pair and the shared control are not in the states the shed rule promises at 240",
+		"at the clamp minimum the pair is drawn like every other width, and no shared control exists",
+		(await drawn("[data-session-control-pair]")) === true &&
+			(await drawn("[data-session-pin]")) === true &&
+			(await drawn("[data-session-archive]")) === true &&
+			(await drawn("[data-session-actions]")) === false,
+		`pair ${await drawn("[data-session-control-pair]")}, pin ${await drawn("[data-session-pin]")}, archive ${await drawn("[data-session-archive]")}, shared ${await drawn("[data-session-actions]")}`,
 	);
 	const pinNarrow = await verb(cdp, "measure", "[data-session-pin]");
 	const archiveNarrow = await verb(cdp, "measure", "[data-session-archive]");
-	const sharedNarrow = await verb(cdp, "measure", "[data-session-actions]");
 	note(
-		"title width, shared control (240px panel)",
-		`status row ${narrow.plain.rect.width}px, unread row ${narrow.marked.rect.width}px; pin ${pinNarrow.rect.width}x${pinNarrow.rect.height}, archive ${archiveNarrow.rect.width}x${archiveNarrow.rect.height}, shared ${sharedNarrow.rect.width}x${sharedNarrow.rect.height}`,
+		"title width, pair (240px panel)",
+		`status row ${narrow.plain.rect.width}px, unread row ${narrow.marked.rect.width}px; pin ${pinNarrow.rect.width}x${pinNarrow.rect.height}, archive ${archiveNarrow.rect.width}x${archiveNarrow.rect.height}`,
 	);
-	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
-	await wait(400);
 	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
-	/*
-	 * AND THE TRIGGER UNDER THE POINTER WITH NOTHING OPEN (design round 5, D25): the
-	 * only frame at this width with the pointer on it was taken after a click, so its
-	 * own step (188 -> 231 dark, 73 -> 29 light) could not be separated from whatever
-	 * an open menu paints. This frame is that arm and nothing else.
-	 */
-	await hoverOver(
-		cdp,
-		'[data-session-row="b3f1a09c7d52"] [data-session-actions]',
-	);
-	await wait(400);
-	frames.push(await captureSettled(cdp, `shared-hover${RUN_LABEL}`));
-	/*
-	 * THE SHARED CONTROL AT REST, which is the state it was measured WRONG in: it
-	 * used to be drawn at rest in the row's own ink (12.84:1 dark) and to dim under
-	 * the pointer (7.49:1), so at this width every row wore a title-weight glyph.
-	 * Nothing is drawn here now, and the frame is the evidence (design round 2, D10).
-	 */
-	await parkPointer(cdp);
-	await wait(400);
-	frames.push(await captureSettled(cdp, `shared-rest${RUN_LABEL}`));
-	/*
-	 * AND THE MENU ITSELF (design round 2, D10's second half): the affordance that
-	 * NAMES its two acts had no frame, so the claim that the narrow band "loses no
-	 * act" rested on the source. Opened with the real pointer through `clickAt`, and
-	 * closed again before the scene goes on.
-	 */
-	await clickAt(cdp, "[data-session-actions]");
-	await wait(400);
-	frames.push(await captureSettled(cdp, `shared-menu${RUN_LABEL}`));
-	await cdp.send("Input.dispatchKeyEvent", {
-		type: "keyDown",
-		key: "Escape",
-		code: "Escape",
-		windowsVirtualKeyCode: 27,
-	});
-	await cdp.send("Input.dispatchKeyEvent", {
-		type: "keyUp",
-		key: "Escape",
-		code: "Escape",
-		windowsVirtualKeyCode: 27,
-	});
-	await wait(300);
 	await verb(cdp, "setSidebarWidth", { width: 280 });
 	await wait(300);
 
@@ -2556,11 +2561,18 @@ async function sceneSessionArchive(cdp) {
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
 	check(
-		"the offer's own frame is a still picture of a register that was really there",
-		offerFrames.length === 1 &&
-			offerFrames[0].stable === true &&
-			offerFrames[0].offerOnScreen === true,
-		JSON.stringify(offerFrames),
+		"every frame of a toast is a held-still picture of one that was really there",
+		offerFrames.length === 3 &&
+			offerFrames.every(
+				(frame) => frame.stable === true && frame.toastOnScreen === true,
+			),
+		JSON.stringify(
+			offerFrames.map((frame) => ({
+				label: frame.label,
+				stable: frame.stable,
+				toast: frame.toastOnScreen,
+			})),
+		),
 	);
 	check(
 		"every capture wrote a PNG of the requested size",
@@ -2588,6 +2600,22 @@ async function sceneSessionArchive(cdp) {
  * whether a reserved box has anything in it - and the scene does the arithmetic
  * and writes it beside the frames.
  */
+/**
+ * Whether two boxes share no pixels, or `null` when either was not on screen.
+ *
+ * `null` rather than `true`: a missing box is not a clearance, and a caller that treats
+ * it as one asserts nothing at all. Two scenes ask this question about an overlay and the
+ * composer (`session-archive`'s Undo offer, `row-space`'s archive offer), so it is stated
+ * once rather than re-derived beside each call site.
+ */
+const disjointBoxes = (a, b) =>
+	a === null || b === null
+		? null
+		: a.right <= b.left ||
+			b.right <= a.left ||
+			a.bottom <= b.top ||
+			b.bottom <= a.top;
+
 function rowSpaceGeometry(cdp, ids) {
 	return cdp.evaluate(`(() => {
 		const round = (n) => Math.round(n * 100) / 100;
@@ -2601,14 +2629,14 @@ function rowSpaceGeometry(cdp, ids) {
 			const style = getComputedStyle(node);
 			const r = node.getBoundingClientRect();
 			/*
-			 * PAINTED, not merely transparent-or-not: a control inside a shed
-			 * container (display: none) still answers opacity 1, so opacity
-			 * alone would call a control that is not drawn painted - measured
-			 * on this set's own first run, which reported the 240 band's pin
-			 * as painted while its box was 0x0. A box with no pixels in it is
-			 * not drawn, whatever its opacity says.
+			 * PAINTED, not merely transparent-or-not: an element inside a display: none
+			 * wrapper still answers opacity 1, so opacity alone would call a control that
+			 * is not drawn painted - measured on this set's own first run, which reported
+			 * the 240 band's pin as painted while its box was 0x0. A box with no pixels in
+			 * it is not drawn, whatever its opacity says. The acts are switched by
+			 * display now, so this reading is the one that discriminates them.
 			 */
-			return { ...box(node), opacity: round(Number(style.opacity)), ink: style.color, pointerEvents: style.pointerEvents, painted: Number(style.opacity) > 0 && r.width > 0 && r.height > 0 };
+			return { ...box(node), opacity: round(Number(style.opacity)), display: style.display, ink: style.color, pointerEvents: style.pointerEvents, painted: style.display !== "none" && Number(style.opacity) > 0 && r.width > 0 && r.height > 0 };
 		};
 		const rows = ${JSON.stringify(ids)}.map((id) => {
 			const node = document.querySelector('[data-session-row="' + id + '"]');
@@ -2617,6 +2645,14 @@ function rowSpaceGeometry(cdp, ids) {
 			const status = button ? button.firstElementChild : null;
 			const title = node.querySelector("[data-session-title]");
 			const titleStyle = title ? getComputedStyle(title) : null;
+			/*
+			 * THE TEXT BOX INSIDE THE CLIP BOX, which is where the pan writes: the outer
+			 * element is the clip the row's flex layout sizes (and the box the mask is
+			 * drawn against), and the inner one carries the transform. Reading the
+			 * transform off the clip would report none through a whole pan.
+			 */
+			const text = title ? title.querySelector("[data-session-title-text]") : null;
+			const textStyle = text ? getComputedStyle(text) : null;
 			return {
 				id,
 				present: true,
@@ -2635,33 +2671,53 @@ function rowSpaceGeometry(cdp, ids) {
 							overflows: title.scrollWidth - title.clientWidth > 0.5,
 							ink: titleStyle.color,
 							maskImage: titleStyle.maskImage,
+							/* The clip box's own transform, which the pan never writes. */
 							transform: titleStyle.transform,
+							textTransform: textStyle ? textStyle.transform : null,
+							textWidth: text ? round(text.getBoundingClientRect().width) : null,
 						}
 					: null,
 				pin: control(node.querySelector("[data-session-pin]")),
 				archive: control(node.querySelector("[data-session-archive]")),
 				pair: box(node.querySelector("[data-session-control-pair]")),
-				shared: control(node.querySelector("[data-session-actions]")),
 			};
 		});
 		const panel = document.querySelector('nav[aria-label="Chats"]');
-		const undo = document.querySelector("[data-session-archive-undo]");
+		/*
+		 * THE OFFER, AS THE LANE DRAWS IT NOW (design D11): the panel mounts its own sonner
+		 * container, and sonner marks which lane a container is with data-x-position -
+		 * the global one is right, this one left. The register's own anchors
+		 * (data-session-archive-undo / -failure) went with the register.
+		 */
+		const lane = document.querySelector('[data-sonner-toaster][data-x-position="left"][data-y-position="bottom"]');
+		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
 		return {
 			viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+			/*
+			 * HOW MANY TOASTS EXIST AND HOW MANY ARE DRAWN, which is the only way to state
+			 * the lane's claim honestly: sonner 2.0.3 draws every mounted container's copy
+			 * of every toast, so the app's stylesheet narrows that down to the one the
+			 * reader sees, and painted (a box with pixels in it) is the reading that
+			 * discriminates a drawn toast from a suppressed duplicate.
+			 */
+			toasts: {
+				total: document.querySelectorAll("[data-sonner-toast]").length,
+				painted: Array.from(document.querySelectorAll("[data-sonner-toast]")).filter((node) => node.getBoundingClientRect().width > 0 && getComputedStyle(node).display !== "none").length,
+			},
 			panel: box(panel),
 			panelPadding: panel ? getComputedStyle(panel).padding : null,
-			register: {
-				undo: box(undo),
-				text: undo ? undo.textContent.replace(/\\s+/g, " ").trim() : null,
-				failure: box(document.querySelector("[data-session-archive-failure]")),
+			offer: {
+				lane: box(lane),
+				toast: box(toast),
+				text: toast ? toast.textContent.replace(/\\s+/g, " ").trim() : null,
 			},
 			split: box(document.querySelector("[data-sidebar-split]")),
 			/*
-			 * THE COMPOSER, because the register frames are also the evidence for
-			 * where the offer must NOT go: design round 2's D12 moved this offer
-			 * out of the toast lane because the toast covered the composer's Send
-			 * control, and any proposal to put it back in that lane has to state
-			 * the clearance in pixels rather than in prose.
+			 * THE COMPOSER, because the offer's own frames are also the evidence for where it
+			 * must NOT go: design round 2's D12 moved this offer out of the toast lane because
+			 * a bottom-right toast covered the composer's Send control, and the lane's whole
+			 * argument is that it cannot. Any claim about that has to state the clearance in
+			 * pixels rather than in prose.
 			 */
 			composer: (() => {
 				const send = document.querySelector('[aria-label="Send message"]');
@@ -2670,6 +2726,26 @@ function rowSpaceGeometry(cdp, ids) {
 				return { send: box(send), form: box(form) };
 			})(),
 			firstListRow: box(document.querySelector("[data-session-row]")),
+			/*
+			 * THE LIST REGION'S OWN SCROLLBAR GUTTER, which is 8px on this machine and is a
+			 * DECISION rather than a discovery (design D12 of the row-space spec):
+			 * the region reserves the gutter so a title never re-truncates because a row was
+			 * added or removed, and on a system with always-on classic scrollbars that is the
+			 * ~15px the operator's own screen shows. reserved is what every row pays, and the
+			 * width assertions below subtract it rather than quoting a table derived on a
+			 * machine where it was zero.
+			 */
+			list: (() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (!region) return null;
+				const style = getComputedStyle(region);
+				return {
+					offsetWidth: region.offsetWidth,
+					clientWidth: region.clientWidth,
+					scrollbarGutter: style.scrollbarGutter,
+					reserved: region.offsetWidth - region.clientWidth,
+				};
+			})(),
 			rows,
 		};
 	})()`);
@@ -2689,12 +2765,26 @@ const rowSpaceBudget = (reading) =>
 		pinned: row.pinned ?? null,
 		current: row.current ?? null,
 		rowWidth: row.row ? row.row.width : null,
+		rowHeight: row.row ? row.row.height : null,
+		rowLeft: row.row ? row.row.left : null,
 		buttonWidth: row.button ? row.button.width : null,
 		statusWidth: row.status ? row.status.width : null,
 		titleWidth: row.title ? row.title.width : null,
+		titleLeft: row.title ? row.title.left : null,
 		titleText: row.title ? row.title.text : null,
 		titleOverflows: row.title ? row.title.overflows : null,
 		titleScrollWidth: row.title ? row.title.scrollWidth : null,
+		titleClientWidth: row.title ? row.title.clientWidth : null,
+		titleClipTransform: row.title ? row.title.transform : null,
+		/*
+		 * THE PAN'S TWO OWN READINGS, and which box each comes from is the point: the
+		 * transform is on the TEXT box (the clip box's own transform is `none` through a
+		 * whole pan), and the mask is on the CLIP box (a mask that moved with the text
+		 * would fade the text rather than its clip).
+		 */
+		titleTextTransform: row.title ? row.title.textTransform : null,
+		titleTextWidth: row.title ? row.title.textWidth : null,
+		titleMask: row.title ? row.title.maskImage : null,
 		tailAfterTitle:
 			row.title && row.row
 				? Math.round((row.row.right - row.title.right) * 100) / 100
@@ -2704,8 +2794,6 @@ const rowSpaceBudget = (reading) =>
 		pinPainted: row.pin ? row.pin.painted : null,
 		archiveWidth: row.archive ? row.archive.width : null,
 		archivePainted: row.archive ? row.archive.painted : null,
-		sharedWidth: row.shared ? row.shared.width : null,
-		sharedPainted: row.shared ? row.shared.painted : null,
 	}));
 
 /**
@@ -2739,15 +2827,36 @@ const rowSpaceBudget = (reading) =>
  * writes it (`setSidebarWidth`), which is also what makes 320 reachable at all:
  * `--window-size` cannot.
  *
- * ## The register
+ * ## The pan, and why its frames wait for it to stop
  *
- * One frame is of the panel's archive register, in the state the operator
- * reported: `register-280` is taken after a REAL press on a row's archive
- * control, with the pointer parked off the row afterwards, because the register
- * is a statement about the LIST rather than about the pointer. The row is put
- * back through the register's own Undo before the scene ends, so a second
- * palette's run photographs the list the fixture describes rather than a list the
- * first run emptied.
+ * `hover-long-<w>` is the operator's own case: the pointer is on a row whose title
+ * cannot fit, so the acts are revealed and the title pans. A frame is only evidence
+ * here if the app HELD STILL for it (`captureSettled` requires two byte-identical
+ * captures), so each of those frames is taken after the pan has reached its end and
+ * stopped - the pan holds there while the pointer stays, which is exactly the state a
+ * still can carry. The transform and the mask are read from the same state, so the
+ * end of the pan is asserted rather than asserted-about.
+ *
+ * The three moving states a still cannot carry are read instead: a title that FITS
+ * (`hover-short-280` - no transform, no mask, ever), the instant after the pointer
+ * leaves a row it had panned (`pan-reset-280`), and a row the pointer crossed faster
+ * than the dwell (`pan-swept-280`). Nothing moves in any of them, and each is one
+ * reading rather than a frame.
+ *
+ * ## The offer
+ *
+ * `offer-toast-280` is of the archive offer, in the state the operator reported: it is
+ * taken after a REAL press on a row's archive control, with the pointer parked off the
+ * row afterwards, because the offer is a statement about the LIST rather than about the
+ * pointer. The offer is the panel's own toast lane now (design D11), so the frame is
+ * also the evidence for where it must NOT go: the scene asserts the toast's box is
+ * inside the panel's own box and disjoint from the composer's form and its Send
+ * control, which is the constraint design round 2's D12 turned on and the reason the
+ * offer left the register in the first place.
+ *
+ * The row is put back through the offer's own Undo before the scene ends, so a second
+ * palette's run photographs the list the fixture describes rather than a list the first
+ * run emptied.
  *
  *   node scripts/renderer-driver.mjs --scene row-space \
  *     --backend http://127.0.0.1:18234 --backend-records /tmp/row-space-stub-records \
@@ -2755,6 +2864,12 @@ const rowSpaceBudget = (reading) =>
  */
 async function sceneRowSpace(cdp) {
 	const frames = [];
+	/*
+	 * The offer's frame is of a TRANSIENT, and `captureSettled` structurally refuses one
+	 * (`toastFree`). It carries its own checks - the toast is on screen and the picture
+	 * is held still - rather than being exempted from the assertions silently.
+	 */
+	const offerFrames = [];
 	const geometry = {};
 	const UNPINNED = "b3f1a09c7d52";
 	const SHORT = "7c1b0f2a4d31";
@@ -2762,6 +2877,16 @@ async function sceneRowSpace(cdp) {
 	const CURRENT = "2d5ad5da0025";
 	const IDS = [UNPINNED, SHORT, PINNED, CURRENT];
 	const WIDTHS = [240, 280, 320];
+	/*
+	 * THE DWELL, AND THE LONGEST A PAN CAN RUN AT THESE WIDTHS. The dwell is
+	 * `TOOLTIP_DELAY_MS` (400ms, the provider the flyout and the pan share), and the pan
+	 * is capped at `overflow / 8s` - 8s is its ceiling, and the widest overflow
+	 * photographed here (201px at 240) finishes in 6.3s at the 32px/s floor. Waiting the
+	 * ceiling rather than the arithmetic keeps this reading independent of the fixture's
+	 * exact string: a longer title would only make the wait generous.
+	 */
+	const DWELL_MS = 400;
+	const PAN_CEILING_MS = 8_000;
 
 	const hello = await verb(cdp, "hello");
 	check(
@@ -2816,8 +2941,8 @@ async function sceneRowSpace(cdp) {
 	 * OPEN A CONVERSATION BEFORE ANYTHING IS PHOTOGRAPHED, and both halves of this
 	 * set need it. The panel's CURRENT row is a row class with its own ground (the
 	 * hover step is dropped on it), so a set with nothing open has no current row to
-	 * photograph. And the register frame's subject is an offer that must not land on
-	 * the composer, which has to be on screen for that frame to be about anything:
+	 * photograph. And the offer frame's subject is a toast that must not land on the
+	 * composer, which has to be on screen for that frame to be about anything:
 	 * measured, the composer is mounted only with a conversation open.
 	 *
 	 * It is the reader's own gesture, through the row's own button.
@@ -2836,6 +2961,16 @@ async function sceneRowSpace(cdp) {
 			(id) => panelRows.some((row) => row.id === id && row.rowButton === true),
 		),
 		JSON.stringify(panelRows.map((row) => row.id)),
+	);
+	/*
+	 * AND THE RETIRED SHED IS GONE FROM THE REAL DOM, not only from the source: the
+	 * shared control and its menu were the narrow band's answer to a rest cost that no
+	 * longer exists (design D9), and a frame cannot show an absent element.
+	 */
+	check(
+		"no row carries the retired shared control's anchor any more",
+		panelRows.every((row) => row.actions !== true),
+		JSON.stringify(panelRows.map((row) => row.actions)),
 	);
 
 	for (const width of WIDTHS) {
@@ -2856,74 +2991,117 @@ async function sceneRowSpace(cdp) {
 		geometry[`rest-${width}`] = await rowSpaceGeometry(cdp, IDS);
 		frames.push(await captureSettled(cdp, `rest-${width}`));
 
+		/*
+		 * THE PAN'S OWN CASE, photographed AT ITS END (see the scene note): the dwell
+		 * has elapsed and the title has reached its overflow and stopped there, so two
+		 * consecutive captures of this state are identical and the frame is evidence.
+		 */
 		await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
-		await wait(500);
+		await wait(DWELL_MS + PAN_CEILING_MS);
 		geometry[`hover-long-${width}`] = await rowSpaceGeometry(cdp, IDS);
 		frames.push(await captureSettled(cdp, `hover-long-${width}`));
 
+		/* Leaving the row clears the pan and the mask in the same frame. */
+		await parkPointer(cdp);
+		await wait(200);
+		geometry[`pan-reset-${width}`] = await rowSpaceGeometry(cdp, IDS);
+
+		/*
+		 * AND THE SAME WAIT FOR THE PINNED ROW, because its title overflows at every width
+		 * photographed here too (it is the fixture's second long one), so the pointer starts
+		 * a pan on it exactly as it does on the other row.
+		 */
 		await hoverOver(cdp, `[data-session-row="${PINNED}"] [data-chat-row]`);
-		await wait(500);
+		await wait(DWELL_MS + PAN_CEILING_MS);
 		geometry[`hover-pinned-${width}`] = await rowSpaceGeometry(cdp, IDS);
 		frames.push(await captureSettled(cdp, `hover-pinned-${width}`));
 	}
 
 	/*
 	 * The two states that are about a ROW CLASS rather than a width, photographed
-	 * at the default: a title that fits its box (which must not move once a marquee
-	 * exists) and the row the panel is currently on (whose ground is dropped under
-	 * the pointer, so the pointer must not change which row reads as current).
+	 * at the default: a title that fits its box (which must not move, and this is the
+	 * frame the spec names for that claim) and the row the panel is currently on
+	 * (whose ground is dropped under the pointer, so the pointer must not change which
+	 * row reads as current).
 	 */
 	await verb(cdp, "setSidebarWidth", { width: 280 });
-	await wait(400);
+	await wait(300);
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
-	await wait(500);
+	await wait(DWELL_MS + 600);
 	geometry["hover-short-280"] = await rowSpaceGeometry(cdp, IDS);
 	frames.push(await captureSettled(cdp, "hover-short-280"));
 
 	await hoverOver(cdp, `[data-session-row="${CURRENT}"] [data-chat-row]`);
-	await wait(500);
+	await wait(DWELL_MS + 600);
 	geometry["hover-current-280"] = await rowSpaceGeometry(cdp, IDS);
 	frames.push(await captureSettled(cdp, "hover-current-280"));
 
 	/*
-	 * The register, through a real press: the row has to be hovered for its archive
-	 * control to be operable, which is exactly the sequence a reader performs.
+	 * A SWEEP STARTS NO PAN, which is the property that makes the pan acceptable at
+	 * all: the pointer crosses the row for less than the dwell and leaves, and nothing
+	 * moves. Read rather than photographed, because "nothing moved" is the reading.
 	 */
 	await parkPointer(cdp);
+	await wait(200);
+	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
+	await wait(200);
+	await parkPointer(cdp);
+	await wait(200);
+	geometry["pan-swept-280"] = await rowSpaceGeometry(cdp, IDS);
+
+	/*
+	 * THE OFFER, through a real press. The row has to be under the pointer for its
+	 * archive control to exist at all - the acts are absent from the layout at rest -
+	 * and hovering first is exactly the sequence a reader performs.
+	 */
+	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
+	await wait(400);
 	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
 	await wait(700);
 	await parkPointer(cdp);
-	geometry["register-280"] = await rowSpaceGeometry(cdp, IDS);
-	frames.push(await captureSettled(cdp, "register-280"));
+	geometry["offer-toast-280"] = await rowSpaceGeometry(cdp, IDS);
+	const offerFramesFirst = await captureWithToast(cdp, "offer-toast-280");
+	await wait(200);
+	const offerFramesSecond = await captureWithToast(cdp, "offer-toast-280");
+	offerFrames.push({
+		label: "offer-toast-280",
+		stable: readFileSync(offerFramesFirst.path).equals(
+			readFileSync(offerFramesSecond.path),
+		),
+		toastOnScreen: geometry["offer-toast-280"].offer.toast !== null,
+	});
 	check(
-		"the composer is on screen, so the register frame is also the evidence for where the offer must not go",
-		geometry["register-280"].composer !== null,
-		JSON.stringify(geometry["register-280"].composer),
+		"the composer is on screen, so the offer frame is also the evidence for where the offer must not go",
+		geometry["offer-toast-280"].composer !== null,
+		JSON.stringify(geometry["offer-toast-280"].composer),
 	);
 	check(
-		"the register frame is of a register that was really there",
-		geometry["register-280"].register.undo !== null &&
-			/archived/.test(geometry["register-280"].register.text ?? ""),
-		JSON.stringify(geometry["register-280"].register),
+		"the offer is of an offer that was really there",
+		/archived/.test(geometry["offer-toast-280"].offer.text ?? ""),
+		JSON.stringify(geometry["offer-toast-280"].offer),
 	);
 
-	await clickAt(cdp, "[data-session-archive-undo] button");
+	await clickAt(
+		cdp,
+		'nav[aria-label="Chats"] [data-sonner-toast] [data-button]',
+	);
 	await wait(700);
 	await parkPointer(cdp);
+	await waitForNoToasts(cdp, 5_000);
 	const restored = await rowSpaceGeometry(cdp, [SHORT]);
 	check(
-		"the archived row is back, so the list is the fixture's list again",
-		restored.rows[0]?.present === true && restored.register.undo === null,
-		JSON.stringify({
-			row: restored.rows[0] ?? null,
-			register: restored.register,
-		}),
+		"the offer's own Undo put the row back, so the list is the fixture's list again",
+		restored.rows[0]?.present === true && restored.toasts.total === 0,
+		JSON.stringify({ row: restored.rows[0] ?? null, toasts: restored.toasts }),
 	);
 
 	/*
-	 * THE FOUR FACTS THE FRAMES ARE OF, asserted rather than left to a reader's
-	 * eye - and each one is the BEFORE state, which is what makes this set
-	 * comparable with the after set the change produces.
+	 * THE NUMBERS THE SPEC PROMISES, asserted in the same read that produced them - so
+	 * the change cannot land with the geometry it claims. Each one is a claim in
+	 * `docs/design/sidebar-row-space.md` § 3 and § 14; the arithmetic behind them is
+	 * `row - 4 (the row's gap, when a cluster is drawn at all) - cluster - 28`, where
+	 * the cluster is 0 at rest on an unpinned row, 24 (the mark) on a pinned one, and
+	 * 52 (the pair) under the pointer.
 	 */
 	const budget = Object.fromEntries(
 		Object.entries(geometry).map(([key, reading]) => [
@@ -2933,53 +3111,265 @@ async function sceneRowSpace(cdp) {
 	);
 	const rowIn = (state, id) =>
 		budget[state]?.find((row) => row.id === id) ?? null;
-	const rest280 = rowIn("rest-280", UNPINNED);
-	const rest240 = rowIn("rest-240", UNPINNED);
-	const hover280 = rowIn("hover-long-280", UNPINNED);
+	/** The x of a `transform` matrix, or `null` when there is no transform. */
+	const translateX = (value) => {
+		const match = /matrix\(([^)]+)\)/.exec(value ?? "");
+		if (!match) return null;
+		const parts = match[1].split(",").map(Number);
+		return parts.length === 6 ? parts[4] : null;
+	};
+	/*
+	 * WHAT "THE PAN IS NOT PAINTING" IS, in one predicate, because four checks ask it and
+	 * the reading has TWO spellings now: the transform target is mounted only while a pan
+	 * runs (an always-mounted wrapper costs the rest state its ellipsis, measured), so a
+	 * row that is not panning reports no element at all - `null` - rather than an
+	 * untransformed one. The mask is on the clip box, which always exists.
+	 */
+	const noPanPaint = (row) =>
+		row?.titleMask === "none" &&
+		(row?.titleTextTransform === null || row?.titleTextTransform === "none");
+	const TITLE_REST = { 240: 196, 280: 236, 320: 276 };
+	const TITLE_HOVER = { 240: 140, 280: 180, 320: 220 };
+	/*
+	 * THE SCROLLBAR GUTTER, WHICH THE SPEC'S TABLE DOES NOT INCLUDE AND THIS MACHINE
+	 * PAYS. Every number in `docs/design/sidebar-row-space.md` § 3 and § 14 was derived
+	 * from frames taken on macOS overlay scrollbars, where the list region's scroller
+	 * takes no width - and the spec then DECIDED to reserve the gutter anyway (D12), so
+	 * that a title never re-truncates because a row was added or removed. Reserving it
+	 * is not free on a machine whose scrollbars are not overlay: measured here it takes
+	 * 8px off every row, and on the operator's own screen (always-on classic
+	 * scrollbars) it is the ~15px the README names. So the spec's table is asserted
+	 * MINUS the gutter this run measured, and the gutter's own reading is asserted
+	 * beside it rather than assumed - a run whose region reserved nothing would say so.
+	 */
+	const gutter = geometry["rest-280"]?.list?.reserved ?? null;
 	check(
-		"at rest, at the default width, the row reserves TWO 24px slots with nothing painted in either",
-		rest280?.pairWidth === 52 &&
-			rest280?.pinWidth === 24 &&
-			rest280?.pinPainted === false &&
-			rest280?.archiveWidth === 24 &&
-			rest280?.archivePainted === false,
-		JSON.stringify(rest280),
+		"the list region reserves the scrollbar gutter, and this run measured what it costs a row",
+		gutter !== null &&
+			gutter >= 0 &&
+			gutter <= 16 &&
+			geometry["rest-280"]?.list?.scrollbarGutter === "stable",
+		JSON.stringify(geometry["rest-280"]?.list ?? null),
+	);
+
+	check(
+		"at rest an unpinned row's title has the whole row: no reserved box, and neither act painted",
+		WIDTHS.every((width) => {
+			const row = rowIn(`rest-${width}`, UNPINNED);
+			return (
+				row?.pairWidth === 0 &&
+				row?.pinWidth === 0 &&
+				row?.pinPainted === false &&
+				row?.archiveWidth === 0 &&
+				row?.archivePainted === false
+			);
+		}),
+		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, UNPINNED))),
 	);
 	check(
-		"at rest, at the clamp minimum, the pair is shed for one 24px shared control, also unpainted",
-		rest240?.pairWidth === 0 &&
-			rest240?.sharedWidth === 24 &&
-			rest240?.sharedPainted === false,
-		JSON.stringify(rest240),
-	);
-	check(
-		"with the pointer on the row both slots ARE painted, so the reservation is what shows nothing at rest",
-		hover280?.pinPainted === true && hover280?.archivePainted === true,
-		JSON.stringify(hover280),
-	);
-	check(
-		"the long title truncates at every width photographed here",
-		["rest-240", "rest-280", "rest-320"].every(
-			(key) => rowIn(key, UNPINNED)?.titleOverflows === true,
+		"at rest the unpinned title measures the widths the spec promises (196 / 236 / 276), less the gutter this machine reserves",
+		WIDTHS.every(
+			(width) =>
+				rowIn(`rest-${width}`, UNPINNED)?.titleWidth ===
+				TITLE_REST[width] - gutter,
 		),
 		JSON.stringify(
-			["240", "280", "320"].map((width) => ({
+			WIDTHS.map((width) => ({
 				width,
 				title: rowIn(`rest-${width}`, UNPINNED)?.titleWidth,
-				scroll: rowIn(`rest-${width}`, UNPINNED)?.titleScrollWidth,
-				overflows: rowIn(`rest-${width}`, UNPINNED)?.titleOverflows,
+				expected: TITLE_REST[width] - gutter,
+				gutter,
 			})),
 		),
 	);
 	check(
-		"and the short title does not, at the default width",
-		rowIn("hover-short-280", SHORT)?.titleOverflows === false,
-		JSON.stringify(rowIn("hover-short-280", SHORT)),
+		"at rest on a PINNED row the mark is drawn at every width - including the 240 clamp minimum, where the shipped build drew nothing at all",
+		WIDTHS.every((width) => {
+			const row = rowIn(`rest-${width}`, PINNED);
+			return (
+				row?.pinWidth === 24 &&
+				row.pinPainted === true &&
+				row?.archiveWidth === 0 &&
+				row?.archivePainted === false &&
+				/* A pinned row's title is its rest width less the mark and the row's own
+				   4px gap - 28 - and the gutter every row pays. */
+				row?.titleWidth === TITLE_REST[width] - 28 - gutter
+			);
+		}),
+		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, PINNED))),
 	);
 	check(
-		"every capture is a frame the app held still for, with no toast on it",
+		"with the pointer on the row both acts are painted and the title's box is 140 / 180 / 220, less the gutter",
+		WIDTHS.every((width) => {
+			const row = rowIn(`hover-long-${width}`, UNPINNED);
+			return (
+				row?.pinPainted === true &&
+				row?.archivePainted === true &&
+				row?.titleWidth === TITLE_HOVER[width] - gutter
+			);
+		}),
+		JSON.stringify(
+			WIDTHS.map((width) => rowIn(`hover-long-${width}`, UNPINNED)),
+		),
+	);
+	check(
+		"what moves when the pointer arrives is the title's CLIP: the row's box, its height and the title's leading edge are identical in both states",
+		WIDTHS.every((width) => {
+			const rest = rowIn(`rest-${width}`, UNPINNED);
+			const hover = rowIn(`hover-long-${width}`, UNPINNED);
+			return (
+				rest?.rowWidth === hover?.rowWidth &&
+				rest?.rowHeight === hover?.rowHeight &&
+				rest?.titleLeft === hover?.titleLeft
+			);
+		}),
+		JSON.stringify(
+			WIDTHS.map((width) => ({
+				width,
+				rest: rowIn(`rest-${width}`, UNPINNED)?.titleLeft,
+				hover: rowIn(`hover-long-${width}`, UNPINNED)?.titleLeft,
+			})),
+		),
+	);
+	check(
+		"and the acts are what takes it: 56px on an unpinned row, 28 on a pinned one",
+		WIDTHS.every((width) => {
+			const unpinned =
+				rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
+				rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth;
+			return unpinned === 56;
+		}) &&
+			WIDTHS.every(
+				(width) =>
+					rowIn(`rest-${width}`, PINNED)?.titleWidth -
+						rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth ===
+					28,
+			),
+		JSON.stringify(
+			WIDTHS.map((width) => ({
+				width,
+				unpinned:
+					rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
+					rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth,
+				pinned:
+					rowIn(`rest-${width}`, PINNED)?.titleWidth -
+					rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth,
+			})),
+		),
+	);
+	check(
+		"the long title truncates at every width photographed here",
+		WIDTHS.every(
+			(width) => rowIn(`rest-${width}`, UNPINNED)?.titleOverflows === true,
+		),
+		JSON.stringify(
+			WIDTHS.map((width) => ({
+				width,
+				title: rowIn(`rest-${width}`, UNPINNED)?.titleWidth,
+				scroll: rowIn(`rest-${width}`, UNPINNED)?.titleScrollWidth,
+			})),
+		),
+	);
+	/*
+	 * THE PAN, at each width: it starts only on a title that overflows, it runs one way
+	 * to `scrollWidth - clientWidth`, and it STOPS there and holds. The frame above is
+	 * of that end state, and this is the same reading as a number.
+	 */
+	check(
+		"the pan reached the title's own overflow and stopped there, at every width",
+		WIDTHS.every((width) => {
+			const row = rowIn(`hover-long-${width}`, UNPINNED);
+			const x = translateX(row?.titleTextTransform);
+			/*
+			 * THE TEXT BOX'S WIDTH, not the clip box's `scrollWidth`: the clip's includes
+			 * the ellipsis's own advance while the pointer is arriving, and the pan's class
+			 * swap takes that ellipsis away - so the clip's reading is larger than the
+			 * distance the pan should travel, by exactly one ellipsis (10px here).
+			 */
+			const overflow = row?.titleTextWidth - row?.titleClientWidth;
+			return (
+				x !== null &&
+				x < 0 &&
+				Math.abs(-x - overflow) <= 1 &&
+				row?.titleMask !== "none"
+			);
+		}),
+		JSON.stringify(
+			WIDTHS.map((width) => {
+				const row = rowIn(`hover-long-${width}`, UNPINNED);
+				return {
+					width,
+					x: translateX(row?.titleTextTransform),
+					expected: -(row?.titleTextWidth - row?.titleClientWidth),
+					mask: row?.titleMask,
+				};
+			}),
+		),
+	);
+	check(
+		"at rest there is no mask and no transform: the pan's own paint exists only while it runs",
+		WIDTHS.every(
+			(width) =>
+				noPanPaint(rowIn(`rest-${width}`, UNPINNED)) &&
+				rowIn(`rest-${width}`, UNPINNED)?.titleClipTransform === "none",
+		),
+		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, UNPINNED))),
+	);
+	check(
+		"leaving the row clears the pan and the mask in the same frame, from wherever it got to",
+		WIDTHS.every((width) => noPanPaint(rowIn(`pan-reset-${width}`, UNPINNED))),
+		JSON.stringify(
+			WIDTHS.map((width) => rowIn(`pan-reset-${width}`, UNPINNED)),
+		),
+	);
+	check(
+		"and a pointer that crosses the row faster than the dwell starts no pan at all",
+		noPanPaint(rowIn("pan-swept-280", UNPINNED)),
+		JSON.stringify(rowIn("pan-swept-280", UNPINNED)),
+	);
+	check(
+		"a title that FITS does not move: no overflow, no transform, no mask",
+		rowIn("hover-short-280", SHORT)?.titleOverflows === false &&
+			noPanPaint(rowIn("hover-short-280", SHORT)),
+		JSON.stringify(rowIn("hover-short-280", SHORT)),
+	);
+	/*
+	 * THE OFFER, IN THE PANEL'S OWN LANE: one toast painted, inside the panel's box, and
+	 * clear of the composer. The painted count is what makes this a claim about the app
+	 * rather than about the mechanism - sonner draws every mounted container's copy of
+	 * every toast, and the stylesheet narrows that to the one the reader sees.
+	 */
+	const offer = geometry["offer-toast-280"];
+	check(
+		"the offer is drawn exactly once, and inside the panel's own column",
+		offer.offer.toast !== null &&
+			offer.toasts.painted === 1 &&
+			offer.offer.toast.left >= offer.panel.left &&
+			offer.offer.toast.right <= offer.panel.right,
+		JSON.stringify({
+			toast: offer.offer.toast,
+			panel: offer.panel,
+			toasts: offer.toasts,
+		}),
+	);
+	check(
+		"and it is disjoint from the composer's form and its Send control - the constraint design round 2's D12 turned on",
+		offer.composer !== null &&
+			disjointBoxes(offer.offer.toast, offer.composer.form) === true &&
+			disjointBoxes(offer.offer.toast, offer.composer.send) === true,
+		JSON.stringify({ toast: offer.offer.toast, composer: offer.composer }),
+	);
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
+	);
+	check(
+		"and the offer's own frame is of a held-still picture with the offer on it",
+		offerFrames.every(
+			(frame) => frame.stable === true && frame.toastOnScreen === true,
+		),
+		JSON.stringify(offerFrames),
 	);
 	check(
 		"every capture wrote a PNG of the requested size",
@@ -3005,6 +3395,7 @@ async function sceneRowSpace(cdp) {
 				runtime: electronRuntime(),
 				viewport: geometry["rest-280"]?.viewport ?? null,
 				panelPadding: geometry["rest-280"]?.panelPadding ?? null,
+				listGutter: geometry["rest-280"]?.list ?? null,
 				widths: WIDTHS,
 				panel: geometry["rest-280"]?.panel ?? null,
 				states: budget,
@@ -3015,12 +3406,15 @@ async function sceneRowSpace(cdp) {
 				 * re-run the scene. It is the same reading, written out.
 				 */
 				boxes: geometry,
-				register: {
-					undo: geometry["register-280"]?.register.undo ?? null,
-					text: geometry["register-280"]?.register.text ?? null,
-					split: geometry["register-280"]?.split ?? null,
-					firstListRow: geometry["register-280"]?.firstListRow ?? null,
-					composer: geometry["register-280"]?.composer ?? null,
+				offer: {
+					toast: geometry["offer-toast-280"]?.offer.toast ?? null,
+					lane: geometry["offer-toast-280"]?.offer.lane ?? null,
+					text: geometry["offer-toast-280"]?.offer.text ?? null,
+					toasts: geometry["offer-toast-280"]?.toasts ?? null,
+					panel: geometry["offer-toast-280"]?.panel ?? null,
+					split: geometry["offer-toast-280"]?.split ?? null,
+					firstListRow: geometry["offer-toast-280"]?.firstListRow ?? null,
+					composer: geometry["offer-toast-280"]?.composer ?? null,
 				},
 			},
 			null,
@@ -3031,11 +3425,11 @@ async function sceneRowSpace(cdp) {
 	for (const [key, rows] of Object.entries(budget)) {
 		for (const row of rows) {
 			say(
-				`  ${key} ${row.id}: row ${row.rowWidth} title ${row.titleWidth} (overflows ${row.titleOverflows}) tail ${row.tailAfterTitle} pair ${row.pairWidth} pin ${row.pinWidth}${row.pinPainted ? "+" : "-"} archive ${row.archiveWidth}${row.archivePainted ? "+" : "-"} shared ${row.sharedWidth}${row.sharedPainted ? "+" : "-"}`,
+				`  ${key} ${row.id}: row ${row.rowWidth} title ${row.titleWidth} (overflows ${row.titleOverflows}, x ${row.titleTextTransform}) tail ${row.tailAfterTitle} pair ${row.pairWidth} pin ${row.pinWidth}${row.pinPainted ? "+" : "-"} archive ${row.archiveWidth}${row.archivePainted ? "+" : "-"}`,
 			);
 		}
 	}
-	return frames;
+	return [...frames, ...offerFrames];
 }
 
 async function sceneStates(cdp) {
@@ -5351,10 +5745,15 @@ async function scenePins(cdp) {
 		 */
 		const start = await openSection(cdp, "Previous chats");
 		/*
-		 * WHAT THE RESERVED SLOT COSTS A TITLE (design round 1, D5). Measured rather
-		 * than argued: the conversation button's own box against the withdrawn run's,
-		 * where no slot exists. Both numbers are printed by the two runs, so the cost is
-		 * a subtraction in the record rather than a claim in a comment.
+		 * WHAT THE PIN CONTROL COSTS A TITLE (design round 1, D5). Measured rather than
+		 * argued: the conversation button's own box against the withdrawn run's, where
+		 * no control exists. Both numbers are printed by the two runs, so the cost is a
+		 * subtraction in the record rather than a claim in a comment. IT IS A COST PAID
+		 * UNDER THE POINTER NOW, not at rest: both acts are absent from the layout until
+		 * the pointer or the focus is inside the row (design D3 of
+		 * `docs/design/sidebar-row-space.md`), so on an unpinned row at rest this reads
+		 * 0 for both controls - and the `row-space` scene is where the table of what is
+		 * paid when is asserted.
 		 */
 		const measured = await readList(cdp);
 		if (measured && measured.rows.length > 0) {

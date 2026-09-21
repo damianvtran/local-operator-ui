@@ -827,11 +827,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// the ROW state (never a ground), which is what this expectation exists
 				// to hold.
 				// EIGHT: the archive control added one row-state step beside the pin, and the
-				// shared control the pair sheds into (the band below the panel's default
-				// width) adds the last one. All three take the ROW state, never a ground,
-				// which is what this expectation exists to hold.
+				// shared control the pair used to shed into added the last one - WHICH IS NOW
+				// GONE (design D9, `docs/design/sidebar-row-space.md`): the narrow band's single
+				// shared menu was deleted with the shed that justified it, so the count comes
+				// DOWN by one rather than being extended. Every element left takes the ROW
+				// state, never a ground, which is what this expectation exists to hold.
 				//
-				// NINE (design round 2, D13): the ROW BOX itself carries the step, on the
+				// EIGHT (design round 2, D13): the ROW BOX itself carries the step, on the
 				// wrapper `data-session-row` names. `rowStyle`'s `hover:` fires only while
 				// the pointer is over the BUTTON, and the row's two sibling controls sit
 				// inside the row's box and outside its button - so the ground used to
@@ -840,7 +842,7 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// inside one, it is guarded by `!current`, and it therefore can never sit
 				// inside a current row: the guard is what keeps the selected ground from
 				// being repainted as the pointer's, which is this table's subject.
-				"hover:bg-row-hover": 9,
+				"hover:bg-row-hover": 8,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

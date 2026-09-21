@@ -17,6 +17,26 @@ The TWO PANEL WIDTHS the pair frames need are not viewport widths: the panel's
 width is the user's own preference (`chatSidebarWidth`, clamped 240..360), so the
 scene writes it through the divider's own store action (`setSidebarWidth`), and a
 window resize would photograph the same panel at the same width.
+> **SUPERSEDED IN PART (2026-09-20, `docs/design/sidebar-row-space.md`).** Two
+> families of frames here photograph behaviour that change deletes, and they are
+> kept as the record of the state it replaced rather than re-taken:
+>
+> - **`row-controls-shared*`** (the 240px narrow band's one shared pin+archive
+>   control) and **`row-controls-pair-rest`**'s "two reserved slots" - the shed
+>   constant, the shared menu and the rest reservation are all gone (that spec's
+>   D9): the pair is drawn at every width, and at rest NOTHING is reserved on an
+>   unpinned row. The `row-space` scene's own after frames
+>   (`docs/evidence/sidebar-row-space/after/`) are where that state is now
+>   photographed and asserted.
+> - **`archive-refused*` and `undo-offer`** - the offer and the refusal are the
+>   panel's own sonner toast lane now (that spec's D11), not a register line: the
+>   element they are of no longer exists, and the after set's `offer-toast-280`
+>   carries the new state with the same two assertions (inside the panel, disjoint
+>   from the composer's Send control).
+>
+> The frames themselves are untouched: they are what the register looked like, and
+> a reader wanting the current behaviour should open the row-space set.
+
 **One stub per launch**, because the scene MUTATES the stub (it archives two
 conversations), so a second launch against the same process starts from a
 different store and the first row it looks for is not drawn.
@@ -39,10 +59,17 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=stub-token-archive node scripts/renderer-driver.mjs
   --scene session-archive --backend http://127.0.0.1:18234 \
   --backend-records /tmp/archive-stub-records --seed-onboarding-complete \
   --theme localOperatorDark --out /tmp/archive-frames-dark --window-size 1380x900
+# NOTE (2026-09-20): the scene no longer emits `shared-rest`, `shared-hover` or
+# `shared-menu` (the narrow band's shared control is deleted), and `pair-narrow`
+# is now the pair AT 240 rather than the shed state - the row-space spec's D9. The
+# frames below are the record of what the scene produced BEFORE that change, so
+# re-running with this loop is not expected to reproduce `row-controls-shared*`;
+# the loop is kept as the recipe that took them. `archive-refused*` and
+# `undo-offer` are still emitted, but they are TOAST frames now and are captured
+# through `captureWithToast` rather than `captureSettled`.
 for f in at-rest row-hover row-hover-body search-off search-on delete-dialog \
          delete-refused archive-refused archive-refused-chats-only header-archived \
-         undo-offer deleted-open pair-wide pair-rest pair-pin pair-narrow \
-         shared-rest shared-hover shared-menu; do
+         undo-offer deleted-open pair-wide pair-rest pair-pin pair-narrow; do
   d=docs/evidence/session-archive/$f
   mkdir -p "$d"
   cp /tmp/archive-frames-dark/$(echo $f | \

@@ -52,12 +52,23 @@ import {
 
 const TooltipProviderPresence = createContext(false);
 
+/**
+ * How long the pointer must rest on a trigger before the panel opens.
+ *
+ * Named and exported because it is the app's ONE answer to "the pointer has
+ * decided to stay": the conversation row's title pan
+ * (`chat-row-title.tsx`) waits out the same interval before it starts moving, so
+ * that a sweep across the list starts neither a flyout nor a pan. The two must
+ * move together, which is what importing this instead of restating `400` buys.
+ */
+export const TOOLTIP_DELAY_MS = 400;
+
 export type TooltipProviderProps = ComponentPropsWithoutRef<
 	typeof TooltipPrimitive.Provider
 >;
 
 export const TooltipProvider = ({
-	delayDuration = 400,
+	delayDuration = TOOLTIP_DELAY_MS,
 	skipDelayDuration = 300,
 	children,
 	...props

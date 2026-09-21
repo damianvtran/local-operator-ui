@@ -510,3 +510,61 @@ html .Mui-focusVisible {
 .slash-run-bold {
 	-webkit-text-stroke: 0.5px currentColor;
 }
+
+/*
+ * THE PANEL'S TOAST LANE: one toast, in the sidebar's own column, and nowhere else.
+ *
+ * The chat sidebar mounts its own sonner container (`chat-sidebar.tsx`, design D11 of
+ * `docs/design/sidebar-row-space.md`) so that an archive offer is confined to the
+ * column that performed the archive. That confinement is what makes design round 2's
+ * D12 constraint - "never over the composer's Send control" - a property of the layout
+ * rather than a numeric offset, and it is the half a viewport-corner toast cannot have.
+ *
+ * WHAT SONNER 2.0.3 ACTUALLY DOES, because the spec's own note about it ("sonner routes
+ * a toast to the Toaster whose `position` matches it, and a toast with no `position`
+ * still goes to the first-mounted one") is not what the shipped library does, and the
+ * two rules below exist because of the difference. Mounted in jsdom against the
+ * installed 2.0.3, with one container declaring `bottom-right` and a second declaring
+ * `bottom-left`, then one offer published with `position: "bottom-left"` and one
+ * unpositioned error toast, the reading was:
+ *
+ *   positioned offer: 2 toast elements - one in the panel's container, one in the
+ *                     global one, whose <ol data-x-position="left"> it also drew;
+ *   + unpositioned:   4 toast elements - the error toast drawn in BOTH containers too.
+ *
+ * The reason is in the library's filter: each mounted container keeps a copy of every
+ * toast and renders one `<ol>` per position ANY of them carries (its own first), and
+ * `!toast.position && index === 0 || toast.position === position` is true of the first
+ * `<ol>` of EVERY container - not of the first container. So neither "the offer landing
+ * twice" nor "every other toast appearing in the panel" is avoidable by a `position`
+ * argument, and the app states the policy it wants here instead.
+ *
+ * THE POLICY: the panel's lane carries the panel's own archive toasts and nothing else,
+ * and those toasts are drawn only there. Both rules key on the marker class those two
+ * toasts carry (`ARCHIVE_TOAST_CLASS` in `chat-sidebar.tsx`) and on the panel, which
+ * `nav[aria-label="Chats"]` names - the same hook this app's tests and the driver use.
+ * Specificity, not `!important`: sonner injects its stylesheet at runtime, so it is
+ * last in the document and wins every tie.
+ *
+ * WHAT THE INVARIANT COSTS, stated rather than left to be discovered: the offer is
+ * drawn nowhere while the panel is unmounted, because the first rule is unconditional.
+ * That state is unreachable today - an archive is performed from this panel's rows, from
+ * the conversation header's menu, or by the `/archive` slash command, and the last two
+ * exist only on the chat route, which mounts the panel. If a future surface archives
+ * from outside it, this is the rule that has to change.
+ */
+[data-sonner-toaster] [data-sonner-toast].lo-archive-toast {
+	display: none;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast {
+	/* Sonner's own `display` for a styled toast: it is a flex row whose parts
+	   (icon, title, action, close) are laid out by that rule. */
+	display: flex;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast]:not(.lo-archive-toast) {
+	display: none;
+}
