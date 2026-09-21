@@ -2190,6 +2190,13 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, claimedRow);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
+	/*
+	 * WHEN THE REFUSAL WENT UP, kept for the retry below: a lane message's life is
+	 * measured from its own assertion, so a check about a RE-ASSERTION has to know how
+	 * old the message it replaced was, or a disappearance cannot be attributed to the
+	 * original clock rather than to the press (agent review round 2 - the retry).
+	 */
+	const refusalRaisedAt = Date.now();
 	check(
 		"a refused archive is reported in the panel's own toast lane, with its retry",
 		archiveFailure.inViewport === true,
@@ -2259,6 +2266,47 @@ async function sceneSessionArchive(cdp) {
 			after.archiveAttempts > beforeRetry.archiveAttempts &&
 			after.archiveFailure?.sessionId === REFUSED_ID;
 		retried.attempts = `${beforeRetry?.archiveAttempts} -> ${after?.archiveAttempts}`;
+		/*
+		 * WHAT THE APP THINKS IT HAS, beside what the DOM shows: the store's own count of
+		 * live toasts (`state.toasts`), the lane's node count, and whether any node is in
+		 * sonner's removal state. Recorded ACROSS the window rather than at its end, because
+		 * the question this check had to answer - the refusal standing in the store while the
+		 * lane drew nothing - needs to know WHICH SIDE lost the message, and when.
+		 */
+		retried.toasts = after?.toasts ?? null;
+		retried.dom = await cdp.evaluate(`(() => {
+			const lane = document.querySelector('nav[aria-label="Chats"] [data-sonner-toaster]');
+			return {
+				lanePresent: lane !== null,
+				laneToasts: lane ? lane.querySelectorAll('[data-sonner-toast]').length : 0,
+				containers: document.querySelectorAll('[data-sonner-toaster]').length,
+				total: document.querySelectorAll('[data-sonner-toast]').length,
+				removed: document.querySelectorAll('[data-sonner-toast][data-removed="true"]').length,
+			};
+		})()`);
+		if (retried.painted === false && retried.goneAfterMs === undefined) {
+			retried.goneAfterMs = Date.now() - retryPressedAt;
+			/*
+			 * THE MOMENT IT GOES, in full: the drawn state and the store's own view at that
+			 * instant, so a removal can be attributed - an app dismissal, a store that has
+			 * already emptied, or a node that left without either. Recorded once, on the
+			 * transition, because the reading this check reports is otherwise the window's
+			 * END, which cannot tell when or why the message went.
+			 */
+			retried.goneReading = {
+				at: retried.goneAfterMs,
+				painted: retried.painted,
+				dom: retried.dom ?? null,
+				failure: after?.archiveFailure
+					? {
+							sessionId: after.archiveFailure.sessionId,
+							archived: after.archiveFailure.archived,
+							detail: after.archiveFailure.detail,
+						}
+					: null,
+				undo: after?.archiveUndo ? { sessionId: after.archiveUndo.sessionId } : null,
+			};
+		}
 		if (retried?.painted === true && retried?.answeredAgain === true) break;
 	}
 	check(
@@ -2267,7 +2315,7 @@ async function sceneSessionArchive(cdp) {
 			retried?.action === "Retry" &&
 			retried?.hitTest === true &&
 			retried?.answeredAgain === true,
-		`${Date.now() - retryPressedAt}ms after the retry: ${JSON.stringify(retried)}`,
+		`${Date.now() - retryPressedAt}ms after the retry (refusal raised ${retryPressedAt - refusalRaisedAt}ms before the press): ${JSON.stringify(retried)}`,
 	);
 	/*
 	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).

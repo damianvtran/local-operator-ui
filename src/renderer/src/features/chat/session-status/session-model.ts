@@ -60,6 +60,27 @@ export type ModelIdentity = {
 const AGGREGATOR_PROVIDERS = new Set(["openrouter", "radient", "radient-key"]);
 
 /**
+ * The ROUTER ids an aggregator serves — the synthetic meta-models whose id is a
+ * single word (`auto`) rather than a vendor-scoped slug.
+ *
+ * Mirrors `AGGREGATOR_ROUTER_MODEL_IDS` (`local_operator/model/registry.py`),
+ * read by `_ROUTER_NAMES` (`model/naming.py`). A router is the one id an
+ * aggregator does NOT resell — it is the route itself — so it has a name of its
+ * own to state rather than one that has to say which vendor's weights answer,
+ * which is why the aggregator refusal below does not apply to it.
+ */
+const AGGREGATOR_ROUTER_MODEL_IDS = new Set(["auto", "openrouter/auto"]);
+
+/**
+ * What a router prints. TITLE CASE (`Auto`, not `auto`) because this heads the
+ * band's model segment beside other human names (`Claude Opus 5`); a lowercase
+ * `auto` there reads as the raw id it started from. The SELECTOR the rest of the
+ * app identifies the model by is unchanged — the chip's tooltip still prints
+ * `radient/auto`.
+ */
+const ROUTER_DISPLAY_NAME = "Auto";
+
+/**
  * The bare tail of a selector: what the band falls back to when it will not
  * name a model. `openrouter/openai/gpt-5-mini` -> `gpt-5-mini`.
  */
@@ -179,7 +200,24 @@ export function modelIdentity(
 		!display ||
 		echoesId(display, model.model_id) ||
 		display.toLowerCase() === "unknown";
-	return { name: refused ? bareId(selector) : display, selector };
+	/*
+	 * The router lookup is gated on BOTH halves of the hosting, exactly as
+	 * `_model_label` does (`model/naming.py:248-254`), and the provider gate is
+	 * load-bearing rather than defensive: `auto` is a router id ONLY behind an
+	 * aggregator, while on `ollama/auto` — or any local or vendor server a user
+	 * happens to name `auto` — the same word is an ordinary model. An id-only
+	 * lookup renamed it (measured on the Python side: `ollama/auto` went from
+	 * rendering `Ollama` to rendering `Auto`), which is the collision the
+	 * provider gate exists to prevent. It also outranks `refused`, since an
+	 * aggregator's own listing name is refused for every other id it resells.
+	 */
+	const router =
+		AGGREGATOR_PROVIDERS.has(provider) &&
+		AGGREGATOR_ROUTER_MODEL_IDS.has(model.model_id);
+	return {
+		name: router ? ROUTER_DISPLAY_NAME : refused ? bareId(selector) : display,
+		selector,
+	};
 }
 
 /**
