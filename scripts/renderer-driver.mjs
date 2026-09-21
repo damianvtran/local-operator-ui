@@ -2304,7 +2304,9 @@ async function sceneSessionArchive(cdp) {
 							detail: after.archiveFailure.detail,
 						}
 					: null,
-				undo: after?.archiveUndo ? { sessionId: after.archiveUndo.sessionId } : null,
+				undo: after?.archiveUndo
+					? { sessionId: after.archiveUndo.sessionId }
+					: null,
 			};
 		}
 		if (retried?.painted === true && retried?.answeredAgain === true) break;
