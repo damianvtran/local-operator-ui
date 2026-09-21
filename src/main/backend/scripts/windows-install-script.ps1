@@ -97,9 +97,23 @@ if (-not (Test-Path $PyenvDir)) {
     # `if (Test-Path $TempDir) { Remove-Item ... }` above - named rather than
     # cited by line, because a line number in a script that keeps changing is
     # what a stale citation is made of).
-    # 120 seconds is a payload bound, not the 30-second stall bound the PyPI
-    # probes use: this downloads a source archive rather than answering an API
+    # 120 seconds is a payload bound rather than the 30-second stall bound the PyPI
+    # probes use: this downloads a source archive instead of answering an API
     # call, so it only has to stop an indefinite hang.
+    #
+    # WHICH BOUND `-TimeoutSec` ACTUALLY IS DEPENDS ON THE POWERSHELL, and that is
+    # a trap worth naming because the two paths differ here. The app spawns this
+    # script with `powershell.exe` (Windows PowerShell 5.1, see
+    # backend-installer.ts), where -TimeoutSec is the REQUEST's timeout - 120
+    # seconds to complete the transfer. On PowerShell 7.4+ it was renamed to
+    # -OperationTimeoutSeconds and -TimeoutSec survives only as an ALIAS of
+    # -ConnectionTimeoutSeconds, i.e. a connect bound, so on a 7.x host (the CI
+    # runner is one) a mirror that accepts and then stalls is not ended by this.
+    # Do not "fix" that by adding the 7.x spelling: 5.1 does not know
+    # -OperationTimeoutSeconds, and an unknown parameter is a binding error which
+    # the catch below turns into `exit 1` on every install. The version-agnostic
+    # answer is a bound on the transfer itself (a BITS job or a size/rate check),
+    # which is a larger change than this one and is recorded rather than made.
     try {
         Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120 -ErrorAction Stop
     } catch {

@@ -336,7 +336,7 @@ if [ ! -d "$VENV_PATH" ]; then
     # Try to bootstrap pip
     log "Bootstrapping pip in the minimal virtual environment..."
     if command_exists curl; then
-      curl -s --fail --connect-timeout 5 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
+      curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
     elif command_exists wget; then
       wget -q --timeout=30 --tries=1 -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
     else
@@ -366,7 +366,7 @@ fi
 
 if [ ! -f "$VENV_PATH/bin/pip" ]; then
   echo "pip missing in virtual environment, attempting to bootstrap it..."
-  curl -s --fail --connect-timeout 5 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
+  curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
   "$VENV_PATH/bin/python" "$APP_DATA_DIR/get-pip.py" --no-warn-script-location
   
   if [ ! -f "$VENV_PATH/bin/pip" ]; then
@@ -401,11 +401,19 @@ python -m pip install --upgrade pip || {
 # the response headers `-S` prints (`-S`/`--server-response` is in BusyBox's wget
 # since 2017 as well as GNU's, which is the wget a system without curl has).
 #
+# What the content type does NOT prove, stated so this paragraph is not read as
+# more than it says: a proxy answering 200 with `application/json` and an error
+# body (`{"detail":"blocked by proxy policy"}`) is silent here, because the
+# answer did come back as JSON. Only parsing the body - a fetch of PyPI's own
+# payload shape - would tell those apart, and a diagnostic that costs a parse is
+# not what stands in front of an install.
+#
 # Two bounds, two jobs: the connect bound ends a black-hole network, the total
-# stops a connected-but-stalled peer. 30 rather than 10 because the total must
-# not fire on a slow-but-working link: a working endpoint that answered in 15s
-# tripped a 10s bound and printed this warning on an install that then
-# succeeded.
+# stops a connected-but-stalled peer. Both must be POSITIVE - `--max-time 0` and
+# `--timeout=0` disable the bound rather than making it immediate on both curl and
+# wget. 30 rather than 10 because the total must not fire on a slow-but-working
+# link: a working endpoint that answered in 15s tripped a 10s bound and printed
+# this warning on an install that then succeeded.
 echo "Checking network connectivity to PyPI..."
 if command_exists curl; then
   PYPI_PROBE_CONTENT_TYPE=$(curl -s --fail --connect-timeout 5 --max-time 30 -o /dev/null -w '%{content_type}' https://pypi.org/pypi/local-operator/json) || PYPI_PROBE_CONTENT_TYPE=""
@@ -417,8 +425,11 @@ elif command_exists wget; then
   # rather than piped into `grep -q`: `-q` exits on the first match, the closed
   # pipe gives wget SIGPIPE, and the script runs under `set -o pipefail`, so a
   # WORKING link printed this warning whenever the match landed before wget had
-  # finished writing its headers (measured: intermittent, and exactly the false
-  # alarm this bound was widened to stop).
+  # finished writing its headers. The piped shape was this remediation's own - the
+  # first fix piped it and was measured warning 1 time in 20 against real PyPI
+  # (and 1 in 20 against a healthy local endpoint) while this shape warns 0 in 40
+  # with the same flags - so the trap is recorded here because it is one line away
+  # from being reintroduced, not because the released script ever shipped it.
   PYPI_PROBE_HEADERS=$(wget -q -S --spider --timeout=30 --tries=1 https://pypi.org/pypi/local-operator/json 2>&1) || PYPI_PROBE_HEADERS=""
   if ! grep -qi '^ *content-type: application/json' <<< "$PYPI_PROBE_HEADERS"; then
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."

@@ -194,12 +194,21 @@ pip --version
 # discriminates, and on a captive network a probe that reports "reachable" while
 # pip is about to fail is the false negative this warning exists to catch.
 #
+# What the content type does NOT prove, stated so this paragraph is not read as
+# more than it says: a proxy answering 200 with `application/json` and an error
+# body (`{"detail":"blocked by proxy policy"}`) is silent here, because the
+# answer did come back as JSON. Only parsing the body - a fetch of PyPI's own
+# payload shape - would tell those apart, and a diagnostic that costs a parse is
+# not what stands in front of an install.
+#
 # Two bounds, two jobs: `--connect-timeout 5` ends a black-hole network (a
 # connect that never completes), `--max-time 30` stops a connected-but-stalled
-# peer. 30 rather than 10 because the total must not fire on a slow-but-working
-# link: a working endpoint that answered in 15s tripped a 10s total bound and
-# printed this warning on an install that then succeeded, and a warning that
-# cries wolf is one users learn to ignore.
+# peer. Both must be POSITIVE: `--max-time 0` and `--connect-timeout 0` disable
+# the bound rather than making it immediate, which is why the test beside this
+# script requires `[1-9]`. 30 rather than 10 because the total must not fire on a
+# slow-but-working link: a working endpoint that answered in 15s tripped a 10s
+# total bound and printed this warning on an install that then succeeded, and a
+# warning that cries wolf is one users learn to ignore.
 echo "Checking network connectivity to PyPI..."
 PYPI_PROBE_CONTENT_TYPE=$(curl -s --fail --connect-timeout 5 --max-time 30 -o /dev/null -w '%{content_type}' https://pypi.org/pypi/local-operator/json) || PYPI_PROBE_CONTENT_TYPE=""
 if [[ "$PYPI_PROBE_CONTENT_TYPE" != application/json* ]]; then
