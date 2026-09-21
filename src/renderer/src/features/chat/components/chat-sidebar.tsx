@@ -56,8 +56,8 @@ import {
 } from "lucide-react";
 import {
 	type CSSProperties,
-	type FocusEvent as ReactFocusEvent,
 	type KeyboardEvent,
+	type FocusEvent as ReactFocusEvent,
 	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
@@ -2483,6 +2483,7 @@ export function ChatSidebar({
 					controls
 				)}
 			</div>,
+			row.session_id,
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
