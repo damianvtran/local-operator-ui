@@ -92,7 +92,33 @@ function argValue(flag) {
  * browser host's tab views as `about:blank` pages, and a negative list would have to
  * grow every time another renderer joins the app.
  */
-const APP_DOCUMENT = /\/index\.html$/;
+/*
+ * THE APP'S OWN DOCUMENT, matched on the URL's PATHNAME rather than on the whole
+ * string — and the difference is the blocker QA round 1 measured (Q-1).
+ *
+ * The app's router is a `HashRouter` (`src/renderer/src/main.tsx`), so a MOUNTED app
+ * is at `file:///…/renderer/index.html#/chat`. The anchored `/\/index\.html$/` this
+ * replaced never matched that, and it matched only the case where the renderer had
+ * NOT mounted (no hash yet) — which is precisely the mis-built artifact of that
+ * round. The rig therefore worked against a blank window and failed against a real
+ * one: `no renderer target on the debugging port` at 9.6 s, twice, on every
+ * correctly built tree.
+ *
+ * The capture view is excluded BY NAME for the same reason it has to be: it is also
+ * a `file:` URL ending in `.html`, and (being a renderer) it can appear on the same
+ * port, so a matcher that accepted it would let the rig drive a reconstruction
+ * nobody is looking at instead of the app's window.
+ */
+const APP_DOCUMENT = (url) => {
+	try {
+		const path = new URL(url).pathname;
+		return path.endsWith("/index.html") && !path.includes("console-capture");
+	} catch {
+		// A target whose URL will not parse (an `about:blank` between navigations) is
+		// not the app's document.
+		return false;
+	}
+};
 const SURFACE_HANDLE = /^con:\d+:[A-Za-z0-9_-]+$/;
 const PLIST_EXECUTABLE =
 	/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/;
@@ -651,7 +677,7 @@ async function rendererEvaluate(expression) {
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
 	).json();
 	const page = list.find(
-		(target) => target.type === "page" && APP_DOCUMENT.test(target.url),
+		(target) => target.type === "page" && APP_DOCUMENT(target.url),
 	);
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
@@ -730,9 +756,28 @@ function startFocusWatch(pid) {
 async function waitForRenderer(timeoutMs = bounded(null, 60_000)) {
 	const started = Date.now();
 	for (;;) {
-		const ready = await rendererEvaluate(
-			"typeof window.api?.console?.state === 'function' ? 'ready' : 'waiting'",
-		);
+		let ready = "waiting";
+		try {
+			ready = await rendererEvaluate(
+				"typeof window.api?.console?.state === 'function' ? 'ready' : 'waiting'",
+			);
+		} catch (error) {
+			/*
+			 * A WINDOW THAT IS NOT ON THE PORT YET IS WHAT THIS LOOP IS FOR (Q-1).
+			 *
+			 * The state file appears before the window's first paint, so the ordinary
+			 * case one boot in is a target that has not been created — and this used to
+			 * throw straight out of the wait, aborting the whole run at 9.6 s with
+			 * "no renderer target on the debugging port", which reads like a broken app
+			 * and is actually a renderer one poll away. Only that error is tolerated:
+			 * anything else (a CDP failure, a throw inside the renderer) is a real
+			 * fault and still surfaces immediately rather than being retried into a
+			 * timeout.
+			 */
+			if (!/no renderer target/.test(String(error?.message ?? error))) {
+				throw error;
+			}
+		}
 		if (ready === "ready") return;
 		if (Date.now() - started > timeoutMs) {
 			throw new Error("the renderer never exposed window.api.console");
@@ -1479,18 +1524,61 @@ async function main() {
 	});
 	const sorted = [...samples].sort((a, b) => a - b);
 	const median = sorted[Math.floor(sorted.length / 2)];
+	const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? null;
 	const worst = sorted.at(-1) ?? null;
+
+	/*
+	 * WHAT THIS CELL ASSERTS, AND WHY IT NO LONGER ASSERTS A SINGLE MAXIMUM.
+	 *
+	 * QA round 1 (Q-3) measured this cell failing at 2,618 ms against a 2,500 ms bound
+	 * while the console was answering perfectly: median 5 ms, p95 158 ms, n=67 — and
+	 * two later runs on the same head measured 328 ms and 56 ms. A single wall-clock
+	 * MAXIMUM on a host carrying ~20 sibling worktrees samples the machine's
+	 * scheduler, not main's loop, which is the flake `AGENTS.md`'s timing section
+	 * describes and why it says to prefer a structural fact and, where a number is
+	 * unavoidable, not to sit it on a wall clock.
+	 *
+	 * SO THE ASSERTION IS STRUCTURAL FIRST: the flood ran its full window and main
+	 * answered EVERY sample it was asked for. A starved loop does not answer slowly,
+	 * it stops answering — an unanswered call is the shape this failure would take,
+	 * and `rpcOk` throwing is what makes "every sample answered" a fact rather than an
+	 * implication.
+	 *
+	 * THEN A DISTRIBUTION, NOT A MAXIMUM. The regression this probe exists for is a
+	 * per-chunk synchronous write (`appendFileSync` + `statSync` + a staged sidecar
+	 * rewrite — measured at ~6-7 ms per 8 KiB of pty output on the thread that draws
+	 * the window), and that cost is paid on MOST chunks: it moves the median and the
+	 * p95 rather than expressing itself as one outlier. The ceilings are calibrated
+	 * from the numbers above with an order of magnitude of headroom — median < 100 ms
+	 * against a measured 5 ms, p95 < 500 ms against a measured 158 ms — rather than a
+	 * widening of the old 2,500 ms maximum, which would have kept sampling the host.
+	 *
+	 * WHY NOT A CPU-TIME BOUND. The property under test is RESPONSIVENESS — whether
+	 * the loop can still serve a call — and CPU time cannot see it: a loop blocked in
+	 * a synchronous write spends CPU, a loop the OS has not scheduled spends none, and
+	 * the two are indistinguishable through `time.thread_time`-style accounting while
+	 * only a served round trip separates them. The maximum is still REPORTED, so a
+	 * reader sees the outlier and can judge it rather than having it hidden.
+	 */
+	const FLOOD_MEDIAN_CEILING_MS = 100;
+	const FLOOD_P95_CEILING_MS = 500;
 	check(
 		"a 30 s `yes` flood with retention ON leaves main answering (§19.1 P3)",
-		flooded.running === true && worst !== null && worst < 2_500,
+		flooded.running === true &&
+			samples.length > 0 &&
+			median !== undefined &&
+			median < FLOOD_MEDIAN_CEILING_MS &&
+			p95 !== null &&
+			p95 < FLOOD_P95_CEILING_MS,
 		{
 			baselineMs: { max: Math.max(...baseline), median: baseline[0] },
 			floodMs: {
-				count: samples.length,
+				answered: samples.length,
 				median,
-				p95: sorted[Math.floor(sorted.length * 0.95)] ?? null,
+				p95,
 				max: worst,
 			},
+			ceilings: { median: FLOOD_MEDIAN_CEILING_MS, p95: FLOOD_P95_CEILING_MS },
 			truncated: flooded.truncated,
 			exit_epoch: flooded.exit_epoch,
 			surface: floodSurface.surface,

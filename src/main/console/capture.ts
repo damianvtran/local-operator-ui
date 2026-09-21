@@ -190,6 +190,37 @@ export class ConsoleCaptureView {
 			},
 		});
 		this.window = window;
+		/*
+		 * THE VIEW'S OWN CONSOLE, FORWARDED INTO MAIN'S LOG (QA round 1, Q-4).
+		 *
+		 * The capture view is invisible by construction — `show: false`, not on the
+		 * app's debugging port — so a warning it emits reaches nobody: the design
+		 * round's whole point about an unknown theme was that it must be LOUD, and the
+		 * loud half was unverifiable because the only place it could be seen was a
+		 * renderer nobody can read. One line here puts it in the app log, which is the
+		 * channel a person and a rig both already read.
+		 *
+		 * WARNINGS AND ERRORS ONLY: this is the app's log, and a renderer's info-level
+		 * chatter is not a diagnostic. Both current and previous Electron shapes are
+		 * accepted — newer versions pass a single event object with the fields on it
+		 * and warn that the positional arguments are deprecated, so the positional form
+		 * is the fallback rather than the primary.
+		 */
+		window.webContents.on("console-message", (...args: unknown[]) => {
+			const event = args[0] as
+				| { level?: string | number; message?: string }
+				| undefined;
+			const level = event?.level ?? (args[1] as string | number | undefined);
+			const message =
+				(typeof event?.message === "string" ? event.message : undefined) ??
+				(typeof args[2] === "string" ? (args[2] as string) : undefined) ??
+				"";
+			const severity = String(level ?? "info").toLowerCase();
+			if (severity !== "warning" && severity !== "error" && severity !== "2") {
+				return;
+			}
+			this.options.log(`[console] capture view: ${message}`);
+		});
 		await window.loadURL(this.options.url);
 		/*
 		 * THE MEASUREMENT HANDSHAKE, once per window rather than once per attempt.
@@ -348,8 +379,16 @@ const waitForCapture = (
 
 /** Whether any pixel differs from the first one. `getBitmap` is BGRA and every
  * channel is included: a frame that is uniform in any one of them is not a
- * terminal. */
-const hasVariation = (bitmap: Buffer): boolean => {
+ * terminal.
+ *
+ * EXPORTED because the displayed path needs the same question answered and used to
+ * ask only about the frame's SIZE (QA round 1, Q-2): a blank 1600x800 capture is
+ * ~5 KB of one colour, which clears a byte floor comfortably, so the cell that
+ * certifies "a screenshot is the app's own window, cropped to the pane's rect" was
+ * green on a uniform field — measured, 1 distinct colour and 0 of 427,200 sampled
+ * pixels off background. One predicate, two callers, so the two paths cannot drift
+ * into disagreeing about what a frame is. */
+export const hasVariation = (bitmap: Buffer): boolean => {
 	if (bitmap.length < 8) return false;
 	const first = bitmap.subarray(0, 4);
 	for (let i = 4; i + 4 <= bitmap.length; i += 4) {

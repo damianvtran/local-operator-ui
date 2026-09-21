@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
 import { ByteLog, type ByteLogSlice } from "./byte-log";
+import { hasVariation } from "./capture";
 import {
 	type ConsoleEmulator,
 	type ConsoleReadMode,
@@ -764,17 +765,47 @@ export class ConsoleHost {
 		};
 	}
 
+	/**
+	 * A displayed frame, retried once, and REFUSED when it is blank twice (Q-2).
+	 *
+	 * The byte floor alone was not a guard, and QA round 1 measured it: a blank
+	 * 1600x800 capture is a few kilobytes of one colour, so it clears
+	 * `MIN_FRAME_BYTES` comfortably and the cell certifying "a screenshot is the
+	 * app's own window, cropped to the pane's rect" passed on a uniform field (1
+	 * distinct colour; 0 of 427,200 sampled pixels off background) while the offscreen
+	 * frame from the same run had 252 colours. The offscreen path had always asked
+	 * both questions; this path now asks both, with the SAME predicate, so the two
+	 * cannot drift.
+	 *
+	 * A UNIFORM FRAME IS REFUSED RATHER THAN RETURNED, which is the design's own
+	 * answer for the offscreen path (§13.2's `capture_unavailable`): a picture of one
+	 * colour is not a picture of a terminal, and handing it back would be the class of
+	 * false evidence this whole contract exists to avoid. A real pane is never
+	 * uniform — the DOM renderer paints text and a cursor — and the empty-terminal
+	 * case is the offscreen path's problem too, so this is not a new ceiling.
+	 */
 	private async captureWithRetry(
 		window: BrowserWindow,
 		rect: ConsoleContentRect,
 	): Promise<Buffer> {
-		// Encoded once per attempt rather than once per check: the discriminator is
-		// the PNG's length, and encoding a frame twice to ask a question about it
-		// would cost more than the capture that produced it.
-		const first = framePng(await window.webContents.capturePage(rect));
-		if (first.length >= MIN_FRAME_BYTES) return first;
-		await delay(FRAME_RETRY_DELAY_MS);
-		return framePng(await window.webContents.capturePage(rect));
+		let bytes = 0;
+		for (let attempt = 1; attempt <= 2; attempt++) {
+			const image = await window.webContents.capturePage(rect);
+			const png = framePng(image);
+			bytes = png.length;
+			if (png.length >= MIN_FRAME_BYTES && hasVariation(image.toBitmap())) {
+				return png;
+			}
+			this.options.log(
+				`[console] displayed capture came back blank (${png.length} B, attempt ${attempt})`,
+			);
+			if (attempt === 1) await delay(FRAME_RETRY_DELAY_MS);
+		}
+		throw new ConsoleError(
+			"capture_unavailable",
+			`the displayed capture of this surface produced a blank frame twice (last ${bytes} B)`,
+			{ rendered: "displayed" },
+		);
 	}
 
 	/**

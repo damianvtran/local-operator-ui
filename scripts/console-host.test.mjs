@@ -682,9 +682,26 @@ function fakeWindow({ frames = [], destroyed = false, focused = false } = {}) {
 	};
 }
 
-function image(bytes) {
+/**
+ * A frame, with the two properties the capture paths ask about.
+ *
+ * `toBitmap` MATTERS as much as the byte count does since QA round 1's Q-2: the
+ * displayed path used to judge a frame by its size alone, and a blank 1600x800 PNG is
+ * a few kilobytes of one colour, so it cleared the floor comfortably. A fixture that
+ * could only express "small" or "large" could not tell the two paths apart, which is
+ * why `uniform` exists: `true` is a picture of one colour (the shape that must be
+ * refused), and the default is a frame with one differing pixel, which is what a real
+ * terminal always paints.
+ */
+function image(bytes, { uniform = false } = {}) {
 	const png = Buffer.alloc(bytes);
-	return { isEmpty: () => false, toPNG: () => png };
+	const bitmap = Buffer.alloc(16);
+	if (!uniform) bitmap[4] = 0xff;
+	return {
+		isEmpty: () => false,
+		toPNG: () => png,
+		toBitmap: () => bitmap,
+	};
 }
 
 /** A pane's report for a box, with the cell metrics the spike measured for the DOM
@@ -1347,6 +1364,36 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 	);
 	const png = Buffer.from(shot.image_base64, "base64");
 	assert.ok(png.length >= MIN_FRAME_BYTES);
+
+	/*
+	 * A FRAME THAT IS BIG ENOUGH AND STILL BLANK IS REFUSED, and this is the cell
+	 * QA round 1's Q-2 is about: the displayed path judged a frame by its byte count,
+	 * so a uniform 1600x800 field (measured: 1 distinct colour, 0 of 427,200 sampled
+	 * pixels off background) was certified as "a photograph of the app's window". The
+	 * typed refusal is what the offscreen path has always answered, and the two paths
+	 * now ask the same question.
+	 */
+	const blankFrame = () => image(MIN_FRAME_BYTES + 5_000, { uniform: true });
+	const blankWindow = fakeWindow({ frames: [blankFrame(), blankFrame()] });
+	const { host: blankHost } = hostWithWindow({ window: blankWindow });
+	const blankSurface = await createSurface(blankHost);
+	blankHost.setDisplayed(blankSurface.surface);
+	blankHost.setContentRect(
+		blankSurface.surface,
+		contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+	);
+	await assert.rejects(
+		() => blankHost.screenshot(blankSurface.surface),
+		(error) =>
+			error.code === "capture_unavailable" &&
+			/frame twice/.test(error.message ?? ""),
+		"a blank frame is answered as a typed refusal rather than handed back as a picture",
+	);
+	assert.equal(
+		blankWindow.captured.length,
+		2,
+		"and it is retried once before the refusal, exactly as the offscreen path is",
+	);
 
 	// No pane displaying it: the OFFSCREEN path, which is a faithful reconstruction
 	// from the record rather than a photograph - and says so.
