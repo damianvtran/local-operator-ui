@@ -53,6 +53,17 @@ export interface ConsoleMirrorProps {
 	/** Whether the pane is actually on screen. A hidden pane reports
 	 * `visible: false` and no grid is derived from it (§8.2/8.3). */
 	visible: boolean;
+	/**
+	 * A request for the terminal to take the keyboard, from the pane's answer to the
+	 * user's own open of the console.
+	 *
+	 * A COUNTER RATHER THAN A BOOLEAN so a second open is a second request; `0` and
+	 * absent — every mount nobody just asked for, which is the restored pane, the
+	 * agent's `reveal` and the capture view — is a mirror that never touches focus.
+	 * That is not tidiness: a mirror that focused on mount would pull the caret out of
+	 * the composer of whatever conversation the user is actually typing in.
+	 */
+	focusRequest?: number;
 	/** The grid main decided for this surface, applied as given (§8.2 step 3). */
 	cols: number;
 	rows: number;
@@ -99,6 +110,7 @@ const decodeBytes = (base64: string): Uint8Array => {
 export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	surface,
 	visible,
+	focusRequest,
 	cols,
 	rows,
 	mode = "interactive",
@@ -389,6 +401,21 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		if (terminal.cols === cols && terminal.rows === rows) return;
 		terminal.resize(cols, rows);
 	}, [terminal, cols, rows]);
+
+	/*
+	 * THE CARET, ON REQUEST AND NEVER ON MOUNT.
+	 *
+	 * The pane is mounted for a restored preference, for an agent's `reveal` and on
+	 * every session switch, and not one of those is a user asking for the keyboard —
+	 * so this is the pane's own open that decides, not this component's lifecycle.
+	 * The mount case is still covered, and it is the one that has to be: a request
+	 * that CREATES a surface sees this mirror mount a frame later, carrying the same
+	 * token, which is why the token and not the change of it is the trigger.
+	 */
+	useEffect(() => {
+		if (!terminal || !focusRequest) return;
+		terminal.focus();
+	}, [terminal, focusRequest]);
 
 	/*
 	 * THE THEME, THE RECT AND THEIR ONE OBSERVER.

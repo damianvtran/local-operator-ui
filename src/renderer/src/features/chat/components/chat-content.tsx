@@ -770,6 +770,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);
+		const requestConsoleOpen = useUiPreferencesStore(
+			(s) => s.requestConsoleOpen,
+		);
 		const consolePanelWidth = useUiPreferencesStore((s) => s.consolePanelWidth);
 		const setConsolePanelWidth = useUiPreferencesStore(
 			(s) => s.setConsolePanelWidth,
@@ -1113,7 +1116,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onRequestDelete={
 								sessionId ? () => requestSessionDelete(sessionId) : undefined
 							}
-							onOpenConsole={() => setConsolePaneOpen(true)}
+							onOpenConsole={() => {
+								/*
+								 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
+								 * separate on purpose: claiming the slot is what shows the pane,
+								 * and the request is what tells the pane this open came from the
+								 * user — so it should run a first surface if the conversation has
+								 * none and put the caret in the terminal either way (the store's
+								 * `consoleOpenIntent` states the four ways this pane opens and why
+								 * only this one means "I am about to type").
+								 *
+								 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
+								 * click and main's `reveal` push both claim this slot from
+								 * `app.tsx`, both already name a surface that exists, and the
+								 * reveal is not the user's gesture at all — an agent's surface
+								 * must not take the keyboard.
+								 */
+								setConsolePaneOpen(true);
+								requestConsoleOpen();
+							}}
 							consoleUnseenCount={consoleUnseenMarks.length}
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>

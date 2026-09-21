@@ -5,10 +5,11 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { Bot, Lock, LockOpen, PanelRightClose, Plus } from "lucide-react";
-import { type FC, useEffect, useMemo } from "react";
+import { type FC, useEffect, useMemo, useState } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
+	consoleOpenAction,
 	pickActiveSurface,
 	surfaceTitle,
 	surfacesForSession,
@@ -75,6 +76,30 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const clearUnseen = useUiPreferencesStore(
 		(state) => state.clearConsoleUnseen,
 	);
+	/* The user's own open of this pane, waiting to be answered (see the store's
+	 * `consoleOpenIntent` for why a request is not carried in a prop). */
+	const openIntent = useUiPreferencesStore((state) => state.consoleOpenIntent);
+	const clearOpenIntent = useUiPreferencesStore(
+		(state) => state.clearConsoleOpenIntent,
+	);
+	/**
+	 * A monotonic request for the terminal to take the caret, handed to the mirror.
+	 *
+	 * LOCAL STATE ON PURPOSE, and the reset a remount performs is the feature: the
+	 * pane is remounted on a session switch (`chat-page.tsx` keys it on `identity`),
+	 * so a caret request cannot outlive the open that asked for it and pull the
+	 * keyboard out of another conversation's composer.
+	 */
+	const [focusRequest, setFocusRequest] = useState(0);
+	/**
+	 * Whether the open this pane is answering is still waiting for main to make a
+	 * surface — the window `createSurface`'s promise exists to cover, and one the
+	 * loading state above is the honest thing to show: the pane HAS been asked for a
+	 * terminal and does not have one yet, so "no console in this session" and its `+`
+	 * would be an answer to a question nobody is asking, with a second press in it
+	 * making a second surface.
+	 */
+	const [creating, setCreating] = useState(false);
 	/* One answer for the whole list: whether a completion is still fresh enough to
 	   pulse (§12.2's two states), asked once rather than per row. */
 	const blipPulsing = useConsoleBlipPulse(unseen);
@@ -133,6 +158,65 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		return () => window.removeEventListener("focus", clear);
 	}, [surface?.surface, clearUnseen, surface]);
 
+	/*
+	 * THE USER'S OPEN, ANSWERED (design 6.1; the operator's report that the pane
+	 * "should not greet you with an empty state and a New console button").
+	 *
+	 * WHAT "OPEN" MEANS: the conversation gets a console if it has none, and the
+	 * caret goes into the terminal either way, because a user who opens a console is
+	 * about to type at it. `consoleOpenAction` holds the decision and its four
+	 * inputs; this effect is the dispatcher and the bookkeeping.
+	 *
+	 * THE REQUEST IS CLEARED ONLY WHEN IT HAS BEEN ANSWERED. "Still loading" is not an
+	 * answer — the read is what says whether this conversation already has a surface —
+	 * so the request waits there rather than being consumed into a second surface.
+	 */
+	useEffect(() => {
+		if (!openIntent) return;
+		if (sessionId === null) {
+			// A draft has no conversation to run in, so there is nowhere to put a
+			// surface; the pane's own draft notice is the answer, and the request is
+			// done rather than pending until a conversation appears.
+			clearOpenIntent();
+			return;
+		}
+		const action = consoleOpenAction({
+			requested: true,
+			loading: session.loading,
+			available,
+			hasSurface: surface !== null,
+		});
+		if (action === "none") {
+			// `available: false` with the read settled is main's own "no console can
+			// exist here" (§15): the pane renders that state, and the request is done.
+			if (!session.loading) clearOpenIntent();
+			return;
+		}
+		/*
+		 * The surface a request creates is born with main's own defaults — the login
+		 * shell, the 100x30 grid, `reveal: "none"` — exactly as the pane's `+` makes
+		 * one, because two ways for a user's surface to come into being is the defect.
+		 * Its working directory is main's answer for this session rather than a path
+		 * guessed here: the renderer cannot see the conversation's own directory, and a
+		 * second opinion about it is how a user's shell ends up somewhere they did not
+		 * choose.
+		 */
+		if (action === "create") {
+			setCreating(true);
+			void session.createSurface().finally(() => setCreating(false));
+		}
+		setFocusRequest((value) => value + 1);
+		clearOpenIntent();
+	}, [
+		openIntent,
+		sessionId,
+		session.loading,
+		session.createSurface,
+		available,
+		surface,
+		clearOpenIntent,
+	]);
+
 	if (sessionId === null) {
 		return (
 			<div className={cn("flex h-full flex-col bg-surface")}>
@@ -178,7 +262,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * every mount. `session.error` is ORed in because a window that cannot reach
 		 * main at all never gets an answer to read.
 		 */
-		if (session.loading && surfaces.length === 0) return <ConsoleLoading />;
+		if ((session.loading || creating) && surfaces.length === 0)
+			return <ConsoleLoading />;
 		if (!session.snapshot.available || session.error) {
 			return (
 				<ConsoleUnavailable
@@ -230,6 +315,9 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					<ConsoleMirror
 						key={surface.surface}
 						surface={surface.surface}
+						/* The caret, on the user's own open and never on a mount (see
+						   `focusRequest` above). */
+						focusRequest={focusRequest}
 						/* The pane is open and this is the surface it is showing, so this
 					   mirror is on screen: `visible: true` is what lets main derive a grid
 					   from its report at all (§8.2/8.3). A pane that is mounted but

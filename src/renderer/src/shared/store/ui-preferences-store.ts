@@ -169,6 +169,40 @@ type UiPreferencesState = {
 	isConsolePaneOpen: boolean;
 
 	/**
+	 * The user has just opened the console, and the pane has not answered yet.
+	 *
+	 * A CONSUMED-ONCE REQUEST, NOT A PREFERENCE, and it is deliberately excluded
+	 * from persistence below. The console pane opens for four reasons — the user's
+	 * press, a completion banner's click, an agent's `reveal`, and the restored
+	 * preference of an app relaunch — and only the FIRST of them means "I want to run
+	 * a command now". The other three name a surface that already exists (the
+	 * banner), are not the user's gesture at all (the reveal), or are the same pane
+	 * the user left open (the restore, and this is the one that would be a bug:
+	 * creating a surface on restore would put a shell in a conversation on every
+	 * launch). So the request is an EVENT: the pane consumes it and clears it, and a
+	 * launch starts with it false by construction rather than by a guard.
+	 *
+	 * IT LIVES IN THE STORE rather than in a prop of the pane's parent for the reason
+	 * `consoleActiveSurface` does: the pane is remounted on a session switch, so a
+	 * flag held in the pane would either be forgotten by the remount it was set just
+	 * before, or re-fire on the remount it survived into. Here the pane clears it as
+	 * soon as it has acted, so a remount finds nothing to do.
+	 */
+	consoleOpenIntent: boolean;
+
+	/**
+	 * Ask the pane to take a user's open of the console: create the first surface if
+	 * this conversation has none, or put the caret in the one it shows.
+	 *
+	 * ONE CALLER: the chat header's console trigger. The banner's click and main's
+	 * `reveal` push deliberately do not call it — see `consoleOpenIntent`.
+	 */
+	requestConsoleOpen: () => void;
+
+	/** The pane has answered the request. Called by the pane alone. */
+	clearConsoleOpenIntent: () => void;
+
+	/**
 	 * Set the console pane open state.
 	 *
 	 * Opening it closes the other three occupants, by the same construction as
@@ -755,6 +789,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
+			consoleOpenIntent: false,
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
@@ -860,6 +895,18 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({
 					consoleActiveSurface: surface,
 				});
+			},
+
+			requestConsoleOpen: () => {
+				set({ consoleOpenIntent: true });
+			},
+
+			clearConsoleOpenIntent: () => {
+				// Guarded so a pane with nothing to answer does not write a new state object
+				// on every pass of its effect.
+				set((state) =>
+					state.consoleOpenIntent ? { consoleOpenIntent: false } : {},
+				);
 			},
 
 			markConsoleUnseen: (sessionId: string, surface: string) => {
@@ -1011,9 +1058,19 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * asked about. That is the same defect `docs/run-sidebar.md` § 3.5 refuses
 			 * for the reader's open child — "a mode of a pane is not a preference" —
 			 * and a consumed-once request is more transient than a mode, not less.
+			 *
+			 * `consoleOpenIntent` is the second field, excluded for the same reason one
+			 * pane over: it is a request, it is answered within a frame of being made,
+			 * and a launch that restored it would run a shell in a conversation every
+			 * time the app started — which is exactly the difference between the pane
+			 * being restored and the user opening it.
 			 */
 			partialize: (state) => {
-				const { runPanelReveal: _pending, ...persisted } = state;
+				const {
+					runPanelReveal: _pending,
+					consoleOpenIntent: _intent,
+					...persisted
+				} = state;
 				return persisted;
 			},
 		},

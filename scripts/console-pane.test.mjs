@@ -32,6 +32,9 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/shared/themes/terminal-theme";',
 			'export * from "./src/renderer/src/features/console/model/console-surfaces";',
+			// The pane's own store, for the one question a model function cannot answer:
+			// whether the open request survives being written to disk.
+			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -46,6 +49,14 @@ const bundle = await build({
 		// which imports Electron. The suite's stub is what every other main-process
 		// bundle uses for the same reason.
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+		/*
+		 * The renderer's own path aliases, restated because esbuild reads the ROOT
+		 * tsconfig by default and the renderer's mapping lives in `tsconfig.app.json`.
+		 * A store added to this bundle is what needs them; without them the bundle
+		 * fails to resolve `@shared/themes` rather than resolving it to a second copy.
+		 */
+		"@shared": join(process.cwd(), "src/renderer/src/shared"),
+		"@features": join(process.cwd(), "src/renderer/src/features"),
 	},
 	logLevel: "silent",
 });
@@ -61,6 +72,8 @@ const {
 	missingTerminalRoles,
 	applyCaptureTheme,
 	measureCell,
+	consoleOpenAction,
+	useUiPreferencesStore,
 	kebabRole,
 	readConsoleSnapshot,
 	surfacesForSession,
@@ -675,4 +688,108 @@ test("a fed theme: absent is skipped, empty is written and warned about (Q-8)", 
 	} finally {
 		console.warn = realWarn;
 	}
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE USER'S OPEN OF THE CONSOLE.
+ *
+ * "Opening the console typically means you want to run a console command right
+ * away" (the operator's report), so an open by the USER creates the first surface
+ * and takes the caret — while the other three ways this pane opens (a completion
+ * banner's click, an agent's `reveal`, and the restored preference of a relaunch)
+ * must not. The decision is `consoleOpenAction` so the four inputs and the three
+ * refusals are a thing a test can name; what cannot be tested here is the caret,
+ * which belongs to the rendered mirror (`scripts/console-mirror.test.mjs`).
+ * ---------------------------------------------------------------------------
+ */
+
+test("an open by the user creates a surface in a conversation that has none", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: false,
+		}),
+		"create",
+	);
+});
+
+test("an open by the user FOCUSES the surface the pane already shows rather than making a second", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: true,
+		}),
+		"focus",
+		"a second surface would take the lens off the one the user was reading",
+	);
+});
+
+test("the request WAITS for the first read rather than creating on a listing it has not seen", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: true,
+			available: true,
+			hasSurface: false,
+		}),
+		"none",
+		"acting here would be a controller deciding the conversation has no surface before anything answered",
+	);
+});
+
+test("no other way this pane opens is an open by the user", () => {
+	for (const loading of [true, false]) {
+		assert.equal(
+			consoleOpenAction({
+				requested: false,
+				loading,
+				available: true,
+				hasSurface: false,
+			}),
+			"none",
+			"a restored pane, an agent's reveal and a session switch all arrive with no request",
+		);
+	}
+});
+
+test("a console that cannot exist here is told so rather than given a shell", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: false,
+			hasSurface: false,
+		}),
+		"none",
+	);
+});
+
+test("the request is an event and not a preference: persisting it would run a shell on every launch", () => {
+	const { partialize } = useUiPreferencesStore.persist.getOptions();
+	assert.equal(typeof partialize, "function");
+	const state = useUiPreferencesStore.getState();
+	const persisted = partialize({
+		...state,
+		consoleOpenIntent: true,
+		runPanelReveal: { section: "todos" },
+	});
+	assert.equal(
+		"consoleOpenIntent" in persisted,
+		false,
+		"a launched app would otherwise find an open request from the last one and create a surface nobody asked for",
+	);
+	assert.equal("runPanelReveal" in persisted, false);
+	/*
+	 * AND THE OTHER HALF, so this cannot be satisfied by a filter that drops
+	 * everything: the pane's own open state IS a preference and must survive, which is
+	 * why "the pane was open when the app closed" is restored while "the user opened
+	 * it" is not.
+	 */
+	assert.equal("isConsolePaneOpen" in persisted, true);
+	assert.equal(persisted.themeName, state.themeName);
 });

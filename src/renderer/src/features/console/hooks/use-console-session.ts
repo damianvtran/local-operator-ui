@@ -48,8 +48,16 @@ export interface ConsoleSessionApi {
 			theme: string;
 		},
 	) => void;
-	/** Ask main for a surface the USER owns, with main's own defaults (§6.1). */
-	createSurface: () => void;
+	/** Ask main for a surface the USER owns, with main's own defaults (§6.1).
+	 *
+	 * Returns when the request has been ANSWERED, either way. The pane needs that
+	 * promise: an open that creates a surface has to hold a state that is not the
+	 * empty state until the answer lands, or a user looking at the pane sees a
+	 * "No console in this session" and a `+` for the round trip it already asked for —
+	 * and a second press in that window would make a second surface. The rejection is
+	 * still swallowed here rather than thrown: a failed create is what `error` is for,
+	 * and the pane's unavailable state is what has to carry it. */
+	createSurface: () => Promise<void>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
 }
@@ -163,14 +171,14 @@ export const useConsoleSession = (
 		[],
 	);
 
-	const createSurface = useCallback(() => {
+	const createSurface = useCallback((): Promise<void> => {
 		const api = window.api?.console;
-		if (!api || sessionId === null) return;
+		if (!api || sessionId === null) return Promise.resolve();
 		// Main owns the defaults (the login shell, the session's own cwd, the 100x30
 		// grid, `reveal: "open"`): the pane asks for a surface and does not describe
 		// one, which is what keeps a user's surface and an agent's the same object
 		// (§6.1).
-		void api
+		return api
 			.createSurface({ sessionId })
 			.then(() => {
 				void read();
