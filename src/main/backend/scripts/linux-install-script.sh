@@ -54,10 +54,6 @@ cleanup() {
   if [ -f "${APP_DATA_DIR}/get-pip.py" ]; then
     rm -f "${APP_DATA_DIR}/get-pip.py"
   fi
-  if [ -n "${FFMPEG_TEMP_ARCHIVE:-}" ] && [ -f "${FFMPEG_TEMP_ARCHIVE}" ]; then
-    log "Removing temporary FFmpeg archive: ${FFMPEG_TEMP_ARCHIVE}"
-    rm -f "${FFMPEG_TEMP_ARCHIVE}"
-  fi
   echo "$(date): Cleanup completed."
 }
 
@@ -70,70 +66,16 @@ exec > >(tee -a "${LOG_FILE}") 2>&1
 echo "[${TIMESTAMP}]: Starting Local Operator backend installation..."
 echo "[${TIMESTAMP}]: System information: $(uname -a)"
 
-# Function to log messages with timestamp (defined later, but used by FFmpeg section)
-_log_internal() {
-  local internal_timestamp
-  internal_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-  echo "[${internal_timestamp}] $1"
-}
-
-# --- FFmpeg Installation ---
-BIN_DIR="${APP_DATA_DIR}/bin"
-FFMPEG_BIN="${BIN_DIR}/ffmpeg" # Path to ffmpeg binary
-
-_log_internal "Ensuring bin directory exists: ${BIN_DIR}"
-if ! mkdir -p "${BIN_DIR}"; then
-    _log_internal "ERROR: Unable to create bin directory at ${BIN_DIR}"
-    exit 1
-fi
-
-# Check if FFmpeg is already installed and executable
-if [ -f "${FFMPEG_BIN}" ] && [ -x "${FFMPEG_BIN}" ]; then
-    _log_internal "FFmpeg already installed at ${FFMPEG_BIN}. Skipping download."
-else
-    _log_internal "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
-
-    FFMPEG_DOWNLOAD_URL=""
-
-    LINUX_ARCH=$(uname -m)
-    if [[ "${LINUX_ARCH}" == "x86_64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-x64"
-    elif [[ "${LINUX_ARCH}" == "aarch64" ]] || [[ "${LINUX_ARCH}" == "arm64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-arm64"
-    else
-        _log_internal "Error: Unsupported CPU architecture for FFmpeg download: ${LINUX_ARCH}"
-        exit 1
-    fi
-
-    _log_internal "Downloading FFmpeg from: ${FFMPEG_DOWNLOAD_URL}"
-    if command -v curl >/dev/null 2>&1; then
-        if ! curl -L "${FFMPEG_DOWNLOAD_URL}" -o "${FFMPEG_BIN}"; then
-            _log_internal "Error: Failed to download FFmpeg using curl from ${FFMPEG_DOWNLOAD_URL}"
-            exit 1
-        fi
-    elif command -v wget >/dev/null 2>&1; then
-        if ! wget -O "${FFMPEG_BIN}" "${FFMPEG_DOWNLOAD_URL}"; then
-            _log_internal "Error: Failed to download FFmpeg using wget from ${FFMPEG_DOWNLOAD_URL}"
-            exit 1
-        fi
-    else
-        _log_internal "Error: Neither curl nor wget found. Cannot download FFmpeg."
-        exit 1
-    fi
-    _log_internal "FFmpeg binary downloaded successfully to ${FFMPEG_BIN}"
-
-    chmod +x "${FFMPEG_BIN}"
-    _log_internal "Set executable permissions for ${FFMPEG_BIN}"
-
-    # Verify FFmpeg is executable after download
-    if [ ! -f "${FFMPEG_BIN}" ] || [ ! -x "${FFMPEG_BIN}" ]; then
-        _log_internal "Error: FFmpeg binary not found or not executable after download."
-        exit 1
-    fi
-fi
-
-_log_internal "FFmpeg installation complete. FFmpeg binary is at: ${FFMPEG_BIN}"
-
+# Nothing is fetched here but the package itself.
+#
+# This script used to download a third-party FFmpeg binary from a GitHub release
+# into `${APP_DATA_DIR}/bin`, and under `set -e` a failed download killed the
+# install before the venv existed - so a machine that can reach PyPI but not
+# github.com could not install at all. Nothing in the app or in `local-operator`
+# ever executed that binary. Tooling a task actually needs is acquired later, on
+# demand, through the app's Console with the user's approval; this script's job is
+# the environment below and nothing else. (`_log_internal`, the logging helper
+# that read like a second `log` and existed only for that section, went with it.)
 # Function to check if a command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -166,7 +108,11 @@ is_valid_python_binary() {
   return $?
 }
 
-# Check for network connectivity to key servers
+# Check for network connectivity to key servers.
+# Bound on both spellings: `--timeout`/`--tries` and `--connect-timeout`/
+# `--max-time` are what keep this from holding a black-hole network open, and
+# `--fail` is what stops a captive portal's 200 portal page from reading as a
+# reachable host.
 check_connectivity() {
   log "Checking network connectivity..."
   local servers=("pypi.org" "bootstrap.pypa.io")
@@ -174,12 +120,12 @@ check_connectivity() {
   
   for server in "${servers[@]}"; do
     if command_exists curl; then
-      if curl --connect-timeout 5 -s "https://${server}" -o /dev/null; then
+      if curl --fail --connect-timeout 5 --max-time 10 -s "https://${server}" -o /dev/null; then
         has_connectivity=true
         break
       fi
     elif command_exists wget; then
-      if wget --timeout=5 -q --spider "https://${server}"; then
+      if wget --timeout=5 --tries=1 -q --spider "https://${server}"; then
         has_connectivity=true
         break
       fi
@@ -381,9 +327,9 @@ if [ ! -d "$VENV_PATH" ]; then
     # Try to bootstrap pip
     log "Bootstrapping pip in the minimal virtual environment..."
     if command_exists curl; then
-      curl -s https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
+      curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
     elif command_exists wget; then
-      wget -q -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
+      wget -q --timeout=30 --tries=1 -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
     else
       log "ERROR: Neither curl nor wget available to download get-pip.py"
       error_exit "Installation cannot continue without being able to download pip"
@@ -411,7 +357,7 @@ fi
 
 if [ ! -f "$VENV_PATH/bin/pip" ]; then
   echo "pip missing in virtual environment, attempting to bootstrap it..."
-  curl -s https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
+  curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
   "$VENV_PATH/bin/python" "$APP_DATA_DIR/get-pip.py" --no-warn-script-location
   
   if [ ! -f "$VENV_PATH/bin/pip" ]; then
@@ -432,14 +378,16 @@ python -m pip install --upgrade pip || {
   pip --version
 }
 
-# Check network connectivity to PyPI
+# Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
+# decides whether it can proceed. Bounded on both spellings, and `--fail` added,
+# for the reason `check_connectivity` gives above.
 echo "Checking network connectivity to PyPI..."
 if command_exists curl; then
-  curl -s https://pypi.org/pypi/local-operator/json -o /dev/null || {
+  curl -s --fail --connect-timeout 5 --max-time 10 https://pypi.org/pypi/local-operator/json -o /dev/null || {
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
   }
 elif command_exists wget; then
-  wget -q --spider https://pypi.org/pypi/local-operator/json || {
+  wget -q --spider --timeout=10 --tries=1 https://pypi.org/pypi/local-operator/json || {
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
   }
 fi

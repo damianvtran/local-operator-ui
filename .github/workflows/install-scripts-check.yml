@@ -31,6 +31,19 @@ jobs:
           chmod +x src/main/backend/scripts/linux-install-script.sh
           bash src/main/backend/scripts/linux-install-script.sh
       
+      # The installer used to fetch FFmpeg into $APP_DATA_DIR/bin from a
+      # third-party GitHub release. That block is deleted, and this asserts the
+      # deletion on a real runner rather than only in the text of a script:
+      # see scripts/install-scripts-network.test.mjs for why it went and what
+      # keeps it gone.
+      - name: Assert the installer left no downloaded binary behind
+        run: |
+          if [ -e "$HOME/.config/local-operator/bin/ffmpeg" ]; then
+            echo "Error: the install script created bin/ffmpeg"
+            exit 1
+          fi
+          echo "No bin/ffmpeg after the Linux install: OK"
+
       - name: Verify local-operator installation
         run: |
           source ~/.config/local-operator/local-operator-venv/bin/activate
@@ -66,6 +79,16 @@ jobs:
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
           .\src\main\backend\scripts\windows-install-script.ps1
       
+      - name: Assert the installer left no downloaded binary behind
+        shell: pwsh
+        run: |
+          $ffmpeg = "$env:APPDATA\Local Operator\bin\ffmpeg.exe"
+          if (Test-Path $ffmpeg) {
+            Write-Error "Error: the install script created bin\ffmpeg.exe"
+            exit 1
+          }
+          Write-Output "No bin/ffmpeg.exe after the Windows install: OK"
+
       - name: Verify local-operator installation
         shell: pwsh
         run: |
@@ -135,6 +158,14 @@ jobs:
           chmod +x src/main/backend/scripts/macos-install-script.sh
           bash src/main/backend/scripts/macos-install-script.sh
       
+      - name: Assert the installer left no downloaded binary behind
+        run: |
+          if [ -e "$HOME/Library/Application Support/Local Operator/bin/ffmpeg" ]; then
+            echo "Error: the install script created bin/ffmpeg"
+            exit 1
+          fi
+          echo "No bin/ffmpeg after the macOS install: OK"
+
       - name: Verify local-operator installation
         run: |
           source "$HOME/Library/Application Support/Local Operator/local-operator-venv/bin/activate"

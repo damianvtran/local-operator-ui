@@ -92,62 +92,18 @@ echo "App data directory: $APP_DATA_DIR"
 echo "Log file: $LOG_FILE"
 echo "=============================================="
 
-# --- FFmpeg Installation ---
-BIN_DIR="$APP_DATA_DIR/bin"
-FFMPEG_BIN="$BIN_DIR/ffmpeg"
-
-echo "Ensuring bin directory exists: $BIN_DIR"
-mkdir -p "$BIN_DIR"
-
-# Check if FFmpeg is already installed and executable
-if [ -f "$FFMPEG_BIN" ] && [ -x "$FFMPEG_BIN" ]; then
-    echo "FFmpeg already installed at $FFMPEG_BIN. Skipping download."
-else
-    echo "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
-
-    # The architecture, read here because this URL is the one place left that needs
-    # it: the environment is built on `PYTHON_BIN`, handed in above, so nothing
-    # else in this script derives anything from `uname -m`. The block that used to
-    # compute it at the top of the file was removed with the in-bundle interpreter
-    # search it existed for (review N1) - and that removal took this variable with
-    # it while this block still read it, so `$ARCH` was empty for every caller,
-    # including the app, and any install on a machine without a cached ffmpeg
-    # exited 1 here, before the venv was ever created. Measured: `bash
-    # src/main/backend/scripts/macos-install-script.sh` with `PYTHON_BIN` set stops
-    # on "Unsupported CPU architecture for FFmpeg download:".
-    ARCH=$(uname -m)
-
-    FFMPEG_DOWNLOAD_URL=""
-
-    if [[ "$ARCH" == "x86_64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-x64"
-    elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-arm64"
-    else
-        echo "Error: Unsupported CPU architecture for FFmpeg download: $ARCH"
-        exit 1
-    fi
-
-    echo "Downloading FFmpeg from: $FFMPEG_DOWNLOAD_URL"
-    if curl -L "$FFMPEG_DOWNLOAD_URL" -o "$FFMPEG_BIN"; then
-        echo "FFmpeg downloaded successfully to $FFMPEG_BIN"
-        chmod +x "$FFMPEG_BIN"
-        echo "Set executable permissions for $FFMPEG_BIN"
-    else
-        echo "Error: Failed to download FFmpeg from $FFMPEG_DOWNLOAD_URL"
-        exit 1
-    fi
-
-    # Verify FFmpeg is executable after download
-    if [ ! -f "$FFMPEG_BIN" ] || [ ! -x "$FFMPEG_BIN" ]; then
-        echo "Error: FFmpeg binary not found or not executable after download."
-        exit 1
-    fi
-fi
-
-echo "FFmpeg installation complete. FFmpeg binary is at: $FFMPEG_BIN"
-# --- End FFmpeg Installation ---
-
+# Nothing is fetched here but the package itself.
+#
+# This script used to download a third-party FFmpeg binary from a GitHub
+# release into `$APP_DATA_DIR/bin`. The macOS asset names it asked for do not
+# exist (curl without `--fail` wrote the 404 body to the binary path, `chmod +x`
+# made it executable, its own `[ -f ] && [ -x ]` verification passed and the next
+# run skipped the download, so the broken file was permanent), nothing in the app
+# or in `local-operator` ever executed it, and under `set -e` a failed download
+# killed the install before the venv existed - so a machine that can reach PyPI
+# but not github.com could not install at all. Tooling a task actually needs is
+# acquired later, on demand, through the app's Console with the user's approval;
+# this script's job is the environment below and nothing else.
 # Verify bundled Python exists
 if [ ! -f "$PYTHON_BIN" ]; then
   echo "Error: Bundled Python not found at $PYTHON_BIN"
@@ -225,13 +181,18 @@ python -m pip install --upgrade pip || {
 echo "pip upgrade successful:"
 pip --version
 
-# Check network connectivity to PyPI
+# Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install
+# below decides whether it can proceed. Every bound matters here - without
+# `--max-time` a black-hole network holds this open behind the spinner for
+# minutes, and without `--fail` a captive portal's 200 portal page reads as
+# "PyPI reachable", which is a false negative exactly where the warning is
+# needed.
 echo "Checking network connectivity to PyPI..."
-curl -s https://pypi.org/pypi/local-operator/json -o /dev/null || {
+curl -s --fail --connect-timeout 5 --max-time 10 https://pypi.org/pypi/local-operator/json -o /dev/null || {
   echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
   echo "Attempting to ping common domains to diagnose network issues:"
-  ping -c 1 google.com || echo "Cannot ping google.com"
-  ping -c 1 pypi.org || echo "Cannot ping pypi.org"
+  ping -c 1 -W 2000 google.com || echo "Cannot ping google.com"
+  ping -c 1 -W 2000 pypi.org || echo "Cannot ping pypi.org"
 }
 
 echo "Installing local-operator package..."
@@ -246,7 +207,7 @@ python -m pip install --upgrade --verbose local-operator || {
   echo "Pip config:"
   pip config list
   echo "Network diagnosis:"
-  curl -I https://pypi.org || echo "Cannot reach PyPI server"
+  curl -sI --fail --connect-timeout 5 --max-time 10 https://pypi.org || echo "Cannot reach PyPI server"
   exit 1
 }
 echo "local-operator installation successful"
