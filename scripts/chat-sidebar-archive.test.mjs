@@ -303,11 +303,18 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 * AND THE RETIREMENT RULE IS THE LANE'S, not a second copy of it: the store clears
 	 * `archiveFailure` when a new press supersedes it, and the effect takes the toast
 	 * down through the app's own `dismissToast` the moment that happens.
+	 *
+	 * NOTHING IS DISMISSED ON MOUNT, which is why the effect opens with a ref rather
+	 * than going straight to `dismissToast` (agent review, the jsdom the sidebar's own
+	 * tests mount in): sonner's `dismiss` reaches a bare `requestAnimationFrame` with
+	 * no guard, so a dismiss on a mount that never showed this toast is a call with no
+	 * toast behind it - and in a DOM without `requestAnimationFrame` at all it is a
+	 * ReferenceError thrown from a passive effect. The two assertions below are the two
+	 * halves: the guard is present, and the dismissal is still inside this effect.
 	 */
-	assert.match(
-		failure,
-		/if \(!archiveFailure\) \{\s*dismissToast\(ARCHIVE_FAILURE_TOAST_ID\);/,
-	);
+	assert.match(failure, /if \(previousFailureRef\.current === null\) return;/);
+	assert.match(failure, /if \(!archiveFailure\) \{/);
+	assert.match(failure, /dismissToast\(ARCHIVE_FAILURE_TOAST_ID\);/);
 });
 
 test("the offer is drawn in the sidebar's own lane, mounted at the panel's root (design D11; agent review round 4, R4-1)", () => {
