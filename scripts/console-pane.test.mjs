@@ -774,7 +774,10 @@ test("the request is an event and not a preference: persisting it would run a sh
 	const state = useUiPreferencesStore.getState();
 	const persisted = persistedUiPreferences({
 		...state,
-		consoleOpenIntent: true,
+		// A CONVERSATION ID rather than a flag, because that is what the request carries
+		// now (agent review round 1, F-6): the pane is remounted on a session switch, so a
+		// request has to say which conversation it was made for.
+		consoleOpenIntent: "session-1f4c",
 		runPanelReveal: { section: "todos" },
 	});
 	assert.equal(

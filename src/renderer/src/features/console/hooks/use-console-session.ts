@@ -8,7 +8,8 @@ import {
 /**
  * The pane's read of the console, and every control it has over one.
  *
- * Design: `docs/design/ui-console-tab.md` 6.3 (the registry is app-global and a
+ * Design: `local-operator`'s
+ * `docs/design/ui-console-tab.md` — that repository's file, not one in this tree. 6.3 (the registry is app-global and a
  * session's pane filters), 8.2 (the pane reports, main decides), 10.2 (the
  * renderer-facing ops), 10.3 (a signal to refetch, not a second copy of the state),
  * 12.2 (the blip's clearing rule).
@@ -33,6 +34,16 @@ export interface ConsoleSessionApi {
 	loading: boolean;
 	/** Why the last read failed, when it did. `null` while the last read worked. */
 	error: string | null;
+	/** Why the last CREATE failed, when it did; `null` while the last one worked or no
+	 * create has been asked for.
+	 *
+	 * SEPARATE FROM `error` BECAUSE THE TWO ARE DIFFERENT SENTENCES AND DIFFERENT
+	 * REMEDIES (design round 1, U2): a read that fails means the pane cannot see this
+	 * session's surfaces at all, while a create that fails means the host is answering
+	 * and refused THIS attempt — retry, not "the console is not available in this app".
+	 * The first cut put both in `error`, so every refused create rendered the
+	 * unavailable state with its "update the app" advice. */
+	createError: string | null;
 	/** Read the projection again. */
 	refresh: () => void;
 	/** Tell main a pane is showing this surface (it never resizes anything). */
@@ -50,13 +61,17 @@ export interface ConsoleSessionApi {
 	) => void;
 	/** Ask main for a surface the USER owns, with main's own defaults (§6.1).
 	 *
-	 * Returns when the request has been ANSWERED, either way. The pane needs that
-	 * promise: an open that creates a surface has to hold a state that is not the
-	 * empty state until the answer lands, or a user looking at the pane sees a
-	 * "No console in this session" and a `+` for the round trip it already asked for —
-	 * and a second press in that window would make a second surface. The rejection is
-	 * still swallowed here rather than thrown: a failed create is what `error` is for,
-	 * and the pane's unavailable state is what has to carry it. */
+	 * Returns when the request has been ANSWERED AND THE LISTING IS IN HAND, either
+	 * way. The pane needs both halves of that: an open that creates a surface has to
+	 * hold a state that is not the empty state until the answer lands, or a user
+	 * looking at the pane sees a "No console in this session" and a `+` for the round
+	 * trip it already asked for — and a second press in that window would make a second
+	 * surface. The first cut awaited only the create's own answer, which left the pane
+	 * holding no surface and no `creating` flag for the read that follows it (agent
+	 * review round 1, F-3); the read is inside this promise so that window does not
+	 * exist. The rejection is still swallowed here rather than thrown: a failed create is
+	 * what `createError` is for, and the pane's own create-failed state is what carries
+	 * it. */
 	createSurface: () => Promise<void>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
@@ -71,6 +86,7 @@ export const useConsoleSession = (
 	const [snapshot, setSnapshot] = useState<ConsoleSnapshot>(EMPTY_SNAPSHOT);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [createError, setCreateError] = useState<string | null>(null);
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const alive = useRef(true);
 
@@ -175,17 +191,27 @@ export const useConsoleSession = (
 		const api = window.api?.console;
 		if (!api || sessionId === null) return Promise.resolve();
 		// Main owns the defaults (the login shell, the session's own cwd, the 100x30
-		// grid, `reveal: "open"`): the pane asks for a surface and does not describe
+		// grid, `reveal: "none"`): the pane asks for a surface and does not describe
 		// one, which is what keeps a user's surface and an agent's the same object
 		// (§6.1).
+		//
+		// The previous attempt's failure is cleared as this one starts, so the pane's
+		// retry cannot paint the last attempt's reason under a state that is trying
+		// again.
+		setCreateError(null);
 		return api
 			.createSurface({ sessionId })
-			.then(() => {
-				void read();
-			})
+			.then(() =>
+				// AWAITED, not fired and forgotten (agent review round 1, F-3): the create
+				// has answered but the new surface is not in this pane's listing until the
+				// read lands, and the pane is holding `creating` until this promise
+				// resolves. A `void read()` here left one render with no surface, no
+				// `creating` and no loading — the empty state with a live `+`.
+				read(),
+			)
 			.catch((failure: unknown) => {
 				if (alive.current)
-					setError(
+					setCreateError(
 						failure instanceof Error ? failure.message : String(failure ?? ""),
 					);
 			});
@@ -209,6 +235,7 @@ export const useConsoleSession = (
 		snapshot,
 		loading,
 		error,
+		createError,
 		refresh: () => void read(),
 		showSurface,
 		reportContent,

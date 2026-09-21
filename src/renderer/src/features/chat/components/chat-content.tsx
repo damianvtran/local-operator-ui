@@ -1116,25 +1116,43 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onRequestDelete={
 								sessionId ? () => requestSessionDelete(sessionId) : undefined
 							}
-							onOpenConsole={() => {
-								/*
-								 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
-								 * separate on purpose: claiming the slot is what shows the pane,
-								 * and the request is what tells the pane this open came from the
-								 * user — so it should run a first surface if the conversation has
-								 * none and put the caret in the terminal either way (the store's
-								 * `consoleOpenIntent` states the four ways this pane opens and why
-								 * only this one means "I am about to type").
-								 *
-								 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
-								 * click and main's `reveal` push both claim this slot from
-								 * `app.tsx`, both already name a surface that exists, and the
-								 * reveal is not the user's gesture at all — an agent's surface
-								 * must not take the keyboard.
-								 */
-								setConsolePaneOpen(true);
-								requestConsoleOpen();
-							}}
+							onOpenConsole={
+								sessionId
+									? () => {
+											/*
+											 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
+											 * separate on purpose: claiming the slot is what shows the pane,
+											 * and the request is what tells the pane this open came from the
+											 * user — so it should run a first surface if the conversation has
+											 * none and put the caret in the terminal either way (the store's
+											 * `consoleOpenIntent` states the four ways this pane opens and why
+											 * only this one means "I am about to type").
+											 *
+											 * THE REQUEST NAMES THIS CONVERSATION, because the pane is remounted
+											 * on a session switch: a request still pending when the user switched
+											 * would otherwise be answered by the next conversation's pane, which
+											 * would run a shell nobody asked for there (agent review round 1, F-6).
+											 *
+											 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
+											 * click and main's `reveal` push both claim this slot from
+											 * `app.tsx`, both already name a surface that exists, and the
+											 * reveal is not the user's gesture at all — an agent's surface
+											 * must not take the keyboard.
+											 */
+											setConsolePaneOpen(true);
+											requestConsoleOpen(sessionId);
+										}
+									: /*
+										 * OMITTED ON A DRAFT, as the archive and delete controls beside it are
+										 * (`sessionId ? … : undefined`), and by the same house rule: the pane's
+										 * only answer to a draft is "A console needs a conversation", so the
+										 * trigger would be an offer the app cannot honour — a control that
+										 * cannot act is not shown (design round 1, U3). The pane itself still
+										 * opens on a draft from the restored preference, and its close control
+										 * is there for that case.
+										 */
+										undefined
+							}
 							consoleUnseenCount={consoleUnseenMarks.length}
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>

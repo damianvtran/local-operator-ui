@@ -169,7 +169,8 @@ type UiPreferencesState = {
 	isConsolePaneOpen: boolean;
 
 	/**
-	 * The user has just opened the console, and the pane has not answered yet.
+	 * The conversation whose console the user has just asked to open, and which the
+	 * pane has not answered yet. `null` when there is no request.
 	 *
 	 * A CONSUMED-ONCE REQUEST, NOT A PREFERENCE, and it is deliberately excluded
 	 * from persistence below. The console pane opens for four reasons — the user's
@@ -180,24 +181,31 @@ type UiPreferencesState = {
 	 * the user left open (the restore, and this is the one that would be a bug:
 	 * creating a surface on restore would put a shell in a conversation on every
 	 * launch). So the request is an EVENT: the pane consumes it and clears it, and a
-	 * launch starts with it false by construction rather than by a guard.
+	 * launch starts with it null by construction rather than by a guard.
+	 *
+	 * IT NAMES THE CONVERSATION rather than being a boolean, and that closes a hole the
+	 * first cut left (agent review round 1, F-6): the pane is REMOUNTED on a session
+	 * switch, so a request still pending when the user switched would have been answered
+	 * by the NEXT conversation's pane — a shell created in a conversation nobody asked
+	 * about. An answer is only an answer for the conversation that asked.
 	 *
 	 * IT LIVES IN THE STORE rather than in a prop of the pane's parent for the reason
-	 * `consoleActiveSurface` does: the pane is remounted on a session switch, so a
-	 * flag held in the pane would either be forgotten by the remount it was set just
+	 * `consoleActiveSurface` does: the pane is remounted on a session switch, so a flag
+	 * held in the pane would either be forgotten by the remount it was set just
 	 * before, or re-fire on the remount it survived into. Here the pane clears it as
 	 * soon as it has acted, so a remount finds nothing to do.
 	 */
-	consoleOpenIntent: boolean;
+	consoleOpenIntent: string | null;
 
 	/**
 	 * Ask the pane to take a user's open of the console: create the first surface if
-	 * this conversation has none, or put the caret in the one it shows.
+	 * that conversation has none, or put the caret in the one it shows.
 	 *
-	 * ONE CALLER: the chat header's console trigger. The banner's click and main's
-	 * `reveal` push deliberately do not call it — see `consoleOpenIntent`.
+	 * ONE CALLER: the chat header's console trigger, which is offered only where there
+	 * is a conversation to act on. The banner's click and main's `reveal` push
+	 * deliberately do not call it — see `consoleOpenIntent`.
 	 */
-	requestConsoleOpen: () => void;
+	requestConsoleOpen: (sessionId: string) => void;
 
 	/** The pane has answered the request. Called by the pane alone. */
 	clearConsoleOpenIntent: () => void;
@@ -789,7 +797,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
-			consoleOpenIntent: false,
+			consoleOpenIntent: null,
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
@@ -897,15 +905,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
-			requestConsoleOpen: () => {
-				set({ consoleOpenIntent: true });
+			requestConsoleOpen: (sessionId: string) => {
+				set({ consoleOpenIntent: sessionId });
 			},
 
 			clearConsoleOpenIntent: () => {
 				// Guarded so a pane with nothing to answer does not write a new state object
 				// on every pass of its effect.
 				set((state) =>
-					state.consoleOpenIntent ? { consoleOpenIntent: false } : {},
+					state.consoleOpenIntent !== null ? { consoleOpenIntent: null } : {},
 				);
 			},
 
@@ -1082,8 +1090,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
  * and the test asserts the shipped function itself instead of a runtime handle on it.
  *
  * `runPanelReveal` is a request to open the run pane at a section; `consoleOpenIntent`
- * is a request to give a conversation a terminal and the keyboard. Both are consumed by
- * the pane that answers them, so persisting either would outlive the event it describes
+ * names the conversation a request to give a terminal and the keyboard was made for.
+ * Both are consumed by the pane that answers them, so persisting either would outlive the event it describes
  * — a launch would restore a request nobody made and act on it, which for the console
  * means running a shell in a conversation every time the app started.
  */
