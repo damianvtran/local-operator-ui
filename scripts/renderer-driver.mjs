@@ -3913,6 +3913,38 @@ async function sceneRowSpace(cdp) {
 			onThePin.pressed === "true",
 		JSON.stringify(onThePin),
 	);
+	/*
+	 * THE DELIVERY PRECONDITION, RECORDED FROM THE PAGE (agent review round 3, on the first
+	 * real run of this walk). That run read
+	 * `{"pressed":"true","pairDisplay":"flex","focusInsideRow":true}` — the two clauses this
+	 * fix owns were TRUE and the state had not moved, which is ALSO the reading of a control
+	 * that was never activated. A check that cannot tell those apart sends the next reader to
+	 * the wrong file, so the chord's delivery is recorded from the page's own events before
+	 * it is asserted: `pressChord` now carries each key's character (see `keyText` for why
+	 * that is what activation needs), and this reads whether the chord reached the pin and
+	 * produced its activation at all.
+	 *
+	 * The listeners are capture-phase on the document, because the question is what the
+	 * PLATFORM sent rather than what a handler chose to do with it.
+	 */
+	const recorder = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-session-row="${PINNED}"]');
+		const pin = row ? row.querySelector('[data-session-pin]') : null;
+		const seen = { pinKeydown: 0, pinKeypress: 0, pinClick: 0, anyClick: 0 };
+		window.__u2Walk = seen;
+		const isPin = (event) => pin !== null && (event.target === pin || pin.contains(event.target));
+		document.addEventListener("keydown", (event) => { if (isPin(event)) seen.pinKeydown += 1; }, true);
+		document.addEventListener("keypress", (event) => { if (isPin(event)) seen.pinKeypress += 1; }, true);
+		document.addEventListener("click", (event) => { seen.anyClick += 1; if (isPin(event)) seen.pinClick += 1; }, true);
+		return { installed: window.__u2Walk !== undefined, pin: pin !== null, focused: document.activeElement === pin };
+	})()`);
+	check(
+		"the recorder is installed, the pin is on the panel, and the pin is what has focus - the state the Enter chord is about to be sent into",
+		recorder.installed === true &&
+			recorder.pin === true &&
+			recorder.focused === true,
+		JSON.stringify({ ...recorder, ...onThePin }),
+	);
 	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 	await wait(500);
 	geometry["keyboard-unpin-280"] = await rowSpaceGeometry(cdp, IDS);
@@ -3930,12 +3962,44 @@ async function sceneRowSpace(cdp) {
 			};
 		})()`,
 	);
+	const delivered = await cdp.evaluate(
+		"(() => (window.__u2Walk ? { ...window.__u2Walk } : null))()",
+	);
+	/*
+	 * THE INSTRUMENT'S HALF, ASSERTED SEPARATELY (agent review round 3): a chord that cannot
+	 * activate a button must fail as the rig's fault, not as the app's. This is the check
+	 * that says which half is which, and the behaviour check below carries the same two
+	 * clauses so it cannot pass while activation was never delivered.
+	 */
 	check(
-		"unpinning from the keyboard flips the state and keeps the row's place: the pair stays displayed and focus stays inside the row (U2)",
-		afterUnpin.pressed === "false" &&
+		"the Enter chord reached the focused pin through Chromium's input pipeline and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)",
+		delivered !== null && delivered.pinKeydown > 0 && delivered.pinClick > 0,
+		JSON.stringify({ delivered, activeTag: afterUnpin.activeTag }),
+	);
+	/*
+	 * AND THE VERDICT IS NAMED. Three different faults produce the same pixels on this step,
+	 * and the reading has to say which one the run found: the chord never arriving, the
+	 * chord arriving without activation, and the app not moving a state it was told to move.
+	 */
+	const verdict =
+		delivered === null
+			? "rig: the recorder is gone"
+			: delivered.pinKeydown === 0
+				? "rig: the Enter chord never reached the pin (no keydown on it)"
+				: delivered.pinClick === 0
+					? "rig: the chord reached the pin and produced no activation (keydown, no click)"
+					: afterUnpin.pressed === "false"
+						? "app: activation delivered, the state moved"
+						: "app: activation delivered, the state did not move";
+	check(
+		"unpinning from the keyboard flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
+		delivered !== null &&
+			delivered.pinKeydown > 0 &&
+			delivered.pinClick > 0 &&
+			afterUnpin.pressed === "false" &&
 			afterUnpin.pairDisplay === "flex" &&
 			afterUnpin.focusInsideRow === true,
-		JSON.stringify(afterUnpin),
+		JSON.stringify({ ...afterUnpin, delivered, verdict }),
 	);
 
 	const geometryPath = join(
@@ -7238,12 +7302,15 @@ const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
  *
  * `keyUp` follows every press, because a held key is a different case the app
  * answers differently (`repeat`) and a chord left down would leak into the next
- * step's reading.
+ * step's reading. Each key's own CHARACTER rides the down half — see `keyText`, which is
+ * not decoration: without it a chord reaches the page and performs no default action at
+ * all, which is how a real button press went missing.
  */
 async function pressChord(
 	cdp,
 	{ key, code, virtualKeyCode, modifiers = 0, commands },
 ) {
+	const text = keyText({ code, key, modifiers });
 	for (const type of ["keyDown", "keyUp"]) {
 		await cdp.send("Input.dispatchKeyEvent", {
 			type,
@@ -7252,6 +7319,13 @@ async function pressChord(
 			modifiers,
 			windowsVirtualKeyCode: virtualKeyCode,
 			nativeVirtualKeyCode: virtualKeyCode,
+			/*
+			 * THE CHARACTER GOES ON THE DOWN HALF ONLY, like a real keyboard: the up event
+			 * carries no character, and sending one there would dispatch a second one.
+			 */
+			...(type === "keyDown" && text !== null
+				? { text, unmodifiedText: text }
+				: {}),
 			/*
 			 * An EDITING chord needs Chromium's own editing command. A bare
 			 * modifier+key pair reaches the page and performs no edit, so `Cmd+A`
@@ -7262,6 +7336,42 @@ async function pressChord(
 			...(type === "keyDown" && commands ? { commands } : {}),
 		});
 	}
+}
+
+/**
+ * ONE CHORD'S OWN CHARACTER, when the key it names produces one.
+ *
+ * `Input.dispatchKeyEvent` carries the character a key generates in `text` (and
+ * `unmodifiedText`), and leaving it off is not a tidiness question: the browser's DEFAULT
+ * ACTIVATION of a focused control arrives on the character phase, so a chord sent without
+ * it reaches the page and performs no default action at all. This file has measured that
+ * and worked around it twice rather than fixing it here — the browser pane's trigger had
+ * to be opened with a programmatic click because "`Input.dispatchKeyEvent` for Enter does
+ * not produce Chromium's default activation for the button over this CDP path", and an
+ * editing chord needed Chromium's own `commands` because a bare modifier+key performs no
+ * edit. Both are this omission, and the `row-space` scene's keyboard-unpin walk is where
+ * it is now asserted instead of worked around (its delivery precondition reads the pin's
+ * own keydown and click, so a chord that cannot activate a button is named as the rig's
+ * failure rather than the app's).
+ *
+ * The map is the contract's own rule ("not needed for keys that do not generate text")
+ * spelled out for the keys this file presses, read from `code` because that is the
+ * physical key and `key` is what the layout made of it:
+ *
+ *   - Enter and Space, because a focused button is activated by them (Enter on the down
+ *     half, Space on the up), which is the case every keyboard walk depends on;
+ *   - Tab, because a real keyboard sends its character too;
+ *   - a single printable character, because that is what an editor receives;
+ *   - NONE for Escape, the arrows or the function keys, and none for a chord carrying a
+ *     modifier: `Cmd+A` is a command rather than a character, which is what `commands` is
+ *     for.
+ */
+function keyText({ code, key, modifiers }) {
+	if (modifiers !== 0) return null;
+	if (code === "Enter" || code === "NumpadEnter") return "\r";
+	if (code === "Space") return " ";
+	if (code === "Tab") return "\t";
+	return key.length === 1 && key > " " ? key : null;
 }
 
 /**
@@ -8019,12 +8129,17 @@ async function sceneBrowserPane(cdp) {
 		 * Enter and what leaves `document.activeElement` on `<body>`.
 		 *
 		 * The activation is a programmatic click on the FOCUSED trigger rather than a
-		 * synthesised Enter, and the reason is measured: `Input.dispatchKeyEvent` for
-		 * Enter does not produce Chromium's default activation for the button over
-		 * this CDP path, so the pane never opened and the step reported the state it
-		 * was in rather than the state it meant. Focus is the half that matters here,
-		 * and a programmatic click does not move it - the assertion below checks the
-		 * caret really was lost, so this is not an assumption.
+		 * synthesised Enter, and the reason is measured: an Enter chord dispatched without
+		 * its character does not produce Chromium's default activation for the button over
+		 * this CDP path, so the pane never opened and the step reported the state it was in
+		 * rather than the state it meant. THE CAUSE IS THE MISSING CHARACTER PHASE rather
+		 * than the protocol: `Input.dispatchKeyEvent` carries a key's character in `text`,
+		 * and the default activation arrives on it - `pressChord`'s `keyText` sends it now,
+		 * and the `row-space` scene's keyboard-unpin walk is the check that asserts it (its
+		 * delivery precondition reads the pin's own keydown and click). This step stays a
+		 * click because focus is the half that matters here, and a programmatic click does
+		 * not move it - the assertion below checks the caret really was lost, so this is not
+		 * an assumption.
 		 */
 		await verb(cdp, "press", {
 			selector: '[data-tour-tag="browser-pane-close"]',
