@@ -56,8 +56,8 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 	),
 	"Invalid API key": (
 		<p>
-			Your API key is invalid. Go to the {settingsLink()} to update your API
-			key.
+			Your API key is invalid. Update it in the {settingsLink()}, or replace it
+			by telling the agent with the <code>/credential</code> gesture.
 		</p>
 	),
 	"404 models": (

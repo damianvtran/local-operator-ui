@@ -75,7 +75,6 @@ export type PaletteIconName =
 	| "integrations"
 	| "providers"
 	| "backend"
-	| "credentials"
 	| "updates"
 	| "plus"
 	| "new-chat"
@@ -148,8 +147,8 @@ export type PaletteItem = {
 	/**
 	 * Words a user might type instead of the name. This is where the palette's
 	 * "semantic" half lives: the app's own vocabulary is terse ("Appearance",
-	 * "API credentials") and people search with the words they use for the
-	 * thing ("dark mode", "api key").
+	 * "Backend settings") and people search with the words they use for the
+	 * thing ("dark mode", "temperature").
 	 */
 	keywords?: string[];
 	/** Lower-weight haystack: help text, previews, descriptions. */
@@ -819,10 +818,6 @@ const SETTINGS_META: Record<
 			"web search",
 			"temperature",
 		],
-	},
-	credentials: {
-		icon: "credentials",
-		keywords: ["api key", "api keys", "keys", "tokens", "secrets", "env"],
 	},
 	updates: {
 		icon: "updates",

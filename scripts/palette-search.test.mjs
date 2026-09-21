@@ -55,7 +55,6 @@ const PAGES = [
 const SECTIONS = [
 	{ id: "general", label: "General settings" },
 	{ id: "appearance", label: "Appearance" },
-	{ id: "credentials", label: "API credentials" },
 ];
 
 const ACTIONS = [
@@ -227,7 +226,6 @@ test("an empty query browses, in group order, and leaves the registry out", () =
 		"Clear conversation",
 		"General settings",
 		"Appearance",
-		"API credentials",
 	]);
 	/*
 	 * The registry's keys are searchable but not browsable: seventy rows in the
