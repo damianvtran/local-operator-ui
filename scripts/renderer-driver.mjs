@@ -1410,6 +1410,62 @@ async function waitForNoToasts(cdp, timeoutMs = 15_000) {
  * would pass for the BUTTON's own `hover:bg-row-hover` (`rowStyle`), which is what
  * the 56px-short measurement was. What is asked here is which ELEMENTS paint one.
  */
+/**
+ * WHAT THE APP SAYS ABOUT ONE ROW, immediately before something presses it.
+ *
+ * WHY THIS EXISTS (manager's bounded comparison, 2026-09-21). Two presses of the SAME kind of
+ * control behave differently in one run: the refusal step presses its row's archive control and
+ * a 409 comes back, while the refused-unarchive walk presses its row's archive control and
+ * nothing happens - no offer, no write, no failure, `rowLabel: null`. The pointer hypothesis
+ * died (a stationary press behaves identically to a moving one), so the difference has to be
+ * read off the two rows' own states rather than reasoned about from the source. This samples
+ * both sides of the press: the DOM's own fields for the row and its control, and the store's
+ * archive faces. It is a READING, not a check - it asserts nothing, so it cannot make a scene
+ * pass.
+ */
+async function rowForensics(cdp, sessionId) {
+	const dom = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-session-row="${sessionId}"]');
+		if (!row) return { row: false };
+		const control = row.querySelector("[data-session-archive]");
+		const attrs = (el) => {
+			const out = {};
+			for (const a of el.attributes)
+				if (a.name.startsWith("data-") || a.name.startsWith("aria-"))
+					out[a.name] =
+						a.value.length > 48 ? a.value.slice(0, 48) + "..." : a.value;
+			return out;
+		};
+		const box = control ? control.getBoundingClientRect() : null;
+		return {
+			row: true,
+			rowAttrs: attrs(row),
+			control: control
+				? {
+						label: (control.textContent || "").trim().slice(0, 32),
+						aria: control.getAttribute("aria-label"),
+						box: { w: Math.round(box.width), h: Math.round(box.height) },
+						attrs: attrs(control),
+						disabled: control.disabled === true,
+					}
+				: null,
+		};
+	})()`);
+	const state = await verb(cdp, "state").catch(() => null);
+	return {
+		sessionId,
+		dom,
+		store: state
+			? {
+					activeSessionId: state.activeSessionId ?? null,
+					sessionCount: state.sessionCount ?? null,
+					archiveAttempts: state.archiveAttempts ?? null,
+					archiveFailure: state.archiveFailure ?? null,
+				}
+			: null,
+	};
+}
+
 async function readRowGrounds(cdp) {
 	return cdp.evaluate(`(() => {
 		const rows = [...document.querySelectorAll("[data-session-row]")];
@@ -2187,6 +2243,10 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
 	await wait(300);
 	await hoverOver(cdp, claimedRow);
+	note(
+		"row forensics, refusal step (the press that WORKS)",
+		JSON.stringify(await rowForensics(cdp, REFUSED_ID)),
+	);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
@@ -3011,15 +3071,23 @@ async function sceneSessionArchive(cdp) {
 	 * and acts steps above put it, and the reveal is ASSERTED before the press rather than
 	 * assumed - three checks about the app failed on this one scene-setup error.
 	 */
-	let undoRevealed = false;
-	for (let attempt = 0; attempt < 5; attempt += 1) {
-		await hoverOver(cdp, undoRow);
-		await wait(500);
-		if ((await drawn(`${undoRow} [data-session-archive]`)) === true) {
-			undoRevealed = true;
-			break;
-		}
-	}
+	/*
+	 * PROMPTLY, BECAUSE THE DWELL IS THE DIFFERENCE (manager's bounded comparison, 2026-09-21).
+	 * Sampled live across the two presses, the row that WORKS carries `data-state: "closed"` -
+	 * no tooltip - while this one carried `data-state: "delayed-open"` with `aria-describedby`
+	 * and popper side/align set, because the walk dwelt on the row long enough for the app's own
+	 * flyout to open. Both controls measured 24x24 and `disabled: false`, so the press had a real
+	 * box either way; what differed was the state the row was in when it arrived. This mirrors
+	 * the working step's timing - hover the row, then the control, then press, inside the
+	 * tooltip's own delay - and the forensics note below prints the state it actually reached,
+	 * so the reading stays checkable rather than assumed.
+	 */
+	await hoverOver(cdp, undoRow);
+	await wait(300);
+	await hoverOver(cdp, `${undoRow} [data-session-archive]`);
+	await wait(150);
+	const undoRevealed =
+		(await drawn(`${undoRow} [data-session-archive]`)) === true;
 	check(
 		"the row this walk presses is revealed before it is pressed",
 		undoRevealed === true,
@@ -3034,6 +3102,19 @@ async function sceneSessionArchive(cdp) {
 	 * row's label null; the pointer is already where it needs to be, so the press only has to
 	 * land without a move in front of it.
 	 */
+	/*
+	 * AND THE POINTER GOES ON THE CONTROL, which is what the press that WORKS in this same run
+	 * does: the refusal step hovers the row, then hovers the CONTROL itself, then presses it -
+	 * and the press lands. This walk hovered only the row, so its control was drawn but had never
+	 * had the pointer on it, and a stationary press there did nothing either - which is what
+	 * exonerated the pointer's movement and left the control's own arming as the difference.
+	 */
+	await hoverOver(cdp, `${undoRow} [data-session-archive]`);
+	await wait(300);
+	note(
+		"row forensics, walk (the press that does NOTHING)",
+		JSON.stringify(await rowForensics(cdp, REFUSED_UNDO_ID)),
+	);
 	const undoControl = await verb(
 		cdp,
 		"measure",
