@@ -55,6 +55,10 @@ const bundle = await build({
 			// The capture paths' own judgement of a frame (Q-6/Q-7): the predicate both
 			// paths ask, exported from the module that owns it rather than restated here.
 			'export * from "./src/main/console/capture";',
+			// The capture document's URL derivation (code review round 1, B1): the dev
+			// origin and the built file URL are different shapes, and only one of them
+			// is a suffix replacement.
+			'export * from "./src/main/console/capture-url";',
 			'export * from "./src/main/console/history";',
 			'export * from "./src/main/console/protocol";',
 			'export * from "./src/main/console/dispatch";',
@@ -74,7 +78,10 @@ const bundle = await build({
 			// The error class the refusals must be instances of, so `rpc.ts`'s
 			// `instanceof` narrowing is what the tests exercise.
 			'export { BrowserHostError } from "./src/main/browser/errors";',
-			'export { ipcMain } from "electron";',
+			// The window class as well as the handler registry: the capture view creates its
+			// own window, and a test that cannot reach it cannot assert the grid it was
+			// sized from (code review round 1, B2).
+			'export { BrowserWindow, ipcMain } from "electron";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -119,6 +126,9 @@ const {
 	MIN_COLS,
 	MAX_COLS,
 	hasTerminalContent,
+	ConsoleCaptureView,
+	BrowserWindow,
+	consoleCaptureUrlFor,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
 	ConsoleHistory,
@@ -2663,4 +2673,151 @@ test("hasTerminalContent answers about the picture, not about the PNG's size", (
 		true,
 		"a sparse live console is content, which is the whole of Q-7",
 	);
+});
+
+/**
+ * THE CAPTURE VIEW'S TWO INVARIANTS, both of which code review round 1's B2 found broken.
+ *
+ * The shipped class is driven against the Electron stub, which models exactly what it
+ * touches: a window whose `webContents` records what it was sent, and an `ipcMain` that can
+ * be asked and ANSWERED (or deliberately not answered). The record is empty, which the
+ * offscreen path accepts without the content guard, so the frame's bytes are not what this
+ * test is about — the WINDOW is.
+ *
+ *   - a refused capture still arms the reap (it used to live for the life of the app);
+ *   - a window that never answered the measurement handshake is asked again before it is
+ *     trusted, so the next frame is sized from the cell it reports rather than from the
+ *     8/16 defaults a failed handshake left behind — which is the silently-cropped frame
+ *     the finding described.
+ */
+test("a capture view re-measures a window whose handshake failed, and reaps either way", async () => {
+	ipcMain.reset();
+	BrowserWindow.instances.length = 0;
+	const view = new ConsoleCaptureView({
+		url: "http://127.0.0.1:9/console-capture.html",
+		preload: "/tmp/does-not-matter.js",
+		log: () => {},
+		// The bound is injected so a tripped one is reachable in a test rather than
+		// after the production 30 s; the idle window stays long so nothing is reaped
+		// under the assertions.
+		settleTimeoutMs: 80,
+		idleMs: 60_000,
+	});
+	const request = {
+		surface: "con:1:abcdef",
+		cols: 100,
+		rows: 30,
+		theme: null,
+		bytes: new Uint8Array(0),
+	};
+	/**
+	 * Wait until the view has SENT `channel` more times than `after`, and hand back the
+	 * window it sent it to. The page is a stub, so an answer has to be delivered by the
+	 * test — and the count is what keeps the second capture's answer from landing on the
+	 * first capture's request.
+	 */
+	const awaitSend = async (channel, after) => {
+		const deadline = Date.now() + 2_000;
+		while (Date.now() < deadline) {
+			const window = BrowserWindow.instances.at(-1);
+			const sent =
+				window?.webContents.sent.filter((m) => m.channel === channel).length ??
+				0;
+			if (sent > after) return window;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error(`the capture view never sent ${channel}`);
+	};
+
+	await assert.rejects(
+		() => view.capture(request),
+		(error) =>
+			error.code === "capture_unavailable" &&
+			/console-capture-measured/.test(error.message),
+		"a handshake nobody answers trips the bound rather than hanging",
+	);
+	assert.equal(
+		view.reapArmed,
+		true,
+		"a refused capture must still arm the reap (B2: it left the renderer alive with no timer)",
+	);
+	const window = BrowserWindow.instances.at(-1);
+	assert.equal(
+		window.contentSizes.length,
+		0,
+		"nothing is sized until the cell is known",
+	);
+
+	/*
+	 * THE SECOND CAPTURE, answered with a cell that is NOT the default. Pre-fix this
+	 * return was the live window straight away, so the grid was sized from the 8/16 the
+	 * failed handshake left behind — 800x480 — and the frame was silently cropped.
+	 */
+	const pending = view.capture(request);
+	const measured = await awaitSend("console-capture-measure", 1);
+	ipcMain.emit(
+		"console-capture-measured",
+		{ sender: measured.webContents },
+		{ cellWidth: 9, cellHeight: 18 },
+	);
+	const fed = await awaitSend("console-capture-feed", 0);
+	ipcMain.emit(
+		"console-capture-settled",
+		{ sender: fed.webContents },
+		{ renderer: "dom" },
+	);
+	const frame = await pending;
+
+	assert.equal(frame.renderer, "dom");
+	assert.deepEqual(
+		window.contentSizes.at(-1),
+		{ width: 900, height: 540 },
+		"the re-run handshake's cell (9x18) sized the window, not the 8x16 defaults it inherited",
+	);
+	assert.equal(
+		BrowserWindow.instances.length,
+		1,
+		"the same window was re-measured rather than replaced",
+	);
+	view.dispose();
+});
+
+/**
+ * THE CAPTURE DOCUMENT'S TWO SHAPES (code review round 1, B1).
+ *
+ * The defect this pins: electron-vite's `ELECTRON_RENDERER_URL` is an ORIGIN with no
+ * document in it, so a suffix replacement was a no-op in development and the hidden capture
+ * window mounted the app's own `index.html`. Nothing in a built or packaged run is affected,
+ * which is exactly why every rig and every sweep missed it — so the shapes are pinned here,
+ * against the shipped function, rather than trusted to a dev run somebody has to remember to
+ * make.
+ */
+test("the capture document is appended to a dev origin and is a sibling in a built tree", () => {
+	// A dev origin, with and without the trailing slash the dev server may or may not add.
+	assert.equal(
+		consoleCaptureUrlFor("http://localhost:5173"),
+		"http://localhost:5173/console-capture.html",
+	);
+	assert.equal(
+		consoleCaptureUrlFor("http://localhost:5173/"),
+		"http://localhost:5173/console-capture.html",
+	);
+	// The built tree's file URL: the sibling of index.html, not a path appended to it.
+	assert.equal(
+		consoleCaptureUrlFor("file:///app/out/renderer/index.html"),
+		"file:///app/out/renderer/console-capture.html",
+	);
+	// A query on the document survives the derivation for the same reason.
+	assert.equal(
+		consoleCaptureUrlFor("file:///app/out/renderer/index.html?x=1"),
+		"file:///app/out/renderer/console-capture.html",
+	);
+	// And the property that makes it a fix rather than a spelling: the two dev shapes never
+	// resolve to the app's own document.
+	for (const url of ["http://localhost:5173", "http://localhost:5173/"]) {
+		assert.ok(
+			!/index\.html$/.test(consoleCaptureUrlFor(url)),
+			`a dev origin must not resolve to the app's own document (${url})`,
+		);
+	}
 });

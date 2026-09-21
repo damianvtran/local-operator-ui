@@ -133,6 +133,13 @@ export interface ConsoleCaptureOptions {
 	preload: string;
 	log: (message: string) => void;
 	idleMs?: number;
+	/**
+	 * The handshake's bound, injectable so a test can meet a tripped one without
+	 * waiting the production 30 s (code review round 1, B2). Defaulted rather than
+	 * required: every real caller wants the cold-boot budget, and only a test wants a
+	 * bound short enough to trip on purpose.
+	 */
+	settleTimeoutMs?: number;
 }
 
 /** The payload the page settles with. */
@@ -152,6 +159,16 @@ export class ConsoleCaptureView {
 		return this.busy;
 	}
 
+	/**
+	 * Whether the view is on a reap timer. Public because it is the class's stated
+	 * contract ("nothing lingers for a session that has stopped asking") and the only
+	 * way to assert it from outside without waiting out the idle window: code review
+	 * round 1's B2 was exactly a refusal that left no timer armed.
+	 */
+	get reapArmed(): boolean {
+		return this.reapTimer !== null;
+	}
+
 	async capture(request: ConsoleCaptureRequest): Promise<ConsoleCaptureResult> {
 		if (this.busy) {
 			throw new ConsoleError(
@@ -166,6 +183,14 @@ export class ConsoleCaptureView {
 			return await this.feed(window.webContents, request);
 		} finally {
 			this.busy = false;
+			/*
+			 * THE REAP IS ARMED ON EVERY EXIT, not only on a frame (code review round 1,
+			 * B2). `scheduleReap` was called from the success path alone, so a measurement
+			 * timeout or a blank-twice refusal left the hidden renderer alive with no timer
+			 * for the life of the app — the opposite of what the class comment promises and
+			 * of what the design's one-at-a-time rule costs if it leaks.
+			 */
+			this.scheduleReap();
 		}
 	}
 
@@ -177,6 +202,9 @@ export class ConsoleCaptureView {
 		}
 		const window = this.window;
 		this.window = null;
+		// The measurement went with the window: a window that is gone has answered
+		// nothing, and the next one must be asked rather than inherit its cell.
+		this.measured = false;
 		if (window && !window.isDestroyed()) window.destroy();
 	}
 
@@ -192,7 +220,23 @@ export class ConsoleCaptureView {
 			clearTimeout(this.reapTimer);
 			this.reapTimer = null;
 		}
-		if (this.window && !this.window.isDestroyed()) return this.window;
+		/*
+		 * A LIVE WINDOW IS ONLY TRUSTWORTHY IF IT WAS MEASURED (code review round 1, B2).
+		 *
+		 * `this.window` is assigned before `loadURL`, so a handshake that timed out left a
+		 * live window and the 8/16 cell DEFAULTS behind it. Returning that window early
+		 * then sized the next capture from the wrong cell and handed back a silently
+		 * cropped frame — a wrong picture is worse than a refusal, and it is invisible
+		 * from the caller's side. So the handshake is keyed on whether it HAPPENED, not on
+		 * whether a window exists: a window that answered is reused for free (the whole
+		 * point of the idle window), and one that did not is asked again before it is
+		 * trusted.
+		 */
+		if (this.window && !this.window.isDestroyed()) {
+			if (this.measured) return this.window;
+			return this.measure(this.window);
+		}
+		this.measured = false;
 		const window = new BrowserWindow({
 			// `show: false` and `paintWhenInitiallyHidden` (Electron's default) is the
 			// measured-working pair: the page paints so there is a frame to capture,
@@ -244,24 +288,34 @@ export class ConsoleCaptureView {
 			this.options.log(`[console] capture view: ${message}`);
 		});
 		await window.loadURL(this.options.url);
-		/*
-		 * THE MEASUREMENT HANDSHAKE, once per window rather than once per attempt.
-		 *
-		 * The page owns the cell metrics, because it owns the font: main has no way to
-		 * measure a face, and the frame is a function of (bytes, grid, theme, font,
-		 * renderer), so the grid's pixel size has to come from the same place the
-		 * glyphs do. Cached for the life of the view - a second capture in the idle
-		 * window pays neither the launch nor the measurement.
-		 */
+		return this.measure(window);
+	}
+
+	/**
+	 * THE MEASUREMENT HANDSHAKE, once per window rather than once per attempt.
+	 *
+	 * The page owns the cell metrics, because it owns the font: main has no way to
+	 * measure a face, and the frame is a function of (bytes, grid, theme, font,
+	 * renderer), so the grid's pixel size has to come from the same place the
+	 * glyphs do. Cached for the life of the view - a second capture in the idle
+	 * window pays neither the launch nor the measurement - which is why the cache is
+	 * guarded by `measured` rather than by the window's existence.
+	 */
+	private async measure(window: BrowserWindow): Promise<BrowserWindow> {
 		const measured = await waitForCapture(
 			window.webContents,
 			"console-capture-measured",
 			() => window.webContents.send("console-capture-measure"),
+			this.options.settleTimeoutMs,
 		);
 		this.cellWidth = numberOr(measured.cellWidth, 8);
 		this.cellHeight = numberOr(measured.cellHeight, 16);
+		this.measured = true;
 		return window;
 	}
+
+	/** Whether the live window has answered the measurement handshake. */
+	private measured = false;
 
 	private cellWidth = 8;
 	private cellHeight = 16;
@@ -322,6 +376,7 @@ export class ConsoleCaptureView {
 						theme: request.theme,
 						bytes_base64: Buffer.from(request.bytes).toString("base64"),
 					}),
+				this.options.settleTimeoutMs,
 			);
 			const renderer = stringOr(
 				(settled as CaptureSettledReport).renderer,
@@ -397,6 +452,7 @@ const waitForCapture = (
 	contents: WebContents,
 	channel: string,
 	onWaiting: () => void,
+	timeoutMs: number = SETTLE_TIMEOUT_MS,
 ): Promise<Record<string, unknown>> =>
 	new Promise((resolve, reject) => {
 		/*
@@ -421,11 +477,11 @@ const waitForCapture = (
 			reject(
 				new ConsoleError(
 					"capture_unavailable",
-					`the capture view did not report ${channel} within ${SETTLE_TIMEOUT_MS} ms`,
+					`the capture view did not report ${channel} within ${timeoutMs} ms`,
 					{ rendered: "offscreen" },
 				),
 			);
-		}, SETTLE_TIMEOUT_MS);
+		}, timeoutMs);
 		ipcMain.on(channel, listener);
 		onWaiting();
 	});

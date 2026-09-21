@@ -816,7 +816,6 @@ export class ConsoleHost {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
 		this.requireRunning(entry);
-		this.markActor(entry, actor);
 		const raw = payload.bytes ?? ENCODER.encode(payload.text ?? "");
 		if (raw.length > MAX_INPUT_BYTES) {
 			// Refused BEFORE anything reaches the pty, so "accepted: 0 bytes" is the
@@ -831,6 +830,14 @@ export class ConsoleHost {
 				{ accepted: 0, limit: MAX_INPUT_BYTES },
 			);
 		}
+		/*
+		 * THE ACTOR IS MARKED WHEN THE BYTES ARE TAKEN, not when they are offered (code
+		 * review round 1, B3). `markActor` used to run before the refusals, so a refused
+		 * write still flipped `last_actor` and pushed a state change for a keystroke that
+		 * never reached the pty — the pane's "who typed this" marker would credit a caller
+		 * for a payload the host rejected.
+		 */
+		this.markActor(entry, actor);
 		const bracketed =
 			payload.paste === true && runtime.emulator.grid.modes.bracketedPaste;
 		const bytes = bracketed ? wrapBracketedPaste(raw) : raw;
@@ -847,7 +854,6 @@ export class ConsoleHost {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
 		this.requireRunning(entry);
-		this.markActor(entry, actor);
 		await runtime.emulator.whenIdle();
 		const modes = runtime.emulator.grid.modes;
 		// Encode the WHOLE list before writing any of it. A refusal halfway through a
@@ -868,6 +874,9 @@ export class ConsoleHost {
 				{ accepted: [...NAMED_KEYS], key: unknown },
 			);
 		}
+		// Marked here for the same reason `input` is (B3): an unknown key is a refusal,
+		// and a refusal is not an actor's keystroke.
+		this.markActor(entry, actor);
 		const sequences: string[] = [];
 		for (const bytes of encoded) {
 			if (!bytes) continue;
