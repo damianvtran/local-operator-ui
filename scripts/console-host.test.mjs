@@ -1185,6 +1185,27 @@ test("a subscriber that falls behind is capped, and the record keeps every byte"
 	);
 	const read = await host.read(created.surface, "viewport");
 	assert.equal(read.truncated, false, "the record's read is complete");
+	/*
+	 * AND THE RECORD HAS EVERY BYTE, asserted rather than left inferential. A fresh
+	 * subscribe replays the byte log from offset 0, and the log is a 4 MiB ring against
+	 * this cell's 2.5 MiB, so the replay IS the whole flood — every byte the pty emitted,
+	 * whatever the live view had to drop.
+	 */
+	const wholeRecord = host.subscribe(created.surface, 0, {
+		output: () => {},
+		exit: () => {},
+	});
+	assert.equal(
+		wholeRecord.bytes.length,
+		total,
+		"the byte log holds every byte the pty emitted, whatever the live view dropped",
+	);
+	assert.equal(wholeRecord.to, total, "and its end offset is the byte count");
+	assert.equal(
+		wholeRecord.truncated,
+		false,
+		"nothing was trimmed out of the ring",
+	);
 });
 
 test("a surface that asked not to be retained writes nothing, even when a flush is asked for", async () => {

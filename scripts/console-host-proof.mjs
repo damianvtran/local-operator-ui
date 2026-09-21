@@ -2098,11 +2098,24 @@ async function main() {
 	 * chmods per pty chunk plus a staged sidecar rewrite — measured independently at
 	 * ~6-7 ms per 8 KiB chunk on the thread that draws the app's windows.
 	 */
-	const FLOOD_BYTES = 32 * 1024 * 1024;
+	/*
+	 * THE STIMULUS IS SIZED TO THE DEADLINE, NOT THE OTHER WAY AROUND (review round 3, B4).
+	 *
+	 * 8 MiB, because a pty is a slow pipe and the reviewer measured this one: 4 MiB ≈ 5.5 s
+	 * and 8 MiB ≈ 11 s through the pty on this host (linear — 32 MiB took 43.4 s and was
+	 * what made the previous revision fail a cell that requires the producer to EXIT). 8 MiB
+	 * is still a genuine burst — ~2.6 M chunks of output under retention — with ~2.7x
+	 * headroom under the deadline below, and the app's per-chunk work can only make it
+	 * slower. Not re-measured this round: measuring it needs the app launched, which this
+	 * round's rules put out of bounds; QA's bounded live run is where the number is confirmed.
+	 */
+	const FLOOD_BYTES = 8 * 1024 * 1024;
 	/**
 	 * The deadline for a stimulus that has ALREADY been told how big it is: the loop below
-	 * ends on the producer's exit, and this is the bound that keeps a wedged surface from
-	 * holding the cell open. It is no longer the thing that decides the volume.
+	 * ends on the producer's exit, and this is the bound that keeps a WEDGED SURFACE from
+	 * holding the cell open — not the thing that decides the volume. It is sized above the
+	 * stimulus's own measured cost (8 MiB ≈ 11 s) so a loaded host cannot turn the deadline
+	 * into the reason a cell fails.
 	 */
 	const FLOOD_DEADLINE_MS = 30_000;
 	/**
@@ -2132,6 +2145,26 @@ async function main() {
 		await rpcOk(state, "console_status", { surface: floodSurface.surface });
 		return Date.now() - startedAt;
 	};
+	/*
+	 * A SUBSCRIBER IS ATTACHED FOR THE FLOOD (review round 3, B5). Without one `broadcast`
+	 * returns before it touches `pending`, so the ceiling this round added is never
+	 * consulted and the cell would be evidence for nothing about it. The subscription goes
+	 * through the app's OWN renderer and the pane's own preload API — the same call the pane
+	 * makes — so what runs is the shipped path rather than a test-only door.
+	 *
+	 * WHAT THIS CELL DOES AND DOES NOT PROVE, stated because the honest scope is narrower
+	 * than "the ceiling is covered". It proves the live path is the one under load (frames
+	 * are being coalesced and delivered to a real subscriber through the whole flood), that
+	 * main answers every status call while it happens, and that the app tree stays under its
+	 * RSS ceiling. It does NOT prove the drop path fires: a loop that keeps taking turns
+	 * flushes `pending` every 16 ms, so at this rate the array never reaches 1 MiB, and the
+	 * reviewer's own probe measured exactly that (largest frame 22,668 B, 2.2 % of the
+	 * ceiling). The drop itself is pinned deterministically in `console-host.test.mjs`, which
+	 * drives a 2.5 MiB backlog past the ceiling from a subscriber that never drains.
+	 */
+	const floodSubscription = await rendererEvaluate(
+		`window.api.console.subscribe(${JSON.stringify(floodSurface.surface)}, 0)`,
+	);
 	const baseline = [];
 	for (let index = 0; index < 10; index += 1) baseline.push(await sample());
 	const rssBefore = appTreeRssBytes(app.child.pid);
@@ -2162,6 +2195,13 @@ async function main() {
 		 * GROUP, by the pid only main holds: the pty's child is a child of the app, so the
 		 * rig has no ppid for it and the surface is the handle it does have.
 		 */
+		try {
+			await rendererEvaluate(
+				`window.api.console.unsubscribe(${JSON.stringify(floodSurface.surface)})`,
+			);
+		} catch {
+			/* the renderer is gone; its subscription went with it */
+		}
 		try {
 			await rpcOk(state, "console_close", {
 				surface: floodSurface.surface,
@@ -2233,6 +2273,8 @@ async function main() {
 			exit_epoch: flooded?.exit_epoch,
 			bytes: FLOOD_BYTES,
 			producerExitCode: flooded?.exit_code,
+			subscriberAttached: floodSubscription?.surface ?? null,
+			replayBytesAtSubscribe: floodSubscription?.replay_base64?.length ?? null,
 			surface: floodSurface.surface,
 		},
 	);

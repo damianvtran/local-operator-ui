@@ -278,7 +278,11 @@ export interface SurfaceRuntime {
 	pendingBytes: number;
 	/** Bytes dropped from `pending` because a subscriber fell behind. Reported by
 	 * `console_status` beside the log's `truncated`, so a lossy live view is a fact a
-	 * caller can read rather than a frame that quietly never arrived. */
+	 * caller can read rather than a frame that quietly never arrived.
+	 *
+	 * MONOTONIC: it accumulates for the life of the surface and is never reset, so a
+	 * reader compares two readings rather than treating a number as "how far behind the
+	 * pane is right now" — a pane that caught up still reports the bytes it missed. */
 	droppedLiveBytes: number;
 	pendingTimer: NodeJS.Timeout | null;
 	/** The armed flush of this surface's retained bytes (§7.2). One timer per
@@ -672,6 +676,9 @@ export class ConsoleHost {
 			// drops history it was told to bound, this drops frames a subscriber could
 			// not take. Two numbers because they answer two different questions, and a
 			// caller reasoning about a pane's fidelity needs this one.
+			//
+			// MONOTONIC for the life of the surface: it accumulates and does not reset,
+			// so two readings compare and neither means "how far behind the pane is now".
 			dropped_live_bytes: runtime?.droppedLiveBytes ?? 0,
 			modes: grid?.modes ?? null,
 			cursor: grid?.cursor ?? null,
@@ -1230,6 +1237,9 @@ export class ConsoleHost {
 			runtime.pendingBytes > LIVE_PENDING_MAX_BYTES &&
 			runtime.pending.length > 1
 		) {
+			// The guard is for the type checker rather than for a case: `length > 1` above
+			// means a chunk is always there to take, and it is never a falsy one (a
+			// zero-length chunk is still an object).
 			const oldest = runtime.pending.shift();
 			if (!oldest) break;
 			runtime.pendingBytes -= oldest.length;
@@ -1239,7 +1249,7 @@ export class ConsoleHost {
 			// reader is trying to read.
 			if (runtime.droppedLiveBytes === oldest.length) {
 				this.options.log(
-					`[console] surface ${entry.record.surface} is behind by more than ${LIVE_PENDING_MAX_BYTES} B; the live view drops its oldest frames (the record keeps every byte)`,
+					`[console] surface ${redactSurface(entry.record.surface)} is behind by more than ${LIVE_PENDING_MAX_BYTES} B; the live view drops its oldest frames (the record keeps every byte)`,
 				);
 			}
 		}

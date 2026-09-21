@@ -4,6 +4,14 @@ Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-6629
 Result: every check passed
 Reaped stray spawn-helper processes: 0
 
+> **NOTE, added 2026-09-21 (memory-bounding round).** This transcript is the run at head
+> `5407f5425`. Its flood cell line (`a 30 s `yes` flood…`) is HISTORICAL: that cell sampled for a
+> wall-clock 30 s from an unbounded `yes` and did not require the producer to exit, and it has
+> since been resized to a fixed 8 MiB stimulus that ends on the producer's exit — which is a
+> different cell with a different assertion. The recorded PASS below is not reproducible against
+> the current rig, and the run of the resized cell is outstanding: it needs the app launched, so
+> it belongs to QA's bounded live run rather than to the round that changed it.
+
 
 ## PASS — the discovery record carries the console capability
 
