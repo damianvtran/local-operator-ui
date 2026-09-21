@@ -2089,7 +2089,8 @@ async function sceneSessionArchive(cdp) {
 	 * while the register is drawn - which is exactly the state the fold broke.
 	 */
 	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
-	require("the cluster's hide control is reachable", hideEntities !== null, "no [data-sidebar-hide=entities]");
+	require("the cluster's hide control is reachable", hideEntities !==
+		null, "no [data-sidebar-hide=entities]");
 	await movePointer(cdp, hideEntities.x, hideEntities.y);
 	await wait(320);
 	await pressPointerStationary(cdp, hideEntities.x, hideEntities.y);
@@ -2114,9 +2115,12 @@ async function sceneSessionArchive(cdp) {
 			retryChatsOnly.inViewport === true,
 		JSON.stringify({ entitiesUnmounted, refusalChatsOnly, retryChatsOnly }),
 	);
-	frames.push(await captureSettled(cdp, `archive-refused-chats-only${RUN_LABEL}`));
+	frames.push(
+		await captureSettled(cdp, `archive-refused-chats-only${RUN_LABEL}`),
+	);
 	const showEntities = await splitBox(cdp, '[data-sidebar-restore="entities"]');
-	require("the restore row is drawn", showEntities !== null, "no restore row for the entity region");
+	require("the restore row is drawn", showEntities !==
+		null, "no restore row for the entity region");
 	await movePointer(cdp, showEntities.x, showEntities.y);
 	await wait(320);
 	await pressPointerStationary(cdp, showEntities.x, showEntities.y);
@@ -2173,7 +2177,8 @@ async function sceneSessionArchive(cdp) {
 	 * chats-only frame above already carries the placement.
 	 */
 	const hideForOffer = await splitBox(cdp, '[data-sidebar-hide="entities"]');
-	require("the cluster's hide control is reachable", hideForOffer !== null, "no [data-sidebar-hide=entities]");
+	require("the cluster's hide control is reachable", hideForOffer !==
+		null, "no [data-sidebar-hide=entities]");
 	await movePointer(cdp, hideForOffer.x, hideForOffer.y);
 	await wait(320);
 	await pressPointerStationary(cdp, hideForOffer.x, hideForOffer.y);
@@ -2189,7 +2194,8 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(offerChatsOnly),
 	);
 	const showForOffer = await splitBox(cdp, '[data-sidebar-restore="entities"]');
-	require("the restore row is drawn", showForOffer !== null, "no restore row for the entity region");
+	require("the restore row is drawn", showForOffer !==
+		null, "no restore row for the entity region");
 	await movePointer(cdp, showForOffer.x, showForOffer.y);
 	await wait(320);
 	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
@@ -2504,7 +2510,10 @@ async function sceneSessionArchive(cdp) {
 	 * own step (188 -> 231 dark, 73 -> 29 light) could not be separated from whatever
 	 * an open menu paints. This frame is that arm and nothing else.
 	 */
-	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"] [data-session-actions]');
+	await hoverOver(
+		cdp,
+		'[data-session-row="b3f1a09c7d52"] [data-session-actions]',
+	);
 	await wait(400);
 	frames.push(await captureSettled(cdp, `shared-hover${RUN_LABEL}`));
 	/*
