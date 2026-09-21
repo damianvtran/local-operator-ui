@@ -640,8 +640,18 @@ test("the shell and the working directory fall back to the user's own", () => {
 	assert.equal(defaultShell({ SHELL: "/bin/zsh" }), "/bin/zsh");
 	// A relative shell is not a shell this app execs: it would resolve against
 	// whatever directory the app happens to be in.
-	assert.equal(defaultShell({ SHELL: "zsh" }), "/bin/zsh");
-	assert.equal(defaultShell({}), "/bin/zsh");
+	assert.equal(defaultShell({ SHELL: "zsh" }), defaultShell({}));
+	/*
+	 * The fallback is asserted as a PROPERTY rather than as a literal (round-1
+	 * review R1-3): it is the platform's own login shell, probed for existence, so
+	 * a machine without zsh gets bash instead of an ENOENT. A literal here would
+	 * have pinned macOS's answer onto every platform this suite runs on - which is
+	 * how the Linux hole went unnoticed - so what this asserts is that the answer
+	 * is an absolute shell that is actually present.
+	 */
+	const fallback = defaultShell({});
+	assert.ok(fallback.startsWith("/bin/"), `${fallback} is not a shell path`);
+	assert.ok(existsSync(fallback), `${fallback} is not a shell that exists`);
 	assert.equal(resolveCwd("/tmp"), "/tmp");
 	assert.equal(resolveCwd("relative/path"), resolveCwd(undefined));
 	assert.ok(resolveCwd(undefined).startsWith("/"));
