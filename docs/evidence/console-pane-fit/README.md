@@ -108,6 +108,24 @@ What the decision is, and what it deliberately is not:
   false` answers `none`), and a create that fails lands on the pane's unavailable
   state, which carries the error — it is not a dead pane.
 
+### A conversation that already had a surface (a separate run, same rig)
+
+One surface was created through the app's own console wire while nobody was
+looking, and the trigger was then pressed the way a user does:
+
+| reading | value |
+| --- | --- |
+| surfaces before the press | **1** |
+| surfaces after the open | **1** |
+| `document.activeElement` at the open | `xterm-helper-textarea` |
+| pane's box | 634.5 px |
+| rows / painted | 37 x 17 = **629** px, **5.5 px inside the box** |
+
+The open FOCUSED the surface that was there and made no second one — which is the
+half of the decision `pickActiveSurface` already answers: a second surface would
+take the lens off the one the user was reading. (The rest of this set's runs start
+from a conversation with no surface, where the same press creates the first one.)
+
 ## What these frames do not show
 
 - **The caret's own rendering.** A `headless` window is never shown and cannot be
