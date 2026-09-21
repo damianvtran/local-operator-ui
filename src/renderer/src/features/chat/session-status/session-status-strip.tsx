@@ -27,6 +27,7 @@ import {
 } from "./session-duration";
 import {
 	bandReadings,
+	effortDisplay,
 	effortState,
 	modelIdentity,
 	reconcileEffort,
@@ -939,7 +940,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			{effort && (!draft || effort.levelKnown) && (
 				<Reading
 					label={[
-						`Reasoning effort: ${effort.label}.`,
+						`Reasoning effort: ${effortDisplay(effort.label)}.`,
 						effortReason(draft, effort.adjustable, Boolean(openEffort)),
 					]
 						.filter(Boolean)
@@ -947,7 +948,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					tooltip={
 						<TooltipLines
 							lines={[
-								effort.label,
+								effortDisplay(effort.label),
 								...(draft && effort.adjustable && !openEffort
 									? [DRAFT_EFFORT_LINE]
 									: [effort.detail]),
@@ -964,7 +965,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					 * The level is a machine-reported value, not prose, so it is
 					 * monospace like every other value in this row.
 					 */}
-					<span className="font-mono text-mono-sm">{effort.label}</span>
+					<span className="font-mono text-mono-sm">
+						{effortDisplay(effort.label)}
+					</span>
 				</Reading>
 			)}
 			<Reading

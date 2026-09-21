@@ -60,6 +60,7 @@ const {
 	contextTooltipLines,
 	costTooltip,
 	cumulativeCostKnowledge,
+	effortDisplay,
 	effortState,
 	formatContextTokens,
 	formatCost,
@@ -629,6 +630,33 @@ test("an older backend with no ladder field degrades rather than claiming `auto`
 	assert.equal(
 		effortState({ model_id: "m", reasoning_effort: "low" }).adjustable,
 		true,
+	);
+});
+
+test("the effort VALUE is title-cased for display, and the raw level is untouched", () => {
+	// The chip and the picker print a level beside the model name, which is
+	// already `Auto` after the router-name fix, so the value column is cased
+	// alike. `effortDisplay` is the one owner of that casing.
+	assert.equal(effortDisplay("auto"), "Auto");
+	assert.equal(effortDisplay("high"), "High");
+	assert.equal(effortDisplay("low"), "Low");
+	assert.equal(effortDisplay("medium"), "Medium");
+	assert.equal(effortDisplay("HIGH"), "High", "cased from any input case");
+	assert.equal(effortDisplay("none"), "None");
+	assert.equal(effortDisplay("xhigh"), "xHigh");
+	// A word this file does not know is still shown, not blanked.
+	assert.equal(effortDisplay("turbo"), "Turbo");
+	assert.equal(effortDisplay(""), "");
+	// DISPLAY-ONLY: the value a consumer sends/compares stays lowercase, which
+	// is what makes casing at the render site safe rather than a wire change.
+	assert.equal(
+		effortState({
+			model_id: "m",
+			reasoning_effort: "high",
+			reasoning_efforts: ["low", "high"],
+		}).label,
+		"high",
+		"the state's label stays the raw lowercase level",
 	);
 });
 

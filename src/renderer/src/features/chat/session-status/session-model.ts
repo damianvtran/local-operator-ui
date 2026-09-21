@@ -306,6 +306,42 @@ export function effortLevel(
 	return null;
 }
 
+/**
+ * The effort level's TITLE-CASED human form for a value slot.
+ *
+ * The chip and the `/effort` picker print a level beside the model name, and
+ * the model chip already reads `Auto` (not `auto`) after the router-name fix.
+ * A value column of capitalised names with a lowercase `high`/`auto` beside
+ * them reads as a raw wire token rather than a name, so the two columns are
+ * cased alike. `Auto` in particular now names a real, SENT level on the
+ * Radient router route, so it belongs beside `Claude Opus 5`, not `claude-opus-5`.
+ *
+ * DISPLAY ONLY. The value this describes is unchanged: `reasoning_effort` goes
+ * on the wire lowercase, the picker's `value` and its `current` comparison stay
+ * the raw rung, and nothing MATCHES on this string. One owner for the casing,
+ * so the chip and the picker cannot drift into casing the same word two ways.
+ *
+ * A word outside the vocabulary is title-cased by its first letter rather than
+ * dropped: an owner may report a rung this file does not know, and the honest
+ * render of an unknown level is the level, not a blank.
+ */
+export function effortDisplay(level: string): string {
+	const trimmed = level.trim();
+	if (!trimmed) return trimmed;
+	const known: Record<string, string> = {
+		auto: "Auto",
+		none: "None",
+		minimal: "Minimal",
+		low: "Low",
+		medium: "Medium",
+		high: "High",
+		xhigh: "xHigh",
+		max: "Max",
+	};
+	const key = trimmed.toLowerCase();
+	return known[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+}
+
 export type EffortState = {
 	/** The word the chip prints. */
 	label: string;
