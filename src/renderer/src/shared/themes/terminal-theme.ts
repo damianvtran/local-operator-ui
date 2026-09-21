@@ -233,7 +233,10 @@ export const terminalFontFamily = (
 	 * With no global `getComputedStyle` there is no rendered surface to read a face from,
 	 * and "monospace" is the same answer the caller's ratio branch is written around.
 	 */
-	if (typeof document === "undefined" || typeof getComputedStyle !== "function") {
+	if (
+		typeof document === "undefined" ||
+		typeof getComputedStyle !== "function"
+	) {
 		return "monospace";
 	}
 	const mono = getComputedStyle(root).getPropertyValue("--font-mono").trim();
