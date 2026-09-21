@@ -14,6 +14,7 @@ import type {
 	ProviderMethod,
 	RadientLoginVerdict,
 } from "@shared/api/local-operator/desktop-api";
+import type { RadientAccountRead } from "@shared/hooks/use-radient-user-query";
 
 export function providerMethodLabel(
 	methods: ProviderMethod[],
@@ -55,7 +56,7 @@ export function primaryMethod(
 export const RADIENT_PROVIDER_ID = "radient";
 
 /**
- * The refused badge's long form, which the grid renders as its `title`, because
+ * The refused badge's long form, which a surface renders as its `title`, because
  * the badge itself cannot wrap. Names the sign-in rather than the account or the
  * machine, and stops short of the remedy the sign-in control beside it offers.
  */
@@ -63,7 +64,44 @@ const REFUSED_DETAIL =
 	"Radient no longer accepts the sign-in stored on this machine";
 
 /**
- * Whether the login verdict refuses the credential a provider row counts.
+ * The unverified badge's long form, for the arm where the app cannot confirm a
+ * credential the census counts.
+ */
+const UNVERIFIED_DETAIL =
+	"This app could not confirm the sign-in stored on this machine";
+
+/**
+ * The two fields of the app's own account read this module needs, spelled as the
+ * hook returns them (`useRadientUserQuery`). `unavailable` is what separates
+ * "this machine holds no Radient sign-in" from "this app cannot ask": a
+ * capability answer without `radient` disables the read, and a disabled React
+ * Query reports `isLoading === false` with no data -- which the hook classifies
+ * as `signed-out` because that is the right answer for the surfaces that render
+ * its sentence, and the WRONG one to narrow a credential row with.
+ */
+export type RadientSignInRead = {
+	accountRead: RadientAccountRead;
+	unavailable: boolean;
+};
+
+/**
+ * What this app can say about the sign-in a provider row counts.
+ *
+ * Three answers, and each one exists because collapsing it into another produced
+ * a wrong claim:
+ *
+ * - `working` -- the store's own answer, which is every provider this app has no
+ *   verdict about;
+ * - `refused` -- the provider itself refuses the stored credential (sign in
+ *   again);
+ * - `unverified` -- the row counts a credential and this app's OWN account read
+ *   answers that no sign-in is stored, so neither "signed in" nor "signed out"
+ *   is a claim worth making.
+ */
+export type ProviderLoginState = "working" | "refused" | "unverified";
+
+/**
+ * The sign-in state for one provider row, from the two facts this app holds.
  *
  * WHY THE CENSUS ALONE CANNOT ANSWER THIS. `has_credential` and `configured`
  * are facts about the STORE -- a row is there, and `is_usable()` says so -- and
@@ -72,25 +110,83 @@ const REFUSED_DETAIL =
  * sign-in path writes it. So the grid asserted "Signed in" in green for a login
  * that was dead, while the composer one screen away said it needed
  * re-authentication and the account section said the user was not signed in
- * (UX U1 on the chat session-issue PR, which is the report this predicate
- * answers). The verdict is the one fact that separates the two.
+ * (UX U1 on the chat session-issue PR). `GET /v1/auth/status`'s
+ * `radient_login` is the fact that separates them.
  *
- * A `null`, absent or unreadable verdict keeps the store's own answer, and so
- * does `unknown`: those are "this machine could not be asked" (an offline
- * refresh, a backend older than the route), and a surface that reads them as a
- * refusal sends a user who is signed in to a sign-in they do not need -- the
- * same misdirection as the green chip, in the other direction.
+ * WHY THE ACCOUNT READ IS THE SECOND INPUT, and not more of the same. The
+ * verdict is absent on every runtime below the field's first release (backend
+ * `5ebd6a53`, i.e. `v0.61.2`), and the desktop route still answers 200 there, so
+ * a chip that falls back to the row re-establishes exactly the contradiction
+ * this change removes -- design round 1's D3, QA round 1's Q-1, and the code
+ * round's M1, which photographed that state on this branch's own head.
+ * `signed-out` is the app's own classification of "no Radient credential is
+ * stored", from the same machine at the same moment, so a row plus THAT reading
+ * is a contradiction this app can see without any verdict at all. It is
+ * deliberately the only class used here: a healthy machine's account read fails
+ * `unavailable` rather than `signed-out` (design round 1's `r4`), and none of
+ * `checking`/`ready` contradicts a credential row.
+ *
+ * AN ANSWERED `unknown` IS NOT A HEALTH CLAIM EITHER (QA round 1, Q-1, case F2:
+ * a row whose token endpoint cannot be reached). `unknown` is the app asking and
+ * declining to say `ok`, so the chip may not render the green claim on it; but
+ * it may not call it a refusal either, and the label it gets (`unverified`) says
+ * only what the app knows -- which is also what the sibling surfaces say on that
+ * machine (the account section's read fails `unavailable`, the composer says it
+ * needs re-authentication). The distinction that keeps this from misdirecting a
+ * WORKING login is the `ok` arm above it: a healthy machine answers `ok`, and
+ * the design round's `r4` is that state photographed.
+ *
+ * A `null`, ABSENT or unreadable verdict with neither of those contradictions
+ * keeps the store's own answer, and that is the one case where the chip is still
+ * the pre-change claim: it is a runtime below `v0.61.2` whose account read could
+ * not be taken either, the PR body states that floor, and the release notes must
+ * not imply more than it ships.
+ *
+ * WHAT THE ABSENT-VERDICT ARM COSTS, stated rather than hidden: its second input
+ * is a query like any other, so on a runtime below `v0.61.2` the chip is the
+ * store's answer until that read answers -- a local 409 in the case that
+ * narrows, and nothing at all in the cases that do not (`unavailable` and
+ * `ready` both keep the store's answer). A surface therefore judges THIS
+ * function's settled answer, and the grid does not gate its card list on this
+ * read: it is an upstream-backed query with retries, and holding a provider list
+ * behind it would cost a second or more on exactly the machines where it changes
+ * nothing.
  *
  * The verdict is about ONE provider, so it is joined by id here rather than
  * applied to whichever row is rendering.
+ *
+ * A SURFACE MUST NOT ASK THIS BEFORE THE VERDICT HAS ANSWERED. The answer here
+ * is a claim about a sign-in, and before the read answers the only inputs are
+ * the census -- which is the predicate that produced the incident. `useRadientLoginVerdict`
+ * exposes `isPending` for exactly that, and both surfaces hold their own paint
+ * until it is false (the grid its card list, the panel its badge), which is also
+ * what closes design round 1's D6: a green "Signed in" used to be painted for
+ * 72-193 ms on a refused machine and then corrected.
  */
-export function loginRefused(
+export function loginState(
 	providerId: string,
 	verdict: RadientLoginVerdict | null | undefined,
-): boolean {
-	return (
-		providerId === RADIENT_PROVIDER_ID && verdict?.state === "login_required"
-	);
+	account: RadientSignInRead,
+): ProviderLoginState {
+	if (providerId !== RADIENT_PROVIDER_ID) return "working";
+	if (verdict?.state === "login_required") return "refused";
+	// The provider accepting the sign-in is the one answer that lets the row
+	// speak for itself.
+	if (verdict?.state === "ok") return "working";
+	/*
+	 * An answered `unknown`: the app asked and declined to confirm. No claim
+	 * either way -- see the docblock.
+	 */
+	if (verdict?.state === "unknown") return "unverified";
+	/*
+	 * And the runtime that has no verdict to answer with at all: the row may not
+	 * be read as a working sign-in while this app's own account read says no
+	 * sign-in is stored.
+	 */
+	if (!account.unavailable && account.accountRead === "signed-out") {
+		return "unverified";
+	}
+	return "working";
 }
 
 /**
@@ -113,7 +209,7 @@ export type ProviderReadiness = {
 	 * this as the badge's `title` so the long form is still reachable.
 	 */
 	detail?: string;
-	tone: "success" | "neutral";
+	tone: "success" | "neutral" | "attention";
 	/** Grouping bucket, shared with the model picker so both surfaces agree. */
 	group: "Ready to use" | "Needs a running server" | "Needs sign-in";
 };
@@ -126,13 +222,13 @@ export function providerReadiness(
 		configured: boolean;
 	},
 	/**
-	 * Whether the credential this row counts is one the provider itself refuses,
-	 * from `loginRefused`. Defaulted rather than required, because the facts
-	 * above are all a surface that cannot read the verdict has -- and that is the
-	 * answer an absent, unreadable or `unknown` verdict must keep, not a
-	 * conservative guess in the other direction.
+	 * The sign-in state for this row, from `loginState`. Defaulted to `working`
+	 * rather than required, because the facts above are all a surface that has
+	 * nothing else to go on has -- and a caller with no verdict is asking a
+	 * question about the credential store, which is what this function answered
+	 * before the verdict existed.
 	 */
-	credentialRefused = false,
+	signIn: ProviderLoginState = "working",
 ): ProviderReadiness {
 	// A local server needs no key, and that is ALL this says. "No key needed"
 	// is checkable; "Connected" was not.
@@ -144,17 +240,50 @@ export function providerReadiness(
 			group: "Needs a running server",
 		};
 	}
-	// A credential ROW is not a working sign-in, and this is the only input that
-	// can tell the two apart (see `loginRefused`). It comes before the
-	// credential branch deliberately: the incident was a row that satisfied that
-	// branch while the provider had already stopped accepting it.
-	if (credentialRefused) {
+	/*
+	 * The refused state gets its OWN words and its own tone (design round 1, D1,
+	 * D2, D4, D5). It used to return the never-configured answer verbatim, which
+	 * made the two states the same picture -- measured: the refused card and the
+	 * never-signed-in card differ in zero of 4,791,360 pixels, with the only
+	 * difference in the DOM an attribute a screenshot cannot contain. The label
+	 * says what happened to the sign-in in the sibling surface's own vocabulary
+	 * (#416's callout title is "Radient needs re-authentication"), and `attention`
+	 * is the variant this app built for "needs your attention, not an error":
+	 * `neutral` is what a healthy local provider says (`No key needed`), so on
+	 * this grid the hue carried no severity at all. The group stays "Needs
+	 * sign-in", because that is the bucket the model picker and the picker's own
+	 * filter read, and the remedy IS a sign-in.
+	 */
+	if (signIn === "refused") {
 		return {
-			label: "Needs sign-in",
+			label: "Needs re-authentication",
 			detail: REFUSED_DETAIL,
-			tone: "neutral",
+			tone: "attention",
 			group: "Needs sign-in",
 		};
+	}
+	/*
+	 * The row counts a credential and this app's own account read says none is
+	 * stored. Nothing here may claim a successful sign-in, and nothing here can
+	 * claim a refusal either: what is known is that the app cannot confirm the
+	 * sign-in, which is the same thing the section's sentence above it says.
+	 *
+	 * The long form is owed only when the census counted a credential, because it
+	 * names the CONTRADICTION: on a machine that simply has no sign-in, "could not
+	 * confirm the sign-in stored on this machine" describes a row that is not
+	 * there, and that machine must keep rendering exactly what it rendered before
+	 * this change.
+	 */
+	if (signIn === "unverified") {
+		if (provider.has_credential || provider.configured) {
+			return {
+				label: "Needs sign-in",
+				detail: UNVERIFIED_DETAIL,
+				tone: "neutral",
+				group: "Needs sign-in",
+			};
+		}
+		return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
 	}
 	if (provider.has_credential || provider.configured) {
 		return { label: "Signed in", tone: "success", group: "Ready to use" };
