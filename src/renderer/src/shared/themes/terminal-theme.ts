@@ -214,6 +214,28 @@ const isColor = (value: string): boolean =>
 export const terminalFontFamily = (
 	root: HTMLElement = document.documentElement,
 ): string => {
+	/*
+	 * A DOM IS NOT THE SAME THING AS A GLOBAL, and that distinction cost seven
+	 * desktop test files before it was written down here (measured: `pnpm test:desktop`
+	 * failed in seven places, `working-line-clock`, `composer-tabs`, `chat-image-expand`,
+	 * `chat-link-affordances`, `run-panel-navigation`, `settings-account-gate` and
+	 * `backend-settings-tiers`, every one of them with `ReferenceError: getComputedStyle
+	 * is not defined` out of this line).
+	 *
+	 * The shape is ordinary and worth naming: a Node test that bootstraps jsdom assigns
+	 * `globalThis.document` and `globalThis.window` so React can be imported, and jsdom's
+	 * `getComputedStyle` lives on the WINDOW it hands you — it is not a Node global. So
+	 * `typeof document !== "undefined"` is not enough, and the caller's no-DOM guard
+	 * (measureCell's, which exists for exactly this process shape) walked straight past
+	 * it. `readTerminalTheme` and `missingTerminalRoles` take a `root` and are
+	 * renderer-only, so this is the one call site on an import-time path.
+	 *
+	 * With no global `getComputedStyle` there is no rendered surface to read a face from,
+	 * and "monospace" is the same answer the caller's ratio branch is written around.
+	 */
+	if (typeof document === "undefined" || typeof getComputedStyle !== "function") {
+		return "monospace";
+	}
 	const mono = getComputedStyle(root).getPropertyValue("--font-mono").trim();
 	return mono || "monospace";
 };
