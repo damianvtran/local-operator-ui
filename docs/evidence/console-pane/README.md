@@ -50,10 +50,13 @@ against the BUILT app headless, and it is the other half of the evidence:
   app's own launch intent, presses the console trigger, and never calls
   `setContentRect` itself, so the rect main crops to is the one the PANE reported.
   `rendered: "displayed"`, 82×45, `theme: "localOperatorDark"`, **47,139 B** at
-  1286×1404 — the frame is in physical pixels against a 659×779.5 CSS box, i.e. the
-  window's device pixel ratio of 2. What it shows is the pane's terminal, not a
-  window corner: an earlier revision of this cell photographed the window's top-left
-  quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
+  **1286×1404**. The arithmetic, because design round 4's D20 caught it printed wrong
+  here: the pane's own frame is 659×779.5 CSS, and the CROP is the terminal's box inside
+  it — 643×702.5, which is the panel's reported `contentRect` and therefore what the frame
+  is of. At the window's device pixel ratio of 2 that is 1286×1405, and the file is
+  1286×1404 because the crop floors to whole pixels. What the frame shows is the pane's
+  terminal, not a window corner: an earlier revision of this cell photographed the
+  window's top-left quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
 - `offscreen-capture.png` — the same call with the pane closed: `rendered:
   "offscreen"`, `renderer: "dom"`, **47,138 B**, `attempts: 1`, at the grid the
   displayed frame reported (82×45). It is a real terminal frame — the rig's own

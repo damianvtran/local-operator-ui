@@ -979,6 +979,15 @@ export const STORIES = [
 	["console-pane--ended", CONSOLE_PANE_WIDTH, 560],
 	["console-pane--restored", CONSOLE_PANE_WIDTH, 560],
 	["console-pane--secure", CONSOLE_PANE_WIDTH, 520],
+	/*
+	 * D21's own state, and the reason it is here rather than only in the component's
+	 * stories: the selection became load-bearing this round (1.11:1 -> the accent, gated by
+	 * `check-themes`) and no frame anywhere in the set showed one, so its appearance was
+	 * measured and never SEEN. The story's `play` function performs a real drag on the real
+	 * terminal and throws when no selection layer appears, so a theme whose selection is
+	 * invisible fails the sweep rather than shipping a picture of nothing.
+	 */
+	["console-pane--selected", CONSOLE_PANE_WIDTH, 520],
 	["console-pane--blip-pulsing", CONSOLE_PANE_WIDTH, 520],
 	["console-pane--blip-resting", CONSOLE_PANE_WIDTH, 520],
 	["console-pane--other-conversation-mark", CONSOLE_PANE_WIDTH, 520],
