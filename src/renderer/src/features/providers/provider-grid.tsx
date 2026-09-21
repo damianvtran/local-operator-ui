@@ -15,13 +15,21 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input } from "@shared/components/ui";
+/*
+ * The MODULE, not the `@shared/hooks` barrel: the barrel carries
+ * `use-connectivity-status`, which reads the renderer's config at import time and
+ * therefore throws in any Node bundle that does not define `import.meta.env` --
+ * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
+ * docblock. Importing the leaf keeps this feature out of that graph.
+ */
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { cn } from "@shared/lib/utils";
 import { Search, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
 import {
-	loginRefused,
+	loginState,
 	providerLoadErrorMessage,
 	providerMethodLabel,
 	providerReadiness,
@@ -53,6 +61,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	 * has to ask.
 	 */
 	const login = useRadientLoginVerdict();
+	/*
+	 * The app's own answer about whether any Radient sign-in is stored, and
+	 * whether it could be asked at all. It is the second input `loginState` reads,
+	 * and the reason it exists is design round 1's D3: on a runtime whose route
+	 * predates `radient_login` there is no verdict at all, so without this the chip
+	 * falls back to the credential ROW and the contradiction this change removes
+	 * comes back. See `loginState` for why only a `signed-out` answer from an
+	 * enabled read narrows it.
+	 */
+	const { accountRead, unavailable } = useRadientUserQuery();
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialProviderId,
 	);
@@ -110,6 +128,27 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		);
 	}
 
+	/*
+	 * THE VERDICT'S OWN GATE COMES AFTER THE ERROR BRANCH, and that ordering is
+	 * load-bearing: a verdict read that never answers must not be able to swallow
+	 * the census's diagnosis and its Retry button. (`scripts/backend-error-surfaces.test.mjs`
+	 * caught exactly that when this gate sat first: the error frame rendered
+	 * "Loading providers".) What follows is design round 1's D6 -- a green
+	 * "Signed in" was painted for 72-193 ms on a refused machine and then
+	 * corrected, because the census answers first and the card painted from it.
+	 * The verdict is one local control issued beside the census, so holding the
+	 * list until it answers costs the frame after the slower of two parallel reads
+	 * rather than a round trip, and the first painted card never carries a chip it
+	 * is about to change.
+	 */
+	if (login.isPending) {
+		return (
+			<div className="flex h-40 items-center justify-center">
+				<Spinner size="lg" label="Loading providers" />
+			</div>
+		);
+	}
+
 	const selected = rows.find((provider) => provider.id === selectedId) ?? null;
 
 	if (selected) {
@@ -162,7 +201,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					{filtered.map((provider) => {
 						const readiness = providerReadiness(
 							provider,
-							loginRefused(provider.id, login.data),
+							loginState(provider.id, login.data, {
+								accountRead,
+								unavailable,
+							}),
 						);
 						return (
 							<li key={provider.id}>

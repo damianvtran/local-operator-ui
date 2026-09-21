@@ -6,63 +6,106 @@ Radient account rendered BOTH "You are not currently signed in to Radient" AND a
 green "Signed in" chip under it. The chip was keyed on the credential ROW
 (`has_credential || configured`), and a revoked grant keeps its row.
 
-The pair here is that screen, on the same isolated machine state in both halves,
-before and after the chip's input became the login verdict.
+Round 1 of the reviews then found the two ways this change could still lie, and
+this set is the proof of both:
+
+- **the refused state was drawn in the never-signed-in vocabulary** (design D1:
+  the two cards were pixel-identical, 0 of 4,791,360 pixels apart, with the only
+  difference an attribute a screenshot cannot contain), so `after/` and
+  `never-signed-in/` are the pair that has to pull apart;
+- **the fallback was silent** (design D3, code M1, QA Q-1: with `radient_login`
+  absent -- any runtime below `v0.61.2` -- or answered `unknown`, the chip
+  returned to the pre-fix claim), so `no-verdict/` and `unknown-verdict/` are the
+  two runtime states the fallback arm now answers.
 
 ## What produced these frames
 
 ```
-# the rig: a copy of the UX round's own (fake IdP + isolated backend + proxy on
-# the one extra port the renderer's CSP admits). Its README is the runbook; the
-# backend worktree it needs is one command:
-git -C ~/local-operator worktree add --detach <rig>/backend bd53de08
-bash <rig>/run.sh                       # IdP + backend 11319 + proxy 8080
-
-# both trees built against that proxy - the renderer's backend address is
-# inlined at BUILD time, and the driver refuses a tree built for another one:
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 pnpm build
-
-# one boot per tree, same command, same rig state:
-CHIP_WT=<tree> CHIP_OUT=<frames> bash <rig>/run-mine.sh
+pnpm build            # with VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18080
+                      # and VITE_DISABLE_BACKEND_MANAGER=true; the rest of the
+                      # variables come from a copy of the repository's own .env
+                      # (gitignored), minus the PostHog key, with the client
+                      # secret left exactly where check-build-env allows it
+node ~/workspace/chipverdict-rig/chip-driver.mjs --scene chipverdict \
+  --backend http://127.0.0.1:18080 --backend-records <rig>/records \
+  --seed-onboarding-complete --window-size 1380x900 --clean --out <dir>
 ```
 
-`before/` is `origin/main` = `8d758d238` (the rebase base this branch sits on);
-`after/` is this branch's commit. The scene is one addition to a **copy** of
-`scripts/renderer-driver.mjs` — the repository's own file is untouched — and it
-navigates to `/settings`, presses the `Radient account` nav row, reads that
-section, then scrolls the Providers grid to the Radient card. `scene-before.log`
-and `scene-after.log` are its raw output, and they carry the two readings that
-make the frames falsifiable:
+The rig itself (`~/workspace/chipverdict-rig`, runbook in its README) is the UX
+round's own: a fake IdP whose refresh is refused, an isolated backend on 11319, a
+blanking proxy in front of it, `HOME`/`LOCAL_OPERATOR_CONFIG_DIR` inside the
+rig's own `iso/`, a scratch `--user-data-dir`, and a `headless` launch asserted in
+every run that produced a frame. **Its proxy moved to 18080 for this round**: a
+foreign `lop serve` on 8080 made the first attempt drive an app against somebody
+else's service, which the run's own "the app holds a connection to this run's
+backend" check caught.
 
-| reading | before | after |
-| --- | --- | --- |
-| rig's `GET /v1/auth/status` → `radient_login` | `{"credential_id":1,"state":"login_required"}` | same |
-| census row for `radient` | `has_credential: true, configured: true` | same |
-| the account section's own badge | `Signed in`, tone `success` | `Needs sign-in`, tone `neutral` |
-| the grid card's badge | `Signed in`, tone `success`, no title | `Needs sign-in`, tone `neutral`, `title="Radient no longer accepts the sign-in stored on this machine"` |
+Each state is one `flip.py` write through the product's own `AuthStore`, plus one
+proxy flag file (`strip.flag` answers `/v1/auth/status` with no `radient_login` at
+all; `unknown.flag` answers `state: "unknown"`), then one driver run:
 
-Both halves ran the same command against the same rig: the census still counts a
-Radient credential (so the old predicate has everything it needs to claim a
-sign-in), and the verdict refuses it. A frame taken against a healthy verdict
-would photograph the unchanged chip and say nothing, which is why the scene
-asserts the verdict it found rather than assuming it.
+| directory | rig state | `/v1/auth/status` | census row |
+| --- | --- | --- | --- |
+| `after/` | dead grant (expired access, refused refresh) | `login_required` | `has_credential: true, configured: true` |
+| `healthy/` | fresh grant | `ok` | `has_credential: true, configured: true` |
+| `no-verdict/` | dead grant, route stripped | key absent | `has_credential: true, configured: true` |
+| `unknown-verdict/` | dead grant, route forced to `unknown` (QA F2) | `unknown` | `has_credential: true, configured: true` |
+| `never-signed-in/` | no row, no tunnel | `unknown` | `has_credential: false, configured: false` |
+| `before/` | dead grant, **`origin/main` = `8d758d238`** | `login_required` | `has_credential: true, configured: true` |
 
-## What these frames do not show
+`before/` is the base tree and is unchanged from the first round; everything else
+is this head. `after/` is the same rig state as `before/`, which is what makes
+the pair comparable -- nothing about the command changes between them.
 
-- **The composer.** PR #416 owns that surface; this change deliberately does not
-  touch it, and the two agree by keying on the same verdict rather than by
-  rendering the same sentence.
-- **The section's sentence.** It is unchanged here (it is `origin/main`'s copy),
-  and it agrees with the new chip in both halves. The vocabulary question D6/U1
-  raised rides #416's remediation, whose copy is still moving.
-- **Reachability, layout and colour.** These are PNGs of the window at
-  1380x900 (`1380x868` CSS viewport on this runtime), captured by the app's own
-  `capturePage()` from a `headless` launch — the run's own stdout carries
-  `[window-mode] … visible=false focused=false focusable=false`, and the driver
-  asserts the window was never shown. No `screencapture`, no browser engine, no
-  window on the operator's screen.
-- **The three other surfaces that read the same predicate.** The hosting picker's
-  filter and the model picker's sub-line still read the credential row, on
-  purpose (`loginRefused`'s callers are named in the PR body): removing a
-  provider from a control is a different act from correcting the badge on its
-  row.
+## What the frames show
+
+- `before/` (base): the section says "You are not currently signed in to Radient"
+  and the chip under it is green **"Signed in"**; the grid's Radient card says
+  **"Signed in"** in the success tone.
+- `after/` (this head, same state): the chip is **"Needs re-authentication"** in
+  the attention tone on the card, and the section's chip says the same words --
+  one vocabulary for one condition, and the green claim is gone.
+- `healthy/`: **"Signed in"**, success -- unchanged, because the verdict says
+  `ok`. This is the control that keeps the new arms from misdirecting a machine
+  whose login is fine.
+- `no-verdict/`: **"Needs sign-in"**, neutral. A runtime below `v0.61.2` sends no
+  `radient_login`, and the chip may not read the credential row as a working
+  sign-in when this app's own account read says none is stored.
+- `unknown-verdict/`: **"Needs sign-in"**, neutral (QA round 1's F2: the row is
+  there and the token endpoint cannot be reached).
+- `never-signed-in/`: **"Needs sign-in"**, neutral -- and the pair with `after/`
+  is the point: the refused machine is no longer the same picture as the machine
+  that never signed in.
+
+## The floor this set does NOT claim
+
+On a runtime below `v0.61.2` whose account read cannot be taken either
+(`unavailable`), the chip still renders the credential row's own answer -- there
+is no fact left on that machine that contradicts it. The PR body states that
+floor in its Impact section; the release notes must not imply more than ships.
+
+The `title` tooltip is not in these frames by construction: a native `title` is
+drawn by the OS outside the web contents, so `capturePage()` cannot contain it.
+The DOM readings that carry it (`Needs re-authentication`, and the long form on
+the contradicted row only) are asserted in `scripts/provider-chip-verdict.test.mjs`.
+
+## The fold this head sits on
+
+The branch was folded onto `origin/main` = `03ef5f480` after the reviews, and the
+frames above were taken on the pre-fold head. That is stated rather than implied:
+`git range-diff 8d758d238..3c91c7b5f 03ef5f480..HEAD` shows this branch's three
+commits unchanged (`=`, `!`, `=`), the `!` being the manifest restamp itself, and
+`git diff 3c91c7b5f HEAD -- src/renderer/src/features/providers
+src/shared/api/local-operator/desktop-hooks.ts src/shared/api/local-operator/desktop-api.ts
+src/shared/desktop-contract.ts src/renderer/src/shared/hooks/use-radient-user-query.ts
+docs/evidence/provider-chip-verdict` is EMPTY -- every input the frames render is
+byte-identical, and upstream's two moved files are main-process daemon attach
+(`src/main/backend/backend-service.ts`, `daemon-status.ts`). The stamps in
+`docs/evidence/manifest.json` are re-derived for this head, as its guard requires.
+
+**One later commit inside this round** moved the verdict's pending gate BELOW the
+census's error branch (`provider-grid.tsx`), because a verdict read that never
+answers must not be able to hide the census's diagnosis and its Retry -- the
+neighbour suite `scripts/backend-error-surfaces.test.mjs` caught exactly that.
+That changes only the pending and error frames; every frame here is a settled
+state, so none of them is affected, and the ordering is asserted by that suite.

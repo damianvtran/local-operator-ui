@@ -1,39 +1,44 @@
 #!/usr/bin/env node
 /**
- * The provider chip's input: the login verdict, not the credential row.
+ * The provider chip's input: the login state, not the credential row.
  *
  * THE REPORT. On the operator's own machine, at one second, the chat composer
  * said the Radient sign-in "needs re-authentication" while Settings -> Radient
  * account rendered BOTH "You are not currently signed in" AND a green "Signed
  * in" chip under it (UX round 1, U1, on the chat session-issue PR). The chip was
- * keyed on `provider.configured` / `has_credential`, which are facts about the
- * CREDENTIAL STORE: a revoked grant kept its row, kept `configured` true because
- * its access token was still inside its expiry, and left `disabled_cause` NULL,
- * so nothing in the census could tell a working sign-in from a dead one.
+ * keyed on a credential ROW, and a revoked grant keeps its row: the store keeps
+ * `configured` true while the access token is inside its expiry, and
+ * `disabled_cause` is never written.
  *
  * WHAT IS PROVEN HERE, and why each half needs its own case:
  *
- *  - the PREDICATE, over the shipped module: `login_required` refuses a claim,
- *    while `unknown`, an absent verdict and a verdict about ANOTHER provider all
- *    keep the store's own answer (the direction that matters is "do not send a
- *    machine with a working login to a sign-in it does not need");
- *  - the READ: the shipped hook, mounted against a real `QueryClient` and the
- *    shipped transport, parsing `GET /v1/auth/status`' payload through the
- *    `accounts.list` op. A seeded cache key would prove nothing about this half;
- *  - the SURFACES: the shipped grid card and the shipped detail panel, which are
- *    the two places this change is visible. They are mounted rather than
- *    rendered statically, because the claim is that the surface READS the
- *    verdict -- a component that stopped calling the hook would still render a
- *    seeded cache.
+ *  - the JOIN, over the shipped module: `loginState` refuses a claim on
+ *    `login_required`, refuses one when the verdict is ABSENT and this app's own
+ *    account read answers `signed-out` (design round 1's D3, the code round's
+ *    M1: without that arm the fallback is the row, and the incident comes back on
+ *    every runtime below `v0.61.2`), and keeps the store's answer everywhere
+ *    else -- including a healthy machine whose account read failed
+ *    `unavailable`, which must not be sent to a sign-in it does not need;
+ *  - the RENDER, over the shipped predicate: the refused state has its own words
+ *    and its own tone (D1 and D4: it used to be pixel-identical to the
+ *    never-signed-in card, and its tone was the one a healthy local provider
+ *    uses);
+ *  - the SURFACES, mounted against a real `QueryClient`, the shipped transport
+ *    and a stubbed bridge, with the bridge (not a seeded cache) answering the
+ *    census, the verdict and the account read: a component that stopped asking
+ *    would still render a seeded cache;
+ *  - the MOUNT, which is D6: with the verdict deliberately held open, the card
+ *    list must not paint a claim it is about to correct -- measured there as a
+ *    green "Signed in" for 72-193 ms on a refused machine.
  *
  * WHAT THIS IS NOT. Proof of layout, of colour, or of the live app: jsdom has no
- * layout engine, so the frames are the evidence rig's business. The badge's TEXT
- * and its `title` are asserted, not its pixels.
+ * layout engine, so the frames are the evidence rig's business. The chip's TEXT,
+ * its `title` and its tone class are asserted, not its pixels.
  */
 
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, beforeEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -44,10 +49,11 @@ const bundle = await build({
 			export { ProviderGrid } from "./src/renderer/src/features/providers/provider-grid";
 			export { ProviderDetail } from "./src/renderer/src/features/providers/provider-detail";
 			export {
+				loginState,
 				providerReadiness,
-				loginRefused,
 			} from "./src/renderer/src/features/providers/provider-labels";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+			export { radientUserKeys } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { createRoot } from "react-dom/client";
 		`,
@@ -174,8 +180,9 @@ const OPENAI_ROW = {
  *
  * The envelopes are the route's own: the verdict rides BESIDE `accounts` on
  * `GET /v1/auth/status`, and a backend older than the route answers without the
- * key at all -- which is the `"absent"` case, and the reason the key is optional
- * on the wire.
+ * key at all -- the `"absent"` case, and the reason the key is optional on the
+ * wire. `"absent"` is the state design round 1's `r6` photographed on this
+ * branch's own head, where the chip fell back to the credential row.
  */
 const LOGIN_ANSWERS = {
 	refused: {
@@ -199,8 +206,88 @@ const LOGIN_ANSWERS = {
 	absent: { result: { accounts: [] } },
 };
 
-/** Which answer the bridge gives the verdict read. Set per case. */
+/**
+ * What the bridge answers for the app's own account read, per case.
+ *
+ * `signed-out` is the 409 the daemon in the field answers with a bare prose
+ * detail -- no `radient_` code -- which is why `classifyRadientAccountFailure`
+ * reads that sentence for that status and no other. `unavailable` is a healthy
+ * machine's account read being unreachable (design round 1's `r4`), and it must
+ * NOT narrow the chip: it is the control that keeps a working login from being
+ * sent to a sign-in it does not need.
+ */
+const ACCOUNT_ANSWERS = {
+	"signed-out": {
+		status: 409,
+		body: { detail: "Sign in to Radient to access your account" },
+	},
+	unavailable: {
+		status: 502,
+		body: {
+			detail: {
+				code: "radient_upstream_failed",
+				message: "Radient could not complete this operation",
+				details: { reason: "credential_unavailable" },
+			},
+		},
+	},
+	ready: {
+		status: 200,
+		body: {
+			result: {
+				data: {
+					msg: "ok",
+					result: {
+						account: {
+							id: "acct_chip_verdict",
+							tenant_id: "ten_chip_verdict",
+							email: "chip-verdict@example.test",
+							name: "Chip Verdict",
+							role: "owner",
+							status: "active",
+							created_at: "2026-01-02T03:04:05Z",
+							updated_at: "2026-01-02T03:04:05Z",
+						},
+						identity: {
+							email: "chip-verdict@example.test",
+							provider: "google",
+							provider_id: "google-chip-verdict",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+/** Which answers the bridge gives, and whether the verdict is held open. */
 let loginAnswer = "refused";
+let accountAnswer = "ready";
+let holdVerdict = false;
+/**
+ * The census the bridge serves, mutable so the never-signed-in machine -- no row
+ * at all -- can be rendered beside the incident's own state.
+ */
+let census = [RADIENT_ROW, OPENAI_ROW];
+/** Releases the held verdict, called from the case that held it. */
+let releaseVerdict = () => {};
+
+/**
+ * Every case starts from the incident's own state, and from a bridge that is not
+ * holding anything.
+ *
+ * The reset is not tidiness: a case that HOLDS the verdict and then fails throws
+ * before it releases, and the next case would inherit both the hold and its own
+ * timeout -- a failure attributed to the wrong case, which is how a mutant of the
+ * grid's gate looked like it had broken the detail panel.
+ */
+beforeEach(() => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	census = [RADIENT_ROW, OPENAI_ROW];
+	holdVerdict = false;
+	releaseVerdict = () => {};
+});
 
 globalThis.window.api = {
 	desktop: {
@@ -208,11 +295,35 @@ globalThis.window.api = {
 			if (request?.op === "providers.list") {
 				return {
 					status: 200,
-					body: { result: { providers: [RADIENT_ROW, OPENAI_ROW] } },
+					body: { result: { providers: census } },
 				};
 			}
 			if (request?.op === "accounts.list") {
+				if (holdVerdict) {
+					// The state D6 is about: the census has answered and the verdict has
+					// not, which is when the card list used to paint "Signed in".
+					// The released value is a whole desktop response, not just the result:
+					// the hook unwraps this envelope, so a half-shaped answer would be a
+					// transport error rather than the verdict under test.
+					return await new Promise((resolve) => {
+						releaseVerdict = () =>
+							resolve({ status: 200, body: LOGIN_ANSWERS[loginAnswer] });
+					});
+				}
 				return { status: 200, body: LOGIN_ANSWERS[loginAnswer] };
+			}
+			if (request?.control?.operation === "account") {
+				return ACCOUNT_ANSWERS[accountAnswer];
+			}
+			if (request?.op === "capabilities") {
+				// The account read is gated on this key, so without an answer here the
+				// second input `loginState` reads would never arrive.
+				return {
+					status: 200,
+					body: {
+						result: { desktop_available: true, features: { radient: 1 } },
+					},
+				};
 			}
 			return { status: 503, body: { detail: "not part of this test" } };
 		},
@@ -226,20 +337,23 @@ const {
 	QueryClientProvider,
 	createRoot,
 	desktopKeys,
-	loginRefused,
+	loginState,
 	providerReadiness,
+	radientUserKeys,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const createElement = React.createElement;
 
 /*
- * The refused statement, as the two surfaces render it. Both are asserted in a
- * case apiece, and they live at the top level because `scripts/` sits outside
- * `pnpm lint`'s path list and biome's own rule wants a literal it can see once
- * (script-lint: `useTopLevelRegex`).
+ * The three statements this file asserts, as the surfaces render them. They live
+ * at the top level because `scripts/` sits outside `pnpm lint`'s path list and
+ * biome's own rule wants a literal it can see once (script-lint:
+ * `useTopLevelRegex`).
  */
 const REFUSED_DETAIL = /no longer accepts the sign-in stored on this machine/;
+const UNVERIFIED_DETAIL =
+	/could not confirm the sign-in stored on this machine/;
 const REFUSED_DETAIL_ATTRIBUTE =
 	/title="Radient no longer accepts the sign-in stored on this machine"/;
 
@@ -306,8 +420,7 @@ after(async () => {
  * real query, a real transport and a real render, so "how long is enough" is not
  * a number this file can know -- only a condition it can wait for. The flush
  * BEFORE the look is deliberate: a query can settle a tick before the render
- * that publishes it, so checking first would hand the assertion a snapshot from
- * before the answer.
+ * that publishes it.
  */
 async function mountUntil(element, predicate, what, timeoutMs = 5000) {
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -334,9 +447,9 @@ async function mountUntil(element, predicate, what, timeoutMs = 5000) {
  * The grid, mounted, once both cards are on screen.
  *
  * The predicate is about the grid being READY rather than about either answer:
- * deciding readiness on "Signed in" or "Needs sign-in" would time out on the
- * state it is waiting for whenever the surface got that state wrong, and a
- * timeout hides the frame the assertion is about.
+ * deciding readiness on "Signed in" or a refusal would time out on the state it
+ * is waiting for whenever the surface got that state wrong, and a timeout hides
+ * the frame the assertion is about.
  */
 async function renderGrid() {
 	const queryClient = client();
@@ -351,6 +464,15 @@ async function renderGrid() {
 			node.textContent.includes("OpenAI"),
 		"the provider cards",
 	);
+	/*
+	 * Every grid case judges a SETTLED frame. The chip's second input is this
+	 * app's own account read (see `loginState`), and the card list is deliberately
+	 * not gated on it -- that read is upstream-backed with retries, and holding a
+	 * provider list behind it would cost a second or more on exactly the machines
+	 * where it changes nothing. So the assertion belongs after both reads have
+	 * answered rather than on whichever frame the cards painted first.
+	 */
+	await awaitReads(container, queryClient);
 	return { container, queryClient };
 }
 
@@ -370,24 +492,30 @@ async function renderDetail() {
 }
 
 /**
- * Flush until the verdict read has ANSWERED, so the panel is rendered from it.
+ * Flush until both reads the chip depends on have answered.
  *
- * This waits on the query's own state and then reads the DOM, rather than
- * polling the DOM for the answer under test: a case whose expected answer never
- * arrives would otherwise report its own timeout instead of the frame that was
- * on screen.
+ * This waits on the QUERY STATES and then reads the DOM, rather than polling the
+ * DOM for the answer under test: a case whose expected answer never arrives would
+ * otherwise report its own timeout instead of the frame that was on screen.
  */
-async function awaitVerdict(container, queryClient) {
+async function awaitReads(container, queryClient) {
 	const deadline = Date.now() + 5000;
 	for (;;) {
-		const read = queryClient.getQueryState(desktopKeys.radientLogin);
-		if (read?.status === "success") {
+		const verdict = queryClient.getQueryState(desktopKeys.radientLogin);
+		const account = queryClient.getQueryState(radientUserKeys.user());
+		const settled = (state) => state && state.status !== "pending";
+		/*
+		 * SETTLED rather than successful: the account read has cases here that are
+		 * meant to fail (`unavailable`), and a case that waited for `success` would
+		 * report its own timeout instead of the frame it is about.
+		 */
+		if (settled(verdict) && settled(account)) {
 			await flush();
 			return;
 		}
 		if (Date.now() > deadline) {
 			throw new Error(
-				`the verdict read never answered (saw ${read?.status}); the panel reads "${text(container)}"`,
+				`a read never settled (verdict ${verdict?.status}, account ${account?.status}); the panel reads "${text(container)}"`,
 			);
 		}
 		await flush();
@@ -395,68 +523,156 @@ async function awaitVerdict(container, queryClient) {
 }
 
 /**
- * The predicate, over the shipped module.
+ * The join, over the shipped module.
  *
- * Both directions are named in the cases: `login_required` is the ONE state that
- * refuses a claim, and everything else keeps the store's own answer. A predicate
- * that treated `unknown` as a refusal would pass a test written only about the
- * incident and fail a machine that is merely offline.
+ * Both directions are named in the cases. `login_required` is the ONE verdict
+ * that refuses a claim; an ABSENT verdict refuses one only when the app's own
+ * account read says no sign-in is stored; and everything else keeps the store's
+ * own answer, because sending a machine whose login is fine to a sign-in it does
+ * not need is the same misdirection as the green chip, in the other direction.
  */
-test("the verdict refuses a claim on login_required, and on nothing else", () => {
+test("loginState refuses a claim on the refusal, and on the absent-verdict contradiction", () => {
+	/** An enabled account read, which is the only one that can narrow. */
+	const read = (accountRead) => ({ accountRead, unavailable: false });
 	assert.equal(
-		loginRefused("radient", { credential_id: 7, state: "login_required" }),
-		true,
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "login_required" },
+			read("ready"),
+		),
+		"refused",
+	);
+	// D3/M1: no verdict at all, and this app's own account read says no sign-in is
+	// stored -- the state where falling back to the credential row re-creates the
+	// contradiction this change removes.
+	assert.equal(
+		loginState("radient", undefined, read("signed-out")),
+		"unverified",
+	);
+	assert.equal(loginState("radient", null, read("signed-out")), "unverified");
+	assert.equal(
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "unknown" },
+			read("signed-out"),
+		),
+		"unverified",
+	);
+	// QA round 1's F2: an ANSWERED `unknown` -- the app asked and declined to
+	// confirm (a row whose token endpoint cannot be reached). No health claim,
+	// whatever the account read says.
+	assert.equal(
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "unknown" },
+			read("ready"),
+		),
+		"unverified",
 	);
 	assert.equal(
-		loginRefused("radient", { credential_id: 7, state: "ok" }),
-		false,
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "unknown" },
+			read("unavailable"),
+		),
+		"unverified",
 	);
-	// A check that could not RUN is not a verdict about the login.
+	// A healthy machine whose account read failed `unavailable` must keep its
+	// claim; so must every other class of that read, WHEN THERE IS NO VERDICT AT
+	// ALL -- the runtime floor the PR body states.
+	for (const account of ["unavailable", "unknown", "checking", "ready"]) {
+		assert.equal(
+			loginState("radient", undefined, read(account)),
+			"working",
+			`an absent verdict with an account read of ${account} must keep the store's answer`,
+		);
+	}
+	/*
+	 * And a read that could not be ASKED is not a reading. A capability answer
+	 * without `radient` disables the query, and a disabled React Query reports no
+	 * data with `isLoading === false` -- which the shared hook classifies as
+	 * `signed-out`: right for the surfaces rendering its sentence, wrong as
+	 * evidence about a credential row.
+	 */
 	assert.equal(
-		loginRefused("radient", { credential_id: 7, state: "unknown" }),
-		false,
+		loginState("radient", undefined, {
+			accountRead: "signed-out",
+			unavailable: true,
+		}),
+		"working",
 	);
-	// A backend older than the route answers without the key at all.
-	assert.equal(loginRefused("radient", undefined), false);
-	assert.equal(loginRefused("radient", null), false);
+	// The provider accepting a sign-in is not a contradiction to be doubted.
+	assert.equal(
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "ok" },
+			read("signed-out"),
+		),
+		"working",
+	);
 	// The verdict is about ONE provider's login, so it cannot refuse another's.
 	assert.equal(
-		loginRefused("openai", { credential_id: 7, state: "login_required" }),
-		false,
+		loginState(
+			"openai",
+			{ credential_id: 7, state: "login_required" },
+			read("signed-out"),
+		),
+		"working",
 	);
 });
 
-test("the chip keeps 'Signed in' for every answer except the refusal", () => {
-	assert.equal(
-		providerReadiness(RADIENT_ROW, loginRefused("radient", { state: "ok" }))
-			.label,
-		"Signed in",
+test("the refused chip has its own words, its own tone, and the neighbour's group", () => {
+	const refused = providerReadiness(RADIENT_ROW, "refused");
+	// D1: the refused state used to render the never-signed-in answer verbatim.
+	assert.equal(refused.label, "Needs re-authentication");
+	assert.notEqual(
+		refused.label,
+		providerReadiness(RADIENT_ROW, "working").label,
 	);
-	for (const verdict of [{ state: "unknown" }, undefined, null]) {
-		assert.equal(
-			providerReadiness(RADIENT_ROW, loginRefused("radient", verdict)).label,
-			"Signed in",
-			`${JSON.stringify(verdict)} must keep the store's own answer`,
-		);
-	}
-	const refused = providerReadiness(
-		RADIENT_ROW,
-		loginRefused("radient", { state: "login_required" }),
-	);
-	assert.equal(refused.label, "Needs sign-in");
-	// The group is what the model picker and the picker's own filter bucket on, so
-	// a chip that stopped saying "Signed in" but stayed in "Ready to use" would
-	// contradict itself on the next surface.
+	// D4: `neutral` is what a healthy local provider says, so it carried no
+	// severity on this grid; `attention` is the variant for "needs your attention".
+	assert.equal(refused.tone, "attention");
+	// The group is what the model picker buckets on and what the hosting filter
+	// reads, and the remedy here IS a sign-in.
 	assert.equal(refused.group, "Needs sign-in");
-	assert.equal(refused.tone, "neutral");
 	assert.match(refused.detail, REFUSED_DETAIL);
+
+	const unverified = providerReadiness(RADIENT_ROW, "unverified");
+	assert.equal(unverified.label, "Needs sign-in");
+	assert.equal(unverified.tone, "neutral");
+	assert.equal(unverified.group, "Needs sign-in");
+	assert.match(unverified.detail, UNVERIFIED_DETAIL);
+
 	// A row with no credential at all reads the same in both worlds: the change
 	// corrects a claim, it does not invent one.
-	assert.equal(providerReadiness(OPENAI_ROW, false).label, "Needs sign-in");
+	assert.equal(providerReadiness(OPENAI_ROW, "working").label, "Needs sign-in");
+	assert.equal(providerReadiness(RADIENT_ROW, "working").label, "Signed in");
+	assert.equal(providerReadiness(RADIENT_ROW, "working").tone, "success");
+	/*
+	 * And the unverified arm owes its long form only where there is a row to
+	 * contradict: the sentence names the contradiction, so a machine with no
+	 * sign-in stored at all must render exactly what it rendered before this
+	 * change -- same label, same tone, and no `title` it never had.
+	 */
+	const noRow = { ...RADIENT_ROW, configured: false, has_credential: false };
+	assert.equal(providerReadiness(noRow, "unverified").label, "Needs sign-in");
+	assert.equal(providerReadiness(noRow, "unverified").detail, undefined);
+	assert.match(
+		providerReadiness(RADIENT_ROW, "unverified").detail,
+		UNVERIFIED_DETAIL,
+	);
+	// A local server needs no key in every state, refusal included.
+	assert.equal(
+		providerReadiness(
+			{ ...OPENAI_ROW, local: true, credential_optional: true },
+			"refused",
+		).label,
+		"No key needed",
+	);
 });
 
 /**
- * The grid card, driven through the shipped hook and the shipped transport.
+ * The grid card, driven through the shipped hooks and the shipped transport.
  *
  * This is the case that fails before the fix: the census row carries a
  * credential, so the old predicate said "Signed in" in the success tone for a
@@ -464,6 +680,7 @@ test("the chip keeps 'Signed in' for every answer except the refusal", () => {
  */
 test("the grid card stops claiming a sign-in the verdict refuses", async () => {
 	loginAnswer = "refused";
+	accountAnswer = "ready";
 	const { container } = await renderGrid();
 	const rendered = text(container);
 	assert.equal(
@@ -471,31 +688,184 @@ test("the grid card stops claiming a sign-in the verdict refuses", async () => {
 		0,
 		`no card may claim a sign-in while the verdict refuses one: ${rendered}`,
 	);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
-	// The long form still reaches the card's tooltip, so the short label did not
-	// lose the reason it is short.
+	assert.equal(occurrences(rendered, "Needs re-authentication"), 1, rendered);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
+	// D2: the long form is still reachable, and now on both surfaces.
 	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 });
 
-test("the grid card still claims the sign-in a healthy verdict allows", async () => {
+test("the grid card keeps its claim on a healthy verdict", async () => {
 	loginAnswer = "ok";
+	accountAnswer = "ready";
 	const { container } = await renderGrid();
 	const rendered = text(container);
 	assert.equal(occurrences(rendered, "Signed in"), 1, rendered);
 	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
 });
 
-test("a backend that cannot answer the verdict leaves the chip as it was", async () => {
-	for (const answer of ["absent", "unknown"]) {
-		loginAnswer = answer;
+/**
+ * D3 / M1, on the surface: a runtime whose route predates `radient_login`, with
+ * the app's own account read answering that no sign-in is stored. The chip may
+ * not fall back to the credential row here -- that fallback IS the incident.
+ */
+test("an absent verdict plus a signed-out account read does not claim a sign-in", async () => {
+	loginAnswer = "absent";
+	accountAnswer = "signed-out";
+	const { container } = await renderGrid();
+	const rendered = text(container);
+	assert.equal(
+		occurrences(rendered, "Signed in"),
+		0,
+		`the row may not be read as a working sign-in without a verdict: ${rendered}`,
+	);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	assert.match(
+		container.innerHTML,
+		/title="This app could not confirm the sign-in stored on this machine"/,
+	);
+});
+
+/**
+ * The never-signed-in machine, which must be UNCHANGED by this change: it is the
+ * picture D1's remedy has to pull the refused card apart from, and the pair only
+ * reads as a distinction if this half is still the plain one.
+ */
+test("a machine with no stored sign-in keeps the card it had before this change", async () => {
+	loginAnswer = "unknown";
+	accountAnswer = "signed-out";
+	census = [
+		{
+			...RADIENT_ROW,
+			configured: false,
+			has_credential: false,
+			stored_credentials: 0,
+		},
+		OPENAI_ROW,
+	];
+	const { container } = await renderGrid();
+	const rendered = text(container);
+	assert.equal(occurrences(rendered, "Signed in"), 0, rendered);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	assert.equal(
+		occurrences(container.innerHTML, 'title="This app could not confirm'),
+		0,
+		`a machine with no sign-in owes no contradiction prose: ${container.innerHTML}`,
+	);
+	// And the distinction itself: with a row, the same state DOES carry the long
+	// form, which is the whole reason the two cards stop being one picture.
+	census = [RADIENT_ROW, OPENAI_ROW];
+	const withRow = await renderGrid();
+	assert.equal(
+		occurrences(
+			withRow.container.innerHTML,
+			'title="This app could not confirm',
+		),
+		1,
+	);
+});
+
+/**
+ * QA round 1's F2, on the surface: the verdict ANSWERED `unknown` (a row whose
+ * token endpoint cannot be reached) with the account read failing `unavailable`.
+ * Neither read confirms the login, so no surface may render the green claim.
+ */
+test("an unknown verdict does not claim a sign-in either", async () => {
+	loginAnswer = "unknown";
+	accountAnswer = "unavailable";
+	const { container } = await renderGrid();
+	const rendered = text(container);
+	assert.equal(
+		occurrences(rendered, "Signed in"),
+		0,
+		`an unconfirmed verdict is not a health claim: ${rendered}`,
+	);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	assert.match(
+		container.innerHTML,
+		/title="This app could not confirm the sign-in stored on this machine"/,
+	);
+});
+
+/**
+ * The control for the case above, and the direction that must NOT narrow: a
+ * runtime with no verdict at all, whose account read is unreachable, keeps the
+ * store's own answer. That is the floor the PR body states.
+ */
+test("an absent verdict with an unreachable account read keeps the store's answer", async () => {
+	for (const account of ["unavailable", "ready"]) {
+		loginAnswer = "absent";
+		accountAnswer = account;
 		const { container } = await renderGrid();
 		const rendered = text(container);
 		assert.equal(
 			occurrences(rendered, "Signed in"),
 			1,
-			`the "${answer}" answer must keep the store's own answer: ${rendered}`,
+			`an account read of ${account} must not narrow the chip: ${rendered}`,
 		);
 	}
+});
+
+/**
+ * D6: the claim waits for the read that can correct it.
+ *
+ * The verdict is held open with the census already answered -- the window design
+ * round 1 measured as a green "Signed in" for 72-193 ms, then corrected. The card
+ * list must not be on screen claiming anything until the verdict has answered.
+ */
+test("the card list does not paint a claim while the verdict read is out", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	holdVerdict = true;
+	releaseVerdict = () => {};
+	const queryClient = client();
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	mounted.push({ root, queryClient });
+	await act(async () => {
+		root.render(
+			createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				createElement(ProviderGrid, {}),
+			),
+		);
+	});
+	/*
+	 * Sampled repeatedly rather than once: the census HAS answered by now (the
+	 * bridge answers it immediately), so a single sample could pass on the frame
+	 * before the query ran. Four flushes is far more than the 46-99 ms the design
+	 * round measured this flash lasting.
+	 */
+	for (let sample = 0; sample < 4; sample++) {
+		await flush();
+		const rendered = text(container);
+		assert.equal(
+			occurrences(rendered, "Signed in"),
+			0,
+			`sample ${sample + 1} painted a claim before the verdict answered: ${rendered}`,
+		);
+		assert.ok(
+			rendered.includes("Loading providers"),
+			`sample ${sample + 1} should still be holding the grid's own loading state: ${rendered}`,
+		);
+	}
+	holdVerdict = false;
+	releaseVerdict();
+	const deadline = Date.now() + 5000;
+	for (;;) {
+		await flush();
+		if (text(container).includes("Needs re-authentication")) break;
+		if (Date.now() > deadline) {
+			throw new Error(
+				`the refused card never arrived after the verdict answered: ${text(container)}`,
+			);
+		}
+	}
+	const settled = text(container);
+	assert.equal(occurrences(settled, "Signed in"), 0, settled);
+	assert.equal(occurrences(settled, "Needs re-authentication"), 1, settled);
 });
 
 /**
@@ -505,11 +875,17 @@ test("a backend that cannot answer the verdict leaves the chip as it was", async
  */
 test("the detail panel's badge is keyed on the verdict, not on the credential row", async () => {
 	loginAnswer = "refused";
+	accountAnswer = "ready";
 	const refused = await renderDetail();
-	await awaitVerdict(refused.container, refused.queryClient);
+	await awaitReads(refused.container, refused.queryClient);
 	const refusedText = text(refused.container);
 	assert.equal(occurrences(refusedText, "Signed in"), 0, refusedText);
-	assert.equal(occurrences(refusedText, "Needs sign-in"), 1, refusedText);
+	assert.equal(
+		occurrences(refusedText, "Needs re-authentication"),
+		1,
+		refusedText,
+	);
+	assert.match(refused.container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 	// A real unmount rather than a second container: the healthy half asserts
 	// against a panel that rendered from its own answer, not from this one's
 	// state or from a leftover DOM.
@@ -519,7 +895,7 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 
 	loginAnswer = "ok";
 	const healthy = await renderDetail();
-	await awaitVerdict(healthy.container, healthy.queryClient);
+	await awaitReads(healthy.container, healthy.queryClient);
 	const healthyText = text(healthy.container);
 	assert.equal(occurrences(healthyText, "Signed in"), 1, healthyText);
 });

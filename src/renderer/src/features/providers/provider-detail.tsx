@@ -23,6 +23,14 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
+/*
+ * The MODULE, not the `@shared/hooks` barrel: the barrel carries
+ * `use-connectivity-status`, which reads the renderer's config at import time and
+ * therefore throws in any Node bundle that does not define `import.meta.env` --
+ * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
+ * docblock. Importing the leaf keeps this feature out of that graph.
+ */
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
@@ -30,7 +38,7 @@ import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	isTerminalAuthState,
-	loginRefused,
+	loginState,
 	primaryMethod,
 	providerReadiness,
 } from "./provider-labels";
@@ -194,13 +202,17 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * early returns, so the hook order is the same for every provider.
 	 */
 	const login = useRadientLoginVerdict();
+	/** The app's own answer about whether a Radient sign-in is stored, and whether
+	 * it could be asked at all (see `loginState`; design round 1's D3 is why the
+	 * chip may not fall back to the credential row when the verdict is absent). */
+	const { accountRead, unavailable } = useRadientUserQuery();
 	/**
 	 * The badge's own words, from the same predicate the grid's cards use, so one
 	 * credential cannot be called two things on one screen.
 	 */
 	const readiness = providerReadiness(
 		provider,
-		loginRefused(provider.id, login.data),
+		loginState(provider.id, login.data, { accountRead, unavailable }),
 	);
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [operation, setOperation] = useState<AuthOperation | null>(null);
@@ -433,9 +445,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 								{method.label}
 							</Button>
 							{/* The row's own badge, keyed on the login verdict rather than on
-							    the credential row -- see the `readiness` above. */}
-							{provider.configured && (
-								<Badge variant={readiness.tone}>{readiness.label}</Badge>
+							    the credential row -- and NOT painted until the verdict has
+							    answered, because a claim it is about to correct is what design
+							    round 1's D6 measured. The prose rides the same `title` the grid's
+							    chip carries, so the long form is reachable on both surfaces. */}
+							{provider.configured && !login.isPending && (
+								<Badge variant={readiness.tone} title={readiness.detail}>
+									{readiness.label}
+								</Badge>
 							)}
 						</div>
 					)}
