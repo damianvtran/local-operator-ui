@@ -57,9 +57,22 @@ against the BUILT app headless, and it is the other half of the evidence:
   1286×1404 because the crop floors to whole pixels. What the frame shows is the pane's
   terminal, not a window corner: an earlier revision of this cell photographed the
   window's top-left quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
-- `offscreen-capture.png` — the same call with the pane closed: `rendered:
-  "offscreen"`, `renderer: "dom"`, **47,138 B**, `attempts: 1`, at the grid the
-  displayed frame reported (82×45). It is a real terminal frame — the rig's own
+- `proof-transcript-unpaired.md` — THE SAME RIG ON A MACHINE THE APP IS NOT PAIRED WITH,
+  and it is here because that is a state a reader will meet: QA round 4's Q-10 was exactly
+  this run reported as a pass. The pane cells need a conversation the app can READ, which
+  needs the pairing; with none, the rig says so —
+  `Result: 42 of 42 check(s) passed, 1 BLOCKED`, the blocked cell naming the precondition,
+  the other forty-two cells all run, and the process exits **non-zero** so a partial run
+  cannot be read as a pass. Nothing is hidden and nothing is guessed: the transcript carries
+  the app's own sentence (`This conversation cannot be read here: the app is not paired with
+  the running server`) and the four cells that did not run.
+- `offscreen-capture.png` — the same call with the pane closed, from that unpaired run: it
+  needs no pane and no backend, which is the point of the reconstruction.
+  `rendered: "offscreen"`, `renderer: "dom"`, **44,713 B** at **1560×936**, `attempts: 1`.
+  The size differs from the paired run's 47,138 B for a reason worth stating rather than
+  rounding over: with no pane mounted nothing reports a content rect, so the window is sized
+  to the SURFACE's own grid (100×30) rather than to the pane's box. It is a real terminal
+  frame — the rig's own
   `printf 'marker-424242\n'` and `stty size` → `30 100` — reconstructed from the
   record by the capture view.
 
