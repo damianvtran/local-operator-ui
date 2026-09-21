@@ -21,6 +21,7 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
+import type { OnboardingPanelWidth } from "./onboarding-dialog";
 import { ConnectProviderStep } from "./steps/connect-provider-step";
 import { CreateAgentStep } from "./steps/create-agent-step";
 import { DefaultModelStep } from "./steps/default-model-step";
@@ -62,6 +63,21 @@ const SKIPPABLE = new Set([
 	OnboardingStep.SEARCH_API,
 	OnboardingStep.CREATE_AGENT,
 ]);
+
+/**
+ * The panel measure each step is laid out at, for the steps that are not a
+ * form.
+ *
+ * One entry, and it is here rather than at the `OnboardingDialog` call site
+ * below because the value is a decision about the STEP rather than an argument
+ * at a render: the provider step renders a grid of registry rows and asks for
+ * the measure that fits a third column of cards; every other step asks for the
+ * form measure by default. See `ONBOARDING_PANEL_WIDTHS` for the arithmetic.
+ */
+const STEP_PANEL_WIDTH: Partial<Record<OnboardingStep, OnboardingPanelWidth>> =
+	{
+		[OnboardingStep.CONNECT_PROVIDER]: "grid",
+	};
 
 /**
  * Props for the OnboardingModal component
@@ -338,6 +354,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			title={dialogTitle}
 			stepIndicators={finalStepIndicatorsProp}
 			actions={dialogActions}
+			width={STEP_PANEL_WIDTH[currentStep] ?? "form"}
 		>
 			{stepContent}
 		</OnboardingDialog>

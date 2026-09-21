@@ -3488,7 +3488,14 @@ export const STORIES = [
 		"onboarding-providersetup--settings-column",
 		1000,
 		1100,
-		{ dir: "card-focused", tabTo: '[data-provider-id="radient"]' },
+		/*
+		 * `> button` because the hook is on the ROW: the element a keyboard user
+		 * reaches is the card inside it, which is what `tabTo` asserts.
+		 */
+		{
+			dir: "card-focused",
+			tabTo: '[data-provider-id="radient"] > button',
+		},
 	],
 
 	/* 1380x800 is what the story declares and what the app window ships. */

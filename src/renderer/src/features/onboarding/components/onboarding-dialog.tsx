@@ -16,6 +16,35 @@ import { cn } from "@shared/lib/utils";
 import { type ReactNode, useRef } from "react";
 
 /**
+ * The panel measure, per step SHAPE.
+ *
+ * Two shapes, because the flow has two. Every step but one is a form: it asks
+ * for a name, a URL, a choice, and 560px is the measure the whole flow was
+ * composed at — wide enough for a sentence of explanation, narrow enough that
+ * one decision fills the frame. A two-field form in a 940px box reads as a web
+ * signup page rather than as a desktop setup dialog (Raycast, Cron and Things
+ * all run first run at roughly that measure), which is why that number is kept
+ * rather than moved for the one step that wants more.
+ *
+ * The provider step is not a form. It is a grid of the registry's rows, and the
+ * measure it needs is the one that fits a third column of cards: 960px less the
+ * body's own 24px padding is 912px of grid, which is 3 x 280px cards and two
+ * 12px gaps (864px) with 48px to spare — and 897px even after a CLASSIC
+ * scrollbar takes 15px off the body, which is the case that decides it. At the
+ * 928px that also looks plausible the same arithmetic leaves 1px of slack, so a
+ * platform with space-taking scrollbars would silently drop the grid back to two
+ * columns. The dialog is `w-full`, so below 960px the panel is simply the window
+ * and the grid's own container rule degrades it to two columns and then one.
+ */
+export const ONBOARDING_PANEL_WIDTHS = {
+	form: "max-w-140",
+	grid: "max-w-240",
+} as const;
+
+/** Which of those measures a step asks for. */
+export type OnboardingPanelWidth = keyof typeof ONBOARDING_PANEL_WIDTHS;
+
+/**
  * Props for the OnboardingDialog component
  */
 export type OnboardingDialogProps = {
@@ -41,6 +70,12 @@ export type OnboardingDialogProps = {
 	 */
 	actions?: ReactNode;
 	/**
+	 * How wide the panel may be. Defaults to the form measure, which is every
+	 * step's; see {@link ONBOARDING_PANEL_WIDTHS} for the two shapes and why the
+	 * grid step is not measured like the rest.
+	 */
+	width?: OnboardingPanelWidth;
+	/**
 	 * Extra classes for the dialog panel
 	 */
 	className?: string;
@@ -58,6 +93,7 @@ export const OnboardingDialog = ({
 	stepIndicators,
 	children,
 	actions,
+	width = "form",
 	className,
 }: OnboardingDialogProps): ReactNode => {
 	const contentRef = useRef<HTMLDivElement>(null);
@@ -99,14 +135,13 @@ export const OnboardingDialog = ({
 				}}
 				className={cn(
 					/*
-					 * 560px, down from 660. The choice step was the only one that
-					 * wanted the width; every other step is a two-field form, and a
-					 * 612px-wide box for "Your name" is a web signup page rather than
-					 * a desktop setup dialog. Raycast, Cron and Things all run first
-					 * run at roughly this measure — wide enough for a sentence of
-					 * explanation, narrow enough that one decision fills the frame.
+					 * The measure comes from the step's own shape (see
+					 * `ONBOARDING_PANEL_WIDTHS`); the rest of this string is the frame
+					 * every step shares — a cap at the window's height, and no padding of
+					 * its own because the header, body and actions each own theirs.
 					 */
-					"max-h-[calc(100vh-4rem)] max-w-140 gap-0 overflow-hidden p-0",
+					"max-h-[calc(100vh-4rem)] gap-0 overflow-hidden p-0",
+					ONBOARDING_PANEL_WIDTHS[width],
 					className,
 				)}
 			>
