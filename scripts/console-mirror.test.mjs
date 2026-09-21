@@ -496,3 +496,46 @@ test("a re-feed under the same key still clears first: one record, never a union
 	);
 	root.unmount();
 });
+
+test("the capture settle is the write's own completion, not a frame count (Q-13)", async () => {
+	/*
+	 * THE CELL Q-13 ASKS FOR. The settle used to be "two animation frames after the write
+	 * was CALLED", which is right for a prompt and wrong for a large record: QA measured a
+	 * 3.9-8 MB record coming back blank on 1 of 5, 2 of 5 and 1 of 5 back-to-back captures of
+	 * the same surface, because the shutter could beat the parse. It is xterm's own
+	 * `write(data, callback)` now, and what this cell can hold is the order the mirror
+	 * depends on: when the settle fires, the record is ALREADY in the terminal, and it
+	 * arrived there through the write's callback rather than through a timer.
+	 */
+	const root = harness.createRoot(document.getElementById("root"));
+	const settledWith = [];
+	const feed = (text) =>
+		root.render(
+			harness.createElement(harness.ConsoleMirror, {
+				key: text,
+				surface: "con:1:feed",
+				visible: true,
+				cols: 80,
+				rows: 24,
+				mode: "capture",
+				bytes: new TextEncoder().encode(text),
+				onSettled: (terminal) => settledWith.push(written(terminal)),
+				onReport: () => {},
+			}),
+		);
+
+	feed("A-LARGE-RECORD\n");
+	await settle(60);
+	const terminal = __terminals.filter((t) => !t.wasDisposed).at(-1);
+	assert.deepEqual(
+		settledWith,
+		["A-LARGE-RECORD\n"],
+		"the settle arrives with the record already parsed into the terminal",
+	);
+	assert.equal(
+		terminal.writeCallbacks.filter(Boolean).length,
+		1,
+		"and it was carried by the write's own callback rather than by a frame count",
+	);
+	root.unmount();
+});

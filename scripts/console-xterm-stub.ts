@@ -90,11 +90,18 @@ export class Terminal {
 		this.addons.push(addon);
 	}
 	open(): void {}
-	write(data: Uint8Array | string): void {
+	write(data: Uint8Array | string, callback?: () => void): void {
 		this.written.push(
 			typeof data === "string" ? new TextEncoder().encode(data) : data,
 		);
+		// The real `Terminal.write` calls this once the data has been PARSED, which is what
+		// the capture path's settle is now (Q-13). The stub calls it immediately after
+		// recording, so a cell can assert the ORDER the mirror relies on: the bytes are in
+		// the buffer before anything downstream is told the terminal has settled.
+		this.writeCallbacks.push(callback);
+		callback?.();
 	}
+	readonly writeCallbacks: Array<(() => void) | undefined> = [];
 
 	/**
 	 * xterm's own `reset()`, and it is recorded rather than a no-op because a test has

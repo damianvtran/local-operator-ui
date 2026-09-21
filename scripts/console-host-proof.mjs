@@ -26,6 +26,14 @@
  *   - the app's backend manager is disabled: this run is about a console, and a pip
  *     install in a scratch HOME has a quit path of its own.
  *
+ * PRECONDITION, STATED BECAUSE A RUN THAT HIDES IT IS A DEAD INSTRUMENT (QA round 4's Q-10):
+ * the pane cells — the console trigger, the mounted pane, and the displayed capture — need the
+ * app PAIRED with a backend, because the chat route renders no conversation header without one.
+ * Pairing a backend is outside this rig's reach (the API base is baked into the bundle, and the
+ * daemon that answers it is the operator's own), so a run without one does not fail and does
+ * not pretend: those cells are reported as BLOCKED with this reason, every other cell still
+ * runs, and the run EXITS NON-ZERO with the counts it actually reached.
+ *
  * Usage:
  *   node scripts/console-host-proof.mjs [--keep] [--out <dir>]
  *   node scripts/console-host-proof.mjs --packaged "/Applications/Local Operator.app"
@@ -187,6 +195,9 @@ const SESSION = "abcdef012345";
 
 const transcript = [];
 let failures = 0;
+/** How many cells were ASKED, so a run that stopped early cannot report a total it never
+ * reached (Q-10: 27 of 45 cells never ran and the summary could not say so). */
+let checks = 0;
 let app = null;
 let DEVTOOLS_PORT = 0;
 
@@ -202,7 +213,27 @@ function say(line) {
 	console.log(line);
 }
 
+/**
+ * A CELL THAT COULD NOT RUN, which is neither a pass nor a failure.
+ *
+ * WHY IT EXISTS (QA round 4's Q-10): this rig reported "45 PASS / 0 FAIL" on a machine whose
+ * daemon happened to be running, and QA's clean-state run of the same command gave 17 PASS,
+ * 1 FAIL and a crash — 27 cells never ran, and the run's own summary could not say so. A
+ * precondition that is silently assumed is the shape this repository's AGENTS.md names: a
+ * dead instrument returns a reading, not an error. So a blocked cell is COUNTED, PRINTED and
+ * makes the run exit non-zero, and the summary names the precondition rather than the number
+ * of cells that happened to be reachable.
+ */
+const blockedCells = [];
+function blocked(label, reason, detail) {
+	blockedCells.push({ label, reason });
+	transcript.push(
+		`\n## BLOCKED — ${label}\n\n${reason}\n\n\`\`\`\n${JSON.stringify(detail, null, 2)}\n\`\`\`\n`,
+	);
+}
+
 function check(label, ok, detail) {
+	checks += 1;
 	if (!ok) failures += 1;
 	record(
 		`${ok ? "PASS" : "FAIL"} — ${label}`,
@@ -1393,20 +1424,50 @@ async function main() {
 	// A FLOOR OF 30 s REGARDLESS OF `--wait-ms`: this wait is a boot plus a navigation
 	// rather than a poll of something already up, and a small `--wait-ms` (QA's 20 s, which
 	// found this) would otherwise starve the one step that depends on the app having painted.
-	const triggerAt = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
-	check(
-		"the console trigger is on screen in a conversation's header (Q-5, Q-10)",
-		triggerAt !== null && triggerAt.failed !== true,
-		triggerAt,
-	);
-	if (triggerAt) {
+	/*
+	 * THE PRECONDITION IS NAMED, NOT ASSUMED (QA round 4's Q-10).
+	 *
+	 * This rig's pane cells need a conversation on the chat route, and the chat route renders
+	 * one only when the app is PAIRED with a backend — measured: with no pairing the body
+	 * carries "This app is not paired with the running Local Operator server", the route is
+	 * `#/chat` with an empty session store, and no trigger ever appears; with a pairing it
+	 * appears in 1,250 ms. The rig's first version therefore reported 45 PASS / 0 FAIL on a
+	 * machine whose daemon happened to be up, and QA's clean-state run of the same command
+	 * got 17 PASS, 1 FAIL and a crash — 27 cells never ran.
+	 *
+	 * PAIRING A BACKEND IS OUTSIDE THIS RIG'S REACH, and that is a judgement rather than a
+	 * shrug: the app's API base is baked into the bundle it is built with, the daemon that
+	 * answers it is the operator's own, and a rig that stood up a stub and pointed the app at
+	 * it would be photographing an app no user runs. So the honest end state is this one: the
+	 * cells that need the pane are BLOCKED BY NAME, every other cell still runs, the summary
+	 * counts what actually ran, and the run exits non-zero — a partial pass can no longer be
+	 * reported as a pass.
+	 */
+	const mounted = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
+	const paneAvailable = mounted !== null && mounted.failed !== true;
+	let boxes = null;
+	let shot = null;
+	let dpr = 1;
+	if (!paneAvailable) {
+		blocked(
+			"the pane cells (the trigger, the mounted pane, and the displayed capture)",
+			"a PAIRED backend. The chat route renders no conversation header without one, so the pane cannot be mounted and this rig cannot photograph it; every other cell in this run does not need it and has run.",
+			mounted,
+		);
+	}
+	if (paneAvailable) {
+		check(
+			"the console trigger is on screen in a conversation's header (Q-5, Q-10)",
+			true,
+			mounted,
+		);
 		/*
 		 * A page that has STOPPED MOVING before the press, which is the UX round's own
 		 * measured step: the trigger is found while the conversation is still settling, and
 		 * a press aimed at the box from one frame earlier lands on whatever moved into that
 		 * place. Two identical reads a beat apart is the cheap test that the box is stable.
 		 */
-		let previous = JSON.stringify(triggerAt.box);
+		let previous = JSON.stringify(mounted.box);
 		for (let i = 0; i < 12; i++) {
 			await sleep(250);
 			const now = await rendererEvaluate(
@@ -1415,113 +1476,122 @@ async function main() {
 			if (now === previous) break;
 			previous = now;
 		}
+		/*
+		 * The pointer probe is guarded, because the box can vanish between the wait and the
+		 * read — and a `null` there used to throw out of `elementFromPoint` and take the rest
+		 * of the run with it, which is how QA's clean-state run lost 27 cells (Q-10).
+		 */
 		const under = await rendererEvaluate(
 			`(() => {
-				const el = document.elementFromPoint(${triggerAt.x}, ${triggerAt.y});
+				const el = document.elementFromPoint(${mounted.x}, ${mounted.y});
 				return el ? { tag: el.tagName, tag_: el.getAttribute('data-tour-tag'), closest: Boolean(el.closest('[data-tour-tag="console-pane-trigger"]')) } : null;
 			})()`,
-		);
+		).catch(() => null);
 		record("what is under the pointer at the trigger's centre", {
 			under,
-			triggerAt,
+			triggerAt: mounted,
 		});
-		await clickAt(triggerAt.x, triggerAt.y);
-	}
-	let boxes = await waitForConsolePane();
-	/** Whether the compositor's own press opened the pane, or the fallback below did. */
-	const openedByPress = !(boxes === null || boxes.failed === true);
-	record("how the pane was opened", { pressTook: openedByPress });
-	if (!openedByPress) {
-		/*
-		 * A DIAGNOSTIC, NOT THE OPENING PATH: if the compositor's press did not take, ask
-		 * whether the element's own `click()` does. The two answers separate "the input did
-		 * not reach the page" from "the pane does not mount when asked", and only the second
-		 * would be a defect in this branch.
-		 */
-		await rendererEvaluate(
-			`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); window.__consoleProofDomClick = el ? 'clicked' : 'no-trigger'; if (el) el.click(); })()`,
+		await clickAt(mounted.x, mounted.y);
+		boxes = await waitForConsolePane();
+		/** Whether the compositor's own press opened the pane, or the fallback below did. */
+		const openedByPress = !(boxes === null || boxes.failed === true);
+		if (!openedByPress) {
+			/*
+			 * THE PRESS DOES NOT ALWAYS REACH THE PAGE, and in a window that is never shown it
+			 * does not: measured, with the pointer verifiably over a settled button. So the pane
+			 * is opened with the element's own `click()` — the same handler, reached a way the
+			 * compositor does not have to deliver — and WHICH PATH RAN is recorded rather than
+			 * implied. (This fallback was lost for one run when the pane section was
+			 * restructured for Q-10, which is what a `pressTook` record is for: the run that
+			 * lost it failed loudly instead of quietly photographing a window.)
+			 */
+			await rendererEvaluate(
+				`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); window.__consoleProofDomClick = el ? 'clicked' : 'no-trigger'; if (el) el.click(); })()`,
+			);
+			boxes = await waitForConsolePane(Math.max(15_000, WAIT_MS ?? 0));
+		}
+		record("how the pane was opened", { pressTook: openedByPress });
+		check(
+			"the pane is mounted on a conversation and its terminal is on screen (Q-5)",
+			boxes !== null && boxes.failed !== true,
+			boxes,
 		);
-		boxes = await waitForConsolePane(bounded(null, 10_000));
-	}
-	check(
-		"the pane is mounted on a conversation and its terminal is on screen (Q-5)",
-		boxes !== null && boxes.failed !== true,
-		boxes,
-	);
-	/*
-	 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a measured
-	 * defect: this rig reported `theme: "proof"`, a name no palette answers, so the capture
-	 * view wrote `data-theme="proof"`, resolved no role variables at all, and the offscreen
-	 * frame came back as xterm's own `#000000`/`#ffffff` with zero role-coloured pixels. The
-	 * rig was reporting a theme the app was not wearing, and the pane's whole claim is that
-	 * it follows the app's palette. The PANE reports this theme to main as part of its own
-	 * rect report, which is now the only report there is.
-	 */
-	const themeName = await rendererEvaluate(
-		"document.documentElement.dataset.theme || ''",
-	);
-	check(
-		"the app is wearing a named theme (the capture view is fed its name)",
-		typeof themeName === "string" && themeName.length > 0,
-		themeName,
-	);
-	/*
-	 * A beat for the pane's report to reach main before the screenshot: the report is a
-	 * `ResizeObserver` callback, so it lands on a frame of its own rather than synchronously
-	 * with the mount. Bounded, and the assertion that follows is what catches a report that
-	 * never arrived — the frame would come back at the pane's previous size.
-	 */
-	await sleep(500);
-	const shot = await rpcOk(state, "console_screenshot", { surface });
-	const png = Buffer.from(shot.image_base64, "base64");
-	const framePath = join(
-		OUT_DIR,
-		`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}.png`,
-	);
-	writeFileSync(framePath, png);
-	const size = pngSize(png);
-	/*
-	 * THE FRAME IS IN PHYSICAL PIXELS AND THE DOM BOX IS IN CSS ONES, which is the
-	 * measurement this cell needed and the first version of it got wrong: the frame came
-	 * back 1286x1404 against a 659x779.5 box, i.e. exactly the window's device pixel ratio
-	 * of 2. `capturePage` returns the photograph at the compositor's scale, so the
-	 * comparison is `mirror * dpr`.
-	 */
-	const dpr = await rendererEvaluate("window.devicePixelRatio || 1");
-	record("capture geometry", {
-		rendered: shot.rendered,
-		cols: shot.cols,
-		rows: shot.rows,
-		theme: shot.theme,
-		live: shot.live,
-		bytes: png.length,
-		frame: size,
-		pane: boxes?.pane ?? null,
-		mirror: boxes?.mirror ?? null,
-		sha256: createHash("sha256").update(png).digest("hex"),
-		file: framePath,
-	});
-	check(
-		"a screenshot is the app's own window, cropped to the PANE's rect (design 13.2, Q-5)",
-		shot.rendered === "displayed" &&
-			boxes !== null &&
-			boxes.failed !== true &&
-			// The crop is integer-floored and clipped to the window's content bounds
-			// (`cropToWindow`), so the tolerance is the rounding, not a slack.
-			Math.abs(size.width - boxes.mirror.width * dpr) <= 2 &&
-			Math.abs(size.height - boxes.mirror.height * dpr) <= 2 &&
-			shot.cols > 0 &&
-			shot.rows > 0,
-		{
+		/*
+		 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a measured
+		 * defect: this rig reported `theme: "proof"`, a name no palette answers, so the
+		 * capture view wrote `data-theme="proof"`, resolved no role variables at all, and the
+		 * offscreen frame came back as xterm's own `#000000`/`#ffffff` with zero
+		 * role-coloured pixels. The rig was reporting a theme the app was not wearing, and the
+		 * pane's whole claim is that it follows the app's palette.
+		 */
+		const themeName = await rendererEvaluate(
+			"document.documentElement.dataset.theme || ''",
+		);
+		check(
+			"the app is wearing a named theme (the capture view is fed its name)",
+			typeof themeName === "string" && themeName.length > 0,
+			themeName,
+		);
+		/*
+		 * A beat for the pane's report to reach main before the screenshot: the report is a
+		 * `ResizeObserver` callback, so it lands on a frame of its own rather than
+		 * synchronously with the mount. Bounded, and the assertion that follows is what
+		 * catches a report that never arrived — the frame would come back at the pane's
+		 * previous size.
+		 */
+		await sleep(500);
+		shot = await rpcOk(state, "console_screenshot", { surface });
+		const png = Buffer.from(shot.image_base64, "base64");
+		const framePath = join(
+			OUT_DIR,
+			`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}.png`,
+		);
+		writeFileSync(framePath, png);
+		const size = pngSize(png);
+		/*
+		 * THE FRAME IS IN PHYSICAL PIXELS AND THE DOM BOX IS IN CSS ONES, which is the
+		 * measurement this cell needed and the first version of it got wrong: the frame came
+		 * back 1286x1404 against a 659x779.5 box, i.e. exactly the window's device pixel ratio
+		 * of 2. `capturePage` returns the photograph at the compositor's scale, so the
+		 * comparison is `mirror * dpr`.
+		 */
+		dpr = await rendererEvaluate("window.devicePixelRatio || 1");
+		record("capture geometry", {
 			rendered: shot.rendered,
 			cols: shot.cols,
 			rows: shot.rows,
+			theme: shot.theme,
+			live: shot.live,
+			bytes: png.length,
 			frame: size,
+			pane: boxes?.pane ?? null,
 			mirror: boxes?.mirror ?? null,
 			dpr,
-			bytes: png.length,
-		},
-	);
+			sha256: createHash("sha256").update(png).digest("hex"),
+			file: framePath,
+		});
+		check(
+			"a screenshot is the app's own window, cropped to the PANE's rect (design 13.2, Q-5)",
+			shot.rendered === "displayed" &&
+				boxes !== null &&
+				boxes.failed !== true &&
+				// The crop is integer-floored and clipped to the window's content bounds
+				// (`cropToWindow`), so the tolerance is the rounding, not a slack.
+				Math.abs(size.width - boxes.mirror.width * dpr) <= 2 &&
+				Math.abs(size.height - boxes.mirror.height * dpr) <= 2 &&
+				shot.cols > 0 &&
+				shot.rows > 0,
+			{
+				rendered: shot.rendered,
+				cols: shot.cols,
+				rows: shot.rows,
+				frame: size,
+				mirror: boxes?.mirror ?? null,
+				dpr,
+				bytes: png.length,
+			},
+		);
+	}
 
 	/*
 	 * With no pane on it, the frame is a RECONSTRUCTION from the record rather than a
@@ -1567,9 +1637,16 @@ async function main() {
 			 * The pane now measures its own box, and both frames must agree about the grid
 			 * they are pictures of.
 			 */
-			offscreen.cols === shot.cols &&
-			offscreen.rows === shot.rows &&
+			/*
+			 * THE RECONSTRUCTION IS AT THE RECORD'S GRID, and when the pane could not be
+			 * mounted (Q-10's precondition) there is no displayed frame to compare it
+			 * against: the comparison is the record's own grid, stated as such rather than
+			 * skipped silently.
+			 */
 			offscreen.cols > 0 &&
+			offscreen.rows > 0 &&
+			(shot === null ||
+				(offscreen.cols === shot.cols && offscreen.rows === shot.rows)) &&
 			offscreenPng.length > 2000,
 		{
 			rendered: offscreen.rendered,
@@ -1577,7 +1654,7 @@ async function main() {
 			attempts: offscreen.attempts,
 			cols: offscreen.cols,
 			rows: offscreen.rows,
-			displayedGrid: { cols: shot.cols, rows: shot.rows },
+			displayedGrid: shot ? { cols: shot.cols, rows: shot.rows } : null,
 			bytes: offscreenPng.length,
 		},
 	);
@@ -1654,6 +1731,72 @@ async function main() {
 		"an empty record is its own frame, not another surface's (Q-11)",
 		empty.sha !== alpha1.sha && empty.sha !== beta.sha,
 		{ empty, alphaBytes: alpha1.bytes, betaBytes: beta.bytes },
+	);
+	// Released before the next cell asks for a surface of its own: a session may run eight at
+	// once (§6.3), and a rig that never closes what it opened meets that ceiling instead of its
+	// own assertions — which is exactly how the large-record cell first failed.
+	for (const spent of [alphaSurface, betaSurface, emptySurface]) {
+		await rpcOk(state, "console_close", { surface: spent }).catch(() => {});
+	}
+
+	/*
+	 * A LARGE RECORD, CAPTURED FIVE TIMES (QA round 4's Q-13).
+	 *
+	 * The blank-frame verdict used to be a TIMING proxy — "two animation frames after the write
+	 * was called" — so a big record could be refused for a reason that had nothing to do with
+	 * its content: measured by QA, 3.9-8 MB records came back blank on 1 of 5, 2 of 5 and 1 of 5
+	 * back-to-back captures of the SAME surface. The settle is now xterm's own `write`
+	 * callback, i.e. the parse rather than a frame count, and this cell is the measurement that
+	 * would have caught the old behaviour: five captures of one surface, every one of them the
+	 * same frame, none refused.
+	 */
+	const bigRecord = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: [
+			"-c",
+			"head -c 4000000 /dev/zero | tr '\\0' 'x' | fold -w 100 | tail -n 400",
+		],
+		cols: 100,
+		rows: 30,
+		reveal: "none",
+	});
+	await readUntil(state, bigRecord.surface, "xxxxxxxxxx", 30_000);
+	const bigShots = [];
+	for (let i = 0; i < 5; i++) {
+		try {
+			bigShots.push(await offscreenSha(bigRecord.surface));
+		} catch (error) {
+			bigShots.push({ refused: String(error?.message ?? error).slice(0, 120) });
+		}
+	}
+	/*
+	 * AND THE GENERATOR IS REAPED BEFORE THE NEXT CELL, which is not tidiness: the flood cell
+	 * below measures main's responsiveness, and a pty still pushing four megabytes through a
+	 * pipeline is CPU the measurement would be paying for. Measured, once: the first version of
+	 * this cell left it running and the flood cell's median moved from 4 ms to 116 ms against a
+	 * 100 ms ceiling.
+	 */
+	for (let i = 0; i < 80; i++) {
+		// `console_status` is per-SURFACE, and a surface that has been reaped answers with an
+		// error rather than a listing — which is the same answer as `live: false` here.
+		const entry = await rpcOk(state, "console_status", {
+			surface: bigRecord.surface,
+		}).catch(() => null);
+		if (!entry || entry.live === false) break;
+		await sleep(250);
+	}
+	await rpcOk(state, "console_close", { surface: bigRecord.surface }).catch(
+		() => {},
+	);
+	record("five captures of one large record (Q-13)", bigShots);
+	const bigShas = new Set(bigShots.map((shot) => shot.sha ?? shot.refused));
+	check(
+		"a large record is captured five times, none refused, all five the same frame (Q-13)",
+		bigShots.every(
+			(shot) => shot.rendered === "offscreen" && shot.bytes > 2000,
+		) && bigShas.size === 1,
+		bigShots,
 	);
 
 	// ---- the grid broadcast (§8.2 step 2(c)) -------------------------------
@@ -2124,7 +2267,14 @@ function finish() {
 			: "# Console host end-to-end proof",
 		"",
 		`Scratch: \`${SCRATCH}\``,
-		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}`,
+		`Result: ${failures === 0 ? (blockedCells.length === 0 ? "every check passed" : `${checks} of ${checks} check(s) passed`) : `${failures} of ${checks} check(s) FAILED`}${blockedCells.length > 0 ? `, ${blockedCells.length} BLOCKED` : ""}`,
+		...(blockedCells.length > 0
+			? [
+					"",
+					`BLOCKED: ${blockedCells.length} cell(s) did not run, and this run is NOT a pass:`,
+					...blockedCells.map((entry) => `  - ${entry.label}: ${entry.reason}`),
+				]
+			: []),
 		`Reaped stray spawn-helper processes: ${reaped}`,
 		"",
 		transcript.join("\n"),
@@ -2133,7 +2283,7 @@ function finish() {
 	writeFileSync(join(OUT_DIR, "proof.md"), summary);
 	say(`\ntranscript: ${join(OUT_DIR, "proof.md")}`);
 	say(`frames: ${OUT_DIR}`);
-	if (failures > 0) process.exitCode = 1;
+	if (failures > 0 || blockedCells.length > 0) process.exitCode = 1;
 }
 
 main()

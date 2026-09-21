@@ -7049,7 +7049,17 @@ const main = async () => {
 						.join(" "),
 				)
 				.find((text) =>
-					/^(AssertionError|TestingLibraryElementError)|Unable to perform pointer interaction/.test(
+					/*
+					 * `^Error:` IS PART OF THE PATTERN NOW, and QA round 4's Q-12 is why: this
+					 * guard knew the two shapes `@storybook/test` throws and the pointer refusal
+					 * user-event produces, so a `play` that threw its own `Error` — which is
+					 * exactly what the console pane's selection story did — was reported to the
+					 * console and IGNORED, and the sweep photographed twelve frames of a state
+					 * the play had already rejected. The comment above this block said that limit
+					 * out loud; a limit that ships a wrong frame is not a disclosure, it is the
+					 * defect. A thrown `Error:` in a story's phase now stops the sweep.
+					 */
+					/^(AssertionError|TestingLibraryElementError|Error:)|Unable to perform pointer interaction/.test(
 						text,
 					),
 				);

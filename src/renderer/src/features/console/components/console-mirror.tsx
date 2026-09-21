@@ -268,8 +268,20 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			 * does not change.
 			 */
 			terminal.reset();
-			terminal.write(bytes);
-			settledRef.current?.(terminal);
+			/*
+			 * THE SETTLE IS THE WRITE'S OWN COMPLETION, NOT A FRAME COUNT (QA round 4's Q-13).
+			 *
+			 * `write` takes a callback that fires when the data has been PARSED into the
+			 * terminal, and the settle used to be "two animation frames after the call" — a
+			 * proxy that is right for a prompt and wrong for a large record. Measured: a
+			 * 3.9-8 MB record came back as a blank frame on 1 of 5, 2 of 5 and 1 of 5
+			 * back-to-back captures of the same surface, because the shutter could beat the
+			 * parse. A verdict about CONTENT must not move with the scheduler, which is the
+			 * same rule Q-6 and Q-7 were fixed under, applied to the other end of the same
+			 * path: there the predicate stopped asking about bytes, and here the handshake
+			 * stops asking about frames.
+			 */
+			terminal.write(bytes, () => settledRef.current?.(terminal));
 			return;
 		}
 		const api = window.api?.console;

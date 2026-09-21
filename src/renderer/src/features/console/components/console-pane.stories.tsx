@@ -1,6 +1,7 @@
 import { DEFAULT_CONSOLE_PANEL_WIDTH } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect } from "@storybook/test";
 import type { FC } from "react";
 import { useEffect } from "react";
 import { ConsolePane } from "./console-pane";
@@ -314,6 +315,18 @@ export const Populated: Story = {
  * frame without a selection is a failed story rather than a quiet picture of nothing.
  */
 const paintSelection = (canvasElement: HTMLElement) => {
+	/*
+	 * `detail: 1` IS THE WHOLE OF THE FIRST VERSION'S BUG, and it is worth naming because the
+	 * frame looked plausible without it: xterm's selection handler is gated on
+	 * `1 === e.detail` (`_handleSingleClick` — a MouseEvent built with `new MouseEvent(...)`
+	 * defaults `detail` to 0, so the press moved the cursor and started nothing). The drag was
+	 * firing, the terminal was focusing, and no selection existed — which is exactly what QA
+	 * found in the twelve frames this story produced (round 4's Q-12).
+	 *
+	 * The move goes to `document` because that is where xterm binds it
+	 * (`_screenElement.ownerDocument.addEventListener("mousemove", …)`), and `buttons: 1`
+	 * keeps it a drag rather than a hover.
+	 */
 	const screen = canvasElement.querySelector<HTMLElement>(".xterm-screen");
 	// The third painted row, which is `SAMPLE`'s ANSI row rather than the title.
 	const row = canvasElement.querySelector<HTMLElement>(
@@ -325,19 +338,25 @@ const paintSelection = (canvasElement: HTMLElement) => {
 	const y = box.top + box.height / 2;
 	const from = box.left + 4;
 	const to = box.left + Math.min(box.width - 4, 260);
-	const fire = (type: string, target: EventTarget, x: number) =>
+	const fire = (
+		type: string,
+		target: EventTarget,
+		x: number,
+		buttons: number,
+	) =>
 		target.dispatchEvent(
 			new MouseEvent(type, {
 				bubbles: true,
 				cancelable: true,
 				clientX: x,
 				clientY: y,
-				buttons: type === "mouseup" ? 0 : 1,
+				buttons,
+				detail: 1,
 			}),
 		);
-	fire("mousedown", screen, from);
-	fire("mousemove", document, to);
-	fire("mouseup", document, to);
+	fire("mousedown", screen, from, 1);
+	fire("mousemove", document, to, 1);
+	fire("mouseup", document, to, 0);
 	return true;
 };
 
@@ -375,14 +394,19 @@ export const Selected: Story = {
 			painted = paintSelection(canvasElement);
 			if (!painted) await new Promise((resolve) => setTimeout(resolve, 100));
 		}
-		if (!painted) throw new Error("the terminal never painted a row to select");
+		// `expect` rather than a thrown `Error`, because the sweep's own guard reads the
+		// console for a play's failure and knows the shapes `@storybook/test` throws
+		// (AssertionError) rather than an `Error` a story raised itself — which is how
+		// twelve frames of a focused cursor shipped under a `play` that had already failed
+		// (QA round 4's Q-12). The guard is widened in the same commit, so a plain `Error`
+		// fails the sweep too; this is the belt and the other is the braces.
+		expect(painted, "the terminal never painted a row to select").toBe(true);
 		await new Promise((resolve) => setTimeout(resolve, 120));
 		const layers = canvasElement.querySelectorAll(".xterm-selection div");
-		if (layers.length === 0) {
-			throw new Error(
-				"the drag painted no selection layer, so this frame would claim a selection it does not show",
-			);
-		}
+		expect(
+			layers.length,
+			"the drag painted no selection layer, so this frame would claim a selection it does not show",
+		).toBeGreaterThan(0);
 	},
 };
 
