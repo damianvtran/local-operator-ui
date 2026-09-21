@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
 import { ByteLog, type ByteLogSlice } from "./byte-log";
-import { hasVariation } from "./capture";
+import { hasTerminalContent } from "./capture";
 import {
 	type ConsoleEmulator,
 	type ConsoleReadMode,
@@ -107,13 +107,6 @@ export const OUTPUT_COALESCE_MS = 16;
  */
 export const PERSIST_FLUSH_MS = 250;
 export const PERSIST_FLUSH_BYTES = 256 * 1024;
-
-/** The shortest a frame may be before it is treated as the blank first frame a
- * hidden window returns. Measured in the compatibility spike: a stale/blank first
- * capture came back 9,866 B against 27,869 B for the settled frame at the same
- * size. The threshold sits well under the small end and well above "empty", so it
- * catches a blank frame without re-capturing a legitimately tiny one. */
-export const MIN_FRAME_BYTES = 2_000;
 
 /** How long to wait before the single retry. The spike's stale frame was the
  * *first* capture of a hidden window; one compositor beat later it was correct. */
@@ -766,23 +759,23 @@ export class ConsoleHost {
 	}
 
 	/**
-	 * A displayed frame, retried once, and REFUSED when it is blank twice (Q-2).
+	 * A displayed frame, retried once, and REFUSED when it has no content twice (Q-2).
 	 *
-	 * The byte floor alone was not a guard, and QA round 1 measured it: a blank
-	 * 1600x800 capture is a few kilobytes of one colour, so it clears
-	 * `MIN_FRAME_BYTES` comfortably and the cell certifying "a screenshot is the
-	 * app's own window, cropped to the pane's rect" passed on a uniform field (1
-	 * distinct colour; 0 of 427,200 sampled pixels off background) while the offscreen
-	 * frame from the same run had 252 colours. The offscreen path had always asked
-	 * both questions; this path now asks both, with the SAME predicate, so the two
-	 * cannot drift.
+	 * There is no byte floor any more, here or on the offscreen path, and the two
+	 * findings are why: the floor was not a guard (QA round 1's Q-2 — a blank 1600x800
+	 * capture is a few kilobytes of one colour, so the cell certifying "a screenshot is
+	 * the app's own window, cropped to the pane's rect" was green on a uniform field
+	 * while the offscreen frame from the same run had 252 colours) AND it refused real
+	 * captures from the other side (QA round 2's Q-7 — a live console that had printed
+	 * less than a screenful was answered as blank). `hasTerminalContent` asks the
+	 * question both findings reduce to, once, for both paths.
 	 *
-	 * A UNIFORM FRAME IS REFUSED RATHER THAN RETURNED, which is the design's own
-	 * answer for the offscreen path (§13.2's `capture_unavailable`): a picture of one
-	 * colour is not a picture of a terminal, and handing it back would be the class of
-	 * false evidence this whole contract exists to avoid. A real pane is never
-	 * uniform — the DOM renderer paints text and a cursor — and the empty-terminal
-	 * case is the offscreen path's problem too, so this is not a new ceiling.
+	 * A FRAME WITH NO CONTENT IS REFUSED RATHER THAN RETURNED, which is the design's own
+	 * answer for the offscreen path (§13.2's `capture_unavailable`): one flat field is
+	 * not a picture of a terminal, and handing it back would be the class of false
+	 * evidence this contract exists to avoid. A real pane is never flat — the DOM
+	 * renderer paints antialiased text and a cursor — and the empty-terminal case is the
+	 * offscreen path's problem too, so this is not a new ceiling.
 	 */
 	private async captureWithRetry(
 		window: BrowserWindow,
@@ -793,7 +786,7 @@ export class ConsoleHost {
 			const image = await window.webContents.capturePage(rect);
 			const png = framePng(image);
 			bytes = png.length;
-			if (png.length >= MIN_FRAME_BYTES && hasVariation(image.toBitmap())) {
+			if (hasTerminalContent(image.toBitmap())) {
 				return png;
 			}
 			this.options.log(

@@ -73,11 +73,33 @@ const DEFAULT_IDLE_MS = 30_000;
  */
 const SETTLE_TIMEOUT_MS = 30_000;
 
-/** The frame's size floor, in bytes, below which a PNG is treated as blank. The
- * design's measurement is the calibration: 9,866 B was the stale frame and 27,869 B
- * the settled one at 100x30, so a floor between them discriminates the case this
- * exists for without asserting anything about content. */
-const MIN_FRAME_BYTES = 14_000;
+/**
+ * What "this frame is blank" means, in PIXELS rather than in PNG bytes (Q-7, Q-6).
+ *
+ * The byte floor that used to stand here was content-dependent, and QA round 2 measured
+ * how badly: sweeping `seq 1 N` at 100x30 with no pane, N=1 came back 6,931 B and was
+ * REFUSED, N=4 8,505 B refused, N=8 10,825 B refused, N=16 16,186 B accepted — and a bare
+ * prompt was refused at 9,655 B, which the app's own log called "came back blank". A small
+ * output is the COMMON case for an agent looking at a TUI, and any console showing less
+ * than about a screenful could not be photographed offscreen at all. The floor was
+ * measuring how much text a program had printed, not whether the capture worked.
+ *
+ * Two questions replace it, and both are about the picture:
+ *
+ *  - `MIN_CONTENT_DISTINCT_COLOURS` catches the frame that is one or two solid fields —
+ *    the genuinely blank capture (1 colour: measured, 1 distinct colour and 0 of 427,200
+ *    sampled pixels off background) AND the two-solid-band glyph-free frame QA round 2
+ *    measured passing at 4,417-5,628 B (Q-6). A rendered terminal is never a flat field:
+ *    the measured offscreen frame for a live surface carried 252 distinct colours, and the
+ *    threshold of 8 sits two orders of magnitude below that and well above the bands.
+ *  - `MIN_CONTENT_PIXELS` catches the speck: a handful of pixels that differ from the
+ *    frame's ground is not a screenshot of anything, whatever its palette.
+ *
+ * Both must hold. The reference is the frame's FIRST pixel, which for a terminal is the
+ * pane's ground — the same reference the blank-frame measurement above used.
+ */
+const MIN_CONTENT_DISTINCT_COLOURS = 8;
+const MIN_CONTENT_PIXELS = 32;
 
 /** How long to wait before re-capturing a frame that came back blank. */
 const RETRY_DELAY_MS = 120;
@@ -299,7 +321,7 @@ export class ConsoleCaptureView {
 			const image = await contents.capturePage();
 			const png = image.toPNG();
 			last = { bytes: png.length, renderer };
-			if (png.length >= MIN_FRAME_BYTES && hasVariation(image.toBitmap())) {
+			if (hasTerminalContent(image.toBitmap())) {
 				this.scheduleReap();
 				this.options.log(
 					`[console] captured surface ${request.surface} offscreen at ${request.cols}x${request.rows} (${renderer} renderer, ${png.length} B, attempt ${attempt})`,
@@ -377,28 +399,49 @@ const waitForCapture = (
 		onWaiting();
 	});
 
-/** Whether any pixel differs from the first one. `getBitmap` is BGRA and every
- * channel is included: a frame that is uniform in any one of them is not a
- * terminal.
+/**
+ * Whether a frame carries anything a terminal painted.
  *
- * EXPORTED because the displayed path needs the same question answered and used to
- * ask only about the frame's SIZE (QA round 1, Q-2): a blank 1600x800 capture is
- * ~5 KB of one colour, which clears a byte floor comfortably, so the cell that
- * certifies "a screenshot is the app's own window, cropped to the pane's rect" was
- * green on a uniform field — measured, 1 distinct colour and 0 of 427,200 sampled
- * pixels off background. One predicate, two callers, so the two paths cannot drift
- * into disagreeing about what a frame is. */
-export const hasVariation = (bitmap: Buffer): boolean => {
+ * ONE predicate for both capture paths, which is what keeps them from drifting into
+ * disagreeing about what a frame is. The displayed path used to ask only about the frame's
+ * SIZE (QA round 1, Q-2): a blank 1600x800 capture is a few kilobytes of one colour, which
+ * clears any byte floor comfortably, so the cell certifying "a screenshot is the app's own
+ * window, cropped to the pane's rect" was green on a uniform field. The offscreen path had
+ * the same weakness from the other side (Q-7): too SMALL was refused, so a live sparse
+ * console could not be photographed. `MIN_CONTENT_*` above is the replacement, and this
+ * function is where both paths ask it.
+ *
+ * `getBitmap` is BGRA; alpha counts, because a frame that differs only in alpha is not a
+ * terminal either. The scan returns as soon as both thresholds are met — a frame with
+ * content costs a few thousand pixels' worth of work, and only a genuinely flat frame is
+ * read to the end.
+ */
+export const hasTerminalContent = (bitmap: Buffer): boolean => {
 	if (bitmap.length < 8) return false;
 	const first = bitmap.subarray(0, 4);
-	for (let i = 4; i + 4 <= bitmap.length; i += 4) {
+	const colours = new Set<number>();
+	let nonModal = 0;
+	for (let i = 0; i + 4 <= bitmap.length; i += 4) {
+		colours.add(
+			(bitmap[i] << 24) |
+				(bitmap[i + 1] << 16) |
+				(bitmap[i + 2] << 8) |
+				bitmap[i + 3],
+		);
 		if (
 			bitmap[i] !== first[0] ||
 			bitmap[i + 1] !== first[1] ||
 			bitmap[i + 2] !== first[2] ||
 			bitmap[i + 3] !== first[3]
-		)
+		) {
+			nonModal += 1;
+		}
+		if (
+			colours.size >= MIN_CONTENT_DISTINCT_COLOURS &&
+			nonModal >= MIN_CONTENT_PIXELS
+		) {
 			return true;
+		}
 	}
 	return false;
 };

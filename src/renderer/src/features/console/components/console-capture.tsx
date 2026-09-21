@@ -1,5 +1,6 @@
 import {
 	TERMINAL_FONT_SIZE,
+	applyCaptureTheme,
 	measureCell,
 	terminalFontFamily,
 } from "@shared/themes/terminal-theme";
@@ -89,29 +90,14 @@ export const ConsoleCapture: FC = () => {
 	 * reconstruction matches what the user was looking at.
 	 */
 	useEffect(() => {
-		if (!feed?.theme) return;
-		document.documentElement.dataset.theme = feed.theme;
-		document.documentElement.classList.toggle(
-			"dark",
-			feed.theme.toLowerCase().includes("light") === false,
-		);
 		/*
-		 * AN UNKNOWN THEME NAME IS LOUD, and this check exists because it was silent
-		 * and that silence was measured: a rig that reported `theme: "proof"` set a
-		 * `data-theme` no palette answers, every role variable resolved to nothing,
-		 * and the frame came back as xterm's own `#000000`/`#ffffff` — a capture that
-		 * looks like a terminal and is a picture of no theme at all, with nothing in
-		 * the log to say so. Verification is on the RESOLVED TOKEN rather than on a
-		 * name list, so a renamed or newly added palette cannot make this check wrong.
+		 * THE DECISION IS `applyCaptureTheme`'s, in the module that owns theme resolution,
+		 * and Q-8 is why it is a function rather than three lines here: an ABSENT theme and
+		 * an EMPTY one used to take the same early return, so `theme: ""` painted xterm's
+		 * own frame with nothing in the log while every other unknown name was loud. The
+		 * distinction is tested where it lives (`terminal-theme`), not here.
 		 */
-		const resolved = getComputedStyle(document.documentElement)
-			.getPropertyValue("--color-sunken")
-			.trim();
-		if (!resolved) {
-			console.warn(
-				`[console] the capture view was fed theme "${feed.theme}", which resolves no role variables; the frame will not be this app's colours`,
-			);
-		}
+		applyCaptureTheme(feed?.theme);
 	}, [feed?.theme]);
 
 	if (!feed) return null;

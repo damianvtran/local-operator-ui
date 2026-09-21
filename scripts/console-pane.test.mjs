@@ -59,6 +59,7 @@ const {
 	TERMINAL_ANSI_SLOTS,
 	readTerminalTheme,
 	missingTerminalRoles,
+	applyCaptureTheme,
 	measureCell,
 	kebabRole,
 	readConsoleSnapshot,
@@ -539,4 +540,78 @@ test("the snapshot carries the refusal's reason and the surface's last actor", (
 	);
 	assert.equal(state.surfaces[2].lastActor, null);
 	assert.equal(state.reason, null);
+});
+
+/*
+ * WHAT THE CAPTURE VIEW DOES WITH A FED THEME (Q-8).
+ *
+ * The bug this closes: an ABSENT theme and an EMPTY one took the same early return, so a
+ * capture fed `theme: ""` painted xterm's own `#000000` frame with nothing in the log,
+ * while every other name no palette answers was loud. The distinction is the fix, and it
+ * lives in `applyCaptureTheme` so it can be asked here rather than inferred from a frame.
+ *
+ * The root is a stub because this process has no DOM: what the cell is about is the
+ * DECISION (does the attribute get written, is a warning emitted), not a stylesheet
+ * resolving. A real name therefore also warns in this process — there is no `--color-sunken`
+ * to resolve — and that is stated rather than pretended.
+ */
+test("a fed theme: absent is skipped, empty is written and warned about (Q-8)", () => {
+	const warns = [];
+	const realWarn = console.warn;
+	console.warn = (message) => warns.push(String(message));
+	const root = () => {
+		const dataset = {};
+		const toggled = [];
+		return {
+			dataset,
+			classList: { toggle: (name, on) => toggled.push([name, on]) },
+			toggled,
+		};
+	};
+	try {
+		// ABSENT: the pane has not reported a theme yet. Nothing is written and nothing is
+		// said — this is the case the early return was written for and it still applies.
+		const absent = root();
+		applyCaptureTheme(null, absent);
+		applyCaptureTheme(undefined, absent);
+		assert.equal(
+			"theme" in absent.dataset,
+			false,
+			"an absent theme is not written to the document",
+		);
+		assert.deepEqual(warns, [], "and says nothing");
+
+		// EMPTY: a name was supplied and it is not a palette. It is pinned (so the frame is
+		// reproducible from its arguments) and it is LOUD, which is the whole of Q-8.
+		const empty = root();
+		applyCaptureTheme("", empty);
+		assert.equal(
+			empty.dataset.theme,
+			"",
+			"an empty name is written rather than skipped",
+		);
+		assert.equal(
+			warns.length,
+			1,
+			"and it is warned about like any other unknown name",
+		);
+		assert.match(warns[0], /theme ""/, "with the name it was fed");
+
+		// A REAL name: written, and the dark/light class follows its own spelling.
+		const named = root();
+		applyCaptureTheme("localOperatorLight", named);
+		assert.equal(named.dataset.theme, "localOperatorLight");
+		assert.deepEqual(
+			named.toggled,
+			[["dark", false]],
+			"a light palette does not take the `dark` class",
+		);
+		assert.equal(
+			warns.length,
+			2,
+			"and it warns here too — this process has no stylesheet to resolve against",
+		);
+	} finally {
+		console.warn = realWarn;
+	}
 });

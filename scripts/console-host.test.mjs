@@ -52,6 +52,9 @@ const bundle = await build({
 			'export * from "./src/main/console/osc133";',
 			'export * from "./src/main/console/keys";',
 			'export * from "./src/main/console/host";',
+			// The capture paths' own judgement of a frame (Q-6/Q-7): the predicate both
+			// paths ask, exported from the module that owns it rather than restated here.
+			'export * from "./src/main/console/capture";',
 			'export * from "./src/main/console/history";',
 			'export * from "./src/main/console/protocol";',
 			'export * from "./src/main/console/dispatch";',
@@ -115,7 +118,7 @@ const {
 	DEFAULT_ROWS,
 	MIN_COLS,
 	MAX_COLS,
-	MIN_FRAME_BYTES,
+	hasTerminalContent,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
 	ConsoleHistory,
@@ -673,7 +676,7 @@ function fakeWindow({ frames = [], destroyed = false, focused = false } = {}) {
 		webContents: {
 			capturePage: async (rect) => {
 				captured.push(rect);
-				return queue.length > 0 ? queue.shift() : image(MIN_FRAME_BYTES + 1);
+				return queue.length > 0 ? queue.shift() : image(40_000);
 			},
 			send: (channel, payload) => sent.push({ channel, payload }),
 		},
@@ -683,20 +686,50 @@ function fakeWindow({ frames = [], destroyed = false, focused = false } = {}) {
 }
 
 /**
- * A frame, with the two properties the capture paths ask about.
+ * A frame, shaped the way the capture paths read one.
  *
- * `toBitmap` MATTERS as much as the byte count does since QA round 1's Q-2: the
- * displayed path used to judge a frame by its size alone, and a blank 1600x800 PNG is
- * a few kilobytes of one colour, so it cleared the floor comfortably. A fixture that
- * could only express "small" or "large" could not tell the two paths apart, which is
- * why `uniform` exists: `true` is a picture of one colour (the shape that must be
- * refused), and the default is a frame with one differing pixel, which is what a real
- * terminal always paints.
+ * `toBitmap` MATTERS as much as the byte count does since QA round 1's Q-2 (the displayed
+ * path used to judge a frame by its size alone, and a blank 1600x800 PNG is a few
+ * kilobytes of one colour, so it cleared the floor comfortably) — and since round 2's
+ * Q-6/Q-7 the byte count is not consulted at all, so the BITMAP is the whole of what these
+ * fixtures say. The default is therefore a frame with content: a ground plus enough
+ * differing pixels in enough distinct values to answer `hasTerminalContent`, which is what
+ * a rendered terminal produces (the measured offscreen frame carried 252 colours).
+ *
+ * The shapes that must be REFUSED are named rather than implied, because each is a
+ * finding: `uniform` is the blank capture (one colour, Q-2's case); `bands` is the
+ * glyph-free two-solid-field frame that used to pass (Q-6); `speck` is a few pixels of
+ * detail, which is not a screenshot of anything. `sparse` is the case round 2 added from
+ * the other side (Q-7): a live console that has printed very little — a prompt and a line
+ * — which is real content and must be ACCEPTED.
  */
-function image(bytes, { uniform = false } = {}) {
+function image(bytes, { shape = "content" } = {}) {
 	const png = Buffer.alloc(bytes);
-	const bitmap = Buffer.alloc(16);
-	if (!uniform) bitmap[4] = 0xff;
+	const pixels = 512;
+	const bitmap = Buffer.alloc(pixels * 4);
+	/** A ground of zeros, then `count` pixels in `count` distinct values. */
+	const paint = (count, from = 1) => {
+		for (let i = 0; i < count && from + i < pixels; i++) {
+			const at = (from + i) * 4;
+			bitmap[at] = (i * 7) % 256;
+			bitmap[at + 1] = (i * 13) % 256;
+			bitmap[at + 2] = (i * 29) % 256;
+			bitmap[at + 3] = 255;
+		}
+	};
+	if (shape === "content") paint(64);
+	if (shape === "sparse") paint(40);
+	if (shape === "speck") paint(4);
+	if (shape === "bands") {
+		// One other solid colour over the lower half: a LOT of differing pixels, and only
+		// one more colour than the ground.
+		for (let i = pixels / 2; i < pixels; i++) {
+			bitmap[i * 4] = 9;
+			bitmap[i * 4 + 1] = 9;
+			bitmap[i * 4 + 2] = 9;
+			bitmap[i * 4 + 3] = 255;
+		}
+	}
 	return {
 		isEmpty: () => false,
 		toPNG: () => png,
@@ -1337,7 +1370,7 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 	// The blank first frame is the spike's measured trap: a hidden window's FIRST
 	// capture came back at 9,866 B where the settled frame was 27,869 B.
 	const window = fakeWindow({
-		frames: [image(64), image(MIN_FRAME_BYTES + 900)],
+		frames: [image(64, { shape: "uniform" }), image(40_900)],
 	});
 	const { host } = hostWithWindow({ window });
 	const created = await createSurface(host);
@@ -1363,7 +1396,7 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 		"the blank frame must trigger exactly one retry",
 	);
 	const png = Buffer.from(shot.image_base64, "base64");
-	assert.ok(png.length >= MIN_FRAME_BYTES);
+	assert.ok(png.length > 0, "a frame came back at all");
 
 	/*
 	 * A FRAME THAT IS BIG ENOUGH AND STILL BLANK IS REFUSED, and this is the cell
@@ -1373,7 +1406,7 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 	 * typed refusal is what the offscreen path has always answered, and the two paths
 	 * now ask the same question.
 	 */
-	const blankFrame = () => image(MIN_FRAME_BYTES + 5_000, { uniform: true });
+	const blankFrame = () => image(45_000, { shape: "uniform" });
 	const blankWindow = fakeWindow({ frames: [blankFrame(), blankFrame()] });
 	const { host: blankHost } = hostWithWindow({ window: blankWindow });
 	const blankSurface = await createSurface(blankHost);
@@ -1395,6 +1428,59 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 		"and it is retried once before the refusal, exactly as the offscreen path is",
 	);
 
+	/*
+	 * AND THE OTHER DIRECTION, which is Q-7: a frame with a LITTLE content is content.
+	 * The byte floor this replaced refused a live, settled console that had printed less
+	 * than a screenful — sweeping `seq 1 N` at 100x30, N=1 came back 6,931 B and N=4
+	 * 8,505 B, both refused and both logged as "came back blank", and a bare prompt was
+	 * refused at 9,655 B. A small output is the common case for an agent looking at a
+	 * TUI, so a sparse frame must be photographed rather than refused.
+	 */
+	const sparseWindow = fakeWindow({
+		frames: [image(9_655, { shape: "sparse" })],
+	});
+	const { host: sparseHost } = hostWithWindow({ window: sparseWindow });
+	const sparseSurface = await createSurface(sparseHost);
+	sparseHost.setDisplayed(sparseSurface.surface);
+	sparseHost.setContentRect(
+		sparseSurface.surface,
+		contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+	);
+	const sparseShot = await sparseHost.screenshot(sparseSurface.surface);
+	assert.equal(sparseShot.rendered, "displayed");
+	assert.equal(
+		sparseWindow.captured.length,
+		1,
+		"a bare prompt's worth of content is accepted on the first attempt",
+	);
+
+	/*
+	 * Q-6, from the other side: the old predicate accepted any frame with ONE pixel that
+	 * differed, so a glyph-free two-solid-band frame passed as that surface's screenshot
+	 * (measured 4,417-5,628 B over four rounds). Two colours is a field, not a terminal,
+	 * however many pixels the second colour covers — and a four-pixel speck is not a
+	 * screenshot of anything either.
+	 */
+	for (const shape of ["bands", "speck"]) {
+		const refusedWindow = fakeWindow({
+			frames: [image(45_000, { shape }), image(45_000, { shape })],
+		});
+		const { host: refusedHost } = hostWithWindow({ window: refusedWindow });
+		const refused = await createSurface(refusedHost);
+		refusedHost.setDisplayed(refused.surface);
+		refusedHost.setContentRect(
+			refused.surface,
+			contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+		);
+		await assert.rejects(
+			() => refusedHost.screenshot(refused.surface),
+			(error) =>
+				error.code === "capture_unavailable" &&
+				/frame twice/.test(error.message ?? ""),
+			`a ${shape} frame is refused`,
+		);
+	}
+
 	// No pane displaying it: the OFFSCREEN path, which is a faithful reconstruction
 	// from the record rather than a photograph - and says so.
 	host.setDisplayed(null);
@@ -1403,7 +1489,7 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 		captureOffscreen: async (request) => {
 			demanded.push(request);
 			return {
-				png: Buffer.alloc(MIN_FRAME_BYTES + 100, 7),
+				png: Buffer.alloc(40_100, 7),
 				renderer: "dom",
 				attempts: 1,
 			};
@@ -2510,4 +2596,71 @@ test("a refused start still answers a state read, with the reason it refused", a
 		"a stranger frame is refused even in the unanswered state",
 	);
 	await started.stop?.();
+});
+
+/* ------------------------------------------------- what "blank" means (Q-6, Q-7) */
+
+test("hasTerminalContent answers about the picture, not about the PNG's size", () => {
+	const bitmapFrom = (paint) => {
+		const pixels = 512;
+		const bitmap = Buffer.alloc(pixels * 4);
+		paint(bitmap, pixels);
+		return bitmap;
+	};
+	const ground = (bitmap) => bitmap.fill(0);
+
+	// Nothing at all: not a frame.
+	assert.equal(hasTerminalContent(Buffer.alloc(0)), false);
+	// One flat field — the blank capture Q-2 measured at 1 distinct colour and 0 of
+	// 427,200 sampled pixels off background.
+	assert.equal(
+		hasTerminalContent(bitmapFrom(ground)),
+		false,
+		"a uniform frame has no content",
+	);
+	// Two solid fields: Q-6's glyph-free frame, which the old predicate accepted because
+	// a single differing pixel was enough.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap, pixels) => {
+				for (let i = pixels / 2; i < pixels; i++) {
+					bitmap[i * 4] = 9;
+					bitmap[i * 4 + 1] = 9;
+					bitmap[i * 4 + 2] = 9;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		false,
+		"two colours is a field, not a terminal",
+	);
+	// A speck: four pixels of detail in four values.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap) => {
+				for (let i = 1; i <= 4; i++) {
+					bitmap[i * 4] = i * 40;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		false,
+		"a handful of pixels is not a screenshot of anything",
+	);
+	// Q-7's case: a live console with a prompt's worth of content — few non-modal pixels,
+	// but antialiased text, so many distinct values. It must be ACCEPTED.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap) => {
+				for (let i = 1; i <= 40; i++) {
+					bitmap[i * 4] = (i * 7) % 256;
+					bitmap[i * 4 + 1] = (i * 13) % 256;
+					bitmap[i * 4 + 2] = (i * 29) % 256;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		true,
+		"a sparse live console is content, which is the whole of Q-7",
+	);
 });

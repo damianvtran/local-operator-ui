@@ -138,6 +138,54 @@ export const readTerminalTheme = (
 	return theme as ITheme;
 };
 
+/**
+ * Pin a fed theme onto the document, and SAY SO when it resolves nothing.
+ *
+ * This lives here rather than in the capture view because it is theme resolution, and
+ * because it has a q-8 bug to keep closed: an ABSENT theme (null/undefined — the pane has
+ * not reported one yet) and an EMPTY one (`""` — a name was supplied and is not a palette)
+ * used to take the same early return, so an empty theme painted xterm's own `#000000`
+ * frame while every other unknown name was loud. The distinction is the whole fix: only an
+ * absent theme is skipped, and an empty string is written to `data-theme` and warned about
+ * like any other name no palette answers.
+ */
+export const applyCaptureTheme = (
+	theme: string | null | undefined,
+	root: HTMLElement = document.documentElement,
+): void => {
+	if (theme === null || theme === undefined) return;
+	root.dataset.theme = theme;
+	root.classList.toggle(
+		"dark",
+		theme.toLowerCase().includes("light") === false,
+	);
+	/*
+	 * AN UNKNOWN THEME NAME IS LOUD, checked on the RESOLVED TOKEN rather than on a name
+	 * list so a renamed or newly added palette cannot make the check wrong. Measured: a
+	 * rig reporting `theme: "proof"` set a `data-theme` no palette answers, every role
+	 * resolved to nothing, and the frame came back as xterm's own `#000000`/`#ffffff` — a
+	 * capture that looks like a terminal and is a picture of no theme at all.
+	 */
+	const resolved = resolveCustomProperty(root, "--color-sunken");
+	if (!resolved) {
+		console.warn(
+			`[console] the capture view was fed theme "${theme}", which resolves no role variables; the frame will not be this app's colours`,
+		);
+	}
+};
+
+/**
+ * One custom property off a root, or `""` where there is no window to ask.
+ *
+ * The same distinction `terminalFontFamily` carries a guard for: a jsdom-bootstrapped Node
+ * process has a `document` but no global `getComputedStyle`, and this module is imported by
+ * tests as well as by the app.
+ */
+const resolveCustomProperty = (root: HTMLElement, name: string): string => {
+	if (typeof getComputedStyle !== "function") return "";
+	return getComputedStyle(root).getPropertyValue(name).trim();
+};
+
 /** Warned-once bookkeeping, keyed by the document's own theme attribute. */
 const warnedThemes = new Set<string>();
 
