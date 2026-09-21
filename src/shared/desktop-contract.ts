@@ -2647,7 +2647,19 @@ export type DesktopAPI = {
 		sessionId: string;
 	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
-	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
+	/**
+	 * A notification click, with the conversation it names and - when the banner was
+	 * about a console surface - the surface to select once the conversation is on
+	 * screen (design 12.3).
+	 *
+	 * The second argument is OPTIONAL on purpose: it is additive on a payload that
+	 * already carries an explicit `null` for the catalogue case, so a renderer that
+	 * ignores it opens the conversation exactly as it did before, and a sender that
+	 * predates it simply never passes one.
+	 */
+	onOpenConversation?: (
+		callback: (sessionId: string, surface?: string) => void,
+	) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
 	 * running. Main applies the normal unsaved-state guard. Electron only. */
 	closeWindow?: () => Promise<void>;

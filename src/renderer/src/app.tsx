@@ -9,6 +9,7 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
+import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import {
@@ -28,7 +29,10 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelSessionIdOfView,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 // The other five routes are split out so a cold start neither downloads nor
@@ -160,6 +164,14 @@ const App: FC = () => {
 	 */
 	useCommandPaletteShortcut();
 
+	/*
+	 * The console's blip, watched where the WINDOW is (design 12.2). R14's whole case
+	 * is a command finishing while the pane is closed, and the pane is unmounted then
+	 * - so the watcher cannot live inside it. It writes one thing: the marks the
+	 * header's dot and the pane's rows paint.
+	 */
+	useConsoleAttention();
+
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
@@ -174,9 +186,38 @@ const App: FC = () => {
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
+
+	/*
+	 * The conversation the app is DISPLAYING, which is not the same question as
+	 * "which session is active" while a draft is staged: `stageDraft` leaves
+	 * `activeSessionId` at the session the reader came from, so a reviewer that
+	 * read only that field would answer with the old id on both sides of a draft
+	 * and an agent's `reveal: "session"` would claim a pane over a draft.
+	 * `panelSessionIdOfView` is the app's own answer to this question and is read
+	 * here rather than re-derived (design §10.4's "the pane opens only if the app
+	 * is displaying that session").
+	 */
+	const displayedSessionId = useCanonicalSessionsStore((state) => {
+		const draft = state.activeDraftKey
+			? state.drafts[state.activeDraftKey]
+			: undefined;
+		return panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		);
+	});
+	/* The console pane's slot claim, for a banner click that names a surface (design
+	 * 12.3): the click lands the conversation AND the pane that shows it. */
+	const setConsolePaneOpen = useUiPreferencesStore(
+		(state) => state.setConsolePaneOpen,
+	);
+	const setConsoleActiveSurface = useUiPreferencesStore(
+		(state) => state.setConsoleActiveSurface,
+	);
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
-			(sessionId) => {
+			(sessionId, surface) => {
 				/*
 				 * The START of the latency trace the design asks to report rather than
 				 * to describe: the sibling mark is at the first painted transcript row
@@ -195,11 +236,66 @@ const App: FC = () => {
 				// exactly this, so a digest click lands where all the burst's
 				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
+				//
+				// A CONSOLE BANNER'S CLICK ALSO NAMES ITS SURFACE (design 12.3). Claiming the
+				// slot for the console pane and selecting that surface is what makes the
+				// click land on the terminal that finished rather than on the conversation
+				// with whichever pane the user left open. A surface that no longer exists
+				// (the app restarted) selects the pane anyway: `pickActiveSurface` falls back
+				// to the session's own most recent surface, which for a retained one is its
+				// recorded history with the "ended" state - an honest landing rather than a
+				// no-op (§7.3).
+				if (surface !== undefined && sessionId !== null) {
+					setConsoleActiveSurface(surface);
+					setConsolePaneOpen(true);
+				}
 				navigate("/chat");
 			},
 		);
 		return () => unsubscribe?.();
-	}, [navigate, setActiveSession]);
+	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
+
+	/*
+	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
+	 * which conversation is on screen (design §10.4).
+	 *
+	 * The push exists in main and had no client: `console_create {reveal:"session"}`
+	 * answered `{revealed:true}` and the pane stayed closed, which is a lie the
+	 * caller cannot see through. Two modes, and the difference is the whole of
+	 * §10.4's focus-intent allowlist:
+	 *
+	 *   - `"session"` claims the pane ONLY when that session is the one being
+	 *     displayed, so an agent cannot yank the user's viewport to another
+	 *     conversation. It does not navigate, and that is the point of the mode.
+	 *   - `"open"` was downgraded by main to `"none"` unless the app's window was
+	 *     already focused — main owns that half because focus is a fact only it can
+	 *     read — so what arrives here is an open request the app may honour. It
+	 *     selects the conversation it names, for the same reason the banner's click
+	 *     does: a pane claimed for a conversation the user is not looking at would
+	 *     be a claim they cannot see.
+	 *
+	 * NEITHER MODE RAISES A WINDOW: `show`/`showInactive`/`focus` live in
+	 * `window-raise.ts` alone, and the focus rule was already applied in main.
+	 */
+	useEffect(() => {
+		const unsubscribe = window.api?.console?.onReveal?.((payload) => {
+			if (payload.mode === "none") return;
+			if (
+				payload.mode === "session" &&
+				payload.session_id !== displayedSessionId
+			)
+				return;
+			if (payload.mode === "open") setActiveSession(payload.session_id);
+			setConsoleActiveSurface(payload.surface);
+			setConsolePaneOpen(true);
+		});
+		return () => unsubscribe?.();
+	}, [
+		displayedSessionId,
+		setActiveSession,
+		setConsolePaneOpen,
+		setConsoleActiveSurface,
+	]);
 
 	// A consent banner's click, handled where the ROUTES are.
 	//

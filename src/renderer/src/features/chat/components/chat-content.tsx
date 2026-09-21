@@ -1,5 +1,7 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
+import { ConsolePane } from "@features/console/components/console-pane";
+import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -12,6 +14,7 @@ import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	DEFAULT_CONSOLE_PANEL_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -752,6 +755,52 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			browserPanelWidth === 0 ? 640 : browserPanelWidth;
 
 		/*
+		 * The console pane: the FOURTH occupant of the same slot (design 6.1), read
+		 * here for the reason the browser pane's block above states — the header's
+		 * trigger and the pane must answer "is it up" from ONE field, or the trigger
+		 * and what is on screen can disagree.
+		 *
+		 * The zero-fallback is that same shape and a different number on purpose: the
+		 * console's default is DERIVED from the measured advance of the shipped mono
+		 * face times the design's 100-column grid (see `DEFAULT_CONSOLE_PANEL_WIDTH`), so
+		 * an unset preference lands the pane on the grid the design names rather than on
+		 * whichever sibling's number happens to be first.
+		 */
+		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		const setConsolePaneOpen = useUiPreferencesStore(
+			(s) => s.setConsolePaneOpen,
+		);
+		const consolePanelWidth = useUiPreferencesStore((s) => s.consolePanelWidth);
+		const setConsolePanelWidth = useUiPreferencesStore(
+			(s) => s.setConsolePanelWidth,
+		);
+		const restoreDefaultConsolePanelWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultConsolePanelWidth,
+		);
+		const effectiveConsolePanelWidth =
+			consolePanelWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : consolePanelWidth;
+
+		/*
+		 * How much THIS conversation's console has finished unseen, for the header's
+		 * blip (design 12.2). Filtered by session because the trigger is in one
+		 * conversation's header: a completion in another conversation's console must not
+		 * light this one up.
+		 *
+		 * Read here rather than inside `ChatHeader` for the reason `browserAttentionCount`
+		 * is: the marks are window state scoped to a conversation, and this component is
+		 * where the conversation's identity lives.
+		 */
+		const consoleUnseenAll = useUiPreferencesStore((s) => s.consoleUnseen);
+		const consoleUnseenMarks = useMemo(
+			() =>
+				sessionId === null
+					? []
+					: consoleUnseenAll.filter((mark) => mark.sessionId === sessionId),
+			[consoleUnseenAll, sessionId],
+		);
+		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+
+		/*
 		 * How many approvals THIS conversation's agent is waiting on, for the header
 		 * trigger's badge (spec 7.3).
 		 *
@@ -1064,6 +1113,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onRequestDelete={
 								sessionId ? () => requestSessionDelete(sessionId) : undefined
 							}
+							onOpenConsole={() => setConsolePaneOpen(true)}
+							consoleUnseenCount={consoleUnseenMarks.length}
+							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
 						{/*
 						 * The one delete confirmation, rendered here because this component owns
@@ -1555,6 +1607,42 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<BrowserPane
 								sessionId={sessionId ?? null}
 								onClose={() => setBrowserPaneOpen(false)}
+							/>
+						</div>
+					</>
+				)}
+				{/*
+				 * The console: the FOURTH occupant of this slot (§6.1), mutually exclusive
+				 * with the other three by construction (`claimRightSlot`), and built from
+				 * the same three pieces the browser pane reuses — the divider, the wrapper
+				 * with the `border-l` seam, and a root element — because those mechanics
+				 * belong to the slot rather than to any occupant.
+				 *
+				 * THE DIVIDER'S FLOOR IS 480, the browser pane's own (§6.1 asks for it by
+				 * that number): a terminal pane narrower than its grid rows start wrapping
+				 * into a soup, and the surface's 40-column floor is MAIN's, not this drag's
+				 * (§8.5) — the pane crops horizontally rather than shrinking the grid below
+				 * what a program can use.
+				 */}
+				{isConsolePaneOpen && (
+					<>
+						<ResizableDivider
+							sidebarWidth={effectiveConsolePanelWidth}
+							onSidebarWidthChange={setConsolePanelWidth}
+							minWidth={480}
+							maxWidth={1200}
+							side="left"
+							onDoubleClick={restoreDefaultConsolePanelWidth}
+							label="Resize console"
+						/>
+						<div
+							style={{ width: effectiveConsolePanelWidth }}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							data-tour-tag="console-pane-slot"
+						>
+							<ConsolePane
+								sessionId={sessionId ?? null}
+								onClose={() => setConsolePaneOpen(false)}
 							/>
 						</div>
 					</>

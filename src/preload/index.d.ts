@@ -224,6 +224,42 @@ declare global {
 						mode: "none" | "session" | "open";
 					}) => void,
 				) => () => void;
+				/**
+				 * A signal, not the state: refetch `state()` when it fires.
+				 *
+				 * `console-state` is the one projection (design 10.2), so this carries
+				 * nothing and the renderer re-reads rather than receiving a second, partial
+				 * description of the same surfaces that could drift from the first.
+				 */
+				onStateChanged: (callback: () => void) => () => void;
+			};
+			/**
+			 * The capture view's own bridge (design 13.2/13.3).
+			 *
+			 * A SEPARATE NAMESPACE FROM `console`, deliberately: the console namespace
+			 * authorizes the app's window's main frame, and a renderer that exists to be
+			 * photographed must not be able to read, type into or resize a surface. This
+			 * one carries exactly what a reconstruction needs - a measurement request, the
+			 * record's bytes, and two answers - and nothing that could act on a surface.
+			 */
+			desktopCapture: {
+				/** Main asks for the cell's pixel size, once per window. */
+				onMeasure: (callback: () => void) => () => void;
+				/** The page's answer: the same measurement the pane reports to main. */
+				measured: (report: { cellWidth: number; cellHeight: number }) => void;
+				/** Main feeds one surface's record to paint. */
+				onFeed: (
+					callback: (payload: {
+						nonce?: number;
+						surface?: string;
+						cols: number;
+						rows: number;
+						theme: string | null;
+						bytes_base64: string;
+					}) => void,
+				) => () => void;
+				/** The page's "I have painted", with the renderer it painted with. */
+				settled: (report: { renderer: string }) => void;
 			};
 			/**
 			 * The server-status signal, from the MAIN process.

@@ -20,6 +20,7 @@ import {
 	FileText,
 	Globe,
 	MoreHorizontal,
+	SquareTerminal,
 	Trash2,
 } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
@@ -108,6 +109,30 @@ type ChatHeaderProps = {
 	 */
 	onOpenBrowser?: () => void;
 	/**
+	 * Opens the conversation's console pane, or absent when this header has none.
+	 *
+	 * The fourth occupant of the same slot and the same shape as `onOpenBrowser`:
+	 * the header renders the trigger from whether a host offered the action, hides it
+	 * while the pane is up (the pane carries its own close), and never decides itself
+	 * which pane is showing.
+	 */
+	onOpenConsole?: () => void;
+	/**
+	 * How many completions THIS conversation's console has produced that the user has
+	 * not looked at (design 12.2), and whether any of them is still fresh enough to
+	 * pulse.
+	 *
+	 * A COUNT IS PASSED AND A DOT IS DRAWN, which is the one place this trigger
+	 * agrees with the canvas button rather than the browser one: "here the only job is
+	 * to say 'there is something' before the user has opened it". The count is not
+	 * rendered — it is what the tooltip and the `aria-label` read, which is where an
+	 * exact number belongs for a control this size.
+	 */
+	consoleUnseenCount?: number;
+	/** Whether those marks are still pulsing, i.e. whether the dot is `accent` or has
+	 * come to rest in `inkMuted` (design 12.2's two states). */
+	consoleUnseenPulsing?: boolean;
+	/**
 	 * How many approvals THIS conversation is waiting on, for the trigger's badge.
 	 *
 	 * The count and not a dot, which is the one place this header differs from the
@@ -162,6 +187,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onSetArchived,
 	deleteEnabled = false,
 	onRequestDelete,
+	onOpenConsole,
+	consoleUnseenCount = 0,
+	consoleUnseenPulsing = false,
 }) => {
 	/*
 	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
@@ -178,6 +206,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
 	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
+	// The console's own field, read for the same reason and from the same place.
+	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
@@ -207,6 +237,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const browserButtonShown = Boolean(onOpenBrowser) && !isBrowserPaneOpen;
 	const browserBadgeDrawn = browserButtonShown && browserAttentionCount > 0;
 	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
+	const consoleButtonShown = Boolean(onOpenConsole) && !isConsolePaneOpen;
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
@@ -252,6 +283,25 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			browserButtonRef.current?.focus();
 		browserPaneWasOpen.current = isBrowserPaneOpen;
 	}, [isBrowserPaneOpen]);
+
+	/*
+	 * And the same again for the console, which is the fourth occupant of the same
+	 * slot (design 6.1) and would otherwise be the second one to drop a keyboard
+	 * user at the top of the document's tab order - the exact defect UX round 1 (U2)
+	 * found on the browser trigger. Same guard: only when focus was actually lost,
+	 * and never on first mount.
+	 */
+	const consoleButtonRef = useRef<HTMLButtonElement | null>(null);
+	const consolePaneWasOpen = useRef(isConsolePaneOpen);
+	useEffect(() => {
+		if (
+			consolePaneWasOpen.current &&
+			!isConsolePaneOpen &&
+			document.activeElement === document.body
+		)
+			consoleButtonRef.current?.focus();
+		consolePaneWasOpen.current = isConsolePaneOpen;
+	}, [isConsolePaneOpen]);
 
 	return (
 		<div
@@ -595,6 +645,64 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										{badgeText}
 									</Badge>
 								</span>
+							)}
+						</Button>
+					</Tooltip>
+				)}
+				{/*
+				 * The conversation's console, the fourth pane in the cluster (design
+				 * 6.1). `ghost`/`icon` like its neighbours, and it hides while the pane
+				 * is up for the same reason the browser button does — the pane carries its
+				 * own close, and a trigger for a pane already on screen is a no-op with a
+				 * tooltip.
+				 *
+				 * THE BLIP IS A DOT, NOT A COUNT (§12.2), and its two colours are the
+				 * whole of what it says: `accent` while the completion is fresh, because
+				 * something IS unread and the accent is earned (the canvas button's
+				 * `ink-muted` dot is the opposite case), and the resting `ink-muted` step
+				 * once the pulse has had its moment, so an unread mark never becomes a
+				 * permanent animation.
+				 *
+				 * `SquareTerminal` RATHER THAN `Terminal`, and the distinction is
+				 * load-bearing at 16px: `bash`'s bare `Terminal` is the shell the agent
+				 * ran, and this is the app's own framed surface (§6.1, §14.4). Two
+				 * terminals told apart at a glance in one 56px bar is the whole
+				 * requirement.
+				 */}
+				{consoleButtonShown && (
+					<Tooltip
+						content={
+							consoleUnseenCount > 0
+								? `Open console — ${consoleUnseenCount} finished since you looked`
+								: "Open console"
+						}
+						side="top"
+					>
+						<Button
+							ref={consoleButtonRef}
+							variant="ghost"
+							size="icon"
+							onClick={onOpenConsole}
+							aria-label={
+								consoleUnseenCount > 0
+									? `Open console, ${consoleUnseenCount} finished since you looked`
+									: "Open console"
+							}
+							data-tour-tag="console-pane-trigger"
+							className={cn("relative")}
+						>
+							<SquareTerminal aria-hidden={true} />
+							{consoleUnseenCount > 0 && (
+								<span
+									aria-hidden="true"
+									className={cn(
+										"absolute top-1 right-1 size-1.5 rounded-full",
+										consoleUnseenPulsing
+											? "bg-accent animate-pulse-visible"
+											: "bg-ink-muted",
+									)}
+									data-tour-tag="console-pane-blip"
+								/>
 							)}
 						</Button>
 					</Tooltip>
