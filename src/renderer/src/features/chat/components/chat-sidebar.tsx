@@ -18,6 +18,14 @@ import {
 	ResizableDivider,
 } from "@shared/components/common/resizable-divider";
 import { Button } from "@shared/components/ui/button";
+import { Checkbox } from "@shared/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
+import { Label } from "@shared/components/ui/label";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
@@ -32,6 +40,8 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
+	Archive,
+	ArchiveRestore,
 	ArrowUpDown,
 	Bot,
 	CheckCheck,
@@ -61,7 +71,19 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
+import { archiveOfferedText, offerArchiveUndo } from "../archive-undo";
 import {
+	type ArchivePressRecord,
+	archivePressExpired,
+	archivePressOutcome,
+} from "../chat-archive-press";
+import {
+	archiveControlLabel,
+	archivedSearchWidened,
+	visibleRows,
+} from "../chat-archived";
+import {
+	type ArchiveView,
 	chatCountAnnouncement,
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
@@ -151,6 +173,56 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
  * line is not an option and the sentence is what has to change length.
  */
 const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
+
+/**
+ * WHERE THE ROW'S PER-ROW CONTROLS SHED, and why they shed at all.
+ *
+ * The panel carries TWO reserved 24px slots per row - the pin's and the archive
+ * control's - and the row's own 4px gap between them: 56px off every title, on
+ * every row, whether or not the pointer is anywhere near it. That is a price this
+ * panel has already refused once: the per-row BROWSER control was deleted on
+ * 2026-09-18 for exactly this reason - it "cost every title its 28px for a control
+ * used rarely" - and two of them is twice that.
+ *
+ * The pair is kept from the panel's DEFAULT width up, where the title still has
+ * room, and shed below it. The threshold is where the title stops being readable
+ * rather than where the arithmetic gets tight: the sidebar's own clamp is
+ * 240/288/360 with 280 as the default (`chat-layout.tsx`), and the header row is
+ * 17px narrower than the panel, so the query is on the ROW's width.
+ *
+ * `263` AND NOT `280`, for two reasons that are both about what a container query
+ * actually measures. A size query evaluates the container's CONTENT box, and this
+ * container is the panel root, which carries `p-2`: the content box is the panel
+ * minus its own 16px, so the shed threshold for a 280px panel is 264. And the
+ * comparison is INCLUSIVE in the direction that matters (`@max-[N]` compiles to
+ * `not (min-width: N)`), so the bound sits one pixel under 264 rather than on it -
+ * at 264 the pair is still drawn. Measured, and the measurement is a BAND rather
+ * than a width (design round 2, D15): the pair is shed from the 240 clamp minimum
+ * up to 278 - 39 of the 121 selectable widths - and holds from 279. The frames
+ * show its two ends (280 and 240), which is what the rule turns on; the band's own
+ * extent is the container query's, read off the arithmetic above rather than
+ * photographed at every width in it.
+ *
+ * Measured at both widths on a row that carries a status and on one that also
+ * carries an unread mark. THIS COMMENT USED TO CLAIM THE MARK COSTS TITLE WIDTH,
+ * AND IT DOES NOT (design round 2, D14; four lanes quoted the wrong premise before
+ * it was measured): the unread mark is drawn INSIDE the row's reserved LEADING
+ * status slot (`ChatSessionStatus`, `flex size-4 shrink-0`), so the title span
+ * starts at the same x on a marked row and a bare one and measures the SAME width -
+ * 180px and 180px at the 280 default, 168px and 168px at the 240 clamp minimum. See
+ * `docs/design/session-archive-delete.md` and
+ * `docs/evidence/session-archive/README.md` for the numbers and the frames: the
+ * marked row is in the pair frames precisely so the equal widths are visible rather
+ * than asserted.
+ */
+const ROW_CONTROLS_PAIR_SHED = "@max-[263px]/chatsidebar:hidden";
+/**
+ * The other half of the same decision: the one shared control is drawn ONLY in the
+ * band the pair is shed in, so the row never carries both at once and never carries
+ * neither. Same container, inverted, which is what makes the pair and the shared
+ * control one rule rather than two.
+ */
+const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -363,6 +435,15 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
 
 /**
+ * The DOM id joining the `Include archived` checkbox to its label.
+ *
+ * A constant rather than an inline string because the two elements carry it in
+ * two places, and a label whose `for` names an id no input has is an accessible
+ * name that silently disappears - the control would then be a bare box beside
+ * the word "Include archived" rather than a checkbox called that.
+ */
+const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
+/**
  * THE REMEDY FOR A ROW THAT IS NOT ANSWERING, appended to its own sentence.
  *
  * A wedged row asks something different of a reader than a failed or a working
@@ -456,6 +537,48 @@ const builtinOfferSentence = (
 		names.length === 1 ? "it" : "them"
 	} once installed.`;
 };
+
+/**
+ * Focus the row that takes the place of a row that is about to leave the list.
+ *
+ * WHY THIS EXISTS: activating a row's archive control unmounts the control AND its
+ * row, so the browser's own focus handling drops the reader on `<body>` - the next
+ * Tab restarts at the top of the document, twelve stops from where they were (UX
+ * round 1, U5, and the same class of defect as U9 in the dialog). The app's
+ * discipline elsewhere is to hand focus to whatever took the place of the focused
+ * control; in a list, that is the row that slides up into the gap.
+ *
+ * Read from the DOM rather than from the list model on purpose: a row's position
+ * in the model is a section, a search result set or a group, which this handler
+ * cannot index, while the document order of `[data-chat-row]` IS the order the
+ * reader sees. The snapshot is taken at the press and filtered to what is still
+ * connected when the callback runs, so it is correct whether or not React has
+ * committed the removal yet: before the commit the pressed row is still connected
+ * and the successor is the element after it; after it the pressed row is gone and
+ * the first survivor past its index is that same element.
+ *
+ * Returns a callback rather than moving focus itself, because the caller only
+ * wants it moved when the write was ACCEPTED - a refused press leaves the row (and
+ * the reader) exactly where they were.
+ */
+function focusRowAfterRemoval(pressed: HTMLElement): () => void {
+	const rows = Array.from(
+		document.querySelectorAll<HTMLElement>("[data-chat-row]"),
+	);
+	const rowButton =
+		pressed.parentElement?.querySelector<HTMLElement>("[data-chat-row]") ??
+		null;
+	const index = rowButton ? rows.indexOf(rowButton) : -1;
+	return () => {
+		const live = rows
+			.map((element, position) => ({ element, position }))
+			.filter(({ element }) => element.isConnected);
+		const successor =
+			live.find(({ position }) => position > index)?.element ??
+			live.filter(({ position }) => position < index).at(-1)?.element;
+		successor?.focus();
+	};
+}
 
 export function ChatSidebar({
 	selectedConversation,
@@ -1060,6 +1183,84 @@ export function ChatSidebar({
 		"session_search",
 	);
 	/*
+	 * Whether this backend can hold an archived conversation at all, read from the
+	 * same capability answer the catalogue gate above uses rather than from a
+	 * second negotiation.
+	 *
+	 * FAIL-CLOSED MEANS NO AFFORDANCE AND NO PARTITION, not a disabled one: absent
+	 * `session_archive` this is false, the row mounts no second control, no row
+	 * carries a marker and `visibleRows` returns the page untouched. A permanently
+	 * reserved empty slot would cost every row width to advertise a feature the user
+	 * cannot get, which is the rule the pin slot is written under.
+	 *
+	 * WHAT THAT IS AND IS NOT, because the earlier wording overclaimed it: the rows
+	 * and the classes of a panel with the capability are the ones a panel without it
+	 * draws, up to the capability's own additions - but the DOM is NOT identical
+	 * when a conversation is archived, and the published measurement says so
+	 * (`docs/evidence/session-archive/README.md`): nothing is hidden without the
+	 * capability, so an archived conversation is LISTED here where an enabled panel
+	 * hides it, and the at-rest frame gains that row. What is byte-identical is the
+	 * 690x60 band around a live row, which is what the withdrawn pair is compared
+	 * for.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	/*
+	 * The `Include archived` control, REMEMBERED for the session but in force only
+	 * while a query is - `archivedSearchWidened` is the rule and its docstring
+	 * carries the reasoning (UX round 1, U8: clearing the box used to disarm the
+	 * widening silently, so a user who cleared and retyped lost the archived result
+	 * they had just found, with nothing saying why).
+	 *
+	 * Local state rather than the store, for the reason the query itself is local:
+	 * it is a property of the box, not of the data, and it is deliberately not
+	 * persisted - a user who reopens the app must not silently be searching a set
+	 * they chose to include once, days ago.
+	 */
+	const [includeArchived, setIncludeArchived] = useState(false);
+	const widened = archivedSearchWidened(includeArchived, query, archiveEnabled);
+	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
+	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
+	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
+	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
+	const setSessionArchived = useCanonicalSessionsStore(
+		(s) => s.setSessionArchived,
+	);
+	/*
+	 * The pure search module takes plain booleans: the stamp that orders a fact
+	 * against an answer is the store's business (`applySearchAnswer`), and a row
+	 * only needs what to draw.
+	 */
+	const archiveFactValues = useMemo(() => {
+		const values: Record<string, boolean> = {};
+		for (const [id, fact] of Object.entries(archiveFacts))
+			values[id] = fact.archived;
+		return values;
+	}, [archiveFacts]);
+	const archiveView = useMemo<ArchiveView>(
+		() => ({
+			include: widened,
+			facts: archiveFactValues,
+			/*
+			 * The delete tombstones, as a SET because that is all the join asks: a
+			 * conversation this window has deleted must not be drawn from a row or rebuilt
+			 * from a cached search hit (`chat-search.ts`).
+			 */
+			forgotten: new Set(Object.keys(forgottenFacts)),
+		}),
+		[widened, archiveFactValues, forgottenFacts],
+	);
+	/*
+	 * The last archive press the POINTER made, and where (`chat-archive-press.ts`).
+	 *
+	 * A ref rather than state: it is read and written inside the press handler, it
+	 * must survive between two clicks of one double-click, and nothing renders from
+	 * it - so making it state would re-render the list on every pointer move.
+	 */
+	const lastArchivePress = useRef<ArchivePressRecord | null>(null);
+	/*
 	 * An over-long query never reaches the wire. The op's `q` is capped at
 	 * `SESSION_SEARCH_MAX_CHARS`, and asking anyway buys a generic 422 that the
 	 * panel then renders as a backend outage with a Retry that cannot succeed —
@@ -1080,8 +1281,24 @@ export function ChatSidebar({
 	 * whether or not there are hits — so what the notice describes is what the
 	 * user is still getting, not a replacement for it.
 	 */
-	const search = useChatSearch(query, ready && searchSupported);
+	const search = useChatSearch(query, ready && searchSupported, widened);
 	const overLong = search.refused;
+	/*
+	 * The rows the LISTS may draw, which is the page minus the archived ones unless
+	 * the search control includes them.
+	 *
+	 * ONE FILTER, before anything reads the list: the flat list, the two sections,
+	 * the agent and team groups and the local half of the search all read this
+	 * array, so "archived conversations are not in the default lists" is a property
+	 * of the base rather than a condition repeated at each of the five call sites -
+	 * which is how one of them would eventually be missed. With the control ON the
+	 * filter is off (that is what the control promises), and the archived rows
+	 * rejoin every list for as long as the query lasts.
+	 */
+	const listed = useMemo(
+		() => visibleRows(sessions, archiveEnabled && !widened),
+		[sessions, archiveEnabled, widened],
+	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
 	 * them and the counts below read their honesty off the same array, so the two
@@ -1123,8 +1340,15 @@ export function ChatSidebar({
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats([...sessions, ...heldRows], query, hits, pinFactValues),
-		[sessions, heldRows, query, hits, pinFactValues],
+		() =>
+			searchChats(
+				[...listed, ...heldRows],
+				query,
+				hits,
+				pinFactValues,
+				archiveView,
+			),
+		[listed, heldRows, query, hits, pinFactValues, archiveView],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -1203,8 +1427,22 @@ export function ChatSidebar({
 	 */
 	const previous = useMemo(() => {
 		if (answered || !search.data || !query.trim()) return null;
-		return searchChats(sessions, search.data.query, search.data.sessions);
-	}, [answered, search.data, sessions, query]);
+		return searchChats(
+			[...listed, ...heldRows],
+			search.data.query,
+			search.data.sessions,
+			pinFactValues,
+			archiveView,
+		);
+	}, [
+		answered,
+		search.data,
+		listed,
+		heldRows,
+		pinFactValues,
+		archiveView,
+		query,
+	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
 	// term `awaiting` stays true forever and `Searching conversations…` sits under
 	// the failure notice that says the search is unavailable — the panel claiming
@@ -1298,6 +1536,21 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		const pinned = row.pinned === true;
+		/** The row's own name, used by the archive control's accessible name and tooltip
+		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
+		 * name the same row differently. */
+		const label = row.title || "Untitled chat";
+		/*
+		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
+		 * has written one that this row's answer predates (`archiveFacts` - the same
+		 * precedence the search join applies, read here for the rows the page holds).
+		 *
+		 * The fact is what makes the press INVERT: the row is rebuilt from the store on
+		 * every render, so a press that only wrote the backend would read back the state
+		 * the catalogue last saw, and the control could never undo its own press.
+		 */
+		const archived = archiveFactValues[row.session_id] ?? row.archived === true;
 		/** The row is the CURRENT one, read ONCE and shared by the wrapper and the button:
 		 * two elements paint one state, so two copies of this expression would be two chances
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
@@ -1334,6 +1587,17 @@ export function ChatSidebar({
 		 * main's and still holds: a full-width button sharing a flex row with a sibling
 		 * is a row that overflows.
 		 *
+		 * THE ARCHIVE'S SECOND SLOT, added beside the pin's by this branch: the same
+		 * box (`size-6 shrink-0`), the same reveal (`opacity` and `pointer-events` only,
+		 * so the reveal cannot reflow the row), the same `group` hook, mounted only when
+		 * the backend advertises `session_archive`. While both capabilities are present
+		 * the two controls hold two slots RESERVED SIDE BY SIDE rather than sharing one
+		 * 24px box: two controls in one box occlude each other's reveal, so only the top
+		 * one could ever be pressed, and an overlapping reveal hides the title of the
+		 * row the pointer is on. Below the panel's default width the pair sheds to a
+		 * single shared control (`ROW_ACTIONS_SHED`), the band where two slots leave the
+		 * title about twenty characters wide.
+		 *
 		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with it
 		 * `title` and `aria-current` — three committed harnesses select on those and the
 		 * arrow-key traversal walks the attribute. The pin control deliberately does NOT
@@ -1345,8 +1609,6 @@ export function ChatSidebar({
 		 * the press guard on the row's own `onClick` — both sides' intents, neither
 		 * restated from the other.
 		 */
-		const pinned = row.pinned === true;
-		const label = row.title || "Untitled chat";
 		const rowButton = (
 			<button
 				type="button"
@@ -1358,6 +1620,20 @@ export function ChatSidebar({
 				   carries, and it is inert outside a driver run. */
 				data-tour-tag="chat-session-row"
 				data-child={nested || undefined}
+				/*
+				 * The row's archived state as an ATTRIBUTE, absent when the conversation is
+				 * live.
+				 *
+				 * It is here rather than on the wrapper because this is the element a reader
+				 * already means by "the row" (`data-chat-row` is what the arrow ring collects
+				 * and what the driver's `measure` verb finds), and a second anchor for the
+				 * same row would be a second place a scene has to know about. It carries no
+				 * pixels: the visible mark is the glyph below, and this is what lets a scene
+				 * assert that the archived conversation is ABSENT from the list before the
+				 * search control is on and PRESENT after it, rather than comparing two stills
+				 * and hoping the difference is the row.
+				 */
+				data-session-archived={archived ? "true" : undefined}
 				className={cn(
 					rowStyle,
 					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
@@ -1387,7 +1663,7 @@ export function ChatSidebar({
 				   busy or gated row's tooltip claim a mark its own spinner and gate were
 				   nowhere drawing — the reported defect, in the channel a reader reaches
 				   by hovering, and the row that most needs the tooltip to be true. */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}`}
+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
 				/*
 				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
 				 * this is the keyboard's, and it is the one a person using the `sr-only` name
@@ -1432,13 +1708,40 @@ export function ChatSidebar({
 				}}
 			>
 				<ChatSessionStatus row={row} />
+				{/*
+				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
+				 * answer for: IN FRONT of the title rather than in the trailing slot.
+				 *
+				 * That slot is CONTESTED and deliberately admits exactly one statement
+				 * (`rowTrailingStatement` in `features/chat/chat-search.ts` records the
+				 * three layouts that failed when it admitted more), so a marker competing
+				 * for it would either displace "· in conversation" - the reason a row with
+				 * nothing visibly in common with the query is on screen - or be dropped
+				 * from the one row that most needs both. A leading glyph is outside that
+				 * rule rather than an extension of it, it cannot be truncated away (it is
+				 * not inside the title's span), and it reads where the row's other
+				 * leading fact already is: beside the status glyph.
+				 *
+				 * `aria-hidden` on the glyph with the word carried by the `sr-only` span
+				 * after the title, so a screen reader hears "archived" once, in the
+				 * sentence the tooltip also states - the arrangement the "· in
+				 * conversation" mark already uses.
+				 */}
+				{archiveEnabled && archived && (
+					<>
+						<Archive
+							aria-hidden="true"
+							className="ml-1 size-3.5 shrink-0 text-ink-dim"
+						/>
+						<span className="sr-only">, archived</span>
+					</>
+				)}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 			    in `features/chat/chat-search.ts` — which is also where the three
 			    failed layouts that led to it are written down (an orphan `·` from
 			    a single truncating span, a starved title from unbounded slots, and
 			    a qualifier clipped to a bare `·` by a floor the row could not pay).
 			    Read that docstring before changing anything here.
-
 			    What matters at this call site: the number of statements is capped
 			    rather than negotiated by the flex algorithm, no floor is needed
 			    because at most one statement can ever be drawn, and TWO elements
@@ -1446,7 +1749,18 @@ export function ChatSidebar({
 			    which is that cap doing the work a floor used to. The two literal
 			    statements below cannot truncate anything: they are fixed strings
 			    with no width to run out of. */}
-				<span className="min-w-0 flex-1 truncate">
+				<span
+					/*
+					 * The title's own anchor, inert outside a driver run: the reserved slot's
+					 * cost is a claim about TITLE width, and the only honest way to state it is
+					 * to measure the element the title is drawn in rather than to subtract
+					 * control widths from a row box (`renderer-driver.mjs`'s `session-archive`
+					 * scene reads it at both panel widths, on a row that carries a status and
+					 * on one that carries an unread mark).
+					 */
+					data-session-title
+					className="min-w-0 flex-1 truncate"
+				>
 					{row.title || "Untitled chat"}
 				</span>
 				{/* In a flat list nothing else names the profile answering, so two
@@ -1509,10 +1823,15 @@ export function ChatSidebar({
 		 * difference is 15,832px dark / 15,898px light.
 		 *
 		 * So the withdrawn path renders MAIN'S BOX: `rowBoxStyle`, the conversation button
-		 * inside it, and nothing else. No pin slot, no `group` - an absent control is the only
+		 * inside it, and nothing else. No slot, no `group` - an absent control is the only
 		 * thing that reads one - and no `data-session-row`, which is this branch's hook for a
-		 * state only a pin can produce. "Byte-identical to the pre-change panel" is still the
-		 * claim this branch makes; what moved is which panel is the pre-change one.
+		 * state only a per-row control can produce. It is entered when NEITHER capability is
+		 * advertised. With the pins present and only the archive withdrawn the row is NOT
+		 * this branch: it is the pin branch's own row, class list included, because `controls`
+		 * holds the pin alone and the pair wrapper - whose only job is to hold two - is not
+		 * drawn. That is what the withdrawn frames are of, and the byte-identity this branch
+		 * claims is against IT, not against a panel without pins: the earlier "identical to
+		 * the pre-change panel" sentence named a tree main has since moved past.
 		 */
 		/*
 		 * THE SENTENCE `aria-describedby` NAMES, AND IT IS OUT HERE ON PURPOSE (review round 2's
@@ -1541,7 +1860,7 @@ export function ChatSidebar({
 			</span>
 		) : null;
 
-		if (!pinsEnabled) {
+		if (!pinsEnabled && !archiveEnabled) {
 			return (
 				<div
 					key={row.session_id}
@@ -1552,16 +1871,15 @@ export function ChatSidebar({
 				</div>
 			);
 		}
-		return (
-			<div
-				key={row.session_id}
-				/* The row's own box, and the hook the current-row ground is asserted
-				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
-				data-session-row={row.session_id}
-				className={cn("group", rowBoxStyle, current && rowCurrent)}
-			>
-				{rowButton}
-				{silentRemedy}
+		/*
+		 * WHETHER THE ROW CARRIES THE PAIR AT ALL. Both capabilities present is the
+		 * only case with two controls to hold; with one, `controls` is that one control
+		 * and the pair wrapper would be a flex box around a single child - the same
+		 * class list, one more element, nothing measured.
+		 */
+		const bothControls = pinsEnabled && archiveEnabled;
+		const controls = (
+			<>
 				{/*
 				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
 				 * AT REST whenever the capability is present, so the reveal cannot reflow
@@ -1608,11 +1926,11 @@ export function ChatSidebar({
 						data-session-pin
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
-						   the pressed state is `aria-pressed`'s to report. */
+					   the pressed state is `aria-pressed`'s to report. */
 						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
 						/* The same string as the accessible name, matching the entity row's
-						   manage control: it is the affordance a pointer user gets, and it
-						   duplicates the name without being announced twice. */
+					   manage control: it is the affordance a pointer user gets, and it
+					   duplicates the name without being announced twice. */
 						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
 						onClick={(event) => {
 							/*
@@ -1677,6 +1995,7 @@ export function ChatSidebar({
 										 */
 										"pointer-events-none",
 										"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:duration-fast",
+										"hover:text-ink!",
 									),
 							// Colour step only, and only while this row is NOT the current
 							// one - see the block comment above. The step is the ROW's own
@@ -1698,6 +2017,333 @@ export function ChatSidebar({
 						/>
 					</button>
 				)}
+				{/*
+				 * THE ARCHIVE CONTROL: a SIBLING of the row's button, never a child.
+				 *
+				 * A nested button is invalid HTML, unfocusable, and a press inside it fires
+				 * the row's own `onClick` as well - opening the conversation the user was
+				 * trying to archive. As a sibling it is a control in its own right: Tab
+				 * reaches it (it is in the tab order wherever the row is), and the arrow-key
+				 * traversal in `keyDown` skips it, because that traversal collects
+				 * `[data-chat-row]` and this button deliberately does not carry the
+				 * attribute - the rule the entity row's own two controls are written under.
+				 *
+				 * RESERVED AT REST, REVEALED BY OPACITY ONLY. It is `size-6 shrink-0` and
+				 * present in the layout whenever the capability is, so the reveal cannot
+				 * reflow the row under the pointer; only `opacity`, `pointer-events` and
+				 * colour move, which keeps this inside the design contract's rule that
+				 * nothing lifts, scales or translates on hover. `group-focus-within` is what
+				 * makes it reachable by keyboard: pressing Tab into the row's button reveals
+				 * it, and the next Tab lands on it.
+				 *
+				 * HIDDEN IS ALSO INERT: `pointer-events-none` while invisible, because an
+				 * affordance the reader cannot see must not be the thing a press lands on.
+				 *
+				 * THE STATE MUST READ WITHOUT HOVERING, or a reader cannot tell an archived
+				 * row from a live one: an archived row carries the leading marker AND this
+				 * control's icon is the RESTORE glyph (see `archiveControlLabel`), so the
+				 * action it offers is legible the moment it is revealed.
+				 */}
+				{archiveEnabled && (
+					<button
+						type="button"
+						data-session-archive
+						aria-label={archiveControlLabel(label, archived)}
+						/*
+						 * The action, never the state: "Archive \u201cX\u201d" is what pressing
+						 * does, and the state is carried by the marker beside the title and by
+						 * this button's glyph. `aria-pressed` is deliberately NOT used here,
+						 * unlike the pin's control: a boolean `aria-pressed` on a button whose
+						 * action is "archive" reads as "archive: pressed", which is a claim
+						 * about a toggle rather than about a conversation's state.
+						 */
+						title={archiveControlLabel(label, archived)}
+						onClick={(event) => {
+							/*
+							 * THE REPEAT-PRESS GUARD RUNS FIRST, before anything is written or
+							 * remembered (`chat-archive-press.ts` carries the rule and the
+							 * gesture it protects): archiving removes this row from the list, so
+							 * the second click of a double-click lands on whatever row slid up
+							 * into the gap - with the pointer already inside that row's reveal.
+							 * A dropped press changes nothing at all.
+							 *
+							 * `event.detail === 0` is the keyboard (a click synthesised from
+							 * Enter or Space carries no click count), which always acts on the
+							 * focused row and is therefore never dropped.
+							 */
+							const press = archivePressOutcome(
+								lastArchivePress.current,
+								event.detail === 0
+									? null
+									: { x: event.clientX, y: event.clientY },
+								row.session_id,
+							);
+							lastArchivePress.current = press.record;
+							if (press.drop) return;
+							/*
+							 * Snapshot the successor BEFORE the press, because the press removes the
+							 * row: `event.currentTarget` is not readable after an await, and the
+							 * document order at press time is the order the user sees.
+							 */
+							const restoreFocus = focusRowAfterRemoval(event.currentTarget);
+							void setSessionArchived(
+								row.session_id,
+								!archived,
+								row.title ?? undefined,
+							).then((accepted) => {
+								/*
+								 * A REFUSED PRESS MOVES NOTHING, focus included: the row is still
+								 * there and the reader is still on the control they pressed, with the
+								 * store's refusal sentence in the panel's register at its root.
+								 */
+								if (!accepted) return;
+								restoreFocus();
+								/*
+								 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving takes the row AND its
+								 * control out of the list, which is exactly the situation the offer
+								 * exists for - so the row's press offers the same Undo the typed
+								 * `/archive` does, rather than the same act reporting differently
+								 * depending on which surface asked for it. Unarchiving offers none: the
+								 * row comes back into the list, which is its own visible trace.
+								 */
+								if (archived) return;
+								offerArchiveUndo({
+									sessionId: row.session_id,
+									title: row.title ?? undefined,
+									archived: true,
+								});
+							});
+						}}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"text-ink-dim opacity-0 pointer-events-none",
+							// The duration governs the transition INTO the current state, so the
+							// resting value is the fade-out and the revealed one the fade-in:
+							// quick to appear, gentler to leave.
+							"transition-opacity duration-base ease-out-quart",
+							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
+							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							/*
+							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
+							 * D22). The row box and both controls now declare the same
+							 * `hover:bg-row-hover`, so the ground is uniform across a hovered
+							 * row and says nothing about WHICH control the pointer is on - the
+							 * nested step D18's fix removed, one level down. A distinct control
+							 * token would be a new role across every palette for one 24px box;
+							 * the ink step is the vocabulary this file already has (a pinned
+							 * row's glyph takes `text-ink`), so the control under the pointer
+							 * darkens to full ink while its sibling stays at the revealed
+							 * `ink-muted`. The `!` is load-bearing: `group-hover:text-ink-muted`
+							 * and `hover:text-ink` are two equally specific rules that both
+							 * match, so the winner would be the stylesheet's own order.
+							 */
+							"hover:text-ink!",
+							// The hover GROUND is dropped while this row is the current one, the
+							// rule the entity row's two controls follow: a child's background
+							// paints over the row's own, so keeping it would let the pointer's
+							// transient mark replace the mark that says where the reader is.
+							//
+							// And it is the ROW STATE (`rowHover`), never a ground: this control
+							// lives inside a row, so `elevated` - which is every menu, popover,
+							// tooltip and dialog in the app - would answer the pointer with a
+							// role that means something else entirely. The panel's own guard
+							// (`chat-sidebar-selection.test.mjs`) is what holds that boundary.
+							!current && "hover:bg-row-hover",
+						)}
+					>
+						{archived ? (
+							<ArchiveRestore aria-hidden="true" className="size-4" />
+						) : (
+							<Archive aria-hidden="true" className="size-4" />
+						)}
+					</button>
+				)}
+			</>
+		);
+		/*
+		 * THE SHARED CONTROL, mounted only while a pair could be drawn at all and shown
+		 * only below the panel's default width (`NARROW_SHOWS_THE_SHARED_CONTROL`): one
+		 * reserved 24px slot holding both acts as menu items. It exists because the pair
+		 * is a width COST and its 56px is not payable at the clamp minimum - not because
+		 * either act is less wanted there.
+		 *
+		 * A MENU RATHER THAN A SECOND GLYPH. One 24px box cannot carry two controls (the
+		 * rule the pair exists for), so the narrow band would otherwise lose an act: a
+		 * single button can only invert one of the two flags. The two items name their
+		 * acts in words, which is what keeps the control legible where the row has no
+		 * room to spell a tooltip.
+		 *
+		 * NO PRESS GUARD, unlike the two row controls: both items are two clicks from the
+		 * list (open, then choose), so the reflex the guards protect against - the second
+		 * click of a double-click landing on whatever row slid into the gap - cannot reach
+		 * a menu item. A guard here would be a rule with no gesture behind it.
+		 */
+		const sharedActions = (
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<button
+						type="button"
+						data-session-actions
+						aria-label={`Actions for ${label}`}
+						className={cn(
+							// THE BASE IS `hidden` AND THE QUERY ADDS `flex`, IN THAT ORDER
+							// SPECIFICALLY. Both are display utilities, so a base `flex` beside
+							// the variant's own would be two display rules of equal weight and the
+							// cascade - not the container - would decide: measured, the control
+							// drew at every width. A base `hidden` cannot lose to a variant that
+							// only ever ADDS `flex` when the container matches.
+							"hidden size-6 shrink-0 items-center justify-center rounded-md",
+							ROW_CONTROLS_SHARED_SHOWN,
+							/*
+							 * AND THE SAME REVEAL MODEL AS THE PAIR (design round 2, D10). This
+							 * control used to be drawn at rest in the row's own text ink - measured
+							 * 12.84:1 dark / 15.23:1 light - and to DIM when the pointer arrived
+							 * (7.49:1 / 7.95:1), while the pair beside it reveals from `opacity-0`.
+							 * That is backwards on the one width where the title has least room:
+							 * every row wore a title-weight glyph, and hovering the row made the
+							 * affordance fainter rather than clearer.
+							 *
+							 * So it is reserved at rest and revealed by the pointer or by focus,
+							 * exactly as the pin and archive controls are: only `opacity` and
+							 * `pointer-events` move, the box stays 24px, and nothing reflows.
+							 *
+							 * `data-[state=open]` is the third way in and it is not decoration:
+							 * Radix keeps focus on the trigger while its menu is up, but the menu
+							 * is a PORTAL - a pointer that opens it and leaves the row must not
+							 * undraw the control the menu belongs to.
+							 */
+							"text-ink-dim opacity-0 pointer-events-none",
+							"transition-opacity duration-base ease-out-quart",
+							"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast",
+							"group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:text-ink-muted",
+							"data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto",
+							"hover:text-ink!",
+							// The ROW's own state, never a ground - see the two controls above.
+							!current && "hover:bg-row-hover",
+						)}
+					>
+						<MoreHorizontal aria-hidden="true" className="size-4" />
+					</button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem
+						onSelect={() =>
+							void setSessionPin(row.session_id, !pinned, {
+								title: row.title ?? undefined,
+								updated_at: row.updated_at ?? undefined,
+							})
+						}
+					>
+						<Pin aria-hidden="true" fill={pinned ? "currentColor" : "none"} />
+						<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onSelect={() =>
+							void setSessionArchived(
+								row.session_id,
+								!archived,
+								row.title ?? undefined,
+							)
+						}
+					>
+						{archived ? (
+							<ArchiveRestore aria-hidden="true" />
+						) : (
+							<Archive aria-hidden="true" />
+						)}
+						<span>
+							{archived ? "Unarchive conversation" : "Archive conversation"}
+						</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		);
+
+		return (
+			<div
+				key={row.session_id}
+				/* The row's own box, and the hook the current-row ground is asserted
+				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
+				data-session-row={row.session_id}
+				className={cn(
+					// Carried while EITHER per-row control is mounted, because both reveal
+					// themselves through `group-hover`/`group-focus-within` on it, and absent
+					// when neither is - which is what keeps the fully withdrawn panel's class
+					// list the one it had before either feature existed.
+					(pinsEnabled || archiveEnabled) && "group",
+					/*
+					 * AND THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON (design
+					 * round 2, D13). `rowStyle` carries `hover:bg-row-hover`, which fires
+					 * only while the pointer is over the BUTTON - so moving onto either
+					 * sibling control (they are inside the row's box and outside its
+					 * button) dropped the ground the pointer was standing on: a pop under
+					 * the pointer, on the row the pointer never left. The ground is stated
+					 * once more on the box, so the row reads as one hovered thing across
+					 * its whole width.
+					 *
+					 * A PLAIN `hover:` AND NOT `group-hover:` (design round 3, D18), and
+					 * this is the whole reason the first attempt at it was INERT: the box
+					 * is the element that CARRIES `group`, and Tailwind compiles
+					 * `group-hover:` to a DESCENDANT rule
+					 * (`.group-hover\:bg-row-hover:is(:where(.group):hover *)`), which can
+					 * never match its own carrier. Measured on the frames: the ground
+					 * still stopped 56px short of the box at 280 and was absent entirely
+					 * with the pointer on a control. `hover:` fires on the element the
+					 * pointer is actually inside, children included, which is what "the
+					 * row is one hovered thing" means.
+					 *
+					 * Dropped while this row is the CURRENT one, exactly as the two
+					 * controls drop their own hover ground: the selected ground and the
+					 * hover ground are two steps off `surface` in the same direction, and
+					 * repainting the state the reader is IN as the state the pointer is in
+					 * is the substitution `rowCurrent`'s own override exists to stop.
+					 */
+					(pinsEnabled || archiveEnabled) && !current && "hover:bg-row-hover",
+					rowBoxStyle,
+					current && rowCurrent,
+				)}
+			>
+				{rowButton}
+				{silentRemedy}
+				{/*
+				 * THE PAIR, OR THE ONE CONTROL THAT STANDS IN FOR IT WHEN THE PANEL IS AT
+				 * ITS NARROWEST. Both controls are siblings of the row's button, never
+				 * children, and both reveal on the pointer or on focus inside the row - the
+				 * pin and the archive control are two independent affordances, so the row
+				 * carries them as a pair of reserved 24px slots rather than sharing one
+				 * (two controls in one box occlude each other's reveal, and an overlapping
+				 * reveal hides the title of the row the pointer is on).
+				 *
+				 * THE PAIR COSTS THE TITLE 28px PER CONTROL (24 + the row's own 4px gap),
+				 * which is the price this panel has already refused once: the per-row
+				 * BROWSER control was deleted on 2026-09-18 because it "cost every title
+				 * its 28px for a control used rarely". Two reserved slots are 56px off
+				 * every title, on every row, and at the 240px clamp minimum that leaves a
+				 * bare row about eight characters. A row that carries an unread mark is
+				 * NOT worse off than a bare one, which this comment used to claim and
+				 * which the measurement refutes (design round 2, D14): the mark is drawn
+				 * inside the row's reserved LEADING status slot, so the title measures the
+				 * same width either way (180px at 280, 168px at 240, marked or not).
+				 * Measured; the numbers and the frames that carry them are in
+				 * `docs/design/session-archive-delete.md`.
+				 *
+				 * SO THE PAIR IS CARRIED ONLY FROM THE PANEL'S DEFAULT WIDTH UP, and below
+				 * it ONE shared control opens both acts as menu items: the same two acts,
+				 * one slot, no act lost. The switch is a container query on the panel
+				 * (`@container/chatsidebar`), the idiom this file already uses to shed the
+				 * mark-all-read label and the directory chip.
+				 */}
+				{bothControls ? (
+					<div
+						data-session-control-pair
+						className={cn("flex items-center gap-1", ROW_CONTROLS_PAIR_SHED)}
+					>
+						{controls}
+					</div>
+				) : (
+					controls
+				)}
+				{bothControls && sharedActions}
 			</div>
 		);
 	};
@@ -1935,6 +2581,13 @@ export function ChatSidebar({
 				ref={toggleRef}
 				type="button"
 				data-chat-row
+				/*
+				 * The section a driver scene expands (`data-chat-section={key}`): a collapsed
+				 * section draws no rows, and its own label is a copy string, so a scene that
+				 * reached it by text would be asserting a copy edit - the convention
+				 * `data-chat-row` and `data-session-delete` already follow.
+				 */
+				data-chat-section={key}
 				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-row-hover"
 				aria-expanded={query ? true : isOpen(key, initial)}
 				onClick={() => toggle(key, initial)}
@@ -2523,6 +3176,94 @@ export function ChatSidebar({
 	 * sentence is the durable half. `warning` and not `danger`: the list is
 	 * intact and only this row's pin did not move.
 	 */
+	/*
+	 * THE ARCHIVE REGISTER: the refusal and the Undo offer, drawn BESIDE THE PIN'S
+	 * FAILURE LINE at the panel's root rather than inside a region (agent review
+	 * round 4, R4-1 - a fold-introduced defect).
+	 *
+	 * WHY AT ROOT IS THE POINT, and why it has to be written down: the register used
+	 * to be a direct child of the `<nav>` (unconditional), and re-applying it from
+	 * main's structure put it inside the ENTITY region - which this assembly drops in
+	 * `chats-only`, the mode where the user is looking at the rows they just acted
+	 * on. Measured at `3e650f5f0`: drawn in `bothVisible` and `entities-only`, absent
+	 * in `chats-only`, so a refused archive drew no sentence and no Retry there, and a
+	 * successful one drew no Undo. It now draws wherever the pin's own failure line
+	 * draws, which is every mode, and the static test asserts exactly that by reading
+	 * the JSX ancestry rather than the text next to it (that adjacency assertion is
+	 * what let this through).
+	 *
+	 * The refusal gets NO `role="alert"`, so it cannot compete with the catalogue
+	 * alert about a different failure: what announces it is the row coming back with
+	 * its control in the state the user left it, and this sentence is the durable
+	 * half; it is `warning` rather than `danger` because the list is intact and only
+	 * this row's state did not move.
+	 *
+	 * The Undo offer is the offer the module has always made - one sentence and one
+	 * press - drawn where the act happened. The toast lane was the wrong home for two
+	 * measured reasons: its box sat over the composer's Send control in both palettes
+	 * (x 1307..1339, y 803..835, inside the toast's own x 1001..1360.5, y
+	 * 789..842.5), so an offer to take an archive back could be pressed into sending
+	 * a message; and an archive is performed from THIS panel, so the offer belongs to
+	 * this panel's register rather than to a lane floating over the pane the user did
+	 * not act in.
+	 *
+	 * The offer line is `text-ink`, NOT `text-ink-muted` (design round 3, D20): the
+	 * register's other line is `text-warning`, and this one is the only line in the
+	 * panel carrying a LIVE ACTION; at muted ink (7.86:1 / 8.21:1) it read as metadata
+	 * beside it.
+	 *
+	 * `data-session-archive-undo` and `data-session-archive-failure` are the driver
+	 * scenes' anchors, the convention `data-session-delete` and `data-chat-row`
+	 * follow: both sentences name a conversation, so a scene selecting them by text
+	 * would assert a copy edit rather than a state.
+	 *
+	 * The press goes to the store rather than to a closure handed over by whichever
+	 * surface offered it (`archive-undo.ts` says why): every surface offers the same
+	 * act, so the press is one line here too.
+	 */
+	const archiveRegister = (
+		<>
+			{archiveUndo && (
+				<p data-session-archive-undo className="pb-2 text-meta text-ink">
+					{archiveOfferedText(archiveUndo.title)}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveUndo.sessionId,
+								!archiveUndo.archived,
+								archiveUndo.title,
+							)
+						}
+					>
+						Undo
+					</button>
+				</p>
+			)}
+			{archiveFailure && (
+				<p data-session-archive-failure className="pb-2 text-meta text-warning">
+					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
+					{archiveFailure.title}”.
+					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveFailure.sessionId,
+								archiveFailure.archived,
+								archiveFailure.title,
+							)
+						}
+					>
+						Retry
+					</button>
+				</p>
+			)}
+		</>
+	);
+
 	const pinFailureLine = pinFailure ? (
 		/*
 		 * The pin failure, and the reason it carries a ref: it is a flex child of the
@@ -2632,6 +3373,16 @@ export function ChatSidebar({
 			 * a NEW gesture, so the record expires on that movement. Leaving the list
 			 * expires it too - the reflex this protects never leaves the region between
 			 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
+			 *
+			 * BOTH RECORDS' EXPIRY IS REGION-SCOPED, and that is a known gap rather
+			 * than an oversight (agent review round 4, R4-5). `sessionRow` renders the
+			 * list's rows AND the entity region's nested rows, so a press on a NESTED
+			 * row is armed in the entities region and expired only here, in the chats
+			 * region. #408 split the regions and main's own `lastPinPress` has exactly
+			 * this shape, so this file inherits it rather than introducing it; the
+			 * gesture is bounded anyway (the record expires on a real move and on the
+			 * next press), and the fix belongs with the pin's record, in one change,
+			 * rather than as a second rule here.
 			 */
 			onPointerMove={(event) => {
 				const from = lastPinPress.current;
@@ -2642,9 +3393,24 @@ export function ChatSidebar({
 				) {
 					lastPinPress.current = null;
 				}
+				/*
+				 * AND THE ARCHIVE'S OWN RECORD, on the same movement: both guards expire on
+				 * the same path because both exist for the same reflex - a press that
+				 * re-lands on a DIFFERENT row after the list moved under it must not act
+				 * (`chat-archive-press.ts` carries the gesture it protects).
+				 */
+				if (
+					archivePressExpired(lastArchivePress.current, {
+						x: event.clientX,
+						y: event.clientY,
+					})
+				) {
+					lastArchivePress.current = null;
+				}
 			}}
 			onPointerLeave={() => {
 				lastPinPress.current = null;
+				lastArchivePress.current = null;
 			}}
 			className={cn(
 				"space-y-4 overflow-y-auto [overflow-anchor:none]",
@@ -3327,7 +4093,9 @@ export function ChatSidebar({
 		<nav
 			ref={navRef}
 			aria-label="Chats"
-			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			/* The container the per-row controls shed against (`ROW_CONTROLS_PAIR_SHED`),
+			   named so the query cannot be answered by an ancestor's width. */
+			className="@container/chatsidebar flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
 			{/* The header once carried a 16px `Plus` for the same action the "New
@@ -3378,6 +4146,43 @@ export function ChatSidebar({
 					</Button>
 				)}
 			</div>
+			{/*
+			 * INCLUDE ARCHIVED, and its own render rule is the same one the clear
+			 * control above follows: it is drawn only while a query exists.
+			 *
+			 * Not decoration - the rule is what keeps the panel free of new chrome at
+			 * rest, which is the constraint this half of the feature is under. The
+			 * brief rules out an `Archived chats` section, and a permanently visible
+			 * toggle would be that section's control sitting in a block that is
+			 * otherwise about the query: with an empty box there is nothing to scope
+			 * the widened search to, so the control would be a switch for a search that
+			 * is not happening.
+			 *
+			 * A CHECKBOX with a label rather than a pressed button: the question is
+			 * binary and it widens the CURRENT SEARCH rather than selecting a thing, so
+			 * it reads as "what this search looks at" - which is also why the label is
+			 * the whole control and there is no icon.
+			 *
+			 * FAIL-CLOSED: absent `session_archive` this is not rendered at all, and
+			 * with it rendered off the panel is the panel it always was (`visibleRows`
+			 * keeps the archived rows out of every list either way, so the control can
+			 * only ever reveal them inside one query).
+			 */}
+			{archiveEnabled && query.trim() && (
+				<div className="flex items-center gap-2 pb-2">
+					<Checkbox
+						id={INCLUDE_ARCHIVED_ID}
+						checked={includeArchived}
+						onCheckedChange={(checked) => setIncludeArchived(checked === true)}
+					/>
+					<Label
+						htmlFor={INCLUDE_ARCHIVED_ID}
+						className="text-meta text-ink-muted"
+					>
+						Include archived
+					</Label>
+				</div>
+			)}
 			{/* Says what the search actually LOOKED AT, and only while a query is
 		    active, because that is the moment the claim is true and relevant.
 		    Both cases are degradations the user cannot see otherwise: the list
@@ -3475,6 +4280,7 @@ export function ChatSidebar({
 					<>
 						{split.order === "entities-first" ? entityRegion : listRegion}
 						{pinFailureLine}
+						{archiveRegister}
 						{boundary}
 						{split.order === "entities-first" ? listRegion : entityRegion}
 					</>
@@ -3482,6 +4288,7 @@ export function ChatSidebar({
 					<>
 						{restoreAtTop && restoreRow}
 						{pinFailureLine}
+						{archiveRegister}
 						{listRegion}
 						{!restoreAtTop && restoreRow}
 					</>
@@ -3497,6 +4304,7 @@ export function ChatSidebar({
 						{restoreAtTop && restoreRow}
 						{entityRegion}
 						{pinFailureLine}
+						{archiveRegister}
 						{!restoreAtTop && restoreRow}
 					</>
 				)}

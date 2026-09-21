@@ -33,6 +33,26 @@ export type SessionCatalogueRow = {
 	 * terminal and a pin made here are the same pin.
 	 */
 	pinned: boolean;
+	/**
+	 * Whether this conversation is ARCHIVED, as the backend's own store holds it.
+	 *
+	 * ALWAYS PRESENT, both values, on EVERY row, for the reason the pin flag
+	 * carries on its sibling: `replaceSessionRows` -> `mergeRow` in
+	 * `canonical-sessions-store.ts` is `{...current, ...incoming}` under the rule
+	 * "an absent key is not a claim", so a backend that omitted `archived` on a
+	 * live row would leave this client's optimistic `true` immortal - the row would
+	 * stay out of `Active chats` after an unarchive made somewhere else (the
+	 * terminal, another window), with nothing on screen to press to fix it.
+	 *
+	 * The list route's own `include_archived` decides whether archived rows are in
+	 * the ANSWER at all, and it defaults to `false` so a client that predates this
+	 * field keeps the list it had. This app asks for them (`include_archived: true`,
+	 * see `fetchSessions`): it partitions them out of every default list itself,
+	 * which is what lets it both know the state of a conversation it has open and
+	 * offer unarchive from the row that found it. A backend that answered the flag
+	 * by omitting archived rows could do neither.
+	 */
+	archived: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
@@ -95,6 +115,17 @@ export type SessionSearchHit = {
 	 * that silently does nothing is worse than none (review round 1, m1).
 	 */
 	pinned?: boolean;
+	/**
+	 * Whether the hit is archived, ALWAYS present, both values.
+	 *
+	 * Unlike the pin's flag on this shape there is no "we did not ask" case to
+	 * express: a search is asked WITH `include_archived` (default `false`), so an
+	 * archived conversation is either absent from the answer or present with
+	 * `archived: true` - and the client's synthesis of a row from a hit needs the
+	 * value, because a conversation archived in the terminal is exactly the kind
+	 * that is not on this client's catalogue page.
+	 */
+	archived: boolean;
 };
 /**
  * The search answer. `query` is ECHOED rather than assumed: keystrokes are
