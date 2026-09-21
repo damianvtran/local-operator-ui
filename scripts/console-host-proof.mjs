@@ -602,6 +602,29 @@ function reapConsoleHostProof() {
 }
 
 /**
+ * The app tree's RSS in bytes, summed over its process GROUP.
+ *
+ * Electron's tree is main plus a renderer, a GPU process and utilities, and the question a
+ * memory ceiling asks is about the tree rather than about one of its members. `null` when the
+ * tree is gone or `ps` cannot answer, so a missing reading is a missing reading and never a
+ * zero that would pass a ceiling.
+ */
+function appTreeRssBytes(appPid) {
+	let out = "";
+	try {
+		out = execFileSync("ps", ["-ax", "-o", "pgid=,rss="], { encoding: "utf8" });
+	} catch {
+		return null;
+	}
+	let total = 0;
+	for (const line of out.split("\n")) {
+		const [pgid, rss] = line.trim().split(/\s+/);
+		if (Number(pgid) === appPid) total += Number(rss) * 1024;
+	}
+	return total > 0 ? total : null;
+}
+
+/**
  * Everything the app has written that this harness can read: its stdout/stderr, and
  * any log file under the redirected log directory.
  *
@@ -1750,12 +1773,21 @@ async function main() {
 	 * would have caught the old behaviour: five captures of one surface, every one of them the
 	 * same frame, none refused.
 	 */
+	/*
+	 * THE ONE DELIBERATE LARGE-RECORD CELL, and its stimulus is a named byte count rather
+	 * than a pipeline that runs until something stops it (memory-bounding round). 4 MB
+	 * travels through `head | tr | fold | tail` — every stage streams, so the pipeline's own
+	 * memory is constant — and the RECORD it leaves is 400 lines of 100 columns (~40 KB),
+	 * which is what the capture is a frame of. A routine cell is capped at a few hundred KB;
+	 * this one is the exception and says so.
+	 */
+	const BIG_RECORD_PIPE_BYTES = 4_000_000;
 	const bigRecord = await rpcOk(state, "console_create", {
 		session_id: SESSION,
 		command: "/bin/sh",
 		args: [
 			"-c",
-			"head -c 4000000 /dev/zero | tr '\\0' 'x' | fold -w 100 | tail -n 400",
+			`head -c ${BIG_RECORD_PIPE_BYTES} /dev/zero | tr '\\0' 'x' | fold -w 100 | tail -n 400`,
 		],
 		cols: 100,
 		rows: 30,
@@ -2066,10 +2098,31 @@ async function main() {
 	 * chmods per pty chunk plus a staged sidecar rewrite — measured independently at
 	 * ~6-7 ms per 8 KiB chunk on the thread that draws the app's windows.
 	 */
+	const FLOOD_BYTES = 32 * 1024 * 1024;
+	/**
+	 * The deadline for a stimulus that has ALREADY been told how big it is: the loop below
+	 * ends on the producer's exit, and this is the bound that keeps a wedged surface from
+	 * holding the cell open. It is no longer the thing that decides the volume.
+	 */
+	const FLOOD_DEADLINE_MS = 30_000;
+	/**
+	 * How far the app TREE's RSS may rise above its own baseline during the flood. 256 MiB
+	 * is generous against what a bounded console costs — a 1 MiB live coalescing buffer, a
+	 * 4 MiB log ring, a 5,000-line scrollback — and it is the guard that makes a future
+	 * uncapped buffer fail this cell instead of the operator's machine, which is the shape
+	 * this round exists for. The tree rather than the main process, because Electron's
+	 * renderers and utilities are where a pane's frames actually land.
+	 */
+	const FLOOD_RSS_CEILING_BYTES = 256 * 1024 * 1024;
 	const floodSurface = await rpcOk(state, "console_create", {
 		session_id: SESSION,
 		command: "/bin/sh",
-		args: ["-c", "yes"],
+		// A FIXED BYTE COUNT, NOT AN OPEN-ENDED `yes` (memory-bounding round). `yes` writes
+		// as fast as the pty accepts, so the old cell's volume was whatever the host allowed
+		// inside its wall-clock window — an unbounded producer inside a test instrument.
+		// `head -c` makes the stimulus a number this file states; `yes` takes SIGPIPE when
+		// `head` exits, so nothing outlives the count.
+		args: ["-c", `yes | head -c ${FLOOD_BYTES}`],
 		cols: 100,
 		rows: 30,
 		retain: true,
@@ -2081,15 +2134,43 @@ async function main() {
 	};
 	const baseline = [];
 	for (let index = 0; index < 10; index += 1) baseline.push(await sample());
+	const rssBefore = appTreeRssBytes(app.child.pid);
+	let rssPeak = rssBefore;
 	const samples = [];
-	const floodStartedAt = Date.now();
-	while (Date.now() - floodStartedAt < 30_000) {
-		samples.push(await sample());
-		await sleep(200);
+	let flooded = null;
+	try {
+		const floodStartedAt = Date.now();
+		for (;;) {
+			samples.push(await sample());
+			const rss = appTreeRssBytes(app.child.pid);
+			if (rss !== null && (rssPeak === null || rss > rssPeak)) rssPeak = rss;
+			flooded = await rpcOk(state, "console_status", {
+				surface: floodSurface.surface,
+			});
+			// THE STIMULUS ENDS THE SAMPLE, not the clock: `head -c` has taken its byte
+			// count and the shell exits, so the cell cannot outlive what it started.
+			if (flooded.running !== true) break;
+			if (Date.now() - floodStartedAt >= FLOOD_DEADLINE_MS) break;
+			await sleep(200);
+		}
+	} finally {
+		/*
+		 * THE PRODUCER IS REAPED ON EVERY PATH (memory-bounding round), not on the happy
+		 * one. This cell is the loudest thing in the rig, and the path that leaves a `yes`
+		 * running — an assertion throwing mid-flood — is how one test becomes a machine
+		 * event. `console_close` with `kill: true` is main's own reap of the pty's process
+		 * GROUP, by the pid only main holds: the pty's child is a child of the app, so the
+		 * rig has no ppid for it and the surface is the handle it does have.
+		 */
+		try {
+			await rpcOk(state, "console_close", {
+				surface: floodSurface.surface,
+				kill: true,
+			});
+		} catch {
+			/* the surface is already gone */
+		}
 	}
-	const flooded = await rpcOk(state, "console_status", {
-		surface: floodSurface.surface,
-	});
 	const sorted = [...samples].sort((a, b) => a - b);
 	const median = sorted[Math.floor(sorted.length / 2)];
 	const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? null;
@@ -2131,8 +2212,9 @@ async function main() {
 	const FLOOD_MEDIAN_CEILING_MS = 100;
 	const FLOOD_P95_CEILING_MS = 500;
 	check(
-		"a 30 s `yes` flood with retention ON leaves main answering (§19.1 P3)",
-		flooded.running === true &&
+		`a ${FLOOD_BYTES / (1024 * 1024)} MiB flood with retention ON leaves main answering (§19.1 P3)`,
+		flooded?.running === false &&
+			flooded?.exit_code === 0 &&
 			samples.length > 0 &&
 			median !== undefined &&
 			median < FLOOD_MEDIAN_CEILING_MS &&
@@ -2147,9 +2229,30 @@ async function main() {
 				max: worst,
 			},
 			ceilings: { median: FLOOD_MEDIAN_CEILING_MS, p95: FLOOD_P95_CEILING_MS },
-			truncated: flooded.truncated,
-			exit_epoch: flooded.exit_epoch,
+			truncated: flooded?.truncated,
+			exit_epoch: flooded?.exit_epoch,
+			bytes: FLOOD_BYTES,
+			producerExitCode: flooded?.exit_code,
 			surface: floodSurface.surface,
+		},
+	);
+	/*
+	 * THE MEMORY GUARD (memory-bounding round). A flood is the cell most likely to find an
+	 * uncapped buffer, and this is the assertion that turns "we bounded it" into a fact a
+	 * future change has to keep: the app tree's RSS, sampled beside every responsiveness
+	 * sample, may not rise past its own baseline by more than the ceiling above.
+	 */
+	check(
+		"the flood never grew the app tree past its RSS ceiling",
+		rssBefore !== null &&
+			rssPeak !== null &&
+			rssPeak < rssBefore + FLOOD_RSS_CEILING_BYTES,
+		{
+			rssBeforeBytes: rssBefore,
+			rssPeakBytes: rssPeak,
+			ceilingBytes: FLOOD_RSS_CEILING_BYTES,
+			growthBytes:
+				rssBefore !== null && rssPeak !== null ? rssPeak - rssBefore : null,
 		},
 	);
 	await rpcOk(state, "console_close", {
