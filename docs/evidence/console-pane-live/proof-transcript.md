@@ -1,6 +1,6 @@
 # Console host end-to-end proof
 
-Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970`
+Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029`
 Result: every check passed
 Reaped stray spawn-helper processes: 0
 
@@ -12,7 +12,7 @@ Reaped stray spawn-helper processes: 0
   "console": true,
   "console_surfaces": 0,
   "console_agent_surfaces": 0,
-  "pid": 4973,
+  "pid": 31030,
   "proto": 1
 }
 ```
@@ -23,7 +23,7 @@ Reaped stray spawn-helper processes: 0
 {
   "host": "ui",
   "proto": 1,
-  "pid": 4973,
+  "pid": 31030,
   "console": true,
   "capabilities": [
     "download",
@@ -73,10 +73,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
+  "surface": "con:1:oVAJeFR9H5O_aOjufXvWeA",
   "cols": 120,
   "rows": 40,
-  "pid": 5082,
+  "pid": 31205,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -87,10 +87,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
+  "surface": "con:1:oVAJeFR9H5O_aOjufXvWeA",
   "cols": 120,
   "rows": 40,
-  "pid": 5082,
+  "pid": 31205,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -100,7 +100,7 @@ Reaped stray spawn-helper processes: 0
 ## PASS — the handle names its host
 
 ```
-con:1:mIOBC_qswcoFmseNhCqHDA
+con:1:oVAJeFR9H5O_aOjufXvWeA
 ```
 
 ## PASS — the runtime restored the helper's exec bit (trap 1)
@@ -162,7 +162,7 @@ con:1:mIOBC_qswcoFmseNhCqHDA
 {
   "expected": "e697a5e69cace697a50a",
   "got": "e697a5e69cace697a50a",
-  "file": "/tmp/lo-proof-r2-out-4966/input-roundtrip.bin"
+  "file": "/tmp/lo-proof-r3-out-31026/input-roundtrip.bin"
 }
 ```
 
@@ -220,17 +220,17 @@ localOperatorDark
 
 ```
 {
-  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
+  "surface": "con:1:oVAJeFR9H5O_aOjufXvWeA",
   "session_id": "proof-session",
   "origin": "agent",
   "command": "sh",
   "argv_tail": "-f -i",
-  "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+  "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
   "cols": 94,
   "rows": 25,
   "running": true,
   "exit_code": null,
-  "last_activity": 1789957570.692,
+  "last_activity": 1789962966.211,
   "live": true,
   "agent_owned": true,
   "last_actor": "agent",
@@ -251,9 +251,9 @@ localOperatorDark
   "rows": 25,
   "theme": "localOperatorDark",
   "live": true,
-  "bytes": 95723,
-  "sha256": "de0be35faa3b754bf34c79d1f0b3b3e16310fc90d0ff9cc05e4c44cba4d8f75e",
-  "file": "/tmp/lo-proof-r2-out-4966/console-con_1_mIOBC_qswcoFmseNhCqHDA.png"
+  "bytes": 100022,
+  "sha256": "cadeb91372bc80da24bba88b7654f1ce011bd29afd916dbdb011c74a3fb3d5ac",
+  "file": "/tmp/lo-proof-r3-out-31026/console-con_1_oVAJeFR9H5O_aOjufXvWeA.png"
 }
 ```
 
@@ -264,7 +264,7 @@ localOperatorDark
   "rendered": "displayed",
   "cols": 94,
   "rows": 25,
-  "bytes": 95723
+  "bytes": 100022
 }
 ```
 
@@ -277,9 +277,9 @@ localOperatorDark
   "attempts": 1,
   "cols": 94,
   "rows": 25,
-  "bytes": 40980,
-  "sha256": "b3c92450c6b61b8ed8024a183d94baa0053ff4160945fd10146d09cc43a0ad90",
-  "file": "/tmp/lo-proof-r2-out-4966/console-con_1_mIOBC_qswcoFmseNhCqHDA-offscreen.png"
+  "bytes": 42927,
+  "sha256": "f686712b4f2ed014afa623472bfbf582200c4028ab231c9c79868fb3ec17a081",
+  "file": "/tmp/lo-proof-r3-out-31026/console-con_1_oVAJeFR9H5O_aOjufXvWeA-offscreen.png"
 }
 ```
 
@@ -292,7 +292,7 @@ localOperatorDark
   "attempts": 1,
   "cols": 94,
   "rows": 25,
-  "bytes": 40980
+  "bytes": 42927
 }
 ```
 
@@ -312,17 +312,17 @@ armed
     "rows": 33
   },
   "paneGrid": {
-    "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
+    "surface": "con:1:oVAJeFR9H5O_aOjufXvWeA",
     "session_id": "proof-session",
     "origin": "agent",
     "command": "sh",
     "argv_tail": "-f -i",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
     "cols": 110,
     "rows": 33,
     "running": true,
     "exit_code": null,
-    "last_activity": 1789957571.042,
+    "last_activity": 1789962966.553,
     "live": true,
     "agent_owned": true,
     "last_actor": "agent",
@@ -341,14 +341,14 @@ armed
 {
   "read": {
     "code": "secure_input_active",
-    "message": "con:1:mIOBC_… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:oVAJeF… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
   },
   "screenshot": {
     "code": "secure_input_active",
-    "message": "con:1:mIOBC_… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:oVAJeF… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
@@ -364,7 +364,7 @@ armed
   "bytesAfter": 13,
   "truncatedWhileSecure": false,
   "reopenedHoldsMarker": true,
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/config/run/ui-console/history/proof-session/con_5_IyMuA3YnxuS7M6apZuHEXw.log"
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/config/run/ui-console/history/proof-session/con_5_8IMaHrH53LtlltjdaPkYsQ.log"
 }
 ```
 
@@ -491,12 +491,12 @@ armed
     "x": 0,
     "y": 1
   },
-  "last_activity": 1789957572.07,
+  "last_activity": 1789962967.496,
   "retain": false,
   "secure": false,
   "env_marker": {
     "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
-    "value": "con:6:PqkZdoaYkq-C53f0_6znLw"
+    "value": "con:6:fQRvoAQIT7aI7Y4oqDevqA"
   }
 }
 ```
@@ -532,7 +532,7 @@ armed
 ```
 {
   "code": "process_exited",
-  "message": "con:6:PqkZdo… has exited with code 5; its output is still readable",
+  "message": "con:6:fQRvoA… has exited with code 5; its output is still readable",
   "data": {
     "exit_code": 5,
     "retain": false
@@ -553,7 +553,7 @@ armed
 
 ```
 {
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/config/run/ui-console/history/proof-session/con_7_hIuKADZl8vEGScbf_5dbhw.log",
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/config/run/ui-console/history/proof-session/con_7_DkS34_ywwlisYmNx8jJMJg.log",
   "mode": 384
 }
 ```
@@ -571,14 +571,14 @@ armed
 ```
 {
   "baselineMs": {
-    "max": 6,
-    "median": 5
+    "max": 5,
+    "median": 3
   },
   "floodMs": {
-    "answered": 140,
-    "median": 4,
-    "p95": 10,
-    "max": 118
+    "answered": 144,
+    "median": 3,
+    "p95": 9,
+    "max": 260
   },
   "ceilings": {
     "median": 100,
@@ -586,7 +586,7 @@ armed
   },
   "truncated": true,
   "exit_epoch": 0,
-  "surface": "con:8:A0scTyGOmvwAiP4x83x8sw"
+  "surface": "con:8:Mtv_htdHooztBMyjsIU-vA"
 }
 ```
 
@@ -622,113 +622,113 @@ armed
 {
   "surfaces": [
     {
-      "surface": "con:2:JRQqhwbWK-7yWhYiYMPcXA",
+      "surface": "con:2:yJeCBWGyw8V-tHyGkCgKtw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '日本\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1789957568.114,
+      "last_activity": 1789962963.661,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:3:NZsLlGJ4HdgTd4OUXT2xAw",
+      "surface": "con:3:EI4Eq4Cdp0321KRIVN1YDA",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '\\346\\227'; sleep 0.3; printf '\\245\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1789957568.659,
+      "last_activity": 1789962964.188,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:6:PqkZdoaYkq-C53f0_6znLw",
+      "surface": "con:6:fQRvoAQIT7aI7Y4oqDevqA",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf 'exited-marker\\n'; exit 5",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 5,
-      "last_activity": 1789957572.07,
+      "last_activity": 1789962967.496,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:9:Pw-DNMlugnYx4BVxffKbQw",
+      "surface": "con:9:M4FagJj-2joxhMmQhP4Fvw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789957602.799,
+      "last_activity": 1789962998.167,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:10:O6V4qTTaVviUALL0c6AOJQ",
+      "surface": "con:10:R0-plHL9GbtuWQ4hNOVvbw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789957602.805,
+      "last_activity": 1789962998.172,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:11:hh-A7_Mdo6BdfaIjfL2t6w",
+      "surface": "con:11:vI8IMl3QDrcr_uWxRab_0g",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789957602.811,
+      "last_activity": 1789962998.176,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:12:Jh9h-1IzW_672LCZGkv8Aw",
+      "surface": "con:12:rYYO4OYDqYwMaUs5oy0uMw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789957602.817,
+      "last_activity": 1789962998.181,
       "live": true,
       "agent_owned": true,
       "last_actor": null
@@ -750,7 +750,7 @@ armed
 
 ```
 {
-  "samples": 74,
+  "samples": 73,
   "frontmostOurs": 0,
   "distinct": [
     null
@@ -763,18 +763,18 @@ armed
 ```
 {
   "lines": [
-    "22:26:06.986 › [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/console-pane/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/spawn-helper",
-    "22:26:06.986 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "22:26:07.237 › [console] surface con:1:mIOBC_… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 120x40 (agent)",
-    "22:26:07.856 › [console] surface con:1:mIOBC_… resized 100x30",
-    "22:26:08.089 › [console] surface con:2:JRQqhw… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
-    "22:26:08.114 › [console] surface con:2:JRQqhw… exited 0",
-    "22:26:08.308 › [console] surface con:3:NZsLlG… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
-    "22:26:08.659 › [console] surface con:3:NZsLlG… exited 0",
-    "22:26:08.741 › [console] surface con:4:HJgMiG… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
-    "22:26:10.362 › [console] surface con:4:HJgMiG… exited 0",
-    "22:26:10.362 › [console] surface con:4:HJgMiG… closed with exit 0",
-    "22:26:10.734 › [console] surface con:1:mIOBC_… resized 94x25"
+    "23:56:02.708 › [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/console-pane/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/spawn-helper",
+    "23:56:02.708 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "23:56:02.819 › [console] surface con:1:oVAJeF… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home at 120x40 (agent)",
+    "23:56:03.433 › [console] surface con:1:oVAJeF… resized 100x30",
+    "23:56:03.647 › [console] surface con:2:yJeCBW… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home at 80x24 (agent)",
+    "23:56:03.661 › [console] surface con:2:yJeCBW… exited 0",
+    "23:56:03.862 › [console] surface con:3:EI4Eq4… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home at 80x24 (agent)",
+    "23:56:04.188 › [console] surface con:3:EI4Eq4… exited 0",
+    "23:56:04.279 › [console] surface con:4:kbhLf4… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-31029/home at 80x24 (agent)",
+    "23:56:05.892 › [console] surface con:4:kbhLf4… exited 0",
+    "23:56:05.893 › [console] surface con:4:kbhLf4… closed with exit 0",
+    "23:56:06.234 › [console] surface con:1:oVAJeF… resized 94x25"
   ]
 }
 ```
