@@ -2575,6 +2575,469 @@ async function sceneSessionArchive(cdp) {
 	return frames;
 }
 
+/**
+ * The row's horizontal budget, read from the running app rather than from classes.
+ *
+ * WHY EVERY NUMBER HERE IS A MEASUREMENT. The claim this set exists to state is
+ * "the row spends N px on controls it is not drawing at panel width W", and N is a
+ * consequence of four things no single class names: the panel's `p-2`, the row
+ * box's `gap-1`, the button's own `px-1`, its leading status slot and the gap
+ * after it, and which of the pair / shared trigger the container query drew at
+ * that width. So the read returns BOXES - every element's own rect, the title's
+ * `scrollWidth` against its `clientWidth`, and the computed `opacity` that says
+ * whether a reserved box has anything in it - and the scene does the arithmetic
+ * and writes it beside the frames.
+ */
+function rowSpaceGeometry(cdp, ids) {
+	return cdp.evaluate(`(() => {
+		const round = (n) => Math.round(n * 100) / 100;
+		const box = (node) => {
+			if (!node) return null;
+			const r = node.getBoundingClientRect();
+			return { left: round(r.left), right: round(r.right), top: round(r.top), bottom: round(r.bottom), width: round(r.width), height: round(r.height), centre: { x: round(r.left + r.width / 2), y: round(r.top + r.height / 2) } };
+		};
+		const control = (node) => {
+			if (!node) return null;
+			const style = getComputedStyle(node);
+			const r = node.getBoundingClientRect();
+			/*
+			 * PAINTED, not merely transparent-or-not: a control inside a shed
+			 * container (display: none) still answers opacity 1, so opacity
+			 * alone would call a control that is not drawn painted - measured
+			 * on this set's own first run, which reported the 240 band's pin
+			 * as painted while its box was 0x0. A box with no pixels in it is
+			 * not drawn, whatever its opacity says.
+			 */
+			return { ...box(node), opacity: round(Number(style.opacity)), ink: style.color, pointerEvents: style.pointerEvents, painted: Number(style.opacity) > 0 && r.width > 0 && r.height > 0 };
+		};
+		const rows = ${JSON.stringify(ids)}.map((id) => {
+			const node = document.querySelector('[data-session-row="' + id + '"]');
+			if (!node) return { id, present: false };
+			const button = node.querySelector('button[data-tour-tag="chat-session-row"]');
+			const status = button ? button.firstElementChild : null;
+			const title = node.querySelector("[data-session-title]");
+			const titleStyle = title ? getComputedStyle(title) : null;
+			return {
+				id,
+				present: true,
+				pinned: node.querySelector("[data-session-pin]") ? node.querySelector("[data-session-pin]").getAttribute("aria-pressed") === "true" : null,
+				current: button ? button.getAttribute("aria-current") : null,
+				text: button ? button.textContent.replace(/\\s+/g, " ").trim() : null,
+				row: box(node),
+				button: box(button),
+				status: box(status),
+				title: title
+					? {
+							...box(title),
+							text: title.textContent,
+							scrollWidth: round(title.scrollWidth),
+							clientWidth: round(title.clientWidth),
+							overflows: title.scrollWidth - title.clientWidth > 0.5,
+							ink: titleStyle.color,
+							maskImage: titleStyle.maskImage,
+							transform: titleStyle.transform,
+						}
+					: null,
+				pin: control(node.querySelector("[data-session-pin]")),
+				archive: control(node.querySelector("[data-session-archive]")),
+				pair: box(node.querySelector("[data-session-control-pair]")),
+				shared: control(node.querySelector("[data-session-actions]")),
+			};
+		});
+		const panel = document.querySelector('nav[aria-label="Chats"]');
+		const undo = document.querySelector("[data-session-archive-undo]");
+		return {
+			viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+			panel: box(panel),
+			panelPadding: panel ? getComputedStyle(panel).padding : null,
+			register: {
+				undo: box(undo),
+				text: undo ? undo.textContent.replace(/\\s+/g, " ").trim() : null,
+				failure: box(document.querySelector("[data-session-archive-failure]")),
+			},
+			split: box(document.querySelector("[data-sidebar-split]")),
+			/*
+			 * THE COMPOSER, because the register frames are also the evidence for
+			 * where the offer must NOT go: design round 2's D12 moved this offer
+			 * out of the toast lane because the toast covered the composer's Send
+			 * control, and any proposal to put it back in that lane has to state
+			 * the clearance in pixels rather than in prose.
+			 */
+			composer: (() => {
+				const send = document.querySelector('[aria-label="Send message"]');
+				if (!send) return null;
+				const form = send.closest("form");
+				return { send: box(send), form: box(form) };
+			})(),
+			firstListRow: box(document.querySelector("[data-session-row]")),
+			rows,
+		};
+	})()`);
+}
+
+/**
+ * The per-row budget a reader can check without opening the frames: the row box,
+ * the button, the leading status slot, the title's own box and whether its text
+ * overflows it, and each trailing element's box with whether it is PAINTED (a
+ * reserved slot with `opacity: 0` is a box with nothing in it, which is the whole
+ * subject of this set).
+ */
+const rowSpaceBudget = (reading) =>
+	reading.rows.map((row) => ({
+		id: row.id,
+		present: row.present,
+		pinned: row.pinned ?? null,
+		current: row.current ?? null,
+		rowWidth: row.row ? row.row.width : null,
+		buttonWidth: row.button ? row.button.width : null,
+		statusWidth: row.status ? row.status.width : null,
+		titleWidth: row.title ? row.title.width : null,
+		titleText: row.title ? row.title.text : null,
+		titleOverflows: row.title ? row.title.overflows : null,
+		titleScrollWidth: row.title ? row.title.scrollWidth : null,
+		tailAfterTitle:
+			row.title && row.row
+				? Math.round((row.row.right - row.title.right) * 100) / 100
+				: null,
+		pairWidth: row.pair ? row.pair.width : null,
+		pinWidth: row.pin ? row.pin.width : null,
+		pinPainted: row.pin ? row.pin.painted : null,
+		archiveWidth: row.archive ? row.archive.width : null,
+		archivePainted: row.archive ? row.archive.painted : null,
+		sharedWidth: row.shared ? row.shared.width : null,
+		sharedPainted: row.shared ? row.shared.painted : null,
+	}));
+
+/**
+ * `row-space`: the sidebar row's horizontal budget, before the change.
+ *
+ * ## What this scene is for
+ *
+ * The operator's report is a PIXEL report: at a typical panel width a row's title
+ * truncates early and the space to its right is empty, because two 24px control
+ * boxes are reserved on every row whether or not the pointer is anywhere near it.
+ * Every claim in `docs/design/sidebar-row-space.md` is a claim about that budget,
+ * so this scene photographs it at the three panel widths the report is about -
+ * the 240 clamp minimum, the 280 default and 320 - with the pointer OFF the row
+ * and ON it, in both palettes, and writes the boxes it read beside the frames.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names this set's own stand-in daemon
+ * (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`), which is the
+ * archive set's responder with two rows added that the claim needs: a PINNED
+ * conversation (the operator's own screenshot is of a pinned row) and a
+ * conversation whose title is long enough to TRUNCATE at every width here (none
+ * of the archive fixture's four titles is). The app is the real one: its own
+ * catalogue read, its own store, its own sidebar.
+ *
+ * ## Why the panel width is written through the divider's own action
+ *
+ * The panel's width is the user's own preference (`chatSidebarWidth`, clamped
+ * 240..360), not a function of the window, so a window resize would photograph
+ * the same panel at the same width. The scene writes it the way the divider
+ * writes it (`setSidebarWidth`), which is also what makes 320 reachable at all:
+ * `--window-size` cannot.
+ *
+ * ## The register
+ *
+ * One frame is of the panel's archive register, in the state the operator
+ * reported: `register-280` is taken after a REAL press on a row's archive
+ * control, with the pointer parked off the row afterwards, because the register
+ * is a statement about the LIST rather than about the pointer. The row is put
+ * back through the register's own Undo before the scene ends, so a second
+ * palette's run photographs the list the fixture describes rather than a list the
+ * first run emptied.
+ *
+ *   node scripts/renderer-driver.mjs --scene row-space \
+ *     --backend http://127.0.0.1:18234 --backend-records /tmp/row-space-stub-records \
+ *     --seed-onboarding-complete --theme localOperatorDark --out /tmp/row-space-dark
+ */
+async function sceneRowSpace(cdp) {
+	const frames = [];
+	const geometry = {};
+	const UNPINNED = "b3f1a09c7d52";
+	const SHORT = "7c1b0f2a4d31";
+	const PINNED = "c4e17b90a2f6";
+	const CURRENT = "2d5ad5da0025";
+	const IDS = [UNPINNED, SHORT, PINNED, CURRENT];
+	const WIDTHS = [240, 280, 320];
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered and the panel is drawing its rows",
+		state.sessionCount >= 4,
+		`sessionCount is ${state.sessionCount}`,
+	);
+
+	/*
+	 * THE `Previous chats` SECTION IS COLLAPSED BY DEFAULT, and a scene that only
+	 * navigates therefore photographs a panel holding the pinned row and the
+	 * running one - measured here, and the reason this expansion is part of the
+	 * scene rather than of the fixture. It is opened with the reader's own gesture
+	 * through the section's own hook (`data-chat-section`), and only when it is
+	 * shut: a press on an open disclosure would close it.
+	 */
+	const previousOpen = await cdp.evaluate(
+		`(() => { const button = document.querySelector('[data-chat-section="previous"]'); return button ? button.getAttribute("aria-expanded") === "true" : null; })()`,
+	);
+	if (previousOpen === false) {
+		await clickAt(cdp, '[data-chat-section="previous"]');
+		await wait(500);
+	}
+	note(
+		"the Previous chats section",
+		previousOpen === true ? "was already expanded" : "expanded by this scene",
+	);
+
+	/*
+	 * OPEN A CONVERSATION BEFORE ANYTHING IS PHOTOGRAPHED, and both halves of this
+	 * set need it. The panel's CURRENT row is a row class with its own ground (the
+	 * hover step is dropped on it), so a set with nothing open has no current row to
+	 * photograph. And the register frame's subject is an offer that must not land on
+	 * the composer, which has to be on screen for that frame to be about anything:
+	 * measured, the composer is mounted only with a conversation open.
+	 *
+	 * It is the reader's own gesture, through the row's own button.
+	 */
+	await clickAt(cdp, `[data-session-row="${CURRENT}"] [data-chat-row]`);
+	await wait(900);
+	await parkPointer(cdp);
+
+	const panelRows = await cdp.evaluate(
+		`Array.from(document.querySelectorAll("[data-session-row]")).map((node) => ({ id: node.getAttribute("data-session-row"), title: node.querySelector("[data-session-title]") ? node.querySelector("[data-session-title]").textContent : null, rowButton: node.querySelector("[data-chat-row]") !== null, pin: node.querySelector("[data-session-pin]") !== null, archive: node.querySelector("[data-session-archive]") !== null, pair: node.querySelector("[data-session-control-pair]") !== null, actions: node.querySelector("[data-session-actions]") !== null }))`,
+	);
+	note("rows on the panel", JSON.stringify(panelRows, null, 2));
+	check(
+		"the four rows this set measures are all on the panel",
+		["b3f1a09c7d52", "7c1b0f2a4d31", "c4e17b90a2f6", "2d5ad5da0025"].every(
+			(id) => panelRows.some((row) => row.id === id && row.rowButton === true),
+		),
+		JSON.stringify(panelRows.map((row) => row.id)),
+	);
+
+	for (const width of WIDTHS) {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		/*
+		 * The width is written through the divider's own action rather than by
+		 * resizing the window, so it is worth asserting that the panel really took
+		 * it: every number below is quoted as a width's, and a silent clamp would
+		 * make three labels one panel.
+		 */
+		check(
+			`the panel is at the width this frame is labelled with (${width})`,
+			applied.width === width && applied.clamped === false,
+			JSON.stringify(applied),
+		);
+		await wait(400);
+		await parkPointer(cdp);
+		geometry[`rest-${width}`] = await rowSpaceGeometry(cdp, IDS);
+		frames.push(await captureSettled(cdp, `rest-${width}`));
+
+		await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
+		await wait(500);
+		geometry[`hover-long-${width}`] = await rowSpaceGeometry(cdp, IDS);
+		frames.push(await captureSettled(cdp, `hover-long-${width}`));
+
+		await hoverOver(cdp, `[data-session-row="${PINNED}"] [data-chat-row]`);
+		await wait(500);
+		geometry[`hover-pinned-${width}`] = await rowSpaceGeometry(cdp, IDS);
+		frames.push(await captureSettled(cdp, `hover-pinned-${width}`));
+	}
+
+	/*
+	 * The two states that are about a ROW CLASS rather than a width, photographed
+	 * at the default: a title that fits its box (which must not move once a marquee
+	 * exists) and the row the panel is currently on (whose ground is dropped under
+	 * the pointer, so the pointer must not change which row reads as current).
+	 */
+	await verb(cdp, "setSidebarWidth", { width: 280 });
+	await wait(400);
+	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
+	await wait(500);
+	geometry["hover-short-280"] = await rowSpaceGeometry(cdp, IDS);
+	frames.push(await captureSettled(cdp, "hover-short-280"));
+
+	await hoverOver(cdp, `[data-session-row="${CURRENT}"] [data-chat-row]`);
+	await wait(500);
+	geometry["hover-current-280"] = await rowSpaceGeometry(cdp, IDS);
+	frames.push(await captureSettled(cdp, "hover-current-280"));
+
+	/*
+	 * The register, through a real press: the row has to be hovered for its archive
+	 * control to be operable, which is exactly the sequence a reader performs.
+	 */
+	await parkPointer(cdp);
+	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
+	await wait(700);
+	await parkPointer(cdp);
+	geometry["register-280"] = await rowSpaceGeometry(cdp, IDS);
+	frames.push(await captureSettled(cdp, "register-280"));
+	check(
+		"the composer is on screen, so the register frame is also the evidence for where the offer must not go",
+		geometry["register-280"].composer !== null,
+		JSON.stringify(geometry["register-280"].composer),
+	);
+	check(
+		"the register frame is of a register that was really there",
+		geometry["register-280"].register.undo !== null &&
+			/archived/.test(geometry["register-280"].register.text ?? ""),
+		JSON.stringify(geometry["register-280"].register),
+	);
+
+	await clickAt(cdp, "[data-session-archive-undo] button");
+	await wait(700);
+	await parkPointer(cdp);
+	const restored = await rowSpaceGeometry(cdp, [SHORT]);
+	check(
+		"the archived row is back, so the list is the fixture's list again",
+		restored.rows[0]?.present === true && restored.register.undo === null,
+		JSON.stringify({
+			row: restored.rows[0] ?? null,
+			register: restored.register,
+		}),
+	);
+
+	/*
+	 * THE FOUR FACTS THE FRAMES ARE OF, asserted rather than left to a reader's
+	 * eye - and each one is the BEFORE state, which is what makes this set
+	 * comparable with the after set the change produces.
+	 */
+	const budget = Object.fromEntries(
+		Object.entries(geometry).map(([key, reading]) => [
+			key,
+			rowSpaceBudget(reading),
+		]),
+	);
+	const rowIn = (state, id) =>
+		budget[state]?.find((row) => row.id === id) ?? null;
+	const rest280 = rowIn("rest-280", UNPINNED);
+	const rest240 = rowIn("rest-240", UNPINNED);
+	const hover280 = rowIn("hover-long-280", UNPINNED);
+	check(
+		"at rest, at the default width, the row reserves TWO 24px slots with nothing painted in either",
+		rest280?.pairWidth === 52 &&
+			rest280?.pinWidth === 24 &&
+			rest280?.pinPainted === false &&
+			rest280?.archiveWidth === 24 &&
+			rest280?.archivePainted === false,
+		JSON.stringify(rest280),
+	);
+	check(
+		"at rest, at the clamp minimum, the pair is shed for one 24px shared control, also unpainted",
+		rest240?.pairWidth === 0 &&
+			rest240?.sharedWidth === 24 &&
+			rest240?.sharedPainted === false,
+		JSON.stringify(rest240),
+	);
+	check(
+		"with the pointer on the row both slots ARE painted, so the reservation is what shows nothing at rest",
+		hover280?.pinPainted === true && hover280?.archivePainted === true,
+		JSON.stringify(hover280),
+	);
+	check(
+		"the long title truncates at every width photographed here",
+		["rest-240", "rest-280", "rest-320"].every(
+			(key) => rowIn(key, UNPINNED)?.titleOverflows === true,
+		),
+		JSON.stringify(
+			["240", "280", "320"].map((width) => ({
+				width,
+				title: rowIn(`rest-${width}`, UNPINNED)?.titleWidth,
+				scroll: rowIn(`rest-${width}`, UNPINNED)?.titleScrollWidth,
+				overflows: rowIn(`rest-${width}`, UNPINNED)?.titleOverflows,
+			})),
+		),
+	);
+	check(
+		"and the short title does not, at the default width",
+		rowIn("hover-short-280", SHORT)?.titleOverflows === false,
+		JSON.stringify(rowIn("hover-short-280", SHORT)),
+	);
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio,
+		),
+		frames.map((frame) => `${frame.label}: ${frame.bytes}B`).join(" | "),
+	);
+
+	const geometryPath = join(
+		FRAMES,
+		`row-space-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,
+	);
+	writeFileSync(
+		geometryPath,
+		JSON.stringify(
+			{
+				scene: "row-space",
+				theme: THEME ?? null,
+				runtime: electronRuntime(),
+				viewport: geometry["rest-280"]?.viewport ?? null,
+				panelPadding: geometry["rest-280"]?.panelPadding ?? null,
+				widths: WIDTHS,
+				panel: geometry["rest-280"]?.panel ?? null,
+				states: budget,
+				/*
+				 * THE RAW BOXES TOO, beside the derived table: every number in the
+				 * spec is a subtraction over these, and a reader who disagrees with
+				 * one of them should be able to check the arithmetic rather than
+				 * re-run the scene. It is the same reading, written out.
+				 */
+				boxes: geometry,
+				register: {
+					undo: geometry["register-280"]?.register.undo ?? null,
+					text: geometry["register-280"]?.register.text ?? null,
+					split: geometry["register-280"]?.split ?? null,
+					firstListRow: geometry["register-280"]?.firstListRow ?? null,
+					composer: geometry["register-280"]?.composer ?? null,
+				},
+			},
+			null,
+			2,
+		),
+	);
+	note("geometry written", geometryPath);
+	for (const [key, rows] of Object.entries(budget)) {
+		for (const row of rows) {
+			say(
+				`  ${key} ${row.id}: row ${row.rowWidth} title ${row.titleWidth} (overflows ${row.titleOverflows}) tail ${row.tailAfterTitle} pair ${row.pairWidth} pin ${row.pinWidth}${row.pinPainted ? "+" : "-"} archive ${row.archiveWidth}${row.archivePainted ? "+" : "-"} shared ${row.sharedWidth}${row.sharedPainted ? "+" : "-"}`,
+			);
+		}
+	}
+	return frames;
+}
+
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -13265,6 +13728,7 @@ async function main() {
 			}
 			if (SCENE === "states") await sceneStates(cdp);
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
+			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
