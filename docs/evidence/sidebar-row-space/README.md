@@ -114,6 +114,36 @@ show the app's real empty-transcript state for the opened conversation (the stub
 answers no history), which is why the pane to the right of the sidebar is not
 what these frames are of.
 
+**The daemon's RECORD must stay alive for the whole run, and that is the rig's
+job, not the stub's.** The renderer driver links the stub's serve record into the
+run's own `config/run/serve` rather than copying it. A copy is a record whose
+heartbeat is frozen at launch, and discovery calls a record with a live pid and a
+heartbeat older than `HEARTBEAT_TIMEOUT_MS` (45s) *wedged* - refusing both to
+attach to it and to spawn a second daemon. Measured on 2026-09-21: from 48s into
+a run, every scan logged `[discovery] rejected <config>/run/serve/<pid>.json:
+wedged (pid <pid> is alive but its heartbeat is 48s old)` and the app drew its
+"not attached" and "not paired" banners ACROSS THE TOP OF EVERY FRAME, which
+moved the list down far enough that the scene's pointer steps landed on the wrong
+row. With the record linked, the stub's own 5s rewrites are what the app reads and
+the banners never appear.
+
+**The offer's frame is a bounded PAIR of captures, not the retrying helper.** The
+offer is a toast with a duration (`ARCHIVE_UNDO_TOAST_MS`, 8s), and the frames
+here are taken on a machine that runs ~25 concurrent agent sessions: a retry loop
+that keeps shooting until two captures agree (up to ten, `captureWithToast`) can
+outlive the offer, and because every attempt REWRITES the same PNG, the frame
+that survives is the one with no offer on it. `captureToastPair` takes exactly
+two shots and reports whether they match, so what the toast has to survive is one
+screenshot. Measured twice on 2026-09-21 under that load before the change.
+
+**The line under the composer is the stand-in backend's, not the sidebar's.** The
+stub answers no history and serves no stream, so the chat column carries the app's
+own connection line ("Reconnecting", or "Lost the connection to this conversation
+- reconnect to keep reading."); which of the two a frame shows depends on how long
+the run has been up when the shutter opens. It is the same in the before half and
+in both palettes, it sits in the column these frames are not about, and it is the
+reason two runs of this scene are not byte-identical even when every check passes.
+
 ## The frames
 
 Every frame is **2760x1736 device pixels at DPR 2** - a 1380x868 content viewport

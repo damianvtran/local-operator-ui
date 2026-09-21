@@ -125,7 +125,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
-	copyFileSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
@@ -133,6 +132,7 @@ import {
 	realpathSync,
 	rmSync,
 	statSync,
+	symlinkSync,
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
@@ -1543,6 +1543,39 @@ async function captureWithToast(
 		await wait(gapMs);
 	}
 	return { ...frame, attempts, stable: false, toastText: text };
+}
+
+/**
+ * TWO screenshots of the same toast, back to back, and whether they match.
+ *
+ * BOUNDED ON PURPOSE. `captureWithToast` retries until two of its captures agree
+ * (up to ten, 200ms apart), which is the right shape for a frame that only has to
+ * be one the app held still for - and the wrong one for a frame OF A TRANSIENT THAT
+ * HAS A DURATION. Measured under fleet load on 2026-09-21: the retry loop outlived
+ * the archive offer's own 8s, and because every attempt REWRITES the same file, the
+ * frame that survived was the toast-free one; the scene then timed out looking for
+ * the Undo. This takes exactly two shots with nothing between them but a read, so
+ * the window the toast has to survive is one screenshot rather than ten.
+ *
+ * The bytes are held in memory after the first shot rather than re-read from disk,
+ * because `capture` writes every attempt to the SAME path - which is the whole
+ * mechanism of the failure above.
+ */
+async function captureToastPair(cdp, label) {
+	const first = await capture(cdp, label);
+	const firstBytes = readFileSync(first.path);
+	const firstText = await toastText(cdp).catch(() => null);
+	const second = await capture(cdp, label);
+	const secondText = await toastText(cdp).catch(() => null);
+	return {
+		...second,
+		stable:
+			firstText !== null &&
+			secondText !== null &&
+			firstBytes.equals(readFileSync(second.path)),
+		toastText: secondText,
+		firstToastText: firstText,
+	};
 }
 
 /** The text of the toast on screen, or `null` when there is none. */
@@ -3058,17 +3091,22 @@ async function sceneRowSpace(cdp) {
 	await wait(400);
 	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
 	await wait(700);
+	/*
+	 * THE FRAME COMES FIRST, AND IT IS TAKEN WITH `captureToastPair` RATHER THAN
+	 * `captureWithToast` - both for the same reason: the offer is a TRANSIENT with a
+	 * duration (8s), and everything between the press and the shutter is time the
+	 * toast is spending. Measured on 2026-09-21 under fleet load, the retrying helper
+	 * outlived the toast and wrote a frame with no offer on it at all. The pointer is
+	 * parked off the list, so no row draws its acts and the frame is of the list the
+	 * offer is about plus the offer itself.
+	 */
 	await parkPointer(cdp);
+	const offerFrame = await captureToastPair(cdp, "offer-toast-280");
 	geometry["offer-toast-280"] = await rowSpaceGeometry(cdp, IDS);
-	const offerFramesFirst = await captureWithToast(cdp, "offer-toast-280");
-	await wait(200);
-	const offerFramesSecond = await captureWithToast(cdp, "offer-toast-280");
 	offerFrames.push({
 		label: "offer-toast-280",
-		stable: readFileSync(offerFramesFirst.path).equals(
-			readFileSync(offerFramesSecond.path),
-		),
-		toastOnScreen: geometry["offer-toast-280"].offer.toast !== null,
+		stable: offerFrame.stable,
+		toastOnScreen: offerFrame.toastText !== null,
 	});
 	check(
 		"the composer is on screen, so the offer frame is also the evidence for where the offer must not go",
@@ -3081,10 +3119,20 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(geometry["offer-toast-280"].offer),
 	);
 
-	await clickAt(
-		cdp,
-		'nav[aria-label="Chats"] [data-sonner-toast] [data-button]',
-	);
+	/*
+	 * The press is MEASURED with a short timeout first, so a miss NAMES ITSELF rather
+	 * than surfacing as the driver's selector timeout: the offer is a transient, and
+	 * "the lane is not drawing it any more" is the diagnosis a reader needs.
+	 */
+	await verb(cdp, "measure", {
+		selector: `${SIDEBAR_TOAST} [data-button]`,
+		timeoutMs: 2_000,
+	}).catch(() => {
+		throw new Error(
+			`the offer's Undo is not on screen: the lane draws ${JSON.stringify(geometry["offer-toast-280"]?.toasts ?? null)} and the frame carried ${JSON.stringify(offerFrame.toastText)}`,
+		);
+	});
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
 	await waitForNoToasts(cdp, 5_000);
@@ -13898,14 +13946,31 @@ async function main() {
 	if (BACKEND_RECORDS) {
 		const records = join(CONFIG_DIR, "run", "serve");
 		mkdirSync(records, { recursive: true });
-		let copied = 0;
+		let linked = 0;
 		for (const entry of readdirSync(BACKEND_RECORDS)) {
 			if (!entry.endsWith(".json")) continue;
-			copyFileSync(join(BACKEND_RECORDS, entry), join(records, entry));
-			copied += 1;
+			/*
+			 * A LINK, NOT A COPY, and the difference decides whether the app admits this
+			 * run's daemon at all. A serve record is a LIVING document: the real daemon
+			 * rewrites it every `HEARTBEAT_INTERVAL_MS` (15s), and discovery classifies a
+			 * record whose pid is alive and whose heartbeat is older than
+			 * `HEARTBEAT_TIMEOUT_MS` (45s) as WEDGED - refusing both to attach to it and
+			 * to spawn a second daemon over it. A copy taken once at launch therefore
+			 * stops describing a daemon 45 seconds into the run, and from then on the app
+			 * draws its "not attached" banners ACROSS THE FRAMES this rig exists to take.
+			 *
+			 * Measured, 2026-09-21, on a run whose scene outlives the timeout: every scan
+			 * for the rest of the run logged `[discovery] rejected
+			 * <config>/run/serve/<pid>.json: wedged (pid <pid> is alive but its heartbeat
+			 * is 48s old)` and grew from there, while the stub two directories away was
+			 * rewriting that same record every 5s. The link keeps the stub's own rewrites
+			 * visible, which is what a record is for.
+			 */
+			symlinkSync(join(BACKEND_RECORDS, entry), join(records, entry));
+			linked += 1;
 		}
 		say(
-			`  serve records ${copied} copied from ${BACKEND_RECORDS}   (the app admits a daemon only when a record describes it)`,
+			`  serve records ${linked} linked from ${BACKEND_RECORDS}   (the app admits a daemon only while a record describes one, and a record is a heartbeat)`,
 		);
 	}
 
