@@ -175,7 +175,15 @@ const USER_DATA = join(SCRATCH, "userdata");
 const LOG_DIR = join(SCRATCH, "logs");
 const OUT_DIR = argValue("--out") ?? join(SCRATCH, "out");
 const HISTORY_DIR = join(CONFIG_DIR, "run", "ui-console", "history");
-const SESSION = "proof-session";
+/*
+ * A CANONICAL SESSION ID, twelve lowercase hex characters, because the app's own parser
+ * validates the shape before it will honour it (`src/shared/open-session.ts`'s
+ * `SESSION_ID`) and treats anything else as ABSENT. The first version of this rig used a
+ * readable name, which is why the pane could not be mounted: `--open-session=proof-session`
+ * validated to nothing, the window opened on the catalogue, and the run's own diagnostic
+ * showed `activeSessionId: null` with no `console-pane` element in the DOM (Q-5).
+ */
+const SESSION = "abcdef012345";
 
 const transcript = [];
 let failures = 0;
@@ -461,6 +469,16 @@ async function launchApp(appPath = ".") {
 			// seconds — so "windowless" is not the same claim as "does not take focus"
 			// and the rig states its mode rather than relying on the shape rule.
 			"--window-mode=headless",
+			/*
+			 * THE CONVERSATION THIS WINDOW EXISTS TO SHOW, through the app's own launch
+			 * intent rather than a seeded store (Q-5). This is the same argument a
+			 * click-produced window carries (`--open-session=<id>`, `src/shared/open-session.ts`)
+			 * and it is what makes the pane mountable at all on a host with no backend to
+			 * serve a conversation list: the store's hydration honours the launch intent
+			 * over the persisted id, so the first render is already the conversation whose
+			 * console this rig photographs.
+			 */
+			`--open-session=${SESSION}`,
 		],
 		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], detached: true },
 	);
@@ -672,7 +690,15 @@ async function readUntil(state, surface, needle, timeoutMs = 20_000) {
  * the record — so the trap is named here, where the next author would reach for it.
  */
 
-async function rendererEvaluate(expression) {
+/**
+ * One CDP command against the APP's own document, on the app's own debugging port.
+ *
+ * Two entry points rather than two implementations: `rendererCall` speaks the protocol,
+ * and `rendererEvaluate` is the `Runtime.evaluate` case of it. The second was the only
+ * one this rig needed until Q-5, which has to seed the app's persisted store and RELOAD
+ * the renderer to mount the pane in a conversation — `Page.*` commands, same plumbing.
+ */
+async function withRendererSession(work) {
 	const list = await (
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
 	).json();
@@ -685,31 +711,177 @@ async function rendererEvaluate(expression) {
 		socket.addEventListener("open", resolve, { once: true });
 		socket.addEventListener("error", reject, { once: true });
 	});
-	const message = await new Promise((resolve, reject) => {
-		socket.addEventListener("message", (event) => {
-			const incoming = JSON.parse(event.data);
-			if (incoming.id === 1) resolve(incoming);
+	let nextId = 1;
+	const call = async (method, params = {}) => {
+		const id = nextId++;
+		const message = await new Promise((resolve, reject) => {
+			const onMessage = (event) => {
+				const incoming = JSON.parse(event.data);
+				if (incoming.id !== id) return;
+				socket.removeEventListener("message", onMessage);
+				resolve(incoming);
+			};
+			socket.addEventListener("message", onMessage);
+			socket.addEventListener("error", reject, { once: true });
+			socket.send(JSON.stringify({ id, method, params }));
 		});
-		socket.addEventListener("error", reject, { once: true });
-		socket.send(
-			JSON.stringify({
-				id: 1,
-				method: "Runtime.evaluate",
-				params: { expression, awaitPromise: true, returnByValue: true },
-			}),
-		);
+		if (message.error) {
+			throw new Error(`CDP ${method}: ${message.error.message}`);
+		}
+		return message.result;
+	};
+	try {
+		return await work(call);
+	} finally {
+		socket.close();
+	}
+}
+
+async function rendererCall(method, params = {}) {
+	return withRendererSession((call) => call(method, params));
+}
+
+/**
+ * SEVERAL CALLS ON ONE SESSION, which is not a convenience: CDP's
+ * `Page.addScriptToEvaluateOnNewDocument` lives as long as the CONNECTION that registered
+ * it, so a helper that opened a socket per call registered the pane-mounting seed and then
+ * dropped it before the reload could use it — measured, and the run that found it reported
+ * `trigger: false, pane: false` on a `#/chat` route, i.e. the app had booted with no
+ * conversation at all. One session for the sequence is what makes the seed survive to the
+ * document it is for.
+ */
+async function rendererCalls(calls) {
+	return withRendererSession(async (call) => {
+		const results = [];
+		for (const { method, params } of calls) {
+			results.push(await call(method, params));
+		}
+		return results;
 	});
-	socket.close();
-	if (message.error) throw new Error(`CDP: ${message.error.message}`);
-	if (message.result?.exceptionDetails) {
+}
+
+async function rendererEvaluate(expression) {
+	const result = await rendererCall("Runtime.evaluate", {
+		expression,
+		awaitPromise: true,
+		returnByValue: true,
+	});
+	if (result?.exceptionDetails) {
 		throw new Error(
-			message.result.exceptionDetails.exception?.description ??
-				message.result.exceptionDetails.text ??
+			result.exceptionDetails.exception?.description ??
+				result.exceptionDetails.text ??
 				"the renderer threw",
 		);
 	}
-	return message.result?.result?.value;
+	return result?.result?.value;
 }
+
+/**
+ * The pane and its terminal, once both are on screen — or `null` at the bound.
+ *
+ * Returns the boxes rather than a boolean because the box is what the capture cell below
+ * asserts against: the frame is cropped to the pane's own reported rect, so the picture's
+ * size has to be the terminal's size, and a cell that only knew "the pane exists" would
+ * have no way to tell the pane from the window's top-left corner (which is exactly what it
+ * certified before Q-5).
+ */
+async function waitForConsolePane(timeoutMs = bounded(null, 60_000)) {
+	const started = Date.now();
+	for (;;) {
+		const boxes = await rendererEvaluate(
+			`(() => {
+				const pane = document.querySelector('[data-tour-tag="console-pane"]');
+				const mirror = document.querySelector('[data-tour-tag="console-mirror"]');
+				if (!pane || !mirror) return null;
+				const a = pane.getBoundingClientRect();
+				const b = mirror.getBoundingClientRect();
+				if (b.width < 1 || b.height < 1) return null;
+				return {
+					pane: { x: a.x, y: a.y, width: a.width, height: a.height },
+					mirror: { x: b.x, y: b.y, width: b.width, height: b.height },
+				};
+			})()`,
+		).catch(() => null);
+		if (boxes) return boxes;
+		if (Date.now() - started > timeoutMs) {
+			/*
+			 * A BOUND THAT REPORTS WHAT IT SAW rather than `null`: "the pane is not
+			 * mounted" is not actionable on its own, and the four facts below say which
+			 * half is missing — the route (a hash), the pane, the terminal, or the app.
+			 */
+			return await rendererEvaluate(
+				`(() => ({
+					failed: true,
+					hash: location.hash,
+					app: document.getElementById('app')?.childElementCount ?? 0,
+					trigger: Boolean(document.querySelector('[data-tour-tag="console-pane-trigger"]')),
+					pane: Boolean(document.querySelector('[data-tour-tag="console-pane"]')),
+					mirror: Boolean(document.querySelector('[data-tour-tag="console-mirror"]')),
+					slot: Boolean(document.querySelector('[data-tour-tag="console-pane-slot"]')),
+					viaDomClick: window.__consoleProofDomClick ?? null,
+					openedByPress: null,
+					tourTags: [...document.querySelectorAll('[data-tour-tag]')]
+						.map((el) => el.getAttribute('data-tour-tag'))
+						.slice(0, 40),
+					stored: (window.localStorage.getItem('canonical-sessions-storage') || '').slice(0, 200),
+					main: (document.querySelector('main')?.innerText || '').slice(0, 200),
+				}))()`,
+			).catch((error) => ({ failed: true, diagnostic: String(error) }));
+		}
+		await sleep(250);
+	}
+}
+
+/**
+ * A REAL PRESS at a page coordinate, through Chromium's own input pipeline.
+ *
+ * `Input.dispatchMouseEvent` rather than a synthetic `element.click()`: the pane's trigger
+ * is a React control, and a dispatched DOM event is not the same fact as a press the
+ * compositor routes — the UX round's own walk was rebuilt on this distinction. Both
+ * halves of the click go on one session, because a press without its release leaves the
+ * button stuck down for the rest of the run.
+ */
+async function clickAt(x, y) {
+	await rendererCalls([
+		{
+			method: "Input.dispatchMouseEvent",
+			params: { type: "mouseMoved", x, y, button: "none", buttons: 0 },
+		},
+		{
+			// `buttons: 1` IS the one that makes the press land. Measured: without it the
+			// compositor delivered a press the page never saw, and the pane did not open —
+			// while the element's own `click()` did, which is how the two questions were told
+			// apart. `clickCount` and `button` are not enough on their own.
+			method: "Input.dispatchMouseEvent",
+			params: {
+				type: "mousePressed",
+				x,
+				y,
+				button: "left",
+				buttons: 1,
+				clickCount: 1,
+			},
+		},
+		{
+			method: "Input.dispatchMouseEvent",
+			params: {
+				type: "mouseReleased",
+				x,
+				y,
+				button: "left",
+				buttons: 0,
+				clickCount: 1,
+			},
+		},
+	]);
+}
+
+/** A PNG's own pixel size, read off its IHDR — the picture's dimensions rather than a
+ * number the rig was handed. */
+const pngSize = (png) => ({
+	width: png.readUInt32BE(16),
+	height: png.readUInt32BE(20),
+});
 
 /**
  * What the WindowServer says is frontmost, right now.
@@ -1117,16 +1289,105 @@ async function main() {
 		JSON.parse(windowState).focused === false,
 		windowState,
 	);
-	await rendererEvaluate(
-		`window.api.console.openPane(${JSON.stringify(surface)})`,
+	/*
+	 * MOUNT THE PANE, AND LET IT REPORT ITS OWN RECT (Q-5 / D17).
+	 *
+	 * What this replaced, and why it was a false claim rather than a weak one: the rig
+	 * fabricated a rect (`{20, 20, 800, 400}`) and handed it to `console_set_content_rect`,
+	 * so main cropped FAITHFULLY to a box the pane was not in. The committed
+	 * `displayed-capture.png` was the window's top-left quadrant — the sidebar, "Chats",
+	 * "Start a chat" — with no pane in it, certified as "a screenshot is the app's own
+	 * window, cropped to the pane's rect". The artifact was honest about the rect and
+	 * untrue about the pane, which is the one thing this cell exists to establish.
+	 *
+	 * So the pane is mounted for real, the way a returning user's profile mounts it: the
+	 * app's OWN persisted `canonical-sessions-storage` is seeded with an open conversation
+	 * (this host has no isolated backend to serve one, and nothing about the pane, the
+	 * terminal or the capture is stubbed by the seed), the renderer reloads, and the pane
+	 * is opened through its renderer bridge. From here on the rect main crops to is the one
+	 * the PANE reported from its own `ResizeObserver` — this rig never calls
+	 * `setContentRect` — and the cell below asserts the PICTURE's size against the
+	 * terminal's own box, which is what tells the pane apart from the window's corner.
+	 */
+	await waitForRenderer();
+	/*
+	 * THE PANE IS OPENED BY PRESSING ITS TRIGGER, which is the affordance a person uses and
+	 * the only thing that mounts the pane: the renderer bridge's `openPane` reports WHICH
+	 * surface a pane already shows (it is `host.setDisplayed`, main's half), so a rig that
+	 * called it and then photographed the window would be photographing a pane that was
+	 * never mounted — which is precisely the hole Q-5 found in the old cell.
+	 */
+	const triggerAt = await rendererEvaluate(
+		`(() => {
+			const el = document.querySelector('[data-tour-tag="console-pane-trigger"]');
+			if (!el) return null;
+			const box = el.getBoundingClientRect();
+			if (box.width < 1 || box.height < 1) return null;
+			return { x: box.x + box.width / 2, y: box.y + box.height / 2, box: { x: box.x, y: box.y, width: box.width, height: box.height } };
+		})()`,
+	);
+	check(
+		"the console trigger is on screen in a conversation's header (Q-5)",
+		triggerAt !== null,
+		triggerAt,
+	);
+	if (triggerAt) {
+		/*
+		 * A page that has STOPPED MOVING before the press, which is the UX round's own
+		 * measured step: the trigger is found while the conversation is still settling, and
+		 * a press aimed at the box from one frame earlier lands on whatever moved into that
+		 * place. Two identical reads a beat apart is the cheap test that the box is stable.
+		 */
+		let previous = JSON.stringify(triggerAt.box);
+		for (let i = 0; i < 12; i++) {
+			await sleep(250);
+			const now = await rendererEvaluate(
+				`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); if (!el) return null; const b = el.getBoundingClientRect(); return JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height }); })()`,
+			);
+			if (now === previous) break;
+			previous = now;
+		}
+		const under = await rendererEvaluate(
+			`(() => {
+				const el = document.elementFromPoint(${triggerAt.x}, ${triggerAt.y});
+				return el ? { tag: el.tagName, tag_: el.getAttribute('data-tour-tag'), closest: Boolean(el.closest('[data-tour-tag="console-pane-trigger"]')) } : null;
+			})()`,
+		);
+		record("what is under the pointer at the trigger's centre", {
+			under,
+			triggerAt,
+		});
+		await clickAt(triggerAt.x, triggerAt.y);
+	}
+	let boxes = await waitForConsolePane();
+	/** Whether the compositor's own press opened the pane, or the fallback below did. */
+	const openedByPress = !(boxes === null || boxes.failed === true);
+	record("how the pane was opened", { pressTook: openedByPress });
+	if (!openedByPress) {
+		/*
+		 * A DIAGNOSTIC, NOT THE OPENING PATH: if the compositor's press did not take, ask
+		 * whether the element's own `click()` does. The two answers separate "the input did
+		 * not reach the page" from "the pane does not mount when asked", and only the second
+		 * would be a defect in this branch.
+		 */
+		await rendererEvaluate(
+			`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); window.__consoleProofDomClick = el ? 'clicked' : 'no-trigger'; if (el) el.click(); })()`,
+		);
+		boxes = await waitForConsolePane(bounded(null, 10_000));
+	}
+	check(
+		"the pane is mounted on a conversation and its terminal is on screen (Q-5)",
+		boxes !== null && boxes.failed !== true,
+		boxes,
 	);
 	/*
-	 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a
-	 * measured defect: this rig reported `theme: "proof"`, a name no palette answers,
-	 * so the capture view wrote `data-theme="proof"`, resolved no role variables at
-	 * all, and the offscreen frame came back as xterm's own `#000000`/`#ffffff` with
-	 * zero role-coloured pixels. The rig was reporting a theme the app was not
-	 * wearing, and the pane's whole claim is that it follows the app's palette.
+	 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a measured
+	 * defect: this rig reported `theme: "proof"`, a name no palette answers, so the capture
+	 * view wrote `data-theme="proof"`, resolved no role variables at all, and the offscreen
+	 * frame came back as xterm's own `#000000`/`#ffffff` with zero role-coloured pixels. The
+	 * rig was reporting a theme the app was not wearing, and the pane's whole claim is that
+	 * it follows the app's palette. The PANE reports this theme to main as part of its own
+	 * rect report, which is now the only report there is.
 	 */
 	const themeName = await rendererEvaluate(
 		"document.documentElement.dataset.theme || ''",
@@ -1136,21 +1397,13 @@ async function main() {
 		typeof themeName === "string" && themeName.length > 0,
 		themeName,
 	);
-	const report = {
-		contentRect: { x: 20, y: 20, width: 800, height: 400 },
-		cellWidth: 8.425,
-		cellHeight: 16,
-		visible: true,
-		theme: themeName,
-	};
-	const reported = await rendererEvaluate(
-		`window.api.console.setContentRect(${JSON.stringify(surface)}, ${JSON.stringify(report)})`,
-	);
-	check(
-		"the renderer reports a rect and main decides the grid from it",
-		reported?.displayed_surface === surface,
-		reported?.surfaces?.find((entry) => entry.surface === surface) ?? reported,
-	);
+	/*
+	 * A beat for the pane's report to reach main before the screenshot: the report is a
+	 * `ResizeObserver` callback, so it lands on a frame of its own rather than synchronously
+	 * with the mount. Bounded, and the assertion that follows is what catches a report that
+	 * never arrived — the frame would come back at the pane's previous size.
+	 */
+	await sleep(500);
 	const shot = await rpcOk(state, "console_screenshot", { surface });
 	const png = Buffer.from(shot.image_base64, "base64");
 	const framePath = join(
@@ -1158,6 +1411,15 @@ async function main() {
 		`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}.png`,
 	);
 	writeFileSync(framePath, png);
+	const size = pngSize(png);
+	/*
+	 * THE FRAME IS IN PHYSICAL PIXELS AND THE DOM BOX IS IN CSS ONES, which is the
+	 * measurement this cell needed and the first version of it got wrong: the frame came
+	 * back 1286x1404 against a 659x779.5 box, i.e. exactly the window's device pixel ratio
+	 * of 2. `capturePage` returns the photograph at the compositor's scale, so the
+	 * comparison is `mirror * dpr`.
+	 */
+	const dpr = await rendererEvaluate("window.devicePixelRatio || 1");
 	record("capture geometry", {
 		rendered: shot.rendered,
 		cols: shot.cols,
@@ -1165,19 +1427,30 @@ async function main() {
 		theme: shot.theme,
 		live: shot.live,
 		bytes: png.length,
+		frame: size,
+		pane: boxes?.pane ?? null,
+		mirror: boxes?.mirror ?? null,
 		sha256: createHash("sha256").update(png).digest("hex"),
 		file: framePath,
 	});
 	check(
-		"a screenshot is the app's own window, cropped to the pane's rect (design 13.2)",
+		"a screenshot is the app's own window, cropped to the PANE's rect (design 13.2, Q-5)",
 		shot.rendered === "displayed" &&
-			shot.cols === 94 &&
-			shot.rows === 25 &&
-			png.length > 2000,
+			boxes !== null &&
+			boxes.failed !== true &&
+			// The crop is integer-floored and clipped to the window's content bounds
+			// (`cropToWindow`), so the tolerance is the rounding, not a slack.
+			Math.abs(size.width - boxes.mirror.width * dpr) <= 2 &&
+			Math.abs(size.height - boxes.mirror.height * dpr) <= 2 &&
+			shot.cols > 0 &&
+			shot.rows > 0,
 		{
 			rendered: shot.rendered,
 			cols: shot.cols,
 			rows: shot.rows,
+			frame: size,
+			mirror: boxes?.mirror ?? null,
+			dpr,
 			bytes: png.length,
 		},
 	);
@@ -1218,8 +1491,17 @@ async function main() {
 		"a capture with no displayed pane is a DOM-rendered reconstruction from the record",
 		offscreen.rendered === "offscreen" &&
 			offscreen.renderer === "dom" &&
-			offscreen.cols === 94 &&
-			offscreen.rows === 25 &&
+			/*
+			 * THE RECONSTRUCTION IS AT THE RECORD'S GRID, which is what §13.2 claims, and it
+			 * is asserted against the grid the DISPLAYED frame reported rather than against a
+			 * number typed here: the old cell pinned 94x25, the size the rig's own synthetic
+			 * rect produced, so it was asserting the rig's arithmetic rather than the app's.
+			 * The pane now measures its own box, and both frames must agree about the grid
+			 * they are pictures of.
+			 */
+			offscreen.cols === shot.cols &&
+			offscreen.rows === shot.rows &&
+			offscreen.cols > 0 &&
 			offscreenPng.length > 2000,
 		{
 			rendered: offscreen.rendered,
@@ -1227,6 +1509,7 @@ async function main() {
 			attempts: offscreen.attempts,
 			cols: offscreen.cols,
 			rows: offscreen.rows,
+			displayedGrid: { cols: shot.cols, rows: shot.rows },
 			bytes: offscreenPng.length,
 		},
 	);
