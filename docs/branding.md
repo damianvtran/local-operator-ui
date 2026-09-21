@@ -828,9 +828,14 @@ Full treatment in the kit's `voice.md`. The rules that bite hardest in an app:
   headings, menu items); a machine value the owner selected is neither. This is
   scoped to that chip and its picker, and it is an operator-directed decision
   (2026-09-21) rather than a general licence — do not extend Title Case to
-  labels, prose or headings on its strength. `docs/branding.md` §5's
-  monospace-for-machine-voice note still holds: the value keeps its mono face,
-  and the casing does not change that it is a value.
+  labels, prose or headings on its strength. §4's monospace-for-machine-voice
+  rule still holds for the value *as rendered in the chip*, which keeps its
+  mono face; casing does not change that it is a value. (The `/effort` picker's
+  row labels are `text-body-sm`, san-serif, as every picker row is — the casing
+  is the same, the face is the host row's, not the value's.) A deliberately
+  mixed-case rung is left as the wire spells it — `xHigh`, the token
+  `/effort xhigh` accepts — rather than inventing a spelling the command does
+  not use.
 
 ### Implementation traps
 
