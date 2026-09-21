@@ -41,6 +41,17 @@ export interface RegisterConsoleIpcOptions {
 	expectedUrl: string;
 	/** The host, or null when the console feature is off or failed to start. */
 	host: () => ConsoleHost | null;
+	/** Why there is no host, when there is none (`startConsoleHost`'s own refusal).
+	 *
+	 * The namespace is registered even in that case, and this is what makes doing so
+	 * useful rather than a stub: without it the renderer's first call rejects with
+	 * Electron's own "No handler registered for 'console-state'", and the pane has
+	 * nothing to show but a machine line about a missing handler — which is exactly
+	 * what the pane said for a run whose console was switched OFF on purpose, next
+	 * to a sentence whose remedy was "update Local Operator". The reason and the
+	 * detail are §15's two rows, and they are the whole difference between a user
+	 * reading "this run has the console switched off" and being told to update. */
+	unavailable?: { reason: string; detail: string } | null;
 	log: (message: string) => void;
 }
 
@@ -71,7 +82,8 @@ export const CONSOLE_PUSH_CHANNELS = [
 ] as const;
 
 export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
-	function authorize(event: IpcMainInvokeEvent): ConsoleHost {
+	/** The sender check on its own, for the one handler that answers without a host. */
+	function assertTrustedSender(event: IpcMainInvokeEvent): void {
 		const owner = options.window();
 		if (
 			!owner ||
@@ -82,14 +94,32 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 		) {
 			throw new Error("This window cannot use the console.");
 		}
+	}
+
+	function authorize(event: IpcMainInvokeEvent): ConsoleHost {
+		assertTrustedSender(event);
 		const host = options.host();
 		if (!host) throw new Error("The console is not running.");
 		return host;
 	}
 
-	ipcMain.handle("console-state", (event, sessionId: unknown) =>
-		authorize(event).state(optionalString(sessionId, "sessionId")),
-	);
+	ipcMain.handle("console-state", (event, sessionId: unknown) => {
+		assertTrustedSender(event);
+		const host = options.host();
+		if (!host) {
+			// AN ANSWER, NOT A REFUSAL, and the shape is the snapshot's own: a caller
+			// that reads `available: false` already knows how to render this, and a
+			// throw here would lose the reason in a message the renderer can only
+			// string-match against.
+			return {
+				available: false,
+				surfaces: [],
+				reason: options.unavailable?.reason ?? "unavailable",
+				detail: options.unavailable?.detail ?? null,
+			};
+		}
+		return host.state(optionalString(sessionId, "sessionId"));
+	});
 
 	/*
 	 * The pane's own lifecycle, which is deliberately three calls rather than one.
@@ -162,7 +192,10 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 			if (typeof text !== "string") {
 				throw new Error("Console input must be a string.");
 			}
-			return host.input(stringOrThrow(surface, "surface"), { text });
+			// `"user"`: this handler is the pane's own path, and §10.5's sentence —
+			// "human typing needs no encoder we own" — is only true while the two
+			// paths stay distinguishable in the record.
+			return host.input(stringOrThrow(surface, "surface"), { text }, "user");
 		},
 	);
 
@@ -173,7 +206,11 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 			if (!Array.isArray(keys) || keys.some((key) => typeof key !== "string")) {
 				throw new Error("Console keys must be a list of names.");
 			}
-			return host.keys(stringOrThrow(surface, "surface"), keys as string[]);
+			return host.keys(
+				stringOrThrow(surface, "surface"),
+				keys as string[],
+				"user",
+			);
 		},
 	);
 
