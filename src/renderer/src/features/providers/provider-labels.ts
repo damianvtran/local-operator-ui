@@ -9,10 +9,7 @@
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
-import type {
-	AuthOperation,
-	ProviderMethod,
-} from "@shared/api/local-operator/desktop-api";
+import type { ProviderMethod } from "@shared/api/local-operator/desktop-api";
 
 export function providerMethodLabel(
 	methods: ProviderMethod[],
@@ -228,14 +225,4 @@ export function hostingCensusFailureHelperText(error: unknown): string {
  */
 export function providerLoadErrorMessage(error: unknown): string {
 	return backendLoadErrorMessage("Providers could not be loaded.", error);
-}
-
-/** Terminal states after which polling an auth operation must stop. */
-export function isTerminalAuthState(state: AuthOperation["state"]): boolean {
-	return (
-		state === "succeeded" ||
-		state === "failed" ||
-		state === "cancelled" ||
-		state === "expired"
-	);
 }
