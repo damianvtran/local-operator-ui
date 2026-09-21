@@ -7,6 +7,17 @@ on:
       - 'main'
     paths:
       - 'src/main/backend/scripts/**'
+  # Pull requests run this too, under the same path filter, so the assertion that
+  # no installer leaves a fetched payload behind can fail on the change that
+  # introduces it. WHY IT IS HERE: until this trigger existed the three "nothing
+  # was fetched" steps below had never executed anywhere - the workflow's last
+  # run was 2026-09-15 - so they were an assertion in name only (agent review
+  # round 1, R1-3; QA round 1, Q6). The cost is three real installs, one per OS,
+  # for a pull request that touches the install scripts and nothing else; no job
+  # here uses a secret, and the path filter keeps unrelated PRs off it.
+  pull_request:
+    paths:
+      - 'src/main/backend/scripts/**'
 
 jobs:
   linux-install-check:
@@ -36,13 +47,20 @@ jobs:
       # deletion on a real runner rather than only in the text of a script:
       # see scripts/install-scripts-network.test.mjs for why it went and what
       # keeps it gone.
-      - name: Assert the installer left no downloaded binary behind
+      #
+      # The DIRECTORY is the subject, not one filename: a differently-named
+      # payload in the same place is the same regression, and an exact-filename
+      # check would miss it (agent review round 1, R1-3). A future feature that
+      # legitimately writes under the app data directory has to change this
+      # assertion deliberately rather than quietly satisfying it.
+      - name: Assert the installer fetched nothing into the app data directory
         run: |
-          if [ -e "$HOME/.config/local-operator/bin/ffmpeg" ]; then
-            echo "Error: the install script created bin/ffmpeg"
+          if [ -e "$HOME/.config/local-operator/bin" ]; then
+            echo "Error: the install script created bin/ under the app data directory:"
+            ls -la "$HOME/.config/local-operator/bin"
             exit 1
           fi
-          echo "No bin/ffmpeg after the Linux install: OK"
+          echo "No fetched payload under the app data directory after the Linux install: OK"
 
       - name: Verify local-operator installation
         run: |
@@ -79,15 +97,18 @@ jobs:
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
           .\src\main\backend\scripts\windows-install-script.ps1
       
-      - name: Assert the installer left no downloaded binary behind
+      # Same assertion as the Linux job, and the same reason the directory is
+      # the subject rather than one filename. See the Linux step for the full
+      # note and scripts/install-scripts-network.test.mjs for the text guard.
+      - name: Assert the installer fetched nothing into the app data directory
         shell: pwsh
         run: |
-          $ffmpeg = "$env:APPDATA\Local Operator\bin\ffmpeg.exe"
-          if (Test-Path $ffmpeg) {
-            Write-Error "Error: the install script created bin\ffmpeg.exe"
+          $binDir = "$env:APPDATA\Local Operator\bin"
+          if (Test-Path $binDir) {
+            Write-Error "Error: the install script created bin\ under the app data directory: $(Get-ChildItem $binDir | Out-String)"
             exit 1
           }
-          Write-Output "No bin/ffmpeg.exe after the Windows install: OK"
+          Write-Output "No fetched payload under the app data directory after the Windows install: OK"
 
       - name: Verify local-operator installation
         shell: pwsh
@@ -158,13 +179,14 @@ jobs:
           chmod +x src/main/backend/scripts/macos-install-script.sh
           bash src/main/backend/scripts/macos-install-script.sh
       
-      - name: Assert the installer left no downloaded binary behind
+      - name: Assert the installer fetched nothing into the app data directory
         run: |
-          if [ -e "$HOME/Library/Application Support/Local Operator/bin/ffmpeg" ]; then
-            echo "Error: the install script created bin/ffmpeg"
+          if [ -e "$HOME/Library/Application Support/Local Operator/bin" ]; then
+            echo "Error: the install script created bin/ under the app data directory:"
+            ls -la "$HOME/Library/Application Support/Local Operator/bin"
             exit 1
           fi
-          echo "No bin/ffmpeg after the macOS install: OK"
+          echo "No fetched payload under the app data directory after the macOS install: OK"
 
       - name: Verify local-operator installation
         run: |

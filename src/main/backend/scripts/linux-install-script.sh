@@ -109,10 +109,19 @@ is_valid_python_binary() {
 }
 
 # Check for network connectivity to key servers.
-# Bound on both spellings: `--timeout`/`--tries` and `--connect-timeout`/
-# `--max-time` are what keep this from holding a black-hole network open, and
-# `--fail` is what stops a captive portal's 200 portal page from reading as a
-# reachable host.
+#
+# Bounded on both spellings: `--connect-timeout 5`/`--max-time 30` for curl and
+# `--timeout=30`/`--tries=1` for wget (a single attempt, whose timeout covers
+# connect and read since wget has no separate connect bound for BusyBox). 5 ends
+# a black-hole network; 30 is the stall bound and is deliberately well above a
+# slow-but-working link's answer time, because a probe that fails a working
+# connection is noise users learn to ignore.
+#
+# `--fail` turns an HTTP error status into a non-zero exit (a proxy's 403/407,
+# any 4xx/5xx). It does NOT notice a captive portal answering 200 with its own
+# HTML page - measured, a portal-shaped 200 exits 0 with and without the flag -
+# so this check answers "did a request to the host complete", and the PyPI probe
+# below is the one that also checks WHAT came back.
 check_connectivity() {
   log "Checking network connectivity..."
   local servers=("pypi.org" "bootstrap.pypa.io")
@@ -120,12 +129,12 @@ check_connectivity() {
   
   for server in "${servers[@]}"; do
     if command_exists curl; then
-      if curl --fail --connect-timeout 5 --max-time 10 -s "https://${server}" -o /dev/null; then
+      if curl --fail --connect-timeout 5 --max-time 30 -s "https://${server}" -o /dev/null; then
         has_connectivity=true
         break
       fi
     elif command_exists wget; then
-      if wget --timeout=5 --tries=1 -q --spider "https://${server}"; then
+      if wget --timeout=30 --tries=1 -q --spider "https://${server}"; then
         has_connectivity=true
         break
       fi
@@ -327,7 +336,7 @@ if [ ! -d "$VENV_PATH" ]; then
     # Try to bootstrap pip
     log "Bootstrapping pip in the minimal virtual environment..."
     if command_exists curl; then
-      curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
+      curl -s --fail --connect-timeout 5 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
     elif command_exists wget; then
       wget -q --timeout=30 --tries=1 -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
     else
@@ -357,7 +366,7 @@ fi
 
 if [ ! -f "$VENV_PATH/bin/pip" ]; then
   echo "pip missing in virtual environment, attempting to bootstrap it..."
-  curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
+  curl -s --fail --connect-timeout 5 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
   "$VENV_PATH/bin/python" "$APP_DATA_DIR/get-pip.py" --no-warn-script-location
   
   if [ ! -f "$VENV_PATH/bin/pip" ]; then
@@ -379,17 +388,41 @@ python -m pip install --upgrade pip || {
 }
 
 # Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
-# decides whether it can proceed. Bounded on both spellings, and `--fail` added,
-# for the reason `check_connectivity` gives above.
+# decides whether it can proceed.
+#
+# What this answers, stated precisely because an earlier version of this comment
+# claimed more than the flags buy: "did a TLS fetch to PyPI's JSON API complete,
+# and did the answer come back as JSON?". `--fail` turns an HTTP ERROR status
+# into a non-zero exit, and does NOT notice a captive portal answering 200 with
+# its own HTML page (measured: a portal-shaped 200 exits 0 with and without the
+# flag). Both spellings therefore check the CONTENT TYPE as well, since a portal
+# that reports "reachable" while pip is about to fail is the false negative this
+# warning exists to catch: curl through `-w '%{content_type}'`, and wget through
+# the response headers `-S` prints (`-S`/`--server-response` is in BusyBox's wget
+# since 2017 as well as GNU's, which is the wget a system without curl has).
+#
+# Two bounds, two jobs: the connect bound ends a black-hole network, the total
+# stops a connected-but-stalled peer. 30 rather than 10 because the total must
+# not fire on a slow-but-working link: a working endpoint that answered in 15s
+# tripped a 10s bound and printed this warning on an install that then
+# succeeded.
 echo "Checking network connectivity to PyPI..."
 if command_exists curl; then
-  curl -s --fail --connect-timeout 5 --max-time 10 https://pypi.org/pypi/local-operator/json -o /dev/null || {
+  PYPI_PROBE_CONTENT_TYPE=$(curl -s --fail --connect-timeout 5 --max-time 30 -o /dev/null -w '%{content_type}' https://pypi.org/pypi/local-operator/json) || PYPI_PROBE_CONTENT_TYPE=""
+  if [[ "${PYPI_PROBE_CONTENT_TYPE}" != application/json* ]]; then
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
-  }
+  fi
 elif command_exists wget; then
-  wget -q --spider --timeout=10 --tries=1 https://pypi.org/pypi/local-operator/json || {
+  # The headers are captured into a variable and matched with a here-string
+  # rather than piped into `grep -q`: `-q` exits on the first match, the closed
+  # pipe gives wget SIGPIPE, and the script runs under `set -o pipefail`, so a
+  # WORKING link printed this warning whenever the match landed before wget had
+  # finished writing its headers (measured: intermittent, and exactly the false
+  # alarm this bound was widened to stop).
+  PYPI_PROBE_HEADERS=$(wget -q -S --spider --timeout=30 --tries=1 https://pypi.org/pypi/local-operator/json 2>&1) || PYPI_PROBE_HEADERS=""
+  if ! grep -qi '^ *content-type: application/json' <<< "$PYPI_PROBE_HEADERS"; then
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
-  }
+  fi
 fi
 
 echo "Installing local-operator package..."

@@ -86,10 +86,30 @@ if (-not (Test-Path $PyenvDir)) {
     
     # Download and extract pyenv-win
     $PyenvZip = "$TempDir\\pyenv-win.zip"
-    # Bounded: an unbounded request here holds a first-run install open behind
-    # the progress bar forever on a black-hole network.
-    Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120
-    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir
+    # Bounded, and the bound FAILS LOUDLY. An unbounded request here holds a
+    # first-run install open behind the progress bar forever on a black-hole
+    # network; and without -ErrorAction Stop a fired -TimeoutSec is a
+    # NON-TERMINATING error, so the script would walk straight into
+    # Expand-Archive with an absent or partial zip and report an archive error
+    # instead of "the download timed out". The partial file is removed in the
+    # failure branch so a later run cannot expand what this one failed to fetch
+    # (the next run clears $TempDir before it downloads at all, which is the
+    # `if (Test-Path $TempDir) { Remove-Item ... }` above - named rather than
+    # cited by line, because a line number in a script that keeps changing is
+    # what a stale citation is made of).
+    # 120 seconds is a payload bound, not the 30-second stall bound the PyPI
+    # probes use: this downloads a source archive rather than answering an API
+    # call, so it only has to stop an indefinite hang.
+    try {
+        Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120 -ErrorAction Stop
+    } catch {
+        Remove-Item -Path $PyenvZip -Force -ErrorAction SilentlyContinue
+        Write-Error "Failed to download pyenv-win from https://github.com/pyenv-win/pyenv-win/archive/master.zip within 120 seconds: $($_.Exception.Message)"
+        exit 1
+    }
+    # -ErrorAction Stop for the same reason as the download: a truncated archive
+    # must fail here rather than half-copy into $PyenvDir.
+    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir -ErrorAction Stop
     
     # Create .pyenv directory
     New-Item -ItemType Directory -Path $PyenvDir -Force | Out-Null

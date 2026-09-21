@@ -181,19 +181,33 @@ python -m pip install --upgrade pip || {
 echo "pip upgrade successful:"
 pip --version
 
-# Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install
-# below decides whether it can proceed. Every bound matters here - without
-# `--max-time` a black-hole network holds this open behind the spinner for
-# minutes, and without `--fail` a captive portal's 200 portal page reads as
-# "PyPI reachable", which is a false negative exactly where the warning is
-# needed.
+# Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
+# decides whether it can proceed.
+#
+# What this answers, stated precisely because an earlier version of this comment
+# claimed more than the flags buy: "did a TLS fetch to PyPI's JSON API complete,
+# and did the answer come back as JSON?". `--fail` turns an HTTP ERROR status
+# into a non-zero exit - a proxy's 403/407, any 4xx/5xx - and does NOT notice a
+# captive portal answering 200 with its own HTML page (measured: a portal-shaped
+# 200 returns exit 0 with AND without the flag). `-o /dev/null` cannot tell a
+# portal's page from PyPI's JSON either, so the content type is what
+# discriminates, and on a captive network a probe that reports "reachable" while
+# pip is about to fail is the false negative this warning exists to catch.
+#
+# Two bounds, two jobs: `--connect-timeout 5` ends a black-hole network (a
+# connect that never completes), `--max-time 30` stops a connected-but-stalled
+# peer. 30 rather than 10 because the total must not fire on a slow-but-working
+# link: a working endpoint that answered in 15s tripped a 10s total bound and
+# printed this warning on an install that then succeeded, and a warning that
+# cries wolf is one users learn to ignore.
 echo "Checking network connectivity to PyPI..."
-curl -s --fail --connect-timeout 5 --max-time 10 https://pypi.org/pypi/local-operator/json -o /dev/null || {
+PYPI_PROBE_CONTENT_TYPE=$(curl -s --fail --connect-timeout 5 --max-time 30 -o /dev/null -w '%{content_type}' https://pypi.org/pypi/local-operator/json) || PYPI_PROBE_CONTENT_TYPE=""
+if [[ "$PYPI_PROBE_CONTENT_TYPE" != application/json* ]]; then
   echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
   echo "Attempting to ping common domains to diagnose network issues:"
   ping -c 1 -W 2000 google.com || echo "Cannot ping google.com"
   ping -c 1 -W 2000 pypi.org || echo "Cannot ping pypi.org"
-}
+fi
 
 echo "Installing local-operator package..."
 python -m pip install --upgrade --verbose local-operator || {
@@ -207,7 +221,7 @@ python -m pip install --upgrade --verbose local-operator || {
   echo "Pip config:"
   pip config list
   echo "Network diagnosis:"
-  curl -sI --fail --connect-timeout 5 --max-time 10 https://pypi.org || echo "Cannot reach PyPI server"
+  curl -sI --fail --connect-timeout 5 --max-time 30 https://pypi.org || echo "Cannot reach PyPI server"
   exit 1
 }
 echo "local-operator installation successful"
