@@ -491,8 +491,31 @@ test("a refused delete leaves the store byte-identical and keeps the sentence", 
 	const outcome = await store.getState().deleteSession(SESSION);
 	assert.deepEqual(outcome, {
 		ok: false,
-		live: true,
+		guarded: true,
 		detail: "This conversation is running. Stop it before deleting.",
+	});
+	/*
+	 * AND THE WAKE GUARD LANDS THE SAME FIELD, because the client cannot tell the
+	 * four guards apart: `409` is one arm of the route's ladder for a live session,
+	 * an armed wake, unread mail and a guard whose store could not be read, and the
+	 * backend's own docstring says the code does not vary by which fired while the
+	 * SENTENCE names the remedy (QA round 3, Q11). A client that reported a cause
+	 * here would be guessing - which is how an armed-wake refusal came to be drawn
+	 * with advice about stopping a session - so what is asserted is that the route's
+	 * sentence is kept verbatim whichever guard authored it.
+	 */
+	serve(
+		refuse(
+			409,
+			"That conversation has a wake armed for it. Reopen it and ask it to cancel the wake, or delete its wakes/<session-id>.json entry, before deleting it.",
+		),
+	);
+	const wake = await store.getState().deleteSession(SESSION);
+	assert.deepEqual(wake, {
+		ok: false,
+		guarded: true,
+		detail:
+			"That conversation has a wake armed for it. Reopen it and ask it to cancel the wake, or delete its wakes/<session-id>.json entry, before deleting it.",
 	});
 	/*
 	 * NOT optimistic, which is the difference between this op and archiving: a
