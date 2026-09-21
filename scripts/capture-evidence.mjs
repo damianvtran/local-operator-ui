@@ -3674,9 +3674,6 @@ export const STORIES = [
 	/* The cold-owner empty list — "not reported yet", which is a different
 	   fact from "this model has none". */
 	["chat-slash-completion--argument-phase-empty", 768, 300],
-	/* A POPULATED `/effort ` list: the rung names as the row shapes them, which
-	   after the casing change read `High`/`Low` beside the raw `value`. */
-	["chat-slash-completion--argument-phase-effort", 768, 300],
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
 	/* A command typed into a sentence, the list above the prose. */
