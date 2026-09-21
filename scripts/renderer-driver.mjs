@@ -2242,75 +2242,106 @@ async function sceneSessionArchive(cdp) {
 	const beforeRetry = await verb(cdp, "state");
 	const retryPressedAt = Date.now();
 	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	/*
+	 * THE TRANSITION IS SAMPLED AT 60ms, NOT INFERRED FROM THE WINDOW'S END (agent review
+	 * round 2 - the retry's disappearance). A dismissal and a container teardown read
+	 * identically after the fact, and two things only a sampler can see tell them apart:
+	 * sonner marks a dismissed node `data-removed` for `TIME_BEFORE_UNMOUNT` (200ms in the
+	 * installed 2.0.3) before it leaves the DOM, and a teardown takes the
+	 * `<section data-sonner-toaster>` itself with it - sonner renders that section whenever
+	 * its Toaster is MOUNTED, so its absence is a React unmount rather than an empty store.
+	 * The sampler keeps every sample, the LAST one that still held the lane's node, the
+	 * FIRST that did not, and whether `data-removed` was ever seen.
+	 */
+	const samples = [];
 	let retried = null;
-	for (let attempt = 0; attempt < 20; attempt += 1) {
-		await wait(250);
-		retried = await cdp.evaluate(`(() => {
+	let lastWithLane = null;
+	let firstVanished = null;
+	let removedSeen = false;
+	let retryState = beforeRetry;
+	const windowEndsAt = retryPressedAt + 5_000;
+	let sampleIndex = 0;
+	while (Date.now() < windowEndsAt) {
+		const sample = await cdp.evaluate(`(() => {
+			const laneToaster = document.querySelector('nav[aria-label="Chats"] [data-sonner-toaster]');
 			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
-			if (!toast) return { painted: false };
-			const r = toast.getBoundingClientRect();
-			const button = toast.querySelector("[data-button]");
-			if (!button) return { painted: r.width > 0, action: null };
-			const b = button.getBoundingClientRect();
+			const button = toast ? toast.querySelector("[data-button]") : null;
+			const box = toast ? toast.getBoundingClientRect() : null;
+			const action = button ? button.getBoundingClientRect() : null;
 			return {
-				painted: r.width > 0 && getComputedStyle(toast).display !== "none",
-				text: (toast.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 48),
-				action: (button.textContent || "").trim(),
-				hitTest: document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2) === button,
+				laneToaster: laneToaster !== null,
+				toasters: document.querySelectorAll("[data-sonner-toaster]").length,
+				nodes: document.querySelectorAll("[data-sonner-toast]").length,
+				removed: document.querySelectorAll('[data-sonner-toast][data-removed="true"]').length,
+				painted: box ? box.width > 0 && getComputedStyle(toast).display !== "none" : false,
+				text: toast ? (toast.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 48) : null,
+				action: button ? (button.textContent || "").trim() : null,
+				hitTest: action
+					? document.elementFromPoint(
+							action.left + action.width / 2,
+							action.top + action.height / 2,
+						) === button
+					: false,
+				panel: document.querySelector('nav[aria-label="Chats"]') !== null,
+				root: document.querySelector("#root") !== null,
 			};
 		})()`);
-		const after = await verb(cdp, "state");
+		sample.at = Date.now() - retryPressedAt;
+		samples.push(sample);
+		retried = sample;
+		if (sample.removed > 0) removedSeen = true;
+		if (sample.painted === true) lastWithLane = sample;
+		else if (firstVanished === null) firstVanished = sample;
+		/*
+		 * The store is read on every eighth sample rather than every sample: a read is a round
+		 * trip through the dev driver, and the answer this check needs (the press advanced the
+		 * stamp and the refusal names this row) is settled inside the first 500ms.
+		 */
+		if (sampleIndex % 8 === 0) retryState = await verb(cdp, "state");
+		sampleIndex += 1;
 		retried.answeredAgain =
 			typeof beforeRetry?.archiveAttempts === "number" &&
-			typeof after?.archiveAttempts === "number" &&
-			after.archiveAttempts > beforeRetry.archiveAttempts &&
-			after.archiveFailure?.sessionId === REFUSED_ID;
-		retried.attempts = `${beforeRetry?.archiveAttempts} -> ${after?.archiveAttempts}`;
-		/*
-		 * WHAT THE APP THINKS IT HAS, beside what the DOM shows: the store's own count of
-		 * live toasts (`state.toasts`), the lane's node count, and whether any node is in
-		 * sonner's removal state. Recorded ACROSS the window rather than at its end, because
-		 * the question this check had to answer - the refusal standing in the store while the
-		 * lane drew nothing - needs to know WHICH SIDE lost the message, and when.
-		 */
-		retried.toasts = after?.toasts ?? null;
-		retried.dom = await cdp.evaluate(`(() => {
-			const lane = document.querySelector('nav[aria-label="Chats"] [data-sonner-toaster]');
-			return {
-				lanePresent: lane !== null,
-				laneToasts: lane ? lane.querySelectorAll('[data-sonner-toast]').length : 0,
-				containers: document.querySelectorAll('[data-sonner-toaster]').length,
-				total: document.querySelectorAll('[data-sonner-toast]').length,
-				removed: document.querySelectorAll('[data-sonner-toast][data-removed="true"]').length,
-			};
-		})()`);
-		if (retried.painted === false && retried.goneAfterMs === undefined) {
-			retried.goneAfterMs = Date.now() - retryPressedAt;
-			/*
-			 * THE MOMENT IT GOES, in full: the drawn state and the store's own view at that
-			 * instant, so a removal can be attributed - an app dismissal, a store that has
-			 * already emptied, or a node that left without either. Recorded once, on the
-			 * transition, because the reading this check reports is otherwise the window's
-			 * END, which cannot tell when or why the message went.
-			 */
-			retried.goneReading = {
-				at: retried.goneAfterMs,
-				painted: retried.painted,
-				dom: retried.dom ?? null,
-				failure: after?.archiveFailure
-					? {
-							sessionId: after.archiveFailure.sessionId,
-							archived: after.archiveFailure.archived,
-							detail: after.archiveFailure.detail,
-						}
-					: null,
-				undo: after?.archiveUndo
-					? { sessionId: after.archiveUndo.sessionId }
-					: null,
-			};
-		}
-		if (retried?.painted === true && retried?.answeredAgain === true) break;
+			typeof retryState?.archiveAttempts === "number" &&
+			retryState.archiveAttempts > beforeRetry.archiveAttempts &&
+			retryState.archiveFailure?.sessionId === REFUSED_ID;
+		retried.attempts = `${beforeRetry?.archiveAttempts} -> ${retryState?.archiveAttempts}`;
+		if (sample.painted === true && retried.answeredAgain === true) break;
+		await wait(60);
 	}
+	retried.samples = samples.length;
+	retried.removedSeen = removedSeen;
+	/*
+	 * SUMMARISED, NOT KEPT BY REFERENCE: the last sample that still held the lane is often
+	 * the very object the verdict reports, and a back-reference to it is a circular structure
+	 * the check's own `JSON.stringify` refuses (measured: `property 'lastWithLane' closes the
+	 * circle`). The fields below are the ones a reader needs - when, what the DOM held, and
+	 * whether the panel and the root were still there beside it.
+	 */
+	const summarise = (sample) =>
+		sample === null || sample === undefined
+			? null
+			: {
+					at: sample.at,
+					painted: sample.painted,
+					laneToaster: sample.laneToaster,
+					toasters: sample.toasters,
+					nodes: sample.nodes,
+					removed: sample.removed,
+					action: sample.action,
+					panel: sample.panel,
+					root: sample.root,
+				};
+	retried.lastWithLane = summarise(lastWithLane);
+	retried.firstVanished = summarise(firstVanished);
+	retried.failure = retryState?.archiveFailure
+		? {
+				sessionId: retryState.archiveFailure.sessionId,
+				archived: retryState.archiveFailure.archived,
+			}
+		: null;
+	retried.undo = retryState?.archiveUndo
+		? { sessionId: retryState.archiveUndo.sessionId }
+		: null;
 	check(
 		"a refused retry puts the refusal back in the lane, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)",
 		retried?.painted === true &&
@@ -2319,6 +2350,21 @@ async function sceneSessionArchive(cdp) {
 			retried?.answeredAgain === true,
 		`${Date.now() - retryPressedAt}ms after the retry (refusal raised ${retryPressedAt - refusalRaisedAt}ms before the press): ${JSON.stringify(retried)}`,
 	);
+
+	/*
+	 * THE TRANSITION, BESIDE THE VERDICT: the last 60ms sample that still held the lane's node
+	 * and the first that did not, with the container counts each saw. A dismissal shows
+	 * `removed > 0` on the way out and leaves the toaster's own section mounted; a teardown
+	 * shows `toasters: 0`, which neither a dismissal nor an empty store can produce (sonner
+	 * renders that section whenever its Toaster is mounted).
+	 */
+	const transition = {
+		samples: retried?.samples ?? 0,
+		removedSeen: retried?.removedSeen ?? null,
+		lastWithLane: retried?.lastWithLane ?? null,
+		firstVanished: retried?.firstVanished ?? null,
+	};
+	console.log(`[note] retry transition\n        ${JSON.stringify(transition)}`);
 	/*
 	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).
 	 * This is the mode the REGISTER was absent from at `3e650f5f0`: it had been

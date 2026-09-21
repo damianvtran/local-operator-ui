@@ -3460,7 +3460,21 @@ export function ChatSidebar({
 					position: ARCHIVE_TOAST_LANE,
 					action: {
 						label: "Retry",
-						onClick: () => {
+						/*
+						 * SONNER DISMISSES THE TOAST AFTER AN ACTION UNLESS THE HANDLER PREVENTS IT.
+						 * 2.0.3's action button is `onClick(event); if (event.defaultPrevented) return;
+						 * deleteToast();` - so an unprevented press put this entry into its 200ms
+						 * removal window, the answer's re-assert 2-4ms later was merged into the entry
+						 * being removed and destroyed with it, and the lane ended EMPTY while the
+						 * store still held the refusal. Measured 2026-09-21 with the transition
+						 * sampler: 15ms after the press `removed: 1` and `nodes: 2` (the dying entry
+						 * drawn over the new one, which is also why `hitTest` read false on the Retry
+						 * the reader had just pressed), the lane empty ~5s later. This is the other
+						 * half of the round-2 fix below: that removed the APP's dismissal, not the
+						 * library's.
+						 */
+						onClick: (event) => {
+							event.preventDefault();
 							/*
 							 * THE RETRY DOES NOT TAKE ITS OWN MESSAGE DOWN FIRST (UX report round 1, U3:
 							 * "Retry on a refused archive leaves no message at all").
@@ -3533,7 +3547,14 @@ export function ChatSidebar({
 					position: ARCHIVE_TOAST_LANE,
 					action: {
 						label: "Undo",
-						onClick: () => {
+						/*
+						 * AND THE SAME PREVENTION FOR THE OFFER'S OWN PRESS, for the same reason and
+						 * with the same measurement behind it (the round-2 remediation re-asserted
+						 * the offer in place on an accepted/unrefused answer, and sonner would delete
+						 * the entry under it exactly as it did for the Retry).
+						 */
+						onClick: (event) => {
+							event.preventDefault();
 							/*
 							 * THE UNDO SENDS ITS WRITE AND NOTHING ELSE (agent review round 2, R2-1), and
 							 * this is U3's twin on the control beside the Retry: it used to take its own
