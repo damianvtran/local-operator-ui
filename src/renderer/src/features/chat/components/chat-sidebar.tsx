@@ -2094,7 +2094,7 @@ export function ChatSidebar({
 								/*
 								 * A REFUSED PRESS MOVES NOTHING, focus included: the row is still
 								 * there and the reader is still on the control they pressed, with the
-								 * store's refusal sentence beside the list.
+								 * store's refusal sentence in the panel's register at its root.
 								 */
 								if (!accepted) return;
 								restoreFocus();
@@ -3040,76 +3040,6 @@ export function ChatSidebar({
 			    because it does not evaluate alpha). These rows are also the only way to
 			    reach a conversation, so dimming them says "unavailable" about the one
 			    thing that still works. Design round 1, D1. */}
-			{/*
-			 * THE ARCHIVE REGISTER: the refusal and the Undo offer, in the panel's own
-			 * voice beside the list rather than in a toast lane (design round 1, U2;
-			 * design round 2, D12). The refusal gets NO `role="alert"`, so it cannot
-			 * compete with the catalogue alert below about a different failure - what
-			 * announces it is the row coming back with its control in the state the user
-			 * left it, and this sentence is the durable half; it is `warning` rather than
-			 * `danger` because the list is intact and only this row's state did not move.
-			 *
-			 * The Undo offer is the same offer the module has always made - one sentence
-			 * and one press - drawn where the act happened. The toast lane was the wrong
-			 * home for two measured reasons: its box sat over the composer's Send control
-			 * in both palettes (x 1307..1339, y 803..835, inside the toast's own x
-			 * 1001..1360.5, y 789..842.5), so an offer to take an archive back could be
-			 * pressed into sending a message; and an archive is performed from THIS panel,
-			 * so the offer belongs to this panel's register rather than to a lane floating
-			 * over the pane the user did not act in.
-			 *
-			 * The offer line is `text-ink`, NOT `text-ink-muted` (design round 3, D20):
-			 * the register's other line - the refusal - is `text-warning`, and this one is
-			 * the only line in the panel carrying a LIVE ACTION; at muted ink (7.86:1 /
-			 * 8.21:1) it read as metadata beside it.
-			 *
-			 * `data-session-archive-undo` and `data-session-archive-failure` are the driver
-			 * scenes' anchors, the convention `data-session-delete` and `data-chat-row`
-			 * follow: both sentences name a conversation, so a scene selecting them by text
-			 * would assert a copy edit rather than a state.
-			 *
-			 * The press goes to the store rather than to a closure handed over by whichever
-			 * surface offered it (`archive-undo.ts` says why): every surface offers the same
-			 * act, so the press is one line here too.
-			 */}
-			{archiveUndo && (
-				<p data-session-archive-undo className="pb-2 text-meta text-ink">
-					{archiveOfferedText(archiveUndo.title)}{" "}
-					<button
-						type="button"
-						className="underline"
-						onClick={() =>
-							void setSessionArchived(
-								archiveUndo.sessionId,
-								!archiveUndo.archived,
-								archiveUndo.title,
-							)
-						}
-					>
-						Undo
-					</button>
-				</p>
-			)}
-			{archiveFailure && (
-				<p data-session-archive-failure className="pb-2 text-meta text-warning">
-					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
-					{archiveFailure.title}”.
-					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}
-					<button
-						type="button"
-						className="underline"
-						onClick={() =>
-							void setSessionArchived(
-								archiveFailure.sessionId,
-								archiveFailure.archived,
-								archiveFailure.title,
-							)
-						}
-					>
-						Retry
-					</button>
-				</p>
-			)}
 			{showList && (
 				<div className="space-y-4 pb-2">
 					<section>
@@ -3246,6 +3176,94 @@ export function ChatSidebar({
 	 * sentence is the durable half. `warning` and not `danger`: the list is
 	 * intact and only this row's pin did not move.
 	 */
+	/*
+	 * THE ARCHIVE REGISTER: the refusal and the Undo offer, drawn BESIDE THE PIN'S
+	 * FAILURE LINE at the panel's root rather than inside a region (agent review
+	 * round 4, R4-1 - a fold-introduced defect).
+	 *
+	 * WHY AT ROOT IS THE POINT, and why it has to be written down: the register used
+	 * to be a direct child of the `<nav>` (unconditional), and re-applying it from
+	 * main's structure put it inside the ENTITY region - which this assembly drops in
+	 * `chats-only`, the mode where the user is looking at the rows they just acted
+	 * on. Measured at `3e650f5f0`: drawn in `bothVisible` and `entities-only`, absent
+	 * in `chats-only`, so a refused archive drew no sentence and no Retry there, and a
+	 * successful one drew no Undo. It now draws wherever the pin's own failure line
+	 * draws, which is every mode, and the static test asserts exactly that by reading
+	 * the JSX ancestry rather than the text next to it (that adjacency assertion is
+	 * what let this through).
+	 *
+	 * The refusal gets NO `role="alert"`, so it cannot compete with the catalogue
+	 * alert about a different failure: what announces it is the row coming back with
+	 * its control in the state the user left it, and this sentence is the durable
+	 * half; it is `warning` rather than `danger` because the list is intact and only
+	 * this row's state did not move.
+	 *
+	 * The Undo offer is the offer the module has always made - one sentence and one
+	 * press - drawn where the act happened. The toast lane was the wrong home for two
+	 * measured reasons: its box sat over the composer's Send control in both palettes
+	 * (x 1307..1339, y 803..835, inside the toast's own x 1001..1360.5, y
+	 * 789..842.5), so an offer to take an archive back could be pressed into sending
+	 * a message; and an archive is performed from THIS panel, so the offer belongs to
+	 * this panel's register rather than to a lane floating over the pane the user did
+	 * not act in.
+	 *
+	 * The offer line is `text-ink`, NOT `text-ink-muted` (design round 3, D20): the
+	 * register's other line is `text-warning`, and this one is the only line in the
+	 * panel carrying a LIVE ACTION; at muted ink (7.86:1 / 8.21:1) it read as metadata
+	 * beside it.
+	 *
+	 * `data-session-archive-undo` and `data-session-archive-failure` are the driver
+	 * scenes' anchors, the convention `data-session-delete` and `data-chat-row`
+	 * follow: both sentences name a conversation, so a scene selecting them by text
+	 * would assert a copy edit rather than a state.
+	 *
+	 * The press goes to the store rather than to a closure handed over by whichever
+	 * surface offered it (`archive-undo.ts` says why): every surface offers the same
+	 * act, so the press is one line here too.
+	 */
+	const archiveRegister = (
+		<>
+			{archiveUndo && (
+				<p data-session-archive-undo className="pb-2 text-meta text-ink">
+					{archiveOfferedText(archiveUndo.title)}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveUndo.sessionId,
+								!archiveUndo.archived,
+								archiveUndo.title,
+							)
+						}
+					>
+						Undo
+					</button>
+				</p>
+			)}
+			{archiveFailure && (
+				<p data-session-archive-failure className="pb-2 text-meta text-warning">
+					Could not {archiveFailure.archived ? "archive" : "unarchive"} “
+					{archiveFailure.title}”.
+					{archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionArchived(
+								archiveFailure.sessionId,
+								archiveFailure.archived,
+								archiveFailure.title,
+							)
+						}
+					>
+						Retry
+					</button>
+				</p>
+			)}
+		</>
+	);
+
 	const pinFailureLine = pinFailure ? (
 		/*
 		 * The pin failure, and the reason it carries a ref: it is a flex child of the
@@ -3355,6 +3373,16 @@ export function ChatSidebar({
 			 * a NEW gesture, so the record expires on that movement. Leaving the list
 			 * expires it too - the reflex this protects never leaves the region between
 			 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
+			 *
+			 * BOTH RECORDS' EXPIRY IS REGION-SCOPED, and that is a known gap rather
+			 * than an oversight (agent review round 4, R4-5). `sessionRow` renders the
+			 * list's rows AND the entity region's nested rows, so a press on a NESTED
+			 * row is armed in the entities region and expired only here, in the chats
+			 * region. #408 split the regions and main's own `lastPinPress` has exactly
+			 * this shape, so this file inherits it rather than introducing it; the
+			 * gesture is bounded anyway (the record expires on a real move and on the
+			 * next press), and the fix belongs with the pin's record, in one change,
+			 * rather than as a second rule here.
 			 */
 			onPointerMove={(event) => {
 				const from = lastPinPress.current;
@@ -4252,6 +4280,7 @@ export function ChatSidebar({
 					<>
 						{split.order === "entities-first" ? entityRegion : listRegion}
 						{pinFailureLine}
+						{archiveRegister}
 						{boundary}
 						{split.order === "entities-first" ? listRegion : entityRegion}
 					</>
@@ -4259,6 +4288,7 @@ export function ChatSidebar({
 					<>
 						{restoreAtTop && restoreRow}
 						{pinFailureLine}
+						{archiveRegister}
 						{listRegion}
 						{!restoreAtTop && restoreRow}
 					</>
@@ -4274,6 +4304,7 @@ export function ChatSidebar({
 						{restoreAtTop && restoreRow}
 						{entityRegion}
 						{pinFailureLine}
+						{archiveRegister}
 						{!restoreAtTop && restoreRow}
 					</>
 				)}

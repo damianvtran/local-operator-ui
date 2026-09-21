@@ -241,7 +241,15 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 });
 
 test("a refused press is reported once, in the panel's register, with a retry", () => {
-	const failure = between(SIDEBAR, "archiveFailure && (", "{showList && (");
+	/*
+	 * THE SLICE IS THE REGISTER CONSTANT, not the text next to a `&& (`: the older
+	 * form read whichever gate happened to follow, and the fold turned that gate
+	 * from the LIST's into the ENTITY REGION's, which is how a re-parented register
+	 * kept this suite green (agent review round 4, R4-1). The reachability it could
+	 * not see is asserted by the test below and, in the DOM, by the driver's
+	 * chats-only step.
+	 */
+	const failure = between(SIDEBAR, "const archiveRegister = (", "\n\t);");
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
 	// The retry sends the DESIRED state that was refused, not the state on screen.
@@ -256,6 +264,52 @@ test("a refused press is reported once, in the panel's register, with a retry", 
 		failure.includes('role="alert"'),
 		false,
 		"the sentence must not compete with the catalogue alert about a different failure",
+	);
+});
+
+test("the register is drawn wherever the pin's failure line is drawn (agent review round 4, R4-1)", () => {
+	const source = code(SIDEBAR);
+	/*
+	 * WHY THIS SHAPE. The defect was a HOME, not a spelling: the register was a
+	 * direct child of the `<nav>`, the fold re-applied it inside the ENTITY region,
+	 * and the assembly drops that region in `chats-only` - so the sentence and its
+	 * Retry were drawn exactly when the list they belong to was hidden. No text
+	 * assertion near the register can see that; what can see it is the register's
+	 * own home being the SAME one the pin's failure line uses, which the round-4
+	 * review established as every mode (`{pinFailureLine}` appears once in each of
+	 * the assembly's three branches).
+	 */
+	assert.match(source, /const archiveRegister = \(/);
+	const definition = between(SIDEBAR, "const archiveRegister = (", "\n\t);");
+	assert.match(definition, /data-session-archive-undo/);
+	assert.match(definition, /data-session-archive-failure/);
+	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
+	const registers = source.match(/\{archiveRegister\}/g) ?? [];
+	assert.ok(
+		pins.length >= 3,
+		`expected the pin's failure line in every assembly branch, found ${pins.length}`,
+	);
+	assert.equal(
+		registers.length,
+		pins.length,
+		"the register must be drawn in every branch the pin's failure line is drawn in",
+	);
+	assert.equal(
+		(source.match(/\{pinFailureLine\}\n\t+\{archiveRegister\}/g) ?? []).length,
+		pins.length,
+		"each branch must draw the register beside the pin's line, not merely in the file",
+	);
+	// ONE home: the anchors live in the constant and nowhere else, so a second copy
+	// cannot appear inside a region and shadow this assertion.
+	assert.equal(
+		(source.match(/data-session-archive-failure/g) ?? []).length,
+		1,
+		"exactly one element carries the refusal anchor",
+	);
+	assert.equal(
+		(source.match(/data-session-archive-undo/g) ?? []).length,
+		1,
+		"exactly one element carries the offer anchor",
 	);
 });
 

@@ -556,8 +556,18 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				? state.sessions.some((row) => row.session_id === sessionId)
 				: false,
 		);
+		/*
+		 * TWO PREDICATES, BECAUSE THE TWO CONSUMERS WANT DIFFERENT ONES (agent review
+		 * round 4, R4-2). The notice is about EXISTENCE and takes the catalogue's
+		 * membership with it. The composer's refusal is about the STREAM: it exists to
+		 * refuse a message that can only 404, so it keeps `view.missing` - the transport
+		 * state - and the tombstone, and must not be cleared by a catalogue page that
+		 * still lists an id whose own stream has 404'd.
+		 */
 		const gone =
 			sessionGone || (canonical?.view.missing === true && !listedNow);
+		const conversationUnavailable =
+			sessionGone || canonical?.view.missing === true;
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
@@ -1283,7 +1293,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// accepting a message that can only 404. The pane above
 								// carries the sentence and the way out (M6); this only
 								// refuses the keystroke.
-								unavailable={gone}
+								unavailable={conversationUnavailable}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={

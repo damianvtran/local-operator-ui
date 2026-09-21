@@ -2064,6 +2064,63 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(archiveFailure),
 	);
 	frames.push(await captureSettled(cdp, `archive-refused${RUN_LABEL}`));
+	/*
+	 * AND IT IS REACHABLE WITH THE ENTITY REGION HIDDEN (agent review round 4,
+	 * R4-1). This is the mode the register was ABSENT from at `3e650f5f0`: the
+	 * refusal was re-parented into the entities region by the fold, and the assembly
+	 * renders only the list region in `chats-only`, so the sentence and its Retry
+	 * vanished in exactly the layout where the user is acting on chat rows. The
+	 * assertion is on the DRAWN node, not on the text beside it - the text-adjacency
+	 * assertion this replaces read the entity gate and passed while the register was
+	 * unreachable.
+	 */
+	/*
+	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE. The mode comes from the
+	 * panel's OWN collapse control, not from `setSplitPreferences`: that helper
+	 * writes localStorage and RELOADS the page, which would clear the in-memory
+	 * register this step is about (a refusal is not persisted). The control lives on
+	 * the cluster, which is inert until the pointer reveals it - so the pointer is
+	 * moved there first and the press goes to the control's own box, the idiom the
+	 * split scene uses for the same control.
+	 *
+	 * THE MODE IS ASSERTED, NOT ASSUMED: a non-empty query forces `both` regions
+	 * (`sidebar-split.ts`), so a step that merely hid nothing would pass this check
+	 * while proving nothing. `[data-sidebar-region="entities"]` must be UNMOUNTED
+	 * while the register is drawn - which is exactly the state the fold broke.
+	 */
+	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
+	require("the cluster's hide control is reachable", hideEntities !== null, "no [data-sidebar-hide=entities]");
+	await movePointer(cdp, hideEntities.x, hideEntities.y);
+	await wait(320);
+	await pressPointerStationary(cdp, hideEntities.x, hideEntities.y);
+	await wait(500);
+	const entitiesUnmounted = await cdp.evaluate(
+		`document.querySelector('[data-sidebar-region="entities"]') === null`,
+	);
+	const refusalChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure]",
+	);
+	const retryChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-failure] button",
+	);
+	check(
+		"the entity region is unmounted, and the refused archive with its Retry is still reachable",
+		entitiesUnmounted === true &&
+			refusalChatsOnly.inViewport === true &&
+			retryChatsOnly.inViewport === true,
+		JSON.stringify({ entitiesUnmounted, refusalChatsOnly, retryChatsOnly }),
+	);
+	frames.push(await captureSettled(cdp, `archive-refused-chats-only${RUN_LABEL}`));
+	const showEntities = await splitBox(cdp, '[data-sidebar-restore="entities"]');
+	require("the restore row is drawn", showEntities !== null, "no restore row for the entity region");
+	await movePointer(cdp, showEntities.x, showEntities.y);
+	await wait(320);
+	await pressPointerStationary(cdp, showEntities.x, showEntities.y);
+	await wait(500);
 
 	/*
 	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
@@ -2109,6 +2166,34 @@ async function sceneSessionArchive(cdp) {
 	 * about: the offer outlives the catalogue answers that mention the row and is
 	 * retired by its own ceiling, not by the first answer to arrive.
 	 */
+	/*
+	 * THE OFFER IS REACHABLE THERE TOO (R4-1's other half): it is the same register
+	 * and it was absent for the same reason. Asserted while it is still up, before
+	 * the retirement wait below - and WITHOUT a frame, because the refusal's
+	 * chats-only frame above already carries the placement.
+	 */
+	const hideForOffer = await splitBox(cdp, '[data-sidebar-hide="entities"]');
+	require("the cluster's hide control is reachable", hideForOffer !== null, "no [data-sidebar-hide=entities]");
+	await movePointer(cdp, hideForOffer.x, hideForOffer.y);
+	await wait(320);
+	await pressPointerStationary(cdp, hideForOffer.x, hideForOffer.y);
+	await wait(500);
+	const offerChatsOnly = await verb(
+		cdp,
+		"measure",
+		"[data-session-archive-undo]",
+	);
+	check(
+		"the archive offer is reachable in chats-only",
+		offerChatsOnly.inViewport === true,
+		JSON.stringify(offerChatsOnly),
+	);
+	const showForOffer = await splitBox(cdp, '[data-sidebar-restore="entities"]');
+	require("the restore row is drawn", showForOffer !== null, "no restore row for the entity region");
+	await movePointer(cdp, showForOffer.x, showForOffer.y);
+	await wait(320);
+	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
+	await wait(500);
 	const clearance = await waitForGone(
 		cdp,
 		"[data-session-archive-undo]",
@@ -2375,6 +2460,17 @@ async function sceneSessionArchive(cdp) {
 	note("the row's own ground", JSON.stringify(ground));
 	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
 	/*
+	 * THE PIN'S OWN HOVERED STEP (agent review round 4, R4-4). D22's ruling gives
+	 * every control the pointer's step, and for the PIN that step lands on a
+	 * RELEASED surface: main's control declared no `hover:` colour at all, so with
+	 * the pointer on it the glyph now reads `ink` where it read `ink-muted`. The
+	 * archive slot was measured and this one was only asserted by construction, so
+	 * the pointer goes on the pin beside it and the two frames carry the pair.
+	 */
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"] [data-session-pin]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `pair-pin${RUN_LABEL}`));
+	/*
 	 * AND THE SAME ROW AT REST, with the pointer parked off the list: this is the
 	 * half of the design that has no ink (design round 2, D10, which the shared
 	 * control failed). Two reserved slots are RESERVED - the boxes are there, the
@@ -2402,6 +2498,15 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
 	await wait(400);
 	frames.push(await captureSettled(cdp, `pair-narrow${RUN_LABEL}`));
+	/*
+	 * AND THE TRIGGER UNDER THE POINTER WITH NOTHING OPEN (design round 5, D25): the
+	 * only frame at this width with the pointer on it was taken after a click, so its
+	 * own step (188 -> 231 dark, 73 -> 29 light) could not be separated from whatever
+	 * an open menu paints. This frame is that arm and nothing else.
+	 */
+	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"] [data-session-actions]');
+	await wait(400);
+	frames.push(await captureSettled(cdp, `shared-hover${RUN_LABEL}`));
 	/*
 	 * THE SHARED CONTROL AT REST, which is the state it was measured WRONG in: it
 	 * used to be drawn at rest in the row's own ink (12.84:1 dark) and to dim under
