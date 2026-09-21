@@ -2,10 +2,20 @@
 
 The sidebar row's **horizontal budget**, photographed in the running app at the
 three panel widths the operator's report is about, with the pointer off the row
-and on it, plus the one frame of the panel's archive register in the state they
-reported. These are the **before** frames: the spec they exist for is
-`docs/design/sidebar-row-space.md`, and every number in it is a subtraction over
-the boxes in `measurements/`.
+and on it, plus the one frame of the archive offer in the state they reported.
+The spec these frames exist for is `docs/design/sidebar-row-space.md`, and every
+number in it is a subtraction over the boxes in `measurements/`.
+
+## The two halves, and which tree each came from
+
+| Half | Where | Tree |
+| --- | --- | --- |
+| **before** | the twelve label directories at this level | `origin/main` = `b7f3e6126` (v0.30.5) with only the `row-space` scene added - the state the operator reported, kept where the spec's § 1 and this file's own references name it |
+| **after** | `after/<label>/` | this change, at the commit whose `src`/`scripts` trees the manifest's stamps carry |
+
+The labels are the same in both halves, so the two sets compare frame for frame;
+`register-280` is the before half of the state that is now `offer-toast-280`,
+because the register is deleted by the change rather than moved.
 
 ## What the operator reported, and which frame carries it
 
@@ -16,6 +26,15 @@ the boxes in `measurements/`.
 | "the `· agent` badge is followed by an equally empty right side" | any unpinned row here: the trailing statement ends and 56px of the row is empty |
 | "its confirmation … shows up in a weird awkward spot in the sidebar with a gap below it" | `register-280/localOperatorDark.png` - the offer is a 264x25.4px line at y 493.6..519, i.e. at the bottom edge of the region *above* the list, 8px above the split line and **117px above the first list row it is about** |
 
+And what the after half shows for the same four: `after/rest-280/` has the two
+acts gone from every row at rest and the pinned row's mark still drawn (the 240
+clamp minimum included, where the shipped build drew no pin at all);
+`after/hover-long-280/` has both acts under the pointer, the title panned to its
+end behind a two-sided fade, and the flyout open beside the row with the full
+title and its facts; `after/offer-toast-280/` has the offer out of the panel's
+register and in the panel's own toast lane, over the sidebar's bottom and clear
+of the composer.
+
 Two things the operator's own reading does not contain, both measured here, are
 stated in the spec as findings rather than folded into their report:
 
@@ -23,12 +42,20 @@ stated in the spec as findings rather than folded into their report:
   lives inside the container the shed query hides, so its box reads `0x0` and
   nothing is painted (`rest-240/*.png`, both palettes). "The pin's state must
   read without hovering" is a rule this panel states; at the narrowest width the
-  shipped build breaks it.
-- **The frames below understate the operator's own crowding.** They were taken
-  on a machine with macOS overlay scrollbars, where the list region's scroller
-  takes no width. Their screenshot shows a classic scrollbar, which on those
-  systems eats ~15px *inside* the scroller - so their rows are ~15px narrower
-  than the same state photographed here.
+  shipped build breaks it. **The after half is the fix, and it is a frame rather
+  than a claim**: `after/rest-240/` has the mark drawn, at every width.
+- **The before frames understate the operator's own crowding, and the after
+  frames make the same trade deliberately.** The before frames were taken on a
+  machine with macOS overlay scrollbars, where the list region's scroller takes no
+  width; their screenshot shows a classic scrollbar, which on those systems eats
+  ~15px *inside* the scroller. The spec decides to RESERVE that gutter
+  (`[scrollbar-gutter:stable]`, § 11) so a title never re-truncates because a row
+  was added or removed - and reserving it is not free where the scrollbars are not
+  overlay: measured on this machine it takes **8px** off every row, and the scene
+  asserts that reading (`listGutter` in `measurements/`, `reserved": 8`) beside
+  the widths it costs. The after numbers below are therefore the spec's table
+  MINUS 8, and on the operator's own screen (always-on classic scrollbars) the same
+  table is 15px narrower than the spec's instead.
 
 ## How these frames were taken
 
@@ -36,7 +63,9 @@ stated in the spec as findings rather than folded into their report:
 headless launch - `AGENTS.md` § *Running the app without taking the operator's
 focus*, and note that `--window-mode` resolves to `headless` for a rig-shaped
 launch with no mode named. One launch per palette, because the scene's last step
-presses a real control and the stand-in backend is stateful.
+presses a real control and the stand-in backend is stateful. The same commands
+took both halves: the before half from the tree named above, the after half from
+the tree this change ships.
 
 ```
 # 1. a build pointed at this set's stand-in backend (the repo's own .env
@@ -58,6 +87,13 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=[redacted] node scripts/renderer-driver.mjs \
 #    here (no renaming step), plus one geometry file per palette:
 #    <out>/row-space-geometry-<theme>.json -> measurements/
 ```
+
+**The scene asserts what it photographs**, so a run that lands these frames is a
+run that proved the table below: 37 checks, including the two that cost the
+change its first build - the rests' widths against the gutter this machine
+reserves, and the end of the pan against the TEXT box's width rather than the
+clip box's `scrollWidth` (which includes the ellipsis's own advance, 10px here,
+and would have sent the pan past the end of the title).
 
 **Why the panel width is written through the divider's own action.** A row's
 width is the user's own preference (`chatSidebarWidth`, clamped 240..360, default
@@ -83,19 +119,29 @@ what these frames are of.
 Every frame is **2760x1736 device pixels at DPR 2** - a 1380x868 content viewport
 (the app's own default window, `--window-size 1380x900`) - and exists in both
 palettes (`localOperatorDark.png`, `localOperatorLight.png`). App revision: the
-build is of `b7f3e6126` (= `origin/main`, v0.30.5) with only this change's
-`scripts/renderer-driver.mjs` scene added, and the runtime is the pinned
-Electron **44.3.0** (the harness asserts installed == pinned, `AGENTS.md` § the
-committed frame is only reproducible on the runtime that produced it).
+**before** half is a build of `b7f3e6126` (= `origin/main`, v0.30.5) with only
+this change's `scripts/renderer-driver.mjs` scene added; the **after** half is a
+build of the tree this change ships. The runtime is the pinned Electron **44.3.0**
+in both (the harness asserts installed == pinned, `AGENTS.md` § the committed frame
+is only reproducible on the runtime that produced it).
 
-| Directory | Scene label | The state | The pointer | Panel |
+| Directory (both halves) | Scene label | The state | The pointer | Panel |
 | --- | --- | --- | --- | --- |
 | `rest-240` / `rest-280` / `rest-320` | `rest-<w>` | the panel at rest: pinned row, unpinned rows, one long title and the current row all in one frame | parked at (2, 2), off the panel | 240 / 280 / 320 |
 | `hover-long-240/280/320` | `hover-long-<w>` | the **long** row (54 characters, the unread-marked one) under the pointer | on that row's own button, i.e. over its title | as above |
 | `hover-pinned-240/280/320` | `hover-pinned-<w>` | the **pinned** row under the pointer, pin and archive both revealed | on the pinned row's button | as above |
 | `hover-short-280` | `hover-short-280` | the **short** row (its title fits its box at every width) under the pointer - the row a marquee must leave alone | on the short row's button | 280 |
 | `hover-current-280` | `hover-current-280` | the **current** row (`aria-current="page"`) under the pointer: both acts reveal and the SELECTED ground survives the pointer | on the current row's button | 280 |
-| `register-280` | `register-280` | the panel's archive register after a REAL press on the short row's archive control, with a conversation open (so the composer is on screen) | parked, after the press | 280 |
+| `register-280` (before) | `register-280` | the panel's archive register after a REAL press on the short row's archive control, with a conversation open (so the composer is on screen) | parked, after the press | 280 |
+| `offer-toast-280` (after) | `offer-toast-280` | the same press, in the state the change puts it in: the offer is a toast in the panel's OWN lane, over the sidebar's bottom, with its Undo and its close - and the scene asserts its box is inside the panel's and disjoint from the composer's form and its Send control | parked, after the press | 280 |
+
+The one state the after half photographs differently **by design** is
+`hover-long-<w>` and `hover-pinned-<w>`: the pointer there is on a row whose title
+cannot fit, so the title PANS - and a frame is only evidence if the app held still
+for it (`captureSettled` requires two byte-identical captures), so those frames are
+taken after the pan has reached its end and stopped. The still therefore carries
+the acts revealed AND the pan's own paint (the title at its end, the 12px fades at
+both edges), which is more than the before half's frame of the same state showed.
 
 ## The measured geometry
 
@@ -186,3 +232,69 @@ y 789..842.5, i.e. exactly over it.
 - **Motion.** A still frame is not evidence about a pan; the spec's numbers for
   it (dwell, speed, distance, reset) are what the coder and QA check, and the
   distance is measured here (341px of text in a 180px box).
+
+### The same geometry after the change
+
+Read from the after half's `measurements/row-space-geometry-<theme>-after.json`,
+and asserted by the scene rather than left to a reader's subtraction. Every
+number is the spec's § 3/§ 14 table **minus the gutter this machine reserves**
+(8px, below), because the spec's table was derived on overlay scrollbars and the
+spec then decided to reserve the gutter anyway (§ 11).
+
+| Panel | Row box | Button | **Title at rest** | pinned rest | **Title under the pointer** | Pair at rest | Pair under the pointer | Pin at rest (pinned row) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **240** (clamp min) | 216 | 188 | **188** | 160 | **132** | `0x0` | 52 | 24, **painted** (the before half drew nothing here) |
+| **280** (default) | 256 | 228 | **228** | 200 | **172** | `0x0` | 52 | 24, painted |
+| **320** | 296 | 268 | **268** | 240 | **212** | `0x0` | 52 | 24, painted |
+
+What that buys at 280, on the row the operator was looking at: at rest the title
+goes **180 -> 228** (+48 on this machine: +56 before the gutter, -8 for it), and
+the acts cost 56 of it under the pointer rather than always. On a pinned row the
+mark is drawn at every width and costs the title its own 24 + the row's 4px gap.
+
+The pan, at the end of its travel, on the long row (all three widths asserted):
+
+| Panel | Title's natural width | Box under the pointer | Overflow travelled | Mask |
+| --- | --- | --- | --- | --- |
+| 240 | 340.98 | 132 | **-208.98** | both fades, left ramp at its full 12px |
+| 280 | 340.98 | 172 | **-168.98** | as above |
+| 320 | 340.98 | 212 | **-128.98** | as above |
+
+at rest there is no mask and no transform on any row, and the row whose title
+fits (`hover-short-280`) reports `none` for both after its dwell has elapsed -
+the reading the spec's § 5 turns on.
+
+### The offer's lane, measured
+
+`offer-toast-280`, from the after half's geometry file:
+
+| Box | x | y | size |
+| --- | --- | --- | --- |
+| **the offer (panel's own lane)** | **244..460** | **764..844** | 216 x 80 |
+| the lane container | 244..492 | 844 (its bottom edge) | 248 x 0 |
+| the panel | 220..500 | 0..868 | 280 x 868 |
+| the composer's form | 524..1356 | 740..852 | 832 x 112 |
+| **Send** | **1307..1339** | **803..835** | 32 x 32 |
+
+So the offer is inside the panel's own box and **disjoint from the composer's
+form and from Send** - the two constraints design round 2's D12 turned on, now
+met because the lane is anchored in the panel (24px in from its left and bottom,
+capped at `min(264px, 100% - 32px)`) rather than in the viewport's corner. The
+scene also reads `toasts.painted === 1` with `toasts.total === 2`: sonner draws
+every mounted container's copy of every toast, and the panel's stylesheet narrows
+that to the one the reader sees (the mechanism, and the measurement behind it,
+are in `src/renderer/src/styles/index.css`).
+
+### What the change could not keep from the spec's table, and why
+
+- **The gutter's 8px.** The spec's numbers are the ones a machine with overlay
+  scrollbars produces; this one reserves 8px per row for the always-on classic
+  scrollbar the reservation is for. The scene asserts both: the widths MINUS the
+  measured gutter, and the gutter's own reading (`"reserved": 8`,
+  `scrollbarGutter: "stable"`).
+- **The rest state's ellipsis.** The pan needs an element to translate, and an
+  always-mounted wrapper inside the clip box costs `text-overflow` its ellipsis
+  (measured: a hard cut at the clip edge, both palettes). The wrapper is therefore
+  mounted by the pan's own first frame and the rest state keeps the shipped bare
+  text - which is why the after half's `rest-*` frames show an ellipsis exactly
+  where the before half's do.
