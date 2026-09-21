@@ -129,6 +129,7 @@ const {
 	ConsoleCaptureView,
 	BrowserWindow,
 	consoleCaptureUrlFor,
+	LIVE_PENDING_MAX_BYTES,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
 	ConsoleHistory,
@@ -1125,6 +1126,65 @@ test("a retained surface's writes are coalesced, and its sidecar is not rewritte
 	// answered from a buffer the flush emptied.
 	assert.ok(host.status(created.surface).cols > 0);
 	assert.ok(PERSIST_FLUSH_BYTES < 400 * 8 * 1024);
+});
+
+/**
+ * THE LIVE VIEW'S CEILING (memory-bounding round).
+ *
+ * `broadcast`'s per-surface `pending` array was the one structure on the pty path with no
+ * bound: every chunk a subscriber had not taken stayed in it, so its size was a function of
+ * how far behind that subscriber had fallen. This cell drives a backlog past the ceiling
+ * from a subscriber that never drains, and asserts the three things the policy promises —
+ * the drop is COUNTED (`status`'s `dropped_live_bytes`, not a frame that quietly never
+ * arrived), the NEWEST bytes are what survive, and the RECORD is untouched: the byte log
+ * and the emulator keep every byte, because they are what the pane is a mirror of.
+ *
+ * The chunks are 64 KiB and there are 40 of them — 2.5 MiB, past the 1 MiB ceiling and well
+ * inside what a unit cell may allocate.
+ */
+test("a subscriber that falls behind is capped, and the record keeps every byte", async () => {
+	const { host, spawned } = hostWithWindow();
+	const created = await createSurface(host, { cols: 100, rows: 30 });
+	const frames = [];
+	// A subscriber that never drains: `output` collects the frame and returns, so the only
+	// reason `pending` grows is that the coalescing timer has not had a turn yet.
+	host.subscribe(created.surface, 0, {
+		output: (frame) => frames.push(frame),
+		exit: () => {},
+	});
+	const CHUNK_BYTES = 64 * 1024;
+	const CHUNKS = 40;
+	const chunk = "y".repeat(CHUNK_BYTES);
+	for (let index = 0; index < CHUNKS; index += 1) spawned[0].pty.emit(chunk);
+
+	const status = host.status(created.surface);
+	const total = CHUNK_BYTES * CHUNKS;
+	assert.ok(
+		status.dropped_live_bytes > 0,
+		`a ${total} B backlog against a ${LIVE_PENDING_MAX_BYTES} B ceiling must drop something`,
+	);
+	assert.ok(
+		status.dropped_live_bytes < total,
+		"and must not drop everything: the newest frames are what a viewer needs",
+	);
+	// The log is the record of record, and the ceiling is not allowed to touch it.
+	assert.equal(status.truncated, false, "the byte log dropped nothing");
+
+	await ticks(60);
+	assert.equal(frames.length, 1, "one coalesced frame reached the subscriber");
+	const kept = frames[0].bytes.length;
+	assert.equal(
+		status.dropped_live_bytes,
+		total - kept,
+		"the reported loss is exactly what the subscriber did not get",
+	);
+	assert.equal(
+		new TextDecoder().decode(frames[0].bytes).endsWith(chunk),
+		true,
+		"the frame ends with the newest bytes",
+	);
+	const read = await host.read(created.surface, "viewport");
+	assert.equal(read.truncated, false, "the record's read is complete");
 });
 
 test("a surface that asked not to be retained writes nothing, even when a flush is asked for", async () => {

@@ -85,6 +85,34 @@ export const MAX_INPUT_BYTES = 1 << 18;
 export const OUTPUT_COALESCE_MS = 16;
 
 /**
+ * THE LIVE VIEW'S CEILING, in bytes of coalesced-but-undelivered output per surface.
+ *
+ * WHY IT EXISTS (memory-bounding round). `broadcast` pushes every chunk into a per-surface
+ * `pending` array and delivers it on a 16 ms timer. Every other structure on this path is
+ * bounded — the byte log is a ring, the sidecar is staged and flushed, the emulator has a
+ * scrollback — but `pending` had no cap at all, so its size was a function of how far behind
+ * a subscriber had fallen: a renderer that stopped draining, or a main thread blocked long
+ * enough that the coalescing timer could not run, grew it without limit while the pty kept
+ * producing at whatever rate the host allowed.
+ *
+ * WHY THE POLICY IS DROP-OLDEST-RATHER-THAN-PAUSE-THE-PTY. The design's own mitigation for
+ * this risk (§19.1 P3) names backpressure on the pty read side, and pausing the pty is not
+ * available here: `consume` is the pty's only reader, so a paused pty stops the byte log,
+ * the sidecar flush and the emulator too — the RECORD would fall out of step with the pane,
+ * which is the single-authority rule (§10) that the pane is a mirror of main's grid. So the
+ * one thing that may be dropped is the thing that is already a copy: this buffer feeds a
+ * live view, and the durable record is the byte log and its sidecar, which keep receiving
+ * every byte. A drop here costs the pane a frame and a re-attach, never the log of record.
+ *
+ * 1 MiB, against a 16 ms coalescing window: a subscriber that has a megabyte of undelivered
+ * output queued is not going to be saved by the next megabyte, and the newest bytes are what
+ * a viewer needs (the prompt a program just printed, not the scrollback it printed before).
+ * The floor is one chunk, so a single frame larger than the ceiling is still delivered rather
+ * than silently vanishing.
+ */
+export const LIVE_PENDING_MAX_BYTES = 1 << 20;
+
+/**
  * How long a retained surface's newest bytes may sit in memory before they reach
  * disk, and the byte count that forces the write sooner (§7.2/§7.4).
  *
@@ -245,6 +273,13 @@ export interface SurfaceRuntime {
 	subscribers: Set<ConsoleSubscriber>;
 	/** Output waiting to be coalesced into one frame per subscriber. */
 	pending: Uint8Array[];
+	/** `pending`'s own byte count, maintained as it is appended and trimmed so the
+	 * ceiling is a comparison rather than a sum over the array on every chunk. */
+	pendingBytes: number;
+	/** Bytes dropped from `pending` because a subscriber fell behind. Reported by
+	 * `console_status` beside the log's `truncated`, so a lossy live view is a fact a
+	 * caller can read rather than a frame that quietly never arrived. */
+	droppedLiveBytes: number;
 	pendingTimer: NodeJS.Timeout | null;
 	/** The armed flush of this surface's retained bytes (§7.2). One timer per
 	 * surface, so a second chunk joins the pending write instead of adding one. */
@@ -419,6 +454,8 @@ export class ConsoleHost {
 			scanner: new Osc133Scanner(),
 			subscribers: new Set(),
 			pending: [],
+			pendingBytes: 0,
+			droppedLiveBytes: 0,
 			pendingTimer: null,
 			persistTimer: null,
 			seq: 0,
@@ -545,6 +582,8 @@ export class ConsoleHost {
 			scanner: new Osc133Scanner(),
 			subscribers: new Set(),
 			pending: [],
+			pendingBytes: 0,
+			droppedLiveBytes: 0,
 			pendingTimer: null,
 			persistTimer: null,
 			seq: 0,
@@ -629,6 +668,11 @@ export class ConsoleHost {
 			rows: entry.record.rows,
 			live: entry.record.live,
 			truncated: runtime?.log.truncated ?? false,
+			// The LIVE VIEW's own loss, which is not the log's `truncated`: the ring
+			// drops history it was told to bound, this drops frames a subscriber could
+			// not take. Two numbers because they answer two different questions, and a
+			// caller reasoning about a pane's fidelity needs this one.
+			dropped_live_bytes: runtime?.droppedLiveBytes ?? 0,
 			modes: grid?.modes ?? null,
 			cursor: grid?.cursor ?? null,
 			last_activity: entry.record.lastActivity,
@@ -1176,6 +1220,29 @@ export class ConsoleHost {
 	): void {
 		if (runtime.subscribers.size === 0) return;
 		runtime.pending.push(bytes);
+		runtime.pendingBytes += bytes.length;
+		/*
+		 * THE DROP-OLDEST CEILING (see `LIVE_PENDING_MAX_BYTES`). One chunk is kept even
+		 * when it alone is over the ceiling: a frame that arrives late is still a frame,
+		 * and dropping the only chunk would turn a big paste into a blank pane.
+		 */
+		while (
+			runtime.pendingBytes > LIVE_PENDING_MAX_BYTES &&
+			runtime.pending.length > 1
+		) {
+			const oldest = runtime.pending.shift();
+			if (!oldest) break;
+			runtime.pendingBytes -= oldest.length;
+			runtime.droppedLiveBytes += oldest.length;
+			// Logged on the FIRST drop for a surface and not per chunk: a flood would
+			// otherwise write one line per dropped frame into the same app log a
+			// reader is trying to read.
+			if (runtime.droppedLiveBytes === oldest.length) {
+				this.options.log(
+					`[console] surface ${entry.record.surface} is behind by more than ${LIVE_PENDING_MAX_BYTES} B; the live view drops its oldest frames (the record keeps every byte)`,
+				);
+			}
+		}
 		if (runtime.pendingTimer) return;
 		// NOT unref'd, for `delay`'s reason: this timer is what delivers a coalesced
 		// frame to subscribers, and an idle loop must not be able to drop it.
@@ -1183,6 +1250,7 @@ export class ConsoleHost {
 			runtime.pendingTimer = null;
 			const pending = runtime.pending;
 			runtime.pending = [];
+			runtime.pendingBytes = 0;
 			if (pending.length === 0) return;
 			const joined = concat(pending);
 			runtime.seq += 1;
