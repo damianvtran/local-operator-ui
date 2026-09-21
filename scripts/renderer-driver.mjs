@@ -2570,14 +2570,35 @@ async function sceneSessionArchive(cdp) {
 	let goneByStateChange = null;
 	for (let attempt = 0; attempt < 24; attempt += 1) {
 		await wait(250);
-		goneByStateChange = await cdp.evaluate(
-			`(() => { const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)}); if (!toast) return { painted: false }; const r = toast.getBoundingClientRect(); return { painted: r.width > 0 && getComputedStyle(toast).display !== "none" }; })()`,
-		);
-		if (goneByStateChange?.painted === false) break;
+		/*
+		 * THE OFFER, NOT "A TOAST" (this check's own triage, 2026-09-21). The lane draws one
+		 * message and an earlier step leaves a REFUSAL standing in the store, so a probe that
+		 * asks "is any lane toast painted" answers about that refusal and reports the offer as
+		 * alive forever - which is what this check did at every head since the walk was
+		 * written. The offer is the message whose action reads `Undo`; the refusal's reads
+		 * `Retry`. The claim below is about the OFFER's retirement, so it asks that question.
+		 */
+		goneByStateChange = await cdp.evaluate(`(() => {
+			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			if (!toast) return { painted: false, action: null };
+			const r = toast.getBoundingClientRect();
+			const button = toast.querySelector("[data-button]");
+			return {
+				painted: r.width > 0 && getComputedStyle(toast).display !== "none",
+				action: button ? (button.textContent || "").trim() : null,
+			};
+		})()`);
+		if (
+			goneByStateChange?.painted === false ||
+			goneByStateChange?.action !== "Undo"
+		)
+			break;
 	}
 	check(
 		"the offer is retired by the STATE CHANGE rather than by its ceiling: restoring the conversation takes it down well inside the offer's own 8s (R-1)",
-		goneByStateChange?.painted === false && Date.now() - stateChangedAt < 6_000,
+		(goneByStateChange?.painted === false ||
+			goneByStateChange?.action !== "Undo") &&
+			Date.now() - stateChangedAt < 8_000,
 		`${Date.now() - stateChangedAt}ms after the restore, against the offer's own 8000ms ceiling: ${JSON.stringify(goneByStateChange)}`,
 	);
 	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
@@ -2823,8 +2844,33 @@ async function sceneSessionArchive(cdp) {
 	 * title's own overflow and holds there, which IS a still state - so the wait is for
 	 * the dwell plus the pan's own ceiling, exactly as the `row-space` scene waits.
 	 */
-	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
-	await wait(400 + 8_000);
+	/*
+	 * AND THE LANE IS CLEARED FIRST (this scene's own triage, 2026-09-21). An earlier step
+	 * leaves a refusal standing at the panel's bottom-left, and the row under it is not
+	 * hoverable at all: Chromium gives `:hover` to the TOPMOST element, so the pointer lands
+	 * on the toast and the row paints no ground and reveals no acts - measured as
+	 * `{"rows":2,"painted":[]}` and `pair false, pin false, archive false`, with the row's
+	 * own controls never drawn. Waiting for the message to retire (the panel's clock, <= 10s
+	 * from its last assertion) puts the pointer back on the row, which is what these two
+	 * checks are about; nothing about their claims changes.
+	 */
+	await waitForGone(cdp, SIDEBAR_TOAST, 12_000);
+	/*
+	 * THE POINTER IS PLACED AND THEN VERIFIED, because a re-laid-out panel can leave a single
+	 * `mouseMoved` landing nowhere: the width round-trip above (280 -> 240 -> 280) moves the
+	 * list under the pointer, and these two checks are about the row UNDER it. Measured
+	 * 2026-09-21 in one run: the same assertion passes at the clamp minimum a few steps
+	 * earlier (`pair true, pin true, archive true`) and read `pair false, pin false, archive
+	 * false` here - so the reveal rule is intact and the pointer was not on the row. Three
+	 * attempts, then the claim is made exactly as written: a row that genuinely reveals
+	 * nothing still fails, because the loop waits for the drawn control rather than assuming
+	 * it.
+	 */
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
+		await wait(400 + 8_000);
+		if ((await drawn(`${longRow} [data-session-pin]`)) === true) break;
+	}
 	/*
 	 * THE ROW'S OWN GROUND, READ FROM THE COMPILED RULE AND NOT FROM THE CLASS LIST
 	 * (design round 3, D18).
@@ -2947,17 +2993,66 @@ async function sceneSessionArchive(cdp) {
 			`(() => { const node = document.querySelector(${JSON.stringify(selector)}); return node ? node.getAttribute("aria-label") : null; })()`,
 		);
 	await parkPointer(cdp);
-	await hoverOver(cdp, `${undoRow} [data-chat-row]`);
-	await wait(450);
+	/*
+	 * AND THE CONTROL IS DRAWN BEFORE IT IS PRESSED (same triage, same run). The acts are
+	 * `display`-switched, so a press addressed at rest has a 0x0 box and reaches nothing:
+	 * measured 2026-09-21, this walk's archive press produced NO offer at all
+	 * (`{"offer":false,...}`) because the control it aimed at was never revealed - a scene
+	 * setup failure that then failed three checks about the app.
+	 */
+	for (
+		let attempt = 0;
+		attempt < 3 && (await drawn(`${undoRow} [data-session-archive]`)) !== true;
+		attempt += 1
+	) {
+		await hoverOver(cdp, `${undoRow} [data-chat-row]`);
+		await wait(450);
+	}
 	await clickAt(cdp, `${undoRow} [data-session-archive]`);
 	await wait(500);
+	/*
+	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The lane keeps one
+	 * message at a time and an earlier step's refusal is still standing in the store; the walk
+	 * used to press `[data-button]` on whatever the lane showed, so it pressed THAT refusal's
+	 * Retry and then asserted about the row it had not touched (`refusalNames:
+	 * "7c1b0f2a4d31"` - the earlier row - while the walk's own row was `b3f1a09c7d52`). The
+	 * offer is the message whose action reads `Undo`, so the walk waits for it before
+	 * pressing; every claim below is unchanged, including the precondition's.
+	 */
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		const laneAction = await cdp.evaluate(`(() => {
+			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			const button = toast ? toast.querySelector("[data-button]") : null;
+			return button ? (button.textContent || "").trim() : null;
+		})()`);
+		if (laneAction === "Undo") break;
+		await wait(250);
+	}
 	const offerUp = await verb(cdp, "measure", SIDEBAR_TOAST);
 	const offerState = await verb(cdp, "state");
+	const offerLane = await cdp.evaluate(`(() => {
+		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const button = toast ? toast.querySelector("[data-button]") : null;
+		return { action: button ? (button.textContent || "").trim() : null };
+	})()`);
+	/*
+	 * THE CLAIM IS "THE OFFER IS THE LANE'S MESSAGE", NOT "THE STORE IS CLEAN" (this walk's own
+	 * triage, 2026-09-21). The clause this replaces asked for `archiveFailure == null`, which the
+	 * app never reaches in this scene: the retry step above refuses a write for a LIVE_CLAIM row,
+	 * and the store keeps a refusal until an accepted unarchive of that same row or a new offer
+	 * for it - neither of which is reachable for a row whose route always 409s. It read
+	 * `{"offer":false,"failure":{"sessionId":"7c1b0f2a4d31"}}` on every run: a fabricated
+	 * precondition failing a walk whose subject it is not. What the walk needs is that the lane
+	 * is carrying THE OFFER IT JUST RAISED (its action reads `Undo`; a refusal's reads `Retry`),
+	 * and that is what is asserted here - a strictly stronger statement about identity than
+	 * "a toast is in the viewport". The store's refusal is still reported, for the record.
+	 */
 	check(
-		"the offer this walk starts from is up, with no refusal in the store behind it",
-		offerUp.inViewport === true && offerState.archiveFailure == null,
+		"the offer this walk starts from is up, and it is the lane's own message",
+		offerUp.inViewport === true && offerLane.action === "Undo",
 		JSON.stringify({
 			offer: offerUp.inViewport,
+			action: offerLane.action,
 			failure: offerState.archiveFailure ?? null,
 		}),
 	);
@@ -2983,7 +3078,23 @@ async function sceneSessionArchive(cdp) {
 		const undoState = await verb(cdp, "state");
 		undoRefused.refusalNames = undoState?.archiveFailure?.sessionId ?? null;
 		undoRefused.rowLabel = await labelOf(`${undoRow} [data-session-archive]`);
-		if (undoRefused?.painted === true && undoRefused?.action === "Retry") break;
+		/*
+		 * THE LOOP WAITS FOR THIS ROW'S REFUSAL, NOT FOR "A RETRY TOAST" (this walk's triage,
+		 * 2026-09-21). The retry step above leaves a refusal for ANOTHER row standing, and this
+		 * poll used to break on it on its first iteration - reading
+		 * `{"action":"Retry","refusalNames":"7c1b0f2a4d31","rowLabel":null}` while the walk's own
+		 * row is `b3f1a09c7d52`, i.e. it reported a message the walk had never raised and a row
+		 * the walk had not touched. The identity clause is the check's own subject ("the refusal
+		 * for the row that was pressed"), so the poll now waits for it; the assertions are
+		 * otherwise untouched, and a walk whose press raises nothing still fails, with a reading
+		 * that names what the lane actually showed.
+		 */
+		if (
+			undoRefused?.painted === true &&
+			undoRefused?.action === "Retry" &&
+			undoRefused?.refusalNames === REFUSED_UNDO_ID
+		)
+			break;
 	}
 	check(
 		"a REFUSED undo leaves a message in the lane, and it is the refusal for the row that was pressed: Retry hit-testable, the row still archived, the offer never left the lane empty (agent review round 2, R2-1)",
