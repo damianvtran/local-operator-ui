@@ -526,6 +526,45 @@ test("display_name wins, model_id is the fallback, and the selector is the toolt
 	assert.equal(modelIdentity(null), null);
 });
 
+test("the aggregator router prints title case, and only behind an aggregator", () => {
+	// `auto` behind an aggregator is the ROUTER — the synthetic meta-model the
+	// provider serves as the route itself — so it prints `Auto` rather than the
+	// raw id. Mirrors `_ROUTER_NAMES` (`model/naming.py`).
+	assert.equal(
+		modelIdentity({ provider: "radient", model_id: "auto" }).name,
+		"Auto",
+	);
+	assert.equal(
+		modelIdentity({ provider: "openrouter", model_id: "auto" }).name,
+		"Auto",
+	);
+	// The provider-scoped spelling an aggregator may hand back whole.
+	assert.equal(
+		modelIdentity({ provider: "openrouter", model_id: "openrouter/auto" }).name,
+		"Auto",
+	);
+	// `radient-key` is the same hosting under its keyed spelling.
+	assert.equal(
+		modelIdentity({ provider: "radient-key", model_id: "auto" }).name,
+		"Auto",
+	);
+	// The SELECTOR is what the app identifies the model by, so it is unchanged —
+	// only the human form is renamed.
+	assert.equal(
+		modelIdentity({ provider: "radient", model_id: "auto" }).selector,
+		"radient/auto",
+	);
+	// GATED ON THE PROVIDER: `auto` is an ORDINARY model everywhere else, so an
+	// id-only lookup would rename a local model the user named `auto`.
+	for (const provider of ["ollama", "openai", "anthropic"]) {
+		assert.equal(
+			modelIdentity({ provider, model_id: "auto" }).name,
+			"auto",
+			`${provider}/auto is not a router`,
+		);
+	}
+});
+
 test("_effort_label's three states", () => {
 	// An explicit level is the ordinary case.
 	assert.equal(
