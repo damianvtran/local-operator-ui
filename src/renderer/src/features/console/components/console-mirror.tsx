@@ -185,13 +185,32 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 * never fires.
 		 */
 		const copySelection = (): string => term.getSelection() ?? "";
+		/*
+		 * WHICH KEY COPIES IS A PLATFORM QUESTION, AND GETTING IT WRONG COSTS THE
+		 * INTERRUPT (UX round 3, U7 — measured 3/3 in the built app: with a selection,
+		 * `sleep 5` kept running and no prompt returned; with none, `^C` arrived
+		 * normally).
+		 *
+		 * The first version claimed Ctrl+C whenever a selection existed, on every
+		 * platform, "because Ctrl+C is both copy and SIGINT on Linux and Windows". That
+		 * reasoning is right about those platforms and WRONG about macOS, where the copy
+		 * chord is ⌘ and ⌃C is the interrupt — so on a Mac a selection silently took the
+		 * interrupt away from a running program. A terminal that cannot be interrupted
+		 * while text happens to be selected is broken in the way that matters most, so
+		 * the branch is now gated exactly as the sentence always claimed: ⌘C copies on
+		 * darwin, and ⌃C copies elsewhere.
+		 *
+		 * The platform test is the one this app already uses for its own shortcuts
+		 * (`sidebar-navigation.tsx`, `undo-manager.ts`: `navigator.platform` upper-cased
+		 * and searched for `MAC`) rather than a second way of asking.
+		 */
+		const isMacPlatform = (): boolean =>
+			navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 		const copyChord = (event: KeyboardEvent): boolean => {
 			const key = event.key?.toLowerCase();
 			if (key !== "c") return true;
-			// ⌘C on macOS, Ctrl+C (or Ctrl+Shift+C) elsewhere — and ⌘ takes precedence so
-			// a stray Ctrl alongside it is not read as the interrupt chord.
-			const chord = event.metaKey
-				? !event.ctrlKey
+			const chord = isMacPlatform()
+				? event.metaKey && !event.ctrlKey
 				: event.ctrlKey && !event.metaKey;
 			if (!chord || event.altKey) return true;
 			const selection = copySelection();

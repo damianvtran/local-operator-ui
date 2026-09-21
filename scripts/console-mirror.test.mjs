@@ -162,6 +162,30 @@ const installBridge = () => {
 
 const settle = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Which platform the component under test thinks it is on.
+ *
+ * jsdom reports an EMPTY `navigator.platform`, which is neither macOS nor Linux — so a
+ * cell that does not set it is asserting against a platform no user has. The pane's copy
+ * chord is platform-dependent on purpose (U7), so the cells have to say which one they
+ * mean; the descriptor is restored afterwards so one cell cannot decide another's.
+ */
+const setPlatform = (platform) => {
+	const previous = Object.getOwnPropertyDescriptor(
+		window.navigator,
+		"platform",
+	);
+	Object.defineProperty(window.navigator, "platform", {
+		value: platform,
+		configurable: true,
+	});
+	return () => {
+		if (previous) {
+			Object.defineProperty(window.navigator, "platform", previous);
+		}
+	};
+};
+
 /** A clipboard the pane can write to, recording what it was handed. jsdom has none. */
 const installClipboard = () => {
 	const written = [];
@@ -274,12 +298,15 @@ test("the pane's own writes are never sent back as input", async () => {
 });
 
 /*
- * COPY (UX round 2, U5): a drag painted `xterm-selection` boxes and ⌘C did nothing —
- * no `copy` event fired, the clipboard stayed empty, and nothing in this feature had
- * wired a path. These two cells are the wiring proof; the built app's own drag is the
- * round's other half, and the seam between them is stated rather than blurred.
+ * COPY (UX rounds 2 and 3): a drag painted `xterm-selection` boxes and ⌘C did nothing —
+ * no `copy` event fired, the clipboard stayed empty, and nothing in this feature had wired
+ * a path. These cells are the wiring proof, and since U7 they are also the platform proof:
+ * WHICH chord copies is a platform question, and getting it wrong took the interrupt away
+ * on macOS. The built app's own drag is the round's other half, and the seam between them
+ * is stated rather than blurred.
  */
-test("the copy chord copies the selection and is not sent to the program", async () => {
+test("darwin: the copy chord copies the selection and is not sent to the program", async () => {
+	const restore = setPlatform("MacIntel");
 	const written = installClipboard();
 	const calls = installBridge();
 	const { root, terminal } = await mountMirror();
@@ -300,24 +327,57 @@ test("the copy chord copies the selection and is not sent to the program", async
 		"and NOT the pty: a copy is not input, so no `\\x03` may reach a running program",
 	);
 	root.unmount();
+	restore();
 });
 
-test("Ctrl+C with nothing selected is still the interrupt", async () => {
-	// The negative half, and the reason the chord is conditional: on Linux and Windows
-	// Ctrl+C is BOTH copy and SIGINT, so claiming it unconditionally would take the
-	// interrupt away from a shell that is using it.
+test("darwin: Ctrl+C WITH A SELECTION is still the interrupt", async () => {
+	/*
+	 * THE CELL UX ROUND 3's U7 ASKED FOR, and the one whose absence let a real regression
+	 * through: the chord claimed Ctrl+C whenever a selection existed, on every platform,
+	 * so on a Mac selecting text silently took the interrupt away and a running `sleep 5`
+	 * could not be stopped (measured 3/3 in the built app). Here the selection IS present
+	 * and the Ctrl chord must still fall through to the terminal — `true` is what that
+	 * means: xterm encodes it and the pty receives `\x03`.
+	 */
+	const restore = setPlatform("MacIntel");
 	const written = installClipboard();
 	const { root, terminal } = await mountMirror();
 
-	terminal.setSelection("");
+	terminal.setSelection("sleep 5");
 	const handled = terminal.pressKey({ key: "c", ctrlKey: true });
 	assert.equal(
 		handled,
 		true,
-		"with no selection the key is the terminal's to encode",
+		"on darwin a Ctrl chord is never the copy chord, selection or not",
 	);
 	assert.deepEqual(written, [], "and nothing is copied");
 	root.unmount();
+	restore();
+});
+
+test("linux: Ctrl+C copies when there is a selection, and interrupts when there is not", async () => {
+	// The other half of the platform gate: on Linux and Windows Ctrl+C really is BOTH, so
+	// the selection is what decides — the behaviour the first version implemented on every
+	// platform, and macOS is the exception it missed.
+	const restore = setPlatform("Linux x86_64");
+	const written = installClipboard();
+	const { root, terminal } = await mountMirror();
+
+	terminal.setSelection("docker compose logs");
+	const copied = terminal.pressKey({ key: "c", ctrlKey: true });
+	await settle();
+	assert.equal(copied, false, "with a selection the chord is claimed");
+	assert.deepEqual(written, ["docker compose logs"]);
+
+	terminal.setSelection("");
+	const interrupted = terminal.pressKey({ key: "c", ctrlKey: true });
+	assert.equal(
+		interrupted,
+		true,
+		"with no selection the key is the terminal's to encode",
+	);
+	root.unmount();
+	restore();
 });
 
 test("a copy event also carries the selection, for every route that is not the chord", async () => {
