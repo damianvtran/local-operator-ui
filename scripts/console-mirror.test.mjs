@@ -404,3 +404,95 @@ test("a copy event also carries the selection, for every route that is not the c
 	);
 	root.unmount();
 });
+
+/* ------------------------------------------- a feed is a function of ONE record (Q-11) */
+
+/** What a stub terminal has been handed, as text. */
+const written = (terminal) =>
+	terminal.written.map((chunk) => new TextDecoder().decode(chunk)).join("");
+
+/**
+ * Mount the mirror the way the capture page does: a record's bytes, a key, `mode="capture"`.
+ *
+ * The page keys this component on the feed's nonce, which is what makes a second feed start
+ * from a fresh terminal; these cells drive the component directly so both halves of the
+ * guarantee are asserted — the key's half and the reset's half — rather than only the one the
+ * page happens to rely on.
+ */
+const renderFeed =
+	(root) =>
+	(key, text, surface = "con:1:feed") =>
+		root.render(
+			harness.createElement(harness.ConsoleMirror, {
+				key,
+				surface,
+				visible: true,
+				cols: 80,
+				rows: 24,
+				mode: "capture",
+				bytes: new TextEncoder().encode(text),
+				onReport: () => {},
+			}),
+		);
+
+test("a new feed gets a fresh terminal: the frame is its own record, not the union of two", async () => {
+	/*
+	 * THE CELL QA ROUND 3'S Q-11 ASKS FOR, and the defect it pins was live: the offscreen
+	 * path fed `nonce: attempt` — 1 on the first attempt of EVERY request — so the page never
+	 * remounted the mirror, and the second surface's bytes were written into the first one's
+	 * grid. Measured then: a 1-line surface captured after an 8-line one came back as both
+	 * (212 rows = 192 + 20), a repeat capture appended again (232), and three different
+	 * surfaces returned byte-identical frames.
+	 */
+	const root = harness.createRoot(document.getElementById("root"));
+	const feed = renderFeed(root);
+
+	feed(1, "FIRST-SURFACE-TEXT\n");
+	await settle(60);
+	const first = __terminals.filter((t) => !t.wasDisposed).at(-1);
+	assert.equal(
+		written(first),
+		"FIRST-SURFACE-TEXT\n",
+		"the first feed paints its record",
+	);
+
+	feed(2, "SECOND-SURFACE-TEXT\n");
+	await settle(60);
+	const second = __terminals.filter((t) => !t.wasDisposed).at(-1);
+	assert.notEqual(second, first, "a new feed mounts its own terminal");
+	assert.equal(
+		written(second),
+		"SECOND-SURFACE-TEXT\n",
+		"and paints its own record rather than appending to the previous one's",
+	);
+	root.unmount();
+});
+
+test("a re-feed under the same key still clears first: one record, never a union (Q-11)", async () => {
+	/*
+	 * The other half, and the half that holds when a caller forgets the key: the mirror
+	 * resets its buffer at the head of every feed. Without this the key would be the ONLY
+	 * thing standing between a reconstruction and a union of two records, and this round is
+	 * what showed how easily that is forgotten.
+	 */
+	const root = harness.createRoot(document.getElementById("root"));
+	const feed = renderFeed(root);
+
+	feed("same", "FIRST\n");
+	await settle(60);
+	const terminal = __terminals.filter((t) => !t.wasDisposed).at(-1);
+
+	feed("same", "SECOND\n");
+	await settle(60);
+	assert.equal(
+		terminal,
+		__terminals.filter((t) => !t.wasDisposed).at(-1),
+		"the same key reuses the terminal, which is what makes this the reset's own cell",
+	);
+	assert.equal(written(terminal), "SECOND\n");
+	assert.ok(
+		terminal.resets >= 1,
+		"and the buffer was cleared before the write",
+	);
+	root.unmount();
+});

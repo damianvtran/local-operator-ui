@@ -832,6 +832,75 @@ async function waitForConsolePane(timeoutMs = bounded(null, 60_000)) {
 	}
 }
 
+/** The console trigger's centre, or `null` while the app has not painted it. */
+const TRIGGER_BOX = `(() => {
+	const el = document.querySelector('[data-tour-tag="console-pane-trigger"]');
+	if (!el) return null;
+	const box = el.getBoundingClientRect();
+	if (box.width < 1 || box.height < 1) return null;
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2, box: { x: box.x, y: box.y, width: box.width, height: box.height } };
+})()`;
+
+/**
+ * Give the app a conversation of its OWN, then WAIT for its console trigger (Q-10).
+ *
+ * Two things this replaced, and QA round 3 measured both. The rig used to rely on whatever
+ * conversation happened to be in the profile — a run in isolation found an empty session
+ * store, the "not paired" banner and no trigger, and the three Q-5 cells failed with it, so
+ * the rig's claim was only reproducible when some other state was present. And it read the
+ * trigger exactly ONCE, which turns any slow paint into a failed cell.
+ *
+ * So: the app's own persisted `canonical-sessions-storage` is seeded with the conversation
+ * this rig's console belongs to (the same way a returning profile carries one), the renderer
+ * reloads, and the trigger is POLLED for. The seed is registered on the SAME CDP session that
+ * performs the reload, because `Page.addScriptToEvaluateOnNewDocument` lives only as long as
+ * the connection that registered it — a per-call helper dropped it before the reload could
+ * use it, which is a mistake this file has now made once and states.
+ *
+ * Returns the trigger's box, or the failure diagnostic when the bound expires.
+ */
+async function mountConversation(timeoutMs) {
+	return withRendererSession(async (call) => {
+		const evaluate = async (expression) => {
+			const result = await call("Runtime.evaluate", {
+				expression,
+				awaitPromise: true,
+				returnByValue: true,
+			});
+			if (result?.exceptionDetails) return null;
+			return result?.result?.value;
+		};
+		await call("Page.enable", {});
+		await call("Page.addScriptToEvaluateOnNewDocument", {
+			source: `try { window.localStorage.setItem("canonical-sessions-storage", ${JSON.stringify(
+				JSON.stringify({
+					state: { activeSessionId: SESSION, activeDraftKey: null },
+					version: 0,
+				}),
+			)}); } catch (error) {}`,
+		});
+		await call("Page.reload", { ignoreCache: false });
+		const started = Date.now();
+		for (;;) {
+			const box = await evaluate(TRIGGER_BOX).catch(() => null);
+			if (box) return box;
+			if (Date.now() - started > timeoutMs) {
+				return await evaluate(
+					`(() => ({
+						failed: true,
+						hash: location.hash,
+						app: document.getElementById('app')?.childElementCount ?? 0,
+						trigger: Boolean(document.querySelector('[data-tour-tag="console-pane-trigger"]')),
+						stored: (window.localStorage.getItem('canonical-sessions-storage') || '').slice(0, 200),
+						main: (document.querySelector('main')?.innerText || '').slice(0, 200),
+					}))()`,
+				).catch((error) => ({ failed: true, diagnostic: String(error) }));
+			}
+			await sleep(250);
+		}
+	});
+}
+
 /**
  * A REAL PRESS at a page coordinate, through Chromium's own input pipeline.
  *
@@ -1316,19 +1385,18 @@ async function main() {
 	 * surface a pane already shows (it is `host.setDisplayed`, main's half), so a rig that
 	 * called it and then photographed the window would be photographing a pane that was
 	 * never mounted — which is precisely the hole Q-5 found in the old cell.
+	 *
+	 * The conversation is this rig's OWN (Q-10, `mountConversation`) and the trigger is waited
+	 * for rather than sampled once, so a run from a clean profile is the same run as one in a
+	 * profile that happens to carry a conversation.
 	 */
-	const triggerAt = await rendererEvaluate(
-		`(() => {
-			const el = document.querySelector('[data-tour-tag="console-pane-trigger"]');
-			if (!el) return null;
-			const box = el.getBoundingClientRect();
-			if (box.width < 1 || box.height < 1) return null;
-			return { x: box.x + box.width / 2, y: box.y + box.height / 2, box: { x: box.x, y: box.y, width: box.width, height: box.height } };
-		})()`,
-	);
+	// A FLOOR OF 30 s REGARDLESS OF `--wait-ms`: this wait is a boot plus a navigation
+	// rather than a poll of something already up, and a small `--wait-ms` (QA's 20 s, which
+	// found this) would otherwise starve the one step that depends on the app having painted.
+	const triggerAt = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
 	check(
-		"the console trigger is on screen in a conversation's header (Q-5)",
-		triggerAt !== null,
+		"the console trigger is on screen in a conversation's header (Q-5, Q-10)",
+		triggerAt !== null && triggerAt.failed !== true,
 		triggerAt,
 	);
 	if (triggerAt) {
@@ -1512,6 +1580,80 @@ async function main() {
 			displayedGrid: { cols: shot.cols, rows: shot.rows },
 			bytes: offscreenPng.length,
 		},
+	);
+
+	/*
+	 * A FEED IS A FUNCTION OF ONE RECORD (Q-11), and this is the cell an agent's own
+	 * evidence depends on: `console_screenshot` is how an agent looks at a TUI, so a frame
+	 * that is a union of two surfaces — or the previous surface's content — is worse than
+	 * no evidence at all.
+	 *
+	 * What the offscreen path did before this round: it fed `nonce: attempt` (`1` on the
+	 * first attempt of every request), the page keyed the mirror on that number, so a second
+	 * request never remounted it and the new bytes were written into the old terminal. QA
+	 * measured the result — a 1-line surface captured after an 8-line one came back as both
+	 * (212 rows = 192 + 20), a repeat capture appended again (232), and three different
+	 * surfaces, one of them with an empty record, returned BYTE-IDENTICAL frames.
+	 *
+	 * Three surfaces, four captures: DIFFERENT records give different frames, the SAME
+	 * record gives the SAME frame, and an empty record is its own frame rather than a copy
+	 * of somebody else's.
+	 */
+	const surfaceWith = async (marker) => {
+		const created = await rpcOk(state, "console_create", {
+			session_id: SESSION,
+			command: "/bin/sh",
+			args: ["-c", marker ? `printf '${marker}\n'` : "sleep 0.3"],
+			cols: 100,
+			rows: 30,
+			reveal: "none",
+		});
+		const surfaceId = created.surface;
+		if (marker) await readUntil(state, surfaceId, marker, 20_000);
+		else await sleep(600);
+		return surfaceId;
+	};
+	const offscreenSha = async (surfaceId) => {
+		const captured = await rpcOk(state, "console_screenshot", {
+			surface: surfaceId,
+		});
+		const bytes = Buffer.from(captured.image_base64, "base64");
+		return {
+			sha: createHash("sha256").update(bytes).digest("hex"),
+			bytes: bytes.length,
+			rendered: captured.rendered,
+			attempts: captured.attempts,
+		};
+	};
+	const alphaSurface = await surfaceWith(`Q11-ALPHA-${process.pid}`);
+	const betaSurface = await surfaceWith(`Q11-BETA-${process.pid}`);
+	const emptySurface = await surfaceWith("");
+	const alpha1 = await offscreenSha(alphaSurface);
+	const beta = await offscreenSha(betaSurface);
+	const alpha2 = await offscreenSha(alphaSurface);
+	const empty = await offscreenSha(emptySurface);
+	record("four captures across three surfaces (Q-11)", {
+		alpha1,
+		beta,
+		alpha2,
+		empty,
+	});
+	check(
+		"two surfaces with different records give different frames (Q-11)",
+		alpha1.sha !== beta.sha &&
+			alpha1.rendered === "offscreen" &&
+			beta.rendered === "offscreen",
+		{ alpha1, beta },
+	);
+	check(
+		"the SAME record captured twice gives the SAME frame (Q-11)",
+		alpha2.sha === alpha1.sha && alpha2.bytes === alpha1.bytes,
+		{ alpha1, alpha2 },
+	);
+	check(
+		"an empty record is its own frame, not another surface's (Q-11)",
+		empty.sha !== alpha1.sha && empty.sha !== beta.sha,
+		{ empty, alphaBytes: alpha1.bytes, betaBytes: beta.bytes },
 	);
 
 	// ---- the grid broadcast (§8.2 step 2(c)) -------------------------------

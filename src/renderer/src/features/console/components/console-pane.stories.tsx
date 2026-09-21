@@ -300,6 +300,47 @@ export const Populated: Story = {
 	render: () => <Frame surfaces={[surface({ surface: "con:1:7f3a" })]} />,
 };
 
+/**
+ * A SELECTION, PAINTED (design round 4, D21).
+ *
+ * The selection became load-bearing this round — it was measured at 1.11:1 and is now the
+ * accent with `onAccent` ink, asserted by `check-themes`' own row — and a role that is
+ * measured but never SEEN is exactly the gap the design round found: no story state, no
+ * proof cell, no frame anywhere in the set showed a selected run of text. This story fixes
+ * that by making one.
+ *
+ * The drag is real DOM input on the real terminal (the Storybook browser runs the shipped
+ * mirror and the shipped renderer), and the assertion is that a selection layer EXISTS, so a
+ * frame without a selection is a failed story rather than a quiet picture of nothing.
+ */
+const paintSelection = (canvasElement: HTMLElement) => {
+	const screen = canvasElement.querySelector<HTMLElement>(".xterm-screen");
+	// The third painted row, which is `SAMPLE`'s ANSI row rather than the title.
+	const row = canvasElement.querySelector<HTMLElement>(
+		".xterm-rows > div:nth-child(3)",
+	);
+	if (!screen || !row) return false;
+	const box = row.getBoundingClientRect();
+	if (box.width < 40) return false;
+	const y = box.top + box.height / 2;
+	const from = box.left + 4;
+	const to = box.left + Math.min(box.width - 4, 260);
+	const fire = (type: string, target: EventTarget, x: number) =>
+		target.dispatchEvent(
+			new MouseEvent(type, {
+				bubbles: true,
+				cancelable: true,
+				clientX: x,
+				clientY: y,
+				buttons: type === "mouseup" ? 0 : 1,
+			}),
+		);
+	fire("mousedown", screen, from);
+	fire("mousemove", document, to);
+	fire("mouseup", document, to);
+	return true;
+};
+
 /** The lens with more than one surface, one of them opened by an agent: the
  * provenance marker (§6.5) and the recall case (§6.2) in one frame. */
 export const TwoSurfaces: Story = {
@@ -319,6 +360,30 @@ export const TwoSurfaces: Story = {
 			]}
 		/>
 	),
+};
+
+/** The selection's own frame, in every theme: a drag over the third painted row, with the
+ * selection layer asserted so a theme whose selection is invisible fails here rather than
+ * shipping a picture nobody looked at (D21). */
+export const Selected: Story = {
+	render: () => <Frame surfaces={[surface({ surface: "con:1:7f3a" })]} />,
+	play: async ({ canvasElement }) => {
+		// The mirror writes the record in its own effect, so the rows appear a tick after
+		// the render rather than with it.
+		let painted = false;
+		for (let i = 0; i < 60 && !painted; i++) {
+			painted = paintSelection(canvasElement);
+			if (!painted) await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+		if (!painted) throw new Error("the terminal never painted a row to select");
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		const layers = canvasElement.querySelectorAll(".xterm-selection div");
+		if (layers.length === 0) {
+			throw new Error(
+				"the drag painted no selection layer, so this frame would claim a selection it does not show",
+			);
+		}
+	},
 };
 
 /** No surface in this conversation yet: the `+` control is here as well as in the

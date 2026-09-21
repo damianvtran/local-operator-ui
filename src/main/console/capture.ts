@@ -267,6 +267,22 @@ export class ConsoleCaptureView {
 	private cellHeight = 16;
 
 	/**
+	 * THE FEED'S IDENTITY, and it is what makes the frame a function of the record (Q-11).
+	 *
+	 * The capture page remounts the mirror on this number, which is the whole of the
+	 * reconstruction's determinism: the page's terminal is built from a record, so a SECOND
+	 * feed must start from a fresh terminal rather than write into the first one's. A number
+	 * that identifies the ATTEMPT (`1`, then `2` on a retry) is not an identity across
+	 * requests — it repeats — so the page never remounted and the new bytes were appended to
+	 * the old grid. QA measured what that produced: a 1-line surface captured after an 8-line
+	 * one came back as both (212 rows = 192 + 20), a repeat capture appended again (232), and
+	 * three different surfaces — one of them with an empty record — returned BYTE-IDENTICAL
+	 * frames. Main is the only authority for a surface (§3(a)), and this counter is how the
+	 * mirror is told which one it is looking at.
+	 */
+	private feedSeq = 0;
+
+	/**
 	 * Feed one surface's record, wait for the page to paint, and photograph it.
 	 *
 	 * Two attempts at most, and the SECOND attempt re-feeds the same bytes rather
@@ -291,12 +307,14 @@ export class ConsoleCaptureView {
 		}
 		let last = { bytes: 0, renderer: "unknown" };
 		for (let attempt = 1; attempt <= 2; attempt++) {
+			// One number per FEED, not per attempt: see `feedSeq` above.
+			const nonce = (this.feedSeq += 1);
 			const settled = await waitForCapture(
 				contents,
 				"console-capture-settled",
 				() =>
 					contents.send("console-capture-feed", {
-						nonce: attempt,
+						nonce,
 						surface: request.surface,
 						cols: request.cols,
 						rows: request.rows,
@@ -321,7 +339,19 @@ export class ConsoleCaptureView {
 			const image = await contents.capturePage();
 			const png = image.toPNG();
 			last = { bytes: png.length, renderer };
-			if (hasTerminalContent(image.toBitmap())) {
+			/*
+			 * A ZERO-BYTE RECORD IS ACCEPTED WITHOUT THE CONTENT GUARD, because the guard is
+			 * about a failed PAINT and there is nothing here for a paint to be wrong about:
+			 * a surface that has emitted nothing has an empty terminal as its correct frame,
+			 * and `hasTerminalContent` cannot tell that frame from a stale one (a fresh
+			 * capture view and a stuck one both show the ground). Refusing it would make an
+			 * empty surface's screenshot a `capture_unavailable` — a finding of its own —
+			 * while the record's own emptiness is already the honest answer to "what is on
+			 * this screen". The guard still applies to every record with bytes in it, which
+			 * is where Q-6 and Q-7's cases live.
+			 */
+			const recordIsEmpty = request.bytes.length === 0;
+			if (recordIsEmpty || hasTerminalContent(image.toBitmap())) {
 				this.scheduleReap();
 				this.options.log(
 					`[console] captured surface ${request.surface} offscreen at ${request.cols}x${request.rows} (${renderer} renderer, ${png.length} B, attempt ${attempt})`,

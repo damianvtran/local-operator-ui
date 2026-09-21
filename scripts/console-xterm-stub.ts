@@ -95,6 +95,20 @@ export class Terminal {
 			typeof data === "string" ? new TextEncoder().encode(data) : data,
 		);
 	}
+
+	/**
+	 * xterm's own `reset()`, and it is recorded rather than a no-op because a test has
+	 * to be able to ask whether the buffer was cleared before bytes were written into
+	 * it: the mirror calls it at the head of every feed so a reconstruction is a
+	 * function of ONE record rather than a union of two (Q-11). `resets` counts the
+	 * calls, so a cell can assert the order — reset, then write — and not merely that
+	 * both happened.
+	 */
+	resets = 0;
+	reset(): void {
+		this.resets += 1;
+		this.written.length = 0;
+	}
 	resize(cols: number, rows: number): void {
 		this.cols = cols;
 		this.rows = rows;

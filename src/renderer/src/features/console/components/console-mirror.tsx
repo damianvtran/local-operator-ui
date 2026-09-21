@@ -251,10 +251,23 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	useEffect(() => {
 		if (!terminal) return;
 		if (bytes) {
-			// The capture path: the record's bytes, written once into a fresh mirror. A
-			// retry re-mounts this component (the capture page keys it on the feed's
-			// nonce), so the second attempt paints the same settled state rather than
-			// appending a second copy of the log to the first one's.
+			/*
+			 * A FEED IS A FRESH TERMINAL, and that is the invariant the whole offscreen
+			 * capture rests on (Q-11): the frame is a function of the record alone —
+			 * `(bytes, grid, theme, font, renderer)` — so bytes from one surface must
+			 * never land on a grid that already holds another's. `reset()` is the first
+			 * half of the guarantee and it is here rather than only in the caller,
+			 * because a caller that forgets to re-key this component would otherwise
+			 * append the new record to the old one and hand back a union of two surfaces
+			 * — which is exactly what shipped: measured, 212 rows for a 1-line surface
+			 * captured after an 8-line one, three different surfaces returning
+			 * byte-identical frames.
+			 *
+			 * The capture page also keys this component on the feed's own nonce, so a new
+			 * feed mounts a new terminal; this reset is the half that holds when the key
+			 * does not change.
+			 */
+			terminal.reset();
 			terminal.write(bytes);
 			settledRef.current?.(terminal);
 			return;
