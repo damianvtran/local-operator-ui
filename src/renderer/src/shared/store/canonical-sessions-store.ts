@@ -2572,26 +2572,53 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						...state.archiveFacts,
 						[sessionId]: { archived, at },
 					},
-					/*
-					 * A new press retires the refusal about the previous one: the sentence
-					 * in the register describes the last thing the user tried, and leaving a
-					 * stale one under a press that then succeeded is a failure notice for a
-					 * failure that is no longer the state of anything.
-					 */
-					archiveFailure:
-						state.archiveFailure?.sessionId === sessionId
-							? null
-							: state.archiveFailure,
 					sessions: state.sessions.map((row) =>
 						row.session_id === sessionId ? { ...row, archived } : row,
 					),
 				}));
+				/*
+				 * A PRESS DOES NOT RETIRE THE REFUSAL ABOUT ITS OWN CONVERSATION, and this is a
+				 * correction rather than a detail: the version that shipped cleared it here, and
+				 * the clear is what took the RETRY's own answer off the screen.
+				 *
+				 * The lane has ONE stable id for both of its messages (`ARCHIVE_TOAST_ID` in
+				 * `chat-sidebar.tsx`), so a refusal that follows a dismissal of that id within
+				 * sonner's own unmount window is merged into the entry that is being removed and
+				 * destroyed with it - measured against the installed sonner 2.0.3 in jsdom
+				 * (2026-09-21): created on the dismissed id, the toast is painted at +50ms and
+				 * gone by +600ms, while the same create 600ms later mounts normally. A fast
+				 * daemon answers the retry in 2-4ms, which is squarely inside that window, so the
+				 * clearing above left "Retry" doing nothing at all: the message was dismissed and
+				 * the refusal that replaced it never mounted (UX report round 1, U3).
+				 *
+				 * WHAT RETIRES IT INSTEAD, in this order: a refusal that lands replaces the one on
+				 * screen through the SAME id (sonner updates the mounted toast in place, which is
+				 * what one-message-at-a-time means here); an accepted archive supersedes it with
+				 * the offer (`offerArchiveUndo` in `archive-undo.ts`); an accepted unarchive has no
+				 * successor and clears it below; and any other press leaves it alone, because the
+				 * sentence describes the last answer to a press on that conversation rather than a
+				 * state the newer press has already settled.
+				 */
 				try {
 					await desktopResult<{ session_id: string; archived: boolean }>({
 						op: "sessions.archive",
 						sessionId,
 						archived,
 					});
+					/*
+					 * AN ACCEPTED WRITE RETIRES THE REFUSAL IT ANSWERS when nothing succeeds it.
+					 * The archive's successor is the offer, which clears it in the same update that
+					 * raises it (`offerArchiveUndo`); an unarchive has no successor at all - the row
+					 * coming back into the list is its own trace - so the stale sentence goes here,
+					 * and the panel's lane effect takes the toast down with it.
+					 */
+					if (!archived) {
+						set((state) =>
+							state.archiveFailure?.sessionId === sessionId
+								? { archiveFailure: null }
+								: state,
+						);
+					}
 					return true;
 				} catch (error) {
 					set((state) => {
@@ -2601,12 +2628,28 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * owns the row now, and reverting on the older one's failure would undo
 						 * the newer press - the failure of a request the user has already moved
 						 * on from is not a statement about what is on screen.
+						 *
+						 * THE REVERT IS WHAT IS CONDITIONAL, NOT THE REPORT. This guard used to
+						 * return the state untouched, which dropped the refusal with it - so a
+						 * write that really was refused was answered on screen only when no
+						 * catalogue answer had settled the fact first. Measured against the real
+						 * store (the fixture shape `scripts/session-archive-delete.test.mjs` uses,
+						 * 2026-09-21): press, then a page whose request STARTS after the press
+						 * answers before the write's rejection, and `archiveFailure` stays `null` -
+						 * the press silently does nothing, the one outcome the refusal exists to
+						 * prevent. The panel's list read is a 5s poll and every catalogue frame,
+						 * so that ordering is ordinary rather than exotic.
+						 *
+						 * The message is a fact about the press (the write was refused) while the
+						 * revert is a fact about the row, and the two have different owners: the
+						 * row belongs to the newest write, the sentence belongs to the last press
+						 * that was actually answered.
 						 */
-						if (state.archiveFacts[sessionId]?.at !== at) return state;
+						const superseded = state.archiveFacts[sessionId]?.at !== at;
 						const facts = { ...state.archiveFacts };
-						delete facts[sessionId];
+						if (!superseded) delete facts[sessionId];
 						return {
-							archiveFacts: facts,
+							archiveFacts: superseded ? state.archiveFacts : facts,
 							/*
 							 * The value the row carried BEFORE the press, not `!archived`: a press
 							 * is a desired state rather than a toggle, so the value to restore is
@@ -2614,9 +2657,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * has no row to restore, and dropping the fact is the whole revert
 							 * there - the row is rebuilt from the wire hit, which is what it read
 							 * before the press.
+							 *
+							 * AND ONLY AN UNSUPERSEDED PRESS REVERTS AT ALL: `superseded` is the
+							 * same flag the fact above was read with, so what a newer write put on
+							 * the row stands and this failure is reported without touching it.
 							 */
 							sessions:
-								previous === undefined
+								superseded || previous === undefined
 									? state.sessions
 									: state.sessions.map((row) =>
 											row.session_id === sessionId

@@ -107,11 +107,34 @@ export function offerArchiveUndo(input: {
 	archived: boolean;
 }): void {
 	const store = () => useCanonicalSessionsStore.getState();
-	store().setArchiveUndo({
-		sessionId: input.sessionId,
-		title: input.title,
-		archived: input.archived,
-	});
+	/*
+	 * ONE UPDATE RAISES THE OFFER AND RETIRES THE REFUSAL IT SUPERSEDES, and the two
+	 * halves are not separable without a defect.
+	 *
+	 * The lane draws one message under one stable id, so raising the offer is what
+	 * takes a refusal off the screen. Clearing the refusal in `setSessionArchived`
+	 * instead would leave a window in which the store holds neither message: the
+	 * panel's effect would dismiss the lane on that render and the offer's own toast
+	 * would then be created into the id's unmount window and destroyed with it -
+	 * the mechanism `canonical-sessions-store.ts` records beside its press (UX report
+	 * round 1, U3). Setting both in one `set` is what makes the replacement-
+	 * rather-than-dismissal property structural instead of a matter of render order.
+	 *
+	 * The refusal cleared is this conversation's own: a sentence about another row's
+	 * failed write is not superseded by this offer, and the panel's guard keeps the
+	 * two from fighting over the lane (the `laneMessageRef` in `chat-sidebar.tsx`).
+	 */
+	useCanonicalSessionsStore.setState((state) => ({
+		archiveUndo: {
+			sessionId: input.sessionId,
+			title: input.title,
+			archived: input.archived,
+		},
+		archiveFailure:
+			state.archiveFailure?.sessionId === input.sessionId
+				? null
+				: state.archiveFailure,
+	}));
 	let closed = false;
 	const stop = () => {
 		if (closed) return;

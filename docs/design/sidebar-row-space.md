@@ -274,27 +274,60 @@ The row's pointer channel becomes the app's own tooltip
 removed - one pointer surface, not two (a native tooltip appearing a second after
 a styled one is the bug this avoids).
 
-- **Trigger:** the same 400ms dwell as the pan, on the row's button; it opens on
-  keyboard focus as well (Radix does this), which is what makes it the keyboard's
-  channel for a clipped title. `skipDelayDuration` stays the provider's 300ms, so
-  moving between two rows does not re-wait.
+- **Trigger:** the ROW'S OWN BOX (`[data-session-row]`), not its button, and that is
+  a correctness requirement rather than wiring (agent review round 1, R-1's sibling
+  findings D1/U1/Q-1; QA Q-1). The row's `<button>` shrinks by exactly 56px when the
+  acts are revealed, and Radix measures `side="right"` from the trigger, so a flyout
+  anchored to the button began at 428 + 6 = **434** at the 280 panel - 50px inside the
+  row, covering its archive control (460..484) entirely and its pin (432..456) for 22 of
+  its 24px, at every width measured (240/278/279/280/360) and for as long as the pointer
+  rested on the control it was covering. Anchored to the row's box, which never shrinks,
+  the flyout's left edge is the row's right edge (484) plus the primitive's 6px
+  `sideOffset` = **490** at the 280 panel, against a panel whose outer edge is x 500.
+  The same 400ms dwell as the pan (`TOOLTIP_DELAY_MS`, imported rather than restated)
+  applies, and it opens on keyboard focus as well (Radix does this), which is what makes
+  it the keyboard's channel for a clipped title. `skipDelayDuration` stays the provider's
+  300ms, so moving between two rows does not re-wait.
+- **One row at a time, the row under the pointer (D2).** A flyout that is open describes
+  the row the pointer is inside - opening for the row's whole box, INCLUDING the acts -
+  and it closes when the pointer leaves the row and when focus leaves it (the row's own
+  `onBlur` keeps it open while focus moves between the row's own controls). The close on
+  leave is `disableHoverableContent`: by default Radix does NOT close on `pointerleave`
+  (it waits to see whether the pointer enters the content, which is how a hoverable panel
+  stays reachable), and every panel here is `pointer-events: none`, so the default left a
+  flyout painted after the pointer had gone - measured still drawn 2.5s after the pointer
+  left the row, and one committed frame carried another row's flyout, i.e. another row's
+  facts under the pointer. Radix closes any other open tooltip when one opens, so two
+  rows are never described at once.
 - **Content:** everything the native string carried, so nothing is lost with it -
   the full title (untruncated, wrapped, the primitive's own `max-w-64` = 256px),
   the binding (`· <agent or team>`), the row's status label, and the tail flags
   `, not sent yet`, `, unread`, `, archived`, plus the silent-remedy sentence. The
   `aria-describedby` that already names the remedy stays exactly as it is: it is
-  the keyboard/screen-reader channel and it does not move into a tooltip.
+  the keyboard/screen-reader channel and it does not move into a tooltip, and the key
+  is passed only on rows that have a remedy (present-but-`undefined` would override the
+  primitive's own description on every other row - R2).
 - **Placement:** `side="right"`, `align="start"`, `sideOffset` 6 (the primitive's
-  default). At the default width the panel's outer edge is x 500, so the flyout
-  begins at x 506 and grows into the chat column - which is how it satisfies the
-  brief's two constraints at once, and structurally rather than by trial:
-  **it cannot cover the acts**, because they live inside the row (x 440..492) and
-  the flyout starts outside the row's box; **it cannot cover the list below**,
-  because every row is inside x 228..492 and the flyout is not. This is the same
+  default). The flyout grows into the chat column from x 490, which is how it satisfies
+  the brief's two constraints at once, and structurally rather than by trial:
+  **it cannot cover the acts**, because they are the row's last 52px (432..484 at the 280
+  panel) and the flyout starts 6px outside the row's own box; **it cannot cover the list
+  below**, because every row is inside x 228..484 and the flyout is not. This is the same
   reasoning the primitive's own note reaches ("a side is a guess about what is
   nearby … a panel that cannot be clicked cannot swallow a click on ANY side"):
   the panel is `pointer-events-none`, so a flyout over the chat column cannot
   take a press meant for anything.
+- **The window's edges (D4):** `collisionPadding` of 8px. At the list's last row the
+  un-padded box measured **806..868.2 against an 868px viewport** - flush with the
+  window's bottom edge - and 8px keeps it wholly inside. Where a clamped flyout still
+  reaches over the composer's left margin (the composer's form starts at x 524, the
+  bottom row sits at y 828..860, and a 62px flyout for it cannot be clear of both), the
+  trade is that the flyout cannot take a press and the alternative is covering the list
+  and the acts. The same trade applies to nothing else: § 10's clearance proof is about
+  the TOAST, which is confined to the panel's column.
+- Rows whose title FITS get the same flyout - it is a replacement for the native
+  tooltip, not only an overflow affordance - and for those rows it is simply the
+  facts, with the title in full as its first line.
 - Rows whose title FITS get the same flyout - it is a replacement for the native
   tooltip, not only an overflow affordance - and for those rows it is simply the
   facts, with the title in full as its first line.
@@ -370,6 +403,18 @@ container-query test both read text that will no longer exist).
   its `aria-describedby`. The one fact that must not depend on hover - a row's pin
   state - is carried by `aria-pressed` on a mark that is drawn at rest on every
   pinned row (D4).
+- **A STATE CHANGE INSIDE THE ROW MUST NOT TAKE THE KEYBOARD'S PLACE AWAY (U2).**
+  Unpinning from the keyboard used to end with `aria-pressed true->false`, the pair
+  `display: none` and `focus: body`: the mark's own box leaves the layout when it is
+  unpinned, a `display: none` element cannot hold focus, so Chromium blurred it to
+  the document body, `group-focus-within` went false and the cluster stayed hidden -
+  self-sustaining, and a regression the `opacity`-based reveal could not have (a
+  reserved box can hold focus). The rule: a keyboard press that UNPINS returns focus
+  to the row's own button, which is displayed in both states. Focus stays inside the
+  row, the cluster stays revealed, and the next Tab reaches the pin's neighbour
+  rather than restarting from the top of the document. A POINTER press does not take
+  this path (`event.detail === 0` is the keyboard): moving focus into the row would
+  keep the cluster drawn by `group-focus-within` after the pointer had left.
 - **Focus-visible** is the app's existing `:focus-visible` outline, unchanged: the
   ring is drawn on the control the keyboard is on, and revealing the cluster is
   what makes the ring's target visible before it is focused. `data-chat-row`
@@ -413,13 +458,28 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   toast exactly where it is), with `position="bottom-left"` and an inline
   `position: absolute` - the same mechanism `themed-toast-container.tsx` already
   relies on for colour (sonner's stylesheet cannot beat an inline value) - so the
-  lane is the sidebar's own box rather than the viewport's corner. Sonner routes a
-  toast to the Toaster whose `position` matches it, and a toast with no `position`
-  still goes to the first-mounted (global) one, so nothing else moves. The offer
-  is `toast.info(..., { position: "bottom-left" })`.
+  lane is the sidebar's own box rather than the viewport's corner. THE `position`
+  IS NOT WHAT CONTAINS IT, and this paragraph used to say that it was: sonner
+  2.0.3 draws every mounted container's copy of every toast (the reading is
+  recorded in `styles/index.css` beside the two rules that narrow it), so what
+  confines the message to the panel is the app's own rule - the marker class these
+  two messages carry, scoped to `nav[aria-label="Chats"]`. The offer is
+  `toast.info(..., { position: "bottom-left" })` so nothing else changes, not
+  because the argument routes it.
 - **Width:** the lane's toasts are capped to the sidebar's content width
   (`--width: min(264px, 100% - 32px)`), so a long title wraps instead of running
   out of the column, which is also what keeps the disjointness above true.
+  **The offer's card is one line and its title is ellipsised in it** (design D3;
+  UX U5): at 216px of content box a 45-character title wrapped to three lines inside
+  its own quotation (`“Migration` / `checklist”` / `archived.`), and the card stood
+  80px tall - 134px for the longest fixture title - over the row it had just
+  archived. The ellipsis can only fall inside the quoted name; the full name is one
+  dwell away in the row's own flyout. **A refusal is deliberately still whole**: it
+  carries the daemon's own sentence about why the write was refused, and truncating
+  that would hide the reason the reader is being asked to retry. Its measured cost
+  is stated rather than left to be discovered - 216x206 at the 280 panel, nine
+  wrapped lines covering four rows and two section headers - and that is the trade
+  this design takes: a refusal that is readable beats a smaller one that is not.
 - **Duration:** 8000ms for the offer (sonner's 4000ms default is short for an
   Undo), 10000ms for a refusal, which carries its Retry.
 - **Dismissal:** the app's close button is already on (`toastOptions.closeButton`
@@ -428,17 +488,38 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   (`dismissToast` in `shared/utils/toast-manager.ts`, which exists for exactly
   this "an offer is only honest while the state it was taken from still holds"
   reason - the goal confirmation's U7).
-- **A second archive replaces the first.** One stable id per kind
-  (`archive-undo`, `archive-failure`) means sonner replaces rather than stacks,
-  which matches the store's single-value model (`archiveUndo`/`archiveFailure`).
-  The consequence is stated rather than hidden: only the most recent offer is
+- **ONE ID FOR BOTH MESSAGES, `ARCHIVE_TOAST_ID = "archive"`** - this section said
+  one id per kind (`archive-undo`, `archive-failure`) and the implementation
+  deliberately did not (agent review round 1, R-5; the id is what makes one message
+  at a time true, because the second message arrives as an UPDATE of the mounted
+  toast). A second archive therefore replaces the first rather than stacking, which
+  matches the store's single-value model (`archiveUndo`/`archiveFailure`). The
+  consequence is stated rather than hidden: only the most recent offer is
   pressable, and an older restore is still reachable where it always was - the
   row's own Unarchive control, the header's Archived pill, and `/unarchive`.
+  **Replacement is required, not merely tidier:** a message created on this id
+  inside sonner's own unmount window (a dismissal's `requestAnimationFrame` plus
+  its 200ms delay) is merged into the entry being removed and destroyed with it.
+  Measured three ways on 2026-09-21 (the running app: the retry's `dismissToast`
+  and its re-create 2-4ms apart, `showWarningToast` called, no toast element ever
+  mounted, lane empty at +2.5s; the installed sonner 2.0.3 in jsdom: created on a
+  dismissed id, painted at +50ms and gone by +600ms, while the same create 600ms
+  later mounts; the store: the write does set `archiveFailure`, so the effect ran).
+  Nothing in the lane dismisses a message it is about to replace: a refusal that
+  follows a refusal is an update, an accepted archive raises the offer in the same
+  update that clears the refusal (`offerArchiveUndo`), and only a message with no
+  successor is dismissed (an accepted unarchive).
 - **Retirement is unchanged.** The register's rule - the offer stands while the
   conversation still holds the state the offer was taken from
   (`undoOfferStands`) - is kept, implemented with `dismissToast(id)` the moment
   the client knows the state has moved. That is the same rule, in the mechanism
-  the toast lane already has for it.
+  the toast lane already has for it. **What retires a message is the LANE's own
+  record of what it is showing**, not a fact about the store (R-1): the store's
+  `archiveFailure` outlives its message (it is cleared only by an answer to a press
+  on that conversation), and gating the offer's retirement on it let one refused
+  archive disable retirement for the rest of the session - a still-pressable Undo
+  offering to re-archive a conversation the reader had just restored. Each message
+  retires only itself.
 - **Not in scope, named:** the pin's own failure line (`pinFailureLine`) is the
   same class of in-panel line and could move to the same lane; it belongs to the
   pin feature and is left alone here rather than changed in passing.
@@ -459,6 +540,21 @@ Every row on such a system pays 15px permanently - at the default width that is
 never re-truncates because a row was added or removed. The alternative (leave it)
 keeps those 15px and pays for them with a layout shift on exactly the flows this
 change is about. It is one class if the operator prefers the other trade.
+
+**What the reservation costs even where it was said to be free (design round 1,
+D5).** The earlier reading of this was that a machine on overlay scrollbars pays
+nothing, "the gutter is zero" - and the change's own measurement refutes it:
+`listGutter: {offsetWidth: 264, clientWidth: 256, reserved: 8}` in both
+`docs/evidence/sidebar-row-space/measurements/row-space-geometry-*-after.json`
+files, which is why EVERY title width in § 3 is asserted minus 8 rather than as
+written. The visible cost is a de-alignment the operator can see: a row is
+228..484 while the panel's content box is 228..492, so the selected ground and
+the section-header counts stop 8px short of the search field above them, and the
+rest title is 228 rather than the 236 this section's arithmetic promises (on
+always-on classic scrollbars, ~15px and 221). **The trade is kept**: 8px of a
+256px row is 3%, one re-truncation of every title on every archive is not, and
+the alignment is one class to revisit with the operator if the 8px edge reads
+worse in the frames than the re-truncation would.
 
 ## 12. Where this contradicts what the panel already states
 

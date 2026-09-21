@@ -301,8 +301,20 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	);
 	/*
 	 * AND THE RETIREMENT RULE IS THE LANE'S, not a second copy of it: the store clears
-	 * `archiveFailure` when a new press supersedes it, and the effect takes the toast
-	 * down through the app's own `dismissToast` the moment that happens.
+	 * `archiveFailure` when the write it describes is answered - an accepted unarchive
+	 * clears it in the store, an accepted archive is superseded by the offer that
+	 * `offerArchiveUndo` raises in the same update, and a new press leaves it alone -
+	 * and the effect takes the toast down through the app's own `dismissToast` the moment
+	 * that happens.
+	 *
+	 * A PRESS DELIBERATELY DOES NOT RETIRE IT (agent review round 1, R-1 and U3). What
+	 * retires a message is the lane's own record of what it is SHOWING (`laneMessageRef`),
+	 * not a fact about the store: `archiveFailure` outlives its message, so gating the
+	 * OFFER's retirement on it let one refused archive disable retirement for the rest of
+	 * the session - a still-pressable Undo over a conversation the reader had restored.
+	 * And the retry must not take its own message down either: a dismissal followed by a
+	 * create on the same id inside the library's unmount window destroys the message that
+	 * replaces it (the measurement is beside the Retry action).
 	 *
 	 * NOTHING IS DISMISSED ON MOUNT, which is why the effect opens with a ref rather
 	 * than going straight to `dismissToast` (agent review, the jsdom the sidebar's own
@@ -315,6 +327,22 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	assert.match(failure, /if \(previousFailureRef\.current === null\) return;/);
 	assert.match(failure, /if \(!archiveFailure\) \{/);
 	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
+	// The lane's own record, and the guard that reads it: a message retires only itself.
+	assert.match(failure, /if \(laneMessageRef\.current === "failure"\) \{/);
+	assert.equal(
+		failure.includes("if (!archiveUndo) dismissToast(ARCHIVE_TOAST_ID)"),
+		false,
+		"the refusal's retirement must ask the LANE what it is showing, not the store's other fact",
+	);
+	// The retry no longer dismisses its own message before re-sending (U3).
+	const retry = failure.slice(failure.indexOf('label: "Retry"'));
+	assert.equal(
+		retry
+			.slice(0, retry.indexOf("setSessionArchived"))
+			.includes("dismissToast"),
+		false,
+		"a retry that takes its own message down loses the refusal its answer re-creates",
+	);
 });
 
 test("the offer is drawn in the sidebar's own lane, mounted at the panel's root (design D11; agent review round 4, R4-1)", () => {

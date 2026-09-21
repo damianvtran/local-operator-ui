@@ -414,6 +414,42 @@ test("a refused press is reverted to the value the row carried, and says so once
 	assert.equal(state.archiveFailure.archived, true);
 });
 
+test("a refusal is reported even when a newer page has settled the write's fact", async () => {
+	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
+	/*
+	 * The write is slow and the page is not, and the page's request STARTS AFTER the
+	 * press - so its answer settles the press's fact before the rejection arrives, with
+	 * the row already back to the value the page carries. THE REVERT IS THEREFORE ALREADY
+	 * DONE, and the refusal must still be reported, because the write really was refused
+	 * and the press really did nothing (agent review round 1, R-1's family; QA round 1,
+	 * U3's store-side candidate). The panel's list read is a 5s poll and every catalogue
+	 * frame, so this ordering is ordinary rather than exotic.
+	 */
+	serve(async (request) => {
+		if (request.op === "sessions.archive") {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return refuse(409, "This conversation is in use by a running turn.");
+		}
+		return page([{ session_id: SESSION, title: "Kept", archived: false }]);
+	});
+	const press = store.getState().setSessionArchived(SESSION, true, "Kept");
+	// After the press, so the page outranks the write's own stamp...
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	await store.getState().fetchSessions();
+	const accepted = await press;
+	assert.equal(accepted, false, "the write was refused");
+	assert.deepEqual(
+		store.getState().archiveFailure,
+		{
+			sessionId: SESSION,
+			archived: true,
+			title: "Kept",
+			detail: "This conversation is in use by a running turn.",
+		},
+		"the refusal is a fact about the press, and it outlives the fact about the row",
+	);
+});
+
 test("a page in flight across a press cannot resurrect the row it archived", async () => {
 	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
 	let release;

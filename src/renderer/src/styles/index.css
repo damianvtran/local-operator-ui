@@ -568,3 +568,42 @@ nav[aria-label="Chats"]
 	[data-sonner-toast]:not(.lo-archive-toast) {
 	display: none;
 }
+
+/*
+ * THE OFFER'S CARD IS ONE LINE, AND THE TITLE IS ELLIPSISED IN IT.
+ *
+ * WHY: the offer reads `"<title>" archived.` and at the 280 panel the card has 216px of
+ * content box, so a 45-character title wrapped to three lines INSIDE its own quotation
+ * (`"Migration` / `checklist"` / `archived.`) - a sentence broken in the middle of the
+ * name it quotes - and the card stood 80px tall over 216 of the 256px of the very row it
+ * had just archived (design round 1, D3; UX U5, which measured 134px for the longer
+ * title). One line is the shape the row itself uses for a clipped title, the full name
+ * is one dwell away in the row's own flyout, and the sentence's verb is never the part
+ * that gets cut: the ellipsis can only fall inside the quoted name.
+ *
+ * `min-width: 0` ON THE CONTENT is load-bearing and not tidiness. The card is a flex row
+ * (`[data-styled="true"]`) whose items are the icon, this content box and the action, and
+ * a flex item's automatic minimum size is its min-content width - which, with the title
+ * on one line, is the whole title. Without the zero, the content box would refuse to
+ * shrink, the fixed `--width` would be overrun and the Undo would be pushed out of the
+ * card. With it, the title is the only thing that gives.
+ *
+ * THE REFUSAL IS DELIBERATELY NOT INCLUDED: it carries the daemon's own sentence about
+ * why the write was refused, and truncating that would hide the reason the reader is
+ * being asked to retry. Its height is the price of showing it whole, and it is stated as
+ * a trade in spec § 10 with the measurement (216x206 at the 280 panel).
+ */
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-content] {
+	min-width: 0;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-title] {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

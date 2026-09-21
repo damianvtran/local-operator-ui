@@ -2188,6 +2188,47 @@ async function sceneSessionArchive(cdp) {
 		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
 	});
 	/*
+	 * AND THE REFUSAL'S OWN RETRY RE-ASSERTS IT (UX report round 1, U3), which it did NOT:
+	 * the action fired, the message went away, and nothing replaced it - the lane empty at
+	 * +4.2s with the row still un-archived and the write still refused, in three runs and
+	 * both palettes. The cause was the lane's stable id plus a dismissal: the retry took
+	 * its own message down, the answer arrived in 2-4ms, and a create landing inside
+	 * sonner's unmount window is destroyed with the entry being removed (measured in the
+	 * running app, in the installed sonner 2.0.3, and in the store - the mechanism is
+	 * written out beside the Retry action and in the store's press).
+	 *
+	 * This is the field that would have caught it: the refusal must be on screen again
+	 * after the retry, with its own action still the element a press would reach.
+	 */
+	const retryPressedAt = Date.now();
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	let retried = null;
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		await wait(250);
+		retried = await cdp.evaluate(`(() => {
+			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			if (!toast) return { painted: false };
+			const r = toast.getBoundingClientRect();
+			const button = toast.querySelector("[data-button]");
+			if (!button) return { painted: r.width > 0, action: null };
+			const b = button.getBoundingClientRect();
+			return {
+				painted: r.width > 0 && getComputedStyle(toast).display !== "none",
+				text: (toast.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 48),
+				action: (button.textContent || "").trim(),
+				hitTest: document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2) === button,
+			};
+		})()`);
+		if (retried?.painted === true) break;
+	}
+	check(
+		"a refused retry puts the refusal back in the lane, with its Retry still pressable (UX round 1, U3)",
+		retried?.painted === true &&
+			retried?.action === "Retry" &&
+			retried?.hitTest === true,
+		`${Date.now() - retryPressedAt}ms after the retry: ${JSON.stringify(retried)}`,
+	);
+	/*
 	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).
 	 * This is the mode the REGISTER was absent from at `3e650f5f0`: it had been
 	 * re-parented into the entities region, and the assembly renders only the list
@@ -2357,6 +2398,50 @@ async function sceneSessionArchive(cdp) {
 		"the archive offer outlives the catalogue answers and is taken down by the lane's own duration",
 		clearance.timedOut === false && Date.now() - offerRaisedAt >= 6_000,
 		`the offer lived ${Date.now() - offerRaisedAt}ms from the press (the answers that mention the row arrive in 0.4-1.6s, the lane's duration is ${8_000}ms, and the wait for it to go began ${clearance.waitedMs}ms before it did); lane now ${JSON.stringify(laneAfter)} `,
+	);
+	/*
+	 * AND THE OTHER ARM OF THE SAME RULE, WHICH THE BRANCH HAD STOPPED OBSERVING (agent
+	 * review round 1, R-1). The check above is the offer's CEILING; the arm that says a
+	 * flyout has to go the moment the client knows the state it was taken from has moved
+	 * was observed nowhere after the scene was narrowed to accommodate it - and that is
+	 * how a defect shipped in which the offer's retirement was gated on the STORE's
+	 * `archiveFailure`, a value that outlives its own message: one refused archive (the
+	 * step above, on a different conversation) left a still-pressable "Undo" on screen
+	 * offering to re-archive a conversation the reader had just restored.
+	 *
+	 * This walks it: archive the open conversation again through the header's own menu,
+	 * then restore it from the header's own control, and the offer must be gone well inside
+	 * its 8s. It is a regression test for the defect rather than for the happy path, because
+	 * the refusal step above has already set `archiveFailure` in this very run.
+	 */
+	const restoreControl = "[data-session-archived-pill] ~ button";
+	await parkPointer(cdp);
+	await clickAt(cdp, restoreControl);
+	await wait(600);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-archive-action]");
+	await wait(700);
+	const raisedAgain = await verb(cdp, "measure", SIDEBAR_TOAST);
+	check(
+		"the second archive of the open conversation raises the offer again",
+		raisedAgain.inViewport === true,
+		JSON.stringify(raisedAgain),
+	);
+	const stateChangedAt = Date.now();
+	await clickAt(cdp, restoreControl);
+	let goneByStateChange = null;
+	for (let attempt = 0; attempt < 24; attempt += 1) {
+		await wait(250);
+		goneByStateChange = await cdp.evaluate(
+			`(() => { const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)}); if (!toast) return { painted: false }; const r = toast.getBoundingClientRect(); return { painted: r.width > 0 && getComputedStyle(toast).display !== "none" }; })()`,
+		);
+		if (goneByStateChange?.painted === false) break;
+	}
+	check(
+		"the offer is retired by the STATE CHANGE rather than by its ceiling: restoring the conversation takes it down well inside the offer's own 8s (R-1)",
+		goneByStateChange?.painted === false && Date.now() - stateChangedAt < 6_000,
+		`${Date.now() - stateChangedAt}ms after the restore, against the offer's own 8000ms ceiling: ${JSON.stringify(goneByStateChange)}`,
 	);
 	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
 
@@ -2849,6 +2934,34 @@ function rowSpaceGeometry(cdp, ids) {
 			},
 			panel: box(panel),
 			panelPadding: panel ? getComputedStyle(panel).padding : null,
+			/*
+			 * THE FLYOUT, WHICH NOTHING HERE MEASURED BEFORE and which the scene therefore
+			 * could not fail on (design round 1, D2: two committed frames carried ANOTHER
+			 * row's flyout while the pointer was elsewhere, and no field covered it).
+			 *
+			 * Selected by the app's own hook on the primitive's panel ("data-lo-tooltip-panel",
+			 * which "tooltip.tsx" states is there for exactly this), restricted to the one
+			 * the primitive reports as OPEN - Radix leaves the closed ones mounted. The
+			 * title is read off the panel's FIRST line, which is the full title the row's own
+			 * clip box cannot show: comparing it against the hovered row's own "[data-session-title]"
+			 * is what makes "this flyout is about THAT row" a reading rather than an assumption.
+			 */
+			flyout: (() => {
+				const open = Array.from(document.querySelectorAll('[data-lo-tooltip-panel]')).find((node) => {
+					const state = node.getAttribute('data-state');
+					return (state === 'delayed-open' || state === 'instant-open') && node.getBoundingClientRect().width > 0;
+				});
+				if (!open) return null;
+				const line = open.querySelector('span');
+				const r = open.getBoundingClientRect();
+				return {
+					...box(open),
+					state: open.getAttribute('data-state'),
+					title: line ? (line.textContent || '').trim() : null,
+					text: (open.textContent || '').replace(/\\s+/g, ' ').trim(),
+					fitsViewport: r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight,
+				};
+			})(),
 			offer: {
 				lane: box(lane),
 				toast: box(toast),
@@ -3191,6 +3304,14 @@ async function sceneRowSpace(cdp) {
 	await parkPointer(cdp);
 	await wait(200);
 	geometry["pan-swept-280"] = await rowSpaceGeometry(cdp, IDS);
+	/*
+	 * AND THE FLYOUT IS GONE ONCE THE POINTER HAS GONE, read after the pointer has been
+	 * parked well off the panel and with room for the primitive to unmount: the D2 defect
+	 * was a flyout still painted 2.5s later, describing a row the pointer had left.
+	 */
+	await parkPointer(cdp);
+	await wait(600);
+	geometry["flyout-closed-280"] = await rowSpaceGeometry(cdp, IDS);
 
 	/*
 	 * THE OFFER, through a real press. The row has to be under the pointer for its
@@ -3538,6 +3659,136 @@ async function sceneRowSpace(cdp) {
 					frame.viewport.width * frame.viewport.devicePixelRatio,
 		),
 		frames.map((frame) => `${frame.label}: ${frame.bytes}B`).join(" | "),
+	);
+
+	/*
+	 * THE FLYOUT, WHICH THE SCENE COULD NOT FAIL ON BEFORE (design round 1, D2; UX U1;
+	 * QA Q-1). Three properties, each one a defect that shipped:
+	 *
+	 *  - IT IS THERE, on a row under the pointer whose title fits as well as on one that
+	 *    overflows (`hover-short-280` used not to carry one at all, while
+	 *    `hover-current-280` did - the same build, two frames, and no field to tell them
+	 *    apart);
+	 *  - IT IS ABOUT **THAT** ROW: its first line is the hovered row's own full title;
+	 *  - IT CANNOT COVER THE ROW'S ACTS: its left edge is at the row's own right edge or
+	 *    further right, which is the invariant the old comment claimed and the old anchor
+	 *    broke by 50px (the flyout's left edge used to be computed from the row's BUTTON,
+	 *    which shrinks by 56px under the pointer - 434 against a row ending at 484).
+	 *
+	 * The four hovered states are the ones the committed frames carry, including the two
+	 * that shipped another row's facts.
+	 */
+	const hoveredStates = [
+		...WIDTHS.map((width) => ({ state: `hover-long-${width}`, id: UNPINNED })),
+		{ state: "hover-pinned-280", id: PINNED },
+		{ state: "hover-short-280", id: SHORT },
+		{ state: "hover-current-280", id: CURRENT },
+	];
+	const hoveredFlyout = ({ state, id }) => {
+		const reading = geometry[state];
+		const row = (reading?.rows ?? []).find((entry) => entry.id === id) ?? null;
+		return { flyout: reading?.flyout ?? null, row };
+	};
+	check(
+		"every hovered row carries a flyout of its own - the row under the pointer, whose facts it describes, clear of that row's own acts",
+		hoveredStates.every(({ state, id }) => {
+			const { flyout, row } = hoveredFlyout({ state, id });
+			return (
+				flyout !== null &&
+				row !== null &&
+				flyout.title === (row.title?.text ?? null) &&
+				row.row !== null &&
+				flyout.left >= row.row.right &&
+				(row.pin === null || flyout.left >= row.pin.right) &&
+				(row.archive === null || flyout.left >= row.archive.right) &&
+				flyout.fitsViewport === true
+			);
+		}),
+		JSON.stringify(
+			hoveredStates.map(({ state, id }) => {
+				const { flyout, row } = hoveredFlyout({ state, id });
+				return {
+					state,
+					id,
+					flyout:
+						flyout === null
+							? null
+							: {
+									left: flyout.left,
+									title: flyout.title,
+									fits: flyout.fitsViewport,
+								},
+					rowRight: row?.row?.right ?? null,
+					rowTitle: row?.title?.text ?? null,
+					actsRight: row?.archive?.right ?? row?.pin?.right ?? null,
+				};
+			}),
+		),
+	);
+	check(
+		"and no flyout outlives the pointer: with it parked off the panel, the lane of tooltips is empty (the D2 failure was one still painted 2.5s later)",
+		geometry["flyout-closed-280"]?.flyout === null,
+		JSON.stringify(geometry["flyout-closed-280"]?.flyout ?? null),
+	);
+
+	/*
+	 * THE KEYBOARD'S UNPIN, WALKED RATHER THAN REASONED ABOUT (UX report round 1, U2).
+	 *
+	 * Unpinning used to end at `aria-pressed true->false`, the pair `display: none` and
+	 * `focus: body`: the mark's box leaves the layout when it is unpinned, a
+	 * `display: none` element cannot hold focus, so Chromium blurred it to the document
+	 * body, `group-focus-within` went false and the cluster stayed hidden. The fix
+	 * returns focus to the row's own button, and this walks the exact path the finding
+	 * describes: focus the row's button, Tab onto its pin, Enter.
+	 *
+	 * Read last, because it changes the row's state: everything photographed and asserted
+	 * above is already on disk by the time this runs.
+	 */
+	await parkPointer(cdp);
+	await wait(200);
+	const seededFocus = await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const button = row && row.querySelector('[data-chat-row]'); if (!button) return null; button.focus(); return document.activeElement === button; })()`,
+	);
+	check(
+		"the pinned row's own button can hold focus, which is where the keyboard walk starts",
+		seededFocus === true,
+		String(seededFocus),
+	);
+	await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+	await wait(200);
+	const onThePin = await cdp.evaluate(
+		`(() => { const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null }; })()`,
+	);
+	check(
+		"one Tab from the row's button lands on its pin, drawn for focus alone",
+		typeof onThePin.label === "string" &&
+			onThePin.label.startsWith("Unpin") &&
+			onThePin.pressed === "true",
+		JSON.stringify(onThePin),
+	);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	await wait(500);
+	geometry["keyboard-unpin-280"] = await rowSpaceGeometry(cdp, IDS);
+	const afterUnpin = await cdp.evaluate(
+		`(() => {
+			const row = document.querySelector('[data-session-row="${PINNED}"]');
+			const pin = row ? row.querySelector('[data-session-pin]') : null;
+			const pair = row ? row.querySelector('[data-session-control-pair]') : null;
+			const active = document.activeElement;
+			return {
+				pressed: pin ? pin.getAttribute('aria-pressed') : null,
+				pairDisplay: pair ? getComputedStyle(pair).display : null,
+				focusInsideRow: !!(row && active && row.contains(active)),
+				activeTag: active ? active.tagName : null,
+			};
+		})()`,
+	);
+	check(
+		"unpinning from the keyboard flips the state and keeps the row's place: the pair stays displayed and focus stays inside the row (U2)",
+		afterUnpin.pressed === "false" &&
+			afterUnpin.pairDisplay === "flex" &&
+			afterUnpin.focusInsideRow === true,
+		JSON.stringify(afterUnpin),
 	);
 
 	const geometryPath = join(
