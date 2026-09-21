@@ -3000,14 +3000,31 @@ async function sceneSessionArchive(cdp) {
 	 * (`{"offer":false,...}`) because the control it aimed at was never revealed - a scene
 	 * setup failure that then failed three checks about the app.
 	 */
-	for (
-		let attempt = 0;
-		attempt < 3 && (await drawn(`${undoRow} [data-session-archive]`)) !== true;
-		attempt += 1
-	) {
-		await hoverOver(cdp, `${undoRow} [data-chat-row]`);
-		await wait(450);
+	/*
+	 * THE ROW, NOT AN ELEMENT INSIDE IT. This used to hover `${undoRow} [data-chat-row]`, while
+	 * every step that successfully reveals a row hovers the ROW - and `[data-chat-row]` also
+	 * matches SECTION HEADINGS (the catalogue's own reading names one: `button "Agents"`), so
+	 * the pointer went wherever that selector found something first inside the row. Measured
+	 * 2026-09-21: the press at the end of it raised no offer at all (`{"offer":false}`) and
+	 * moved nothing, because the acts are `display`-switched and a press addressed at an
+	 * unrevealed control has a 0x0 box. The pointer now goes on the row, exactly as the ground
+	 * and acts steps above put it, and the reveal is ASSERTED before the press rather than
+	 * assumed - three checks about the app failed on this one scene-setup error.
+	 */
+	let undoRevealed = false;
+	for (let attempt = 0; attempt < 5; attempt += 1) {
+		await hoverOver(cdp, undoRow);
+		await wait(500);
+		if ((await drawn(`${undoRow} [data-session-archive]`)) === true) {
+			undoRevealed = true;
+			break;
+		}
 	}
+	check(
+		"the row this walk presses is revealed before it is pressed",
+		undoRevealed === true,
+		JSON.stringify({ row: REFUSED_UNDO_ID, revealed: undoRevealed }),
+	);
 	await clickAt(cdp, `${undoRow} [data-session-archive]`);
 	await wait(500);
 	/*
