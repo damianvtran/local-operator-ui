@@ -38,17 +38,34 @@ Measured, per window size, with the pane's own report read off the live DOM (the
 rect the pane reads immediately before it reports) and main's own grid read back
 through the app's console wire:
 
-| window | pane's box (reported) | reported cell | real row height | rows main derived | terminal painted | overflow |
+| window | pane's box (READ) | reported cell (INFERRED, below) | real row height (READ) | rows main derived (READ) | terminal painted (READ) | overflow |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1380x900 | 643x**791** | 15.6 | **17** | 50 | 50 x 17 = **850** | **+59 px** |
 | 1024x700 | 287x**591** | 15.6 | **17** | 37 | 37 x 17 = **629** | **+38 px** |
 | 1380x900 (fixed) | 643x**791** | **17** | 17 | 46 | 46 x 17 = **782** | **-9 px** |
 | 1024x700 (fixed) | 287x**591** | **17** | 17 | 34 | 34 x 17 = **578** | **-13 px** |
 
+FIVE OF THE SEVEN COLUMNS ARE READINGS AND TWO ARE RECOVERED, and the header says
+which is which rather than leaving a reader to quote an inference as a reading (QA
+round 1, Q-2). `reported contentRect` and `rowsTimesReportedCell` are `null` in
+`after-geometry.json` for the reason below, so the AFTER table's reported cell is
+derived from `rows` and `box` against the code's constant — reproducible, and checked
+by QA's audit script — but not measured off the wire.
+
 `floor(791 / 15.6) = 50` and `floor(791 / 17) = 46`: 59px is three and a half
 rows of terminal, painted outside the box. The font metrics behind the 17 are read
 from the same page, not assumed: `measureText("W")` at `13px "Geist Mono"` reports
 `fontBoundingBoxAscent 13` + `fontBoundingBoxDescent 4` at dpr 2.
+
+**THE FIT HOLDS TO WITHIN HALF A DEVICE PIXEL, NOT EXACTLY** (QA round 1, Q-1). The
+divisor main now uses is the pane's own `ceil(charHeight * dpr) / dpr` per row, while
+xterm rounds the row TOTAL — `round(device.cell.height * rows / dpr)` — so for an odd
+device-pixel total the painted height can exceed the box by up to **0.5 device px**
+(0.25 CSS px at dpr 2). At this face and ratio the two agree exactly: the sweep in
+`console-mirror.test.mjs` (every box at or above the grid floor, 60…1400 px) finds no
+over-paint, and QA's independent sweep over 1,341 boxes found a worst case of
+**+0.0 px**. Half a pixel clips no glyph — but that is the bound a later reader
+inherits, and "exactly" would be the round number this PR exists to remove.
 
 HOW EACH NUMBER WAS OBTAINED, because two of the four columns are read and two are
 pinned, and a reader is owed the difference:
@@ -105,8 +122,28 @@ What the decision is, and what it deliberately is not:
   of them is a user asking for a keyboard; the request is a consumed-once event
   that is excluded from the persisted preferences, so a launch cannot inherit one;
 - **a console that cannot exist here is told so, not given a shell** (`available:
-  false` answers `none`), and a create that fails lands on the pane's unavailable
-  state, which carries the error — it is not a dead pane.
+  false` answers `none`, which is main's §15 state and names main's own reason), and
+  **a create that fails gets its own state**, because those are different sentences
+  with opposite remedies: the console is available and the attempt failed, so the pane
+  says that, prints the host's own words on the machine line, and offers the same
+  action the header's `+` does. The first cut sent a refused create to the
+  unavailable state, whose copy says the console cannot exist in this app and advises
+  updating it — a claim about the app, above a machine line naming a pty failure
+  (design round 1, U2). The frame is `harness-open-failed.png` below.
+
+### The first tab's 22px is the rig's, not the product's (design round 1, D2)
+
+The design round measured the tab pill growing from 36 to 58 CSS px between the open
+frame and the settled frame and read it as the surface's icon resolving. It is a mark
+appearing, and the reason it appeared is this rig: the run feeds its input down the
+app's own console wire, so the surface's `last_actor` becomes `agent`, and a row whose
+actor is an agent carries the provenance marker of §6.5 — a `size-4` glyph plus the
+row's `gap-1.5`, which is **exactly the 22 px measured** (16 + 6). The product is
+behaving as designed; the two frames were photographed either side of a change the
+frame's own content caused. `after-geometry.json` carries the reading
+(`last_actor: "agent"`), so the pair is comparable only when the same input path
+produced both — which is why the harness frames below drive the pane's own path and
+carry no marker.
 
 ### A conversation that already had a surface (a separate run, same rig)
 
@@ -126,21 +163,114 @@ half of the decision `pickActiveSurface` already answers: a second surface would
 take the lens off the one the user was reading. (The rest of this set's runs start
 from a conversation with no surface, where the same press creates the first one.)
 
-## What these frames do not show
+## 3. The moments between the press and the terminal
+
+`after-1380x900-open.png` is settled: there is no frame in the committed set between a
+press on the trigger and a terminal being there, so the flow's central claim — the pane
+does not greet you with an empty state and a `New console` button — had no visual half
+(design round 1, D1). Three frames close that, one moment per page load, from
+`scripts/console-open-evidence.{html,tsx,css,vite.mjs}` — the pane's own states in a
+browser, **not** a second Electron boot: this round's host rule forbids taking a launch
+of its own (load ~100, ~1–4 GB free), and the pane's state machine is what is under the
+camera. QA's live launch is the app-level cell.
+
+```bash
+# from the worktree root; no pnpm, no app
+export npm_config_manage_package_manager_versions=false
+node node_modules/vite/bin/vite.js --config scripts/console-open-evidence.vite.mjs &
+# then, with the browser tool, at a viewport taller than 800px, one load per frame:
+#   http://localhost:5207/console-open-evidence.html?step=waiting   -> harness-open-waiting.png
+#   http://localhost:5207/console-open-evidence.html?step=created   -> harness-open-created.png
+#   http://localhost:5207/console-open-evidence.html?step=failed    -> harness-open-failed.png
+```
+
+**What I see in them, and what each one is evidence of:**
+
+- `harness-open-waiting.png` — the press has been made and the create is in flight. The
+  pane's body reads **"Starting a console"**. There is no "No console in this session"
+  and no `New console` button anywhere in the frame: this is the moment the operator's
+  report is about, and it is a wait rather than a greeting. (The state's sentence is
+  the `creating` variant added for design round 1, U4 — the pane is starting a shell,
+  not reading a listing.)
+- `harness-open-created.png` — the create answered. The header is `Console zsh`, the
+  surface strip holds one `zsh` row, and the terminal fills the pane's body with the
+  prompt at the top. One surface: the open created the first and did not make a second.
+- `harness-open-failed.png` — the create was refused. The pane says **"The console could
+  not start in this session"**, prints the host's own words verbatim on the machine line
+  (`… console_unavailable: the pty could not be started (spawn_failed)`), and offers
+  **Try again** — and the header's `+` is still there and still enabled, which is the two
+  controls agreeing rather than contradicting each other.
+
+The middle moment is the one the eye cannot sample at 60 Hz, so the transition is also
+pinned as a **commit record**: `scripts/console-pane-render.test.mjs` mounts the shipped
+pane against a scripted bridge and records the text of every React commit from the press
+onward, asserting that no commit contains the greeting and that the sequence is
+wait → starting → terminal. Its readings, in the pane's own words:
+
+```
+["Reading this session's console", "Starting a console", "zsh zsh"]
+```
+
+**The pins are falsifiable, and were falsified**: reverting the await on the read that
+follows a create (the pre-fix `void read()`) turns two of them red; clearing the open
+request as the create STARTS rather than when it answers turns the same two red; putting
+a refused create back on the read's `error` turns the U2 frame's assertion red. The
+transition test found one of those for itself: the first version of the fix cleared the
+request beside `setCreating(true)`, and a write to the preferences store inside that
+effect flushes a render of its own (the store is read through `useSyncExternalStore`,
+whose update is sync-lane) before the state update in the same tick applies — so one
+commit still had no surface, no `creating`, no loading and no request. A sampling
+instrument cannot see that; a commit record can, which is why the test counts commits.
+
+## 4. What these frames do not show
 
 - **The caret's own rendering.** A `headless` window is never shown and cannot be
   focused, so a text caret is not painted; the claim is made by the reading
   (`activeElement` = `xterm-helper-textarea`) and by the caret's *block* at the
   prompt in the AFTER frames, not by a blinking bar. Anything about focus rings is
   out of scope for this mode.
-- **A failed create, live.** No lever available to the rig makes main's
-  `console-create-surface` reject — a shell path that cannot exist produces an
-  ENDED surface rather than a failed create (measured: the pty is born and the
-  child exits at once, which is the pane's ended state), so that path is covered by
-  the decision table's `available: false` row and by the pane's existing error
-  branch rather than by a frame here.
+- **A failed create, live.** No lever available to the app's own rig makes main's
+  `console-create-surface` reject — a shell path that cannot exist produces an ENDED
+  surface rather than a failed create (measured: the pty is born and the child exits at
+  once, which is the pane's ended state), so the refusal is photographed by the harness
+  frame above (`harness-open-failed.png`) and asserted by a render test, not driven
+  through the application. QA round 1 reached the same conclusion independently.
+- **The caret inside the harness frames.** The harness's page reports no layout
+  viewport (`window.innerWidth` 0) and drops programmatic focus, so
+  `document.activeElement` stays `BODY` there whatever the code does — a reading that
+  is confounded, and recorded as confounded rather than put in a frame as if it meant
+  something. The caret half of item 2 is the LIVE evidence:
+  `document.activeElement = xterm-helper-textarea` after the same press, recorded in
+  `*-geometry.json`, and re-checked by QA's launch. What the harness does settle about
+  focus is the one thing a page can: `console-mirror.test.mjs` pins that a mount for a
+  surface nobody asked for cannot inherit the request, and that the app's own
+  `StrictMode` double mount (dev) does not spend it on the mount that is discarded —
+  with the acknowledgement applied synchronously, that test reads `focusCount 0`.
 - **The conversation's own content.** The run's backend is one this rig owns, with
   one empty conversation in it; nothing in these frames is operator data.
+
+## Where the design authority lives, and what is deferred
+
+The comments across `src/renderer/src/features/console` and `src/main/console` cite
+`docs/design/ui-console-tab.md` by section (§6.1, §8.2, §8.5, §15, …). That document
+is **not in this repository** and never was: `git log --all -- docs/design/ui-console-tab.md`
+is empty here because it lives in the Python repository beside this one, at
+`~/local-operator/docs/design/ui-console-tab.md` — verified present, §8.5 included
+("When the pane and the grid disagree": main holds the grid at its floor and the pane
+crops rather than reflowing below 40 columns). A citation a reviewer cannot open is a
+finding of its own (design round 1, D3); the files this round touches say where the
+document lives, and qualifying the remaining twenty headers is a mechanical change of
+its own rather than a ride-along here.
+
+**Deferred — the narrow pane's glyph crop (design round 1, D3).** At 287 px the grid is
+raised to `MIN_COLS = 40` and xterm paints 312 px into that box, so the 37th character
+is cut mid-stroke and an `O` can read as a `C`. This is **pre-existing** — the BEFORE
+record reports the same `cols 40` in the same 287 px box — and §8.5 decides the crop
+deliberately (a terminal reflowed below 40 columns is less useful than one you scroll),
+with one thing this pane does not yet have: §8.5 also asks for a horizontal
+**affordance** for the columns beyond the edge, and there is none. Adding it is a
+change to the pane's chrome rather than to its fit, so it is recorded here, deferred
+rather than silently fixed, for the design round to sequence.
 
 ## The run
 
