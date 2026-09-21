@@ -146,11 +146,26 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					</Button>
 				</div>
 			) : (
-				<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+				<ul
+					/*
+					 * A hook for a HARNESS rather than for the app, in the same family as
+					 * `[data-onboarding-modal]` in `onboarding-dialog.tsx`. The provider-setup
+					 * stories measure this element -- its container width, the column count the
+					 * browser resolved, and any scroll it carries -- and print the numbers
+					 * beside the frame. Nothing styles or sizes it.
+					 */
+					data-provider-grid=""
+					className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+				>
 					{filtered.map((provider) => {
 						const readiness = providerReadiness(provider);
 						return (
-							<li key={provider.id}>
+							/*
+							 * The row's own id, so a rig can point at ONE card: the promoted
+							 * card's hover and focus states are evidence a selector has to name,
+							 * not a position it has to count to.
+							 */
+							<li key={provider.id} data-provider-id={provider.id}>
 								<button
 									type="button"
 									onClick={() => setSelectedId(provider.id)}

@@ -3446,6 +3446,51 @@ export const STORIES = [
 	["onboarding-onboardingmodal--create-agent", 1280, 900],
 	["onboarding-onboardingmodal--congratulations", 1280, 900],
 
+	/*
+	 * Onboarding step 1 -- "Connect a provider" -- and the Settings column that
+	 * renders the same grid, from `provider-setup.stories.tsx`.
+	 *
+	 * WHY THESE EXIST BESIDE THE `onboarding-onboardingmodal--default` ROW ABOVE,
+	 * which is the same step: that story renders the flow with no backend, so its
+	 * grid is the loading branch, and the frames committed under it were taken
+	 * before the registry grid existed at all (they paint the "Choose your
+	 * setup" two-gate screen that #87 replaced). Neither could be used to judge
+	 * the screen this step actually shows, which is a grid of 18 registry rows.
+	 *
+	 * The widths are the CONTAINERS the grid is handed rather than the window,
+	 * because that is what decides its column count: 1000 puts the 896px Settings
+	 * column (`max-w-4xl`) at its real measure, 600 is below every width the app
+	 * can produce and shows the one-column floor, and the two `in-dialog` rows are
+	 * the app's default window and its 800px floor. `--themes=localOperator*` is
+	 * how a narrowed run is taken; the sweep covers all twelve.
+	 *
+	 * The two `dir` entries are the promoted card's hover and focus states, and
+	 * they are entries rather than stories because both are BROWSER state the rig
+	 * has to produce with real input: `hover` moves a real pointer and `tabTo`
+	 * presses real Tabs until the card holds focus, so the frame carries `:hover`
+	 * and `:focus-visible` as the product draws them. A story that set either one
+	 * in a class would photograph the story.
+	 */
+	["onboarding-providersetup--settings-column", 1000, 1100],
+	["onboarding-providersetup--short-registry", 1000, 700],
+	["onboarding-providersetup--search-active", 1000, 900],
+	["onboarding-providersetup--search-no-results", 1000, 760],
+	["onboarding-providersetup--narrow-column", 600, 1100],
+	["onboarding-providersetup--in-dialog", 1280, 900],
+	["onboarding-providersetup--in-dialog", 800, 900],
+	[
+		"onboarding-providersetup--settings-column",
+		1000,
+		1100,
+		{ dir: "card-hovered", hover: '[data-provider-id="radient"]' },
+	],
+	[
+		"onboarding-providersetup--settings-column",
+		1000,
+		1100,
+		{ dir: "card-focused", tabTo: '[data-provider-id="radient"]' },
+	],
+
 	/* 1380x800 is what the story declares and what the app window ships. */
 	["installer-installercontent--default", 1380, 800],
 	/* The transcript's top slot. Its whole claim is that it does not change
