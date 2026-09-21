@@ -1,8 +1,8 @@
 /**
  * The renderer's end of the machine-wide desktop feed.
  *
- * Three jobs, and every one of them is about REPLACING A TIMER rather than
- * adding one:
+ * Four jobs, and the first three have the same shape: each one REPLACES A TIMER
+ * rather than adding one.
  *
  * 1. **The unseen mark arrives on the event.** Each `attention` frame is merged
  *    into its catalogue row through the store's revision-guarded merge, so the
@@ -19,6 +19,14 @@
  *    instead of waiting up to the safety poll for a whole catalogue read. The
  *    frame is applied IN PLACE and leaves one value for two writers to disagree
  *    about, which is what the guard in the store's list merge settles.
+ * 4. **The authoring lists refresh on an invalidation that replaces NOTHING.**
+ *    `profiles.list`/`teams.list` have no poll to replace - `staleTime: 10_000`
+ *    is a freshness window refetched on mount and on window focus, not a
+ *    cadence - so the `authoring` frame is the only event-driven refresh those
+ *    two lists will ever have. It exists because the writer is usually an AGENT:
+ *    a team or profile created over there happens with no click in this window
+ *    and nothing for the renderer to invalidate a cache from, which is the
+ *    reported defect this frame removes.
  *
  * CAPABILITY-GATED BOTH WAYS, and the gate is deliberately about what this app
  * can DO, not only what the backend advertises: `features.desktop_feed` absent
@@ -52,6 +60,16 @@ export type DesktopFeedConnection = {
 	 * invalidation.
 	 */
 	catalogueRevision: number | null;
+	/**
+	 * The backend's AUTHORING revision as of the last `authoring` frame, or null
+	 * before the first one.
+	 *
+	 * Null is also the answer an older backend gives forever, which is what keeps
+	 * this capability-free: a consumer guards on `null` and a frame that never
+	 * arrives changes nothing. Consumed by the authoring queries themselves rather
+	 * than by the sidebar - see the fourth job above.
+	 */
+	authoringRevision: number | null;
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -61,6 +79,9 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		desktopFeatureEnabled(capabilities.data, "desktop_feed") && Boolean(native);
 	const [connected, setConnected] = useState(false);
 	const [catalogueRevision, setCatalogueRevision] = useState<number | null>(
+		null,
+	);
+	const [authoringRevision, setAuthoringRevision] = useState<number | null>(
 		null,
 	);
 
@@ -111,6 +132,20 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			}
 			if (frame.type === "catalogue") {
 				setCatalogueRevision(frame.payload.revision);
+				return;
+			}
+			/*
+			 * The authoring revision is EXPOSED, not acted on, for the same reason the
+			 * catalogue revision is: this hook is the transport, and what a revision
+			 * invalidates belongs to whoever owns the query keys. Here that is the
+			 * profile hooks themselves rather than the sidebar, because the sidebar is
+			 * route-scoped and `/agents` is the page these lists live on.
+			 *
+			 * Handed the revision verbatim, in the same branch shape as `catalogue`
+			 * above: a frame this build does not know falls through both.
+			 */
+			if (frame.type === "authoring") {
+				setAuthoringRevision(frame.payload.revision);
 			}
 			// `open`, `heartbeat` and `gap` carry transport state and nothing the
 			// renderer renders: the snapshot IS the first catalogue revision, and a
@@ -125,5 +160,10 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		};
 	}, [available, native]);
 
-	return { available, connected: available && connected, catalogueRevision };
+	return {
+		available,
+		connected: available && connected,
+		catalogueRevision,
+		authoringRevision,
+	};
 }
