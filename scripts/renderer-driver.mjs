@@ -3884,9 +3884,20 @@ async function sceneRowSpace(cdp) {
 	 * Unpinning used to end at `aria-pressed true->false`, the pair `display: none` and
 	 * `focus: body`: the mark's box leaves the layout when it is unpinned, a
 	 * `display: none` element cannot hold focus, so Chromium blurred it to the document
-	 * body, `group-focus-within` went false and the cluster stayed hidden. The fix
-	 * returns focus to the row's own button, and this walks the exact path the finding
-	 * describes: focus the row's button, Tab onto its pin, Enter.
+	 * body, `group-focus-within` went false and the cluster stayed hidden.
+	 *
+	 * THE FIX IS THE PANEL'S ROW-MOVE CORRECTION, and the first run of this walk is what
+	 * proved a hand-back written inside the handler cannot be it: unpinning re-renders the
+	 * row under a DIFFERENT section parent (`Pinned chats` -> `Active chats`/
+	 * `Previous chats`), so the element the handler holds is destroyed by the same commit
+	 * that moves the row. That run read `aria-pressed "false"` - the state moved - with
+	 * `pairDisplay "none"`, `focusInsideRow false` and `activeTag "BODY"`.
+	 * `rememberMovedRow(..., follow = event.detail === 0)` arms a correction that runs after
+	 * the commit, finds the row by id, and puts the caret on the mark when the mark is
+	 * DRAWN and on the row's own button when it is not.
+	 *
+	 * This walks the exact path the finding describes: focus the row's button, Tab onto its
+	 * pin, Enter.
 	 *
 	 * Read last, because it changes the row's state: everything photographed and asserted
 	 * above is already on disk by the time this runs.

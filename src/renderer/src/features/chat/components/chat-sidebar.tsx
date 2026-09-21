@@ -642,36 +642,6 @@ function focusRowAfterRemoval(pressed: HTMLElement): () => void {
  */
 const FLYOUT_COLLISION_PADDING = 8;
 
-/**
- * Where focus goes when a keyboard press UNPINS a row, and why it must go somewhere.
- *
- * The pin's box leaves the layout on unpin (that is the reveal change: `hidden` until the
- * pointer or the keyboard is inside the row), and a `display: none` element cannot hold
- * focus - Chromium blurs it to `document.body`, `group-focus-within` then evaluates false
- * and the cluster stays hidden, so the keyboard lost its place AND the acts it was
- * reaching for (UX report round 1, U2: `aria-pressed` flipped, the pair read `display:
- * none`, `focus: body`). The reserved `opacity-0` box this row used before the reveal
- * change could hold focus, which is why it is a regression rather than a new edge.
- *
- * Focus goes to the ROW'S OWN BUTTON, which is displayed in both states: focus stays
- * inside the row, so `group-focus-within` keeps the cluster drawn, the pressed state is
- * still on the mark, and the next Tab reaches the control beside it rather than
- * restarting from the top of the document.
- *
- * `event.detail === 0` IS THE KEYBOARD (a click synthesised from Enter or Space carries
- * no click count), the same discriminator both press guards use. A POINTER press must not
- * take this path: moving focus into the row would keep the cluster drawn by
- * `group-focus-within` after the pointer has left, i.e. acts on a row nobody is pointing
- * at.
- */
-function focusRowOnKeyboardUnpin(
-	event: ReactMouseEvent<HTMLButtonElement>,
-	wasPinned: boolean,
-): void {
-	if (event.detail !== 0 || !wasPinned) return;
-	event.currentTarget.closest<HTMLElement>("[data-chat-row]")?.focus();
-}
-
 export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
@@ -921,14 +891,39 @@ export function ChatSidebar({
 			else if (rowBox.bottom > listBox.bottom)
 				list.scrollTop += rowBox.bottom - listBox.bottom;
 			/*
-			 * `preventScroll`, which is the whole reason the correction above survives: a
-			 * plain `focus()` scrolls the element into view itself - measured as the region
-			 * snapping to 0 and the row landing 202 px above the line it was pressed on.
-			 * The correction is this effect's; focus only says where the caret is.
+			 * AND WHICH CONTROL TAKES THE CARET BACK DEPENDS ON WHERE THE ROW WENT (UX report
+			 * round 1, U2; measured 2026-09-21 by the `row-space` scene's keyboard walk, which is
+			 * the check this line exists for).
+			 *
+			 * The mark is the right target after a PIN: the row lands in `Pinned chats`, its pin
+			 * is drawn there, and focusing it keeps the cluster revealed. It is the WRONG target
+			 * after an UNPIN - the mark's box has left the layout (`hidden` until the pointer or
+			 * the keyboard is inside the row), and a `display: none` element cannot hold focus,
+			 * so this call did nothing at all: the caret fell to `document.body`,
+			 * `group-focus-within` went false and the acts the reader was reaching for vanished
+			 * with it (the reading was `aria-pressed "false"`, `pairDisplay "none"`,
+			 * `focusInsideRow false`, `activeTag "BODY"`). The row's own button is drawn in BOTH
+			 * states, so that is where focus goes when the mark is not drawn.
+			 *
+			 * THE TEST IS THE MARK'S OWN BOX, not its presence: the pin element is in the DOM
+			 * either way, and its computed `display` is its own value even inside a hidden
+			 * ancestor - the same lesson the scene's geometry reader records for the same reason
+			 * (only a box with pixels in it is drawn). The row also re-renders under a DIFFERENT
+			 * section parent when it moves, so the hand-back cannot be done at the press on the
+			 * old element: the row it belongs to is a new node by this point, which is why the
+			 * correction is the mechanism and a `focus()` in the handler is not.
+			 *
+			 * `preventScroll`, which is the whole reason the correction above survives: a plain
+			 * `focus()` scrolls the element into view itself - measured as the region snapping
+			 * to 0 and the row landing 202 px above the line it was pressed on. The correction
+			 * is this effect's; focus only says where the caret is.
 			 */
-			row
-				.querySelector<HTMLElement>("[data-session-pin]")
-				?.focus({ preventScroll: true });
+			const pin = row.querySelector<HTMLElement>("[data-session-pin]");
+			const target =
+				pin !== null && pin.getBoundingClientRect().width > 0
+					? pin
+					: row.querySelector<HTMLElement>("[data-chat-row]");
+			target?.focus({ preventScroll: true });
 		} else if (moved.anchorId !== null) {
 			const anchor = list.querySelector<HTMLElement>(
 				`[data-session-row="${moved.anchorId}"]`,
@@ -2187,11 +2182,18 @@ export function ChatSidebar({
 								updated_at: row.updated_at ?? undefined,
 							});
 							/*
-							 * UNPINNING TAKES THIS CONTROL'S BOX OUT OF THE LAYOUT (UX report round 1,
-							 * U2): `focusRowOnKeyboardUnpin` carries why the keyboard path has to hand
-							 * focus back to the row, and why the pointer path must not.
+							 * THE KEYBOARD'S CARET COMES BACK THROUGH THE CORRECTION ABOVE, not from
+							 * here (UX report round 1, U2). Unpinning takes this control's box out of
+							 * the layout and re-renders the row under a different section parent, so
+							 * the element this handler holds is gone by the time the row has moved -
+							 * a `focus()` on it cannot survive, and one on the NEW element cannot run
+							 * until the render that creates it. `rememberMovedRow(..., true, ...)`
+							 * already arms exactly that: the follow correction runs after the commit,
+							 * finds the row by id, and puts the caret on the mark when the mark is
+							 * drawn and on the row's own button when it is not. The pointer path
+							 * deliberately does not take focus (`follow` is false for it), because a
+							 * row revealed by the pointer has no keyboard place to keep.
 							 */
-							focusRowOnKeyboardUnpin(event, pinned);
 						}}
 						className={cn(
 							"size-6 shrink-0 items-center justify-center rounded-md",

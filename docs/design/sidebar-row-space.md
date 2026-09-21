@@ -406,12 +406,19 @@ container-query test both read text that will no longer exist).
   unpinned, a `display: none` element cannot hold focus, so Chromium blurred it to
   the document body, `group-focus-within` went false and the cluster stayed hidden -
   self-sustaining, and a regression the `opacity`-based reveal could not have (a
-  reserved box can hold focus). The rule: a keyboard press that UNPINS returns focus
-  to the row's own button, which is displayed in both states. Focus stays inside the
-  row, the cluster stays revealed, and the next Tab reaches the pin's neighbour
-  rather than restarting from the top of the document. A POINTER press does not take
-  this path (`event.detail === 0` is the keyboard): moving focus into the row would
-  keep the cluster drawn by `group-focus-within` after the pointer had left.
+  reserved box can hold focus). **The rule: a keyboard press that UNPINS puts focus back
+  inside the row, and where inside follows what is drawn** - the mark when the row is
+  pinned, the row's own button when it is not. It is the panel's row-move correction that
+  does it, not the press handler: unpinning re-renders the row under a different section
+  parent, so the element a handler holds is destroyed by the very commit that moves the
+  row. Measured on the first run of the `row-space` keyboard walk: the state moved
+  (`aria-pressed "false"`) while the reading stayed `pairDisplay "none"`,
+  `focusInsideRow false`, `activeTag "BODY"`, until the correction chose its target by
+  the mark's box rather than by its presence. Focus stays inside the row, the cluster
+  stays revealed, and the next Tab reaches the pin's neighbour rather than restarting
+  from the top of the document. A POINTER press does not take this path
+  (`event.detail === 0` is the keyboard): moving focus into the row would keep the cluster
+  drawn by `group-focus-within` after the pointer had left.
 - **Focus-visible** is the app's existing `:focus-visible` outline, unchanged: the
   ring is drawn on the control the keyboard is on, and revealing the cluster is
   what makes the ring's target visible before it is focused. `data-chat-row`
