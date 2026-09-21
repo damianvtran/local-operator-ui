@@ -307,7 +307,7 @@ export function effortLevel(
 }
 
 /**
- * The effort level's TITLE-CASED human form for a value slot.
+ * The effort LEVEL's title-cased human form for a value slot.
  *
  * The chip and the `/effort` picker print a level beside the model name, and
  * the model chip already reads `Auto` (not `auto`) after the router-name fix.
@@ -316,14 +316,21 @@ export function effortLevel(
  * cased alike. `Auto` in particular now names a real, SENT level on the
  * Radient router route, so it belongs beside `Claude Opus 5`, not `claude-opus-5`.
  *
+ * ONLY THE LEVELS ARE CASED. `effortState` also returns two STATE words that are
+ * not levels at all - `unknown` (a cold snapshot that has not reported yet) and
+ * `reasoning` (a reasoning model that exposes no rungs) - and they read the same
+ * way the rest of this file's prose reads: `Reasoning effort: unknown.` and
+ * `Reasoning effort: reasoning.` Title-casing those turns the aria sentence into
+ * nonsense (`Reasoning effort: Reasoning.`), so a word outside the level
+ * vocabulary passes through untouched rather than being cased by its first
+ * letter. The vocabulary is exactly what `/effort` accepts plus the `auto`
+ * sentinel, which is what makes the boundary the LEVEL rather than an arbitrary
+ * word list.
+ *
  * DISPLAY ONLY. The value this describes is unchanged: `reasoning_effort` goes
  * on the wire lowercase, the picker's `value` and its `current` comparison stay
  * the raw rung, and nothing MATCHES on this string. One owner for the casing,
  * so the chip and the picker cannot drift into casing the same word two ways.
- *
- * A word outside the vocabulary is title-cased by its first letter rather than
- * dropped: an owner may report a rung this file does not know, and the honest
- * render of an unknown level is the level, not a blank.
  */
 export function effortDisplay(level: string): string {
 	const trimmed = level.trim();
@@ -338,8 +345,9 @@ export function effortDisplay(level: string): string {
 		xhigh: "xHigh",
 		max: "Max",
 	};
-	const key = trimmed.toLowerCase();
-	return known[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
+	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
+	return known[trimmed.toLowerCase()] ?? trimmed;
 }
 
 export type EffortState = {

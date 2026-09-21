@@ -644,8 +644,13 @@ test("the effort VALUE is title-cased for display, and the raw level is untouche
 	assert.equal(effortDisplay("HIGH"), "High", "cased from any input case");
 	assert.equal(effortDisplay("none"), "None");
 	assert.equal(effortDisplay("xhigh"), "xHigh");
-	// A word this file does not know is still shown, not blanked.
-	assert.equal(effortDisplay("turbo"), "Turbo");
+	// STATE words are NOT levels: they pass through so the sentence stays
+	// `Reasoning effort: reasoning.` / `Reasoning effort: unknown.`
+	assert.equal(effortDisplay("reasoning"), "reasoning");
+	assert.equal(effortDisplay("unknown"), "unknown");
+	// A rung this file does not know is likewise left alone rather than cased
+	// into a name it is not.
+	assert.equal(effortDisplay("turbo"), "turbo");
 	assert.equal(effortDisplay(""), "");
 	// DISPLAY-ONLY: the value a consumer sends/compares stays lowercase, which
 	// is what makes casing at the render site safe rather than a wire change.

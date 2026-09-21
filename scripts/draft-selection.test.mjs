@@ -71,6 +71,7 @@ const bundle = await build({
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 			export {
 				bandReadings,
+				effortDisplay,
 				effortLadder,
 				effortLevel,
 				effortState,
@@ -117,6 +118,7 @@ const {
 	draftPreviewKey,
 	draftPreviewQuery,
 	effortCarry,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	effortState,
@@ -741,6 +743,7 @@ const pickerDependencies = {
 	selectionSelector,
 	bandReadings,
 	effortCarry,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	effortState,
