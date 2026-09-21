@@ -1907,9 +1907,45 @@ async function sceneSessionArchive(cdp) {
 	 *    mid-pan is a frame the app never held still for, and `captureSettled` refuses
 	 *    it - which is why the wait is the ceiling and not the arithmetic.
 	 */
-	const hovered = await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
-	await wait(400 + 8_000);
-	const revealed = await verb(cdp, "measure", "[data-session-archive]");
+	/*
+	 * THE SECTION IS OPENED FIRST, and that is a precondition rather than a
+	 * convenience: `Previous chats` ships COLLAPSED, and a collapsed section draws no
+	 * rows at all - so the row this step hovers is not in the DOM until its heading has
+	 * been pressed. Measured 2026-09-21: without this, the step threw
+	 * `nothing matches [data-session-row="b3f1a09c7d52"] after 10000ms of waiting` on a
+	 * panel that was drawing the list correctly ("All chats 4", `Active chats` open,
+	 * `Previous chats` shut), which reads like a missing row and is a shut section. The
+	 * later steps that open the same section anyway (the refusal step below) now find it
+	 * already open, which is the same state they asked for.
+	 */
+	await openSection(cdp, "Previous chats");
+	/*
+	 * The expansion is a transition, so the row's box is read only after it settles:
+	 * hovering a box measured mid-expansion lands the pointer on a NEIGHBOUR, which is
+	 * a wrong-row read that looks like a wrong-row paint (measured 2026-09-21, before
+	 * this wait: the ground came back painted on the long row while the control's own
+	 * ancestry said the pointer was on `2d5ad5da0025`).
+	 */
+	await wait(500);
+	const longRow = '[data-session-row="b3f1a09c7d52"]';
+	/*
+	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so the row
+	 * is what reveals them; the pointer then moves ONTO the control, which is the state
+	 * the ground assertion below is about (D18's arm: `hover:` on the row's box fires
+	 * for the pointer anywhere inside it, children included). Both reads are scoped to
+	 * this row's own control rather than to the first `[data-session-archive]` in the
+	 * document, which was only ever the hovered one while this section happened to be
+	 * shut - an accident of ordering, not a fact about the row.
+	 */
+	await hoverOver(cdp, longRow);
+	await wait(300);
+	await hoverOver(cdp, `${longRow} [data-session-archive]`);
+	await wait(8_000);
+	const revealed = await verb(
+		cdp,
+		"measure",
+		`${longRow} [data-session-archive]`,
+	);
 	check(
 		"the archive control exists at rest and the pointer is over it",
 		revealed.inViewport === true,
@@ -1955,7 +1991,9 @@ async function sceneSessionArchive(cdp) {
 	 * control, not being painted at all.
 	 */
 	const hoveredRowId = await cdp.evaluate(`(() => {
-		const control = document.querySelector("[data-session-archive]");
+		const control = document.querySelector(
+			'[data-session-row="b3f1a09c7d52"] [data-session-archive]',
+		);
 		return (
 			control?.closest("[data-session-row]")?.getAttribute("data-session-row") ??
 			null
@@ -1963,7 +2001,7 @@ async function sceneSessionArchive(cdp) {
 	})()`);
 	check(
 		"the row's ground survives the pointer moving onto its control",
-		hoveredRowId !== null &&
+		hoveredRowId === "b3f1a09c7d52" &&
 			hoverGrounds.painted.length === 1 &&
 			hoverGrounds.painted[0].id === hoveredRowId,
 		JSON.stringify({ hoveredRowId, ...hoverGrounds }),
@@ -2110,13 +2148,26 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await parkPointer(cdp);
 	/*
-	 * `previous` is EXPANDED first: a collapsed section draws no rows, and the two
-	 * rows this step and the last one press live there (measured: the refusal step
-	 * could not find its control while the section was collapsed).
+	 * `previous` is OPENED first, and IDEMPOTENTLY: a collapsed section draws no rows,
+	 * and the row this step presses lives there (measured: the refusal step could not
+	 * find its control while the section was collapsed). It is `openSection`, which
+	 * reads the heading's `aria-expanded` and returns when it is already open, rather
+	 * than the toggle press it used to be - step 2 opens this section, so a blind toggle
+	 * here CLOSED it and the row went out of the DOM (measured 2026-09-21: `nothing
+	 * matches [aria-label='Archive "Migration checklist"']`).
 	 */
-	await clickAt(cdp, '[data-chat-section="previous"]');
-	await wait(400);
+	await openSection(cdp, "Previous chats");
 	const claimedRow = "[aria-label='Archive “Migration checklist”']";
+	/*
+	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so a
+	 * control addressed at rest has a 0x0 box: the pointer lands on the padding edge,
+	 * the press goes nowhere and - measured 2026-09-21 - NO archive request reaches the
+	 * stub at all, so the lane has no refusal to draw and this step fails two checks
+	 * later for a reason that is three steps back. `:has()` finds the row by the
+	 * control's own label, so the two cannot drift apart.
+	 */
+	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
+	await wait(300);
 	await hoverOver(cdp, claimedRow);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
@@ -2293,6 +2344,11 @@ async function sceneSessionArchive(cdp) {
 	 * `data-chat-row` the scene could have scrolled to.
 	 */
 	const offeredRow = "[aria-label='Archive “Release notes for 0.29”']";
+	/* The row first, for the reason the refusal step above records: a `display`-switched
+	   control has no box until its row is under the pointer, and a press at a 0x0 box
+	   goes nowhere at all. */
+	await hoverOver(cdp, `[data-session-row]:has(${offeredRow})`);
+	await wait(300);
 	await hoverOver(cdp, offeredRow);
 	await clickAt(cdp, offeredRow);
 	await wait(500);
@@ -2541,12 +2597,23 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(ground),
 	);
 	note("the row's own ground", JSON.stringify(ground));
+	/*
+	 * SCOPED TO THE ROW THE POINTER IS ON. `drawn` answers about the FIRST match in the
+	 * document, which was this row only while `Previous chats` happened to be shut: with
+	 * the section open (step 2 opens it) the first pair in the DOM belongs to a row the
+	 * pointer is not on, and the check reported three false negatives on a panel that was
+	 * drawing all three correctly. An assertion about "the row under the pointer" has to
+	 * name that row.
+	 */
+	const pairDrawn =
+		(await drawn(`${longRow} [data-session-control-pair]`)) === true;
+	const pinDrawn = (await drawn(`${longRow} [data-session-pin]`)) === true;
+	const archiveDrawn =
+		(await drawn(`${longRow} [data-session-archive]`)) === true;
 	check(
 		"and under the pointer BOTH acts are drawn, at the panel's default width",
-		(await drawn("[data-session-control-pair]")) === true &&
-			(await drawn("[data-session-pin]")) === true &&
-			(await drawn("[data-session-archive]")) === true,
-		`pair ${await drawn("[data-session-control-pair]")}, pin ${await drawn("[data-session-pin]")}, archive ${await drawn("[data-session-archive]")}`,
+		pairDrawn && pinDrawn && archiveDrawn,
+		`pair ${pairDrawn}, pin ${pinDrawn}, archive ${archiveDrawn}`,
 	);
 	frames.push(await captureSettled(cdp, `pair-wide${RUN_LABEL}`));
 	/*
@@ -2570,13 +2637,24 @@ async function sceneSessionArchive(cdp) {
 	const narrow = await titlesAt(240);
 	await hoverOver(cdp, '[data-session-row="b3f1a09c7d52"]');
 	await wait(400 + 8_000);
+	/*
+	 * The three act reads are SCOPED TO THE HOVERED ROW and the shared-control read is
+	 * not: "the pair is drawn" is a fact about the row under the pointer, while "no
+	 * shared control exists" is a fact about the whole panel (it was deleted, D9). The
+	 * first three were document-wide `drawn` reads, which answer about the first match in
+	 * the document - an unpinned row the pointer is not on, once `Previous chats` is open
+	 * (measured 2026-09-21: three false negatives on a panel drawing all three).
+	 */
+	const narrowPair =
+		(await drawn(`${longRow} [data-session-control-pair]`)) === true;
+	const narrowPin = (await drawn(`${longRow} [data-session-pin]`)) === true;
+	const narrowArchive =
+		(await drawn(`${longRow} [data-session-archive]`)) === true;
+	const narrowShared = (await drawn("[data-session-actions]")) === true;
 	check(
 		"at the clamp minimum the pair is drawn like every other width, and no shared control exists",
-		(await drawn("[data-session-control-pair]")) === true &&
-			(await drawn("[data-session-pin]")) === true &&
-			(await drawn("[data-session-archive]")) === true &&
-			(await drawn("[data-session-actions]")) === false,
-		`pair ${await drawn("[data-session-control-pair]")}, pin ${await drawn("[data-session-pin]")}, archive ${await drawn("[data-session-archive]")}, shared ${await drawn("[data-session-actions]")}`,
+		narrowPair && narrowPin && narrowArchive && narrowShared === false,
+		`pair ${narrowPair}, pin ${narrowPin}, archive ${narrowArchive}, shared ${narrowShared}`,
 	);
 	const pinNarrow = await verb(cdp, "measure", "[data-session-pin]");
 	const archiveNarrow = await verb(cdp, "measure", "[data-session-archive]");
