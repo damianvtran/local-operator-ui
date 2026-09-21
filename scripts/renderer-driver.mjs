@@ -1338,7 +1338,7 @@ const TOAST_SELECTOR = "[data-sonner-toast]";
  * addressed through the panel's own landmark rather than by position alone.
  */
 const SIDEBAR_TOAST =
-	'nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast]';
+	'nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast].lo-archive-toast';
 
 /** How many toasts are on screen right now, asked of the app's own DOM. */
 function toastsOnScreen(cdp) {
@@ -2277,6 +2277,15 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
+	/*
+	 * THE OFFER'S CLOCK STARTS HERE, at the press that raises it, and the check below
+	 * measures from this instant rather than from whenever it gets around to waiting.
+	 * Sonner's duration starts when the toast MOUNTS, which is this press; the steps in
+	 * between (hiding the entity region, reading the offer there, restoring it) spend
+	 * ~2s of the 8s, so a wait that started after them could only ever see the tail and
+	 * a `>=6000ms` claim against the tail is a claim about the scene's own timings.
+	 */
+	const offerRaisedAt = Date.now();
 	await wait(500);
 	const pill = await verb(cdp, "measure", "[data-session-archived-pill]");
 	const openAfter = await verb(cdp, "state");
@@ -2321,10 +2330,33 @@ async function sceneSessionArchive(cdp) {
 	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
 	await wait(500);
 	const clearance = await waitForGone(cdp, SIDEBAR_TOAST, 20_000);
+	/*
+	 * WHAT "GONE" MEANS, read rather than assumed, because `waitForGone` answers
+	 * `box.width > 0`: a toast that is still MOUNTED but not painted (hidden by the
+	 * lane's own rule, say) is reported as retired, and those two facts have different
+	 * owners. The reading below separates them, and it is the difference between
+	 * "the offer was taken down" and "the offer stopped being drawn".
+	 */
+	const laneAfter = await cdp.evaluate(`(() => {
+		const all = Array.from(document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}));
+		return all.map((n) => {
+			const box = n.getBoundingClientRect();
+			return {
+				text: (n.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 28),
+				cls: n.className,
+				display: getComputedStyle(n).display,
+				w: box.width,
+				h: box.height,
+				inLane: !!n.closest('nav[aria-label="Chats"]'),
+				removed: n.getAttribute("data-removed"),
+				mounted: n.getAttribute("data-mounted"),
+			};
+		});
+	})()`);
 	check(
 		"the archive offer outlives the catalogue answers and is taken down by the lane's own duration",
-		clearance.timedOut === false && clearance.waitedMs >= 6_000,
-		`waited ${clearance.waitedMs}ms for the offer to retire (the answers that mention the row arrive in 0.4-1.6s, and the lane's duration is ${8_000}ms) `,
+		clearance.timedOut === false && Date.now() - offerRaisedAt >= 6_000,
+		`the offer lived ${Date.now() - offerRaisedAt}ms from the press (the answers that mention the row arrive in 0.4-1.6s, the lane's duration is ${8_000}ms, and the wait for it to go began ${clearance.waitedMs}ms before it did); lane now ${JSON.stringify(laneAfter)} `,
 	);
 	frames.push(await captureSettled(cdp, `header-archived${RUN_LABEL}`));
 
