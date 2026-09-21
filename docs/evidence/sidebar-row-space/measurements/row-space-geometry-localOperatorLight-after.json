@@ -50,11 +50,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -80,8 +80,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -104,11 +104,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 160,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -134,8 +134,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -190,8 +190,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -214,11 +214,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 160,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -244,8 +244,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -270,11 +270,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -300,8 +300,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -324,11 +324,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 160,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -354,8 +354,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -380,11 +380,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -410,8 +410,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -464,8 +464,8 @@
         "titleScrollWidth": 188,
         "titleClientWidth": 188,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -490,11 +490,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -520,8 +520,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -544,11 +544,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -574,8 +574,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -630,8 +630,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -654,11 +654,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -684,8 +684,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -710,11 +710,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -740,8 +740,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -764,11 +764,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -794,8 +794,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -820,11 +820,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -850,8 +850,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -904,8 +904,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -930,11 +930,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -960,8 +960,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -984,11 +984,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 240,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1014,8 +1014,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1070,8 +1070,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1094,11 +1094,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 240,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1124,8 +1124,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1150,11 +1150,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1180,8 +1180,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1204,11 +1204,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 240,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1234,8 +1234,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1260,11 +1260,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1290,8 +1290,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1344,8 +1344,8 @@
         "titleScrollWidth": 268,
         "titleClientWidth": 268,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1370,11 +1370,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1400,8 +1400,8 @@
         "titleScrollWidth": 172,
         "titleClientWidth": 172,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 60,
         "pairWidth": 52,
@@ -1424,11 +1424,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1454,8 +1454,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1480,11 +1480,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1510,8 +1510,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1534,11 +1534,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1564,8 +1564,8 @@
         "titleScrollWidth": 172,
         "titleClientWidth": 172,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 60,
         "pairWidth": 52,
@@ -1590,11 +1590,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1620,8 +1620,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 114.68,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1644,11 +1644,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1674,8 +1674,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1700,11 +1700,11 @@
         "titleLeft": 252,
         "titleText": "Quarterly retention sweep and the transcripts it dropped",
         "titleOverflows": true,
-        "titleScrollWidth": 351,
+        "titleScrollWidth": 341,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 340.98,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1754,11 +1754,11 @@
         "titleLeft": 252,
         "titleText": "AWS cost increase review with Grafana dashboards",
         "titleOverflows": true,
-        "titleScrollWidth": 321,
+        "titleScrollWidth": 311,
         "titleClientWidth": 200,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 311.03,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 32,
         "pairWidth": 24,
@@ -1784,8 +1784,8 @@
         "titleScrollWidth": 228,
         "titleClientWidth": 228,
         "titleClipTransform": "none",
-        "titleTextTransform": "none",
-        "titleTextWidth": 130.64,
+        "titleTextTransform": null,
+        "titleTextWidth": null,
         "titleMask": "none",
         "tailAfterTitle": 4,
         "pairWidth": 0,
@@ -1958,14 +1958,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 188,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -2074,8 +2074,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -2178,14 +2178,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 160,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 420,
@@ -2294,8 +2294,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -2601,8 +2601,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -2705,14 +2705,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 160,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 420,
@@ -2821,8 +2821,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3012,14 +3012,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 188,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3128,8 +3128,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3232,14 +3232,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 160,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 420,
@@ -3348,8 +3348,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3539,14 +3539,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 188,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3655,8 +3655,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -3875,8 +3875,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -4066,14 +4066,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -4182,8 +4182,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -4286,14 +4286,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -4402,8 +4402,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -4709,8 +4709,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -4813,14 +4813,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -4929,8 +4929,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5120,14 +5120,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5236,8 +5236,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5340,14 +5340,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -5456,8 +5456,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5647,14 +5647,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5763,8 +5763,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -5983,8 +5983,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -6174,14 +6174,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 268,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -6290,8 +6290,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -6394,14 +6394,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 240,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 500,
@@ -6510,8 +6510,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -6817,8 +6817,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -6921,14 +6921,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 240,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 500,
@@ -7037,8 +7037,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -7228,14 +7228,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 268,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -7344,8 +7344,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -7448,14 +7448,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 240,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 500,
@@ -7564,8 +7564,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -7755,14 +7755,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 268,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -7871,8 +7871,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -8091,8 +8091,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -8282,14 +8282,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -8398,8 +8398,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 432,
@@ -8502,14 +8502,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -8618,8 +8618,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -8809,14 +8809,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -8925,8 +8925,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -9029,14 +9029,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -9145,8 +9145,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 432,
@@ -9336,14 +9336,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -9452,8 +9452,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 114.68
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -9556,14 +9556,14 @@
               "y": 628
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -9672,8 +9672,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -9885,14 +9885,14 @@
               "y": 844
             },
             "text": "Quarterly retention sweep and the transcripts it dropped",
-            "scrollWidth": 351,
+            "scrollWidth": 341,
             "clientWidth": 228,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 340.98
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
@@ -9999,14 +9999,14 @@
               "y": 660
             },
             "text": "AWS cost increase review with Grafana dashboards",
-            "scrollWidth": 321,
+            "scrollWidth": 311,
             "clientWidth": 200,
             "overflows": true,
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 311.03
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 460,
@@ -10115,8 +10115,8 @@
             "ink": "rgb(33, 30, 24)",
             "maskImage": "none",
             "transform": "none",
-            "textTransform": "none",
-            "textWidth": 130.64
+            "textTransform": null,
+            "textWidth": null
           },
           "pin": {
             "left": 0,
