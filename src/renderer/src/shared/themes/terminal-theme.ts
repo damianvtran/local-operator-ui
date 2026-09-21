@@ -45,7 +45,29 @@ export const TERMINAL_THEME_ROLES = {
 	foreground: "ink",
 	cursor: "accent",
 	cursorAccent: "surface",
-	selectionBackground: "accentWash",
+	/**
+	 * THE SELECTION IS THE ACCENT ITSELF, not its faintest wash, and the change is a
+	 * measurement rather than a preference (UX round 3, U8): `accentWash` on the
+	 * terminal's own `sunken` ground reads **1.11:1** — rgb(22,40,29) on rgb(29,27,25) —
+	 * which is a selection nobody can see, in the very round that wired copy into this
+	 * pane. The wash is authored for a hover over a panel; the terminal grounds on
+	 * `sunken`, where its step nearly vanishes.
+	 *
+	 * The contract's own rule picks the replacement: "interaction, selection and semantics
+	 * stay on `accent`", and `accentWash` is explicitly "a hover and callout tint and not
+	 * a selection ground" (`palette-contract.ts`). The accent is the strongest form of
+	 * that rule, and its two pairs on this ground are already measured — `accent` against
+	 * `sunken` at the 3:1 boundary floor, and ink on `accent` at the text floor — which is
+	 * why `CONTROLS`' new "console terminal selection" row passes without an exception.
+	 *
+	 * WHAT IT COSTS, stated rather than hidden: selected text wears `onAccent` and loses
+	 * the program's own colour while it is selected. The alternative is a selection that
+	 * hides the text or one that cannot be seen, and §9.2 forbids inventing a palette role
+	 * for it in v1. A reader who wants the program's colour back drags less.
+	 */
+	selectionBackground: "accent",
+	/** Ink on the selection's own fill, which is the accent. */
+	selectionForeground: "onAccent",
 	/** 0, the terminal's "black": the dimmest legible ink, because a literal
 	 * black on a dark `sunken` ground is invisible rather than neutral. */
 	black: "inkDim",

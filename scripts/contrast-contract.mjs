@@ -1140,6 +1140,24 @@ const CONTROLS = [
 	 * human in the design round's frames (§9.3).
 	 */
 	{
+		/*
+		 * THE SELECTION, and it is a row of its own because UX round 3 found it was
+		 * covered by nothing: `selectionBackground` was `accentWash`, which the terminal
+		 * paints on its own `sunken` ground, and that pair measures **1.11:1** — a
+		 * selection a reader cannot see, in the round that wired copy. `accentWash` is a
+		 * hover tint by the contract's own words and not a selection ground; the
+		 * selection is now `accent` with `onAccent` as its ink, so this row asserts both
+		 * halves the finding is about: the fill is perceivable against the terminal's
+		 * ground (the 3:1 boundary floor, through the fill) and the selected text is
+		 * legible on it (the 4.5:1 text floor).
+		 */
+		name: "console terminal selection",
+		on: ["sunken"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
 		name: "console terminal well",
 		on: ["surface"],
 		fill: "sunken",

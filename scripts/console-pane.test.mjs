@@ -108,6 +108,41 @@ test("the terminal's ANSI table is the contract's table, slot for slot", () => {
 	);
 });
 
+/**
+ * The `CONTROLS` row for the terminal's selection, parsed out of the contract's text for
+ * the same reason the ANSI table is (that file is a CLI; importing it would run the whole
+ * gate here).
+ */
+const contractSelectionRow = () => {
+	const source = readFileSync(
+		join(process.cwd(), "scripts/contrast-contract.mjs"),
+		"utf8",
+	);
+	const start = source.indexOf('name: "console terminal selection"');
+	assert.ok(start !== -1, "the contract still carries the selection row");
+	const body = source.slice(start, source.indexOf("},", start));
+	const field = (name) => {
+		const match = body.match(new RegExp(`${name}: "(\\w+)"`));
+		return match ? match[1] : null;
+	};
+	return { fill: field("fill"), border: field("border"), ink: field("ink") };
+};
+
+test("the selection's roles are the ones check-themes asserts (U8)", () => {
+	// Two halves that must move together: the theme table says WHICH roles the selection
+	// paints, and the contract's row is what measures them. A row that named `accent`
+	// while the module painted `accentWash` would be green about a pairing the app does
+	// not have — which is exactly how a 1.11:1 selection shipped behind a passing gate.
+	const row = contractSelectionRow();
+	assert.equal(TERMINAL_THEME_ROLES.selectionBackground, row.fill);
+	assert.equal(TERMINAL_THEME_ROLES.selectionForeground, row.ink);
+	assert.equal(
+		row.border,
+		row.fill,
+		"the selection's own edge is its fill, so the row's 3:1 boundary floor is measured against the terminal's ground",
+	);
+});
+
 test("every colour the terminal is handed is a role, never a hex", () => {
 	for (const [key, role] of Object.entries(TERMINAL_THEME_ROLES)) {
 		assert.ok(
@@ -128,7 +163,14 @@ test("every colour the terminal is handed is a role, never a hex", () => {
 	assert.equal(TERMINAL_THEME_ROLES.background, "sunken");
 	assert.equal(TERMINAL_THEME_ROLES.foreground, "ink");
 	assert.equal(TERMINAL_THEME_ROLES.cursor, "accent");
-	assert.equal(TERMINAL_THEME_ROLES.selectionBackground, "accentWash");
+	// U8: the selection is the ACCENT, not its faintest wash. `accentWash` on the
+	// terminal's own `sunken` ground measures 1.11:1 — a selection nobody can see — and
+	// the contract says a selection stays on `accent` while `accentWash` is a hover tint
+	// and not a selection ground. The pair is asserted by `check-themes`' own "console
+	// terminal selection" row, and the cell below is what keeps THIS mapping and THAT row
+	// from drifting apart.
+	assert.equal(TERMINAL_THEME_ROLES.selectionBackground, "accent");
+	assert.equal(TERMINAL_THEME_ROLES.selectionForeground, "onAccent");
 	// Design 9.2's honest gap, stated as a fact rather than a hope: the six
 	// chromatic slots resolve to four roles, so two pairs ARE the same colour.
 	assert.equal(TERMINAL_THEME_ROLES.cyan, TERMINAL_THEME_ROLES.blue);
@@ -141,6 +183,7 @@ test("the theme resolves roles through the document, and omits what is missing",
 		"--color-ink": "#f0f0f0",
 		"--color-accent": "#4488ff",
 		"--color-accent-wash": "#20242c",
+		"--color-on-accent": "#0b0b0b",
 		"--color-surface": "#181818",
 		"--color-ink-muted": "#c0c0c0",
 		"--color-ink-dim": "#9a9a9a",
@@ -159,6 +202,8 @@ test("the theme resolves roles through the document, and omits what is missing",
 		assert.equal(theme.foreground, "#f0f0f0");
 		assert.equal(theme.cursor, "#4488ff");
 		assert.equal(theme.cursorAccent, "#181818");
+		assert.equal(theme.selectionBackground, "#4488ff");
+		assert.equal(theme.selectionForeground, "#0b0b0b");
 		assert.equal(theme.red, "#ff5555");
 		assert.equal(theme.brightBlack, "#c0c0c0");
 		assert.deepEqual(missingTerminalRoles({}), []);
