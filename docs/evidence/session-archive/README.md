@@ -190,6 +190,18 @@ take width from it. What costs title width is a control slot, and only that. The
 frames carry the mark anyway (`row-controls-{pair,shared}` hover the unread row),
 so the claim and the picture are of the same row.
 
+**The set was re-shot at the fold, and the numbers above are this set's.** Every
+frame here was re-shot with the same three commands after `origin/main` was folded
+in (`13b5e1b41`, 0.30.3, #408's sidebar split), on fresh stubs, one launch per
+palette, `ALL CHECKS PASSED` on all three; 24 of the 34 frames changed, because the
+fold rewrote the panel they are pictures of. Two consequences for the claims on this
+page: the hover ground's endpoints were re-read on THIS set (456..983 device, below),
+and the row-internal geometry the 21.5px marker figure derives from is unchanged on
+it — the driver's own report on this run is `status row 180px, unread row 180px; pin
+24x24, archive 24x24` at 280 and `168px … shared 24x24` at 240, identical to the
+numbers the figure was taken from, which is why the figure itself was not re-derived
+pixel by pixel.
+
 **The archived marker costs a ragged title column of 21.5px (design round 1 D4;
 re-derived on THIS set by design round 3).** In `search-include-archived/{dark,light}`
 the archived row's title starts at **CSS 274.5** and its live sibling's at **253.0**
