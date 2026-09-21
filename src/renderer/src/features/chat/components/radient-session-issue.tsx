@@ -54,8 +54,9 @@ import type {
 	RadientSessionIssue,
 } from "@shared/hooks/use-radient-session-issue";
 import { cn } from "@shared/lib/utils";
-import type { FC } from "react";
+import { type FC, useEffect, useRef } from "react";
 import { CHAT_MEASURE } from "../chat-measure";
+import { shouldRestoreComposerFocus } from "./composer-status-row";
 
 export type RadientSessionIssueCalloutProps = {
 	/** What to say, or `hidden`. */
@@ -68,6 +69,16 @@ export type RadientSessionIssueCalloutProps = {
 	onDismiss: () => void;
 	/** Whether the composer band is in its narrow-window layout. */
 	isSmallView?: boolean;
+	/**
+	 * Puts focus back in the composer when a control of this block unmounts under it.
+	 *
+	 * A PROPERTY of the parent rather than a query from here, for
+	 * `ComposerStatusRow`'s reason: the textarea is `message-input.tsx`'s own ref,
+	 * and reaching for it by selector from a block that component renders would be
+	 * a second way to name one element. Optional so a story or a test that renders
+	 * the callout alone is not forced to invent a focus target.
+	 */
+	onFocusComposer?: () => void;
 };
 
 /**
@@ -134,14 +145,93 @@ function issueProse(issue: RadientSessionIssue): string | null {
  */
 function refusalPointer(refusal: RadientRefusal | undefined): string | null {
 	if (refusal === "sign-in-active") {
-		return "Finish or cancel it in Settings, under Providers.";
+		/*
+		 * THE POINTER NAMES THE PLACE, NOT THE VERB (UX round 2, N6).
+		 *
+		 * The sentence above it is the backend's own and ends "Finish or cancel it
+		 * first."; this line used to answer that with the same instruction again
+		 * ("Finish or cancel it in Settings, under Providers."), so the two
+		 * adjacent lines read as one instruction said twice. The place is the part
+		 * the backend cannot know, so it is the whole of what this sentence says.
+		 */
+		return "Settings, under Providers, is where it can be cleared.";
 	}
 	return null;
 }
 
 export const RadientSessionIssueCallout: FC<
 	RadientSessionIssueCalloutProps
-> = ({ issue, onSignIn, onCancel, onDismiss, isSmallView = false }) => {
+> = ({
+	issue,
+	onSignIn,
+	onCancel,
+	onDismiss,
+	isSmallView = false,
+	onFocusComposer,
+}) => {
+	const calloutRef = useRef<HTMLDivElement>(null);
+	const previouslyFocused = useRef<HTMLElement | null>(null);
+
+	/*
+	 * THE BLOCK HANDS THE COMPOSER ITS FOCUS BACK, reusing the row's predicate and
+	 * closing the same hazard (UX round 2, U7).
+	 *
+	 * Every transition this block has REPLACES the control that was pressed: the
+	 * action becomes Cancel, Cancel becomes the action, Dismiss becomes the
+	 * action, and a completed sign-in removes the block outright. Chromium answers
+	 * a removed focused node by dropping focus to `<body>` - measured on all four
+	 * - which leaves an operator working by keyboard at the top of the app again,
+	 * 35 Tab stops from the control that replaced the one they pressed. The block
+	 * sits ABOVE the box (`docs/composer-status-tabs.md` § 2.1), so the cheap
+	 * `Shift+Tab` route only exists in one direction.
+	 *
+	 * The COMPOSER is the target in all four, not the block's next control, and
+	 * that is a decision rather than a default:
+	 *
+	 * - from the box the replaced control is ONE `Shift+Tab` away in every state,
+	 *   because the block is the box's immediate predecessor in DOM order;
+	 * - focusing the next control would put Enter on `Cancel` the instant after
+	 *   the user started a sign-in (a key repeat cancels the flow they just
+	 *   asked for) and, after a dismissal, on the action that was just refused;
+	 * - the composer is where their draft is, and it is this family's own idiom
+	 *   (`ComposerStatusRow` returns focus the same way when its chip unmounts -
+	 *   through `shouldRestoreComposerFocus` above, which is imported rather than
+	 *   restated so one predicate decides this for both blocks).
+	 *
+	 * THE FOCUS IS RECORDED ON THE FOCUS EVENT, NOT AT RENDER TIME, and that is the
+	 * one place this differs from the row. The row reads `document.activeElement`
+	 * after every render, which is enough when the unmount is driven by polled data
+	 * (a render happens while the chip still holds focus, then a later one removes
+	 * it). This block's own press is the tighter case and has NO render in between:
+	 * the user tabs onto the action, presses Enter, and the state change that
+	 * removes the button IS the next commit - so a render-time read would find
+	 * `previouslyFocused` still null and hand nothing back. The focus event fires
+	 * before any of that (React's `onFocus` reaches it through `focusin`), so the
+	 * node is recorded while it still exists.
+	 *
+	 * What stays the same as the row: the target is only ever a node that held
+	 * focus INSIDE this block, so a press that never took focus (on macOS a mouse
+	 * click focuses nothing, so the caret stays in the textarea) moves nothing, and
+	 * a transition that leaves focus on another control of the block is not
+	 * disturbed.
+	 */
+	useEffect(() => {
+		const active = document.activeElement;
+		const focusedInBlock =
+			active instanceof HTMLElement &&
+			calloutRef.current?.contains(active) === true
+				? active
+				: null;
+		if (
+			shouldRestoreComposerFocus(
+				previouslyFocused.current,
+				focusedInBlock !== null,
+			)
+		)
+			onFocusComposer?.();
+		previouslyFocused.current = focusedInBlock;
+	});
+
 	if (issue.kind === "hidden") return null;
 
 	/*
@@ -184,6 +274,15 @@ export const RadientSessionIssueCallout: FC<
 
 	return (
 		<Alert
+			ref={calloutRef}
+			onFocus={(event) => {
+				/*
+				 * The record the effect above reads. `onFocus` is React's `focusin`, so
+				 * it bubbles: any control in this block lands here, including the ones
+				 * that mount after this handler was attached.
+				 */
+				previouslyFocused.current = event.target as HTMLElement;
+			}}
 			variant={signingIn ? "info" : failed ? "danger" : "warning"}
 			/*
 			 * The kind as an attribute, in the shape this repository's other

@@ -66,7 +66,36 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
+	/*
+	 * ESM ENTRY POINTS, because a bundled CJS dependency that requires React at
+	 * runtime cannot reach an external React from an ESM bundle ("Dynamic require
+	 * of \"react\" is not supported" - measured here, from `lucide-react`'s CJS
+	 * build). `composer-tabs.test.mjs` resolves the same way for the same reason.
+	 */
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	/*
+	 * THE PACKAGES ARE BUNDLED HERE, and only React and the query client stay
+	 * external - the shape `composer-tabs.test.mjs` uses, for the same reason and
+	 * with the same discipline.
+	 *
+	 * This file used to mark every package external, which was fine while the
+	 * callout's graph was five tiny modules. It imports the composer row's own
+	 * `shouldRestoreComposerFocus` now (UX round 2's U7 - one predicate rather than
+	 * two restatements of it), and the row's graph reaches `@mui/material/styles`,
+	 * which Node's ESM loader refuses as a DIRECTORY import once it is left
+	 * external. React stays external because two copies of it is an invalid hook
+	 * call in every test here, and the query client because the test constructs the
+	 * client itself.
+	 */
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react-dom/server",
+		"react/jsx-runtime",
+		"@tanstack/react-query",
+	],
 	jsx: "automatic",
 	loader: { ".css": "empty" },
 	alias: {
@@ -139,6 +168,14 @@ async function mount(world = {}) {
 	});
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
+	/*
+	 * The element CLASS as well, because the callout's focus effect reads
+	 * `document.activeElement instanceof HTMLElement` - the same test
+	 * `ComposerStatusRow` makes, which its own suite never executes (that file
+	 * server-renders the row, so no effect runs there). In a browser both are
+	 * globals; in this harness the DOM has to be installed.
+	 */
+	globalThis.HTMLElement = dom.window.HTMLElement;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 	const state = {
@@ -228,6 +265,25 @@ async function mount(world = {}) {
 	 */
 	let renderedUnder = appliedStamp(undefined);
 
+	/*
+	 * A STAND-IN FOR THE COMPOSER BOX, because the callout's focus restore is a
+	 * PROPERTY of its parent: `message-input.tsx` owns the textarea's ref and
+	 * passes `onFocusComposer`, and a harness that rendered the callout without
+	 * one would be exercising a different wiring from the shipped one.
+	 *
+	 * It is a `tabindex="-1"` DIV rather than a textarea, and the element type is
+	 * the one thing that does not matter here: what is asserted is that the
+	 * parent's node RECEIVED focus. A real textarea engages React's legacy input
+	 * polyfill the moment it is focused, which calls IE's `attachEvent`/`detachEvent`
+	 * and prints a TypeError in jsdom for every case below - noise about the
+	 * harness, in the CI log of a suite that is otherwise silent.
+	 *
+	 * The stand-in is rendered AFTER the callout on purpose: that is the band's DOM
+	 * order (the block precedes the box), and it is what makes the `Shift+Tab`
+	 * route out of the block one stop.
+	 */
+	let composer = null;
+
 	function Probe() {
 		const probe = useRadientSessionIssue();
 		latest = probe;
@@ -243,6 +299,14 @@ async function mount(world = {}) {
 				onSignIn: probe.start,
 				onCancel: probe.cancel,
 				onDismiss: probe.dismiss,
+				onFocusComposer: () => composer?.focus(),
+			}),
+			h("div", {
+				"data-lo-composer": "",
+				tabIndex: -1,
+				ref: (node) => {
+					composer = node;
+				},
 			}),
 		);
 	}
@@ -254,6 +318,16 @@ async function mount(world = {}) {
 	});
 
 	const text = () => container.textContent ?? "";
+	/**
+	 * The callout's rendered variant CLASS, which is how the severity keying is
+	 * visible to this harness (agent review round 2, MINOR-2). Without an
+	 * assertion on it, a later edit flipping `failed` back to `warning` - or a
+	 * refusal to `danger` - would land with every other test here still green.
+	 */
+	const variant = () => {
+		const node = container.querySelector("[data-lo-radient-issue]");
+		return node?.className ?? "";
+	};
 	const controls = (label) =>
 		[...container.querySelectorAll("button")].filter(
 			(candidate) => candidate.textContent?.trim() === label,
@@ -362,6 +436,8 @@ async function mount(world = {}) {
 		state,
 		latest: () => latest,
 		text,
+		variant,
+		composer: () => composer,
 		controls,
 		reads,
 		waitFor,
@@ -575,11 +651,27 @@ test("a concurrent sign-in (409) states the backend's sentence and offers no ret
 	 * phase, so this block used to be a standing sentence with no control at
 	 * all, reachable by pressing this button after starting a sign-in in
 	 * Settings, which posts the same `auth.start`.
+	 *
+	 * The pointer names the PLACE and not the verb (UX round 2, N6): the backend's
+	 * own sentence immediately above it already says what to do, and repeating
+	 * that instruction on the next line read as one instruction said twice.
 	 */
 	assert.match(
 		surface.text(),
-		/Finish or cancel it in Settings, under Providers\./,
+		/Settings, under Providers, is where it can be cleared\./,
 	);
+	/*
+	 * AND IT IS A WARNING, NOT A DANGER (UX round 1, N1): nothing failed here -
+	 * the user pressed an action the machine refused because another flow holds
+	 * the loopback port, which is a state this surface cannot clear and the user
+	 * did not cause.
+	 */
+	assert.match(
+		surface.variant(),
+		/bg-warning-wash/,
+		"a refusal this surface cannot clear is the mild severity, not danger",
+	);
+	assert.doesNotMatch(surface.variant(), /bg-danger-wash/);
 	assert.equal(
 		surface.controls("Dismiss").length,
 		1,
@@ -683,6 +775,14 @@ test("a retryable failure keeps the action and no dismissal", async () => {
 		0,
 		"a dismissal would hide the one control that can clear a failure",
 	);
+	/*
+	 * AND A FAILURE OF AN ACTION THE USER TOOK IS THE LOUD SEVERITY (UX round 1,
+	 * N1, pinned here by agent review round 2's MINOR-2): without this the mapping
+	 * could be flipped - a failure rendered as the benign amber warning and a
+	 * refusal as danger - with every other test in this file still green.
+	 */
+	assert.match(surface.variant(), /bg-danger-wash/);
+	assert.doesNotMatch(surface.variant(), /bg-warning-wash/);
 	await surface.close();
 });
 
@@ -744,6 +844,9 @@ test("an expired flow shows the backend's own sentence and can be started again"
 		/Sign-in expired\. Start again when you are ready\./,
 	);
 	assert.equal(surface.controls("Sign in to Radient").length, 1);
+	// A finished attempt is a failure of the user's own action, like the failure
+	// above, so it is the loud severity too (UX round 1, N1).
+	assert.match(surface.variant(), /bg-danger-wash/);
 	await surface.close();
 });
 
@@ -792,4 +895,110 @@ test("an input-required flow is stated, cancellable, and not finished here", asy
 	assert.equal(surface.controls("Cancel").length, 1);
 	assert.equal(surface.controls("Sign in to Radient").length, 0);
 	await surface.close();
+});
+
+test("a control that unmounts hands focus back to the composer, not to `<body>`", async () => {
+	/*
+	 * UX round 2's U7, in the four transitions that round measured. The block sits
+	 * ABOVE the box, so `Shift+Tab` is the only cheap direction and a control
+	 * REMOVED under the user drops focus to `<body>` with its replacement 35 Tab
+	 * stops forward instead. Each case below focuses the control the keyboard path
+	 * reaches, activates it, and reads where focus landed.
+	 *
+	 * The composer stand-in is the harness's own focusable div, wired exactly as
+	 * `message-input.tsx` wires its textarea - the shipped property, not a second
+	 * one.
+	 *
+	 * WHAT IS IN THE FAILURE MESSAGES, AND WHY IT IS A TAG NAME (measured while
+	 * proving this test can fail). `assert.equal(document.activeElement, node)`
+	 * reads well and is a trap: on failure the assertion builds its message with
+	 * `util.inspect`, and a jsdom element carries React's fiber tree as own
+	 * properties - so the message renders the node, and with the restore below
+	 * removed the run never reported the failure at all (the assertion fired and
+	 * the process sat until a 200 s bound killed it, printing no `fail` line for CI
+	 * to read). Identity compared as a boolean, and the tag name in the message,
+	 * says everything a reader needs for free.
+	 */
+	const activeTag = () =>
+		document.activeElement?.tagName?.toLowerCase() ?? "none";
+	const focusAndPress = async (surface, label) => {
+		await surface.waitFor(
+			() => surface.controls(label).length > 0,
+			`the "${label}" control`,
+		);
+		const [target] = surface.controls(label);
+		await act(async () => {
+			target.focus();
+		});
+		assert.ok(
+			document.activeElement === target,
+			`this case only means something if "${label}" really held focus, and it is on <${activeTag()}>`,
+		);
+		await surface.press(label);
+	};
+
+	/*
+	 * EVERY MOUNT IS CLOSED IN A `finally`: this test asserts the ABSENCE of a
+	 * focus move, so the failing path is the one that must still clean up after
+	 * itself rather than leaving a jsdom window and a mounted root behind.
+	 */
+	const surfaces = [];
+	const open = async (world) => {
+		const surface = await mount(world);
+		surfaces.push(surface);
+		return surface;
+	};
+	try {
+		// 1. The action: the flow starts and the action is replaced by Cancel.
+		const started = await open();
+		await started.expectKind("needs-sign-in");
+		await focusAndPress(started, "Sign in to Radient");
+		await started.expectKind("signing-in");
+		assert.ok(
+			document.activeElement === started.composer(),
+			`the press must leave focus on the composer, not on <${activeTag()}>`,
+		);
+
+		// 2. Cancel: the block returns to its own action.
+		await focusAndPress(started, "Cancel");
+		await started.expectKind("needs-sign-in");
+		assert.ok(document.activeElement === started.composer());
+
+		// 3. Dismiss: the refusal's exit, on the state that is a dead end without it.
+		const refused = await open({
+			start: {
+				status: 409,
+				body: {
+					detail: "A sign-in is already active. Finish or cancel it first.",
+				},
+			},
+		});
+		await refused.expectKind("needs-sign-in");
+		await refused.press("Sign in to Radient");
+		await refused.expectKind("settled");
+		await focusAndPress(refused, "Dismiss");
+		await refused.expectKind("needs-sign-in");
+		assert.ok(document.activeElement === refused.composer());
+
+		/*
+		 * 4. The block clearing on its own: no press is involved, so this is the
+		 * case only the effect can catch - the sign-in completes elsewhere and the
+		 * control the user was on is removed by the verdict arriving.
+		 */
+		const cleared = await open();
+		await cleared.expectKind("needs-sign-in");
+		await act(async () => {
+			cleared.controls("Sign in to Radient")[0].focus();
+		});
+		cleared.state.verdict = HEALTHY;
+		await cleared.refresh();
+		await cleared.expectKind("hidden");
+		assert.equal(cleared.text(), "");
+		assert.ok(
+			document.activeElement === cleared.composer(),
+			`a block that clears under the user must hand focus back as well, not to <${activeTag()}>`,
+		);
+	} finally {
+		for (const surface of surfaces) await surface.close();
+	}
 });
