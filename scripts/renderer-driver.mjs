@@ -3025,7 +3025,21 @@ async function sceneSessionArchive(cdp) {
 		undoRevealed === true,
 		JSON.stringify({ row: REFUSED_UNDO_ID, revealed: undoRevealed }),
 	);
-	await clickAt(cdp, `${undoRow} [data-session-archive]`);
+	/*
+	 * A STATIONARY PRESS, not one that moves first. `clickAt` dispatches `mouseMoved` before
+	 * the press, and this row's acts are REVEALED BY HOVER AND DISARMED BY THE POINTER'S
+	 * MOVING - the hazard the PIN step above documents in its own words, and precisely why
+	 * `pressPointerStationary` exists in this driver. Measured 2026-09-21: with `clickAt` the
+	 * reveal assertion passed and the press still raised NO offer, wrote nothing, and left the
+	 * row's label null; the pointer is already where it needs to be, so the press only has to
+	 * land without a move in front of it.
+	 */
+	const undoControl = await verb(
+		cdp,
+		"measure",
+		`${undoRow} [data-session-archive]`,
+	);
+	await pressPointerStationary(cdp, undoControl.centre.x, undoControl.centre.y);
 	await wait(500);
 	/*
 	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The lane keeps one
