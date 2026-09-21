@@ -333,9 +333,9 @@ export type DesktopFeature =
 	 *
 	 * WHAT HAS TO HAPPEN FOR THE SURFACE TO APPEAR: the harness advertises
 	 * `"tunnel": 1` in `local_operator/server/routes/capabilities.py`, which is
-	 * what PR #1342 (`fix/tunnel-login-resilience`, in review when this landed)
-	 * does. Named here where a reader will meet it, exactly as `references` names
-	 * its own counterpart on the other side of this contract.
+	 * what PR #1342 (`fix/tunnel-login-resilience`, merged as `50635770`) does.
+	 * Named here where a reader will meet it, exactly as `references` names its
+	 * own counterpart on the other side of this contract.
 	 */
 	| "tunnel"
 	/**

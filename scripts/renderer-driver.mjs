@@ -6778,10 +6778,10 @@ async function sceneBrowserPane(cdp) {
  * TWO RUNS, TWO CLAIMS, the shape `browser-pane` and `new-chat` use:
  *
  * - BACKEND SAYS THE LOGIN IS DEAD: the callout is raised with its one action;
- *   pressing it moves the band to the in-flight state (the connector restarts
- *   when the sign-in completes, with the Cancel that releases the one loopback
- *   port the flow holds); and once the flow settles and the verdict is re-read
- *   the callout clears.
+ *   pressing it moves the band to the in-flight state (the connector restarts on
+ *   its own once the sign-in completes, with the Cancel that releases the one
+ *   loopback port the flow holds); and once the flow settles and the verdict is
+ *   re-read the callout clears.
  * - BACKEND SAYS THE LOGIN IS FINE: nothing is raised at all, which is as much
  *   a claim as the callout is - a nag on a working login is the same class of
  *   lie, told in the other direction, as the silent-health bug this surface
@@ -6941,8 +6941,9 @@ async function sceneRadientIssue(cdp) {
 	);
 	check(
 		"the in-flight state says what the connector does next, and offers the cancel",
-		/connector restarts when it completes/.test(signingIn.text) &&
-			signingIn.buttons.includes("Cancel"),
+		/connector restarts on its own once the sign-in completes/.test(
+			signingIn.text,
+		) && signingIn.buttons.includes("Cancel"),
 		JSON.stringify(signingIn),
 	);
 	const signingFrame = await captureSettled(cdp, "issue-signing-in");

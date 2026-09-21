@@ -141,9 +141,25 @@ ambient context rather than a transient failure — it is on screen for as long 
 the condition holds, which is what a dead sign-in is until somebody signs in —
 and it carries an action, so it is drawn with the callout primitive (`Alert`)
 rather than as one of the band's sentences. Like the row it renders `null` in
-the common state, so a healthy machine reserves no height here, and the `
-radient-session-issue.tsx` docblock records why a backend that cannot answer the
-verdict is silent rather than assumed healthy.
+the common state, so a healthy machine reserves no height here, and the
+`radient-session-issue.tsx` docblock records why a backend that cannot answer
+the verdict is silent rather than assumed healthy.
+
+**It is also the one block up here that needs a gap, and it needed one because
+it is the only BORDERED one.** The row and the alert are sentences: their own
+`pb-2` / `pb-1` *is* the gap to the box. A callout's padding is inside its
+border, so the callout mounted bare put its border box 0.5–1.0px above the
+composer's, and the composer's focus ring — 2px `outline` at a 2px offset,
+painted whenever a draft is staged, i.e. in the default state — drew its outer
+4px *inside* the callout's ground and over its border at the rounded corners
+(design round 1, D1). So the band mounts it in a wrapper that carries the gap
+(`message-input.tsx`, `radientIssueBlock`), which is where `branding.md` §5 puts
+it — the container owns the gap, never the component's own `mb-*`.
+
+**And that step does not compact in the small view**, unlike the two above it:
+`pb-1` is exactly the ring's 4px of extent, so the compacted value would put the
+ring's outer edge back on the callout's border. It is `pb-2` at both widths, and
+the reason is the ring rather than the block's own taste.
 
 ### 2.2 The row's own box
 
