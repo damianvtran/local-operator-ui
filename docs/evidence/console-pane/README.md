@@ -43,34 +43,45 @@ against the BUILT app headless, and it is the other half of the evidence:
 
 - `proof-transcript.md` — the full run: a real pty forked through the app's own main
   process, the real `/rpc` driven with real requests, and every cell's actual output.
-  It includes the app's own log line for the capture:
-  `[console] captured surface … offscreen at 94x25 (dom renderer, 39182 B, attempt 1)`,
-  and `the run never held the operator's frontmost application` — 0/N.
-- `displayed-capture.png` — `console_screenshot` with the pane displaying the
-  surface: `rendered: "displayed"`, a photograph of the app's own window cropped to
-  the pane's rect.
+  The two capture cells are in it verbatim (`capture geometry`, `offscreen capture`),
+  as is `the run never held the operator's frontmost application` — 0/N.
+- `displayed-capture.png` — `console_screenshot` with the pane DISPLAYING the
+  surface, and the pane is mounted for it: the rig opens the conversation through the
+  app's own launch intent, presses the console trigger, and never calls
+  `setContentRect` itself, so the rect main crops to is the one the PANE reported.
+  `rendered: "displayed"`, 82×45, `theme: "localOperatorDark"`, **47,139 B** at
+  1286×1404 — the frame is in physical pixels against a 659×779.5 CSS box, i.e. the
+  window's device pixel ratio of 2. What it shows is the pane's terminal, not a
+  window corner: an earlier revision of this cell photographed the window's top-left
+  quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
 - `offscreen-capture.png` — the same call with the pane closed: `rendered:
-  "offscreen"`, `renderer: "dom"`, non-blank (37,491 B against the design's measured
-  9,866 B stale frame), one attempt. It is a real terminal frame — the rig's own
+  "offscreen"`, `renderer: "dom"`, **47,138 B**, `attempts: 1`, at the grid the
+  displayed frame reported (82×45). It is a real terminal frame — the rig's own
   `printf 'marker-424242\n'` and `stty size` → `30 100` — reconstructed from the
   record by the capture view.
 
   REFRESHED, NOT RE-CAPTURED IN KIND: these three files were re-run after a runtime
   swap replaced the `lop` install mid-turn and killed the processes of the earlier
-  run. The refreshed run is 31 PASS / 0 FAIL with the same cells, and its frame is
-  37,491 B where the first was 39,182 B — the difference is the pty's own output
-  (the rig's shell echoes a variable number of lines before the `printf`), not the
-  capture path, and a byte-identical frame across runs is not a property this path
-  claims. The log line it quotes is
-  `[console] captured surface … offscreen at 94x25 (dom renderer, 37491 B, attempt 1)`.
+  run. The refreshed run is **42 PASS / 0 FAIL**. Byte-identical frames across runs
+  are not a property this path claims: the rig's shell echoes a variable number of
+  lines before the `printf`, so the byte count moves with the pty's own output.
+
+  ONE FURTHER DISCLOSURE, because it is a limit of the harness rather than of the
+  pane: in this never-shown window the compositor's own press does NOT reach the
+  page (`how the pane was opened` records `pressTook: false`, with the pointer
+  verifiably over the button and the box settled), so the rig opens the pane with the
+  element's own `click()`. A REAL press opening the pane is UX round 3's own cell,
+  walked in an environment where presses land; what this set adds is that the pane,
+  once open, is the thing photographed.
 
 ## Gaps this set does not cover
 
-1. **The pane driven in the live app, on a conversation.** The pane lives in the
-   chat route, which needs a backend session; this machine's rigs run offline, so
-   the pane's frames are Storybook's and the live frames are the capture view's.
-   Walking "run a command with the pane closed, reopen, the output is there" is a
-   QA-round cell, not a rig this set carries.
+1. **The pane driven in the live app, on a conversation** — now covered for the
+   CAPTURE path and still a QA-round cell for the interaction: the rig mounts the pane
+   on a conversation (the app's own launch intent, the trigger pressed) and the
+   displayed frame is a photograph of it, but walking "run a command with the pane
+   closed, reopen, the output is there" needs a person or a QA walk rather than this
+   rig, which drives the record through the wire.
 2. **The blip and the notification click.** The mark's two states are photographed
    (above); the native banner and its click landing on the right session and surface
    are a live-app walk (the click is a renderer path with no window beside it in a
