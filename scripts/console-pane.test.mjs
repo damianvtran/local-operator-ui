@@ -530,7 +530,23 @@ test("the sweep's console width is the store's own default, not a second number"
 	// while every frame stayed at the old number.
 	const rows =
 		source.match(/\["console-pane--[a-z-]+", ([A-Za-z_0-9]+), \d+\]/g) ?? [];
-	assert.equal(rows.length, 12, "every console-pane story is in the sweep");
+	/*
+	 * COUNTED FROM THE STORY FILE RATHER THAN TYPED HERE. This read `12`, which is exactly the
+	 * kind of number that goes stale in silence: design round 4 added a story (D21's
+	 * `selected`) and this cell kept asserting twelve, so the sweep could have carried twelve
+	 * rows for thirteen stories and passed. The count is the stories' own now.
+	 */
+	const storySource = readFileSync(
+		"src/renderer/src/features/console/components/console-pane.stories.tsx",
+		"utf8",
+	);
+	const stories =
+		storySource.match(/^export const [A-Za-z]+: Story = \{/gm) ?? [];
+	assert.equal(
+		rows.length,
+		stories.length,
+		`the sweep carries ${rows.length} console-pane rows for ${stories.length} stories — every story needs a row, because \`--only=\` filters the sweep's own list rather than Storybook's index`,
+	);
 	assert.ok(
 		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
 		"and every one of them is captured at that width",
