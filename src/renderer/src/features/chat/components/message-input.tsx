@@ -5341,13 +5341,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * screen-reader user got nothing until they happened to tab into it.
 		 * `output` carries the status role implicitly, which is also why this is an
 		 * element rather than a `role="status"` attribute on a `div` (the lint
-		 * rule the a11y set carries wants the element), and the region PERSISTS
-		 * while its contents change, which is the shape an announcement rides.
-		 * `hidden` while there is no issue keeps the healthy band reserving no
-		 * height and the region out of the accessibility tree, exactly as the
-		 * sentence above it does. The `alert` role stays wrong here for the
-		 * primitive's own reason: it is reserved for a callout rendered IN RESPONSE
-		 * to an action, which is the composer's send-error alert.
+		 * rule the a11y set carries wants the element). `hidden` while there is no
+		 * issue keeps the healthy band reserving no height and the region out of the
+		 * accessibility tree, exactly as the sentence above it does. The `alert` role
+		 * stays wrong here for the primitive's own reason: it is reserved for a
+		 * callout rendered IN RESPONSE to an action, which is the composer's
+		 * send-error alert.
+		 *
+		 * WHAT IS VERIFIED HERE AND WHAT IS NOT (agent review round 2, NIT-1; UX
+		 * round 2, N7). Verified: the element, its implicit role, and the fact that
+		 * the same node persists while the callout is up, so a poll that changes
+		 * `needs sign-in` into `signing-in` is a content change in a standing region
+		 * rather than a second mount. NOT verified: that any assistive stack SPEAKS
+		 * the arrival. No screen reader is in the loop for this repository, and the
+		 * arrival is the one case a live region is least reliable in - the region is
+		 * `display: none` while healthy and the callout mounts inside it, so a
+		 * stack that only watches an already-present region sees nothing. A
+		 * permanently-present clipped region (`sr-only` rather than `hidden`) is the
+		 * alternative shape; it was not taken here because it would reserve a
+		 * clipped line in the healthy band for an announcement this round cannot
+		 * measure either way. Recorded as unverified rather than claimed.
 		 *
 		 * THE GAP IS THE WRAPPER'S (design round 1, D1). Every other block above the
 		 * composer leaves its own bottom step for that gap (`px-4 pb-2` / `px-2
@@ -5374,7 +5387,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * Defined once and rendered TWICE: above the box, and - on the centring band
 		 * only - mirrored below the group, so the group grows by the same height on
 		 * both sides and the arrival does not move the box. See the mirror's own
-		 * comment for why that is confined to this band.
+		 * comment for why that is confined to this band, and for the width at which
+		 * the device runs out of room to work.
 		 */
 		const radientIssueBlock = (
 			<output
@@ -5390,6 +5404,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					onCancel={radientIssue.cancel}
 					onDismiss={radientIssue.dismiss}
 					isSmallView={isSmallView}
+					/*
+					 * Every control in this block is REPLACED by its own press (the action by
+					 * Cancel, Dismiss by the action, and a completed sign-in by nothing at
+					 * all), so the focused control is unmounted under the user and Chromium
+					 * drops focus to `<body>` - 35 Tab stops from the control that replaced
+					 * it. The block hands it back HERE for the status row's reason: this is
+					 * where the composer's own ref lives (`UX round 2, U7`).
+					 */
+					onFocusComposer={() => textareaRef.current?.focus()}
 				/>
 			</output>
 		);
@@ -7148,6 +7171,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * the box would grow the band downward and push the typed line UP by the
 				 * block's full height. There the callout takes transcript height
 				 * instead, which is the honest move.
+				 *
+				 * WHERE IT RUNS OUT OF ROOM, AND WHY THAT IS LEFT ALONE (UX round 2's U6,
+				 * QA round 2's Q-1 - both measured at the app's 800x600 floor). The
+				 * device's premise is SLACK: cancelling a centring shift means growing the
+				 * group on both sides, and the copy spends the block's own height to buy
+				 * that. At 1380x868 and 1024x668 the band has the room and nothing moves
+				 * (402.25 in both states, measured in ONE run by the design round - a
+				 * two-run comparison cannot see it, because the empty band is
+				 * bottom-anchored until the snapshot settles). At 800x568 the block is
+				 * 210px, the group needs 560px inside a 512px band, and the band grows
+				 * past the window rather than centring: the field lands 27-33.5px lower
+				 * (both rounds read `285` raised; they differ on the idle reading,
+				 * `258` and `251.5`) and the mirror's own overflow is what falls below the
+				 * fold. Suppressing the mirror when there is no slack would need this band
+				 * to measure itself against the group plus the copy - a feedback loop the
+				 * band does not currently run - and getting it wrong hides the mirror at
+				 * widths where it works, which is the worse failure. So the residue is
+				 * stated rather than removed: at the floor width an arrival moves the box
+				 * by roughly half the block, and everywhere wider it does not move.
 				 *
 				 * It is the SAME element, not a reconstruction, so the two heights match
 				 * by construction at any width and in any state - and it is `invisible`
