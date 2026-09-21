@@ -298,7 +298,6 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	// did not move.
 	assert.match(failure, /showWarningToast\(/);
 	assert.match(failure, /id: ARCHIVE_TOAST_ID/);
-	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
 	assert.match(failure, /position: ARCHIVE_TOAST_LANE/);
 	assert.equal(
 		failure.includes('role="alert"'),
@@ -327,6 +326,41 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 */
 	assert.match(failure, /if \(laneMessageRef\.current === null\) return;/);
 	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
+	/*
+	 * AND THE LIFE A RE-ASSERTION GETS IS A FULL ONE (agent review round 2 - the
+	 * re-assertion). Both draws are PERSISTENT to sonner, because its per-toast life
+	 * resets only when the `duration` passed to an already-mounted entry CHANGES - so the
+	 * refusal a refused Retry put back inherited the clock of the message it replaced and
+	 * went seconds later, measured in `session-archive` as the lane empty 5068ms (dark) /
+	 * 5096ms (light) after the press with the store's refusal still standing. The panel
+	 * arms the life instead, per message, from the same two values the draw reads: no ref,
+	 * no declaration order, and every new assertion re-runs it with the full span.
+	 */
+	assert.match(
+		code(SIDEBAR),
+		/const ARCHIVE_TOAST_PERSISTENT = Number\.POSITIVE_INFINITY;/,
+	);
+	assert.equal(
+		failure.split("duration: ARCHIVE_TOAST_PERSISTENT,").length - 1,
+		2,
+		"both lane messages must be drawn without a life sonner could end on its own",
+	);
+	assert.equal(
+		/duration: ARCHIVE_(FAILURE|UNDO)_TOAST_MS/.test(failure),
+		false,
+		"a draw that passes a finite duration keeps sonner's clock on the entry, which a re-assertion does not reset",
+	);
+	const clock = between(
+		SIDEBAR,
+		"const message = archiveFailure",
+		"}, [archiveFailure, archiveUndo]);",
+	);
+	assert.match(clock, /laneMessageRef\.current = null;/);
+	assert.match(clock, /dismissToast\(ARCHIVE_TOAST_ID\);/);
+	assert.match(
+		clock,
+		/message === "failure" \? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS/,
+	);
 	// Two effects, two "previous value" refs and a peer-fact test are all gone: the
 	// property above is now a consequence of one effect, not of two order-dependent ones.
 	assert.equal(

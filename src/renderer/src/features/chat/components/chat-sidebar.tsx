@@ -222,9 +222,30 @@ const ARCHIVE_TOAST_LANE = "bottom-left";
  * Long enough to read the sentence and reach for it - sonner's 4000ms default is
  * short for an Undo - and the refusal is longer because it carries a Retry the
  * reader has to read before pressing.
+ *
+ * THE PANEL ARMS THESE, NOT SONNER (agent review round 2 - the re-assertion).
+ * sonner's life belongs to the ENTRY: `remainingTime` is a ref inside its toast
+ * component whose only reset is a CHANGED `duration`
+ * (`node_modules/sonner/dist/index.mjs`), so a message RE-ASSERTED by an answer - the
+ * refusal a refused Retry puts back - inherited the clock of the message it replaced
+ * and disappeared seconds later, with nothing left to redraw it, because the store's
+ * refusal had not changed. Measured in the `session-archive` scene before the fix: dark
+ * 5068ms / light 5096ms after the press, `painted false` while the store still held the
+ * refusal. The life belongs to the MESSAGE, so the panel runs the clock (the lane's
+ * second effect) and sonner is told never to expire an entry.
  */
 const ARCHIVE_UNDO_TOAST_MS = 8_000;
 const ARCHIVE_FAILURE_TOAST_MS = 10_000;
+/**
+ * What the lane tells sonner, so it never ends a message on its own: the entry stays
+ * mounted until the panel's clock fires or a state change dismisses it.
+ *
+ * Stated cost, because it is a real one: sonner's hover-pause no longer applies - a
+ * reader hovering the message cannot hold it past its life - since sonner is no longer
+ * what ends it. That is the trade for a life that re-arms on every re-assertion, which
+ * is the property the lane needs and the library cannot express on a mounted entry.
+ */
+const ARCHIVE_TOAST_PERSISTENT = Number.POSITIVE_INFINITY;
 /**
  * The class BOTH archive toasts carry, and the one hook the panel's lane rules read
  * (`styles/index.css`). It exists because sonner draws every mounted container's copy
@@ -3435,7 +3456,7 @@ export function ChatSidebar({
 				{
 					id: ARCHIVE_TOAST_ID,
 					className: ARCHIVE_TOAST_CLASS,
-					duration: ARCHIVE_FAILURE_TOAST_MS,
+					duration: ARCHIVE_TOAST_PERSISTENT,
 					position: ARCHIVE_TOAST_LANE,
 					action: {
 						label: "Retry",
@@ -3508,7 +3529,7 @@ export function ChatSidebar({
 				{
 					id: ARCHIVE_TOAST_ID,
 					className: ARCHIVE_TOAST_CLASS,
-					duration: ARCHIVE_UNDO_TOAST_MS,
+					duration: ARCHIVE_TOAST_PERSISTENT,
 					position: ARCHIVE_TOAST_LANE,
 					action: {
 						label: "Undo",
@@ -3540,6 +3561,31 @@ export function ChatSidebar({
 			);
 		}
 	}, [archiveFailure, archiveUndo, setSessionArchived]);
+
+	/*
+	 * THE CLOCK THE DRAW ABOVE DOES NOT RUN (agent review round 2 - the re-assertion):
+	 * the lane's life, armed per MESSAGE rather than per sonner entry.
+	 *
+	 * It derives the current message from the same two values the drawing effect reads,
+	 * so it needs no ref, no declaration order and no record of what was drawn: a
+	 * re-assertion is a NEW object from the store, this effect re-runs, and the full life
+	 * starts again - which is the whole point (see `ARCHIVE_TOAST_PERSISTENT` for what the
+	 * library could not do). `laneMessageRef` is cleared with the dismissal, because the
+	 * drawing effect reads it as "was there a message": an expired message that left the
+	 * ref standing would make the next empty-lane commit skip the dismissal it owes.
+	 */
+	useEffect(() => {
+		const message = archiveFailure ? "failure" : archiveUndo ? "offer" : null;
+		if (message === null) return;
+		const timer = setTimeout(
+			() => {
+				laneMessageRef.current = null;
+				dismissToast(ARCHIVE_TOAST_ID);
+			},
+			message === "failure" ? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [archiveFailure, archiveUndo]);
 
 	const pinFailureLine = pinFailure ? (
 		/*

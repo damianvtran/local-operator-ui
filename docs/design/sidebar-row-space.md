@@ -490,7 +490,15 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   wrapped lines covering four rows and two section headers - and that is the trade
   this design takes: a refusal that is readable beats a smaller one that is not.
 - **Duration:** 8000ms for the offer (sonner's 4000ms default is short for an
-  Undo), 10000ms for a refusal, which carries its Retry.
+  Undo), 10000ms for a refusal, which carries its Retry. **The panel runs that clock, not
+  sonner** (agent review round 2, the re-assertion): sonner's per-toast life resets only
+  when the `duration` passed to an already-mounted entry CHANGES, so a message re-asserted
+  by an answer - the refusal a refused Retry puts back - kept the clock of the message it
+  replaced and left the lane seconds later (measured: dark 5068ms / light 5096ms after the
+  press, `painted false` with the store's refusal unchanged). Every draw is therefore
+  persistent to sonner and the panel arms the life per message, which also re-arms it on
+  every re-assertion. The cost, stated rather than hidden: sonner's hover-pause no longer
+  applies, since sonner is no longer what ends a message.
 - **Dismissal:** the app's close button is already on (`toastOptions.closeButton`
   in `ThemedToastContainer`), so the offer can be put away without acting;
   pressing Undo dismisses it immediately through the app's own channel
