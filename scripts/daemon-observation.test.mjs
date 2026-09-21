@@ -1383,6 +1383,13 @@ const version = process.env.FIXTURE_VERSION || "0.61.1";
 let instanceId = process.env.FIXTURE_INSTANCE || "instance-before-reload";
 let startedAt = Date.now() / 1000;
 let healthCount = 0;
+/*
+ * Withheld identity, set by the /fixture/not-a-daemon route. The app reads a
+ * /health answer with no instance_id as "not-a-daemon", which is one of the
+ * shapes that STILL contradicts: the residue the observation suite pins below,
+ * where a live child this app spawned is declined by the discovery guard.
+ */
+let identityWithheld = false;
 mkdirSync(runDir, { recursive: true });
 
 const publish = () =>
@@ -1420,13 +1427,15 @@ createServer((req, res) => {
 		json(res, 200, {
 			status: 200,
 			message: "ok",
-			result: {
-				version,
-				instance_id: instanceId,
-				pid: process.pid,
-				prefix: "/tmp/owned-fixture-prefix",
-				install_kind: "uv-tool",
-			},
+			result: identityWithheld
+				? {}
+				: {
+						version,
+						instance_id: instanceId,
+						pid: process.pid,
+						prefix: "/tmp/owned-fixture-prefix",
+						install_kind: "uv-tool",
+					},
 		});
 		return;
 	}
@@ -1440,6 +1449,11 @@ createServer((req, res) => {
 	}
 	if (path === "/fixture/state") {
 		json(res, 200, { pid: process.pid, instanceId, healthCount });
+		return;
+	}
+	if (path === "/fixture/not-a-daemon") {
+		identityWithheld = true;
+		json(res, 200, { withheld: true });
 		return;
 	}
 	if (path === "/fixture/reload") {
@@ -1660,6 +1674,15 @@ async function ownedDaemonScene({
 			const response = await fetch(`${address}/fixture/reload`);
 			const body = await response.json();
 			return body.instanceId;
+		},
+		/**
+		 * Make the SAME live process answer `/health` without an identity, which the
+		 * app reads as `not-a-daemon`. Deliberately not a reload: this is the residue
+		 * that must keep contradicting.
+		 */
+		async answerAsNonDaemon() {
+			const response = await fetch(`${address}/fixture/not-a-daemon`);
+			return response.json();
 		},
 		async dispose() {
 			await manager.stop(false).catch(() => {});
@@ -1942,6 +1965,82 @@ test("the banner's Retry clears a stuck successor pairing on an owned child (202
 					snapshot.state === "attached" && snapshot.pairing.available,
 			),
 			"and the renderer is TOLD, rather than the repair living only in main",
+		);
+	} finally {
+		await scene.dispose();
+	}
+});
+
+test("the residue: an owned child that answers as a non-daemon still reaches the guard, and the Retry cannot clear it (2026-09-20)", async () => {
+	const scene = await ownedDaemonScene();
+	try {
+		const { manager } = scene;
+		const ownedPid = manager.getOwnedPid();
+		const before = manager.getStatusSnapshot();
+
+		await scene.answerAsNonDaemon();
+		const probed = await tickArmedProbe(scene);
+
+		/*
+		 * THE RESIDUE, PINNED RATHER THAN ONLY DESCRIBED. The re-anchor covers the
+		 * shape where the SAME process answers under a new `instance_id`. A live owned
+		 * child that answers without an identity (`not-a-daemon`), or one that names a
+		 * different pid, still contradicts, still reaches the contradiction arm in
+		 * `recoverFromDetachment()`, and still returns at that method's live owned-child
+		 * guard - because `discoverAndAttach()` below it can answer `false` and fall
+		 * through to `start({ quiet: true })`, spawning a second daemon over a child
+		 * that is demonstrably still serving. So the band's Retry is inert for this
+		 * shape too and only an app restart clears it. That limit is deliberate and is
+		 * asserted here so a later reader finds it as a case rather than as a claim.
+		 */
+		const contradicted = manager.getStatusSnapshot();
+		assert.equal(
+			probed,
+			true,
+			"the probe has to answer and reach the state machine, or this case tests nothing",
+		);
+		assert.equal(
+			contradicted.pairing.available,
+			false,
+			"a live child answering as a non-daemon is a contradiction, so the band is up",
+		);
+		assert.equal(contradicted.pairing.cause, "successor");
+
+		const healthBefore = (await scene.state()).healthCount;
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+		// The renderer's verb, exactly: this is what the band's Retry runs.
+		const after = await manager.reconnectNow();
+
+		assert.equal(
+			after.pairing.available,
+			false,
+			"the Retry cannot clear this shape: nothing is adopted, so the band stays",
+		);
+		assert.equal(after.pairing.cause, "successor");
+		assert.equal(
+			after.instanceId,
+			before.instanceId,
+			"and it stays on the identity it had, rather than adopting an answer that is not one",
+		);
+		assert.equal(
+			manager.getOwnedPid(),
+			ownedPid,
+			"the point of the guard: no second daemon is spawned over the live child",
+		);
+		assert.equal(
+			(await scene.state()).pid,
+			ownedPid,
+			"and the child this app spawned is still the process serving",
+		);
+		assert.ok(
+			(await scene.state()).healthCount > healthBefore,
+			"the Retry did probe the live child rather than returning without looking",
+		);
+		assert.equal(
+			pushes.filter((snapshot) => snapshot.pairing.available).length,
+			0,
+			"nothing in the sequence claims a pairing, so the band is the honest rendering",
 		);
 	} finally {
 		await scene.dispose();
