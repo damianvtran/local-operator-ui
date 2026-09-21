@@ -6,10 +6,16 @@ completion and the blip, §13.2/§13.3 the capture view, §19.2 this set).
 
 **The Storybook frames** (`console-pane/<story>/<theme>.webp`) are captured through
 the repo's own `scripts/capture-evidence.mjs`, one frame per story per theme in the
-sweep's twelve-theme list. They are the pane at its own default width — **843 px**,
-which is the design's 100-column grid at the shipped face's measured advance
-(8.425 px per column at `fontSize: 14`) plus the pane's chrome — so a frame of this
-pane is a frame of the grid the design names.
+sweep's twelve-theme list. They are the pane at its own default width — **796 px**,
+which is the design's 100-column grid at the shipped face's advance (`measureCell`,
+0.6 em at `TERMINAL_FONT_SIZE = 13`, i.e. 7.8 px per column) plus the pane's two 8 px
+gutters — so a frame of this pane is a frame of the grid the design names. The number
+is not typed by hand: the story renders at `DEFAULT_CONSOLE_PANEL_WIDTH` and the
+sweep's `CONSOLE_PANE_WIDTH` restatement of it is pinned to the store's own formula
+by `scripts/console-pane.test.mjs`. (An earlier revision of this README and of the
+PR body said "843 px at `fontSize: 14`", which was neither the shipped default nor
+the design's grid — the design round measured those frames at ~108 columns. Both are
+corrected here.)
 
 What they are: the real component, reading a **stubbed projection** of the same
 shape main publishes (the pane's only input is that projection, so a story that

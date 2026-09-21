@@ -1,6 +1,6 @@
 # Console host end-to-end proof
 
-Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379`
+Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970`
 Result: every check passed
 Reaped stray spawn-helper processes: 0
 
@@ -12,7 +12,7 @@ Reaped stray spawn-helper processes: 0
   "console": true,
   "console_surfaces": 0,
   "console_agent_surfaces": 0,
-  "pid": 24382,
+  "pid": 4973,
   "proto": 1
 }
 ```
@@ -23,8 +23,12 @@ Reaped stray spawn-helper processes: 0
 {
   "host": "ui",
   "proto": 1,
-  "pid": 24382,
-  "console": true
+  "pid": 4973,
+  "console": true,
+  "capabilities": [
+    "download",
+    "upload"
+  ]
 }
 ```
 
@@ -69,10 +73,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:vPAM3d3CZZeo6fNLI8zLaA",
+  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
   "cols": 120,
   "rows": 40,
-  "pid": 24530,
+  "pid": 5082,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -83,10 +87,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:vPAM3d3CZZeo6fNLI8zLaA",
+  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
   "cols": 120,
   "rows": 40,
-  "pid": 24530,
+  "pid": 5082,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -96,7 +100,7 @@ Reaped stray spawn-helper processes: 0
 ## PASS — the handle names its host
 
 ```
-con:1:vPAM3d3CZZeo6fNLI8zLaA
+con:1:mIOBC_qswcoFmseNhCqHDA
 ```
 
 ## PASS — the runtime restored the helper's exec bit (trap 1)
@@ -136,14 +140,40 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 }
 ```
 
-## PASS — named keys are encoded and accepted
+## PASS — non-ASCII output reaches the record intact
+
+```
+{
+  "text": "日本\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+}
+```
+
+## PASS — a character split across two pty reads is still one character
+
+```
+{
+  "tail": "日\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+}
+```
+
+## PASS — a non-ASCII payload reaches the program byte for byte, on both paths
+
+```
+{
+  "expected": "e697a5e69cace697a50a",
+  "got": "e697a5e69cace697a50a",
+  "file": "/tmp/lo-proof-r2-out-4966/input-roundtrip.bin"
+}
+```
+
+## PASS — named keys are encoded and accepted, and `encoded` is the SEQUENCES
 
 ```
 {
   "accepted": true,
   "encoded": [
-    "up",
-    "ctrl+c"
+    "\u001b[A",
+    "\u0003"
   ]
 }
 ```
@@ -156,8 +186,7 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "message": "that payload is 400000 bytes and this surface accepts 262144 at a time",
   "data": {
     "accepted": 0,
-    "limit": 262144,
-    "bytes": 400000
+    "limit": 262144
   }
 }
 ```
@@ -181,23 +210,30 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 {"visibility":"visible","focused":false}
 ```
 
+## PASS — the app is wearing a named theme (the capture view is fed its name)
+
+```
+localOperatorDark
+```
+
 ## PASS — the renderer reports a rect and main decides the grid from it
 
 ```
 {
-  "surface": "con:1:vPAM3d3CZZeo6fNLI8zLaA",
+  "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
   "session_id": "proof-session",
   "origin": "agent",
   "command": "sh",
   "argv_tail": "-f -i",
-  "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+  "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
   "cols": 94,
   "rows": 25,
   "running": true,
   "exit_code": null,
-  "last_activity": 1789878112.731,
+  "last_activity": 1789957570.692,
   "live": true,
   "agent_owned": true,
+  "last_actor": "agent",
   "secure": false,
   "retain": false,
   "sizing": "auto",
@@ -213,11 +249,11 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "rendered": "displayed",
   "cols": 94,
   "rows": 25,
-  "theme": "proof",
+  "theme": "localOperatorDark",
   "live": true,
-  "bytes": 5929,
-  "sha256": "a5151dc0f7dbbd5ea44746248bc3039a8d28cd9df00f33b1006e54d9870e4e0f",
-  "file": "/tmp/lo-console-proof-resume/console-con_1_vPAM3d3CZZeo6fNLI8zLaA.png"
+  "bytes": 95723,
+  "sha256": "de0be35faa3b754bf34c79d1f0b3b3e16310fc90d0ff9cc05e4c44cba4d8f75e",
+  "file": "/tmp/lo-proof-r2-out-4966/console-con_1_mIOBC_qswcoFmseNhCqHDA.png"
 }
 ```
 
@@ -228,7 +264,7 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "rendered": "displayed",
   "cols": 94,
   "rows": 25,
-  "bytes": 5929
+  "bytes": 95723
 }
 ```
 
@@ -241,9 +277,9 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "attempts": 1,
   "cols": 94,
   "rows": 25,
-  "bytes": 37491,
-  "sha256": "e62d1fc7f22c062cae89ff45106e50cf778b498911b23c5402d128e2ac31c15e",
-  "file": "/tmp/lo-console-proof-resume/console-con_1_vPAM3d3CZZeo6fNLI8zLaA-offscreen.png"
+  "bytes": 40980,
+  "sha256": "b3c92450c6b61b8ed8024a183d94baa0053ff4160945fd10146d09cc43a0ad90",
+  "file": "/tmp/lo-proof-r2-out-4966/console-con_1_mIOBC_qswcoFmseNhCqHDA-offscreen.png"
 }
 ```
 
@@ -256,7 +292,46 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "attempts": 1,
   "cols": 94,
   "rows": 25,
-  "bytes": 37491
+  "bytes": 40980
+}
+```
+
+## PASS — the preload exposes a state-change subscriber
+
+```
+armed
+```
+
+## PASS — an agent's resize reaches a mounted pane as a broadcast, not only as its own reply
+
+```
+{
+  "frames": 1,
+  "resize": {
+    "cols": 110,
+    "rows": 33
+  },
+  "paneGrid": {
+    "surface": "con:1:mIOBC_qswcoFmseNhCqHDA",
+    "session_id": "proof-session",
+    "origin": "agent",
+    "command": "sh",
+    "argv_tail": "-f -i",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+    "cols": 110,
+    "rows": 33,
+    "running": true,
+    "exit_code": null,
+    "last_activity": 1789957571.042,
+    "live": true,
+    "agent_owned": true,
+    "last_actor": "agent",
+    "secure": false,
+    "retain": false,
+    "sizing": "auto",
+    "displayed": true,
+    "last_mark": null
+  }
 }
 ```
 
@@ -266,18 +341,30 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 {
   "read": {
     "code": "secure_input_active",
-    "message": "con:1:vPAM3d… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:mIOBC_… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
   },
   "screenshot": {
     "code": "secure_input_active",
-    "message": "con:1:vPAM3d… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:mIOBC_… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
   }
+}
+```
+
+## PASS — the secure span keeps the bytes already retained, live and on disk (§11.4.4)
+
+```
+{
+  "bytesBefore": 13,
+  "bytesAfter": 13,
+  "truncatedWhileSecure": false,
+  "reopenedHoldsMarker": true,
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/config/run/ui-console/history/proof-session/con_5_IyMuA3YnxuS7M6apZuHEXw.log"
 }
 ```
 
@@ -286,10 +373,10 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 ```
 {
   "code": "surface_unavailable",
-  "message": "no console surface named con:99:nope…; 1 exist",
+  "message": "no console surface named con:99:nope…; 3 exist",
   "data": {
     "surface": "con:99:nope…",
-    "count": 1
+    "count": 3
   }
 }
 ```
@@ -301,10 +388,6 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
   "code": "invalid_grid",
   "message": "10x30 is outside the supported grid; the clamp would be 40x30",
   "data": {
-    "requested": {
-      "cols": 10,
-      "rows": 30
-    },
     "clamp": {
       "cols": 40,
       "rows": 30
@@ -388,12 +471,13 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 }
 ```
 
-## PASS — a surface's process exit is observed once, with its code
+## PASS — a surface's process exit is observed once, with its code and its generation
 
 ```
 {
   "running": false,
   "exit_code": 5,
+  "exit_epoch": 1,
   "cols": 80,
   "rows": 24,
   "live": true,
@@ -407,9 +491,22 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
     "x": 0,
     "y": 1
   },
-  "last_activity": 1789878113.758,
+  "last_activity": 1789957572.07,
   "retain": false,
-  "secure": false
+  "secure": false,
+  "env_marker": {
+    "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
+    "value": "con:6:PqkZdoaYkq-C53f0_6znLw"
+  }
+}
+```
+
+## PASS — a surface that has not exited reports generation 0
+
+```
+{
+  "exit_epoch": 0,
+  "running": true
 }
 ```
 
@@ -435,11 +532,20 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 ```
 {
   "code": "process_exited",
-  "message": "con:2:oCr3Ac… has exited with code 5; its output is still readable",
+  "message": "con:6:PqkZdo… has exited with code 5; its output is still readable",
   "data": {
     "exit_code": 5,
-    "live": true
+    "retain": false
   }
+}
+```
+
+## PASS — the exit generation is on disk in the sidecar (§7.3)
+
+```
+{
+  "exit_epoch": 1,
+  "exit_code": 0
 }
 ```
 
@@ -447,7 +553,7 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 
 ```
 {
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/config/run/ui-console/history/proof-session/con_3_LCGQ8uMfuf-opgwSgGLsGA.log",
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/config/run/ui-console/history/proof-session/con_7_hIuKADZl8vEGScbf_5dbhw.log",
   "mode": 384
 }
 ```
@@ -460,12 +566,36 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 }
 ```
 
+## PASS — a 30 s `yes` flood with retention ON leaves main answering (§19.1 P3)
+
+```
+{
+  "baselineMs": {
+    "max": 6,
+    "median": 5
+  },
+  "floodMs": {
+    "answered": 140,
+    "median": 4,
+    "p95": 10,
+    "max": 118
+  },
+  "ceilings": {
+    "median": 100,
+    "p95": 500
+  },
+  "truncated": true,
+  "exit_epoch": 0,
+  "surface": "con:8:A0scTyGOmvwAiP4x83x8sw"
+}
+```
+
 ## PASS — the ninth agent surface in one session is refused, with the browser's own code
 
 ```
 {
-  "heldBefore": 2,
-  "created": 6,
+  "heldBefore": 4,
+  "created": 4,
   "refusal": {
     "code": "tab_limit",
     "message": "this session's agent is already running 8 console surfaces; close one first",
@@ -492,109 +622,116 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 {
   "surfaces": [
     {
-      "surface": "con:2:oCr3AcDlAiAYfiDE9T4ELg",
+      "surface": "con:2:JRQqhwbWK-7yWhYiYMPcXA",
+      "session_id": "proof-session",
+      "origin": "agent",
+      "command": "sh",
+      "argv_tail": "-c printf '日本\\n'",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cols": 80,
+      "rows": 24,
+      "running": false,
+      "exit_code": 0,
+      "last_activity": 1789957568.114,
+      "live": true,
+      "agent_owned": true,
+      "last_actor": null
+    },
+    {
+      "surface": "con:3:NZsLlGJ4HdgTd4OUXT2xAw",
+      "session_id": "proof-session",
+      "origin": "agent",
+      "command": "sh",
+      "argv_tail": "-c printf '\\346\\227'; sleep 0.3; printf '\\245\\n'",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
+      "cols": 80,
+      "rows": 24,
+      "running": false,
+      "exit_code": 0,
+      "last_activity": 1789957568.659,
+      "live": true,
+      "agent_owned": true,
+      "last_actor": null
+    },
+    {
+      "surface": "con:6:PqkZdoaYkq-C53f0_6znLw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf 'exited-marker\\n'; exit 5",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 5,
-      "last_activity": 1789878113.758,
+      "last_activity": 1789957572.07,
       "live": true,
-      "agent_owned": true
+      "agent_owned": true,
+      "last_actor": null
     },
     {
-      "surface": "con:4:AMTy08oJNDPF2ZZ-Ep1Ghw",
+      "surface": "con:9:Pw-DNMlugnYx4BVxffKbQw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789878114.441,
+      "last_activity": 1789957602.799,
       "live": true,
-      "agent_owned": true
+      "agent_owned": true,
+      "last_actor": null
     },
     {
-      "surface": "con:5:MQv_eTklIrKPeGBu2qdwiw",
+      "surface": "con:10:O6V4qTTaVviUALL0c6AOJQ",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789878114.448,
+      "last_activity": 1789957602.805,
       "live": true,
-      "agent_owned": true
+      "agent_owned": true,
+      "last_actor": null
     },
     {
-      "surface": "con:6:LQvosjCA22OX20mq4XOkHw",
+      "surface": "con:11:hh-A7_Mdo6BdfaIjfL2t6w",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789878114.463,
+      "last_activity": 1789957602.811,
       "live": true,
-      "agent_owned": true
+      "agent_owned": true,
+      "last_actor": null
     },
     {
-      "surface": "con:7:gDP8LRipMXSvOEiVXYGnvg",
+      "surface": "con:12:Jh9h-1IzW_672LCZGkv8Aw",
       "session_id": "proof-session",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1789878114.514,
+      "last_activity": 1789957602.817,
       "live": true,
-      "agent_owned": true
-    },
-    {
-      "surface": "con:8:SFlLULNN6gc36yiw6zXCNA",
-      "session_id": "proof-session",
-      "origin": "agent",
-      "command": "sh",
-      "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
-      "cols": 100,
-      "rows": 30,
-      "running": true,
-      "exit_code": null,
-      "last_activity": 1789878114.538,
-      "live": true,
-      "agent_owned": true
-    },
-    {
-      "surface": "con:9:swLbBhJKWKh8XYFQCoP3SA",
-      "session_id": "proof-session",
-      "origin": "agent",
-      "command": "sh",
-      "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home",
-      "cols": 100,
-      "rows": 30,
-      "running": true,
-      "exit_code": null,
-      "last_activity": 1789878114.546,
-      "live": true,
-      "agent_owned": true
+      "agent_owned": true,
+      "last_actor": null
     }
   ],
   "count": 7
@@ -613,10 +750,10 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 
 ```
 {
-  "samples": 9,
+  "samples": 74,
   "frontmostOurs": 0,
   "distinct": [
-    "Arc"
+    null
   ]
 }
 ```
@@ -626,18 +763,18 @@ con:1:vPAM3d3CZZeo6fNLI8zLaA
 ```
 {
   "lines": [
-    "00:21:51.578 › [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/console-pane/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "00:21:51.579 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "00:21:51.742 › [console] surface con:1:vPAM3d… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home at 120x40 (agent)",
-    "00:21:52.383 › [console] surface con:1:vPAM3d… resized 100x30",
-    "00:21:52.764 › [console] surface con:1:vPAM3d… resized 94x25",
-    "00:21:53.615 › [console] captured surface con:1:vPAM3d3CZZeo6fNLI8zLaA offscreen at 94x25 (dom renderer, 37491 B, attempt 1)",
-    "00:21:53.681 › [console] surface con:2:oCr3Ac… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home at 80x24 (agent)",
-    "00:21:53.758 › [console] surface con:2:oCr3Ac… exited 5",
-    "00:21:53.939 › [console] surface con:3:LCGQ8u… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home at 100x30 (agent)",
-    "[2026-09-20 00:21:51.578] [info]  [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/console-pane/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "[2026-09-20 00:21:51.579] [info]  [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "[2026-09-20 00:21:51.742] [info]  [console] surface con:1:vPAM3d… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-24379/home at 120x40 (agent)"
+    "22:26:06.986 › [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/console-pane/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/spawn-helper",
+    "22:26:06.986 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "22:26:07.237 › [console] surface con:1:mIOBC_… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 120x40 (agent)",
+    "22:26:07.856 › [console] surface con:1:mIOBC_… resized 100x30",
+    "22:26:08.089 › [console] surface con:2:JRQqhw… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
+    "22:26:08.114 › [console] surface con:2:JRQqhw… exited 0",
+    "22:26:08.308 › [console] surface con:3:NZsLlG… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
+    "22:26:08.659 › [console] surface con:3:NZsLlG… exited 0",
+    "22:26:08.741 › [console] surface con:4:HJgMiG… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-4970/home at 80x24 (agent)",
+    "22:26:10.362 › [console] surface con:4:HJgMiG… exited 0",
+    "22:26:10.362 › [console] surface con:4:HJgMiG… closed with exit 0",
+    "22:26:10.734 › [console] surface con:1:mIOBC_… resized 94x25"
   ]
 }
 ```
