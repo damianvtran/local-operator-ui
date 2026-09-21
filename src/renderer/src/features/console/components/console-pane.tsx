@@ -210,7 +210,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 * running program a `SIGWINCH` (§8.2's box is the pane's content box,
 				 * and a marker the user flips is not allowed to resize their program).
 				 */}
-				<div className={cn("relative flex min-h-0 grow flex-col")}>
+				{/*
+				 * `px-2` IS THE PANE'S GUTTER, ON THE TERMINAL TOO (design round 2,
+				 * D12). The header's title and the strip's pills are inset by 8 px and
+				 * the terminal used to start at the pane's own edge, so the width
+				 * allowance was spent as a right-hand gutter of ground rather than as
+				 * chrome: measured, 780 px of grid inside an 804 px pane, with column 0
+				 * at x=1 against the title's x=9. One gutter, one width, and the
+				 * default width (`CONSOLE_PANE_CHROME_PX`) is now exactly these two.
+				 */}
+				<div className={cn("relative flex min-h-0 grow flex-col px-2")}>
 					{/*
 					 * `key` ON THE SURFACE, and it is the re-attach rule rather than a
 					 * micro-optimisation: one mirror holds one subscription and one terminal,

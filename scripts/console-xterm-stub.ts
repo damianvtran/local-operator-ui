@@ -129,6 +129,49 @@ export class Terminal {
 	onKey(): { dispose: () => void } {
 		return { dispose: () => {} };
 	}
+
+	/**
+	 * The copy path's two handles (UX round 2, U5): the selection the pane reads, and
+	 * the hook xterm runs before it encodes a key.
+	 *
+	 * `getSelection` returns what `setSelection` was given, because the tests here are
+	 * about the WIRING between a chord and the clipboard rather than about xterm's
+	 * selection model — which is xterm's, is exercised by a real drag in the built app,
+	 * and would be a second implementation to keep in step if it were modelled here.
+	 */
+	private selection = "";
+	private customKeyHandler:
+		| ((event: Record<string, unknown>) => boolean)
+		| null = null;
+
+	getSelection(): string {
+		return this.selection;
+	}
+
+	/** Used by the tests, not by the component. */
+	setSelection(text: string): void {
+		this.selection = text;
+	}
+
+	attachCustomKeyEventHandler(
+		handler: (event: Record<string, unknown>) => boolean,
+	): void {
+		this.customKeyHandler = handler;
+	}
+
+	/** One keydown through the hook the component installed, defaults filled in. */
+	pressKey(event: Record<string, unknown>): boolean {
+		if (!this.customKeyHandler) return true;
+		return this.customKeyHandler({
+			type: "keydown",
+			key: "",
+			ctrlKey: false,
+			metaKey: false,
+			altKey: false,
+			shiftKey: false,
+			...event,
+		});
+	}
 	onTitleChange() {
 		return { dispose: () => {} };
 	}

@@ -638,7 +638,21 @@ const DEFAULT_BROWSER_PANEL_WIDTH = 640;
  * that is shipping now.
  */
 const CONSOLE_GRID_COLUMNS = 100;
-const CONSOLE_PANE_CHROME_PX = 24;
+/*
+ * THE PANE'S HORIZONTAL GUTTERS, and the round-2 design finding (D12) is why this
+ * is 16 rather than the 24 it was: the allowance was being spent as a right-hand
+ * gutter rather than as chrome, because the terminal painted from the pane's own
+ * edge (`column 0 at x=1` while the header's title sits at x=9 and the strip's pill
+ * at x=8) and the remaining 24 px showed as uniform ground to the right of the last
+ * column. Measured, not inferred: 780 px of grid inside an 804 px pane.
+ *
+ * The decision is INSET rather than bleed - the terminal takes the same two 8 px
+ * gutters the pane's header and its strip already use, so the pane has one gutter at
+ * one width instead of a chrome bar at 8 px sitting over a grid at 0 - and the
+ * allowance is therefore exactly those two gutters. `console-pane.tsx` carries the
+ * matching `px-2` on the terminal's box; if either moves, this moves with it.
+ */
+const CONSOLE_PANE_CHROME_PX = 16;
 const measureConsoleDefaultWidth = (): number =>
 	Math.ceil(CONSOLE_GRID_COLUMNS * measureCell().cellWidth) +
 	CONSOLE_PANE_CHROME_PX;

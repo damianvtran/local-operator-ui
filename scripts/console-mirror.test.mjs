@@ -162,6 +162,20 @@ const installBridge = () => {
 
 const settle = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** A clipboard the pane can write to, recording what it was handed. jsdom has none. */
+const installClipboard = () => {
+	const written = [];
+	Object.defineProperty(window.navigator, "clipboard", {
+		value: {
+			writeText: async (text) => {
+				written.push(text);
+			},
+		},
+		configurable: true,
+	});
+	return written;
+};
+
 const mountMirror = async () => {
 	const root = harness.createRoot(document.getElementById("root"));
 	root.render(
@@ -256,5 +270,77 @@ test("the pane's own writes are never sent back as input", async () => {
 		"mounting, replaying and the theme pass send no input",
 	);
 	assert.ok(terminal.written.length >= 0);
+	root.unmount();
+});
+
+/*
+ * COPY (UX round 2, U5): a drag painted `xterm-selection` boxes and ⌘C did nothing —
+ * no `copy` event fired, the clipboard stayed empty, and nothing in this feature had
+ * wired a path. These two cells are the wiring proof; the built app's own drag is the
+ * round's other half, and the seam between them is stated rather than blurred.
+ */
+test("the copy chord copies the selection and is not sent to the program", async () => {
+	const written = installClipboard();
+	const calls = installBridge();
+	const { root, terminal } = await mountMirror();
+
+	terminal.setSelection("npm run build");
+	const handled = terminal.pressKey({ key: "c", metaKey: true });
+	await settle();
+
+	assert.equal(handled, false, "the chord is claimed rather than encoded");
+	assert.deepEqual(
+		written,
+		["npm run build"],
+		"and the selection reaches the clipboard",
+	);
+	assert.deepEqual(
+		calls,
+		[],
+		"and NOT the pty: a copy is not input, so no `\\x03` may reach a running program",
+	);
+	root.unmount();
+});
+
+test("Ctrl+C with nothing selected is still the interrupt", async () => {
+	// The negative half, and the reason the chord is conditional: on Linux and Windows
+	// Ctrl+C is BOTH copy and SIGINT, so claiming it unconditionally would take the
+	// interrupt away from a shell that is using it.
+	const written = installClipboard();
+	const { root, terminal } = await mountMirror();
+
+	terminal.setSelection("");
+	const handled = terminal.pressKey({ key: "c", ctrlKey: true });
+	assert.equal(
+		handled,
+		true,
+		"with no selection the key is the terminal's to encode",
+	);
+	assert.deepEqual(written, [], "and nothing is copied");
+	root.unmount();
+});
+
+test("a copy event also carries the selection, for every route that is not the chord", async () => {
+	const { root, terminal } = await mountMirror();
+	terminal.setSelection("built in 4.2s");
+
+	const event = new window.Event("copy", { bubbles: true, cancelable: true });
+	const data = new Map();
+	Object.defineProperty(event, "clipboardData", {
+		value: {
+			setData: (type, value) => data.set(type, value),
+		},
+	});
+	document
+		.querySelector('[data-tour-tag="console-mirror"]')
+		.dispatchEvent(event);
+	await settle();
+
+	assert.equal(data.get("text/plain"), "built in 4.2s");
+	assert.equal(
+		event.defaultPrevented,
+		true,
+		"the browser's own copy is not left to win",
+	);
 	root.unmount();
 });

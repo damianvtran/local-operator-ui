@@ -161,8 +161,60 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		term.loadAddon(new Unicode11Addon());
 		term.unicode.activeVersion = "11";
 		term.open(host);
+
+		/*
+		 * COPY, ON TWO PATHS, and both are needed (UX round 2, U5).
+		 *
+		 * A terminal you cannot copy out of is not finished, and the pane had no copy
+		 * path at all: a drag painted `xterm-selection` boxes and ⌘C did nothing — no
+		 * `copy` event fired and the clipboard stayed empty, because nothing in this
+		 * feature (and no Edit-menu role) had wired one.
+		 *
+		 * PATH ONE is the chord, through xterm's own hook: `attachCustomKeyEventHandler`
+		 * runs BEFORE the terminal encodes a key, and returning false is what stops it
+		 * being sent to the program. That matters on Linux and Windows, where Ctrl+C is
+		 * BOTH copy and SIGINT — so the chord is claimed only when there IS a selection,
+		 * and a Ctrl+C with nothing selected still reaches the shell as an interrupt,
+		 * which is the behaviour a terminal user expects and would notice immediately if
+		 * it were taken away. On macOS the copy chord is ⌘C and ⌃C stays the interrupt,
+		 * so the two never compete.
+		 *
+		 * PATH TWO is the `copy` event itself, for every other route into it: a context
+		 * menu, a native accelerator if one is ever added, or the browser's own
+		 * selection copying. It is the standard xterm recipe and it is harmless when it
+		 * never fires.
+		 */
+		const copySelection = (): string => term.getSelection() ?? "";
+		const copyChord = (event: KeyboardEvent): boolean => {
+			const key = event.key?.toLowerCase();
+			if (key !== "c") return true;
+			// ⌘C on macOS, Ctrl+C (or Ctrl+Shift+C) elsewhere — and ⌘ takes precedence so
+			// a stray Ctrl alongside it is not read as the interrupt chord.
+			const chord = event.metaKey
+				? !event.ctrlKey
+				: event.ctrlKey && !event.metaKey;
+			if (!chord || event.altKey) return true;
+			const selection = copySelection();
+			// NO SELECTION: not ours. Ctrl+C falls through to the pty as `\x03`.
+			if (!selection) return true;
+			void navigator.clipboard?.writeText(selection).catch(() => {});
+			return false;
+		};
+		term.attachCustomKeyEventHandler((event) => {
+			if (event.type !== "keydown") return true;
+			return copyChord(event);
+		});
+		const onCopy = (event: ClipboardEvent) => {
+			const selection = copySelection();
+			if (!selection) return;
+			event.clipboardData?.setData("text/plain", selection);
+			event.preventDefault();
+		};
+		host.addEventListener("copy", onCopy);
+
 		setTerminal(term);
 		return () => {
+			host.removeEventListener("copy", onCopy);
 			setTerminal(null);
 			term.dispose();
 		};

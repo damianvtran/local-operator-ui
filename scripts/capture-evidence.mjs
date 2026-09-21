@@ -113,13 +113,13 @@ const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
  * The console pane's shipped default width, in px.
  *
  * `DEFAULT_CONSOLE_PANEL_WIDTH` from `ui-preferences-store.ts` — `ceil(100 columns
- * x 7.8px) + 24px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
+ * x 7.8px) + 16px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
  * this file is JavaScript and cannot import the store's TypeScript. The restatement
  * is pinned by `scripts/console-pane.test.mjs`, which imports both and fails when
  * they differ, so a font step or a column count that moves upstream breaks a test
  * rather than silently re-cropping every console frame.
  */
-const CONSOLE_PANE_WIDTH = 804;
+const CONSOLE_PANE_WIDTH = 796;
 
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
