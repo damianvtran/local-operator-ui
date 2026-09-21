@@ -41,7 +41,8 @@ here has ever spawned a shell; that is the live set below.
 **The live set** (`console-pane-live/`) is `scripts/console-host-proof.mjs`, run
 against the BUILT app headless, and it is the other half of the evidence:
 
-- `proof-transcript.md` — the full run: a real pty forked through the app's own main
+- `proof-transcript.md` — THE PAIRED RUN, and the one the displayed frame belongs to:
+  `Result: every check passed`, **46 cells, 0 FAIL, exit 0**. It is a real pty forked through the app's own main
   process, the real `/rpc` driven with real requests, and every cell's actual output.
   The two capture cells are in it verbatim (`capture geometry`, `offscreen capture`),
   as is `the run never held the operator's frontmost application` — 0/N.
@@ -49,12 +50,13 @@ against the BUILT app headless, and it is the other half of the evidence:
   surface, and the pane is mounted for it: the rig opens the conversation through the
   app's own launch intent, presses the console trigger, and never calls
   `setContentRect` itself, so the rect main crops to is the one the PANE reported.
-  `rendered: "displayed"`, 82×45, `theme: "localOperatorDark"`, **47,139 B** at
-  **1286×1404**. The arithmetic, because design round 4's D20 caught it printed wrong
-  here: the pane's own frame is 659×779.5 CSS, and the CROP is the terminal's box inside
-  it — 643×702.5, which is the panel's reported `contentRect` and therefore what the frame
-  is of. At the window's device pixel ratio of 2 that is 1286×1405, and the file is
-  1286×1404 because the crop floors to whole pixels. What the frame shows is the pane's
+  `rendered: "displayed"`, `theme: "localOperatorDark"`, **48,159 B** at **1286×1582**
+  (the crop is 643×791 CSS at the window's device pixel ratio of 2, the panel's own
+  reported `contentRect`). The surface in this run is at the grid it was created with,
+  **120×40**, and the pixels show it rather than claim otherwise: the shell's own
+  `stty size` — `30 100` — is in the record, so the pty was resized after it ran, and the
+  pane's box fits fewer columns than the grid, which is §8.5's crop and not a bug in the
+  crop. What the frame shows is the pane's
   terminal, not a window corner: an earlier revision of this cell photographed the
   window's top-left quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
 - `proof-transcript-unpaired.md` — THE SAME RIG ON A MACHINE THE APP IS NOT PAIRED WITH,
@@ -69,9 +71,10 @@ against the BUILT app headless, and it is the other half of the evidence:
 - `offscreen-capture.png` — the same call with the pane closed, from that unpaired run: it
   needs no pane and no backend, which is the point of the reconstruction.
   `rendered: "offscreen"`, `renderer: "dom"`, **44,713 B** at **1560×936**, `attempts: 1`.
-  The size differs from the paired run's 47,138 B for a reason worth stating rather than
-  rounding over: with no pane mounted nothing reports a content rect, so the window is sized
-  to the SURFACE's own grid (100×30) rather than to the pane's box. It is a real terminal
+  The size differs from the paired run's for a reason worth stating rather than rounding
+  over: with no pane mounted nothing reports a content rect, so the window is sized to the
+  SURFACE's own grid rather than to the pane's box. The paired run's own offscreen frame is
+  **48,035 B** at **1280×1560**, the same record at the same grid. It is a real terminal
   frame — the rig's own
   `printf 'marker-424242\n'` and `stty size` → `30 100` — reconstructed from the
   record by the capture view.
