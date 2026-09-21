@@ -674,6 +674,104 @@ test("an ADMITTED request still clears the count, which is what a pairing is", (
 });
 
 /*
+ * A RELOAD IS NOT A SUCCESSOR (2026-09-20).
+ *
+ * `lop-update` moves a serving daemon in place with `os.execve`, which re-runs
+ * the ASGI lifespan and MINTS A NEW `instance_id` under the SAME pid. The app
+ * read that as "another process is answering", published
+ * `pairing: { available: false, cause: "successor" }` - the banner the operator
+ * watched for hours - and could not recover it, because the daemon was a child
+ * this app owns and `recoverFromDetachment` returns at its owned-child guard.
+ * `reanchored` is the observation for the one shape where a changed identity is
+ * the SAME process, and these cases are the machine's side of it.
+ */
+test("a reload of the SAME pid re-anchors the identity and keeps the connection", () => {
+	const machine = attached(true);
+	const reloaded = {
+		...identity,
+		instanceId: "instance-reloaded",
+		version: "0.61.4",
+	};
+	assert.equal(
+		machine.observe({
+			kind: "reanchored",
+			identity: reloaded,
+			detail:
+				"Connected to the daemon on http://127.0.0.1:7341 (pid 4321, v0.61.4). It reloaded in place and kept the same process.",
+		}),
+		"attached",
+		"a reload is not a lost connection: the process never went away",
+	);
+	const snapshot = machine.snapshot();
+	assert.equal(snapshot.instanceId, "instance-reloaded");
+	assert.equal(snapshot.version, "0.61.4");
+	assert.equal(
+		snapshot.pid,
+		4321,
+		"the pid is the evidence that this is the same process, so it may not move with the identity",
+	);
+	assert.equal(
+		snapshot.owned,
+		true,
+		"ownership is a fact about who spawned the process, which a reload cannot change: this machine had an OWNED daemon",
+	);
+	assert.equal(snapshot.state, "attached");
+	assert.equal(snapshot.failures, 0);
+	assert.equal(
+		machine.expectedInstanceId(),
+		"instance-reloaded",
+		"and the app's comparison moves with the process, so the next probe is `identified` rather than a second contradiction",
+	);
+});
+
+test("the re-anchor clears the failure count and any detach state, so a later contradiction starts over", () => {
+	const machine = attached();
+	for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+		machine.observe({ kind: "contradicted", detail: "another process" });
+	}
+	assert.equal(machine.getState(), "detached");
+	assert.equal(
+		machine.observe({
+			kind: "reanchored",
+			identity: { ...identity, instanceId: "instance-reloaded" },
+			detail: "It reloaded in place and kept the same process.",
+		}),
+		"attached",
+		"a reload of the process we were talking to is the end of that detach, not a fourth sample of it",
+	);
+	assert.equal(machine.snapshot().failures, 0);
+	assert.equal(machine.isReconnecting(), false);
+	assert.equal(
+		machine.observe({ kind: "contradicted", detail: "another process" }),
+		"degraded",
+		"the count really was cleared: the next contradiction is the FIRST of three again",
+	);
+});
+
+test("the re-anchor does not pair by itself: the probe site that proved the same process answered is the only producer", () => {
+	const machine = attached(true);
+	/*
+	 * The state a machine is in when the app has NOT proved a credential is
+	 * admitted. `reanchored` must leave it exactly there: the fold's evidence is
+	 * "the process reloaded", which by itself says nothing about the plane, so
+	 * pairing stays the probe site's assertion (`probeAttachedDaemon` sets it from
+	 * the same-pid proof) rather than gaining a second producer here.
+	 */
+	machine.setPairing({ available: false, cause: "unpaired" });
+	machine.observe({
+		kind: "reanchored",
+		identity: { ...identity, instanceId: "instance-reloaded" },
+		detail: "It reloaded in place and kept the same process.",
+	});
+	assert.deepEqual(
+		machine.snapshot().pairing,
+		{ available: false, cause: "unpaired" },
+		"the re-anchor moves the identity and the state, never the pairing",
+	);
+	assert.equal(machine.getState(), "attached");
+});
+
+/*
  * The two bands answer ONE question the same way, and the record is what answers
  * it (design round 1, D2; UX round 1, U3).
  *
