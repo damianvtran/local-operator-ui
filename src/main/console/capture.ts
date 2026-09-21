@@ -308,7 +308,8 @@ export class ConsoleCaptureView {
 		let last = { bytes: 0, renderer: "unknown" };
 		for (let attempt = 1; attempt <= 2; attempt++) {
 			// One number per FEED, not per attempt: see `feedSeq` above.
-			const nonce = (this.feedSeq += 1);
+			this.feedSeq += 1;
+			const nonce = this.feedSeq;
 			const settled = await waitForCapture(
 				contents,
 				"console-capture-settled",
