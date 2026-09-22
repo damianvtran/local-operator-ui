@@ -486,9 +486,16 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   deliberately still whole**: it
   carries the daemon's own sentence about why the write was refused, and truncating
   that would hide the reason the reader is being asked to retry. Its measured cost
-  is stated rather than left to be discovered - 216x206 at the 280 panel, nine
-  wrapped lines covering four rows and two section headers - and that is the trade
-  this design takes: a refusal that is readable beats a smaller one that is not.
+  is stated rather than left to be discovered - **216x170 over eight wrapped lines
+  at the 280 panel**, covering four rows and two section headers, and that is the
+  trade this design takes: a refusal that is readable beats a smaller one that is
+  not. The larger figures this paragraph used to carry (216x206, nine lines) are the
+  LONG-title case, measured on the operator's own 55-character conversation name;
+  the default title wraps to eight (design round 3, D8: the two were quoted as one).
+  **Also recorded rather than fixed** (design round 3, D9): the row's flyout starts
+  2px inside the panel's own content box - the anchor clears the acts, which is what
+  § 6 requires of it, and the 2px is the panel's border - so it is stated here as a
+  measurement of the shipped geometry rather than churned for two pixels.
 - **Duration:** 8000ms for the offer (sonner's 4000ms default is short for an
   Undo), 10000ms for a refusal, which carries its Retry. **The panel runs that clock, not
   sonner** (agent review round 2, the re-assertion): sonner's per-toast life resets only

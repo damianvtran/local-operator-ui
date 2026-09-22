@@ -601,11 +601,53 @@ nav[aria-label="Chats"]
  * THE REFUSAL IS DELIBERATELY NOT INCLUDED: it carries the daemon's own sentence about
  * why the write was refused, and truncating that would hide the reason the reader is
  * being asked to retry. Its height is the price of showing it whole, and it is stated as
- * a trade in spec § 10 with the measurement (216x206 at the 280 panel).
+ * a trade in spec § 10 with the measurement: 216x170 over eight lines at the 280 panel, which
+ * is the DEFAULT title; the operator's own 55-character title is the long case and measured
+ * 216x206 over nine, which is what the figure here used to quote as if it were the default
+ * (design round 3, D8).
  */
 nav[aria-label="Chats"]
 	[data-sonner-toaster]
 	[data-sonner-toast].lo-archive-toast[data-type="info"]
 	[data-content] {
 	min-width: 0;
+}
+
+/*
+ * THE OFFER SPENDS NO WIDTH ON CHROME, AND THE LANE IS THE WIDTH IT GETS (design round 3, D7).
+ *
+ * The card was drawing the type's own 16px icon plus its two margins inside a 216px box, and
+ * the name it quotes is the only part that gives: measured, the operator's own title elided to
+ * about five characters (`“Migra… archived.`). The icon carries nothing here - the sentence
+ * already reads `<name> archived.` and the action beside it is the affordance - so it is hidden
+ * and the box widens to the lane's own 248px, which is what the lane draws at the 280 panel.
+ *
+ * THE CARD TAKES NO PRESS A READER AIMED AT A ROW (UX round 3, U8). The lane sits over the
+ * list, so the card's own box covers up to three rows - and a press inside that box that
+ * misses the buttons used to land on the card and stop there: a dead zone over the list, with
+ * no control under it and the row beneath unreachable. The card's body now passes presses
+ * through, so what a reader aimed at a row reaches the row; the two things that ARE controls -
+ * the action and the close - take theirs back explicitly, and they keep their own hit areas.
+ */
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"] {
+	--width: 248px;
+	pointer-events: none;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-icon] {
+	display: none;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-button],
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-close-button] {
+	pointer-events: auto;
 }

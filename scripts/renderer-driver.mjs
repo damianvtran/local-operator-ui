@@ -3086,12 +3086,46 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 	await hoverOver(cdp, `${undoRow} [data-session-archive]`);
 	await wait(150);
+	/*
+	 * AND THE BOX IS DRAWN, NON-ZERO AND STABLE BEFORE THE PRESS (UX round 3's instrument
+	 * finding). The UX round could not reproduce the walk's no-op as an app behaviour - every
+	 * press of its own landed - and it hit this walk's two failure modes itself: a pre-reveal
+	 * measurement returns a 0x0 box, which sends a press to (0,0), and a press that measures and
+	 * THEN moves aims at the box the control had at rest. So the control's box is read twice
+	 * with a settle between, and the press below goes to the box this check proved.
+	 */
+	const boxBefore = await verb(
+		cdp,
+		"measure",
+		`${undoRow} [data-session-archive]`,
+	);
+	await wait(200);
+	const boxAfter = await verb(
+		cdp,
+		"measure",
+		`${undoRow} [data-session-archive]`,
+	);
+	const stableBox =
+		boxBefore.rect.width > 0 &&
+		boxBefore.rect.height > 0 &&
+		boxBefore.centre.x === boxAfter.centre.x &&
+		boxBefore.centre.y === boxAfter.centre.y;
 	const undoRevealed =
 		(await drawn(`${undoRow} [data-session-archive]`)) === true;
 	check(
-		"the row this walk presses is revealed before it is pressed",
-		undoRevealed === true,
-		JSON.stringify({ row: REFUSED_UNDO_ID, revealed: undoRevealed }),
+		"the control this walk presses is drawn at a non-zero, stable box before the press",
+		undoRevealed === true && stableBox === true,
+		JSON.stringify({
+			row: REFUSED_UNDO_ID,
+			revealed: undoRevealed,
+			stableBox,
+			box: {
+				w: boxAfter.rect.width,
+				h: boxAfter.rect.height,
+				cx: boxAfter.centre.x,
+				cy: boxAfter.centre.y,
+			},
+		}),
 	);
 	/*
 	 * A STATIONARY PRESS, not one that moves first. `clickAt` dispatches `mouseMoved` before
@@ -3115,12 +3149,8 @@ async function sceneSessionArchive(cdp) {
 		"row forensics, walk (the press that does NOTHING)",
 		JSON.stringify(await rowForensics(cdp, REFUSED_UNDO_ID)),
 	);
-	const undoControl = await verb(
-		cdp,
-		"measure",
-		`${undoRow} [data-session-archive]`,
-	);
-	await pressPointerStationary(cdp, undoControl.centre.x, undoControl.centre.y);
+	/* The press goes to the box the check above proved drawn, non-zero and stable. */
+	await pressPointerStationary(cdp, boxAfter.centre.x, boxAfter.centre.y);
 	await wait(500);
 	/*
 	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The lane keeps one
