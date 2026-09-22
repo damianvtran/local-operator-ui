@@ -15178,7 +15178,56 @@ async function gateCheck() {
 
 // ---- main --------------------------------------------------------------------
 
+/**
+ * A STALE BUILD MUST NOT PRODUCE A READING.
+ *
+ * WHY THIS EXISTS (pass 5, and it is the most expensive lesson of this PR): a head carrying the
+ * lane's currency fix was driven against an `out/` bundle built hours earlier that did not
+ * contain it, and every reading came back describing the PREVIOUS app - the walk's three checks
+ * "still failing", the fix "unverified", all of it a measurement of yesterday's bundle rather
+ * than of the tree. That is this repository's own warning about a dead instrument returning a
+ * reading instead of an error, and the cost is days.
+ *
+ * So the launch path refuses. `main()` calls this before anything is spawned: if `out/` has no
+ * renderer assets, or the newest one is older than the newest source file, the run stops with
+ * the remedy rather than photographing the wrong build. A scene can still be run against a
+ * deliberately older bundle, but it has to be done by whoever wants it, knowingly.
+ */
+async function assertBuildIsCurrent() {
+	const fs = await import("node:fs");
+	const path = await import("node:path");
+	const walk = (dir, out = []) => {
+		if (!fs.existsSync(dir)) return out;
+		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+			const at = path.join(dir, entry.name);
+			if (entry.isDirectory()) walk(at, out);
+			else out.push(at);
+		}
+		return out;
+	};
+	const newest = (files) =>
+		files.reduce((max, file) => Math.max(max, fs.statSync(file).mtimeMs), 0);
+	const assets = walk("out/renderer").filter((f) => /\.(js|css|html)$/.test(f));
+	if (assets.length === 0) {
+		throw new Error(
+			"refusing to run: `out/` holds no built renderer assets, so a scene would photograph nothing. Run `pnpm build` at this head, then run the scene.",
+		);
+	}
+	const builtAt = newest(assets);
+	const sourceAt = newest(walk("src").filter((f) => /\.(ts|tsx|css)$/.test(f)));
+	if (builtAt < sourceAt) {
+		const seconds = Math.round((sourceAt - builtAt) / 1000);
+		throw new Error(
+			`refusing to run: the built renderer is ${seconds}s OLDER than the newest source file, so every reading would describe a previous app. Run \`pnpm build\` at this head, then run the scene.`,
+		);
+	}
+	console.log(
+		`[build] current: assets ${new Date(builtAt).toISOString()} >= sources ${new Date(sourceAt).toISOString()}`,
+	);
+}
+
 async function main() {
+	await assertBuildIsCurrent();
 	mkdirSync(HOME_DIR, { recursive: true });
 	mkdirSync(CONFIG_DIR, { recursive: true });
 	mkdirSync(APP_CWD, { recursive: true });
