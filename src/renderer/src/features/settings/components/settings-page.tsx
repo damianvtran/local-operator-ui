@@ -1132,8 +1132,10 @@ export const SettingsPage: FC = () => {
 										filterByCredentials={true}
 										allowCustom={true}
 										allowDefault={false}
-										/* This IS Settings, so the default copy would send the
-										   reader to the page they are already on. */
+										/* This IS Settings, so it names the page's own sign-in door
+										   (sign in, or tell the agent) rather than leaning on the
+										   picker's default; kept explicit so this surface's copy can
+										   diverge from that default without touching it. */
 										emptyHelperText="No hosting providers available. Sign in to a provider or add a key by telling the agent, for example: /credential <your key>."
 									/>
 									<ModelSelect

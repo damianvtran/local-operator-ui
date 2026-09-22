@@ -59,10 +59,11 @@ type HostingSelectProps = {
 	/**
 	 * What to say when credentials filtering leaves nothing to choose.
 	 *
-	 * The default sends the reader to Settings, which is right from the chat
-	 * and the agent form and wrong on the Settings page itself - where the
-	 * credentials section is three rows down the same nav. A caller that IS the
-	 * destination names the section instead.
+	 * The default names the ONLY door that adds a key now that the Settings
+	 * credentials section is gone: the composer's `/credential` gesture. It is
+	 * right from the chat, the agent form and the Settings page alike, so a
+	 * caller with nothing more specific to say can leave it unset. Settings'
+	 * own model section still names that gesture with its own sentence.
 	 */
 	emptyHelperText?: string;
 
@@ -90,7 +91,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	onSave,
 	isSaving = false,
 	filterByCredentials = true,
-	emptyHelperText = "No hosting providers available. Add credentials in Settings.",
+	emptyHelperText = "No hosting providers available. Sign in to a provider, or add a key by telling the agent, for example: /credential <your key>.",
 	allowCustom = true,
 	allowDefault = true,
 }) => {
