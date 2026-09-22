@@ -28,7 +28,7 @@
  */
 
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -87,8 +87,12 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { ConsoleMirror } from "./src/renderer/src/features/console/components/console-mirror";',
+			// Exported rather than imported directly for the same reason the stub's
+			// handles are: the test must read the module the COMPONENT built with, not a
+			// second copy whose constants could drift from it.
+			'export { measureCell, deviceRoundedRowHeight } from "./src/renderer/src/shared/themes/terminal-theme";',
 			'export { createRoot } from "react-dom/client";',
-			'export { createElement } from "react";',
+			'export { createElement, StrictMode, useState } from "react";',
 			// The stub's own handles, exported through the same bundle so the test
 			// drives the very instances the component constructed rather than a
 			// second copy of the module.
@@ -129,7 +133,8 @@ const harnessPath = join(
 );
 writeFileSync(harnessPath, bundle.outputFiles[0].text);
 const harness = await import(pathToFileURL(harnessPath).href);
-const { __terminals, KEYSTROKE_BYTES } = harness;
+const { __terminals, KEYSTROKE_BYTES, measureCell, deviceRoundedRowHeight } =
+	harness;
 
 /** The bridge the pane talks to, recording what it was handed. */
 const installBridge = () => {
@@ -200,7 +205,7 @@ const installClipboard = () => {
 	return written;
 };
 
-const mountMirror = async () => {
+const mountMirror = async (extra = {}) => {
 	const root = harness.createRoot(document.getElementById("root"));
 	root.render(
 		harness.createElement(harness.ConsoleMirror, {
@@ -209,6 +214,7 @@ const mountMirror = async () => {
 			cols: 80,
 			rows: 24,
 			onReport: () => {},
+			...extra,
 		}),
 	);
 	// The component constructs its terminal in a layout effect, so one tick is all
@@ -536,6 +542,328 @@ test("the capture settle is the write's own completion, not a frame count (Q-13)
 		terminal.writeCallbacks.filter(Boolean).length,
 		1,
 		"and it was carried by the write's own callback rather than by a frame count",
+	);
+	root.unmount();
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CELL THE PANE REPORTS, AND THE CARET IT TAKES ON REQUEST.
+ *
+ * Both are claims about a rendered terminal that a rules-only test cannot make, and
+ * both were wrong in the shipped pane: the reported row height was the LINE BOX
+ * (1.2em) rather than the row xterm paints, which made main derive more rows than
+ * the pane's box holds — the last three and a half rows were painted below the
+ * box's clipped edge, where no scroll reaches them (the operator's report); and a
+ * user who opened the console landed on an empty state with no surface and no caret.
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * The font metrics jsdom has no engine to produce, at the values the SHIPPED FACE
+ * measures in the built app.
+ *
+ * These are not invented: they are the pane's own measurement read back out of the
+ * running app (`canvas.measureText("W")` with the app's resolved `--font-mono` at
+ * 13px, at dpr 2), where `fontBoundingBoxAscent + fontBoundingBoxDescent` = 13 + 4 =
+ * 17. That is the number the whole defect turns on — xterm's char height is 17, the
+ * line box the pane used to report is 15.6, and 791 / 15.6 = 50 rows of 17px does
+ * not fit in 791.
+ */
+const installFontMetrics = (ascent, descent) => {
+	const previous = window.HTMLCanvasElement.prototype.getContext;
+	window.HTMLCanvasElement.prototype.getContext = function getContext() {
+		return {
+			font: "",
+			measureText: (text) => ({
+				width: text.length * 7.8,
+				fontBoundingBoxAscent: ascent,
+				fontBoundingBoxDescent: descent,
+			}),
+		};
+	};
+	return () => {
+		window.HTMLCanvasElement.prototype.getContext = previous;
+	};
+};
+
+/**
+ * The height xterm paints for `rows` rows, in CSS pixels, in xterm 6's own words.
+ *
+ * From `browser/renderer/dom/DomRenderer.ts::_updateDimensions`:
+ *   device.char.height = Math.ceil(charSizeService.height * dpr)
+ *   device.cell.height = Math.floor(device.char.height * lineHeight)   // 1 by default
+ *   css.canvas.height  = Math.round(device.cell.height * rows / dpr)
+ * Restated here rather than approximated, because the claim is about THAT arithmetic:
+ * a test that measured "about a row" per row would pass for the bug too.
+ *
+ * THE DIVISION IS INSIDE THE ROUND, which is the arithmetic as written and not as it
+ * was first transcribed here (agent review round 1, F-5): `round(ceil(charH·dpr)·rows)/dpr`
+ * rounds the device pixel total, `round(ceil(charH·dpr)·rows/dpr)` rounds the CSS total,
+ * and the two differ by up to half a device pixel whenever the device total times rows
+ * is odd — in the one case where a half pixel is the thing being checked. The pane's own
+ * per-row report is `deviceRoundedRowHeight` below, so the bound between them is the
+ * half pixel that round trip can add (the README states it).
+ */
+const paintedHeight = (charHeight, dpr, rows) =>
+	Math.round((Math.ceil(charHeight * dpr) * rows) / dpr);
+
+/**
+ * Main's own floor and the window's own, read off the sources that ship them rather
+ * than restated (§8.5).
+ *
+ * READ FOR THE SAME REASON `measureCell` IS EXPORTED: the invariant below is a claim
+ * about what MAIN derives, so a test that typed "10" would go on claiming it after the
+ * floor moved. `host.ts` cannot be in this bundle — it imports `node:os`, a real pty and
+ * Electron — so the constant is read from the file that declares it, which the suite does
+ * elsewhere for the same reason (the contrast contract's own table).
+ */
+const declaredConstant = (name, file) => {
+	const source = readFileSync(file, "utf8");
+	const match = source.match(new RegExp(`export const ${name} = (\\d+);`));
+	assert.ok(match, `${name} is declared in ${file}`);
+	return Number(match[1]);
+};
+const MIN_ROWS = declaredConstant("MIN_ROWS", "src/main/console/host.ts");
+const WINDOW_MIN_HEIGHT = declaredConstant(
+	"WINDOW_MIN_HEIGHT",
+	"src/main/window-mode.ts",
+);
+
+test("the reported cell height is the row xterm paints, so the grid fits the pane's box", () => {
+	const restore = installFontMetrics(13, 4);
+	try {
+		const dpr = 2;
+		const { cellWidth, cellHeight } = measureCell("monospace", 13, dpr);
+		assert.equal(
+			cellWidth,
+			7.8,
+			"the advance is the metric xterm measures with",
+		);
+		assert.equal(
+			cellHeight,
+			17,
+			"the reported row height is xterm's own: ceil(17 * 2) / 2, not 13 * 1.2",
+		);
+		assert.equal(deviceRoundedRowHeight(17, dpr), 17);
+
+		/*
+		 * THE INVARIANT, over every box this pane can be given — and the RANGE is part of
+		 * the claim, because main does not stop at the division (agent review round 1, F-2).
+		 * `host.ts` derives `rows = floor(box / cellHeight)` and then runs it through
+		 * `clampGrid`, whose floor is `MIN_ROWS`: a box shorter than ten rows is answered
+		 * with TEN, so the pane paints 170px into a box that cannot hold it — the operator's
+		 * symptom by a second route — and a loop that began at 60px was asserting a property
+		 * the derivation does not hold. The floor is pinned below, with the reason it stays
+		 * latent.
+		 */
+		for (let box = MIN_ROWS * cellHeight; box <= 1400; box += 1) {
+			const rows = Math.floor(box / cellHeight);
+			assert.ok(
+				paintedHeight(17, dpr, rows) <= box,
+				`a ${box}px box asked for ${rows} rows, which paints ${paintedHeight(17, dpr, rows)}px`,
+			);
+		}
+
+		/*
+		 * AND THE OTHER HALF, so this test cannot pass for the bug it exists for: the
+		 * row height it used to report over-derives by exactly the amount the operator's
+		 * screen showed. 791 / 15.6 = 50 rows, 50 * 17 = 850 px, 59 px of terminal below
+		 * the box — the live reproduction's own numbers.
+		 */
+		const box = 791;
+		const ratioRows = Math.floor(box / (13 * 1.2));
+		assert.equal(ratioRows, 50);
+		assert.equal(paintedHeight(17, dpr, ratioRows) - box, 59);
+		assert.equal(Math.floor(box / cellHeight), 46);
+
+		/*
+		 * THE FLOOR, PINNED RATHER THAN GLOSSED — the honest answer to a loop that now begins
+		 * at it. Below `MIN_ROWS * cellHeight` main clamps the grid UP, so the pane paints
+		 * rows into a box that cannot show them; that is main's own §8.5 rule and not
+		 * something this pane can fix. What has to hold for it to stay latent is the second
+		 * number: the app's window floor, which is more than three times the height the grid
+		 * floor needs at this face. The pane's box is a fraction of the window's content
+		 * height rather than a multiple of it, so where the floor CAN be reached is a live
+		 * measurement at the smallest window — QA's resize cell on the PR — rather than a
+		 * number invented here.
+		 */
+		const flooredBox = 120;
+		assert.equal(Math.floor(flooredBox / cellHeight), 7);
+		assert.equal(
+			Math.max(MIN_ROWS, Math.floor(flooredBox / cellHeight)),
+			MIN_ROWS,
+			"below the floor main answers a 120px box with ten rows",
+		);
+		assert.ok(
+			paintedHeight(17, dpr, MIN_ROWS) > flooredBox,
+			"and the pane then paints 170px of rows into that 120px box: the over-paint, documented rather than claimed away",
+		);
+		assert.ok(
+			WINDOW_MIN_HEIGHT >= 3 * MIN_ROWS * cellHeight,
+			`the window's own floor (${WINDOW_MIN_HEIGHT}px) is what keeps a pane's box above the grid floor (${MIN_ROWS * cellHeight}px)`,
+		);
+	} finally {
+		restore();
+	}
+});
+
+test("the caret goes into the terminal on the pane's own open, and never on a plain mount", async () => {
+	const before = __terminals.length;
+	const { root } = await mountMirror({ focusRequest: 2 });
+	await settle(2);
+	const asked = __terminals
+		.slice(before)
+		.filter((terminal) => !terminal.wasDisposed);
+	assert.equal(asked.length, 1);
+	assert.equal(
+		asked[0].focusCount,
+		1,
+		"a request takes the keyboard once: the pane answers a user's open by asking, not by mounting",
+	);
+	root.unmount();
+});
+
+test("the request is SPENT when a mirror applies it, so a later mount inside the same pane cannot inherit it", async () => {
+	/*
+	 * THE FINDING THIS PINS (agent review round 1, F-1; UX round 1, U1), and why the two
+	 * tests above could not catch it: each of them mounts a mirror ONCE. The pane keys
+	 * this component on the surface, so a LENS CHANGE inside one pane instance — an
+	 * agent's `console_create` in the conversation on screen, a banner's click for
+	 * another surface, the fallback when the shown surface leaves the listing — mounts a
+	 * second mirror, and a token that survived the pane's life was still sitting there
+	 * for it to apply. Reading it live: the second terminal's `focusCount` was 1, which
+	 * is the caret leaving the composer mid-sentence.
+	 *
+	 * SO THIS RENDERS THE PANE'S OWN SHAPE rather than a second mirror: the token lives in
+	 * the PARENT, the mirror is keyed on the surface, and the parent zeroes the token the
+	 * mirror reports it applied. What follows is that the acknowledgement makes the second
+	 * mount a zero, and the contrast is one line away — the same rig without
+	 * `onFocusTaken` (or without the clear) reads 1, which is how the fix was falsified
+	 * before it was believed.
+	 */
+	const before = __terminals.length;
+	const root = harness.createRoot(document.createElement("div"));
+	const Pane = ({ surface }) => {
+		const [focusRequest, setFocusRequest] = harness.useState(1);
+		return harness.createElement(harness.ConsoleMirror, {
+			key: surface,
+			surface,
+			visible: true,
+			cols: 80,
+			rows: 24,
+			focusRequest,
+			onFocusTaken: (applied) =>
+				setFocusRequest((current) => (current === applied ? 0 : current)),
+			onReport: () => {},
+		});
+	};
+
+	root.render(harness.createElement(Pane, { surface: "con:1:the-users-open" }));
+	await settle(2);
+	const opened = __terminals
+		.slice(before)
+		.find((terminal) => !terminal.wasDisposed);
+	assert.ok(opened, "the first surface's terminal was constructed");
+	assert.equal(opened.focusCount, 1, "the user's own open takes the keyboard");
+
+	// The user then clicks into the composer, and a surface nobody asked for arrives.
+	root.render(
+		harness.createElement(Pane, { surface: "con:2:nobody-asked-for-this" }),
+	);
+	await settle(2);
+
+	/*
+	 * THE KEY CHANGE IS THE WHOLE MECHANISM: the first mirror is unmounted (its terminal
+	 * is disposed) and a second one is mounted for the new surface, so what matters is
+	 * the caret behaviour of THAT terminal — the one the pane did not ask for.
+	 */
+	const live = __terminals
+		.slice(before)
+		.filter((terminal) => !terminal.wasDisposed);
+	assert.equal(
+		live.length,
+		1,
+		"the second surface mounted exactly one terminal",
+	);
+	assert.equal(
+		live[0].focusCount,
+		0,
+		"a mirror mounted for a surface nobody asked for must leave the caret in the composer",
+	);
+	root.unmount();
+});
+
+test("a StrictMode double mount does not spend the request on the mount that is discarded", async () => {
+	/*
+	 * THE APP MOUNTS INSIDE `React.StrictMode` (`main.tsx`), and in dev React runs a
+	 * mount's effects, cleans them up and runs them again INSIDE ONE COMMIT. A caret
+	 * request that is consumed synchronously is therefore spent by the mount that is
+	 * immediately discarded, and the mount that survives never takes the caret — which is
+	 * exactly the half of the open this PR is about, in the loop the operator works in
+	 * (`pnpm dev`). The pane defers its acknowledgement one microtask for this reason, and
+	 * this test is what says the deferral is needed rather than tidy: with the
+	 * acknowledgement applied synchronously, the surviving mount's `focusCount` is 0.
+	 *
+	 * The SHIPPED build has no double invocation, so this is a dev-mode property; it is
+	 * pinned here because the harness that photographed the pane could not settle it (its
+	 * page reports no viewport and drops programmatic focus, so the caret reading there is
+	 * confounded whatever the code does).
+	 */
+	const before = __terminals.length;
+	const root = harness.createRoot(document.createElement("div"));
+	const Pane = () => {
+		const [focusRequest, setFocusRequest] = harness.useState(1);
+		return harness.createElement(harness.ConsoleMirror, {
+			surface: "con:1:strict-mode",
+			visible: true,
+			cols: 80,
+			rows: 24,
+			focusRequest,
+			onFocusTaken: (applied) =>
+				queueMicrotask(() =>
+					setFocusRequest((current) => (current === applied ? 0 : current)),
+				),
+			onReport: () => {},
+		});
+	};
+	root.render(
+		harness.createElement(
+			harness.StrictMode,
+			null,
+			harness.createElement(Pane),
+		),
+	);
+	await settle(4);
+	const live = __terminals.slice(before).filter((t) => !t.wasDisposed);
+	assert.equal(live.length, 1, "one mirror survives the double mount");
+	assert.equal(
+		live[0].focusCount,
+		1,
+		"the surviving mount takes the keyboard: the request must not be spent by the discarded one",
+	);
+	root.unmount();
+});
+
+test("a mirror mounted without a request never takes the keyboard (the restore, the reveal, the capture view)", async () => {
+	const before = __terminals.length;
+	const root = harness.createRoot(document.createElement("div"));
+	root.render(
+		harness.createElement(harness.ConsoleMirror, {
+			surface: "con:1:no-focus",
+			visible: true,
+			cols: 80,
+			rows: 24,
+			onReport: () => {},
+		}),
+	);
+	await settle(2);
+	const mounted = __terminals.slice(before).filter((t) => !t.wasDisposed);
+	assert.equal(mounted.length, 1);
+	assert.equal(
+		mounted[0].focusCount,
+		0,
+		"a pane restored at launch, an agent's reveal and the capture view all mount here, and none of them is a user asking for the keyboard",
 	);
 	root.unmount();
 });
