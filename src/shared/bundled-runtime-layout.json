@@ -1,0 +1,48 @@
+{
+	"python": {
+		"version": "3.12.14",
+		"buildDate": "20260901",
+		"seedNamespace": "python-runtime-seed",
+		"checkoutSeedNames": {
+			"arm64": "python_aarch64",
+			"x64": "python"
+		},
+		"seedStdlibMarker": "lib/python{pyver}/encodings/__init__.py",
+		"prunedSeedPaths": [
+			"bin/2to3",
+			"bin/2to3-{pyver}",
+			"bin/idle3",
+			"bin/idle3.{pyminor}",
+			"bin/pydoc3",
+			"bin/pydoc3.{pyminor}",
+			"lib/python{pyver}/idlelib",
+			"lib/python{pyver}/turtledemo",
+			"lib/python{pyver}/lib2to3",
+			"lib/python{pyver}/pydoc_data",
+			"lib/tk8.6/demos"
+		]
+	},
+	"uv": {
+		"version": "0.12.17",
+		"namespace": "uv",
+		"binaryNames": {
+			"darwin": "uv",
+			"linux": "uv",
+			"win32": "uv.exe"
+		},
+		"checkoutNames": {
+			"arm64": "uv_aarch64",
+			"x64": "uv"
+		}
+	},
+	"architectures": ["arm64", "x64"],
+	"legacyResourceNames": ["python", "python_aarch64"],
+	"machOMagics": [
+		"cffaedfe",
+		"cefaedfe",
+		"feedfacf",
+		"feedface",
+		"cafebabe",
+		"bebafeca"
+	]
+}

@@ -119,17 +119,19 @@ the build actually produced, and any failure fails the release before upload:
 | No bytecode ships | Walks the private seed tree for `.pyc`/`.pyo` |
 | Private seed ships | Asserts exactly one `python-runtime-seed/<arch>` and no `python`/`python_aarch64` name beside it - including a dangling symlink |
 | One seed ships | Asserts the seed present is the one `lipo -archs` says this bundle's architecture resolves |
+| The seed is the declared Python | Runs the seed's own `bin/python3 -I -B --version` and requires the patch release `src/shared/bundled-runtime-layout.json` declares - the only reading that sees a patch level, since the tree's own markers carry the major.minor |
+| One uv ships, and it runs | Asserts exactly one `uv/<arch>`, that its `uv` is a plain file with the execute bit, and that `lipo -archs` on it matches the directory (and the artifact's own `-<arch>`) |
 | The seed matches the filename | Asserts the artifact's `-<arch>` names the same architecture as the app inside it and the seed that app carries |
 | The delivered containers are asserted | `hdiutil attach` the `.dmg` and `ditto` the app out, or `unzip -Z1` then `ditto -x -k` the `.zip`, then run the app checks above on the copy |
 | Metadata describes delivered bytes | Every `latest*.yml` entry's `sha512`/`size` is recomputed from the final, stapled container |
 
 The last four ask nothing of `codesign`: they are about what the build
 assembled. A shipped `.pyc` is bytecode that must not exist in a code-sealed
-bundle at all, and two seed trees mean half of it is an interpreter the machine
+bundle at all, and two runtime trees mean half of it is a binary the machine
 cannot run (`afterPack` in `scripts/after-pack.mjs` removes the other one).
 
 Both bytecode rows name the interpreter trees through
-`src/shared/bundled-python-layout.json` - the same definition the app's own
+`src/shared/bundled-runtime-layout.json` - the same definition the app's own
 update-time heal reads (`isPythonBytecodePath` in `src/main/update-install.ts`),
 which lists the retired `python`/`python_aarch64` names *and*
 `python-runtime-seed/<arch>`. That heal is the app deleting a `.pyc` a stray
@@ -137,6 +139,17 @@ process wrote beside the interpreter it ships; it is deliberately narrow (added
 bytecode under those trees only, never a sealed file, never a `modified` entry),
 and it has to know both layouts because the bundle being replaced is the old one
 and the bundle being healed is either.
+
+The bundled `uv` is asserted the same way and for the same reason: it is a
+EXECUTABLE resource inside the sealed tree (unlike the seed, the app runs it in
+place - see `docs/BUILD.md`), so an artifact that carries the wrong
+architecture's build, or carries it without an execute bit, passes every signing
+check and fails on the user's first install. `bundledUvToolCheck`
+(`scripts/python-artifact-layout.mjs`) asserts the directory, the file, its mode
+and its architecture against the artifact's own name. Its signature is its
+publisher's, not ours: the staged release is Developer ID signed with the
+hardened-runtime flag and notarized, which is what the seal and notarization
+accept without a re-sign.
 
 The container rows exist because the app checks used to run against
 electron-builder's unpacked `dist` output and nothing else, so the bundle a user

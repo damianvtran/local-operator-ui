@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Keep only the bundled Python interpreter the app being packaged can run.
+ * Keep only the bundled runtime resources the app being packaged can run.
  *
  * Why this exists: `extraResources` copies BOTH standalone interpreters
  * (`resources/python` for x64, `resources/python_aarch64` for arm64) into every
@@ -11,30 +11,46 @@
  * bundled interpreter - about 47 MB - was dead weight in every image, and in
  * the universal build both halves were carried for every user.
  *
+ * WHY IT NOW PRUNES TWO TREES AND NOT ONE. The bundled `uv` (see
+ * `src/main/backend/uv-tool.ts`) is staged per architecture for exactly the same
+ * reason the interpreter is - the tool that installs the backend has to run on
+ * the machine the artifact was built for - and it is copied in by the same
+ * architecture-blind `extraResources` list. Adding a second, near-identical
+ * prune step beside this one would have been the obvious move and the wrong
+ * one: two steps that walk the same bundle and delete the other architecture's
+ * tree will drift, and the drift shows up as a larger download nobody measures.
+ * So the groups are parameterised here instead, and `bundledUvToolCheck` in
+ * `python-artifact-layout.mjs` asserts what survived on the artifact.
+ *
  * `afterPack` is the right seam rather than a trimmed `extraResources` filter:
  * the filter is evaluated per target and would have to spell the architecture
  * twice, while electron-builder hands the hook the arch of the bundle it just
  * packed. It runs after the files are copied and BEFORE signing, which matters -
- * the tree is code-sealed as part of the `.app`, so anything removed after
+ * the trees are code-sealed as part of the `.app`, so anything removed after
  * signing would be a `file missing:` violation, the class no update-time heal
  * can repair (see `update-install.ts` `healPythonBytecode`).
  *
- * The "no .pyc/.pyo ships" invariant is unaffected: this only deletes a whole
- * tree, never writes into the one it keeps, and `verify-macos-artifacts.mjs`
+ * The "no .pyc/.pyo ships" invariant is unaffected: this only deletes whole
+ * trees, never writes into the one it keeps, and `verify-macos-artifacts.mjs`
  * still walks what survived.
  *
- * Scope: macOS only. The two trees this prunes are mac standalone interpreters
- * (`setup-python-resource.sh` downloads the `*-apple-darwin-install_only`
- * builds), and no Windows or Linux job assembles them - `publish.yml` runs
- * `pnpm setup-python` in the macOS job alone. Leaving `--win`/`--linux` output
- * byte-identical to what those platforms produce today is the point.
+ * Scope: macOS only. The trees this prunes are mac standalone builds -
+ * `setup-python-resource.sh` downloads the `*-apple-darwin-install_only`
+ * interpreters and the `*-apple-darwin` uv release, and neither `publish.yml`
+ * nor `setup-python` stages them for a Windows or Linux build. Leaving
+ * `--win`/`--linux` output byte-identical to what those platforms produce today
+ * is the point.
  *
  * Usage: configured as `build.afterPack`; not meant to be run by hand. The
  * exported function is what the unit test drives.
  */
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { LAYOUT, seedResourceDir } from "./bundled-python-layout.mjs";
+import {
+	LAYOUT,
+	seedResourceDir,
+	uvResourceDir,
+} from "./bundled-runtime-layout.mjs";
 
 /**
  * The directory each architecture's interpreter occupies, by the same names
@@ -45,6 +61,22 @@ import { LAYOUT, seedResourceDir } from "./bundled-python-layout.mjs";
 export const PYTHON_RESOURCE_DIRS = Object.fromEntries(
 	LAYOUT.architectures.map((arch) => [arch, seedResourceDir(arch)]),
 );
+
+/** And each architecture's `uv`, under its own resource namespace. */
+export const UV_RESOURCE_DIRS = Object.fromEntries(
+	LAYOUT.architectures.map((arch) => [arch, uvResourceDir(arch)]),
+);
+
+/**
+ * Every tree this step prunes the off-architecture half out of, by group.
+ *
+ * Keyed by the group's name only so a failure can name WHAT could not be pruned
+ * rather than dumping two paths nobody can tell apart.
+ */
+export const PRUNED_RESOURCE_GROUPS = {
+	python: PYTHON_RESOURCE_DIRS,
+	uv: UV_RESOURCE_DIRS,
+};
 
 /**
  * `builder-util`'s `Arch` enum, as `afterPack` receives it.
@@ -69,7 +101,7 @@ export function archName(arch) {
 }
 
 /** The packaged app's resources directory, where `extraResources` land. */
-export function pythonResourcesDir({
+export function packagedResourcesDir({
 	appOutDir,
 	productFilename,
 	platform = process.platform,
@@ -82,7 +114,7 @@ export function pythonResourcesDir({
 }
 
 /**
- * Remove the interpreter tree this architecture cannot run.
+ * Remove every resource tree this architecture cannot run.
  *
  * Throws on an arch with no mapping: the two names above are the only ones the
  * app can resolve, so a third architecture reaching this hook means the mac
@@ -92,7 +124,7 @@ export function pythonResourcesDir({
  * runs as either architecture on different machines, so it needs both trees and
  * cannot be pruned at all.
  */
-export function pruneUnshippedPythonResources({
+export function pruneUnshippedBundledResources({
 	appOutDir,
 	arch,
 	productFilename,
@@ -100,39 +132,49 @@ export function pruneUnshippedPythonResources({
 	log = console.log,
 }) {
 	if (platform !== "darwin") {
-		log(`Skipping Python resource pruning: not macOS (${platform})`);
-		return { pruned: [], kept: null, resourcesDir: null };
+		log(`Skipping bundled runtime resource pruning: not macOS (${platform})`);
+		return { pruned: [], kept: [], resourcesDir: null };
 	}
 	const name = archName(arch);
 	if (!Object.hasOwn(PYTHON_RESOURCE_DIRS, name)) {
 		throw new Error(
-			`Cannot prune bundled Python for arch "${name}": expected one of ${Object.keys(PYTHON_RESOURCE_DIRS).join(", ")}. A universal app runs as either architecture and needs both trees, so it cannot be pruned.`,
+			`Cannot prune the bundled runtime for arch "${name}": expected one of ${Object.keys(PYTHON_RESOURCE_DIRS).join(", ")}. A universal app runs as either architecture and needs both trees, so it cannot be pruned.`,
 		);
 	}
-	const keep = PYTHON_RESOURCE_DIRS[name];
-	const resourcesDir = pythonResourcesDir({
+	const resourcesDir = packagedResourcesDir({
 		appOutDir,
 		productFilename,
 		platform,
 	});
 	const pruned = [];
-	for (const name of Object.values(PYTHON_RESOURCE_DIRS)) {
-		if (name === keep) continue;
-		const target = join(resourcesDir, name);
-		if (!existsSync(target)) continue;
-		rmSync(target, { recursive: true, force: true });
-		pruned.push(target);
+	const kept = [];
+	for (const [group, dirs] of Object.entries(PRUNED_RESOURCE_GROUPS)) {
+		const keep = dirs[name];
+		kept.push(keep);
+		for (const [otherArch, relative] of Object.entries(dirs)) {
+			if (otherArch === name) continue;
+			const target = join(resourcesDir, relative);
+			if (!existsSync(target)) continue;
+			rmSync(target, { recursive: true, force: true });
+			pruned.push(target);
+		}
+		// Named per group, so a build that pruned the interpreter and silently
+		// kept the other architecture's uv says which half was missing rather
+		// than reporting nothing to do.
+		log(
+			`Bundled ${group} for the ${name} app: kept ${join(resourcesDir, keep)}`,
+		);
 	}
 	if (pruned.length > 0) {
 		log(
-			`Pruned bundled Python the ${name} app cannot run: ${pruned.join(", ")}`,
+			`Pruned bundled runtime resources the ${name} app cannot run: ${pruned.join(", ")}`,
 		);
 	} else {
 		log(
-			`No off-architecture bundled Python found for ${name} in ${resourcesDir}`,
+			`No off-architecture bundled runtime resources found for ${name} in ${resourcesDir}`,
 		);
 	}
-	return { pruned, kept: join(resourcesDir, keep), resourcesDir };
+	return { pruned, kept, resourcesDir };
 }
 
 /**
@@ -146,10 +188,10 @@ export default async function afterPack(context) {
 	const productFilename = context.packager?.appInfo?.productFilename;
 	if (productFilename == null) {
 		throw new Error(
-			"Cannot prune bundled Python: afterPack context has no packager.appInfo.productFilename",
+			"Cannot prune the bundled runtime: afterPack context has no packager.appInfo.productFilename",
 		);
 	}
-	return pruneUnshippedPythonResources({
+	return pruneUnshippedBundledResources({
 		appOutDir: context.appOutDir,
 		arch: context.arch,
 		productFilename,

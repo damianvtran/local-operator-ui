@@ -85,7 +85,11 @@ import {
 	rmSync,
 } from "node:fs";
 import { join } from "node:path";
-import { LAYOUT } from "./bundled-python-layout.mjs";
+import {
+	LAYOUT,
+	PRUNED_SEED_PATHS,
+	SEED_STDLIB_MARKER,
+} from "./bundled-runtime-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 /**
@@ -99,19 +103,24 @@ import { isEntryPoint } from "./entry-point.mjs";
  */
 export const MACH_O_MAGICS = new Set(LAYOUT.machOMagics);
 
-/** The seed content nothing can reach, relative to the seed root. */
-export const PRUNED_SEED_PATHS = LAYOUT.prunedSeedPaths;
-
 /**
- * The file that says this tree is the Python the prune list was written for.
+ * The seed content nothing can reach, relative to the seed root, and the marker
+ * that says a tree is the Python those paths were written for.
  *
- * The list spells `lib/python3.12/...`, so a bump to another minor version
- * would otherwise turn every entry into a silent no-op - the paths would not
- * exist, nothing would be removed, and the release gate's "the pruned paths are
- * absent" assertion would pass trivially for exactly that reason. Requiring the
- * marker turns that into a build failure that names the file to update.
+ * Both DERIVED from the declared version rather than written out here: the list
+ * used to spell `lib/python3.12/...` literally, so a bump to another minor
+ * version turned every entry into a silent no-op - the paths would not exist,
+ * nothing would be removed, and the release gate's "the pruned paths are absent"
+ * assertion would pass trivially for exactly that reason. The `{pyver}` token in
+ * the definition file (expanded by `bundled-runtime-layout.mjs`) is what makes
+ * that impossible now, and the marker check below still refuses a tree that is
+ * not the Python the list applies to at all.
+ *
+ * Re-exported here, not defined here: `verify-macos-artifacts.mjs` reads them
+ * from this module, and the definition the app and the pack step also read is
+ * `src/shared/bundled-runtime-layout.json`.
  */
-export const SEED_STDLIB_MARKER = LAYOUT.seedStdlibMarker;
+export { PRUNED_SEED_PATHS, SEED_STDLIB_MARKER };
 
 /** A file's first four bytes, as hex, or `null` when they cannot be read. */
 function leadingMagic(path) {
@@ -215,7 +224,7 @@ export function clearIncidentalExecBits(root) {
 export function pruneSeed(root, { log = console.log } = {}) {
 	if (!lstatSync(join(root, SEED_STDLIB_MARKER), { throwIfNoEntry: false })) {
 		throw new Error(
-			`Refusing to prune ${root}: it has no ${SEED_STDLIB_MARKER}, so it is not the Python the prune list was written for. Update seedStdlibMarker and prunedSeedPaths in src/shared/bundled-python-layout.json together with the seed version.`,
+			`Refusing to prune ${root}: it has no ${SEED_STDLIB_MARKER}, so it is not the Python the prune list was written for. Update the python version and the seed paths in src/shared/bundled-runtime-layout.json together with the seed version.`,
 		);
 	}
 	const removed = [];

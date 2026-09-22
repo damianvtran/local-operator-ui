@@ -377,15 +377,54 @@ fi
 
 echo "Virtual environment structure verified"
 
+# --- The package install: uv when there is one, pip otherwise ------------------
+#
+# Same shape as the macOS script, and for the same reasons: uv resolves and
+# fetches in parallel (measured there, cold cache, same interpreter: 14.8 s
+# against pip's 128.9 s for the package install), the pip path below is unchanged and
+# runs whenever uv is absent or cannot do the job, and pip STAYS in the venv
+# because the app's backend-update path runs `pip install --upgrade
+# local-operator` inside this same environment - which is also why the venv is
+# still created with `python -m venv` rather than `uv venv`.
+#
+# Nothing here searches PATH for a uv: an installed uv is a version and a
+# configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
+# app's own answer (`src/main/backend/uv-tool.ts`).
+UV_BIN="${LOCAL_OPERATOR_UV_BIN:-}"
+
+# Drop every UV_* variable the launching environment carried. Measured on uv
+# 0.12.17: a user-level `uv.toml` naming an unreachable index is obeyed by
+# `uv pip install` and ignored with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL`
+# changes where packages come from, while `PIP_INDEX_URL` does not affect uv at
+# all. A name list would drift the day uv adds a variable - the namespace cannot.
+#
+# IT RUNS BEFORE THE SETTINGS BELOW ARE SET: a sweep after them takes them away,
+# and an empty `UV_CACHE_DIR` makes uv exit 2 with `a value is required for
+# '--cache-dir <CACHE_DIR>'` rather than falling back to a default.
+for uv_ambient in $(env | sed -n 's/^\(UV_[A-Za-z0-9_]*\)=.*/\1/p'); do
+  unset "$uv_ambient"
+done
+
+# The cache lives under the app's own support directory rather than the user's
+# shared `~/.cache/uv`, and is handed to uv per invocation rather than exported.
+UV_CACHE_DIR="${APP_DATA_DIR}/uv-cache"
+
+# Is the handed-down uv something we can actually run?
+uv_is_usable() {
+  [ -n "${UV_BIN}" ] && [ -x "${UV_BIN}" ] && "${UV_BIN}" --version >/dev/null 2>&1
+}
+
+# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
+# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
+# never fetches another.
+uv_run() {
+  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_CACHE_DIR="${UV_CACHE_DIR}" \
+    "${UV_BIN}" "$@"
+}
+
 # Activate virtual environment and install local-operator
 echo "Installing local-operator in virtual environment..."
 source "$VENV_PATH/bin/activate"
-
-echo "Upgrading pip..."
-python -m pip install --upgrade pip || {
-  echo "WARNING: Failed to upgrade pip. Will try to continue with existing pip version."
-  pip --version
-}
 
 # Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
 # decides whether it can proceed.
@@ -436,17 +475,39 @@ elif command_exists wget; then
   fi
 fi
 
-echo "Installing local-operator package..."
-python -m pip install --verbose local-operator || {
-  echo "ERROR: Failed to install local-operator package. Exit code: $?"
-  echo "Python version:"
-  python --version
-  echo "pip version:"
-  pip --version
-  echo "Available pip packages:"
-  pip list
-  exit 1
-}
+UV_INSTALLED=false
+if uv_is_usable; then
+  echo "Installing local-operator with uv ($("${UV_BIN}" --version 2>/dev/null || echo 'version unavailable'))..."
+  # No `pip install --upgrade pip` on this path: uv does not use pip.
+  if uv_run pip install --python "${VENV_PATH}/bin/python" --upgrade local-operator; then
+    UV_INSTALLED=true
+    echo "local-operator installation with uv successful"
+  else
+    echo "WARNING: the uv install failed; retrying with pip, which is what this script used before uv was bundled."
+  fi
+else
+  echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."
+fi
+
+if [ "${UV_INSTALLED}" != true ]; then
+  echo "Upgrading pip..."
+  python -m pip install --upgrade pip || {
+    echo "WARNING: Failed to upgrade pip. Will try to continue with existing pip version."
+    pip --version
+  }
+
+  echo "Installing local-operator package..."
+  python -m pip install --verbose local-operator || {
+    echo "ERROR: Failed to install local-operator package. Exit code: $?"
+    echo "Python version:"
+    python --version
+    echo "pip version:"
+    pip --version
+    echo "Available pip packages:"
+    pip list
+    exit 1
+  }
+fi
 echo "local-operator installation successful"
 
 # Verify installation

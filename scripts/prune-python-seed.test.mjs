@@ -13,7 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
-import { LAYOUT } from "./bundled-python-layout.mjs";
+import { LAYOUT } from "./bundled-runtime-layout.mjs";
 import {
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
@@ -46,7 +46,7 @@ import {
  * WHAT IS SUBSTITUTED: the Mach-O file is four magic bytes and padding rather
  * than a signed binary. The predicate under test IS those four bytes (the app's
  * `verifyMachO` reads the same set from
- * `src/shared/bundled-python-layout.json`), and whether a Mach-O's signature
+ * `src/shared/bundled-runtime-layout.json`), and whether a Mach-O's signature
  * verifies is `verifyMachO`'s assertion, exercised in `managed-python.test.mjs`
  * against a real seed. Synthesising it keeps this suite runnable on CI's Linux
  * runner, where the desktop suite runs.
@@ -138,11 +138,13 @@ function makeSeed(dir, { pruned = false } = {}) {
 function makePassingApp(dir) {
 	const app = join(dir, "mac-arm64", "Local Operator.app");
 	const resources = join(app, "Contents", "Resources");
-	makeSeed(join(resources, LAYOUT.seedNamespace, "arm64"), { pruned: true });
+	makeSeed(join(resources, LAYOUT.python.seedNamespace, "arm64"), {
+		pruned: true,
+	});
 	return {
 		app,
 		resources,
-		seed: join(resources, LAYOUT.seedNamespace, "arm64"),
+		seed: join(resources, LAYOUT.python.seedNamespace, "arm64"),
 	};
 }
 
@@ -277,7 +279,7 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
  * build, and every test in the sibling file stayed green because they drive the
  * modules rather than the thing that decides whether the modules run. The gap
  * was the config, so the config is what is asserted - the same lesson
- * `prune-python-resource.test.mjs` records for `afterPack`.
+ * `prune-bundled-resources.test.mjs` records for `afterPack`.
  */
 test("the seeding script runs the prune", () => {
 	const script = readFileSync(
@@ -300,11 +302,11 @@ test("the app and this step read one Mach-O magic set", () => {
 		join(process.cwd(), "src/main/backend/managed-python.ts"),
 		"utf8",
 	);
-	assert.match(source, /BUNDLED_PYTHON_LAYOUT\.machOMagics/);
+	assert.match(source, /BUNDLED_RUNTIME_LAYOUT\.machOMagics/);
 	for (const magic of LAYOUT.machOMagics)
 		assert.doesNotMatch(
 			source,
 			new RegExp(magic),
-			`${magic} is written inline in managed-python.ts again; it belongs in src/shared/bundled-python-layout.json`,
+			`${magic} is written inline in managed-python.ts again; it belongs in src/shared/bundled-runtime-layout.json`,
 		);
 });

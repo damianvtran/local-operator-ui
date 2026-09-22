@@ -143,24 +143,28 @@ The build configuration is defined in the `build` section of `package.json`. You
 - `directories.output`: Output directory for distributables
 - `mac`, `win`, `linux`: Platform-specific configurations
 
-### macOS: one artifact set per architecture, and one bundled interpreter
+### macOS: one artifact set per architecture, and one copy of each bundled runtime tree
 
 `mac.target` builds a `dmg` and a `zip` for `arm64` and `x64` separately, so
 `artifactName` (`${name}-${version}-${arch}.${ext}`) produces
 `local-operator-ui-<version>-arm64.dmg`, `-x64.dmg`, `-arm64.zip` and
 `-x64.zip`. There is no universal image: a universal `.app` carries two copies
-of the Electron framework and both bundled interpreters, so half of every
+of the Electron framework and both bundled runtime trees, so half of every
 download is code the user's machine cannot run.
 
 `extraResources` is not architecture-aware and copies both interpreters into
 every build, as inert data under `Contents/Resources/python-runtime-seed/<arch>`
-(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names. Two
-steps in `scripts/after-pack.mjs` - which `package.json` names as the single
-`afterPack` hook, and which is where anyone who followed an older revision of
-this paragraph to `prune-python-resource.mjs` should look now - run there:
+(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names - and
+both `uv` releases, under `Contents/Resources/uv/<arch>`. Two steps in
+`scripts/after-pack.mjs` - which `package.json` names as the single `afterPack`
+hook, and which is where anyone who followed an older revision of this paragraph
+to `prune-python-resource.mjs` should look now - run there:
 
-1. `scripts/prune-python-resource.mjs` deletes the tree the app cannot run, by
-the same mapping `backend-installer.ts` resolves at runtime.
+1. `scripts/prune-bundled-resources.mjs` deletes every tree the app cannot run -
+the interpreter seed and the `uv` - by the same mapping `backend-installer.ts`
+resolves at runtime. One step for both, because two steps that walk the same
+bundle and delete the other architecture's tree drift, and the drift shows up as
+a larger download nobody measures.
 2. The hook refuses a bundle that still carries a legacy resource name, even a
 dangling one. The seed is never executed from the `.app`, but an incumbent
 install's venv still names `Contents/Resources/python[_aarch64]/bin` in its
@@ -169,18 +173,35 @@ the window between an update's swap and the app's first instruction.
 
 Both have to run before signing: removing a file from a code-sealed `.app` is a
 violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
-the release if a delivered bundle does not carry exactly the seed its
+the release if a delivered bundle does not carry exactly the runtime its
 architecture needs, or carries a legacy alias beside it.
 
+**What `uv` is doing in the bundle.** The install scripts create the backend venv
+and install `local-operator` into it, and that install is the dominant cost of a
+first run (measured: 128.9 s with pip against 14.8 s with uv, cold cache, the
+same interpreter and the same dependency set, on this host at ~25 concurrent
+sessions; both caches warm the same comparison is 178.3 s against 4.5 s). The `uv` binary ships as a sealed resource, pinned to an exact
+release and staged by `pnpm setup-python` from its publisher's signed and
+notarized build; the app hands its path down as `LOCAL_OPERATOR_UV_BIN`
+(`src/main/backend/uv-tool.ts`) and the scripts fall back to the pip path
+exactly as they ran before when it is absent or unrunnable. It is executed from
+the bundle rather than copied out, unlike the interpreter: the interpreter's
+copy-out exists because a venv built on an in-bundle interpreter *records* that
+path and then resolves its stdlib inside the code-sealed `.app`, and uv has no
+such coupling - it is stateless, invoked with argv, and exits before the app is
+usable.
+
 **One definition of that layout.** The names above are spelled nowhere else.
-`src/shared/bundled-python-layout.json` holds the seed namespace, both
-architectures, the checkout spellings and the retired names; the app imports it
-(`managed-python.ts`, `update-install.ts`) and the scripts read it through
-`scripts/bundled-python-layout.mjs`. That is not tidiness - the previous six
-spellings drifted apart in exactly one place (the heal's predicate kept the
-retired names while the release gate was updated), which made every bytecode
-violation on a bundle this branch builds unhealable by construction while the
-gate that shares its job was green.
+`src/shared/bundled-runtime-layout.json` holds the seed namespace, both
+architectures, the checkout spellings and the retired names, the Python version
+and build date (the `{pyver}` token every version-bearing path derives from), and
+the pinned `uv` release with its namespace and per-platform binary names; the app
+imports it (`managed-python.ts`, `update-install.ts`, `uv-tool.ts`) and the
+scripts read it through `scripts/bundled-runtime-layout.mjs`. That is not
+tidiness - the previous six spellings drifted apart in exactly one place (the
+heal's predicate kept the retired names while the release gate was updated),
+which made every bytecode violation on a bundle this branch builds unhealable by
+construction while the gate that shares its job was green.
 
 ### What the app does with the seed at runtime
 

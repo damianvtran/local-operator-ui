@@ -14,24 +14,29 @@ import { after, test } from "node:test";
 import seedAfterPack from "./after-pack.mjs";
 import {
 	LEGACY_RESOURCE_NAMES,
+	SEED_RESOURCE_DIRS,
 	seedResourceDir,
-} from "./bundled-python-layout.mjs";
+	uvResourceDir,
+} from "./bundled-runtime-layout.mjs";
 import afterPack, {
 	PYTHON_RESOURCE_DIRS,
+	UV_RESOURCE_DIRS,
 	archName,
-	pythonResourcesDir,
-	pruneUnshippedPythonResources,
-} from "./prune-python-resource.mjs";
+	packagedResourcesDir,
+	pruneUnshippedBundledResources,
+} from "./prune-bundled-resources.mjs";
 
 /*
- * Coverage for the `afterPack` step that keeps one bundled interpreter per
- * build.
+ * Coverage for the `afterPack` step that keeps one copy of each bundled runtime
+ * resource per build - the interpreter seed and the `uv` tool.
  *
  * Why this file exists: the step is the only thing standing between a user and
- * ~47 MB of interpreter their machine cannot execute, and it fails in the
- * direction nothing notices - if it does nothing at all, the build succeeds,
- * the app runs, and the only symptom is a larger download. Every branch is
- * exercised here, including the two that must NOT remove anything.
+ * ~47 MB of interpreter (plus ~37 MB of uv) their machine cannot execute, and it
+ * fails in the direction nothing notices - if it does nothing at all, the build
+ * succeeds, the app runs, and the only symptom is a larger download. Every
+ * branch is exercised here, including the two that must NOT remove anything,
+ * and both groups: a prune that keeps the right interpreter and the wrong uv is
+ * a bundle whose install silently falls back to pip.
  *
  * What is real: the shipped module, and real directories on a real filesystem.
  * What is substituted: nothing. The hook's whole job is filesystem effects, so
@@ -62,10 +67,13 @@ after(() => {
 	}
 });
 
-/** A packaged macOS app whose two interpreter trees each hold one real file. */
+/** A packaged macOS app whose runtime resource trees each hold one real file. */
 function makePackagedApp(
 	dir,
-	{ trees = Object.values(PYTHON_RESOURCE_DIRS) } = {},
+	{
+		trees = Object.values(PYTHON_RESOURCE_DIRS),
+		uvTrees = Object.values(UV_RESOURCE_DIRS),
+	} = {},
 ) {
 	const appOutDir = join(dir, "mac-arm64");
 	const resources = join(
@@ -89,13 +97,25 @@ function makePackagedApp(
 			"utf8",
 		);
 	}
+	for (const name of uvTrees) {
+		mkdirSync(join(resources, name), { recursive: true });
+		writeFileSync(join(resources, name, "uv"), `# ${name}\n`, {
+			mode: 0o755,
+		});
+	}
 	return { appOutDir, resources };
 }
 
-test("an arm64 build ships only the aarch64 interpreter", () => {
+/** Every path the off-architecture half of both groups occupies. */
+const otherArchTrees = (resources, keep) =>
+	[...Object.entries(PYTHON_RESOURCE_DIRS), ...Object.entries(UV_RESOURCE_DIRS)]
+		.filter(([arch]) => arch !== keep)
+		.map(([, relative]) => join(resources, relative));
+
+test("an arm64 build ships only the aarch64 runtime trees", () => {
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"));
 
-	const result = pruneUnshippedPythonResources({
+	const result = pruneUnshippedBundledResources({
 		appOutDir,
 		arch: "arm64",
 		productFilename: "Local Operator",
@@ -103,23 +123,33 @@ test("an arm64 build ships only the aarch64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	// BOTH groups, in one call: the interpreter the app's probe resolves and the
+	// uv the install script is handed are pruned by the same step, so a bundle
+	// can never keep the right interpreter and the other architecture's uv.
+	assert.deepEqual(result.pruned, otherArchTrees(resources, "arm64"));
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
-	// The tree that stays is untouched, not rebuilt: the app's own probe reads
-	// this directory at runtime, and pruning must not disturb what it finds.
+	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), false);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), true);
+	// The trees that stay are untouched, not rebuilt: the app's own probe reads
+	// the seed at runtime and the install script executes the uv binary, so
+	// pruning must not disturb what it finds.
 	assert.deepEqual(
 		readdirSync(
 			join(resources, "python-runtime-seed/arm64", "lib", "python3.12"),
 		),
 		["os.py"],
 	);
+	assert.equal(
+		readFileSync(join(resources, uvResourceDir("arm64"), "uv"), "utf8"),
+		"# uv/arm64\n",
+	);
 });
 
-test("an x64 build ships only the x86_64 interpreter", () => {
+test("an x64 build ships only the x86_64 runtime trees", () => {
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"));
 
-	const result = pruneUnshippedPythonResources({
+	const result = pruneUnshippedBundledResources({
 		appOutDir,
 		arch: "x64",
 		productFilename: "Local Operator",
@@ -127,19 +157,23 @@ test("an x64 build ships only the x86_64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [
-		join(resources, "python-runtime-seed/arm64"),
-	]);
+	assert.deepEqual(result.pruned, otherArchTrees(resources, "x64"));
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), false);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), false);
+	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), true);
 });
 
-test("a build that carries only its own interpreter is left alone", () => {
+test("a build that carries only its own runtime trees is left alone", () => {
+	// And its uv: a macOS job that staged only the host architecture's uv (a
+	// hand-run build, or a future trimmed copy list) must not have that tree
+	// removed out from under it - absence is not evidence of the wrong arch.
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"), {
-		trees: ["python-runtime-seed/arm64"],
+		trees: [seedResourceDir("arm64")],
+		uvTrees: [uvResourceDir("arm64")],
 	});
 
-	const result = pruneUnshippedPythonResources({
+	const result = pruneUnshippedBundledResources({
 		appOutDir,
 		arch: "arm64",
 		productFilename: "Local Operator",
@@ -148,20 +182,29 @@ test("a build that carries only its own interpreter is left alone", () => {
 	});
 
 	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.deepEqual(result.kept, [
+		seedResourceDir("arm64"),
+		uvResourceDir("arm64"),
+	]);
+	assert.equal(existsSync(join(resources, seedResourceDir("arm64"))), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"), "uv")), true);
 });
 
 test("a non-macOS build is not touched", () => {
-	// The two trees are mac standalone interpreters and only the macOS job
-	// assembles them; leaving the other platforms' output identical is the
-	// contract, so this branch removes nothing even when both trees exist.
+	// The trees are mac standalone builds and only the macOS job assembles them;
+	// leaving the other platforms' output identical is the contract, so this
+	// branch removes nothing even when every tree exists.
 	const dir = tempDir("lo-prune-win-");
 	const appOutDir = join(dir, "win-unpacked");
 	const resources = join(appOutDir, "resources");
-	mkdirSync(join(resources, "python-runtime-seed/arm64"), { recursive: true });
-	mkdirSync(join(resources, "python-runtime-seed/x64"), { recursive: true });
+	for (const relative of [
+		...SEED_RESOURCE_DIRS,
+		uvResourceDir("arm64"),
+		uvResourceDir("x64"),
+	])
+		mkdirSync(join(resources, relative), { recursive: true });
 
-	const result = pruneUnshippedPythonResources({
+	const result = pruneUnshippedBundledResources({
 		appOutDir,
 		arch: "x64",
 		productFilename: "Local Operator",
@@ -172,6 +215,8 @@ test("a non-macOS build is not touched", () => {
 	assert.deepEqual(result.pruned, []);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), true);
 });
 
 test("the numeric Arch enum an afterPack context carries is understood", () => {
@@ -180,7 +225,7 @@ test("the numeric Arch enum an afterPack context carries is understood", () => {
 	// real build it saw.
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"));
 
-	const result = pruneUnshippedPythonResources({
+	const result = pruneUnshippedBundledResources({
 		appOutDir,
 		arch: 3,
 		productFilename: "Local Operator",
@@ -188,41 +233,43 @@ test("the numeric Arch enum an afterPack context carries is understood", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	assert.deepEqual(result.pruned, otherArchTrees(resources, "arm64"));
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), true);
 });
 
-test("an architecture with no bundled interpreter mapping fails loudly", () => {
+test("an architecture with no bundled runtime mapping fails loudly", () => {
 	// Shipping both trees is otherwise a silent outcome, and so is deleting the
 	// wrong one. A third architecture reaching this hook means `mac.target` and
 	// PYTHON_RESOURCE_DIRS have diverged, which must stop the build.
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"));
 	assert.throws(
 		() =>
-			pruneUnshippedPythonResources({
+			pruneUnshippedBundledResources({
 				appOutDir,
 				arch: "ia32",
 				productFilename: "Local Operator",
 				platform: "darwin",
 				log: () => {},
 			}),
-		/Cannot prune bundled Python for arch "ia32"/,
+		/Cannot prune the bundled runtime for arch "ia32"/,
 	);
 	// `universal` is the case that must never be quietly pruned: the same bundle
 	// runs as either architecture on different machines.
 	assert.throws(
 		() =>
-			pruneUnshippedPythonResources({
+			pruneUnshippedBundledResources({
 				appOutDir,
 				arch: 4,
 				productFilename: "Local Operator",
 				platform: "darwin",
 				log: () => {},
 			}),
-		/Cannot prune bundled Python for arch "universal"/,
+		/Cannot prune the bundled runtime for arch "universal"/,
 	);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), true);
 });
 
 test("the afterPack hook resolves the bundle from the packager context", async () => {
@@ -237,6 +284,8 @@ test("the afterPack hook resolves the bundle from the packager context", async (
 
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), false);
+	assert.equal(existsSync(join(resources, uvResourceDir("arm64"), "uv")), true);
 });
 
 test("the hook refuses a context it cannot resolve a bundle from", async () => {
@@ -248,7 +297,7 @@ test("the hook refuses a context it cannot resolve a bundle from", async () => {
 
 test("the resources directory is the bundle's Contents/Resources on macOS only", () => {
 	assert.equal(
-		pythonResourcesDir({
+		packagedResourcesDir({
 			appOutDir: "/tmp/dist/mac-arm64",
 			productFilename: "Local Operator",
 			platform: "darwin",
@@ -256,7 +305,7 @@ test("the resources directory is the bundle's Contents/Resources on macOS only",
 		"/tmp/dist/mac-arm64/Local Operator.app/Contents/Resources",
 	);
 	assert.equal(
-		pythonResourcesDir({
+		packagedResourcesDir({
 			appOutDir: "/tmp/dist/linux-unpacked",
 			productFilename: "Local Operator",
 			platform: "linux",
@@ -286,7 +335,7 @@ test("the arch name is the one the app resolves its interpreter by", () => {
  * all, which is exactly what `verify-macos-artifacts.mjs` refused on the v0.23.2
  * publish run. The gap is the config itself, so the config is what is asserted.
  */
-test("the builder config stages the mac interpreters into the seed namespace", () => {
+test("the builder config stages both runtime trees the architecture resolves", () => {
 	const config = JSON.parse(
 		readFileSync(join(process.cwd(), "package.json"), "utf8"),
 	).build;
@@ -312,9 +361,29 @@ test("the builder config stages the mac interpreters into the seed namespace", (
 		[
 			["resources/python", seedResourceDir("x64")],
 			["resources/python_aarch64", seedResourceDir("arm64")],
+			["resources/uv", uvResourceDir("x64")],
+			["resources/uv_aarch64", uvResourceDir("arm64")],
 		],
-		"the mac build copies each checkout tree into the seed directory its architecture resolves",
+		"the mac build copies each checkout tree into the resource directory its architecture resolves",
 	);
+	/*
+	 * And the two other platforms, which never RUN `pnpm setup-python`: their
+	 * entries are what ships if the trees are ever staged for them, and a uv
+	 * entry missing here is the failure that looks like a working build -
+	 * `extraResources` from a directory that does not exist is silently skipped,
+	 * so the artifact simply arrives without uv and every install falls back to
+	 * pip.
+	 */
+	for (const scope of ["win", "linux"]) {
+		const entries = (config[scope]?.extraResources ?? []).map(
+			(entry) => entry.to,
+		);
+		for (const arch of ["x64", "arm64"])
+			assert.ok(
+				entries.includes(uvResourceDir(arch)),
+				`build.${scope}.extraResources must map a tree to ${uvResourceDir(arch)}; got ${entries.join(", ")}`,
+			);
+	}
 });
 
 test("the hook refuses a bundle that still carries a legacy alias, by name", async () => {

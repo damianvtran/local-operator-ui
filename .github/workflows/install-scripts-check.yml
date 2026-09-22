@@ -72,6 +72,52 @@ jobs:
           fi
           echo "Linux installation script check passed!"
 
+      # THE UV ARM, and why the check above is not enough on its own.
+      #
+      # The step above runs with no `LOCAL_OPERATOR_UV_BIN` - which is what every
+      # artifact built before uv was bundled looks like - so it exercises the
+      # FALLBACK. The script's other path was otherwise only exercised on the
+      # machine that wrote it, and a path nobody runs is a claim rather than a
+      # feature: the failure it would hide is the silent one, an install that
+      # keeps falling back to pip for every user.
+      #
+      # The VERSION IS READ FROM THE LAYOUT DEFINITION rather than written here,
+      # for the same reason the app reads it from there: two spellings of a pinned
+      # version are two versions, and a job that staged a different one would be
+      # testing something nobody ships.
+      #
+      # WHAT THIS ASSERTS THAT MATTERS: `pip` is still in the venv uv built into
+      # (the app's backend-update path runs `pip install --upgrade
+      # local-operator` in that environment, which is why the scripts keep
+      # creating it with `python -m venv`), and the installed console script still
+      # answers `--version`.
+      - name: Stage the pinned uv release for the uv arm
+        run: |
+          uv_version="$(python3 -c "import json;print(json.load(open('src/shared/bundled-runtime-layout.json'))['uv']['version'])")"
+          echo "Pinned uv version from the layout definition: ${uv_version}"
+          mkdir -p "$RUNNER_TEMP/uv"
+          curl --fail --location --silent --show-error --max-time 600 \
+            "https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-x86_64-unknown-linux-gnu.tar.gz" \
+            -o "$RUNNER_TEMP/uv/uv.tar.gz"
+          tar -xzf "$RUNNER_TEMP/uv/uv.tar.gz" -C "$RUNNER_TEMP/uv"
+          UV_BIN="$RUNNER_TEMP/uv/uv-x86_64-unknown-linux-gnu/uv"
+          "$UV_BIN" --version
+          echo "LOCAL_OPERATOR_UV_BIN=${UV_BIN}" >> "$GITHUB_ENV"
+
+      - name: Run the Linux installation script on its uv path
+        run: |
+          export LOCAL_OPERATOR_VENV_PATH="$HOME/.config/local-operator/local-operator-venv-uv"
+          bash src/main/backend/scripts/linux-install-script.sh
+
+          if [ ! -x "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" ]; then
+            echo "Error: the uv install produced a venv with no pip; the app's backend-update path installs with pip in this very environment."
+            ls -la "${LOCAL_OPERATOR_VENV_PATH}/bin" || true
+            exit 1
+          fi
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" --version
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/local-operator" --version
+          echo "Linux uv installation path check passed!"
+
   windows-install-check:
     name: Windows Installation Script Check
     runs-on: windows-latest

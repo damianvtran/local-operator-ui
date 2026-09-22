@@ -33,8 +33,10 @@ import { basename, dirname, join } from "node:path";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
+	PYTHON_VERSION,
+	UV_VERSION,
 	seedResourceDir,
-} from "./bundled-python-layout.mjs";
+} from "./bundled-runtime-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
@@ -48,6 +50,7 @@ import {
 	seedModeViolations,
 } from "./prune-python-seed.mjs";
 import {
+	bundledUvToolCheck,
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -437,7 +440,7 @@ const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;
  * the one its architecture runs (`backend-installer.ts` `findPython`), so a
  * bundle with two trees carries an interpreter the machine cannot execute - half
  * the interpreter's weight again, in every download and every update. `afterPack`
- * (`scripts/prune-python-resource.mjs`) is what removes the other one, and this
+ * (`scripts/prune-bundled-resources.mjs`) is what removes the other one, and this
  * is the check that the removal happened: the failure mode is a silent 47 MB,
  * because a bundle carrying both trees still runs perfectly.
  */
@@ -667,7 +670,12 @@ function appCheck(id, appPath, description, work) {
  */
 export function seedRoot(appPath) {
 	try {
-		const parent = join(appPath, "Contents", "Resources", LAYOUT.seedNamespace);
+		const parent = join(
+			appPath,
+			"Contents",
+			"Resources",
+			LAYOUT.python.seedNamespace,
+		);
 		const names = readdirSync(parent).filter((name) =>
 			LAYOUT.architectures.includes(name),
 		);
@@ -703,7 +711,7 @@ export function prunedSeedCheck(appPath) {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
 			const back = PRUNED_SEED_PATHS.filter(
 				(relative) => lstatOrNull(join(root, relative)) !== null,
@@ -731,7 +739,7 @@ export function seedModeCheck(appPath) {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
 			const violations = seedModeViolations(root);
 			if (violations.length > 0)
@@ -772,7 +780,7 @@ export function seedBootstrapCheck(appPath) {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
 			const missing = [];
 			for (const relative of [
@@ -794,6 +802,63 @@ export function seedBootstrapCheck(appPath) {
 			if (missing.length > 0)
 				throw new Error(`the seed cannot build a venv: ${missing.join(", ")}`);
 			return `venv bootstrap present (${wheels.join(", ")})`;
+		},
+	);
+}
+
+/**
+ * The interpreter the bundle ships IS the one the definition declares.
+ *
+ * WHY THIS EXISTS, and why it is the only check here that runs something. The
+ * declared version is the one thing in this layout that nothing else can see:
+ * `pnpm setup-python` DERIVES its download URL from it, so a build that ran the
+ * step is right by construction, while a build that did not - `resources/`
+ * staged weeks ago, a checkout that pulled a version bump and rebuilt - ships
+ * the previous patch release under the new declaration, and every other check in
+ * this gate passes: `lib/python3.12` exists in both (measured: the tree's own
+ * version markers carry the major.minor and nothing finer - `_sysconfigdata`'s
+ * `VERSION` is `3.12`), so a prune list, a marker path and a completeness check
+ * derived from `{pyver}` all agree with a 3.12.10 tree. Four patch releases, three
+ * of them security, is the gap this closes.
+ *
+ * WHY EXECUTING IS ACCEPTABLE HERE, and it is the only place in this repository
+ * that executes the seed in place. The namespace is inert DATA for the app - no
+ * venv resolves into it, and nothing the app runs reads it (`managed-python.ts`
+ * `ditto`s a copy out and builds the venv against that) - and this gate is not
+ * the app: it is a reader of the artifact, on a tree extracted from a DMG or a
+ * ZIP, and `--version` is the only way to read a patch level the tree itself does
+ * not record. The two switches make it a read: `-I` (ignore every `PYTHON*`
+ * variable and the user site directory) and `-B` (write no bytecode), the same
+ * pair the app's own runtime smoke child is started with. Measured on a real
+ * 3.12.14 seed tree: `bin/python3 -I -B --version` printed `Python 3.12.14` and
+ * left the tree's file set and every file's sha256 unchanged.
+ */
+export function seedVersionCheck(appPath, { run = spawnRunner } = {}) {
+	return appCheck(
+		"app-seed-python-version",
+		appPath,
+		`the bundled seed is the declared Python ${PYTHON_VERSION}`,
+		() => {
+			const root = seedRoot(appPath);
+			if (root == null)
+				throw new Error(
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
+				);
+			const python = join(root, "bin", "python3");
+			if (!existsSync(python))
+				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
+			const result = run(python, ["-I", "-B", "--version"]);
+			const printed = `${result.stdout}${result.stderr}`.trim();
+			const match = /^Python (\d+\.\d+\.\d+)$/.exec(printed);
+			if (result.status !== 0 || match == null)
+				throw new Error(
+					`The seed's interpreter could not report its version (exit ${result.status}): ${printed || "no output"}`,
+				);
+			if (match[1] !== PYTHON_VERSION)
+				throw new Error(
+					`The bundle ships Python ${match[1]} while src/shared/bundled-runtime-layout.json declares ${PYTHON_VERSION}; run scripts/setup-python-resource.sh so the staged seed is the declared one (a version bump that nothing re-stages ships the previous patch release under the new number)`,
+				);
+			return `bin/python3 reports Python ${match[1]}`;
 		},
 	);
 }
@@ -1218,13 +1283,15 @@ export function verifyArtifacts({
 			bundledBytecodeCheck(path),
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
-			// The three halves of the seed's weight, each asserted where the build
-			// assembled it: the content nothing imports, the execute bits that mean
-			// nothing in a bundle, and the venv bootstrap the pruning must not have
-			// reached.
+			bundledUvToolCheck(path, { expectArch: arch, run }),
+			// The four halves of the bundled runtime's weight, each asserted where
+			// the build assembled it: the content nothing imports, the execute bits
+			// that mean nothing in a bundle, the venv bootstrap the pruning must not
+			// have reached, and the interpreter's own version.
 			prunedSeedCheck(path),
 			seedModeCheck(path),
 			seedBootstrapCheck(path),
+			seedVersionCheck(path, { run }),
 		];
 	};
 	for (const appPath of appPaths) {
@@ -1242,15 +1309,17 @@ export function verifyArtifacts({
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
 		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
-		// Neither of the next six is a `codesign` question: all are about what the
-		// build assembled, and they fail with the offending paths so the fix is
+		// Neither of the next eight is a `codesign` question: all are about what
+		// the build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
+		results.push(bundledUvToolCheck(appPath, { run }));
 		results.push(prunedSeedCheck(appPath));
 		results.push(seedModeCheck(appPath));
 		results.push(seedBootstrapCheck(appPath));
+		results.push(seedVersionCheck(appPath, { run }));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -1302,7 +1371,7 @@ export function verifyArtifacts({
 		);
 		if (interpreters) {
 			log(
-				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
+				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-bundled-resources.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
 			);
 		}
 		// The refusal this gate most needed and did not have: a bundle macOS will not
