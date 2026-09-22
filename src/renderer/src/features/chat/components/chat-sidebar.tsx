@@ -2408,6 +2408,8 @@ export function ChatSidebar({
 							 */
 							cn(
 								"hidden size-6 shrink-0 items-center justify-center rounded-md",
+								/* ORDER FIRST: the mark owns the row's right edge (see the comment below). */
+								"order-first",
 								"text-ink-dim",
 								"group-hover:flex group-hover:text-ink-muted",
 								"group-focus-within:flex group-focus-within:text-ink-muted",
