@@ -628,11 +628,31 @@ nav[aria-label="Chats"]
  * no control under it and the row beneath unreachable. The card's body now passes presses
  * through, so what a reader aimed at a row reaches the row; the two things that ARE controls -
  * the action and the close - take theirs back explicitly, and they keep their own hit areas.
+ *
+ * THE WIDTH IS CAPPED BY THE LANE IT IS DRAWN IN (design round 3, D10). `248px` was a literal
+ * taken from the lane's width at the 280 panel; the lane is `min(264px, 100% - 32px)` of the
+ * panel, so at the 240 clamp minimum it is 208 and a 248px card was 40px wider than its own
+ * lane and about 32px past the sidebar's right edge, with nothing clipping it. At 240 it was
+ * 176 before this lane took the icon's width out. `min(248px, 100%)` is the same card wherever
+ * the lane is wide enough and never wider than the lane.
+ *
+ * AND THE PRESS RULES ARE BOUND TO THE CLASS, NOT THE TYPE (D11, U9, R4-1). They were scoped
+ * `[data-type="info"]`, which is sonner's stamp of `toast.info` - while the REFUSAL is raised
+ * by `showWarningToast` -> `toast.warning`, so `data-type="warning"`, and it matched none of
+ * these rules: it kept `pointer-events: auto` and sat as a dead zone over the three to four
+ * rows it covers until it retired, which is the very behaviour U8 removed for the offer. Both
+ * types carry `.lo-archive-toast`, so the press rules name that. THE TWO RULES THAT STAY
+ * OFFER-ONLY ARE DELIBERATE: hiding `[data-icon]` and letting `[data-content]` shrink are the
+ * offer's own trade - its sentence is `<name> archived.` and the name is the part that gives -
+ * while the refusal carries the daemon's sentence about why the write was refused, with a
+ * warning icon that says what kind of message this is. Truncating that would hide the reason
+ * the reader is being asked to retry, and § 10 states that price with its measurement.
  */
+
 nav[aria-label="Chats"]
 	[data-sonner-toaster]
-	[data-sonner-toast].lo-archive-toast[data-type="info"] {
-	--width: 248px;
+	[data-sonner-toast].lo-archive-toast {
+	--width: min(248px, 100%);
 	pointer-events: none;
 }
 nav[aria-label="Chats"]
@@ -643,11 +663,11 @@ nav[aria-label="Chats"]
 }
 nav[aria-label="Chats"]
 	[data-sonner-toaster]
-	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-sonner-toast].lo-archive-toast
 	[data-button],
 nav[aria-label="Chats"]
 	[data-sonner-toaster]
-	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-sonner-toast].lo-archive-toast
 	[data-close-button] {
 	pointer-events: auto;
 }

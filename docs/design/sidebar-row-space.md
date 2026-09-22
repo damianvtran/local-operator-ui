@@ -112,7 +112,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | Row class | State | Title box at 240 | at 280 | at 320 | What is drawn to its right |
 | --- | --- | --- | --- | --- | --- |
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
-| **unpinned** | hover / focus-within | **140** | **180** | **220** | pin, then archive (56px + the 4px row gap) |
+| **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
 | **pinned** | hover / focus-within | **140** | **180** | **220** | the archive, revealed beside the mark |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
@@ -129,6 +129,16 @@ first time.
 is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on an
 unpinned row, `24` at rest on a pinned one, and `52` under the pointer; at 240/280
 /320 the row box is 224/264/304.
+
+**Which control is drawn FIRST in the pair is part of the design, and the code
+orders the ARCHIVE first** (design round 2, folded here as D12; the sentence this
+paragraph replaces said "pin, then archive" and never recorded the decision). A
+pinned row's mark must keep the row's RIGHT EDGE: it is the state that has to read
+without hovering, so it must sit where the eye already is and where the pointer
+leaves the row last, and the control revealed by the pointer - the archive - takes
+the inner position beside it. Reversing the two puts the revealed, destructive act
+on the edge the mark owns, which is the U6 hazard in one line: the box a reader
+aims at for the state becomes the box that archives the conversation.
 
 ## 4. The acts: how they take space (D2), and what they replace (D3)
 
@@ -473,6 +483,15 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
 - **Width:** the lane's toasts are capped to the sidebar's content width
   (`--width: min(264px, 100% - 32px)`), so a long title wraps instead of running
   out of the column, which is also what keeps the disjointness above true.
+  **AND THE CARD'S OWN WIDTH IS CAPPED TO THAT LANE, not set to a literal** (design
+  round 3, D10, fixed 2026-09-22): the card's rule carried `--width: 248px` - the
+  lane's width at the 280 panel - while the lane itself is
+  `min(264px, 100% - 32px)` of the panel, so at the 240 clamp minimum the lane is
+  208 and the card was 40px wider than its own lane and about 32px past the
+  sidebar's right edge with nothing clipping it. It is `min(248px, 100%)` now: the
+  same card wherever the lane is wide enough, never wider than the lane. THE CAP
+  THE PARAGRAPH PROMISED WAS EFFECTIVELY DROPPED FOR THESE CARDS by that literal,
+  which is why the fix is on the card rather than on the lane.
   **The offer's card is one line, and only its NAME may be truncated** (design D3;
   UX U5; the truncation's own correction in agent review round 2, R2-3): at 216px of
   content box a 45-character title wrapped to three lines inside its own quotation

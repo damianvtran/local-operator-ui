@@ -2281,6 +2281,79 @@ async function sceneSessionArchive(cdp) {
 		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
 	});
 	/*
+	 * WHAT THE CARD DOES TO THE ROWS UNDER IT (C: Q-1, R4-1, D11, U9 - four independent streams on
+	 * one selector).
+	 *
+	 * The lane sits over the list and the card's BODY passes presses through - but the rules that
+	 * say so were scoped `[data-type="info"]`, which is sonner's stamp of `toast.info`. This refusal
+	 * is raised by `showWarningToast` -> `toast.warning`, so `data-type="warning"`, and it matched
+	 * none of them: it kept `pointer-events: auto` and QA measured its band covering the acts zone
+	 * of every other row in the fixture - a press loop skipping all three ("a lane card covers its
+	 * acts"), so NO conversation could be archived from a row for the card's whole life. This is
+	 * the reading that has to fail if that ever comes back: for each row the card overlaps, hover it
+	 * so its acts exist, hit-test the archive control's own centre, and require the card's body not
+	 * to be what a press there reaches.
+	 *
+	 * THE ASSERTION IS DELIBERATELY NARROWER THAN "the row's control receives it". A card BUTTON
+	 * that happens to sit over a covered row's acts is the other half of the same defect (QA round
+	 * 2, Q-2) and is NOT fixed here; the note below prints which control answered, so that overlap
+	 * is visible evidence rather than a silent pass.
+	 */
+	const cardBox = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const rowsUnderCard = await cdp.evaluate(
+		`(() => {
+			const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)}).getBoundingClientRect();
+			return Array.from(document.querySelectorAll("[data-session-row]"))
+				.filter((row) => {
+					const r = row.getBoundingClientRect();
+					return r.bottom > card.top && r.top < card.bottom;
+				})
+				.map((row) => row.getAttribute("data-session-row"));
+		})()`,
+	);
+	const reach = [];
+	for (const id of rowsUnderCard) {
+		await hoverOver(cdp, `[data-session-row="${id}"] [data-chat-row]`);
+		await wait(400);
+		const control = await verb(cdp, "measure", {
+			selector: `[data-session-row="${id}"] [data-session-archive]`,
+			timeoutMs: 1_500,
+		}).catch(() => null);
+		if (control === null || control.rect.width === 0) {
+			reach.push({ id, reaches: "the acts are not laid out here" });
+			continue;
+		}
+		reach.push({
+			id,
+			box: control.rect,
+			...(await cdp.evaluate(
+				`(() => {
+					const el = document.elementFromPoint(${control.centre.x}, ${control.centre.y});
+					if (!el) return { reaches: null };
+					const path = [];
+					for (let n = el; n && path.length < 5; n = n.parentElement) {
+						path.push(n.tagName.toLowerCase() + (n.hasAttribute("data-session-archive") ? "[data-session-archive]" : "") + (n.hasAttribute("data-sonner-toast") ? "[data-sonner-toast]" : "") + (n.hasAttribute("data-button") ? "[data-button]" : "") + (n.hasAttribute("data-content") ? "[data-content]" : "") + (n.hasAttribute("data-session-row") ? "[data-session-row]" : ""));
+					}
+					return {
+						reaches: path.join(" < "),
+						cardBody: el.closest("[data-sonner-toast]") !== null && el.closest("[data-button], [data-close-button]") === null,
+						ownControl: el.closest("[data-session-archive]") !== null,
+					};
+				})()`,
+			)),
+		});
+	}
+	await parkPointer(cdp);
+	check(
+		"the refusal card's own body does not swallow a press aimed at the rows it covers (C: Q-1, R4-1, D11, U9)",
+		reach.length > 0 && reach.every((entry) => entry.cardBody !== true),
+		JSON.stringify({ card: cardBox.rect, reach }),
+	);
+	note(
+		"what a press at each covered row's archive control reaches",
+		JSON.stringify(reach),
+	);
+	/*
 	 * AND THE REFUSAL'S OWN RETRY RE-ASSERTS IT (UX report round 1, U3), which it did NOT:
 	 * the action fired, the message went away, and nothing replaced it - the lane empty at
 	 * +4.2s with the row still un-archived and the write still refused, in three runs and
@@ -3729,9 +3802,19 @@ async function sceneRowSpace(cdp) {
 	await hoverOver(cdp, `[data-session-row="${PINNED}"]`);
 	await wait(600);
 	const markUnderPointer = await verb(cdp, "measure", markRow);
+	/*
+	 * CENTRES, AND NOT ONLY CENTRES (R4-2). Two `display: none` readings are both `0x0` at (0,0), so
+	 * a centres-only comparison passes on a mark that is not drawn at all - which is the state this
+	 * clause exists to rule out. The boxes are asserted non-zero as well, the way the restore clause
+	 * below asserts its own.
+	 */
 	check(
 		"U6: the pinned row's mark does not move when the pointer arrives",
-		markAtRest.centre.x === markUnderPointer.centre.x &&
+		markAtRest.rect.width > 0 &&
+			markAtRest.rect.height > 0 &&
+			markUnderPointer.rect.width > 0 &&
+			markUnderPointer.rect.height > 0 &&
+			markAtRest.centre.x === markUnderPointer.centre.x &&
 			markAtRest.centre.y === markUnderPointer.centre.y,
 		`at rest ${markAtRest.centre.x},${markAtRest.centre.y} ${markAtRest.rect.width}x${markAtRest.rect.height} -> under the pointer ${markUnderPointer.centre.x},${markUnderPointer.centre.y} ${markUnderPointer.rect.width}x${markUnderPointer.rect.height}`,
 	);
@@ -3797,7 +3880,17 @@ async function sceneRowSpace(cdp) {
 		restingCost.pinned.archiveWidth === 0 &&
 			(restingCost.pinned.archiveDisplay === null ||
 				restingCost.pinned.archiveDisplay === "none") &&
-			restingCost.pinned.rowWidth > 0,
+			restingCost.pinned.rowWidth > 0 &&
+			/*
+			 * AND THE UNPINNED HALF IS ASSERTED WHERE IT IS MOUNTED (the dead-reading nit): it reads
+			 * `rowWidth null` here because its section is still collapsed, so the naive form would fail
+			 * on the FIXTURE rather than on the app. Both spellings are the clause's claim - "not
+			 * mounted" and "mounted with nothing reserved" - and neither of them is "not read".
+			 */
+			(restingCost.unpinned.rowWidth === null ||
+				(restingCost.unpinned.archiveWidth === 0 &&
+					(restingCost.unpinned.archiveDisplay === null ||
+						restingCost.unpinned.archiveDisplay === "none"))),
 		JSON.stringify(restingCost),
 	);
 	/* AIMED AT THE VISIBLE MARK: the resting centre, which is where a reader's pointer already is. */
@@ -3820,14 +3913,18 @@ async function sceneRowSpace(cdp) {
 		hitAtMarkCentre,
 	);
 	/*
-	 * ACTION IDENTITY, ON THE SIGNAL THE APP ACTUALLY HAS. `chat-sidebar.tsx:1778` writes
+	 * ACTION IDENTITY, ON THE SIGNAL THE APP ACTUALLY HAS. `chat-sidebar.tsx` writes
 	 * `data-session-archived={archived ? "true" : undefined}`: the attribute is ABSENT unless the
 	 * conversation is archived, so reading `null` was correct all along and the mistake was
-	 * downstream - an ABSENT ROW was being treated as proof of an archive. An unpin never removes
-	 * the row from the document (it moves it to another section, and this list contains the
-	 * sections), so a row that is gone was removed by the scene's archived filter. That is also why
-	 * the previous clause was unreachable as written: `leftBecauseUnpinned` required
-	 * `pinAfter !== null`, and once the row is gone there is no pin left to read.
+	 * downstream - an ABSENT ROW was being treated as proof of an archive.
+	 *
+	 * AND THE ROW CAN ABSOLUTELY LEAVE THE DOCUMENT (R4-5, corrected - the sentence here used to
+	 * claim the opposite). An unpin moves it out of `Pinned chats` into a section that is COLLAPSED
+	 * by default, and a collapsed section draws no rows: this run's own reading is
+	 * `"archivedAfter":"row-absent"` for a press that archived nothing at all. That is exactly why
+	 * the presence form cannot carry this clause and why the assertion below reads the daemon's log
+	 * instead; it is also why the previous clause was unreachable as written (`leftBecauseUnpinned`
+	 * required `pinAfter !== null`, and a row that is gone has no pin left to read).
 	 */
 	/*
 	 * ASSERT WHAT THE DAEMON SAW. A DOM-presence form cannot carry this fixture: an unpin moves the
@@ -4032,7 +4129,13 @@ async function sceneRowSpace(cdp) {
 		"and the fixture IS pinned again: the row the frames call PINNED reads `aria-pressed true`, and the restore wrote a pin and no archive",
 		repinState.present === true &&
 			repinState.pressed === "true" &&
-			restoredWrites.pins >= 2 &&
+			/*
+			 * EXACTLY THE TWO PRESSES THIS SCENE HAS MADE FOR THIS ROW SO FAR - the U6 press and this
+			 * restore - so a third write fails here instead of passing as "at least two" (the cumulative
+			 * counter nit): a double-fired press, or a press that reached the ring twice, is the shape
+			 * this row's U6 hazard would take.
+			 */
+			restoredWrites.pins === 2 &&
 			restoredWrites.archives === 0,
 		JSON.stringify({ ...repinState, ...restoredWrites }),
 	);
@@ -4199,6 +4302,123 @@ async function sceneRowSpace(cdp) {
 		"the offer's own Undo put the row back, so the list is the fixture's list again",
 		restored.rows[0]?.present === true && restored.toasts.total === 0,
 		JSON.stringify({ row: restored.rows[0] ?? null, toasts: restored.toasts }),
+	);
+
+	/*
+	 * AND THE SAME OFFER AT THE 240 CLAMP MINIMUM, WHICH IS THE FRAME THAT SETTLES D10. The
+	 * card's width was a literal 248px - the lane's width at the 280 panel - while the lane is
+	 * `min(264px, 100% - 32px)` of the panel: at 240 the lane is 208, so the card was 40px wider
+	 * than its own lane and about 32px past the sidebar's right edge, with nothing clipping it
+	 * (design round 3, D10). It was 176 there before the lane took the icon's width out. A frame
+	 * is the only way to see that and there was none at this width, so this is the capture the
+	 * design round named as the thing that settles it - in both palettes, because the lane's
+	 * numbers do not move with the theme.
+	 *
+	 * The press is the reader's own sequence again, and the two assertions are the numbers a
+	 * still cannot carry: the card is no wider than the lane it is drawn in, and its right edge
+	 * is inside the panel's own box.
+	 */
+	await verb(cdp, "setSidebarWidth", { width: 240 });
+	await wait(400);
+	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
+	await wait(400);
+	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
+	await wait(700);
+	await parkPointer(cdp);
+	const offer240 = await captureToastPair(cdp, "offer-toast-240");
+	geometry["offer-toast-240"] = await rowSpaceGeometry(cdp, IDS);
+	offerFrames.push({
+		label: "offer-toast-240",
+		stable: offer240.stable,
+		toastOnScreen: offer240.toastText !== null,
+	});
+	const offer240Reading = geometry["offer-toast-240"].offer;
+	check(
+		"at the 240 clamp minimum the offer card is no wider than the lane it is drawn in, and inside the panel's own box (design round 3, D10)",
+		offer240Reading.toast !== null &&
+			offer240Reading.lane !== null &&
+			offer240Reading.toast.width <= offer240Reading.lane.width + 0.5 &&
+			offer240Reading.toast.right <=
+				geometry["offer-toast-240"].panel.right + 0.5,
+		JSON.stringify({
+			panelWidth: geometry["offer-toast-240"].panel.width,
+			lane: offer240Reading.lane,
+			toast: offer240Reading.toast,
+		}),
+	);
+	check(
+		"and the 240 offer is of an offer that was really there",
+		/archived/.test(offer240Reading.text ?? ""),
+		JSON.stringify(offer240Reading),
+	);
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await wait(700);
+	await parkPointer(cdp);
+	await waitForNoToasts(cdp, 5_000);
+	await verb(cdp, "setSidebarWidth", { width: 280 });
+	await wait(300);
+
+	/*
+	 * THE LONG NAME IN THE LANE (design round 3, D13). The D7 acceptance claim is that the card
+	 * spends its width on the name rather than on chrome, and the claim was carried by frames of
+	 * the SHORT row's title, which fits at every width here - so nothing photographed the case the
+	 * fix is about. This is that case: the offer is raised on the row whose title is long enough
+	 * to TRUNCATE at all three widths, and the name is read as a BOX rather than as a sentence,
+	 * because "elided" is `scrollWidth > clientWidth` on the element that carries the name and
+	 * nothing else can state it.
+	 */
+	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
+	await wait(400);
+	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
+	await wait(700);
+	await parkPointer(cdp);
+	const offerLong = await captureToastPair(cdp, "offer-long-280");
+	geometry["offer-long-280"] = await rowSpaceGeometry(cdp, IDS);
+	offerFrames.push({
+		label: "offer-long-280",
+		stable: offerLong.stable,
+		toastOnScreen: offerLong.toastText !== null,
+	});
+	const offerName = await cdp.evaluate(`(() => {
+		const name = document.querySelector('${SIDEBAR_TOAST} [data-content] > span > span');
+		if (!name) return null;
+		return {
+			text: name.textContent,
+			clientWidth: name.clientWidth,
+			scrollWidth: name.scrollWidth,
+			elided: name.scrollWidth - name.clientWidth > 0.5,
+		};
+	})()`);
+	const offerLongReading = geometry["offer-long-280"].offer;
+	check(
+		"the long name reaches the lane whole and the card is inside its own lane (design round 3, D7/D13)",
+		offerLongReading.toast !== null &&
+			offerLongReading.lane !== null &&
+			offerLongReading.toast.width <= offerLongReading.lane.width + 0.5 &&
+			offerName !== null &&
+			(offerName.text ?? "").includes(
+				"Quarterly retention sweep and the transcripts it dropped",
+			),
+		JSON.stringify({
+			lane: offerLongReading.lane,
+			toast: offerLongReading.toast,
+			name: offerName,
+		}),
+	);
+	note(
+		"the long name in the lane, as a box (D7's acceptance reading)",
+		JSON.stringify(offerName),
+	);
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await wait(700);
+	await parkPointer(cdp);
+	await waitForNoToasts(cdp, 5_000);
+	const restoredLong = await rowSpaceGeometry(cdp, [UNPINNED, SHORT]);
+	check(
+		"and both offers' rows are back, so every check below reads the fixture's list",
+		restoredLong.rows.every((row) => row.present === true) &&
+			restoredLong.toasts.total === 0,
+		JSON.stringify({ rows: restoredLong.rows, toasts: restoredLong.toasts }),
 	);
 
 	/*
@@ -15592,11 +15812,20 @@ async function assertBuildIsCurrent() {
 	 * CONTENT is still the previous app, so a scene ran against yesterday's bundle with the guard
 	 * satisfied. A marker has to survive minification in the built output, which a destructured
 	 * local does not (the first attempt used `archiveUndo.at`; the minifier renames it, and it
-	 * reads 0 in a bundle that plainly contains the fix). A literal the fix introduced - the
-	 * lane card's own width - survives, because class names and lengths are what the minifier
-	 * leaves alone.
+	 * reads 0 in a bundle that plainly contains the fix). A literal survives minification only if it
+	 * is a string the code hands the DOM or a class name - `248px` did, and so does the attribute
+	 * name the marker now uses.
 	 */
-	const marker = "248px";
+	/*
+	 * AND IT MUST BE STRUCTURAL RATHER THAN A DESIGN VALUE (the marker nit). The first marker was
+	 * the lane card's own width literal, which wires EVERY scene's build gate to a number a design
+	 * fix may move - and D10 moved it on 2026-09-22, which is the fragility in one line. The marker
+	 * below is a DOM attribute this change INTRODUCED: attribute-name literals survive minification
+	 * (they are strings the code hands the DOM) and no later length, colour or spacing tweak moves
+	 * one, so the gate keeps answering "was this bundle built from these sources" rather than "did
+	 * somebody change a number".
+	 */
+	const marker = "data-session-control-pair";
 	const bundleText = walk("out/renderer")
 		.filter((f) => /\.(js|css|html)$/.test(f))
 		.map((f) => fs.readFileSync(f, "utf8"))
