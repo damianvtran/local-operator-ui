@@ -1,5 +1,9 @@
 # Code owners for local-operator-ui.
 #
+# THERE ARE NO PATTERNS IN THIS FILE, AND THAT IS THE POINT. No line here starts
+# with a path or `*`; a matching pattern is the only thing that makes GitHub
+# create a review request, so nothing is requested automatically when a PR opens.
+#
 # 2026-09-16 -- AUTO-REQUESTS REMOVED (operator decision). The `*` line that
 # used to sit at the bottom of this file (`@damianvtran @bbqben`) existed only to
 # route: GitHub requests every handle on a pattern matching a pull request's
@@ -9,29 +13,86 @@
 # list and drops the notification; matching a pattern IS the request. The pattern
 # is gone, and this path is kept, pattern-free, as the record of the change.
 #
-# Nothing else depended on it: this repository has no ruleset requiring an
-# approving or a code-owner review, so no gate lost a participant. Probe that
-# with `gh api repos/<owner>/<repo>/rules/branches/main` (`[]` means nothing is
-# enforced) -- never with the legacy `branches/main/protection` endpoint, which
-# answers `404 Branch not protected` even for a branch a modern ruleset *is*
-# enforcing. A merge here is authorized by the independent agent review round
-# alone, per AGENTS.md, "Who may merge".
+# 2026-09-22 -- THE ENFORCEMENT HALF WAS WRITTEN, AND IT DID NOT PUT A PATTERN
+# BACK. A ruleset named `Main Protection` is configured for the default branch,
+# mirroring the backend repository's (`local-operator`, ruleset 3622629): a
+# `non_fast_forward` rule, plus a `pull_request` rule with
+# `required_approving_review_count: 1`, `require_code_owner_review: false`,
+# `required_review_thread_resolution: false`, `dismiss_stale_reviews_on_push:
+# false`, `require_last_push_approval: false`,
+# `require_extra_approval_for_unattributed_changes: true` (GitHub's *Require an
+# additional approval for unattributed Copilot pull requests*: it is scoped to a
+# pull request COPILOT opened under its own app identity rather than on behalf of
+# a person, not to an ordinary PR), and
+# `allowed_merge_methods: [merge, squash, rebase]`; plus one bypass actor,
+# `RepositoryRole` id 5 with `bypass_mode: always`. On a repository owned by a
+# personal account that role belongs to the OWNER ALONE: such a repository has
+# exactly two permission levels, the owner and collaborators, and GitHub refuses
+# `admin` and `maintain` on one (`422 Cannot assign <user> permission of admin`),
+# so the bypass is the owner's and no collaborator's (GitHub, *Permission levels
+# for a personal account repository*). The same page names the escape hatch if
+# those roles are ever wanted: transferring the repository to an organization is
+# what creates them, and what would let a team-scoped bypass actor exist. The
+# ruleset IS attached: created 2026-09-22 as id `23841604`, and
+# `gh api .../rules/branches/main` (the second command below) returns it today.
+# Diff these sentences against the repository rather than trusting them:
 #
-# If a code-owner ruleset is ever enabled here, read the backend's AGENTS.md
-# section "Who may merge" before adding a pattern back: it documents the
-# self-approval limitation that bites the moment such a rule exists, and the
-# notification cost this file just stopped paying.
+#   gh api repos/damianvtran/local-operator-ui/rulesets
+#   gh api repos/damianvtran/local-operator-ui/rules/branches/main
+#
+# `require_code_owner_review: false` is what lets this file stay pattern-free.
+# GitHub scopes that rule to content that HAS a code owner -- "any pull request
+# that modifies content with a code owner must be approved by that code owner
+# before the pull request can be merged into the protected branch" -- so with no
+# paths declared it would be VACUOUS rather than a hazard: nothing here has an
+# owner, so the rule would never demand an approval from anyone and no merge
+# would be forced through the bypass. Turning it ON would therefore buy exactly no
+# control, which is why the setting is `false`; the review *count* is what carries
+# the protection. The count is the tier-2 rule in
+# AGENTS.md, "Who may merge: two tiers": an outside contributor's PR cannot reach
+# `main` without an approving review from a collaborator other than its author.
+# Before 2026-09-22 `gh api repos/<owner>/<repo>/rules/branches/main` answered
+# `[]` here -- no ruleset was attached -- so nothing mechanical stood behind those
+# rules; with the ruleset attached the approval count and the no-force-push rule
+# do, and the agent-review discipline is unchanged either way.
+#
+# The owner set -- whose judgement stands in for the project's, and who may be
+# asked for a human review when one is genuinely wanted -- is `damianvtran`, who
+# owns this repository and is its only administrator; `bbqben`, who holds write
+# access today; and `olafagbemi`, `sherman-tsui` and `SanaKetabchi`, who hold it
+# by INVITATION sent 2026-09-22 and hold nothing until they accept it. Members of
+# the set are not administrators and cannot be: a repository owned by a personal
+# account has exactly two permission levels, the owner and collaborators (see the
+# section above). Write access is precisely what makes the
+# set effective -- an approving review from any write-access collaborator other
+# than the author satisfies the ruleset's review count, and "act as a code owner"
+# is a collaborator capability on such a repository. `jcobhams` holds write access
+# too but is deliberately NOT in that set: ownership here means "can approve on
+# behalf of the project", which is narrower than commit access. Verify a handle
+# before relying on it with
+# `gh api repos/damianvtran/local-operator-ui/collaborators` -- `bbqben` and
+# `jcobhams` hold write while `olafagbemi`, `sherman-tsui` and `SanaKetabchi` hold
+# it by invitation sent 2026-09-22 and take it on acceptance, which is why the
+# endpoint is read rather than this sentence -- since a handle without write
+# access is silently ignored by GitHub. The review count is satisfied by an
+# approving review from *any* collaborator other than the author, not only from
+# the set above, because no code owners are declared.
+#
+# The self-approval limitation is the thing to read before adding a pattern
+# back: GitHub refuses `422 Review Can not approve your own pull request`, and
+# every agent here pushes as the owner's account, so an agent-authored PR the
+# owner opened can never be clicked approved by the account that opened it. That
+# is why the owner's bypass -- the ruleset's one bypass actor, which only the
+# owner can hold -- is the *sanctioned* completion for the owner's own reviewed
+# work here rather than a hole, and why it must be disclosed on the PR
+# (AGENTS.md, "Who may merge: two tiers"; the backend's section of the same name,
+# and its "How the forge records tier 1", are the long form).
 #
 # When a human review IS wanted it is a deliberate act rather than a side effect
 # of opening a PR: add the reviewer by hand at the point the PR is ready to be
 # read, `gh pr edit <n> --add-reviewer <handle>` (no leading `@` -- gh <= 2.100
-# only strips it for `@me` and `@copilot`). Who may be asked: the handles with
-# write access, whose approval is the one that counts -- anyone with read access
-# can review and comment, but only a write-access collaborator satisfies an
-# approval rule -- `damianvtran` (admin), `bbqben`, `jcobhams` (write). Verify a
-# handle before
-# relying on it with `gh api repos/damianvtran/local-operator-ui/collaborators`,
-# since a handle without write access is silently ignored by GitHub.
+# only strips it for `@me` and `@copilot`). Tagging a person in a *comment* is
+# what says the PR is waiting on them, so neither is done casually.
 #
 # Validate any future edit with GitHub's own parser rather than by eye, and pin
 # the ref or it silently validates the default branch instead of your branch:

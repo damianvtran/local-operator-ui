@@ -31,6 +31,7 @@ import {
 	statSync,
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
@@ -65,6 +66,19 @@ const CODESIGN = "/usr/bin/codesign";
 const SPCTL = "/usr/sbin/spctl";
 const XCRUN = "/usr/bin/xcrun";
 const SECURITY = "/usr/bin/security";
+
+/**
+ * The bytecode probe `app-bytecode-loadable` runs inside the bundle under test.
+ *
+ * Resolved from THIS module's own URL rather than from `process.cwd()`, because
+ * the gate is invoked through `scripts/require-report.sh` from the repository
+ * root on CI and by hand from anywhere else; a relative path would turn a probe
+ * that cannot be found into a spawn failure that reads like a brick.
+ */
+const BYTECODE_PROBE = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"bytecode-accepts-probe.cjs",
+);
 
 /**
  * How long the spawn probe is given before its child counts as never-exited.
@@ -401,6 +415,52 @@ export function artifactChecks({
 				// translation's time rather than in its own, and `timedOut` would
 				// otherwise report the translator as an OS refusal. See
 				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+				timeoutMs: execBound(executable, hostArch),
+				expect: (result) =>
+					result.status === 0 && !result.signal && !result.timedOut,
+			},
+			/*
+			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.30.10 x64 BRICK.
+			 *
+			 * `app-spawn` above proves the OS will EXEC the launcher. It does not
+			 * prove the app can LOAD, and those came apart in v0.30.10: the x64 DMG
+			 * shipped the arm64 runner's V8 bytecode (both DMGs carried a
+			 * byte-identical `out/main/index.jsc`, sha256 23a37ddc…) because
+			 * `pnpm dist:mac` compiled bytecode once and packaged it for both
+			 * architectures. Every launch threw `Invalid or incompatible cached data
+			 * (cachedDataRejected)` out of `bytecode-loader.cjs` — the user saw
+			 * Electron's "A JavaScript error occurred in the main process" dialog and
+			 * the app never opened.
+			 *
+			 * Measured on the real broken bundle on an M3: `codesign --verify --deep
+			 * --strict` exits 0, `spctl` answers "accepted / Notarized Developer ID",
+			 * `stapler validate` passes, and `app-spawn` exits 0 — because
+			 * `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the string
+			 * it is handed and never requires `app.asar`. Six green checks on a bundle
+			 * that cannot start. Nothing here loaded the payload, so this check does.
+			 *
+			 * The probe runs UNDER THE BUNDLE'S OWN ELECTRON, which is what makes the
+			 * verdict meaningful: the x64 bundle answers in x86_64 terms even though
+			 * an arm64 runner is holding the file. It asks V8 for the same
+			 * `cachedDataRejected` flag the loader throws on and never runs the
+			 * compiled wrapper, so it starts no app, writes nothing and leaves nothing
+			 * behind. See `scripts/bytecode-accepts-probe.cjs`.
+			 *
+			 * Exit 1 is REJECTED (the brick). Exit 2 is PROBE-ERROR — unreadable or
+			 * unparseable — and is red too: "could not tell" must never ship.
+			 */
+			{
+				id: "app-bytecode-loadable",
+				scope: "app",
+				target: executable,
+				description:
+					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
+				command: executable,
+				args: [
+					BYTECODE_PROBE,
+					join(appPath, "Contents/Resources/app.asar/out/main/index.jsc"),
+				],
+				env: { ELECTRON_RUN_AS_NODE: "1" },
 				timeoutMs: execBound(executable, hostArch),
 				expect: (result) =>
 					result.status === 0 && !result.signal && !result.timedOut,
@@ -1560,6 +1620,17 @@ export function verifyArtifacts({
 		if (spawn) {
 			log(
 				`The app does not spawn: ${spawn.output}. macOS decides this at exec, not at verification — a restricted entitlement with no embedded provisioning profile is refused by amfid (measured: -413 "No matching profile found", SIGKILL at spawn) while codesign, spctl and stapler all pass. Embed the profile that authorizes the claim, or remove the claim; see scripts/macos-entitlement-policy.mjs.`,
+			);
+		}
+		// The other remedy that lives in the BUILD rather than in the signing step,
+		// and the one whose raw output ("REJECTED …") says what happened but not
+		// what to change.
+		const bytecodeLoadable = failures.find(
+			(result) => result.id === "app-bytecode-loadable",
+		);
+		if (bytecodeLoadable) {
+			log(
+				`The app cannot load the V8 bytecode it ships: ${bytecodeLoadable.output}. V8 accepts cached data only from its own version, flags AND architecture, so a bundle built in the same pass as the other architecture's — one \`pnpm run build\` feeding an \`electron-builder\` that packages arm64 and x64 — carries the runner's bytecode and dies at every launch with cachedDataRejected, while codesign, spctl, stapler and the spawn probe all pass. Build each macOS architecture in its own pass, with node_modules/electron/dist fetched for THAT arch (npm_config_arch); see the macOS build steps in .github/workflows/publish.yml.`,
 			);
 		}
 		const authorization = failures.find(
