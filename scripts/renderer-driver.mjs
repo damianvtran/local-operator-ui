@@ -2381,12 +2381,33 @@ async function sceneSessionArchive(cdp) {
 	const bandBox = await verb(cdp, "measure", "[data-archive-toast-band]").catch(
 		null,
 	);
+	/*
+	 * BOTH BOXES ARE RE-READ AFTER THE CARD SETTLES, which is what this check needed and did not
+	 * have: sonner animates the card's own height (`transition: ... height .4s`), so a band read
+	 * immediately after the message arrives describes a card that is still growing - measured in
+	 * this head's first full dark walk: `band 34, card 34`, a card mid-transition, while the
+	 * refusal settles at 142 and the band at 150. The PAIRING is the whole assertion (D14: the band
+	 * is the card's height plus the gap), so the two numbers have to describe the same moment.
+	 */
+	await wait(700);
+	const settledBand = await verb(
+		cdp,
+		"measure",
+		"[data-archive-toast-band]",
+	).catch(() => null);
+	const settledCard = await verb(cdp, "measure", SIDEBAR_TOAST).catch(
+		() => null,
+	);
 	check(
 		"the band's height is the card's plus the gap, so the list gives up exactly what the message spends (design round 4, D14)",
-		bandBox !== null &&
-			cardBox.rect.width > 0 &&
-			Math.abs(bandBox.rect.height - (cardBox.rect.height + 8)) <= 1,
-		JSON.stringify({ band: bandBox?.rect ?? null, card: cardBox.rect }),
+		settledBand !== null &&
+			settledCard !== null &&
+			settledCard.rect.width > 0 &&
+			Math.abs(settledBand.rect.height - (settledCard.rect.height + 8)) <= 1,
+		JSON.stringify({
+			band: settledBand?.rect ?? null,
+			card: settledCard?.rect ?? null,
+		}),
 	);
 	note(
 		"the band while the refusal stands",
@@ -2983,6 +3004,15 @@ async function sceneSessionArchive(cdp) {
 		successor !== null &&
 			successor.focused === true &&
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
+		JSON.stringify(successor),
+	);
+	/*
+	 * WHAT IT LANDED ON, PRINTED FOR THE RE-BASELINE: the row-scoped form of this selector does not
+	 * match at all (see above), so the assertion cannot be written from a guess - this reading is
+	 * its input, and it is evidence rather than decoration.
+	 */
+	note(
+		"what holds the keyboard after a row is clicked",
 		JSON.stringify(successor),
 	);
 	/*
