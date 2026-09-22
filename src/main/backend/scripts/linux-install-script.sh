@@ -54,10 +54,6 @@ cleanup() {
   if [ -f "${APP_DATA_DIR}/get-pip.py" ]; then
     rm -f "${APP_DATA_DIR}/get-pip.py"
   fi
-  if [ -n "${FFMPEG_TEMP_ARCHIVE:-}" ] && [ -f "${FFMPEG_TEMP_ARCHIVE}" ]; then
-    log "Removing temporary FFmpeg archive: ${FFMPEG_TEMP_ARCHIVE}"
-    rm -f "${FFMPEG_TEMP_ARCHIVE}"
-  fi
   echo "$(date): Cleanup completed."
 }
 
@@ -70,70 +66,16 @@ exec > >(tee -a "${LOG_FILE}") 2>&1
 echo "[${TIMESTAMP}]: Starting Local Operator backend installation..."
 echo "[${TIMESTAMP}]: System information: $(uname -a)"
 
-# Function to log messages with timestamp (defined later, but used by FFmpeg section)
-_log_internal() {
-  local internal_timestamp
-  internal_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-  echo "[${internal_timestamp}] $1"
-}
-
-# --- FFmpeg Installation ---
-BIN_DIR="${APP_DATA_DIR}/bin"
-FFMPEG_BIN="${BIN_DIR}/ffmpeg" # Path to ffmpeg binary
-
-_log_internal "Ensuring bin directory exists: ${BIN_DIR}"
-if ! mkdir -p "${BIN_DIR}"; then
-    _log_internal "ERROR: Unable to create bin directory at ${BIN_DIR}"
-    exit 1
-fi
-
-# Check if FFmpeg is already installed and executable
-if [ -f "${FFMPEG_BIN}" ] && [ -x "${FFMPEG_BIN}" ]; then
-    _log_internal "FFmpeg already installed at ${FFMPEG_BIN}. Skipping download."
-else
-    _log_internal "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
-
-    FFMPEG_DOWNLOAD_URL=""
-
-    LINUX_ARCH=$(uname -m)
-    if [[ "${LINUX_ARCH}" == "x86_64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-x64"
-    elif [[ "${LINUX_ARCH}" == "aarch64" ]] || [[ "${LINUX_ARCH}" == "arm64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-arm64"
-    else
-        _log_internal "Error: Unsupported CPU architecture for FFmpeg download: ${LINUX_ARCH}"
-        exit 1
-    fi
-
-    _log_internal "Downloading FFmpeg from: ${FFMPEG_DOWNLOAD_URL}"
-    if command -v curl >/dev/null 2>&1; then
-        if ! curl -L "${FFMPEG_DOWNLOAD_URL}" -o "${FFMPEG_BIN}"; then
-            _log_internal "Error: Failed to download FFmpeg using curl from ${FFMPEG_DOWNLOAD_URL}"
-            exit 1
-        fi
-    elif command -v wget >/dev/null 2>&1; then
-        if ! wget -O "${FFMPEG_BIN}" "${FFMPEG_DOWNLOAD_URL}"; then
-            _log_internal "Error: Failed to download FFmpeg using wget from ${FFMPEG_DOWNLOAD_URL}"
-            exit 1
-        fi
-    else
-        _log_internal "Error: Neither curl nor wget found. Cannot download FFmpeg."
-        exit 1
-    fi
-    _log_internal "FFmpeg binary downloaded successfully to ${FFMPEG_BIN}"
-
-    chmod +x "${FFMPEG_BIN}"
-    _log_internal "Set executable permissions for ${FFMPEG_BIN}"
-
-    # Verify FFmpeg is executable after download
-    if [ ! -f "${FFMPEG_BIN}" ] || [ ! -x "${FFMPEG_BIN}" ]; then
-        _log_internal "Error: FFmpeg binary not found or not executable after download."
-        exit 1
-    fi
-fi
-
-_log_internal "FFmpeg installation complete. FFmpeg binary is at: ${FFMPEG_BIN}"
-
+# Nothing is fetched here but the package itself.
+#
+# This script used to download a third-party FFmpeg binary from a GitHub release
+# into `${APP_DATA_DIR}/bin`, and under `set -e` a failed download killed the
+# install before the venv existed - so a machine that can reach PyPI but not
+# github.com could not install at all. Nothing in the app or in `local-operator`
+# ever executed that binary. Tooling a task actually needs is acquired later, on
+# demand, through the app's Console with the user's approval; this script's job is
+# the environment below and nothing else. (`_log_internal`, the logging helper
+# that read like a second `log` and existed only for that section, went with it.)
 # Function to check if a command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -166,7 +108,20 @@ is_valid_python_binary() {
   return $?
 }
 
-# Check for network connectivity to key servers
+# Check for network connectivity to key servers.
+#
+# Bounded on both spellings: `--connect-timeout 5`/`--max-time 30` for curl and
+# `--timeout=30`/`--tries=1` for wget (a single attempt, whose timeout covers
+# connect and read since wget has no separate connect bound for BusyBox). 5 ends
+# a black-hole network; 30 is the stall bound and is deliberately well above a
+# slow-but-working link's answer time, because a probe that fails a working
+# connection is noise users learn to ignore.
+#
+# `--fail` turns an HTTP error status into a non-zero exit (a proxy's 403/407,
+# any 4xx/5xx). It does NOT notice a captive portal answering 200 with its own
+# HTML page - measured, a portal-shaped 200 exits 0 with and without the flag -
+# so this check answers "did a request to the host complete", and the PyPI probe
+# below is the one that also checks WHAT came back.
 check_connectivity() {
   log "Checking network connectivity..."
   local servers=("pypi.org" "bootstrap.pypa.io")
@@ -174,12 +129,12 @@ check_connectivity() {
   
   for server in "${servers[@]}"; do
     if command_exists curl; then
-      if curl --connect-timeout 5 -s "https://${server}" -o /dev/null; then
+      if curl --fail --connect-timeout 5 --max-time 30 -s "https://${server}" -o /dev/null; then
         has_connectivity=true
         break
       fi
     elif command_exists wget; then
-      if wget --timeout=5 -q --spider "https://${server}"; then
+      if wget --timeout=30 --tries=1 -q --spider "https://${server}"; then
         has_connectivity=true
         break
       fi
@@ -381,9 +336,9 @@ if [ ! -d "$VENV_PATH" ]; then
     # Try to bootstrap pip
     log "Bootstrapping pip in the minimal virtual environment..."
     if command_exists curl; then
-      curl -s https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
+      curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py" || log "WARNING: Failed to download get-pip.py"
     elif command_exists wget; then
-      wget -q -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
+      wget -q --timeout=30 --tries=1 -O "$APP_DATA_DIR/get-pip.py" https://bootstrap.pypa.io/get-pip.py || log "WARNING: Failed to download get-pip.py"
     else
       log "ERROR: Neither curl nor wget available to download get-pip.py"
       error_exit "Installation cannot continue without being able to download pip"
@@ -411,7 +366,7 @@ fi
 
 if [ ! -f "$VENV_PATH/bin/pip" ]; then
   echo "pip missing in virtual environment, attempting to bootstrap it..."
-  curl -s https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
+  curl -s --fail --connect-timeout 10 --max-time 60 https://bootstrap.pypa.io/get-pip.py -o "$APP_DATA_DIR/get-pip.py"
   "$VENV_PATH/bin/python" "$APP_DATA_DIR/get-pip.py" --no-warn-script-location
   
   if [ ! -f "$VENV_PATH/bin/pip" ]; then
@@ -432,16 +387,53 @@ python -m pip install --upgrade pip || {
   pip --version
 }
 
-# Check network connectivity to PyPI
+# Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
+# decides whether it can proceed.
+#
+# What this answers, stated precisely because an earlier version of this comment
+# claimed more than the flags buy: "did a TLS fetch to PyPI's JSON API complete,
+# and did the answer come back as JSON?". `--fail` turns an HTTP ERROR status
+# into a non-zero exit, and does NOT notice a captive portal answering 200 with
+# its own HTML page (measured: a portal-shaped 200 exits 0 with and without the
+# flag). Both spellings therefore check the CONTENT TYPE as well, since a portal
+# that reports "reachable" while pip is about to fail is the false negative this
+# warning exists to catch: curl through `-w '%{content_type}'`, and wget through
+# the response headers `-S` prints (`-S`/`--server-response` is in BusyBox's wget
+# since 2017 as well as GNU's, which is the wget a system without curl has).
+#
+# What the content type does NOT prove, stated so this paragraph is not read as
+# more than it says: a proxy answering 200 with `application/json` and an error
+# body (`{"detail":"blocked by proxy policy"}`) is silent here, because the
+# answer did come back as JSON. Only parsing the body - a fetch of PyPI's own
+# payload shape - would tell those apart, and a diagnostic that costs a parse is
+# not what stands in front of an install.
+#
+# Two bounds, two jobs: the connect bound ends a black-hole network, the total
+# stops a connected-but-stalled peer. Both must be POSITIVE - `--max-time 0` and
+# `--timeout=0` disable the bound rather than making it immediate on both curl and
+# wget. 30 rather than 10 because the total must not fire on a slow-but-working
+# link: a working endpoint that answered in 15s tripped a 10s bound and printed
+# this warning on an install that then succeeded.
 echo "Checking network connectivity to PyPI..."
 if command_exists curl; then
-  curl -s https://pypi.org/pypi/local-operator/json -o /dev/null || {
+  PYPI_PROBE_CONTENT_TYPE=$(curl -s --fail --connect-timeout 5 --max-time 30 -o /dev/null -w '%{content_type}' https://pypi.org/pypi/local-operator/json) || PYPI_PROBE_CONTENT_TYPE=""
+  if [[ "${PYPI_PROBE_CONTENT_TYPE}" != application/json* ]]; then
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
-  }
+  fi
 elif command_exists wget; then
-  wget -q --spider https://pypi.org/pypi/local-operator/json || {
+  # The headers are captured into a variable and matched with a here-string
+  # rather than piped into `grep -q`: `-q` exits on the first match, the closed
+  # pipe gives wget SIGPIPE, and the script runs under `set -o pipefail`, so a
+  # WORKING link printed this warning whenever the match landed before wget had
+  # finished writing its headers. The piped shape was this remediation's own - the
+  # first fix piped it and was measured warning 1 time in 20 against real PyPI
+  # (and 1 in 20 against a healthy local endpoint) while this shape warns 0 in 40
+  # with the same flags - so the trap is recorded here because it is one line away
+  # from being reintroduced, not because the released script ever shipped it.
+  PYPI_PROBE_HEADERS=$(wget -q -S --spider --timeout=30 --tries=1 https://pypi.org/pypi/local-operator/json 2>&1) || PYPI_PROBE_HEADERS=""
+  if ! grep -qi '^ *content-type: application/json' <<< "$PYPI_PROBE_HEADERS"; then
     echo "WARNING: Could not reach PyPI. Network connectivity issues might prevent installation."
-  }
+  fi
 fi
 
 echo "Installing local-operator package..."
