@@ -20,7 +20,10 @@
 # `required_approving_review_count: 1`, `require_code_owner_review: false`,
 # `required_review_thread_resolution: false`, `dismiss_stale_reviews_on_push:
 # false`, `require_last_push_approval: false`,
-# `require_extra_approval_for_unattributed_changes: true`, and
+# `require_extra_approval_for_unattributed_changes: true` (GitHub's *Require an
+# additional approval for unattributed Copilot pull requests*: it is scoped to a
+# pull request COPILOT opened under its own app identity rather than on behalf of
+# a person, not to an ordinary PR), and
 # `allowed_merge_methods: [merge, squash, rebase]`; plus one bypass actor,
 # `RepositoryRole` id 5 with `bypass_mode: always`. On a repository owned by a
 # personal account that role belongs to the OWNER ALONE: such a repository has
@@ -29,19 +32,23 @@
 # so the bypass is the owner's and no collaborator's (GitHub, *Permission levels
 # for a personal account repository*). The same page names the escape hatch if
 # those roles are ever wanted: transferring the repository to an organization is
-# what creates them, and what would let a team-scoped bypass actor exist. This
-# port does not create the ruleset, so the first command below is what says
-# whether it is attached yet. Diff these sentences against the repository rather
-# than trusting them:
+# what creates them, and what would let a team-scoped bypass actor exist. The
+# ruleset IS attached: created 2026-09-22 as id `23841604`, and
+# `gh api .../rules/branches/main` (the second command below) returns it today.
+# Diff these sentences against the repository rather than trusting them:
 #
 #   gh api repos/damianvtran/local-operator-ui/rulesets
 #   gh api repos/damianvtran/local-operator-ui/rules/branches/main
 #
-# `require_code_owner_review: false` is what lets this file stay pattern-free. A
-# code-owner rule with no paths declared is an unsatisfiable control -- every
-# merge would have to come through the bypass, which is the failure this file's
-# 2026-09-16 change was made to avoid -- so the rule is off and the review
-# *count* is what carries the protection. The count is the tier-2 rule in
+# `require_code_owner_review: false` is what lets this file stay pattern-free.
+# GitHub scopes that rule to content that HAS a code owner -- "any pull request
+# that modifies content with a code owner must be approved by that code owner
+# before the pull request can be merged into the protected branch" -- so with no
+# paths declared it would be VACUOUS rather than a hazard: nothing here has an
+# owner, so the rule would never demand an approval from anyone and no merge
+# would be forced through the bypass. Turning it ON would therefore buy exactly no
+# control, which is why the setting is `false`; the review *count* is what carries
+# the protection. The count is the tier-2 rule in
 # AGENTS.md, "Who may merge: two tiers": an outside contributor's PR cannot reach
 # `main` without an approving review from a collaborator other than its author.
 # Before 2026-09-22 `gh api repos/<owner>/<repo>/rules/branches/main` answered
@@ -51,11 +58,12 @@
 #
 # The owner set -- whose judgement stands in for the project's, and who may be
 # asked for a human review when one is genuinely wanted -- is `damianvtran`, who
-# owns this repository and is its only administrator, plus `bbqben`,
-# `olafagbemi`, `sherman-tsui` and `SanaKetabchi` as **write-access
-# collaborators**. They are not administrators and cannot be: a repository owned
-# by a personal account has exactly two permission levels, the owner and
-# collaborators (see the section above). Write access is precisely what makes the
+# owns this repository and is its only administrator; `bbqben`, who holds write
+# access today; and `olafagbemi`, `sherman-tsui` and `SanaKetabchi`, who hold it
+# by INVITATION sent 2026-09-22 and hold nothing until they accept it. Members of
+# the set are not administrators and cannot be: a repository owned by a personal
+# account has exactly two permission levels, the owner and collaborators (see the
+# section above). Write access is precisely what makes the
 # set effective -- an approving review from any write-access collaborator other
 # than the author satisfies the ruleset's review count, and "act as a code owner"
 # is a collaborator capability on such a repository. `jcobhams` holds write access
