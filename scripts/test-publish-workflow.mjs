@@ -39,6 +39,25 @@ const pkg = JSON.parse(
 const jobs = workflow.jobs;
 const steps = (job) => jobs[job].steps;
 const step = (job, name) => steps(job).find((s) => s.name === name);
+
+/**
+ * The macOS build steps, which are ONE PER ARCHITECTURE.
+ *
+ * They were a single "Build macOS app" until the v0.30.10 x64 brick: `pnpm run
+ * build` emits V8 bytecode, V8 accepts cached data only from its own
+ * architecture, and one pass feeding an `electron-builder` that packaged arm64
+ * AND x64 put the arm64 runner's bytecode inside the x64 DMG (the shipped
+ * `.jsc` was byte-identical in both). Every launch died with
+ * `cachedDataRejected`. Each architecture now builds in its own pass.
+ *
+ * Every invariant these tests assert — signing forced, no NOTARIZE/CSC_LINK in
+ * the step env, no entitlements or profile overrides on the command line — has
+ * to hold for EACH pass, so the helper returns all of them and the assertions
+ * iterate. A test that kept naming one step would silently stop covering the
+ * other one the day a third arch is added.
+ */
+const macBuildSteps = () =>
+	steps("build-macos").filter((s) => /^Build macOS app\b/.test(s.name ?? ""));
 const needsOf = (job) => [].concat(jobs[job].needs || []);
 function condition(expression, context) {
 	if (!expression) return true;
@@ -559,11 +578,15 @@ test("NOTARIZE=false is rejected", () =>
 	));
 test("mac signing uses imported keychain without CSC_LINK, keeps notarization", () => {
 	assert.equal(workflow.env.NOTARIZE, "true");
-	const mac = step("build-macos", "Build macOS app");
-	assert.ok(!("NOTARIZE" in mac.env));
-	assert.ok(!("CSC_LINK" in mac.env));
-	for (const key of ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"])
-		assert.equal(mac.env[key], preflight.env[key]);
+	const macSteps = macBuildSteps();
+	// Both architectures, or the assertions below would pass by covering one.
+	assert.equal(macSteps.length, 2);
+	for (const mac of macSteps) {
+		assert.ok(!("NOTARIZE" in mac.env), mac.name);
+		assert.ok(!("CSC_LINK" in mac.env), mac.name);
+		for (const key of ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"])
+			assert.equal(mac.env[key], preflight.env[key], `${mac.name}: ${key}`);
+	}
 	const setup = step("build-macos", "Setup code signing").run;
 	assert.match(setup, /CSC_KEYCHAIN=\"\$RUNNER_TEMP\/build.keychain-db\"/);
 	assert.match(setup, /echo "CSC_KEYCHAIN=\$CSC_KEYCHAIN" >> "\$GITHUB_ENV"/);
@@ -602,17 +625,18 @@ test("the macOS app is codesigned with the committed, group-free entitlements pl
 		/ENTITLEMENTS_PLIST/,
 		"no rendered plist path reaches the build",
 	);
-	const build = step("build-macos", "Build macOS app");
-	assert.doesNotMatch(
-		build.run,
-		/mac\.entitlements/,
-		"the entitlements config stays at its committed value",
-	);
-	assert.doesNotMatch(
-		build.run,
-		/mac\.provisioningProfile/,
-		"the profile path is documented, not wired: a dormant branch that has never had its secret is a behaviour nobody can test",
-	);
+	for (const build of macBuildSteps()) {
+		assert.doesNotMatch(
+			build.run,
+			/mac\.entitlements/,
+			`${build.name}: the entitlements config stays at its committed value`,
+		);
+		assert.doesNotMatch(
+			build.run,
+			/mac\.provisioningProfile/,
+			`${build.name}: the profile path is documented, not wired: a dormant branch that has never had its secret is a behaviour nobody can test`,
+		);
+	}
 	// The committed plist stays secret-free and carries no group: every local build
 	// signs with it, and a group there would be a team id in the repository plus a
 	// signature no developer's identity can honour.
@@ -784,9 +808,21 @@ test("actual pnpm forwarding and electron-builder parser enforce signing", async
 			'#!/usr/bin/env node\nconsole.log("BUILDER_ARGV="+JSON.stringify(process.argv.slice(2)));\n',
 			{ mode: 0o755 },
 		);
+		// Each macOS step provisions the Electron dist for ITS architecture before
+		// building, because the bytecode is compiled against that runtime. This
+		// fixture is about the argv that reaches electron-builder, so the fetch is
+		// stubbed rather than performed — but it has to EXIST, or the `&&` chain
+		// dies before the builder is ever reached.
+		writeFileSync(
+			join(dir, "bin", "ensure-electron.js"),
+			"#!/usr/bin/env node\n// stub: the real one downloads a ~100MB runtime\n",
+			{ mode: 0o755 },
+		);
 		return [
 			["pnpm dist:mac -- -c.forceCodeSigning=true", false],
-			[step("build-macos", "Build macOS app").run, true],
+			// Each architecture's real command, so forcing is proven per pass rather
+			// than on whichever one happened to be first in the file.
+			...macBuildSteps().map((s) => [s.run, true]),
 		].map(([command, shouldForce]) => {
 			const result = shell(
 				command,
