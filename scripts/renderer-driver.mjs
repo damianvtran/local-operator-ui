@@ -2387,6 +2387,37 @@ async function sceneSessionArchive(cdp) {
 		"the list and its rows BEFORE the band (Q-3)",
 		JSON.stringify(offsetsBeforeBand),
 	);
+	/*
+	 * WHO WRITES THE READER'S SCROLL AS THE BAND ARRIVES (QA round 4, Q-9). The committed note said
+	 * `list.scrollTop = list.scrollHeight` gave 0 - it was read on a list whose band-0 box was 289
+	 * against 288 of content, where nothing CAN scroll - and QA's scene reads 142 on the same head
+	 * once the band's own box (147) is what overflows. The clause both readings serve is the
+	 * designer's: NEITHER `scrollTop` IS WRITTEN. So the writes themselves are trapped here, on the
+	 * element, with the stack of whatever made them: a value written on the arrival is a finding even
+	 * when it happens to equal what was already there, which is why this is a trap rather than a
+	 * comparison of two readings.
+	 */
+	const trapInstalled = await cdp
+		.evaluate(`(() => {
+			const el = document.querySelector('[data-sidebar-region="chats"]');
+			if (el === null) return false;
+			const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
+			window.__scrollWrites = [];
+			Object.defineProperty(el, 'scrollTop', {
+				configurable: true,
+				get() { return descriptor.get.call(this); },
+				set(value) {
+					window.__scrollWrites.push({
+						value,
+						from: descriptor.get.call(this),
+						stack: (new Error().stack || '').split('\\n').slice(0, 8).join(' <- '),
+					});
+					descriptor.set.call(this, value);
+				},
+			});
+			return true;
+		})()`)
+		.catch(() => false);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
@@ -2623,6 +2654,20 @@ async function sceneSessionArchive(cdp) {
 		settleAttempts: settled.attempts,
 		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
 	});
+	const scrollWrites = await cdp
+		.evaluate("(() => window.__scrollWrites || [])()")
+		.catch(() => []);
+	note(
+		"who writes the list's scroll while the band arrives (QA round 4, Q-9)",
+		JSON.stringify({ trapInstalled, writes: scrollWrites }),
+	);
+	check(
+		"and the band's arrival does not write the reader's scroll: the list's own `scrollTop` is never set as the message lands (design round 6's Q-3 ruling; QA round 4, Q-9)",
+		trapInstalled === true &&
+			Array.isArray(scrollWrites) &&
+			scrollWrites.length === 0,
+		JSON.stringify({ trapInstalled, writes: scrollWrites }),
+	);
 	/*
 	 * AND THE YIELD IS READ AS THE COMPARISON IT IS (QA round 3, Q-3 = design round 4, D20), which
 	 * is the half D14 never measured: the check above pins the band's SIZE, this one pins WHERE the
@@ -2688,17 +2733,16 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	/*
-	 * THE OVERFLOWING CASE, READ AND NOT ASSERTED (design round 6's Q-3 ruling asked for it, and this
-	 * is what the run says). The state IS the overflowing one - with the card standing the list's own
-	 * box is 147 against 288 of content, so the rows the band spends are the overflow at its bottom,
-	 * and the reading above shows every one of them still at its band-0 top with the box below its
-	 * content. What is NOT established is the SCROLL half: `list.scrollTop = list.scrollHeight` on the
-	 * region returned 0 in both palettes (verbatim `{"scrolledBy":0,"setBottom":0}`), so either the
-	 * region is not the element that scrolls in this state or something re-pins it, and a check built
-	 * on that reading would be asserting a fact about the harness rather than about the band. Left as
-	 * a note and reported as owed rather than written into the acceptance: the Q-5 reading beside it
-	 * DOES move this same element's `scrollTop` (0 -> 47.5) once a wheel is forwarded to it, which is
-	 * why the cause is not obvious enough to assert either way without another probe.
+	 * AND THE SAME LIST SCROLLED TO ITS BOTTOM, WHICH IS THE OVERFLOWING CASE AND THE ONE THIS FIX
+	 * IS FOR (design round 6's Q-3 ruling; QA round 4 closed the reading this check used to owe).
+	 *
+	 * The committed note here claimed `list.scrollTop = list.scrollHeight` returned 0 and left the
+	 * case unasserted. It was read on a list whose band-0 box is 289 against 288 of content, where
+	 * nothing can scroll; once the band's own box (147) is what overflows, the same assignment gives
+	 * 142 - measured at this head, verbatim `{"scrolledBy":142,"setBottom":142}` with the rows moving
+	 * by exactly that (688 -> 546, 764 -> 622, 796 -> 654, 828 -> 686) while the entity region holds
+	 * its box and its scroll. So the region IS the scroller, and this is the check the note owes: the
+	 * list takes the scroll, the region above it does not move, and the band is unchanged.
 	 */
 	const bottomBefore = await listAndRowOffsets(cdp);
 	const setBottom = await cdp
@@ -2709,11 +2753,30 @@ async function sceneSessionArchive(cdp) {
 		})()`)
 		.catch(() => null);
 	const bottomAfter = await listAndRowOffsets(cdp);
-	note(
-		"the overflowing list at its bottom, under the standing card (Q-3): read, not asserted",
+	const scrolledBy = bottomAfter.list.scrollTop - bottomBefore.list.scrollTop;
+	const heldWhileScrolled =
+		bottomAfter.band === bottomBefore.band &&
+		bottomAfter.list.height === bottomBefore.list.height &&
+		(bottomAfter.entities?.top ?? null) ===
+			(bottomBefore.entities?.top ?? null) &&
+		(bottomAfter.entities?.height ?? null) ===
+			(bottomBefore.entities?.height ?? null) &&
+		(bottomAfter.entities?.scrollTop ?? 0) ===
+			(bottomBefore.entities?.scrollTop ?? 0);
+	const rowsFollowTheScroll =
+		scrolledBy > 0 &&
+		bottomBefore.rows.every((row) => {
+			const now = bottomAfter.rows.find((r) => r.id === row.id);
+			return now === undefined || Math.abs(row.top - now.top - scrolledBy) <= 1;
+		});
+	check(
+		"and with the overflowing list scrolled to its bottom only the LIST moves: the entity region's box and scroll are byte-equal, the list's own box and the band are unchanged, and its rows move by exactly the scroll (design round 6's Q-3 ruling, the overflowing case)",
+		heldWhileScrolled && rowsFollowTheScroll,
 		JSON.stringify({
-			scrolledBy: bottomAfter.list.scrollTop - bottomBefore.list.scrollTop,
+			scrolledBy,
 			setBottom,
+			heldWhileScrolled,
+			rowsFollowTheScroll,
 			before: {
 				list: bottomBefore.list,
 				entities: bottomBefore.entities,

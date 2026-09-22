@@ -3913,6 +3913,48 @@ export function ChatSidebar({
 		 * "entities":{"height":333}}}` against `475` before, with the band at 142.
 		 */
 	}, [bandHeight, bothVisible, listIsBottomRegion]);
+	const lastBandHeightRef = useRef(bandHeight);
+	useLayoutEffect(() => {
+		/*
+		 * THE BAND'S ARRIVAL IS NOT A COMMIT THAT MOVED A ROW (QA round 4, Q-9), and without that
+		 * distinction the focus-hold TAKES THE READER'S SCROLL.
+		 *
+		 * `holdFocusedRow` follows a focused row that was inside its panel and left it as this commit
+		 * landed - "the correction only fires for a row that was inside and left". The band's arrival
+		 * shrinks the list's own box by its height (design round 6's ruling), so a focused row that
+		 * was inside the 289 box and sits within `band` of its bottom edge is OUTSIDE the 147 one -
+		 * not because anything moved it, but because the reader's window onto the list got shorter.
+		 * The hold reads that as a row to follow and writes `container.scrollTop` to bring it back.
+		 *
+		 * THE ARITHMETIC IS THE EVIDENCE, and it is why this is not a guess: QA's reading is
+		 * `{"scrollBefore":8.5,"scrollAfter":0}` with every row moving by exactly that (420 -> 429,
+		 * 496 -> 505, 528 -> 537), and 8.5 is the amount by which the followed row sat above the new
+		 * clip - `scrollTop + (above - band)` with `above = -8.5` clamps to 0, which is the number the
+		 * scene reports; the four-row case reads `40.5 -> 8.5`, i.e. the same write with a row 32 above
+		 * the clip and no ring. A press at the same scroll that raises no message leaves the position
+		 * alone, which is what a box that did not change predicts.
+		 *
+		 * WHAT IS NOT VERIFIED YET, stated rather than implied: the walk's own scene has no scroll to
+		 * lose when the band arrives - its list is 289 tall against 288 of content, so `max(0, ...)`
+		 * is 0 and the hold has nothing to write (the trap now in the driver reads `writes: []`
+		 * there). QA's fixture overflows at rest, which is the state this fix is for, and the walk
+		 * needs a shorter panel before it can reproduce it. The correction that WOULD have fired is
+		 * therefore not exercised by the check that lands beside it.
+		 *
+		 * The record is REFRESHED instead (the same call the containers make on their own scroll):
+		 * the new clip is the baseline, nothing is followed, and `scrollTop` is left exactly where the
+		 * reader put it - which is the clause the ruling states.
+		 */
+		const bandMoved = lastBandHeightRef.current !== bandHeight;
+		lastBandHeightRef.current = bandHeight;
+		if (bandMoved) {
+			refreshFocusedInside(entityPanelRef.current, entitySlotRef);
+			refreshFocusedInside(listPanelRef.current, listSlotRef);
+			return;
+		}
+		holdFocusedRow(entityPanelRef.current, entitySlotRef);
+		holdFocusedRow(listPanelRef.current, listSlotRef);
+	});
 	const listYield: number | undefined =
 		listIsBottomRegion && bandHeight > 0 && listBase !== null
 			? Math.max(0, listBase - bandHeight)
