@@ -235,7 +235,11 @@ test("overlapping catalogue refreshes coalesce and perform one trailing read", a
 		store.getState().fetchSessions(73),
 	];
 	assert.equal(calls.length, 1, "a burst shares the active catalogue request");
-	assert.equal(burst.length, 2, "both overlapping callers join the same flight");
+	assert.equal(
+		burst.length,
+		2,
+		"both overlapping callers join the same flight",
+	);
 	assert.equal(
 		calls[0].limit,
 		73,
