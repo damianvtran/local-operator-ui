@@ -19,8 +19,21 @@ export type ErrorBlockProps = {
 	isUser: boolean;
 };
 
-const settingsLink = (label = "settings page") => (
-	<Link to="/settings" className="text-accent underline underline-offset-2">
+/*
+ * A link INTO the settings page, with an optional literal `to`.
+ *
+ * `to` is a full path/query STRING written at the call site rather than a
+ * section id interpolated in here, and that is deliberate: `settings-page.tsx`
+ * resolves `?section=` against its own `sectionRefs`, and the route scan
+ * (`scripts/settings-section-routes.test.mjs`) can only verify a route whose
+ * section is a LITERAL in the source. A label that NAMES a section must carry
+ * that section — `settingsLink("Providers section")` used to render the word
+ * "Providers" over a bare `/settings`, so the reader who followed it landed on
+ * General, the same dead-end class this area was just fixed for (design review
+ * round 2, D7). Callers that mean the whole page keep the default.
+ */
+const settingsLink = (label = "settings page", to = "/settings") => (
+	<Link to={to} className="text-accent underline underline-offset-2">
 		{label}
 	</Link>
 );
@@ -57,7 +70,8 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 	"Invalid API key": (
 		<p>
 			Your API key is invalid. Update it in the{" "}
-			{settingsLink("Providers section")}, or sign in to the provider again.
+			{settingsLink("Providers section", "/settings?section=providers")}, or
+			sign in to the provider again.
 		</p>
 	),
 	"404 models": (
