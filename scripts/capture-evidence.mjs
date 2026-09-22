@@ -3517,8 +3517,18 @@ export const STORIES = [
 		},
 	],
 
-	/* 1380x800 is what the story declares and what the app window ships. */
-	["installer-installercontent--default", 1380, 800],
+	/* 640x480 is what the story declares and what the app window ships. The five
+	   states are the five a user can be left in, and each is captured because the
+	   panel is the first screen a new user sees: the mounted entry, an
+	   indeterminate first frame, the long download, the failure with its reason
+	   and Retry, and the settled panel. One frame of the DEFAULT state was all
+	   this surface had, which is why the failure state could have shipped as a
+	   dialog nobody had looked at. */
+	["installer-installercontent--default", 640, 480],
+	["installer-installercontent--indeterminate", 640, 480],
+	["installer-installercontent--mid-install", 640, 480],
+	["installer-installercontent--failure", 640, 480],
+	["installer-installercontent--installed", 640, 480],
 	/* The transcript's top slot. Its whole claim is that it does not change
 	   height, which is a COMPARISON between states — so the boards stack the
 	   states between rules rather than showing one per frame. `app-minimum-width`
