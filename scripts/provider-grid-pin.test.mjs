@@ -157,12 +157,18 @@ const row = (id, name, searchAliases, authMethods) => ({
 });
 
 const census = (overrides = {}) => [
-	row("openai", "OpenAI (ChatGPT Plus/Pro)", ["codex"], [
-		method("openai", "openai-key", "API key", "api_key"),
-	]),
-	row("anthropic", "Anthropic (Claude)", [], [
-		method("anthropic", "anthropic-key", "API key", "api_key"),
-	]),
+	row(
+		"openai",
+		"OpenAI (ChatGPT Plus/Pro)",
+		["codex"],
+		[method("openai", "openai-key", "API key", "api_key")],
+	),
+	row(
+		"anthropic",
+		"Anthropic (Claude)",
+		[],
+		[method("anthropic", "anthropic-key", "API key", "api_key")],
+	),
 	{
 		...row(
 			"radient",
