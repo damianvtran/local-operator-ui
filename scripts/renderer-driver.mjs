@@ -3263,6 +3263,17 @@ async function sceneSessionArchive(cdp) {
 		undoRefused.refusalNames = undoState?.archiveFailure?.sessionId ?? null;
 		undoRefused.rowLabel = await labelOf(`${undoRow} [data-session-archive]`);
 		/*
+		 * AND WHETHER THE ROW IS IN THE LIST AT ALL. After a REFUSED unarchive the store reverts
+		 * the row to ARCHIVED, and this scene runs with `Include archived` off - so the row leaves
+		 * the list and its control is gone with it, which is why `rowLabel` reads `null` here and
+		 * why that `null` is the CORRECT reading rather than a missing one (manager, pass 6). The
+		 * clause below therefore asserts the state the app actually reaches instead of the label
+		 * it would carry if the refusal had not reverted.
+		 */
+		undoRefused.rowStillListed = await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(undoRow)}) !== null`,
+		);
+		/*
 		 * THE LOOP WAITS FOR THIS ROW'S REFUSAL, NOT FOR "A RETRY TOAST" (this walk's triage,
 		 * 2026-09-21). The retry step above leaves a refusal for ANOTHER row standing, and this
 		 * poll used to break on it on its first iteration - reading
@@ -3286,8 +3297,8 @@ async function sceneSessionArchive(cdp) {
 			undoRefused?.action === "Retry" &&
 			undoRefused?.hitTest === true &&
 			undoRefused?.refusalNames === REFUSED_UNDO_ID &&
-			typeof undoRefused?.rowLabel === "string" &&
-			undoRefused.rowLabel.startsWith("Unarchive"),
+			undoRefused?.rowLabel === null &&
+			undoRefused?.rowStillListed === false,
 		`${Date.now() - undoAt}ms after the undo: ${JSON.stringify(undoRefused)}`,
 	);
 	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
@@ -15215,6 +15226,26 @@ async function assertBuildIsCurrent() {
 	}
 	const builtAt = newest(assets);
 	const sourceAt = newest(walk("src").filter((f) => /\.(ts|tsx|css)$/.test(f)));
+	/*
+	 * THE CONTENT MARKER, AND IT MUST BE A STRING LITERAL. The mtime arm below is not enough on
+	 * its own, and its first use proved it: a FAILED `pnpm build` writes fresh-mtime assets whose
+	 * CONTENT is still the previous app, so a scene ran against yesterday's bundle with the guard
+	 * satisfied. A marker has to survive minification in the built output, which a destructured
+	 * local does not (the first attempt used `archiveUndo.at`; the minifier renames it, and it
+	 * reads 0 in a bundle that plainly contains the fix). A literal the fix introduced - the
+	 * lane card's own width - survives, because class names and lengths are what the minifier
+	 * leaves alone.
+	 */
+	const marker = "248px";
+	const bundleText = walk("out/renderer")
+		.filter((f) => /\.(js|css|html)$/.test(f))
+		.map((f) => fs.readFileSync(f, "utf8"))
+		.join("\n");
+	if (!bundleText.includes(marker)) {
+		throw new Error(
+			`refusing to run: the built bundle does not contain the marker \`${marker}\`, so it was made from sources other than these. Run \`pnpm build\` at this head (with \`~/local-operator-ui/.env\` sourced, which the build requires), then run the scene.`,
+		);
+	}
 	if (builtAt < sourceAt) {
 		const seconds = Math.round((sourceAt - builtAt) / 1000);
 		throw new Error(
