@@ -36,6 +36,12 @@ window resize would photograph the same panel at the same width.
 >
 > The frames themselves are untouched: they are what the register looked like, and
 > a reader wanting the current behaviour should open the row-space set.
+>
+> **ADDED 2026-09-22: `refusal-band-280/{dark,light}`.** The refusal's CURRENT shape -
+> the panel's own band - now has a frame of its own in this set, because the row-space
+> set carries only OFFERS and the band's tallest case is the refusal (design round 4,
+> D15). `archive-refused*` and `undo-offer` stay exactly as they are: they are the
+> record of the register, not of the lane.
 
 **One stub per launch**, because the scene MUTATES the stub (it archives two
 conversations), so a second launch against the same process starts from a
@@ -101,9 +107,10 @@ cp /tmp/archive-frames-withdrawn/search-off.png \
 
 The scene asserts before it photographs. Run 1 (dark) and run 2 (light) report
 `ALL CHECKS PASSED` with **nineteen frames each**; the withdrawn run reports the same
-with two. The set committed here is therefore **40 PNGs** (19 + 19 + 2), and the
-count is stated because the round brief and the manifest's earlier `headNote` both
-said 24 — a number that was already stale when they were written. What the assertions cover, in the run's own words: the catalogue
+with two. The set committed here is therefore **42 PNGs** (19 + 19 + 2, plus the two
+frames of `refusal-band-280` - see the row below), and the count is stated because the
+round brief and the manifest's earlier `headNote` both said 24 — a number that was
+already stale when they were written. What the assertions cover, in the run's own words: the catalogue
 answered, the archived conversation matches nothing before the control is on and a
 row after it, the delete confirmation is open on the conversation the menu was
 opened on, **Cancel hands the keyboard back to the header trigger**, the refused
@@ -161,6 +168,7 @@ line, the register, the Retry) is what those frames are of.
 | `archive-refused/{dark,light}` |
 | `archive-refused-chats-only/{dark,light}` | the refused archive with the **entity region collapsed by the panel's own control** | R4-1's proof, in the mode that was broken: the register is a root child beside the pin's failure line, so it survives `chats-only` — the scene asserts `[data-sidebar-region="entities"]` is UNMOUNTED and that the sentence and its Retry are both in the viewport, which is the assertion the old text-adjacency test could not make | the cluster's hide control hovered and pressed (`movePointer` + `pressPointerStationary`), asserted, then the restore row pressed to return |
  the archive control pressed on the same claimed conversation | a refused archive reports in the panel's own register - at the panel's root, drawn in EVERY assembly mode (`chats-only` included, agent review round 4's R4-1) - with the **Retry** that re-sends the desired state | the scene clicks the row's control and asserts `[data-session-archive-failure]` is in the viewport |
+| `refusal-band-280/{dark,light}` | the archive control pressed on the conversation a running session claims, at the panel's **280px default** - the frame the design round's **D15** asked for, because the band's largest case had no measured box | the refusal in the shape D14 puts it in: the panel's own bottom band rather than an overlay, holding the **full** card (the sentence is nine lines and the band clips only past `calc(100% - 56px)`). The box, read in both palettes rather than quoted: **band 264x150 at x 228..492** (`y 710..860`), **card 248x142 at x 228..476** (`y 718..860`), panel 280x868, gap 8 - so `band.height == card.height + 8` as D14's ruling says, and the document's `216x170` / `216x206` are both stale in x AND y at this head. THE CARD'S X IS A READING THE RULING'S TABLE GETS WRONG: D14's table predicts the card "unchanged" at `244..492` (`panel.right - 8`), and the measured card sits at the LANE's left edge, **228..476**, with 16px of slack on the lane's right - the same left-anchoring `offer-toast-320` measures at the wider lane. Reported as a finding rather than reconciled here: nothing in the band's height ruling depends on x | ONE launch per palette on a fresh stub: the scene presses the row's control, asserts the refusal is in the lane with a hit-testable Retry, and reads the band, the card and the panel with `measure` |
 | `header-archived/{dark,light}` | the open conversation archived from its own menu, no dialog open | archiving the OPEN conversation keeps the pane open and adds the header's `Archived` pill with its restore control beside it | the scene archives from the menu, asserts the pill is in the viewport AND `activeSessionId` is still that conversation, and waits out the offer's 15s ceiling so nothing transient is over the pill's ink |
 | `undo-offer/{dark,light}` | a row's archive just succeeded | a successful archive offers **Undo** on the surface that performed it, as a **panel register at the panel's root** rather than a toast: the box is inside the panel (measured x 228..492 of the panel's 220..500) and disjoint from the composer's Send control (x 1307..1339), and it is still on screen after the catalogue's answers land | a real click on the row's control, then a plain `capture` (this is the frame that is OF the offer, so it carries its own `stable` + `offerOnScreen` checks alongside the `toastFree` ones — and the scene asserts the register's box is inside the panel and does not intersect Send) |
 | `deleted-open/{dark,light}` | the OPEN conversation deleted from its own menu | the pane lands on the missing-session notice that already existed — naming the conversation that is gone, with the composer refusing input — and the route stays on the deleted id rather than being swapped for a blank pane | the stub deletes an `idle`, unclaimed conversation; the scene asserts `#lo-missing-session-notice` is in the viewport AND `activeSessionId` is still that conversation |

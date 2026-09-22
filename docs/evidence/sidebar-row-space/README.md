@@ -15,7 +15,12 @@ number in it is a subtraction over the boxes in `measurements/`.
 
 The labels are the same in both halves, so the two sets compare frame for frame;
 `register-280` is the before half of the state that is now `offer-toast-280`,
-because the register is deleted by the change rather than moved.
+because the register is deleted by the change rather than moved. Three of the
+after labels have no before counterpart at all - `offer-toast-240`,
+`offer-toast-320` and `offer-long-280` - because the states they photograph (the
+clamp minimum, the width where the card is narrower than its own lane, and a title
+long enough to truncate) are states the change DELETES the register line from
+rather than moves it, so there is nothing on the other side to compare them to.
 
 ## What the operator reported, and which frame carries it
 
@@ -183,6 +188,7 @@ is only reproducible on the runtime that produced it).
 | `register-280` (before) | `register-280` | the panel's archive register after a REAL press on the short row's archive control, with a conversation open (so the composer is on screen) | parked, after the press | 280 |
 | `offer-toast-280` (after) | `offer-toast-280` | the same press, in the state the change puts it in: the offer is a toast in the panel's OWN lane, over the sidebar's bottom, with its Undo and its close - and the scene asserts its box is inside the panel's and disjoint from the composer's form and its Send control | parked, after the press | 280 |
 | `offer-toast-240` (after) | `offer-toast-240` | the same press at the **240 clamp minimum**, which is where the card's own width stops being a literal: the lane is 208 there, the card was 248 - 40px wider than its own lane and about 32px past the sidebar's right edge, with nothing clipping it (design round 3, D10) - and the scene asserts the card is no wider than its lane and inside the panel's own box | parked, after the press | 240 |
+| `offer-toast-320` (after) | `offer-toast-320` | the same press at **320**, which is D10's last unphotographed corner and the FIRST width where the card (248) is narrower than the lane it is drawn in (304): 240 and 280 fill their lane exactly, so neither settles which edge the spare 56px falls on. Read, not asserted (the scene adds no check, so the tally this round's QA compares does not move): the card's own box is **x 228..476 of the lane's 228..532** i.e. LEFT-anchored, with the slack at the lane's right edge, and its height 58 at the 320 panel - the same card the 240 and 280 frames draw | parked, after the press | 320 |
 | `offer-long-280` (after) | `offer-long-280` | the same press on the row whose title is long enough to truncate at every width: the lane frame D13 found missing, with the offered NAME read as a box rather than as a sentence | parked, after the press | 280 |
 
 The one state the after half photographs differently **by design** is
