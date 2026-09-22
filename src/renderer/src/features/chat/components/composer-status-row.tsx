@@ -123,6 +123,7 @@ import {
 	GOAL_COMMAND,
 	GOAL_DISMISS_ARGS,
 	GOAL_DONE_ARGS,
+	goalStateWord,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
 	loopIsRunning,
@@ -607,23 +608,6 @@ export const goalDisclosureLabel = (
 		stateWord ? `${stateWord}, ` : ""
 	}${goal}`;
 
-/**
- * The judge's live state as the ONE word the chip's names carry, from the wire's
- * two goal fields.
- *
- * Unknown members of `goal_judge.state` (a newer writer) fall through to `""` —
- * the chip shows what it knows and says nothing it cannot vouch for, which is the
- * closed-vocabulary/open-reader rule the contract states.
- */
-export const goalStateWord = (
-	goalStatus: string | undefined,
-	judgeState: string | undefined,
-): string => {
-	if (goalStatus === "done") return "done";
-	if (judgeState === "stalled") return "stalled";
-	if (judgeState === "judging" || judgeState === "continuing") return "working";
-	return "";
-};
 
 /**
  * The plan chip's tooltip and accessible name.

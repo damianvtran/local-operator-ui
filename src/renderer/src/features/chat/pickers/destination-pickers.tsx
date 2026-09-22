@@ -42,11 +42,12 @@ import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
-import type {
-	CanonicalFrontendSync,
-	CanonicalModel,
-	DesktopHistoryPage,
-	SessionCatalogueStatus,
+import {
+	type CanonicalFrontendSync,
+	type CanonicalModel,
+	type DesktopHistoryPage,
+	type SessionCatalogueStatus,
+	goalCapability,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { credentialNamesFrom } from "../components/credential-capture";
@@ -84,6 +85,8 @@ import {
 import {
 	GOAL_CLEAR_ARGS,
 	GOAL_COMMAND,
+	GOAL_DONE_ARGS,
+	goalStateWord,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
 	loopIsRunning,
@@ -1913,43 +1916,102 @@ export const GoalPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 }) => {
-	const current = canonical.frontend?.goal ?? "";
+	const frontend = canonical.frontend;
+	const current = frontend?.goal ?? "";
 	const [goal, setGoal] = useState(current);
 	const command = useSessionCommand(sessionId);
+	/*
+	 * `Mark done` owns its own press (agent review round 2, MINOR 2's rule): a command
+	 * in flight on the danger button must not disable the safe one beside it.
+	 */
+	const doneCommand = useSessionCommand(sessionId);
+	/*
+	 * THE SAME TWO GATES THE CHIP USES, for the same two reasons. `done` decides which
+	 * actions exist (a settled goal cannot be marked done twice) and `capable` decides
+	 * whether the new argument may be sent at all: on a backend without the new wire
+	 * fields, `Mark done` is not rendered, so `/goal done` can never reach a build that
+	 * would store the literal word as the user's goal.
+	 */
+	const done = frontend?.goal_status === "done";
+	const capable = goalCapability(frontend);
+	const judge = frontend?.goal_judge ?? null;
+	/*
+	 * The judge's state, in the chip's own vocabulary (`goalStateWord`) so the dialog
+	 * and the row cannot describe one state with two words. A goal at rest gets the
+	 * word instead of the chip's deliberate silence, because a readout with room for it
+	 * has to say something — and `stalled` carries the clause the user needs to act on.
+	 */
+	const judgeWord =
+		goalStateWord(frontend?.goal_status, judge?.state) ||
+		(judge?.state === "waiting" ? "waiting" : "idle");
+	const judgeLine =
+		judgeWord === "stalled"
+			? "stalled — send a message to continue"
+			: judgeWord;
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title="Session goal"
 			description={
-				current
-					? "The standing goal is prepended to every turn. Clear it to remove it."
-					: "A standing goal the agent keeps in view on every turn."
+				done
+					? "The judge called this done. It stays in the goal history — dismiss it to clear the chip."
+					: current
+						? "The standing goal is prepended to every turn. Clear it to remove it."
+						: "A standing goal the agent keeps in view on every turn."
 			}
 			form={
-				<PickerField label="Goal">
-					<Textarea
-						value={goal}
-						onChange={(event) => setGoal(event.target.value)}
-						rows={3}
-						placeholder="Ship the release with green gates"
-					/>
-				</PickerField>
+				<>
+					<PickerField label="Goal">
+						<Textarea
+							value={goal}
+							onChange={(event) => setGoal(event.target.value)}
+							rows={3}
+							placeholder="Ship the release with green gates"
+						/>
+					</PickerField>
+					{/*
+					 * THE JUDGE ROW EXISTS ONLY WHERE THERE IS A JUDGE TO READ, which is
+					 * exactly when the backend publishes `goal_judge` — the same capability
+					 * signal the actions are gated on. Showing it on a backend that has no
+					 * judge would invent a state out of the absent field.
+					 */}
+					{capable && (
+						<PickerField label="Judge">
+							<span className="text-ink-muted text-body-sm">{judgeLine}</span>
+						</PickerField>
+					)}
+				</>
 			}
 			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
 			submitLabel="Set goal"
 			submitDisabled={!goal.trim()}
 			actions={
 				current ? (
-					<Button
-						variant="danger"
-						size="sm"
-						type="button"
-						onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
-						disabled={command.busy}
-					>
-						Clear goal
-					</Button>
+					<>
+						{capable && !done && (
+							<Button
+								variant="secondary"
+								size="sm"
+								type="button"
+								onClick={() =>
+									void doneCommand.run(GOAL_COMMAND, GOAL_DONE_ARGS)
+								}
+								disabled={doneCommand.busy}
+							>
+								Mark done
+							</Button>
+						)}
+						<Button
+							variant="danger"
+							size="sm"
+							type="button"
+							onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
+							disabled={command.busy}
+						>
+							Clear goal
+						</Button>
+					</>
 				) : undefined
 			}
 			busy={command.busy}
