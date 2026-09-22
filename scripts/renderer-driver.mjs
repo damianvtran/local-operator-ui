@@ -3661,6 +3661,47 @@ async function sceneRowSpace(cdp) {
 	const PINNED = "c4e17b90a2f6";
 	const CURRENT = "2d5ad5da0025";
 	const IDS = [UNPINNED, SHORT, PINNED, CURRENT];
+	/*
+	 * U6 IN THE APP (manager, pass 7 - the major the whole reveal rests on).
+	 *
+	 * A pinned row draws its mark AT REST, so the reader can aim at a control that is on screen
+	 * before any pointer arrives. If the acts' appearance shifts that mark, the box the reader
+	 * aimed at belongs to something else by the time they press - and in this design the thing
+	 * that lands on it is ARCHIVE, i.e. a state toggle becomes a destructive action. Two readings
+	 * settle it: the mark's box before and under the pointer (identical, not merely same-size),
+	 * and what a press at the RESTING centre does to the row's own archived fact. The pin may
+	 * flip - that is a legitimate answer - but the conversation must not be archived.
+	 */
+	await parkPointer(cdp);
+	const markRow = `[data-session-row="${PINNED}"] [data-session-pin]`;
+	const archivedFactOf = async () =>
+		cdp.evaluate(
+			`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); return row ? row.getAttribute("data-session-archived") : "row-absent"; })()`,
+		);
+	const markAtRest = await verb(cdp, "measure", markRow);
+	const archivedBefore = await archivedFactOf();
+	await hoverOver(cdp, `[data-session-row="${PINNED}"]`);
+	await wait(600);
+	const markUnderPointer = await verb(cdp, "measure", markRow);
+	check(
+		"U6: the pinned row's mark does not move when the pointer arrives",
+		markAtRest.centre.x === markUnderPointer.centre.x &&
+			markAtRest.centre.y === markUnderPointer.centre.y,
+		`at rest ${markAtRest.centre.x},${markAtRest.centre.y} ${markAtRest.rect.width}x${markAtRest.rect.height} -> under the pointer ${markUnderPointer.centre.x},${markUnderPointer.centre.y} ${markUnderPointer.rect.width}x${markUnderPointer.rect.height}`,
+	);
+	/* AIMED AT THE VISIBLE MARK: the resting centre, which is where a reader's pointer already is. */
+	await pressPointerStationary(cdp, markAtRest.centre.x, markAtRest.centre.y);
+	await wait(700);
+	const archivedAfter = await archivedFactOf();
+	const pinAfter = await cdp.evaluate(
+		`(() => { const el = document.querySelector('${markRow}'); return el ? el.getAttribute("aria-pressed") : null; })()`,
+	);
+	check(
+		"U6: a press at the visible mark's centre does NOT archive the conversation",
+		archivedAfter === archivedBefore,
+		JSON.stringify({ archivedBefore, archivedAfter, pinAfter }),
+	);
+
 	const WIDTHS = [240, 280, 320];
 	/*
 	 * THE DWELL, AND THE LONGEST A PAN CAN RUN AT THESE WIDTHS. The dwell is
