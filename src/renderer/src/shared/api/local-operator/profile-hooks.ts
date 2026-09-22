@@ -77,19 +77,30 @@ export type ChatTarget = { kind: "agent" | "team"; name: string };
  * its own mount just started.
  */
 function useAuthoringRefresh(kind: "profiles" | "teams") {
-	const { authoringRevision } = useDesktopFeed();
+	const { authoringRevision, authoringReconnectRevision } = useDesktopFeed();
 	const queryClient = useQueryClient();
 	const applied = useRef<number | null>(authoringRevision);
+	const appliedReconnect = useRef(authoringReconnectRevision);
 
 	useEffect(() => {
-		if (authoringRevision === null || authoringRevision === applied.current)
+		if (authoringRevision !== null && authoringRevision !== applied.current) {
+			applied.current = authoringRevision;
+			// This revision-triggered refresh also covers a reconnect observed in
+			// the same render, so do not spend it again on the next render.
+			appliedReconnect.current = authoringReconnectRevision;
+			void queryClient.invalidateQueries({ queryKey: ["desktop", kind] });
+			void queryClient.invalidateQueries({
+				queryKey: ["desktop", kind === "profiles" ? "profile" : "team"],
+			});
 			return;
-		applied.current = authoringRevision;
+		}
+		if (authoringReconnectRevision === appliedReconnect.current) return;
+		appliedReconnect.current = authoringReconnectRevision;
 		void queryClient.invalidateQueries({ queryKey: ["desktop", kind] });
 		void queryClient.invalidateQueries({
 			queryKey: ["desktop", kind === "profiles" ? "profile" : "team"],
 		});
-	}, [authoringRevision, kind, queryClient]);
+	}, [authoringRevision, authoringReconnectRevision, kind, queryClient]);
 }
 
 export function useProfiles(enabled: boolean) {

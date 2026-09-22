@@ -136,7 +136,8 @@ export const desktopResult = request => globalThis.__statusRequest(request);`,
 							capabilities: `export const desktopFeatureEnabled = () => true;
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
-export function useState(initial) { return [typeof initial === "function" ? initial() : initial, (value) => { globalThis.__stateSets.push(value); }]; }`,
+export function useRef(initial) { return { current: initial }; }
+export function useState(initial) { let current = typeof initial === "function" ? initial() : initial; return [current, (value) => { current = typeof value === "function" ? value(current) : value; globalThis.__stateSets.push(current); }]; }`,
 						}[args.path],
 						loader: "js",
 						resolveDir: process.cwd(),
@@ -170,6 +171,9 @@ globalThis.__effects = [];
 // catalogue revision is published through one, so a setter that discarded its
 // argument would leave the trigger unassertable.
 globalThis.__stateSets = [];
+globalThis.__feedState = () => {
+	throw new Error("the hook never watched feed state");
+};
 globalThis.__frames = () => {
 	throw new Error("the hook never subscribed");
 };
@@ -569,7 +573,10 @@ test("the hook hands the store the pair, not the frame payload", () => {
 						globalThis.__frames = onFrame;
 						return () => {};
 					},
-					watchState: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
 				},
 			},
 		},
@@ -610,6 +617,45 @@ test("the hook hands the store the pair, not the frame payload", () => {
  * frame this build does not know must publish nothing at all, which is what makes
  * a newer backend's frame a no-op for an older renderer.
  */
+test("only a previously connected feed reconnect advances authoring recovery", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__stateSets.length = 0;
+	globalThis.__feedState = () => {
+		throw new Error("the hook never watched feed state");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	assert.equal(connection.authoringReconnectRevision, 0);
+	for (const effect of globalThis.__effects) effect();
+
+	globalThis.__feedState({ connected: true });
+	assert.deepEqual(globalThis.__stateSets, [true]);
+	globalThis.__stateSets.length = 0;
+
+	// The transport was live, dropped, then came back. A repeated connected
+	// notification from the same open is not another reconnect.
+	globalThis.__feedState({ connected: false });
+	globalThis.__feedState({ connected: true });
+	globalThis.__feedState({ connected: true });
+	assert.deepEqual(globalThis.__stateSets, [false, 1, true, true]);
+	// The initial connection did not publish an authoring recovery generation;
+	// one false-to-true transition after that connection published exactly one,
+	// while the repeated connected state only republishes the live transport state.
+});
+
 test("the catalogue frame publishes the revision the sidebar refetches on", () => {
 	seeded();
 	globalThis.__effects.length = 0;
@@ -625,7 +671,10 @@ test("the catalogue frame publishes the revision the sidebar refetches on", () =
 						globalThis.__frames = onFrame;
 						return () => {};
 					},
-					watchState: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
 				},
 			},
 		},
