@@ -31,6 +31,7 @@ import {
 	windowsInstallScript,
 } from "./scripts";
 import { setupFailureCause } from "./setup-failure-causes";
+import { UV_TOOL_ENV, ensureUvToolExecutable } from "./uv-tool";
 import { VENV_PATH_ENV, managedVenvPath } from "./venv-paths";
 /**
  * The failure dialog's detail line: what happened, then what was recorded.
@@ -575,6 +576,38 @@ export class BackendInstaller {
 						env.PYTHON_BIN = this.pythonPath;
 						logger.info(
 							`Setting PYTHON_BIN to ${this.pythonPath}`,
+							LogFileType.INSTALLER,
+						);
+					}
+
+					/*
+					 * And the bundled uv, which is what makes the package install fast.
+					 *
+					 * WHY THE APP RESOLVES IT RATHER THAN THE SCRIPT PROBING: the resource
+					 * namespace, the per-architecture directory and the platform's binary
+					 * name are the app's own layout (`uv-tool.ts` reads the one definition),
+					 * and a script that re-derived them would be a second copy of that layout
+					 * in another language.
+					 *
+					 * ABSENT IS THE ORDINARY CASE, not a failure: a dev checkout whose
+					 * `pnpm setup-python` has not been run, and any artifact built before
+					 * this change, have no bundled uv. The script then installs with pip
+					 * exactly as it did before, so nothing about that path is left unexercised
+					 * by a build that lacks it - the CI install-script jobs are one such
+					 * build, and they run the fallback on every pull request.
+					 */
+					const uv = ensureUvToolExecutable(this.managedOptions());
+					if (uv.path !== null) {
+						env[UV_TOOL_ENV] = uv.path;
+						logger.info(
+							uv.healed
+								? `Restored the execute bit on the bundled uv (${uv.path}) before handing it to the installer; the mode a bundle arrives with is not covered by codesign's seal`
+								: `Setting ${UV_TOOL_ENV} to ${uv.path}`,
+							LogFileType.INSTALLER,
+						);
+					} else {
+						logger.info(
+							`No bundled uv for ${process.arch}: ${uv.reason}`,
 							LogFileType.INSTALLER,
 						);
 					}
