@@ -467,21 +467,44 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
 - **D12's constraint 2, "it must sit on the surface that performed the action", is
   now satisfied too**: the archive is performed from the sidebar, and the offer
   appears in the sidebar. That was the half a bottom-right toast could not have.
-- **How it is placed, concretely.** A second `ThemedToastContainer` is mounted by
-  the chat sidebar's panel root (the global one in `main.tsx` keeps every other
-  toast exactly where it is), with `position="bottom-left"` and an inline
-  `position: absolute` - the same mechanism `themed-toast-container.tsx` already
-  relies on for colour (sonner's stylesheet cannot beat an inline value) - so the
-  lane is the sidebar's own box rather than the viewport's corner. THE `position`
-  IS NOT WHAT CONTAINS IT, and this paragraph used to say that it was: sonner
-  2.0.3 draws every mounted container's copy of every toast (the reading is
-  recorded in `styles/index.css` beside the two rules that narrow it), so what
-  confines the message to the panel is the app's own rule - the marker class these
+- **How it is placed, concretely - and it is a BAND now, not an overlay** (design round 4,
+  D14; the ruling that settled Q-2 with measurement). A second `ThemedToastContainer` is
+  mounted by the chat sidebar's panel root as the panel flex column's LAST CHILD (the global
+  one in `main.tsx` keeps every other toast exactly where it is), and the app wraps it in a
+  band whose inline box is `position: relative; width: 100%; flex-shrink: 0; overflow: hidden;
+  max-height: calc(100% - 56px)` with `height: 0` at rest and `card height + 8` while a message
+  stands - measured from the drawn card, because the offer is one line at every width and the
+  refusal is not. The container's own `position` is `static` (an inline value, the same
+  mechanism `themed-toast-container.tsx` already relies on for colour, since sonner's
+  stylesheet cannot beat an inline one). THE `position` ARGUMENT IS NOT WHAT CONTAINS IT, and
+  this paragraph used to say that it was: sonner 2.0.3 draws every mounted container's copy of
+  every toast (the reading is recorded in `styles/index.css` beside the two rules that narrow
+  it), so what confines the message to the panel is the app's own rule - the marker class these
   two messages carry, scoped to `nav[aria-label="Chats"]`. The offer is
-  `toast.info(..., { position: "bottom-left" })` so nothing else changes, not
-  because the argument routes it.
-- **Width:** the lane's toasts are capped to the sidebar's content width
-  (`--width: min(264px, 100% - 32px)`), so a long title wraps instead of running
+  `toast.info(..., { position: "bottom-left" })` so nothing else changes, not because the
+  argument routes it.
+- **Why the band replaced the overlay - the trade, recorded as the designer stated it.** As an
+  absolutely positioned container the card was drawn OVER the list, and that single fact was
+  the subject of four independent findings: the covered-row scan (Q-1 and three review streams
+  on one selector), QA's press loop finding no conversation archivable from a row for the
+  card's whole life (Q-2), and D11. The designer settled it with measurement rather than taste:
+  the acts column is the row's last 52px (392..444 at 240, 432..484 at 280, 472..524 at 320)
+  and the card's right edge is 8px beyond the row's, so the column sits wholly inside the
+  card's span - a left-anchored card would need width <= 148/188/228 to clear it, a
+  right-anchored one <= 8px, and the card's own ink floor is 208. **A control under a card
+  cannot be aimed at, whatever the card does with presses** - so the card takes its own height
+  out of the column instead, and the ROWS DO NOT MOVE: the list is `flex-1`, so what yields is
+  its bottom (an empty tail in a short list, the formerly-hidden bottom rows when it
+  overflows), with `scrollTop` never written. There is no transition on the band, because a
+  band that animated would move rows under the reader's pointer. The price the designer
+  accepts and this document records: **58px of list viewport for the offer's eight seconds, or
+  the refusal's height plus eight for its ten**, spent at the moment the list is already
+  rearranging - against a wrong write or a dead control on every archive made while a message
+  stands. The `pointer-events` rules stay (they now buy only the wheel: a wheel over the card
+  reaches the list behind it, while the action and the close keep taking their presses), and
+  the two things they were written for - Q-1, Q-2 - lose their subject to the geometry.
+- **Width:** the band's toasts are capped to the band's content box
+  (`--width: min(248px, 100%)` on the card), so a long title wraps instead of running
   out of the column, which is also what keeps the disjointness above true.
   **AND THE CARD'S OWN WIDTH IS CAPPED TO THAT LANE, not set to a literal** (design
   round 3, D10, fixed 2026-09-22): the card's rule carried `--width: 248px` - the
