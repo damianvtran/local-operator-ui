@@ -1678,6 +1678,18 @@ type CanonicalSessionsState = {
 	 */
 	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
 	/**
+	 * Clear the refusal once its message's turn in the panel's lane is over.
+	 *
+	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
+	 * panel owns the drawing decision (which message is the newest word, and so when an older
+	 * one has been superseded), and U10 is what happens when the VALUE outlives its message -
+	 * the refusal was re-printed every time a newer message retired, because the clock cleared
+	 * the drawing and not the value. Nothing else reads this field: what reverts the row is the
+	 * fact `setSessionArchived` already recorded, and what announces it is the control's own
+	 * flip, so clearing the sentence takes no affordance with it.
+	 */
+	clearArchiveFailure: () => void;
+	/**
 	 * The conversation a danger dialog is asking about, or null.
 	 *
 	 * In the STORE rather than in the component that draws the dialog, because two
@@ -2574,6 +2586,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });
+			},
+			clearArchiveFailure: () => {
+				set({ archiveFailure: null });
 			},
 			setSessionArchived: async (sessionId, archived, title) => {
 				/*

@@ -2480,15 +2480,28 @@ async function sceneSessionArchive(cdp) {
 				archived: retryState.archiveFailure.archived,
 			}
 		: null;
-	retried.undo = retryState?.archiveUndo
-		? { sessionId: retryState.archiveUndo.sessionId }
-		: null;
+	/*
+	 * WHAT THE ANSWER ACTUALLY PRODUCED, INSTEAD OF A FIELD THAT COULD NEVER BE FILLED (nit,
+	 * round 2). This read `archiveUndo` and was null in every run: the retry's answer raises an
+	 * offer only when it ACCEPTS, and this fixture's daemon refuses this conversation's writes
+	 * every time - so the reading was dead evidence shaped like a live one. The answer this
+	 * fixture gives is another refusal for the SAME row, and it is asserted below rather than
+	 * left for a reader to notice; a daemon that accepted would fail that assertion, which is the
+	 * honest thing for a reading of the fixture to do.
+	 */
+	retried.answer =
+		retryState?.archiveFailure?.sessionId === REFUSED_ID
+			? "another refusal for this row"
+			: retryState?.archiveUndo
+				? "an offer for this row"
+				: "neither shape";
 	check(
 		"a refused retry puts the refusal back in the lane, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)",
 		retried?.painted === true &&
 			retried?.action === "Retry" &&
 			retried?.hitTest === true &&
-			retried?.answeredAgain === true,
+			retried?.answeredAgain === true &&
+			retried?.answer === "another refusal for this row",
 		`${Date.now() - retryPressedAt}ms after the retry (refusal raised ${retryPressedAt - refusalRaisedAt}ms before the press): ${JSON.stringify(retried)}`,
 	);
 
@@ -2506,6 +2519,102 @@ async function sceneSessionArchive(cdp) {
 		firstVanished: retried?.firstVanished ?? null,
 	};
 	console.log(`[note] retry transition\n        ${JSON.stringify(transition)}`);
+
+	/*
+	 * U10, THE SEQUENCE THAT FAILED (UX round 3), AND THE ASSERTION IS ABOUT WHAT DOES *NOT*
+	 * COME BACK. A refusal stands for the refused conversation; a NEWER message then takes the
+	 * lane (a second conversation's archive raises its offer); the reader presses that offer's
+	 * own Undo; the lane goes empty. The defect was what happened next: the SUPERSEDED refusal,
+	 * whose value was still in the store, was drawn again - lane empty at +450ms in the light
+	 * palette, the refusal back at +1.75s dark / +450ms light - because the currency rule chose
+	 * the newest word per commit while the clock cleared only the DRAWING, never the value.
+	 *
+	 * THE FIX IS READ IN TWO PLACES, and the first is the mechanism rather than the symptom: the
+	 * moment the offer supersedes the refusal, the refusal's value must be gone (that is what
+	 * makes it un-re-printable), and then the lane must stay empty through both of the moments the
+	 * return was measured at. A red run here with the first clause green is the old defect back:
+	 * the value outliving its message.
+	 *
+	 * B IS THE ROW THIS SCENE ARCHIVES LATER ANYWAY, and the sequence puts it back through the
+	 * offer's own Undo - so the fixture this step hands on is the fixture it found.
+	 */
+	const refusedStanding = await verb(cdp, "state");
+	check(
+		"U10 precondition: the refused conversation's refusal is what the lane is showing",
+		refusedStanding.archiveFailure?.sessionId === REFUSED_ID &&
+			(await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+		JSON.stringify({
+			failure: refusedStanding.archiveFailure ?? null,
+			undo: refusedStanding.archiveUndo ?? null,
+		}),
+	);
+	const supersedingOffer = "[aria-label='Archive “Release notes for 0.29”']";
+	await hoverOver(cdp, supersedingOffer);
+	await wait(200);
+	await clickAt(cdp, supersedingOffer);
+	await wait(700);
+	const superseded = await verb(cdp, "state");
+	check(
+		"U10: the newer offer takes the lane AND the refusal it superseded is cleared with it, so it cannot be re-printed",
+		superseded.archiveUndo !== null && superseded.archiveFailure === null,
+		JSON.stringify({
+			undo: superseded.archiveUndo
+				? { sessionId: superseded.archiveUndo.sessionId }
+				: null,
+			failure: superseded.archiveFailure ?? null,
+		}),
+	);
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	const afterRetire = [];
+	for (const at of [450, 1750]) {
+		await wait(at === 450 ? 450 : 1300);
+		const lane = await verb(cdp, "state");
+		afterRetire.push({
+			at: `+${at}ms`,
+			drawn: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+			failure: lane.archiveFailure ?? null,
+			undo: lane.archiveUndo ?? null,
+		});
+	}
+	check(
+		"U10: after the offer's own Undo the lane stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, in this palette",
+		afterRetire.every(
+			(reading) =>
+				reading.drawn === false &&
+				reading.failure === null &&
+				reading.undo === null,
+		),
+		JSON.stringify(afterRetire),
+	);
+	note(
+		"U10 the lane after the newer message retires",
+		JSON.stringify(afterRetire),
+	);
+
+	/*
+	 * AND THE REFUSAL GOES BACK, BECAUSE THIS STEP MOVED THE STATE THE NEXT STEPS ARE ABOUT. The
+	 * walk above leaves a refusal standing, and the split-mode step after this one reads that
+	 * refusal with the entity region gone - so a step that CLEARS it (which is exactly what the
+	 * fix does with a superseded refusal) has to raise a fresh one rather than hand the next step
+	 * an empty lane. It is the reader's own gesture, and the new refusal is asserted rather than
+	 * assumed: a run whose daemon accepted this row would fail here, loudly, instead of three
+	 * steps later for a reason nothing on screen explains.
+	 */
+	const refusedControl = "[aria-label='Archive “Migration checklist”']";
+	await hoverOver(cdp, refusedControl);
+	await wait(200);
+	await clickAt(cdp, refusedControl);
+	await wait(700);
+	const refusalBack = await verb(cdp, "state");
+	check(
+		"U10: the refusal this walk is about is standing again, so the steps after it read the state they were written against",
+		refusalBack.archiveFailure?.sessionId === REFUSED_ID &&
+			(await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+		JSON.stringify({
+			failure: refusalBack.archiveFailure?.sessionId ?? null,
+			undo: refusalBack.archiveUndo ?? null,
+		}),
+	);
 	/*
 	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).
 	 * This is the mode the REGISTER was absent from at `3e650f5f0`: it had been
@@ -2572,7 +2681,18 @@ async function sceneSessionArchive(cdp) {
 	 *    survives the pointer leaving the control's 24px box.
 	 */
 	await parkPointer(cdp);
-	const titledRow = await verb(cdp, "measure", "[data-chat-row]");
+	/*
+	 * SCOPED TO A SESSION ROW, because `[data-chat-row]` also matches SECTION HEADINGS - the
+	 * catalogue's own reading names one (`button "Agents"`), and a heading is a full-width button
+	 * (nit, round 2; the same confusion cost this walk three checks on 2026-09-21). Unscoped, this
+	 * measured whatever heading came first and put the pointer sixty pixels into the PANEL's
+	 * header rather than onto a row's title, which is the state the frame is supposed to be of.
+	 */
+	const titledRow = await verb(
+		cdp,
+		"measure",
+		"[data-session-row] [data-chat-row]",
+	);
 	await cdp.send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		x: titledRow.rect.x + 60,
@@ -2768,9 +2888,16 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, offeredRow);
 	await clickAt(cdp, offeredRow);
 	await wait(500);
-	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
-		null,
-	);
+	/*
+	 * SCOPED TO A SESSION ROW FOR THE SAME REASON AS THE TITLE STEP ABOVE: `[data-chat-row]`
+	 * matches section headings too, so an unscoped `:focus` would have passed this check with the
+	 * keyboard on a heading - and the check's own name is "lands on a row" (nit, round 2).
+	 */
+	const successor = await verb(
+		cdp,
+		"measure",
+		"[data-session-row] [data-chat-row]:focus",
+	).catch(null);
 	check(
 		"the keyboard lands on a row rather than back on the document",
 		successor !== null &&
@@ -2925,14 +3052,32 @@ async function sceneSessionArchive(cdp) {
 	const mark = await cdp.evaluate(`(() => {
 		const marked = document.querySelector('[data-session-row="b3f1a09c7d52"]');
 		const glyph = marked?.querySelector(".text-success") ?? null;
-		const r = glyph?.getBoundingClientRect() ?? null;
-		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")]
-			.filter((el) => !marked?.contains(el)).length;
-		return {
-			drawn: !!r && r.width > 0 && r.height > 0,
-			width: r?.width ?? 0,
-			height: r?.height ?? 0,
-			elsewhere,
+		/*
+	 * DRAWN MEANS PAINTED, NOT MERELY SIZED (nit, round 2). A box with pixels in it needs three
+	 * answers rather than one: a glyph inside a display:none wrapper is 0x0, but one that is
+	 * visibility:hidden or opacity:0 KEEPS its box - so a width-and-height test alone would call a
+	 * mark that paints nothing "drawn", and the two equal title widths below would be evidence
+	 * about a mark nobody can see. This is the same three clauses the scene's own painted
+	 * reading uses, spelled where the glyph is.
+	 */
+	const style = glyph ? getComputedStyle(glyph) : null;
+	const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")]
+		.filter((el) => !marked?.contains(el)).length;
+	return {
+		drawn:
+			!!r &&
+			r.width > 0 &&
+			r.height > 0 &&
+			style !== null &&
+			style.display !== "none" &&
+			style.visibility !== "hidden" &&
+			Number(style.opacity) > 0,
+		width: r?.width ?? 0,
+		height: r?.height ?? 0,
+		display: style?.display ?? null,
+		visibility: style?.visibility ?? null,
+		opacity: style ? Number(style.opacity) : null,
+		elsewhere,
 		};
 	})()`);
 	check(

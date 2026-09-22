@@ -1333,6 +1333,18 @@ export function ChatSidebar({
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
 	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
+	/*
+	 * BOTH LANE MESSAGES' OWN WRITES, because the panel is what decides which message the lane
+	 * shows and therefore when a message's turn is over - and a value that outlives its message
+	 * is U10 (the two uses are beside the drawing effect's currency rule and in its clock).
+	 * `setArchiveUndo` is normally the offer's own module's (`archive-undo.ts` owns WHEN the
+	 * offer is retired by the conversation's state); the clock needs it for the other end of the
+	 * same life - a message that expired unread.
+	 */
+	const clearArchiveFailure = useCanonicalSessionsStore(
+		(s) => s.clearArchiveFailure,
+	);
+	const setArchiveUndo = useCanonicalSessionsStore((s) => s.setArchiveUndo);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -3490,6 +3502,18 @@ export function ChatSidebar({
 				: archiveFailure
 					? "failure"
 					: "offer";
+		/*
+		 * THE MESSAGE THE NEWER ONE SUPERSEDED IS CLEARED, WHICH IS U10 ITSELF (UX round 3). The
+		 * currency rule above decides which of the two is the lane's newest word - and until this
+		 * clause the LOSING one stayed in the store: archive a second conversation while a refusal
+		 * stands and the offer takes the lane, press that offer's own Undo, and the lane went EMPTY
+		 * and then re-printed the OLD refusal with a fresh ten-second clock (measured: empty at
+		 * +450ms, the refusal back at +1.75s in the dark palette and +450ms in the light one).
+		 * Clearing the superseded value here is what makes "the lane shows the newest word" true
+		 * over TIME rather than only at the moment the newer word arrives.
+		 */
+		if (newest === "offer" && archiveFailure !== null) clearArchiveFailure();
+		if (newest === "failure" && archiveUndo !== null) setArchiveUndo(null);
 		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";
 			showWarningToast(
@@ -3622,7 +3646,7 @@ export function ChatSidebar({
 				},
 			);
 		}
-	}, [archiveFailure, archiveUndo, setSessionArchived]);
+	}, [archiveFailure, archiveUndo, setSessionArchived, clearArchiveFailure, setArchiveUndo]);
 
 	/*
 	 * THE CLOCK THE DRAW ABOVE DOES NOT RUN (agent review round 2 - the re-assertion):
@@ -3643,11 +3667,22 @@ export function ChatSidebar({
 			() => {
 				laneMessageRef.current = null;
 				dismissToast(ARCHIVE_TOAST_ID);
+				/*
+				 * AND THE VALUE GOES WITH ITS MESSAGE (the same U10 clause, at the other end of the
+				 * life): an expired message that left its value standing was drawn again by the next
+				 * commit that re-ran the effect, with a FRESH clock - the reader's own dismissal undone
+				 * by a re-render they did not cause, and the clock the design says belongs to the
+				 * message because sonner's is no longer what ends one. What does not depend on the lane
+				 * is untouched: a live offer is still reachable from the row's own Unarchive control,
+				 * the header's Archived pill and `/unarchive`.
+				 */
+				if (message === "failure") clearArchiveFailure();
+				else setArchiveUndo(null);
 			},
 			message === "failure" ? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS,
 		);
 		return () => clearTimeout(timer);
-	}, [archiveFailure, archiveUndo]);
+	}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);
 
 	const pinFailureLine = pinFailure ? (
 		/*
