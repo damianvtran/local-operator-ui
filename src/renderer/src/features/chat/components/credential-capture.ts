@@ -2406,11 +2406,32 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
  * direction that matters. Only the caller has the planner — the composer asks it for
  * the same locked run the press will take — and asking in here would be a second
  * decision about which word owns the line.
+ *
+ * THE CALLER MUST ASK THE PRESS'S OWN QUESTION (agent review round 2, R5). `takenBy`
+ * is a claim about what Enter does, and the composer reads it off a state the app
+ * persists — the disclosure — while the hold is a fact about a ref that dies on a
+ * reload. So the argument is `HELD_TAKEN_BY` on exactly the draft whose press
+ * `planForDraft` answers `held` for (the composer's `holdsHeldPress`), never on the
+ * disclosure's mere presence: the disclosure outliving the record is precisely the
+ * shape where this sentence would promise a hold that is not there and Enter
+ * dispatches the secret as a command's argument instead.
  */
+/**
+ * The `takenBy` value that means "the press is HELD" rather than "command /X owns the tail".
+ *
+ * The composer cannot name a command here any more: after an Esc cancel whose span held
+ * characters the press is HELD (nothing runs, nothing sends), so "Enter will take them as
+ * /credential's argument" is a sentence about a route this change retired. The value is a
+ * sentinel, not a command name, because the sentence it selects is not about any command.
+ */
+export const HELD_TAKEN_BY = "\u0000held";
+
 export const unredactedNotice = (length: number, takenBy?: string): string =>
 	takenBy === undefined
 		? `${length} characters are now PLAIN TEXT in the composer — Enter will expose them`
-		: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
+		: takenBy === HELD_TAKEN_BY
+			? `${length} characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words`
+			: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
 
 /**
  * The buffer with a LIVE mask replaced by the characters it stands for.
