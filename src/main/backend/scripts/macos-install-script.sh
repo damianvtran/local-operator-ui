@@ -167,19 +167,97 @@ if [ ! -f "$VENV_PATH/bin/python" ] || [ ! -f "$VENV_PATH/bin/pip" ]; then
 fi
 echo "Virtual environment structure verified"
 
+# --- The package install: uv when there is one, pip otherwise ------------------
+#
+# WHY UV. Installing the backend is the phase a user waits through on a first
+# run, and pip spends it resolving and fetching serially. Measured on this
+# machine, cold cache, three runs each, the same interpreter and dependency set:
+# pip's package install is 33.0-40.7 s against uv's 12.8-16.1 s, plus the
+# 2.3-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
+# on a quieter box was 33.9 s against 22.8 s, so read the ratio as 1.5-2.8x
+# ACROSS those two operators, and the seconds as this box's. Warm, a retry or a
+# repair: 15.9-33.8 s against 0.65-1.57 s.
+#
+# THE FIGURES THIS COMMENT USED TO QUOTE ARE WITHDRAWN, and this note is here so
+# they are not restored: "pip 128.9 s against uv 14.8 s, 178.3 s against 4.5 s
+# warm". The pip reading was taken at load ~90 and did not reproduce at five
+# further attempts. A comment that argues from a withdrawn number is how the next
+# maintainer decides on a ratio five times the measured one - and the decision it
+# argues is whether ~16-20 MiB per artifact earns its place, so the number is
+# load-bearing. `docs/BUILD.md` carries the full set.
+#
+# WHY A FALLBACK RATHER THAN UV ALONE. uv is a NEW resource in the bundle, and
+# every artifact built before this change has none. The pip path below is the one
+# that shipped until now, unchanged, and it runs whenever uv is absent or cannot
+# do the job - a dev checkout whose `pnpm setup-python` was never run, an older
+# artifact, a uv the platform refuses to spawn, a uv install that failed. A
+# fallback that has never been exercised is a claim rather than a feature, which
+# is why the CI install-script jobs run this script with no uv at all.
+#
+# WHY pip STAYS IN THE VENV, and why this does NOT use `uv venv`: the app's
+# backend-update path runs `pip install --upgrade local-operator` inside this same
+# environment (`update-service.ts`, and `update-install.ts` documents why pip is
+# the right command there). `python -m venv` seeds pip from the interpreter's own
+# `ensurepip` wheel, where `uv venv` produces an environment with no pip at all -
+# so switching the creation would silently break every later update. The check
+# above (`"$VENV_PATH/bin/pip"`) is what holds that on both paths.
+#
+# The app hands the path of the pinned, bundled uv in `LOCAL_OPERATOR_UV_BIN`
+# (`src/main/backend/uv-tool.ts`). Nothing here searches PATH for a uv: an
+# installed uv is a version and a configuration nobody in this repository chose,
+# and the point of bundling one is that the install is the same for every user.
+UV_BIN="${LOCAL_OPERATOR_UV_BIN:-}"
+
+# Drop every UV_* variable the launching environment carried.
+#
+# WHY THE WHOLE NAMESPACE rather than a list of the dangerous ones: uv reads its
+# configuration from `UV_*` and from `uv.toml`, and both are the caller's, not
+# this app's. Measured on uv 0.12.17: with a user-level `uv.toml` naming an index
+# that is not reachable, `uv pip install --dry-run six` fails with `tcp connect
+# error`; `UV_NO_CONFIG=1` makes the same command resolve from PyPI. And an
+# ambient `UV_INDEX_URL` changes where packages come from - while `PIP_INDEX_URL`
+# does not affect uv at all (measured, both directions). Unsetting a name list
+# would drift the day uv adds a variable; unsetting the namespace cannot.
+#
+# IT RUNS BEFORE THE SETTINGS BELOW ARE SET, and that order is load-bearing: a
+# sweep after them takes them away, and an empty `UV_CACHE_DIR` is not "use the
+# default cache" - uv exits 2 with `a value is required for '--cache-dir
+# <CACHE_DIR>'`. Measured by running this script on the uv path, where the
+# failure first surfaced as a silent pip install, because the fallback below
+# caught it exactly as designed.
+for uv_ambient in $(env | sed -n 's/^\(UV_[A-Za-z0-9_]*\)=.*/\1/p'); do
+  unset "$uv_ambient"
+done
+
+# The cache lives under the app's own support directory rather than the user's
+# shared `~/.cache/uv`, so the install neither reads nor pollutes a cache that
+# another tool (or another version of uv) is maintaining. Written here, after the
+# sweep, and handed to uv per invocation rather than exported.
+#
+# IT PERSISTS, and that is worth knowing on a user's disk: a full install leaves
+# ~118 MB there (measured; pip's own cache for the same dependency set is ~40 MB
+# and it also persists). Nothing else reads it today - the app's backend-update
+# path installs with pip - so it is there for the next provisioning or repair,
+# and it is what makes a retry converge in ~1.5 s instead of ~20 s.
+UV_CACHE_DIR="$APP_DATA_DIR/uv-cache"
+
+# Is the handed-down uv something we can actually run?
+uv_is_usable() {
+  [ -n "$UV_BIN" ] && [ -x "$UV_BIN" ] && "$UV_BIN" --version >/dev/null 2>&1
+}
+
+# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
+# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
+# may never fetch another, which is also what keeps it working offline.
+# UV_CACHE_DIR: this install's own cache, passed explicitly for the same reason.
+uv_run() {
+  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_CACHE_DIR="$UV_CACHE_DIR" \
+    "$UV_BIN" "$@"
+}
+
 # Activate virtual environment and install local-operator
 echo "Installing local-operator in virtual environment..."
 source "$VENV_PATH/bin/activate"
-
-echo "Upgrading pip..."
-python -m pip install --upgrade pip || {
-  echo "ERROR: Failed to upgrade pip. Exit code: $?"
-  echo "pip version before failing:"
-  pip --version
-  exit 1
-}
-echo "pip upgrade successful:"
-pip --version
 
 # Check network connectivity to PyPI. A DIAGNOSTIC, not a gate: the install below
 # decides whether it can proceed.
@@ -218,21 +296,55 @@ if [[ "$PYPI_PROBE_CONTENT_TYPE" != application/json* ]]; then
   ping -c 1 -W 2000 pypi.org || echo "Cannot ping pypi.org"
 fi
 
-echo "Installing local-operator package..."
-python -m pip install --upgrade --verbose local-operator || {
-  echo "ERROR: Failed to install local-operator package. Exit code: $?"
-  echo "Python version:"
-  python --version
-  echo "pip version:"
+UV_INSTALLED=false
+if uv_is_usable; then
+  echo "Installing local-operator with uv ($("$UV_BIN" --version 2>/dev/null || echo 'version unavailable'))..."
+  # No `pip install --upgrade pip` on this path: uv does not use pip, so the
+  # upgrade would be a whole extra network round trip that changes nothing about
+  # the result.
+  if uv_run pip install --python "$VENV_PATH/bin/python" --upgrade local-operator; then
+    UV_INSTALLED=true
+    echo "local-operator installation with uv successful"
+  else
+    # WHY THE EXIT CODE IS PRINTED (review round 1, QA Q2): this fallback has to
+    # be forgiving - an install must not fail because uv did - but "a bundled uv
+    # is present and fails" is a defect rather than a degraded path, and this line
+    # is the only place it shows up: the exit code is 0 and the UI is unchanged.
+    # `uv_is_usable` passing and a uv install SUCCEEDING are two different facts.
+    UV_STATUS=$?
+    echo "WARNING: the bundled uv is present but its install failed (exit ${UV_STATUS}); retrying with pip, which is what this script used before uv was bundled."
+  fi
+else
+  echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."
+fi
+
+if [ "$UV_INSTALLED" != true ]; then
+  echo "Upgrading pip..."
+  python -m pip install --upgrade pip || {
+    echo "ERROR: Failed to upgrade pip. Exit code: $?"
+    echo "pip version before failing:"
+    pip --version
+    exit 1
+  }
+  echo "pip upgrade successful:"
   pip --version
-  echo "Available pip packages:"
-  pip list
-  echo "Pip config:"
-  pip config list
-  echo "Network diagnosis:"
-  curl -sI --fail --connect-timeout 5 --max-time 30 https://pypi.org || echo "Cannot reach PyPI server"
-  exit 1
-}
+
+  echo "Installing local-operator package..."
+  python -m pip install --upgrade --verbose local-operator || {
+    echo "ERROR: Failed to install local-operator package. Exit code: $?"
+    echo "Python version:"
+    python --version
+    echo "pip version:"
+    pip --version
+    echo "Available pip packages:"
+    pip list
+    echo "Pip config:"
+    pip config list
+    echo "Network diagnosis:"
+    curl -sI --fail --connect-timeout 5 --max-time 30 https://pypi.org || echo "Cannot reach PyPI server"
+    exit 1
+  }
+fi
 echo "local-operator installation successful"
 
 # Verify installation

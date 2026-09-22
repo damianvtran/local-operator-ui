@@ -232,16 +232,99 @@ if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
     exit 1
 }
 
+# --- The package install: uv when there is one, pip otherwise ------------------
+#
+# Same shape as the macOS and Linux scripts, and for the same reasons: uv resolves
+# and fetches in parallel - measured on macOS, cold cache, three runs each, same
+# interpreter: uv's package install is 12.8-16.1 s against pip's 33.0-40.7 s,
+# plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
+# operators rather than the "14.8 s against 128.9 s" quoted here before that
+# reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
+# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in the venv
+# because the app's backend-update path runs `pip install --upgrade
+# local-operator` inside this same environment - which is also why the venv is
+# still created with `python -m venv` rather than `uv venv`.
+#
+# Nothing here searches PATH for a uv: an installed uv is a version and a
+# configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
+# app's own answer (`src/main/backend/uv-tool.ts`).
+$UvBin = $env:LOCAL_OPERATOR_UV_BIN
+$UvCacheDir = "$AppDataDir\uv-cache"
+
+function Test-UvUsable {
+    if (-not $UvBin) { return $false }
+    if (-not (Test-Path $UvBin)) { return $false }
+    try {
+        & $UvBin --version | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+# Drop every UV_* variable the launching environment carried, then set the three
+# settings this install depends on. Measured on uv 0.12.17: a user-level
+# `uv.toml` naming an unreachable index is obeyed by `uv pip install` and ignored
+# with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL` changes where packages come
+# from, while `PIP_INDEX_URL` does not affect uv at all. A name list would drift
+# the day uv adds a variable - the namespace cannot.
+#
+# The names are MATERIALISED first (`@(...)` over a property projection):
+# removing entries of a collection that is still being enumerated is the shape
+# that throws `Collection was modified`.
+$uvAmbientNames = @(
+    Get-ChildItem env: |
+        Where-Object { $_.Name -like 'UV_*' } |
+        Select-Object -ExpandProperty Name
+)
+foreach ($uvAmbientName in $uvAmbientNames) {
+    Remove-Item "env:$uvAmbientName" -ErrorAction SilentlyContinue
+}
+
+# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
+# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
+# never fetches another.
+# UV_CACHE_DIR: under the app's own support directory rather than the user's
+# shared uv cache.
+$env:UV_NO_CONFIG = "1"
+$env:UV_PYTHON_DOWNLOADS = "never"
+$env:UV_CACHE_DIR = $UvCacheDir
+
 # Activate virtual environment and install local-operator
 Write-Output "Installing local-operator in virtual environment..."
 # Use PowerShell to run the activation script
 & "$VenvPath\\Scripts\\Activate.ps1"
-& python -m pip install --upgrade pip
-& python -m pip install --upgrade local-operator
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to install packages in virtual environment"
-    exit 1
+$UvInstalled = $false
+if (Test-UvUsable) {
+    Write-Output "Installing local-operator with uv..."
+    # No `pip install --upgrade pip` on this path: uv does not use pip.
+    & $UvBin pip install --python "$VenvPath\Scripts\python.exe" --upgrade local-operator
+    if ($LASTEXITCODE -eq 0) {
+        $UvInstalled = $true
+        Write-Output "local-operator installation with uv successful"
+    } else {
+        # The exit code is printed for the same reason as on macOS and Linux: the
+        # fallback is deliberately forgiving, so this line is the only evidence
+        # that a bundled uv is present and failing for every user (QA Q2).
+        Write-Output "WARNING: the bundled uv is present but its install failed (exit $LASTEXITCODE); retrying with pip, which is what this script used before uv was bundled."
+    }
+} else {
+    if ($UvBin) {
+        Write-Output "Bundled uv at $UvBin could not be run on this machine; installing with pip."
+    } else {
+        Write-Output "Bundled uv not available (LOCAL_OPERATOR_UV_BIN unset); installing with pip."
+    }
+}
+
+if (-not $UvInstalled) {
+    & python -m pip install --upgrade pip
+    & python -m pip install --upgrade local-operator
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install packages in virtual environment"
+        exit 1
+    }
 }
 
 # Verify installation
