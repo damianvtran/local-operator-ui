@@ -1148,22 +1148,34 @@ test("a daemon replaced under the app is re-paired without a restart (2026-09-18
 			acceptedBearer: "successor-claim-key",
 		});
 
-		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
-			const refused = await manager.requestDesktop({
-				op: "sessions.list",
-				limit: 1,
-			});
-			assert.equal(
-				refused.status,
-				401,
-				"the successor refuses the credential this app holds for the process it replaced",
-			);
-			// and the renderer's capability poll, which the plane answers without
-			// admitting anyone - liveness, never a pairing
-			const capabilities = await manager.requestDesktop({ op: "capabilities" });
-			assert.equal(capabilities.status, 200);
-			await manager.checkBackendHealth();
-		}
+		// The successor refuses the credential this app holds for the process it
+		// replaced - the pre-condition of this case, asserted once.
+		const refused = await manager.requestDesktop({
+			op: "sessions.list",
+			limit: 1,
+		});
+		assert.equal(
+			refused.status,
+			401,
+			"the successor refuses the credential this app holds for the process it replaced",
+		);
+		// and the renderer's capability poll, which the plane answers without
+		// admitting anyone - liveness, never a pairing
+		const capabilities = await manager.requestDesktop({ op: "capabilities" });
+		assert.equal(capabilities.status, 200);
+		/*
+		 * ONE tick is enough now, and that is the point of the 2026-09-21 change.
+		 *
+		 * Before it, the app had to accumulate three consecutive answered
+		 * contradictions before it detached, and only `detached` reached
+		 * re-discovery - so this case drove `DEGRADED_AFTER_FAILURES` of them. The
+		 * pairing record says the pairing is broken on the FIRST answered
+		 * contradiction (`probeAttachedDaemon` sets `cause: "successor"` there), and
+		 * `checkBackendHealth` now consults it, so re-discovery runs at once - which
+		 * is also what makes the band's Retry do something the moment a user presses
+		 * it rather than waiting out three probes (design § 6.2).
+		 */
+		await manager.checkBackendHealth();
 
 		const healed = await waitFor(() => {
 			const snapshot = manager.getStatusSnapshot();
@@ -2139,5 +2151,142 @@ test("A3: an ADOPTED daemon that reloads in place recovers without a restart, by
 			await manager.stop(false).catch(() => {});
 			await scene.dispose();
 		}
+	}
+});
+
+test("the operator's report: an ADOPTED daemon that reloads in place never re-discovers while admitted traffic keeps clearing the count (2026-09-21)", async () => {
+	/*
+	 * THE LIVE EVENING OF 2026-09-21, in the shape the operator's own
+	 * `backend-service.log` records: this app ADOPTED a daemon it did NOT spawn
+	 * (pid 1276, owned:false), that daemon reloaded IN PLACE (`lop-update`,
+	 * `os.execve` - same pid, same port, new instance_id, republished record), and
+	 * every gate route kept admitting this app's credential.
+	 *
+	 * The band "The Local Operator server was replaced while this app was running.
+	 * Pairing with the new one." sat from ~20:08 to 21:20:31, and the log holds NO
+	 * "Backend detached:" line in that window - which is the whole clue. The
+	 * probe answers `identity-mismatch` (an ANSWER, not a miss), so exactly ONE
+	 * `contradicted` observation is folded per tick; but this app is also reading
+	 * from the same daemon (the renderer's presence beat and session reads), and
+	 * each ADMITTED answer runs `recordTransportSuccess()`, which clears the
+	 * failure count and revives `degraded` -> `attached`. The three CONSECUTIVE
+	 * contradictions `DEGRADED_AFTER_FAILURES` requires are therefore never
+	 * reached, `checkBackendHealth` never sees `detached`, and
+	 * `recoverFromDetachment` - the only path that re-discovers and re-pairs - is
+	 * never entered. The pairing cause stays `successor` for as long as the app is
+	 * left open.
+	 *
+	 * A3 (above) drives the same reload WITHOUT the interleaved admitted traffic,
+	 * which is exactly why A3 passes today: its three contradictions accumulate
+	 * and detach. This case is the operator's shape, and it is the one that was
+	 * broken.
+	 */
+	const token = "d".repeat(64);
+	const tokenFile = join(HOME, "userData", "desktop-token");
+	mkdirSync(join(HOME, "userData"), { recursive: true });
+	writeFileSync(tokenFile, token, { mode: 0o600 });
+
+	const scene = await daemonScene({
+		instanceId: "instance-adopted-before",
+		claimKey: "",
+		acceptedBearer: token,
+	});
+	globalThis.__testConfiguredUrl = scene.address;
+	const { manager, intervals } = await adoptAtStartup(scene);
+	try {
+		const adopted = manager.getStatusSnapshot();
+		assert.equal(
+			adopted.state,
+			"attached",
+			"the rig must start adopted and attached",
+		);
+		assert.equal(
+			adopted.owned,
+			false,
+			"adopted, not spawned: this is the operator's shape",
+		);
+
+		const reloadedInstanceId = "instance-adopted-after";
+		await scene.reloadInPlace({
+			instanceId: reloadedInstanceId,
+			claimKey: "",
+			acceptedBearer: token,
+		});
+
+		const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
+		assert.ok(loop, "adoption must have armed the probe loop");
+
+		const sequence = [];
+		for (let tick = 1; tick <= 5; tick++) {
+			const clockBefore = manager.getStatusSnapshot().updatedAt;
+			const seenBefore = scene.seen.length;
+			loop.fn();
+			await waitFor(
+				() => scene.seen.length > seenBefore,
+				"the tick's probe to reach the daemon",
+			);
+			await waitFor(
+				() => manager.getStatusSnapshot().updatedAt > clockBefore,
+				"the tick's probe to be folded",
+			);
+			/*
+			 * The renderer's own traffic between probes - the presence beat and a
+			 * session read - which the SAME plane admits (the reload preserved this
+			 * app's credential). This is the load-bearing detail of the report: it
+			 * is what clears the contradiction count and keeps the app `attached`.
+			 */
+			const read = await manager.requestDesktop({
+				op: "sessions.list",
+				limit: 1,
+			});
+			assert.equal(
+				read.status,
+				200,
+				"the reloaded daemon still admits this app's credential: the pairing is real even though main reports it broken",
+			);
+			const snapshot = manager.getStatusSnapshot();
+			sequence.push({
+				tick,
+				state: snapshot.state,
+				failures: snapshot.failures,
+				pairing: snapshot.pairing.available
+					? "paired"
+					: `cause: ${snapshot.pairing.cause}`,
+				instanceId: snapshot.instanceId,
+			});
+		}
+
+		const settled = manager.getStatusSnapshot();
+		assert.equal(
+			settled.state,
+			"attached",
+			`admitted traffic keeps reviving the connection, so it never detaches. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			settled.instanceId,
+			reloadedInstanceId,
+			`left alone, the app must re-discover the reloaded daemon and adopt its new identity without a restart. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			settled.pairing.available,
+			true,
+			`and the pairing it reports must be the true one. Observed: ${JSON.stringify(sequence)}`,
+		);
+		assert.equal(
+			manager.getOwnedPid(),
+			null,
+			"nothing may be spawned over a daemon this app does not own",
+		);
+
+		/* The Retry half, which pins the delta: the operator's manual press DOES
+		 * clear it, by running `recoverFromDetachment()` directly. */
+		const healed = await manager.reconnectNow();
+		assert.equal(healed.state, "attached");
+		assert.equal(healed.pairing.available, true);
+		assert.equal(healed.instanceId, reloadedInstanceId);
+	} finally {
+		rmSync(tokenFile, { force: true });
+		await manager.stop(false).catch(() => {});
+		await scene.dispose();
 	}
 });

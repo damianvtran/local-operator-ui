@@ -43,7 +43,6 @@ import {
 	ExternalLink,
 	History,
 	Info,
-	Key,
 	List,
 	MessagesSquare,
 	Plug,
@@ -58,7 +57,6 @@ import { useLocation } from "react-router-dom";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 
-import { Credentials } from "./credentials";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
@@ -385,7 +383,6 @@ export const SettingsPage: FC = () => {
 		radient: useRef<HTMLDivElement>(null),
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
-		credentials: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -1135,9 +1132,11 @@ export const SettingsPage: FC = () => {
 										filterByCredentials={true}
 										allowCustom={true}
 										allowDefault={false}
-										/* This IS Settings, so the default copy would send the
-										   reader to the page they are already on. */
-										emptyHelperText="No hosting providers available. Add one in API credentials, in the list on the left."
+										/* This IS Settings, so the default ("…in Settings, under Providers")
+										   would send the reader to the page they are already on. Settings'
+										   own model section says "below" instead: same door, same words,
+										   no second sentence. */
+										emptyHelperText="No hosting providers available. Sign in to a provider, or add a provider's API key below, under Providers."
 									/>
 									<ModelSelect
 										value={config.values.model_name}
@@ -1153,7 +1152,8 @@ export const SettingsPage: FC = () => {
 									>
 										You need a Radient account or your own API keys to reach
 										cloud providers. If you don't see more hosting providers and
-										models here, add credentials or sign in to Radient.
+										models here, sign in to Radient, or add a provider's API key
+										below, under Providers.
 									</Alert>
 								</div>
 							</SettingsSection>
@@ -1350,16 +1350,6 @@ export const SettingsPage: FC = () => {
 							sectionRef={sectionRefs.integrations}
 							highlightServer={mcpTarget}
 						/>
-
-						<SettingsSection
-							title="API credentials"
-							icon={Key}
-							description="Manage your API keys for various services and integrations"
-							sectionRef={sectionRefs.credentials}
-							dataTourTag="settings-api-credentials-section"
-						>
-							<Credentials />
-						</SettingsSection>
 
 						<div ref={sectionRefs.updates}>
 							<AppUpdatesSection />

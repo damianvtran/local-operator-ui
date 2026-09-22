@@ -52,6 +52,13 @@ const bundle = await build({
 			'export * from "./src/main/console/osc133";',
 			'export * from "./src/main/console/keys";',
 			'export * from "./src/main/console/host";',
+			// The capture paths' own judgement of a frame (Q-6/Q-7): the predicate both
+			// paths ask, exported from the module that owns it rather than restated here.
+			'export * from "./src/main/console/capture";',
+			// The capture document's URL derivation (code review round 1, B1): the dev
+			// origin and the built file URL are different shapes, and only one of them
+			// is a suffix replacement.
+			'export * from "./src/main/console/capture-url";',
 			'export * from "./src/main/console/history";',
 			'export * from "./src/main/console/protocol";',
 			'export * from "./src/main/console/dispatch";',
@@ -71,7 +78,10 @@ const bundle = await build({
 			// The error class the refusals must be instances of, so `rpc.ts`'s
 			// `instanceof` narrowing is what the tests exercise.
 			'export { BrowserHostError } from "./src/main/browser/errors";',
-			'export { ipcMain } from "electron";',
+			// The window class as well as the handler registry: the capture view creates its
+			// own window, and a test that cannot reach it cannot assert the grid it was
+			// sized from (code review round 1, B2).
+			'export { BrowserWindow, ipcMain } from "electron";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -115,7 +125,11 @@ const {
 	DEFAULT_ROWS,
 	MIN_COLS,
 	MAX_COLS,
-	MIN_FRAME_BYTES,
+	hasTerminalContent,
+	ConsoleCaptureView,
+	BrowserWindow,
+	consoleCaptureUrlFor,
+	LIVE_PENDING_MAX_BYTES,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
 	ConsoleHistory,
@@ -626,8 +640,18 @@ test("the shell and the working directory fall back to the user's own", () => {
 	assert.equal(defaultShell({ SHELL: "/bin/zsh" }), "/bin/zsh");
 	// A relative shell is not a shell this app execs: it would resolve against
 	// whatever directory the app happens to be in.
-	assert.equal(defaultShell({ SHELL: "zsh" }), "/bin/zsh");
-	assert.equal(defaultShell({}), "/bin/zsh");
+	assert.equal(defaultShell({ SHELL: "zsh" }), defaultShell({}));
+	/*
+	 * The fallback is asserted as a PROPERTY rather than as a literal (round-1
+	 * review R1-3): it is the platform's own login shell, probed for existence, so
+	 * a machine without zsh gets bash instead of an ENOENT. A literal here would
+	 * have pinned macOS's answer onto every platform this suite runs on - which is
+	 * how the Linux hole went unnoticed - so what this asserts is that the answer
+	 * is an absolute shell that is actually present.
+	 */
+	const fallback = defaultShell({});
+	assert.ok(fallback.startsWith("/bin/"), `${fallback} is not a shell path`);
+	assert.ok(existsSync(fallback), `${fallback} is not a shell that exists`);
 	assert.equal(resolveCwd("/tmp"), "/tmp");
 	assert.equal(resolveCwd("relative/path"), resolveCwd(undefined));
 	assert.ok(resolveCwd(undefined).startsWith("/"));
@@ -673,7 +697,7 @@ function fakeWindow({ frames = [], destroyed = false, focused = false } = {}) {
 		webContents: {
 			capturePage: async (rect) => {
 				captured.push(rect);
-				return queue.length > 0 ? queue.shift() : image(MIN_FRAME_BYTES + 1);
+				return queue.length > 0 ? queue.shift() : image(40_000);
 			},
 			send: (channel, payload) => sent.push({ channel, payload }),
 		},
@@ -682,9 +706,56 @@ function fakeWindow({ frames = [], destroyed = false, focused = false } = {}) {
 	};
 }
 
-function image(bytes) {
+/**
+ * A frame, shaped the way the capture paths read one.
+ *
+ * `toBitmap` MATTERS as much as the byte count does since QA round 1's Q-2 (the displayed
+ * path used to judge a frame by its size alone, and a blank 1600x800 PNG is a few
+ * kilobytes of one colour, so it cleared the floor comfortably) — and since round 2's
+ * Q-6/Q-7 the byte count is not consulted at all, so the BITMAP is the whole of what these
+ * fixtures say. The default is therefore a frame with content: a ground plus enough
+ * differing pixels in enough distinct values to answer `hasTerminalContent`, which is what
+ * a rendered terminal produces (the measured offscreen frame carried 252 colours).
+ *
+ * The shapes that must be REFUSED are named rather than implied, because each is a
+ * finding: `uniform` is the blank capture (one colour, Q-2's case); `bands` is the
+ * glyph-free two-solid-field frame that used to pass (Q-6); `speck` is a few pixels of
+ * detail, which is not a screenshot of anything. `sparse` is the case round 2 added from
+ * the other side (Q-7): a live console that has printed very little — a prompt and a line
+ * — which is real content and must be ACCEPTED.
+ */
+function image(bytes, { shape = "content" } = {}) {
 	const png = Buffer.alloc(bytes);
-	return { isEmpty: () => false, toPNG: () => png };
+	const pixels = 512;
+	const bitmap = Buffer.alloc(pixels * 4);
+	/** A ground of zeros, then `count` pixels in `count` distinct values. */
+	const paint = (count, from = 1) => {
+		for (let i = 0; i < count && from + i < pixels; i++) {
+			const at = (from + i) * 4;
+			bitmap[at] = (i * 7) % 256;
+			bitmap[at + 1] = (i * 13) % 256;
+			bitmap[at + 2] = (i * 29) % 256;
+			bitmap[at + 3] = 255;
+		}
+	};
+	if (shape === "content") paint(64);
+	if (shape === "sparse") paint(40);
+	if (shape === "speck") paint(4);
+	if (shape === "bands") {
+		// One other solid colour over the lower half: a LOT of differing pixels, and only
+		// one more colour than the ground.
+		for (let i = pixels / 2; i < pixels; i++) {
+			bitmap[i * 4] = 9;
+			bitmap[i * 4 + 1] = 9;
+			bitmap[i * 4 + 2] = 9;
+			bitmap[i * 4 + 3] = 255;
+		}
+	}
+	return {
+		isEmpty: () => false,
+		toPNG: () => png,
+		toBitmap: () => bitmap,
+	};
 }
 
 /** A pane's report for a box, with the cell metrics the spike measured for the DOM
@@ -724,6 +795,10 @@ function hostWithWindow(options = {}) {
 			return pty;
 		},
 		onReveal: options.onReveal,
+		// The offscreen capture seam (design 13.2/13.3), injected the way the pty is:
+		// a test that wants the offscreen path asserts the HOST's contract with it
+		// without a renderer process, and the real capture view is a live rig's job.
+		captureOffscreen: options.captureOffscreen,
 	});
 	return { host, registry, spawned, window };
 }
@@ -1063,6 +1138,86 @@ test("a retained surface's writes are coalesced, and its sidecar is not rewritte
 	assert.ok(PERSIST_FLUSH_BYTES < 400 * 8 * 1024);
 });
 
+/**
+ * THE LIVE VIEW'S CEILING (memory-bounding round).
+ *
+ * `broadcast`'s per-surface `pending` array was the one structure on the pty path with no
+ * bound: every chunk a subscriber had not taken stayed in it, so its size was a function of
+ * how far behind that subscriber had fallen. This cell drives a backlog past the ceiling
+ * from a subscriber that never drains, and asserts the three things the policy promises —
+ * the drop is COUNTED (`status`'s `dropped_live_bytes`, not a frame that quietly never
+ * arrived), the NEWEST bytes are what survive, and the RECORD is untouched: the byte log
+ * and the emulator keep every byte, because they are what the pane is a mirror of.
+ *
+ * The chunks are 64 KiB and there are 40 of them — 2.5 MiB, past the 1 MiB ceiling and well
+ * inside what a unit cell may allocate.
+ */
+test("a subscriber that falls behind is capped, and the record keeps every byte", async () => {
+	const { host, spawned } = hostWithWindow();
+	const created = await createSurface(host, { cols: 100, rows: 30 });
+	const frames = [];
+	// A subscriber that never drains: `output` collects the frame and returns, so the only
+	// reason `pending` grows is that the coalescing timer has not had a turn yet.
+	host.subscribe(created.surface, 0, {
+		output: (frame) => frames.push(frame),
+		exit: () => {},
+	});
+	const CHUNK_BYTES = 64 * 1024;
+	const CHUNKS = 40;
+	const chunk = "y".repeat(CHUNK_BYTES);
+	for (let index = 0; index < CHUNKS; index += 1) spawned[0].pty.emit(chunk);
+
+	const status = host.status(created.surface);
+	const total = CHUNK_BYTES * CHUNKS;
+	assert.ok(
+		status.dropped_live_bytes > 0,
+		`a ${total} B backlog against a ${LIVE_PENDING_MAX_BYTES} B ceiling must drop something`,
+	);
+	assert.ok(
+		status.dropped_live_bytes < total,
+		"and must not drop everything: the newest frames are what a viewer needs",
+	);
+	// The log is the record of record, and the ceiling is not allowed to touch it.
+	assert.equal(status.truncated, false, "the byte log dropped nothing");
+
+	await ticks(60);
+	assert.equal(frames.length, 1, "one coalesced frame reached the subscriber");
+	const kept = frames[0].bytes.length;
+	assert.equal(
+		status.dropped_live_bytes,
+		total - kept,
+		"the reported loss is exactly what the subscriber did not get",
+	);
+	assert.equal(
+		new TextDecoder().decode(frames[0].bytes).endsWith(chunk),
+		true,
+		"the frame ends with the newest bytes",
+	);
+	const read = await host.read(created.surface, "viewport");
+	assert.equal(read.truncated, false, "the record's read is complete");
+	/*
+	 * AND THE RECORD HAS EVERY BYTE, asserted rather than left inferential. A fresh
+	 * subscribe replays the byte log from offset 0, and the log is a 4 MiB ring against
+	 * this cell's 2.5 MiB, so the replay IS the whole flood — every byte the pty emitted,
+	 * whatever the live view had to drop.
+	 */
+	const wholeRecord = host.subscribe(created.surface, 0, {
+		output: () => {},
+		exit: () => {},
+	});
+	assert.equal(
+		wholeRecord.bytes.length,
+		total,
+		"the byte log holds every byte the pty emitted, whatever the live view dropped",
+	);
+	assert.equal(wholeRecord.to, total, "and its end offset is the byte count");
+	assert.equal(
+		wholeRecord.truncated,
+		false,
+		"nothing was trimmed out of the ring",
+	);
+});
+
 test("a surface that asked not to be retained writes nothing, even when a flush is asked for", async () => {
 	const dir = scratch();
 	const history = new ConsoleHistory(historyRoot(dir));
@@ -1316,7 +1471,7 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 	// The blank first frame is the spike's measured trap: a hidden window's FIRST
 	// capture came back at 9,866 B where the settled frame was 27,869 B.
 	const window = fakeWindow({
-		frames: [image(64), image(MIN_FRAME_BYTES + 900)],
+		frames: [image(64, { shape: "uniform" }), image(40_900)],
 	});
 	const { host } = hostWithWindow({ window });
 	const created = await createSurface(host);
@@ -1342,11 +1497,120 @@ test("a capture photographs the app's own window, crop to the pane's rect, and r
 		"the blank frame must trigger exactly one retry",
 	);
 	const png = Buffer.from(shot.image_base64, "base64");
-	assert.ok(png.length >= MIN_FRAME_BYTES);
+	assert.ok(png.length > 0, "a frame came back at all");
 
-	// No pane displaying it: refused with the typed gap rather than answered with a
-	// frame of something else. The offscreen capture view is PR B's (design 17.1).
+	/*
+	 * A FRAME THAT IS BIG ENOUGH AND STILL BLANK IS REFUSED, and this is the cell
+	 * QA round 1's Q-2 is about: the displayed path judged a frame by its byte count,
+	 * so a uniform 1600x800 field (measured: 1 distinct colour, 0 of 427,200 sampled
+	 * pixels off background) was certified as "a photograph of the app's window". The
+	 * typed refusal is what the offscreen path has always answered, and the two paths
+	 * now ask the same question.
+	 */
+	const blankFrame = () => image(45_000, { shape: "uniform" });
+	const blankWindow = fakeWindow({ frames: [blankFrame(), blankFrame()] });
+	const { host: blankHost } = hostWithWindow({ window: blankWindow });
+	const blankSurface = await createSurface(blankHost);
+	blankHost.setDisplayed(blankSurface.surface);
+	blankHost.setContentRect(
+		blankSurface.surface,
+		contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+	);
+	await assert.rejects(
+		() => blankHost.screenshot(blankSurface.surface),
+		(error) =>
+			error.code === "capture_unavailable" &&
+			/frame twice/.test(error.message ?? ""),
+		"a blank frame is answered as a typed refusal rather than handed back as a picture",
+	);
+	assert.equal(
+		blankWindow.captured.length,
+		2,
+		"and it is retried once before the refusal, exactly as the offscreen path is",
+	);
+
+	/*
+	 * AND THE OTHER DIRECTION, which is Q-7: a frame with a LITTLE content is content.
+	 * The byte floor this replaced refused a live, settled console that had printed less
+	 * than a screenful — sweeping `seq 1 N` at 100x30, N=1 came back 6,931 B and N=4
+	 * 8,505 B, both refused and both logged as "came back blank", and a bare prompt was
+	 * refused at 9,655 B. A small output is the common case for an agent looking at a
+	 * TUI, so a sparse frame must be photographed rather than refused.
+	 */
+	const sparseWindow = fakeWindow({
+		frames: [image(9_655, { shape: "sparse" })],
+	});
+	const { host: sparseHost } = hostWithWindow({ window: sparseWindow });
+	const sparseSurface = await createSurface(sparseHost);
+	sparseHost.setDisplayed(sparseSurface.surface);
+	sparseHost.setContentRect(
+		sparseSurface.surface,
+		contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+	);
+	const sparseShot = await sparseHost.screenshot(sparseSurface.surface);
+	assert.equal(sparseShot.rendered, "displayed");
+	assert.equal(
+		sparseWindow.captured.length,
+		1,
+		"a bare prompt's worth of content is accepted on the first attempt",
+	);
+
+	/*
+	 * Q-6, from the other side: the old predicate accepted any frame with ONE pixel that
+	 * differed, so a glyph-free two-solid-band frame passed as that surface's screenshot
+	 * (measured 4,417-5,628 B over four rounds). Two colours is a field, not a terminal,
+	 * however many pixels the second colour covers — and a four-pixel speck is not a
+	 * screenshot of anything either.
+	 */
+	for (const shape of ["bands", "speck"]) {
+		const refusedWindow = fakeWindow({
+			frames: [image(45_000, { shape }), image(45_000, { shape })],
+		});
+		const { host: refusedHost } = hostWithWindow({ window: refusedWindow });
+		const refused = await createSurface(refusedHost);
+		refusedHost.setDisplayed(refused.surface);
+		refusedHost.setContentRect(
+			refused.surface,
+			contentReport({ x: 0, y: 0, width: 843, height: 480 }),
+		);
+		await assert.rejects(
+			() => refusedHost.screenshot(refused.surface),
+			(error) =>
+				error.code === "capture_unavailable" &&
+				/frame twice/.test(error.message ?? ""),
+			`a ${shape} frame is refused`,
+		);
+	}
+
+	// No pane displaying it: the OFFSCREEN path, which is a faithful reconstruction
+	// from the record rather than a photograph - and says so.
 	host.setDisplayed(null);
+	const demanded = [];
+	const offscreenHost = hostWithWindow({
+		captureOffscreen: async (request) => {
+			demanded.push(request);
+			return {
+				png: Buffer.alloc(40_100, 7),
+				renderer: "dom",
+				attempts: 1,
+			};
+		},
+	});
+	const offscreen = await createSurface(offscreenHost.host);
+	const reconstructed = await offscreenHost.host.screenshot(offscreen.surface);
+	assert.equal(reconstructed.rendered, "offscreen");
+	assert.equal(reconstructed.renderer, "dom");
+	assert.equal(reconstructed.attempts, 1);
+	assert.equal(reconstructed.live, true);
+	// The seam is handed the RECORD's own bytes and the record's grid, which is what
+	// makes a frame a function of its declared inputs (design 13.3).
+	assert.equal(demanded.length, 1);
+	assert.equal(demanded[0].cols, DEFAULT_COLS);
+	assert.equal(demanded[0].rows, DEFAULT_ROWS);
+	assert.ok(demanded[0].bytes instanceof Uint8Array);
+
+	// And a host with no capture view answers the typed refusal rather than a frame
+	// of something else, which is what the pane's own tests run against.
 	await assert.rejects(
 		() => host.screenshot(created.surface),
 		(error) => error.code === "capture_unavailable",
@@ -2367,6 +2631,284 @@ test("a wiring the caller did not supply fails the start by name, before any con
 			() => startConsoleHost(partial),
 			(error) => error.message.includes(`needs ${field}:`),
 			`omitting ${field} started the host instead of failing`,
+		);
+	}
+});
+
+/*
+ * A REFUSED START STILL ANSWERS THE RENDERER, and the reason it refuses is the
+ * answer, not a crash report.
+ *
+ * This is the round-1 UX finding's U4 turned into a cell: with the console switched
+ * off, the namespace was never registered at all, so the pane's first read rejected
+ * with Electron's own "No handler registered for 'console-state'" and the pane put
+ * that underneath a sentence telling the user to update Local Operator — advice to
+ * reinstall an app that was working exactly as configured. The handler now exists on
+ * every path and answers `available: false` with the refusal's own reason, which is
+ * what lets the pane pick the right sentence.
+ */
+test("a refused start still answers a state read, with the reason it refused", async () => {
+	// The frame object is the SAME reference the window reports, because that identity
+	// is one of the checks: the shipped gate compares `event.senderFrame` with
+	// `owner.webContents.mainFrame` rather than their urls.
+	const mainFrame = { url: "http://localhost/index.html" };
+	const webContents = { mainFrame };
+	const window_ = { isDestroyed: () => false, webContents };
+	ipcMain.handlers.clear();
+	const started = await startConsoleHost({
+		window: window_,
+		expectedUrl: "http://localhost/index.html",
+		appVersion: "0.0.0-test",
+		log: () => {},
+	});
+	assert.equal(started.ok, false);
+
+	const handler = ipcMain.handlers.get("console-state");
+	assert.ok(
+		handler,
+		"the namespace is registered even though no host started, which is the whole point: an unregistered namespace is what produced the machine line",
+	);
+	const answer = await handler(
+		{ sender: webContents, senderFrame: mainFrame },
+		"session-1",
+	);
+	assert.equal(answer.available, false);
+	assert.equal(answer.reason, started.reason);
+	assert.equal(answer.detail, started.detail);
+	assert.deepEqual(answer.surfaces, []);
+
+	/*
+	 * AND THE SENDER CHECK IS UNCHANGED: answering without a host must not become a
+	 * way for a window that is not this app's to read the projection.
+	 */
+	await assert.rejects(
+		// An ASYNC thunk, because the sender check throws BEFORE the handler returns a
+		// promise: a synchronous throw from the argument is not something
+		// `assert.rejects` compares, it is a failure of the assertion instead.
+		async () =>
+			await handler(
+				{
+					sender: { mainFrame: {} },
+					senderFrame: { url: "https://elsewhere.example/" },
+				},
+				"session-1",
+			),
+		(error) => error.message.includes("cannot use the console"),
+		"a stranger frame is refused even in the unanswered state",
+	);
+	await started.stop?.();
+});
+
+/* ------------------------------------------------- what "blank" means (Q-6, Q-7) */
+
+test("hasTerminalContent answers about the picture, not about the PNG's size", () => {
+	const bitmapFrom = (paint) => {
+		const pixels = 512;
+		const bitmap = Buffer.alloc(pixels * 4);
+		paint(bitmap, pixels);
+		return bitmap;
+	};
+	const ground = (bitmap) => bitmap.fill(0);
+
+	// Nothing at all: not a frame.
+	assert.equal(hasTerminalContent(Buffer.alloc(0)), false);
+	// One flat field — the blank capture Q-2 measured at 1 distinct colour and 0 of
+	// 427,200 sampled pixels off background.
+	assert.equal(
+		hasTerminalContent(bitmapFrom(ground)),
+		false,
+		"a uniform frame has no content",
+	);
+	// Two solid fields: Q-6's glyph-free frame, which the old predicate accepted because
+	// a single differing pixel was enough.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap, pixels) => {
+				for (let i = pixels / 2; i < pixels; i++) {
+					bitmap[i * 4] = 9;
+					bitmap[i * 4 + 1] = 9;
+					bitmap[i * 4 + 2] = 9;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		false,
+		"two colours is a field, not a terminal",
+	);
+	// A speck: four pixels of detail in four values.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap) => {
+				for (let i = 1; i <= 4; i++) {
+					bitmap[i * 4] = i * 40;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		false,
+		"a handful of pixels is not a screenshot of anything",
+	);
+	// Q-7's case: a live console with a prompt's worth of content — few non-modal pixels,
+	// but antialiased text, so many distinct values. It must be ACCEPTED.
+	assert.equal(
+		hasTerminalContent(
+			bitmapFrom((bitmap) => {
+				for (let i = 1; i <= 40; i++) {
+					bitmap[i * 4] = (i * 7) % 256;
+					bitmap[i * 4 + 1] = (i * 13) % 256;
+					bitmap[i * 4 + 2] = (i * 29) % 256;
+					bitmap[i * 4 + 3] = 255;
+				}
+			}),
+		),
+		true,
+		"a sparse live console is content, which is the whole of Q-7",
+	);
+});
+
+/**
+ * THE CAPTURE VIEW'S TWO INVARIANTS, both of which code review round 1's B2 found broken.
+ *
+ * The shipped class is driven against the Electron stub, which models exactly what it
+ * touches: a window whose `webContents` records what it was sent, and an `ipcMain` that can
+ * be asked and ANSWERED (or deliberately not answered). The record is empty, which the
+ * offscreen path accepts without the content guard, so the frame's bytes are not what this
+ * test is about — the WINDOW is.
+ *
+ *   - a refused capture still arms the reap (it used to live for the life of the app);
+ *   - a window that never answered the measurement handshake is asked again before it is
+ *     trusted, so the next frame is sized from the cell it reports rather than from the
+ *     8/16 defaults a failed handshake left behind — which is the silently-cropped frame
+ *     the finding described.
+ */
+test("a capture view re-measures a window whose handshake failed, and reaps either way", async () => {
+	ipcMain.reset();
+	BrowserWindow.instances.length = 0;
+	const view = new ConsoleCaptureView({
+		url: "http://127.0.0.1:9/console-capture.html",
+		preload: "/tmp/does-not-matter.js",
+		log: () => {},
+		// The bound is injected so a tripped one is reachable in a test rather than
+		// after the production 30 s; the idle window stays long so nothing is reaped
+		// under the assertions.
+		settleTimeoutMs: 80,
+		idleMs: 60_000,
+	});
+	const request = {
+		surface: "con:1:abcdef",
+		cols: 100,
+		rows: 30,
+		theme: null,
+		bytes: new Uint8Array(0),
+	};
+	/**
+	 * Wait until the view has SENT `channel` more times than `after`, and hand back the
+	 * window it sent it to. The page is a stub, so an answer has to be delivered by the
+	 * test — and the count is what keeps the second capture's answer from landing on the
+	 * first capture's request.
+	 */
+	const awaitSend = async (channel, after) => {
+		const deadline = Date.now() + 2_000;
+		while (Date.now() < deadline) {
+			const window = BrowserWindow.instances.at(-1);
+			const sent =
+				window?.webContents.sent.filter((m) => m.channel === channel).length ??
+				0;
+			if (sent > after) return window;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error(`the capture view never sent ${channel}`);
+	};
+
+	await assert.rejects(
+		() => view.capture(request),
+		(error) =>
+			error.code === "capture_unavailable" &&
+			/console-capture-measured/.test(error.message),
+		"a handshake nobody answers trips the bound rather than hanging",
+	);
+	assert.equal(
+		view.reapArmed,
+		true,
+		"a refused capture must still arm the reap (B2: it left the renderer alive with no timer)",
+	);
+	const window = BrowserWindow.instances.at(-1);
+	assert.equal(
+		window.contentSizes.length,
+		0,
+		"nothing is sized until the cell is known",
+	);
+
+	/*
+	 * THE SECOND CAPTURE, answered with a cell that is NOT the default. Pre-fix this
+	 * return was the live window straight away, so the grid was sized from the 8/16 the
+	 * failed handshake left behind — 800x480 — and the frame was silently cropped.
+	 */
+	const pending = view.capture(request);
+	const measured = await awaitSend("console-capture-measure", 1);
+	ipcMain.emit(
+		"console-capture-measured",
+		{ sender: measured.webContents },
+		{ cellWidth: 9, cellHeight: 18 },
+	);
+	const fed = await awaitSend("console-capture-feed", 0);
+	ipcMain.emit(
+		"console-capture-settled",
+		{ sender: fed.webContents },
+		{ renderer: "dom" },
+	);
+	const frame = await pending;
+
+	assert.equal(frame.renderer, "dom");
+	assert.deepEqual(
+		window.contentSizes.at(-1),
+		{ width: 900, height: 540 },
+		"the re-run handshake's cell (9x18) sized the window, not the 8x16 defaults it inherited",
+	);
+	assert.equal(
+		BrowserWindow.instances.length,
+		1,
+		"the same window was re-measured rather than replaced",
+	);
+	view.dispose();
+});
+
+/**
+ * THE CAPTURE DOCUMENT'S TWO SHAPES (code review round 1, B1).
+ *
+ * The defect this pins: electron-vite's `ELECTRON_RENDERER_URL` is an ORIGIN with no
+ * document in it, so a suffix replacement was a no-op in development and the hidden capture
+ * window mounted the app's own `index.html`. Nothing in a built or packaged run is affected,
+ * which is exactly why every rig and every sweep missed it — so the shapes are pinned here,
+ * against the shipped function, rather than trusted to a dev run somebody has to remember to
+ * make.
+ */
+test("the capture document is appended to a dev origin and is a sibling in a built tree", () => {
+	// A dev origin, with and without the trailing slash the dev server may or may not add.
+	assert.equal(
+		consoleCaptureUrlFor("http://localhost:5173"),
+		"http://localhost:5173/console-capture.html",
+	);
+	assert.equal(
+		consoleCaptureUrlFor("http://localhost:5173/"),
+		"http://localhost:5173/console-capture.html",
+	);
+	// The built tree's file URL: the sibling of index.html, not a path appended to it.
+	assert.equal(
+		consoleCaptureUrlFor("file:///app/out/renderer/index.html"),
+		"file:///app/out/renderer/console-capture.html",
+	);
+	// A query on the document survives the derivation for the same reason.
+	assert.equal(
+		consoleCaptureUrlFor("file:///app/out/renderer/index.html?x=1"),
+		"file:///app/out/renderer/console-capture.html",
+	);
+	// And the property that makes it a fix rather than a spelling: the two dev shapes never
+	// resolve to the app's own document.
+	for (const url of ["http://localhost:5173", "http://localhost:5173/"]) {
+		assert.ok(
+			!/index\.html$/.test(consoleCaptureUrlFor(url)),
+			`a dev origin must not resolve to the app's own document (${url})`,
 		);
 	}
 });

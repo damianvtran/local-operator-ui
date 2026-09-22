@@ -1,14 +1,14 @@
 import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import {
+	bytecodePlugin,
 	defineConfig,
 	externalizeDepsPlugin,
-	bytecodePlugin,
 } from "electron-vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
+import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
 // V8 bytecode is tied to the exact Electron (V8) version that produced it, so a
 // .jsc built here is only loadable by an Electron we control. That holds for the
@@ -90,6 +90,25 @@ export default defineConfig({
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
 					installer: resolve(__dirname, "src/renderer/installer.html"),
+					/*
+					 * The console's capture view (design 13.2/13.3): a third document, for
+					 * the same reason the installer is one. A renderer that exists to be
+					 * photographed must mount nothing that reaches the app's stores or
+					 * streams, so it cannot be a route inside the app's shell - but it IS
+					 * the same component the pane mounts, which is what keeps the two from
+					 * drifting in font, theme or renderer.
+					 *
+					 * It is here, in `rollupOptions.input`, rather than in the renderer's own
+					 * `input` above: that one tells the dev server what it may serve, and this
+					 * one is what the BUILD emits. Declaring it only above produced a config
+					 * that served the page in development and shipped no such document, which
+					 * fails at the first offscreen capture as a 404 — measured, and the reason
+					 * the two lists are asserted to agree below.
+					 */
+					consoleCapture: resolve(
+						__dirname,
+						"src/renderer/console-capture.html",
+					),
 				},
 			},
 		},

@@ -1,0 +1,864 @@
+/**
+ * Contract tests for the console PANE's rules: the theme's role mapping, the
+ * listing's narrowing and recall, and the completion ladder's decisions.
+ *
+ * The shipped TypeScript is bundled in memory with esbuild — the harness
+ * `console-host.test.mjs` and `browser-host.test.mjs` use — so what runs here is
+ * the code that ships.
+ *
+ * WHAT THESE TESTS ARE NOT: proof that a terminal works. No pty is spawned, no
+ * frame is rendered, no window exists. The pane's rendered truth is the design
+ * round's frames and the live-app rig; this file exists so a regression in the
+ * RULES is caught without booting an app, and the three it pins are the ones whose
+ * failure would be silent:
+ *
+ *   - the ANSI table is pinned to the contract's own copy, so the two cannot drift
+ *     into disagreeing about what colour a program gets;
+ *   - every theme value is a ROLE, not a hex, and an unresolved role is omitted
+ *     rather than guessed;
+ *   - the completion ladder's two suppressions (a repeat mark, and a process exit
+ *     immediately after the shell's own mark) hold, because both are the
+ *     difference between one banner and two.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+/*
+ * THE STORAGE SHIM, the same one `console-pane-render.test.mjs` and four sibling jsdom
+ * suites carry. THIS file now WRITES to the persisted preferences store — the late-answer
+ * pin calls `requestConsoleOpen`/`clearConsoleOpenIntent` — and zustand's persist
+ * middleware writes through `localStorage` on every `setState`. Node 26 has the binding
+ * and its value is `undefined` (Node 22 has none at all and the middleware degrades with
+ * its own warning), so every write throws here without it: agent review round 3's M2, in
+ * the second file it reaches.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
+const bundle = await build({
+	stdin: {
+		contents: [
+			'export * from "./src/renderer/src/shared/themes/terminal-theme";',
+			'export * from "./src/renderer/src/features/console/model/console-surfaces";',
+			// The pane's own store, for the one question a model function cannot answer:
+			// whether the open request survives being written to disk.
+			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export * from "./src/main/console/completion";',
+		].join("\n"),
+		resolveDir: process.cwd(),
+		loader: "ts",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	alias: {
+		// The completion module imports the namespace's channel list from `./ipc`,
+		// which imports Electron. The suite's stub is what every other main-process
+		// bundle uses for the same reason.
+		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+		/*
+		 * The renderer's own path aliases, restated because esbuild reads the ROOT
+		 * tsconfig by default and the renderer's mapping lives in `tsconfig.app.json`.
+		 * A store added to this bundle is what needs them; without them the bundle
+		 * fails to resolve `@shared/themes` rather than resolving it to a second copy.
+		 */
+		"@shared": join(process.cwd(), "src/renderer/src/shared"),
+		"@features": join(process.cwd(), "src/renderer/src/features"),
+	},
+	logLevel: "silent",
+});
+
+const module_ = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+
+const {
+	TERMINAL_THEME_ROLES,
+	TERMINAL_ANSI_SLOTS,
+	readTerminalTheme,
+	missingTerminalRoles,
+	applyCaptureTheme,
+	measureCell,
+	consoleOpenAction,
+	useUiPreferencesStore,
+	persistedUiPreferences,
+	kebabRole,
+	readConsoleSnapshot,
+	surfacesForSession,
+	pickActiveSurface,
+	surfaceTitle,
+	consoleCompletionHooks,
+} = module_;
+
+/**
+ * The contract's own copy of the ANSI table, parsed out of
+ * `scripts/contrast-contract.mjs`.
+ *
+ * WHY PARSED RATHER THAN IMPORTED: that file is a CLI that asserts over every
+ * palette as it loads, so importing it would run the whole gate inside a unit
+ * test. Reading the table's own text is the same shape `palette-source.mjs` uses
+ * for the palettes, and the assertion is the thing that matters: two copies of one
+ * mapping that disagree are indistinguishable from two copies that are both right,
+ * right up until one is edited.
+ */
+const contractAnsi = () => {
+	const source = readFileSync(
+		join(process.cwd(), "scripts/contrast-contract.mjs"),
+		"utf8",
+	);
+	const start = source.indexOf("const TERMINAL_ANSI = [");
+	assert.ok(start !== -1, "the contract still declares TERMINAL_ANSI");
+	const body = source.slice(start, source.indexOf("];", start));
+	const rows = [...body.matchAll(/\["(\w+)",\s*"(\w+)"\]/g)].map((match) => ({
+		slot: match[1],
+		role: match[2],
+	}));
+	assert.equal(rows.length, 16, "the contract's table still has 16 slots");
+	return rows;
+};
+
+test("the terminal's ANSI table is the contract's table, slot for slot", () => {
+	const fromModule = TERMINAL_ANSI_SLOTS.map((slot) => ({
+		slot,
+		role: TERMINAL_THEME_ROLES[slot],
+	}));
+	assert.deepEqual(
+		fromModule,
+		contractAnsi(),
+		"terminal-theme.ts and contrast-contract.mjs disagree about a slot; one of them is now wrong",
+	);
+});
+
+/**
+ * The `CONTROLS` row for the terminal's selection, parsed out of the contract's text for
+ * the same reason the ANSI table is (that file is a CLI; importing it would run the whole
+ * gate here).
+ */
+const contractSelectionRow = () => {
+	const source = readFileSync(
+		join(process.cwd(), "scripts/contrast-contract.mjs"),
+		"utf8",
+	);
+	const start = source.indexOf('name: "console terminal selection"');
+	assert.ok(start !== -1, "the contract still carries the selection row");
+	const body = source.slice(start, source.indexOf("},", start));
+	const field = (name) => {
+		const match = body.match(new RegExp(`${name}: "(\\w+)"`));
+		return match ? match[1] : null;
+	};
+	return { fill: field("fill"), border: field("border"), ink: field("ink") };
+};
+
+test("the selection's roles are the ones check-themes asserts (U8)", () => {
+	// Two halves that must move together: the theme table says WHICH roles the selection
+	// paints, and the contract's row is what measures them. A row that named `accent`
+	// while the module painted `accentWash` would be green about a pairing the app does
+	// not have — which is exactly how a 1.11:1 selection shipped behind a passing gate.
+	const row = contractSelectionRow();
+	assert.equal(TERMINAL_THEME_ROLES.selectionBackground, row.fill);
+	assert.equal(TERMINAL_THEME_ROLES.selectionForeground, row.ink);
+	assert.equal(
+		row.border,
+		row.fill,
+		"the selection's own edge is its fill, so the row's 3:1 boundary floor is measured against the terminal's ground",
+	);
+});
+
+test("every colour the terminal is handed is a role, never a hex", () => {
+	for (const [key, role] of Object.entries(TERMINAL_THEME_ROLES)) {
+		assert.ok(
+			typeof role === "string" && /^[a-z][A-Za-z]*$/.test(role),
+			`${key} must name a palette role, got ${JSON.stringify(role)}`,
+		);
+		assert.ok(
+			!/^#/.test(role),
+			`${key} is a literal colour, which no palette author can see and check-themes cannot measure`,
+		);
+	}
+	// The four gated semantics, on the slots design 9.1 names, and the two greys
+	// where the contract's own INKS floors apply.
+	assert.equal(TERMINAL_THEME_ROLES.red, "danger");
+	assert.equal(TERMINAL_THEME_ROLES.green, "success");
+	assert.equal(TERMINAL_THEME_ROLES.yellow, "warning");
+	assert.equal(TERMINAL_THEME_ROLES.blue, "info");
+	assert.equal(TERMINAL_THEME_ROLES.background, "sunken");
+	assert.equal(TERMINAL_THEME_ROLES.foreground, "ink");
+	assert.equal(TERMINAL_THEME_ROLES.cursor, "accent");
+	// U8: the selection is the ACCENT, not its faintest wash. `accentWash` on the
+	// terminal's own `sunken` ground measures 1.11:1 — a selection nobody can see — and
+	// the contract says a selection stays on `accent` while `accentWash` is a hover tint
+	// and not a selection ground. The pair is asserted by `check-themes`' own "console
+	// terminal selection" row, and the cell below is what keeps THIS mapping and THAT row
+	// from drifting apart.
+	assert.equal(TERMINAL_THEME_ROLES.selectionBackground, "accent");
+	assert.equal(TERMINAL_THEME_ROLES.selectionForeground, "onAccent");
+	// Design 9.2's honest gap, stated as a fact rather than a hope: the six
+	// chromatic slots resolve to four roles, so two pairs ARE the same colour.
+	assert.equal(TERMINAL_THEME_ROLES.cyan, TERMINAL_THEME_ROLES.blue);
+	assert.equal(TERMINAL_THEME_ROLES.magenta, TERMINAL_THEME_ROLES.red);
+});
+
+test("the theme resolves roles through the document, and omits what is missing", () => {
+	const roles = {
+		"--color-sunken": "#101010",
+		"--color-ink": "#f0f0f0",
+		"--color-accent": "#4488ff",
+		"--color-accent-wash": "#20242c",
+		"--color-on-accent": "#0b0b0b",
+		"--color-surface": "#181818",
+		"--color-ink-muted": "#c0c0c0",
+		"--color-ink-dim": "#9a9a9a",
+		"--color-danger": "#ff5555",
+		"--color-success": "#55ff88",
+		"--color-warning": "#ffcc55",
+		"--color-info": "#55ccff",
+	};
+	const previous = globalThis.getComputedStyle;
+	globalThis.getComputedStyle = () => ({
+		getPropertyValue: (name) => roles[name] ?? "",
+	});
+	try {
+		const theme = readTerminalTheme({});
+		assert.equal(theme.background, "#101010");
+		assert.equal(theme.foreground, "#f0f0f0");
+		assert.equal(theme.cursor, "#4488ff");
+		assert.equal(theme.cursorAccent, "#181818");
+		assert.equal(theme.selectionBackground, "#4488ff");
+		assert.equal(theme.selectionForeground, "#0b0b0b");
+		assert.equal(theme.red, "#ff5555");
+		assert.equal(theme.brightBlack, "#c0c0c0");
+		assert.deepEqual(missingTerminalRoles({}), []);
+		/*
+		 * AND AN UNRESOLVED ROLE IS OMITTED. xterm keeps its own default for a key
+		 * it is not given, which shows up in a frame as one unthemed cell rather
+		 * than as a crash or — worse — as a `var()` string that xterm's colour
+		 * parser drops silently for the WHOLE palette.
+		 */
+		roles["--color-danger"] = "var(--lo-danger)";
+		assert.equal(readTerminalTheme({}).red, undefined);
+		// Four slots ride `danger`, which is the mapping's own shape: one unresolved
+		// role is four unthemed slots, not one.
+		assert.deepEqual(missingTerminalRoles({}), [
+			"red",
+			"magenta",
+			"brightRed",
+			"brightMagenta",
+		]);
+	} finally {
+		globalThis.getComputedStyle = previous;
+	}
+});
+
+test("kebabRole spells the one difference between a role and its variable", () => {
+	assert.equal(kebabRole("accentWash"), "accent-wash");
+	assert.equal(kebabRole("inkMuted"), "ink-muted");
+	assert.equal(kebabRole("sunken"), "sunken");
+});
+
+test("a cell measurement without a DOM is the ratio, not an exception", () => {
+	const cell = measureCell("monospace", 13);
+	assert.ok(cell.cellWidth > 0 && cell.cellHeight > 0);
+	assert.equal(cell.cellHeight, 13 * 1.2);
+});
+
+const listing = (overrides = {}) => ({
+	surface: "con:1:7f3a",
+	session_id: "session-1f4c",
+	origin: "user",
+	command: "zsh",
+	argv_tail: "",
+	cwd: "~/workspace",
+	cols: 100,
+	rows: 30,
+	running: true,
+	exit_code: null,
+	last_activity: 100,
+	live: true,
+	agent_owned: false,
+	secure: false,
+	retain: true,
+	displayed: false,
+	last_mark: null,
+	...overrides,
+});
+
+test("a listing without a surface id is not a surface", () => {
+	const snapshot = readConsoleSnapshot({
+		available: true,
+		total: 3,
+		agent: 0,
+		displayed_surface: "con:1:7f3a",
+		surfaces: [listing(), { command: "zsh" }, "not a listing"],
+	});
+	assert.equal(snapshot.surfaces.length, 1);
+	assert.equal(snapshot.surfaces[0].surface, "con:1:7f3a");
+	assert.equal(snapshot.displayedSurface, "con:1:7f3a");
+	// An answer that does not say the console is running is not evidence that it is.
+	assert.equal(readConsoleSnapshot(undefined).available, false);
+	assert.equal(readConsoleSnapshot({ surfaces: [listing()] }).available, false);
+});
+
+test("the pane's lens recalls a surface, and falls back to the most recent", () => {
+	const mine = surfacesForSession(
+		readConsoleSnapshot({
+			available: true,
+			surfaces: [
+				listing({ surface: "con:1:aaaa", last_activity: 100 }),
+				listing({ surface: "con:2:bbbb", last_activity: 300 }),
+				listing({
+					surface: "con:3:cccc",
+					session_id: "session-other",
+					last_activity: 900,
+				}),
+			],
+		}),
+		"session-1f4c",
+	);
+	assert.deepEqual(
+		mine.map((s) => s.surface),
+		["con:2:bbbb", "con:1:aaaa"],
+		"another session's surface must not appear, and the newest comes first",
+	);
+	const snapshot = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			listing({ surface: "con:1:aaaa", last_activity: 100 }),
+			listing({ surface: "con:2:bbbb", last_activity: 300 }),
+		],
+	});
+	// 1. the stored lens, while it is still this session's;
+	assert.equal(
+		pickActiveSurface(snapshot, "session-1f4c", "con:1:aaaa")?.surface,
+		"con:1:aaaa",
+	);
+	// 2. otherwise the most recent of this session's;
+	assert.equal(
+		pickActiveSurface(snapshot, "session-1f4c", "con:9:gone")?.surface,
+		"con:2:bbbb",
+	);
+	// 3. and nothing at all on a draft, which is the empty state.
+	assert.equal(pickActiveSurface(snapshot, null, null), null);
+	assert.equal(
+		pickActiveSurface(
+			readConsoleSnapshot({ available: true }),
+			"session-1f4c",
+			null,
+		),
+		null,
+	);
+	assert.equal(surfaceTitle({ command: "npm", argvTail: "run dev" }), "npm");
+	assert.equal(surfaceTitle({ command: "", argvTail: "zsh -l" }), "zsh");
+	assert.equal(
+		surfaceTitle({ command: "", argvTail: "", surface: "con:1:7f3a" }),
+		"con:1:7f3a",
+	);
+});
+
+/** A notifier that records what it was asked to raise. */
+const recorder = () => {
+	const notices = [];
+	return {
+		notices,
+		consoleCompletion: (notice) => notices.push(notice),
+	};
+};
+
+const completionFixture = ({ displayed = null } = {}) => {
+	const records = new Map([
+		["con:1:7f3a", { record: { sessionId: "session-1f4c", command: "zsh" } }],
+	]);
+	const notifier = recorder();
+	const logged = [];
+	const hooks = consoleCompletionHooks({
+		host: () => ({ state: () => ({ displayed_surface: displayed }) }),
+		registry: { find: (surface) => records.get(surface) ?? undefined },
+		notifier: () => notifier,
+		log: (message) => logged.push(message),
+	});
+	/*
+	 * NO WINDOW IN THIS FIXTURE, deliberately. The state push is not the completion
+	 * seam's: `console/index.ts` sends it through the host's ONE pusher
+	 * (`broadcastConsoleState`, wired as `onChanged`) so a mark cannot produce two
+	 * copies of the same frame, and `onChanged` fires for a mark and an exit as well.
+	 * What is asserted here is therefore what this module owes — the banners and their
+	 * suppressions — and the push is exercised where it lives, by the live rig
+	 * (`scripts/console-host-proof.mjs`).
+	 */
+	return { hooks, notifier, logged };
+};
+
+test("a command mark banners once", () => {
+	const { hooks, notifier } = completionFixture();
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-finished",
+		exitCode: 0,
+		offset: 120,
+	});
+	assert.equal(notifier.notices.length, 1);
+	assert.equal(notifier.notices[0].surface, "con:1:7f3a");
+	assert.equal(notifier.notices[0].exitCode, 0);
+	assert.equal(notifier.notices[0].surfaceName, "zsh");
+	assert.equal(notifier.notices[0].sessionId, "session-1f4c");
+	assert.equal(notifier.notices[0].displayed, false, "no pane is showing it");
+
+	// The OTHER three marks are the shell's prompt and command boundaries: they are
+	// not completions and must not banner.
+	hooks.onMark("con:1:7f3a", {
+		kind: "prompt-start",
+		exitCode: null,
+		offset: 200,
+	});
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-start",
+		exitCode: null,
+		offset: 210,
+	});
+	hooks.onMark("con:1:7f3a", {
+		kind: "output-start",
+		exitCode: null,
+		offset: 220,
+	});
+	assert.equal(notifier.notices.length, 1);
+});
+
+test("a process exit banners with its own key, and never twice", () => {
+	const { hooks, notifier } = completionFixture();
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
+	assert.equal(notifier.notices.length, 2);
+	assert.notEqual(
+		notifier.notices[0].key,
+		notifier.notices[1].key,
+		"two exits are two completions, even with the same code — the key is the counter, not the code",
+	);
+});
+
+test("a shell that exits from its own prompt is ONE completion, not two", () => {
+	const { hooks, notifier, logged } = completionFixture();
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-finished",
+		exitCode: 0,
+		offset: 120,
+	});
+	hooks.onExit({
+		surface: "con:1:7f3a",
+		sessionId: "session-1f4c",
+		exitCode: 0,
+	});
+	assert.equal(
+		notifier.notices.length,
+		1,
+		"the mark and the exit are one event",
+	);
+	assert.ok(
+		logged.some((line) => line.includes("one banner, not two")),
+		"the suppression is stated in the log rather than silent",
+	);
+});
+
+test("a mark's own offset is what makes two commands two banners", () => {
+	const { hooks, notifier } = completionFixture();
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-finished",
+		exitCode: 0,
+		offset: 120,
+	});
+	hooks.onMark("con:1:7f3a", {
+		kind: "command-finished",
+		exitCode: 0,
+		offset: 640,
+	});
+	assert.equal(notifier.notices.length, 2);
+	assert.notEqual(notifier.notices[0].key, notifier.notices[1].key);
+});
+
+test("a mark for a surface the host no longer has banners nothing", () => {
+	const { hooks, notifier } = completionFixture();
+	hooks.onMark("con:9:gone", {
+		kind: "command-finished",
+		exitCode: 1,
+		offset: 10,
+	});
+	assert.equal(notifier.notices.length, 0);
+	/*
+	 * AND NO PUSH IS ASSERTED HERE, which is the point of the single-pusher wiring:
+	 * the renderer still learns about the change, but through the host's own
+	 * `onChanged` (and therefore `broadcastConsoleState`) rather than through a second
+	 * frame this module would have to keep in step. The live rig asserts the push's
+	 * effect end to end.
+	 */
+});
+
+/*
+ * THE FRAME WIDTH IS THE SHIPPED DEFAULT, PINNED TO BOTH COPIES.
+ *
+ * Design round 1's D2: the sweep captured this pane at a literal `843` while the
+ * store shipped ~804, so every console frame showed a pane no user has and the body
+ * quoted the default's arithmetic. The frame is now rendered at the store's constant
+ * and the sweep carries a restatement of it — because the sweep is JavaScript and
+ * cannot import the store's TypeScript. This test is what makes the restatement a
+ * copy rather than a second opinion: it reads the number out of the script's own
+ * source and compares it with the store's.
+ */
+test("the sweep's console width is the store's own default, not a second number", () => {
+	/*
+	 * THE ARITHMETIC IS THE SHIPPED ONE and only its two inputs are read from the
+	 * store's source, because the store itself cannot be imported here: it pulls in
+	 * zustand's `persist`, which reaches for a `localStorage` this process does not
+	 * have, and a bundle of it fails at import rather than at a useful line. So the
+	 * formula comes from `measureCell` (the same function the pane reports to main)
+	 * and the two constants it multiplies are read out of the file that owns them —
+	 * a change to either breaks this test instead of silently re-cropping frames.
+	 */
+	const storeSource = readFileSync(
+		"src/renderer/src/shared/store/ui-preferences-store.ts",
+		"utf8",
+	);
+	const columns = Number(
+		storeSource.match(/const CONSOLE_GRID_COLUMNS = (\d+);/)?.[1],
+	);
+	const chrome = Number(
+		storeSource.match(/const CONSOLE_PANE_CHROME_PX = (\d+);/)?.[1],
+	);
+	assert.ok(
+		Number.isFinite(columns) && Number.isFinite(chrome),
+		"the store still states the grid and its chrome as named constants",
+	);
+	// `measureCell` with no document is the shipped face's ratio (0.6em), which is the
+	// same branch the store's own default is computed from before a render exists.
+	const expected = Math.ceil(columns * measureCell().cellWidth) + chrome;
+
+	const source = readFileSync("scripts/capture-evidence.mjs", "utf8");
+	const declared = source.match(/const CONSOLE_PANE_WIDTH = (\d+);/);
+	assert.ok(
+		declared,
+		"the sweep declares its console width as a named constant to pin",
+	);
+	assert.equal(
+		Number(declared[1]),
+		expected,
+		"a font step or a column count that moves upstream must break this test rather than silently re-crop every console frame",
+	);
+	// And the rows must USE it: a constant nothing reads would pass the check above
+	// while every frame stayed at the old number.
+	const rows =
+		source.match(/\["console-pane--[a-z-]+", ([A-Za-z_0-9]+), \d+\]/g) ?? [];
+	/*
+	 * COUNTED FROM THE STORY FILE RATHER THAN TYPED HERE. This read `12`, which is exactly the
+	 * kind of number that goes stale in silence: design round 4 added a story (D21's
+	 * `selected`) and this cell kept asserting twelve, so the sweep could have carried twelve
+	 * rows for thirteen stories and passed. The count is the stories' own now.
+	 */
+	const storySource = readFileSync(
+		"src/renderer/src/features/console/components/console-pane.stories.tsx",
+		"utf8",
+	);
+	const stories =
+		storySource.match(/^export const [A-Za-z]+: Story = \{/gm) ?? [];
+	assert.equal(
+		rows.length,
+		stories.length,
+		`the sweep carries ${rows.length} console-pane rows for ${stories.length} stories — every story needs a row, because \`--only=\` filters the sweep's own list rather than Storybook's index`,
+	);
+	assert.ok(
+		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
+		"and every one of them is captured at that width",
+	);
+});
+
+/*
+ * THE TWO FIELDS THE PANE'S OWN ROUND ADDED, both of which fail silently when the
+ * projection drops them: a dropped `last_actor` is an agent marker that never
+ * appears (§13.4's co-pilot cell), and a dropped `reason` is an unavailable pane
+ * telling a user to update an app that is working as configured (§15).
+ */
+test("the snapshot carries the refusal's reason and the surface's last actor", () => {
+	const refused = readConsoleSnapshot({
+		available: false,
+		surfaces: [],
+		reason: "disabled",
+		detail: "LOCAL_OPERATOR_UI_CONSOLE_HOST is off",
+	});
+	assert.equal(refused.available, false);
+	assert.equal(refused.reason, "disabled");
+	assert.equal(refused.detail, "LOCAL_OPERATOR_UI_CONSOLE_HOST is off");
+
+	const state = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			{
+				surface: "con:1:aaaa",
+				session_id: "s",
+				origin: "user",
+				agent_owned: false,
+				last_actor: "agent",
+			},
+			{
+				surface: "con:2:bbbb",
+				session_id: "s",
+				origin: "agent",
+				agent_owned: true,
+				last_actor: "user",
+			},
+			// A row from an older host, with no `last_actor` at all: null rather than a
+			// guess, because "nobody has typed" and "the user typed" are different facts.
+			{ surface: "con:3:cccc", session_id: "s", origin: "user" },
+		],
+	});
+	assert.equal(state.surfaces[0].lastActor, "agent");
+	assert.equal(state.surfaces[0].agentOwned, false);
+	assert.equal(
+		state.surfaces[1].lastActor,
+		"user",
+		"a surface an agent CREATED and the user then typed into reports the user, which is the fact that moves",
+	);
+	assert.equal(state.surfaces[2].lastActor, null);
+	assert.equal(state.reason, null);
+});
+
+/*
+ * WHAT THE CAPTURE VIEW DOES WITH A FED THEME (Q-8).
+ *
+ * The bug this closes: an ABSENT theme and an EMPTY one took the same early return, so a
+ * capture fed `theme: ""` painted xterm's own `#000000` frame with nothing in the log,
+ * while every other name no palette answers was loud. The distinction is the fix, and it
+ * lives in `applyCaptureTheme` so it can be asked here rather than inferred from a frame.
+ *
+ * The root is a stub because this process has no DOM: what the cell is about is the
+ * DECISION (does the attribute get written, is a warning emitted), not a stylesheet
+ * resolving. A real name therefore also warns in this process — there is no `--color-sunken`
+ * to resolve — and that is stated rather than pretended.
+ */
+test("a fed theme: absent is skipped, empty is written and warned about (Q-8)", () => {
+	const warns = [];
+	const realWarn = console.warn;
+	console.warn = (message) => warns.push(String(message));
+	const root = () => {
+		const dataset = {};
+		const toggled = [];
+		return {
+			dataset,
+			classList: { toggle: (name, on) => toggled.push([name, on]) },
+			toggled,
+		};
+	};
+	try {
+		// ABSENT: the pane has not reported a theme yet. Nothing is written and nothing is
+		// said — this is the case the early return was written for and it still applies.
+		const absent = root();
+		applyCaptureTheme(null, absent);
+		applyCaptureTheme(undefined, absent);
+		assert.equal(
+			"theme" in absent.dataset,
+			false,
+			"an absent theme is not written to the document",
+		);
+		assert.deepEqual(warns, [], "and says nothing");
+
+		// EMPTY: a name was supplied and it is not a palette. It is pinned (so the frame is
+		// reproducible from its arguments) and it is LOUD, which is the whole of Q-8.
+		const empty = root();
+		applyCaptureTheme("", empty);
+		assert.equal(
+			empty.dataset.theme,
+			"",
+			"an empty name is written rather than skipped",
+		);
+		assert.equal(
+			warns.length,
+			1,
+			"and it is warned about like any other unknown name",
+		);
+		assert.match(warns[0], /theme ""/, "with the name it was fed");
+
+		// A REAL name: written, and the dark/light class follows its own spelling.
+		const named = root();
+		applyCaptureTheme("localOperatorLight", named);
+		assert.equal(named.dataset.theme, "localOperatorLight");
+		assert.deepEqual(
+			named.toggled,
+			[["dark", false]],
+			"a light palette does not take the `dark` class",
+		);
+		assert.equal(
+			warns.length,
+			2,
+			"and it warns here too — this process has no stylesheet to resolve against",
+		);
+	} finally {
+		console.warn = realWarn;
+	}
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE USER'S OPEN OF THE CONSOLE.
+ *
+ * "Opening the console typically means you want to run a console command right
+ * away" (the operator's report), so an open by the USER creates the first surface
+ * and takes the caret — while the other three ways this pane opens (a completion
+ * banner's click, an agent's `reveal`, and the restored preference of a relaunch)
+ * must not. The decision is `consoleOpenAction` so the four inputs and the three
+ * refusals are a thing a test can name; what cannot be tested here is the caret,
+ * which belongs to the rendered mirror (`scripts/console-mirror.test.mjs`).
+ * ---------------------------------------------------------------------------
+ */
+
+test("an open by the user creates a surface in a conversation that has none", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: false,
+		}),
+		"create",
+	);
+});
+
+test("an open by the user FOCUSES the surface the pane already shows rather than making a second", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: true,
+		}),
+		"focus",
+		"a second surface would take the lens off the one the user was reading",
+	);
+});
+
+test("the request WAITS for the first read rather than creating on a listing it has not seen", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: true,
+			available: true,
+			hasSurface: false,
+		}),
+		"none",
+		"acting here would be a controller deciding the conversation has no surface before anything answered",
+	);
+});
+
+test("no other way this pane opens is an open by the user", () => {
+	for (const loading of [true, false]) {
+		assert.equal(
+			consoleOpenAction({
+				requested: false,
+				loading,
+				available: true,
+				hasSurface: false,
+			}),
+			"none",
+			"a restored pane, an agent's reveal and a session switch all arrive with no request",
+		);
+	}
+});
+
+test("a console that cannot exist here is told so rather than given a shell", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: false,
+			hasSurface: false,
+		}),
+		"none",
+	);
+});
+
+test("clearing a request answers only the request it answers", () => {
+	/*
+	 * THE LATE-ANSWER HALF OF F-6, pinned rather than assumed (agent review round 2). The pane
+	 * that answers a request is not necessarily the pane that still owns it: a request can be
+	 * raised for one conversation and a second raised for another while the first is still
+	 * being answered, and an UNCONDITIONAL clear would throw the second one away — the user's
+	 * press would be silently dropped with nothing on screen to say it had been. The clear
+	 * therefore names the conversation it answers, and this is the shape one pane over from the
+	 * caret token's `current === applied` acknowledgement: an answer belongs to its request.
+	 */
+	const store = () => useUiPreferencesStore.getState();
+	store().clearConsoleOpenIntent("session-a");
+	store().requestConsoleOpen("session-a");
+	store().requestConsoleOpen("session-b");
+	store().clearConsoleOpenIntent("session-a");
+	assert.equal(
+		store().consoleOpenIntent,
+		"session-b",
+		"clearing A must not throw away a request the user made for B",
+	);
+	store().clearConsoleOpenIntent("session-b");
+	assert.equal(
+		store().consoleOpenIntent,
+		null,
+		"and its own answer does clear it",
+	);
+});
+
+test("the request is an event and not a preference: persisting it would run a shell on every launch", () => {
+	const state = useUiPreferencesStore.getState();
+	const persisted = persistedUiPreferences({
+		...state,
+		// A CONVERSATION ID rather than a flag, because that is what the request carries
+		// now (agent review round 1, F-6): the pane is remounted on a session switch, so a
+		// request has to say which conversation it was made for.
+		consoleOpenIntent: "session-1f4c",
+		runPanelReveal: { section: "todos" },
+	});
+	assert.equal(
+		"consoleOpenIntent" in persisted,
+		false,
+		"a launched app would otherwise find an open request from the last one and create a surface nobody asked for",
+	);
+	assert.equal("runPanelReveal" in persisted, false);
+	/*
+	 * AND THE OTHER HALF, so this cannot be satisfied by a filter that drops
+	 * everything: the pane's own open state IS a preference and must survive, which is
+	 * why "the pane was open when the app closed" is restored while "the user opened
+	 * it" is not.
+	 */
+	assert.equal("isConsolePaneOpen" in persisted, true);
+	assert.equal(persisted.themeName, state.themeName);
+	/*
+	 * AND IT IS THE FILTER THE STORE SHIPS, not a second copy that happens to answer
+	 * the same way: the assertion above is about an exported function, and a store whose
+	 * `partialize` stopped calling it would leave this file green. Read off the source,
+	 * the way this suite reads the contrast contract's own table.
+	 */
+	const store = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/store/ui-preferences-store.ts",
+		),
+		"utf8",
+	);
+	assert.match(
+		store,
+		/partialize: persistedUiPreferences,/,
+		"the store must persist through the filter this test pins, not through a closure beside it",
+	);
+});

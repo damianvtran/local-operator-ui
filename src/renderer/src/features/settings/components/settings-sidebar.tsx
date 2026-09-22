@@ -5,7 +5,6 @@ import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import {
 	Download,
-	Key,
 	Paintbrush,
 	Plug,
 	Puzzle,
@@ -64,7 +63,6 @@ const TOUR_TAGS: Record<string, string> = {
 	radient: "settings-sidebar-radient-account",
 	integrations: "settings-sidebar-integrations",
 	appearance: "settings-sidebar-appearance",
-	credentials: "settings-sidebar-api-credentials",
 	updates: "settings-sidebar-application-updates",
 };
 
@@ -84,7 +82,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	{ label: "General", ids: ["general", "appearance"] },
 	{
 		label: "Account",
-		ids: ["radient", "providers", "integrations", "credentials"],
+		ids: ["radient", "providers", "integrations"],
 	},
 	// The backend registry section was rendered but reachable only by deep
 	// link because it sat in no group; the rail filters by group membership.
@@ -350,11 +348,6 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "backend",
 		label: "Backend settings",
 		icon: SlidersHorizontal,
-	},
-	{
-		id: "credentials",
-		label: "API credentials",
-		icon: Key,
 	},
 	{
 		id: "updates",

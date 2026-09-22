@@ -60,6 +60,27 @@ export type ModelIdentity = {
 const AGGREGATOR_PROVIDERS = new Set(["openrouter", "radient", "radient-key"]);
 
 /**
+ * The ROUTER ids an aggregator serves — the synthetic meta-models whose id is a
+ * single word (`auto`) rather than a vendor-scoped slug.
+ *
+ * Mirrors `AGGREGATOR_ROUTER_MODEL_IDS` (`local_operator/model/registry.py`),
+ * read by `_ROUTER_NAMES` (`model/naming.py`). A router is the one id an
+ * aggregator does NOT resell — it is the route itself — so it has a name of its
+ * own to state rather than one that has to say which vendor's weights answer,
+ * which is why the aggregator refusal below does not apply to it.
+ */
+const AGGREGATOR_ROUTER_MODEL_IDS = new Set(["auto", "openrouter/auto"]);
+
+/**
+ * What a router prints. TITLE CASE (`Auto`, not `auto`) because this heads the
+ * band's model segment beside other human names (`Claude Opus 5`); a lowercase
+ * `auto` there reads as the raw id it started from. The SELECTOR the rest of the
+ * app identifies the model by is unchanged — the chip's tooltip still prints
+ * `radient/auto`.
+ */
+const ROUTER_DISPLAY_NAME = "Auto";
+
+/**
  * The bare tail of a selector: what the band falls back to when it will not
  * name a model. `openrouter/openai/gpt-5-mini` -> `gpt-5-mini`.
  */
@@ -179,7 +200,24 @@ export function modelIdentity(
 		!display ||
 		echoesId(display, model.model_id) ||
 		display.toLowerCase() === "unknown";
-	return { name: refused ? bareId(selector) : display, selector };
+	/*
+	 * The router lookup is gated on BOTH halves of the hosting, exactly as
+	 * `_model_label` does (`model/naming.py:248-254`), and the provider gate is
+	 * load-bearing rather than defensive: `auto` is a router id ONLY behind an
+	 * aggregator, while on `ollama/auto` — or any local or vendor server a user
+	 * happens to name `auto` — the same word is an ordinary model. An id-only
+	 * lookup renamed it (measured on the Python side: `ollama/auto` went from
+	 * rendering `Ollama` to rendering `Auto`), which is the collision the
+	 * provider gate exists to prevent. It also outranks `refused`, since an
+	 * aggregator's own listing name is refused for every other id it resells.
+	 */
+	const router =
+		AGGREGATOR_PROVIDERS.has(provider) &&
+		AGGREGATOR_ROUTER_MODEL_IDS.has(model.model_id);
+	return {
+		name: router ? ROUTER_DISPLAY_NAME : refused ? bareId(selector) : display,
+		selector,
+	};
 }
 
 /**
@@ -266,6 +304,50 @@ export function effortLevel(
 			return field.trim().toLowerCase();
 	}
 	return null;
+}
+
+/**
+ * The effort LEVEL's title-cased human form for a value slot.
+ *
+ * The chip and the `/effort` picker print a level beside the model name, and
+ * the model chip already reads `Auto` (not `auto`) after the router-name fix.
+ * A value column of capitalised names with a lowercase `high`/`auto` beside
+ * them reads as a raw wire token rather than a name, so the two columns are
+ * cased alike. `Auto` in particular now names a real, SENT level on the
+ * Radient router route, so it belongs beside `Claude Opus 5`, not `claude-opus-5`.
+ *
+ * ONLY THE LEVELS ARE CASED. `effortState` also returns two STATE words that are
+ * not levels at all - `unknown` (a cold snapshot that has not reported yet) and
+ * `reasoning` (a reasoning model that exposes no rungs) - and they read the same
+ * way the rest of this file's prose reads: `Reasoning effort: unknown.` and
+ * `Reasoning effort: reasoning.` Title-casing those turns the aria sentence into
+ * nonsense (`Reasoning effort: Reasoning.`), so a word outside the level
+ * vocabulary passes through untouched rather than being cased by its first
+ * letter. The vocabulary is exactly what `/effort` accepts plus the `auto`
+ * sentinel, which is what makes the boundary the LEVEL rather than an arbitrary
+ * word list.
+ *
+ * DISPLAY ONLY. The value this describes is unchanged: `reasoning_effort` goes
+ * on the wire lowercase, the picker's `value` and its `current` comparison stay
+ * the raw rung, and nothing MATCHES on this string. One owner for the casing,
+ * so the chip and the picker cannot drift into casing the same word two ways.
+ */
+export function effortDisplay(level: string): string {
+	const trimmed = level.trim();
+	if (!trimmed) return trimmed;
+	const known: Record<string, string> = {
+		auto: "Auto",
+		none: "None",
+		minimal: "Minimal",
+		low: "Low",
+		medium: "Medium",
+		high: "High",
+		xhigh: "xHigh",
+		max: "Max",
+	};
+	// A non-level word (`unknown`, `reasoning`, or a rung this file does not
+	// know) is returned as-is: it is a state or an unfamiliar token, not a level.
+	return known[trimmed.toLowerCase()] ?? trimmed;
 }
 
 export type EffortState = {

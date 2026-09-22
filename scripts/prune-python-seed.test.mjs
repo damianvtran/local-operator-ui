@@ -13,20 +13,27 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
-import { LAYOUT } from "./bundled-python-layout.mjs";
+import { LAYOUT } from "./bundled-runtime-layout.mjs";
 import {
+	MACH_O_FILETYPE,
+	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	SEED_TK_DIR,
 	clearIncidentalExecBits,
+	machOExecutables,
+	machOFileType,
 	machOFiles,
 	pruneSeed,
 	seedExecBitFiles,
 	seedModeViolations,
 } from "./prune-python-seed.mjs";
+import { bundledUvToolCheck } from "./python-artifact-layout.mjs";
 import {
 	prunedSeedCheck,
 	seedBootstrapCheck,
 	seedModeCheck,
+	seedVersionCheck,
 } from "./verify-macos-artifacts.mjs";
 
 /*
@@ -46,7 +53,7 @@ import {
  * WHAT IS SUBSTITUTED: the Mach-O file is four magic bytes and padding rather
  * than a signed binary. The predicate under test IS those four bytes (the app's
  * `verifyMachO` reads the same set from
- * `src/shared/bundled-python-layout.json`), and whether a Mach-O's signature
+ * `src/shared/bundled-runtime-layout.json`), and whether a Mach-O's signature
  * verifies is `verifyMachO`'s assertion, exercised in `managed-python.test.mjs`
  * against a real seed. Synthesising it keeps this suite runnable on CI's Linux
  * runner, where the desktop suite runs.
@@ -72,14 +79,26 @@ after(() => {
 	}
 });
 
-/** The four bytes `verifyMachO` tests, plus padding, with the execute bit set. */
-function writeMachO(path) {
+/**
+ * A Mach-O file: the magic `verifyMachO` tests, the `filetype` word the release
+ * gate's exec-bit rule reads, and padding.
+ *
+ * The filetype is written rather than left as zeros because it is load-bearing
+ * now: `MH_EXECUTE` (2) is the only filetype the kernel runs, `MH_DYLIB` (6) and
+ * `MH_BUNDLE` (8) are read through `dlopen`, and a zero word is neither - a
+ * fixture that left it out would be a file the gate refused as "no executable
+ * here", which is a different assertion than the ones these cases make.
+ */
+function writeMachO(
+	path,
+	{ fileType = MACH_O_FILETYPE.MH_EXECUTE, mode = 0o755 } = {},
+) {
 	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(
-		path,
-		Buffer.concat([Buffer.from("cffaedfe", "hex"), Buffer.alloc(60)]),
-	);
-	chmodSync(path, 0o755);
+	const header = Buffer.alloc(64);
+	Buffer.from("cffaedfe", "hex").copy(header, 0);
+	header.writeUInt32LE(fileType, 12);
+	writeFileSync(path, header);
+	chmodSync(path, mode);
 }
 
 /** A plain file, optionally carrying the execute bit the upstream tarball ships. */
@@ -114,9 +133,12 @@ function makeSeed(dir, { pruned = false } = {}) {
 		// What a prune leaves behind: the parent directories survive while the
 		// pruned entries do not, which is why the gate checks the entries.
 		writeFile(join(dir, "lib/python3.12/os.py"));
-		writeFile(join(dir, "lib/tk8.6/tk.tcl"));
 	}
 	writeFile(join(dir, SEED_STDLIB_MARKER));
+	// The Tcl/Tk tree, in BOTH states: it is content the prune deliberately keeps,
+	// and it is what ties the `{tkver}` token to the build (review R2-5) - the
+	// prune refuses a tree that does not carry it.
+	writeFile(join(dir, SEED_TK_DIR, "tk.tcl"));
 	writeFile(join(dir, "lib/python3.12/venv/__init__.py"));
 	writeFile(join(dir, "lib/python3.12/ensurepip/__init__.py"));
 	writeFile(
@@ -125,6 +147,18 @@ function makeSeed(dir, { pruned = false } = {}) {
 	if (!pruned) writeFile(join(dir, "lib/python3.12/cgi.py"), { exec: true });
 	writeMachO(join(dir, "bin/python3.12"));
 	symlinkSync("python3.12", join(dir, "bin/python3"));
+	// The shape the `20260901` build ships and the `20250529` one did not: loadable
+	// libraries, some of them at 0644 upstream (measured in the raw tarball). The
+	// passing case carries them so the exec-bit rule is exercised in the direction
+	// that made the old count equality false.
+	writeMachO(join(dir, "lib/libpython3.12.dylib"), {
+		fileType: MACH_O_FILETYPE.MH_DYLIB,
+		mode: 0o755,
+	});
+	writeMachO(join(dir, "lib/itcl4.3.8/libitcl4.3.8.dylib"), {
+		fileType: MACH_O_FILETYPE.MH_DYLIB,
+		mode: 0o644,
+	});
 	return dir;
 }
 
@@ -138,11 +172,13 @@ function makeSeed(dir, { pruned = false } = {}) {
 function makePassingApp(dir) {
 	const app = join(dir, "mac-arm64", "Local Operator.app");
 	const resources = join(app, "Contents", "Resources");
-	makeSeed(join(resources, LAYOUT.seedNamespace, "arm64"), { pruned: true });
+	makeSeed(join(resources, LAYOUT.python.seedNamespace, "arm64"), {
+		pruned: true,
+	});
 	return {
 		app,
 		resources,
-		seed: join(resources, LAYOUT.seedNamespace, "arm64"),
+		seed: join(resources, LAYOUT.python.seedNamespace, "arm64"),
 	};
 }
 
@@ -209,19 +245,57 @@ test("the execute bit survives on Mach-O files and nowhere else", () => {
 	);
 });
 
-test("the prune is idempotent, and a symlink is not a mode to own", () => {
+test("a second prune refuses, a symlink is not a mode to own, and the prune owns only the executable half", () => {
 	const seed = makeSeed(tempDir("lo-seed-"));
 	pruneSeed(seed, { log: () => {} });
 	// `bin/python3` is a link into `bin/python3.12`; it must still resolve, and
 	// the walk must not have tried to own its mode (macOS has no `lchmod`, and
 	// `chmod` on a link follows it).
 	assert.equal(statSync(join(seed, "bin/python3")).mode & 0o111, 0o111);
-	const second = pruneSeed(seed, { log: () => {} });
-	assert.deepEqual(second.removed, []);
-	assert.deepEqual(second.cleared, []);
-	assert.equal(second.machO, 1);
-	assert.deepEqual(machOFiles(seed), ["bin/python3.12"]);
-	assert.deepEqual(seedExecBitFiles(seed), ["bin/python3.12"]);
+	// The prune is NOT idempotent, and that is the R1-6 decision rather than an
+	// oversight: a tree the list's paths are all absent from is either one that
+	// was already pruned or one the list no longer describes, and only the fresh
+	// tree `pnpm setup-python` extracts tells those apart. A silent second pass
+	// was the shape that let `lib/tk8.6/demos` prune nothing for a whole release.
+	assert.throws(
+		() => pruneSeed(seed, { log: () => {} }),
+		/already been pruned|does not have/,
+	);
+	const second = pruneSeed(makeSeed(tempDir("lo-seed-")), {
+		log: () => {},
+	});
+	// The tree this fixture models carries the interpreter AND the loadable
+	// libraries the `20260901` build ships - `libpython3.12.dylib` at 0755
+	// (upstream's mode) and two Tcl/Tk libraries at 0644 (also upstream's). What
+	// the prune owns is the EXECUTABLE half: one file, and the one the app spawns.
+	assert.deepEqual(second.removed.length, PRUNED_SEED_PATHS.length);
+	assert.deepEqual(second.absentOptional, PRUNED_SEED_OPTIONAL_PATHS);
+	assert.deepEqual(machOExecutables(seed), ["bin/python3.12"]);
+	assert.equal(second.machO, 3);
+	assert.deepEqual(machOFiles(seed).sort(), [
+		"bin/python3.12",
+		"lib/itcl4.3.8/libitcl4.3.8.dylib",
+		"lib/libpython3.12.dylib",
+	]);
+	assert.deepEqual(seedExecBitFiles(seed).sort(), [
+		"bin/python3.12",
+		"lib/libpython3.12.dylib",
+	]);
+	assert.equal(
+		machOFileType(join(seed, "bin/python3.12")),
+		MACH_O_FILETYPE.MH_EXECUTE,
+	);
+	assert.equal(
+		machOFileType(join(seed, "lib/itcl4.3.8/libitcl4.3.8.dylib")),
+		MACH_O_FILETYPE.MH_DYLIB,
+	);
+	// The interpreter's bit, and nothing else's, is what the app needs; the
+	// library that carries one carries it because upstream does.
+	assert.equal(statSync(join(seed, "bin/python3.12")).mode & 0o111, 0o111);
+	assert.equal(
+		statSync(join(seed, "lib/itcl4.3.8/libitcl4.3.8.dylib")).mode & 0o111,
+		0,
+	);
 });
 
 test("the gate passes a pruned bundle and names each way it can regress", () => {
@@ -234,7 +308,12 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 		assert.equal(check.passed, true, `${check.id} must pass: ${check.output}`);
 	assert.deepEqual(
 		prunedSeedCheck(passing.app).output,
-		`${PRUNED_SEED_PATHS.length} pruned path(s) absent`,
+		`${PRUNED_SEED_PATHS.length + PRUNED_SEED_OPTIONAL_PATHS.length} pruned path(s) absent`,
+	);
+	assert.match(
+		seedModeCheck(passing.app).output,
+		/executable\(s\) carrying the execute bit \(bin\/python3 among them\)/,
+		"the exec-bit reading names the file the app spawns rather than counting Mach-O files",
 	);
 
 	// 1. Content the prune removes comes back.
@@ -251,13 +330,63 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 	assert.equal(modeCheck.passed, false);
 	assert.match(modeCheck.output, /lib\/python3\.12\/os\.py/);
 
-	// 3. A seed with no Mach-O at all: the subset test on its own is satisfied
-	// by a seed whose interpreter is gone, which is why the count is asserted.
+	// 2b. An EXECUTABLE that lost its bit. This is the failure the check exists
+	// for (a packaging step that drops modes leaves an interpreter the OS refuses
+	// to spawn), and it is the case the old count equality could MISS: a library
+	// that gained a bit while the interpreter lost one kept the totals equal.
+	const bitless = makePassingApp(tempDir("lo-app-"));
+	chmodSync(join(bitless.seed, "bin/python3.12"), 0o644);
+	const bitlessCheck = seedModeCheck(bitless.app);
+	assert.equal(bitlessCheck.passed, false);
+	assert.match(bitlessCheck.output, /bin\/python3\.12/);
+	assert.match(bitlessCheck.output, /do not carry the execute bit/);
+
+	// 2c. A library at 0644 is FINE, and this is the correction review round 1
+	// forced on this check: `libitcl4.3.8/libitcl4.3.8.dylib` is `MH_DYLIB`
+	// (loaded through `dlopen`, never exec'd) and upstream ships it without a bit
+	// in the `20260901` build. The check must not demand a mode on it - and the
+	// fixture's own passing case already carries one, so this case asserts the
+	// absence explicitly rather than by construction.
+	const library = makePassingApp(tempDir("lo-app-"));
+	assert.equal(
+		seedModeCheck(library.app).passed,
+		true,
+		"a loadable library without an execute bit must not fail the gate",
+	);
+
+	// 3. A seed with no Mach-O at all: the subset test on its own is satisfied by
+	// a seed whose interpreter is gone, which is why the executables are named.
 	const noMachO = makePassingApp(tempDir("lo-app-"));
-	rmSync(join(noMachO.seed, "bin/python3.12"));
+	for (const gone of [
+		"bin/python3.12",
+		"lib/libpython3.12.dylib",
+		"lib/itcl4.3.8/libitcl4.3.8.dylib",
+	])
+		rmSync(join(noMachO.seed, gone));
 	const emptyModeCheck = seedModeCheck(noMachO.app);
 	assert.equal(emptyModeCheck.passed, false);
 	assert.match(emptyModeCheck.output, /No Mach-O file under the seed/);
+
+	// 3b. A seed whose interpreter was replaced by a LIBRARY: Mach-O files are
+	// present, none of them is a filetype the kernel runs, and the check says so
+	// instead of passing on a count.
+	const libraryOnly = makePassingApp(tempDir("lo-app-"));
+	writeMachO(join(libraryOnly.seed, "bin/python3.12"), {
+		fileType: MACH_O_FILETYPE.MH_DYLIB,
+		mode: 0o755,
+	});
+	const libraryCheck = seedModeCheck(libraryOnly.app);
+	assert.equal(libraryCheck.passed, false);
+	assert.match(libraryCheck.output, /No executable Mach-O under the seed/);
+
+	// 3c. The optional prune entry coming back is the build having skipped the
+	// prune, exactly as a required one is (review R1-6 / QA's Q4 follow-up: the
+	// optional half has to be asserted too, or "optional" reads as "unchecked").
+	const optionalBack = makePassingApp(tempDir("lo-app-"));
+	writeFile(join(optionalBack.seed, PRUNED_SEED_OPTIONAL_PATHS[0], "widget"));
+	const optionalCheck = prunedSeedCheck(optionalBack.app);
+	assert.equal(optionalCheck.passed, false);
+	assert.match(optionalCheck.output, new RegExp(PRUNED_SEED_OPTIONAL_PATHS[0]));
 
 	// 4. The venv bootstrap: the half an install cannot recover from.
 	const noWheel = makePassingApp(tempDir("lo-app-"));
@@ -277,8 +406,177 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
  * build, and every test in the sibling file stayed green because they drive the
  * modules rather than the thing that decides whether the modules run. The gap
  * was the config, so the config is what is asserted - the same lesson
- * `prune-python-resource.test.mjs` records for `afterPack`.
+ * `prune-bundled-resources.test.mjs` records for `afterPack`.
  */
+test("the Tcl/Tk token is bound to the tree, not only to an optional entry", () => {
+	// Review R2-5. `{tkver}`'s only prune consumer is the OPTIONAL demos entry, so
+	// before this binding a refresh that moved Tcl/Tk while the token stayed put
+	// would prune nothing and look exactly like a correct build - the no-op class
+	// R1-6 fixed, one token over. The tree is asserted to carry `lib/tk<declared>`.
+	const seed = makeSeed(tempDir("lo-seed-"));
+	pruneSeed(seed, { log: () => {} });
+	assert.equal(
+		existsSync(join(seed, SEED_TK_DIR)),
+		true,
+		"the prune keeps the Tk tree",
+	);
+
+	// A tree whose Tcl/Tk moved without the declaration moving with it.
+	const stale = makeSeed(tempDir("lo-seed-"));
+	rmSync(join(stale, SEED_TK_DIR), { recursive: true });
+	writeFile(join(stale, "lib/tk8.6/tk.tcl"));
+	assert.throws(
+		() => pruneSeed(stale, { log: () => {} }),
+		/lib\/tk\d+\.\d+/,
+		"a tree whose Tcl/Tk is not the declared one must fail by name",
+	);
+});
+
+test("a named path the tree does not have is refused, and an optional one is reported", () => {
+	// The R1-6 guard, driven through the real function rather than the message:
+	// `lib/tk8.6/demos` pruned nothing for a whole release because a stale
+	// version token made it a no-op that read as success.
+	const incomplete = makeSeed(tempDir("lo-seed-"));
+	rmSync(join(incomplete, "lib/python3.12/turtledemo"), { recursive: true });
+	assert.throws(
+		() => pruneSeed(incomplete, { log: () => {} }),
+		/lib\/python3\.12\/turtledemo/,
+		"a required path that is missing must fail the build by name",
+	);
+
+	// An optional entry that is absent is reported rather than fatal, and one
+	// that IS present is pruned like any other.
+	const complete = makeSeed(tempDir("lo-seed-"));
+	const result = pruneSeed(complete, { log: () => {} });
+	assert.deepEqual(result.absentOptional, PRUNED_SEED_OPTIONAL_PATHS);
+	assert.deepEqual(result.removed.length, PRUNED_SEED_PATHS.length);
+	const withDemos = makeSeed(tempDir("lo-seed-"));
+	writeFile(join(withDemos, PRUNED_SEED_OPTIONAL_PATHS[0], "widget"));
+	const prunedDemos = pruneSeed(withDemos, { log: () => {} });
+	assert.deepEqual(prunedDemos.absentOptional, []);
+	assert.deepEqual(
+		prunedDemos.removed.length,
+		PRUNED_SEED_PATHS.length + PRUNED_SEED_OPTIONAL_PATHS.length,
+	);
+	assert.equal(
+		existsSync(join(withDemos, PRUNED_SEED_OPTIONAL_PATHS[0])),
+		false,
+	);
+});
+
+/** A bundle whose seed claims to be a Python release. Drives the version gate. */
+function makeVersionedApp(dir, version) {
+	const app = join(dir, "mac-arm64", "Local Operator.app");
+	const seed = join(
+		app,
+		"Contents",
+		"Resources",
+		LAYOUT.python.seedNamespace,
+		"arm64",
+	);
+	mkdirSync(join(seed, "bin"), { recursive: true });
+	// A stand-in for the interpreter: the check runs `bin/python3 -I -B --version`
+	// and reads the release out of it, so what matters is what this prints.
+	writeFileSync(
+		join(seed, "bin", "python3"),
+		`#!/bin/sh\necho "Python ${version}"\n`,
+	);
+	chmodSync(join(seed, "bin", "python3"), 0o755);
+	return { app, seed };
+}
+
+test("the shipped seed's own version is asserted against the declaration", () => {
+	// Review R1-5: this check had no committed test, and it is the only reading in
+	// the repository that can see a PATCH level - the tree's own markers
+	// (`lib/python3.12`, `_sysconfigdata`'s `VERSION`) carry the major.minor.
+	const declared = JSON.parse(
+		readFileSync(join("src", "shared", "bundled-runtime-layout.json"), "utf8"),
+	).python.version;
+	const matching = makeVersionedApp(tempDir("lo-app-"), declared);
+	const pass = seedVersionCheck(matching.app);
+	assert.equal(pass.passed, true, pass.output);
+	assert.match(pass.output, new RegExp(declared.replace(/\./g, "\\.")));
+
+	// A refresh that changes the declaration and never re-stages the seed is the
+	// failure this exists for: the bundle ships the previous patch release under
+	// the new number, and every other check is green.
+	const stale = makeVersionedApp(tempDir("lo-app-"), "3.12.10");
+	const fail = seedVersionCheck(stale.app);
+	assert.equal(fail.passed, false);
+	assert.match(fail.output, /3\.12\.10/);
+	assert.match(fail.output, new RegExp(declared.replace(/\./g, "\\.")));
+});
+
+test("the bundled uv is asserted where it lives: one architecture, runnable", () => {
+	// Review R1-5, and QA Q3 (the install script cannot detect a
+	// wrong-architecture uv - this gate is what does). `lipo` is stubbed, because
+	// this suite runs on CI's Linux runner and the point of these cases is the
+	// gate's decisions rather than the Mach-O reader; the real runner is what
+	// `pnpm verify-macos-artifacts` passes, and the real `lipo` reading of the real
+	// binary is on the PR.
+	const lipo = (archs) => () => ({
+		status: 0,
+		stdout: `${archs}\n`,
+		stderr: "",
+	});
+	const makeApp = (dir, { arch = "arm64", mode = 0o755, file = true } = {}) => {
+		const app = join(dir, "mac-arm64", "Local Operator.app");
+		if (arch === null) return { app };
+		const tree = join(app, "Contents", "Resources", "uv", arch);
+		mkdirSync(tree, { recursive: true });
+		if (file) {
+			writeFileSync(join(tree, "uv"), "#!/bin/sh\nexit 0\n");
+			chmodSync(join(tree, "uv"), mode);
+		}
+		return { app };
+	};
+
+	const pass = bundledUvToolCheck(makeApp(tempDir("lo-uv-")).app, {
+		expectArch: "arm64",
+		run: lipo("arm64"),
+	});
+	assert.equal(pass.passed, true, pass.output);
+	assert.match(pass.output, /arm64 executable/);
+
+	// The artifact's own name is what the uv must match: an x64-named artifact
+	// carrying the arm64 uv runs on the machine it was built on and not on the one
+	// it was built for.
+	const named = bundledUvToolCheck(makeApp(tempDir("lo-uv-")).app, {
+		expectArch: "x64",
+		run: lipo("arm64"),
+	});
+	assert.equal(named.passed, false);
+	assert.match(named.output, /names x64 but ships the arm64 uv/);
+
+	// Present, one architecture, but not the one its directory claims - the case
+	// the directories and the bytes disagree about.
+	const mismatched = bundledUvToolCheck(makeApp(tempDir("lo-uv-")).app, {
+		expectArch: "arm64",
+		run: lipo("x86_64"),
+	});
+	assert.equal(mismatched.passed, false);
+	assert.match(mismatched.output, /arm64 uv directory carries a x86_64 binary/);
+
+	// Present, right architecture, no execute bit: the mode a ZIP would drop.
+	const noBit = bundledUvToolCheck(
+		makeApp(tempDir("lo-uv-"), { mode: 0o644 }).app,
+		{ expectArch: "arm64", run: lipo("arm64") },
+	);
+	assert.equal(noBit.passed, false);
+	assert.match(noBit.output, /no execute bit/);
+
+	// Neither architecture: the bundle ships no uv at all.
+	const none = bundledUvToolCheck(
+		makeApp(tempDir("lo-uv-"), { arch: null }).app,
+		{
+			expectArch: "arm64",
+			run: lipo("arm64"),
+		},
+	);
+	assert.equal(none.passed, false);
+	assert.match(none.output, /ships no uv/);
+});
+
 test("the seeding script runs the prune", () => {
 	const script = readFileSync(
 		join(process.cwd(), "scripts/setup-python-resource.sh"),
@@ -300,11 +598,11 @@ test("the app and this step read one Mach-O magic set", () => {
 		join(process.cwd(), "src/main/backend/managed-python.ts"),
 		"utf8",
 	);
-	assert.match(source, /BUNDLED_PYTHON_LAYOUT\.machOMagics/);
+	assert.match(source, /BUNDLED_RUNTIME_LAYOUT\.machOMagics/);
 	for (const magic of LAYOUT.machOMagics)
 		assert.doesNotMatch(
 			source,
 			new RegExp(magic),
-			`${magic} is written inline in managed-python.ts again; it belongs in src/shared/bundled-python-layout.json`,
+			`${magic} is written inline in managed-python.ts again; it belongs in src/shared/bundled-runtime-layout.json`,
 		);
 });

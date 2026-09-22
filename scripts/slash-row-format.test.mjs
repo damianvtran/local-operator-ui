@@ -198,10 +198,16 @@ test("value rows are their own name, and `current` comes from the payload", () =
 		"high",
 	);
 	assert.deepEqual(rows, [
-		{ value: "low", name: "low", current: false },
-		{ value: "high", name: "high", current: true },
+		// `name` is the title-cased human form (matching the strip's chip and the
+		// `/effort` modal); `value` stays the raw rung the command is sent, and
+		// `current` still compares the RAW value, never the cased label.
+		{ value: "low", name: "Low", current: false },
+		{ value: "high", name: "High", current: true },
 	]);
+	// `approvals` is NOT an effort list: its `auto` is a mode, not a rung, so it
+	// is deliberately left uncased (the two cases are separate branches).
 	const approvals = argumentRows("approvals", [{ value: "auto" }], "auto");
+	assert.equal(approvals[0].name, "auto");
 	assert.equal(approvals[0].current, true);
 });
 

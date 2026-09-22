@@ -65,6 +65,15 @@ export interface ParsedSurface {
 
 /** The mutable facts about one surface. Everything time-shaped is seconds since
  * the epoch, matching the discovery record's own clock. */
+/**
+ * Who drove a surface's pty: the human at the pane, or the agent over the RPC.
+ *
+ * A named type rather than an inline union because it crosses three files (the
+ * record, the host's write paths, and the two call sites that name it) and a
+ * typo in one of them would be a marker that silently never appears.
+ */
+export type ConsoleActor = "user" | "agent";
+
 export interface ConsoleSurfaceRecord {
 	surface: string;
 	sessionId: string;
@@ -89,6 +98,15 @@ export interface ConsoleSurfaceRecord {
 	retain: boolean;
 	/** Whether reads and captures of this surface are refused (§11.4.4). */
 	secure: boolean;
+	/** Who drove the pty last: the human in the pane, or the agent over the RPC.
+	 *
+	 * The co-pilot cell (§13.4) is what needs it. `origin` says who CREATED a
+	 * surface and never changes, so a surface the user opened and an agent then
+	 * typed into keeps `origin: "user"` for ever — which left the pane's agent
+	 * marker with nothing to say at exactly the moment two actors were sharing one
+	 * pty. `null` until either path writes, because "nobody has typed" is a
+	 * different fact from "the user typed". */
+	lastActor: "user" | "agent" | null;
 	/** `fixed` refuses `console_resize` and refuses a pane's rect (§8.4): the
 	 * escape hatch a test needs for frame-exact output. */
 	sizing: "auto" | "fixed";
@@ -211,6 +229,7 @@ export class ConsoleRegistry<R> {
 			live: true,
 			retain: input.retain,
 			secure: false,
+			lastActor: null,
 			sizing: input.sizing,
 		};
 		const entry: ConsoleRegistryEntry<R> = { record, runtime: null };

@@ -39,6 +39,41 @@
 export const ipcMain = {
 	handlers: new Map<string, (event: unknown, ...args: unknown[]) => unknown>(),
 
+	/**
+	 * The listener side, which is a different mechanism from `handle` and is what the
+	 * capture view's handshake rides: `waitForCapture` waits on `ipcMain.on` for a
+	 * page's answer and unsubscribes with `removeListener`. Modelled here so a test can
+	 * ANSWER a handshake — or deliberately not answer one — against the shipped wait
+	 * rather than a re-implementation of it.
+	 */
+	listeners: new Map<
+		string,
+		Set<(event: unknown, ...args: unknown[]) => unknown>
+	>(),
+
+	on(
+		channel: string,
+		listener: (event: unknown, ...args: unknown[]) => unknown,
+	) {
+		const set = ipcMain.listeners.get(channel) ?? new Set();
+		set.add(listener);
+		ipcMain.listeners.set(channel, set);
+	},
+
+	removeListener(
+		channel: string,
+		listener: (event: unknown, ...args: unknown[]) => unknown,
+	): void {
+		ipcMain.listeners.get(channel)?.delete(listener);
+	},
+
+	/** Deliver a page's answer, the way `ipcRenderer.send` does. */
+	emit(channel: string, event: unknown, ...args: unknown[]): void {
+		for (const listener of [...(ipcMain.listeners.get(channel) ?? [])]) {
+			listener(event, ...args);
+		}
+	},
+
 	handle(
 		channel: string,
 		handler: (event: unknown, ...args: unknown[]) => unknown,
@@ -60,6 +95,7 @@ export const ipcMain = {
 	/** Between registrations, so one test's handlers do not answer another's. */
 	reset(): void {
 		ipcMain.handlers.clear();
+		ipcMain.listeners.clear();
 	},
 };
 export class Notification {
@@ -179,3 +215,55 @@ export const ipcRenderer = {
  * object is the honest model rather than a set of methods that pretend to work.
  */
 export const webFrame = {};
+
+/**
+ * `BrowserWindow`, which the console's capture view CONSTRUCTS (design 13.3).
+ *
+ * It is the one Electron class in this suite that is instantiated rather than
+ * merely called, and the console host builds one lazily — so a bundle that
+ * includes `console/capture.ts` needs the class to exist even when no capture is
+ * ever taken. Every member here is one the capture view actually reads, and
+ * nothing else is modelled: `loadURL` resolves immediately, `capturePage` returns
+ * a blank image (which the view's own non-blank assert is what rejects), and the
+ * lifecycle members are honest no-ops, because the point of this stub is that the
+ * MODULE loads and the RULES around it can be driven.
+ */
+export class BrowserWindow {
+	/**
+	 * Every window this stub made, in order. The capture view builds its own window and
+	 * keeps it private, so this is how a test reaches the one under assertion — and
+	 * counting them is how it tells a RE-MEASURED window from a replaced one.
+	 */
+	static readonly instances: BrowserWindow[] = [];
+	private destroyed = false;
+	/** Every `setContentSize` the shipped code asked for, in order: the grid-to-pixels
+	 * arithmetic is what tells a measured window from one sized by the 8/16 defaults. */
+	readonly contentSizes: Array<{ width: number; height: number }> = [];
+	readonly webContents = {
+		capturePage: async () => ({
+			toPNG: () => Buffer.alloc(0),
+			toBitmap: () => Buffer.alloc(0),
+		}),
+		/** Every channel this window's page was sent, so a test can answer the one it
+		 * is waiting for and assert the feed's shape. */
+		sent: [] as Array<{ channel: string; payload: unknown }>,
+		send(channel: string, payload?: unknown): void {
+			this.sent.push({ channel, payload });
+		},
+		on(): void {},
+		removeListener(): void {},
+	};
+	constructor(readonly options: Record<string, unknown> = {}) {
+		BrowserWindow.instances.push(this);
+	}
+	async loadURL(): Promise<void> {}
+	setContentSize(width: number, height: number): void {
+		this.contentSizes.push({ width, height });
+	}
+	isDestroyed(): boolean {
+		return this.destroyed;
+	}
+	destroy(): void {
+		this.destroyed = true;
+	}
+}

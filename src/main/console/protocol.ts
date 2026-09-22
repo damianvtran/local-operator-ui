@@ -65,6 +65,7 @@ export const CONSOLE_ERROR_CODES = [
 	"console_unavailable",
 	"invalid_grid",
 	"capture_unavailable",
+	"console_capture_full",
 ] as const;
 
 export type ConsoleErrorCode = (typeof CONSOLE_ERROR_CODES)[number];
@@ -123,4 +124,12 @@ export interface ConsoleSurfaceListing {
 	 * because a caller that reads the browser's listings should not have to learn
 	 * a second spelling. */
 	agent_owned: boolean;
+	/** Who drove the pty last (§13.4's co-pilot cell), or null until either path
+	 * writes.
+	 *
+	 * A SECOND FIELD BECAUSE `origin` CANNOT ANSWER THIS ONE: `origin` is fixed at
+	 * create, so a surface the USER opened that an agent then typed into keeps
+	 * `origin: "user"` for ever, and the pane's agent marker had nothing to say at
+	 * exactly the moment two actors shared one pty. */
+	last_actor: "user" | "agent" | null;
 }

@@ -59,7 +59,7 @@
 import { chmodSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
-import { archName } from "./prune-python-resource.mjs";
+import { archName } from "./prune-bundled-resources.mjs";
 
 /** The executable node-pty forks through on the platforms that have one. */
 export const SPAWN_HELPER_NAME = "spawn-helper";
@@ -154,7 +154,7 @@ export function nativeModuleDir(root, target) {
  *
  * macOS wraps the app in a bundle and the other platforms put `resources` beside
  * the executable — the same split (and the same reasoning) as
- * `prune-python-resource.mjs`, resolved here rather than shared because that
+ * `prune-bundled-resources.mjs`, resolved here rather than shared because that
  * module's own resolver is private to its prune step.
  */
 export function resourcesDirFor({

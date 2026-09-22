@@ -53,6 +53,7 @@ import {
 	stopBrowserHost,
 } from "./browser";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
+import { consoleCaptureUrlFor } from "./console/capture-url";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -73,6 +74,7 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import { createUserShellPath } from "./shell-path";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -863,7 +865,18 @@ function createWindow(
 }
 
 // Initialize backend service manager and installer
-const backendService = new BackendServiceManager();
+//
+// The one resolver for the user's own PATH, built HERE because this is the only
+// file that owns both consumers: the backend manager below, and the browser host
+// that starts the console. Handing the same instance to both is what keeps "what
+// is this user's PATH" a single answer in this process - see `./shell-path` for
+// the measurement (a launchd-started app sees `/usr/bin:/bin:/usr/sbin:/sbin`,
+// so neither a console surface nor `execute_bash` could find Homebrew). Started
+// lazily on the first ask, so a run that needs neither starts no shell.
+const userShellPath = createUserShellPath({
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+const backendService = new BackendServiceManager({ userShellPath });
 const backendInstaller = new BackendInstaller();
 
 /**
@@ -1821,6 +1834,17 @@ app
 			process.env.ELECTRON_RENDERER_URL ||
 			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
 		/*
+		 * The capture view's own document, derived from the trusted renderer URL rather than
+		 * spelled a second time: in development it is the same dev server with a different
+		 * entry, and in a packaged build it is the sibling of `index.html` in
+		 * `out/renderer`. Deriving it means a dev server on another port, or a moved bundle,
+		 * cannot leave the capture path pointing at a document that is not there — which
+		 * would fail as a blank frame rather than as a missing file. The two shapes and the
+		 * dev one that is easy to get wrong (code review round 1's B1) live, with their
+		 * test, in `console/capture-url.ts`.
+		 */
+		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -2503,7 +2527,9 @@ app
 			// If local-operator doesn't exist globally and our backend is not installed
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
 				// Install backend
-				const installSuccess = await backendInstaller.install();
+				const installSuccess = await backendInstaller.install(
+					windowLaunch.show,
+				);
 				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
 					logger.error(
@@ -2833,6 +2859,24 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The console's completion banner is raised through this app's ONE
+					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
+					// the window state, the raise policy and the click path). It is still the
+					// notifier that decides whether a banner is delivered: this forwards it.
+					notifier: desktopNotifier,
+					// The console's offscreen capture view (design 13.2/13.3): its own
+					// document, and the preload every renderer in this app gets, which is what
+					// lets main feed the reconstruction to it.
+					consoleCaptureUrl,
+					preloadPath: join(__dirname, "../preload/index.js"),
+					/*
+					 * The console's surfaces are handed the user's own PATH, from the same
+					 * resolver the backend spawn uses (above). Without it a surface inherits
+					 * this app's launchd environment, in which `brew` - and every other tool
+					 * the user installed - does not exist, so the console cannot run the
+					 * tooling the agent is meant to acquire through it.
+					 */
+					userShellPath,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {

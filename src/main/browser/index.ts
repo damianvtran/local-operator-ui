@@ -9,8 +9,10 @@ import {
 	webContents,
 } from "electron";
 import { startConsoleHost } from "../console";
+import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
 import { ConsoleError } from "../console/errors";
+import type { UserShellPath } from "../shell-path";
 import {
 	WebauthnChooser,
 	type WebauthnRequestSource,
@@ -108,6 +110,30 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * The app's notifier, forwarded verbatim to the console host so a console
+	 * surface's completion can be raised as a banner (design 12.3). The console rides
+	 * this endpoint (design 10.1) but NOT this notifier's opinions: the notifier owns
+	 * the delivery gate, the claim and the click, and this module only hands it over.
+	 */
+	notifier?: ConsoleCompletionNotifier;
+	/**
+	 * The console's offscreen capture document and the preload it needs (design
+	 * 13.2/13.3). Both come from the app because only the app knows where its own
+	 * bundle lives: the console host is handed URLs, never paths it guesses.
+	 *
+	 * Absent means no capture view, which the host reports as the typed
+	 * `capture_unavailable` refusal rather than as a blank frame.
+	 */
+	consoleCaptureUrl?: string;
+	preloadPath?: string;
+	/**
+	 * The user's own login-shell PATH (`../shell-path`), forwarded to the console
+	 * host so a surface behaves like the user's terminal. The app builds ONE of
+	 * these and hands it here and to the backend, so the two consumers cannot
+	 * answer "what is this user's PATH" differently.
+	 */
+	userShellPath?: UserShellPath;
 	log: (message: string) => void;
 }
 
@@ -592,6 +618,19 @@ export async function startBrowserHost(
 		window: options.window,
 		expectedUrl: options.expectedUrl,
 		appVersion: options.appVersion,
+		notifier: options.notifier,
+		/*
+		 * The capture view's document and preload, forwarded rather than re-derived:
+		 * only the app knows where its own bundle lives, and a console host that
+		 * guessed would answer a screenshot with a blank frame rather than with its
+		 * own typed refusal. WITHOUT THESE TWO the host builds no capture view at all,
+		 * which the live proof rig caught as `capture_unavailable` on a surface with
+		 * no displayed pane — the exact shape of a seam that is wired in tests and
+		 * forgotten in the one call site that matters.
+		 */
+		consoleCaptureUrl: options.consoleCaptureUrl,
+		preloadPath: options.preloadPath,
+		userShellPath: options.userShellPath,
 		log,
 	});
 
