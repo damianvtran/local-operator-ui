@@ -2867,11 +2867,61 @@ async function sceneSessionArchive(cdp) {
 	 * while proving nothing. `[data-sidebar-region="entities"]` must be UNMOUNTED
 	 * while the refusal is drawn - which is exactly the state the fold broke.
 	 */
+	/*
+	 * THE PLATE IS REVEALED BEFORE THE PRESS, AND THE WARM-UP IS WHAT REVEALS IT (measured
+	 * 2026-09-22). The control lives on the plate, which straddles the boundary's ZERO-HEIGHT
+	 * band (`absolute -translate-y-1/2` inside `h-0`), and the band reveals that plate from its
+	 * own `onPointerEnter`. A pointer that is already inside the 16px strip therefore fires NO
+	 * enter when the walk moves it a few pixels onto the control's own centre, and the plate
+	 * stays `pointer-events-none` - so the press passes through it and the region never
+	 * unmounts, which is what this check then reads as `entitiesUnmounted:false`.
+	 *
+	 * THE PROBE THAT SETTLED IT (this run, then removed): the boundary's boxes read band
+	 * `{y:421,height:0}`, strip `{top:413,bottom:429,height:16}`, separator `{top:416,bottom:426,
+	 * height:10}`, control `{x:404,y:421,top:407,bottom:435,width:28}` - i.e. the control's own
+	 * centre is ON the line - and EVERY sampled point (the line, +-3px, +-6px, at the band's
+	 * centre and at the control's own x) revealed the plate, with `waitedMs` 250-340 and a hit
+	 * test naming the separator at the middle three. So the aim is not what fails and the
+	 * geometry is not what decides it: ARRIVING FROM OUTSIDE IS. `parkPointer` puts the pointer
+	 * where it hovers nothing, and the move that follows is a real entry into the strip - the
+	 * strip is 16px tall and the separator is the hit target over its own 10px, so the aim lands
+	 * on the boundary by construction rather than by luck.
+	 *
+	 * THE REVEAL IS WAITED FOR AND THEN REQUIRED, so a future tip of this fails here, naming the
+	 * reveal, rather than at the state check it would otherwise silently explain. The press
+	 * still goes to the control's own box, which is interactive only once that reveal happened.
+	 *
+	 * THREE ATTEMPTS, the shape the row work above uses for the same class of question (hover,
+	 * bounded wait, break when it is drawn - then the claim made exactly as written). It is not
+	 * belt and braces: the boundary MOVES UNDER A SETTLING LAYOUT, because the lane's band below
+	 * it changes height as the refusal arrives (measured on the same head: the band check read
+	 * 34px - the offer's one-line card - where the settled refusal is 150), and an aim that was
+	 * inside the strip when it was taken can be outside it a frame later, which is a
+	 * `pointerleave` and a disarm rather than a reveal. Each attempt re-parks, because a real
+	 * entry needs the pointer to come from outside the strip, and re-measures.
+	 */
+	const clusterRevealed = { ok: false, waitedMs: 0 };
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		await parkPointer(cdp);
+		const boundary = await splitBox(cdp, SPLIT_SEPARATOR);
+		require("the boundary this cluster hangs on is drawn", boundary !==
+			null, "no separator: the split needs both regions");
+		await movePointer(cdp, boundary.x, boundary.y);
+		const read = await waitForCondition(
+			cdp,
+			`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
+			700,
+			40,
+		);
+		clusterRevealed.ok = read.ok;
+		clusterRevealed.waitedMs += read.waitedMs;
+		if (read.ok === true) break;
+	}
+	require("the cluster's plate is revealed before its control is pressed", clusterRevealed.ok ===
+		true, `the plate never revealed in ${clusterRevealed.waitedMs}ms after three attempts: the pointer did not enter the boundary`);
 	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
 	require("the cluster's hide control is reachable", hideEntities !==
 		null, "no [data-sidebar-hide=entities]");
-	await movePointer(cdp, hideEntities.x, hideEntities.y);
-	await wait(320);
 	await pressPointerStationary(cdp, hideEntities.x, hideEntities.y);
 	await wait(500);
 	const entitiesUnmounted = await cdp.evaluate(
