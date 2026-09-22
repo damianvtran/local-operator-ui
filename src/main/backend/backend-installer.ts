@@ -175,6 +175,17 @@ export class BackendInstaller {
 	private runActive = false;
 
 	/**
+	 * True for the beat the finished state is held on screen, and false otherwise.
+	 *
+	 * WHY IT IS NOT `runActive` (UX U18): the hold sits inside an attempt, so
+	 * `runActive` is true through it - and a close there was therefore read as a
+	 * request to stop a run that had already succeeded, raising "Quitting now stops
+	 * it" over a panel that said "Setup complete.". Nothing is in flight at that
+	 * moment, so the two states have to be separable.
+	 */
+	private terminalHold = false;
+
+	/**
 	 * Resolves `install()`'s wait when a failure is on screen and the user owns
 	 * the decision.
 	 *
@@ -188,9 +199,6 @@ export class BackendInstaller {
 	 * and never resolves at all.
 	 */
 	private settleUserDecision: ((ok: boolean) => void) | null = null;
-
-	/** The plan this process's launch raises a window under, passed by `index.ts`. */
-	private windowShow: WindowShow = "focus";
 
 	/*
 	 * The last phase announced to the setup window, and whether a failure is
@@ -520,7 +528,6 @@ export class BackendInstaller {
 	 * in-window failure state.
 	 */
 	async install(show: WindowShow): Promise<boolean> {
-		this.windowShow = show;
 		try {
 			for (;;) {
 				this.runActive = true;
@@ -601,11 +608,21 @@ export class BackendInstaller {
 				 */
 				this.runActive = false;
 				this.decisionPending = true;
+				let retry: boolean;
 				try {
-					return await this.awaitUserDecision();
+					retry = await this.awaitUserDecision();
 				} finally {
 					this.decisionPending = false;
 				}
+				/*
+				 * "Try again" asks for the SAME attempt a first run gets, so the loop runs
+				 * it. It used to be a second copy of the attempt path, entered from
+				 * `retryFromWindow`, and a copy is what let the retry skip `runActive` (Cancel
+				 * stopped killing the child, the close box stopped asking), the terminal hold
+				 * and `settleInstalled` (review R3-1, R3-2, UX U17). A retry now behaves like a
+				 * first run because it is one.
+				 */
+				if (!retry) return false;
 			}
 		} finally {
 			this.runActive = false;
@@ -1149,7 +1166,7 @@ export class BackendInstaller {
 				kind: "phase",
 				phase: this.lastPhase ?? "python",
 			});
-			void this.retryFromWindow();
+			this.retryFromWindow();
 		};
 
 		const cancelHandler = () => {
@@ -1176,6 +1193,21 @@ export class BackendInstaller {
 		 * closing.
 		 */
 		progressWindow.on("close", (event) => {
+			if (this.terminalHold) {
+				/*
+				 * Setup has FINISHED and the window is holding the completed state for its
+				 * beat. Nothing is in flight to stop, so this is not Cancel's question - and
+				 * asking it put "Quitting now stops it" over a panel reading "Setup complete."
+				 * (UX U18). The close ends the acknowledgement early and startup continues to
+				 * the app's own window; the run is not aborted, and the rest of the hold is
+				 * simply not spent.
+				 */
+				logger.info(
+					"Setup window closed during the completed state's hold; the install has finished, so startup continues",
+					LogFileType.INSTALLER,
+				);
+				return;
+			}
 			if (this.runActive) {
 				/*
 				 * A run is in flight, so closing is a request to stop - the same request
@@ -1254,7 +1286,12 @@ export class BackendInstaller {
 	 */
 	private async holdTerminalFrame(): Promise<void> {
 		if (!this.hasLivePreparationWindow()) return;
-		await new Promise((resolve) => setTimeout(resolve, TERMINAL_FRAME_MS));
+		this.terminalHold = true;
+		try {
+			await new Promise((resolve) => setTimeout(resolve, TERMINAL_FRAME_MS));
+		} finally {
+			this.terminalHold = false;
+		}
 	}
 
 	/**
@@ -1266,19 +1303,7 @@ export class BackendInstaller {
 	 * `install()` is holding on, which is what lets startup continue into the
 	 * backend it just installed.
 	 */
-	private async retryFromWindow(): Promise<void> {
-		let ok = false;
-		try {
-			ok = await this.prepareAndInstall(this.windowShow);
-		} catch (error) {
-			logger.error(
-				"Backend preparation failed on a retry from the setup window",
-				LogFileType.INSTALLER,
-				error,
-			);
-			if (!this.failureOnScreen) this.reportInstallFailure(error);
-		}
-		if (!ok) return;
+	private retryFromWindow(): void {
 		const settle = this.settleUserDecision;
 		this.settleUserDecision = null;
 		settle?.(true);

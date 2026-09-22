@@ -3504,3 +3504,193 @@ test("closing the window mid-run asks the same question Cancel does", async () =
 		);
 	});
 });
+
+test("the click is authorised by the hold, not by the report flag", async () => {
+	/*
+	 * Review R3-3: the mutation matrix showed the round-2 guard alone stayed green
+	 * against the case above, because in every reachable state the two flags agree -
+	 * so nothing pinned the guard itself. This case makes them disagree on purpose:
+	 * the report flag is cleared by hand, standing in for any other writer of it
+	 * (`installEnvironment` clears it at the start of every attempt, `settleInstalled`
+	 * at the end, and round 1's `install()` cleared it before the park), and the click
+	 * must still start the second attempt. A guard reading that flag goes red here.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:environment\n|LO1:components\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		assert.equal(installer.decisionPending, true);
+		installer.failureOnScreen = false;
+
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const second = await waitForSpawn();
+		assert.ok(second, "the retry must start on the hold's word alone");
+		second.child.emit("exit", 0);
+		const entry = join(installer.venvPath, "bin", "local-operator");
+		mkdirSync(dirname(entry), { recursive: true });
+		writeFileSync(entry, "#!/bin/sh\n");
+		await finished;
+	});
+});
+
+test("a retry runs the same attempt the first run does", async () => {
+	/*
+	 * Review R3-1/R3-2 and UX U17, measured through the shipped graph: a retry used
+	 * to be a second copy of the attempt path, entered from `retryFromWindow` while
+	 * `install()` stayed parked - so `runActive` was false for its whole duration
+	 * (Cancel stopped killing the child, the close box stopped asking) and the
+	 * terminal hold never ran on the one success path a user reaches by clicking
+	 * Retry. This drives a retry and asserts the three things the fold restores:
+	 * Cancel kills during it, the close asks during it, and the finished state is
+	 * held afterwards.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:environment\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const retry = await waitForSpawn();
+		assert.equal(
+			installer.runActive,
+			true,
+			"the retry's attempt is a run in flight, which is what Cancel and the close read",
+		);
+
+		// The close box, mid-retry: it must ask, the way it does during a first run.
+		const window = globalThis.__loWindows.at(-1);
+		let prevented = false;
+		window.handlers.close.at(-1)({
+			preventDefault: () => {
+				prevented = true;
+			},
+		});
+		assert.equal(
+			prevented,
+			true,
+			"a close during a retry is a request, not a teardown",
+		);
+		assert.equal(
+			globalThis.__loDialogs.at(-1)?.buttons?.[1],
+			"Quit without setup",
+			"and it asks the question Cancel asks",
+		);
+
+		// Cancel, mid-retry: the child is killed, which is what the dialog promises.
+		const kills = [];
+		const realKill = process.kill;
+		process.kill = (pid, signal) => {
+			kills.push([pid, signal]);
+			return true;
+		};
+		try {
+			globalThis.__loDialogResponse = 1; // "Quit without setup"
+			await globalThis.__loIpcHandlers["cancel-installation"]();
+		} finally {
+			process.kill = realKill;
+		}
+		assert.deepEqual(
+			kills,
+			[[-retry.child.pid, "SIGTERM"]],
+			"Cancel during a retry must kill the attempt's process group",
+		);
+		assert.equal(installer.attemptCancelled, true);
+		assert.equal(
+			globalThis.__loExitCode,
+			1,
+			"and the app leaves, as it promised",
+		);
+	});
+});
+
+test("a successful retry holds its finished state and does not ask to quit over it", async () => {
+	/*
+	 * UX U17 (the state is painted on both success paths) and U18 (the close during
+	 * the hold must not raise "Quitting now stops it" over a panel that says "Setup
+	 * complete."). The hold is asserted as a lower bound on elapsed time, which is
+	 * the only observable this harness has for it.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:components\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const retry = await waitForSpawn();
+		const entry = join(installer.venvPath, "bin", "local-operator");
+		mkdirSync(dirname(entry), { recursive: true });
+		writeFileSync(entry, "#!/bin/sh\n");
+		const exitedAt = Date.now();
+		retry.child.emit("exit", 0);
+
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "installed"),
+			"the finished state to reach the window on the retry's own path",
+		);
+		/*
+		 * Two dialogs by now and no more: the consent prompt and the non-darwin
+		 * "Setup Complete" acknowledgement. The point of the count is the next
+		 * assertion - that the close adds nothing to it.
+		 */
+		const dialogsBefore = globalThis.__loDialogs.length;
+		assert.equal(dialogsBefore, 2);
+		let prevented = false;
+		globalThis.__loWindows.at(-1).handlers.close.at(-1)({
+			preventDefault: () => {
+				prevented = true;
+			},
+		});
+		assert.equal(
+			prevented,
+			false,
+			"a close over the finished state stops nothing",
+		);
+		assert.equal(
+			globalThis.__loDialogs.length,
+			dialogsBefore,
+			"and it must not ask to quit over a run that has already succeeded",
+		);
+		assert.equal(globalThis.__loExitCode, undefined);
+
+		assert.equal(await finished, true);
+		assert.ok(
+			Date.now() - exitedAt >= 1400,
+			`the finished state must be held on the retry path too (held ${Date.now() - exitedAt}ms)`,
+		);
+	});
+});

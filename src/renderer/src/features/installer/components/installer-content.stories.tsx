@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type React from "react";
 import "../../../styles/index.css";
+/*
+ * The sentence the app falls back to, CALLED rather than copied (design D21): a
+ * hand-typed copy of what `installFailureSentence` returns is the drift this
+ * file's own notes call a defect, and the frame would keep asserting the old
+ * wording after the function changed.
+ */
+import { installFailureSentence } from "../../../../../shared/install-progress";
 import { InstallerContent, InstallerShell } from "./installer-content";
 import { InstallPanel } from "./installer-panel";
 
@@ -168,7 +175,7 @@ export const FailureFallback: Story = {
 			installed: false,
 			failure: {
 				phase: "components",
-				reason: "Setup stopped while downloading components.",
+				reason: installFailureSentence("components"),
 				detail:
 					"ERROR: Could not find a version that satisfies the requirement local-operator (from versions: none)",
 				exitCode: 1,
