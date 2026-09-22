@@ -109,6 +109,18 @@ const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
  * that ignored the rejection would file a resting frame under a key its claim
  * says was pressed - the same trap the mouse options in this file document.
  */
+/**
+ * The console pane's shipped default width, in px.
+ *
+ * `DEFAULT_CONSOLE_PANEL_WIDTH` from `ui-preferences-store.ts` — `ceil(100 columns
+ * x 7.8px) + 16px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
+ * this file is JavaScript and cannot import the store's TypeScript. The restatement
+ * is pinned by `scripts/console-pane.test.mjs`, which imports both and fails when
+ * they differ, so a font step or a column count that moves upstream breaks a test
+ * rather than silently re-cropping every console frame.
+ */
+const CONSOLE_PANE_WIDTH = 796;
+
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
 	Tab: { code: "Tab", keyCode: 9 },
@@ -939,6 +951,46 @@ export const STORIES = [
 	 * feature has. The header rows are 84 = the 56px bar plus the 28px caption that
 	 * carries the reported rectangle.
 	 */
+	/*
+	 * The console pane (`docs/design/ui-console-tab.md` §6, §7, §9, §12), captured
+	 * at the pane's OWN width rather than at a window's — and at the pane's SHIPPED
+	 * default, not at a number typed here.
+	 *
+	 * THE NUMBER MOVED, and the reason is design round 1's D2: these rows read `843`,
+	 * which was neither the store's `DEFAULT_CONSOLE_PANEL_WIDTH` (~804, derived from
+	 * the shipped face at `TERMINAL_FONT_SIZE = 13`) nor the design's 100-column grid
+	 * — measured off the frame, 843 painted ~108 columns. The frames therefore showed
+	 * a pane no user has, while the PR body quoted the default's own arithmetic.
+	 * `CONSOLE_PANE_WIDTH` below is that default, and `scripts/console-pane.test.mjs`
+	 * pins it against the store's constant so the two cannot drift apart again (the
+	 * story renders the pane at the same imported width).
+	 *
+	 * The extra height on the ended and restored frames is their banner: those states
+	 * still grow a 28px row (§7.3, and D6 keeps it — there is no process left to
+	 * reflow by the time it appears). `secure` no longer does: its marker is an
+	 * overlay since D6, so a secure toggle cannot resize a running program.
+	 */
+	["console-pane--populated", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--two-surfaces", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--empty", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--draft-conversation", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--loading", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--unavailable", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--ended", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--restored", CONSOLE_PANE_WIDTH, 560],
+	["console-pane--secure", CONSOLE_PANE_WIDTH, 520],
+	/*
+	 * D21's own state, and the reason it is here rather than only in the component's
+	 * stories: the selection became load-bearing this round (1.11:1 -> the accent, gated by
+	 * `check-themes`) and no frame anywhere in the set showed one, so its appearance was
+	 * measured and never SEEN. The story's `play` function performs a real drag on the real
+	 * terminal and throws when no selection layer appears, so a theme whose selection is
+	 * invisible fails the sweep rather than shipping a picture of nothing.
+	 */
+	["console-pane--selected", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-pulsing", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--blip-resting", CONSOLE_PANE_WIDTH, 520],
+	["console-pane--other-conversation-mark", CONSOLE_PANE_WIDTH, 520],
 	["browser-pane--this-conversation", 640, 460],
 	["browser-pane--all-tabs", 640, 460],
 	/*
@@ -1009,6 +1061,14 @@ export const STORIES = [
 	/* The badge drawn with the canvas button unmounted: the reservation's room is
 	   owed for the box that button owns, so this state must stay at the 8px step. */
 	["chat-header-cluster--canvas-open-badge", 560, 84],
+	/*
+	 * The console trigger's attention dot (design 12.2), in the same band and at the
+	 * same size as the cluster's other frames so the pair can be held against them.
+	 * They exist because the design round's D1 could not find the header dot in any
+	 * frame: the pane's row mark and this dot are two halves of one rule.
+	 */
+	["chat-header-cluster--console-blip", 560, 84],
+	["chat-header-cluster--console-blip-resting", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
@@ -3386,8 +3446,94 @@ export const STORIES = [
 	["onboarding-onboardingmodal--create-agent", 1280, 900],
 	["onboarding-onboardingmodal--congratulations", 1280, 900],
 
-	/* 1380x800 is what the story declares and what the app window ships. */
-	["installer-installercontent--default", 1380, 800],
+	/*
+	 * Onboarding step 1 -- "Connect a provider" -- and the Settings column that
+	 * renders the same grid, from `provider-setup.stories.tsx`.
+	 *
+	 * WHY THESE EXIST BESIDE THE `onboarding-onboardingmodal--default` ROW ABOVE,
+	 * which is the same step: that story renders the flow with no backend, so its
+	 * grid is the loading branch, and the frames committed under it were taken
+	 * before the registry grid existed at all (they paint the "Choose your
+	 * setup" two-gate screen that #87 replaced). Neither could be used to judge
+	 * the screen this step actually shows, which is a grid of 18 registry rows.
+	 *
+	 * The widths are the CONTAINERS the grid is handed rather than the window,
+	 * because that is what decides its column count: 1000 puts the 896px Settings
+	 * column (`max-w-4xl`) at its real measure, 600 is below every width the app
+	 * can produce and shows the one-column floor, and the two `in-dialog` rows are
+	 * the app's default window and its 800px floor. `--themes=localOperator*` is
+	 * how a narrowed run is taken; the sweep covers all twelve.
+	 *
+	 * The two `dir` entries are the promoted card's hover and focus states, and
+	 * they are entries rather than stories because both are BROWSER state the rig
+	 * has to produce with real input: `hover` moves a real pointer and `tabTo`
+	 * presses real Tabs until the card holds focus, so the frame carries `:hover`
+	 * and `:focus-visible` as the product draws them. A story that set either one
+	 * in a class would photograph the story.
+	 */
+	["onboarding-providersetup--settings-column", 1000, 1100],
+	["onboarding-providersetup--signed-in", 1000, 1100],
+	["onboarding-providersetup--short-registry", 1000, 700],
+	["onboarding-providersetup--search-active", 1000, 900],
+	["onboarding-providersetup--search-recommended", 1000, 900],
+	["onboarding-providersetup--search-no-results", 1000, 760],
+	["onboarding-providersetup--narrow-column", 600, 1100],
+	/*
+	 * Three WINDOWS for one story, because the panel's measure is clamped against
+	 * the viewport: 1280 is the app's default, 800x600 is its declared floor
+	 * (`WINDOW_MIN_WIDTH` / `WINDOW_MIN_HEIGHT`) where the clamp and the height cap
+	 * both bite, and the fourth entry is the same 1280x900 window with the body
+	 * parked at the end of the list -- a state no frame covered, and the one where
+	 * "the field scrolls away with the content" can be seen rather than argued.
+	 */
+	["onboarding-providersetup--in-dialog", 1280, 900],
+	["onboarding-providersetup--in-dialog", 800, 600],
+	[
+		"onboarding-providersetup--in-dialog",
+		1280,
+		900,
+		{
+			dir: "in-dialog-scrolled",
+			scrollToEnd: "[role=dialog] > div:nth-of-type(2)",
+		},
+	],
+	[
+		"onboarding-providersetup--settings-column",
+		1000,
+		1100,
+		{ dir: "card-hovered", hover: '[data-provider-id="radient"]' },
+	],
+	[
+		"onboarding-providersetup--settings-column",
+		1000,
+		1100,
+		/*
+		 * `> button` because the hook is on the ROW: the element a keyboard user
+		 * reaches is the card inside it, which is what `tabTo` asserts.
+		 */
+		{
+			dir: "card-focused",
+			tabTo: '[data-provider-id="radient"] > button',
+		},
+	],
+
+	/* 640x480 is what the story declares and what the app window ships, and the
+	   test beside `install-install-progress.test.mjs` reads those two numbers
+	   against this tuple so a third copy of the size cannot drift again (design
+	   D15 - a story at one size while the window said another is exactly what the
+	   1380x800 set was). SIX states, because a user can be left in six: the
+	   mounted entry, an indeterminate first frame, the long download, a failure
+	   with a recognised cause, a failure WITHOUT one (the composition the code
+	   calls the common case, whose only specific line is the machine one below the
+	   sentence - design D12), and the settled panel. One frame of DEFAULT was all
+	   this surface had, which is why the failure state could have shipped as a
+	   dialog nobody had looked at. */
+	["installer-installercontent--default", 640, 480],
+	["installer-installercontent--indeterminate", 640, 480],
+	["installer-installercontent--mid-install", 640, 480],
+	["installer-installercontent--failure", 640, 480],
+	["installer-installercontent--failure-fallback", 640, 480],
+	["installer-installercontent--installed", 640, 480],
 	/* The transcript's top slot. Its whole claim is that it does not change
 	   height, which is a COMPARISON between states — so the boards stack the
 	   states between rules rather than showing one per frame. `app-minimum-width`
@@ -6989,7 +7135,17 @@ const main = async () => {
 						.join(" "),
 				)
 				.find((text) =>
-					/^(AssertionError|TestingLibraryElementError)|Unable to perform pointer interaction/.test(
+					/*
+					 * `^Error:` IS PART OF THE PATTERN NOW, and QA round 4's Q-12 is why: this
+					 * guard knew the two shapes `@storybook/test` throws and the pointer refusal
+					 * user-event produces, so a `play` that threw its own `Error` — which is
+					 * exactly what the console pane's selection story did — was reported to the
+					 * console and IGNORED, and the sweep photographed twelve frames of a state
+					 * the play had already rejected. The comment above this block said that limit
+					 * out loud; a limit that ships a wrong frame is not a disclosure, it is the
+					 * defect. A thrown `Error:` in a story's phase now stops the sweep.
+					 */
+					/^(AssertionError|TestingLibraryElementError|Error:)|Unable to perform pointer interaction/.test(
 						text,
 					),
 				);

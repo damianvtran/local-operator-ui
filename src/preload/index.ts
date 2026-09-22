@@ -1,5 +1,5 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { contextBridge, ipcRenderer } from "electron";
+import { type IpcRendererEvent, contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type {
 	BackendUpdateCompletion,
@@ -105,17 +105,32 @@ const api = {
 				};
 			},
 		},
-		onOpenConversation: (callback: (sessionId: string | null) => void) => {
+		onOpenConversation: (
+			callback: (sessionId: string | null, surface?: string) => void,
+		) => {
 			/*
 			 * `null` is a TARGET, not a malformed payload: a burst digest's click
 			 * names several conversations and opens the catalogue, which the store
 			 * models as "no active session". Dropping it here would turn that click
 			 * back into the silent no-op this path exists to remove, so the filter
 			 * admits an explicit null and refuses only a value that is neither.
+			 *
+			 * `surface` is the console's half of the same click (design 12.3): one
+			 * additive optional field on this payload, so an older renderer opens the
+			 * conversation exactly as before and a newer one also claims the right slot
+			 * for the console pane and selects that surface. It is passed through only
+			 * when it is a string - absent and malformed are the same thing here, and the
+			 * caller's second argument is optional for exactly that reason.
 			 */
-			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
-				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
-				else if (payload?.sessionId === null) callback(null);
+			const handler = (
+				_event: unknown,
+				payload: { sessionId?: unknown; surface?: unknown },
+			) => {
+				const surface =
+					typeof payload?.surface === "string" ? payload.surface : undefined;
+				if (typeof payload?.sessionId === "string")
+					callback(payload.sessionId, surface);
+				else if (payload?.sessionId === null) callback(null, surface);
 			};
 			ipcRenderer.on("desktop-open-conversation", handler);
 			return () => {
@@ -864,6 +879,10 @@ const api = {
 		 * the value main returned", so the pane re-reads `state()` and applies that.
 		 * A listener therefore acts by re-reading, never by trusting a number that
 		 * arrived on a push channel.
+		 *
+		 * It is also what the pane's blip rides (design 12.2): a completion arrives as
+		 * this signal plus the listing it is re-read from, rather than as a second
+		 * description of the same event on a channel of its own.
 		 */
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
@@ -961,6 +980,53 @@ const api = {
 			};
 		},
 	},
+	/*
+	 * The capture view's bridge (design 13.2/13.3).
+	 *
+	 * SEPARATE FROM `console` ON PURPOSE, and the reason is authority rather than
+	 * tidiness: every console op authorizes the app's OWN window's main frame, so a
+	 * renderer that exists to be photographed could not call one even if the
+	 * namespace were shared. What this carries is the whole of a reconstruction -
+	 * a measurement request, the record's bytes, and two answers - and nothing that
+	 * could read, type into or resize a surface.
+	 */
+	desktopCapture: {
+		onMeasure: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on("console-capture-measure", handler);
+			return () => {
+				ipcRenderer.removeListener("console-capture-measure", handler);
+			};
+		},
+		measured: (report: {
+			cellWidth: number;
+			cellHeight: number;
+		}): void => {
+			ipcRenderer.send("console-capture-measured", report);
+		},
+		onFeed: (
+			callback: (payload: {
+				nonce?: number;
+				surface?: string;
+				cols: number;
+				rows: number;
+				theme: string | null;
+				bytes_base64: string;
+			}) => void,
+		): (() => void) => {
+			// The payload is main's, and this channel's only sender is main; the
+			// callback validates what it needs before using any of it.
+			const handler = (_event: IpcRendererEvent, payload: unknown) =>
+				callback(payload as Parameters<typeof callback>[0]);
+			ipcRenderer.on("console-capture-feed", handler);
+			return () => {
+				ipcRenderer.removeListener("console-capture-feed", handler);
+			};
+		},
+		settled: (report: { renderer: string }): void => {
+			ipcRenderer.send("console-capture-settled", report);
+		},
+	},
 
 	/** Opens a native dialog to select a directory */
 	selectDirectory: (): Promise<string | undefined> =>
@@ -997,7 +1063,31 @@ const api = {
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {
-			const validChannels = ["cancel-installation"];
+			/*
+			 * The installer window's OUTBOUND channels, and the reason this list is
+			 * explicit rather than a prefix match: these three are the whole surface the
+			 * setup window can reach, so a channel added here is a capability added to a
+			 * first-run screen. `installation-progress-replay` asks the main process for
+			 * the phase this window was too young to hear (on macOS the managed runtime
+			 * is prepared before the window exists); `retry-installation` restarts a
+			 * failed attempt in place. Dropping either from this list is silent - the
+			 * window keeps painting its last state and nothing in the renderer errors -
+			 * which is why the parser test that pins the contract also pins this list.
+			 */
+			/*
+			 * Spelled as literals rather than imported from
+			 * `src/shared/install-progress.ts`, and that is deliberate: the preload is a
+			 * SEPARATE BUNDLE from the renderer, so importing the contract would put a
+			 * second copy of it in the preload's graph for four strings - and this file
+			 * is the boundary, so the values it accepts should be readable here rather
+			 * than assembled. The list is pinned against the contract's own constants by
+			 * a test instead, which fails on drift without coupling the two bundles.
+			 */
+			const validChannels = [
+				"cancel-installation",
+				"retry-installation",
+				"installation-progress-replay",
+			];
 			if (validChannels.includes(channel)) {
 				ipcRenderer.send(channel, ...args);
 			}

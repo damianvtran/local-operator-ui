@@ -231,13 +231,24 @@ const {
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
+	hostTranslatesExecutable,
 	mainExecutablePath,
 	profileAuthorizationCheck,
 	profileAuthorizes,
 	runChecks,
+	seedVersionCheck,
+	SPAWN_PROBE_TIMEOUT_MS,
+	SPAWN_PROBE_TRANSLATED_TIMEOUT_MS,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+// The Mach-O cpu types the gate's translation rule compares against, imported
+// rather than spelled out here so the fixture and the rule cannot drift apart.
+const { MACH_O_CPUTYPE } = await import("./prune-python-seed.mjs");
+// The declared interpreter and the seed namespace the fixture below has to build:
+// imported rather than spelled, so a version bump cannot leave this test asserting
+// a tree the app itself would refuse.
+const { LAYOUT, PYTHON_VERSION } = await import("./bundled-runtime-layout.mjs");
 // The policy module the GATE reads, imported beside the bundle the APP reads from
 // (`install` above): the two implementations of one rule are only allowed to stay
 // separate because a test asserts they agree, and that test needs both in scope.
@@ -651,14 +662,16 @@ test("the heal knows the namespace the interpreter actually ships in", async () 
 	const bundle = "/Applications/Local Operator.app";
 	const layout = JSON.parse(
 		readFileSync(
-			join(process.cwd(), "src/shared/bundled-python-layout.json"),
+			join(process.cwd(), "src/shared/bundled-runtime-layout.json"),
 			"utf8",
 		),
 	);
 	for (const name of [
 		"python",
 		"python_aarch64",
-		...layout.architectures.map((arch) => `${layout.seedNamespace}/${arch}`),
+		...layout.architectures.map(
+			(arch) => `${layout.python.seedNamespace}/${arch}`,
+		),
 	]) {
 		const path = `${bundle}/Contents/Resources/${name}/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc`;
 		assert.equal(isPythonBytecodePath(bundle, path), true, path);
@@ -3922,6 +3935,15 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			// Honoured only by executing the binary — amfid's refusal is invisible to
 			// codesign, spctl and stapler alike (both measured on the real bundle).
 			"app-spawn",
+			// The question `app-spawn` does NOT ask, and the one that bricked the
+			// 0.30.10 x64 DMG: the OS execs the launcher, and then the app cannot
+			// LOAD. `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the
+			// string it is given and never requires `app.asar`, so arm64 bytecode in
+			// an x64 bundle passed every check above it (measured on the shipped
+			// artifact: codesign, spctl, stapler and the spawn probe all green on a
+			// bundle that threw cachedDataRejected at every launch). This row loads
+			// the payload the others skip, under the bundle's own Electron.
+			"app-bytecode-loadable",
 			// The cause behind it — a restricted entitlement with no profile to
 			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
 			// which walks every executable in the bundle rather than reading the
@@ -3976,6 +3998,67 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	);
 });
 
+test("the bytecode gate asks the bundle's own Electron and refuses 'could not tell'", () => {
+	const app = gateFixtureBundle("lo-gate-bytecode-");
+	const launcher = join(app, "Contents", "MacOS", "Local Operator");
+	const check = artifactChecks({ appPath: app, dmgPath: null }).find(
+		(row) => row.id === "app-bytecode-loadable",
+	);
+
+	// THE PROBE MUST RUN UNDER THE ARTIFACT, NOT UNDER THE RUNNER'S NODE. That is
+	// the entire mechanism: V8 accepts cached data only from its own
+	// architecture, so only the x64 bundle's own Electron can answer for the x64
+	// bundle while an arm64 runner holds the file. A probe spawned with
+	// `process.execPath` would answer for the RUNNER and pass the broken artifact.
+	assert.equal(check.command, launcher);
+	assert.deepEqual(check.env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(check.args.length, 2);
+	assert.match(check.args[0], /scripts\/bytecode-accepts-probe\.cjs$/);
+	// Absolute, so the gate is invocable from any cwd (CI runs it through
+	// require-report.sh from the repo root; a human runs it from anywhere).
+	assert.ok(isAbsolute(check.args[0]));
+	assert.ok(existsSync(check.args[0]));
+	assert.equal(
+		check.args[1],
+		join(app, "Contents/Resources/app.asar/out/main/index.jsc"),
+	);
+
+	// A translated child gets the longer bound here for the same reason
+	// `app-spawn` does: on an arm64 runner the x64 probe pays Rosetta's one-time
+	// cost, and `timedOut` must not report the translator as a broken bundle.
+	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
+	const translated = artifactChecks({
+		appPath: app,
+		dmgPath: null,
+		hostArch: "arm64",
+	}).find((row) => row.id === "app-bytecode-loadable");
+	assert.equal(translated.timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+
+	// ACCEPTED is the only pass. The three refusal shapes are each red, and the
+	// third one is the point: exit 2 is the probe saying it COULD NOT TELL
+	// (unreadable .jsc, unparseable header), which must never ship as a pass.
+	assert.equal(
+		check.expect({ status: 0, signal: null, timedOut: false }),
+		true,
+	);
+	assert.equal(
+		check.expect({ status: 1, signal: null, timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: 2, signal: null, timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: null, signal: "SIGKILL", timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: 0, signal: null, timedOut: true }),
+		false,
+	);
+});
+
 test("an unsigned or unnotarized disk image fails the release assertions", () => {
 	// The shape of the shipped 0.17.0 release: the app inside is signed,
 	// notarized and stapled, and the image itself is none of those.
@@ -3989,6 +4072,17 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 				signal: null,
 				timedOut: false,
 				stdout: "",
+				stderr: "",
+			};
+		}
+		// So does the bytecode probe, which runs under that same executable. This
+		// release's fault is its disk image, so the bundle loads its own bytecode.
+		if (joined.includes("bytecode-accepts-probe.cjs")) {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "ACCEPTED",
 				stderr: "",
 			};
 		}
@@ -4138,6 +4232,23 @@ function writeMachO(path) {
 	chmodSync(path, 0o755);
 }
 
+/** A 16-byte thin Mach-O header carrying a chosen `cputype` - magic, cputype,
+ * cpusubtype, filetype - which is the whole of what the gate's translation rule
+ * reads.
+ *
+ * The 8-byte `writeMachO` above is deliberately left as it is rather than widened:
+ * it answers no architecture at all, and one of the cases below is that a launcher
+ * whose header cannot be read keeps the tight bound instead of buying patience. */
+function writeThinMachO(path, cpuType) {
+	const header = Buffer.alloc(16);
+	header.writeUInt32LE(0xfeedfacf, 0); // cffaedfe: 64-bit, little-endian
+	header.writeUInt32LE(cpuType, 4);
+	header.writeUInt32LE(0, 8); // cpusubtype
+	header.writeUInt32LE(2, 12); // MH_EXECUTE
+	writeFileSync(path, header);
+	chmodSync(path, 0o755);
+}
+
 /**
  * A `run` that answers for a bundle everything except the spawn probe says yes
  * to, with the signature's entitlements supplied per case.
@@ -4169,6 +4280,19 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 						stderr: "",
 					}
 				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+		}
+		// The bytecode probe runs under the same executable as the spawn probe.
+		// These fixtures model ENTITLEMENT and spawn faults, where the bundle's
+		// bytecode matches its own runtime, so it answers ACCEPTED — keeping each
+		// test's failure set the one thing it is about.
+		if (joined.includes("bytecode-accepts-probe.cjs")) {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "ACCEPTED",
+				stderr: "",
+			};
 		}
 		if (command.endsWith("/security")) {
 			return {
@@ -4351,6 +4475,134 @@ test("the spawn probe owns its env, whatever signature the runner has", () => {
 	);
 	// And it is restored afterwards, so no later check inherits node mode.
 	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+});
+
+test("the spawn bound covers a translation, and only where there IS one", () => {
+	/*
+	 * The bound is the one number in this gate the HOST decides rather than the
+	 * artifact, and the two things it can catch have to stay distinguishable: a
+	 * child this host must translate, which answers in a translation's time
+	 * (measured on an x64 launcher of a shipped bundle on an arm64 host: 24.7 s of
+	 * wall clock against 0.5 s of user time on the first exec, 1.2 s on the
+	 * second), versus a spawn the OS neither completes nor refuses.
+	 *
+	 * v0.30.9 lost both of its publish attempts to the first being read as the
+	 * second: run 35701146672 reported 2 of its 6 `app-spawn` checks red, both on
+	 * x64 bundles, while the arm64 bundles answered the same question in 4-6 s and
+	 * the same launcher bytes passed later in the same run.
+	 */
+	const dir = tempDir("lo-translate-");
+	const x64 = join(dir, "launcher-x64");
+	writeThinMachO(x64, MACH_O_CPUTYPE.X86_64);
+	const arm64 = join(dir, "launcher-arm64");
+	writeThinMachO(arm64, MACH_O_CPUTYPE.ARM64);
+
+	assert.equal(
+		hostTranslatesExecutable(x64, "arm64"),
+		true,
+		"an x86_64 child on an arm64 host is translated",
+	);
+	assert.equal(
+		hostTranslatesExecutable(x64, "x64"),
+		false,
+		"the same child on an Intel host runs natively and keeps the tight bound",
+	);
+	assert.equal(
+		hostTranslatesExecutable(arm64, "arm64"),
+		false,
+		"the artifact an Apple-Silicon user installs is never translated",
+	);
+	// An arm64 child on an x64 host is REFUSED rather than translated, which is
+	// exactly the shape this probe exists to catch: it must not get more patience.
+	assert.equal(hostTranslatesExecutable(arm64, "x64"), false);
+
+	// "Could not tell" keeps the tight bound, in both shapes it arrives in: a
+	// header that carries no architecture, and a path that cannot be opened.
+	const noHeader = join(dir, "unreadable");
+	writeMachO(noHeader);
+	assert.equal(hostTranslatesExecutable(noHeader, "arm64"), false);
+	assert.equal(hostTranslatesExecutable(join(dir, "absent"), "arm64"), false);
+});
+
+test("the artifact gate hands a translated launcher the longer bound", () => {
+	const app = gateFixtureBundle("lo-gate-bound-");
+	const launcher = join(app, "Contents", "MacOS", "Local Operator");
+	const row = (hostArch) =>
+		artifactChecks({ appPath: app, dmgPath: null, hostArch }).find(
+			(check) => check.id === "app-spawn",
+		);
+
+	// The fixture's launcher answers no architecture, so it keeps the bound the
+	// gate shipped with until the header says otherwise.
+	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
+	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+	assert.equal(row("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+
+	// And the row is otherwise the probe it was: same id, same command, same one
+	// switch that keeps it out of a real launch, same predicate.
+	assert.equal(row("arm64").command, launcher);
+	assert.equal(row("arm64").target, launcher);
+	assert.deepEqual(row("arm64").args, ["-p", "process.exit(0)"]);
+	assert.deepEqual(row("arm64").env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(
+		row("arm64").expect({ status: null, signal: "SIGKILL", timedOut: false }),
+		false,
+	);
+	assert.equal(
+		row("arm64").expect({ status: 0, signal: null, timedOut: true }),
+		false,
+	);
+	assert.equal(
+		row("arm64").expect({ status: 0, signal: null, timedOut: false }),
+		true,
+	);
+});
+
+test("the seed's version ask is bounded by the same rule as the probe", () => {
+	/*
+	 * `app-seed-python-version` is the only OTHER check that execs a child out of
+	 * the bundle, and it carried no bound at all - it passed because the interpreter
+	 * happened to answer quickly, which is the blindness `app-spawn` exists to
+	 * remove, one check to the right (review round 1, M1). The fixture is a seed
+	 * whose interpreter header says x86_64.
+	 */
+	const app = gateFixtureBundle("lo-gate-seed-ask-");
+	const bindir = join(
+		app,
+		"Contents",
+		"Resources",
+		LAYOUT.python.seedNamespace,
+		"arm64",
+		"bin",
+	);
+	mkdirSync(bindir, { recursive: true });
+	writeThinMachO(join(bindir, "python3"), MACH_O_CPUTYPE.X86_64);
+
+	const ask = (hostArch) => {
+		const seen = [];
+		const row = seedVersionCheck(app, {
+			hostArch,
+			run: (command, args, input, env, timeoutMs) => {
+				void input;
+				void env;
+				seen.push({ command, args, timeoutMs });
+				return {
+					status: 0,
+					stdout: `Python ${PYTHON_VERSION}\n`,
+					stderr: "",
+				};
+			},
+		});
+		assert.equal(row.passed, true, `the ask must pass: ${row.output}`);
+		return seen[0];
+	};
+
+	// An arm64 host translates the x86_64 interpreter it asks; an Intel host runs it
+	// natively. The ask itself is the one the check documents.
+	assert.equal(ask("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+	assert.equal(ask("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+	assert.deepEqual(ask("arm64").args, ["-I", "-B", "--version"]);
 });
 
 test("the gate's own results carry the bundle-walk rows", () => {

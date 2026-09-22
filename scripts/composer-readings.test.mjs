@@ -210,7 +210,7 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	const effort = readingClasses(html, "Reasoning effort:");
 	assert.match(
 		effort.label,
-		/^Reasoning effort: high\. Set once the conversation starts\.$/,
+		/^Reasoning effort: High\. Set once the conversation starts\.$/,
 	);
 
 	// Context: an empty ring, and a sentence rather than a number. A percentage,
@@ -227,7 +227,7 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	// tooltip's content only when it opens, deliberately — see `Tooltip`).
 	assert.match(
 		html,
-		/aria-label="Reasoning effort: high\. Set once the conversation starts\."/,
+		/aria-label="Reasoning effort: High\. Set once the conversation starts\."/,
 	);
 });
 
@@ -352,7 +352,7 @@ test("an inert reading states its reason instead of naming a control it cannot o
 	// rendering one.
 	assert.match(
 		inert,
-		/aria-label="Reasoning effort: high\. Slash commands are off/,
+		/aria-label="Reasoning effort: High\. Slash commands are off/,
 	);
 	assert.match(text(inert), /3\.2%\/400k/);
 });
@@ -417,7 +417,7 @@ test("a draft whose backend selects exposes model and effort as CONTROLS, in the
 	// earlier, with the same U2 scope clause after it.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Reasoning effort: high\. Change it\. It applies to this conversation\."/,
+		/<button type="button" aria-label="Reasoning effort: High\. Change it\. It applies to this conversation\."/,
 	);
 
 	// The sentences a draft may no longer say where the chip CAN open (R21/R8 of
@@ -446,7 +446,7 @@ test("the draft keeps its fact-plus-reason copy wherever a chip cannot open", ()
 	);
 	assert.match(
 		html,
-		/<button type="button" aria-disabled="true" aria-label="Reasoning effort: high\. Set once the conversation starts\."/,
+		/<button type="button" aria-disabled="true" aria-label="Reasoning effort: High\. Set once the conversation starts\."/,
 	);
 	assert.doesNotMatch(text(html), /Click to choose a different model/);
 	assert.doesNotMatch(text(html), /Change it\./);

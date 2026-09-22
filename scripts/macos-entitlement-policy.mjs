@@ -15,7 +15,7 @@
  * that rule — the release gate (`scripts/verify-macos-artifacts.mjs`) and the
  * app's own update pre-flight (`src/main/update-install.ts`) — and two copies of
  * a security rule is how the heal and the gate drifted apart before (see
- * `scripts/bundled-python-layout.mjs`, which exists for the same reason).
+ * `scripts/bundled-runtime-layout.mjs`, which exists for the same reason).
  *
  * WHY A LIST OF UNRESTRICTED SPELLINGS RATHER THAN OF RESTRICTED ONES. TN3125
  * names the *unrestricted* families (the App Sandbox, the hardened runtime,
