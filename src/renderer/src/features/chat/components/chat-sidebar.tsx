@@ -1390,6 +1390,12 @@ export function ChatSidebar({
 		(s) => s.clearArchiveFailure,
 	);
 	const setArchiveUndo = useCanonicalSessionsStore((s) => s.setArchiveUndo);
+	/*
+	 * WHAT THE LANE LAST DREW, and its stamp: the clearing rule below needs BOTH - which message
+	 * the reader was last looking at, and whether the one that replaces it outranks it - because
+	 * clearing on the ordering alone removed a refusal while its own card was still up.
+	 */
+	const laneDrawnRef = useRef<{ kind: "offer" | "failure"; at: number } | null>(null);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -3570,9 +3576,35 @@ export function ChatSidebar({
 		 * the refusal is the message that stands - and the clause below therefore deletes only what
 		 * the rule ranked STRICTLY older.
 		 */
-		if (newest === "offer" && archiveFailure !== null && archiveUndo !== null && archiveUndo.at > archiveFailure.at)
-			clearArchiveFailure();
-		if (newest === "failure" && archiveUndo !== null) setArchiveUndo(null);
+		/*
+		 * AND THE MESSAGE A NEWER ONE SUPERSEDED IS CLEARED ONLY WHEN THAT NEWER ONE WAS ACTUALLY
+		 * DRAWN OVER IT, AND IS STRICTLY NEWER. The two clauses this replaces cleared on the
+		 * ORDERING alone, and the walk's finishing sequence proved what that costs: the refusal
+		 * for a press the reader had just made was removed from the store while its OWN CARD was
+		 * still on screen (measured: the store reads `"archiveFailure":null` with the row's press
+		 * counted at `archiveAttempts:36`, while the step before it passes asserting the lane holds
+		 * that refusal with a hit-testable Retry), so the clock re-armed from what the store did
+		 * hold - an offer, hence an eight-second ceiling rather than the refusal's ten - the card
+		 * was dismissed, and the Retry had nothing left to be: the walk's last request never
+		 * reached the wire and the row stayed archived.
+		 *
+		 * A sonner entry persists until it is dismissed, so a value and its card CAN disagree; the
+		 * rule that keeps them together is the one the drawn message itself defines. `drawnRef`
+		 * records what was last drawn and its stamp, and the superseded value is cleared only when
+		 * a message of the OTHER kind is drawn with a strictly higher stamp - i.e. only when the
+		 * older message's turn in the lane is genuinely over. U10's defect is exactly that case (a
+		 * refusal for A drawn, then B's offer drawn strictly later: the refusal goes, and it is not
+		 * re-printed when the offer retires), while a refusal that arrives AFTER an offer - the
+		 * reader's own press, answered - is never the loser of a comparison it wins.
+		 */
+		const drawnAt =
+			newest === "offer" ? (archiveUndo?.at ?? 0) : (archiveFailure?.at ?? 0);
+		const drawnBefore = laneDrawnRef.current;
+		laneDrawnRef.current = { kind: newest, at: drawnAt };
+		if (drawnBefore !== null && drawnBefore.kind !== newest && drawnAt > drawnBefore.at) {
+			if (newest === "offer") clearArchiveFailure();
+			else setArchiveUndo(null);
+		}
 		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";
 			showWarningToast(
