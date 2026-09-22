@@ -15,9 +15,46 @@ import {
 } from "node:path";
 import { promisify } from "node:util";
 import BUNDLED_RUNTIME_LAYOUT from "../../shared/bundled-runtime-layout.json";
+/*
+ * The phase vocabulary, read from `src/shared` - the tree both builds compile.
+ * This module EMITS the milestones and the setup window RENDERS them, so the
+ * contract cannot live in either half: `src/main` is not on the renderer's
+ * program and `src/renderer` is not on this one.
+ */
+import type { InstallPhase } from "../../shared/install-progress";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 
 const execute = promisify(execFile);
+
+/*
+ * The install-phase sink, and why it is a module-level registration rather than
+ * a parameter on `prepareManagedPython`.
+ *
+ * The phases this module owns are not all at its entry point: `python` belongs
+ * to `prepareRuntime`, which is reached from `publishGeneration` on both the
+ * prepare and the update path, and `verify` belongs to `smokeEnvironment`, which
+ * only `publishGeneration` calls. Threading a reporter down through both would
+ * put a UI concern into the signature of every function between them; a sink
+ * registered once by the one process that has a window to paint leaves them
+ * alone.
+ *
+ * The DEFAULT IS NOTHING, and that is load-bearing: the app-owned update path
+ * calls `updateManagedPython` with no window to tell, and a marker printed there
+ * would be noise in a log rather than progress on a screen. With no sink
+ * registered, `reportInstallPhase` is a no-op.
+ */
+let installPhaseSink: ((phase: InstallPhase) => void) | null = null;
+
+/** Give the install phases somewhere to go. Every caller may register. */
+export function setInstallPhaseSink(
+	sink: ((phase: InstallPhase) => void) | null,
+): void {
+	installPhaseSink = sink;
+}
+
+function reportInstallPhase(phase: InstallPhase): void {
+	installPhaseSink?.(phase);
+}
 
 /*
  * Every pattern this module matches with lives here rather than inline: they run
@@ -392,6 +429,11 @@ async function prepareRuntime(
 	const id = runtimeIdentity(seed, options.arch);
 	const existing = usableRuntimeGeneration(options, id);
 	if (existing) return { runtime: existing, id };
+	// Only when the copy is actually about to happen: a machine with a reusable
+	// generation is not "preparing Python", and a phase announced for work that
+	// is skipped is the one kind of progress a user notices is untrue (they wait
+	// and then watch the step finish instantly, on every launch).
+	reportInstallPhase("python");
 	await verifyMachO(seed, manifest);
 	const root = runtimesRoot(options);
 	await mkdir(root, { recursive: true, mode: 0o700 });
@@ -1005,6 +1047,14 @@ async function publishGeneration(
 			"Backend preparation did not complete. Your previous environment and data were preserved.",
 		);
 	const env = withPythonBytecodeCache({ ...process.env }, options.support);
+	/*
+	 * `verify`, reported before the probe rather than after it, because a phase
+	 * marker is a transition: this one says "the environment is built and what
+	 * happens next is the check", and the check is the step the user is then
+	 * waiting on. Announcing it afterwards would paint a step as in progress for
+	 * the exact interval nothing is happening in it.
+	 */
+	reportInstallPhase("verify");
 	const backendVersion = await smokeEnvironment(venv, env);
 	const selection: ManagedSelection = {
 		format: FORMAT,

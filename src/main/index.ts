@@ -2527,7 +2527,9 @@ app
 			// If local-operator doesn't exist globally and our backend is not installed
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
 				// Install backend
-				const installSuccess = await backendInstaller.install();
+				const installSuccess = await backendInstaller.install(
+					windowLaunch.show,
+				);
 				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
 					logger.error(
