@@ -65,6 +65,8 @@ import {
 	type ArgumentRow,
 	type ArgumentSource,
 	argumentRows,
+	isRendererLocalSource,
+	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
 	activeRowRuns,
@@ -330,9 +332,11 @@ export type SlashCompletionState = {
  * The entity-backed sources reuse the picker dialogs' own `useEntities` query —
  * same key, same path mapper — so the composer and the dialog cannot end up
  * showing different rungs for the same command (the round-1 U3 rule the
- * session-status strip's effort chip already follows). `/theme` is the one
- * renderer-local source: it reads the same `@shared/themes` table its dialog
- * reads, so there is no second theme vocabulary.
+ * session-status strip's effort chip already follows). The renderer-local
+ * sources (`RENDERER_LOCAL_SOURCES`) ask the backend for nothing: `/theme` reads
+ * the same `@shared/themes` table its dialog reads, and `title-refresh` is a
+ * fixed spelling list. Both are answered from a local read and reported as
+ * loaded, because "nothing to ask" must not render as "not reported yet".
  */
 function useArgumentRows(
 	source: ArgumentSource | undefined,
@@ -343,13 +347,14 @@ function useArgumentRows(
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	// Hooks cannot be called conditionally, so the entity query always runs and
-	// is merely DISABLED for the renderer-local source.
-	const entitySource = source && source !== "theme" ? source : "model";
+	// is merely DISABLED for a renderer-local source.
+	const local = isRendererLocalSource(source);
+	const entitySource = source && !local ? source : "model";
 	const entities = useEntities(
 		sessionId ?? "",
 		entitySource,
 		undefined,
-		enabled && Boolean(source) && source !== "theme" && Boolean(sessionId),
+		enabled && Boolean(source) && !local && Boolean(sessionId),
 	);
 	const localThemes = useMemo(
 		() =>
@@ -386,6 +391,21 @@ function useArgumentRows(
 		if (source === "theme") {
 			return {
 				rows: argumentRows("theme", localThemes, current),
+				loading: false,
+				error: null,
+				needsSession: false,
+			};
+		}
+		if (source === "title-refresh") {
+			/*
+			 * No entities and no `current`: this source's rows are a fixed vocabulary
+			 * (`TITLE_REFRESH_ROWS`), so there is nothing to load and nothing that
+			 * could be selected. `loading: false` is load-bearing — the empty state
+			 * prints "Loading…" ahead of every other cause, so a list that is not
+			 * waiting on anything must not say it is.
+			 */
+			return {
+				rows: argumentRows("title-refresh", [], null),
 				loading: false,
 				error: null,
 				needsSession: false,
@@ -745,9 +765,41 @@ export function useSlashCompletion({
 				? "command"
 				: null;
 
-	const matches = phase === "argument" ? argumentMatches : commandMatches;
-	const eligible = enabled && phase !== null;
-	const visible = eligible && (matches.length > 0 || phase === "argument");
+	/*
+	 * A FLAG list does not follow the catalogue's unmatched rule.
+	 *
+	 * `purePhase === "argument"` is true the moment the word-terminating space is
+	 * typed, and for a catalogue source that is exactly right: the empty argument
+	 * OPENS the list because "show me everything" is a sensible thing to ask of a
+	 * set of things, and an unmatched query still shows the honest empty sentence.
+	 * A flag list has one row, so a list drawn without the user having named a flag
+	 * is a list that has already chosen — and Enter's single-survivor arm would then
+	 * complete `/rename ` to `--refresh`, making the naming FORM (the bare
+	 * command's presentation) unreachable by the gesture that opens it. Measured on
+	 * the real component before this rule existed.
+	 *
+	 * The condition is TWO clauses and both are load-bearing, which is why it is
+	 * not written as `matches.length` alone: `matchChoices` answers the EMPTY query
+	 * with the whole list (that is how a catalogue list opens), so a flag list would
+	 * still be non-empty at the space. A flag list therefore draws only when the user
+	 * has typed something AND it matches a row — which also keeps a TITLE out of the
+	 * list (`/rename quarterly review` names the conversation; nothing should be
+	 * drawn over the sentence). Every other source keeps its behaviour exactly.
+	 */
+	const flagListQuery = pyTrim(argumentContext?.value ?? "");
+	const phaseWithFlagList =
+		phase === "argument" &&
+		!showsUnmatchedList(inline?.source) &&
+		(flagListQuery === "" ||
+			matchChoices(flagListQuery, argumentList.rows).length === 0)
+			? null
+			: phase;
+
+	const matches =
+		phaseWithFlagList === "argument" ? argumentMatches : commandMatches;
+	const eligible = enabled && phaseWithFlagList !== null;
+	const visible =
+		eligible && (matches.length > 0 || phaseWithFlagList === "argument");
 
 	const [state, setState] = useState({ open: false, active: 0 });
 	const [chosenByHand, setChosenByHand] = useState(false);
@@ -770,13 +822,13 @@ export function useSlashCompletion({
 	 * that stays inside one phase does not (`_sync_picker_if_phase_changed`).
 	 */
 	const queryText =
-		phase === "argument"
+		phaseWithFlagList === "argument"
 			? (argumentContext?.value ?? "")
 			: (commandContext?.query ?? "");
 	const phaseKey =
-		phase === null
+		phaseWithFlagList === null
 			? null
-			: phase === "argument"
+			: phaseWithFlagList === "argument"
 				? `argument:${argumentContext?.tokenStart ?? -1}:${queryText}`
 				: `command:${commandContext?.start ?? -1}:${queryText}`;
 	const lastPhaseKey = useRef<string | null>(null);
@@ -840,7 +892,7 @@ export function useSlashCompletion({
 	}, []);
 
 	return {
-		phase,
+		phase: phaseWithFlagList,
 		open: state.open && visible,
 		active: state.active,
 		matches,

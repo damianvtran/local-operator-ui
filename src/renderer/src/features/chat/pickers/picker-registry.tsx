@@ -204,7 +204,32 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"sessions.reload": { kind: "picker", component: ReloadPicker },
 	"sessions.resume": { kind: "picker", component: ResumePicker },
 	"sessions.stop": { kind: "picker", component: StopPicker },
-	"session.rename": { kind: "picker", component: RenamePicker },
+	"session.rename": {
+		kind: "picker",
+		component: RenamePicker,
+		/*
+		 * `/rename` takes free text, so its list cannot be a chooser of titles —
+		 * the app does not know what a conversation should be called. It offers the
+		 * ONE thing a user could not guess: the `--refresh` flag, in a static
+		 * spelling list (`slash-argument-rows.ts`'s `TITLE_REFRESH_ROWS`).
+		 *
+		 * `runs: true`, and this is the second half of the operator's report. The
+		 * row's CLICK must perform the refresh rather than autofill the composer
+		 * and wait for Enter, which is what `runs: true` buys: an argument row's
+		 * click runs when its list says `runs` (`message-input.tsx`'s
+		 * `handleSlashPick`), so the flag reaches the dispatcher as the command's
+		 * argument in one gesture. It is NOT the `/theme` case (`runs: false`):
+		 * there a run opens a DIALOG the user still has to commit, while here the
+		 * run IS the outcome — nothing is left to confirm.
+		 *
+		 * The bare and titled forms are UNTOUCHED by this row. Bare `/rename` still
+		 * presents `RenamePicker` as a form (the dispatcher's `PRESENT_DIRECTLY`
+		 * path is keyed on an EMPTY args), and `/rename some title` still sets that
+		 * title. Only a pick of the flag row changes behaviour, because only there
+		 * is there something to run without a name.
+		 */
+		inline: { source: "title-refresh", nameThenMessage: false, runs: true },
+	},
 	"session.fork": { kind: "picker", component: ForkPicker },
 	/*
 	 * `/move`: the one destination that presents by focusing an EXISTING control.

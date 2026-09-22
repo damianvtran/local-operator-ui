@@ -260,12 +260,23 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 	 *
 	 * A stale id would not fail anywhere — it would render an empty list, which
 	 * is the failure mode this guard exists to make impossible.
+	 *
+	 * THE GUARD NAMES THE RENDERER-LOCAL SOURCES TOO, and that is the half that
+	 * had to be EXTENDED rather than deleted when `/rename`'s flag list landed.
+	 * The two halves answer different questions: the backend ids must equal the
+	 * route's set exactly (a sixth one would query a route that does not serve
+	 * it), while the renderer-local ids must equal the ones `argumentRows`
+	 * actually has a `case` for (an id declared with no case renders nothing, and
+	 * a case with no declared id is dead code) — and neither invariant is visible
+	 * from the other, so both literals are pinned here. `title-refresh` joins
+	 * `theme` in the second list, and the literal in each is the thing a future
+	 * author updates deliberately.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/chat/pickers/picker-registry.tsx",
 		"utf8",
 	);
-	const declared = [...source.matchAll(/source:\s*"([a-z]+)"/g)].map(
+	const declared = [...source.matchAll(/source:\s*"([a-z-]+)"/g)].map(
 		(match) => match[1],
 	);
 	assert.deepEqual([...new Set(declared)].sort(), [
@@ -275,14 +286,76 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 		"model",
 		"team",
 		"theme",
+		"title-refresh",
 	]);
-	// `theme` is the one renderer-local source; the other five are entity
-	// commands and must exactly equal the route's set.
-	assert.deepEqual(declared.filter((id) => id !== "theme").sort(), [
+	// The renderer-local half: exactly two, and they are the ones the row shaper
+	// has a case for. Read off `slash-argument-rows.ts` rather than restated, so
+	// the two files cannot drift into "declared but not shaped".
+	const rowSource = readFileSync(
+		"src/renderer/src/features/chat/components/slash-argument-rows.ts",
+		"utf8",
+	);
+	const localUnion =
+		/RendererArgumentSource = ([^;]+);/.exec(rowSource)?.[1] ?? "";
+	const localIds = [...localUnion.matchAll(/"([a-z-]+)"/g)]
+		.map((match) => match[1])
+		.sort();
+	assert.deepEqual(localIds, ["theme", "title-refresh"]);
+	// Every renderer-local id has a `case` in `argumentRows`, and every declared
+	// id is one of the two halves. Together these are the whole guard: a new
+	// source cannot be added without stating which half it is, and a half cannot
+	// be stated without the shaping existing.
+	for (const id of localIds) {
+		assert.match(
+			rowSource,
+			new RegExp(`case "${id}":`),
+			`argumentRows must shape the renderer-local source "${id}"`,
+		);
+	}
+	// The other five are entity commands and must exactly equal the route's set.
+	assert.deepEqual(declared.filter((id) => !localIds.includes(id)).sort(), [
 		"agent",
 		"approvals",
 		"effort",
 		"model",
 		"team",
 	]);
+});
+
+test("the /rename flag list is the one row the backend honours, aliased", () => {
+	/*
+	 * The row the operator's report is about, and its boundaries. `--refresh` is
+	 * the ONE row: the backend honours more spellings than any surface should
+	 * OFFER (`session/naming.py`'s `TITLE_REFRESH_FLAGS` / `TITLE_REFRESH_WORDS`
+	 * carry `--auto`, `--update`, `--retitle` and their bare forms as a
+	 * TOLERANCE, so a near-miss is never stored as a title), and the help text
+	 * advertises exactly one of them (`slash_commands.py`:
+	 * `"Name this conversation, or /title --refresh"`). A test rather than a
+	 * comment because the list is a literal and a literal grows by accident.
+	 *
+	 * The alias is pinned with the row because the alias is the half a reviewer
+	 * would "tidy away": it looks redundant next to a name that `refresh`
+	 * subsequence-matches, and its whole job is RANK (`matchChoices` scores on
+	 * name and aliases, displays `name`).
+	 */
+	const rows = argumentRows("title-refresh", [], null);
+	assert.equal(rows.length, 1);
+	assert.deepEqual(rows[0], {
+		value: "--refresh",
+		name: "--refresh",
+		description: "Re-read the conversation and name it again",
+		detail: "resumes auto-naming",
+		aliases: ["refresh"],
+	});
+	// The flag form is what a pick writes AND what a run sends, so a row whose
+	// `value` drifted from its `name` would run a different spelling than it
+	// shows. They are equal here by construction and pinned so they stay so.
+	assert.equal(rows[0].value, rows[0].name);
+	// The inputs are ignored, and that is the contract: no route serves this list,
+	// so a caller that passed entities by mistake must get the same rows rather
+	// than a phantom list.
+	assert.deepEqual(argumentRows("title-refresh", [{ value: "x" }], "x"), rows);
+	// A copy, not the module constant: a caller that mutated a returned row must
+	// not corrupt the next caller's list.
+	assert.notEqual(argumentRows("title-refresh", [], null), rows);
 });

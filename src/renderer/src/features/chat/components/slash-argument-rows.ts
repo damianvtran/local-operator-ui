@@ -25,6 +25,25 @@ export type ArgumentRow = {
 	description?: string;
 	/** Trailing machine-voice detail: "128k · $3/15", "role", "usage-based". */
 	detail?: string;
+	/**
+	 * Spellings that FIND this row without changing what it writes.
+	 *
+	 * The TUI's `ArgumentChoice.aliases`, and the reason it exists there is the
+	 * whole reason it exists here: `matchChoices` scores against name AND aliases
+	 * but always DISPLAYS `name` (`slash-rank.ts`), so an alias buys RANK and not
+	 * reachability. For `/rename` that is the difference between a user who types
+	 * the bare word `refresh` seeing an exact-1000 hit and one who sees the row
+	 * rank as a near-miss against its own flag spelling. It never writes the
+	 * alias: `completionFor` writes `value`, and `rename --refresh` is a refresh
+	 * on the backend while `rename refresh` happens to be one too — but the row's
+	 * job is to teach the spelling the help text advertises.
+	 *
+	 * Optional, and omitted on every other row on purpose: this file shapes rows
+	 * from backend payloads that carry no aliases, and inventing an empty array
+	 * for them would be a fact about the source the source does not state (round 1
+	 * NIT-2's rule about the two source halves, one field over).
+	 */
+	aliases?: readonly string[];
 	/** Paints `detail` in the danger tint. */
 	alert?: boolean;
 	current?: boolean;
@@ -41,9 +60,21 @@ export type ArgumentRow = {
  * `desktop_catalogues.py:262-305` by `scripts/slash-row-format.test.mjs` — the
  * route answers exactly `model`, `effort`, `approvals`, `team` and `agent`, and
  * a stale id would silently render an empty list rather than fail.
- * `RendererArgumentSource` is the one source with no backend route: `theme` is
- * filled from the same `@shared/themes` table `/theme`'s dialog reads, so there
- * is no second theme vocabulary.
+ *
+ * `RendererArgumentSource` is the half with no backend route, and it now holds
+ * two sources that are the same KIND of thing for two different reasons:
+ *
+ *   - `theme` is filled from the same `@shared/themes` table `/theme`'s dialog
+ *     reads, so there is no second theme vocabulary.
+ *   - `title-refresh` is a STATIC list of flag spellings (`TITLE_REFRESH_ROWS`)
+ *     rather than anything derived from a payload. It exists because `/rename`
+ *     takes free text, and free text cannot be offered from a list — the app
+ *     does not know what a conversation should be called — so the list's whole
+ *     job is to teach the ONE non-typing thing the command accepts. The
+ *     backend's `commands.entities` route has no row for it and never will (an
+ *     entity list is a set of things to choose BETWEEN; a flag vocabulary is
+ *     not), which is exactly why this is a renderer source and not a sixth
+ *     backend id.
  */
 export type BackendArgumentSource =
 	| "model"
@@ -51,8 +82,82 @@ export type BackendArgumentSource =
 	| "approvals"
 	| "team"
 	| "agent";
-export type RendererArgumentSource = "theme";
+export type RendererArgumentSource = "theme" | "title-refresh";
 export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
+
+/**
+ * The sources that answer WITHOUT a session and WITHOUT a backend round trip.
+ *
+ * One set rather than a pair of `source === "theme"` comparisons in the hook that
+ * fills the rows (`slash-commands.tsx`): that comparison is what decided both
+ * whether to run the entity query at all and which empty state to print, and a
+ * second renderer-local source added without touching both would query the
+ * backend for a list it does not serve and then report "not reported yet" about
+ * a list nothing was asked to report.
+ *
+ * Membership is a fact about WHERE the rows come from, not about which command
+ * uses the source, so it lives beside the source union rather than in a command
+ * list.
+ */
+export const RENDERER_LOCAL_SOURCES: ReadonlySet<ArgumentSource> = new Set([
+	"theme",
+	"title-refresh",
+]);
+
+/** Whether this source's rows are available with no session and no transport. */
+export function isRendererLocalSource(
+	source: ArgumentSource | undefined,
+): boolean {
+	return source !== undefined && RENDERER_LOCAL_SOURCES.has(source);
+}
+
+/**
+ * Sources whose rows are a FLAG vocabulary, and which therefore appear ONLY when
+ * the typed text actually matches a row.
+ *
+ * A catalogue source (`model`, `effort`, `theme`) answers an UNMATCHED query with
+ * its whole list or its empty-state sentence: "show me everything there is" is a
+ * sensible thing to ask of a list of THINGS, and the `effort` cold-owner sentence
+ * is a fact the user needs. A flag list is the opposite shape. Its rows are not a
+ * set of things to choose among, they are SPELLINGS of one thing, so a list with
+ * no row to offer has nothing to say and nothing to open: with one row, an empty
+ * list is a list that has already chosen.
+ *
+ * That distinction is what keeps `/rename`'s two behaviours apart, and it is not
+ * cosmetic. The desktop presents a BARE `/rename` as a FORM (`RenamePicker`, the
+ * dispatcher's presentation for empty args), and bare `/rename ` + Enter has to
+ * keep opening it. A flag list that opened on the empty query would complete the
+ * word to `--refresh` instead — measured on the real component, which is what this
+ * rule was written from — and the form would become unreachable by the gesture
+ * that has always opened it. The same condition is what keeps a TITLE out of the
+ * list: `/rename quarterly review` matches no flag, so no list is drawn over the
+ * sentence the user is naming their conversation with.
+ *
+ * This is a DESKTOP rule with no TUI counterpart, and the terminal's behaviour is
+ * NOT the thing to restore: there the row is printed under the cursor and
+ * `/title ` + Enter is a refresh, while here it is the form. Same row, two hosts,
+ * two answers — which is why the rule lives beside the source union rather than in
+ * a command-name check at the call site.
+ */
+export const FLAG_LIST_SOURCES: ReadonlySet<ArgumentSource> = new Set([
+	"title-refresh",
+]);
+
+/**
+ * Whether this source may draw a list at all when its query matched no row.
+ *
+ * The ONE question the popup's phase derivation needs, so the rule that keeps
+ * `/rename `'s form reachable and a title out of a flag list is asked in a named
+ * place rather than inlined as a set membership at the render site. `true` for
+ * every source but the flag vocabularies, which is why an undefined source (no
+ * inline list at all) answers `true` — the caller's own `inline` check is what
+ * decides whether a list exists.
+ */
+export function showsUnmatchedList(
+	source: ArgumentSource | undefined,
+): boolean {
+	return source === undefined || !FLAG_LIST_SOURCES.has(source);
+}
 
 /**
  * The popup's one-word name for each argument list, and for the command list.
@@ -70,6 +175,19 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	team: "Teams",
 	agent: "Agents",
 	theme: "Themes",
+	/*
+	 * `/rename`'s list, and why it is not called "Titles".
+	 *
+	 * Every other label names the KIND of thing the rows are — models, themes,
+	 * teams. This list's rows are not a kind of title; they are spelling OPTIONS
+	 * for one flag, and a title is precisely what the list does NOT contain (it
+	 * cannot: a title is free text). "Titles" would promise a chooser of
+	 * conversations' names that the list does not offer, which is the label
+	 * lying about the list's subject — the failure the exhaustive record exists to
+	 * prevent, reached from the other direction. "Options" is what the rows are,
+	 * and it keeps the plural-noun shape of its siblings.
+	 */
+	"title-refresh": "Options",
 };
 
 /**
@@ -167,6 +285,57 @@ const asText = (value: unknown): string =>
 
 const asNumber = (value: unknown): number =>
 	typeof value === "number" && Number.isFinite(value) ? value : -1;
+
+/**
+ * `/rename`'s argument list: the ONE row the command takes besides free text.
+ *
+ * THE GAP THIS CLOSES. The composer offered `/rename` no argument list at all,
+ * so typing `-`, `--` or `ref` suggested nothing, and a user had to know the flag
+ * and spell it in full from memory. The backend has honoured the flag all along
+ * (`session/naming.py`'s `TITLE_REFRESH_FLAGS` / `TITLE_REFRESH_WORDS`), and the
+ * TERMINAL host has always listed it (`tui/app.py`: one `ArgumentChoice`), so the
+ * desktop was the only surface that taught nothing.
+ *
+ * THE ROW IS `--refresh`, and its alias is the bare `refresh` — the TUI's own
+ * choice, taken over rather than re-derived. `refresh` is NOT a second row: a
+ * row is a THING to choose, and `--refresh` and `refresh` are two spellings of
+ * one action, so a second row would offer the same outcome twice and make the
+ * list look like it had two options. The alias buys RANK instead
+ * (`matchChoices`: scored on name AND aliases, displayed as `name`), so a user
+ * who already learned the bare word scores an exact 1000 rather than the fuzzy
+ * subsequence that `refresh` earns against `--refresh`.
+ *
+ * WHY THE OTHER TWO SPELLINGS ARE DELIBERATELY NOT ROWS. The vocabulary the
+ * backend honours is wider than the vocabulary any surface may OFFER:
+ * `--update`/`--retitle`/`update`/`retitle` are accepted so that a near-miss is
+ * never silently stored as a title (the prefix rule in `parse_title_arg`, and
+ * its own comment says why the prefix makes the failure worse rather than
+ * better), which is a reason to HONOUR a spelling and not a reason to advertise
+ * it. `--auto` is the same class and is additionally not in the help text
+ * (`"Name this conversation, or /title --refresh"`), so a row for it would be
+ * the app teaching a synonym its own documentation does not mention. A row is a
+ * recommendation; the parser's accept-set is a tolerance. Offering `update`
+ * beside `refresh` would turn one action into three advertised choices.
+ *
+ * The DESCRIPTION and DETAIL are the TUI's own strings, verbatim, so the two
+ * hosts say the same thing about the same flag: the description states the call
+ * and the detail states the RELEASE — that a refresh hands the name back to
+ * automatic naming is the surprising half, and this row is the last surface
+ * before it runs.
+ *
+ * `value` is what a pick WRITES and what a run SENDS (`completionFor`), and it
+ * is the flag form — the shape every other command taught — matching `name` here
+ * because this row has no separate selector to carry.
+ */
+export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
+	{
+		value: "--refresh",
+		name: "--refresh",
+		description: "Re-read the conversation and name it again",
+		detail: "resumes auto-naming",
+		aliases: ["refresh"],
+	},
+];
 
 /** The row's own selector, in the one spelling the wire and the picker share. */
 function modelSelectorOf(row: ModelEntity): string {
@@ -287,5 +456,20 @@ export function argumentRows(
 					current: current === value,
 				};
 			});
+		/*
+		 * The one case that ignores its inputs, and the comment says so rather than
+		 * leaving a reader to wonder whether `entities` is a bug.
+		 *
+		 * `title-refresh`'s rows are a FIXED vocabulary — the spellings the backend
+		 * honours — so there is nothing to read: no route serves them, `entities` is
+		 * always `[]` (the hook does not even run the query for this source) and
+		 * `current` has no meaning (a flag is not "selected" the way a model is).
+		 * Returning a fresh array rather than the constant itself keeps the module's
+		 * one contract — every branch hands back rows the caller owns — and the copy
+		 * is one row, once per render of a popup that is already re-deriving its
+		 * matches on that render.
+		 */
+		case "title-refresh":
+			return [...TITLE_REFRESH_ROWS];
 	}
 }

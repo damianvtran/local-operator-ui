@@ -43,7 +43,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import "../../../styles/index.css";
-import { type ArgumentRow, argumentRows } from "./slash-argument-rows";
+import {
+	type ArgumentRow,
+	type ArgumentSource,
+	argumentRows,
+} from "./slash-argument-rows";
 import {
 	type CompletionRow,
 	type SlashCommandMeta,
@@ -312,7 +316,7 @@ const THEMES = [
 ];
 
 const argumentRowsFor = (
-	source: "model" | "team" | "agent" | "effort" | "approvals" | "theme",
+	source: ArgumentSource,
 	entities: readonly unknown[],
 	current: unknown,
 	query = "",

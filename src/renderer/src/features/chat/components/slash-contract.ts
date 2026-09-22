@@ -20,7 +20,7 @@
  */
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
-import { slashContext } from "./slash-token";
+import { pyTrim, slashContext } from "./slash-token";
 
 /**
  * The minimum a row must say for routing, copy and list identity to be decided.
@@ -88,6 +88,34 @@ export type SlashKeyInput = {
  * One function so the router and the footer cannot disagree: the footer TELLS
  * the user that Enter will run, and the risk being managed is that it says so on
  * a key that only completes (round 1 UX U2).
+ *
+ * AN EMPTY QUERY IS NEVER UNAMBIGUOUS, and this is a deliberate DESKTOP
+ * DEVIATION from `_picker_choice_is_unambiguous` (`editor.py:7731-7765`) rather
+ * than a port of it, recorded here so nobody "restores parity". The terminal's
+ * single-survivor arm fires on an empty query — its `_picker_query()` answers
+ * `""` once the space is typed, and `"" == name` is false but `len(rows) <= 1`
+ * is true — so `/rename ` + Enter there RUNS the highlighted `--refresh` row.
+ * That is survivable in a terminal, where the row is printed under the cursor and
+ * the command's other form is a report. In the desktop the SAME keystroke is the
+ * documented way to open `/rename`'s form, so inheriting the arm would replace
+ * "open the naming dialog" with "re-read the conversation and name it again" —
+ * an irreversible act the user did not ask for, on the key that has always opened
+ * the form (the operator's own report). The general form of the rule is also the
+ * honest one: an empty query is not EVIDENCE about which row is meant, and the
+ * single-survivor arm exists precisely as "the query could only mean this row".
+ * A list narrowed to one row by an empty query is a list the user has not chosen
+ * from yet.
+ *
+ * The practical reach is narrow, which is why the deviation is cheap: an empty
+ * argument query only ever meets a one-row list, so the lists it changes are the
+ * single-row ones (this flag list, and a one-model account's `/model`). For those
+ * the first Enter completes — which for `/rename` opens the form and for `/model`
+ * leaves the word as typed — and the second Enter runs, the same two-Enter path
+ * `/compact` already has.
+ *
+ * `chosenByHand` still outranks this, on purpose: an arrow press is a choice the
+ * user made, so a user who moved onto the only row has named it however empty the
+ * query is.
  */
 export function slashRunAllowed(input: {
 	argumentQuery: string;
@@ -96,6 +124,7 @@ export function slashRunAllowed(input: {
 	destructive: boolean;
 	chosenByHand: boolean;
 }): boolean {
+	if (!input.chosenByHand && pyTrim(input.argumentQuery) === "") return false;
 	return isUnambiguous(
 		input.argumentQuery,
 		input.value,

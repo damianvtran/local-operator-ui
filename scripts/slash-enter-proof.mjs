@@ -180,6 +180,135 @@ const CASES = [
 		click: "/analytics",
 		expect: { ran: "/analytics", draft: "" },
 	},
+	/*
+	 * THE `/rename` FLAG ROW, the operator's report, in both halves.
+	 *
+	 * Six cases rather than two because the report had two defects and each needs
+	 * its own frame pair: the row did not SUGGEST as the user typed (`-`, `--`, `r`,
+	 * `ref`), and a CLICK on it autofilled the composer and waited for Enter
+	 * instead of performing the refresh. A single `ref` case would show both, but
+	 * the typed-word half is exactly the list the report said was empty, so each
+	 * spelling the user named gets its own before/after pair — that is what makes
+	 * the frames evidence about the suggestion rather than about the click.
+	 *
+	 * The list label is `Options` (`ARGUMENT_SOURCE_LABEL`), not `Arguments`: the
+	 * rows are spelling options for one flag, and the label says so. Asserting it
+	 * here is what catches a source added without a label, because `phaseLabel`
+	 * falls back to the un-named `Arguments` only when `source` is undefined.
+	 *
+	 * The DISPATCHED value is the hard half: the row's click must reach
+	 * `onSlashCommand` as `rename --refresh` (the same command the dispatcher
+	 * posts and the backend's `parse_title_arg` reads as a refresh), and the box
+	 * must be EMPTY afterwards — a click that only autofilled would show `ran:
+	 * none` with the draft carrying the flag, which is the defect's own frame.
+	 */
+	{
+		name: "rename-suggests-on-dash",
+		why: "The first half of the report: typing `-` must offer the `--refresh` row. Before the fix this list did not exist, so the gesture produced an empty state.",
+		word: "rename -",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/rename -",
+			list: "Command arguments",
+			phase: "Options",
+			active:
+				"--refreshRe-read the conversation and name it againresumes auto-naming",
+		},
+	},
+	{
+		name: "rename-suggests-on-double-dash",
+		why: "`--`: the row is the only candidate the dash-dash prefix can mean, so it is highlighted and the list is up.",
+		word: "rename --",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/rename --",
+			list: "Command arguments",
+			phase: "Options",
+			active:
+				"--refreshRe-read the conversation and name it againresumes auto-naming",
+		},
+	},
+	{
+		name: "rename-suggests-on-r",
+		why: "`r`: offered as a subsequence of `--refresh`, the same fuzzy habit every other command's list teaches.",
+		word: "rename r",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/rename r",
+			list: "Command arguments",
+			phase: "Options",
+			active:
+				"--refreshRe-read the conversation and name it againresumes auto-naming",
+		},
+	},
+	{
+		name: "rename-suggests-on-ref",
+		why: "`ref`, the spelling the operator named. The row displays `--refresh` while matching the typed `ref` — the alias buys rank, the row teaches the flag.",
+		word: "rename ref",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/rename ref",
+			list: "Command arguments",
+			phase: "Options",
+			active:
+				"--refreshRe-read the conversation and name it againresumes auto-naming",
+		},
+	},
+	{
+		name: "rename-suggests-on-bare-word",
+		why: "`refresh`, the bare spelling the row carries as an alias: an exact hit on the alias, displayed as the flag the row teaches.",
+		word: "rename refresh",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/rename refresh",
+			list: "Command arguments",
+			phase: "Options",
+			active:
+				"--refreshRe-read the conversation and name it againresumes auto-naming",
+		},
+	},
+	{
+		name: "rename-empty-space-offers-nothing",
+		why: "The bare space after the word, the state the operator's report photographed: the flag list does NOT open on an empty query, so the naming form's gesture is untouched. Before the fix this list did not exist at all; after it, this state is deliberately still empty.",
+		word: "rename ",
+		typeOnly: true,
+		noListBefore: true,
+		expect: {
+			ran: "none",
+			draft: "/rename ",
+			list: null,
+			phase: null,
+			active: null,
+		},
+	},
+	{
+		name: "rename-click-runs-the-refresh",
+		why: "The second half of the report: a CLICK on the row must RUN the refresh on the same gesture, not autofill and wait for Enter.",
+		word: "rename ref",
+		click: "--refresh",
+		expect: { ran: "/rename --refresh", draft: "", list: null },
+	},
+	{
+		name: "rename-bare-enter-opens-the-form",
+		why: "The no-regression half: bare `/rename ` + Enter still presents the naming form (recorded as the invocation `rename` with empty args) and does NOT run a refresh. The flag row must not turn the space that opens the form into a run — the empty-query arm of `slashRunAllowed` is what keeps this true.",
+		word: "rename ",
+		key: "Enter",
+		noListBefore: true,
+		expect: { ran: "/rename", list: null },
+	},
+	{
+		name: "rename-titled-enter-keeps-the-title",
+		why: "The other no-regression half: `/rename quarterly review` is a literal title, dispatched with those words as its argument, and never a refresh. The flag list is shut over it — a title matches no flag — so nothing is drawn over the sentence.",
+		word: "rename quarterly review",
+		key: "Enter",
+		noListBefore: true,
+		expect: { ran: "/rename quarterly review", list: null },
+	},
 ];
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -352,7 +481,12 @@ async function reset() {
 }
 
 /** Focus the composer the way a user does, then type the word. */
-async function typeWord(word, trailing = "", caretLefts = 0) {
+async function typeWord(
+	word,
+	trailing = "",
+	caretLefts = 0,
+	expectList = true,
+) {
 	const point = await evaluate(`(() => {
 		const field = document.querySelector("textarea");
 		if (!field) return null;
@@ -424,14 +558,40 @@ async function typeWord(word, trailing = "", caretLefts = 0) {
 	/* The popup opens on the query's own render, not on a timer, but the list's
 	   rows come from the fixture's query — wait for the box rather than a fixed
 	   sleep, so a slow first render cannot be read as "no list". */
+	/*
+	 * Wait for the listbox to reach the state this case EXPECTS, rather than
+	 * waiting for one to appear and returning.
+	 *
+	 * Two states are in play and they are both legitimate, so a rig that waited
+	 * only for "a list appeared" could read the previous case's box and could not
+	 * express the new one. A flag list (`/rename`) opens on a TYPED flag and stays
+	 * shut on an empty query, so `expectList === false` cases wait for the box to be
+	 * ABSENT — and the `true` cases still wait for it to appear, so a slow first
+	 * render is never read as "no list". Polling both ways is also what closes the
+	 * settle race a plain `return` left: the `/rename ` + Enter case read a stale
+	 * box in the frame before the effect closed it.
+	 */
 	const started = Date.now();
 	for (;;) {
 		const open = await evaluate(
 			`Boolean(document.querySelector('[role="listbox"]'))`,
 		);
-		if (open) return;
+		if (expectList ? open : !open) return;
 		if (Date.now() - started > 10_000) {
-			throw new Error(`the list never opened for "/${word}"`);
+			/*
+			 * NOT fatal, deliberately, and this is what makes the BEFORE half work on a
+			 * tree WITHOUT the fix: on `origin/main` there is no `/rename` argument list,
+			 * so a suggestion case waits for a box that never opens. A driver that threw
+			 * here could not produce a BEFORE record at all — the run would die on the
+			 * first case rather than document it — while returning lets the frame be taken
+			 * and the case record its own `list: null` mismatch, which is exactly the
+			 * evidence the pair exists to show. On this branch the wait is satisfied on the
+			 * render after the keystroke, so the tolerance costs nothing where it works.
+			 */
+			console.log(
+				`  (the list never ${expectList ? "opened" : "closed"} for "/${word}" — recording the state as it stands)`,
+			);
+			return;
 		}
 		await wait(100);
 	}
@@ -449,7 +609,17 @@ async function clickRow(label) {
 		const r = row.getBoundingClientRect();
 		return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
 	})()`);
-	if (!point) throw new Error(`no row matching ${label} in the list`);
+	/*
+	 * NOT fatal: on a tree without the row the case's whole point is that there is
+	 * nothing to click, and throwing here would abort the run instead of recording
+	 * it. The caller records the unchanged draft as its own mismatch.
+	 */
+	if (!point) {
+		console.log(
+			`  (no row matching "${label}" in the list — nothing to click)`,
+		);
+		return false;
+	}
 	await send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		x: point.x,
@@ -472,6 +642,7 @@ async function clickRow(label) {
 			pointerType: "mouse",
 		});
 	}
+	return true;
 }
 
 const pageProblems = [];
@@ -522,24 +693,59 @@ try {
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
 	for (const testCase of CASES) {
-		const gesture = testCase.click
-			? `click on the "${testCase.click}" row after typing "/${testCase.word}"`
-			: `${testCase.key} after typing "/${testCase.word}"`;
+		const gesture = testCase.typeOnly
+			? `type "/${testCase.word}" and read the list`
+			: testCase.click
+				? `click on the "${testCase.click}" row after typing "/${testCase.word}"`
+				: `${testCase.key} after typing "/${testCase.word}"`;
 		await reset();
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
 		});
-		await typeWord(testCase.word, testCase.trailing, testCase.caretLefts);
+		/*
+		 * The wait applies to the BEFORE state, which for a type-only case IS the
+		 * state under test and for a gesture case is the list the gesture acts on.
+		 * So only a type-only case can ask for "no list": the `/clear` case's
+		 * `list: null` describes its AFTER state (the completion closed the box),
+		 * while the box is legitimately up as the gesture is taken.
+		 */
+		await typeWord(
+			testCase.word,
+			testCase.trailing,
+			testCase.caretLefts,
+			/*
+			 * Whether the list should be UP in the BEFORE state. Almost always yes — the
+			 * gesture is taken against a list. The exception is `noListBefore`: the flag
+			 * list's EMPTY state, which is shut for a type-only case reading it as its
+			 * answer and for the bare-Enter case whose whole point is that `/rename `
+			 * opens nothing to complete. Named per case rather than inferred from the
+			 * expectation, because an AFTER of `null` is a different fact (a gesture
+			 * that CLOSED the list, e.g. `/clear`) and would make the wait wrong.
+			 */
+			!testCase.noListBefore,
+		);
 		const before = await evaluate(READ_STATE);
 		const beforeFrame = await shoot(`${testCase.name}-before`);
-		if (testCase.click) {
-			await clickRow(testCase.click);
-		} else {
-			await press(...KEYS[testCase.key]);
+		/*
+		 * A TYPE-ONLY case presses no key and clicks nothing: the whole question is
+		 * what the list OFFERS as the user types, so the state read right after the
+		 * typing IS the answer, and the "before" frame is the only frame. The field
+		 * assertions are then read off `before` rather than `after` — same fields,
+		 * same expectations, one gesture fewer — so a case cannot claim a suggestion
+		 * it only produced after some other key moved the word.
+		 */
+		if (!testCase.typeOnly) {
+			if (testCase.click) {
+				await clickRow(testCase.click);
+			} else {
+				await press(...KEYS[testCase.key]);
+			}
+			await sleep(400);
 		}
-		await sleep(400);
-		const after = await evaluate(READ_STATE);
-		const afterFrame = await shoot(`${testCase.name}-after`);
+		const after = testCase.typeOnly ? before : await evaluate(READ_STATE);
+		const afterFrame = testCase.typeOnly
+			? beforeFrame
+			: await shoot(`${testCase.name}-after`);
 
 		const mismatches = [];
 		for (const [field, expected] of Object.entries(testCase.expect)) {

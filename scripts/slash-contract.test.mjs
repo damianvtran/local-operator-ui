@@ -118,7 +118,15 @@ const REGISTRY = readFileSync(
  * destination: what the helper must accept is any kind the table declares.
  */
 const KIND = /kind: "([\w-]+)"/;
-const INLINE_SOURCE = /source: "(\w+)"/;
+/*
+ * `[\w-]+` for the same reason `KIND` is hyphen-tolerant: `title-refresh` is a
+ * source id with a hyphen in it, and a class that stopped at the hyphen read
+ * `undefined` for `/rename` — which this helper reports as "declares no inline
+ * list", i.e. as a defect in the table rather than in the reader. A source id is
+ * a kebab-case word by the family's own convention (`sessions.archive`,
+ * `machine-panel`), so the hyphen belongs in the class.
+ */
+const INLINE_SOURCE = /source: "([\w-]+)"/;
 const NAME_THEN_MESSAGE = /nameThenMessage: (true|false)/;
 const RUNS = /runs: (true|false)/;
 
@@ -1202,6 +1210,15 @@ test("a list-bearing command completes and never runs", () => {
 		["session.approvals", "approvals"],
 		// `/theme`: an inline list whose apply path is a dialog (`runs: false`).
 		["appearance", "theme"],
+		/*
+		 * `/rename`: the row is `/rename`'s flag list, and its argument pick DOES run
+		 * (`runs: true`) — see the click-runs case below. What is asserted HERE is the
+		 * other half: a pick of the COMMAND row only completes the word and opens the
+		 * list, because the list IS the gesture that has to open. Without that,
+		 * clicking `/rename` in the command list would fire a bare `rename` and clear
+		 * the box instead of offering the flag row.
+		 */
+		["session.rename", "title-refresh"],
 	]) {
 		assert.equal(registryEntry(id)?.inline?.source, source, id);
 		assert.equal(pickRuns(id), false, id);
@@ -1212,6 +1229,143 @@ test("a list-bearing command completes and never runs", () => {
 		assert.equal(registryEntry(id)?.inline?.nameThenMessage, true, id);
 		assert.equal(pickRuns(id), false, id);
 	}
+});
+
+/*
+ * THE OPERATOR'S SECOND DEFECT, both halves of it, asserted end to end.
+ *
+ * A CLICK on the `--refresh` row must PERFORM the refresh rather than autofill
+ * the composer and wait for Enter. The chain is three links and each is read off
+ * the real code rather than restated: the registry says the list runs
+ * (`runs: true`), the row shaper produces the `--refresh` row, and the PLANNER —
+ * the same `planSlashSubmission` a submit goes through — turns the completed
+ * draft into `rename --refresh`, which is the command the dispatcher posts.
+ *
+ * The draft is built by `completionFor`, the pick's own write, so the assertion
+ * is over the line a real click produces rather than a hand-built string (the
+ * same discipline review F7 demanded for the arming seam).
+ */
+test("a click on the /rename flag row runs the refresh in one gesture", () => {
+	const entry = registryEntry("session.rename");
+	assert.equal(entry?.kind, "picker");
+	// The list declares the run: this is what `handleSlashPick`'s
+	// `slash.inline?.runs` arm reads for an ARGUMENT row.
+	assert.equal(entry?.inline?.runs, true, "the flag row must run on a click");
+	assert.equal(
+		entry?.inline?.nameThenMessage,
+		false,
+		"no trailing space: the value is the whole argument, not a name to type after",
+	);
+	const [row] = argumentRows(entry.inline.source, [], null);
+	assert.equal(row.value, "--refresh");
+	/*
+	 * The pick's write, then the planner's answer — the two halves of the seam.
+	 * `completionFor` replaces the ARGUMENT span only, leaving the command word
+	 * intact (an argument row never rewrites the word), and the gesture is `pick`,
+	 * which is what the composer passes for a popup pick.
+	 */
+	const names = new Set(["rename", "title"]);
+	for (const [typed, expected] of [
+		// Typed the dashes, the bare word, or nothing at all: one completed draft.
+		["/rename ", "--refresh"],
+		["/rename -", "--refresh"],
+		["/rename --", "--refresh"],
+		["/rename r", "--refresh"],
+		["/rename ref", "--refresh"],
+		["/rename refresh", "--refresh"],
+	]) {
+		const written = completionFor(
+			typed,
+			typed.length,
+			{ kind: "argument", row },
+			names,
+			["rename", "title"],
+			false,
+		);
+		assert.ok(written, `a pick in ${JSON.stringify(typed)} produces a write`);
+		assert.equal(written.text, `/rename ${expected}`);
+		const plan = planSlashSubmission({
+			draft: written.text,
+			caret: written.caret,
+			gesture: "pick",
+			commandNames: names,
+			promptCommands: new Set(),
+			armedOnlyCommands: new Set(),
+			valueArgumentCommands: new Set(["rename"]),
+			nameListCommands: new Set(),
+			argumentCommands: new Set(["rename"]),
+			prefixingCommands: new Set(),
+			argumentShapes: new Map([
+				["rename", { name: "rename", shape: "any", words: [] }],
+			]),
+			commandLockedWords: new Set(),
+			enabled: true,
+		});
+		// A whole-draft command: the box empties and the dispatcher posts it. This
+		// is the `rename --refresh` the backend's `parse_title_arg` reads as a
+		// REFRESH, so the click performs it with no second gesture.
+		assert.deepEqual(
+			plan,
+			{ kind: "whole", command: { name: "rename", args: "--refresh" } },
+			`the click in ${JSON.stringify(typed)} dispatches the refresh`,
+		);
+	}
+});
+
+test("the /rename no-regression paths are untouched by the flag row", () => {
+	/*
+	 * Bare `/rename` still opens the naming form and `/rename <title>` still sets
+	 * the title. Both travel the SAME planner as the click above and must keep
+	 * answering with the args the backend already reads that way:
+	 * `parse_title_arg("")` → the presentation, and `parse_title_arg("my title")`
+	 * → a literal title. The flag row changes behaviour only where there is
+	 * something to run without a name, which is exactly these two staying put.
+	 */
+	const names = new Set(["rename", "title"]);
+	const plan = (draft) =>
+		planSlashSubmission({
+			draft,
+			caret: draft.length,
+			gesture: "typed",
+			commandNames: names,
+			promptCommands: new Set(),
+			armedOnlyCommands: new Set(),
+			valueArgumentCommands: new Set(["rename"]),
+			nameListCommands: new Set(),
+			argumentCommands: new Set(["rename"]),
+			prefixingCommands: new Set(),
+			argumentShapes: new Map([
+				["rename", { name: "rename", shape: "any", words: [] }],
+			]),
+			commandLockedWords: new Set(),
+			enabled: true,
+		});
+	// Bare, with and without the trailing space: the presentation form.
+	assert.deepEqual(plan("/rename"), {
+		kind: "whole",
+		command: { name: "rename", args: "" },
+	});
+	assert.deepEqual(plan("/rename "), {
+		kind: "whole",
+		command: { name: "rename", args: "" },
+	});
+	// The alias is the same command.
+	assert.deepEqual(plan("/title"), {
+		kind: "whole",
+		command: { name: "title", args: "" },
+	});
+	// A title is passed through as written, flag-shaped or not.
+	assert.deepEqual(plan("/rename my title"), {
+		kind: "whole",
+		command: { name: "rename", args: "my title" },
+	});
+	// The bare refresh WORD is the backend's other refresh spelling, and it is
+	// passed through as typed — the row writes the flag, so the planner does not
+	// rewrite a word the user typed themselves.
+	assert.deepEqual(plan("/rename refresh"), {
+		kind: "whole",
+		command: { name: "rename", args: "refresh" },
+	});
 });
 
 test("the three protected destinations are protected by id, not by kind", () => {
