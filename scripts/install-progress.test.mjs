@@ -108,14 +108,20 @@ const SCRIPT_MARKERS = [
 		"src/main/backend/scripts/macos-install-script.sh",
 		{
 			environment: "Creating virtual environment at $VENV_PATH",
-			components: "Installing local-operator package",
+			/*
+			 * The install BLOCK's first line, not the pip call inside it: the block
+			 * opens by deciding between the bundled uv and pip (#440), so a marker
+			 * aimed at `python -m pip install` would land inside a branch half the
+			 * runs do not take.
+			 */
+			components: "UV_INSTALLED=false",
 		},
 	],
 	[
 		"src/main/backend/scripts/linux-install-script.sh",
 		{
 			environment: "Creating virtual environment at $VENV_PATH",
-			components: "Installing local-operator package",
+			components: "UV_INSTALLED=false",
 		},
 	],
 	[
@@ -467,6 +473,53 @@ test("the preload bridge carries every channel this contract owns", () => {
 	);
 });
 
+test("the window, the story and the capture tuple agree on one size", () => {
+	/*
+	 * The size half of the pair the canvas test beside it covers (design D15), and
+	 * the guard the round-1 blocker did not have: 640x480 is stated in three files
+	 * that nothing related - the window the app builds, the story's viewport, and
+	 * the capture tuple that sizes the browser - so changing any one of them
+	 * silently re-creates the defect where every frame was shot at a size the app
+	 * never used. The frames cannot catch that on their own: they are internally
+	 * consistent whatever the other two say.
+	 */
+	const main = readFileSync("src/main/backend/backend-installer.ts", "utf8");
+	const story = readFileSync(
+		"src/renderer/src/features/installer/components/installer-content.stories.tsx",
+		"utf8",
+	);
+	const rig = readFileSync("scripts/capture-evidence.mjs", "utf8");
+	const window = main.match(
+		/useContentSize: true,\s*width: (\d+),\s*height: (\d+),/,
+	);
+	assert.ok(window, "the preparation window no longer pins a content size");
+	const viewport = story.match(
+		/styles: \{ width: "(\d+)px", height: "(\d+)px" \}/,
+	);
+	assert.ok(viewport, "the installer story no longer declares a viewport");
+	const rows = [
+		...rig.matchAll(
+			/\["installer-installercontent--([a-z-]+)", (\d+), (\d+)\]/g,
+		),
+	];
+	assert.ok(
+		rows.length >= 5,
+		`the capture tuple lists ${rows.length} installer stories`,
+	);
+	for (const [, name, width, height] of rows) {
+		assert.equal(
+			`${width}x${height}`,
+			`${window[1]}x${window[2]}`,
+			`${name} is captured at ${width}x${height} while the window builds ${window[1]}x${window[2]}`,
+		);
+	}
+	assert.equal(
+		`${viewport[1]}x${viewport[2]}`,
+		`${window[1]}x${window[2]}`,
+		"the story's viewport and the window's content size disagree",
+	);
+});
+
 test("the window and the main process name the same channels", () => {
 	const main = readFileSync("src/main/backend/backend-installer.ts", "utf8");
 	const renderer = readFileSync(
@@ -511,9 +564,22 @@ test("the main process actually consumes the markers it reads off stdout", () =>
 		handlerStart > 0,
 		"the install script's stdout handler is gone, so no marker can be read",
 	);
+	/*
+	 * BOUNDED BY THE NEXT STRUCTURAL MARKER, not by the first `});` (review R2-N1).
+	 * `indexOf("});")` happened to land on this handler's own close, but only
+	 * because its first statement is a call that opens no closure - a one-line
+	 * reshape inside the handler (an early return, a nested call) would have shrunk
+	 * the region silently and left this test passing over a body it never read,
+	 * which is the failure mode it exists to catch. The stderr block is the next
+	 * sibling in the same method and cannot appear inside this one.
+	 */
+	const nextSibling = source.indexOf(
+		"this.installProcess.stderr",
+		handlerStart,
+	);
 	const handler = source.slice(
 		handlerStart,
-		source.indexOf("});", handlerStart),
+		nextSibling > handlerStart ? nextSibling : undefined,
 	);
 	const split = handler.indexOf("splitLines(");
 	const parse = handler.indexOf("parseInstallMarker(");

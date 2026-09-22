@@ -94,6 +94,17 @@ export function backendSetupFailureDetail(
  * Backend Installer class
  * Manages the installation of the Local Operator backend
  */
+/**
+ * How long the finished state stays on screen before the window closes.
+ *
+ * The window used to close 32 ms after `installed` was painted - measured on a
+ * live first run (UX U15) - so the state could not be read at all. Setup has
+ * just taken one to five minutes; this is a beat of acknowledgement, not a
+ * progress bar, and it is deliberately short enough that nobody notices it as a
+ * wait.
+ */
+const TERMINAL_FRAME_MS = 1_500;
+
 export class BackendInstaller {
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
@@ -135,6 +146,33 @@ export class BackendInstaller {
 	 * why the flag is on the instance rather than captured per attempt.
 	 */
 	private attemptCancelled = false;
+
+	/**
+	 * True from the moment the window owns an unanswered failure until the user's
+	 * answer arrives, and true for nothing else.
+	 *
+	 * WHY IT IS NOT `failureOnScreen`. That flag answers "has this attempt already
+	 * been surfaced", which `installEnvironment` must clear at the start of every
+	 * attempt and `settleInstalled` at the end - and clearing it is exactly what
+	 * left Retry dead twice: `install()` cleared it one microtask after painting
+	 * the failure, before a click could land, so the handler's guard read `false`
+	 * on every real click while `cancel-installation` next to it worked (review
+	 * R2-1, UX U2; the same cleared flag also left the parked `await` with no
+	 * reachable resolver, R2-2). The hold owns this one: armed where the wait is
+	 * armed, cleared where the answer arrives.
+	 */
+	private decisionPending = false;
+
+	/**
+	 * True for the whole of one attempt - preparation, script and the post-install
+	 * check - and false while the app is waiting for anything at all.
+	 *
+	 * WHY THE CLOSE BOX NEEDS THIS AND NOT `attemptInFlight`: that one covers the
+	 * script only, and on macOS the longest step of the run (the smoke probe) sits
+	 * after the script has resolved. A close arriving there matched neither branch
+	 * of the close handler, so the window went away mid-run with no record of why.
+	 */
+	private runActive = false;
 
 	/**
 	 * Resolves `install()`'s wait when a failure is on screen and the user owns
@@ -485,8 +523,12 @@ export class BackendInstaller {
 		this.windowShow = show;
 		try {
 			for (;;) {
+				this.runActive = true;
 				try {
-					if (await this.prepareAndInstall(show)) return true;
+					if (await this.prepareAndInstall(show)) {
+						await this.holdTerminalFrame();
+						return true;
+					}
 				} catch (error) {
 					logger.error(
 						"Backend preparation failed",
@@ -502,6 +544,15 @@ export class BackendInstaller {
 					 * the package index" - with one derived from the wrapper's message
 					 * ("Backend preparation did not complete"), which is strictly less true.
 					 */
+					/*
+					 * A CANCELLED RUN IS NOT A FAILURE, and reporting it as one stacked a
+					 * dialog over the user's own answer: agreeing to "Quit without setup"
+					 * produced a second dialog offering to retry the setup they had just
+					 * cancelled, 8 ms later (UX U14). `installEnvironment` already knows the
+					 * difference and exits on its own; this is the same fact reaching the
+					 * catch that used to ignore it.
+					 */
+					if (this.attemptCancelled) return false;
 					if (!this.failureOnScreen) {
 						/*
 						 * ONE SURFACE PER FAILURE. The window owns a failure whenever it is up - the
@@ -535,17 +586,29 @@ export class BackendInstaller {
 					}
 				}
 				if (!this.failureOnScreen) return false;
-				this.failureOnScreen = false;
 				/*
 				 * The window has the failure and the user has the choice, so startup waits
 				 * here rather than resolving false - which `index.ts` reads as "cancelled or
 				 * failed" and answers by quitting the app, taking the panel down a frame after
 				 * it appeared. A successful retry resolves true; Quit exits the app and never
 				 * resolves at all, which is what makes those two the only ways out.
+				 *
+				 * `failureOnScreen` is deliberately NOT cleared here (review R2-1): it means
+				 * "a failure has been surfaced and not yet answered", which is exactly the
+				 * state the retry handler is asking about, and the handler clears it one tick
+				 * before the second attempt starts. `decisionPending` is the hold's own fact
+				 * and covers the window closing instead of answering (R2-2).
 				 */
-				return await this.awaitUserDecision();
+				this.runActive = false;
+				this.decisionPending = true;
+				try {
+					return await this.awaitUserDecision();
+				} finally {
+					this.decisionPending = false;
+				}
 			}
 		} finally {
+			this.runActive = false;
 			if (this.preparationWindow && !this.preparationWindow.isDestroyed())
 				this.preparationWindow.close();
 			this.preparationWindow = null;
@@ -562,7 +625,22 @@ export class BackendInstaller {
 	 * arrive on all three.
 	 */
 	private async prepareAndInstall(show: WindowShow): Promise<boolean> {
-		if (process.platform !== "darwin") return this.installEnvironment(show);
+		if (process.platform !== "darwin") {
+			/*
+			 * The success terminal, on every platform that finishes.
+			 *
+			 * It is sent from inside `installEnvironment` no longer, and this early
+			 * return IS the win32 and linux path - so moving it to the far side of
+			 * macOS's smoke probe left those two with no sender at all: the panel kept
+			 * a finished run with its fourth row still active and Cancel still enabled,
+			 * and `installed` is a designed state with its own frames (review R2-3).
+			 * Pip is the last step on these platforms, so the near side of the return
+			 * is the far side of their last check.
+			 */
+			const ok = await this.installEnvironment(show);
+			if (ok) this.settleInstalled();
+			return ok;
+		}
 		/*
 		 * Say why, before preparing: a published environment that is gone or no
 		 * longer the published bytes is now recovered from rather than refused
@@ -1042,13 +1120,35 @@ export class BackendInstaller {
 		};
 
 		const retryHandler = () => {
-			const last = this.failureOnScreen;
-			if (!last || this.attemptInFlight) return;
+			/*
+			 * The guard is the HOLD, not the report flag (review R2-1, UX U2). Reading
+			 * `failureOnScreen` here was the defect: `install()` had already cleared it
+			 * before arming the wait, so this returned on every real click - a click, a
+			 * dead button and no log line, three ways (pointer, DOM, raw IPC) on a live
+			 * failure. `decisionPending` is true for exactly as long as there is a
+			 * failure on screen with nobody's answer to it.
+			 */
+			if (!this.decisionPending || this.attemptInFlight) return;
 			logger.info(
 				"Retrying the backend installation from the setup window",
 				LogFileType.INSTALLER,
 			);
 			this.failureOnScreen = false;
+			/*
+			 * And take the failure OFF the panel, in the same tick as the click.
+			 *
+			 * Why this half is not optional: nothing in the renderer clears
+			 * `view.failure` - it is replaced only by the next `phase` or `installed`
+			 * payload - so without this the retry runs while the panel still shows the
+			 * old failure, its buttons and its reason until the next milestone, which on
+			 * a first retry is the `environment` marker about forty seconds later. A
+			 * user who has just pressed the only button on the screen would watch
+			 * nothing happen and press it again.
+			 */
+			this.sendInstallProgress({
+				kind: "phase",
+				phase: this.lastPhase ?? "python",
+			});
 			void this.retryFromWindow();
 		};
 
@@ -1075,25 +1175,38 @@ export class BackendInstaller {
 		 * Cancel button does), and a window with nothing left to wait for is just
 		 * closing.
 		 */
-		progressWindow.on("close", () => {
-			if (this.attemptInFlight) {
-				logger.info(
-					"Installation cancelled by user closing the progress window",
-					LogFileType.INSTALLER,
-				);
-				this.attemptCancelled = true;
-				this.killInstallProcess();
+		progressWindow.on("close", (event) => {
+			if (this.runActive) {
+				/*
+				 * A run is in flight, so closing is a request to stop - the same request
+				 * the Cancel button makes, and the same one the panel's own copy promises
+				 * ("Closing it stops setup"). It goes through the same confirmation rather
+				 * than aborting the install outright: two controls that both stop setup
+				 * should not disagree about whether to ask (design D16), and the close box
+				 * is the easier of the two to hit by accident.
+				 *
+				 * `preventDefault` is what makes the question possible at all - the window
+				 * is destroyed the moment this handler returns otherwise - and a declined
+				 * confirmation leaves the run exactly where it was.
+				 */
+				event.preventDefault();
+				void this.quitFromWindow();
 				return;
 			}
 			/*
 			 * A window closed with a FAILURE on screen is the user declining to retry,
 			 * and the app cannot start without setup - so the process leaves with it
-			 * rather than waiting on a decision nobody can now make. Without this the
-			 * `await` in `install` has no resolver and no surface: the app would sit
-			 * alive with no window at all, which is the worse version of the silent quit
-			 * this round is fixing.
+			 * rather than waiting on a decision nobody can now make. The trigger is the
+			 * HOLD rather than the report flag (review R2-2): `failureOnScreen` is false
+			 * while `install()` is parked, because clearing it is what the retry reads as
+			 * its answer, so the old condition never matched - the window closed, the
+			 * listeners came off with it, and `install()` stayed parked on a resolver
+			 * nothing could reach. The process then sat alive, invisible and unusable
+			 * until it was force-quit, which is the worse version of the silent quit this
+			 * round is fixing. Closing is the same decline "Quit" expresses, so it takes
+			 * the same exit.
 			 */
-			if (this.failureOnScreen) {
+			if (this.decisionPending) {
 				logger.info(
 					"Setup window closed with the failure on screen; quitting",
 					LogFileType.INSTALLER,
@@ -1126,6 +1239,22 @@ export class BackendInstaller {
 		});
 
 		return progressWindow;
+	}
+
+	/**
+	 * Keep the terminal state on screen for as long as a person needs to read it.
+	 *
+	 * WHY A HOLD RATHER THAN THE CLOSE ALONE (UX U15): the window closed 32 ms
+	 * after `installed` was painted - measured on a live first run - so the panel's
+	 * own success state was unreadable, and the twelve committed frames of it
+	 * documented a state no user could see. Setup has just taken one to five
+	 * minutes; a beat of acknowledgement is the smallest honest version of it.
+	 * Skipped with no live window (the update path), so nothing waits on a surface
+	 * that does not exist.
+	 */
+	private async holdTerminalFrame(): Promise<void> {
+		if (!this.hasLivePreparationWindow()) return;
+		await new Promise((resolve) => setTimeout(resolve, TERMINAL_FRAME_MS));
 	}
 
 	/**
@@ -1169,7 +1298,7 @@ export class BackendInstaller {
 	 * leaves its partial environment where the next attempt reuses or replaces it.
 	 */
 	private async quitFromWindow(): Promise<void> {
-		const inFlight = this.attemptInFlight;
+		const inFlight = this.runActive;
 		const { response } = await electronDialog.showMessageBox({
 			type: "question",
 			buttons: ["Keep setting up", "Quit without setup"],
@@ -1177,8 +1306,15 @@ export class BackendInstaller {
 			cancelId: 0,
 			title: "Quit without setup?",
 			message: "Local Operator needs this setup to run.",
+			/*
+			 * THE SECOND HALF OF DESIGN D13. "Nothing that was already on this computer
+			 * is changed" is false on Windows, where the install script persists
+			 * User-scope `PYENV`/`PYENV_HOME` and prepends the user's `PATH` before the
+			 * step most likely to fail - and the dialog said it on every platform. What
+			 * is true everywhere is which files are touched, so that is what it says.
+			 */
 			detail:
-				"Quitting now stops it. Nothing that was already on this computer is changed, and the next launch starts the setup again.",
+				"Quitting now stops it. Setup keeps everything it installs in its own folder; nothing of yours was touched, and the next launch starts the setup again.",
 		});
 		if (response !== 1) {
 			logger.info(

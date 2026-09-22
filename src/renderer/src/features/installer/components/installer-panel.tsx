@@ -301,12 +301,14 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 			 * no longer assumes the reader has met an assistant yet, which on the
 			 * first screen of the product nobody has (UX U10).
 			 *
-			 * NOT IN THE FAILURE STATE. It promises a wait that has stopped, and the
-			 * failure block below needs the room: measured on this panel, keeping it
-			 * pushed the two buttons past the bottom of a 480px window, which is a
-			 * non-resizable window with no scrollbar.
+			 * NOT IN THE FAILURE STATE, and not in the finished one either: it promises a
+			 * wait that has stopped in both. In the failure state the block below needs
+			 * the room - measured on this panel, keeping it pushed the two buttons past
+			 * the bottom of a 480px window, which is a non-resizable window with no
+			 * scrollbar - and in the finished state it is a duration promise sitting
+			 * under a full bar (design D17).
 			 */}
-			{!failure && (
+			{!failure && !installed && (
 				<p className="mt-2 text-body text-ink-muted">
 					This takes a few minutes the first time, on this computer.
 				</p>
@@ -352,7 +354,15 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 			</ol>
 
 			{failure ? (
-				<div className="mt-5 flex w-full flex-col items-center">
+				/*
+				 * 16px, not 20: the failure state is the tallest composition this panel
+				 * has, and at 640x480 the extra four pixels came straight out of its
+				 * margins - measured in the frames, the content box ran 4..475 of 480 with
+				 * the two-line machine line in place. 20px was off the space ramp anyway
+				 * (branding section 5's tiers are 4/8/12/16/24/32/48/64), so this is the
+				 * same change as dropping to the next tier down below the mark.
+				 */
+				<div className="mt-4 flex w-full flex-col items-center">
 					{/*
 					 * THE SENTENCE FIRST, AT READING WEIGHT. The failure used to render
 					 * the last line the install captured, verbatim -
@@ -374,21 +384,35 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					>
 						{failure.reason}
 					</p>
+					{/*
+					 * Two lines, not one (design D12). This is the only line on the screen
+					 * that carries the SPECIFIC failure whenever the cause table does not
+					 * recognise it - the composition the code calls the common case - and pip
+					 * puts the specific part at the END of the line: the requirement, the
+					 * URL, `(from versions: none)`. A clamp of one showed the head and cut
+					 * the tail, so the one diagnostic the user could act on was the part
+					 * hidden. Measured in the frames: the second line costs 18px and the
+					 * failure state still has ground under its buttons at 480px.
+					 */}
 					{failure.detail && (
-						<p className="mt-2 line-clamp-1 max-w-90 break-words font-mono text-meta text-ink-dim">
+						<p className="mt-2 line-clamp-2 max-w-90 break-words font-mono text-meta text-ink-dim">
 							{failure.detail}
 						</p>
 					)}
 					{/*
 					 * What survived, because "did this destroy my work" is the first
 					 * question a failed setup raises and nothing on this screen answered
-					 * it. Setup only ever writes its own environment and never touches
-					 * user data, which is what makes the sentence safe to say.
+					 * it. Setup writes only inside its own support folder, which is what
+					 * makes the sentence safe on every platform (design D13): Windows is
+					 * the one that persists User-scope PYENV/PYENV_HOME and prepends the
+					 * user's PATH, so "nothing on this computer changed" was already false
+					 * there by the time this screen could appear.
 					 */}
 					<p className="mt-2 max-w-90 text-body-sm text-ink-muted">
-						Nothing that was already on this computer was changed.
+						Setup keeps everything it installs in its own folder; nothing of
+						yours was touched.
 					</p>
-					<div className="mt-4 flex items-center gap-3">
+					<div className="mt-3 flex items-center gap-3">
 						<Button variant="secondary" onClick={onRetry}>
 							Try again
 						</Button>

@@ -131,6 +131,44 @@ export const Failure: Story = {
 				phase: "components",
 				reason:
 					"Local Operator could not reach the package index, which is usually the network or a proxy. Check the connection and retry.",
+				/*
+				 * The line the LIVE flow picks, not a plausible one (UX U16). The
+				 * shipped script prints pip's failure and then its own `ERROR:` line, and
+				 * `installFailureReason` takes the last error-shaped line, so a real
+				 * failure of this kind renders the script's summary - a story that
+				 * authored a longer pip line documented a state the app does not produce.
+				 */
+				detail: "ERROR: Failed to install local-operator package. Exit code: 1",
+				exitCode: 1,
+			},
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * The failure the cause table does NOT recognise - the composition this
+ * screen's own code calls the common case, and the only one of the two the
+ * evidence set did not show (design D12).
+ *
+ * WHY ITS MACHINE LINE IS LONG ON PURPOSE: with no recognised cause the
+ * sentence above is generic, so this line is the only specific thing on the
+ * screen, and pip puts the specific part at the END - the requirement, the URL,
+ * `(from versions: none)`. A one-line clamp showed the head and hid exactly the
+ * part a user could act on; this frame is the one that proves the second line
+ * arrives. The sentence is `installFailureSentence("components")`, which is what
+ * the app falls back to. The line is the captured one, not a longer invention:
+ * a 137-character line would need three lines, and what ships is a two-line
+ * clamp.
+ */
+export const FailureFallback: Story = {
+	render: () =>
+		panel({
+			phase: "components",
+			installed: false,
+			failure: {
+				phase: "components",
+				reason: "Setup stopped while downloading components.",
 				detail:
 					"ERROR: Could not find a version that satisfies the requirement local-operator (from versions: none)",
 				exitCode: 1,

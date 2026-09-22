@@ -495,6 +495,7 @@ fi
 # cold machine, and the app cannot see inside the venv it is about to create -
 # this is the only process that knows when the environment exists and when the
 # download starts.
+echo "|LO1:components"
 UV_INSTALLED=false
 if uv_is_usable; then
   echo "Installing local-operator with uv ($("${UV_BIN}" --version 2>/dev/null || echo 'version unavailable'))..."
@@ -520,21 +521,7 @@ if [ "${UV_INSTALLED}" != true ]; then
     pip --version
   }
 
-  # --- Progress markers -------------------------------------------------------
-# One whole line per phase, read by the app and shown in the setup window. The
-# app matches the ENTIRE line (`|LO1:<phase>`, see src/shared/install-progress.ts)
-# and never a substring, so a marker has to stand alone: do not wrap it in
-# other text, do not re-indent it into a longer sentence, and do not emit one
-# for work this script does not actually do. A missing marker leaves the window
-# on its previous step, which is the honest failure; a marker a log line also
-# happens to produce is a wrong step presented as a measurement.
-#
-# WHY THE SCRIPT AND NOT ONLY THE APP: the install below is minutes of work on a
-# cold machine, and the app cannot see inside the venv it is about to create -
-# this is the only process that knows when the environment exists and when the
-# download starts.
-echo "|LO1:components"
-echo "Installing local-operator package..."
+  echo "Installing local-operator package..."
   python -m pip install --verbose local-operator || {
     echo "ERROR: Failed to install local-operator package. Exit code: $?"
     echo "Python version:"
@@ -545,7 +532,8 @@ echo "Installing local-operator package..."
     pip list
     exit 1
   }
-fiecho "local-operator installation successful"
+fi
+echo "local-operator installation successful"
 
 # Verify installation
 if [ -f "$VENV_PATH/bin/local-operator" ]; then

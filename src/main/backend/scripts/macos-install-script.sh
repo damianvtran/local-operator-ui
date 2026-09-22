@@ -311,13 +311,6 @@ fi
 # this is the only process that knows when the environment exists and when the
 # download starts.
 echo "|LO1:components"
-echo "Installing local-operator package..."
-python -m pip install --upgrade --verbose local-operator || {
-  echo "ERROR: Failed to install local-operator package. Exit code: $?"
-  echo "Python version:"
-  python --version
-  echo "pip version:"
-
 UV_INSTALLED=false
 if uv_is_usable; then
   echo "Installing local-operator with uv ($("$UV_BIN" --version 2>/dev/null || echo 'version unavailable'))..."
@@ -348,7 +341,8 @@ if [ "$UV_INSTALLED" != true ]; then
     pip --version
     exit 1
   }
-  echo "pip upgrade successful:"  pip --version
+  echo "pip upgrade successful:"
+  pip --version
 
   echo "Installing local-operator package..."
   python -m pip install --upgrade --verbose local-operator || {
