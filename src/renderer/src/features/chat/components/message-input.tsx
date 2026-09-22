@@ -3145,15 +3145,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * corrected this: the earlier claim here that the shape re-sends the sentence was
 					 * wrong — it is refused, and the gain over the previous head is that the words are
 					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
-					 * no later keystroke can make that untrue. Yielding is
-					 * still the planner's answer (`lockedRunOf`), not a second question asked here, and
-					 * every other draft keeps the exception's `send` to the letter — the bare-token
-					 * cancel included: a bare `/credential` carries no tail, so the planner answers
-					 * `send` too and nothing here changes.
+					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
+					 * here; the press is HELD (see the branch below), because the dispatch route took
+					 * the operator's own words as the command's argument, which is the complaint this
+					 * change answers.
 					 */
 					if ((cancelledToken.current?.restored ?? 0) > 0) {
-						const locked = lockedRunOf(draft, at);
-						if (locked !== null) return locked;
+						/*
+						 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
+						 *
+						 * The dispatch route below used to run here and it answered Q-1 — the restored
+						 * secret was never SENT to the model — but at the operator's own cost: the words
+						 * they typed after the cancelled token became the command's ARGUMENT, the run
+						 * consumed them, and the receipt said so. The operator's requirement outranks
+						 * that route. Both of the plan's old answers are wrong at this state:
+						 * dispatching consumes their words, and `send` puts the restored secret into a
+						 * message record. So the press is HELD: nothing runs, nothing sends, the box is
+						 * kept, and one notice names the way out. The Q-1 security invariant is met by
+						 * the hold rather than by the dispatch.
+						 */
+						return {
+							kind: "held",
+							notice:
+								"These characters are still the credentials you cancelled — clear the box (or delete them) before Enter sends your words.",
+						};
 					}
 					return { kind: "send" };
 				}
@@ -3186,7 +3201,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (index < 0) return plan;
 				return planFor(draft, index + word.length, "pick");
 			},
-			[gestureFor, lockedRunOf, planFor, recordWord],
+			/*
+			 * `lockedRunOf` is deliberately NOT a dependency: it is no longer called in
+			 * this body (the held press replaced the dispatch route that read it), so
+			 * listing it here is a stale dep — a new `lockedRunOf` identity would rebuild
+			 * the planner for nothing. It is still used elsewhere in the component.
+			 */
+			[gestureFor, planFor, recordWord],
 		);
 		/*
 		 * The composer's syntax highlight, and the ONE gate that decides whether the
@@ -3294,6 +3315,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
+				if (plan.kind === "held") {
+					/*
+					 * A HELD PRESS (operator requirement). This plan is asked of the composer
+					 * when the box still carries an Esc-cancelled credential token whose
+					 * characters were restored: the operator's own words after the token must not
+					 * become the command's argument, and the restored secret must not go to the
+					 * model. So the plan's answer is "do nothing, keep the box, and say the way
+					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
+					 * the hold is a property of the composer's own state, not of whether a
+					 * dispatcher is wired, so a harness that mounts the composer alone still gets
+					 * the one sentence rather than a silently dead Enter.
+					 */
+					onSlashNote?.(plan.notice);
+					return;
+				}
 				if (!runSlashCommand) return;
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
