@@ -493,9 +493,14 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   card's span - a left-anchored card would need width <= 148/188/228 to clear it, a
   right-anchored one <= 8px, and the card's own ink floor is 208. **A control under a card
   cannot be aimed at, whatever the card does with presses** - so the card takes its own height
-  out of the column instead, and the ROWS DO NOT MOVE: the list is `flex-1`, so what yields is
-  its bottom (an empty tail in a short list, the formerly-hidden bottom rows when it
-  overflows), with `scrollTop` never written. There is no transition on the band, because a
+  out of the column instead, and the ROWS DO NOT MOVE: the band's height is spent by the column's
+  BOTTOM-MOST region - the one immediately above the band, whose top edge is the only edge that
+  moves - which in the measured assembly is the chats list, forced to a definite box of its
+  band-0 height less the band, so it goes BELOW its content and what the band hides is the
+  overflow at its bottom (an empty tail in a short list, the formerly-hidden bottom rows when it
+  overflows), with `scrollTop` never written and the region above it keeping its box to the
+  pixel. In the other order that bottom-most region is already the `flex-1` one and it yields by
+  itself, which is why the rule names the region and not the list. There is no transition on the band, because a
   band that animated would move rows under the reader's pointer. The price the designer
   accepts and this document records: **58px of list viewport for the offer's eight seconds, or
   the refusal's height plus eight for its ten**, spent at the moment the list is already

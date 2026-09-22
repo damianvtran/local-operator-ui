@@ -3865,6 +3865,59 @@ export function ChatSidebar({
 		};
 	}, []);
 
+	/*
+	 * THE BAND IS SPENT BY THE COLUMN'S BOTTOM-MOST REGION (design round 6's Q-3 ruling, shape (b)),
+	 * and in the measured `entities-first` assembly that region is the chats list. The rule: that
+	 * region is forced to a DEFINITE box of `max(0, base - band)`, `base` being the height it had with
+	 * no message standing - so its top edge does not move, the `flex-1` entity region above keeps its
+	 * box to the pixel, the rows in BOTH regions keep their offsets, and neither `scrollTop` is
+	 * written. What the band spends is then the list's own bottom, where `overflow-y` clips: the
+	 * rows it hides are the overflow, which is what D14 promised and what QA round 3 measured it not
+	 * doing (the entity region above paid 94 of the band's 142 and every row rode up with it).
+	 *
+	 * `base` IS READ ONLY WHILE NO BAND STANDS, and that is a CONSTRAINT rather than a detail: the
+	 * forced box IS what a re-read returns, so re-reading while a message is up subtracts the band
+	 * from the already-subtracted height - 289 -> 147 -> 5 -> 0, one message at a time (the designer
+	 * named the trap). The observer is attached in the band-0 state and this effect's own cleanup
+	 * tears it down the moment a message appears.
+	 *
+	 * IN `chats-first` THE LIST IS NOT THE BOTTOM REGION: the entity region is, and it is the
+	 * `flex-1` one, so it yields by itself and this rule leaves the list exactly as it was. That is
+	 * the shape's other half, not an omission.
+	 */
+	const listIsBottomRegion = bottomRegion === "chats";
+	const [listBase, setListBase] = useState<number | null>(null);
+	useEffect(() => {
+		if (bandHeight > 0) return;
+		/*
+		 * BOTH FLAGS ARE READ HERE RATHER THAN ONLY DECLARED: the region the ref points at is
+		 * rendered only while both are true, so they are how this effect learns that the ref has
+		 * arrived (and a lint rule that sees a dependency nobody reads is right to complain).
+		 */
+		const rendered = bothVisible && listIsBottomRegion;
+		const list = rendered ? listPanelRef.current : null;
+		if (list === null) return;
+		const read = () =>
+			setListBase(Math.round(list.getBoundingClientRect().height));
+		read();
+		const observer = new ResizeObserver(read);
+		observer.observe(list);
+		return () => observer.disconnect();
+		/*
+		 * AND THE EFFECT RE-RUNS WHEN THE ASSEMBLY CHANGES, not only when the band does (measured
+		 * 2026-09-22: the first cut depended on `bandHeight` alone, so a mount where the two regions
+		 * were not yet both drawn left the ref null - the effect returned without measuring - and the
+		 * next run was the one the band triggered, which returns early by the constraint above. The
+		 * base stayed `null`, no yield applied, and the entity region paid the band exactly as before:
+		 * `{"rowsHeld":false,"entityBoxHeld":false,"yieldExact":false,"after":{"list":{"height":289},
+		 * "entities":{"height":333}}}` against `475` before, with the band at 142.
+		 */
+	}, [bandHeight, bothVisible, listIsBottomRegion]);
+	const listYield: number | undefined =
+		listIsBottomRegion && bandHeight > 0 && listBase !== null
+			? Math.max(0, listBase - bandHeight)
+			: undefined;
+
 	const pinFailureLine = pinFailure ? (
 		/*
 		 * The pin failure, and the reason it carries a ref: it is a flex child of the
@@ -3948,31 +4001,23 @@ export function ChatSidebar({
 			id={CHAT_REGION_ID}
 			data-sidebar-region="chats"
 			style={
-				split.listMax === null
+				split.listMax === null && listYield === undefined
 					? undefined
 					: {
 							/*
-							 * THE BAND'S HEIGHT COMES OUT OF THE LIST'S OWN ALLOWANCE (D14's yield, and QA round 3's
-							 * Q-3: the yield was not real). This container is the SIZED region in this assembly
-							 * (`shrink-0`, below), which is what keeps the split's meaning - only the user's drag or
-							 * the module's own cap moves it - but the band is a flex sibling that grows BELOW it,
-							 * and with this cap untouched the column paid the band out of the ENTITY region above,
-							 * whose height IS this box's top: the list was translated up by the band and every row
-							 * rode with it (measured: -150 at the settled refusal, -34/-58 mid-entrance, -144 at
-							 * the short window, with the list's own height never changing). Subtracting the band
-							 * here keeps `shrink-0` AND makes the yield real: the box keeps its top, loses the
-							 * band's height off its bottom, and `scrollTop` is untouched, so the rows keep their
-							 * offsets and what the band spends is the overflow at the bottom - which is what D14
-							 * specified and what the committed spec's § "the list gives up exactly this much"
-							 * promises. A band taller than the cap floors at 0 rather than inverting the box.
-							 *
-							 * `maxHeight` is subtracted even when the region is not `listFixed`: the cap is what
-							 * the module hands this region, and the band is spending from the same column.
+							 * The cap the split module computed, and the definite box the band's ruling forces
+							 * while a message stands (`listYield`, read at the hook above): the list's own band-0
+							 * height less the band, deliberately below its content, so the rows the band hides
+							 * are the overflow at the bottom rather than a re-laid list. A CHOSEN (`listFixed`)
+							 * height is still forced when no message stands; with a band up the yield is the
+							 * definite box, which is the same mechanism one step further.
 							 */
-							maxHeight: Math.max(0, split.listMax - bandHeight),
-							height: split.listFixed
-								? Math.max(0, split.listMax - bandHeight)
-								: undefined,
+							maxHeight: split.listMax ?? undefined,
+							height:
+								listYield ??
+								(split.listFixed && split.listMax !== null
+									? split.listMax
+									: undefined),
 						}
 			}
 			/*

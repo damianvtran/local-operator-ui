@@ -1893,23 +1893,68 @@ async function clickAt(cdp, selector) {
  */
 async function listAndRowOffsets(cdp) {
 	return cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
-		const band = document.querySelector("[data-archive-toast-band]");
-		const rect = list.getBoundingClientRect();
-		return {
-			list: {
+		/*
+		 * BOTH REGIONS, because the band's ruling (design round 6, Q-3) is about which one gives:
+		 * the column's bottom-most region loses the band off its own bottom and the one above keeps
+		 * its box TO THE PIXEL, so a reading that watched only the list could not tell the two apart
+		 * - it would pass on the defect this replaced, where the entity region above paid and the
+		 * list was translated up with its height unchanged. Each region reports its box, its own
+		 * scroll, and the tops of what it draws: the list's rows are session rows and the entity
+		 * region's are entity groups (its nested rows are session rows too, and they are in the
+		 * top-level list below with a region tag so a comparison can tell them apart).
+		 */
+		const region = (sel, rowSel, tag) => {
+			const node = document.querySelector(sel);
+			if (node === null) return null;
+			const rect = node.getBoundingClientRect();
+			return {
 				top: Math.round(rect.top),
 				height: Math.round(rect.height),
-				scrollTop: list.scrollTop,
-				scrollHeight: list.scrollHeight,
-			},
+				scrollTop: node.scrollTop,
+				scrollHeight: node.scrollHeight,
+				rows: Array.from(node.querySelectorAll(rowSel)).map((row) => ({
+					id:
+						row.getAttribute("data-session-row") ??
+						row.getAttribute("data-entity-name") ??
+						row.textContent.trim().slice(0, 24),
+					region: tag,
+					top: Math.round(row.getBoundingClientRect().top),
+				})),
+			};
+		};
+		const band = document.querySelector("[data-archive-toast-band]");
+		return {
+			list: region('[data-sidebar-region="chats"]', "[data-session-row]", "chats"),
+			entities: region('[data-sidebar-region="entities"]', "[data-entity]", "entities"),
 			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
-			rows: Array.from(document.querySelectorAll("[data-session-row]")).map((row) => ({
+			rows: Array.from(
+				document.querySelectorAll(
+					'[data-sidebar-region="chats"] [data-session-row], [data-sidebar-region="entities"] [data-session-row]',
+				),
+			).map((row) => ({
 				id: row.getAttribute("data-session-row"),
 				top: Math.round(row.getBoundingClientRect().top),
 			})),
 		};
 	})()`);
+}
+
+/** Whether two row lists name the same rows at the same offsets, to the pixel. */
+function sameTops(before, after) {
+	/*
+	 * TWO EMPTY LISTS ARE EQUAL, and that matters here: this fixture's entity region draws neither
+	 * `[data-entity]` groups nor nested session rows in the state the band's check runs in, so the
+	 * entity side of the comparison is genuinely empty - and its rows ARE covered anyway by the
+	 * top-level list, which reads the session rows inside both regions. An empty comparison that
+	 * returned `false` would fail the acceptance reading on a fixture that has nothing to move.
+	 */
+	if (before.length !== after.length) return false;
+	if (before.length === 0) return true;
+	const first = new Map(before.map((row) => [row.id, row.top]));
+	return after.every((row) => {
+		const was = first.get(row.id);
+		return was !== undefined && was === row.top;
+	});
 }
 
 /** Whether two `listAndRowOffsets` readings describe the same rows at the same offsets. */
@@ -1921,6 +1966,39 @@ function rowsUnmoved(before, after) {
 		const was = first.get(row.id);
 		return was !== undefined && Math.abs(was - row.top) <= 1;
 	});
+}
+
+/**
+ * THE CARD'S OWN BOX, READ UNTIL IT STOPS MOVING, AND BOUNDED TO THE CHEAP SIDE (QA round 3's
+ * Q-6, D17, D18).
+ *
+ * Sonner animates the toast's own height over ~400ms, so a box read - or a FRAME taken - as the
+ * message arrives describes a card still growing: the dark `refusal-band-280` frame was captured at
+ * 58 tall against a settled 142, with its top border in the wrong place and its last line cut
+ * mid-word, and `offer-toast-280`/`offer-toast-320` paired a settled card in one palette with a
+ * 34-tall one in the other.
+ *
+ * The loop drives a rendering update per attempt (`Page.captureScreenshot`, the same driver the
+ * capture helpers use, because a ResizeObserver callback needs a rendering update a headless window
+ * does not produce on its own) and stops as soon as two consecutive readings agree: two screenshots
+ * in the ordinary case, six in the worst - 6 x 120ms, about 0.7s. THAT BOUND IS THE POINT. An
+ * earlier version of this used twelve attempts and cost ~26s across the two places it ran, which is
+ * LONGER THAN THE LANE'S OWN MESSAGE LIFE: the loop outlived the card it was waiting for, read
+ * `{band: {height: 0}, card: null}` and the step lost the message its frames photograph. A settle
+ * that can outlive its subject is worse than the clock wait it replaces.
+ */
+async function awaitCardSettled(cdp, { attempts = 6, gapMs = 120 } = {}) {
+	let previous = null;
+	let reading = null;
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		await capture(cdp, "settle-probe").catch(() => null);
+		reading = await verb(cdp, "measure", SIDEBAR_TOAST).catch(() => null);
+		const key = reading === null ? null : JSON.stringify(reading.rect);
+		if (key !== null && key === previous) return { reading, attempts: attempt };
+		previous = key;
+		await wait(gapMs);
+	}
+	return { reading, attempts };
 }
 
 async function sceneSessionArchive(cdp) {
@@ -2329,11 +2407,6 @@ async function sceneSessionArchive(cdp) {
 	 * with no toast on it: the two frames this set takes OF the toast carry their own
 	 * checks in `offerFrames` instead of being exempted from the assertions silently.
 	 */
-	offerFrames.push({
-		label: `archive-refused${RUN_LABEL}`,
-		...(await captureWithToast(cdp, `archive-refused${RUN_LABEL}`)),
-		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
-	});
 	/*
 	 * WHAT THE CARD DOES TO THE ROWS UNDER IT (C: Q-1, R4-1, D11, U9 - four independent streams on
 	 * one selector).
@@ -2476,15 +2549,13 @@ async function sceneSessionArchive(cdp) {
 	 * and the message's life - and that bound needs measuring rather than guessing, so the clock
 	 * wait stays with its known spurious-FAIL mode and the fix is recorded as owed on the PR.
 	 */
-	await wait(700);
+	const settled = await awaitCardSettled(cdp);
 	const settledBand = await verb(
 		cdp,
 		"measure",
 		"[data-archive-toast-band]",
 	).catch(() => null);
-	const settledCard = await verb(cdp, "measure", SIDEBAR_TOAST).catch(
-		() => null,
-	);
+	const settledCard = settled.reading;
 	/*
 	 * AND THE CARD'S OWN OVERFLOW, WHICH IS D19's READING rather than a box: a scrollbar on a toast is
 	 * a visible defect, and the horizontal one came free with `overflow-y: auto` - CSS computes the
@@ -2540,6 +2611,19 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	/*
+	 * AND THE FRAME IS TAKEN AT THAT SAME SAMPLE (QA round 3's D17). The settle gates the BOX
+	 * READING, not the capture, and that is how the dark refusal frame came back mid-replacement:
+	 * a 58-tall card with its title gone, in a frame set a reader would read as the refusal's shape.
+	 * One moment, one pair of numbers, one frame - the capture right after the settled box read, so
+	 * a frame and the reading beside it cannot describe different cards.
+	 */
+	offerFrames.push({
+		label: `archive-refused${RUN_LABEL}`,
+		...(await captureWithToast(cdp, `archive-refused${RUN_LABEL}`)),
+		settleAttempts: settled.attempts,
+		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+	});
+	/*
 	 * AND THE YIELD IS READ AS THE COMPARISON IT IS (QA round 3, Q-3 = design round 4, D20), which
 	 * is the half D14 never measured: the check above pins the band's SIZE, this one pins WHERE the
 	 * height comes from. The promise is that the band is taken off the LIST's own bottom with the
@@ -2556,86 +2640,90 @@ async function sceneSessionArchive(cdp) {
 		"the list and its rows AFTER the band (Q-3)",
 		JSON.stringify(offsetsAfterBand),
 	);
-	const rowsHeld = rowsUnmoved(offsetsBeforeBand, offsetsAfterBand);
+	const rowsHeld = sameTops(
+		offsetsBeforeBand.rows.map((r) => ({ id: `row:${r.id}`, top: r.top })),
+		offsetsAfterBand.rows.map((r) => ({ id: `row:${r.id}`, top: r.top })),
+	);
+	/*
+	 * THE ACCEPTANCE READING IS THE DESIGNER'S OWN SENTENCE (design round 6's Q-3 ruling, shape
+	 * (b)), and it is deliberately about the WHOLE COLUMN rather than about the list: every row's
+	 * top in BOTH regions byte-equal to the band-0 frame, both `scrollTop`s untouched, the entity
+	 * region's box unchanged, and the list's own height down by EXACTLY the band. The last two are
+	 * what separate the yield from the defect QA round 3 measured: a list translated up with its
+	 * height unchanged passes a rows-only reading in the short list, and an entity region that paid
+	 * the band passes it too while every row rides up.
+	 */
+	const entityBoxHeld =
+		offsetsBeforeBand.entities !== null &&
+		offsetsAfterBand.entities !== null &&
+		offsetsBeforeBand.entities.top === offsetsAfterBand.entities.top &&
+		offsetsBeforeBand.entities.height === offsetsAfterBand.entities.height;
+	const entityRowsHeld =
+		offsetsBeforeBand.entities !== null &&
+		offsetsAfterBand.entities !== null &&
+		sameTops(offsetsBeforeBand.entities.rows, offsetsAfterBand.entities.rows);
 	const scrollHeld =
-		offsetsAfterBand.list.scrollTop === offsetsBeforeBand.list.scrollTop;
-	/*
-	 * THE GIVE-BACK IS A BOUND, NOT AN EQUALITY: the list's box must be no TALLER than it was (the
-	 * band's height comes off this region, never out of the entity region above, which is what moved
-	 * the rows), and in this fixture it is shorter - the content is 288 and the shrunk cap binds, so
-	 * the box the reader sees is the cap with the band's height already spent. A list whose content
-	 * did not reach the shrunk cap keeps its content height; what it may never do is grow or move
-	 * its rows.
-	 */
-	const boxGave = offsetsAfterBand.list.height <= offsetsBeforeBand.list.height;
-	/*
-	 * AND A WHEEL INSIDE THE STANDING CARD, WHICH IS Q-5's READING. The app's own rule claimed a
-	 * wheel over the card "reaches the list behind it"; QA measured 0 -> 0 over the card against
-	 * 0 -> 40.5 over a row once D14 put the card BESIDE the list rather than over it, and the rule
-	 * now forwards the gesture from the band (`onWheel`). The reading is the list's own `scrollTop`,
-	 * and it is only discriminating where the list HAS somewhere to scroll - in this fixture the
-	 * list is content-sized, so the note says so rather than reporting a PASS bought by a list that
-	 * could not have moved either way.
-	 */
-	const wheelTarget = settledCard?.centre ?? null;
-	const scrollBeforeWheel = (await listAndRowOffsets(cdp)).list.scrollTop;
-	const listCanScroll = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
-		return list.scrollHeight > list.clientHeight + 1;
-	})()`);
-	if (wheelTarget !== null) {
-		await movePointer(cdp, wheelTarget.x, wheelTarget.y);
-		await cdp
-			.send("Input.dispatchMouseEvent", {
-				type: "mouseWheel",
-				x: wheelTarget.x,
-				y: wheelTarget.y,
-				deltaX: 0,
-				deltaY: 120,
-				buttons: 0,
-			})
-			.catch(() => null);
-		await wait(240);
-	}
-	const scrollAfterWheel = (await listAndRowOffsets(cdp)).list.scrollTop;
-	note(
-		"a wheel inside the standing card, against the list (Q-5)",
-		JSON.stringify({
-			wheelTarget,
-			listCanScroll,
-			scrollBeforeWheel,
-			scrollAfterWheel,
-		}),
-	);
+		offsetsAfterBand.list.scrollTop === offsetsBeforeBand.list.scrollTop &&
+		(offsetsBeforeBand.entities?.scrollTop ?? 0) ===
+			(offsetsAfterBand.entities?.scrollTop ?? 0);
+	const yieldExact =
+		offsetsAfterBand.list.height ===
+		Math.max(0, offsetsBeforeBand.list.height - offsetsAfterBand.band);
 	check(
-		"a wheel inside the standing card reaches the LIST (QA round 3, Q-5), read where the list has somewhere to go",
-		wheelTarget === null ||
-			listCanScroll === false ||
-			scrollAfterWheel !== scrollBeforeWheel,
-		JSON.stringify({
-			wheelTarget,
-			listCanScroll,
-			scrollBeforeWheel,
-			scrollAfterWheel,
-		}),
-	);
-	check(
-		"the band comes out of the LIST's own box: the rows keep their offsets, the list never scrolls itself, and a capped list gives back exactly the band (design round 4, D14; QA round 3, Q-3)",
-		rowsHeld && scrollHeld && boxGave,
+		"the band comes out of the LIST's own box, the column's bottom-most region here: every row in both regions keeps its top, both scrollTops are untouched, the entity region keeps its box to the pixel, and the list's own height loses exactly the band (design round 6's Q-3 ruling, shape (b))",
+		rowsHeld &&
+			entityBoxHeld &&
+			entityRowsHeld &&
+			scrollHeld &&
+			yieldExact &&
+			offsetsAfterBand.band > 0,
 		JSON.stringify({
 			rowsHeld,
+			entityBoxHeld,
+			entityRowsHeld,
 			scrollHeld,
-			boxGave,
+			yieldExact,
 			before: offsetsBeforeBand,
 			after: offsetsAfterBand,
 		}),
+	);
+	/*
+	 * THE OVERFLOWING CASE, READ AND NOT ASSERTED (design round 6's Q-3 ruling asked for it, and this
+	 * is what the run says). The state IS the overflowing one - with the card standing the list's own
+	 * box is 147 against 288 of content, so the rows the band spends are the overflow at its bottom,
+	 * and the reading above shows every one of them still at its band-0 top with the box below its
+	 * content. What is NOT established is the SCROLL half: `list.scrollTop = list.scrollHeight` on the
+	 * region returned 0 in both palettes (verbatim `{"scrolledBy":0,"setBottom":0}`), so either the
+	 * region is not the element that scrolls in this state or something re-pins it, and a check built
+	 * on that reading would be asserting a fact about the harness rather than about the band. Left as
+	 * a note and reported as owed rather than written into the acceptance: the Q-5 reading beside it
+	 * DOES move this same element's `scrollTop` (0 -> 47.5) once a wheel is forwarded to it, which is
+	 * why the cause is not obvious enough to assert either way without another probe.
+	 */
+	const bottomBefore = await listAndRowOffsets(cdp);
+	const setBottom = await cdp
+		.evaluate(`(() => {
+			const list = document.querySelector('[data-sidebar-region="chats"]');
+			list.scrollTop = list.scrollHeight;
+			return Math.round(list.scrollTop);
+		})()`)
+		.catch(() => null);
+	const bottomAfter = await listAndRowOffsets(cdp);
+	note(
+		"the overflowing list at its bottom, under the standing card (Q-3): read, not asserted",
 		JSON.stringify({
-			rowsHeld,
-			scrollHeld,
-			boxGave,
-			before: offsetsBeforeBand.list,
-			after: offsetsAfterBand.list,
-			band: offsetsAfterBand.band,
+			scrolledBy: bottomAfter.list.scrollTop - bottomBefore.list.scrollTop,
+			setBottom,
+			before: {
+				list: bottomBefore.list,
+				entities: bottomBefore.entities,
+				band: bottomBefore.band,
+			},
+			after: {
+				list: bottomAfter.list,
+				entities: bottomAfter.entities,
+				band: bottomAfter.band,
+			},
 		}),
 	);
 	/*
@@ -5004,6 +5092,7 @@ async function sceneRowSpace(cdp) {
 	 * offer is about plus the offer itself.
 	 */
 	await parkPointer(cdp);
+	await awaitCardSettled(cdp);
 	const offerFrame = await captureToastPair(cdp, "offer-toast-280");
 	geometry["offer-toast-280"] = await rowSpaceGeometry(cdp, IDS);
 	offerFrames.push({
@@ -5067,6 +5156,7 @@ async function sceneRowSpace(cdp) {
 	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
 	await wait(700);
 	await parkPointer(cdp);
+	await awaitCardSettled(cdp);
 	const offer240 = await captureToastPair(cdp, "offer-toast-240");
 	geometry["offer-toast-240"] = await rowSpaceGeometry(cdp, IDS);
 	offerFrames.push({
@@ -5118,6 +5208,7 @@ async function sceneRowSpace(cdp) {
 	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
 	await wait(700);
 	await parkPointer(cdp);
+	await awaitCardSettled(cdp);
 	const offer320 = await captureToastPair(cdp, "offer-toast-320");
 	geometry["offer-toast-320"] = await rowSpaceGeometry(cdp, IDS);
 	offerFrames.push({
@@ -5159,6 +5250,7 @@ async function sceneRowSpace(cdp) {
 	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
 	await wait(700);
 	await parkPointer(cdp);
+	await awaitCardSettled(cdp);
 	const offerLong = await captureToastPair(cdp, "offer-long-280");
 	geometry["offer-long-280"] = await rowSpaceGeometry(cdp, IDS);
 	offerFrames.push({
