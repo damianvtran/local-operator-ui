@@ -263,8 +263,10 @@ export function mainExecutablePath(appPath) {
  * bundle, the artifact's name or the architecture of a neighbouring binary:
  * translation is decided by the kernel when it loads THAT file. `machOCpuType`
  * answers `null` for a fat launcher and for anything unreadable, and both keep the
- * tight bound - a fat bundle carries the host's own slice and runs natively, and
- * "could not tell" must not silently buy patience at a release gate.
+ * tight bound: a fat bundle is one this gate REFUSES rather than ships
+ * (`app-one-bundled-python` fails any app that is not a single architecture, and
+ * `mac.target` builds one per architecture), and "could not tell" must not
+ * silently buy patience at a release gate.
  *
  * Rosetta is the only translator macOS has, so the pair is an arm64 host against
  * an x86_64 child. An arm64 child on an x64 host is not translated, it is
@@ -276,6 +278,20 @@ export function hostTranslatesExecutable(executable, hostArch = process.arch) {
 	return (
 		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
 	);
+}
+
+/**
+ * The bound a check that EXECS `executable` gets, decided in one place.
+ *
+ * Two checks in this file run a child out of the bundle under test - the spawn
+ * probe and the seed-version ask - and both are exposed to the same translation,
+ * so the rule is written once rather than twice as a ternary. Every other check
+ * here reads files and needs no bound at all.
+ */
+export function execBound(executable, hostArch = process.arch) {
+	return hostTranslatesExecutable(executable, hostArch)
+		? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
+		: SPAWN_PROBE_TIMEOUT_MS;
 }
 
 /**
@@ -385,9 +401,7 @@ export function artifactChecks({
 				// translation's time rather than in its own, and `timedOut` would
 				// otherwise report the translator as an OS refusal. See
 				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
-				timeoutMs: hostTranslatesExecutable(executable, hostArch)
-					? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
-					: SPAWN_PROBE_TIMEOUT_MS,
+				timeoutMs: execBound(executable, hostArch),
 				expect: (result) =>
 					result.status === 0 && !result.signal && !result.timedOut,
 			},
@@ -974,7 +988,24 @@ export function seedBootstrapCheck(appPath) {
  * 3.12.14 seed tree: `bin/python3 -I -B --version` printed `Python 3.12.14` and
  * left the tree's file set and every file's sha256 unchanged.
  */
-export function seedVersionCheck(appPath, { run = spawnRunner } = {}) {
+/**
+ * The one check in this group that RUNS the seed, and why it is bounded.
+ *
+ * Every sibling reads files (`seedModeCheck`, `prunedSeedCheck`,
+ * `seedBootstrapCheck`, `bundledBytecodeCheck`, `privatePythonSeedCheck`); this
+ * one asks the interpreter its version, which makes it the same class of
+ * blindness the spawn probe removes one check to the left - a child nobody is
+ * measuring. v0.30.9 is the worked example: that release failed on a child which
+ * had to be TRANSLATED before it could answer (run `35701146672`), and this
+ * interpreter is an x86_64 child inside the x64 bundle that the arm64 runner must
+ * translate on its first exec exactly as the launcher is. It takes the bound
+ * `execBound` picks, so a native ask keeps the tight bound and a translated one
+ * is not mistaken for a hang.
+ */
+export function seedVersionCheck(
+	appPath,
+	{ run = spawnRunner, hostArch = process.arch } = {},
+) {
 	return appCheck(
 		"app-seed-python-version",
 		appPath,
@@ -988,12 +1019,18 @@ export function seedVersionCheck(appPath, { run = spawnRunner } = {}) {
 			const python = join(root, "bin", "python3");
 			if (!existsSync(python))
 				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
-			const result = run(python, ["-I", "-B", "--version"]);
+			const result = run(
+				python,
+				["-I", "-B", "--version"],
+				undefined,
+				undefined,
+				execBound(python, hostArch),
+			);
 			const printed = `${result.stdout}${result.stderr}`.trim();
 			const match = /^Python (\d+\.\d+\.\d+)$/.exec(printed);
 			if (result.status !== 0 || match == null)
 				throw new Error(
-					`The seed's interpreter could not report its version (exit ${result.status}): ${printed || "no output"}`,
+					`The seed's interpreter could not report its version (exit ${result.status ?? "none"}): ${printed || "no output"}`,
 				);
 			if (match[1] !== PYTHON_VERSION)
 				throw new Error(

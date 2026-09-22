@@ -236,6 +236,7 @@ const {
 	profileAuthorizationCheck,
 	profileAuthorizes,
 	runChecks,
+	seedVersionCheck,
 	SPAWN_PROBE_TIMEOUT_MS,
 	SPAWN_PROBE_TRANSLATED_TIMEOUT_MS,
 	summarize,
@@ -244,6 +245,10 @@ const {
 // The Mach-O cpu types the gate's translation rule compares against, imported
 // rather than spelled out here so the fixture and the rule cannot drift apart.
 const { MACH_O_CPUTYPE } = await import("./prune-python-seed.mjs");
+// The declared interpreter and the seed namespace the fixture below has to build:
+// imported rather than spelled, so a version bump cannot leave this test asserting
+// a tree the app itself would refuse.
+const { LAYOUT, PYTHON_VERSION } = await import("./bundled-runtime-layout.mjs");
 // The policy module the GATE reads, imported beside the bundle the APP reads from
 // (`install` above): the two implementations of one rule are only allowed to stay
 // separate because a test asserts they agree, and that test needs both in scope.
@@ -4458,6 +4463,52 @@ test("the artifact gate hands a translated launcher the longer bound", () => {
 		row("arm64").expect({ status: 0, signal: null, timedOut: false }),
 		true,
 	);
+});
+
+test("the seed's version ask is bounded by the same rule as the probe", () => {
+	/*
+	 * `app-seed-python-version` is the only OTHER check that execs a child out of
+	 * the bundle, and it carried no bound at all - it passed because the interpreter
+	 * happened to answer quickly, which is the blindness `app-spawn` exists to
+	 * remove, one check to the right (review round 1, M1). The fixture is a seed
+	 * whose interpreter header says x86_64.
+	 */
+	const app = gateFixtureBundle("lo-gate-seed-ask-");
+	const bindir = join(
+		app,
+		"Contents",
+		"Resources",
+		LAYOUT.python.seedNamespace,
+		"arm64",
+		"bin",
+	);
+	mkdirSync(bindir, { recursive: true });
+	writeThinMachO(join(bindir, "python3"), MACH_O_CPUTYPE.X86_64);
+
+	const ask = (hostArch) => {
+		const seen = [];
+		const row = seedVersionCheck(app, {
+			hostArch,
+			run: (command, args, input, env, timeoutMs) => {
+				void input;
+				void env;
+				seen.push({ command, args, timeoutMs });
+				return {
+					status: 0,
+					stdout: `Python ${PYTHON_VERSION}\n`,
+					stderr: "",
+				};
+			},
+		});
+		assert.equal(row.passed, true, `the ask must pass: ${row.output}`);
+		return seen[0];
+	};
+
+	// An arm64 host translates the x86_64 interpreter it asks; an Intel host runs it
+	// natively. The ask itself is the one the check documents.
+	assert.equal(ask("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+	assert.equal(ask("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+	assert.deepEqual(ask("arm64").args, ["-I", "-B", "--version"]);
 });
 
 test("the gate's own results carry the bundle-walk rows", () => {
