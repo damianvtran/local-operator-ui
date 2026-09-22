@@ -3887,73 +3887,38 @@ export function ChatSidebar({
 	 */
 	const listIsBottomRegion = bottomRegion === "chats";
 	const [listBase, setListBase] = useState<number | null>(null);
-	useEffect(() => {
-		if (bandHeight > 0) return;
-		/*
-		 * BOTH FLAGS ARE READ HERE RATHER THAN ONLY DECLARED: the region the ref points at is
-		 * rendered only while both are true, so they are how this effect learns that the ref has
-		 * arrived (and a lint rule that sees a dependency nobody reads is right to complain).
-		 */
-		const rendered = bothVisible && listIsBottomRegion;
-		const list = rendered ? listPanelRef.current : null;
-		if (list === null) return;
-		const read = () =>
-			setListBase(Math.round(list.getBoundingClientRect().height));
-		read();
-		const observer = new ResizeObserver(read);
-		observer.observe(list);
-		return () => observer.disconnect();
-		/*
-		 * AND THE EFFECT RE-RUNS WHEN THE ASSEMBLY CHANGES, not only when the band does (measured
-		 * 2026-09-22: the first cut depended on `bandHeight` alone, so a mount where the two regions
-		 * were not yet both drawn left the ref null - the effect returned without measuring - and the
-		 * next run was the one the band triggered, which returns early by the constraint above. The
-		 * base stayed `null`, no yield applied, and the entity region paid the band exactly as before:
-		 * `{"rowsHeld":false,"entityBoxHeld":false,"yieldExact":false,"after":{"list":{"height":289},
-		 * "entities":{"height":333}}}` against `475` before, with the band at 142.
-		 */
-	}, [bandHeight, bothVisible, listIsBottomRegion]);
-	const lastBandHeightRef = useRef(bandHeight);
+	/*
+	 * THE BASE IS READ IN THE COMMIT ITSELF, AND THAT IS THE FIX FOR AN INTERMITTENT FAILURE RATHER
+	 * THAN A TIDY-UP (measured 2026-09-22, the yield's own check: the LIGHT pass reading
+	 * `yieldExact: true` against the DARK pass's `{"rowsHeld":false,"entityBoxHeld":false,
+	 * "scrollHeld":true,"yieldExact":false}` on identical code, with the list's box unchanged at 289
+	 * and the entity region paying the band - the pre-fix behaviour exactly, once in five runs).
+	 *
+	 * The first cut read the base from a PASSIVE effect that attached a `ResizeObserver` and returned
+	 * early whenever a band stood. Two ways to lose that race, and a run that loses either leaves the
+	 * base `null` for the band's whole life: the passive effect may never run in a band-0 commit if
+	 * the region was not rendered yet (the ref is null, the effect returns, and its dependencies - the
+	 * band's height, the assembly's flags - do not change again before the message arrives), and an
+	 * observer's first callback is delivered in a rendering update that a headless window does not
+	 * produce on its own. A LAYOUT effect with NO dependency list runs in every commit, synchronously,
+	 * before paint, so the commit that first renders the region is the commit that measures it - and
+	 * no message can exist before that, because a message needs a press.
+	 *
+	 * The observer is gone with it: the read happens on every commit while no band stands, which is
+	 * the same coverage without a callback that can be late. `setListBase` bails on an unchanged
+	 * value, so the extra call is free and cannot loop.
+	 *
+	 * The FREEZE itself is the designer's constraint, and it is kept: while a band stands this returns
+	 * immediately, so the forced box (`max(0, base - band)`) is never re-read as a new base - the
+	 * 289 -> 147 -> 5 -> 0 trap. `chats-first` needs nothing from any of this: the entity region is
+	 * the `flex-1` bottom region there and yields by itself, so the list is left exactly as it was.
+	 */
 	useLayoutEffect(() => {
-		/*
-		 * THE BAND'S ARRIVAL IS NOT A COMMIT THAT MOVED A ROW (QA round 4, Q-9), and without that
-		 * distinction the focus-hold TAKES THE READER'S SCROLL.
-		 *
-		 * `holdFocusedRow` follows a focused row that was inside its panel and left it as this commit
-		 * landed - "the correction only fires for a row that was inside and left". The band's arrival
-		 * shrinks the list's own box by its height (design round 6's ruling), so a focused row that
-		 * was inside the 289 box and sits within `band` of its bottom edge is OUTSIDE the 147 one -
-		 * not because anything moved it, but because the reader's window onto the list got shorter.
-		 * The hold reads that as a row to follow and writes `container.scrollTop` to bring it back.
-		 *
-		 * THE ARITHMETIC IS THE EVIDENCE, and it is why this is not a guess: QA's reading is
-		 * `{"scrollBefore":8.5,"scrollAfter":0}` with every row moving by exactly that (420 -> 429,
-		 * 496 -> 505, 528 -> 537), and 8.5 is the amount by which the followed row sat above the new
-		 * clip - `scrollTop + (above - band)` with `above = -8.5` clamps to 0, which is the number the
-		 * scene reports; the four-row case reads `40.5 -> 8.5`, i.e. the same write with a row 32 above
-		 * the clip and no ring. A press at the same scroll that raises no message leaves the position
-		 * alone, which is what a box that did not change predicts.
-		 *
-		 * WHAT IS NOT VERIFIED YET, stated rather than implied: the walk's own scene has no scroll to
-		 * lose when the band arrives - its list is 289 tall against 288 of content, so `max(0, ...)`
-		 * is 0 and the hold has nothing to write (the trap now in the driver reads `writes: []`
-		 * there). QA's fixture overflows at rest, which is the state this fix is for, and the walk
-		 * needs a shorter panel before it can reproduce it. The correction that WOULD have fired is
-		 * therefore not exercised by the check that lands beside it.
-		 *
-		 * The record is REFRESHED instead (the same call the containers make on their own scroll):
-		 * the new clip is the baseline, nothing is followed, and `scrollTop` is left exactly where the
-		 * reader put it - which is the clause the ruling states.
-		 */
-		const bandMoved = lastBandHeightRef.current !== bandHeight;
-		lastBandHeightRef.current = bandHeight;
-		if (bandMoved) {
-			refreshFocusedInside(entityPanelRef.current, entitySlotRef);
-			refreshFocusedInside(listPanelRef.current, listSlotRef);
-			return;
-		}
-		holdFocusedRow(entityPanelRef.current, entitySlotRef);
-		holdFocusedRow(listPanelRef.current, listSlotRef);
+		if (bandHeight > 0) return;
+		const list = listPanelRef.current;
+		if (list === null) return;
+		const measured = Math.round(list.getBoundingClientRect().height);
+		setListBase((previous) => (previous === measured ? previous : measured));
 	});
 	const listYield: number | undefined =
 		listIsBottomRegion && bandHeight > 0 && listBase !== null
