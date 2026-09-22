@@ -2632,7 +2632,39 @@ async function sceneSessionArchive(cdp) {
 	await wait(200);
 	await hoverOver(cdp, `[data-session-row]:has(${supersedingOffer})`);
 	await wait(300);
-	await hoverOver(cdp, supersedingOffer);
+	/*
+	 * THE CONTROL IS WAITED FOR, NEVER HOVERED BLIND (the light-palette miss, diagnosed by reading):
+	 * the acts are `display`-switched, so the control measures 0x0 until the pointer is on the row -
+	 * and a `hoverOver` aimed at a 0x0 box sends the pointer to (0,0), which takes it OFF the row,
+	 * un-reveals the acts, and leaves the press to land on a div outside every session row. Measured
+	 * verbatim in light: `control {"x":0,"y":0,"w":0,"h":0}` with `hit:"div
+	 * NOT-IN-A-SESSION-ROW"` while the row itself was `256x32` and present - i.e. the pointer had
+	 * been moved off it by the step's own second hover. Dark passed the same code on timing alone.
+	 * So: the row is hovered, the control's box is then POLLED until it has pixels (re-hovering the
+	 * row each time, because that is what reveals it), and the press goes to the control's own centre
+	 * once it exists. A control that never appears fails the check below by name rather than writing
+	 * nothing and leaving the verdict to the next step.
+	 */
+	const supersedingCentre = await (async () => {
+		for (let attempt = 0; attempt < 12; attempt += 1) {
+			const box = await verb(cdp, "measure", supersedingOffer).catch(
+				() => null,
+			);
+			if (box !== null && box.rect.width > 0 && box.rect.height > 0)
+				return box.centre;
+			await hoverOver(cdp, `[data-session-row]:has(${supersedingOffer})`);
+			await wait(150);
+		}
+		return null;
+	})();
+	check(
+		"the superseding row's archive control is revealed before the press (a press at a 0x0 box reaches nothing - the light-palette miss)",
+		supersedingCentre !== null,
+		JSON.stringify({
+			centre: supersedingCentre,
+			box: await verb(cdp, "measure", supersedingOffer).catch(() => null),
+		}),
+	);
 	await wait(200);
 	/*
 	 * WHAT THE PRESS IS AIMED AT, SAMPLED RATHER THAN THEORISED - the dark palette runs this whole
@@ -2668,7 +2700,10 @@ async function sceneSessionArchive(cdp) {
 			hit: centre ? name(document.elementFromPoint(centre.x, centre.y)) : null,
 		};
 	})()`);
-	await clickAt(cdp, supersedingOffer);
+	/* THE PRESS GOES AT LAST, AT THE CONTROL'S OWN CENTRE - the aim above was sampled before it,
+	   which is the reading this step exists to report when the two palettes disagree. */
+	if (supersedingCentre !== null)
+		await pressPointerStationary(cdp, supersedingCentre.x, supersedingCentre.y);
 	await wait(700);
 	const superseded = await verb(cdp, "state");
 	note(
