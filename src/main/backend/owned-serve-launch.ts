@@ -4,6 +4,47 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 
 const SHEBANG = /^#!([^\r\n]+)\r?\n/;
 const PYTHON_NAME = /[/\\]python(?:\d+(?:\.\d+)*)?$/;
+
+/**
+ * The /bin/sh exec trick distlib writes when the interpreter path cannot be a
+ * shebang — and on macOS, pipx's DEFAULT layout guarantees it.
+ *
+ * A console script's shebang normally names the venv interpreter directly,
+ * which is what `consoleInterpreter` reads. But a shebang cannot carry a path
+ * with spaces (or one over the kernel's length cap), so distlib's
+ * `_build_shebang` — the code under pip and pipx alike — falls back to:
+ *
+ *     #!/bin/sh
+ *     '''exec' '/path with spaces/python' "$0" "$@"
+ *     ' '''
+ *
+ * sh reads line two and execs the interpreter on this same file; Python reads
+ * the whole prefix as a string literal and falls through to the code below it.
+ * pipx's default home on macOS is `~/Library/Application Support/pipx/venvs`
+ * — a path WITH A SPACE — so every default pipx install on macOS produces this
+ * exact launcher, and the shebang test alone rejected all of them: the app
+ * quit at startup with "Cannot safely own this backend launcher" against the
+ * install it had itself resolved and classified as pipx (measured on a real
+ * v0.30.10 install; the same file passed once its shebang named a space-free
+ * symlink to the same venv).
+ *
+ * The capture is the interpreter with whatever quoting distlib applied; line
+ * one and the trailing `"$0" "$@"` anchor it so an arbitrary wrapper script
+ * that happens to exec python does not match — only this exact two-line
+ * preamble does, and the entrypoint import below is still required on top.
+ */
+const SH_EXEC_TRICK =
+	/^#!\/bin\/sh\r?\n'''exec' ([^\r\n]+) "\$0" "\$@"\r?\n' '''/;
+
+/** Strip the one layer of quoting distlib may have wrapped the path in. */
+function unquoteExecTrickPath(captured: string): string {
+	const trimmed = captured.trim();
+	const first = trimmed[0];
+	if ((first === "'" || first === '"') && trimmed.endsWith(first)) {
+		return trimmed.slice(1, -1);
+	}
+	return trimmed;
+}
 export const SERVE_ENTRYPOINT = "from local_operator.cli import main; main()";
 
 /** Runs in the interpreter under inspection and prints the four facts the launch
@@ -545,19 +586,34 @@ export async function windowsPathInterpreterCandidates(
 }
 
 /** Accept the installed Python console entrypoint, not arbitrary shell shims.
- * Keep the existing PATH resolver authoritative; this only proves its identity. */
+ * Keep the existing PATH resolver authoritative; this only proves its identity.
+ *
+ * Two spellings of the same launcher are accepted, and only those two:
+ * a shebang naming the interpreter (distlib's normal form), and distlib's
+ * /bin/sh exec trick (its own fallback when the interpreter path cannot BE a
+ * shebang — see SH_EXEC_TRICK, which is every default macOS pipx install).
+ * Both must still import the CLI entrypoint, and the interpreter must still
+ * look like a python. An arbitrary shell wrapper matches neither. */
 export function consoleInterpreter(consolePath: string): string {
 	const script = readFileSync(consolePath, "utf8");
+	const entrypoint = script.includes("from local_operator.cli import main");
 	const shebang = SHEBANG.exec(script)?.[1];
 	if (
-		!shebang ||
-		!isAbsolute(shebang) ||
-		!PYTHON_NAME.test(shebang) ||
-		!script.includes("from local_operator.cli import main")
+		shebang &&
+		isAbsolute(shebang) &&
+		PYTHON_NAME.test(shebang) &&
+		entrypoint
 	) {
-		throw new Error(
-			"Cannot safely own this backend launcher; use a directly paired external backend",
-		);
+		return shebang;
 	}
-	return shebang;
+	const trick = SH_EXEC_TRICK.exec(script)?.[1];
+	if (trick && entrypoint) {
+		const interpreter = unquoteExecTrickPath(trick);
+		if (isAbsolute(interpreter) && PYTHON_NAME.test(interpreter)) {
+			return interpreter;
+		}
+	}
+	throw new Error(
+		"Cannot safely own this backend launcher; use a directly paired external backend",
+	);
 }
