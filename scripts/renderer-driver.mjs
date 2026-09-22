@@ -3764,11 +3764,17 @@ async function sceneRowSpace(cdp) {
 	 * not a write.
 	 */
 	const archived = archivedAfter === "true";
-	const leftBecauseUnpinned = archivedAfter === "row-absent" && pinAfter !== null;
+	const leftBecauseUnpinned =
+		archivedAfter === "row-absent" && pinAfter !== null;
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",
 		!archived && (archivedAfter === archivedBefore || leftBecauseUnpinned),
-		JSON.stringify({ archivedBefore, archivedAfter, pinAfter, leftBecauseUnpinned }),
+		JSON.stringify({
+			archivedBefore,
+			archivedAfter,
+			pinAfter,
+			leftBecauseUnpinned,
+		}),
 	);
 
 	const WIDTHS = [240, 280, 320];
