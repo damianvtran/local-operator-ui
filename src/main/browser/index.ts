@@ -12,6 +12,7 @@ import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
 import { ConsoleError } from "../console/errors";
+import type { UserShellPath } from "../shell-path";
 import {
 	WebauthnChooser,
 	type WebauthnRequestSource,
@@ -126,6 +127,13 @@ export interface StartBrowserHostOptions {
 	 */
 	consoleCaptureUrl?: string;
 	preloadPath?: string;
+	/**
+	 * The user's own login-shell PATH (`../shell-path`), forwarded to the console
+	 * host so a surface behaves like the user's terminal. The app builds ONE of
+	 * these and hands it here and to the backend, so the two consumers cannot
+	 * answer "what is this user's PATH" differently.
+	 */
+	userShellPath?: UserShellPath;
 	log: (message: string) => void;
 }
 
@@ -622,6 +630,7 @@ export async function startBrowserHost(
 		 */
 		consoleCaptureUrl: options.consoleCaptureUrl,
 		preloadPath: options.preloadPath,
+		userShellPath: options.userShellPath,
 		log,
 	});
 

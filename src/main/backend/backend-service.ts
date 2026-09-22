@@ -56,6 +56,7 @@ import {
 	requestDesktopOutcome,
 } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
+import { type UserShellPath, withUserShellPath } from "../shell-path";
 import {
 	readInstallIdentity,
 	resolveGlobalConsoleScript,
@@ -222,6 +223,18 @@ interface OwnedServe {
 }
 
 /**
+ * What the manager may be handed from outside.
+ *
+ * One option, because it is the one thing the app owns and this class must not
+ * decide for itself: the login-shell PATH shared with the console host.
+ */
+export interface BackendServiceManagerOptions {
+	/** The app's ONE login-shell PATH resolver (`../shell-path`). Absent - a test or
+	 * a rig - leaves the spawn environment's PATH as the launch environment's. */
+	userShellPath?: UserShellPath;
+}
+
+/**
  * Backend Service Manager class
  * Manages the Local Operator backend service
  */
@@ -312,6 +325,16 @@ export class BackendServiceManager {
 	private statusObserver: ((snapshot: DaemonStatusSnapshot) => void) | null =
 		null;
 	private shellEnv: Record<string, string | undefined> = {};
+	/**
+	 * The user's own login-shell PATH, resolved once for the whole app.
+	 *
+	 * Handed in by `src/main/index.ts` rather than constructed here, for one
+	 * reason: the console host is given the SAME instance, so "what is this user's
+	 * PATH" has one answer in this process instead of one per consumer. Absent -
+	 * every test and rig that builds a manager directly - means this instance keeps
+	 * the launch environment's PATH, which is exactly what it did before.
+	 */
+	private readonly userShellPath?: UserShellPath;
 	// External/dev backends may be explicitly paired through main's environment.
 	// Managed starts always rotate this; it is never exposed by preload or logs.
 	/**
@@ -700,8 +723,13 @@ export class BackendServiceManager {
 
 	/**
 	 * Constructor
+	 *
+	 * @param options.userShellPath the app's one login-shell PATH resolver (see
+	 * `../shell-path`). Optional so a manager built without the app - a test, a rig
+	 * - behaves exactly as it did before this option existed.
 	 */
-	constructor() {
+	constructor(options: BackendServiceManagerOptions = {}) {
+		this.userShellPath = options.userShellPath;
 		// Extract port from API URL
 		try {
 			const apiUrl = new URL(backendConfig.VITE_LOCAL_OPERATOR_API_URL);
@@ -798,12 +826,6 @@ export class BackendServiceManager {
 				);
 			}
 
-			// Log the PATH environment variable to verify it's loaded correctly
-			logger.info(
-				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
-				LogFileType.BACKEND,
-			);
-
 			// Half of a deliberate belt-and-braces pair (the other half is
 			// `backendSpawnEnv()`, which every spawn calls): this line corrects a
 			// value the platform loaders above can inject from the operator's shell
@@ -813,6 +835,25 @@ export class BackendServiceManager {
 			// `backendSpawnEnv()` for the ordering hole and why the guarantee lives
 			// there.
 			this.shellEnv = withPythonBytecodeCache(this.shellEnv, this.appDataPath);
+
+			// And the PATH, last of all, from the user's OWN login shell. After the
+			// platform loaders on purpose: they merge the rc files' `env` dump, PATH
+			// included, and on macOS that dump is the wrong answer - it reads the first
+			// of `~/.zshrc`/`~/.bash_profile` through `/bin/bash` and misses
+			// `~/.zprofile`, which is where Homebrew's `shellenv` lives on Apple
+			// silicon. Resolving it here means one mechanism answers "what is this
+			// user's PATH" for both this manager and the console host, rather than the
+			// two the app used to have.
+			await this.settleUserShellPath();
+
+			// The PATH is logged AFTER both folds, not before them: this line is the
+			// record of the PATH the backend is actually given, and printed first it
+			// reported a value the spawn never saw - which is how the missing Homebrew
+			// directory was read off this log in the first place.
+			logger.info(
+				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
+				LogFileType.BACKEND,
+			);
 		} catch (error) {
 			logger.error(
 				"Error loading shell environment variables:",
@@ -820,6 +861,25 @@ export class BackendServiceManager {
 				error,
 			);
 		}
+	}
+
+	/**
+	 * Fold the user's login-shell PATH into `shellEnv`, when the app handed one in.
+	 *
+	 * Awaited at BOTH of its call sites, unlike the other enrichments the spawn
+	 * environment carries, because unlike them this one IS the value being fixed: a
+	 * fire-and-forget resolution is the defect it exists to remove, and the first
+	 * spawn would keep the launchd PATH on exactly the machines whose rc is slowest.
+	 * `resolve()` is memoized, so the second caller - and the console host, which
+	 * holds the same resolver - is answered from the first shell's result rather
+	 * than starting one.
+	 *
+	 * A no-op without a resolver: a manager a test or rig builds directly keeps the
+	 * launch environment's PATH exactly as it did before.
+	 */
+	private async settleUserShellPath(): Promise<void> {
+		if (!this.userShellPath) return;
+		this.shellEnv = await withUserShellPath(this.shellEnv, this.userShellPath);
 	}
 
 	/**
@@ -834,6 +894,14 @@ export class BackendServiceManager {
 	 * exact pre-fix configuration, on the machines whose rc is slowest. Applying
 	 * it here makes the guarantee structural instead of ordering-dependent, so
 	 * no spawn path can miss it.
+	 *
+	 * PATH is the one term of that race this method no longer has to carry: its
+	 * resolver is awaited before the first spawn (`settleUserShellPath`), so a slow
+	 * rc delays the start rather than quietly leaving the launchd PATH in place.
+	 * The prefix and the kill switch stay here all the same, because the seed they
+	 * are read from is `process.env` itself - an exported `PYTHONPYCACHEPREFIX`
+	 * inside the bundle, or a `.env` folded over the launch - and no shell
+	 * resolution of PATH has anything to say about either.
 	 *
 	 * These spawns are the ones whose `python` is the interpreter we ship:
 	 * CPython writes `__pycache__/*.pyc` beside the sources it imports, those
@@ -1983,6 +2051,16 @@ export class BackendServiceManager {
 				packaged: app.isPackaged,
 			});
 			const globalInstall = await this.checkLocalOperatorExists();
+			/*
+			 * Before the spawn environment is built, not after: this is the ordering
+			 * guarantee the PATH needs, and the reason it is not left to
+			 * `loadShellEnvironment()` (started un-awaited from the constructor) or to
+			 * `backendSpawnEnv()` (which has no async step to hook). A resolver answers
+			 * from its first shell, so an already-started resolution costs a microtask
+			 * here, and a resolution that is still running delays this start by at most
+			 * its own bound instead of spawning with the PATH the app was launched with.
+			 */
+			await this.settleUserShellPath();
 			const env = this.backendSpawnEnv();
 			/*
 			 * The interpreter to own, as CLAIMS rather than one path.

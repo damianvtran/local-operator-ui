@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import type { BrowserWindow } from "electron";
 import { localOperatorConfigDir } from "../browser/state-file";
+import { type UserShellPath, withUserShellPath } from "../shell-path";
 import { ConsoleCaptureView } from "./capture";
 import {
 	type ConsoleCompletionNotifier,
@@ -86,6 +87,12 @@ export const CONSOLE_DEFAULTED_OPTIONS = [
 	/** Defaults to the real pty; every test injects a fake. */
 	"spawn",
 	/*
+	 * The user's login-shell PATH (see `../shell-path`). Absent means the surfaces
+	 * are handed the app's own environment, which is what a rig that asserts the
+	 * RPC path wants and what every run got before this option existed.
+	 */
+	"userShellPath",
+	/*
 	 * The three fields this branch added, each optional for its own reason:
 	 *
 	 *  - `notifier` is the app's ONE notifier (design 12.3). Absent means the
@@ -118,6 +125,15 @@ export interface StartConsoleHostOptions {
 	appVersion: string;
 	log: (message: string) => void;
 	now?: () => number;
+	/**
+	 * The user's own login-shell PATH, resolved once for the whole app
+	 * (`../shell-path`), so a surface behaves like the user's terminal rather than
+	 * like the launchd-started app: a surface must be able to run the tools the
+	 * user can run, and `brew` is the case that made this necessary.
+	 *
+	 * The SAME instance the backend is given: one resolution, two consumers.
+	 */
+	userShellPath?: UserShellPath;
 	/** The config root the history lives under, defaulting to the same root the
 	 * discovery record uses. */
 	configDir?: string;
@@ -316,6 +332,15 @@ export async function startConsoleHost(
 		log,
 		history,
 		now: options.now,
+		// Resolved BEFORE the host exists, so no surface can be created against the
+		// launch environment and then start behaving like the user's terminal later:
+		// a surface's PATH is decided here, once, and every surface this host makes
+		// carries the same one. Bounded by the resolver's own timeout (it never
+		// rejects and answers null when the shell cannot speak), and no part of the
+		// app's own startup waits on it: the browser host is attached to the window
+		// without being awaited, so the cost of a slow rc here is this host coming
+		// online later, not the app failing to come up.
+		env: await withUserShellPath(process.env, options.userShellPath),
 		captureOffscreen: capture
 			? (request) => capture.capture(request)
 			: undefined,

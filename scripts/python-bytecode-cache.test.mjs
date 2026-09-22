@@ -2209,6 +2209,14 @@ const SPAWN_SITES = [
 	// for being unlisted rather than hiding behind a file-level exemption.
 
 	runsCommand(
+		"src/main/shell-path.ts",
+		"spawn",
+		1,
+		/shell,\s*\[\.\.\.args\]/,
+		"the user's own login shell (`defaultShell(env)`, run as `-l -i -c`) asked to print `$PATH` between sentinels, so a console surface and the backend see the environment the user's terminal has. It runs no interpreter of ours: the command is `command printf` over `$PATH`, the startup files it sources are the user's own, and no guarded environment applies or is wanted here - the child is deliberately handed the launch environment, because the whole point is to read what THAT environment's shell would produce",
+	),
+
+	runsCommand(
 		"src/main/update-install.ts",
 		"execFileSync",
 		1,
