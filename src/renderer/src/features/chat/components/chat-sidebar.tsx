@@ -1395,7 +1395,9 @@ export function ChatSidebar({
 	 * the reader was last looking at, and whether the one that replaces it outranks it - because
 	 * clearing on the ordering alone removed a refusal while its own card was still up.
 	 */
-	const laneDrawnRef = useRef<{ kind: "offer" | "failure"; at: number } | null>(null);
+	const laneDrawnRef = useRef<{ kind: "offer" | "failure"; at: number } | null>(
+		null,
+	);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -3601,7 +3603,11 @@ export function ChatSidebar({
 			newest === "offer" ? (archiveUndo?.at ?? 0) : (archiveFailure?.at ?? 0);
 		const drawnBefore = laneDrawnRef.current;
 		laneDrawnRef.current = { kind: newest, at: drawnAt };
-		if (drawnBefore !== null && drawnBefore.kind !== newest && drawnAt > drawnBefore.at) {
+		if (
+			drawnBefore !== null &&
+			drawnBefore.kind !== newest &&
+			drawnAt > drawnBefore.at
+		) {
 			if (newest === "offer") clearArchiveFailure();
 			else setArchiveUndo(null);
 		}
@@ -3737,7 +3743,13 @@ export function ChatSidebar({
 				},
 			);
 		}
-	}, [archiveFailure, archiveUndo, setSessionArchived, clearArchiveFailure, setArchiveUndo]);
+	}, [
+		archiveFailure,
+		archiveUndo,
+		setSessionArchived,
+		clearArchiveFailure,
+		setArchiveUndo,
+	]);
 
 	/*
 	 * THE CLOCK THE DRAW ABOVE DOES NOT RUN (agent review round 2 - the re-assertion):
@@ -3800,9 +3812,7 @@ export function ChatSidebar({
 		const settled = new ResizeObserver(() => measure());
 		let watched: HTMLElement | null = null;
 		const measure = () => {
-			const card = band.querySelector<HTMLElement>(
-				`.${ARCHIVE_TOAST_CLASS}`,
-			);
+			const card = band.querySelector<HTMLElement>(`.${ARCHIVE_TOAST_CLASS}`);
 			if (card !== watched) {
 				if (watched !== null) settled.unobserve(watched);
 				watched = card;
@@ -4936,12 +4946,20 @@ export function ChatSidebar({
 			 * to this panel - and the reading behind that rule is recorded there.
 			 * a toast by `position`.
 			 */}
-			/*
+			{/*
 			 * THE BAND, THEN THE CONTAINER INSIDE IT (design round 4, D14). The wrapper is what the app
 			 * can size and clip; sonner's own root keeps every rule its stylesheet gives it except the
 			 * positioning, which the container style overrides - see `ARCHIVE_TOAST_BAND_STYLE` for why
 			 * the card is the band's and no longer the panel's.
-			 */
+			 *
+			 * THE BRACES ARE THE COMMENT, AND WITHOUT THEM THIS SENTENCE IS UI (measured 2026-09-22). A
+			 * block comment written without them in a children position is not a comment to JSX: it is a
+			 * TEXT NODE, so this block was DRAWN in the panel's own bottom - `pnpm lint`'s
+			 * `lint/suspicious/noCommentText` caught it, and every frame of the panel taken on the heads
+			 * between it landing and this fix photographs the sentence. A block comment among JSX children
+			 * needs the braces, which is why the block above it carries them - and why the delimiters are
+			 * not spelled out here: the closing one would end this comment early.
+			 */}
 			<div
 				ref={laneBandRef}
 				data-archive-toast-band

@@ -54,7 +54,22 @@ const between = (path, start, end) => {
 		`${path} no longer contains ${JSON.stringify(start)}`,
 	);
 	const stop = source.indexOf(end, at);
-	return stop === -1 ? source.slice(at) : source.slice(at, stop);
+	/*
+	 * A MISSING END MARKER IS AN ERROR, NOT "TO THE END OF THE FILE" (repaired 2026-09-22).
+	 * This used to fall through to `source.slice(at)` when `end` was not found, and that turned
+	 * a markup assertion into a claim about the whole file the moment a marker moved: the
+	 * refusal test's end marker was the lane effect's dependency array, the U10 fix grew that
+	 * array by two entries, and the slice silently became 1428 lines - so the `role="alert"`
+	 * check went on passing while reading the CATALOGUE alert's own markup further down rather
+	 * than the lane's, which is the opposite of what it asserts. The caller is told which marker
+	 * moved instead.
+	 */
+	assert.notEqual(
+		stop,
+		-1,
+		`${path} no longer contains ${JSON.stringify(end)} after ${JSON.stringify(start)} - the slice would have run to the end of the file`,
+	);
+	return source.slice(at, stop);
 };
 
 /* ------------------------------------------------------------- the sidebar */
@@ -282,10 +297,22 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 * about ONE decision per commit rather than about two effects whose declaration order
 	 * would decide which message wins.
 	 */
+	/*
+	 * THE SLICE ENDS AT THE EFFECT'S DEPENDENCY ARRAY, which is the last line of the drawing
+	 * effect and therefore carries BOTH lane messages (the refusal and the offer), and it is
+	 * spelled here in the shaped `pnpm lint`/`biome format` gives it.
+	 *
+	 * IT WAS `}, [archiveFailure, archiveUndo, setSessionArchived]);` UNTIL 2026-09-22, and that
+	 * marker stopped matching when the U10 fix added two entries - `between` then ran the slice
+	 * to the end of the FILE (1428 lines), so the assertions below were reading the whole
+	 * component and the `role="alert"` one found the CATALOGUE alert's own markup hundreds of
+	 * lines down: it had become a claim about the rest of the component. `between` now fails
+	 * loudly on a missing marker, which is what makes this spelling safe to pin.
+	 */
 	const failure = between(
 		SIDEBAR,
 		"if (!archiveFailure && !archiveUndo) {",
-		"}, [archiveFailure, archiveUndo, setSessionArchived]);",
+		"\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
 	);
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
@@ -312,7 +339,17 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 * the write that raised them and the NEWER one wins, which these assertions pin: the
 	 * comparison exists, and the failure branch is the one that comparison selects.
 	 */
-	assert.match(failure, /archiveUndo\.at >= archiveFailure\.at/);
+	/*
+	 * AND THE COMPARISON IS STRICT (repaired 2026-09-22, `cbfe27143` - "a refusal outranks an
+	 * offer on a tie, and carries its own stamp"). This assertion pinned `>=`, which is the
+	 * OLD contract: both messages are stamped from the same counter, and an undo whose
+	 * refusal lands in the answer that re-raises the offer puts them at the SAME stamp -
+	 * under `>=` the OFFER won that tie and the branch then cleared the refusal, so the lane
+	 * drew an offer for its eight seconds while the reader had just been refused. The src is
+	 * right and the test was behind it: a REFUSAL is a fact about a press that was ANSWERED,
+	 * an offer a fact about a write, and on a tie the refused press keeps its card.
+	 */
+	assert.match(failure, /archiveUndo\.at > archiveFailure\.at/);
 	assert.match(
 		failure,
 		/if \(newest === "failure" && archiveFailure\) \{[\s\S]*laneMessageRef\.current = "failure";[\s\S]*showWarningToast\(/,
@@ -361,7 +398,14 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	const clock = between(
 		SIDEBAR,
 		"const message = archiveFailure",
-		"}, [archiveFailure, archiveUndo]);",
+		/*
+		 * THE MARKER IS THE CLOCK EFFECT'S OWN DEPENDENCY ARRAY, re-spelled 2026-09-22: it used to
+		 * be `}, [archiveFailure, archiveUndo]);` and the U10 fix grew it by `clearArchiveFailure`
+		 * and `setArchiveUndo` (both read in the expiry body). `between` now fails on a missing
+		 * marker rather than running the slice to the end of the file, which is what makes this
+		 * pin safe - before, this assertion had been reading the rest of the component.
+		 */
+		"}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);",
 	);
 	assert.match(clock, /laneMessageRef\.current = null;/);
 	assert.match(clock, /dismissToast\(ARCHIVE_TOAST_ID\);/);
@@ -398,10 +442,18 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 });
 
 test("the offer's card truncates its NAME and can never truncate the verb (agent review round 2, R2-3)", () => {
+	/*
+	 * THE MARKER IS THE DRAWING EFFECT'S DEPENDENCY ARRAY, re-spelled 2026-09-22 in the shape the
+	 * formatter gives it: it used to be `}, [archiveFailure, archiveUndo, setSessionArchived]);`,
+	 * which the U10 fix grew by `clearArchiveFailure` and `setArchiveUndo` and `biome format`
+	 * wrapped across lines. Before `between` was hardened this slice silently ran to the end of
+	 * the file, so the assertions below were reading the whole component rather than the
+	 * offer's own message.
+	 */
 	const offer = between(
 		SIDEBAR,
 		"if (archiveUndo) {",
-		"}, [archiveFailure, archiveUndo, setSessionArchived]);",
+		"\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
 	);
 	// The name and the verb are two elements: a single string that overflows loses its
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
@@ -438,18 +490,26 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 	);
 	const lane = between(SIDEBAR, "<ThemedToastContainer", "/>");
 	assert.match(lane, /position=\{ARCHIVE_TOAST_LANE\}/);
-	assert.match(lane, /style=\{ARCHIVE_TOAST_LANE_STYLE\}/);
+	assert.match(lane, /style=\{ARCHIVE_TOAST_CONTAINER_STYLE\}/);
 	/*
-	 * AND THE LANE IS THE PANEL'S BOX, which is the anchor plus the cap: `relative` on
-	 * the nav is what an absolutely positioned container is confined by, and the width
-	 * is the panel's own content width rather than sonner's 356px default.
+	 * AND THE LANE IS THE PANEL'S BOX, which since D10's cap and D14's band is the anchor
+	 * plus TWO boxes (repaired 2026-09-22, when the band landed): the nav's `relative` is
+	 * what the panel's column is confined by, the BAND is the positioned ancestor the card
+	 * resolves its `--width` and `max-height: 100%` against, and the CONTAINER is
+	 * deliberately `static` so sonner's own `position: fixed` cannot put the card back in
+	 * the viewport's corner. This assertion used to read `position: "absolute"` and
+	 * `ARCHIVE_TOAST_LANE_STYLE` because the container WAS the card's box; both moved with
+	 * the shape. The cap is the card's and lives on the band: `min(248px, 100%)`, i.e.
+	 * never wider than the lane it is drawn in (design round 3, D10) - not the old
+	 * `min(264px, 100% - 32px)` the container used to declare.
 	 */
 	assert.match(
 		source,
 		/className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"/,
 	);
-	assert.match(source, /position: "absolute"/);
-	assert.match(source, /"--width": "min\(264px, 100% - 32px\)"/);
+	assert.match(source, /position: "relative"/);
+	assert.match(source, /position: "static"/);
+	assert.match(source, /"--width": "min\(248px, 100%\)"/);
 	// The pins' failure line keeps its three sites; the register has none left.
 	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
 	assert.ok(
@@ -471,7 +531,16 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 });
 
 test("the press record expires on the pointer's own path", () => {
-	const panel = between(SIDEBAR, "ref={listPanelRef}", 'className="mt-2');
+	/*
+	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its end marker moved 2026-09-22: the
+	 * element used to end at a `className="mt-2` (gone with the gutter/split class work), and the
+	 * list's class list now sits AFTER its handlers as `className={cn(` - the same marker the
+	 * sessionRow slice below uses. Before `between` was hardened, this slice ran to the end of
+	 * the file, so every pattern it asserts could have been satisfied by the ENTITY region's
+	 * nested rows rather than by this panel, which is exactly what its own comment says the
+	 * records are region-scoped about.
+	 */
+	const panel = between(SIDEBAR, "ref={listPanelRef}", "className={cn(");
 	assert.match(panel, /onPointerMove=/);
 	assert.match(panel, /archivePressExpired\(lastArchivePress\.current/);
 	assert.match(panel, /onPointerLeave=/);
@@ -481,10 +550,18 @@ test("the press record expires on the pointer's own path", () => {
 /* ------------------------------------------------------- the chat header */
 
 test("the archived state is a pill badge with its own restore control beside it", () => {
+	/*
+	 * AND IT ENDS WHERE THE MENU'S MARKUP BEGINS, matched as CODE (re-spelled 2026-09-22). The
+	 * marker was `{/*\n\t\t\t\t * THE CONVERSATION'S OWN MENU`, which a sliced source can never
+	 * match: `code()` STRIPS comments on purpose, "so a rule can never be satisfied by prose
+	 * about the rule". It never matched, `between` fell through to the end of the file, and the
+	 * array's assertions were being asked of the whole header. `<DropdownMenu>` is the next
+	 * element after the pill block and is the boundary this slice wants.
+	 */
 	const pill = between(
 		HEADER,
 		"archiveEnabled && archived && (",
-		"{/*\n\t\t\t\t * THE CONVERSATION'S OWN MENU",
+		"<DropdownMenu>",
 	);
 	const source = code(HEADER);
 	const at = source.indexOf("data-session-archived-pill");
@@ -615,10 +692,18 @@ test("the palette withholds the archive row that does not apply, and keys it on 
 });
 
 test("a typed /delete stages the dialog and can never reach the wire itself", () => {
+	/*
+	 * THE BRANCH ENDS WHERE THE NEXT COMMAND'S HANDLING BEGINS (`/exit`), matched as CODE
+	 * (re-spelled 2026-09-22): the marker used to be `if (entry.action === "clear")` and the
+	 * dispatch has no `clear` action any more, so the slice ran to the end of the file and the
+	 * "must not reach the wire" assertions below were being asked of EVERY command's branch - a
+	 * `sessions.delete` in any later branch would have satisfied them. A comment cannot serve as
+	 * the marker either: `code()` strips them, which is this file's own rule.
+	 */
 	const branch = between(
 		DISPATCH,
 		'entry.action === "request-delete"',
-		'if (entry.action === "clear")',
+		"if (window.api?.desktop?.closeWindow) {",
 	);
 	assert.match(branch, /requestSessionDelete\(sessionId\)/);
 	/*
