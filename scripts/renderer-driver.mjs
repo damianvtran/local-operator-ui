@@ -2634,9 +2634,51 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 	await hoverOver(cdp, supersedingOffer);
 	await wait(200);
+	/*
+	 * WHAT THE PRESS IS AIMED AT, SAMPLED RATHER THAN THEORISED - the dark palette runs this whole
+	 * sequence green and the light palette's press writes NOTHING ("undo": null, the old refusal
+	 * still in the store), so the difference has to be read. All three of this step's earlier
+	 * defects were geometric (a `hoverOver` on a `display`-switched 0x0 control, the band clipping
+	 * the row, an unquoted selector in the page script), which is why the sample is the three boxes
+	 * that make up an aim: the row's, the control's, the point the press will use, and what the DOM
+	 * answers AT that point - plus whether the element it answers with is inside a session row at
+	 * all. It is reported with the verdict either way, so a palette that behaves differently is a
+	 * reading on the PR rather than a theory in a comment.
+	 */
+	const aim = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+		};
+		const name = (el) => {
+			if (!el) return null;
+			const row = el.closest("[data-session-row]");
+			return el.tagName.toLowerCase() + (el.hasAttribute("data-session-archive") ? "[data-session-archive]" : "") + (el.hasAttribute("data-sonner-toast") ? "[data-sonner-toast]" : "") + (el.closest("[data-button]") ? "[data-button]" : "") + (row ? " row:" + row.getAttribute("data-session-row") : " NOT-IN-A-SESSION-ROW");
+		};
+		const row = document.querySelector(${JSON.stringify(`[data-session-row]:has(${supersedingOffer})`)});
+		const control = document.querySelector(${JSON.stringify(supersedingOffer)});
+		const r = control ? control.getBoundingClientRect() : null;
+		const centre = r ? { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) } : null;
+		return {
+			viewport: { w: window.innerWidth, h: window.innerHeight },
+			row: box(row),
+			control: box(control),
+			centre,
+			hit: centre ? name(document.elementFromPoint(centre.x, centre.y)) : null,
+		};
+	})()`);
 	await clickAt(cdp, supersedingOffer);
 	await wait(700);
 	const superseded = await verb(cdp, "state");
+	note(
+		"U10 the aim at the superseding archive control, and the answer it produced",
+		JSON.stringify({
+			...aim,
+			undo: superseded.archiveUndo?.sessionId ?? null,
+			failure: superseded.archiveFailure?.sessionId ?? null,
+		}),
+	);
 	check(
 		"U10: the newer offer takes the lane AND the refusal it superseded is cleared with it, so it cannot be re-printed",
 		superseded.archiveUndo !== null && superseded.archiveFailure === null,
