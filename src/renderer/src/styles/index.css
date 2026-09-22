@@ -218,9 +218,96 @@
 	 * shadow is only for objects that leave the flow.
 	 */
 	--shadow-overlay: var(--lo-overlay-shadow);
+
+	/* ---- the installer window's two animations ----------------------------
+	 * The first screen a new user sees, and the only place in the app that
+	 * animates on mount. Both follow ONE rule that the rest of this file states in
+	 * two places already: the RESTING state is the `to` keyframe, so a document
+	 * that never paints - or a user whose `prefers-reduced-motion` lands the
+	 * animation on its final frame via the cap below - sees the finished state
+	 * rather than an element stuck at `from`.
+	 *
+	 * `enter` is a fade and a 4px rise, at the contract's entrance duration (the
+	 * longest step, 240ms, because something entering the screen is the one thing
+	 * that earns it). It animates `transform` and `opacity` only: a fade alone
+	 * would look like the window repainting, and neither property can move a
+	 * sibling.
+	 *
+	 * `sweep` is the indeterminate progress segment. It travels a segment across
+	 * the track rather than sizing or fading one, so the bar reads as "work is
+	 * happening" without stating a fraction - and at its final keyframe the
+	 * segment sits at the left edge, which is a quiet determinate-looking bar.
+	 * The static width and the animation are split across the query below: read
+	 * that rule before moving either half back in.
+	 */
+	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
+		both;
+
+	@keyframes install-enter {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@keyframes install-sweep {
+		/*
+		 * Off-track at BOTH ends, so the segment enters and leaves rather than staging
+		 * at a plausible fraction: 0% -> 100% spends its first visible moment flush at
+		 * the track's left edge, which is where a determinate fill sits (design D9).
+		 */
+		from {
+			margin-left: -35%;
+		}
+		to {
+			margin-left: 100%;
+		}
+	}
 }
 
 @layer base {
+	/*
+	 * The installer's indeterminate progress segment. THE WIDTH IS OUTSIDE THE
+	 * QUERY AND ONLY THE ANIMATION IS INSIDE IT (design D4, review R1-8).
+	 *
+	 * Declining an animation is not the same as declining the STATE. This element
+	 * gets no width from the panel in the states that use it, so a reduced-motion
+	 * user who saw only the `animation` declined got a 0%-wide fill on a `sunken`
+	 * track - measured #1d1b19 on #22201c, 1.06:1, deltaE 2.07 - which is the empty
+	 * bar the paragraph below says an indeterminate state must never look like, held
+	 * for the whole pre-marker window. A static 35% segment says work is happening
+	 * without claiming how much.
+	 *
+	 * WHY A PLAIN CLASS RATHER THAN A TAILWIND UTILITY: there is no utility for
+	 * "this element's width follows a keyframe", and the panel sets a real width for
+	 * every state that has one (0%, 25%, 50%, 100%).
+	 */
+	.lo-install-sweep {
+		width: 35% !important;
+		/*
+		 * Mid-track when it is not moving. Parked at the left edge, a static segment is
+		 * indistinguishable from a determinate fill that has stopped there - measured
+		 * at 34.5% of the track in a still, exactly where a 35% determinate fill sits
+		 * (design D9).
+		 */
+		margin-left: 33%;
+	}
+
+	/*
+	 * And the motion, where the document has not asked for less of it. This is not
+	 * the global reduced-motion cap doing its work by accident: the cap truncates an
+	 * animation to 0.01ms, which would land this keyframe on `margin-left: 100%` - a
+	 * 35%-wide segment pushed off the end of its track, which is empty again.
+	 */
+	@media (prefers-reduced-motion: no-preference) {
+		.lo-install-sweep {
+			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		}
+	}
 	/*
 	 * The zero-specificity half of the focus ring: shape only.
 	 *
