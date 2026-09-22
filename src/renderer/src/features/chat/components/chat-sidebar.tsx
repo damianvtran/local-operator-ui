@@ -254,18 +254,63 @@ const ARCHIVE_TOAST_PERSISTENT = Number.POSITIVE_INFINITY;
  */
 const ARCHIVE_TOAST_CLASS = "lo-archive-toast";
 /**
- * The lane's own box, in two declarations.
- *
- * `position: absolute` is what makes the lane the PANEL's rather than the
- * viewport's corner (sonner's stylesheet declares `fixed`, and an inline value is the
- * only thing that beats it), and the width is capped to the panel's content width so
- * a long title wraps inside the column instead of running out of it - which is also
- * half of what keeps the offer clear of the composer: `100%` resolves against the
- * panel, so the toast is at most `100% - 32px` of it.
+ * The gap the band keeps under its card, in px: one unit of the panel's own rhythm, and the
+ * slack that keeps a card flush against nothing.
  */
-const ARCHIVE_TOAST_LANE_STYLE: CSSProperties = {
-	position: "absolute",
-	"--width": "min(264px, 100% - 32px)",
+const ARCHIVE_TOAST_BAND_GAP = 8;
+
+/**
+ * THE BAND'S OWN BOX (design round 4, D14) - the lane is no longer an overlay.
+ *
+ * It was `position: absolute` on sonner's container, which drew the card OVER the list and was
+ * the whole subject of three independent findings (Q-1 through four streams on one selector,
+ * Q-2 from QA's press loop, D11 from the design round): a dead zone over the three or four rows
+ * the card covered, and - measured, not inferred - the offer's own Undo button sitting exactly
+ * over the archive control of the row beneath it, so a real press there wrote NOTHING at all.
+ * The designer's ruling settled the shape with measurements rather than taste: the acts column
+ * is the row's last 52px and the card is 8px wider than the row, so there is no offset that
+ * clears it - a control under a card cannot be aimed at, whatever the card does with presses.
+ *
+ * SO THE CARD TAKES ITS OWN HEIGHT OUT OF THE COLUMN INSTEAD. The container is the panel flex
+ * column's LAST CHILD - it already was, which is why this is a change of one declaration plus a
+ * height - so as a band it gives the list back nothing at rest (`height: 0`) and exactly
+ * `card + 8` while a message stands, and the ROWS DO NOT MOVE: the list is `flex-1`, so what
+ * yields is its bottom (an empty tail in a short list, formerly-hidden bottom rows when it
+ * overflows) with `scrollTop` untouched. That is the trade the ruling records and accepts:
+ * 58px of list viewport for the offer's eight seconds, or the refusal's height plus eight for
+ * its ten, spent when the list is already rearranging - against a wrong write or a dead control
+ * on every archive made while a message stood.
+ *
+ * `position: relative` IS THE CARD'S CONTAINING BLOCK, not decoration: sonner draws its toast
+ * `position: absolute` with `left: 0; right: 0`, so the band has to be the positioned ancestor
+ * for the card to be the band's width rather than the panel's - which is what keeps D10's
+ * reading true (``--width: min(248px, 100%)`` resolves against this box, and it measured 248 of
+ * a 248 lane at 280 and 208 of a 208 lane at 240). `overflow: hidden` is what makes `height: 0`
+ * mean INVISIBLE rather than merely out of flow, and it is also what clips the card against
+ * `max-height` - the ceiling the ruling names, so a pathological message cannot push the list
+ * out of the panel entirely.
+ *
+ * NO TRANSITION, and that is the ruling's own word: the band's height snaps with the message
+ * that causes it, because a band that animated would move rows under the reader's pointer for
+ * the length of the animation - the very class of defect this change removes.
+ */
+const ARCHIVE_TOAST_BAND_STYLE: CSSProperties = {
+	position: "relative",
+	width: "100%",
+	flexShrink: 0,
+	overflow: "hidden",
+	maxHeight: "calc(100% - 56px)",
+	"--width": "min(248px, 100%)",
+} as CSSProperties;
+
+/**
+ * The container statement, which is now only about the CARD: the band is the positioned
+ * ancestor (`ARCHIVE_TOAST_BAND_STYLE`), so sonner's own `position: fixed` has to be beaten
+ * here or every card would be laid out against the viewport again.
+ */
+const ARCHIVE_TOAST_CONTAINER_STYLE: CSSProperties = {
+	position: "static",
+	width: "100%",
 } as CSSProperties;
 
 /*
@@ -3684,6 +3729,55 @@ export function ChatSidebar({
 		return () => clearTimeout(timer);
 	}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);
 
+	/*
+	 * THE BAND'S HEIGHT IS THE CARD'S OWN, PLUS THE GAP (design round 4, D14), and it is
+	 * measured rather than declared because only one of the two messages has a fixed height:
+	 * the offer is one line at every width (its name truncates), while the refusal carries the
+	 * daemon's sentence about why the write was refused and wrapped to eight lines - 170px -
+	 * at the 280 panel. A declaration would have to pick one of them and be wrong about the
+	 * other, and wrong in the direction that either clips a refusal or spends 120px of list on
+	 * a one-line offer.
+	 *
+	 * TWO OBSERVERS, BECAUSE THE CARD ARRIVES AFTER THE COMMIT: sonner mounts the toast in its
+	 * own render, so the first measurement of a fresh message finds nothing and the childList
+	 * watcher is what notices it land; the ResizeObserver re-reads the card when its own height
+	 * changes (a wrap at a narrower panel, a longer daemon detail), and it re-targets when the
+	 * card is replaced - the same stable sonner entry, a new element, which is exactly what a
+	 * supersession looks like from here. `setBandHeight` with an unchanged value is a no-op in
+	 * React, so the two can run on the same commit without a loop.
+	 */
+	const [bandHeight, setBandHeight] = useState(0);
+	const laneBandRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const band = laneBandRef.current;
+		if (band === null) return;
+		const settled = new ResizeObserver(() => measure());
+		let watched: HTMLElement | null = null;
+		const measure = () => {
+			const card = band.querySelector<HTMLElement>(
+				`.${ARCHIVE_TOAST_CLASS}`,
+			);
+			if (card !== watched) {
+				if (watched !== null) settled.unobserve(watched);
+				watched = card;
+				if (card !== null) settled.observe(card);
+			}
+			setBandHeight(
+				card === null
+					? 0
+					: Math.round(card.getBoundingClientRect().height) +
+							ARCHIVE_TOAST_BAND_GAP,
+			);
+		};
+		const arrived = new MutationObserver(measure);
+		arrived.observe(band, { childList: true, subtree: true });
+		measure();
+		return () => {
+			arrived.disconnect();
+			settled.disconnect();
+		};
+	}, []);
+
 	const pinFailureLine = pinFailure ? (
 		/*
 		 * The pin failure, and the reason it carries a ref: it is a flex child of the
@@ -4532,13 +4626,12 @@ export function ChatSidebar({
 			ref={navRef}
 			aria-label="Chats"
 			/*
-			 * `relative` IS THE TOAST LANE'S ANCHOR, not decoration: the panel mounts its own
-			 * `ThemedToastContainer` with an inline `position: absolute` (a toast confined to
-			 * the sidebar's own column, rather than one in the viewport's corner over the
-			 * composer - design D11), and an absolutely positioned box needs a positioned
-			 * ancestor to be confined to anything. The container declaration the old
-			 * per-row shed measured against is gone with the shed: this panel no longer
-			 * changes what it draws by width.
+			 * `relative` IS THE PANEL'S OWN ANCHOR for anything absolutely positioned inside it, and the
+			 * archive band's card is no longer one of those: the band carries `position: relative`
+			 * itself (`ARCHIVE_TOAST_BAND_STYLE`, design round 4, D14), because a card contained by
+			 * the panel is a card drawn over the list. The container declaration the old per-row shed
+			 * measured against is gone with the shed: this panel no longer changes what it draws by
+			 * width.
 			 */
 			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
@@ -4797,10 +4890,22 @@ export function ChatSidebar({
 			 * to this panel - and the reading behind that rule is recorded there.
 			 * a toast by `position`.
 			 */}
-			<ThemedToastContainer
-				position={ARCHIVE_TOAST_LANE}
-				style={ARCHIVE_TOAST_LANE_STYLE}
-			/>
+			/*
+			 * THE BAND, THEN THE CONTAINER INSIDE IT (design round 4, D14). The wrapper is what the app
+			 * can size and clip; sonner's own root keeps every rule its stylesheet gives it except the
+			 * positioning, which the container style overrides - see `ARCHIVE_TOAST_BAND_STYLE` for why
+			 * the card is the band's and no longer the panel's.
+			 */
+			<div
+				ref={laneBandRef}
+				data-archive-toast-band
+				style={{ ...ARCHIVE_TOAST_BAND_STYLE, height: bandHeight }}
+			>
+				<ThemedToastContainer
+					position={ARCHIVE_TOAST_LANE}
+					style={ARCHIVE_TOAST_CONTAINER_STYLE}
+				/>
+			</div>
 		</nav>
 	);
 }

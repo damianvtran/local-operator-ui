@@ -2344,10 +2344,53 @@ async function sceneSessionArchive(cdp) {
 		});
 	}
 	await parkPointer(cdp);
+	/*
+	 * THE CARD IS A BAND, SO THE ACCEPTANCE READING IS THE EMPTY SET (design round 4, D14), and
+	 * that replaces the narrower rule this check used to carry. The history it answers: as an
+	 * overlay the card covered the acts zone of every row in the fixture - QA's press loop skipped
+	 * all three - and the rules that passed presses through were scoped `[data-type="info"]` while
+	 * this refusal is `toast.warning`, so the card's body swallowed them; four streams landed on
+	 * that one selector, and the designer's ruling settled it as geometry rather than as an offset:
+	 * the acts column is the row's last 52px and the card is 8px wider than the row, so there is no
+	 * position that clears a covered control.
+	 *
+	 * THE BAND: height 0 at rest, `card + 8` while a message stands, taken out of the panel column
+	 * with the ROWS UNMOVED (the list yields its bottom; `scrollTop` is never written). So the
+	 * reading the ruling asks for is exactly this scan, and it must be EMPTY. The per-row loop
+	 * below stays as the belt-and-braces half rather than as the assertion: if a row ever IS
+	 * covered again, the reading names the control a press there would reach, which is the shape
+	 * Q-1 and Q-2 were both found in, and the second check says so without pretending an empty
+	 * loop proves anything.
+	 */
 	check(
-		"the refusal card's own body does not swallow a press aimed at the rows it covers (C: Q-1, R4-1, D11, U9)",
-		reach.length > 0 && reach.every((entry) => entry.cardBody !== true),
-		JSON.stringify({ card: cardBox.rect, reach }),
+		"no row's box is covered by the card (design round 4, D14): the covered-row scan returns the empty set",
+		rowsUnderCard.length === 0,
+		JSON.stringify({ card: cardBox.rect, rowsUnderCard, reach }),
+	);
+	check(
+		"and if one ever were: the card's own body does not swallow a press aimed at it (C: Q-1, R4-1, D11, U9)",
+		reach.every((entry) => entry.cardBody !== true),
+		JSON.stringify({ reach }),
+	);
+	/*
+	 * AND THE BAND PAYS EXACTLY THE CARD'S HEIGHT PLUS THE GAP, measured against the drawn card
+	 * rather than against the offer's constant: the offer is one line at every width, the refusal
+	 * is not, and a band sized for one of them would either clip the other or spend its rows. The
+	 * tolerance is a pixel for the rounding of two device-pixel ratios, not a range.
+	 */
+	const bandBox = await verb(cdp, "measure", "[data-archive-toast-band]").catch(
+		null,
+	);
+	check(
+		"the band's height is the card's plus the gap, so the list gives up exactly what the message spends (design round 4, D14)",
+		bandBox !== null &&
+			cardBox.rect.width > 0 &&
+			Math.abs(bandBox.rect.height - (cardBox.rect.height + 8)) <= 1,
+		JSON.stringify({ band: bandBox?.rect ?? null, card: cardBox.rect }),
+	);
+	note(
+		"the band while the refusal stands",
+		JSON.stringify(bandBox?.rect ?? null),
 	);
 	note(
 		"what a press at each covered row's archive control reaches",
@@ -2572,15 +2615,27 @@ async function sceneSessionArchive(cdp) {
 		afterRetire.push({
 			at: `+${at}ms`,
 			drawn: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+			/*
+			 * THE BAND GIVES THE ROWS BACK, which is the other half of D14's own reading: height
+			 * 0 once the message is gone, so an empty lane costs the list nothing at all.
+			 */
+			bandHeight: Math.round(
+				(
+					await verb(cdp, "measure", "[data-archive-toast-band]").catch(
+						() => null,
+					)
+				)?.rect.height ?? -1,
+			),
 			failure: lane.archiveFailure ?? null,
 			undo: lane.archiveUndo ?? null,
 		});
 	}
 	check(
-		"U10: after the offer's own Undo the lane stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, in this palette",
+		"U10: after the offer's own Undo the lane stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, and the band gives the list back its height, in this palette",
 		afterRetire.every(
 			(reading) =>
 				reading.drawn === false &&
+				reading.bandHeight === 0 &&
 				reading.failure === null &&
 				reading.undo === null,
 		),

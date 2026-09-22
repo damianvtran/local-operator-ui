@@ -622,12 +622,19 @@ nav[aria-label="Chats"]
  * already reads `<name> archived.` and the action beside it is the affordance - so it is hidden
  * and the box widens to the lane's own 248px, which is what the lane draws at the 280 panel.
  *
- * THE CARD TAKES NO PRESS A READER AIMED AT A ROW (UX round 3, U8). The lane sits over the
- * list, so the card's own box covers up to three rows - and a press inside that box that
- * misses the buttons used to land on the card and stop there: a dead zone over the list, with
- * no control under it and the row beneath unreachable. The card's body now passes presses
- * through, so what a reader aimed at a row reaches the row; the two things that ARE controls -
- * the action and the close - take theirs back explicitly, and they keep their own hit areas.
+ * THE CARD TAKES NO PRESS A READER AIMED AT A ROW, AND IT NO LONGER COVERS ONE (UX round 3, U8;
+ * design round 4, D14). The lane is a BAND at the panel column's bottom - height 0 at rest,
+ * `card + 8` while a message stands, the list giving up exactly that - so there is no row under
+ * the card to aim at, which is what made U8 necessary: as an overlay the card's box covered up
+ * to three rows, and a press inside it that missed the buttons landed on the card and stopped.
+ * The rules below therefore buy only what they still can: a wheel over the card reaches the
+ * list behind it rather than scrolling a card that cannot scroll, while the two things that ARE
+ * controls - the action and the close - take their presses back explicitly and keep their own
+ * hit areas. THEIR REAL SUBJECT - Q-1, Q-2, D11, four streams on the offset a covered control
+ * would need - is retired by the geometry rather than by a rule, and the designer's ruling is
+ * why: the acts column is the row's last 52px and the card is 8px wider than the row, so no
+ * offset clears it, and a control under a card cannot be aimed at whatever the card does with
+ * presses.
  *
  * THE WIDTH IS CAPPED BY THE LANE IT IS DRAWN IN (design round 3, D10). `248px` was a literal
  * taken from the lane's width at the 280 panel; the lane is `min(264px, 100% - 32px)` of the
@@ -654,6 +661,15 @@ nav[aria-label="Chats"]
 	[data-sonner-toast].lo-archive-toast {
 	--width: min(248px, 100%);
 	pointer-events: none;
+	/*
+	 * THE CARD SCROLLS INSIDE THE BAND'S CEILING (design round 4, D14). The band clips at
+	 * `calc(100% - 56px)`, so a message taller than that - a refusal with a long daemon
+	 * sentence at a short panel, the one shape the offer cannot have - is read by scrolling
+	 * the card rather than by clipping the reason the reader is being asked to retry. `100%`
+	 * resolves against the band, which is the card's containing block.
+	 */
+	max-height: 100%;
+	overflow-y: auto;
 }
 nav[aria-label="Chats"]
 	[data-sonner-toaster]
