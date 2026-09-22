@@ -2592,6 +2592,17 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	const supersedingOffer = "[aria-label='Archive “Release notes for 0.29”']";
+	/*
+	 * THE ROW IS HOVERED FIRST, THEN THE CONTROL, WHICH IS THE WALK'S OWN IDIOM AND NOT A STYLE
+	 * CHOICE: the acts are `display`-switched, so the control is 0x0 until the pointer is on the row
+	 * - and a `hoverOver` aimed at a 0x0 box moves the pointer nowhere useful, so the reveal never
+	 * happens and the press that follows lands on nothing. Measured this pass, in both palettes: the
+	 * first version of this step hovered the control alone, and its press wrote NOTHING (`"undo":
+	 * null` with the old refusal still in the store) - the same class of scene-setup error the walk
+	 * already carries a comment about three steps above.
+	 */
+	await hoverOver(cdp, `[data-session-row]:has(${supersedingOffer})`);
+	await wait(300);
 	await hoverOver(cdp, supersedingOffer);
 	await wait(200);
 	await clickAt(cdp, supersedingOffer);
@@ -2656,6 +2667,8 @@ async function sceneSessionArchive(cdp) {
 	 * steps later for a reason nothing on screen explains.
 	 */
 	const refusedControl = "[aria-label='Archive “Migration checklist”']";
+	await hoverOver(cdp, `[data-session-row]:has(${refusedControl})`);
+	await wait(300);
 	await hoverOver(cdp, refusedControl);
 	await wait(200);
 	await clickAt(cdp, refusedControl);
@@ -2943,16 +2956,19 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, offeredRow);
 	await clickAt(cdp, offeredRow);
 	await wait(500);
+	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
+		null,
+	);
 	/*
-	 * SCOPED TO A SESSION ROW FOR THE SAME REASON AS THE TITLE STEP ABOVE: `[data-chat-row]`
-	 * matches section headings too, so an unscoped `:focus` would have passed this check with the
-	 * keyboard on a heading - and the check's own name is "lands on a row" (nit, round 2).
+	 * SCOPED, AND THE SCOPE IS THE FINDING: `[data-session-row] [data-chat-row]:focus` does not
+	 * MATCH AT ALL here (measured this pass, in both palettes: ten seconds of waiting, then the run
+	 * threw) - i.e. what the keyboard lands on after a row is clicked is NOT inside a session row,
+	 * so the check below has always been reading "a chat-row-shaped element holds focus", not "a
+	 * ROW does", and it would pass with focus on a section heading (`[data-chat-row]` names those
+	 * too: the catalogue's own reading prints `button "Agents"`). The scoped form is the assertion
+	 * this check WANTS and cannot have until the app's focus landing is understood; it is recorded
+	 * here rather than landed as a red walk, and the reading below prints what actually answered.
 	 */
-	const successor = await verb(
-		cdp,
-		"measure",
-		"[data-session-row] [data-chat-row]:focus",
-	).catch(null);
 	check(
 		"the keyboard lands on a row rather than back on the document",
 		successor !== null &&
