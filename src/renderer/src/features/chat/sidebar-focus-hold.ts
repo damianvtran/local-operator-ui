@@ -250,7 +250,12 @@ export const holdFocusedRow = (
 		previous.visibility === "outside" ||
 		visibilityNow !== "outside"
 	) {
-		slot.current = { node: active, index, visibility: visibilityNow, clipHeight };
+		slot.current = {
+			node: active,
+			index,
+			visibility: visibilityNow,
+			clipHeight,
+		};
 		return;
 	}
 	const clip = clipBox(container);
