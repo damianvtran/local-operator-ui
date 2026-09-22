@@ -120,6 +120,19 @@ export const SEED_STDLIB_MARKER = expandVersionToken(
 	LAYOUT.python.seedStdlibMarker,
 );
 
+/** The Tcl/Tk directory this seed must carry, expanded (`lib/tk9.0`).
+ *
+ * WHY A REQUIRED PATH FOR A VERSION NOTHING ELSE PINS (review R2-5): the ONLY
+ * consumer of `{tkver}` is the optional demos entry, and an optional entry's
+ * absence is the accepted outcome - so a refresh that moved Tcl/Tk while the
+ * token stayed behind would prune nothing and look exactly like a correct build.
+ * That is the silent-no-op class this file has already been bitten by twice
+ * (`bin/idle3.{pyver}`, `lib/tk8.6/demos`), one token over. This directory is
+ * what ties the token to the tree: it is content the prune deliberately KEEPS
+ * (`tkinter` is a live module), so asserting its presence says nothing about what
+ * is pruned and everything about whether the token still names this build. */
+export const SEED_TK_DIR = expandVersionToken(LAYOUT.python.seedTkDir);
+
 /** The seed content no import can reach, expanded.
  *
  * TWO LISTS, and the split is load-bearing: a path in `prunedSeedPaths` MUST

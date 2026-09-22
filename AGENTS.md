@@ -366,6 +366,26 @@ npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
 npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
 ```
 
+**WHAT A SCRATCH PROFILE DOES NOT COVER, and an unpackaged run on a FRESH machine
+will hit it (QA round 1, Q6).** `--user-data-dir` and a redirected `HOME` cover
+the Chromium profile and the pieces that read `$HOME` (the daemon's run record,
+for instance), but **two of the app's own roots do not move**: the log path and
+the managed-Python root both come from `app.getPath("home")`, which on macOS is
+`NSHomeDirectory()` and ignores `$HOME`, and `managed-python-options.ts` offers no
+override. Measured on this machine: a headless run with `HOME` pointed at a
+scratch directory logged `Log path: <the operator's own Application Support>/logs`
+and `Virtual environment path: .../managed-python/dev/no-environment-selected`,
+and on darwin `BackendInstaller.isInstalled()` *is* `managedSelectionReady()` -
+so on a machine whose `managed-python/dev/` is empty, the next step of that run is
+a real first-run install of ~100 MB into the operator's own Application Support
+directory. It writes log lines either way. Until the app accepts a support-root
+override (the shape `macos-install-script.sh` already takes as
+`LOCAL_OPERATOR_SUPPORT_PATH`), treat a first-run check as something that touches
+the operator's real roots: run it where `managed-python/dev/` already has a
+selection, or drive the provisioning directly against an isolated
+`LOCAL_OPERATOR_SUPPORT_PATH`/`LOCAL_OPERATOR_VENV_PATH` as the install-script CI
+job does, rather than booting the app and hoping.
+
 `npx local-operator-ui` spawns Electron with this process's environment, so the
 same switch covers a check of the published launcher — **from the release that
 carries the shape rule**. Two version floors matter, and they are not the same

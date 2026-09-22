@@ -93,6 +93,7 @@ import {
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	SEED_TK_DIR,
 } from "./bundled-runtime-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
@@ -124,7 +125,12 @@ export const MACH_O_MAGICS = new Set(LAYOUT.machOMagics);
  * from this module, and the definition the app and the pack step also read is
  * `src/shared/bundled-runtime-layout.json`.
  */
-export { PRUNED_SEED_PATHS, PRUNED_SEED_OPTIONAL_PATHS, SEED_STDLIB_MARKER };
+export {
+	PRUNED_SEED_PATHS,
+	PRUNED_SEED_OPTIONAL_PATHS,
+	SEED_STDLIB_MARKER,
+	SEED_TK_DIR,
+};
 
 /** A file's leading bytes, or `null` when they cannot be read. */
 function leadingBytes(path, length) {
@@ -321,6 +327,16 @@ export function pruneSeed(root, { log = console.log } = {}) {
 	// Presence is checked for the WHOLE list before anything is removed, so a
 	// stale declaration fails the build on an untouched tree rather than halfway
 	// through one.
+	// The Tcl/Tk token's own binding (review R2-5): its only other consumer is the
+	// OPTIONAL demos entry, whose absence is the accepted outcome, so without this
+	// reading a stale `tkVersion` would prune nothing and be indistinguishable
+	// from a correct build. `lib/tk9.0` is content the prune keeps, which is
+	// exactly why it can be required here.
+	if (!lstatSync(join(root, SEED_TK_DIR), { throwIfNoEntry: false })) {
+		throw new Error(
+			`Refusing to prune ${root}: it has no ${SEED_TK_DIR}, so it is not the Tcl/Tk the declaration names. The tkVersion token would then make the optional demos entry prune nothing while looking correct - update the tkVersion key in src/shared/bundled-runtime-layout.json together with the seed.`,
+		);
+	}
 	const missing = PRUNED_SEED_PATHS.filter(
 		// `lstat`, not `exists`: a dangling symlink is content the bundle must not
 		// carry either, and the list contains links (`bin/2to3`).

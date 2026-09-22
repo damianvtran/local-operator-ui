@@ -9,6 +9,7 @@
 			"x64": "python"
 		},
 		"seedStdlibMarker": "lib/python{pyver}/encodings/__init__.py",
+		"seedTkDir": "lib/tk{tkver}",
 		"prunedSeedPaths": [
 			"bin/2to3",
 			"bin/2to3-{pyver}",

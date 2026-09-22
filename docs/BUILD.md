@@ -180,11 +180,14 @@ architecture needs, or carries a legacy alias beside it.
 and install `local-operator` into it, and that install is the dominant cost of a
 first run. Measured on this host (three cold runs each, same interpreter and
 dependency set): pip's package phase is 33.0-40.7 s plus a 2.3-2.9 s
-`pip install --upgrade pip` the uv path does not pay, against uv's 12.8-16.1 s;
-end to end through the shipped script, 37.5-79.0 s against 31-34.5 s across four
-independent operators, and 20.4 s against 1.6 s with both caches warm. Read the
-ratio as link- and load-dependent (the phase win is 1.5-2.8x) and the seconds as
-this box's.
+`pip install --upgrade pip` the uv path does not pay, against uv's 12.8-16.1 s -
+**2.5-2.8x on those pairs** (2.7-3.0x counting the skipped upgrade), saving
+20-25 s. QA's independent pair on a quieter box was 22.8 s against 33.9 s, so the
+ratio to quote is **1.5-2.8x across two operators** (1.8-3.0x with the
+self-upgrade). End to end through the shipped script: uv 31-34.5 s against pip
+37.5-79.0 s across four operators. Warm, which is what a retry or a repair pays:
+pip 15.9-33.8 s against uv 0.65-1.57 s. The seconds are this box's; the ratio is
+link- and load-dependent.
 
 The `uv` binary ships as a sealed resource, pinned to an exact release and staged
 by `pnpm setup-python` from its publisher's signed and notarized build; the app

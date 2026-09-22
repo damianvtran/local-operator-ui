@@ -171,11 +171,20 @@ echo "Virtual environment structure verified"
 #
 # WHY UV. Installing the backend is the phase a user waits through on a first
 # run, and pip spends it resolving and fetching serially. Measured on this
-# machine, cold cache, the same interpreter and the same dependency set: pip
-# 128.9 s against uv 14.8 s for the package install, and 178.3 s against 4.5 s
-# with both caches warm (pip's own CPU 13.7 s against uv's 0.5 s). The host runs
-# ~25 concurrent agent sessions, so read the ratio as the finding and the seconds
-# as this box's.
+# machine, cold cache, three runs each, the same interpreter and dependency set:
+# pip's package install is 33.0-40.7 s against uv's 12.8-16.1 s, plus the
+# 2.4-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
+# on a quieter box was 33.9 s against 22.8 s, so read the ratio as 1.5-2.8x
+# ACROSS those two operators, and the seconds as this box's. Warm, a retry or a
+# repair: 15.9-33.8 s against 0.65-1.57 s.
+#
+# THE FIGURES THIS COMMENT USED TO QUOTE ARE WITHDRAWN, and this note is here so
+# they are not restored: "pip 128.9 s against uv 14.8 s, 178.3 s against 4.5 s
+# warm". The pip reading was taken at load ~90 and did not reproduce at five
+# further attempts. A comment that argues from a withdrawn number is how the next
+# maintainer decides on a ratio five times the measured one - and the decision it
+# argues is whether ~16-20 MiB per artifact earns its place, so the number is
+# load-bearing. `docs/BUILD.md` carries the full set.
 #
 # WHY A FALLBACK RATHER THAN UV ALONE. uv is a NEW resource in the bundle, and
 # every artifact built before this change has none. The pip path below is the one

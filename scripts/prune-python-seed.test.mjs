@@ -19,6 +19,7 @@ import {
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	SEED_TK_DIR,
 	clearIncidentalExecBits,
 	machOExecutables,
 	machOFileType,
@@ -132,9 +133,12 @@ function makeSeed(dir, { pruned = false } = {}) {
 		// What a prune leaves behind: the parent directories survive while the
 		// pruned entries do not, which is why the gate checks the entries.
 		writeFile(join(dir, "lib/python3.12/os.py"));
-		writeFile(join(dir, `lib/tk${LAYOUT.python.tkVersion}/tk.tcl`));
 	}
 	writeFile(join(dir, SEED_STDLIB_MARKER));
+	// The Tcl/Tk tree, in BOTH states: it is content the prune deliberately keeps,
+	// and it is what ties the `{tkver}` token to the build (review R2-5) - the
+	// prune refuses a tree that does not carry it.
+	writeFile(join(dir, SEED_TK_DIR, "tk.tcl"));
 	writeFile(join(dir, "lib/python3.12/venv/__init__.py"));
 	writeFile(join(dir, "lib/python3.12/ensurepip/__init__.py"));
 	writeFile(
@@ -404,6 +408,30 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
  * was the config, so the config is what is asserted - the same lesson
  * `prune-bundled-resources.test.mjs` records for `afterPack`.
  */
+test("the Tcl/Tk token is bound to the tree, not only to an optional entry", () => {
+	// Review R2-5. `{tkver}`'s only prune consumer is the OPTIONAL demos entry, so
+	// before this binding a refresh that moved Tcl/Tk while the token stayed put
+	// would prune nothing and look exactly like a correct build - the no-op class
+	// R1-6 fixed, one token over. The tree is asserted to carry `lib/tk<declared>`.
+	const seed = makeSeed(tempDir("lo-seed-"));
+	pruneSeed(seed, { log: () => {} });
+	assert.equal(
+		existsSync(join(seed, SEED_TK_DIR)),
+		true,
+		"the prune keeps the Tk tree",
+	);
+
+	// A tree whose Tcl/Tk moved without the declaration moving with it.
+	const stale = makeSeed(tempDir("lo-seed-"));
+	rmSync(join(stale, SEED_TK_DIR), { recursive: true });
+	writeFile(join(stale, "lib/tk8.6/tk.tcl"));
+	assert.throws(
+		() => pruneSeed(stale, { log: () => {} }),
+		/lib\/tk\d+\.\d+/,
+		"a tree whose Tcl/Tk is not the declared one must fail by name",
+	);
+});
+
 test("a named path the tree does not have is refused, and an optional one is reported", () => {
 	// The R1-6 guard, driven through the real function rather than the message:
 	// `lib/tk8.6/demos` pruned nothing for a whole release because a stale

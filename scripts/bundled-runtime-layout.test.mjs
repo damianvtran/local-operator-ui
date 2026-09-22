@@ -14,12 +14,14 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import {
 	LAYOUT,
+	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	PYTHON_ABI,
 	PYTHON_BUILD_DATE,
 	PYTHON_MINOR,
 	PYTHON_VERSION,
 	SEED_STDLIB_MARKER,
+	SEED_TK_DIR,
 	UV_NAMESPACE,
 	UV_VERSION,
 	uvBinaryName,
@@ -88,6 +90,29 @@ const appResolvers = await (async () => {
 		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 	);
 })();
+
+test("the Tcl/Tk token expands from the declaration, and the seed directory it names is required", () => {
+	// Review R2-5: `{tkver}`'s only other consumer is an OPTIONAL prune entry
+	// (`lib/tk{tkver}/demos`), whose absence is the accepted outcome - so the token
+	// itself has to be tied to something the tree must have. That is
+	// `SEED_TK_DIR`, and `pruneSeed` refuses a tree without it; this asserts the
+	// expansion so a token left on the previous Tcl/Tk line fails before the prune
+	// ever runs.
+	assert.equal(SEED_TK_DIR, `lib/tk${LAYOUT.python.tkVersion}`);
+	assert.match(SEED_TK_DIR, /^lib\/tk\d+\.\d+$/);
+	assert.doesNotMatch(
+		read("src/shared/bundled-runtime-layout.json"),
+		/lib\/tk\d/,
+		"the Tk version belongs behind the {tkver} token, not spelled in a path",
+	);
+	// The demos entry and the required directory must agree: an optional entry
+	// under a different Tcl/Tk line than the one the seed is asserted to carry is
+	// the no-op this binding exists to prevent.
+	assert.ok(
+		PRUNED_SEED_OPTIONAL_PATHS.every((path) => path.startsWith(SEED_TK_DIR)),
+		`every optional Tcl/Tk entry must live under ${SEED_TK_DIR}`,
+	);
+});
 
 test("no version-bearing path in the definition spells a Python minor", () => {
 	// The token, not a literal `python3.12`: a prune list that names the previous
@@ -280,9 +305,12 @@ test("the app resolves the directory the packaging lists copy into", () => {
 	const config = JSON.parse(read("package.json")).build;
 	const resources = tempDir("lo-uv-resolve-");
 	const name = uvBinaryName("darwin");
-	// The two directories the packaged app can carry, with a runnable-looking
-	// binary in each: `uvToolPath` answers null for a path that is not executable,
-	// so a fixture with no file would test nothing.
+	// The two directories the packaged app can carry, with a binary in each.
+	// `uvToolPath` answers null only when NOTHING is there (`F_OK` + `isFile()`);
+	// the mode is `ensureUvToolExecutable`'s question now, and it REPAIRS a
+	// missing bit rather than treating the file as absent (review R1-1 changed
+	// that contract - a reader who restores `X_OK` here reinstates the silent
+	// absence that finding was about).
 	for (const arch of LAYOUT.architectures) {
 		mkdirSync(join(resources, uvResourceDir(arch)), { recursive: true });
 		const binary = join(resources, uvResourceDir(arch), name);
