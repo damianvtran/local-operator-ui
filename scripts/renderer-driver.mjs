@@ -3149,8 +3149,50 @@ async function sceneSessionArchive(cdp) {
 		"row forensics, walk (the press that does NOTHING)",
 		JSON.stringify(await rowForensics(cdp, REFUSED_UNDO_ID)),
 	);
-	/* The press goes to the box the check above proved drawn, non-zero and stable. */
+	/*
+	 * WHAT IS ACTUALLY ON TOP AT THOSE COORDINATES (manager's lead, pass 4). The press that
+	 * WORKS in this same run happens with NO lane card up; this one happens while the refusal
+	 * card is - and the card overlays the list's lower rows, which is U8's subject. If something
+	 * is intercepting, the only way to see it is to ask the document what the point resolves to
+	 * rather than to assume the control is the hit target.
+	 */
+	const hitAtPress = await cdp.evaluate(`(() => {
+		const el = document.elementFromPoint(${boxAfter.centre.x}, ${boxAfter.centre.y});
+		if (!el) return { tag: null };
+		const path = [];
+		for (let n = el; n && path.length < 6; n = n.parentElement) {
+			path.push(
+				n.tagName.toLowerCase() +
+					(n.getAttribute("data-session-archive") !== null ? "[data-session-archive]" : "") +
+					(n.hasAttribute("data-button") ? "[data-button]" : "") +
+					(n.classList.contains("lo-archive-toast") ? ".lo-archive-toast" : "") +
+					(n.hasAttribute("data-content") ? "[data-content]" : "") +
+					(n.hasAttribute("data-sonner-toast") ? "[data-sonner-toast]" : "") +
+					(n.hasAttribute("data-session-row") ? "[data-session-row]" : ""),
+			);
+		}
+		return { tag: path[0], chain: path.join(" < "), pe: getComputedStyle(el).pointerEvents };
+	})()`);
+	note("the hit target at the walk's press point", JSON.stringify(hitAtPress));
+	/*
+	 * AND WHETHER THE PRESS REACHES THE APP AT ALL (manager's lead, pass 4): `archiveAttempts`
+	 * is the store's write counter, so a press that lands advances it whether or not the daemon
+	 * accepts. The hit probe above says the control IS the hit target; this says whether pressing
+	 * it did anything - the two together separate "the rig never delivered it" from "the app
+	 * received it and chose not to".
+	 */
+	const attemptsBefore = (await verb(cdp, "state"))?.archiveAttempts ?? null;
 	await pressPointerStationary(cdp, boxAfter.centre.x, boxAfter.centre.y);
+	await wait(600);
+	const attemptsAfter = (await verb(cdp, "state"))?.archiveAttempts ?? null;
+	note(
+		"the walk's press, seen by the store",
+		JSON.stringify({
+			attemptsBefore,
+			attemptsAfter,
+			advanced: attemptsAfter !== attemptsBefore,
+		}),
+	);
 	await wait(500);
 	/*
 	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The lane keeps one
