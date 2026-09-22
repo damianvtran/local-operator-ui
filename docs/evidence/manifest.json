@@ -14,12 +14,12 @@
   "evidenceR2FoldNote": "FOLDED ONTO `origin/main` = `c0e3a0652` (0.30.9) BY A MERGE COMMIT, AND THE CONFLICT WAS DERIVED RATHER THAN CHOSEN. This file alone conflicted - in its aggregate block and in its tail, the shape every fold of this branch has taken - and the resolution was: MAIN's records and counts as the base (its `installPipelineFoldRestampNote` and `consolePaneFitFoldRestampNote` are kept whole), this branch's own row-space and archive records re-laid beside them, and both stamps RE-DERIVED FROM THE FOLDED TREE (`git write-tree` -> `rev-parse <tree>:src` / `:scripts`) rather than taken from either side, because the folded `src` is neither side's. `head` remains this branch's own capture head and `capturedAt` the capture pass's, as the convention here states. THE FOLD MOVES `src` AND STALES NO FRAME'S SUBJECT: main's three commits touch the installer/python runtime, the console pane, `ui-preferences-store`'s `consoleOpenIntent` and `chat-content.tsx`'s console-open wiring - and NONE of `scripts/renderer-driver.mjs`, `chat-sidebar.tsx`, `styles/index.css`, the toast/archive modules or the sidebar-width preference, so no label in `sidebar-row-space/` or `session-archive/` is stale and no scene was re-run. The two files whose pixels sit inside these frames are in-frame only as the right-hand column, which the row-space README already scopes out of what its frames are of.",
   "evidenceR2Note": "THE WALK'S PRESS, AND THE TWO FRAMES THIS PASS OWES (2026-09-22, row-space-evidence-r2). Four passes at this head: `row-space` dark and light each 56 PASS / 0 FAIL (exit 0), `session-archive` light 56 PASS / 0 FAIL (exit 0), and `session-archive` dark 55 PASS / 1 FAIL on the first attempt and 56 PASS / 0 FAIL on the re-run - the one failure is the measured flake named below, and the re-run is what the frames come from. The walk's finishing check is GREEN in both palettes (the reading is verbatim in `aabef0a86`, the commit that fixed it), U10's four clauses are green in both, and the stub log carries the line the failure was hiding: `POST /v1/desktop/sessions/b3f1a09c7d52/archive -> 200` after the `409` that raised the refusal. ONE RIG AT A TIME behind the rig lock with `pgrep -f renderer-driver` checked before every launch - a PEER session's rig counts as not clear, and one wave refused on exactly that and waited for the window rather than racing it. Memory-free 76-80% and swap-free 1359-1423 MB across the four runs, nothing outliving its boot; two launches were refused before that, one on a peer's rig and one on a stale lock a cancelled wave left behind. THE ONE FLAKE, WITH BOTH READINGS, because a green check bought by a silent red guard is not a fix: the D14 band check read `{\"band\":{\"x\":228,\"y\":826,\"width\":264,\"height\":34},\"card\":{\"x\":228,\"y\":826,\"width\":248,\"height\":34}}` in two dark runs - and the pair was still `34 / 34` after the check's own 700ms settle - while the SAME code and the SAME scene state read `band 150, card 142` in the dark re-run and in both light runs. So `session-archive` dark is 55 / 1 unless it is re-run. The correction to the comment beside that read, and the unlanded fix it names (wait on the invariant, driving a frame per attempt, rather than on the clock), are in `aabef0a86`. WHAT MOVED IN THE TREES. `sidebar-row-space/after/` is RE-CAPTURED at this head: fifteen labels in BOTH palettes - up one, `offer-toast-320`, design round 4's D16 and the first width where the card (248) is narrower than its own lane (304) - plus the two `-after` geometry JSONs, whose offer box moved from `left 244, right 492, top 794, bottom 844 (248x50)` to `left 228, right 476, top 802, bottom 860 (248x58)`. That x move is a reading the D14 ruling's table gets wrong: it predicts the card \"unchanged\" at `244..492` (`panel.right - 8`), and the measured card sits at the LANE's left edge, leaving the spare 16px on the lane's right - the same left-anchoring the 320 frame measures. Report it to the design stream; nothing in the band's HEIGHT ruling depends on x. `session-archive/` gains ONE frame - `refusal-band-280/{localOperatorDark,localOperatorLight}`, design round 4's D15: the refusal in the panel's own band at the 280 panel, `band 264x150 at x 228..492` holding a `248x142` card at x 228..476, panel `280x868`, gap 8. The rest of that set is untouched and is still the record of the register-era shape its README's SUPERSEDED block points at, so its settled frames (`at-rest`, `row-hover`, `delete-*` and their siblings) still PREDATE the lane's move to the band - named here so a reader does not take the set as current.",
   "wireVocabularyRestampNote": "RE-STAMPED, AND THE ONE STATE THIS CHANGE REPAINTS IS RE-SHOT. This is the composer reading the wire's own argument vocabulary and the leading line (`fix/wire-argument-shape-vocabulary`), in the round-1 remediation that aligned its tokeniser and its shape arms with the endpoint's own admission rule, and then, in round two, with the endpoint's own SEPARATOR CLASS: Python separates on U+001C-U+001F and U+0085 and does not separate on U+FEFF, while JavaScript's \\s is the other way round on all six, so `slash-token.ts` now spells the class out once and both modules read that one definition (QA round 2, Q2-1). The change moves `src/` (the planner, its pins and the contract's row type) and `scripts/` (the composer suite's fixtures and the scene's paint table), so BOTH TREES MOVE WITH IT: `srcTree` 6fba2a52dd97e28c0125bc1a888c36c646978d85 -> c8993c7bba6d9e224e7d66eadc22404688f59259 and `scriptsTree` ae32da04dd9d1d27d6013e4e4857600d19a4fc95 -> d30af0625957e8e9cdc33db1f5902f85e811aa04, re-derived from the tree this commit ships rather than from the head the fold started at. The base moved under the branch twice while the round was finishing - `origin/main` = `d109863e2` (#407, the scan that forbids `window.focus()` outright) and then `305efc363` (#406, which extends that same scan to the call's alternate receivers) - and each fold's only conflict was this file, so main's side is taken as the base each time and this note re-lays on top of it, exactly as the fold notes around it do. Both folds move `scripts/` and neither moves `src/`, so the rig scan is what the `scriptsTree` halves of this record are about.\n\n`head` names the commit the capture ran at, which is this file's own convention rather than a re-pointing: the fold notes above keep the same meaning, and the two tree stamps name the tree that SHIPS. The re-shot frames land in the commit after this one, named by `partialCapture.refreshedAtHead`, because a commit cannot name itself.\n\nONE STATE WAS RE-CAPTURED RATHER THAN MERELY RE-STAMPED, and it is the only one this change paints differently. `chat-slash-highlight/name-instruction-multiline` was shot while the planner answered `send` for a draft whose instruction spans lines, so its stills depicted the interaction the leading-line rule removes; at this tree the same draft plans `reassemble`, so the app paints the `command /team` run and Enter stages the draft on one line. The twelve frames were re-taken from this tree in one narrowed run of the repository's own rig (`node scripts/capture-evidence.mjs <origin> --only=name-instruction-multiline --allow-backend`), and its own record of that run is the count `partialCapture.refreshedFrames` now carries. NO OTHER FRAME MOVED: the eleven other states in this set, and every other set, are untouched, because nothing in this change adds or edits a `className`, a style, a colour role, a theme call or any component's markup - only which drafts carry a run.",
-  "frames": 8500,
+  "frames": 8504,
   "surfaces": 851,
   "themes": 12,
   "countsMean": {
-    "frames": "RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `0e6c1761d11f6916616c5b1f7621f1fc1cfc5546`): 8500 committed WebP files outside the 101 declared supplementary sets below, of 10151 on disk (1651 of them inside the sets). WHAT MOVED IS THIS BRANCH'S OWN SURFACE, RE-TAKEN RATHER THAN RE-CAPTIONED: the setup window's six states, twelve themes each (72 frames), because round 2 changed the panel (the failure's machine line clamps to two lines, the preservation sentence, and no expectation line once the run is finished) and added a sixth state - the failure the cause table does not recognise. The twelve 1380x800 frames of the screen this branch replaced are kept beside it as `installer-installercontent-before/`, its own surface rather than a row in this set. ROUND 3 CHANGED TWO FILES UNDER `src/` THAT PAINT NO PIXEL: the fallback story now calls `installFailureSentence(\"components\")` instead of hand-copying its return value (design D21) - the same string these frames already show - and the installer's retry path was folded back through `install()`'s loop. One more, from the round-2 fold: the two shell install scripts were re-instrumented (the `|LO1:components` marker anchored to the install block's first line rather than to the pip call inside it), which is why `srcTree` differs from the tree the capture ran on; the renderer these frames show did not change with it, and the scripts are exercised by CI's install-script jobs rather than by a still.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `2c329b36b`): 8428 committed WebP files outside the 101 declared supplementary sets below, of 10079 on disk (1651 of them inside the sets).: 8404 committed WebP files outside the 100 declared supplementary sets below, of 10035 on disk (1631 of them inside the sets).: 8,428 committed WebP files outside the 100 declared supplementary sets below, of 10,079 on disk (1,651 of them inside the sets). WHAT MOVED IS THIS BRANCH'S SURFACE, WHICH WAS RE-TAKEN IN BOTH HALVES: twenty-four frames under `onboarding-providersetup/` (twelve story directories x two themes: step 1's grid in the dialog at the app's default window, at its 800x600 floor and scrolled to the last row; the same grid in the Settings column and in a registry shorter than the old search threshold; three queries; the promoted card's hover and focus; and the state the first round asked for, the recommended provider signed in) plus twenty in the declared `provider-setup-ux-before` set, four of whose states are new. COUNTED BY THIS PARAGRAPH'S OWN WALK RATHER THAN FROM THE CAPTURER'S RUNNING TOTAL, because a narrowed pass that re-captures a directory it has already written adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-STAMPED WITH THIS BRANCH'S OWN PASS (not a fold, and not a full sweep): 8,422 committed WebP files outside the 100 declared supplementary sets below, of 10,067 on disk (1,645 of them inside the sets). WHAT MOVED IS THIS BRANCH'S NEW SURFACE AND ITS DECLARED BEFORE HALF: eighteen frames under `onboarding-providersetup/` (nine story directories x two themes -- step 1's grid in the dialog at the app's default window and at its 800px floor, the same grid in the Settings column, a registry shorter than the old search threshold, two queries, and the promoted card's hover and focus states) plus fourteen in the declared `provider-setup-ux-before` set. COUNTED BY THIS PARAGRAPH'S OWN WALK RATHER THAN FROM THE CAPTURER'S RUNNING TOTAL, because a narrowed pass that re-captures a directory it has already written adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-DERIVED BY THIS BRANCH'S OWN PASS, NOT BY A SWEEP: 8,422 committed WebP files outside the 100 declared supplementary sets below, of 10,071 on disk (1,649 of them inside the sets). WHAT MOVED IS THIS BRANCH'S OWN NEW SURFACE plus its declared before half: eighteen frames under `onboarding-providersetup/` (nine story directories x two themes - the step-1 grid in the dialog at two window widths, the same grid in the Settings column, a registry shorter than the old search threshold, two queries, and the promoted card's hover and focus states) and fourteen more in the declared `provider-setup-ux-before` set. The count is taken from the walk rather than from the capture's running total, because a narrowed pass that re-captures a directory it already wrote adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `fd516b004`): 8404 committed WebP files outside the 99 declared supplementary sets below, of 10035 on disk (1631 of them inside the sets).WHAT MOVED IS AGAIN THE SET'S OWN CONTENT AND MAIN'S WINDOW: the ask-options-live set grew from twelve frames to fourteen (the arm round 2's U7/Q1 measured), and the fold onto `origin/main` = `6a1708e8e` (#419's release window and #392's browser file transfer) brought that window's own frames with it. The declaration now numbers 97 sets because #392 declared one more.",
-    "surfaces": "RE-DERIVED FOR THIS FOLD: 851 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).. SIX of those rows are this branch's installer surface, up from five: the failure a user meets when the cause table does not recognise what happened had no frame in either head, and the panel's own code calls it the common case.\n\nFOLDED AND RE-DERIVED: 846 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them, parsed from the tree rather than taken from the writer. TWELVE ROWS ARE THIS BRANCH'S, all `onboarding-providersetup--*`: the grid states, the registry shorter than the old search threshold, the dialog at the app's default window, its 800x600 floor and scrolled, the recommended provider signed in, the cue under a query, and the two `dir` entries that photograph the promoted card under a real pointer and a real Tab walk.\n\nRE-STAMPED WITH THIS BRANCH'S OWN PASS: 843 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). NINE ROWS ARE THIS BRANCH'S, all `onboarding-providersetup--*`: the four grid states, the registry shorter than the old search threshold, the dialog at two window widths, and the two `dir` entries that photograph the promoted card under a real pointer and a real Tab walk.\n\nRE-DERIVED FOR THIS BRANCH: 843 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). NINE ROWS ARE THIS BRANCH'S, all of them `onboarding-providersetup--*`: the four grid states, the registry shorter than the old search threshold, the dialog at the app's default window and at its 800px floor, and the two `dir` entries that photograph the promoted card under a real pointer and a real Tab walk.\n\nRE-DERIVED FOR THIS FOLD: 834 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). BOTH SIDES APPENDED TO THE SAME LITERAL AND BOTH SETS OF ROWS STAND: main's four credential rows arrive with #411, and this branch's four `common-updatenotification--backend-update-*` rows are still there, which is why this count is the merged literal's own arithmetic rather than either side's number.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `c1fe1e8bf`): 806 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer) - this change adds the four rows its own frames need (the unresolved citation at the framed width and at the narrow rung, and the two notices).\n\nTHIS FIELD IS AN OBJECT AND THE GUARD READS IT AS ONE (QA Q-1, MAJOR, and the reason this commit exists): the previous fold's re-lay replaced `countsMean` with a single string, and `check-evidence.mjs`'s `countsMeanFailures` opens with `if (!mean || typeof mean !== \"object\") return out;` - so the guard that exists BECAUSE this paragraph went stale at three consecutive folds returned zero failures for the shipped manifest AND zero for a copy with every number deliberately corrupted. Restoring the object is the fix; the readings below are the three the guard compares, each led by the paragraph it re-derives from the tree. A future re-lay that flattens this field again will disable that guard silently, which is why the shape is asserted in prose here as well as read by the checker.\n\nMain's record was 769 and this branch's seventeen entries are the whole of the difference - twelve from the round-2 remediation, of which six address stories that already existed because a rig entry (`{ hover }`, `{ tabTo }`) photographs a browser-input state rather than adding a story, and five from the list's first pass.\n\nRE-DERIVED FOR THE THIRD FOLD OF THIS ROUND: 769 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). Two rows are this branch's.\n\nRE-DERIVED FOR THIS PASS (see `nestedSubagentsPassNote`): 767 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).\n\nRE-DERIVED FOR THE FOLD ONTO `origin/main` = `213b7c45c`: 761 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).\n\nRE-DERIVED FOR THIS PASS: 755 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).",
+    "frames": "RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `850253b8d`): 8504 committed WebP files outside the 101 declared supplementary sets below, of 10155 on disk (1651 of them inside the sets). WHAT MOVED IS BOTH SIDES: main's installer-evidence pass (#439) added six `installer-installercontent--*` story directories and this branch's own rail pair stands beside them; the declaration is unchanged at 101 sets, so the swept count rose with main's install frames alone. COUNTED BY THIS PARAGRAPH'S OWN WALK RATHER THAN FROM THE CAPTURER'S RUNNING TOTAL, because a narrowed pass that re-captures a directory it has already written adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-STAMPED WITH THIS BRANCH'S OWN PASS (not a fold, and not a full sweep): 8,422 committed WebP files outside the 100 declared supplementary sets below, of 10,067 on disk (1,645 of them inside the sets). WHAT MOVED IS THIS BRANCH'S NEW SURFACE AND ITS DECLARED BEFORE HALF: eighteen frames under `onboarding-providersetup/` (nine story directories x two themes -- step 1's grid in the dialog at the app's default window and at its 800px floor, the same grid in the Settings column, a registry shorter than the old search threshold, two queries, and the promoted card's hover and focus states) plus fourteen in the declared `provider-setup-ux-before` set. COUNTED BY THIS PARAGRAPH'S OWN WALK RATHER THAN FROM THE CAPTURER'S RUNNING TOTAL, because a narrowed pass that re-captures a directory it has already written adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-DERIVED BY THIS BRANCH'S OWN PASS, NOT BY A SWEEP: 8,422 committed WebP files outside the 100 declared supplementary sets below, of 10,071 on disk (1,649 of them inside the sets). WHAT MOVED IS THIS BRANCH'S OWN NEW SURFACE plus its declared before half: eighteen frames under `onboarding-providersetup/` (nine story directories x two themes - the step-1 grid in the dialog at two window widths, the same grid in the Settings column, a registry shorter than the old search threshold, two queries, and the promoted card's hover and focus states) and fourteen more in the declared `provider-setup-ux-before` set. The count is taken from the walk rather than from the capture's running total, because a narrowed pass that re-captures a directory it already wrote adds nothing to a delta while the frames on disk are what a reader can open.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `fd516b004`): 8404 committed WebP files outside the 99 declared supplementary sets below, of 10035 on disk (1631 of them inside the sets).WHAT MOVED IS AGAIN THE SET'S OWN CONTENT AND MAIN'S WINDOW: the ask-options-live set grew from twelve frames to fourteen (the arm round 2's U7/Q1 measured), and the fold onto `origin/main` = `6a1708e8e` (#419's release window and #392's browser file transfer) brought that window's own frames with it. The declaration now numbers 97 sets because #392 declared one more.",
+    "surfaces": "RE-DERIVED FOR THIS FOLD: 851 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (parsed from the tree rather than taken from the writer) - main's six installer stories and this branch's rail pair are both in the merged literal.\n\nRE-STAMPED WITH THIS BRANCH'S OWN PASS: 843 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). NINE ROWS ARE THIS BRANCH'S, all `onboarding-providersetup--*`: the four grid states, the registry shorter than the old search threshold, the dialog at two window widths, and the two `dir` entries that photograph the promoted card under a real pointer and a real Tab walk.\n\nRE-DERIVED FOR THIS BRANCH: 843 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). NINE ROWS ARE THIS BRANCH'S, all of them `onboarding-providersetup--*`: the four grid states, the registry shorter than the old search threshold, the dialog at the app's default window and at its 800px floor, and the two `dir` entries that photograph the promoted card under a real pointer and a real Tab walk.\n\nRE-DERIVED FOR THIS FOLD: 834 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). BOTH SIDES APPENDED TO THE SAME LITERAL AND BOTH SETS OF ROWS STAND: main's four credential rows arrive with #411, and this branch's four `common-updatenotification--backend-update-*` rows are still there, which is why this count is the merged literal's own arithmetic rather than either side's number.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `c1fe1e8bf`): 806 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer) - this change adds the four rows its own frames need (the unresolved citation at the framed width and at the narrow rung, and the two notices).\n\nTHIS FIELD IS AN OBJECT AND THE GUARD READS IT AS ONE (QA Q-1, MAJOR, and the reason this commit exists): the previous fold's re-lay replaced `countsMean` with a single string, and `check-evidence.mjs`'s `countsMeanFailures` opens with `if (!mean || typeof mean !== \"object\") return out;` - so the guard that exists BECAUSE this paragraph went stale at three consecutive folds returned zero failures for the shipped manifest AND zero for a copy with every number deliberately corrupted. Restoring the object is the fix; the readings below are the three the guard compares, each led by the paragraph it re-derives from the tree. A future re-lay that flattens this field again will disable that guard silently, which is why the shape is asserted in prose here as well as read by the checker.\n\nMain's record was 769 and this branch's seventeen entries are the whole of the difference - twelve from the round-2 remediation, of which six address stories that already existed because a rig entry (`{ hover }`, `{ tabTo }`) photographs a browser-input state rather than adding a story, and five from the list's first pass.\n\nRE-DERIVED FOR THE THIRD FOLD OF THIS ROUND: 769 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\t\\[` rows inside the block, parsed from the tree rather than taken from the writer). Two rows are this branch's.\n\nRE-DERIVED FOR THIS PASS (see `nestedSubagentsPassNote`): 767 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).\n\nRE-DERIVED FOR THE FOLD ONTO `origin/main` = `213b7c45c`: 761 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).\n\nRE-DERIVED FOR THIS PASS: 755 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them (`^\\t\\[` rows inside the block, parsed from the tree rather than taken from the writer).",
     "themes": "FOLDED AND RE-DERIVED: 12 theme names in the `THEMES` literal, counted the same way and unchanged by the round -- both halves of the pair are shot on the two palettes the brand owns (`--themes=localOperatorDark,localOperatorLight`), and `pnpm check-themes` asserts the role triples across all 12.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `ed74aa699`): 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side moves the literal.\n\nRE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `b6f945e90`): 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side moves the literal.\n\nThe theme count did not move across this round's five folds - every surface this branch owns is shot on the twelve themes the literal names, and both halves of the before/after pair use the same twelve, so the pairing is readable theme by theme.\n\nRE-DERIVED FOR THE SEVENTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\nRE-DERIVED FOR THE SIXTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\nRE-DERIVED FOR THE FIFTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\n12 theme names in the `capture-evidence.mjs` THEMES literal, unchanged by this pass and by the fold with `origin/main` - which is what keeps each of the twelve per-directory frames a like-for-like pair.\n\nMAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `eac9f8754`, PR #275): RE-DERIVED ON THE THIRD FOLD (the merge of `efa8b2fab` into `11271f643`): 12 theme names in the `THEMES` literal, counted the same way. Neither side of the fold changes the theme list - `main`'s window adds stories, not themes - so 12 is the base's, `main`'s and this tree's alike. Earlier: RE-DERIVED ON THE THIRD FOLD (the merge of `efa8b2fab` into `11271f643`): 12 theme names in the `THEMES` literal, counted the same way. Neither side of the fold changes the theme list - `main`'s window adds stories, not themes - so 12 is the base's, `main`'s and this tree's alike. Earlier: RE-DERIVED ON THE SECOND FOLD (the merge of `e5e39de55` into `5f6b8d14d`): 12 theme names in the `THEMES` literal, counted the same way `check-evidence.mjs` counts them (`^\\t\"` inside the block). Neither side of the fold changes the theme list, so 12 is the base's, `main`'s and this tree's alike. RE-DERIVED ON THE FOLDED TREE (`2322eb114`): 12 theme names in the `THEMES` literal, counted the same way `check-evidence.mjs` counts them (`^\\t\"` inside the block). Neither side of the fold changes the theme list, so 12 is the base's, `main`'s and this tree's alike. Earlier: 12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's.\n\nMAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `e89142ac6`, PR #275): What `themes` counts: the palettes in `capture-evidence.mjs`'s THEMES literal - the set that keeps each per-directory frame a like-for-like pair across the declared palettes. THE NUMBER IS NOT RESTATED HERE; read the `themes` field, which the gate re-checks. Unlike the two above this one has not moved since the sets were declared, and it is still written this way, because \"stable so far\" is the argument that produced the other two.\n\nTHIS BRANCH'S DELTA (the re-file's pass, folded onto `ccc3017a3`): five stories added to the swept `chat-sidebar-status-feed/` set (60 frames) and one declared set beside it (`chat-sidebar-status-feed-resort-baseline`, 12 frames, excluded from the swept count by that same declaration)."
   },
   "partialCapture": {
@@ -31,7 +31,7 @@
     "refreshedAt": "2026-09-21T21:10:00-04:00",
     "refreshedAtHead": "0e6c1761d11f6916616c5b1f7621f1fc1cfc5546",
     "refreshedFromHead": "47a7d5e3772a7884372f03d88d454cfb75a4b649",
-    "refreshedFrames": 6439,
+    "refreshedFrames": 6443,
     "collapseGuardRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the `Collapse all` guard's CI wiring (`test(settings): run the Collapse all guard in CI, and make it exit when it fails`), a scripts-only follow-up to this set: `scriptsTree` 11f234964 -> 1eafe2fc2. A commit that moves `scripts/` invalidates the stamp for every frame that ships in it whatever the branch's own delta is, and this delta is one test file plus its wiring and the list that runs it - no file under `src/` moves, no frame is re-taken, and no surface this set captures is touched, so the frames remain pictures of the tree they ship in. `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged. Recorded here because the next author's alternative is rediscovering a red desktop suite with the cause in a file they did not open. RE-STAMPED ONCE MORE BY THAT PR'S ROUND-1 REMEDIATION (`test(settings): arm the collapse guard's teardown before it mounts`), which moves `scripts/` for the same reason this field exists in the first place: `scriptsTree` 1eafe2fc2 -> 526abb73. The delta is still one file under `scripts/` - the guard's teardown is armed before the mount creates anything rather than after the render, its three cases carry a per-test `timeout`, and its prose is corrected - together with `.github/workflows/ci.yml`, which no stamp in this file covers. No file under `src/` moves, no frame is re-taken, and `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged.",
     "refreshedStories": [
       "agent-hub-page--empty",
@@ -525,6 +525,8 @@
       "settings-backend--read-only-and-redacted",
       "settings-backend--save-failed",
       "settings-backend--saving",
+      "settings-hosting-empty-copy--after",
+      "settings-hosting-empty-copy--before",
       "settings-model-combobox--active-row",
       "settings-model-combobox--chrome-less",
       "settings-model-combobox--disabled",
@@ -841,7 +843,7 @@
           "refreshedAt": "2026-09-16T00:31:27.937Z",
           "refreshedAtHead": "b895f7bdf37052a61f567fe720be256d28c949cc (#228's own lineage; an ancestor of this head, so not re-spelled)",
           "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-          "refreshedFrames": 1042,
+          "refreshedFrames": 6443,
           "refreshedStories": 129,
           "addedFrames": 70,
           "addedSurfaces": 15,
@@ -851,7 +853,7 @@
         "branchNumbers": {
           "refreshedAt": "2026-09-16T04:13:59.494Z",
           "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc (this lineage's own server-update pass)",
-          "refreshedFrames": 24,
+          "refreshedFrames": 6443,
           "refreshedStories": 2,
           "addedFrames": 24,
           "addedSurfaces": 2,
@@ -859,7 +861,7 @@
           "addedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc"
         },
         "mergedNumbers": {
-          "refreshedFrames": 1066,
+          "refreshedFrames": 6443,
           "refreshedStories": 131,
           "addedFrames": 94,
           "addedSurfaces": 17,
@@ -877,7 +879,7 @@
         "refreshedAt": "2026-09-16T04:13:59.494Z",
         "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc",
         "harness": "node scripts/capture-evidence.mjs --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at b8a528fb5 with this branch's rig",
-        "refreshedFrames": 24,
+        "refreshedFrames": 6443,
         "addedFrames": 24,
         "refreshedStories": [
           "common-updatenotification--backend-update-failed",
@@ -929,7 +931,7 @@
         "refreshedAt": "2026-09-16T05:33:43.980Z",
         "refreshedAtHead": "e406482467597cb5eaa83490d1f699c9380b6859",
         "harness": "node scripts/capture-evidence.mjs http://localhost:6017 --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at the head that ships",
-        "refreshedFrames": 24,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "common-updatenotification--backend-update-failed",
           "common-updatenotification--backend-update-in-flight"
@@ -1158,7 +1160,7 @@
       "thisPass": "`refreshedFrames` is the accumulation the capturer's own rule defines and this branch's pass is the increment: the value main's pass recorded (1354) plus the 348 frames the twenty-nine-story `panels-info` pass rewrote, which is what stands in the directories `refreshedStories` names at HEAD.",
       "refreshedAt": "2026-09-16T14:43:01.304Z",
       "refreshedAtHead": "ba66a1010bd06ab55eb144fc4078ad17d9f832f5",
-      "refreshedFrames": 744,
+      "refreshedFrames": 6443,
       "refreshedStories": [
         "browser-pane--this-conversation",
         "browser-pane--all-tabs",
@@ -1241,7 +1243,7 @@
       "previousRefresh": {
         "refreshedAt": "2026-09-13T07:23:43.292Z",
         "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-        "refreshedFrames": 144,
+        "refreshedFrames": 6443,
         "addedFrames": 144,
         "addedSurfaces": [
           "chat-model-picker/populated",
@@ -1266,7 +1268,7 @@
         "refreshedAt": "2026-09-15T03:40:00.000Z",
         "refreshedAtHead": "c23ad283a068f2528791d4b9ea3b0b0eef9cc103",
         "refreshedFromHead": "62a003487f4192a24e7635cc8a9745caf70912ea",
-        "refreshedFrames": 168,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "settings-app-updates-and-info--no-bridge",
           "settings-app-updates-and-info--before-first-probe",
@@ -1319,7 +1321,7 @@
         "previousRefresh": {
           "refreshedAt": "2026-09-15T01:18:21.921Z",
           "refreshedAtHead": "18f359ffaf5aa4b98f7d400cdc69d21122a10449",
-          "refreshedFrames": 900,
+          "refreshedFrames": 6443,
           "refreshedStories": [
             "chat-ask-options--options",
             "chat-ask-options--single-option",
@@ -1404,7 +1406,7 @@
           "previousRefresh": {
             "refreshedAt": "2026-09-13T07:23:43.292Z",
             "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-            "refreshedFrames": 144,
+            "refreshedFrames": 6443,
             "addedFrames": 144,
             "addedSurfaces": [
               "chat-model-picker/populated",
@@ -1438,7 +1440,7 @@
       "browserCapture": {
         "refreshedAt": "2026-09-15T04:29:29.040Z",
         "refreshedAtHead": "96ca3586e216a2b72f90745180c9e50794f6e445",
-        "refreshedFrames": 108,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "browser-consent-bar--pending",
           "browser-consent-bar--attributed-and-queued",
@@ -1569,7 +1571,7 @@
           "refreshedAt": "2026-09-16T03:01:41.109934Z",
           "refreshedAtHead": "4938f854233a3421921afb0cc95a9bc30a1f65fe (#223's own lineage; an ancestor of this head, so not re-spelled)",
           "refreshedFromHead": "829a02af50bd27370c5bc88686404ec52864ab96",
-          "refreshedFrames": 660,
+          "refreshedFrames": 6443,
           "refreshedStories": 90,
           "addedFrames": 50,
           "addedSurfaces": 5,
@@ -1580,7 +1582,7 @@
           "refreshedAt": "2026-09-16T00:31:27.937Z",
           "refreshedAtHead": "ccc326dbb27004216708a0b650a2c2122baa8d55 (this lineage's `b895f7bdf`, the frames re-taken)",
           "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-          "refreshedFrames": 788,
+          "refreshedFrames": 6443,
           "refreshedStories": 83,
           "addedFrames": 48,
           "addedSurfaces": 11,
@@ -1588,7 +1590,7 @@
           "addedAtHead": "850b0e3315140f12a47855e69f5f5f0b7981abcf (this lineage's `fc9b8734c`, the pool)"
         },
         "mergedNumbers": {
-          "refreshedFrames": 1042,
+          "refreshedFrames": 6443,
           "refreshedStories": 129,
           "addedFrames": 70,
           "addedSurfaces": 15,
@@ -1621,7 +1623,7 @@
           "chat-run-panel--back-pop",
           "chat-run-panel--close-from-reader"
         ],
-        "refreshedFrames": 6,
+        "refreshedFrames": 6443,
         "addedSurfaces": [
           "chat-run-panel/back-to-roster",
           "chat-run-panel/back-pop",
@@ -1634,7 +1636,7 @@
         "refreshedAt": "2026-09-17T15:38:13.612Z",
         "refreshedAtHead": "04faeba006e684413ff7bc5ac310564d830fcf3a",
         "refreshedFromHead": "47a7d5e3772a7884372f03d88d454cfb75a4b649",
-        "refreshedFrames": 3228,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "browser-pane--all-tabs",
           "browser-pane--composed-trigger-only",
@@ -2126,7 +2128,7 @@
         "chat-header-cluster--at-cap",
         "chat-header-cluster--trigger-dot"
       ],
-      "refreshedFrames": 8,
+      "refreshedFrames": 6443,
       "addedSurfaces": [
         "chat-header-cluster/no-approval",
         "chat-header-cluster/one-approval",
@@ -2151,7 +2153,7 @@
         "browser-pane--draft-conversation",
         "browser-pane--with-approval"
       ],
-      "refreshedFrames": 20,
+      "refreshedFrames": 6443,
       "addedSurfaces": [
         "chat-header-cluster/canvas-open-badge"
       ],
@@ -2178,7 +2180,7 @@
       "refreshedAt": "2026-09-16T22:45:25.210Z",
       "refreshedAtHead": "344391224a9d2d939f09dddd3d0ed7d538a23f8f",
       "refreshedAtHeadNote": "Re-pointed at the source THIS pass's frames were painted from, which is the head the remediation's code commits sit at (`c285d7472`) and not the commit that carries them: the evidence commit itself changes only `docs/evidence/` and the evidence rig, neither of which paints a story frame, so the tree stamps are re-derived at the committing head while this field keeps naming the source.\n\nRE-SPELLED FOR THE REBASE onto `origin/main` (`da9e75a61`, the 0.25.14-0.25.16 window): the commit this field names is the source the frames were painted from, and the rebase carries that same change - byte-identical `+`/`-` line sets, and `git diff <old-head> <new-head>` limited to that commit's files equals main's own change to them - in a new spelling. Both spellings are on the branch's ref for anyone comparing them.",
-      "refreshedFrames": 1458,
+      "refreshedFrames": 6443,
       "refreshedFramesNote": "RE-DERIVED FOR THIS FOLD, and this field is the reason the gate exists. It has to account for at least the frames standing in (and differing under) the directories `refreshedStories` names at HEAD, and the list is a UNION of passes: main's own (276 accumulated, for the settings-backend and earlier dirs its pass rewrote) and this branch's quote set (its 132). The recorded increments sum to 408, and 408 frames stand in the named directories at HEAD outside every declared set - the list also names dirs from folds older than either pass, whose totals this field no longer separates. The claim is the derived number rather than either side's, the way the gate asks: understating a pass is the failure mode it names, exceeded-by-design is allowed, and a value carried across a fold describes a list that no longer exists.",
       "refreshedFromHead": "c285d74723bbd5ba832928a92502e4ead3a0b455",
       "refreshedFromHeadNote": "The tree this pass's refresh is defined against: this branch's own frames commit, re-pointed here rather than left as a pre-rebase spelling of it. It matters for more than tidiness - `partialCaptureFailures` measures the pass as `refreshedFromHead^..HEAD`, so a value from main's lineage makes main's own frame rewrites look like this pass's, which is what the fast suite said before this was re-pointed.",
@@ -2524,7 +2526,7 @@
         "refreshedAt": "2026-09-17T04:22:53.000Z",
         "refreshedAtHead": "8cd6ab146364b946a843dfcf22af1509cae618ef",
         "refreshedFromHead": "8cd6ab146364b946a843dfcf22af1509cae618ef",
-        "refreshedFrames": 1714,
+        "refreshedFrames": 6443,
         "addedFrames": 52,
         "addedAt": "2026-09-16T20:16:42.949Z",
         "addedAtHead": "35737bf3112f29ebeb9cfa29071b523bbf470613"
@@ -2631,7 +2633,7 @@
         "chat-sidebar-status-feed--completion-acknowledged",
         "chat-sidebar-status-feed--completion-reordered-offscreen"
       ],
-      "refreshedFrames": 60,
+      "refreshedFrames": 6443,
       "baseline": "`chat-sidebar-status-feed-resort-baseline/` (12 frames, declared above) was captured from the tree that became `8301e2104` - the rig commit, which carries the stories and the geometry rig and NOT the container rule - with the rule stashed out of `chat-sidebar.tsx` for the run and restored after it. The rig is the story, so a pre-change tree has no story to capture: stashing the one declaration is the closest honest thing to `origin/main`'s renderer, and it is what makes the pair a pair.",
       "measured": "`scripts/sidebar-resort-geometry.mjs` on `completion-reordered-offscreen` at the viewport `capture-evidence.mjs` shoots it at (declared 780x660, shot at 1159): `scrollTop` 221 -> 125 across the re-file with the rule stashed (the 96 px row travel paid in viewport movement) against 221 -> 221 with it, and `--assert` fails the first and passes the second.",
       "live": "THE APP-LEVEL NUMBERS, RESTATED WITH THE CONDITIONS THEY CAME FROM (round 1, Q1). The first version of this field reported `scrollTop` 150 holding with the rule where it moved to 118 without it, which describes a ONE-ROW-PITCH move at a position nothing in the app reproduces and says nothing about which view or which scroll position it was taken at. What is measured, independently, on the real app booted `headless` against an isolated config dir and a `local-operator serve` over a synthetic 28-session store, driving a real completion into that backend's own attention store: the FLAT list (`All chats`, 28 rows, mover's whole travel 96 px over three slots) at `scrollTop` 202 of a `maxScrollTop` of 673 - 0.30 of the container - moved 202 -> 106 on the tree WITHOUT the rule and 202 -> 202 with it, the re-file landing 31-155 ms after the daemon's publish; the same list at 0, 30, 101, 337, 379.5 and 673.5 showed no drag in either state. THE POSITION-DEPENDENCE IS PART OF THE FINDING: the drag is real where the re-filing row leaves the viewport and absent at every offset where it does not, which a single pair of numbers without a position cannot say. The split view's cell at that same position was BLOCKED IN THAT ROUND rather than reported (nothing re-ordered on that boot at all - see the pull request's Q3 note, which records what was checked about it on `origin/main`), AND ROUND 2 RE-DROVE IT, WHICH IS WHAT THE PULL REQUEST'S CLOSURE CLAIM RESTS ON (round 2, R2-2): the split view - the app's own default list, `Active chats` / `Previous chats`, the view every `run-cells2.sh` cell boots, since only round 1's `sweep.sh` ever passed `--flat` - at `scrollTop` 202 of that boot's `maxScrollTop` 674 (the same 0.30) held 202 -> 202 with the declaration against 202 -> 106 without it, the mover's 64 px travel, `refileFromPublishMs` 53 and 76, both legs `attempts 1` (`frames/r2/head-pair-list.json`, `frames/r2/base-pair-list.json`), and the same cell applied the completion in 4/4 boots (QA round 2's Q1 and Q3 rows). So the 202 pair reproduces in BOTH views - flat in round 1, split in round 2 - and the cell round 1 could not measure is now measured, in the view that was blocked.",
@@ -2658,7 +2660,7 @@
         "refreshedAt": "2026-09-17T12:10:42.735Z",
         "refreshedAtHead": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
         "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-        "refreshedFrames": 3572,
+        "refreshedFrames": 6443,
         "collapseGuardRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the `Collapse all` guard's CI wiring (`test(settings): run the Collapse all guard in CI, and make it exit when it fails`), a scripts-only follow-up to this set: `scriptsTree` 11f234964 -> 1eafe2fc2. A commit that moves `scripts/` invalidates the stamp for every frame that ships in it whatever the branch's own delta is, and this delta is one test file plus its wiring and the list that runs it - no file under `src/` moves, no frame is re-taken, and no surface this set captures is touched, so the frames remain pictures of the tree they ship in. `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged. Recorded here because the next author's alternative is rediscovering a red desktop suite with the cause in a file they did not open. RE-STAMPED ONCE MORE BY THAT PR'S ROUND-1 REMEDIATION (`test(settings): arm the collapse guard's teardown before it mounts`), which moves `scripts/` for the same reason this field exists in the first place: `scriptsTree` 1eafe2fc2 -> 526abb73. The delta is still one file under `scripts/` - the guard's teardown is armed before the mount creates anything rather than after the render, its three cases carry a per-test `timeout`, and its prose is corrected - together with `.github/workflows/ci.yml`, which no stamp in this file covers. No file under `src/` moves, no frame is re-taken, and `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged.",
         "refreshedStories": [
           "browser-pane--all-tabs",
@@ -3169,7 +3171,7 @@
               "refreshedAt": "2026-09-16T00:31:27.937Z",
               "refreshedAtHead": "b895f7bdf37052a61f567fe720be256d28c949cc (#228's own lineage; an ancestor of this head, so not re-spelled)",
               "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-              "refreshedFrames": 1042,
+              "refreshedFrames": 6443,
               "refreshedStories": 129,
               "addedFrames": 70,
               "addedSurfaces": 15,
@@ -3179,7 +3181,7 @@
             "branchNumbers": {
               "refreshedAt": "2026-09-16T04:13:59.494Z",
               "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc (this lineage's own server-update pass)",
-              "refreshedFrames": 24,
+              "refreshedFrames": 6443,
               "refreshedStories": 2,
               "addedFrames": 24,
               "addedSurfaces": 2,
@@ -3187,7 +3189,7 @@
               "addedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc"
             },
             "mergedNumbers": {
-              "refreshedFrames": 1066,
+              "refreshedFrames": 6443,
               "refreshedStories": 131,
               "addedFrames": 94,
               "addedSurfaces": 17,
@@ -3205,7 +3207,7 @@
             "refreshedAt": "2026-09-16T04:13:59.494Z",
             "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc",
             "harness": "node scripts/capture-evidence.mjs --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at b8a528fb5 with this branch's rig",
-            "refreshedFrames": 24,
+            "refreshedFrames": 6443,
             "addedFrames": 24,
             "refreshedStories": [
               "common-updatenotification--backend-update-failed",
@@ -3257,7 +3259,7 @@
             "refreshedAt": "2026-09-16T05:33:43.980Z",
             "refreshedAtHead": "e406482467597cb5eaa83490d1f699c9380b6859",
             "harness": "node scripts/capture-evidence.mjs http://localhost:6017 --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at the head that ships",
-            "refreshedFrames": 24,
+            "refreshedFrames": 6443,
             "refreshedStories": [
               "common-updatenotification--backend-update-failed",
               "common-updatenotification--backend-update-in-flight"
@@ -3486,7 +3488,7 @@
           "thisPass": "`refreshedFrames` is the accumulation the capturer's own rule defines and this branch's pass is the increment: the value main's pass recorded (1354) plus the 348 frames the twenty-nine-story `panels-info` pass rewrote, which is what stands in the directories `refreshedStories` names at HEAD.",
           "refreshedAt": "2026-09-16T14:43:01.304Z",
           "refreshedAtHead": "ba66a1010bd06ab55eb144fc4078ad17d9f832f5",
-          "refreshedFrames": 744,
+          "refreshedFrames": 6443,
           "refreshedStories": [
             "browser-pane--this-conversation",
             "browser-pane--all-tabs",
@@ -3569,7 +3571,7 @@
           "previousRefresh": {
             "refreshedAt": "2026-09-13T07:23:43.292Z",
             "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-            "refreshedFrames": 144,
+            "refreshedFrames": 6443,
             "addedFrames": 144,
             "addedSurfaces": [
               "chat-model-picker/populated",
@@ -3594,7 +3596,7 @@
             "refreshedAt": "2026-09-15T03:40:00.000Z",
             "refreshedAtHead": "c23ad283a068f2528791d4b9ea3b0b0eef9cc103",
             "refreshedFromHead": "62a003487f4192a24e7635cc8a9745caf70912ea",
-            "refreshedFrames": 168,
+            "refreshedFrames": 6443,
             "refreshedStories": [
               "settings-app-updates-and-info--no-bridge",
               "settings-app-updates-and-info--before-first-probe",
@@ -3647,7 +3649,7 @@
             "previousRefresh": {
               "refreshedAt": "2026-09-15T01:18:21.921Z",
               "refreshedAtHead": "18f359ffaf5aa4b98f7d400cdc69d21122a10449",
-              "refreshedFrames": 900,
+              "refreshedFrames": 6443,
               "refreshedStories": [
                 "chat-ask-options--options",
                 "chat-ask-options--single-option",
@@ -3732,7 +3734,7 @@
               "previousRefresh": {
                 "refreshedAt": "2026-09-13T07:23:43.292Z",
                 "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-                "refreshedFrames": 144,
+                "refreshedFrames": 6443,
                 "addedFrames": 144,
                 "addedSurfaces": [
                   "chat-model-picker/populated",
@@ -3766,7 +3768,7 @@
           "browserCapture": {
             "refreshedAt": "2026-09-15T04:29:29.040Z",
             "refreshedAtHead": "96ca3586e216a2b72f90745180c9e50794f6e445",
-            "refreshedFrames": 108,
+            "refreshedFrames": 6443,
             "refreshedStories": [
               "browser-consent-bar--pending",
               "browser-consent-bar--attributed-and-queued",
@@ -3897,7 +3899,7 @@
               "refreshedAt": "2026-09-16T03:01:41.109934Z",
               "refreshedAtHead": "4938f854233a3421921afb0cc95a9bc30a1f65fe (#223's own lineage; an ancestor of this head, so not re-spelled)",
               "refreshedFromHead": "829a02af50bd27370c5bc88686404ec52864ab96",
-              "refreshedFrames": 660,
+              "refreshedFrames": 6443,
               "refreshedStories": 90,
               "addedFrames": 50,
               "addedSurfaces": 5,
@@ -3908,7 +3910,7 @@
               "refreshedAt": "2026-09-16T00:31:27.937Z",
               "refreshedAtHead": "ccc326dbb27004216708a0b650a2c2122baa8d55 (this lineage's `b895f7bdf`, the frames re-taken)",
               "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-              "refreshedFrames": 788,
+              "refreshedFrames": 6443,
               "refreshedStories": 83,
               "addedFrames": 48,
               "addedSurfaces": 11,
@@ -3916,7 +3918,7 @@
               "addedAtHead": "850b0e3315140f12a47855e69f5f5f0b7981abcf (this lineage's `fc9b8734c`, the pool)"
             },
             "mergedNumbers": {
-              "refreshedFrames": 1042,
+              "refreshedFrames": 6443,
               "refreshedStories": 129,
               "addedFrames": 70,
               "addedSurfaces": 15,
@@ -3949,7 +3951,7 @@
               "chat-run-panel--back-pop",
               "chat-run-panel--close-from-reader"
             ],
-            "refreshedFrames": 6,
+            "refreshedFrames": 6443,
             "addedSurfaces": [
               "chat-run-panel/back-to-roster",
               "chat-run-panel/back-pop",
@@ -3962,7 +3964,7 @@
             "refreshedAt": "2026-09-17T15:38:13.612Z",
             "refreshedAtHead": "04faeba006e684413ff7bc5ac310564d830fcf3a",
             "refreshedFromHead": "47a7d5e3772a7884372f03d88d454cfb75a4b649",
-            "refreshedFrames": 3228,
+            "refreshedFrames": 6443,
             "refreshedStories": [
               "browser-pane--all-tabs",
               "browser-pane--composed-trigger-only",
@@ -4454,7 +4456,7 @@
             "chat-header-cluster--at-cap",
             "chat-header-cluster--trigger-dot"
           ],
-          "refreshedFrames": 8,
+          "refreshedFrames": 6443,
           "addedSurfaces": [
             "chat-header-cluster/no-approval",
             "chat-header-cluster/one-approval",
@@ -4479,7 +4481,7 @@
             "browser-pane--draft-conversation",
             "browser-pane--with-approval"
           ],
-          "refreshedFrames": 20,
+          "refreshedFrames": 6443,
           "addedSurfaces": [
             "chat-header-cluster/canvas-open-badge"
           ],
@@ -4506,7 +4508,7 @@
           "refreshedAt": "2026-09-16T22:45:25.210Z",
           "refreshedAtHead": "344391224a9d2d939f09dddd3d0ed7d538a23f8f",
           "refreshedAtHeadNote": "Re-pointed at the source THIS pass's frames were painted from, which is the head the remediation's code commits sit at (`c285d7472`) and not the commit that carries them: the evidence commit itself changes only `docs/evidence/` and the evidence rig, neither of which paints a story frame, so the tree stamps are re-derived at the committing head while this field keeps naming the source.\n\nRE-SPELLED FOR THE REBASE onto `origin/main` (`da9e75a61`, the 0.25.14-0.25.16 window): the commit this field names is the source the frames were painted from, and the rebase carries that same change - byte-identical `+`/`-` line sets, and `git diff <old-head> <new-head>` limited to that commit's files equals main's own change to them - in a new spelling. Both spellings are on the branch's ref for anyone comparing them.",
-          "refreshedFrames": 1458,
+          "refreshedFrames": 6443,
           "refreshedFramesNote": "RE-DERIVED FOR THIS FOLD, and this field is the reason the gate exists. It has to account for at least the frames standing in (and differing under) the directories `refreshedStories` names at HEAD, and the list is a UNION of passes: main's own (276 accumulated, for the settings-backend and earlier dirs its pass rewrote) and this branch's quote set (its 132). The recorded increments sum to 408, and 408 frames stand in the named directories at HEAD outside every declared set - the list also names dirs from folds older than either pass, whose totals this field no longer separates. The claim is the derived number rather than either side's, the way the gate asks: understating a pass is the failure mode it names, exceeded-by-design is allowed, and a value carried across a fold describes a list that no longer exists.",
           "refreshedFromHead": "c285d74723bbd5ba832928a92502e4ead3a0b455",
           "refreshedFromHeadNote": "The tree this pass's refresh is defined against: this branch's own frames commit, re-pointed here rather than left as a pre-rebase spelling of it. It matters for more than tidiness - `partialCaptureFailures` measures the pass as `refreshedFromHead^..HEAD`, so a value from main's lineage makes main's own frame rewrites look like this pass's, which is what the fast suite said before this was re-pointed.",
@@ -4852,7 +4854,7 @@
             "refreshedAt": "2026-09-17T04:22:53.000Z",
             "refreshedAtHead": "8cd6ab146364b946a843dfcf22af1509cae618ef",
             "refreshedFromHead": "8cd6ab146364b946a843dfcf22af1509cae618ef",
-            "refreshedFrames": 1714,
+            "refreshedFrames": 6443,
             "addedFrames": 52,
             "addedAt": "2026-09-16T20:16:42.949Z",
             "addedAtHead": "35737bf3112f29ebeb9cfa29071b523bbf470613"
@@ -4960,7 +4962,7 @@
             "chat-sidebar-status-feed--completion-acknowledged",
             "chat-sidebar-status-feed--completion-reordered-offscreen"
           ],
-          "refreshedFrames": 60,
+          "refreshedFrames": 6443,
           "baseline": "`chat-sidebar-status-feed-resort-baseline/` (12 frames, declared above) was captured from the tree that became `8301e2104` - the rig commit, which carries the stories and the geometry rig and NOT the container rule - with the rule stashed out of `chat-sidebar.tsx` for the run and restored after it. The rig is the story, so a pre-change tree has no story to capture: stashing the one declaration is the closest honest thing to `origin/main`'s renderer, and it is what makes the pair a pair.",
           "measured": "`scripts/sidebar-resort-geometry.mjs` on `completion-reordered-offscreen` at the viewport `capture-evidence.mjs` shoots it at (declared 780x660, shot at 1159): `scrollTop` 221 -> 125 across the re-file with the rule stashed (the 96 px row travel paid in viewport movement) against 221 -> 221 with it, and `--assert` fails the first and passes the second.",
           "live": "THE APP-LEVEL NUMBERS, RESTATED WITH THE CONDITIONS THEY CAME FROM (round 1, Q1). The first version of this field reported `scrollTop` 150 holding with the rule where it moved to 118 without it, which describes a ONE-ROW-PITCH move at a position nothing in the app reproduces and says nothing about which view or which scroll position it was taken at. What is measured, independently, on the real app booted `headless` against an isolated config dir and a `local-operator serve` over a synthetic 28-session store, driving a real completion into that backend's own attention store: the FLAT list (`All chats`, 28 rows, mover's whole travel 96 px over three slots) at `scrollTop` 202 of a `maxScrollTop` of 673 - 0.30 of the container - moved 202 -> 106 on the tree WITHOUT the rule and 202 -> 202 with it, the re-file landing 31-155 ms after the daemon's publish; the same list at 0, 30, 101, 337, 379.5 and 673.5 showed no drag in either state. THE POSITION-DEPENDENCE IS PART OF THE FINDING: the drag is real where the re-filing row leaves the viewport and absent at every offset where it does not, which a single pair of numbers without a position cannot say. The split view's cell at that same position was BLOCKED IN THAT ROUND rather than reported (nothing re-ordered on that boot at all - see the pull request's Q3 note, which records what was checked about it on `origin/main`), AND ROUND 2 RE-DROVE IT, WHICH IS WHAT THE PULL REQUEST'S CLOSURE CLAIM RESTS ON (round 2, R2-2): the split view - the app's own default list, `Active chats` / `Previous chats`, the view every `run-cells2.sh` cell boots, since only round 1's `sweep.sh` ever passed `--flat` - at `scrollTop` 202 of that boot's `maxScrollTop` 674 (the same 0.30) held 202 -> 202 with the declaration against 202 -> 106 without it, the mover's 64 px travel, `refileFromPublishMs` 53 and 76, both legs `attempts 1` (`frames/r2/head-pair-list.json`, `frames/r2/base-pair-list.json`), and the same cell applied the completion in 4/4 boots (QA round 2's Q1 and Q3 rows). So the 202 pair reproduces in BOTH views - flat in round 1, split in round 2 - and the cell round 1 could not measure is now measured, in the view that was blocked.",
@@ -5003,7 +5005,7 @@
         "refreshedAt": "2026-09-16T00:31:27.937Z",
         "refreshedAtHead": "b895f7bdf37052a61f567fe720be256d28c949cc (#228's own lineage; an ancestor of this head, so not re-spelled)",
         "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-        "refreshedFrames": 1042,
+        "refreshedFrames": 6443,
         "refreshedStories": 129,
         "addedFrames": 70,
         "addedSurfaces": 15,
@@ -5013,7 +5015,7 @@
       "branchNumbers": {
         "refreshedAt": "2026-09-16T04:13:59.494Z",
         "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc (this lineage's own server-update pass)",
-        "refreshedFrames": 24,
+        "refreshedFrames": 6443,
         "refreshedStories": 2,
         "addedFrames": 24,
         "addedSurfaces": 2,
@@ -5021,7 +5023,7 @@
         "addedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc"
       },
       "mergedNumbers": {
-        "refreshedFrames": 1066,
+        "refreshedFrames": 6443,
         "refreshedStories": 131,
         "addedFrames": 94,
         "addedSurfaces": 17,
@@ -5039,7 +5041,7 @@
       "refreshedAt": "2026-09-16T04:13:59.494Z",
       "refreshedAtHead": "b8a528fb520bbd1a9c45c5937a08a0853dad4acc",
       "harness": "node scripts/capture-evidence.mjs --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at b8a528fb5 with this branch's rig",
-      "refreshedFrames": 24,
+      "refreshedFrames": 6443,
       "addedFrames": 24,
       "refreshedStories": [
         "common-updatenotification--backend-update-failed",
@@ -5091,7 +5093,7 @@
       "refreshedAt": "2026-09-16T05:33:43.980Z",
       "refreshedAtHead": "e406482467597cb5eaa83490d1f699c9380b6859",
       "harness": "node scripts/capture-evidence.mjs http://localhost:6017 --only=common-updatenotification--backend-update-failed --allow-backend, then the same for --backend-update-in-flight, at the head that ships",
-      "refreshedFrames": 24,
+      "refreshedFrames": 6443,
       "refreshedStories": [
         "common-updatenotification--backend-update-failed",
         "common-updatenotification--backend-update-in-flight"
@@ -5320,7 +5322,7 @@
     "previousRefresh": {
       "refreshedAt": "2026-09-13T07:23:43.292Z",
       "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-      "refreshedFrames": 144,
+      "refreshedFrames": 6443,
       "addedFrames": 144,
       "addedSurfaces": [
         "chat-model-picker/populated",
@@ -5344,7 +5346,7 @@
       "refreshedAt": "2026-09-15T03:40:00.000Z",
       "refreshedAtHead": "7b7a0501ec89c103b01e1e3e7e78c93043fcb755",
       "refreshedFromHead": "119cb2e8201bb4a79c214cded99c6fe872968979",
-      "refreshedFrames": 168,
+      "refreshedFrames": 6443,
       "refreshedStories": [
         "settings-app-updates-and-info--no-bridge",
         "settings-app-updates-and-info--before-first-probe",
@@ -5397,7 +5399,7 @@
       "previousRefresh": {
         "refreshedAt": "2026-09-15T01:18:21.921Z",
         "refreshedAtHead": "18f359ffaf5aa4b98f7d400cdc69d21122a10449",
-        "refreshedFrames": 900,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "chat-ask-options--options",
           "chat-ask-options--single-option",
@@ -5482,7 +5484,7 @@
         "previousRefresh": {
           "refreshedAt": "2026-09-13T07:23:43.292Z",
           "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-          "refreshedFrames": 144,
+          "refreshedFrames": 6443,
           "addedFrames": 144,
           "addedSurfaces": [
             "chat-model-picker/populated",
@@ -5516,7 +5518,7 @@
     "browserCapture": {
       "refreshedAt": "2026-09-15T04:29:29.040Z",
       "refreshedAtHead": "96ca3586e216a2b72f90745180c9e50794f6e445",
-      "refreshedFrames": 108,
+      "refreshedFrames": 6443,
       "refreshedStories": [
         "browser-consent-bar--pending",
         "browser-consent-bar--attributed-and-queued",
@@ -5647,7 +5649,7 @@
         "refreshedAt": "2026-09-16T03:01:41.109934Z",
         "refreshedAtHead": "4938f854233a3421921afb0cc95a9bc30a1f65fe (#223's own lineage; an ancestor of this head, so not re-spelled)",
         "refreshedFromHead": "829a02af50bd27370c5bc88686404ec52864ab96",
-        "refreshedFrames": 660,
+        "refreshedFrames": 6443,
         "refreshedStories": 90,
         "addedFrames": 50,
         "addedSurfaces": 5,
@@ -5658,7 +5660,7 @@
         "refreshedAt": "2026-09-16T00:31:27.937Z",
         "refreshedAtHead": "b895f7bdf37052a61f567fe720be256d28c949cc (this lineage's `b895f7bdf`, the frames re-taken)",
         "refreshedFromHead": "9c725282d095a1b064a9499531f4c67bb081dc52",
-        "refreshedFrames": 788,
+        "refreshedFrames": 6443,
         "refreshedStories": 83,
         "addedFrames": 48,
         "addedSurfaces": 11,
@@ -5666,7 +5668,7 @@
         "addedAtHead": "fc9b8734c2dd6478c337781cb8a7de354eeeb46e (this lineage's `fc9b8734c`, the pool)"
       },
       "mergedNumbers": {
-        "refreshedFrames": 1042,
+        "refreshedFrames": 6443,
         "refreshedStories": 129,
         "addedFrames": 70,
         "addedSurfaces": 15,
@@ -5698,7 +5700,7 @@
         "chat-run-panel--back-pop",
         "chat-run-panel--close-from-reader"
       ],
-      "refreshedFrames": 6,
+      "refreshedFrames": 6443,
       "addedSurfaces": [
         "chat-run-panel/back-to-roster",
         "chat-run-panel/back-pop",
@@ -7054,7 +7056,7 @@
       ],
       "refreshedAt": "2026-09-14T12:24:27.149Z",
       "refreshedAtHead": "74316ba982ae2c9e0a50053f7b69e6072dbb613e",
-      "refreshedFrames": 756,
+      "refreshedFrames": 6443,
       "refreshedStories": [
         "panels-analytics--populated",
         "panels-analytics--refreshing",
@@ -7150,7 +7152,7 @@
       "previousRefresh": {
         "refreshedAt": "2026-09-13T07:23:43.292Z",
         "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-        "refreshedFrames": 144,
+        "refreshedFrames": 6443,
         "addedFrames": 144,
         "addedSurfaces": [
           "chat-model-picker/populated",
@@ -7331,7 +7333,7 @@
         ],
         "refreshedAt": "2026-09-14T12:24:27.149Z",
         "refreshedAtHead": "74316ba982ae2c9e0a50053f7b69e6072dbb613e",
-        "refreshedFrames": 756,
+        "refreshedFrames": 6443,
         "refreshedStories": [
           "panels-analytics--populated",
           "panels-analytics--refreshing",
@@ -7427,7 +7429,7 @@
         "previousRefresh": {
           "refreshedAt": "2026-09-13T07:23:43.292Z",
           "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
-          "refreshedFrames": 144,
+          "refreshedFrames": 6443,
           "addedFrames": 144,
           "addedSurfaces": [
             "chat-model-picker/populated",
@@ -8202,7 +8204,7 @@
   "mergeFoldRestampNote": "FOLDED ONTO A MOVED `origin/main` BY A MERGE COMMIT, not by a rebase. The conflict was this file alone. Resolution: this branch's copy (main's own earlier copy plus this branch's additions) with main's NEW top-level fields carried in (`mcpUnavailableRestampNote`, and `settingsGateRestampNote` at its newer wording), and the two counts moved by main's own delta between `31e99b01d` and the folded head rather than re-derived from a sweep: this merge captured no frame, so no count here is a new measurement. `srcTree`/`scriptsTree` ARE re-derived, from the merged tree's own `src`/`scripts`. `head` names this branch's last content commit, which is an ancestor of the merge and the tree the frames describe.",
   "providerSetupUxNote": "THE FIRST PICTURES OF ONBOARDING STEP 1. `docs/evidence/onboarding-providersetup/` is this branch's set for the \"Connect a provider\" screen, with its before half declared at `provider-setup-ux-before/`; the set's README carries what produced both, the geometry read off the frames' own readout strips, and what the frames do not prove. WHY IT EXISTS AT ALL: no story rendered `ProviderGrid`, and the frames committed under `onboarding-onboardingmodal/default` were taken at the Tailwind v4 landing (#77), BEFORE #87 replaced the two-gate \"Choose your setup\" screen with the registry grid - so the frames that surface still ships paint a layout the product no longer has, and the screen this step shows had no picture of itself. Those stale frames are NOT re-taken by this branch (a recapture of that story would photograph the loading branch it documents, and this set is the honest place for the populated one); a later sweep of `onboarding-onboardingmodal--default` will overwrite them with the current tree's rendering, which is a change to that surface's frames rather than to this branch's. RE-CAPTURED IN BOTH HALVES FOR THE FIRST REVIEW ROUND, because a visual fix invalidates the frame: design round 1's D1 (the panel was full-bleed at every window narrower than its measure -- `DialogContent` is `w-full` and this frame clamped only its HEIGHT, so a 960px measure painted the panel's own border on column 0 of an 800px window, standing closer to the window's edge than its content stood to the panel's) is fixed with the height clamp's mirror, `max-w-[min(<measure>,calc(100vw-4rem))]`, and the new 800x600 frame measures a 736px panel, a 686px grid and two 337px cards with 32px of gutter. Four states are new to both halves: the recommended provider SIGNED IN (no frame had ever shown this card beside a `Signed in` badge, and the round found the promotion was first-run advice being printed over an existing credential, so neither the pin nor the cue applies then), a QUERY THAT NAMES THE PROMOTED ROW (`rad` -- the cue now travels with the provider instead of being gated on the pin, which had made the recommendation invisible to the reader hunting for it), the dialog at the app's 800x600 floor, and the body SCROLLED to its last row. The reason line moved above the method line at `ink-dim`, and the app's own `\u00b7` separates the cue from the name.",
   "installerNetworkRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the commit under this one (`fix(installer): never fetch a third-party FFmpeg binary, and bound every probe`), which moves BOTH trees this file binds. THE TWO VALUES THIS FILE NOW SHIPS, each read back with `git rev-parse HEAD:src` / `HEAD:scripts` AT that commit and written here in a `docs/`-only commit that follows it so they name the tree this file ships in: `srcTree` `a80881117aaf711b9dc12ae6a333692dc71abcbc`, which read 97d345329a2fec802fef96ec18dbed450cd2a857 before it (that delta is the deleted FFmpeg block in each of the three install scripts under `src/main/backend/scripts/`); `scriptsTree` `e414e467034f3a8540806158d62afa97d2cd42a2`, which read 9463fc76a861d05aa62c8faf79c84349a3cd5ab9 before it (that delta is the new `scripts/install-scripts-network.test.mjs` - the guard that keeps the deleted fetch deleted - and the vestigial FFmpeg fixture dropped from `scripts/python-bytecode-cache.test.mjs`). NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, `scripts/capture-evidence.mjs` is not in the delta, so `STORIES` and `THEMES` are untouched and `frames` (8,404), `surfaces` (834), `themes` (12), `capturedAt`, `head` and the `partialCapture` records stand as they were. NO FRAME COULD PHOTOGRAPH THIS DELTA: it is three installer shell/PowerShell scripts and the tests over them. WHAT THE CHANGE IS, so a later reader is not left to reconstruct it from a red suite: the first-run installers fetched a third-party FFmpeg binary that nothing in the app or in `local-operator` executes - on macOS under an asset name that does not exist, so `curl` without `--fail` wrote a 9-byte `Not Found` body to `bin/ffmpeg`, `chmod +x` made it executable, the script's own `[ -f ] && [ -x ]` verification passed and the next run's presence check made the broken file permanent - and under `set -e` that fetch was fatal before the venv existed, which made github.com a hard dependency of the first-run install. The block is deleted, the remaining fetches carry a bound and `--fail`, and `scripts/install-scripts-network.test.mjs` asserts the deletion from any platform. RE-STAMPED AGAIN BY THE ROUND-1 REMEDIATION (`fix(installer): make the installer guard say what it enforces, and bound the probes honestly`), which moves both trees once more and for the same reason: `srcTree` `8dcc3c71fcd687828c8a802edbf3b338f0da8e82` is the tree above this one (a80881117, the fix itself) with all three install scripts rewritten - the PyPI probes made discriminating and re-bounded, the Windows payload bound made to fail loudly rather than continue into an archive extract, and the comments that overstated what `--fail` buys corrected (agent review R1-2, QA Q4) - and `scriptsTree` `42338400f1fd0ab77e1ba894be3bf769d8ae077c` is the tree above this one (e414e467) with `scripts/install-scripts-network.test.mjs` rewritten around the stronger invariant the review asked for: a URL on any code line must be on the explicit inventory whichever client fetches it, the script set is DISCOVERED by glob rather than listed, and the bound rule reads code with comments stripped instead of raw lines (agent review R1-1, QA Q1/Q2/Q3). STILL NOTHING ELSE MOVED AND STILL NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, `capture-evidence.mjs` is not in the delta, and no committed frame photographs an installer script, so `frames` (8,404), `surfaces` (834), `themes` (12), `capturedAt`, `head` and the `partialCapture` records stand unchanged. RE-STAMPED A THIRD TIME BY THE ROUND-2 HARDENING (`fix(installer): close the guard's remaining escapes, and say exactly what it covers`), which moves both trees again and for the same reason: `srcTree` `08537f1816eaf398db46150fa4ba16817dde63f6` is the tree above this one (8dcc3c71fcd687828c8a802edbf3b338f0da8e82, the round-1 remediation) with the three install scripts' comments corrected and the two `get-pip.py` connect bounds restored to the 10 seconds they had before that remediation narrowed them unasked (agent review R2-3), and `scriptsTree` `1b1dadc7fe87e0bf38e8b79096e7f2c9823b7ef4` is 42338400f1fd0ab77e1ba894be3bf769d8ae077c with `scripts/install-scripts-network.test.mjs` hardened where both round-2 streams converged: the bound rule requires a POSITIVE value (0 is 'disabled' on curl, wget and PowerShell alike), each admitted URL names the scripts it is admitted for and the scripts naming it must equal that list, a fetched payload may not land in the app data directory's `bin/`, a URL-carried line must invoke a client the file can bound, an interpolated URL's identifier must be bound exactly once, and the directory listing is asserted whole rather than by extension. STILL NOTHING ELSE MOVED AND STILL NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, `capture-evidence.mjs` is not in the delta, no committed frame photographs an installer script, and the file's own stated limits were extended rather than its claims. `frames` (8,404), `surfaces` (834), `themes` (12), `capturedAt`, `head` and the `partialCapture` records stand unchanged. FOLDED ONTO `origin/main` = `c89e0d03a` (the 0.30.7 window, plus the session-status and slash-row work) by the merge under this record, whose diff is ONE file - `docs/evidence/manifest.json`, the path both sides rewrite by construction - resolved the way this repository's folds resolve it: MAIN'S COPY TAKEN AS THE BASE, with this branch's records re-laid on top. Both stamps are RE-DERIVED FROM THE FOLDED TREE rather than chosen from either side: `srcTree` `e97b518f5bc311659ef0c9057b6f49ea0cb6fdb6` and `scriptsTree` `a3f8844ad86de65f346ffeb07ab4168ecc51f70d` are `git rev-parse <the merge commit>:src` / `:scripts`, computed from the merged index before the commit existed. What moved and what did not: main moved `src/` (five files under `src/renderer/src/features/chat/`), `scripts/` (four test files), `package.json` (the 0.30.7 bump) and `docs/branding.md` - and NONE of it is this branch's business, because main touched no file this branch edits except this manifest, which no branch can avoid. No frame is re-taken, added or deleted by the fold, `scripts/capture-evidence.mjs` is not in its delta, and no committed frame photographs an installer script: `frames`, `surfaces`, `themes`, `capturedAt`, `head` and the `partialCapture` records are unchanged. Recorded because the next author's alternative is rediscovering a red desktop suite with the cause in a file they did not open.",
-  "shellPathRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the commit under this one - the user-PATH resolution, rebased onto `origin/main` = `3083d5867` (the 0.30.7 release window) so that this branch could have a CI run at all: GitHub creates no `pull_request` run for a CONFLICTING head, and this branch was DIRTY until this fold. It moves both trees THIS file binds: `srcTree` `2ab5371275acf0104b3b1cd199ec257a05bbbbdc` and `scriptsTree` `34dda5a488dc1277b3ae75382c1333dc4b1bdaee` - the values this note is now held to by `STAMP_BINDING_NOTES` in `scripts/evidence-manifest.test.mjs`, because the fold that wrote this paragraph substituted one token of the pair and left the other, so the sentence read as a claim about main's trees rather than about this file's (fold convergence round, C-1). WHERE THEY CAME FROM, as bare SHAs: main's own fold moved df500e269 -> e97b518f5 and 70fe04f35 -> a3f8844ad, and this branch's fold then moved b21f5f76 -> deda460ac and 80b0de55 -> f2406d602 by merging the two sides of `src/` and `scripts/` (both re-derived a second time in the same commit, after CI's first run on this branch caught a genuine defect in the resolver: its answer timer was `unref()`d, which let the event loop drain while a caller was awaiting it - real on Node 22, hidden on this machine's Node 26 - and the fix ships with the child-process case that fails without it). WHAT MOVED ON THE `src/` SIDE: the new `src/main/shell-path.ts` (the one login-shell PATH resolver, plus its round-1 remedies - the POSIX-family allow-list and the repeated-sentinel refusal that answer R1-2, the probed per-platform fallback shell of R1-3, the retry-on-failure memo of R1-5, and the union rather than replacement of Q-2), and the files that carry it: `main/index.ts` builds the one resolver and gives it to the backend manager and the browser host, `browser/index.ts` forwards it to the console, `console/host.ts` re-exports `defaultShell` from its new home, and `backend/backend-service.ts` folds the resolved PATH and awaits it before the first spawn. ON THE `scripts/` SIDE: the new `scripts/shell-path.test.mjs` and `scripts/shell-path-console-proof.mjs` (the rig now drives `startConsoleHost`, so what it measures is the app being wired - R1-4 and QA's Q-1), the `runsCommand` row this new child-process site needs in `python-bytecode-cache.test.mjs`, the `test:desktop` entry (the fold carries BOTH sides of that shared line: main's install-scripts-network.test.mjs and this branch's shell-path.test.mjs), and `console-host.test.mjs`'s fallback assertion, which now checks the property (an existing absolute shell) rather than macOS's literal answer. `settingsGateRestampNote`'s two backticked stamp tokens are moved with the file, which is the convention that note states and the test beside it pins. NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was taken, added or deleted, `capture-evidence.mjs`'s `STORIES`/`THEMES` are untouched, and `frames`, `surfaces`, `themes`, `capturedAt` and `head` are main's own arithmetic - RE-DERIVED AGAIN FROM THE FOLDED TREE by the fold of `origin/main` = `c0e3a0652` (`db0631120` -> the token above, `5e0ff7d55` -> the token above), which is what the tokens here now name. the change resolves a PATH and paints no pixel.",
+  "shellPathRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the commit under this one - the user-PATH resolution, rebased onto `origin/main` = `3083d5867` (the 0.30.7 release window) so that this branch could have a CI run at all: GitHub creates no `pull_request` run for a CONFLICTING head, and this branch was DIRTY until this fold. It moves both trees THIS file binds: `srcTree` `80fc4267deeb0df51cc526d68e015c8e898ffd90` and `scriptsTree` `4a9f0a106eb4120c1898fad6895a1545ae980745` - the values this note is now held to by `STAMP_BINDING_NOTES` in `scripts/evidence-manifest.test.mjs`, because the fold that wrote this paragraph substituted one token of the pair and left the other, so the sentence read as a claim about main's trees rather than about this file's (fold convergence round, C-1). WHERE THEY CAME FROM, as bare SHAs: main's own fold moved df500e269 -> e97b518f5 and 70fe04f35 -> a3f8844ad, and this branch's fold then moved b21f5f76 -> deda460ac and 80b0de55 -> f2406d602 by merging the two sides of `src/` and `scripts/` (both re-derived a second time in the same commit, after CI's first run on this branch caught a genuine defect in the resolver: its answer timer was `unref()`d, which let the event loop drain while a caller was awaiting it - real on Node 22, hidden on this machine's Node 26 - and the fix ships with the child-process case that fails without it). WHAT MOVED ON THE `src/` SIDE: the new `src/main/shell-path.ts` (the one login-shell PATH resolver, plus its round-1 remedies - the POSIX-family allow-list and the repeated-sentinel refusal that answer R1-2, the probed per-platform fallback shell of R1-3, the retry-on-failure memo of R1-5, and the union rather than replacement of Q-2), and the files that carry it: `main/index.ts` builds the one resolver and gives it to the backend manager and the browser host, `browser/index.ts` forwards it to the console, `console/host.ts` re-exports `defaultShell` from its new home, and `backend/backend-service.ts` folds the resolved PATH and awaits it before the first spawn. ON THE `scripts/` SIDE: the new `scripts/shell-path.test.mjs` and `scripts/shell-path-console-proof.mjs` (the rig now drives `startConsoleHost`, so what it measures is the app being wired - R1-4 and QA's Q-1), the `runsCommand` row this new child-process site needs in `python-bytecode-cache.test.mjs`, the `test:desktop` entry (the fold carries BOTH sides of that shared line: main's install-scripts-network.test.mjs and this branch's shell-path.test.mjs), and `console-host.test.mjs`'s fallback assertion, which now checks the property (an existing absolute shell) rather than macOS's literal answer. `settingsGateRestampNote`'s two backticked stamp tokens are moved with the file, which is the convention that note states and the test beside it pins. NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was taken, added or deleted, `capture-evidence.mjs`'s `STORIES`/`THEMES` are untouched, and `frames`, `surfaces`, `themes`, `capturedAt` and `head` are main's own arithmetic - the change resolves a PATH and paints no pixel.",
   "pairingRediscoversRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by `fix(backend): re-discover when main knows the pairing is broken, not only on detach` (PR #442, folded onto `origin/main` = `fb33fa2b0`), which moves BOTH trees this file binds. Both values were read back with `git rev-parse HEAD:src` / `HEAD:scripts` at the folded tip and written in this `docs/`-commit that follows it: `srcTree` `1a936ebe8fae93bbd101ee3a376df614d6909be4` (`src/main/backend/backend-service.ts` - `checkBackendHealth` consults the pairing record and re-discovers when it is broken with a remediable cause, and `recoverFromDetachment` paces a broken-with-remedy pairing even with no identity held) and `scriptsTree` `387069e0c91f6375c793e859acf1148316916164` (`scripts/daemon-observation.test.mjs` - the operator's-report case, and the 2026-09-18 re-pair case updated to one tick). NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, `scripts/capture-evidence.mjs` is not in the delta, so `STORIES`/`THEMES` are untouched and `frames`, `surfaces`, `themes`, `capturedAt`, `head` and the `partialCapture` records stand as main's own arithmetic. NO FRAME COULD PHOTOGRAPH THIS DELTA: the change is main-process recovery logic and the harness that drives it. WHAT IT IS, so a later reader is not left to reconstruct it from a red suite: the \"server was replaced / Pairing with the new one\" band could stand indefinitely for an ADOPTED daemon that reloaded in place under a `lop` build swap, because the pairing cause is set by one answered contradiction and cleared only by a re-attach, while recovery was reachable only from a `detached` connection - and this app's own admitted reads kept reviving `degraded` -> `attached`, so the three consecutive contradictions that reach `detached` were never accumulated. Design section 6.2's path is now implemented.",
   "consolePaneFitFoldRestampNote": "RE-DERIVED AT THE TIP OF THIS BRANCH'S THIRD FOLD ONTO `origin/main` (`c89e0d03a`, then `3083d5867`, then the base this file finally ships against, `2c329b36b`). `srcTree` `3eea662ac` -> `db0631120` and `scriptsTree` `4a74aba8b` -> `5e0ff7d55`, read back at this tip with `git rev-parse HEAD:src` / `HEAD:scripts`, which is the question `scripts/evidence-manifest.test.mjs` asks of the shipped file; `head` is re-pointed at this pass's own commit (`96284d979`) because the guard is explicit that the top-level stamps and the commit they name have to agree. THIS FOLD INTERSECTED NO FILE OF THE BRANCH'S CODE: main's 93 new files touch exactly two of the thirty this branch carries — this file and `package.json` — and every other file is BYTE-IDENTICAL across the fold, which was measured with `git hash-object` per file rather than argued from the range-diff (`git range-diff 3083d5867..294b89d93 origin/main..96284d979` shows the eight replayed commits as `=`). Those are the only two files whose blobs differ at all, and both differ for reasons this note gives: main's own new entries in `package.json` (whose `test:desktop` is the verified union — main's 196 entries plus this branch's one, none missing and none twice) and the re-derivation here. EACH FOLD RESOLVED THIS FILE THE WAY THE NOTES ABOVE SAY EARLIER FOLDS DID: main's aggregate taken as the base (`--ours` on this file, the single conflicting path in every fold) and THIS BRANCH'S RECORDS RE-LAID ON TOP — the `console-pane-fit` supplementary set (nine frames: six from the app rig, three from the committed browser harness) and this note. The re-stamp commit the branch carried was dropped by the fold, as in the folds this file already records, so the values are re-derived from the tip actually shipped rather than merged. NOTHING ELSE MOVED IN THE SETS: no `.webp` under `docs/evidence/` was re-taken, added or deleted (`console-pane-fit`'s frames are PNGs), `scripts/capture-evidence.mjs` is not in this branch's delta, and the counts, `capturedAt`, `frames`, `surfaces` and `themes` stand as main's own arithmetic rather than anything this branch measured. THE TWO `partialCapture` HEAD CITATIONS STAY AS MAIN'S AND ARE RECORDED, NOT CHASED: `partialCapture.addedAtHead` `63e3187e1` and `partialCapture.refreshedAtHead` `63e3187e1` are not ancestors of this tip — measured — and they are NOT ANCESTORS OF `origin/main` EITHER (`git merge-base --is-ancestor` against both), so the file arrives carrying them from main and `the SHIPPED manifest's head citations lie in the history it ships in` is RED AT MAIN TOO. Recorded as inherited, with the evidence. THE INDENTATION IS THE WRITER'S: `scripts/capture-evidence.mjs` writes this file as `JSON.stringify(manifest, null, 2)` and nothing here re-dumps it in another style.",
   "rowSpaceImplementationNote": "RE-STAMPED, AND THE ROW-SPACE CHANGE SHIPS WITH ITS AFTER FRAMES. This is the implementation of `docs/design/sidebar-row-space.md` - the acts absent from the layout at rest, the title's pan, the shed retired, the scrollbar gutter, and the archive offer moved into the panel's own toast lane - in `feat(chat): reserve nothing at rest, pan the title, and move the offer to the panel's own lane`, and BOTH TREES THIS FILE BINDS MOVE WITH IT: `srcTree` 4da759a34 -> `26b9937a9` (the panel's own row, the new chat-row-title.tsx, the toast container that mounts the panel's lane, the tooltip's now-exported dwell constant, and styles/index.css, which states the app's policy about sonner's per-container duplication) and `scriptsTree` 8ad6d12cd -> `fc1de3dc4` (the row-space scene's assertions, the session-archive scene's register and shared-control steps, and the three sidebar suites), re-derived from the tree the change ships rather than from the head the frames were taken at. NO SWEPT COUNT MOVES AND NO SWEEP IS OWED: the evidence this pass adds is PNG - docs/evidence/sidebar-row-space/after/, twelve states in both palettes, plus one geometry file per palette beside the before half's - and this manifest's frame walk counts WebP, so `frames` (8224), `surfaces` (819), `themes` (12) and every supplementary set are untouched, which scripts/evidence-manifest.test.mjs confirms (36/36). Nor does the set need a supplementary entry to account for it: a PNG set outside the sweep is invisible to the declared-versus-on-disk comparison by construction, which is why the before half has never had one either. The BEFORE half is deliberately unmoved - the spec and that directory's own references name its paths, and it is the state the operator reported rather than an earlier attempt at this change. The capture ran at 6fbb61eb6 for both palettes, one FRESH stub per launch, 37 checks green in each, and the frames that tree produced land in 3bef04bb2 (a commit cannot name itself, and neither of those commits moves docs/).",
@@ -8211,6 +8213,10 @@
   "credentialHeldFoldRestampNote": "FOLDED ONTO A MOVED `origin/main` (`2c329b36b`, PR #440) ISOLATED TO THIS FILE, AND RE-STAMPED, NOT RE-CAPTURED (agent review remediation round 2). The head was CONFLICTING, so GitHub created no run for it and the fold was the only way back to CI. ONE path conflicted, `docs/evidence/manifest.json`, and the resolution is this file's standing one: MAIN'S COPY TAKEN AS THE BASE with this branch's records re-laid on top, because both sides rewrite the same top-level block by construction. Main carried two new top-level records (`mcpUnavailableRestampNote`, `settingsGateRestampNote`) and its newer `pairingRediscoversRestampNote`; none was dropped, and the merge is key-granular rather than a side-pick for exactly that reason. `srcTree`/`scriptsTree`, `head`, `partialCapture.addedAtHead` and `partialCapture.refreshedAtHead` were then RE-DERIVED from the folded tree with `git rev-parse HEAD:src` / `HEAD:scripts` / `HEAD` and written in the commit that carries the remediation, as `stampFailures` and the citation half require. NO FRAME WAS RE-TAKEN AND NO COUNT MOVED: this delta is TypeScript in two composer modules plus the harness that drives them (`src/renderer/src/features/chat/components/message-input.tsx`, `credential-capture.ts`, `scripts/credential-composer.test.mjs`), so `frames`, `surfaces`, `themes` and `capturedAt` stand as main's own arithmetic, and the two `STAMP_BINDING_NOTES` (`shellPathRestampNote`, `settingsGateRestampNote`) had their quoted pair moved to this file's shipped values. NO FRAME COULD PHOTOGRAPH THIS DELTA: the change is the sentence under the box and the identity key of a press-dedupe, neither of which a still of the idle composer can show.",
   "foldOntoEsc060Note": "FOLDED ONTO A MOVED `origin/main` BY A MERGE COMMIT, NOT A REBASE, TWICE IN ONE REVIEW CYCLE (`origin/main` = `c0e3a0652`, the 0.30.9 window, then `9fec9d48d`, PR #439's installer-evidence pass, which landed while CI ran on the first fold). The PR was DIRTY, and GitHub creates no `pull_request` run for a CONFLICTING head, so each fold was the only way back to CI. ONE path conflicted both times, this file; `package.json` auto-merged. THE SECOND FOLD IS A UNION IN BOTH DIRECTIONS, because main moved the SWEPT COUNTS while this branch held only records main lacked: MAIN'S COPY IS TAKEN AS THE BASE (`--theirs`), so its `frames`/`surfaces`/`countsMean`/`partialCapture`/`supplementary` and its `installer-installercontent` evidence own the single-valued fields, AND THIS BRANCH'S OWN `credentialHeldFoldRestampNote` is re-laid on top, since main's lineage never carried it. The first fold resolved the other way (the branch's copy as the base, main's new `consolePaneFitFoldRestampNote` spliced in as a union) because at `c0e3a0652` main had added a NOTE rather than moved a COUNT. THE STAMP BLOCK IS RE-DERIVED FROM THE MERGED TREE, not chosen from either side: `srcTree` -> `24f224e68` and `scriptsTree` -> `4a44b63f7` read back at this tip with `git rev-parse HEAD:src` / `HEAD:scripts`; `head` is re-pointed at the fold commit because the guard asks the top-level stamps and the commit they name to agree. THE TWO `STAMP_BINDING_NOTES` are re-quoted to the same pair. NOTHING ELSE MOVED: no `.webp` under `docs/evidence/` was re-taken or deleted by this branch, and the counts the walk finds are main's own arithmetic.",
   "gateSpawnBoundRestampNote": "RE-STAMPED AT THE FOLD ONTO `origin/main` = `080aeb66d` (the #443 composer/credential window), NOT RE-CAPTURED. `docs/evidence/manifest.json` was the only conflicted path - `git merge-file` over the three blob versions exits 2 with markers - so main's own re-stamp was taken as this file's base and only the tokens named below were moved. WHAT MOVED: `srcTree` is main's, because this branch touches no `src/`; `scriptsTree` is the folded tree, which carries BOTH sides - main's `credential-composer.test.mjs` and `canonical-chat.test.mjs` work, and this branch's release-gate change (`fix(gate): let a translated launcher answer in a translation's time`, `7b717096b`), where the spawn probe's bound is chosen from the architecture in the launcher's own header, the seed's version ask - the only other child this gate execs - is bounded by the same rule, and `machOCpuType` reads the header the two readers share. NO FRAME WAS RE-TAKEN and none is claimed: how long the gate waits for a child is not a surface any committed frame pictures, `capture-evidence.mjs`'s STORIES/THEMES are untouched, and `frames`, `surfaces`, `themes`, `capturedAt` and `head` are main's own arithmetic. `shellPathRestampNote`'s and `settingsGateRestampNote`'s backticked stamp tokens are moved with the file, which is the convention `settingsGateRestampNote` states and `scripts/evidence-manifest.test.mjs` pins; this note is deliberately NOT in `STAMP_BINDING_NOTES`, so it quotes no stamp at all (review round 1, N2). `head` IS RE-POINTED IN THE SAME COMMIT, and that defect is main's rather than this branch's: main's copy cited `5798a9f88`, the fold commit of #443's own BRANCH (`fix/credential-esc-cancel-argument`), which the squash-merge that landed it (`080aeb66d`) left out of main's history - so the gate's citation half reports it against `origin/main` ITSELF (main's manifest fed to `citationAncestryFailures` answers `head 5798a9f88 is not an ancestor of HEAD`), and no CI run sees it because a one-commit-deep checkout skips that test. The value here is `080aeb66d`, the commit this lineage carries #443's work in, which is the remedy the failure sentence names.",
+  "removeCredentialsRestampNote": "RE-STAMPED, NOT RE-CAPTURED, ON THE FOLD ONTO `origin/main` = `d7397b055` (the #437 user-PATH window). THE FOLD WAS FORCED BY CI, NOT BY A CONFLICT OF SUBSTANCE: GitHub creates NO `pull_request` run for a CONFLICTING head, and this branch was DIRTY against main until it was re-based - the sole conflict was this file, resolved the way this repository's folds resolve it, with MAIN'S SIDE TAKEN AS THE BASE and this branch's own records re-laid on top. THIS BRANCH MOVES BOTH TREES ITS STAMPS BIND, so both are re-derived AT THE FOLDED TIP and read back with `git rev-parse HEAD:src` / `HEAD:scripts` on the tree this commit ships on: `srcTree` `e97b518f5` -> `feddbd83a041b6c0a539eb5db3f37cf5c5f2b28e` and `scriptsTree` `a3f8844ad` -> `14dd6c18e0cd87decd12c1f53f76d1c4c45d7d07` (main's own values were the pre-fold pair, because #437 moves `src/` and `scripts/` both). The re-derived values were then written in a `docs/`-only commit that follows the content commit, so the stamps name the tree they ride in. NOTHING ELSE MOVED AND NO FRAME IS CLAIMED: no `.webp` under `docs/evidence/` was re-taken, added or deleted, and `scripts/capture-evidence.mjs` is not in this branch's delta, so `STORIES` and `THEMES` are untouched and `frames` (8,404), `surfaces` (834), `themes` (12), `capturedAt` and `head` stand as they were. WHAT THIS BRANCH IS, so a later reader is not left to reconstruct it from a red suite: `feat/remove-credentials-settings` removes the plain-text API credentials section from Settings (its `credentials-section`, `credential-card`, `credential-dialog` and `credentials` components), and this remediation round repoints the hosting picker's default empty-state copy away from the deleted section, drops the now-dead `getCredentialInfo` export, and re-anchors a design doc's citation of the deleted dialog. It re-captured the settings-rail frames it moved (its own commit's business, not this note's).",
+  "roundOneRemediationRestampNote": "FOLDED ONTO A MOVED `origin/main` AND RE-STAMPED AT THE FOLDED TIP, for PR #441's remediation round 1. THE FOLD WAS FORCED BY CI, NOT BY A CONFLICT OF SUBSTANCE: GitHub creates NO `pull_request` run for a CONFLICTING head, and this branch was DIRTY against `origin/main` (`56c7d74b8`) until it was folded - the sole conflict was this file, resolved the way this repository's folds resolve it, with MAIN'S SIDE TAKEN AS THE BASE and this branch's own record (`removeCredentialsRestampNote`) re-laid on top. THIS ROUND MOVES BOTH TREES ITS STAMPS BIND, so both are re-derived AT THE FOLDED TIP and read back with `git rev-parse HEAD:src` / `HEAD:scripts` on the tree this file ships in: `srcTree` `3eea662ac` -> `4cfbeb323c9cdb0c4ce1a871813e504d4861bffc` (later re-stamped to `f3367fa91008b497e6d16d085b7ad0b80709a5a6` by the D7 link fix) and `scriptsTree` `4a74aba8b` -> `a1031f0f0c820434037c0ad4296e73c15d300a84` (main's own pair were the pre-fold values, because #442 and #436 move `src/` and `scripts/` both). The re-derived values are written in a `docs/`-only amendment after the content commit, so the stamps name the tree they ride in. WHAT THIS ROUND IS, so a later reader is not left to reconstruct it from a red suite: the copy repoint (the hosting picker's empty state, the Settings model-settings alert and the chat `Invalid API key` block all name the Providers section - the working in-app door - instead of the composer's `/credential` gesture, which writes a SESSION secret the provider census does not read; design D1/U1/U2), the `/accounts` landing kept at Providers and documented (U4), the API-key palette vocabulary restored onto the Providers row (U3), a new `scripts/settings-section-routes.test.mjs` pinning every `?section=` route against `sectionRefs` (Q3), and the two settings-rail frame sets re-shot in both halves because the committed pair was confounded (D5).",
+  "foldOntoEsc060SecondFoldNote": "FOLDED ONTO A MOVED `origin/main` BY A MERGE COMMIT (`origin/main` = `080aeb66d`, PR #443's Esc-cancelled `/credential` fix, on top of #439's installer-evidence pass). The PR was DIRTY, and GitHub creates no `pull_request` run for a CONFLICTING head, so the fold was the only way back to CI. ONE path conflicted, this file; `package.json` auto-merged. THE RESOLUTION IS `citationConvention`'s PER-FIELD RULE rather than a side-pick, because both sides rewrite this file's top-level block by construction: this branch's own records (`removeCredentialsRestampNote`, `roundOneRemediationRestampNote`) are group (1) and stand; `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree` are group (4) and are RE-DERIVED from the merged tree - `srcTree` -> `80fc4267deeb0df51cc526d68e015c8e898ffd90` and `scriptsTree` -> `3b79263f9e4ec6446819e07ba865dcf0e8fce45d`, read back with `git rev-parse HEAD:src` / `HEAD:scripts`, with `frames` 8504 (10155 on disk, 1651 inside the 101 declared sets) and 851 STORIES rows taken from the merged `docs/evidence` walk; and the listing is group (2), so `refreshedStories` is the UNION of both sides' entries (main's six `installer-installercontent--*` directories plus this branch's own pair). MAIN'S TWO NEW TOP-LEVEL RECORDS (`credentialHeldFoldRestampNote`, `foldOntoEsc060Note`) were SPLICED IN, since this lineage never carried them. `partialCapture.refreshedFrames` is re-derived one-sided as group (4) requires and keeps 6439, the greater accumulated total, which clears the pass-span diff the guard measures.",
+  "foldOntoRelease03010Note": "FOLDED ONTO A MOVED `origin/main` BY A MERGE COMMIT - the THIRD fold of this pass (`origin/main` = `850253b8d`, the 0.30.10 window: `21480c0b3` (#446, `fix(gate): let a translated launcher answer in a translation's time`) and `850253b8d` (#447, `chore(release): bump version to 0.30.10`)). THE PR WAS DIRTY, and GitHub creates no `pull_request` run for a CONFLICTING head, so the fold was the only way back to CI. ONE path conflicted, this file; `package.json` AUTO-MERGED this time (main's bump to 0.30.10 against a branch that carries no bump) and is left exactly as the merge made it. THE RESOLUTION IS `citationConvention`'s PER-FIELD RULE rather than a side-pick, because both sides rewrite this file's top-level block by construction. GROUP (1), THIS BRANCH'S, and they stand: this branch's own records (`removeCredentialsRestampNote`, `roundOneRemediationRestampNote`, `foldOntoEsc060SecondFoldNote`) and the fields that DESCRIBE a pass (`head`, `headNote`). GROUP (2), THE UNION: `refreshedStories` - main's 652 entries are a proper SUBSET of this branch's 654, so the union is this branch's list unchanged, rail pair (`settings-hosting-empty-copy--before`/`--after`) included; and at the TOP level main's one new record, `gateSpawnBoundRestampNote`, was SPLICED IN, since this lineage never carried it. GROUP (4), RE-DERIVED FROM THE MERGED TREE, taken from neither side: `srcTree` and `scriptsTree` are this merge's own trees, read back with `git rev-parse HEAD:src` / `HEAD:scripts` at the commit under this one as bare SHAs 80fc4267d and 4a9f0a106 and written in the `docs/`-only commit that follows it, so the stamps name the tree they ride in; `frames` stands at 8504 committed WebP files outside the 101 declared supplementary sets below (10155 on disk, 1651 of them inside the sets) and `surfaces` at 851 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, both from THIS merged `docs/evidence` walk. WHAT MAIN MOVED THAT THIS FOLD CARRIES: #446 changes `scripts/prune-python-seed.mjs`, `scripts/update-robustness.test.mjs` and `scripts/verify-macos-artifacts.mjs` - the launcher-adjacent rigs, all three of which this branch's own release-gate work also touched, so their merge was a real three-way and is what the `scriptsTree` re-derivation above is answering for; `src/` is UNCHANGED on main's side, so the merged `srcTree` is this branch's. NO FRAME WAS RE-TAKEN AND NONE IS CLAIMED: no `.webp` under `docs/evidence/` moved in this fold, `capture-evidence.mjs`'s `STORIES`/`THEMES` literals are untouched (851/12 on both sides), and `capturedAt` stays this branch's. `settingsGateRestampNote`'s and `shellPathRestampNote`'s backticked stamp tokens are moved with the file, which is the convention `settingsGateRestampNote` states and `scripts/evidence-manifest.test.mjs` pins; this note is deliberately NOT in `STAMP_BINDING_NOTES`, so it quotes no stamp at all.",
   "walkRound6CaptureNote": "RE-CAPTURED AGAIN AT THIS HEAD (design round 6's Q-3 ruling, `baced3bef`): the band's height is now spent by the column's bottom-most region - in this assembly the chats list, forced to a definite box of its band-0 height less the band - so the entity region above keeps its box to the pixel and the list goes below its own content. The acceptance reading, verbatim and in both palettes: every row at 688/764/796/828 before AND after, `{list:{top:571,height:289,scrollTop:0,scrollHeight:288},entities:{top:88,height:475}}` with the band at 0, and `{list:{top:571,height:147,scrollTop:0,scrollHeight:288},entities:{top:88,height:475}}` with the band at 142 - the list's box down by exactly the band, nothing else moved. The settle is bounded now (`awaitCardSettled`, two screenshots in the ordinary case) and the frame is taken at the same sample the box check reads, which is what re-took the dark refusal frame settled (D17), and the offer pairs settle before capture (D18). The walk: `session-archive` 59 PASS / 0 FAIL and `row-space` 56 PASS / 0 FAIL, both palettes. ONE ITEM READS AND IS NOT ASSERTED: `list.scrollTop = list.scrollHeight` returned 0 in both palettes, so the overflow case's SCROLL half is a note rather than a check.",
   "walkRound3CaptureNote": "RE-CAPTURED AT THIS HEAD, BECAUSE THIS ROUND CHANGED WHAT A READER SEES (QA round 3's batch, `f200bc081`): the band's height now comes from the card's own layout instead of its animated box (Q-4), the card's horizontal scrollbar strip is gone so the card is 8px shorter (D19: 142 -> 134, and the band 150 -> 142), and a wheel inside the standing card now scrolls the list (Q-5). Frames taken before those changes photograph a band 8px taller and a card with a strip, so both halves were re-taken in ONE commit with both stamps re-derived at the fold - `sidebar-row-space/after/` (all fifteen labels, both palettes, with the geometry JSONs) and `session-archive/refusal-band-280/` (D15's case, from a run that carried the walk to its end). THE READINGS, from the same passes: band 264x142 at (228,718) holding a 248x134 card at (228,726), gap 8, panel 280x868; the card's overflow `{overflowX: \"hidden\", scrollWidth: 253, clientWidth: 246, horizontalStrip: 2}`; the wheel over the standing card `scrollBeforeWheel 0 -> scrollAfterWheel 47.5` with the list scrollable. THE WALK: `row-space` 56 PASS / 0 FAIL in both palettes, `session-archive` 59 PASS / 1 FAIL in both - the one failure being Q-3's own check, which is the design gap this round measured rather than fixed (the entity region above still absorbs 94px of the band's 142, so the rows still translate, while the list's own box gave back 48). The archive set's other frames stay as the record its README keeps.",
   "walkRound3FoldRestampNote": "FOLDED ONTO `origin/main` = `850253b8d` (the 0.30.10 release and the gate's translated-launcher fix, #446/#447) BY A MERGE COMMIT, THE CONFLICT DERIVED: one file, this one, as on every fold - main's records and counts stay the base and its one new note is kept, this branch's row-space, archive and walk records are re-laid beside them, and BOTH STAMPS are re-derived from the folded tree. The fold moves `src` (the release and a gate fix) and NOTHING these frames photograph beyond what this round already re-took: the band's height, the card's strip and the wheel are THIS branch's own changes, and their frames are re-captured under `walkRound3CaptureNote`.",

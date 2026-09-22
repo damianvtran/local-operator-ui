@@ -140,20 +140,3 @@ export const CREDENTIAL_MANIFEST = [
 		type: CredentialType.Hosting,
 	},
 ];
-
-/**
- * Find credential info from the manifest
- *
- * @param key - The credential key to look up.
- * @returns The credential info object if found, otherwise a default object.
- */
-export const getCredentialInfo = (key: string) => {
-	return (
-		CREDENTIAL_MANIFEST.find((cred) => cred.key === key) || {
-			key,
-			name: key,
-			description: "Custom credential",
-			url: "",
-		}
-	);
-};
