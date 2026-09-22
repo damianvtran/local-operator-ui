@@ -4379,14 +4379,34 @@ async function sceneRowSpace(cdp) {
 		stable: offerLong.stable,
 		toastOnScreen: offerLong.toastText !== null,
 	});
+	/*
+	 * THE NAME IS THE ELEMENT THAT CARRIES THE QUOTED NAME AND NOTHING ELSE, found by what it says
+	 * rather than by its position. The first attempt used a child-combinator path through sonner's
+	 * own wrapper, which read `null` in both palettes on the first run of this clause; the
+	 * `truncate` class is the second spelling the component itself states, so a build that changes
+	 * one and not the other still answers.
+	 */
 	const offerName = await cdp.evaluate(`(() => {
-		const name = document.querySelector('${SIDEBAR_TOAST} [data-content] > span > span');
+		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		if (!toast) return null;
+		const spans = Array.from(toast.querySelectorAll("[data-content] span"));
+		/*
+		 * THE DEEPEST MATCH, and that is the point rather than a detail: the WRAPPER also starts
+		 * with the quotation mark, and its scrollWidth is its laid-out flex width, so it reports
+		 * "elided: false" for a name that is plainly truncated - a width-only reading of an
+		 * element that cannot carry the claim. The name span is the last match in document order.
+		 */
+		const quoted = spans.filter((node) => /^[“"]/.test((node.textContent || "").trim()));
+		const name =
+			(quoted.length > 0 ? quoted[quoted.length - 1] : null) ??
+			spans.find((node) => node.className.includes("truncate"));
 		if (!name) return null;
 		return {
 			text: name.textContent,
 			clientWidth: name.clientWidth,
 			scrollWidth: name.scrollWidth,
 			elided: name.scrollWidth - name.clientWidth > 0.5,
+			className: name.className,
 		};
 	})()`);
 	const offerLongReading = geometry["offer-long-280"].offer;
