@@ -3710,8 +3710,14 @@ async function sceneRowSpace(cdp) {
 	 * THE RESTING READ COMES BEFORE THE HOVER, AND THAT ORDERING IS THE CHECK. Pass 16's clause
 	 * read the archive control's own box - the right element - but did it AFTER this block hovered
 	 * the row, so what it called "at rest" was measured with the pointer already on it (it saw
-	 * `archiveDisplay: "flex", archiveWidth: 24`). Read here, before any pointer movement, and the
-	 * comparison against the unpinned row below is what gives the number meaning.
+	 * `archiveDisplay: "flex", archiveWidth: 24`). Read here, before any pointer movement.
+	 *
+	 * AND THE UNPINNED ROW IS READ BESIDE IT, which on this head reads `rowWidth null`: at this
+	 * point in the scene the unpinned rows live in the `Previous chats` section, which is still
+	 * collapsed, so the comparison the earlier form of this clause was written for is not
+	 * available here and the clause stands on the pinned row alone. The note prints both
+	 * readings, so which one settled it is visible rather than assumed - and the unpinned half
+	 * is asserted where it IS mounted, by the rest frames' own checks below.
 	 */
 	const restingCost = {
 		pinned: await readArchive(PINNED),
