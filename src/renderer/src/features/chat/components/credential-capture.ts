@@ -2407,10 +2407,22 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
  * the same locked run the press will take — and asking in here would be a second
  * decision about which word owns the line.
  */
+/**
+ * The `takenBy` value that means "the press is HELD" rather than "command /X owns the tail".
+ *
+ * The composer cannot name a command here any more: after an Esc cancel whose span held
+ * characters the press is HELD (nothing runs, nothing sends), so "Enter will take them as
+ * /credential's argument" is a sentence about a route this change retired. The value is a
+ * sentinel, not a command name, because the sentence it selects is not about any command.
+ */
+export const HELD_TAKEN_BY = "\u0000held";
+
 export const unredactedNotice = (length: number, takenBy?: string): string =>
 	takenBy === undefined
 		? `${length} characters are now PLAIN TEXT in the composer — Enter will expose them`
-		: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
+		: takenBy === HELD_TAKEN_BY
+			? `${length} characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words`
+			: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
 
 /**
  * The buffer with a LIVE mask replaced by the characters it stands for.

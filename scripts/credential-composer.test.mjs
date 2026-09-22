@@ -313,6 +313,7 @@ const bundle = await build({
 				CREDENTIAL_EMPTY_SPAN_NOTICE,
 				CREDENTIAL_KEY_ALPHABET,
 				CREDENTIAL_TYPING_NOTICE,
+				HELD_TAKEN_BY,
 				MASK_CELL,
 				unredactedNotice,
 			} from "./src/renderer/src/features/chat/components/credential-capture.ts";
@@ -355,6 +356,7 @@ const {
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_TYPING_NOTICE,
+	HELD_TAKEN_BY,
 	MASK_CELL,
 	unredactedNotice,
 } = await import(bundlePath.href);
@@ -2178,8 +2180,8 @@ test("an edit retires the disclosure, and the draft never carries a count it doe
 	await esc(frame);
 	assert.equal(
 		frame.notice(),
-		unredactedNotice(11, "credential"),
-		"the Esc discloses the eleven characters it put back — and says what the next Enter does with them, which for a locked draft is that the command takes them",
+		unredactedNotice(11, HELD_TAKEN_BY),
+		"the Esc discloses the eleven characters it put back — and says what the next Enter does with them, which on the held shape is that the press is held (remediation round 1, R2/Q3)",
 	);
 	assert.equal(
 		frame.disclosure(),
@@ -2463,8 +2465,8 @@ test("a restored draft still discloses the characters an Esc unredacted", async 
 	await esc(frame);
 	assert.equal(
 		frame.notice(),
-		unredactedNotice(19, "credential"),
-		"the live state discloses, as round 1 pinned — with the locked run's own clause (UX round 2, U7)",
+		unredactedNotice(19, HELD_TAKEN_BY),
+		"the live state discloses, as round 1 pinned — with the held clause the composer now passes (remediation round 1, R2/Q3; UX round 2, U7)",
 	);
 
 	// The persisted draft carries the characters AND the count.
@@ -2487,7 +2489,7 @@ test("a restored draft still discloses the characters an Esc unredacted", async 
 	assert.equal(reloaded.value(), "deploy with /credential sk-live-CANARY-4417");
 	assert.equal(
 		reloaded.notice(),
-		unredactedNotice(19, "credential"),
+		unredactedNotice(19, HELD_TAKEN_BY),
 		"the disclosure survives the restore, in the same words the live state used",
 	);
 });
@@ -3838,7 +3840,7 @@ test("the unredact notice says what Enter will actually do (UX round 2, U7)", as
 	await esc(locked);
 	assert.equal(
 		locked.notice(),
-		"11 characters are now PLAIN TEXT in the composer — Enter will take them as /credential's argument, not send them",
+		"11 characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words",
 		"a locked draft says what the press does with them",
 	);
 
@@ -3969,7 +3971,7 @@ test("the undo announces the real characters it hands back, and a held press arm
 	await esc(typedFrame);
 	assert.equal(
 		typedFrame.notice(),
-		unredactedNotice(CANARY.length, "credential"),
+		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
 		"the Escape announces what it puts back",
 	);
 	/*
@@ -4017,7 +4019,7 @@ test("the undo announces the real characters it hands back, and a held press arm
 	assert.equal(arrived.value(), arrival);
 	assert.equal(
 		arrived.notice(),
-		unredactedNotice(CANARY.length, "credential"),
+		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
 		"and a restore of characters that were never hidden is announced on the same rule",
 	);
 	assert.equal(arrived.disclosure(), CANARY.length);
