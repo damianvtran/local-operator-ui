@@ -508,6 +508,51 @@ test("opaque launcher rejected; cli:main entrypoint works without __main__", asy
 	writeFileSync(opaque, '#!/bin/sh\nexec python3 -m local_operator "$@"\n');
 	assert.throws(() => consoleInterpreter(opaque), /Cannot safely own/);
 	assert.equal(consoleInterpreter(join(home, "bin", "local-operator")), python);
+
+	/*
+	 * THE LAUNCHER EVERY DEFAULT macOS PIPX INSTALL HAS. A shebang cannot carry
+	 * a path with spaces, and pipx's default home on macOS is
+	 * `~/Library/Application Support/pipx/venvs` — so distlib's `_build_shebang`
+	 * falls back to its /bin/sh exec trick for ALL of them, and the shebang
+	 * test alone rejected the app's own resolved, pipx-classified install: the
+	 * app quit at startup with "Cannot safely own this backend launcher"
+	 * (measured on a real v0.30.10 install; the same venv through a space-free
+	 * symlink shebang passed). The shim below is byte-for-byte what pipx
+	 * writes, spaces included.
+	 */
+	const spacedPython = join(home, "App Support", "pipx", "bin", "python");
+	const pipxShim = join(home, "pipx-shim");
+	writeFileSync(
+		pipxShim,
+		`#!/bin/sh\n'''exec' '${spacedPython}' "$0" "$@"\n' '''\n# -*- coding: utf-8 -*-\nimport sys\nfrom local_operator.cli import main\nif __name__ == "__main__":\n    sys.exit(main())\n`,
+	);
+	assert.equal(consoleInterpreter(pipxShim), spacedPython);
+
+	// The trick's interpreter must still LOOK like an interpreter…
+	const ruby = join(home, "pipx-shim-ruby");
+	writeFileSync(
+		ruby,
+		`#!/bin/sh\n'''exec' '/usr/bin/ruby' "$0" "$@"\n' '''\nfrom local_operator.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(ruby), /Cannot safely own/);
+
+	// …the file must still import THIS app's entrypoint…
+	const foreign = join(home, "pipx-shim-foreign");
+	writeFileSync(
+		foreign,
+		`#!/bin/sh\n'''exec' '${spacedPython}' "$0" "$@"\n' '''\nfrom something_else.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(foreign), /Cannot safely own/);
+
+	// …and only distlib's exact two-line preamble is the trick: an sh wrapper
+	// that merely execs a python somewhere in its body stays opaque, even when
+	// a commented-out entrypoint import appears later in the file.
+	const lookalike = join(home, "pipx-shim-lookalike");
+	writeFileSync(
+		lookalike,
+		`#!/bin/sh\nexec '${spacedPython}' "$0" "$@"\n# from local_operator.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(lookalike), /Cannot safely own/);
 	// The fixture intentionally has no __main__.py; every real HTTP test above
 	// exercised the same console entrypoint used by the shipped launcher.
 });
