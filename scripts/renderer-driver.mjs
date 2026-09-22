@@ -3756,24 +3756,30 @@ async function sceneRowSpace(cdp) {
 		hitAtMarkCentre,
 	);
 	/*
-	 * UNPIN IS NOT ARCHIVE, AND THE FIRST VERSION OF THIS CLAUSE COULD NOT TELL THEM APART. An
-	 * unpin moves the row out of the pinned section, this scene's filter drops it from the list,
-	 * and `archivedFactOf()` came back `row-absent` - which the equality read as an archive. Assert
-	 * by ACTION IDENTITY, the way the walk does: no archive happened, and a row that has left the
-	 * list is legitimate only if the pin actually flipped, so the departure has a cause that is
-	 * not a write.
+	 * ACTION IDENTITY, ON THE SIGNAL THE APP ACTUALLY HAS. `chat-sidebar.tsx:1778` writes
+	 * `data-session-archived={archived ? "true" : undefined}`: the attribute is ABSENT unless the
+	 * conversation is archived, so reading `null` was correct all along and the mistake was
+	 * downstream - an ABSENT ROW was being treated as proof of an archive. An unpin never removes
+	 * the row from the document (it moves it to another section, and this list contains the
+	 * sections), so a row that is gone was removed by the scene's archived filter. That is also why
+	 * the previous clause was unreachable as written: `leftBecauseUnpinned` required
+	 * `pinAfter !== null`, and once the row is gone there is no pin left to read.
 	 */
 	const archived = archivedAfter === "true";
-	const leftBecauseUnpinned =
-		archivedAfter === "row-absent" && pinAfter !== null;
+	const archivedByAbsence = archivedAfter === "row-absent";
+	const unpinned = pinAfter === "false" && !archivedByAbsence;
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",
-		!archived && (archivedAfter === archivedBefore || leftBecauseUnpinned),
+		!archived &&
+			!archivedByAbsence &&
+			(archivedAfter === archivedBefore || unpinned),
 		JSON.stringify({
 			archivedBefore,
 			archivedAfter,
 			pinAfter,
-			leftBecauseUnpinned,
+			archived,
+			archivedByAbsence,
+			unpinned,
 		}),
 	);
 
