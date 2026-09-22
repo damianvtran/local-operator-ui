@@ -69,6 +69,21 @@ const remove = (sessionId = SESSION) => ({
 	confirmed: true,
 });
 
+/**
+ * The refusal WITHOUT its currency stamp, which is asserted here rather than compared: `at` is
+ * the lane's ordering key (agent review round 3, R3-1), and its literal value comes from the
+ * store's own counter, which this suite advances for unrelated reasons.
+ */
+const refusalOf = (state) => {
+	const { at, ...rest } = state.archiveFailure ?? {};
+	assert.equal(
+		typeof at,
+		"number",
+		"the refusal carries the stamp the lane orders it by",
+	);
+	return rest;
+};
+
 test("the archive op carries the DESIRED state to the archive route, and nothing else", () => {
 	assert.deepEqual(desktopEndpoint(archive()), {
 		path: `/v1/desktop/sessions/${SESSION}/archive`,
@@ -400,7 +415,7 @@ test("a refused press is reverted to the value the row carried, and says so once
 		undefined,
 		"and the fact goes with it: nothing this client wrote settles a refused write",
 	);
-	assert.deepEqual(state.archiveFailure, {
+	assert.deepEqual(refusalOf(state), {
 		sessionId: SESSION,
 		archived: true,
 		title: "Kept",
@@ -439,7 +454,7 @@ test("a refusal is reported even when a newer page has settled the write's fact"
 	const accepted = await press;
 	assert.equal(accepted, false, "the write was refused");
 	assert.deepEqual(
-		store.getState().archiveFailure,
+		refusalOf(store.getState()),
 		{
 			sessionId: SESSION,
 			archived: true,

@@ -305,9 +305,17 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 		"the sentence must not compete with the catalogue alert about a different failure",
 	);
 	// The refusal is the newest word: it is decided before the offer in the same effect.
+	/*
+	 * AND THE DECISION IS ONE OF CURRENCY (agent review round 3, R3-1 = UX round 3, U7). The
+	 * effect used to take the failure branch unconditionally, so after ONE refused archive every
+	 * later successful archive's offer was never painted. Both messages now carry the stamp of
+	 * the write that raised them and the NEWER one wins, which these assertions pin: the
+	 * comparison exists, and the failure branch is the one that comparison selects.
+	 */
+	assert.match(failure, /archiveUndo\.at >= archiveFailure\.at/);
 	assert.match(
 		failure,
-		/if \(archiveFailure\) \{[\s\S]*laneMessageRef\.current = "failure";[\s\S]*showWarningToast\(/,
+		/if \(newest === "failure" && archiveFailure\) \{[\s\S]*laneMessageRef\.current = "failure";[\s\S]*showWarningToast\(/,
 	);
 	/*
 	 * AND THE ONE DISMISSAL IS THE LANE GOING EMPTY (agent review round 1, R-1, and round 2,
