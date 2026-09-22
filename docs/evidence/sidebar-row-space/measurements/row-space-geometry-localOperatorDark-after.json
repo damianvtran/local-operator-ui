@@ -1914,8 +1914,8 @@
         "devicePixelRatio": 2
       },
       "toasts": {
-        "total": 2,
-        "painted": 1
+        "total": 0,
+        "painted": 0
       },
       "panel": {
         "left": 220,
@@ -1932,18 +1932,7 @@
       "panelPadding": "8px",
       "flyout": null,
       "offer": {
-        "lane": {
-          "left": 244,
-          "right": 452,
-          "top": 844,
-          "bottom": 844,
-          "width": 208,
-          "height": 0,
-          "centre": {
-            "x": 348,
-            "y": 844
-          }
-        },
+        "lane": null,
         "toast": null,
         "text": null
       },
@@ -2611,14 +2600,14 @@
             "textWidth": 340.98
           },
           "pin": {
-            "left": 392,
-            "right": 416,
+            "left": 420,
+            "right": 444,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 404,
+              "x": 432,
               "y": 844
             },
             "opacity": 1,
@@ -2628,14 +2617,14 @@
             "painted": true
           },
           "archive": {
-            "left": 420,
-            "right": 444,
+            "left": 392,
+            "right": 416,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 432,
+              "x": 404,
               "y": 844
             },
             "opacity": 1,
@@ -3902,14 +3891,14 @@
             "textWidth": 311.03
           },
           "pin": {
-            "left": 392,
-            "right": 416,
+            "left": 420,
+            "right": 444,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 404,
+              "x": 432,
               "y": 628
             },
             "opacity": 1,
@@ -3919,14 +3908,14 @@
             "painted": true
           },
           "archive": {
-            "left": 420,
-            "right": 444,
+            "left": 392,
+            "right": 416,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 432,
+              "x": 404,
               "y": 628
             },
             "opacity": 1,
@@ -4753,14 +4742,14 @@
             "textWidth": 340.98
           },
           "pin": {
-            "left": 432,
-            "right": 456,
+            "left": 460,
+            "right": 484,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 444,
+              "x": 472,
               "y": 844
             },
             "opacity": 1,
@@ -4770,14 +4759,14 @@
             "painted": true
           },
           "archive": {
-            "left": 460,
-            "right": 484,
+            "left": 432,
+            "right": 456,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 472,
+              "x": 444,
               "y": 844
             },
             "opacity": 1,
@@ -6044,14 +6033,14 @@
             "textWidth": 311.03
           },
           "pin": {
-            "left": 432,
-            "right": 456,
+            "left": 460,
+            "right": 484,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 444,
+              "x": 472,
               "y": 628
             },
             "opacity": 1,
@@ -6061,14 +6050,14 @@
             "painted": true
           },
           "archive": {
-            "left": 460,
-            "right": 484,
+            "left": 432,
+            "right": 456,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 472,
+              "x": 444,
               "y": 628
             },
             "opacity": 1,
@@ -6895,14 +6884,14 @@
             "textWidth": 340.98
           },
           "pin": {
-            "left": 472,
-            "right": 496,
+            "left": 500,
+            "right": 524,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 484,
+              "x": 512,
               "y": 844
             },
             "opacity": 1,
@@ -6912,14 +6901,14 @@
             "painted": true
           },
           "archive": {
-            "left": 500,
-            "right": 524,
+            "left": 472,
+            "right": 496,
             "top": 832,
             "bottom": 856,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 512,
+              "x": 484,
               "y": 844
             },
             "opacity": 1,
@@ -8186,14 +8175,14 @@
             "textWidth": 311.03
           },
           "pin": {
-            "left": 472,
-            "right": 496,
+            "left": 500,
+            "right": 524,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 484,
+              "x": 512,
               "y": 628
             },
             "opacity": 1,
@@ -8203,14 +8192,14 @@
             "painted": true
           },
           "archive": {
-            "left": 500,
-            "right": 524,
+            "left": 472,
+            "right": 496,
             "top": 616,
             "bottom": 640,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 512,
+              "x": 484,
               "y": 628
             },
             "opacity": 1,
@@ -8619,14 +8608,14 @@
             "textWidth": null
           },
           "pin": {
-            "left": 432,
-            "right": 456,
+            "left": 460,
+            "right": 484,
             "top": 800,
             "bottom": 824,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 444,
+              "x": 472,
               "y": 812
             },
             "opacity": 1,
@@ -8636,14 +8625,14 @@
             "painted": true
           },
           "archive": {
-            "left": 460,
-            "right": 484,
+            "left": 432,
+            "right": 456,
             "top": 800,
             "bottom": 824,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 472,
+              "x": 444,
               "y": 812
             },
             "opacity": 1,
@@ -9382,14 +9371,14 @@
             "textWidth": null
           },
           "pin": {
-            "left": 432,
-            "right": 456,
+            "left": 460,
+            "right": 484,
             "top": 692,
             "bottom": 716,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 444,
+              "x": 472,
               "y": 704
             },
             "opacity": 1,
@@ -9399,14 +9388,14 @@
             "painted": true
           },
           "archive": {
-            "left": 460,
-            "right": 484,
+            "left": 432,
+            "right": 456,
             "top": 692,
             "bottom": 716,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 472,
+              "x": 444,
               "y": 704
             },
             "opacity": 1,
@@ -10525,13 +10514,13 @@
         },
         "toast": {
           "left": 244,
-          "right": 460,
+          "right": 492,
           "top": 794,
           "bottom": 844,
-          "width": 216,
+          "width": 248,
           "height": 50,
           "centre": {
-            "x": 352,
+            "x": 368,
             "y": 819
           }
         },
@@ -11315,14 +11304,14 @@
             "textWidth": null
           },
           "pin": {
-            "left": 432,
-            "right": 456,
+            "left": 460,
+            "right": 484,
             "top": 736,
             "bottom": 760,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 444,
+              "x": 472,
               "y": 748
             },
             "opacity": 1,
@@ -11332,14 +11321,14 @@
             "painted": true
           },
           "archive": {
-            "left": 460,
-            "right": 484,
+            "left": 432,
+            "right": 456,
             "top": 736,
             "bottom": 760,
             "width": 24,
             "height": 24,
             "centre": {
-              "x": 472,
+              "x": 444,
               "y": 748
             },
             "opacity": 1,
@@ -11477,13 +11466,13 @@
   "offer": {
     "toast": {
       "left": 244,
-      "right": 460,
+      "right": 492,
       "top": 794,
       "bottom": 844,
-      "width": 216,
+      "width": 248,
       "height": 50,
       "centre": {
-        "x": 352,
+        "x": 368,
         "y": 819
       }
     },
