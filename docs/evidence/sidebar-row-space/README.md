@@ -74,12 +74,19 @@ set -a; . ~/local-operator-ui/.env; set +a
 VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18234 pnpm build
 
 # 2. a FRESH stub per launch, then ONE launch per palette. The stub is a
-#    RESPONDER, not a backend: no store, no turns, no transcript.
+#    RESPONDER, not a backend: no store, no turns, no transcript. Its STDOUT IS
+#    AN INPUT to the run and not a log: the U6 press clause reads the request the
+#    daemon saw (`--stub-log`, below), because in this fixture the DOM cannot
+#    answer the question - an unpin moves the row into a section that is not
+#    mounted, so `row-absent` is not evidence of an archive. A run launched
+#    without it fails those clauses by design (`no --stub-log given, so the write
+#    could not be read`), which is what a reader following this recipe used to get.
 node docs/evidence/sidebar-row-space/harness/stub-daemon.mjs \
-  --port 18234 --records /tmp/row-space-stub-records
+  --port 18234 --records /tmp/row-space-stub-records > /tmp/row-space-stub.log 2>&1 &
 LOCAL_OPERATOR_DESKTOP_TOKEN=[redacted] node scripts/renderer-driver.mjs \
   --scene row-space --backend http://127.0.0.1:18234 \
   --backend-records /tmp/row-space-stub-records --seed-onboarding-complete \
+  --stub-log /tmp/row-space-stub.log \
   --theme localOperatorDark --out /tmp/row-space-dark --window-size 1380x900
 # …then the same launch with --theme localOperatorLight --out /tmp/row-space-light
 
@@ -89,11 +96,22 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=[redacted] node scripts/renderer-driver.mjs \
 ```
 
 **The scene asserts what it photographs**, so a run that lands these frames is a
-run that proved the table below: 37 checks, including the two that cost the
+run that proved the table below: 56 checks, including the two that cost the
 change its first build - the rests' widths against the gutter this machine
 reserves, and the end of the pan against the TEXT box's width rather than the
 clip box's `scrollWidth` (which includes the ellipsis's own advance, 10px here,
 and would have sent the pan past the end of the title).
+
+**And what the offered NAME does with the width it gets, measured rather than
+claimed** (design round 3, D13). The D7 acceptance claim is that the card spends
+no width on chrome, and this set carried it with frames of a title that FITS at
+every width here - so it photographed neither the case the fix is about nor its
+limit. `offer-long-280` is that case, in both palettes: with the icon gone and the
+card at 248px, the name element reads **`clientWidth 104` of `scrollWidth 338`**
+for the operator's own 55-character conversation, i.e. it still elides. That is
+the trade the design takes and now states: the chrome costs the name nothing, the
+VERB is never the part that gives (R2-3), and the full name is one dwell away in
+the row's own flyout.
 
 **Why the panel width is written through the divider's own action.** A row's
 width is the user's own preference (`chatSidebarWidth`, clamped 240..360, default
@@ -164,6 +182,8 @@ is only reproducible on the runtime that produced it).
 | `hover-current-280` | `hover-current-280` | the **current** row (`aria-current="page"`) under the pointer: both acts reveal and the SELECTED ground survives the pointer | on the current row's button | 280 |
 | `register-280` (before) | `register-280` | the panel's archive register after a REAL press on the short row's archive control, with a conversation open (so the composer is on screen) | parked, after the press | 280 |
 | `offer-toast-280` (after) | `offer-toast-280` | the same press, in the state the change puts it in: the offer is a toast in the panel's OWN lane, over the sidebar's bottom, with its Undo and its close - and the scene asserts its box is inside the panel's and disjoint from the composer's form and its Send control | parked, after the press | 280 |
+| `offer-toast-240` (after) | `offer-toast-240` | the same press at the **240 clamp minimum**, which is where the card's own width stops being a literal: the lane is 208 there, the card was 248 - 40px wider than its own lane and about 32px past the sidebar's right edge, with nothing clipping it (design round 3, D10) - and the scene asserts the card is no wider than its lane and inside the panel's own box | parked, after the press | 240 |
+| `offer-long-280` (after) | `offer-long-280` | the same press on the row whose title is long enough to truncate at every width: the lane frame D13 found missing, with the offered NAME read as a box rather than as a sentence | parked, after the press | 280 |
 
 The one state the after half photographs differently **by design** is
 `hover-long-<w>` and `hover-pinned-<w>`: the pointer there is on a row whose title
