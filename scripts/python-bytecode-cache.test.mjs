@@ -680,10 +680,11 @@ function venvAssignment(trace, path) {
  *
  * The script's default is an executable fact, not a string: running it is what
  * shows which directory a standalone run actually writes bytecode to. Nothing
- * of the operator's machine is touched - `HOME` is a temp directory, the FFmpeg
- * the script would otherwise download is pre-placed so no network is used, and
- * the interpreter is a stub that fails at the venv probe, which the script only
- * reaches after the default has been applied.
+ * of the operator's machine is touched - `HOME` is a temp directory, the install
+ * script fetches nothing of its own any more (the FFmpeg download this rig used
+ * to pre-place a file against is gone), and the interpreter is a stub that fails
+ * at the venv probe, which the script only reaches after the default has been
+ * applied.
  */
 function runMacosInstallScript(scriptText, extraEnv) {
 	const home = mkdtempSync(join(tmpdir(), "lo-install-script-home-"));
@@ -696,11 +697,6 @@ function runMacosInstallScript(scriptText, extraEnv) {
 		"Application Support",
 		"Local Operator",
 	);
-	mkdirSync(join(appDataDir, "bin"), { recursive: true });
-	const ffmpeg = join(appDataDir, "bin", "ffmpeg");
-	writeFileSync(ffmpeg, "#!/bin/bash\nexit 0\n");
-	chmodSync(ffmpeg, 0o755);
-
 	const pythonStub = join(home, "python3-stub");
 	writeFileSync(
 		pythonStub,
