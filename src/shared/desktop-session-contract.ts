@@ -577,6 +577,46 @@ export function epochMsFromSeconds(value: unknown): number | null {
 		: null;
 }
 
+/**
+ * The live judge state a judged goal carries, as `FrontendSessionState.goal_judge`
+ * publishes it.
+ *
+ * A CLOSED VOCABULARY WITH AN OPEN READER. Every member of `state` is a word some
+ * surface may render, and a reader must tolerate a member it does not know: the
+ * writer is a newer backend than this build, and the alternative to tolerating it
+ * is a surface that paints nothing (or, worse, crashes) on a state that is
+ * perfectly real. `verdict` is typed the same way for the same reason.
+ *
+ * `run` is the count of consecutive auto-continuations admitted for the goal. It
+ * is NOT a progress bar — the design record refuses printing it on the chip
+ * because nothing on the row can act on it — but it is read by the pane and the
+ * picker where a goal has room to say how far a judge has driven it.
+ */
+export type CanonicalGoalJudge = {
+	state: string;
+	run?: number;
+	verdict?: string;
+	reason?: string;
+};
+
+/**
+ * One settled goal, as `FrontendSessionState.goal_history` publishes it.
+ *
+ * `status` is the WIRE's word and is printed as the wire spells it (the loop
+ * chip's own rule for a status word), so the receipt and the pane cannot describe
+ * one goal differently. `id` is stable and is what a future delete-by-id would
+ * address; nothing consumes it yet — the pane's omission of a delete control is
+ * deliberate, because no command deletes a history row.
+ */
+export type CanonicalGoalHistoryEntry = {
+	id: string;
+	text: string;
+	status: string;
+	created_at?: string;
+	settled_at?: string;
+	reason?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -588,6 +628,21 @@ export type CanonicalFrontendState = {
 	conversation_title_user_set: boolean;
 	conversation_title_forked: boolean;
 	goal: string;
+	/**
+	 * `""` (no goal) | `"active"` | `"done"`. Optional, and the optionality is
+	 * LOAD-BEARING rather than incidental: this field, `goal_judge`, `goal_history`
+	 * and `goal_history_truncated` all ship in ONE backend change, so their presence
+	 * on the snapshot is the only capability signal a released-vs-current backend
+	 * gives a renderer. A typed non-optional field here would let a control be
+	 * written that sends a new argument to a backend that would store it as the goal
+	 * text (`goal --clear` did exactly that on a released build, measured in
+	 * `docs/composer-status-tabs.md` §12.4). Read them through `goalCapability`
+	 * below; never assume they are there.
+	 */
+	goal_status?: string;
+	goal_judge?: CanonicalGoalJudge | null;
+	goal_history?: CanonicalGoalHistoryEntry[];
+	goal_history_truncated?: boolean;
 	active_agent: string;
 	active_team: string;
 	selected_model: CanonicalModel | null;
@@ -706,6 +761,29 @@ export type CanonicalFrontendState = {
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
 };
+/**
+ * Whether this snapshot came from a backend that understands the goal lifecycle
+ * arguments (`done`, `dismiss`, `history`).
+ *
+ * ONE PREDICATE, READ BY EVERY NEW CONTROL. The gate is not a nicety: a backend
+ * that predates these fields does not have `--done`/`done` in its flag vocabulary,
+ * so it treats the bare word as goal TEXT and stores the literal `done` as the
+ * user's standing goal — silent data loss from one click, measured for the sibling
+ * `--clear` footgun in `docs/composer-status-tabs.md` §12.4. The fields and the
+ * flags ship in one backend change, so "is the field there" is exactly "does the
+ * flag exist".
+ *
+ * `goal_status` is the field that decides it because it is the one every new
+ * control depends on (the done paint, the `Dismiss` swap, the pane's rows) — and it
+ * is checked with `in`/`typeof` rather than truthiness, because `""` and `false` are
+ * legitimate VALUES of this capability and only absence means "old".
+ *
+ * A `null` frontend (a pane with no snapshot yet) is NOT capable: nothing new may
+ * be sent before a snapshot has said the backend knows it.
+ */
+export const goalCapability = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => typeof frontend?.goal_status === "string";
 export type CanonicalFrontendSync = {
 	state_version: number;
 	epoch: string;
