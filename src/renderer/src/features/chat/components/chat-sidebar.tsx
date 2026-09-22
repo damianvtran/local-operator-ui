@@ -3541,7 +3541,7 @@ export function ChatSidebar({
 		 */
 		const newest =
 			archiveFailure && archiveUndo
-				? archiveUndo.at >= archiveFailure.at
+				? archiveUndo.at > archiveFailure.at
 					? "offer"
 					: "failure"
 				: archiveFailure
@@ -3556,8 +3556,22 @@ export function ChatSidebar({
 		 * +450ms, the refusal back at +1.75s in the dark palette and +450ms in the light one).
 		 * Clearing the superseded value here is what makes "the lane shows the newest word" true
 		 * over TIME rather than only at the moment the newer word arrives.
+		 *
+		 * AND IT CLEARS ONLY ON A STRICT RANKING, WHICH IS THE OTHER HALF OF THIS FIX (the walk's own
+		 * finishing check caught the tie). Both messages are stamped from the SAME counter - the
+		 * refusal takes `state.answerSeq` and the offer takes it too - so an undo whose refusal lands
+		 * in the answer that re-raises the offer puts them at the SAME stamp. Under the old `>=` the
+		 * offer won that tie and this clause then DELETED the refusal: the lane drew the offer for its
+		 * eight seconds (measured: `lane cleared in 8169ms`, the offer's ceiling, not the refusal's
+		 * ten) and the refusal's own Retry had no card left to be - so the walk's last request never
+		 * reached the wire (`stub … /archive -> 409` is the log's final archive-family line) and the
+		 * row stayed archived. A refusal is a fact about a press that was ANSWERED while an offer is a
+		 * fact about a write (`canonical-sessions-store.ts` says so where it builds it), so on a tie
+		 * the refusal is the message that stands - and the clause below therefore deletes only what
+		 * the rule ranked STRICTLY older.
 		 */
-		if (newest === "offer" && archiveFailure !== null) clearArchiveFailure();
+		if (newest === "offer" && archiveFailure !== null && archiveUndo !== null && archiveUndo.at > archiveFailure.at)
+			clearArchiveFailure();
 		if (newest === "failure" && archiveUndo !== null) setArchiveUndo(null);
 		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";

@@ -2734,6 +2734,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 												? { ...row, archived: previous }
 												: row,
 										),
+							/*
+							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both lane messages
+							 * used to be stamped from the SAME counter (the refusal took `state.answerSeq` as it
+							 * stood), so a refusal landing in the answer that re-raised an offer TIED with it -
+							 * and a tie is exactly the state the lane's rule now resolves in the refusal's favour
+							 * (see the drawn-message rule and its comment in `chat-sidebar.tsx`). Advancing the
+							 * counter here makes a refusal that lands LAST strictly newer, which is what its own
+							 * sentence says it is: the last press the daemon actually answered.
+							 */
+							answerSeq: state.answerSeq + 1,
 							archiveFailure: {
 								sessionId,
 								/*
@@ -2742,7 +2752,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * one, which is what lets the lane draw the newer message instead of preferring
 								 * the refusal forever.
 								 */
-								at: state.answerSeq,
+								at: state.answerSeq + 1,
 								archived,
 								title: rowTitle || "Untitled chat",
 								/*

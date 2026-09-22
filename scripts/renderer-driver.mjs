@@ -2710,7 +2710,13 @@ async function sceneSessionArchive(cdp) {
 		"U10 the aim at the superseding archive control, and the answer it produced",
 		JSON.stringify({
 			...aim,
-			undo: superseded.archiveUndo?.sessionId ?? null,
+			/*
+			 * PRESENCE, NOT A FIELD: this printed `archiveUndo?.sessionId` and read null while the very
+			 * next check asserted the same object non-null - the offer does not carry `sessionId`, so
+			 * the note was the wrong half of the pair (manager's finding). What the check reads is
+			 * whether the value is THERE, so that is what the note reports.
+			 */
+			undo: superseded.archiveUndo !== null,
 			failure: superseded.archiveFailure?.sessionId ?? null,
 		}),
 	);
