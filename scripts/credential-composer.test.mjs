@@ -2181,7 +2181,7 @@ test("an edit retires the disclosure, and the draft never carries a count it doe
 	assert.equal(
 		frame.notice(),
 		unredactedNotice(11, HELD_TAKEN_BY),
-		"the Esc discloses the eleven characters it put back — and says what the next Enter does with them, which on the held shape is that the press is held (remediation round 1, R2/Q3)",
+		"a LIVE cancel's own record answers the press, so the sentence still names the hold and its way out (agent review round 2, R5: this is the shape the sentinel is for)",
 	);
 	assert.equal(
 		frame.disclosure(),
@@ -2466,7 +2466,7 @@ test("a restored draft still discloses the characters an Esc unredacted", async 
 	assert.equal(
 		frame.notice(),
 		unredactedNotice(19, HELD_TAKEN_BY),
-		"the live state discloses, as round 1 pinned — with the held clause the composer now passes (remediation round 1, R2/Q3; UX round 2, U7)",
+		"the live state discloses, as round 1 pinned — the hold named only while the cancel's own record answers the press (agent review round 2, R5)",
 	);
 
 	// The persisted draft carries the characters AND the count.
@@ -2489,8 +2489,8 @@ test("a restored draft still discloses the characters an Esc unredacted", async 
 	assert.equal(reloaded.value(), "deploy with /credential sk-live-CANARY-4417");
 	assert.equal(
 		reloaded.notice(),
-		unredactedNotice(19, HELD_TAKEN_BY),
-		"the disclosure survives the restore, in the same words the live state used",
+		unredactedNotice(19),
+		"a restored draft with no live record says what its Enter really does — expose, not held (agent review round 2, R5, which INVERTS this pin from the round-1 head)",
 	);
 });
 
@@ -4019,8 +4019,8 @@ test("the undo announces the real characters it hands back, and a held press arm
 	assert.equal(arrived.value(), arrival);
 	assert.equal(
 		arrived.notice(),
-		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
-		"and a restore of characters that were never hidden is announced on the same rule",
+		unredactedNotice(CANARY.length),
+		"and a restore of characters that were never hidden is announced on the same rule — plain, because an arrival arms no cancel record and so no hold",
 	);
 	assert.equal(arrived.disclosure(), CANARY.length);
 });
@@ -4860,5 +4860,149 @@ test("the geometry rig's strip floor is the layer's own number", async () => {
 		literal(rig),
 		literal(layer),
 		"the rig asserts the layer's own strip floor: change one and the other has to move with it",
+	);
+});
+
+/*
+ * R5's OWN SHAPE, PINNED AS THE DEFECT IT WAS (agent review round 2).
+ *
+ * The sentinel is a claim about what Enter does, and the composer used to read it
+ * off the DISCLOSURE — which a reload keeps while the record that decides the press
+ * dies with the instance. So the line promised "Enter is held" over a box whose Enter
+ * DISPATCHES `/credential <secret>` and eats the trailing words as its argument, the
+ * exact defect this change exists to close, under a sentence promising the opposite.
+ * The two halves are asserted together on purpose: the sentence must not claim the
+ * hold, AND the press must really dispatch — a test that only read the notice would
+ * pass on a head where the press had changed and the sentence had not.
+ */
+test("the held line is not claimed on the reload shape, where Enter really dispatches", async () => {
+	const CANARY = "LOP_R5_RELOAD_CANARY_77";
+	const ran = [];
+	const dispatch = async (command) => {
+		ran.push(command);
+		return "consumed";
+	};
+	const frame = await mount({
+		conversationId: "conv-r5-reload",
+		onSlashCommand: dispatch,
+	});
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, CANARY);
+	await esc(frame);
+	assert.equal(
+		frame.notice(),
+		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
+		"the LIVE cancel's record answers the press, so the line names the hold",
+	);
+
+	/*
+	 * A real reload: refs gone, the persisted draft and its count kept. This is the
+	 * shape the round-1 sentinel lied on.
+	 */
+	const reloaded = await mount({
+		conversationId: "conv-r5-reload",
+		keepWorld: true,
+		remount: true,
+		onSlashCommand: dispatch,
+	});
+	assert.equal(
+		reloaded.value(),
+		`deploy with /credential ${CANARY}`,
+		"the characters and the token survive the reload",
+	);
+	assert.equal(
+		reloaded.disclosure(),
+		CANARY.length,
+		"and so does the disclosure, which is why it could not decide the hold",
+	);
+	assert.equal(
+		reloaded.notice(),
+		unredactedNotice(CANARY.length),
+		"but the HOLD is not claimed: no record answers this press, so the line says what Enter really does",
+	);
+	assert.ok(
+		!/held/.test(reloaded.notice()),
+		"and the word 'held' — the whole lie — is absent",
+	);
+
+	/* The press proves the sentence right: it dispatches, taking the tail. */
+	await enter(reloaded);
+	await settle();
+	assert.equal(
+		ran.length,
+		1,
+		"Enter DISPATCHED on the reload shape, which is what the line now says",
+	);
+	assert.equal(ran[0]?.command?.name ?? ran[0]?.name, "credential");
+	assert.deepEqual(
+		reloaded.notes.length,
+		1,
+		"and the dispatch narrated itself, rather than a hold that never happened",
+	);
+});
+
+/*
+ * R6's OWN SHAPE: the notice's OWN remedy, then the identical hold re-armed.
+ *
+ * The dedupe's reset lived only in `applyCapture`, and clearing the box with the
+ * keyboard never runs it (the textarea `onChange` → `applyDomEdit` route clears the
+ * record but not the ref). So the operator followed the app's named way out, re-armed
+ * the same shape, and the second hold was SILENT — the box kept, nothing dispatched,
+ * no sentence — which is the "dead Enter with no feedback" complaint un-suppressible.
+ * The clear below is driven through the DOM edit route deliberately: that is the path
+ * the remedy actually takes, and the path the reset was missing from.
+ */
+test("a fresh hold after the notice's own remedy raises its own sentence", async () => {
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-r6-rearm",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	const REARM = "LOP_R6_REARM_CANARY_42";
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, REARM);
+	await esc(frame);
+	await enter(frame);
+	await settle();
+	assert.equal(frame.notes.length, 1, "the first hold raised its sentence");
+	assert.match(frame.notes[0], /still the credentials you cancelled/);
+	assert.equal(ran.length, 0, "and nothing dispatched");
+
+	/* THE REMEDY THE SENTENCE ITSELF NAMES: clear the box. */
+	const field = frame.textarea();
+	await act(async () => {
+		writeValue(field, "", 0);
+	});
+	await settle();
+	assert.equal(frame.value(), "", "the box is empty, the notice answered");
+
+	/* Re-arm the IDENTICAL shape. */
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, REARM);
+	await esc(frame);
+	assert.equal(
+		frame.notice(),
+		unredactedNotice(REARM.length, HELD_TAKEN_BY),
+		"the re-armed hold claims the hold again",
+	);
+	await enter(frame);
+	await settle();
+	assert.equal(
+		frame.notes.length,
+		2,
+		"a new hold owes its own sentence; the old one's must not suppress it",
+	);
+	assert.match(
+		frame.notes[1],
+		/still the credentials you cancelled/,
+		"and it is the same sentence, freshly raised",
+	);
+	assert.equal(
+		ran.length,
+		0,
+		"the re-armed press is still held, not dispatched",
 	);
 });

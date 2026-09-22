@@ -2406,7 +2406,15 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
  * direction that matters. Only the caller has the planner — the composer asks it for
  * the same locked run the press will take — and asking in here would be a second
  * decision about which word owns the line.
- */
+ *
+ * THE CALLER MUST ASK THE PRESS'S OWN QUESTION (agent review round 2, R5). `takenBy`
+ * is a claim about what Enter does, and the composer reads it off a state the app
+ * persists — the disclosure — while the hold is a fact about a ref that dies on a
+ * reload. So the argument is `HELD_TAKEN_BY` on exactly the draft whose press
+ * `planForDraft` answers `held` for (the composer's `holdsHeldPress`), never on the
+ * disclosure's mere presence: the disclosure outliving the record is precisely the
+ * shape where this sentence would promise a hold that is not there and Enter
+ * dispatches the secret as a command's argument instead./
 /**
  * The `takenBy` value that means "the press is HELD" rather than "command /X owns the tail".
  *
