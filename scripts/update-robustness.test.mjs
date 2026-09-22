@@ -3935,6 +3935,15 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			// Honoured only by executing the binary — amfid's refusal is invisible to
 			// codesign, spctl and stapler alike (both measured on the real bundle).
 			"app-spawn",
+			// The question `app-spawn` does NOT ask, and the one that bricked the
+			// 0.30.10 x64 DMG: the OS execs the launcher, and then the app cannot
+			// LOAD. `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the
+			// string it is given and never requires `app.asar`, so arm64 bytecode in
+			// an x64 bundle passed every check above it (measured on the shipped
+			// artifact: codesign, spctl, stapler and the spawn probe all green on a
+			// bundle that threw cachedDataRejected at every launch). This row loads
+			// the payload the others skip, under the bundle's own Electron.
+			"app-bytecode-loadable",
 			// The cause behind it — a restricted entitlement with no profile to
 			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
 			// which walks every executable in the bundle rather than reading the
@@ -3989,6 +3998,67 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	);
 });
 
+test("the bytecode gate asks the bundle's own Electron and refuses 'could not tell'", () => {
+	const app = gateFixtureBundle("lo-gate-bytecode-");
+	const launcher = join(app, "Contents", "MacOS", "Local Operator");
+	const check = artifactChecks({ appPath: app, dmgPath: null }).find(
+		(row) => row.id === "app-bytecode-loadable",
+	);
+
+	// THE PROBE MUST RUN UNDER THE ARTIFACT, NOT UNDER THE RUNNER'S NODE. That is
+	// the entire mechanism: V8 accepts cached data only from its own
+	// architecture, so only the x64 bundle's own Electron can answer for the x64
+	// bundle while an arm64 runner holds the file. A probe spawned with
+	// `process.execPath` would answer for the RUNNER and pass the broken artifact.
+	assert.equal(check.command, launcher);
+	assert.deepEqual(check.env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(check.args.length, 2);
+	assert.match(check.args[0], /scripts\/bytecode-accepts-probe\.cjs$/);
+	// Absolute, so the gate is invocable from any cwd (CI runs it through
+	// require-report.sh from the repo root; a human runs it from anywhere).
+	assert.ok(isAbsolute(check.args[0]));
+	assert.ok(existsSync(check.args[0]));
+	assert.equal(
+		check.args[1],
+		join(app, "Contents/Resources/app.asar/out/main/index.jsc"),
+	);
+
+	// A translated child gets the longer bound here for the same reason
+	// `app-spawn` does: on an arm64 runner the x64 probe pays Rosetta's one-time
+	// cost, and `timedOut` must not report the translator as a broken bundle.
+	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
+	const translated = artifactChecks({
+		appPath: app,
+		dmgPath: null,
+		hostArch: "arm64",
+	}).find((row) => row.id === "app-bytecode-loadable");
+	assert.equal(translated.timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+
+	// ACCEPTED is the only pass. The three refusal shapes are each red, and the
+	// third one is the point: exit 2 is the probe saying it COULD NOT TELL
+	// (unreadable .jsc, unparseable header), which must never ship as a pass.
+	assert.equal(
+		check.expect({ status: 0, signal: null, timedOut: false }),
+		true,
+	);
+	assert.equal(
+		check.expect({ status: 1, signal: null, timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: 2, signal: null, timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: null, signal: "SIGKILL", timedOut: false }),
+		false,
+	);
+	assert.equal(
+		check.expect({ status: 0, signal: null, timedOut: true }),
+		false,
+	);
+});
+
 test("an unsigned or unnotarized disk image fails the release assertions", () => {
 	// The shape of the shipped 0.17.0 release: the app inside is signed,
 	// notarized and stapled, and the image itself is none of those.
@@ -4002,6 +4072,17 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 				signal: null,
 				timedOut: false,
 				stdout: "",
+				stderr: "",
+			};
+		}
+		// So does the bytecode probe, which runs under that same executable. This
+		// release's fault is its disk image, so the bundle loads its own bytecode.
+		if (joined.includes("bytecode-accepts-probe.cjs")) {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "ACCEPTED",
 				stderr: "",
 			};
 		}
@@ -4199,6 +4280,19 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 						stderr: "",
 					}
 				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+		}
+		// The bytecode probe runs under the same executable as the spawn probe.
+		// These fixtures model ENTITLEMENT and spawn faults, where the bundle's
+		// bytecode matches its own runtime, so it answers ACCEPTED — keeping each
+		// test's failure set the one thing it is about.
+		if (joined.includes("bytecode-accepts-probe.cjs")) {
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "ACCEPTED",
+				stderr: "",
+			};
 		}
 		if (command.endsWith("/security")) {
 			return {
