@@ -126,7 +126,18 @@ export class Terminal {
 		this.dataHandlers.length = 0;
 		this.binaryHandlers.length = 0;
 	}
-	focus(): void {}
+	/**
+	 * How many times this terminal was asked to take the keyboard.
+	 *
+	 * Counted because `focus()` is a no-op in a stub and therefore invisible: the
+	 * pane's caret is a claim (a user who opens the console should be able to type
+	 * at it immediately) and a claim nothing can observe is not pinned by anything.
+	 */
+	focusCount = 0;
+
+	focus(): void {
+		this.focusCount += 1;
+	}
 	refresh(): void {}
 
 	onData(handler: (data: string) => void) {

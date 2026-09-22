@@ -1,13 +1,20 @@
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { AlertTriangle, Lock, Plus, SquareTerminal } from "lucide-react";
+import {
+	AlertTriangle,
+	Lock,
+	Plus,
+	RefreshCw,
+	SquareTerminal,
+} from "lucide-react";
 import type { FC, ReactNode } from "react";
 
 /**
  * The console pane's non-terminal states, and the two banners that sit above its
  * terminal when one is showing history or refusing to record.
  *
- * Design: `docs/design/ui-console-tab.md` 6.1 (empty and loading are the pane's
+ * Design: `local-operator`'s
+ * `docs/design/ui-console-tab.md` — that repository's file, not one in this tree. 6.1 (empty and loading are the pane's
  * own states, and the `+` control is present in the empty state because that is
  * the one a first-run user meets), 7.3 ("after a relaunch … the pane's header
  * carries 'this terminal has ended' with the exit code if it was observed"), 11.4
@@ -73,9 +80,18 @@ export const ConsoleNotice: FC<ConsoleNoticeProps> = ({
 );
 
 /** Before the first read answers. The pane is a place, so its loading state is
- * the place without contents rather than a spinner over nothing. */
-export const ConsoleLoading: FC = () => (
-	<ConsoleNotice title="Reading this session's console" />
+ * the place without contents rather than a spinner over nothing.
+ *
+ * TWO SENTENCES, ONE STATE, because they describe two different waits the same pane
+ * can be in (design round 1, U4): after the user's open the pane waits for a shell to
+ * start, not for a listing to arrive, and telling that user the pane is "reading this
+ * session's console" describes the operation they did not ask for. The state is the
+ * same and only the sentence changes, which is why this is a variant rather than a
+ * second component. */
+export const ConsoleLoading: FC<{ creating?: boolean }> = ({ creating }) => (
+	<ConsoleNotice
+		title={creating ? "Starting a console" : "Reading this session's console"}
+	/>
 );
 
 /**
@@ -132,6 +148,50 @@ export const ConsoleUnavailable: FC<{
 		/>
 	);
 };
+
+/**
+ * A create that was refused by the console host (§15's "a surface could not be
+ * started" row).
+ *
+ * WHY THIS IS NOT `ConsoleUnavailable`, and this is the finding it was added for
+ * (design round 1, U2). With the host answering normally and only the CREATE failing,
+ * the pane used to render the unavailable state: "The console is not available in this
+ * app", whose next line is "Terminal support did not load for this run. Updating Local
+ * Operator restores it" — four statements, none of them true of a transient pty
+ * failure, one of them printed directly above the machine line that named the real
+ * cause, and the remedy (reinstall the app) the opposite of the action that helps.
+ *
+ * IT LEADS WITH THE ATTEMPT, NOT THE APP: the console is available here — that is what
+ * makes this state different from its neighbour — and the thing to offer is another
+ * attempt, which is the same action as the header's `+` and the empty state's button.
+ * The host's own words go on the machine line, unedited, because that line is what a
+ * bug report quotes (the first cut's copy is what told the user the app "did not say
+ * why" while quoting the reason below it).
+ */
+export const ConsoleCreateFailed: FC<{
+	message: string | null;
+	onRetry: () => void;
+}> = ({ message, onRetry }) => (
+	<ConsoleNotice
+		icon={
+			<AlertTriangle aria-hidden="true" className={cn("size-5 text-warning")} />
+		}
+		title="The console could not start in this session"
+		detail="The console host is running, and refused to start a program for this conversation — so this is one attempt failing rather than the console being switched off. Trying again is the first thing to do; if it keeps failing, the line below is the host's own reason."
+		machine={message ?? undefined}
+		action={
+			<Button
+				variant="outline"
+				size="sm"
+				onClick={onRetry}
+				data-tour-tag="console-create-retry"
+			>
+				<RefreshCw aria-hidden="true" className={cn("size-4")} />
+				Try again
+			</Button>
+		}
+	/>
+);
 
 /** No surface in this session yet — and the `+` control lives HERE as well as in
  * the header, because this is the state a first-run user actually meets. */

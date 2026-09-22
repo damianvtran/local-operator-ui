@@ -27,11 +27,35 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+/*
+ * THE STORAGE SHIM, the same one `console-pane-render.test.mjs` and four sibling jsdom
+ * suites carry. THIS file now WRITES to the persisted preferences store — the late-answer
+ * pin calls `requestConsoleOpen`/`clearConsoleOpenIntent` — and zustand's persist
+ * middleware writes through `localStorage` on every `setState`. Node 26 has the binding
+ * and its value is `undefined` (Node 22 has none at all and the middleware degrades with
+ * its own warning), so every write throws here without it: agent review round 3's M2, in
+ * the second file it reaches.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
 const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/shared/themes/terminal-theme";',
 			'export * from "./src/renderer/src/features/console/model/console-surfaces";',
+			// The pane's own store, for the one question a model function cannot answer:
+			// whether the open request survives being written to disk.
+			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -46,6 +70,14 @@ const bundle = await build({
 		// which imports Electron. The suite's stub is what every other main-process
 		// bundle uses for the same reason.
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+		/*
+		 * The renderer's own path aliases, restated because esbuild reads the ROOT
+		 * tsconfig by default and the renderer's mapping lives in `tsconfig.app.json`.
+		 * A store added to this bundle is what needs them; without them the bundle
+		 * fails to resolve `@shared/themes` rather than resolving it to a second copy.
+		 */
+		"@shared": join(process.cwd(), "src/renderer/src/shared"),
+		"@features": join(process.cwd(), "src/renderer/src/features"),
 	},
 	logLevel: "silent",
 });
@@ -61,6 +93,9 @@ const {
 	missingTerminalRoles,
 	applyCaptureTheme,
 	measureCell,
+	consoleOpenAction,
+	useUiPreferencesStore,
+	persistedUiPreferences,
 	kebabRole,
 	readConsoleSnapshot,
 	surfacesForSession,
@@ -675,4 +710,155 @@ test("a fed theme: absent is skipped, empty is written and warned about (Q-8)", 
 	} finally {
 		console.warn = realWarn;
 	}
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE USER'S OPEN OF THE CONSOLE.
+ *
+ * "Opening the console typically means you want to run a console command right
+ * away" (the operator's report), so an open by the USER creates the first surface
+ * and takes the caret — while the other three ways this pane opens (a completion
+ * banner's click, an agent's `reveal`, and the restored preference of a relaunch)
+ * must not. The decision is `consoleOpenAction` so the four inputs and the three
+ * refusals are a thing a test can name; what cannot be tested here is the caret,
+ * which belongs to the rendered mirror (`scripts/console-mirror.test.mjs`).
+ * ---------------------------------------------------------------------------
+ */
+
+test("an open by the user creates a surface in a conversation that has none", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: false,
+		}),
+		"create",
+	);
+});
+
+test("an open by the user FOCUSES the surface the pane already shows rather than making a second", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasSurface: true,
+		}),
+		"focus",
+		"a second surface would take the lens off the one the user was reading",
+	);
+});
+
+test("the request WAITS for the first read rather than creating on a listing it has not seen", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: true,
+			available: true,
+			hasSurface: false,
+		}),
+		"none",
+		"acting here would be a controller deciding the conversation has no surface before anything answered",
+	);
+});
+
+test("no other way this pane opens is an open by the user", () => {
+	for (const loading of [true, false]) {
+		assert.equal(
+			consoleOpenAction({
+				requested: false,
+				loading,
+				available: true,
+				hasSurface: false,
+			}),
+			"none",
+			"a restored pane, an agent's reveal and a session switch all arrive with no request",
+		);
+	}
+});
+
+test("a console that cannot exist here is told so rather than given a shell", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: false,
+			hasSurface: false,
+		}),
+		"none",
+	);
+});
+
+test("clearing a request answers only the request it answers", () => {
+	/*
+	 * THE LATE-ANSWER HALF OF F-6, pinned rather than assumed (agent review round 2). The pane
+	 * that answers a request is not necessarily the pane that still owns it: a request can be
+	 * raised for one conversation and a second raised for another while the first is still
+	 * being answered, and an UNCONDITIONAL clear would throw the second one away — the user's
+	 * press would be silently dropped with nothing on screen to say it had been. The clear
+	 * therefore names the conversation it answers, and this is the shape one pane over from the
+	 * caret token's `current === applied` acknowledgement: an answer belongs to its request.
+	 */
+	const store = () => useUiPreferencesStore.getState();
+	store().clearConsoleOpenIntent("session-a");
+	store().requestConsoleOpen("session-a");
+	store().requestConsoleOpen("session-b");
+	store().clearConsoleOpenIntent("session-a");
+	assert.equal(
+		store().consoleOpenIntent,
+		"session-b",
+		"clearing A must not throw away a request the user made for B",
+	);
+	store().clearConsoleOpenIntent("session-b");
+	assert.equal(
+		store().consoleOpenIntent,
+		null,
+		"and its own answer does clear it",
+	);
+});
+
+test("the request is an event and not a preference: persisting it would run a shell on every launch", () => {
+	const state = useUiPreferencesStore.getState();
+	const persisted = persistedUiPreferences({
+		...state,
+		// A CONVERSATION ID rather than a flag, because that is what the request carries
+		// now (agent review round 1, F-6): the pane is remounted on a session switch, so a
+		// request has to say which conversation it was made for.
+		consoleOpenIntent: "session-1f4c",
+		runPanelReveal: { section: "todos" },
+	});
+	assert.equal(
+		"consoleOpenIntent" in persisted,
+		false,
+		"a launched app would otherwise find an open request from the last one and create a surface nobody asked for",
+	);
+	assert.equal("runPanelReveal" in persisted, false);
+	/*
+	 * AND THE OTHER HALF, so this cannot be satisfied by a filter that drops
+	 * everything: the pane's own open state IS a preference and must survive, which is
+	 * why "the pane was open when the app closed" is restored while "the user opened
+	 * it" is not.
+	 */
+	assert.equal("isConsolePaneOpen" in persisted, true);
+	assert.equal(persisted.themeName, state.themeName);
+	/*
+	 * AND IT IS THE FILTER THE STORE SHIPS, not a second copy that happens to answer
+	 * the same way: the assertion above is about an exported function, and a store whose
+	 * `partialize` stopped calling it would leave this file green. Read off the source,
+	 * the way this suite reads the contrast contract's own table.
+	 */
+	const store = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/store/ui-preferences-store.ts",
+		),
+		"utf8",
+	);
+	assert.match(
+		store,
+		/partialize: persistedUiPreferences,/,
+		"the store must persist through the filter this test pins, not through a closure beside it",
+	);
 });

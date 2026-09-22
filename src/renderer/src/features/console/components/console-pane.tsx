@@ -5,16 +5,18 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { Bot, Lock, LockOpen, PanelRightClose, Plus } from "lucide-react";
-import { type FC, useEffect, useMemo } from "react";
+import { type FC, useEffect, useMemo, useState } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
+	consoleOpenAction,
 	pickActiveSurface,
 	surfaceTitle,
 	surfacesForSession,
 } from "../model/console-surfaces";
 import { ConsoleMirror } from "./console-mirror";
 import {
+	ConsoleCreateFailed,
 	ConsoleEmpty,
 	ConsoleEndedBar,
 	ConsoleLoading,
@@ -26,7 +28,8 @@ import {
 /**
  * The console: the FOURTH occupant of the conversation's right slot.
  *
- * Design: `docs/design/ui-console-tab.md` 6.1 (the pane, its lens and its width),
+ * Design: `local-operator`'s
+ * `docs/design/ui-console-tab.md` — that repository's file, not one in this tree. 6.1 (the pane, its lens and its width),
  * 6.2 (recall on a session switch), 6.4 (the pty's lifetime is the surface's, never
  * the pane's), 6.5 (provenance: the surface's own command, and the agent marker the
  * browser's strip uses), 7.3 (the ended state), 9.4 (the pane's chrome is the app's
@@ -75,6 +78,41 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const clearUnseen = useUiPreferencesStore(
 		(state) => state.clearConsoleUnseen,
 	);
+	/* The user's own open of this pane, waiting to be answered (see the store's
+	 * `consoleOpenIntent` for why a request is not carried in a prop). */
+	const openIntent = useUiPreferencesStore((state) => state.consoleOpenIntent);
+	const clearOpenIntent = useUiPreferencesStore(
+		(state) => state.clearConsoleOpenIntent,
+	);
+	/**
+	 * A ONE-SHOT request for the terminal to take the caret, handed to the mirror and
+	 * CONSUMED by the mirror that applies it.
+	 *
+	 * ONE-SHOT IS THE PROPERTY THAT MATTERS, and it is the second one this token has
+	 * had (agent review round 1, F-1; UX round 1, U1). It was a monotonic counter for
+	 * the life of the mount, and the mirror is KEYED ON THE SURFACE — so a lens change
+	 * inside one pane instance (an agent's `console_create` in the conversation on
+	 * screen, a completion banner's click for another surface, the fallback when the
+	 * shown surface leaves the listing) re-keyed the mirror, it mounted carrying the
+	 * stale token, and it pulled the caret out of the composer of whatever the user was
+	 * typing in. Cleared as soon as a mirror has applied it, a later mount inside the
+	 * same pane finds nothing to apply. Gating on "the token changed since mount"
+	 * instead would break the create case, whose mirror mounts AFTER the request.
+	 *
+	 * LOCAL STATE ON PURPOSE, and the reset a remount performs is the second belt: the
+	 * pane is remounted on a session switch (`chat-page.tsx` keys it on `identity`),
+	 * so a caret request cannot outlive the open that asked for it either.
+	 */
+	const [focusRequest, setFocusRequest] = useState(0);
+	/**
+	 * Whether the open this pane is answering is still waiting for main to make a
+	 * surface — the window `createSurface`'s promise exists to cover, and one the
+	 * loading state above is the honest thing to show: the pane HAS been asked for a
+	 * terminal and does not have one yet, so "no console in this session" and its `+`
+	 * would be an answer to a question nobody is asking, with a second press in it
+	 * making a second surface.
+	 */
+	const [creating, setCreating] = useState(false);
 	/* One answer for the whole list: whether a completion is still fresh enough to
 	   pulse (§12.2's two states), asked once rather than per row. */
 	const blipPulsing = useConsoleBlipPulse(unseen);
@@ -133,6 +171,120 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		return () => window.removeEventListener("focus", clear);
 	}, [surface?.surface, clearUnseen, surface]);
 
+	/*
+	 * THE USER'S OPEN, ANSWERED (design 6.1; the operator's report that the pane
+	 * "should not greet you with an empty state and a New console button").
+	 *
+	 * WHAT "OPEN" MEANS: the conversation gets a console if it has none, and the
+	 * caret goes into the terminal either way, because a user who opens a console is
+	 * about to type at it. `consoleOpenAction` holds the decision and its four
+	 * inputs; this effect is the dispatcher and the bookkeeping.
+	 *
+	 * A REQUEST NAMES THE CONVERSATION IT WAS MADE FOR, and only that conversation's pane
+	 * answers it (agent review round 1, F-6): this pane is remounted on a session switch,
+	 * so a request still pending when the user switched would otherwise be answered here
+	 * — a shell created in a conversation nobody asked about.
+	 *
+	 * THE REQUEST IS CLEARED ONLY WHEN IT HAS BEEN ANSWERED. "Still loading" is not an
+	 * answer — the read is what says whether this conversation already has a surface —
+	 * so the request waits there rather than being consumed into a second surface. The
+	 * body masks its own empty state on the same flag while it waits: this effect runs
+	 * after paint, so the commit in between (the read has settled, `creating` is not yet
+	 * set) would otherwise paint "No console in this session" with a live `+` for one
+	 * frame (design round 1, D1).
+	 */
+	const unansweredForThisSession =
+		openIntent !== null && openIntent === sessionId;
+	/**
+	 * A create has answered WITH a surface, and this pane's own listing has not caught up
+	 * yet. It exists because the answer and the listing are two different commits: the
+	 * promise resolves in the microtask that follows the read's `setSnapshot`, so its
+	 * continuation can commit before the listing does, and a mask held by a flag that the
+	 * continuation clears is a mask with a gap in it. Under load that gap painted exactly
+	 * one commit of the greeting this flow exists to remove — caught once by
+	 * `console-pane-render.test.mjs`, which is why this is a STATE the listing settles
+	 * rather than a timer: the effect below clears it on the commit that shows the surface.
+	 */
+	const [awaitingSurface, setAwaitingSurface] = useState(false);
+	useEffect(() => {
+		if (surface !== null) setAwaitingSurface(false);
+	}, [surface]);
+	useEffect(() => {
+		if (!unansweredForThisSession) return;
+		const action = consoleOpenAction({
+			requested: true,
+			loading: session.loading,
+			available,
+			hasSurface: surface !== null,
+		});
+		if (action === "none") {
+			// `available: false` with the read settled is main's own "no console can
+			// exist here" (§15): the pane renders that state, and the request is done.
+			if (!session.loading) clearOpenIntent(sessionId);
+			return;
+		}
+		/*
+		 * The surface a request creates is born with main's own defaults — the login
+		 * shell, the 100x30 grid, `reveal: "none"` — exactly as the pane's `+` makes
+		 * one, because two ways for a user's surface to come into being is the defect.
+		 * Its working directory is main's answer for this session rather than a path
+		 * guessed here: the renderer cannot see the conversation's own directory, and a
+		 * second opinion about it is how a user's shell ends up somewhere they did not
+		 * choose.
+		 */
+		if (action === "create") {
+			setCreating(true);
+			/*
+			 * THE REQUEST IS CLEARED WHEN THE CREATE ANSWERS, not when it is made — the same
+			 * rule the comment above states, applied one step further than the first cut did.
+			 * Clearing it here, beside `setCreating(true)`, still painted the empty state for
+			 * one commit, and the reason is the instrument's: a write to the preferences store
+			 * inside this effect flushes a render of its own (the store is read through
+			 * `useSyncExternalStore`, whose update is sync-lane) BEFORE the `creating` update
+			 * queued in the same tick is applied — so that commit had no surface, no
+			 * `creating`, no loading and no request, which is the empty state the operator's
+			 * report is about. `console-pane-render.test.mjs` asserts per COMMIT and caught it;
+			 * a state sampled after the round trip never could.
+			 *
+			 * THE CARET IS ARMED BY THE ANSWER, NOT BY THE PRESS (agent review round 3, M1).
+			 * It used to be armed on the way IN, beside `setCreating(true)`, and the created
+			 * surface's own mirror then spent it on mount — which works for a create that
+			 * succeeds and leaves the request armed for a create that FAILS, with nothing
+			 * that will ever spend it: the next surface to appear in this conversation by ANY
+			 * route other than the press (main's `onStateChanged` is what an agent's
+			 * `console_create` fires) mounted a mirror that inherited the armed token and
+			 * pulled the caret out of the composer, which is the case UX's U1 named. So the
+			 * invariant is now "the caret is armed by the ANSWER, and only when there is a
+			 * surface to put it in": `createSurface` resolves whether the listing after the
+			 * create holds one, and a refused or empty answer arms nothing.
+			 */
+			void session
+				.createSurface()
+				.then((created) => {
+					if (!created) return;
+					setAwaitingSurface(true);
+					setFocusRequest((value) => value + 1);
+				})
+				.finally(() => {
+					setCreating(false);
+					clearOpenIntent(sessionId);
+				});
+		} else {
+			// The surface the request was for is already in the pane, so its mirror is mounted
+			// (or mounts with the token) and the caret is armed at once.
+			clearOpenIntent(sessionId);
+			setFocusRequest((value) => value + 1);
+		}
+	}, [
+		unansweredForThisSession,
+		sessionId,
+		session.loading,
+		session.createSurface,
+		available,
+		surface,
+		clearOpenIntent,
+	]);
+
 	if (sessionId === null) {
 		return (
 			<div className={cn("flex h-full flex-col bg-surface")}>
@@ -175,20 +327,68 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * now that main ANSWERS an unavailable state rather than throwing: `available`
 		 * is false in the snapshot a pane starts with, so a check on it before the
 		 * loading branch would flash "the console is not available" for one frame on
-		 * every mount. `session.error` is ORed in because a window that cannot reach
-		 * main at all never gets an answer to read.
+		 * every mount.
+		 *
+		 * AND A PENDING OPEN IS PART OF "LOADING" (design round 1, D1; agent review round
+		 * 1, F-3). There are two windows where the pane has been asked for a terminal and
+		 * does not have one yet: the commit where the read has settled and this pane's own
+		 * dispatcher has not run, and the create's round trip — which now includes the read
+		 * that follows it, so the new listing is in hand before `creating` is cleared. Both
+		 * used to be able to paint the empty state with a live `+`, which is the state this
+		 * flow exists to remove.
 		 */
-		if (session.loading && surfaces.length === 0) return <ConsoleLoading />;
-		if (!session.snapshot.available || session.error) {
+		if (
+			(session.loading ||
+				creating ||
+				unansweredForThisSession ||
+				awaitingSurface) &&
+			surfaces.length === 0
+		)
+			return <ConsoleLoading creating={creating} />;
+		/*
+		 * THEN THE TWO FAILURES, IN THE ORDER OF WHAT THEY ARE ABOUT. `available: false` is
+		 * the host saying no console can exist in this app at all (§15) and carries main's
+		 * own reason; a transport error is the other direction — there is no listing to
+		 * paint and no reason to quote. A FAILED CREATE IS NEITHER, and is deliberately not
+		 * here: it is a state of the BODY below, because the console is available and the
+		 * thing to offer is another attempt (design round 1, U2).
+		 */
+		if (!session.snapshot.available) {
 			return (
 				<ConsoleUnavailable
 					reason={session.snapshot.reason}
 					detail={session.snapshot.detail}
+					message={null}
+				/>
+			);
+		}
+		if (session.error) {
+			return (
+				<ConsoleUnavailable
+					reason={null}
+					detail={null}
 					message={session.error}
 				/>
 			);
 		}
 		if (!surface) {
+			/*
+			 * A CREATE THAT WAS REFUSED gets its own state rather than the unavailable one,
+			 * and the reason is what the first cut got wrong (design round 1, U2): with the
+			 * host answering and the CREATE failing, the pane said "the console is not
+			 * available in this app" and advised updating the app — for a transient pty
+			 * failure — directly above the machine line that named the real cause. The
+			 * header `+` stays enabled here, which is the correct half: the action to offer
+			 * is another attempt, and the body now offers the same one.
+			 */
+			if (session.createError) {
+				return (
+					<ConsoleCreateFailed
+						message={session.createError}
+						onRetry={session.createSurface}
+					/>
+				);
+			}
 			return (
 				<ConsoleEmpty
 					onCreate={session.createSurface}
@@ -230,6 +430,29 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					<ConsoleMirror
 						key={surface.surface}
 						surface={surface.surface}
+						/* The caret, on the user's own open and never on a mount (see
+						   `focusRequest` above) — and the token is CONSUMED by the mirror that
+						   applies it, so a mirror mounted later for a surface the user never asked
+						   for finds a zero and leaves the keyboard where it is.
+
+						   THE CLEAR IS DEFERRED ONE MICROTASK, and that is not hedging: the app
+						   mounts its tree inside `React.StrictMode`, whose dev-mode double
+						   invocation runs this mirror's effects, unmounts it and runs them again
+						   inside ONE commit — so an acknowledgement applied synchronously spends the
+						   request on the mount that is immediately discarded and the caret never
+						   lands (measured in the browser harness with StrictMode on: the subscribe
+						   replayed twice and `helperFocused` was false; the shipped build has no
+						   double invocation and lands it). A microtask still clears the token
+						   before any LATER render can mount a mirror, because a lens change is a
+						   different task — which is the property the finding is about. */
+						focusRequest={focusRequest}
+						onFocusTaken={(applied) =>
+							queueMicrotask(() =>
+								setFocusRequest((current) =>
+									current === applied ? 0 : current,
+								),
+							)
+						}
 						/* The pane is open and this is the surface it is showing, so this
 					   mirror is on screen: `visible: true` is what lets main derive a grid
 					   from its report at all (§8.2/8.3). A pane that is mounted but
@@ -305,8 +528,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							/* DISABLED WHEN THERE IS NOTHING TO ACT ON, which is the pane's
 							   own stated principle ("a control with nothing to act on lies"):
 							   in the unavailable state the `+` rendered identically to the
-							   empty state's and did nothing when pressed. */
-							disabled={!available}
+							   empty state's and did nothing when pressed. It is ALSO disabled
+							   while a create is in flight, which is the same principle's other
+							   half: a second press in that window would make a second surface,
+							   and the body's retry would then be racing this control for the
+							   same action. It stays ENABLED after a create has FAILED, because
+							   trying again is the action that failure calls for. */
+							disabled={!available || creating}
 							data-tour-tag="console-new-surface"
 						>
 							<Plus aria-hidden="true" />

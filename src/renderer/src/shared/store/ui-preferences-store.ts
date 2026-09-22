@@ -169,6 +169,56 @@ type UiPreferencesState = {
 	isConsolePaneOpen: boolean;
 
 	/**
+	 * The conversation whose console the user has just asked to open, and which the
+	 * pane has not answered yet. `null` when there is no request.
+	 *
+	 * A CONSUMED-ONCE REQUEST, NOT A PREFERENCE, and it is deliberately excluded
+	 * from persistence below. The console pane opens for four reasons — the user's
+	 * press, a completion banner's click, an agent's `reveal`, and the restored
+	 * preference of an app relaunch — and only the FIRST of them means "I want to run
+	 * a command now". The other three name a surface that already exists (the
+	 * banner), are not the user's gesture at all (the reveal), or are the same pane
+	 * the user left open (the restore, and this is the one that would be a bug:
+	 * creating a surface on restore would put a shell in a conversation on every
+	 * launch). So the request is an EVENT: the pane consumes it and clears it, and a
+	 * launch starts with it null by construction rather than by a guard.
+	 *
+	 * IT NAMES THE CONVERSATION rather than being a boolean, and that closes a hole the
+	 * first cut left (agent review round 1, F-6): the pane is REMOUNTED on a session
+	 * switch, so a request still pending when the user switched would have been answered
+	 * by the NEXT conversation's pane — a shell created in a conversation nobody asked
+	 * about. An answer is only an answer for the conversation that asked.
+	 *
+	 * IT LIVES IN THE STORE rather than in a prop of the pane's parent for the reason
+	 * `consoleActiveSurface` does: the pane is remounted on a session switch, so a flag
+	 * held in the pane would either be forgotten by the remount it was set just
+	 * before, or re-fire on the remount it survived into. Here the pane clears it as
+	 * soon as it has acted, so a remount finds nothing to do.
+	 */
+	consoleOpenIntent: string | null;
+
+	/**
+	 * Ask the pane to take a user's open of the console: create the first surface if
+	 * that conversation has none, or put the caret in the one it shows.
+	 *
+	 * ONE CALLER: the chat header's console trigger, which is offered only where there
+	 * is a conversation to act on. The banner's click and main's `reveal` push
+	 * deliberately do not call it — see `consoleOpenIntent`.
+	 */
+	requestConsoleOpen: (sessionId: string) => void;
+
+	/** The pane has answered the request FOR THIS CONVERSATION, and only that one. Called
+	 * by the pane alone, with the conversation it answered for.
+	 *
+	 * IT TAKES THE CONVERSATION IT ANSWERS, and the guard is the point (agent review round
+	 * 3, the late-answer half of F-6): an unconditional clear would wipe a request the user
+	 * made for a different conversation while the first one was still being answered — the
+	 * pane would have thrown away a request nobody had served. It is the same shape as the
+	 * caret token's `current === applied` acknowledgement one pane over: an answer belongs
+	 * to the request it answers. */
+	clearConsoleOpenIntent: (sessionId: string) => void;
+
+	/**
 	 * Set the console pane open state.
 	 *
 	 * Opening it closes the other three occupants, by the same construction as
@@ -755,6 +805,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
+			consoleOpenIntent: null,
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
@@ -860,6 +911,21 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({
 					consoleActiveSurface: surface,
 				});
+			},
+
+			requestConsoleOpen: (sessionId: string) => {
+				set({ consoleOpenIntent: sessionId });
+			},
+
+			clearConsoleOpenIntent: (sessionId: string) => {
+				// Guarded so a pane with nothing to answer does not write a new state object
+				// on every pass of its effect — and so a pane answering ITS conversation
+				// cannot clear a request raised for another one in the meantime.
+				set((state) =>
+					state.consoleOpenIntent === sessionId
+						? { consoleOpenIntent: null }
+						: {},
+				);
 			},
 
 			markConsoleUnseen: (sessionId: string, surface: string) => {
@@ -1011,11 +1077,42 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * asked about. That is the same defect `docs/run-sidebar.md` § 3.5 refuses
 			 * for the reader's open child — "a mode of a pane is not a preference" —
 			 * and a consumed-once request is more transient than a mode, not less.
+			 *
+			 * `consoleOpenIntent` is the second field, excluded for the same reason one
+			 * pane over: it is a request, it is answered within a frame of being made,
+			 * and a launch that restored it would run a shell in a conversation every
+			 * time the app started — which is exactly the difference between the pane
+			 * being restored and the user opening it.
 			 */
-			partialize: (state) => {
-				const { runPanelReveal: _pending, ...persisted } = state;
-				return persisted;
-			},
+			partialize: persistedUiPreferences,
 		},
 	),
 );
+
+/**
+ * The part of the preferences that is written to disk: all of it, minus the two
+ * requests that only mean something inside the run that made them.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE CLOSURE, and the reason is a test that went
+ * red in CI rather than here: the pin over this filter used to reach the closure
+ * through `useUiPreferencesStore.persist.getOptions()`, which is zustand's own API
+ * and is not the same shape on every runtime (`Cannot read properties of undefined
+ * (reading 'getOptions')` on CI's node against this one), so the filter is exported
+ * and the test asserts the shipped function itself instead of a runtime handle on it.
+ *
+ * `runPanelReveal` is a request to open the run pane at a section; `consoleOpenIntent`
+ * names the conversation a request to give a terminal and the keyboard was made for.
+ * Both are consumed by the pane that answers them, so persisting either would outlive the event it describes
+ * — a launch would restore a request nobody made and act on it, which for the console
+ * means running a shell in a conversation every time the app started.
+ */
+export function persistedUiPreferences<
+	T extends { runPanelReveal: unknown; consoleOpenIntent: unknown },
+>(state: T): Omit<T, "runPanelReveal" | "consoleOpenIntent"> {
+	const {
+		runPanelReveal: _pending,
+		consoleOpenIntent: _intent,
+		...persisted
+	} = state;
+	return persisted;
+}

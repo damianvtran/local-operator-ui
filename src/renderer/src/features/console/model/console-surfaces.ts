@@ -230,6 +230,54 @@ export const pickActiveSurface = (
 };
 
 /**
+ * What a user's open of the console should DO, as one answer the pane can act on
+ * and a test can name.
+ *
+ * WHY THIS IS A MODEL FUNCTION AND NOT AN `if` INSIDE AN EFFECT. The decision has
+ * four inputs and three of them arrive asynchronously, so the pane's effect is the
+ * easy half to get subtly wrong — and the wrong half is not cosmetic: acting before
+ * the first read lands creates a SECOND surface in a conversation that already had
+ * one, and acting on a request nobody made creates one in a conversation the user
+ * was not opening. Naming the answer keeps the effect a dispatcher.
+ *
+ * The inputs, and why each one is one of them:
+ *
+ *   - `requested` — the user's own open, and nothing else produces it (see the
+ *     store's `consoleOpenIntent`). A pane restored at launch, a pane remounted by
+ *     a session switch, and an agent's `reveal` all reach this function with
+ *     `requested: false`, which is what makes "never on a background path" a
+ *     property of the model rather than of the caller's memory.
+ *   - `loading` — the first read has not answered, so "does this conversation have
+ *     a surface" is not yet a question with an answer. Waiting is the only correct
+ *     behaviour, and it is what stops the double-create above.
+ *   - `available` — main says no console can exist here (§15). There is nothing to
+ *     create and nothing to focus, and the pane's empty state is where the user
+ *     lands instead.
+ *   - `hasSurface` — the conversation already has one, so the open FOCUSES it
+ *     rather than making a second: `pickActiveSurface` has already chosen which
+ *     one the pane is showing (`focus`), and a second surface would take the lens
+ *     away from the one the user was reading.
+ */
+export type ConsoleOpenAction = "none" | "create" | "focus";
+
+export const consoleOpenAction = ({
+	requested,
+	loading,
+	available,
+	hasSurface,
+}: {
+	requested: boolean;
+	loading: boolean;
+	available: boolean;
+	hasSurface: boolean;
+}): ConsoleOpenAction => {
+	if (!requested) return "none";
+	if (loading) return "none";
+	if (!available) return "none";
+	return hasSurface ? "focus" : "create";
+};
+
+/**
  * A surface's own name for the pane's header, in the words §6.5 fixes: the
  * command it was created with, or its `argv[0]`, or the id's own tail when the
  * listing carries neither.

@@ -14,7 +14,8 @@ import { type FC, useEffect, useLayoutEffect, useRef, useState } from "react";
 /**
  * The pane's terminal: a MIRROR of a surface main owns.
  *
- * Design: `docs/design/ui-console-tab.md` 6.1 (the pane), 8.1/8.2 (the grid is
+ * Design: `local-operator`'s
+ * `docs/design/ui-console-tab.md` — that repository's file, not one in this tree. 6.1 (the pane), 8.1/8.2 (the grid is
  * main's and a view never sets it), 8.5 (what a pane does when the grid and the box
  * disagree), 10.3 (the subscription: replay, then stream), 12.2 (the blip's
  * clearing rule), 13.3 (the capture view pins the DOM renderer).
@@ -53,6 +54,31 @@ export interface ConsoleMirrorProps {
 	/** Whether the pane is actually on screen. A hidden pane reports
 	 * `visible: false` and no grid is derived from it (§8.2/8.3). */
 	visible: boolean;
+	/**
+	 * A request for the terminal to take the keyboard, from the pane's answer to the
+	 * user's own open of the console.
+	 *
+	 * A COUNTER RATHER THAN A BOOLEAN so a second open is a second request, and
+	 * `0`/absent — every mount nobody just asked for, which is the restored pane, the
+	 * agent's `reveal` and the capture view — is a mirror that never touches focus.
+	 * That is not tidiness: a mirror that focused on mount would pull the caret out of
+	 * the composer of whatever conversation the user is actually typing in.
+	 *
+	 * THE TOKEN IS **CONSUMED**, NOT MERELY OBSERVED, and that is what makes the
+	 * sentence above true of a mount at all (agent review round 1, F-1; UX round 1,
+	 * U1). The pane keys this component on the surface, so a lens change inside one
+	 * pane — an agent's `console_create`, a banner's click for another surface, the
+	 * fallback when the shown surface leaves the listing — mounts a NEW mirror, and a
+	 * token that survived the pane's whole life would still be sitting there for it to
+	 * apply. So the mirror reports what it applied (`onFocusTaken`) and the pane zeroes
+	 * the token, which is what leaves a later mount nothing to inherit.
+	 */
+	focusRequest?: number;
+	/** This mirror has applied `focusRequest` and it is now spent. A per-APPLICATION
+	 * acknowledgement rather than a per-mount one: the pane clears the token only if
+	 * it is still the token that was applied, so an acknowledgement that arrives after
+	 * a newer request cannot cancel it. */
+	onFocusTaken?: (applied: number) => void;
 	/** The grid main decided for this surface, applied as given (§8.2 step 3). */
 	cols: number;
 	rows: number;
@@ -99,6 +125,8 @@ const decodeBytes = (base64: string): Uint8Array => {
 export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	surface,
 	visible,
+	focusRequest,
+	onFocusTaken,
 	cols,
 	rows,
 	mode = "interactive",
@@ -116,8 +144,21 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	reportRef.current = onReport ?? null;
 	const exitRef = useRef(onExit);
 	const settledRef = useRef(onSettled);
+	const focusTakenRef = useRef(onFocusTaken);
 	exitRef.current = onExit;
 	settledRef.current = onSettled;
+	/*
+	 * THE ACKNOWLEDGEMENT IS READ THROUGH A REF, like `onExit`/`onSettled`/`onReport` above
+	 * and for the same reason the caret effect is about to depend on: an inline handler
+	 * (`onFocusTaken={(applied) => …}`) is a NEW function on every render of the parent, so
+	 * an effect that listed it in its dependencies would re-run on every one of those
+	 * renders — and while the token is still non-zero between the application and the pane's
+	 * acknowledgement, each of those re-runs is another `terminal.focus()`. Measured: two of
+	 * them on a create that answers in more than one commit, which is what a busy render
+	 * loop under load looks like (agent review round 3, M1's contrast test read
+	 * `focusCount 2`).
+	 */
+	focusTakenRef.current = onFocusTaken;
 
 	/*
 	 * The terminal itself, created once per mount and disposed with it.
@@ -389,6 +430,26 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		if (terminal.cols === cols && terminal.rows === rows) return;
 		terminal.resize(cols, rows);
 	}, [terminal, cols, rows]);
+
+	/*
+	 * THE CARET, ON REQUEST AND NEVER ON MOUNT.
+	 *
+	 * The pane is mounted for a restored preference, for an agent's `reveal` and on
+	 * every session switch, and not one of those is a user asking for the keyboard —
+	 * so this is the pane's own open that decides, not this component's lifecycle.
+	 *
+	 * THE REQUEST IS SPENT WHEN IT IS APPLIED — hence the acknowledgement — and the
+	 * mount case is still covered, which is the one that has to be: a request that
+	 * CREATES a surface sees this mirror mount a frame later, carrying the same token,
+	 * which is why the token and not the change of it is the trigger. What the
+	 * acknowledgement removes is the OTHER mount: one carrying a token the user's
+	 * gesture is long finished with, which used to take the keyboard from the composer.
+	 */
+	useEffect(() => {
+		if (!terminal || !focusRequest) return;
+		terminal.focus();
+		focusTakenRef.current?.(focusRequest);
+	}, [terminal, focusRequest]);
 
 	/*
 	 * THE THEME, THE RECT AND THEIR ONE OBSERVER.

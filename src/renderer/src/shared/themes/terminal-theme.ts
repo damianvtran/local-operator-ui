@@ -319,49 +319,95 @@ export const terminalFontFamily = (
  * WHY THIS IS MEASURED HERE RATHER THAN READ OFF THE TERMINAL: xterm exposes no
  * public cell metric, and the value main needs is a divisor for the pane's own
  * box. Canvas `measureText` with the same font string is what xterm's own
- * CharSizeService uses, so this is the same measurement rather than a second
- * opinion; it can differ from xterm's rounded-up device-pixel cell by under one
- * pixel, and the consequence of that is bounded and already designed: main owns
- * the grid (§8), and a mirror whose measure is a hair small crops horizontally
- * exactly as §8.5's mismatch rule says a narrow pane does.
+ * `CharSizeService` measures with, so this is the same measurement rather than a
+ * second opinion.
  *
- * The width is measured with `W` (the widest common cell in a monospace face,
- * and what xterm measures with), and the height is the font box the renderer
- * allocates — `fontSize * 1.2`, which is the line box a shared terminal uses;
- * it is reported to main rather than used to size anything here.
+ * THE HEIGHT IS THE ROW HEIGHT XTERM WILL ACTUALLY PAINT, and that is a
+ * correction rather than a refinement. This used to return `fontSize * 1.2` (the
+ * line box a shared terminal allocates) on the reasoning that it "can differ from
+ * xterm's rounded-up device-pixel cell by under one pixel". Measured in the built
+ * app at 1380x900 / dpr 2, the difference is 1.4 px per row and the consequence is
+ * not bounded at all: xterm 6 measures its char height as
+ * `fontBoundingBoxAscent + fontBoundingBoxDescent` (`browser/services/
+ * CharSizeService.ts`, `TextMetricsMeasureStrategy`) and then sizes each row to
+ * `round(ceil(charHeight * dpr) * rows / dpr) / rows` (`browser/renderer/dom/
+ * DomRenderer.ts`), which at this face and ratio is 17 px against this function's
+ * 15.6. Main divides the pane's box by the number reported here, so a divisor
+ * smaller than the painted row yields MORE ROWS THAN THE BOX HOLDS: the pane's
+ * 791 px box was told to draw 50 rows, 850 px of terminal, and the last 59 px —
+ * three and a half rows, the prompt included — were painted below the box's
+ * clipped edge, where no scroll can reach them. The reported height is therefore
+ * the same font metric xterm measures, rounded up to the device pixel grid the
+ * same way xterm rounds it, because those two roundings are what the row height
+ * IS.
+ *
+ * The width is measured with `W` (the widest common cell in a monospace face, and
+ * what xterm measures with) and is deliberately left un-rounded, as xterm leaves
+ * it: xterm's cell width is `charWidth` in device pixels with no ceiling, so a
+ * hair-small reported width over-derives columns by nothing — and the design's
+ * answer to a box narrower than its grid is a horizontal crop (§8.5), not a
+ * smaller grid. A vertical crop has no such answer: the bottom row of a terminal
+ * is where the prompt is.
  */
 export const measureCell = (
 	fontFamily?: string,
 	fontSize: number = TERMINAL_FONT_SIZE,
-): { cellWidth: number; cellHeight: number } => {
-	const cellHeight = fontSize * 1.2;
-	/*
-	 * A process with no DOM — a Node test importing this module through the desktop
-	 * suite, which bundles the real source — gets the ratio rather than an
-	 * exception: 0.6em is the advance of every monospace face this app has shipped,
-	 * and the width derived from it is a preference default rather than a
-	 * measurement anyone reads. Nothing in a real render reaches this branch.
+	/**
+	 * The ratio xterm rounds its device-pixel cell with. A parameter rather than a
+	 * global read so the rounding is testable, and defaulted to the renderer's own
+	 * value, which is the one xterm's `CoreBrowserService` uses.
 	 */
+	devicePixelRatio: number = typeof window === "undefined"
+		? 1
+		: window.devicePixelRatio || 1,
+): { cellWidth: number; cellHeight: number } => {
+	/*
+	 * THE RATIO BRANCH, and both callers of it are real: a process with no DOM (a
+	 * Node test importing this module through the desktop suite, which bundles the
+	 * real source) gets 0.6em / 1.2em, and so does a context whose metrics cannot
+	 * answer. 1.2em is the line box the shipped face is drawn in, which is the best
+	 * answer available without a measurement — and it is the one value here that is
+	 * NOT the painted row height, so it is only ever reachable where nothing paints.
+	 */
+	let cellWidth = fontSize * 0.6;
+	let cellHeight = fontSize * 1.2;
 	if (typeof document === "undefined") {
-		return { cellWidth: fontSize * 0.6, cellHeight };
+		return { cellWidth, cellHeight };
 	}
 	/*
-	 * THE FONT IS RESOLVED HERE, AFTER the no-DOM guard, rather than as a default
-	 * argument — which is a correction: `fontFamily = terminalFontFamily()` evaluated
-	 * its default BEFORE the guard ran, and `terminalFontFamily()` reads
-	 * `document.documentElement`, so the branch below that exists to return a ratio
-	 * "rather than an exception" threw a ReferenceError in every Node process. The
-	 * ratio is now what a process without a document actually gets.
+	 * THE FONT IS RESOLVED AFTER THE GUARD rather than as a default argument, and the
+	 * reason is the guard itself: `terminalFontFamily()` reads
+	 * `document.documentElement`, so a default argument would evaluate it before the
+	 * branch that exists for a process with no document had a chance to return —
+	 * which is a ReferenceError in every Node process, the one thing that branch is
+	 * written to avoid.
 	 */
 	const family = fontFamily ?? terminalFontFamily();
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
-	const font = `${fontSize}px ${family}`;
-	let cellWidth = fontSize * 0.6;
-	if (context) {
-		context.font = font;
-		const measured = context.measureText("W").width;
-		if (Number.isFinite(measured) && measured > 0) cellWidth = measured;
+	if (!context) return { cellWidth, cellHeight };
+	context.font = `${fontSize}px ${family}`;
+	const metrics = context.measureText("W");
+	if (Number.isFinite(metrics.width) && metrics.width > 0) {
+		cellWidth = metrics.width;
+	}
+	const fontHeight =
+		metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+	if (Number.isFinite(fontHeight) && fontHeight > 0) {
+		cellHeight = deviceRoundedRowHeight(fontHeight, devicePixelRatio);
 	}
 	return { cellWidth, cellHeight };
 };
+
+/**
+ * The height of one row as xterm paints it, in CSS pixels.
+ *
+ * xterm holds its cell height in DEVICE pixels (`ceil(charHeight * dpr)`) and turns
+ * it back into CSS pixels once, on the whole grid (`round(cellHeight * rows / dpr)`),
+ * so the per-row height it draws is the device-ceiled one and not the font metric.
+ * Exported because that round trip is the thing a test has to be able to name.
+ */
+export const deviceRoundedRowHeight = (
+	fontHeight: number,
+	devicePixelRatio: number,
+): number => Math.ceil(fontHeight * devicePixelRatio) / devicePixelRatio;

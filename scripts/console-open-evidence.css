@@ -1,0 +1,35 @@
+/*
+ * Stylesheet for the console OPEN evidence harness.
+ *
+ * `@import` AND `@source` ARE BOTH LOAD-BEARING, and the first capture of this harness is
+ * why the note exists in a fifth file. Tailwind v4 detects source files relative to the
+ * VITE ROOT, and this harness's root is `scripts/` — so the renderer's own utilities are
+ * never generated, and the page comes out as correct markup with no design system. That
+ * failure is SILENT and it cost a frame here: the new create-failed state's retry button
+ * rendered its icon and its label stacked, because `inline-flex` (written in
+ * `button.tsx`, never in `scripts/`) was not in the sheet at all. `@source` points the
+ * scanner back at the renderer tree and `@import` gives the harness the app's own roles,
+ * radii and type ramp, so a frame here resolves exactly what the product resolves.
+ *
+ * Below it: this page's own furniture, and only that. The pane brings its own theme, so
+ * nothing here may colour it.
+ *
+ *  - the page's ground is the app's `sunken` role, so the pane's edge is visible in a
+ *    frame instead of dissolving into a default white body;
+ *  - `#probe` is off-canvas, because the frame is the product surface and the numbers a
+ *    reader checks belong beside it rather than painted over it.
+ */
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
+
+body {
+	margin: 0;
+	background: var(--lo-sunken);
+}
+
+#probe {
+	position: absolute;
+	left: -10000px;
+	top: 0;
+	white-space: pre;
+}
