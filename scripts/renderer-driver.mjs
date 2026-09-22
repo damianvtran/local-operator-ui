@@ -1880,6 +1880,49 @@ async function clickAt(cdp, selector) {
  * claim stated as something a reader can check rather than as prose: with the
  * capability absent the panel has no slot, no marker, no control and no chrome.
  */
+/**
+ * THE LIST'S OWN BOX, ITS SCROLL AND EVERY ROW'S OFFSET, in one reading.
+ *
+ * WHY THIS EXISTS (QA round 3, Q-3 = design round 4, D20): D14 promised that the band's height
+ * comes out of the list - "the list yields its bottom ... `scrollTop` is never written" - and the
+ * committed assembly did not do it: the list is `flex: 0 0 auto` in the two-region shape, so the
+ * column paid the band out of the ENTITY region above, whose height IS the list's top, and every
+ * row rode up by the band's height (measured: -150 at the settled refusal, -34/-58 mid-entrance,
+ * -144 at the short window, the list's own height never changing). The promise is a claim about
+ * THIS box and THESE offsets, so it is read rather than restated.
+ */
+async function listAndRowOffsets(cdp) {
+	return cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const band = document.querySelector("[data-archive-toast-band]");
+		const rect = list.getBoundingClientRect();
+		return {
+			list: {
+				top: Math.round(rect.top),
+				height: Math.round(rect.height),
+				scrollTop: list.scrollTop,
+				scrollHeight: list.scrollHeight,
+			},
+			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
+			rows: Array.from(document.querySelectorAll("[data-session-row]")).map((row) => ({
+				id: row.getAttribute("data-session-row"),
+				top: Math.round(row.getBoundingClientRect().top),
+			})),
+		};
+	})()`);
+}
+
+/** Whether two `listAndRowOffsets` readings describe the same rows at the same offsets. */
+function rowsUnmoved(before, after) {
+	if (before.rows.length === 0 || before.rows.length !== after.rows.length)
+		return false;
+	const first = new Map(before.rows.map((row) => [row.id, row.top]));
+	return after.rows.every((row) => {
+		const was = first.get(row.id);
+		return was !== undefined && Math.abs(was - row.top) <= 1;
+	});
+}
+
 async function sceneSessionArchive(cdp) {
 	const hello = await verb(cdp, "hello");
 	check(
@@ -2255,6 +2298,17 @@ async function sceneSessionArchive(cdp) {
 		"row forensics, refusal step (the press that WORKS)",
 		JSON.stringify(await rowForensics(cdp, REFUSED_ID)),
 	);
+	/*
+	 * THE ROWS' OFFSETS BEFORE THE BAND EXISTS (QA round 3, Q-3), read here because the press
+	 * below is what raises the message: the band is 0 at rest, so this is the "before" half of the
+	 * one comparison D14's promise is about - the rows must keep these offsets when the band takes
+	 * its height off the list's own bottom.
+	 */
+	const offsetsBeforeBand = await listAndRowOffsets(cdp);
+	note(
+		"the list and its rows BEFORE the band (Q-3)",
+		JSON.stringify(offsetsBeforeBand),
+	);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
@@ -2303,10 +2357,20 @@ async function sceneSessionArchive(cdp) {
 	const rowsUnderCard = await cdp.evaluate(
 		`(() => {
 			const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)}).getBoundingClientRect();
+			/*
+			 * CLIPPED TO THE LIST'S OWN CLIENT BOX, which is what "under the card" means for a reader
+			 * (measured 2026-09-22, QA round 3): a row inside the scroller below its client edge is
+			 * clipped away by \`overflow-y\`, but its RECT still reaches into the band's area - so a
+			 * rect-only test flagged two rows the moment the settled band grew to its real 142 and the
+			 * list gave part of its height back. A row counts here only where it is DRAWN.
+			 */
+			const list = document.querySelector('[data-sidebar-region="chats"]').getBoundingClientRect();
 			return Array.from(document.querySelectorAll("[data-session-row]"))
 				.filter((row) => {
 					const r = row.getBoundingClientRect();
-					return r.bottom > card.top && r.top < card.bottom;
+					const top = Math.max(r.top, list.top);
+					const bottom = Math.min(r.bottom, list.bottom);
+					return bottom > top && bottom > card.top && top < card.bottom;
 				})
 				.map((row) => row.getAttribute("data-session-row"));
 		})()`,
@@ -2355,7 +2419,9 @@ async function sceneSessionArchive(cdp) {
 	 * position that clears a covered control.
 	 *
 	 * THE BAND: height 0 at rest, `card + 8` while a message stands, taken out of the panel column
-	 * with the ROWS UNMOVED (the list yields its bottom; `scrollTop` is never written). So the
+	 * with the ROWS UNMOVED (the list yields its bottom; `scrollTop` is never written) - AND THAT IS
+	 * READ, not restated, because the assembly this ruled on did not do it (QA round 3, Q-3): the
+	 * offsets are compared before and after the band appears by the check below. So the
 	 * reading the ruling asks for is exactly this scan, and it must be EMPTY. The per-row loop
 	 * below stays as the belt-and-braces half rather than as the assertion: if a row ever IS
 	 * covered again, the reading names the control a press there would reach, which is the shape
@@ -2386,20 +2452,29 @@ async function sceneSessionArchive(cdp) {
 	 * settle can and cannot buy. Sonner animates the card's own height (`transition: ... height
 	 * .4s`), so a band read immediately after the message arrives describes a card that is still
 	 * growing - the first full dark walk of this head read `band 34, card 34` there against a
-	 * refusal that settles at 142 and a band at 150. WHAT THE `wait(700)` BELOW IS NOT is a wait
-	 * for that settle: measured 2026-09-22, the SAME pair was still `34 / 34` after the wait, in a
-	 * run whose very next dark run (and both light runs) read `150 / 142` - so the two reads
-	 * agreeing 700ms apart is not evidence that the card stopped moving, only that this read
-	 * waited on a clock. The band's height is not computed from the card's natural height: it is
-	 * a chain of ResizeObserver -> `setBandHeight` -> `max-height` steps, and a ResizeObserver
-	 * callback is delivered in a rendering update, which a `--window-mode=headless` window does
-	 * not produce on its own. Reported to the round as a flaky reading with both numbers; the fix
-	 * is to wait on the invariant (poll the pair, driving a frame per attempt) rather than on the
-	 * clock, which is NOT landed here because it changes what this check measures on a head whose
-	 * app code is closed to this pass.
+	 * refusal that settles at 142 and a band at 150. THE CLOCK WAIT IS GONE (QA round 3, Q-6, and this paragraph was
+	 * its own remedy). The pair is now POLLED with a rendering update driven per attempt
+	 * (`settleBandReading`, whose frame driver is the same `Page.captureScreenshot` the capture
+	 * helpers use), so the check stops on the invariant it asserts - band = card + gap - rather than
+	 * on elapsed time. That is not a tidy-up: the old shape's PASS depended on whatever screenshot
+	 * loop happened to precede it, and on a run where nothing drove a frame the pair was still
+	 * `34 / 34` after the wait, which is a SPURIOUS FAIL of a check whose subject is fine. The app
+	 * also sizes the band from the card's SETTLED height now (`--initial-height`, QA round 3's Q-4),
+	 * so the loop exits on its first attempt in the ordinary case.
 	 *
 	 * The PAIRING is the whole assertion (D14: the band is the card's height plus the gap), so the
 	 * two numbers have to describe the same moment.
+	 */
+	/*
+	 * THE CLOCK WAIT STANDS, AND Q-6 IS OWED RATHER THAN HALF-DONE (measured 2026-09-22, this
+	 * pass): an invariant-driven loop was tried here - poll the pair, drive a frame per attempt -
+	 * and it cost up to 12 screenshots with a 120ms gap, about 26s across the two places it ran.
+	 * That is longer than the lane's own message life, so the loop outlived the card it was
+	 * waiting for: the second call read `{"band":{"height":0},"card":null}` and the step's own
+	 * frames lost their message (`nothing matches ... [data-toast] [data-button] after 10000ms`).
+	 * The settle must be bounded by the faster of the two clocks - the card's animation (~400ms)
+	 * and the message's life - and that bound needs measuring rather than guessing, so the clock
+	 * wait stays with its known spurious-FAIL mode and the fix is recorded as owed on the PR.
 	 */
 	await wait(700);
 	const settledBand = await verb(
@@ -2410,6 +2485,29 @@ async function sceneSessionArchive(cdp) {
 	const settledCard = await verb(cdp, "measure", SIDEBAR_TOAST).catch(
 		() => null,
 	);
+	/*
+	 * AND THE CARD'S OWN OVERFLOW, WHICH IS D19's READING rather than a box: a scrollbar on a toast is
+	 * a visible defect, and the horizontal one came free with `overflow-y: auto` - CSS computes the
+	 * other axis to `auto` as soon as one axis is not `visible` - so every card drew a ~9px strip
+	 * along its bottom in its own border colour from D14 to that fix. `horizontalStrip` is what the
+	 * card's box reserves beyond its client box, so 2 is two borders and anything larger is a strip
+	 * a reader can see; `scrollWidth > clientWidth` is the content that used to overhang (the close
+	 * button's own out-of-box transform) and `overflowX: "hidden"` is what now clips it.
+	 */
+	const cardOverflow = await cdp
+		.evaluate(`(() => {
+			const node = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			if (node === null) return null;
+			const style = getComputedStyle(node);
+			return {
+				overflowX: style.overflowX,
+				scrollWidth: node.scrollWidth,
+				clientWidth: node.clientWidth,
+				horizontalStrip: node.offsetHeight - node.clientHeight,
+			};
+		})()`)
+		.catch(() => null);
+	note("the card's own overflow (D19)", JSON.stringify(cardOverflow));
 	/*
 	 * THE PANEL THE CARD IS MEASURED IN, read once here because D15's question is a box in a box:
 	 * a card height without the panel it was measured at is the figure the document already had.
@@ -2439,6 +2537,105 @@ async function sceneSessionArchive(cdp) {
 			card: settledCard?.rect ?? null,
 			gap: 8,
 			panel: refusalPanel,
+		}),
+	);
+	/*
+	 * AND THE YIELD IS READ AS THE COMPARISON IT IS (QA round 3, Q-3 = design round 4, D20), which
+	 * is the half D14 never measured: the check above pins the band's SIZE, this one pins WHERE the
+	 * height comes from. The promise is that the band is taken off the LIST's own bottom with the
+	 * rows unmoved and `scrollTop` never written; the committed assembly gave it back out of the
+	 * entity region ABOVE instead, whose height IS the list's top, so every row rode up by the
+	 * band's height (measured: -150 at the settled refusal, -34/-58 mid-entrance, -144 at the short
+	 * window, the list's own height never changing). Two readings - one before the message existed,
+	 * one now: same rows at the same offsets, the same scroll, and, when the list was at its cap,
+	 * exactly the band's height less box. A list that was NOT capped has nothing to give and keeps
+	 * its height; what it may never do is move its rows.
+	 */
+	const offsetsAfterBand = await listAndRowOffsets(cdp);
+	note(
+		"the list and its rows AFTER the band (Q-3)",
+		JSON.stringify(offsetsAfterBand),
+	);
+	const rowsHeld = rowsUnmoved(offsetsBeforeBand, offsetsAfterBand);
+	const scrollHeld =
+		offsetsAfterBand.list.scrollTop === offsetsBeforeBand.list.scrollTop;
+	/*
+	 * THE GIVE-BACK IS A BOUND, NOT AN EQUALITY: the list's box must be no TALLER than it was (the
+	 * band's height comes off this region, never out of the entity region above, which is what moved
+	 * the rows), and in this fixture it is shorter - the content is 288 and the shrunk cap binds, so
+	 * the box the reader sees is the cap with the band's height already spent. A list whose content
+	 * did not reach the shrunk cap keeps its content height; what it may never do is grow or move
+	 * its rows.
+	 */
+	const boxGave = offsetsAfterBand.list.height <= offsetsBeforeBand.list.height;
+	/*
+	 * AND A WHEEL INSIDE THE STANDING CARD, WHICH IS Q-5's READING. The app's own rule claimed a
+	 * wheel over the card "reaches the list behind it"; QA measured 0 -> 0 over the card against
+	 * 0 -> 40.5 over a row once D14 put the card BESIDE the list rather than over it, and the rule
+	 * now forwards the gesture from the band (`onWheel`). The reading is the list's own `scrollTop`,
+	 * and it is only discriminating where the list HAS somewhere to scroll - in this fixture the
+	 * list is content-sized, so the note says so rather than reporting a PASS bought by a list that
+	 * could not have moved either way.
+	 */
+	const wheelTarget = settledCard?.centre ?? null;
+	const scrollBeforeWheel = (await listAndRowOffsets(cdp)).list.scrollTop;
+	const listCanScroll = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		return list.scrollHeight > list.clientHeight + 1;
+	})()`);
+	if (wheelTarget !== null) {
+		await movePointer(cdp, wheelTarget.x, wheelTarget.y);
+		await cdp
+			.send("Input.dispatchMouseEvent", {
+				type: "mouseWheel",
+				x: wheelTarget.x,
+				y: wheelTarget.y,
+				deltaX: 0,
+				deltaY: 120,
+				buttons: 0,
+			})
+			.catch(() => null);
+		await wait(240);
+	}
+	const scrollAfterWheel = (await listAndRowOffsets(cdp)).list.scrollTop;
+	note(
+		"a wheel inside the standing card, against the list (Q-5)",
+		JSON.stringify({
+			wheelTarget,
+			listCanScroll,
+			scrollBeforeWheel,
+			scrollAfterWheel,
+		}),
+	);
+	check(
+		"a wheel inside the standing card reaches the LIST (QA round 3, Q-5), read where the list has somewhere to go",
+		wheelTarget === null ||
+			listCanScroll === false ||
+			scrollAfterWheel !== scrollBeforeWheel,
+		JSON.stringify({
+			wheelTarget,
+			listCanScroll,
+			scrollBeforeWheel,
+			scrollAfterWheel,
+		}),
+	);
+	check(
+		"the band comes out of the LIST's own box: the rows keep their offsets, the list never scrolls itself, and a capped list gives back exactly the band (design round 4, D14; QA round 3, Q-3)",
+		rowsHeld && scrollHeld && boxGave,
+		JSON.stringify({
+			rowsHeld,
+			scrollHeld,
+			boxGave,
+			before: offsetsBeforeBand,
+			after: offsetsAfterBand,
+		}),
+		JSON.stringify({
+			rowsHeld,
+			scrollHeld,
+			boxGave,
+			before: offsetsBeforeBand.list,
+			after: offsetsAfterBand.list,
+			band: offsetsAfterBand.band,
 		}),
 	);
 	/*

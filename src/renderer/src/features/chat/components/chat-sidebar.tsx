@@ -3818,11 +3818,42 @@ export function ChatSidebar({
 				watched = card;
 				if (card !== null) settled.observe(card);
 			}
-			setBandHeight(
+			/*
+			 * THE SETTLED CARD, NOT THE ANIMATED ONE (QA round 3, Q-4). Sonner animates the toast's own
+			 * `height` over 400ms (`transition: ... height 400ms`, 2.0.3), so its
+			 * `getBoundingClientRect().height` grows through the entrance - and this effect read THAT, so
+			 * the band rode the entrance with it and the rows rode the band (measured: the band ~40px
+			 * ahead of the card at low frame rates, which is the motion `transition: none` on the band
+			 * exists to prevent).
+			 *
+			 * WHERE THE SETTLED HEIGHT IS READ FROM, AND WHY NOT SONNER'S OWN NUMBER: the first cut of
+			 * this read `--initial-height`, which is the library's own statement of the height the card
+			 * settles at - measured once, AT MOUNT. That is exactly wrong for this lane, because both
+			 * messages share ONE sonner entry (`ARCHIVE_TOAST_ID`): the offer mounts it at one line (34),
+			 * the refusal replaces the message in the same entry (142 settled), and the variable is never
+			 * re-measured - measured in the walk, `band 42 / card 42` where the pair should read
+			 * `150 / 142`, i.e. the band sized from the offer's height while a refusal stood.
+			 *
+			 * So the settled height is taken from the card's own LAYOUT: `scrollHeight` is the content's
+			 * own height (independent of the animated box) and the two border widths turn it into the
+			 * border-box height the rect reports at rest, which is the number the band's ruling is
+			 * written in. It re-reads correctly on a replacement, because the content is what changed.
+			 */
+			const animated = card === null ? 0 : card.getBoundingClientRect().height;
+			const cardStyle = card === null ? null : getComputedStyle(card);
+			const borders =
+				cardStyle === null
+					? 0
+					: (Number.parseFloat(cardStyle.borderTopWidth) || 0) +
+						(Number.parseFloat(cardStyle.borderBottomWidth) || 0);
+			const cardHeight =
 				card === null
 					? 0
-					: Math.round(card.getBoundingClientRect().height) +
-							ARCHIVE_TOAST_BAND_GAP,
+					: card.scrollHeight > 0
+						? card.scrollHeight + borders
+						: animated;
+			setBandHeight(
+				card === null ? 0 : Math.round(cardHeight) + ARCHIVE_TOAST_BAND_GAP,
 			);
 		};
 		const arrived = new MutationObserver(measure);
@@ -3921,20 +3952,27 @@ export function ChatSidebar({
 					? undefined
 					: {
 							/*
-							 * The cap the split module computed: the shipped 45% of the
-							 * panel's own content box in the auto state, and the stored
-							 * height clamped to what this panel can give it when the user
-							 * has chosen one. A stored value is never rewritten, so a
-							 * window that can honour it draws it again.
+							 * THE BAND'S HEIGHT COMES OUT OF THE LIST'S OWN ALLOWANCE (D14's yield, and QA round 3's
+							 * Q-3: the yield was not real). This container is the SIZED region in this assembly
+							 * (`shrink-0`, below), which is what keeps the split's meaning - only the user's drag or
+							 * the module's own cap moves it - but the band is a flex sibling that grows BELOW it,
+							 * and with this cap untouched the column paid the band out of the ENTITY region above,
+							 * whose height IS this box's top: the list was translated up by the band and every row
+							 * rode with it (measured: -150 at the settled refusal, -34/-58 mid-entrance, -144 at
+							 * the short window, with the list's own height never changing). Subtracting the band
+							 * here keeps `shrink-0` AND makes the yield real: the box keeps its top, loses the
+							 * band's height off its bottom, and `scrollTop` is untouched, so the rows keep their
+							 * offsets and what the band spends is the overflow at the bottom - which is what D14
+							 * specified and what the committed spec's § "the list gives up exactly this much"
+							 * promises. A band taller than the cap floors at 0 rather than inverting the box.
+							 *
+							 * `maxHeight` is subtracted even when the region is not `listFixed`: the cap is what
+							 * the module hands this region, and the band is spending from the same column.
 							 */
-							maxHeight: split.listMax,
-							/*
-							 * `auto` measures itself, so only a CHOSEN height is forced: the
-							 * region is a definite box of that size, not a box that happens
-							 * to be that big around its content - which is what makes the
-							 * stored number the number the user dragged the boundary to.
-							 */
-							height: split.listFixed ? split.listMax : undefined,
+							maxHeight: Math.max(0, split.listMax - bandHeight),
+							height: split.listFixed
+								? Math.max(0, split.listMax - bandHeight)
+								: undefined,
 						}
 			}
 			/*
@@ -4964,6 +5002,30 @@ export function ChatSidebar({
 				ref={laneBandRef}
 				data-archive-toast-band
 				style={{ ...ARCHIVE_TOAST_BAND_STYLE, height: bandHeight }}
+				/*
+				 * A WHEEL AT THE PANEL'S BOTTOM IS A GESTURE ABOUT THE LIST (QA round 3, Q-5). The band put
+				 * the card BESIDE the list instead of over it (D14), so the gesture has nowhere to land on
+				 * its own: the card is `pointer-events: none`, this wrapper is not a scroller, and the rule
+				 * in `styles/index.css` that claimed a wheel here "reaches the list behind it" measured
+				 * 0 -> 0 while the same wheel over a row scrolled 0 -> 40.5. The reader's gesture at the
+				 * panel's bottom is scrolling the list, so it is forwarded there - and to the CARD first
+				 * when the card has somewhere to go, because a message taller than the band's ceiling is
+				 * read by scrolling it (the short-panel refusal, `max-height: 100%; overflow-y: auto`),
+				 * which a `pointer-events: none` card cannot be driven to by a wheel on its own.
+				 */
+				onWheel={(event) => {
+					const card = laneBandRef.current?.querySelector<HTMLElement>(
+						`.${ARCHIVE_TOAST_CLASS}`,
+					);
+					const scroller =
+						card !== null &&
+						card !== undefined &&
+						card.scrollHeight > card.clientHeight
+							? card
+							: listPanelRef.current;
+					if (scroller === null || scroller === undefined) return;
+					scroller.scrollTop += event.deltaY;
+				}}
 			>
 				<ThemedToastContainer
 					position={ARCHIVE_TOAST_LANE}

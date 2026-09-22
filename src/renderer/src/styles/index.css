@@ -714,10 +714,16 @@ nav[aria-label="Chats"]
  * `card + 8` while a message stands, the list giving up exactly that - so there is no row under
  * the card to aim at, which is what made U8 necessary: as an overlay the card's box covered up
  * to three rows, and a press inside it that missed the buttons landed on the card and stopped.
- * The rules below therefore buy only what they still can: a wheel over the card reaches the
- * list behind it rather than scrolling a card that cannot scroll, while the two things that ARE
- * controls - the action and the close - take their presses back explicitly and keep their own
- * hit areas. THEIR REAL SUBJECT - Q-1, Q-2, D11, four streams on the offset a covered control
+ * The rules below therefore buy only what they still can: THE TWO THINGS THAT ARE CONTROLS - the
+ * action and the close - take their presses back explicitly and keep their own hit areas, while
+ * THE WHEEL IS CARRIED BY THE BAND'S OWN HANDLER rather than by a rule here. QA round 3's Q-5
+ * measured this block's old claim - that a wheel over the card "reaches the list behind it rather
+ * than scrolling a card that cannot scroll" - as false once D14 put the card BESIDE the list
+ * rather than over it: 0 -> 0 with the pointer inside the card, 0 -> 40.5 with it over a row. The
+ * gesture is now forwarded by `[data-archive-toast-band]`'s `onWheel` (to the CARD when the card
+ * itself overflows - the short-panel refusal, which a `pointer-events: none` card cannot be
+ * driven to scroll by a wheel - and to the list otherwise), so the promise is kept by behaviour
+ * rather than by a sentence. THEIR REAL SUBJECT - Q-1, Q-2, D11, four streams on the offset a covered control
  * would need - is retired by the geometry rather than by a rule, and the designer's ruling is
  * why: the acts column is the row's last 52px and the card is 8px wider than the row, so no
  * offset clears it, and a control under a card cannot be aimed at whatever the card does with
@@ -754,8 +760,16 @@ nav[aria-label="Chats"]
 	 * sentence at a short panel, the one shape the offer cannot have - is read by scrolling
 	 * the card rather than by clipping the reason the reader is being asked to retry. `100%`
 	 * resolves against the band, which is the card's containing block.
+	 *
+	 * `overflow-x: hidden` IS WHAT KEEPS A SCROLLBAR OFF A TOAST (QA round 3, D19). CSS computes
+	 * the other axis to `auto` as soon as one axis is not `visible`, so `overflow-y: auto` alone
+	 * gave the card a HORIZONTAL scroll container too - and its content is about a pixel wider
+	 * than its box (the close button's own out-of-box transform), so every card drew a ~9px strip
+	 * of scrollbar along its bottom in its own border colour. That strip is new with this lane and
+	 * is in every frame since; one axis scrolls here, and it is the vertical one.
 	 */
 	max-height: 100%;
+	overflow-x: hidden;
 	overflow-y: auto;
 }
 nav[aria-label="Chats"]
