@@ -2001,6 +2001,531 @@ async function awaitCardSettled(cdp, { attempts = 6, gapMs = 120 } = {}) {
 	return { reading, attempts };
 }
 
+/**
+ * A BAND ARRIVING ON A LIST THE READER IS STANDING IN, WITH THE WRITER NAMED (QA round 4's Q-9,
+ * design round 7's D24).
+ *
+ * WHY THIS IS AN INSTRUMENT AND NOT A COMPARISON OF TWO NUMBERS. QA measured
+ * `{"scrollBefore":8.5,"scrollAfter":0}` on an overflowing list and could not name what moved it -
+ * the app's own focus-hold returns early when no row carries focus, and no `scrollIntoView` sits on
+ * that path - and left the writer to the implementer. The candidate the code offers is
+ * `holdFocusedRow`, the ONLY writer of these containers' `scrollTop` in this feature
+ * (`sidebar-focus-hold.ts:224`), but a before/after pair cannot tell a JS write from the browser's
+ * own reset of a scroller that was RE-ATTACHED in the DOM - measured in this same file as `24 -> 0`
+ * (see `saveRegionScroll`'s argument) - and the two want different fixes. So all three signatures
+ * are taken at once:
+ *
+ *   1. THE WRITE ITSELF, trapped on the list's own `scrollTop` property, with the stack that made
+ *      it. A write is a finding whatever value it carried, which is why this is a trap rather than
+ *      a comparison of two readings.
+ *   2. EVERY FRAME, sampled on `requestAnimationFrame` across the arrival: the scroll, the box, and
+ *      whether the element the selector names is still the SAME NODE. A reset by re-attachment
+ *      shows here and nowhere else.
+ *   3. THE DOM, watched with a `MutationObserver`: a row arriving or leaving, and any mutation that
+ *      touches the list node itself.
+ *
+ * AND THE STATE IS QA'S, which is the half the committed probe never reached: the list is given a
+ * cap so it OVERFLOWS AT REST (this app's list is content-sized, and a shorter window takes the
+ * slack out of the `flex-1` entity region instead - measured: no overflow at 700px), the reader's
+ * own scroll is set off the top, a row that STARTS INSIDE the clip is focused (the state the
+ * focus-hold records as 'inside' or 'partly', without which its gate cannot correct anything at
+ * all), and the band is raised by the app's own control.
+ *
+ * TWO ARRIVALS, BECAUSE THE TWO CANDIDATE WRITERS DIFFER IN ONE INPUT. `press.aboveFocused` presses
+ * a live row ABOVE the cursor's, so that row LEAVES the list and the cursor's row CHANGES SLOT - the
+ * one input `holdFocusedRow`'s gate needs before it will correct at all. A press on a refused row
+ * takes nothing out of the list and leaves the slot alone, which is QA's own case. The caller drives
+ * both.
+ *
+ * WHAT IT DOES NOT DO: decide whether the app is right. It returns the readings; `arrivalReading`
+ * and the scene's checks read the clauses the designer's ruling states for them.
+ */
+async function scrolledArrival(cdp, { label, cap, scroll, press }) {
+	/*
+	 * ONE READING, TAKEN TWICE. The before and the after are the same script, so a comparison
+	 * between them cannot be a comparison of two instruments - and the reading carries the
+	 * instrument's own output when one has been armed.
+	 */
+	const stateScript = `(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		if (list === null) return { ok: false, why: "no list region" };
+		const bandNode = document.querySelector("[data-archive-toast-band]");
+		const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const entities = document.querySelector('[data-sidebar-region="entities"]');
+		const box = list.getBoundingClientRect();
+		const clipTop = box.top + list.clientTop;
+		const clip = { top: clipTop, bottom: clipTop + list.clientHeight };
+		const visibilityOf = (rect) =>
+			rect.bottom <= clip.top || rect.top >= clip.bottom
+				? "outside"
+				: rect.top >= clip.top && rect.bottom <= clip.bottom
+					? "inside"
+					: "partly";
+		const rows = Array.from(list.querySelectorAll("[data-session-row]")).map((row) => {
+			const button = row.querySelector("[data-chat-row]");
+			const rect = (button ?? row).getBoundingClientRect();
+			const control = row.querySelector("[data-session-archive]");
+			return {
+				id: row.getAttribute("data-session-row"),
+				top: Math.round(rect.top),
+				height: Math.round(rect.height),
+				action: (control?.getAttribute("aria-label") ?? "").split(" ")[0] ?? null,
+			};
+		});
+		const active = document.activeElement;
+		const rowNodes = Array.from(list.querySelectorAll("[data-chat-row]"));
+		const activeRect =
+			active instanceof HTMLElement && rowNodes.includes(active)
+				? active.getBoundingClientRect()
+				: null;
+		const activeRow =
+			active instanceof HTMLElement ? active.closest("[data-session-row]") : null;
+		const activeId =
+			activeRow === null ? null : activeRow.getAttribute("data-session-row");
+		const focusedIndex = activeId === null ? -1 : rows.findIndex((row) => row.id === activeId);
+		const q9 = window.__q9 ?? null;
+		let instrument = null;
+		if (q9 !== null) {
+			if (q9.stop) q9.stop();
+			instrument = {
+				writes: q9.writes.map((w) => ({
+					value: w.value,
+					from: w.from,
+					at: w.at,
+					stack: w.stack,
+				})),
+				samples: q9.samples.slice(0, 40),
+				sampleCount: q9.samples.length,
+				mutations: q9.mutations.slice(0, 20),
+				mutationCount: q9.mutations.length,
+			};
+		}
+		return {
+			ok: true,
+			overflowAtRest: list.scrollHeight > list.clientHeight + 1,
+			scrollTop: list.scrollTop,
+			box: {
+				top: Math.round(box.top),
+				height: Math.round(list.clientHeight),
+				scrollHeight: list.scrollHeight,
+			},
+			clip: { top: Math.round(clip.top), bottom: Math.round(clip.bottom) },
+			band: bandNode === null ? 0 : Math.round(bandNode.getBoundingClientRect().height),
+			card: card === null ? null : Math.round(card.getBoundingClientRect().height),
+			entities:
+				entities === null
+					? null
+					: {
+							top: Math.round(entities.getBoundingClientRect().top),
+							height: Math.round(entities.getBoundingClientRect().height),
+							scrollTop: entities.scrollTop,
+						},
+			rows,
+			focused: {
+				id: activeId,
+				index: activeRect === null ? -1 : rowNodes.indexOf(active),
+				top: activeRect === null ? null : Math.round(activeRect.top),
+				bottom: activeRect === null ? null : Math.round(activeRect.bottom),
+				visibility: activeRect === null ? "no-row-focused" : visibilityOf(activeRect),
+			},
+			focusedIndex,
+			activeIsChatRow: activeRect !== null,
+			instrument,
+		};
+	})()`;
+	const readState = async (why) => {
+		try {
+			const reading = await cdp.evaluate(stateScript);
+			return { ...reading, why };
+		} catch (error) {
+			return { ok: false, why: `${why}: ${String(error)}` };
+		}
+	};
+	/*
+	 * THE ARRIVAL STARTS FROM NO BAND, and the wait is a precondition rather than tidiness: the rig's
+	 * cap is applied below and the app measures its OWN band-0 box (`listBase`) on the next commit,
+	 * so a band standing then would leave the base measured from a box the band had already taken
+	 * height off - and the yield clause would be asserting arithmetic about this probe. The lane's
+	 * message retires on its own clock, so this waits it out.
+	 */
+	let bandNow = null;
+	for (let attempt = 0; attempt < 60; attempt += 1) {
+		bandNow = await cdp
+			.evaluate(`(() => {
+				const band = document.querySelector("[data-archive-toast-band]");
+				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
+			})()`)
+			.catch(() => null);
+		if (bandNow === 0) break;
+		await wait(500);
+	}
+	/*
+	 * THE RULE IS BUILT HERE, IN THE DRIVER'S OWN CODE, and the page only assigns it: a nested
+	 * template literal inside the page script would terminate the script string it lives in, and
+	 * building the rule by concatenation is what `pnpm lint` refuses.
+	 */
+	const capRule = `[data-sidebar-region="chats"] { max-height: ${cap} !important; }`;
+	const capped = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		if (list === null) return { ok: false, why: "no list region" };
+		/*
+		 * THE CAP IS THE RIG'S ONLY EDIT, and it is the one thing the app's own layout cannot be
+		 * driven to: the region's maxHeight comes from the split, and it is measured from the list's
+		 * own content - so the box is content-sized at rest, it does not overflow, and a scroll
+		 * written on it would be clamped away (measured: 241 against 241, scrollTop 0).
+		 *
+		 * IT IS A STYLESHEET RULE, AND THAT IS NOT DECORATION. Two measured attempts to hold this
+		 * inline failed: a plain value was overwritten by the split's own recompute in the resize
+		 * commit below (the box read 241 with the cap at 200 and the state collapsed back to "no
+		 * overflow"), and an IMPORTANT inline value died with React's own bookkeeping, because when
+		 * this region's style prop transitions - the same commit clears the declaration React
+		 * wrote, and a clear removes the whole declaration including its priority. A rule in a
+		 * stylesheet React never touches survives both, and beats an inline non-important value.
+		 *
+		 * Everything after this line is the app's: the press is the app's control, the card is the
+		 * app's message, and the commit that gives the band its height is the app's own.
+		 */
+		const sheet = document.createElement("style");
+		sheet.setAttribute("data-q9-cap", "1");
+		sheet.textContent = ${JSON.stringify(capRule)};
+		document.head.appendChild(sheet);
+		const applied = getComputedStyle(list).maxHeight;
+		return { ok: true, bandAtSeed: ${JSON.stringify(bandNow)}, appliedMaxHeight: applied };
+	})()`);
+	if (capped?.ok !== true) return { label, capped };
+	/*
+	 * A COMMIT AFTER THE CAP, AND BEFORE THE CURSOR IS PLACED. The band-0 box is read in a layout
+	 * effect on every commit while no band stands (`chat-sidebar.tsx`), so a cap written between
+	 * commits is a box the app has not measured yet - and the yield would then be computed from the
+	 * pre-cap box, which is a fact about this probe rather than about the app. A 1px window change is
+	 * a reader's own gesture, it is delivered through the app's own observers, and it leaves the
+	 * list's vertical layout where it was. It comes BEFORE the focus deliberately: this commit can
+	 * re-render the rows, and a cursor placed before it would be a cursor the re-render had moved.
+	 */
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1201,
+			height: 700,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(250);
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1200,
+			height: 700,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(400);
+	/*
+	 * THE CURSOR AND THE READER'S SCROLL, placed after that commit and in this order: `focus()`
+	 * scrolls its element into view, and the state under test is a reader who put the list where
+	 * they wanted it with a cursor inside it - a probe whose scroll was decided by the browser's
+	 * focus scroll would be measuring that instead. The row is the LAST one that STARTS inside the
+	 * clip (the one sitting within a row's height of the clip's lower edge): it reads 'inside' or
+	 * 'partly' now, the two states the record must carry for a correction to be possible at all, and
+	 * the band's own height given back off the box's bottom puts its top below the new edge.
+	 */
+	const placed = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		if (list === null) return { ok: false, why: "no list region" };
+		const clipOf = () => {
+			const rect = list.getBoundingClientRect();
+			const top = rect.top + list.clientTop;
+			return { top, bottom: top + list.clientHeight };
+		};
+		const pickFocus = () => {
+			const clip = clipOf();
+			const inside = Array.from(list.querySelectorAll("[data-session-row]")).filter((row) => {
+				const button = row.querySelector("[data-chat-row]");
+				if (button === null) return false;
+				const rect = button.getBoundingClientRect();
+				return rect.top >= clip.top && rect.top < clip.bottom;
+			});
+			return inside[inside.length - 1] ?? null;
+		};
+		let chosen = pickFocus();
+		if (chosen === null) return { ok: false, why: "no session row starts inside the clip" };
+		chosen.querySelector("[data-chat-row]").focus();
+		list.scrollTop = ${JSON.stringify(scroll)};
+		chosen = pickFocus() ?? chosen;
+		const button = chosen.querySelector("[data-chat-row]");
+		button.focus();
+		list.scrollTop = ${JSON.stringify(scroll)};
+		return {
+			ok: true,
+			focusedId: chosen.getAttribute("data-session-row"),
+			focusHeld: document.activeElement === button,
+			scrollTop: list.scrollTop,
+		};
+	})()`);
+	if (placed?.ok !== true) return { label, capped, placed };
+	const before = await readState("before");
+	const pressSelector = press.selector;
+	const armed = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		if (list === null) return { ok: false };
+		/*
+		 * THE SETTER IS TAKEN FROM THE DESCRIPTOR ALREADY ON THE ELEMENT when one is - the walk's own
+		 * trap sits there - so this records the writes that trap records rather than replacing it:
+		 * two recorders, one write each.
+		 */
+		const own = Object.getOwnPropertyDescriptor(list, "scrollTop");
+		const underlying =
+			own ?? Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+		window.__q9 = { writes: [], samples: [], mutations: [], t0: performance.now() };
+		Object.defineProperty(list, "scrollTop", {
+			configurable: true,
+			get() {
+				return underlying.get.call(this);
+			},
+			set(value) {
+				window.__q9.writes.push({
+					value,
+					from: underlying.get.call(this),
+					at: Math.round(performance.now() - window.__q9.t0),
+					stack: (new Error().stack || "").split("\\n").slice(1, 6).join(" <- "),
+				});
+				underlying.set.call(this, value);
+			},
+		});
+		let frames = 0;
+		const tick = () => {
+			const named = document.querySelector('[data-sidebar-region="chats"]');
+			const sample = {
+				t: Math.round(performance.now() - window.__q9.t0),
+				scrollTop: list.scrollTop,
+				box: list.clientHeight,
+				connected: list.isConnected,
+				sameNode: named === list,
+			};
+			const last = window.__q9.samples[window.__q9.samples.length - 1];
+			if (
+				last === undefined ||
+				last.scrollTop !== sample.scrollTop ||
+				last.box !== sample.box ||
+				last.sameNode !== sample.sameNode
+			)
+				window.__q9.samples.push(sample);
+			if (frames++ < 300) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				const nodes = [...record.addedNodes, ...record.removedNodes].filter(
+					(n) => n.nodeType === 1,
+				);
+				const interesting = nodes.filter(
+					(n) =>
+						n === list ||
+						n.hasAttribute("data-session-row") ||
+						n.hasAttribute("data-chat-row") ||
+						n.contains(list),
+				);
+				if (interesting.length === 0) continue;
+				const name = (n) =>
+					n === list
+						? "LIST"
+						: n.getAttribute("data-session-row") !== null
+							? "row:" + n.getAttribute("data-session-row")
+							: n.hasAttribute("data-chat-row")
+								? "chat-row"
+								: n.tagName.toLowerCase();
+				window.__q9.mutations.push({
+					t: Math.round(performance.now() - window.__q9.t0),
+					added: [...record.addedNodes].filter((n) => n.nodeType === 1).map(name),
+					removed: [...record.removedNodes].filter((n) => n.nodeType === 1).map(name),
+				});
+			}
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		window.__q9.stop = () => observer.disconnect();
+		return { ok: true };
+	})()`);
+	/*
+	 * THE HOVER IS THE IDIOM THE WALK'S OWN PRESSES USE - the row first, then its control, because
+	 * the acts are display-switched and a control addressed at rest has a 0x0 box. The DOM press
+	 * below does not need the box, but a state read without it is not the state a reader presses in.
+	 * The scene addresses this control by its own label, which carries spaces inside the VALUE
+	 * (`[aria-label='Archive “X”']`), so the selector IS the row address here and is not split.
+	 */
+	if (pressSelector !== null && pressSelector !== "") {
+		const rowSelector = pressSelector.startsWith("[data-session-row=")
+			? pressSelector.split(" ")[0]
+			: pressSelector;
+		await hoverOver(cdp, rowSelector).catch(() => null);
+		await wait(300);
+		await hoverOver(cdp, pressSelector).catch(() => null);
+		await wait(300);
+	}
+	await cdp.evaluate("window.__q9.writes.length = 0").catch(() => null);
+	const atPress = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const selector = ${JSON.stringify(pressSelector ?? "")};
+		/*
+		 * AN EMPTY SELECTOR IS A READING, NOT A THROW: 'querySelector("")' raises, and a probe that
+		 * took the whole run down with it would report the harness rather than the app (the first
+		 * pass of this check did exactly that). The reading this returns is what the scene's own
+		 * precondition check then fails on.
+		 */
+		const control = selector === "" ? null : document.querySelector(selector);
+		const reading = {
+			scrollTop: list === null ? null : list.scrollTop,
+			box: list === null ? null : list.clientHeight,
+			band: (() => {
+				const band = document.querySelector("[data-archive-toast-band]");
+				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
+			})(),
+		};
+		if (control === null) return { clicked: false, reading, selector };
+		/*
+		 * A DOM CLICK, DELIBERATELY, AND IT IS THE HALF THAT MAKES THE READING POSSIBLE: a REAL
+		 * pointer press focuses the control it presses, and the focus-hold's gate then reads
+		 * rowNodes.indexOf(document.activeElement) as -1 and returns early - so the writer under
+		 * test could not run at all. This is the one place in this file where the synthetic click is
+		 * the faithful one: the handler is the row's own, the request is the app's, and the cursor
+		 * stays on the row the reader put it on.
+		 */
+		control.click();
+		return { clicked: true, reading, selector };
+	})()`);
+	const settled = await awaitCardSettled(cdp);
+	await wait(500);
+	const after = await readState("after");
+	return {
+		label,
+		capped,
+		placed,
+		armed,
+		before,
+		pressSelector,
+		atPress,
+		settledAttempts: settled.attempts,
+		after,
+	};
+}
+
+/**
+ * The clauses the designer's ruling states for a scrolled arrival, read off `scrolledArrival`'s two
+ * readings: the reader's scroll, the rows' offsets, the yield, and the trap.
+ *
+ * `base` is the list's band-0 box, PASSED IN because an arrival's own before-reading may already
+ * have a band up: the second arrival starts with the first one's message standing, so its box is
+ * already short of the base by that band. The yield the ruling states is the base less the band.
+ */
+function arrivalReading(arrival, base) {
+	const before = arrival.before ?? {};
+	const atPress = arrival.atPress ?? {};
+	const after = arrival.after ?? {};
+	const was = new Map((before.rows ?? []).map((row) => [row.id, row.top]));
+	const kept = (after.rows ?? []).filter((row) => was.has(row.id));
+	const gone = (before.rows ?? [])
+		.filter((row) => !(after.rows ?? []).some((other) => other.id === row.id))
+		.map((row) => ({ id: row.id, height: row.height }));
+	const deltas = [...new Set(kept.map((row) => row.top - was.get(row.id)))];
+	const writes = after.instrument?.writes ?? null;
+	const focusedBefore = before.focused ?? {};
+	const focusedAfter = after.focused ?? {};
+	/*
+	 * A ROW MAY MOVE ONLY IF THE PRESS ITSELF TOOK ONE OUT, and then by the SAME delta for every row
+	 * that survived. A `scrollTop` write translates the content uniformly in the other direction and
+	 * a re-file shifts it, so "one delta, and it is 0 when nothing was taken out" is the clause - and
+	 * the run that removes a row reports the delta it moved by rather than passing on a coincidence.
+	 */
+	const rowsHeld =
+		gone.length === 0
+			? deltas.every((delta) => delta === 0)
+			: deltas.length <= 1 &&
+				gone.length === 1 &&
+				gone[0].id === before.pressed?.id &&
+				(kept.length === 0 || deltas[0] === -gone[0].height);
+	return {
+		label: arrival.label,
+		stateOk:
+			arrival.capped?.ok === true &&
+			arrival.placed?.ok === true &&
+			arrival.placed?.focusHeld === true &&
+			arrival.armed?.ok === true &&
+			before.ok === true &&
+			before.overflowAtRest === true &&
+			atPress.clicked === true &&
+			atPress.reading?.scrollTop > 0 &&
+			before.focused.visibility !== "no-row-focused" &&
+			after.band > 0 &&
+			after.card !== null,
+		state: {
+			overflowAtRest: before.overflowAtRest,
+			scrollAtPress: atPress.reading?.scrollTop,
+			bandAtSeed: arrival.seeded?.bandAtSeed,
+			bandAtPress: atPress.reading?.band,
+			bandAfter: after.band,
+			card: after.card,
+			focusedBefore: focusedBefore,
+			focusedAfter,
+			clicked: atPress.clicked,
+			pressSelector: arrival.pressSelector,
+			rows: {
+				before: (before.rows ?? []).length,
+				after: (after.rows ?? []).length,
+			},
+		},
+		/*
+		 * THE GEOMETRY THE PRE-FIX GATE READ AS A ROW LEAVING, read rather than asserted by
+		 * construction: the cursor's row was on screen before the press and is outside the panel
+		 * after it, and the panel's box got shorter doing it. That is what makes the empty trap
+		 * beside this a statement about the code rather than a state in which nothing could have
+		 * written.
+		 */
+		geometryOk:
+			(focusedBefore.visibility === "inside" ||
+				focusedBefore.visibility === "partly") &&
+			focusedAfter.visibility === "outside" &&
+			typeof atPress.reading?.box === "number" &&
+			typeof after.box?.height === "number" &&
+			after.box.height < atPress.reading.box,
+		geometry: {
+			focusedBefore,
+			focusedAfter,
+			boxAtPress: atPress.reading?.box,
+			boxAfter: after.box?.height,
+		},
+		scrollHeld: after.scrollTop === atPress.reading?.scrollTop,
+		scroll: {
+			before: atPress.reading?.scrollTop,
+			after: after.scrollTop,
+			boxBefore: atPress.reading?.box,
+			boxAfter: after.box,
+			samples: after.instrument?.samples ?? null,
+			sampleCount: after.instrument?.sampleCount ?? null,
+			mutations: after.instrument?.mutations ?? null,
+			mutationCount: after.instrument?.mutationCount ?? null,
+		},
+		trapped: writes !== null,
+		writes,
+		rowsHeld,
+		rows: { kept: kept.length, gone, deltas },
+		yieldExact: base !== null && after.box?.height === base - after.band,
+		entitiesHeld:
+			before.entities != null &&
+			after.entities != null &&
+			before.entities.top === after.entities.top &&
+			before.entities.height === after.entities.height &&
+			before.entities.scrollTop === after.entities.scrollTop,
+		yield: {
+			base,
+			band: after.band,
+			boxAtPress: atPress.reading?.box,
+			boxAfter: after.box,
+			expected: base === null ? null : base - after.band,
+			entitiesBefore: before.entities,
+			entitiesAfter: after.entities,
+		},
+	};
+}
+
 async function sceneSessionArchive(cdp) {
 	const hello = await verb(cdp, "hello");
 	check(
@@ -4272,143 +4797,95 @@ async function sceneSessionArchive(cdp) {
 	);
 
 	/*
-	 * THE SCROLLED ARRIVAL, IN QA'S OWN STATE (QA round 4's Q-9, and the acceptance this round owes).
+	 * THE SCROLLED ARRIVAL, IN QA'S OWN STATE, WITH THE WRITER TRAPPED (QA round 4's Q-9, design
+	 * round 7's D24).
 	 *
-	 * The walk's ordinary scene cannot exercise the finding at all: its list is 289 tall against 288
-	 * of content, so `scrollHeight - clientHeight` is 0, there is no scroll to lose, and the hold has
-	 * nothing to write. QA's fixture has one - their reading is `{"scrollBefore":8.5,"scrollAfter":0}`
-	 * - so this builds that state directly: the viewport is SHORTENED until the list overflows at
-	 * rest, a row is focused (`holdFocusedRow` only follows a row that is `document.activeElement`,
-	 * and only when the container's own box changed under it), the list is scrolled so that row
-	 * straddles the clip's top edge by a few pixels - which is what makes it "inside or partial" at
-	 * the previous commit and "outside" at the next, the gate's own condition - and the card is raised
-	 * WITHOUT moving focus (a DOM click on the control, not a synthetic pointer press, because a real
-	 * press focuses the control and `rowNodes.indexOf(active)` is then -1, the early return QA hit).
+	 * WHAT THIS REPLACES, AND WHY IT COULD NOT ANSWER THE QUESTION. The committed probe read
+	 * `{"clicked":false,…,"after":{"band":0,"card":null}}`: the row it focused was the first
+	 * `[data-chat-row]` in the list, and a SECTION HEADING carries `data-chat-row` without
+	 * `data-session-row` - so `row.closest("[data-session-row]")` was null, the control it looked for
+	 * inside that row was never there, no card was raised, and the writer was never given the chance
+	 * to write. Its geometry was wrong for the same reason: it straddled the clip's TOP edge, and the
+	 * band takes its height off the box's BOTTOM. `scrolledArrival` builds the state QA measured and
+	 * takes all three signatures of a scroll change.
 	 *
-	 * THE ACCEPTANCE IS THE RULING'S CLAUSE: `scrollTop` unchanged, every row's top unchanged, the
-	 * yield still exact, and the trap on the list's own `scrollTop` EMPTY. A write would be the
-	 * finding, whatever value it carried, which is why this reads the trap and not two numbers.
+	 * TWO ARRIVALS, AND THE ORDER IS THE POINT. The first presses a LIVE row above the cursor's, so
+	 * that row LEAVES the list and the cursor's row CHANGES SLOT - the one input `holdFocusedRow`'s
+	 * gate needs before it will correct at all - while the box gives the offer's band away. The
+	 * second presses the REFUSED row: QA's own case, a 142px refusal that takes nothing out of the
+	 * list, so the cursor's slot is unchanged and the acceptance reading has clean rows to compare.
+	 * Both are needed to say which of the two candidate writers a scroll change has.
 	 */
-	const shortViewport = await cdp
-		.send("Emulation.setDeviceMetricsOverride", {
-			width: 1200,
-			height: 700,
-			deviceScaleFactor: 2,
-			mobile: false,
-		})
-		.then(() => true)
-		.catch(() => false);
-	await wait(600);
-	/*
-	 * THE READER'S OWN SCROLL IS SEEDED FROM THE DOM, AND WHY THAT IS FAITHFUL ENOUGH: this list is
-	 * CONTENT-SIZED, so a shorter window takes the height out of the `flex-1` entity region and the
-	 * list never overflows on its own (measured: `overflowAtRest` false at 700px, entity 354 against
-	 * 475). QA's overflows because its content exceeds the split's cap. The cap is what is set here -
-	 * an inline `maxHeight` on the region - so the list overflows at rest and the reader can hold a
-	 * scroll BEFORE any message exists; everything after that is the app's own: the card is raised by
-	 * the app's control, the band's arrival is the app's commit, and the hold that runs inside it is
-	 * the code under test. React re-applies its own `maxHeight` on that commit, which does not matter:
-	 * the yield has already made the box smaller than the content by then.
-	 *
-	 * THE HOVER IS THE SECOND EDIT THE FIRST READING ASKED FOR: the archive control is laid out with
-	 * the acts (D3), so it is not in the DOM at rest - `clicked` was false - and a real pointer move
-	 * is what the walk's refusal step already uses to reach it.
-	 */
-	const rowCentre = await cdp
-		.evaluate(`(() => {
-			const list = document.querySelector('[data-sidebar-region="chats"]');
-			if (list === null) return null;
-			list.style.maxHeight = "120px";
-			const row = list.querySelector("[data-chat-row]");
-			if (row === null) return null;
-			const box = row.getBoundingClientRect();
-			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + 6) };
-		})()`)
-		.catch(() => null);
-	if (rowCentre !== null) {
-		await movePointer(cdp, rowCentre.x, rowCentre.y);
-		await wait(320);
-	}
-	const scrolledState = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
-		if (list === null) return null;
-		const rows = Array.from(list.querySelectorAll("[data-chat-row]"));
-		if (rows.length === 0) return null;
-		const row = rows[0];
-		const clip = list.getBoundingClientRect();
-		const rowBox = row.getBoundingClientRect();
-		/* The row straddles the clip's own top edge by 4px: inside-or-partial now, outside once the
-		 * box gives back the band's height - which is the gate's own condition for a correction. */
-		list.scrollTop = Math.round(list.scrollTop + (rowBox.top - clip.top) + 4);
-		row.focus();
-		const host = row.closest("[data-session-row]");
-		const control =
-			host === null ? null : host.querySelector("[data-session-archive]");
-		if (control !== null) control.click();
-		const after = row.getBoundingClientRect();
-		return {
-			overflowAtRest: list.scrollHeight > list.clientHeight + 1,
-			scrollTop: Math.round(list.scrollTop),
-			straddle: Math.round(after.top - list.getBoundingClientRect().top),
-			focusedIsRow: document.activeElement === row,
-			clicked: control !== null,
-			rows: rows.length,
-		};
-	})()`);
-	await wait(900);
-	const scrolledAfter = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
-		const band = document.querySelector("[data-archive-toast-band]");
-		const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
-		return {
-			scrollTop: list === null ? null : Math.round(list.scrollTop),
-			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
-			card: card === null ? null : Math.round(card.getBoundingClientRect().height),
-			rowTops: Array.from(list.querySelectorAll("[data-chat-row]")).map((row) =>
-				Math.round(row.getBoundingClientRect().top),
-			),
-			entities: (() => {
-				const region = document.querySelector('[data-sidebar-region="entities"]');
-				if (region === null) return null;
-				const box = region.getBoundingClientRect();
-				return {
-					top: Math.round(box.top),
-					height: Math.round(box.height),
-					scrollTop: region.scrollTop,
-				};
-			})(),
-			writes: (window.__scrollWrites || []).map((w) => ({ value: w.value, from: w.from })),
-		};
-	})()`);
+	const scrolledArrivalReading = await scrolledArrival(cdp, {
+		label: "the refusal's band arrives on a list the reader is standing in",
+		cap: "200px",
+		scroll: 20,
+		press: { selector: claimedRow },
+	});
 	note(
-		"the scrolled arrival in QA's own state (QA round 4, Q-9): a list that overflows at rest, scrolled mid-list, a row focused, a card arriving",
-		JSON.stringify({
-			shortViewport,
-			rowCentre,
-			before: scrolledState,
-			after: scrolledAfter,
-		}),
+		"the band's arrival on a scrolled list, with the writer trapped (QA round 4, Q-9)",
+		JSON.stringify(scrolledArrivalReading),
 	);
 	/*
-	 * READ, NOT ASSERTED, AND ONE EDIT FROM THE READING - the second attempt, verbatim:
+	 * THE CLAUSES, READ OFF THE ARRIVAL. The base is the list's own band-0 box as this probe
+	 * measured it (its cap, read after the resize commit that makes the app measure it), because the
+	 * yield the ruling states is that box less the band.
 	 *
-	 *   {"shortViewport":true,"rowCentre":{"x":356,"y":587},"before":{"overflowAtRest":TRUE,
-	 *   "scrollTop":8,"straddle":1,"focusedIsRow":true,"clicked":FALSE,"rows":6},
-	 *   "after":{"scrollTop":8,"band":0,"card":null,"rowTops":[573,605,653,714,742,774],
-	 *   "entities":{"top":88,"height":476,"scrollTop":0},
-	 *   "writes":[{"value":288,"from":0},{"value":13,"from":0}]}}
+	 * THE HALF THIS FIXTURE CANNOT REACH, stated rather than implied: `holdFocusedRow`'s gate needs
+	 * the cursor's row to CHANGE SLOT, and after this walk the list holds two session rows - the
+	 * claimed one and the unread one - so there is no live row ABOVE the cursor's to take out and
+	 * the slot cannot change here. QA's own scene reached that state (their fixture keeps four rows
+	 * and a `contentBefore` of 256); this scene's unit cell pins that half instead, in
+	 * `scripts/sidebar-focus-hold.test.mjs`: one commit in which a row arrives above the cursor's
+	 * while the box gets shorter, which reads `scrollTop 100 !== 0` on the head this change
+	 * replaces and passes with it - paired with the same re-file under an unchanged box, which is
+	 * followed on both heads (U1).
 	 *
-	 * THE STATE IS NOW QA'S: the list OVERFLOWS AT REST (the seeded cap) and the reader holds
-	 * `scrollTop: 8` - their number, 8.5, to the pixel - with a row focused and straddling the clip's
-	 * top edge by 1px, which is the gate's own condition (inside-or-partial now, outside once the box
-	 * gives back the band). WHAT IS STILL MISSING IS THE CARD: `clicked` is false, so no band was
-	 * raised (`band: 0`, `card: null`), the hold was never given the chance to write, and the two
-	 * writes the trap caught are this probe's own (`value 288` / `value 13` from the earlier overflow
-	 * step, both named by stack). The archive control is still not in the DOM after a real pointer
-	 * move at the row's top edge - the third edit is the pointer's landing point (and possibly a
-	 * second move, the idiom `pinRow`/the refusal step use to make the acts lay out), and until that
-	 * lands the Q-9 fix stands on its arithmetic rather than on this reading.
+	 * WHAT THIS ARRIVAL DOES SHOW, and it is the state the ruling names: a list that OVERFLOWS AT
+	 * REST, the reader wheeled off the top, a cursor row that reads `partly` before the press and
+	 * `outside` after it - because the band took its height off the box, the exact geometry the
+	 * pre-fix gate read as "the row left" - and the reader's `scrollTop` byte-equal across it, no
+	 * write on the container, every row at the same top, and the yield exact.
 	 */
+	const arrivalReadingNow = arrivalReading(
+		scrolledArrivalReading,
+		scrolledArrivalReading.before?.box?.height ?? null,
+	);
+	check(
+		"the scrolled arrival is set up in QA's own state: the list overflows at rest, the reader's scroll is off the top, a row that starts inside holds focus, and the press raises the card",
+		arrivalReadingNow.stateOk,
+		JSON.stringify(arrivalReadingNow.state),
+	);
+	check(
+		"and the band's arrival is the geometry QA measured: the cursor's row sits `partly` in the panel before the press and `outside` after it, because the band's height came off the box rather than off the rows",
+		arrivalReadingNow.geometryOk,
+		JSON.stringify(arrivalReadingNow.geometry),
+	);
+	check(
+		"and the band's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it (QA round 4, Q-9's clause)",
+		arrivalReadingNow.scrollHeld,
+		JSON.stringify(arrivalReadingNow.scroll),
+	);
+	check(
+		"and nothing writes the list's own scrollTop as the band arrives: the trap is empty across the press, so the writer is named rather than inferred",
+		arrivalReadingNow.trapped && arrivalReadingNow.writes.length === 0,
+		JSON.stringify({
+			trapped: arrivalReadingNow.trapped,
+			writes: arrivalReadingNow.writes,
+			samples: arrivalReadingNow.scroll.samples,
+			mutations: arrivalReadingNow.scroll.mutations,
+		}),
+	);
+	check(
+		"and every row on screen at the press is at the same top after it: the band's arrival translates nothing",
+		arrivalReadingNow.rowsHeld,
+		JSON.stringify(arrivalReadingNow.rows),
+	);
+	check(
+		"and the yield is still exact: the list's box is its band-0 box less the band, and the entity region above holds its box and its scroll",
+		arrivalReadingNow.yieldExact && arrivalReadingNow.entitiesHeld,
+		JSON.stringify(arrivalReadingNow.yield),
+	);
 	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
 	await wait(300);
 	check(

@@ -34,6 +34,21 @@ clamp minimum, the width where the card is narrower than its own lane, and a tit
 long enough to truncate) are states the change DELETES the register line from
 rather than moves it, so there is nothing on the other side to compare them to.
 
+**ONE DIRECTORY UNDER `after/` IS THE INSTRUMENT'S OWN AND NOT A SIXTEENTH STATE
+(design round 7's D26).** `after/settle-probe/` is the settle loop's residue:
+`awaitCardSettled` takes a screenshot per attempt (`renderer-driver.mjs`), so the
+label is written by every run that waits for a card to stop growing, and the pair
+committed here is the loop's LAST attempt - the state `offer-long-280` then
+photographs, which is why the two are byte-identical (md5
+`59119aa37ac048cc160572c3b519694f` dark / `05a2bb718dceab2e6115c14eff5e17e2`
+light) and why a reader comparing them would be comparing one frame with itself.
+It is carried because this set is a verbatim copy of the run's frames directory,
+and it makes no claim: `offer-long-280` is the state itself, and this label is the
+settle loop's own capture of it - byte-identical, so the loop and the frame's own
+shutter agree to the pixel. No manifest entry is owed for either - a PNG set
+sits outside `check-evidence`'s WebP sweep, which is why this directory is
+declared by this file rather than by a supplementary set.
+
 ## What the operator reported, and which frame carries it
 
 | Their words | The frame |
