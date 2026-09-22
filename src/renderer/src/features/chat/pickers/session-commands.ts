@@ -75,6 +75,34 @@ export const GOAL_DONE_ARGS = "done";
 /** The value `goal` takes to dismiss the settled chip (`/goal dismiss`). */
 export const GOAL_DISMISS_ARGS = "dismiss";
 
+/**
+ * The judge's live state as ONE word, from the wire's two goal fields.
+ *
+ * IT LIVES HERE, with `loopIsRunning`, because more than one surface reads it: the
+ * chip puts the word in its accessible name, and the `/goal` picker prints it on the
+ * row. A second mapping beside the first is how the chip comes to say `working`
+ * while the dialog says `judging` about one state.
+ *
+ * `judging` and `continuing` both become `working` because that is what the user can
+ * observe — a turn streaming — and `waiting` becomes `""` because the relation
+ * between "a goal is active" and "no judge tick is in flight" is the goal's own
+ * state, which the active chip already says. A surface that must print something in
+ * the resting state picks its own word for `""` (the picker prints `waiting`).
+ *
+ * AN UNKNOWN MEMBER (a newer writer) FALLS THROUGH TO `""`: the chip shows what it
+ * knows and claims nothing it cannot vouch for, which is the closed-vocabulary /
+ * open-reader rule the contract states.
+ */
+export const goalStateWord = (
+	goalStatus: string | undefined,
+	judgeState: string | undefined,
+): string => {
+	if (goalStatus === "done") return "done";
+	if (judgeState === "stalled") return "stalled";
+	if (judgeState === "judging" || judgeState === "continuing") return "working";
+	return "";
+};
+
 /** The value `loop` takes to cancel the running loop (`/loop stop`). */
 export const LOOP_STOP_ARGS = "stop";
 
