@@ -651,14 +651,16 @@ test("the heal knows the namespace the interpreter actually ships in", async () 
 	const bundle = "/Applications/Local Operator.app";
 	const layout = JSON.parse(
 		readFileSync(
-			join(process.cwd(), "src/shared/bundled-python-layout.json"),
+			join(process.cwd(), "src/shared/bundled-runtime-layout.json"),
 			"utf8",
 		),
 	);
 	for (const name of [
 		"python",
 		"python_aarch64",
-		...layout.architectures.map((arch) => `${layout.seedNamespace}/${arch}`),
+		...layout.architectures.map(
+			(arch) => `${layout.python.seedNamespace}/${arch}`,
+		),
 	]) {
 		const path = `${bundle}/Contents/Resources/${name}/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc`;
 		assert.equal(isPythonBytecodePath(bundle, path), true, path);

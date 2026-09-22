@@ -14,7 +14,7 @@ import {
 	sep,
 } from "node:path";
 import { promisify } from "node:util";
-import BUNDLED_PYTHON_LAYOUT from "../../shared/bundled-python-layout.json";
+import BUNDLED_RUNTIME_LAYOUT from "../../shared/bundled-runtime-layout.json";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 
 const execute = promisify(execFile);
@@ -45,7 +45,8 @@ const LOCK_OWNER = /^\s*\d+\s*$/;
 /** A legacy in-bundle interpreter path, in a launcher or a shebang. */
 const LEGACY_BUNDLE_PYTHON_PATH =
 	/\.app\/Contents\/Resources\/python(?:_aarch64)?\//;
-export const PYTHON_SEED_NAMESPACE = BUNDLED_PYTHON_LAYOUT.seedNamespace;
+export const PYTHON_SEED_NAMESPACE =
+	BUNDLED_RUNTIME_LAYOUT.python.seedNamespace;
 /**
  * The Mach-O magics, from the layout definition rather than inline here.
  *
@@ -56,7 +57,7 @@ export const PYTHON_SEED_NAMESPACE = BUNDLED_PYTHON_LAYOUT.seedNamespace;
  * objects" question answered by two hand-kept lists is the drift review R10 /
  * QA Q2 cost a release; the app, the pack step and the gate now read one list.
  */
-const MACH_O_MAGICS = new Set<string>(BUNDLED_PYTHON_LAYOUT.machOMagics);
+const MACH_O_MAGICS = new Set<string>(BUNDLED_RUNTIME_LAYOUT.machOMagics);
 const FORMAT = 1;
 const READY = "environment-ready.json";
 const POINTER = "selected-environment.json";
@@ -235,9 +236,12 @@ function seedPath(options: ManagedPythonOptions): string {
 		? join(options.resources, PYTHON_SEED_NAMESPACE, options.arch)
 		: join(
 				options.resources,
-				(BUNDLED_PYTHON_LAYOUT.checkoutSeedNames as Record<string, string>)[
-					options.arch
-				],
+				(
+					BUNDLED_RUNTIME_LAYOUT.python.checkoutSeedNames as Record<
+						string,
+						string
+					>
+				)[options.arch],
 			);
 }
 function pythonPath(runtime: string): string {

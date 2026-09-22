@@ -1,39 +1,102 @@
 #!/bin/bash
-# setup-python-standalone.sh
+# setup-python-resource.sh
 #
-# Downloads and sets up standalone Python for bundling with the Local Operator UI
-# application for use with Electron-based builds.
+# Stages the runtime resources the packaging step copies into the app: the
+# standalone Python the backend venv is built on, and the `uv` release the
+# install scripts use to install the backend.
 #
 # This script uses python-build-standalone from Gregory Szorc, which is designed
 # for easy bundling with applications. It's also used by PyOxidize and Datasette Desktop.
 #
-# Usage: ./setup-python-standalone.sh
+# Both versions live in `src/shared/bundled-runtime-layout.json`, which is the
+# single definition the app, the pack hook and the release gate read
+# (`scripts/bundled-runtime-layout.mjs` is the scripts-side reader). They are read
+# from it here rather than spelled again, because a version spelled twice is a
+# version that can disagree: the declared one is what the release gate asserts
+# against the seed that ships (`seedVersionCheck` in verify-macos-artifacts.mjs),
+# and it DERIVES this script's download URL - so a bump that only reaches the
+# JSON changes nothing here, and a bump that only reaches this file ships a tree
+# the gate then refuses.
+#
+# Usage: pnpm setup-python  (this script)
 #
 set -euo pipefail
 
-# Configuration
-PYTHON_VERSION="3.12.10"
-PYTHON_BUILD_DATE="20250529"
-BASE_PYTHON_STANDALONE_URL="https://github.com/indygreg/python-build-standalone/releases/download/${PYTHON_BUILD_DATE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_DATE}"
+# Configuration. Read the version pins out of the layout definition.
+#
+# LAYOUT_JSON is ABSOLUTE, and that is not style: `node -e "require('...')"`
+# resolves a relative specifier as a bare module id, so
+# `scripts/../src/shared/bundled-runtime-layout.json` is not found at all
+# (`MODULE_NOT_FOUND`), and even a `./`-prefixed spelling would depend on the
+# caller's working directory. Measured by running this script.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LAYOUT_JSON="${REPO_ROOT}/src/shared/bundled-runtime-layout.json"
+read_layout() {
+    node -e "process.stdout.write(require('${LAYOUT_JSON}')$1)"
+}
+PYTHON_VERSION="$(read_layout '.python.version')"
+PYTHON_BUILD_DATE="$(read_layout '.python.buildDate')"
+UV_VERSION="$(read_layout '.uv.version')"
 
+# The canonical org: `indygreg/python-build-standalone` redirects here (301), and
+# a build that depends on a redirect is one rename away from failing. Both the
+# release assets and the redirect were checked on 2026-09-21.
+BASE_PYTHON_STANDALONE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_DATE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_DATE}"
 PYTHON_STANDALONE_URL_X86_64="${BASE_PYTHON_STANDALONE_URL}-x86_64-apple-darwin-install_only.tar.gz"
 PYTHON_STANDALONE_URL_AARCH64="${BASE_PYTHON_STANDALONE_URL}-aarch64-apple-darwin-install_only.tar.gz"
 
-RESOURCES_DIR="$(dirname "$0")/../resources"
-PYTHON_DIR_X86_64="${RESOURCES_DIR}/python"
-PYTHON_DIR_AARCH64="${RESOURCES_DIR}/python_aarch64"
+# uv is pinned to an exact release, never `latest`: the install scripts' behaviour
+# is then a property of this repository rather than of the day a build ran, and
+# the release gate can assert the version that shipped. The asset is a `.tar.gz`
+# (it carries `uv` and `uvx`; only `uv` is staged, see setup_uv_arch below) with a
+# published `.sha256` beside it, which is checked before anything is unpacked.
+UV_RELEASE_BASE_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}"
 
-echo "Setting up standalone Python for Local Operator UI..."
-echo "Python version: ${PYTHON_VERSION}"
+RESOURCES_DIR="$(dirname "$0")/../resources"
+# The staging directory names come from the layout too. They are not cosmetic:
+# `backend-installer.ts` resolves the DEV layout by the same names
+# (`uvToolPath`/`seedPath`), so a staging directory this script invented would be
+# a tree the app never looks in - and the failure mode is the quiet one, an
+# install that keeps falling back to pip.
+PYTHON_DIR_X86_64="${RESOURCES_DIR}/$(read_layout '.python.checkoutSeedNames.x64')"
+PYTHON_DIR_AARCH64="${RESOURCES_DIR}/$(read_layout '.python.checkoutSeedNames.arm64')"
+UV_DIR_X86_64="${RESOURCES_DIR}/$(read_layout '.uv.checkoutNames.x64')"
+UV_DIR_AARCH64="${RESOURCES_DIR}/$(read_layout '.uv.checkoutNames.arm64')"
+
+# Every download in this script is bounded and fails on an HTTP error. Why the
+# pair rather than the bare `curl -L` this used to be: a build with no bound and
+# no `--fail` hangs on a stalled connection and, on a 404 or a moved asset,
+# writes the ERROR PAGE into the tree as if it were the artifact - which the
+# extraction then reports as a tar error naming a file nobody can explain.
+FETCH=(curl --fail --location --silent --show-error --max-time 600)
+
+# Fetch a URL into a file, then print the file. Kept as a function so every
+# download this script performs is bounded by the same one implementation.
+fetch_to() {
+    local url=$1 destination=$2
+    echo "Downloading ${url}"
+    "${FETCH[@]}" "${url}" -o "${destination}"
+}
+
+# The sha256 of a file, in the spelling the published `.sha256` files use.
+sha256_of() {
+    shasum -a 256 "$1" | awk '{print $1}'
+}
+
+echo "Setting up the bundled runtime resources for Local Operator UI..."
+echo "Python version: ${PYTHON_VERSION} (${PYTHON_BUILD_DATE})"
+echo "uv version: ${UV_VERSION}"
 echo "Resources directory: ${RESOURCES_DIR}"
 echo "Python x86_64 directory: ${PYTHON_DIR_X86_64}"
 echo "Python aarch64 directory: ${PYTHON_DIR_AARCH64}"
+echo "uv x86_64 directory: ${UV_DIR_X86_64}"
+echo "uv aarch64 directory: ${UV_DIR_AARCH64}"
 
 # Create resources directory if it doesn't exist
 mkdir -p "${RESOURCES_DIR}"
 echo "Created resources directory: ${RESOURCES_DIR}"
 
-# Remove existing Python directories if they exist
+# Remove existing staged directories if they exist
 if [ -d "${PYTHON_DIR_X86_64}" ]; then
     echo "Removing existing Python x86_64 directory: ${PYTHON_DIR_X86_64}..."
     rm -rf "${PYTHON_DIR_X86_64}"
@@ -42,6 +105,16 @@ if [ -d "${PYTHON_DIR_AARCH64}" ]; then
     echo "Removing existing Python aarch64 directory: ${PYTHON_DIR_AARCH64}..."
     rm -rf "${PYTHON_DIR_AARCH64}"
 fi
+
+# Remove existing staged uv directories if they exist (the staged tree is a build
+# input, never a source: `resources/uv*` is gitignored).
+for dir in "${UV_DIR_X86_64}" "${UV_DIR_AARCH64}"; do
+    if [ -d "${dir}" ]; then
+        echo "Removing existing uv directory: ${dir}..."
+        rm -rf "${dir}"
+    fi
+    mkdir -p "${dir}"
+done
 
 # Create Python architecture-specific directories
 mkdir -p "${PYTHON_DIR_X86_64}"
@@ -56,10 +129,9 @@ setup_python_arch() {
     local final_python_dir=$3 # This is PYTHON_DIR_X86_64 or PYTHON_DIR_AARCH64
 
     echo "Setting up Python for ${arch}..."
-    echo "Downloading Python standalone for ${arch} from ${url}..."
     # Download to a temporary file first to handle potential tar issues
     TMP_TAR_FILE=$(mktemp)
-    curl -L "${url}" -o "${TMP_TAR_FILE}"
+    fetch_to "${url}" "${TMP_TAR_FILE}"
 
     # Extract into a temporary location first to avoid conflicts if 'python' dir already exists
     EXTRACT_TEMP_DIR=$(mktemp -d)
@@ -99,6 +171,26 @@ setup_python_arch() {
         exit 1
     fi
 
+    # The tree that was just unpacked IS the version the layout declares, or the
+    # build stops here.
+    #
+    # WHY THIS ASSERTION IS NOT DECORATION: the patch level is the one thing no
+    # later step can see. `lib/python3.12`, `bin/python3.12` and
+    # `_sysconfigdata`'s `VERSION` all carry the major.minor only, so a bump to
+    # the declaration that this script did not act on - a checkout that pulled
+    # the bump and ran `pnpm build` without re-running `pnpm setup-python`, or a
+    # CDN serving the previous patch - produces a complete tree the release gate
+    # accepts while shipping four patch releases behind, three of them security.
+    # Asking the interpreter it just unpacked takes the reading from the bytes
+    # rather than from the URL that was supposed to produce them.
+    REPORTED_VERSION=$(PYTHONDONTWRITEBYTECODE=1 "${PYTHON_BIN}" --version 2>&1)
+    if [ "${REPORTED_VERSION}" != "Python ${PYTHON_VERSION}" ]; then
+        echo "Error: the ${arch} interpreter just unpacked reports '${REPORTED_VERSION}' but src/shared/bundled-runtime-layout.json declares Python ${PYTHON_VERSION}."
+        echo "URL fetched: ${url}"
+        exit 1
+    fi
+    echo "Verified: the ${arch} tree is Python ${PYTHON_VERSION}."
+
     # Ship no bytecode, and remove any that the extraction or the check above
     # produced.
     #
@@ -131,7 +223,8 @@ setup_python_arch() {
     # It runs BEFORE signing by construction - this script runs before the build
     # - and removing content after signing would be a `file missing:` violation.
     # See scripts/prune-python-seed.mjs for why the list is what it is, and
-    # src/shared/bundled-python-layout.json for the list itself.
+    # the seedStdlibMarker and prunedSeedPaths keys of
+    # src/shared/bundled-runtime-layout.json for the list itself.
     echo "Pruning unreachable seed content and normalising execute bits in ${final_python_dir}..."
     node "$(dirname "$0")/prune-python-seed.mjs" "${final_python_dir}"
 
@@ -150,5 +243,101 @@ setup_python_arch "x86_64" "${PYTHON_STANDALONE_URL_X86_64}" "${PYTHON_DIR_X86_6
 # Setup Python for aarch64
 setup_python_arch "aarch64" "${PYTHON_STANDALONE_URL_AARCH64}" "${PYTHON_DIR_AARCH64}"
 
+# --- uv ---------------------------------------------------------------------
+#
+# The uv release for one architecture, verified and staged as a single binary.
+#
+# WHY uv SHIPS AT ALL: installing the backend with pip is the dominant cost of a
+# first run. Measured on this machine, cold cache, same interpreter, same
+# dependency set: pip 28 s against uv 4 s for the package install, and the venv
+# creation is 3 s on both paths. That is the phase a user waits through.
+#
+# WHY THE ARCHIVE AND NOT A BARE BINARY: the release publishes
+# `uv-<triple>.tar.gz` with a `.sha256` beside it. The archive carries `uv` and
+# `uvx`; only `uv` is staged, because `uvx` is a tool runner this app never
+# invokes and app size is a download every user pays.
+#
+# WHAT THIS DOES NOT DO: re-sign or normalise the binary. It ships exactly the
+# bytes its publisher signed and notarized (`codesign -dv` reports a Developer ID
+# Application authority and the hardened-runtime flag; `spctl -a -vv -t install`
+# reports `source=Notarized Developer ID`), which is what lets it sit inside this
+# repository's code-sealed bundle as a sealed resource without re-signing - and
+# re-signing it would replace the publisher's identity with ours for a tool that
+# is not ours to speak for.
+setup_uv_arch() {
+    local arch=$1
+    local triple=$2
+    local final_dir=$3
+    local tarball_url="${UV_RELEASE_BASE_URL}/uv-${triple}.tar.gz"
+
+    echo "Setting up uv for ${arch} (${triple})..."
+    TMP_UV_TAR=$(mktemp)
+    TMP_UV_SUM=$(mktemp)
+    fetch_to "${tarball_url}" "${TMP_UV_TAR}"
+    fetch_to "${tarball_url}.sha256" "${TMP_UV_SUM}"
+
+    # The published checksum, checked before anything is unpacked. This is the
+    # half that makes "pinned to a release" mean the bytes rather than the URL:
+    # a truncated download or a substituted asset is refused here rather than
+    # becoming a binary the install scripts cannot execute on every user's
+    # machine.
+    EXPECTED_SHA=$(awk '{print $1}' "${TMP_UV_SUM}")
+    ACTUAL_SHA=$(sha256_of "${TMP_UV_TAR}")
+    if [ "${EXPECTED_SHA}" != "${ACTUAL_SHA}" ]; then
+        echo "Error: uv ${UV_VERSION} for ${arch} does not match its published sha256."
+        echo "Expected: ${EXPECTED_SHA}"
+        echo "Actual:   ${ACTUAL_SHA}"
+        echo "URL fetched: ${tarball_url}"
+        rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
+        exit 1
+    fi
+    echo "Verified uv ${arch} sha256: ${ACTUAL_SHA}"
+
+    TMP_UV_EXTRACT=$(mktemp -d)
+    tar -xzf "${TMP_UV_TAR}" -C "${TMP_UV_EXTRACT}"
+    if [ ! -f "${TMP_UV_EXTRACT}/uv-${triple}/uv" ]; then
+        echo "Error: expected uv-${triple}/uv in the archive for ${arch}."
+        rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
+        rm -rf "${TMP_UV_EXTRACT}"
+        exit 1
+    fi
+    cp "${TMP_UV_EXTRACT}/uv-${triple}/uv" "${final_dir}/uv"
+    chmod +x "${final_dir}/uv"
+    rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
+    rm -rf "${TMP_UV_EXTRACT}"
+
+    # The staged binary runs, and it is the pinned release.
+    #
+    # A tree for the OTHER architecture may not execute at all on this host (an
+    # x86_64 uv on an arm64 machine with no Rosetta), and that is not a failure:
+    # the bytes are pinned by the checked sha256 above, and the architecture that
+    # ships is asserted per artifact by the release gate (`bundledUvToolCheck`).
+    # What is checked here is that a binary this host CAN run reports the version
+    # the layout declares - i.e. that the pin and the staged bytes agree.
+    REPORTED_UV=$( "${final_dir}/uv" --version 2>/dev/null || true )
+    if [ -n "${REPORTED_UV}" ]; then
+        case "${REPORTED_UV}" in
+            "uv ${UV_VERSION}"*)
+                echo "Verified: the ${arch} uv is ${REPORTED_UV}."
+                ;;
+            *)
+                echo "Error: the staged uv for ${arch} reports '${REPORTED_UV}' rather than 'uv ${UV_VERSION}'."
+                exit 1
+                ;;
+        esac
+    else
+        echo "Staged ${final_dir}/uv for ${arch} cannot run on this host ($(uname -m)); its version is asserted on an artifact built for that architecture."
+    fi
+}
+
+# The two macOS triples the layout's `uv.binaryNames` map is paired with. A
+# Windows or Linux uv is deliberately NOT staged here: this script runs only in
+# the macOS job (`publish.yml`), while `package.json`'s win/linux
+# `extraResources` carry the same two target directories so a future platform job
+# that does stage them ships them without another change to the layout.
+setup_uv_arch "x86_64" "x86_64-apple-darwin" "${UV_DIR_X86_64}"
+setup_uv_arch "aarch64" "aarch64-apple-darwin" "${UV_DIR_AARCH64}"
+
 echo "Python standalone setup complete for all architectures!"
+echo "uv ${UV_VERSION} staged for both architectures."
 echo "You can now build the application with 'pnpm dist:mac'"
