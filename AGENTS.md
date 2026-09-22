@@ -1402,6 +1402,25 @@ the diff base, every changed path with its category, every flag with its reason 
 every job as run or skipped. **A skipped job is a claim, not a pass** — the owner
 justifies each skip before merging, and a skip they cannot justify is a finding.
 
+**A pull request opened from a FORK cannot pass the two `NPX Sanity Check` legs,
+and that is environmental rather than a finding.** The job's `Build and pack` step
+reads four repository secrets — `secrets.GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` and `MICROSOFT_TENANT_ID`, wired to
+the `VITE_*` names `electron.vite.config.js` requires — and GitHub withholds
+repository secrets from a `pull_request` run whose head is a fork, so the build
+dies in `replaceBackendConfigPlugin` with `Error: VITE_GOOGLE_CLIENT_ID is not
+set` before anything diff-specific runs. Measured on 2026-09-22: #449
+(`SanaKetabchi/fix/mac-x64-bytecode-arch`, run 35776483172) failed both legs in
+45 s and 1 m 13 s at that step while `Change Scope`, `Lint`, `Type Checking`,
+`Desktop Tests`, `Runtime Dependencies`, `Security Audit` and `Version Bump Guard`
+all passed; the same job passes on a same-repo branch (#451, run 35775784209,
+both legs green). So **green means every job that can run on that head**, and
+those two legs cannot run on a fork head — an outside contributor's PR is read on
+the jobs that can run plus its agent rounds, which is exactly why "green" is not
+a check-list length. This is **not** a licence to ignore a red job that *can* run:
+those two legs are read normally on a same-repo branch, and every other job is read
+normally wherever the head lives.
+
 The failure this prevents is measured, not theoretical. The backend repository
 used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions
 each holding a reserved patch number, `0.47.1` → `0.48.0` took close to five
@@ -1495,16 +1514,25 @@ Two owners at once produce two tags on two commits, and the second Release is th
 one that ships the wrong tree.
 
 ```bash
-# 0. A fresh tree, never a bump sitting on a feature branch — and the LOCK comes
-#    first. The version is not known yet (the bump is decided from the window in
-#    step 1), so the claim is ONE EMPTY commit on `release-next`, opened as a
-#    DRAFT PR; step 2 amends that same commit into the version change and retitles
-#    this same PR, so the lock's number never moves. Push the branch and open the
-#    PR only after step 1 of *The window, and the release owner's procedure* has
-#    found no open chore(release) PR.
-git fetch origin --tags && git switch -c release-next origin/main
-git commit --allow-empty -m 'chore(release): claim release window'
-git push -u origin release-next
+# 0. A THROWAWAY worktree, never the working checkout — and the LOCK comes
+#    first. The bump branch has to be cut somewhere, and cutting it in the root
+#    checkout (`git switch -c release-next`) moves the owner's own branch onto the
+#    release: the amendment in step 2 would then rewrite a commit on top of
+#    whatever that checkout had staged or modified, so the tagged tree would be
+#    whatever `git commit` happened to find rather than the one line the review
+#    round read. Every mutating command below is `git -C "$WT"`, and the root
+#    checkout's branch is never touched. The version is not known yet (the bump is
+#    decided from the window in step 1), so the claim is ONE EMPTY commit on
+#    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
+#    version change and retitles this same PR, so the lock's number never moves.
+#    Push the branch and open the PR only after step 1 of *The window, and the
+#    release owner's procedure* has found no open chore(release) PR.
+WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+git fetch origin --tags
+git worktree add "$WT" origin/main
+git -C "$WT" switch -c release-next
+git -C "$WT" commit --allow-empty -m 'chore(release): claim release window'
+git -C "$WT" push -u origin release-next
 gh pr create --draft --base main --head release-next --assignee damianvtran \
   --title 'chore(release): claim release window' \
   --body 'Release window claimed. Owner session pid: <pid from lop sessions>.
@@ -1528,9 +1556,28 @@ git diff v<PREV>..origin/main -- package.json | grep '^[-+].*"version"'
 #    Green CI here is ONE guard plus the classifier: a version-only package.json
 #    diff is a release bump, so every other job in ci.yml is a deliberate skip
 #    (see *Change scope*). The one-line diff's review round is the rest.
-sed -i '' 's/"version": "[0-9.]*"/"version": "X.Y.Z"/' package.json
-git commit --amend -am 'chore(release): bump version to X.Y.Z'
-git push --force-with-lease origin release-next
+#    The version line is written by this repository's own script rather than by
+#    sed: `scripts/apply-release-bump.mjs` replaces that one line textually and
+#    *refuses* — non-zero exit, `Bump refused: ...` — unless the result is
+#    line-for-line identical to the input except for it, which is the property the
+#    review round is checking and the one a re-serialised JSON does not preserve
+#    (this file's two-space indentation and field order are its own, and
+#    `JSON.parse` -> `JSON.stringify` keeps neither). Its
+#    contract is CI-covered by `scripts/release-baseline.test.mjs`, wired into the
+#    "Check release contracts" step of `.github/workflows/ci.yml`, so the check
+#    that ran locally is the one CI keeps.
+#    Name `--package` explicitly: its default is CWD-relative, so run from the root
+#    checkout a bare `node "$WT/scripts/apply-release-bump.mjs"` rewrites the ROOT
+#    checkout's package.json and leaves the worktree's alone (measured 2026-09-22).
+node "$WT/scripts/apply-release-bump.mjs" --package "$WT/package.json" --version X.Y.Z
+
+#    `-o package.json`, never `-am`: `--only` holds the amended commit to the one
+#    file the review round read, where `-a` stages every modified tracked file in
+#    the tree. Measured 2026-09-22: a two-line edit to an unrelated file rode into
+#    the bump commit under `--amend -am` and was left out under
+#    `--amend -o package.json`.
+git -C "$WT" commit --amend -o package.json -m 'chore(release): bump version to X.Y.Z'
+git -C "$WT" push --force-with-lease origin release-next
 gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
 gh pr ready <claim-pr-number>
 MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
@@ -1556,7 +1603,13 @@ gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 
 # 5. Post the tag and the Release URL on every PR in the window, and send them to
 #    each contributor still running — the PR comment is the record, the message is
-#    what reaches someone who has already moved on.
+#    what reaches someone who has already moved on. Then reclaim the throwaway
+#    worktree: it is scratch, and a release must not leave one behind holding
+#    `release-next`. A removal that REFUSES means something is still untracked or
+#    modified inside it — read that before forcing, because it means the tree the
+#    release came out of was not the one the review round read (the commit itself
+#    was still `package.json` only, which `-o` guarantees).
+git worktree remove "$WT"
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag
@@ -1580,9 +1633,13 @@ can.
 generated draft (`## What's Changed`), and annotates one that carries neither a
 `## What's New` heading (matched case-insensitively; every release here since
 v0.23.0 spells it `## What's new`) nor a `Full Changelog` compare link. The refusal is
-raised in the run's second job, and every job that can ship something — the npm
-publish, the three installers and the promote — declares that job as a dependency,
-so a refused writeup skips all of them rather than publishing to npm beside them:
+raised in the run's second job, and every job that can ship something names it as a
+dependency — the npm publish and the three installers declare it directly
+(`needs: [validate-release, open-release-window]`) and the promote,
+`finalize-release`, reaches it transitively through the builds (`needs:
+[validate-release, attach-to-release]`, and `attach-to-release` needs the three
+builds) — so a refused writeup skips all of them rather than publishing to npm
+beside them:
 Actions never cancels a sibling for another job's failure, and a job gated on
 `validate-release` alone would happily run next to a failing window. Recovery is
 editing the Release body and re-running the failed run: the re-run replays the
@@ -1695,15 +1752,17 @@ derivation to guard. What remains:
   Read the classification summary (see *Change scope*) before treating either
   shape as evidence.
 - **Never force-push, and never merge on a red required job.** The `Main
-  Protection` ruleset, once attached, configures **no required status checks** —
+  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) configures **no
+  required status checks** —
   its rules are `non_fast_forward` and the approval count — so nothing makes a red
   check fatal: `version-bump-guard` and CI make it *loud*, and the merge is still
   the agent's to refuse. `non_fast_forward` does then refuse a force-push
   mechanically, the one violation that stopped being merely loud.
 - **Write access to `main` is release authority, and it is the widest control this
-  repository has.** Once the `Main Protection` ruleset is attached, `main` is
-  governed by it — `gh api repos/<owner>/<repo>/rules/branches/main` names it, the
-  check this file already prescribes — and the only way past it without a second
+  repository has.** `main` is governed by the `Main Protection` ruleset —
+  `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
+  prescribes, names it, ruleset `23841604` — and the only way past it without a
+  second
   approval is its one bypass actor, `RepositoryRole` id 5, which on a repository
   owned by a personal account is the owner alone (AGENTS.md, *Who may merge: two
   tiers*). What the
@@ -1763,15 +1822,18 @@ which is deliberate: nothing is requested automatically when a PR opens, and the
 owner set whose judgement stands in for the project's is recorded in that file's
 comment instead.
 
-**When the `Main Protection` ruleset is attached, the forge enforces an approval
-where it used to enforce nothing.** The ruleset configured for the default branch
-mirrors the backend repository's (`local-operator`, ruleset 3622629): a
+**The `Main Protection` ruleset is attached, and the forge now enforces an approval
+where it used to enforce nothing.** It is this repository's ruleset id `23841604`,
+created 2026-09-22, configured for the default branch and mirroring the backend
+repository's (`local-operator`, ruleset 3622629): a
 `non_fast_forward` rule, plus a `pull_request` rule with
 `required_approving_review_count: 1`, `require_code_owner_review: false`,
 `required_review_thread_resolution: false`, `dismiss_stale_reviews_on_push:
 false`, `require_last_push_approval: false`,
-`require_extra_approval_for_unattributed_changes: true` (an unattributed PR
-therefore needs two approvals) and
+`require_extra_approval_for_unattributed_changes: true` (GitHub's *Require an
+additional approval for unattributed Copilot pull requests* — scoped to a pull
+request that **Copilot** opened under its own app identity, so an unattributed
+Copilot PR needs two approvals and nothing here does) and
 `allowed_merge_methods: [merge, squash, rebase]`. It carries exactly one bypass
 actor, `RepositoryRole` id 5 with `bypass_mode: always` — and on a repository
 owned by a personal account **that role is the owner's alone**: such a repository
@@ -1783,10 +1845,11 @@ transferring the repository to an organization is what would create those roles,
 and what would permit team-scoped bypass actors). Confirm what is actually
 enforced, rather than trusting this paragraph, with
 `gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
-the state, and this port does not create the ruleset, so while none is attached it
-answers `[]` — and never with the legacy `branches/main/protection` endpoint: that
-one answers `404 Branch not protected` even for a branch a modern ruleset *is*
-enforcing, so it is the wrong question. Before the ruleset the rules below were a
+the state, and it returns the ruleset above today; this paragraph is the record,
+the API is the truth — and never with the legacy `branches/main/protection`
+endpoint: that one answers `404 Branch not protected` even for a branch a modern
+ruleset *is* enforcing, so it is the wrong question. Before 2026-09-22 that
+endpoint answered `[]` here — no ruleset existed — and the rules below were a
 discipline with nothing mechanical behind them. The disciplines are unchanged,
 and the settings above encode a deliberate two-tier policy; this section exists so
 nobody "fixes" one half without understanding what the other half is for.
@@ -1794,8 +1857,14 @@ nobody "fixes" one half without understanding what the other half is for.
 **Tier 1 — the PR is the owner's.** When the agent is **acting for the owner** —
 the operator, running on their machine and under their account, which is the
 normal case here — the standing agent review gate **is** the approval. A clean,
-fresh, independent agent review round plus green CI is sufficient to merge; the
-agent does not need to find a second human to click approve. Green here is the
+fresh, independent agent review round plus green CI is **sufficient to merge**;
+the agent does not need to find a second human to click approve. On an
+owner-authored PR that means the completion is `--admin`, because GitHub refuses
+`422 Review Can not approve your own pull request` — no account here can approve
+the pull request it opened, so the rule the reviewer would satisfy by clicking is
+one they are forbidden from satisfying. #451 sat `BLOCKED`/`REVIEW_REQUIRED` for
+exactly this reason. *How the forge records tier 1* below is the path and the
+disclosure it requires. Green here is the
 *classified* green: read the run's classification summary before treating the
 check list as evidence, because a job this diff skipped appears there as a skip
 rather than as a pass (*Change scope*).
