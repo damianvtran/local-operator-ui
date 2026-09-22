@@ -92,12 +92,17 @@ const scroller = ({ count = 12, panel = 5, ring = KEYBOARD_RING } = {}) => {
 	const container = new FakeElement();
 	const rows = [];
 	const rings = new Map();
-	const state = { scrollTop: 0, offsets: [] };
+	/*
+	 * THE PANEL IS STATE, NOT A CONSTANT, because one cell has to change it: a BAND arriving is a
+	 * container whose clip box gets shorter under a cursor row that never moved (QA round 4's Q-9,
+	 * design round 7's D24), and a `panel` frozen at construction cannot model that at all.
+	 */
+	const state = { scrollTop: 0, offsets: [], panel };
 	const CLIP_TOP = 400 + 1; // the container's border box top, plus its 1px border
 
 	container.clientTop = 1;
 	Object.defineProperty(container, "clientHeight", {
-		get: () => panel * ROW_H,
+		get: () => state.panel * ROW_H,
 	});
 	Object.defineProperty(container, "scrollHeight", {
 		get: () => rows.length * ROW_H,
@@ -142,7 +147,13 @@ const scroller = ({ count = 12, panel = 5, ring = KEYBOARD_RING } = {}) => {
 		container,
 		rows,
 		clipTop: CLIP_TOP,
-		clipBottom: CLIP_TOP + panel * ROW_H,
+		get clipBottom() {
+			return CLIP_TOP + state.panel * ROW_H;
+		},
+		/** The box the band spends: the same rows, a shorter window onto them. */
+		shrink(rowsTall) {
+			state.panel = rowsTall;
+		},
 		/** The row the cursor is on, as the DOM reports it. */
 		focus(index) {
 			globalThis.document.activeElement = rows[index];
@@ -178,9 +189,9 @@ const scroller = ({ count = 12, panel = 5, ring = KEYBOARD_RING } = {}) => {
 	};
 };
 
-/** A record, as the component's ref holds it. */
+/** A record, as the component's ref holds it. `clipHeight` is the box it was measured against, which the first reading of it starts as 0. */
 const slot = () => ({
-	current: { node: null, index: -1, visibility: "outside" },
+	current: { node: null, index: -1, visibility: "outside", clipHeight: 0 },
 });
 
 test("a reader who scrolled the cursor's row fully out is never moved", () => {
@@ -359,5 +370,73 @@ test("an arrival that does not move the cursor's row is left alone", () => {
 		record.current.index,
 		2,
 		"and the cursor's row is still the row it was on",
+	);
+});
+
+test("a box that SHRANK is not a row that left: the same re-file under a band leaves the reader alone (QA round 4's Q-9, design round 7's D24)", () => {
+	/*
+	 * THE STATE QA MEASURED, in the model this file drives: a list that overflows, a cursor row at
+	 * the panel's lower edge, and then ONE commit in which a row arrives above the cursor's (so its
+	 * slot changes) while the container's own clip box gets shorter - which is what a band arriving
+	 * off the box's bottom does. A record carrying the slot alone cannot tell the two apart, so it
+	 * reads the shorter box as "the row left" and writes `scrollTop` to fetch it back; that write is
+	 * the reader's-place defect (the app's own reading: `{"scrollBefore":8.5,"scrollAfter":0}`).
+	 */
+	const s = scroller({ panel: 5 });
+	const record = slot();
+	s.focus(4);
+	holdFocusedRow(s.container, record);
+	assert.equal(
+		record.current.visibility,
+		"inside",
+		"the cursor's row starts inside the panel, at its lower edge",
+	);
+	const held = s.scrollTop();
+
+	s.arriveAbove(0); // the re-file: the cursor's row keeps its node and changes slot
+	s.shrink(3); // and the band's own height comes off the box
+	holdFocusedRow(s.container, record);
+
+	assert.equal(
+		s.scrollTop(),
+		held,
+		"a box that shrank is not a row that left: the reader keeps the place they chose (Q-9)",
+	);
+	assert.equal(
+		record.current.clipHeight,
+		s.container.clientHeight,
+		"and the record is refreshed onto the box that is standing, so the next commit reads against it",
+	);
+	assert.equal(
+		record.current.visibility,
+		"outside",
+		"the cursor's row IS outside the shorter panel - the record says so, which is what makes the NEXT commit's reading honest rather than a second blind spot",
+	);
+});
+
+test("and with the box unchanged the same re-file is still followed (U1, the half that must not regress)", () => {
+	/*
+	 * THE PAIR, and it is what stops the cell above passing for a rule that never corrects anything:
+	 * the same arrival above the cursor's row, with the panel left where it was, has to bring the
+	 * cursor's row back into view - that is U1, and it is why `holdFocusedRow` exists at all.
+	 */
+	const s = scroller({ panel: 5 });
+	const record = slot();
+	s.focus(4);
+	holdFocusedRow(s.container, record);
+	const held = s.scrollTop();
+
+	s.arriveAbove(0);
+	holdFocusedRow(s.container, record);
+
+	assert.notEqual(
+		s.scrollTop(),
+		held,
+		"a row the re-file took out of the panel is followed (U1)",
+	);
+	assert.equal(
+		record.current.visibility,
+		"inside",
+		"and the cursor is back on screen",
 	);
 });

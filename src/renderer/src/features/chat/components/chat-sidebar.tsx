@@ -2938,17 +2938,31 @@ export function ChatSidebar({
 	 * row as still inside and follow it (U5). The record is three-valued rather
 	 * than a boolean so a row that was PARTLY on screen when the change landed is
 	 * still followed; `sidebar-focus-hold.ts` carries both arguments.
+	 *
+	 * AND IT CARRIES THE BOX THE ROW WAS MEASURED IN (QA round 4's Q-9, design round
+	 * 7's D24), which is the one input this effect could not supply on its own: the
+	 * band's arrival takes its height off the list's own box while every row keeps
+	 * its offset (the yield below), so a cursor row near the clip's lower edge reads
+	 * as having left the panel when nothing moved it - and the correction would
+	 * write `scrollTop` to fetch it back, moving a reader who is mid-list. The
+	 * record is REFRESHED instead when the container's clip box is not the one it
+	 * was measured against, which is done inside `holdFocusedRow` before any write
+	 * rather than by a second effect here: a later effect runs AFTER this one, so
+	 * its refresh would have nothing left to prevent (the order design round 7's
+	 * D24 names).
 	 */
 	const entityPanelRef = useRef<HTMLDivElement | null>(null);
 	const entitySlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
 		visibility: "outside",
+		clipHeight: 0,
 	});
 	const listSlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
 		visibility: "outside",
+		clipHeight: 0,
 	});
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);

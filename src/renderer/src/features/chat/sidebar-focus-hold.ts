@@ -32,11 +32,27 @@
  * the row is on screen, so the reader is looking at it, and the re-file taking it
  * the rest of the way out is this rule's to correct - while a row they scrolled
  * fully out is still never touched.
+ *
+ * `clipHeight` IS THE SECOND HALF OF THE SAME ARGUMENT, and it is what QA's round
+ * 4 measured the absence of (Q-9; design round 7's D24). A row can be outside the
+ * panel for a third reason - the READER'S WINDOW onto the list got shorter - and
+ * every other field of this record is blind to it: the row is the same node, at
+ * the same slot, and the same rows are above and below it, so `visibility` alone
+ * says "it was inside and it has left". The band's arrival is exactly that event:
+ * the panel's own message takes its height off the list's box (design round 6's
+ * ruling), so a row within `band` of the clip's lower edge ends up outside a box
+ * nothing moved it out of - and a record that cannot say so writes `scrollTop` to
+ * fetch it back (measured `{"scrollBefore":8.5,"scrollAfter":0}`, the reader's
+ * place in the list taken by a message arriving). Carrying the box the record was
+ * measured against is what makes the difference readable: the same rows, a
+ * different window, is not a re-file, and the gate below refreshes instead.
  */
 export type FocusedSlot = {
 	node: HTMLElement | null;
 	index: number;
 	visibility: RowVisibility;
+	/** The container's `clientHeight` when this record was written. */
+	clipHeight: number;
 };
 
 /** A row's containment in its container, as the gate reads it. */
@@ -175,7 +191,12 @@ export const holdFocusedRow = (
 	slot: { current: FocusedSlot },
 ) => {
 	if (!container) {
-		slot.current = { node: null, index: -1, visibility: "outside" };
+		slot.current = {
+			node: null,
+			index: -1,
+			visibility: "outside",
+			clipHeight: 0,
+		};
 		return;
 	}
 	/*
@@ -196,19 +217,40 @@ export const holdFocusedRow = (
 			: null;
 	const index = active ? rowNodes.indexOf(active) : -1;
 	const previous = slot.current;
+	const clipHeight = container.clientHeight;
 	if (!active || index < 0) {
-		slot.current = { node: null, index: -1, visibility: "outside" };
+		slot.current = { node: null, index: -1, visibility: "outside", clipHeight };
 		return;
 	}
 	const visibilityNow = rowVisibility(active, container);
+	/*
+	 * THE BOX THE RECORD WAS MEASURED AGAINST IS PART OF WHAT IT SAYS (QA round 4's Q-9,
+	 * design round 7's D24), and the check is here - in the same call, before any write -
+	 * rather than in a second effect beside it, because a later effect's correction has
+	 * already landed by the time it runs: the first cut of this fix refreshed the record
+	 * from an effect declared AFTER the one that calls this, so within the band's own commit
+	 * the write went first and the refresh had nothing left to prevent (design round 7, D24:
+	 * `6715ac0c6` added it, `52f756255` removed it while rewriting the base read).
+	 *
+	 * A row whose panel is a different SIZE is not a row that left: the band's arrival takes
+	 * its height off this box while every row keeps its offset, so "inside and now outside"
+	 * is the READER'S WINDOW changing and not a re-file. Refreshing the record onto the box
+	 * that is standing leaves `scrollTop` exactly where the reader put it, which is the
+	 * clause the ruling states - and the rows the band hides are the overflow at the bottom,
+	 * which is what the yield below the list is FOR. A re-file in the same commit (a row
+	 * arriving or leaving) still changes the slot, so the pair of them is reported as what it
+	 * is: the box moved, so this commit corrects nothing and the NEXT one reads an honest
+	 * record.
+	 */
 	if (
+		previous.clipHeight !== clipHeight ||
 		previous.node !== active ||
 		previous.index < 0 ||
 		previous.index === index ||
 		previous.visibility === "outside" ||
 		visibilityNow !== "outside"
 	) {
-		slot.current = { node: active, index, visibility: visibilityNow };
+		slot.current = { node: active, index, visibility: visibilityNow, clipHeight };
 		return;
 	}
 	const clip = clipBox(container);
@@ -232,6 +274,7 @@ export const holdFocusedRow = (
 		node: active,
 		index,
 		visibility: rowVisibility(active, container),
+		clipHeight: container.clientHeight,
 	};
 };
 
@@ -267,5 +310,11 @@ export const refreshFocusedInside = (
 	slot.current = {
 		...slot.current,
 		visibility: rowVisibility(node, container),
+		/*
+		 * The box is re-read here for the same reason `visibility` is: the reader's own scroll does
+		 * not resize anything, so this is the cheap path that keeps the two facts in step rather
+		 * than a second rule (the scroll handler and the layout effect write the same record).
+		 */
+		clipHeight: container.clientHeight,
 	};
 };
