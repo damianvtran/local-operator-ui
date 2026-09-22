@@ -4270,6 +4270,127 @@ async function sceneSessionArchive(cdp) {
 			card: cardAtEdge,
 		}),
 	);
+
+	/*
+	 * THE SCROLLED ARRIVAL, IN QA'S OWN STATE (QA round 4's Q-9, and the acceptance this round owes).
+	 *
+	 * The walk's ordinary scene cannot exercise the finding at all: its list is 289 tall against 288
+	 * of content, so `scrollHeight - clientHeight` is 0, there is no scroll to lose, and the hold has
+	 * nothing to write. QA's fixture has one - their reading is `{"scrollBefore":8.5,"scrollAfter":0}`
+	 * - so this builds that state directly: the viewport is SHORTENED until the list overflows at
+	 * rest, a row is focused (`holdFocusedRow` only follows a row that is `document.activeElement`,
+	 * and only when the container's own box changed under it), the list is scrolled so that row
+	 * straddles the clip's top edge by a few pixels - which is what makes it "inside or partial" at
+	 * the previous commit and "outside" at the next, the gate's own condition - and the card is raised
+	 * WITHOUT moving focus (a DOM click on the control, not a synthetic pointer press, because a real
+	 * press focuses the control and `rowNodes.indexOf(active)` is then -1, the early return QA hit).
+	 *
+	 * THE ACCEPTANCE IS THE RULING'S CLAUSE: `scrollTop` unchanged, every row's top unchanged, the
+	 * yield still exact, and the trap on the list's own `scrollTop` EMPTY. A write would be the
+	 * finding, whatever value it carried, which is why this reads the trap and not two numbers.
+	 */
+	const shortViewport = await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1200,
+			height: 700,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.then(() => true)
+		.catch(() => false);
+	await wait(600);
+	const scrolledState = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		if (list === null) return null;
+		const rows = Array.from(list.querySelectorAll("[data-chat-row]"));
+		if (rows.length === 0) return null;
+		const row = rows[0];
+		const clip = list.getBoundingClientRect();
+		const rowBox = row.getBoundingClientRect();
+		/* The row straddles the clip's own top edge by 4px: partial now, outside once the box gives. */
+		list.scrollTop = Math.round(list.scrollTop + (rowBox.top - clip.top) + 4);
+		row.focus();
+		const after = row.getBoundingClientRect();
+		const host = row.closest("[data-session-row]");
+		const control =
+			host === null ? null : host.querySelector("[data-session-archive]");
+		if (control !== null) {
+			control.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+			control.click();
+		}
+		return {
+			overflowAtRest: list.scrollHeight > list.clientHeight + 1,
+			scrollTop: Math.round(list.scrollTop),
+			straddle: Math.round(after.top - list.getBoundingClientRect().top),
+			focusedIsRow: document.activeElement === row,
+			clicked: control !== null,
+			rows: rows.length,
+		};
+	})()`);
+	await wait(700);
+	const scrolledAfter = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const band = document.querySelector("[data-archive-toast-band]");
+		const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		return {
+			scrollTop: list === null ? null : Math.round(list.scrollTop),
+			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
+			card: card === null ? null : Math.round(card.getBoundingClientRect().height),
+			rows: Array.from(list.querySelectorAll("[data-chat-row]")).map((row) =>
+				Math.round(row.getBoundingClientRect().top),
+			),
+			entities: (() => {
+				const region = document.querySelector('[data-sidebar-region="entities"]');
+				if (region === null) return null;
+				const box = region.getBoundingClientRect();
+				return { top: Math.round(box.top), height: Math.round(box.height), scrollTop: region.scrollTop };
+			})(),
+			writes: window.__scrollWrites || [],
+		};
+	})()`);
+	const rowShift =
+		scrolledState !== null &&
+		Array.isArray(scrolledAfter.rows) &&
+		scrolledAfter.rows.length > 0
+			? Math.abs(scrolledAfter.rows[0] - scrolledState.scrollTop)
+			: null;
+	note(
+		"the scrolled arrival in QA's own state (QA round 4, Q-9)",
+		JSON.stringify({
+			shortViewport,
+			before: scrolledState,
+			after: scrolledAfter,
+			rowShift,
+		}),
+	);
+	/*
+	 * READ, NOT ASSERTED, AND THE READING SAYS THE SCENARIO IS NOT QA'S STATE YET - which is the
+	 * whole reason this is a note and not a check on this head:
+	 *
+	 *   {"before":{"overflowAtRest":false,"scrollTop":0,"straddle":9,"focusedIsRow":true,
+	 *   "clicked":false,"rows":6},"after":{"scrollTop":0,"band":0,"card":null,"rows":[...],
+	 *   "writes":[{"value":288,"from":0,...},{"value":13,"from":0,...}]}}
+	 *
+	 * THREE THINGS IT ESTABLISHES, and one it does not:
+	 *  1. THE TRAP WORKS: it caught two writes and named them by stack - both of them this probe's own
+	 *     (`list.scrollTop = ...` from the anonymous evaluate), which is what a trap that would catch
+	 *     the app's write has to do first.
+	 *  2. A SHORTER VIEWPORT DOES NOT MAKE THIS LIST OVERFLOW: `overflowAtRest` is false at 700px,
+	 *     because the list is CONTENT-SIZED in this assembly - shortening the panel takes the height
+	 *     out of the `flex-1` entity region (354 here against 475) and the list keeps its content
+	 *     height. QA's list overflows because its content exceeds the split's own cap, so the state
+	 *     needs MORE ROWS (or a ruled shorter cap), not a shorter window.
+	 *  3. THE ARCHIVE CONTROL IS NOT IN THE DOM AT REST: `clicked` is false - `data-session-archive`
+	 *     is laid out with the acts (D3), so the probe has to HOVER the row before it can reach the
+	 *     control, which is the idiom the walk's own refusal step already carries.
+	 *
+	 * AND THE FIX ITSELF IS STILL UNEXERCISED: with the band never raised here (`band: 0`,
+	 * `card: null`), the hold was never given the chance to write. The scenario is two edits from
+	 * being QA's - more rows, and a hover before the click - and until it runs, the Q-9 fix stands on
+	 * its arithmetic rather than on a reading.
+	 */
+	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
+	await wait(300);
 	check(
 		"and the walk leaves the list as the fixture describes it: the refusal's own Retry lands the unarchive, so no row is left archived by this sequence",
 		undoCleared.timedOut === false &&
