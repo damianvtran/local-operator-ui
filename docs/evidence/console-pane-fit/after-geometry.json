@@ -1,0 +1,904 @@
+[
+  {
+    "size": "1380x900",
+    "frames": [
+      "/Users/damian/.local-operator/sessions/62387bb66c06/scratchpad/frames/after-1380x900-open.png",
+      "/Users/damian/.local-operator/sessions/62387bb66c06/scratchpad/frames/after-1380x900-bottom.png"
+    ],
+    "steps": [
+      {
+        "step": "the trigger is on screen in the conversation header",
+        "detail": true
+      },
+      {
+        "step": "how the pane was opened",
+        "detail": {
+          "pressTook": true
+        }
+      },
+      {
+        "step": "the open itself created the surface",
+        "detail": true
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "ls -la ~",
+          "status": 200,
+          "ok": true
+        }
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "seq 1 120",
+          "status": 200,
+          "ok": true
+        }
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "echo BOTTOM-MARKER-OK",
+          "status": 200,
+          "ok": true
+        }
+      }
+    ],
+    "afterOpen": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 0,
+      "lastRectReads": [],
+      "innerWidth": 1380,
+      "innerHeight": 868,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 660,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 659,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "mirror": null,
+      "xterm": null,
+      "screen": null,
+      "rowsBox": null,
+      "rowCount": 0,
+      "rowHeight": null,
+      "activeElement": "BODY",
+      "helperFocused": false,
+      "text": null,
+      "paneState": "present"
+    },
+    "afterSurface": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 2,
+      "lastRectReads": [
+        {
+          "at": 678.2999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        },
+        {
+          "at": 687.2999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        }
+      ],
+      "innerWidth": 1380,
+      "innerHeight": 868,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 660,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 659,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 643,
+        "height": 791,
+        "bottom": 868,
+        "clientHeight": 791,
+        "offsetHeight": 791
+      },
+      "xterm": {
+        "x": 729,
+        "y": 77,
+        "width": 643,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "screen": {
+        "x": 729,
+        "y": 77,
+        "width": 640,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "rowsBox": {
+        "x": 729,
+        "y": 77,
+        "width": 640,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "rowCount": 46,
+      "rowHeight": 17,
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "text": "damian@damians-MacBook-Pro ~ %  ",
+      "paneState": "present"
+    },
+    "atOpen": {
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 643,
+        "height": 791,
+        "bottom": 868,
+        "clientHeight": 791,
+        "offsetHeight": 791
+      },
+      "terminalText": "damian@damians-MacBook-Pro ~ %  "
+    },
+    "listing": {
+      "surfaces": [
+        {
+          "surface": "con:1:j4qTlsH9098Yjx3BUQ1QtQ",
+          "session_id": "4e7c4758deb2",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/home",
+          "cols": 82,
+          "rows": 46,
+          "running": true,
+          "exit_code": null,
+          "last_activity": 1790017607.135,
+          "live": true,
+          "agent_owned": false,
+          "last_actor": null
+        }
+      ],
+      "count": 1
+    },
+    "surface": "con:1:j4qTlsH9098Yjx3BUQ1QtQ",
+    "final": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 4,
+      "lastRectReads": [
+        {
+          "at": 687.2999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        },
+        {
+          "at": 909.0999999996275,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        },
+        {
+          "at": 988.0999999996275,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        }
+      ],
+      "innerWidth": 1380,
+      "innerHeight": 868,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 660,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 659,
+        "height": 868,
+        "bottom": 868,
+        "clientHeight": 868,
+        "offsetHeight": 868
+      },
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 643,
+        "height": 791,
+        "bottom": 868,
+        "clientHeight": 791,
+        "offsetHeight": 791
+      },
+      "xterm": {
+        "x": 729,
+        "y": 77,
+        "width": 643,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "screen": {
+        "x": 729,
+        "y": 77,
+        "width": 640,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "rowsBox": {
+        "x": 729,
+        "y": 77,
+        "width": 640,
+        "height": 782,
+        "bottom": 859,
+        "clientHeight": 782,
+        "offsetHeight": 782
+      },
+      "rowCount": 46,
+      "rowHeight": 17,
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "text": "78\n79\n80\n81\n82\n83\n84\n85\n86\n87\n88\n89\n90\n91\n92\n93\n94\n95\n96\n97\n98\n99\n100\n101\n102\n103\n104\n105\n106\n107\n108\n109\n110\n111\n112\n113\n114\n115\n116\n117\n118\n119\n120\ndamian@damians-MacBook-Pro ~ % echo BOTTOM-MARKER-OK\nBOTTOM-MARKER-OK\ndamian@damians-MacBook-Pro ~ %  ",
+      "paneState": "present"
+    },
+    "finalListing": {
+      "surfaces": [
+        {
+          "surface": "con:1:j4qTlsH9098Yjx3BUQ1QtQ",
+          "session_id": "4e7c4758deb2",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/home",
+          "cols": 82,
+          "rows": 46,
+          "running": true,
+          "exit_code": null,
+          "last_activity": 1790017609.032,
+          "live": true,
+          "agent_owned": false,
+          "last_actor": "agent"
+        }
+      ],
+      "count": 1
+    },
+    "settled": false,
+    "verdict": {
+      "innerHeight": 868,
+      "innerWidth": 1380,
+      "dpr": 2,
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "bridgePatch": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "rectReadCount": 4,
+      "lastRectReads": [
+        {
+          "at": 687.2999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        },
+        {
+          "at": 909.0999999996275,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        },
+        {
+          "at": 988.0999999996275,
+          "x": 729,
+          "y": 77,
+          "width": 643,
+          "height": 791,
+          "innerHeight": 868,
+          "dpr": 2
+        }
+      ],
+      "hostHeight": 791,
+      "paintedScreenHeight": 782,
+      "overflowPx": -9,
+      "reportedContentRect": null,
+      "reportedCellHeight": null,
+      "realRowHeight": 17,
+      "paintedRows": 46,
+      "gridFromMain": null,
+      "gridAtCreate": {
+        "cols": 82,
+        "rows": 46
+      },
+      "gridAfterSettling": {
+        "cols": 82,
+        "rows": 46
+      },
+      "paintedRowsFromDom": 46,
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/home",
+      "gridFromProjection": {
+        "cols": 82,
+        "rows": 46,
+        "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/home"
+      },
+      "rowsTimesReportedCell": null,
+      "bottomMarkerInDomText": true,
+      "helperFocused": true,
+      "activeElement": "xterm-helper-textarea"
+    },
+    "appLog": " [discovery] candidate http://127.0.0.1:7491 pid 49301 v0.61.9 prefix /Users/damian/local-operator/.venv\n15:06:46.129 › [discovery] rejected http://127.0.0.1:1111: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:1111, so it cannot be proven to be the one this app found)\n15:06:46.132 › [discovery] picked http://127.0.0.1:7491 (pid 49301, v0.61.9, record)\n15:06:46.138 › Attached to daemon http://127.0.0.1:7491 (pid 49301, v0.61.9, editable, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/config/run/serve/49301.json) - backend URL moved from http://127.0.0.1:1111\n15:06:46.140 › Discovered a daemon; the backend manager is configured not to spawn or kill one.\n15:06:46.241 › Update service initialized. Dev mode: true, NPX install: false\n15:06:46.244 › Unpackaged instance: no packaged install state to leave alone.\n15:06:46.246 › Periodic update checks scheduled (every 5 minutes)\n15:06:46.247 › macOS auto-update requires app signing\n15:06:46.249 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure\n15:06:46.262 › [browser] denied a media permission request from (unknown origin)\n15:06:46.263 › [browser] denied a media permission request from (unknown origin)\n15:06:46.265 › [browser] denied a web-app-installation permission request from (unknown origin)\n15:06:46.265 › [browser] denied a geolocation permission request from (unknown origin)\n15:06:46.371 › [browser] denied a media permission request from (unknown origin)\n15:06:46.371 › [browser] denied a media permission request from (unknown origin)\n15:06:46.371 › [browser] denied a web-app-installation permission request from (unknown origin)\n15:06:46.372 › [browser] denied a geolocation permission request from (unknown origin)\n15:06:46.384 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)\n15:06:46.388 › [browser] host on 127.0.0.1:63366 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))\n15:06:46.490 › [browser] tab 1 navigated to about:blank\n15:06:46.641 › Checking for UI updates...\n15:06:46.644 › Skip checkForUpdates because application is not packed and dev update config is not forced\n15:06:47.050 › [console] surface con:1:j4qTls… started: zsh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-0/home at 100x30 (user)\n15:06:47.075 › [console] surface con:1:j4qTls… resized 82x46\n[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x868\n15:06:49.252 › Checking for updates... (silent mode: true)\n15:06:49.252 › Skip checkForUpdates because application is not packed and dev update config is not forced\n15:06:49.253 › Checking for backend updates... (silent mode: true)\n15:06:49.254 › Skip backend update check in dev mode unless forced\n"
+  },
+  {
+    "size": "1024x700",
+    "frames": [
+      "/Users/damian/.local-operator/sessions/62387bb66c06/scratchpad/frames/after-1024x700-open.png",
+      "/Users/damian/.local-operator/sessions/62387bb66c06/scratchpad/frames/after-1024x700-bottom.png"
+    ],
+    "steps": [
+      {
+        "step": "the trigger is on screen in the conversation header",
+        "detail": true
+      },
+      {
+        "step": "how the pane was opened",
+        "detail": {
+          "pressTook": true
+        }
+      },
+      {
+        "step": "the open itself created the surface",
+        "detail": true
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "ls -la ~",
+          "status": 200,
+          "ok": true
+        }
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "seq 1 120",
+          "status": 200,
+          "ok": true
+        }
+      },
+      {
+        "step": "console_input",
+        "detail": {
+          "line": "echo BOTTOM-MARKER-OK",
+          "status": 200,
+          "ok": true
+        }
+      }
+    ],
+    "afterOpen": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 0,
+      "lastRectReads": [],
+      "innerWidth": 1024,
+      "innerHeight": 668,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 304,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 303,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "mirror": null,
+      "xterm": null,
+      "screen": null,
+      "rowsBox": null,
+      "rowCount": 0,
+      "rowHeight": null,
+      "activeElement": "BODY",
+      "helperFocused": false,
+      "text": null,
+      "paneState": "present"
+    },
+    "afterSurface": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 2,
+      "lastRectReads": [
+        {
+          "at": 1394.5,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        },
+        {
+          "at": 1418,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        }
+      ],
+      "innerWidth": 1024,
+      "innerHeight": 668,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 304,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 303,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 287,
+        "height": 591,
+        "bottom": 668,
+        "clientHeight": 591,
+        "offsetHeight": 591
+      },
+      "xterm": {
+        "x": 729,
+        "y": 77,
+        "width": 287,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "screen": {
+        "x": 729,
+        "y": 77,
+        "width": 312,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "rowsBox": {
+        "x": 729,
+        "y": 77,
+        "width": 312,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "rowCount": 34,
+      "rowHeight": 17,
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "text": "%                                       \n                                        \ndamian@damians-MacBook-Pro ~ %  ",
+      "paneState": "present"
+    },
+    "atOpen": {
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 287,
+        "height": 591,
+        "bottom": 668,
+        "clientHeight": 591,
+        "offsetHeight": 591
+      },
+      "terminalText": "%                                       \n                                        \ndamian@damians-MacBook-Pro ~ %  "
+    },
+    "listing": {
+      "surfaces": [
+        {
+          "surface": "con:1:9JVMIlrrkGmmdmAjVppm0g",
+          "session_id": "4e7c4758deb2",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/home",
+          "cols": 40,
+          "rows": 34,
+          "running": true,
+          "exit_code": null,
+          "last_activity": 1790017621.586,
+          "live": true,
+          "agent_owned": false,
+          "last_actor": null
+        }
+      ],
+      "count": 1
+    },
+    "surface": "con:1:9JVMIlrrkGmmdmAjVppm0g",
+    "final": {
+      "bridge": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "rectReadCount": 4,
+      "lastRectReads": [
+        {
+          "at": 1418,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        },
+        {
+          "at": 1606.7999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        },
+        {
+          "at": 1723.699999999255,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        }
+      ],
+      "innerWidth": 1024,
+      "innerHeight": 668,
+      "dpr": 2,
+      "reports": 0,
+      "lastReport": null,
+      "replyGrid": null,
+      "replyError": null,
+      "trigger": false,
+      "slot": {
+        "x": 720,
+        "y": 0,
+        "width": 304,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "pane": {
+        "x": 721,
+        "y": 0,
+        "width": 303,
+        "height": 668,
+        "bottom": 668,
+        "clientHeight": 668,
+        "offsetHeight": 668
+      },
+      "mirror": {
+        "x": 729,
+        "y": 77,
+        "width": 287,
+        "height": 591,
+        "bottom": 668,
+        "clientHeight": 591,
+        "offsetHeight": 591
+      },
+      "xterm": {
+        "x": 729,
+        "y": 77,
+        "width": 287,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "screen": {
+        "x": 729,
+        "y": 77,
+        "width": 312,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "rowsBox": {
+        "x": 729,
+        "y": 77,
+        "width": 312,
+        "height": 578,
+        "bottom": 655,
+        "clientHeight": 578,
+        "offsetHeight": 578
+      },
+      "rowCount": 34,
+      "rowHeight": 17,
+      "activeElement": "xterm-helper-textarea",
+      "helperFocused": true,
+      "text": "91\n92\n93\n94\n95\n96\n97\n98\n99\n100\n101\n102\n103\n104\n105\n106\n107\n108\n109\n110\n111\n112\n113\n114\n115\n116\n117\n118\n119\n120\ndamian@damians-MacBook-Pro ~ % echo BOTT\nOM-MARKER-OK\nBOTTOM-MARKER-OK\ndamian@damians-MacBook-Pro ~ %  ",
+      "paneState": "present"
+    },
+    "finalListing": {
+      "surfaces": [
+        {
+          "surface": "con:1:9JVMIlrrkGmmdmAjVppm0g",
+          "session_id": "4e7c4758deb2",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/home",
+          "cols": 40,
+          "rows": 34,
+          "running": true,
+          "exit_code": null,
+          "last_activity": 1790017623.549,
+          "live": true,
+          "agent_owned": false,
+          "last_actor": "agent"
+        }
+      ],
+      "count": 1
+    },
+    "settled": false,
+    "verdict": {
+      "innerHeight": 668,
+      "innerWidth": 1024,
+      "dpr": 2,
+      "fontMetrics": {
+        "family": "\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
+        "cellWidth": 7.79998779296875,
+        "ascent": 13,
+        "descent": 4,
+        "fontHeight": 17
+      },
+      "bridgePatch": {
+        "frozen": true,
+        "assigned": false,
+        "defined": false,
+        "defineError": "TypeError: Cannot redefine property: setContentRect"
+      },
+      "rectReadCount": 4,
+      "lastRectReads": [
+        {
+          "at": 1418,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        },
+        {
+          "at": 1606.7999999988824,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        },
+        {
+          "at": 1723.699999999255,
+          "x": 729,
+          "y": 77,
+          "width": 287,
+          "height": 591,
+          "innerHeight": 668,
+          "dpr": 2
+        }
+      ],
+      "hostHeight": 591,
+      "paintedScreenHeight": 578,
+      "overflowPx": -13,
+      "reportedContentRect": null,
+      "reportedCellHeight": null,
+      "realRowHeight": 17,
+      "paintedRows": 34,
+      "gridFromMain": null,
+      "gridAtCreate": {
+        "cols": 40,
+        "rows": 34
+      },
+      "gridAfterSettling": {
+        "cols": 40,
+        "rows": 34
+      },
+      "paintedRowsFromDom": 34,
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/home",
+      "gridFromProjection": {
+        "cols": 40,
+        "rows": 34,
+        "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/home"
+      },
+      "rowsTimesReportedCell": null,
+      "bottomMarkerInDomText": true,
+      "helperFocused": true,
+      "activeElement": "xterm-helper-textarea"
+    },
+    "appLog": " [discovery] candidate http://127.0.0.1:7491 pid 49301 v0.61.9 prefix /Users/damian/local-operator/.venv\n15:06:59.814 › [discovery] rejected http://127.0.0.1:1111: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:1111, so it cannot be proven to be the one this app found)\n15:06:59.814 › [discovery] picked http://127.0.0.1:7491 (pid 49301, v0.61.9, record)\n15:06:59.822 › Attached to daemon http://127.0.0.1:7491 (pid 49301, v0.61.9, editable, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/config/run/serve/49301.json) - backend URL moved from http://127.0.0.1:1111\n15:06:59.826 › Discovered a daemon; the backend manager is configured not to spawn or kill one.\n15:06:59.978 › Update service initialized. Dev mode: true, NPX install: false\n15:06:59.989 › Unpackaged instance: no packaged install state to leave alone.\n15:06:59.992 › Periodic update checks scheduled (every 5 minutes)\n15:06:59.997 › macOS auto-update requires app signing\n15:07:00.001 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure\n15:07:00.021 › [browser] denied a media permission request from (unknown origin)\n15:07:00.023 › [browser] denied a media permission request from (unknown origin)\n15:07:00.024 › [browser] denied a web-app-installation permission request from (unknown origin)\n15:07:00.024 › [browser] denied a geolocation permission request from (unknown origin)\n15:07:00.214 › [browser] denied a media permission request from (unknown origin)\n15:07:00.215 › [browser] denied a media permission request from (unknown origin)\n15:07:00.218 › [browser] denied a web-app-installation permission request from (unknown origin)\n15:07:00.219 › [browser] denied a geolocation permission request from (unknown origin)\n15:07:00.228 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)\n15:07:00.233 › [browser] host on 127.0.0.1:63488 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))\n15:07:00.356 › [browser] tab 1 navigated to about:blank\n15:07:00.710 › Checking for UI updates...\n15:07:00.711 › Skip checkForUpdates because application is not packed and dev update config is not forced\n15:07:01.466 › [console] surface con:1:9JVMIl… started: zsh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-fit-74722-1/home at 100x30 (user)\n15:07:01.584 › [console] surface con:1:9JVMIl… resized 40x34\n[window-mode] state: visible=false focused=false focusable=false size=1024x700 content=1024x668\n15:07:03.005 › Checking for updates... (silent mode: true)\n15:07:03.006 › Skip checkForUpdates because application is not packed and dev update config is not forced\n15:07:03.007 › Checking for backend updates... (silent mode: true)\n15:07:03.008 › Skip backend update check in dev mode unless forced\n"
+  }
+]
