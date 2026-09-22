@@ -3725,15 +3725,36 @@ async function sceneRowSpace(cdp) {
 		"U6 hit target at the mark's resting centre (pointer on the row)",
 		hitAtMarkCentre,
 	);
-	const restingCost = await cdp.evaluate(`(() => {
-		const row = document.querySelector('[data-session-row="${PINNED}"]');
-		const pair = document.querySelector('[data-session-row="${PINNED}"] [data-session-control-pair]');
-		return { rowWidth: row ? row.getBoundingClientRect().width : null, pairDisplay: pair ? getComputedStyle(pair).display : null };
-	})()`);
+	/*
+	 * READ THE ARCHIVE CONTROL'S OWN BOX, ON A PINNED ROW AND AN UNPINNED ONE. The pair WRAPPER is
+	 * always `flex` on a pinned row, so the first version of this check - which read the wrapper -
+	 * proved nothing about whether a slot was reserved. The requirement is about the archive
+	 * itself: at rest on a pinned row it must reserve NOTHING, which is why the two rows are read
+	 * together here - a number only means something next to the one it is compared with.
+	 */
+	const readArchive = async (id) =>
+		cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="' + ${JSON.stringify(id)} + '"]');
+			const archive = row ? row.querySelector("[data-session-archive]") : null;
+			const box = archive ? archive.getBoundingClientRect() : null;
+			return {
+				rowWidth: row ? row.getBoundingClientRect().width : null,
+				archivePresent: archive !== null,
+				archiveDisplay: archive ? getComputedStyle(archive).display : null,
+				archiveWidth: box ? box.width : 0,
+			};
+		})()`);
+	const restingCost = {
+		pinned: await readArchive(PINNED),
+		unpinned: await readArchive(UNPINNED),
+	};
 	note("U6 the pinned row's resting cost", JSON.stringify(restingCost));
 	check(
 		"U6: the pinned row at rest costs the pin alone (the archive is not reserving a slot)",
-		restingCost.pairDisplay === "none",
+		restingCost.pinned.archiveWidth === 0 &&
+			(restingCost.pinned.archiveDisplay === null ||
+				restingCost.pinned.archiveDisplay === "none") &&
+			restingCost.pinned.rowWidth > 0,
 		JSON.stringify(restingCost),
 	);
 	/* AIMED AT THE VISIBLE MARK: the resting centre, which is where a reader's pointer already is. */
@@ -3765,21 +3786,31 @@ async function sceneRowSpace(cdp) {
 	 * the previous clause was unreachable as written: `leftBecauseUnpinned` required
 	 * `pinAfter !== null`, and once the row is gone there is no pin left to read.
 	 */
+	/*
+	 * A TOGGLE PAIR IS THE ASSERTION, because a DOM inference cannot carry it here: an unpin moves
+	 * the row into a section this scene does not render, so pass 15's `row-absent` reading was NOT
+	 * sound evidence of an archive - and the daemon's own log showed the press resolving as
+	 * `POST /v1/desktop/sessions/c4e17b90a2f6/pin -> 200`, with no archive request for that row at
+	 * all. A destructive action cannot be undone by pressing the same spot again; a toggle can. So
+	 * press, then press once more, and require the row to be back where it started.
+	 */
 	const archived = archivedAfter === "true";
-	const archivedByAbsence = archivedAfter === "row-absent";
-	const unpinned = pinAfter === "false" && !archivedByAbsence;
+	await pressPointerStationary(cdp, markAtRest.centre.x, markAtRest.centre.y);
+	await wait(700);
+	const afterSecondPress = await archivedFactOf();
+	const pinAfterSecond = await cdp.evaluate(
+		`(() => { const el = document.querySelector('${markRow}'); return el ? el.getAttribute("aria-pressed") : null; })()`,
+	);
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",
-		!archived &&
-			!archivedByAbsence &&
-			(archivedAfter === archivedBefore || unpinned),
+		!archived && afterSecondPress === archivedBefore,
 		JSON.stringify({
 			archivedBefore,
 			archivedAfter,
 			pinAfter,
+			afterSecondPress,
+			pinAfterSecond,
 			archived,
-			archivedByAbsence,
-			unpinned,
 		}),
 	);
 
