@@ -13,6 +13,7 @@ import {
 	LoaderCircle,
 	MessageSquare,
 	Pause,
+	Share2,
 } from "lucide-react";
 
 /** Resting codes that legitimately render as a plain ring. */
@@ -77,16 +78,43 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 								? Clock
 								: code === "attached"
 									? MessageSquare
-									: // `idle`/`recent` are ordinary resting states and keep the plain
-										// ring. Anything else is a code this build does not know, so it
-										// must not be normalised into looking like "Recent" — a backend
-										// newer than the UI would silently misreport state. An ABSENT
-										// status is a different case: a locally created row carries none
-										// until the next fetch, and the label already reads "Recent", so
-										// treating it as unknown made the icon contradict the label.
-										KNOWN_RESTING.has(code ?? "recent")
-										? Circle
-										: HelpCircle;
+									: // `delegating` is the arm for a session whose OWN turn is not
+										// running but which still owns subagents: running ones, queued
+										// ones, or both. It sits beside `attached` because the backend
+										// inserts the code at that rung - below an attached session, a
+										// gate, a stop, a live turn and an unseen receipt, and above an
+										// armed wake - so the glyph cannot name a state the backend
+										// outranks.
+										//
+										// `Share2` because it is the app's OWN "Delegated work" mark
+										// (`trace-labels.ts`'s `DELEGATE` action), so the sidebar and
+										// the transcript spend one glyph on one fact.
+										//
+										// The COUNT is not drawn here and needs no arm of its own: the
+										// backend puts it inside `status.label` ("2 subagents running,
+										// 1 queued"), which this component already renders into `title`
+										// and `sr-only` below. That is deliberate rather than lazy - the
+										// count changes on the same clock as the code, so a count riding
+										// a separate field would be read from a slower projection and
+										// could contradict the glyph beside it.
+										//
+										// Deliberately NOT in `KNOWN_RESTING` below: this is a state of
+										// its own with its own mark, and a build older than the code
+										// renders it as the unknown `HelpCircle` rather than as a
+										// resting ring, which is why this arm has to ship before or with
+										// the runtime that emits it.
+										code === "delegating"
+										? Share2
+										: // `idle`/`recent` are ordinary resting states and keep the plain
+											// ring. Anything else is a code this build does not know, so it
+											// must not be normalised into looking like "Recent" — a backend
+											// newer than the UI would silently misreport state. An ABSENT
+											// status is a different case: a locally created row carries none
+											// until the next fetch, and the label already reads "Recent", so
+											// treating it as unknown made the icon contradict the label.
+											KNOWN_RESTING.has(code ?? "recent")
+											? Circle
+											: HelpCircle;
 	const ink =
 		code === "busy"
 			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
@@ -121,7 +149,13 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 						? "text-warning"
 						: unseenCompletion
 							? "text-success"
-							: "text-ink-dim";
+							: // The accent role, and STATIC on purpose: `busy` owns the spinner in
+								// this slot, and a second animated mark would make two different
+								// states read as one. Delegating is a state of the session, not
+								// activity within it, so it holds still.
+								code === "delegating"
+								? "text-accent"
+								: "text-ink-dim";
 	return (
 		/*
 		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
