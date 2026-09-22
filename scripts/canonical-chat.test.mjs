@@ -209,6 +209,154 @@ test("authoritative refresh removes absent IDs while newer viewed revision survi
  * is additive, so this asserts the compatibility half as well: a daemon that
  * sends nothing leaves the marker empty and every surface renders as it did.
  */
+test("overlapping catalogue refreshes coalesce and perform one trailing read", async () => {
+	reset();
+	const resolveResponses = [];
+	let firstRequestStarted;
+	let secondRequestStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const secondRequest = new Promise((resolve) => {
+		secondRequestStarted = resolve;
+	});
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		const response = new Promise((resolve) => resolveResponses.push(resolve));
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 2) secondRequestStarted();
+		return response;
+	};
+
+	const first = store.getState().fetchSessions(73);
+	await firstRequest;
+	const burst = [
+		store.getState().fetchSessions(73),
+		store.getState().fetchSessions(73),
+	];
+	assert.equal(calls.length, 1, "a burst shares the active catalogue request");
+	assert.equal(burst.length, 2, "both overlapping callers join the same flight");
+	assert.equal(
+		calls[0].limit,
+		73,
+		"coalescing preserves an explicit page limit",
+	);
+
+	resolveResponses[0]({
+		sessions: [{ id: "stale", name: "stale", mtime: 1 }],
+		truncated: false,
+	});
+	await secondRequest;
+	assert.equal(
+		calls.length,
+		2,
+		"an invalidation during flight starts one trailing read",
+	);
+	assert.equal(
+		calls[1].limit,
+		73,
+		"the trailing read retains the requested page size",
+	);
+	resolveResponses[1]({
+		sessions: [{ id: "fresh", name: "fresh", mtime: 2 }],
+		truncated: true,
+	});
+	await first;
+
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["fresh"],
+		"the stale in-flight page must not replace the trailing answer",
+	);
+	assert.equal(store.getState().truncated, true);
+	assert.equal(store.getState().loading, false);
+	assert.equal(store.getState().error, null);
+});
+
+test("the latest explicit catalogue limit is used by the trailing refresh", async () => {
+	reset();
+	const pending = [];
+	let firstRequestStarted;
+	let trailingStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const trailingRequest = new Promise((resolve) => {
+		trailingStarted = resolve;
+	});
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		const response = new Promise((resolve) => pending.push(resolve));
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 2) trailingStarted();
+		return response;
+	};
+
+	const narrow = store.getState().fetchSessions(31);
+	await firstRequest;
+	const broad = store.getState().fetchSessions(79);
+	assert.deepEqual(
+		calls.map(({ limit }) => limit),
+		[31],
+	);
+	pending[0]({ sessions: [{ id: "stale", name: "stale", mtime: 1 }] });
+	await trailingRequest;
+	assert.deepEqual(
+		calls.map(({ limit }) => limit),
+		[31, 79],
+		"the latest explicit page size applies to the trailing read",
+	);
+	pending[1]({
+		sessions: [{ id: "broad", name: "broad", mtime: 2 }],
+		truncated: true,
+	});
+	await Promise.all([narrow, broad]);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["broad"],
+	);
+	assert.equal(store.getState().truncated, true);
+});
+
+test("an invalidated catalogue failure is retried without publishing an error", async () => {
+	reset();
+	let rejectFirst;
+	let firstRequestStarted;
+	let trailingStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const trailingRequest = new Promise((resolve) => {
+		trailingStarted = resolve;
+	});
+	const responses = [];
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 1)
+			return new Promise((_, reject) => {
+				rejectFirst = reject;
+			});
+		if (calls.length === 2) trailingStarted();
+		return new Promise((resolve) => responses.push(resolve));
+	};
+
+	const first = store.getState().fetchSessions();
+	await firstRequest;
+	const joined = store.getState().fetchSessions();
+	rejectFirst(new Error("stale read failure"));
+	await trailingRequest;
+	assert.equal(calls.length, 2);
+	assert.equal(store.getState().error, null);
+	responses[0]({ sessions: [{ id: "fresh", name: "fresh", mtime: 2 }] });
+	await Promise.all([first, joined]);
+	assert.equal(store.getState().error, null);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["fresh"],
+	);
+});
+
 test("the daemon's unread reads are carried, and an absent marker is not an empty store", async () => {
 	reset();
 	globalThis.__canonicalRequest = async () => ({

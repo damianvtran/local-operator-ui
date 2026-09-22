@@ -2237,6 +2237,54 @@ export function replaceSessionRows(
 }
 let navigationGeneration = 0;
 let refreshGeneration = 0;
+/*
+ * Mount, transition, poll and focus triggers can overlap while every caller reads
+ * the same catalogue. Serialize those reads to preserve the store's global
+ * generation ordering. Calls in flight invalidate that answer and collapse into
+ * one trailing read using the most recently requested page limit.
+ */
+let sessionRefresh: {
+	limit: number;
+	invalidated: boolean;
+	promise: Promise<unknown>;
+} | null = null;
+
+function coalesceSessionCatalogueRequest<T>(
+	limit: number,
+	request: (limit: number) => Promise<T>,
+): Promise<T> {
+	const active = sessionRefresh;
+	if (active) {
+		active.invalidated = true;
+		active.limit = limit;
+		return active.promise as Promise<T>;
+	}
+
+	const flight = { limit, invalidated: false, promise: null as unknown as Promise<T> };
+	sessionRefresh = flight;
+	flight.promise = (async () => {
+		try {
+			while (true) {
+				flight.invalidated = false;
+				let answer: T;
+				try {
+					answer = await request(flight.limit);
+				} catch (error) {
+					if (flight.invalidated) continue;
+					throw error;
+				}
+				if (flight.invalidated) continue;
+				// Clear synchronously with the final validity check so an invalidation
+				// cannot land after the loop decides to stop and go unserved.
+				if (sessionRefresh === flight) sessionRefresh = null;
+				return answer;
+			}
+		} finally {
+			if (sessionRefresh === flight) sessionRefresh = null;
+		}
+	})();
+	return flight.promise;
+}
 
 /**
  * What main asked THIS window to open, resolved through the shared reader.
@@ -2358,17 +2406,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set({ answerSeq: answerAt });
 				set({ loading: true, error: null });
 				try {
-					const result = await desktopResult<{
-						sessions: BackendSessionRow[];
-						truncated?: boolean;
-						/**
+					const result = await coalesceSessionCatalogueRequest(limit, (pageLimit) =>
+						desktopResult<{
+							sessions: BackendSessionRow[];
+							truncated?: boolean;
+							/**
 						 * The reads the daemon could not answer, additive and optional. A
 						 * daemon that sends nothing here is one that answered all of them.
 						 */
 						degraded?: string[];
-					}>({
-						op: "sessions.list",
-						limit,
+						}>({
+							op: "sessions.list",
+							limit: pageLimit,
 						/*
 						 * THE ARCHIVED ROWS ARE ASKED FOR AND THEN HIDDEN HERE, rather than left
 						 * out by the route. The default `false` is a promise to clients that
@@ -2394,8 +2443,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * and the alternative - hiding the archived set from this client
 						 * entirely - fails the two bullets above.
 						 */
-						include_archived: true,
-					});
+							include_archived: true,
+						}),
+					);
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
 						...rest,
