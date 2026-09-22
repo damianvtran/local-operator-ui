@@ -334,7 +334,18 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		route: () => "/settings?section=backend&filter=web-search",
 	},
 	providers: { kind: "navigate", route: () => "/settings?section=providers" },
-	accounts: { kind: "navigate", route: () => "/settings?section=credentials" },
+	/*
+	 * `/accounts` lists stored credentials, and the Providers section is where
+	 * credentials live now: it is the same grid onboarding uses, documented as
+	 * "one place for a provider's sign-in methods, states and stored
+	 * credentials", and the section `/login` and `/logout` already land on.
+	 *
+	 * It pointed at `?section=credentials` until this branch deleted that
+	 * section from `sectionRefs`; `settings-page`'s deep-link effect returns
+	 * early on an unknown key, so `/accounts` stranded the user on `general`.
+	 * The route must name a section key that exists in `sectionRefs`.
+	 */
+	accounts: { kind: "navigate", route: () => "/settings?section=providers" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
 	mcp: { kind: "picker", component: McpPicker },
 };
