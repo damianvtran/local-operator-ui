@@ -1463,9 +1463,13 @@ through the forge, so the claim PR is the lock. In order:
    returns nothing.)
 2. **Take the lock by opening the claim PR** — the owner's *first* act, before
    collecting anything (step 0 of the procedure below). It starts as one empty
-   commit titled `chore(release): claim release window`, and becomes the bump once
-   the version is decided: the same commit is amended and the same PR retitled, so
-   the lock's number never changes.
+   commit titled `chore(release): claim release window`, opened as a draft PR whose
+   body names the owner's session pid from `lop sessions` and carries an empty
+   checklist of the window's PRs; only then is it announced with `send` to the
+   other live sessions — the message is what reaches a session not watching the
+   forge, the PR is what that session can check afterwards, and it is the PR that
+   is the lock. It becomes the bump once the version is decided: the same commit is
+   amended and the same PR retitled, so the lock's number never changes.
 3. **Tie-break by `createdAt`.** If two claim PRs are open, the earlier one owns
    the window; the author of the later one closes it, deletes its branch, and hands
    its contents to the earlier PR's owner.
@@ -1691,16 +1695,18 @@ derivation to guard. What remains:
   Read the classification summary (see *Change scope*) before treating either
   shape as evidence.
 - **Never force-push, and never merge on a red required job.** The `Main
-  Protection` ruleset configures **no required status checks** — its rules are
-  `non_fast_forward` and the approval count — so nothing makes a red check fatal:
-  `version-bump-guard` and CI make it *loud*, and the merge is still the agent's to
-  refuse. `non_fast_forward` does now refuse a force-push mechanically, the one
-  violation that stopped being merely loud.
+  Protection` ruleset, once attached, configures **no required status checks** —
+  its rules are `non_fast_forward` and the approval count — so nothing makes a red
+  check fatal: `version-bump-guard` and CI make it *loud*, and the merge is still
+  the agent's to refuse. `non_fast_forward` does then refuse a force-push
+  mechanically, the one violation that stopped being merely loud.
 - **Write access to `main` is release authority, and it is the widest control this
-  repository has.** Since 2026-09-22 `main` carries the `Main Protection` ruleset —
-  `gh api repos/<owner>/<repo>/rules/branches/main` names it, the check this file
-  already prescribes — so the only way past it is the configured admin-role bypass,
-  which is the owner's own path (AGENTS.md, *Who may merge: two tiers*). What the
+  repository has.** Once the `Main Protection` ruleset is attached, `main` is
+  governed by it — `gh api repos/<owner>/<repo>/rules/branches/main` names it, the
+  check this file already prescribes — and the only way past it without a second
+  approval is its one bypass actor, `RepositoryRole` id 5, which on a repository
+  owned by a personal account is the owner alone (AGENTS.md, *Who may merge: two
+  tiers*). What the
   Release trigger adds on top is a single, visible act between a merge and a shipped
   version: nothing reaches users until somebody creates a Release, and that Release,
   its notes and its tag are all attributable to whoever ran the command. Read every
@@ -1757,26 +1763,33 @@ which is deliberate: nothing is requested automatically when a PR opens, and the
 owner set whose judgement stands in for the project's is recorded in that file's
 comment instead.
 
-**The forge enforces an approval now, where it used to enforce nothing.** `main`
-is governed by a ruleset named `Main Protection` on the default branch, mirroring
-the backend repository's (`local-operator`, ruleset 3622629): a `non_fast_forward`
-rule, plus a `pull_request` rule with `required_approving_review_count: 1`,
-`require_code_owner_review: false`, `required_review_thread_resolution: false`,
-`dismiss_stale_reviews_on_push: false`, `require_last_push_approval: false`,
+**When the `Main Protection` ruleset is attached, the forge enforces an approval
+where it used to enforce nothing.** The ruleset configured for the default branch
+mirrors the backend repository's (`local-operator`, ruleset 3622629): a
+`non_fast_forward` rule, plus a `pull_request` rule with
+`required_approving_review_count: 1`, `require_code_owner_review: false`,
+`required_review_thread_resolution: false`, `dismiss_stale_reviews_on_push:
+false`, `require_last_push_approval: false`,
 `require_extra_approval_for_unattributed_changes: true` (an unattributed PR
 therefore needs two approvals) and
-`allowed_merge_methods: [merge, squash, rebase]`. It carries a configured
-**bypass for the admin repository role** (`bypass_actors`: `RepositoryRole` 5,
-`bypass_mode: always` — diff that against the repository rather than trusting
-it). Confirm what is enforced with
-`gh api repos/damianvtran/local-operator-ui/rules/branches/main`, never with the
-legacy `branches/main/protection` endpoint: that one answers
-`404 Branch not protected` even for a branch a modern ruleset *is* enforcing, so it
-is the wrong question. Before 2026-09-22 nothing was enforced here at all —
-`rules/branches/main` answered `[]` — so the rules below were a discipline with
-nothing mechanical behind them. The disciplines are unchanged, and the two
-settings above encode a deliberate two-tier policy; this section exists so nobody
-"fixes" one half without understanding what the other half is for.
+`allowed_merge_methods: [merge, squash, rebase]`. It carries exactly one bypass
+actor, `RepositoryRole` id 5 with `bypass_mode: always` — and on a repository
+owned by a personal account **that role is the owner's alone**: such a repository
+has only two permission levels, owner and collaborator, and GitHub refuses `admin`
+and `maintain` on one (`422 Cannot assign <user> permission of admin`), so the
+bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
+for a personal account repository*; the same page names the escape hatch —
+transferring the repository to an organization is what would create those roles,
+and what would permit team-scoped bypass actors). Confirm what is actually
+enforced, rather than trusting this paragraph, with
+`gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
+the state, and this port does not create the ruleset, so while none is attached it
+answers `[]` — and never with the legacy `branches/main/protection` endpoint: that
+one answers `404 Branch not protected` even for a branch a modern ruleset *is*
+enforcing, so it is the wrong question. Before the ruleset the rules below were a
+discipline with nothing mechanical behind them. The disciplines are unchanged,
+and the settings above encode a deliberate two-tier policy; this section exists so
+nobody "fixes" one half without understanding what the other half is for.
 
 **Tier 1 — the PR is the owner's.** When the agent is **acting for the owner** —
 the operator, running on their machine and under their account, which is the
@@ -1799,8 +1812,9 @@ be lowered: at 0 an outsider could land on `main` with nobody having looked at i
 (`422 Review Can not approve your own pull request`), and every agent here pushes
 as the owner's account, so an agent-authored PR the owner created can never be
 *clicked* approved by the account that opened it. The ruleset anticipates exactly
-this: the admin-role bypass is the **sanctioned** way the owner's reviewed PR
-completes, not a hole. Concretely, for an agent acting for the owner with a clean
+this: its one bypass actor is the owner's own, so that bypass is the
+**sanctioned** way the owner's reviewed PR completes, not a hole. Concretely, for
+an agent acting for the owner with a clean
 independent round and classified-green CI: try the normal merge first (a
 collaborator may already have approved); if the ruleset refuses because nobody
 else has approved, complete it with `--admin` **and disclose that on the PR** in
