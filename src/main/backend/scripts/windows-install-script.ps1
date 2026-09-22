@@ -201,6 +201,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path $VenvPath)) {
+    Write-Output "|LO1:environment"
     Write-Output "Creating virtual environment at $VenvPath..."
     
     # Ensure the directory exists
@@ -291,6 +292,20 @@ $env:UV_PYTHON_DOWNLOADS = "never"
 $env:UV_CACHE_DIR = $UvCacheDir
 
 # Activate virtual environment and install local-operator
+# --- Progress markers -------------------------------------------------------
+# One whole line per phase, read by the app and shown in the setup window. The
+# app matches the ENTIRE line (`|LO1:<phase>`, see src/shared/install-progress.ts)
+# and never a substring, so a marker has to stand alone: do not wrap it in
+# other text, do not re-indent it into a longer sentence, and do not emit one
+# for work this script does not actually do. A missing marker leaves the window
+# on its previous step, which is the honest failure; a marker a log line also
+# happens to produce is a wrong step presented as a measurement.
+#
+# WHY THE SCRIPT AND NOT ONLY THE APP: the install below is minutes of work on a
+# cold machine, and the app cannot see inside the venv it is about to create -
+# this is the only process that knows when the environment exists and when the
+# download starts.
+Write-Output "|LO1:components"
 Write-Output "Installing local-operator in virtual environment..."
 # Use PowerShell to run the activation script
 & "$VenvPath\\Scripts\\Activate.ps1"

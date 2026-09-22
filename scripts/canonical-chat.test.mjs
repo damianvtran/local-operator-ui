@@ -4026,13 +4026,21 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	// wrapper still delegates, which is what makes the rename safe rather than a
 	// hole: a `planForDraft` that stopped calling `planFor` would take both call
 	// sites out of the planner's reach while this assertion stayed green.
+	//
+	// The window is 4200, not 400 (remediation round 1, Q1). The property this
+	// pins is unchanged — the wrapper still delegates to `planFor(draft, at)` —
+	// but the held-press branch and its comment block now sit between the
+	// `useCallback(` and the call, so the first `planFor(draft, at)` moved past
+	// the old window (measured comment-stripped: 424 chars on the base, 536 on
+	// the head that added the branch). The distance is not the invariant; the
+	// delegation is.
 	const plans = composer.match(/planForDraft\(newMessage, caret\)/g) ?? [];
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
 	);
 	assert.ok(
-		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(
+		/const planForDraft = useCallback\([\s\S]{0,4200}?planFor\(draft, at\)/.test(
 			composer,
 		),
 		"`planForDraft` no longer delegates to `planFor`, so the two submit entry points consult an exception with no planner behind it",
