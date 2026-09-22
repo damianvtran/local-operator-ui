@@ -3752,7 +3752,7 @@ async function sceneRowSpace(cdp) {
 		 * assertion is that the button is IN the chain and that no archive control is above it.
 		 */
 		hitAtMarkCentre.includes("button[data-session-pin]") &&
-			!hitAtMarkCentre.includes("data-session-archive]")
+			!hitAtMarkCentre.includes("data-session-archive]"),
 		hitAtMarkCentre,
 	);
 	/*
