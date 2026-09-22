@@ -27,7 +27,11 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DaemonStatusSnapshot } from "../../shared/backend-status";
-import { DAEMON_PAIRED, relayNeedsRebuild } from "../../shared/backend-status";
+import {
+	DAEMON_PAIRED,
+	pairingHasRemedy,
+	relayNeedsRebuild,
+} from "../../shared/backend-status";
 import type {
 	DesktopFeedState,
 	DesktopResponse,
@@ -3054,7 +3058,12 @@ export class BackendServiceManager {
 	 * daemon that might have been mid-restart, busy with someone else's turn, or
 	 * serving another app - and, for an external daemon, adopted it as "ours" and
 	 * started a second one. Neither is possible here: `degraded` never starts
-	 * anything, and only `detached` reaches {@link recoverFromDetachment}.
+	 * anything, and {@link recoverFromDetachment} is reached only from the facts
+	 * the state machine has already established - a `detached`/`wedged`
+	 * connection, a pid its liveness probe read as gone (EVIDENCE, not a sample),
+	 * and, since the 2026-09-21 change below, a pairing record that says the
+	 * pairing is broken with a cause a sweep could repair, even while the
+	 * connection still reads `attached`.
 	 */
 	private async checkBackendHealth(): Promise<void> {
 		if (this.isAppClosing) return;
@@ -3090,6 +3099,11 @@ export class BackendServiceManager {
 			// (and then be reaped), or may be replaced by a daemon the operator
 			// starts, and all three are found by looking, not by spawning.
 			await this.recoverFromDetachment();
+			// This `return` was a no-op where the call above was already the last
+			// statement of the method; it is LOAD-BEARING now that the
+			// broken-pairing block below follows. Remove it and a detached/wedged
+			// tick would run BOTH recoveries - this one and the pairing one - in a
+			// single tick.
 			return;
 		}
 
@@ -3108,6 +3122,63 @@ export class BackendServiceManager {
 				`Backend detached: ${this.daemonState.snapshot().detail}`,
 				LogFileType.BACKEND,
 			);
+			await this.recoverFromDetachment();
+			return;
+		}
+		/*
+		 * RE-DISCOVERY MUST BE REACHABLE WHEN MAIN ALREADY KNOWS THE PAIRING IS
+		 * BROKEN, even while the connection still reads `attached` (design § 6.2).
+		 *
+		 * WHY the STATE is the wrong gate here, and the pairing record the right one.
+		 * They answer different questions: a process can be answering this address -
+		 * so the connection is `attached` and every probe ANSWERS - while it is no
+		 * longer the process this app holds a credential for. That is exactly a `lop`
+		 * build swap of an ADOPTED daemon: the reload republishes the record under a
+		 * new `instance_id`, the probe answers `identity-mismatch` (an ANSWER, not a
+		 * miss), one `contradicted` observation is folded per tick - and then this
+		 * app's OWN admitted reads (the renderer's presence beat, a session list) run
+		 * `recordTransportSuccess()`, which zeroes the count and revives `degraded` ->
+		 * `attached`. The three CONSECUTIVE contradictions the state machine needs for
+		 * `detached` are never reached, so `recoverFromDetachment` - the only path
+		 * that re-discovers and re-pairs - was never entered, and the "server was
+		 * replaced" band stood until the app was restarted. Measured on the operator's
+		 * machine 2026-09-21: adopted daemon pid 1276 reloaded v0.61.18 -> v0.62.0 in
+		 * place at ~20:08, the band sat until the manual Retry at 21:20:31, and the
+		 * log held no "Backend detached:" line in that window at all.
+		 *
+		 * WHY THIS IS SAFE, and which guards make it so. `recoverFromDetachment`
+		 * re-probes first and then re-discovers, and the two facts that keep that to
+		 * a RE-DISCOVERY rather than a replacement are its OWN guards, named here
+		 * rather than assumed: (1) the owned-child guard - `this.process` live
+		 * (`exitCode === null && signalCode == null`) returns before
+		 * `discoverAndAttach()` and therefore before any spawn - and (2)
+		 * `isExternalBackend`, set on every adoption path, which returns before
+		 * `start({ quiet: true })` for a daemon this app is attached to but did not
+		 * spawn. So the operator's reported shape cannot be spawned over, and the
+		 * hazard the owned-child guard prevents - a discovery that answers `false`
+		 * and falls through to `start()` - is untouched.
+		 *
+		 * THE RESIDUAL, named so the paragraph above is not read as a guarantee the
+		 * code does not make: an app holding NO identity at all (it never attached)
+		 * with a remedy-bearing cause reaches NEITHER guard - `this.process` is null
+		 * and `isExternalBackend` is false - so that one shape can reach
+		 * `start({ quiet: true })`, gated only by `startOwned`'s own occupancy probe
+		 * against the configured origin. It is not a spawn over a live process: a
+		 * port a daemon is already answering makes that probe decline, and a stale
+		 * record's own aging path is what retires the record.
+		 *
+		 * WHY `pairingHasRemedy` and not `!available`. A cause with no remedy this app
+		 * may offer (`governed-elsewhere`: a second claim is refused by contract;
+		 * `pre-handshake`: the claim route does not exist) would make every tick run a
+		 * sweep that can only fail, so it is excluded here the same way the banner
+		 * withholds its Retry for it. Recovery is paced by the reattach backoff for a
+		 * broken-with-remedy pairing whether or not an identity is held
+		 * (`pairingBreaksPacing`), so a pairing that cannot yet be repaired retries
+		 * on that cadence rather than on every tick - while the FIRST attempt still
+		 * runs on the tick the break is first seen, which is what this block is for.
+		 */
+		const pairing = this.daemonState.snapshot().pairing;
+		if (!pairing.available && pairingHasRemedy(pairing.cause)) {
 			await this.recoverFromDetachment();
 		}
 	}
@@ -3133,6 +3204,37 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * Whether a broken pairing main knows about is one a sweep could repair, and
+	 * is therefore a subject for the reattach backoff.
+	 *
+	 * WHY the pacing needs this second clause at all. The identity gate above is
+	 * `expectedInstanceId() !== null`, and the pairing record can be broken while
+	 * NO identity is held: `attachIfUsable`'s wrong-key arm (and its refused arm)
+	 * records the cause and returns WITHOUT attaching, so the old gate has nothing
+	 * to pace against. That state IS reachable in production, because
+	 * `checkExistingBackend()` drives that pass and a later `start()` calls
+	 * `discoverAndAttach()` again before it spawns, so the loop can be armed with
+	 * the app `connecting` and a cause already recorded. Without this clause such
+	 * a pairing would re-probe, sweep discovery and re-claim on every 10 s tick.
+	 *
+	 * THE EXCLUSION: `unpaired` is the control flow's own initial value - "the
+	 * cause is not yet established" (design § 2, S5) - and not an observation that
+	 * a pairing broke. It is what `attachIfUsable` records while the app is
+	 * `connecting` and has not attached yet, which is a FIRST RUN rather than a
+	 * break, so a first run with no daemon at all stays unpaced; every cause a
+	 * pass actually observed is paced.
+	 */
+	private pairingBreaksPacing(): boolean {
+		const pairing = this.daemonState.snapshot().pairing;
+		return (
+			!pairing.available &&
+			pairing.cause !== null &&
+			pairing.cause !== "unpaired" &&
+			pairingHasRemedy(pairing.cause)
+		);
+	}
+
+	/**
 	 * Recover from a lost daemon - by RE-DISCOVERING, and only then by starting
 	 * one.
 	 *
@@ -3146,10 +3248,20 @@ export class BackendServiceManager {
 		if (this.isAppClosing || this.isAutoUpdating || this.recoveryInFlight)
 			return;
 		// Backoff applies to a daemon we HAD (re-attaching to a specific daemon
-		// on a specific address is the case worth pacing). With no daemon at all,
-		// a tick is one directory read plus a couple of loopback probes, and
-		// discovering one the operator starts a minute later is the entire point.
-		if (this.daemonState.expectedInstanceId() !== null) {
+		// on a specific address is the case worth pacing), and to a pairing main
+		// already knows is broken with a cause a sweep could repair even when no
+		// identity is held (`pairingBreaksPacing`) - the wrong-key `successor`
+		// shape, where the record names a process that is gone and the pairing can
+		// only be repaired once that record ages out, would otherwise be a full
+		// sweep every 10 s tick. With no daemon at all AND no cause yet
+		// established, a tick is one directory read plus a couple of loopback
+		// probes, and discovering one the operator starts a minute later is the
+		// entire point. The FIRST attempt is immediate either way: `nextRecoveryAt`
+		// starts at 0 and is advanced only by a real attempt, below.
+		if (
+			this.daemonState.expectedInstanceId() !== null ||
+			this.pairingBreaksPacing()
+		) {
 			const now = Date.now();
 			if (now < this.nextRecoveryAt) return;
 			// Advance only on a real attempt, not each skipped timer tick.
