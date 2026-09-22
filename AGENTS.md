@@ -1402,6 +1402,25 @@ the diff base, every changed path with its category, every flag with its reason 
 every job as run or skipped. **A skipped job is a claim, not a pass** — the owner
 justifies each skip before merging, and a skip they cannot justify is a finding.
 
+**A pull request opened from a FORK cannot pass the two `NPX Sanity Check` legs,
+and that is environmental rather than a finding.** The job's `Build and pack` step
+reads four repository secrets — `secrets.GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` and `MICROSOFT_TENANT_ID`, wired to
+the `VITE_*` names `electron.vite.config.js` requires — and GitHub withholds
+repository secrets from a `pull_request` run whose head is a fork, so the build
+dies in `replaceBackendConfigPlugin` with `Error: VITE_GOOGLE_CLIENT_ID is not
+set` before anything diff-specific runs. Measured on 2026-09-22: #449
+(`SanaKetabchi/fix/mac-x64-bytecode-arch`, run 35776483172) failed both legs in
+45 s and 1 m 13 s at that step while `Change Scope`, `Lint`, `Type Checking`,
+`Desktop Tests`, `Runtime Dependencies`, `Security Audit` and `Version Bump Guard`
+all passed; the same job passes on a same-repo branch (#451, run 35775784209,
+both legs green). So **green means every job that can run on that head**, and
+those two legs cannot run on a fork head — an outside contributor's PR is read on
+the jobs that can run plus its agent rounds, which is exactly why "green" is not
+a check-list length. This is **not** a licence to ignore a red job that *can* run:
+those two legs are read normally on a same-repo branch, and every other job is read
+normally wherever the head lives.
+
 The failure this prevents is measured, not theoretical. The backend repository
 used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions
 each holding a reserved patch number, `0.47.1` → `0.48.0` took close to five
@@ -1447,17 +1466,78 @@ time — in practice, everything that merged before the owner starts cutting. Th
 owner picks **one** bump for all of it, and a PR that lands late rides the *next*
 window rather than delaying this one: the owner never waits for an unready PR.
 
-**One owner per window, and the ownership is a claim rather than a lock.** Before
-cutting, ask whether somebody already owns the current window — with parallel agent
-sessions that means `lop sessions` and a message to the peers you find — and if one
-does, hand them the PR number, the merge SHA and the bump you would argue for
-rather than tagging over them. If nobody does, say so and become the owner. Two
-owners at once produce two tags on two commits, and the second Release is the one
-that ships the wrong tree.
+**One owner per window, and the lock on a window is the open claim PR, not a
+message.** A `lop sessions` snapshot plus a `send` cannot be the lock: that state
+goes stale in minutes here (the runtime swaps restarted sessions without
+recording a stop), and two sessions that both look in the same minute each see
+"nobody owns it" and both proceed — which is how the backend repository cut two
+out-of-queue releases in one window. A pull request is observable to every session
+through the forge, so the claim PR is the lock. In order:
+
+1. **Look for the lock.** `gh pr list --search '"chore(release)" in:title'
+   --state open`. An open claim/bump PR means the window is owned: its body names
+   the owning session's pid, so send that session your PR number, merge SHA and
+   `Release:` line and let it aggregate. Do not start a second release. (Quote the
+   phrase: `gh` passes it to GitHub, which reads bare parentheses as syntax and
+   returns nothing.)
+2. **Take the lock by opening the claim PR** — the owner's *first* act, before
+   collecting anything (step 0 of the procedure below). It starts as one empty
+   commit titled `chore(release): claim release window`, opened as a draft PR whose
+   body names the owner's session pid from `lop sessions` and carries an empty
+   checklist of the window's PRs; only then is it announced with `send` to the
+   other live sessions — the message is what reaches a session not watching the
+   forge, the PR is what that session can check afterwards, and it is the PR that
+   is the lock. It becomes the bump once the version is decided: the same commit is
+   amended and the same PR retitled, so the lock's number never changes.
+3. **Tie-break by `createdAt`.** If two claim PRs are open, the earlier one owns
+   the window; the author of the later one closes it, deletes its branch, and hands
+   its contents to the earlier PR's owner.
+4. **Adopt a dead owner.** An agent arriving cold cannot know how long a pid has
+   been gone, so the clock is anchored on what the forge shows: if the owner pid is
+   absent from `lop sessions` *now* **and** the lock PR's `updatedAt` and its last
+   owner comment are both more than 15 minutes old, any agent may adopt the window
+   — comment on the PR that it is taking over, put its own pid in the body, and
+   continue from wherever the checklist stopped. Nothing is reset, so an owner
+   still working keeps the PR current; silence is what makes a window adoptable.
+
+Two things follow for everyone else. **If you merge while a window is open, send
+the owner your PR number and merge SHA at merge time**, not when you next happen
+to talk to them: a PR that merges after the owner starts cutting can ride *this*
+window unlisted, because the tag names a SHA and everything reachable from it
+ships — the backend shipped #731 that way, merged above the bump commit after the
+owner had polled every peer, and absent from the notes. And the owner **re-derives
+the window immediately before `gh release create`**, not once when claiming it,
+because a window derived correctly at the start is stale by the time the tag is
+cut.
+
+Two owners at once produce two tags on two commits, and the second Release is the
+one that ships the wrong tree.
 
 ```bash
-# 0. A fresh tree, never a bump sitting on a feature branch.
-git fetch origin --tags && git switch -c chore/release-X.Y.Z origin/main
+# 0. A THROWAWAY worktree, never the working checkout — and the LOCK comes
+#    first. The bump branch has to be cut somewhere, and cutting it in the root
+#    checkout (`git switch -c release-next`) moves the owner's own branch onto the
+#    release: the amendment in step 2 would then rewrite a commit on top of
+#    whatever that checkout had staged or modified, so the tagged tree would be
+#    whatever `git commit` happened to find rather than the one line the review
+#    round read. Every mutating command below is `git -C "$WT"`, and the root
+#    checkout's branch is never touched. The version is not known yet (the bump is
+#    decided from the window in step 1), so the claim is ONE EMPTY commit on
+#    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
+#    version change and retitles this same PR, so the lock's number never moves.
+#    Push the branch and open the PR only after step 1 of *The window, and the
+#    release owner's procedure* has found no open chore(release) PR.
+WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+git fetch origin --tags
+git worktree add "$WT" origin/main
+git -C "$WT" switch -c release-next
+git -C "$WT" commit --allow-empty -m 'chore(release): claim release window'
+git -C "$WT" push -u origin release-next
+gh pr create --draft --base main --head release-next --assignee damianvtran \
+  --title 'chore(release): claim release window' \
+  --body 'Release window claimed. Owner session pid: <pid from lop sessions>.
+Window (tick as each merges):
+- [ ] #<n> — <Release: line>'
 
 # 1. Collect the window and pick ONE bump by materiality (see above).
 git log --first-parent --oneline v<PREV>..origin/main
@@ -1470,14 +1550,43 @@ gh pr list --state merged --limit 60 --json number,title,mergedAt,mergeCommit
 #    that guarantee now.
 git diff v<PREV>..origin/main -- package.json | grep '^[-+].*"version"'
 
-# 2. The bump PR: package.json only, one line, title `chore(release): bump version
-#    to X.Y.Z`, independent review round on that diff, and green CI. Then merge it.
+# 2. The bump: amend that SAME commit and retitle the SAME PR — the lock must not
+#    change number. package.json only, one line, independent review round on that
+#    diff, then `gh pr ready` and green CI. Then merge it.
 #    Green CI here is ONE guard plus the classifier: a version-only package.json
 #    diff is a release bump, so every other job in ci.yml is a deliberate skip
 #    (see *Change scope*). The one-line diff's review round is the rest.
-MERGE_SHA=$(gh pr view <n> --json mergeCommit --jq .mergeCommit.oid)
+#    The version line is written by this repository's own script rather than by
+#    sed: `scripts/apply-release-bump.mjs` replaces that one line textually and
+#    *refuses* — non-zero exit, `Bump refused: ...` — unless the result is
+#    line-for-line identical to the input except for it, which is the property the
+#    review round is checking and the one a re-serialised JSON does not preserve
+#    (this file's two-space indentation and field order are its own, and
+#    `JSON.parse` -> `JSON.stringify` keeps neither). Its
+#    contract is CI-covered by `scripts/release-baseline.test.mjs`, wired into the
+#    "Check release contracts" step of `.github/workflows/ci.yml`, so the check
+#    that ran locally is the one CI keeps.
+#    Name `--package` explicitly: its default is CWD-relative, so run from the root
+#    checkout a bare `node "$WT/scripts/apply-release-bump.mjs"` rewrites the ROOT
+#    checkout's package.json and leaves the worktree's alone (measured 2026-09-22).
+node "$WT/scripts/apply-release-bump.mjs" --package "$WT/package.json" --version X.Y.Z
 
-# 3. Tag and Release in ONE step on that SHA, notes hand-written from the template.
+#    `-o package.json`, never `-am`: `--only` holds the amended commit to the one
+#    file the review round read, where `-a` stages every modified tracked file in
+#    the tree. Measured 2026-09-22: a two-line edit to an unrelated file rode into
+#    the bump commit under `--amend -am` and was left out under
+#    `--amend -o package.json`.
+git -C "$WT" commit --amend -o package.json -m 'chore(release): bump version to X.Y.Z'
+git -C "$WT" push --force-with-lease origin release-next
+gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
+gh pr ready <claim-pr-number>
+MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
+
+# 3. RE-DERIVE the window here, then tag and Release in ONE step on that SHA, notes
+#    hand-written from the template. Anything merged since step 1 rides this tag —
+#    the tag names a SHA and everything reachable from it ships — so this is the
+#    moment the notes' PR list is composed, not when the window was claimed.
+git log --first-parent --oneline v<PREV>..origin/main
 cp .github/RELEASE_TEMPLATE.md /tmp/vX.Y.Z.md && $EDITOR /tmp/vX.Y.Z.md
 gh release create vX.Y.Z --target "$MERGE_SHA" --prerelease \
   --title 'X.Y.Z: <theme>' --notes-file /tmp/vX.Y.Z.md
@@ -1492,7 +1601,15 @@ git fetch origin --tags
 git rev-parse "vX.Y.Z^{commit}"   # must print $MERGE_SHA
 gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 
-# 5. Post the tag and the Release URL on every PR in the window.
+# 5. Post the tag and the Release URL on every PR in the window, and send them to
+#    each contributor still running — the PR comment is the record, the message is
+#    what reaches someone who has already moved on. Then reclaim the throwaway
+#    worktree: it is scratch, and a release must not leave one behind holding
+#    `release-next`. A removal that REFUSES means something is still untracked or
+#    modified inside it — read that before forcing, because it means the tree the
+#    release came out of was not the one the review round read (the commit itself
+#    was still `package.json` only, which `-o` guarantees).
+git worktree remove "$WT"
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag
@@ -1516,9 +1633,13 @@ can.
 generated draft (`## What's Changed`), and annotates one that carries neither a
 `## What's New` heading (matched case-insensitively; every release here since
 v0.23.0 spells it `## What's new`) nor a `Full Changelog` compare link. The refusal is
-raised in the run's second job, and every job that can ship something — the npm
-publish, the three installers and the promote — declares that job as a dependency,
-so a refused writeup skips all of them rather than publishing to npm beside them:
+raised in the run's second job, and every job that can ship something names it as a
+dependency — the npm publish and the three installers declare it directly
+(`needs: [validate-release, open-release-window]`) and the promote,
+`finalize-release`, reaches it transitively through the builds (`needs:
+[validate-release, attach-to-release]`, and `attach-to-release` needs the three
+builds) — so a refused writeup skips all of them rather than publishing to npm
+beside them:
 Actions never cancels a sibling for another job's failure, and a job gated on
 `validate-release` alone would happily run next to a failing window. Recovery is
 editing the Release body and re-running the failed run: the re-run replays the
@@ -1630,15 +1751,22 @@ derivation to guard. What remains:
   whole of what CI has to say about it — not a matrix that happened to be short.
   Read the classification summary (see *Change scope*) before treating either
   shape as evidence.
-- **Never force-push, and never merge on a red required job.** `main` has no
-  ruleset requiring checks, so nothing makes a violation impossible — the
-  `version-bump-guard` and CI make it *loud*, and the merge is still the agent's to
-  refuse.
+- **Never force-push, and never merge on a red required job.** The `Main
+  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) configures **no
+  required status checks** —
+  its rules are `non_fast_forward` and the approval count — so nothing makes a red
+  check fatal: `version-bump-guard` and CI make it *loud*, and the merge is still
+  the agent's to refuse. `non_fast_forward` does then refuse a force-push
+  mechanically, the one violation that stopped being merely loud.
 - **Write access to `main` is release authority, and it is the widest control this
-  repository has.** `main` is not protected and carries no ruleset —
-  `gh api repos/<owner>/<repo>/rules/branches/main` answers `[]`, the check this file
-  already prescribes — so nothing mechanical prevents a direct push. What the
-  Release trigger adds is a single, visible act between a merge and a shipped
+  repository has.** `main` is governed by the `Main Protection` ruleset —
+  `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
+  prescribes, names it, ruleset `23841604` — and the only way past it without a
+  second
+  approval is its one bypass actor, `RepositoryRole` id 5, which on a repository
+  owned by a personal account is the owner alone (AGENTS.md, *Who may merge: two
+  tiers*). What the
+  Release trigger adds on top is a single, visible act between a merge and a shipped
   version: nothing reaches users until somebody creates a Release, and that Release,
   its notes and its tag are all attributable to whoever ran the command. Read every
   "who can reach the signing key" question against that boundary: the
@@ -1683,65 +1811,128 @@ derivation to guard. What remains:
 - If there are unrelated uncommitted changes, do not discard them; proceed
   carefully and scope your commit.
 
-## Who may merge: the agent review round
+## Who may merge: two tiers
 
-Code owners: none are declared. `.github/CODEOWNERS` carried a `*` line until
-2026-09-16 that routed an automatic review request to `bbqben` on every PR the
-moment it opened -- including the ones still churning through review rounds --
-and a matching pattern is the only thing that creates that request (GitHub has no
-setting that keeps the map and drops the notification). It is now pattern-free.
-**This repository has no
-ruleset requiring an approving review**, so there is no approval gate to clear
-here -- with no owners declared, nothing is requested and nothing blocks merges.
-Confirm that with `gh api repos/damianvtran/local-operator-ui/rules/branches/main` (`[]`
-means nothing is enforced), never with the legacy
-`branches/main/protection` endpoint: that one answers `404 Branch not protected`
-even for a branch a modern ruleset *is* enforcing, so it is the wrong question.
-The rule
-below is therefore about what makes a merge *legitimate*, not about what the
-forge will let through.
+**No path in `.github/CODEOWNERS` declares a code owner.** That file carried a `*`
+line until 2026-09-16 that routed an automatic review request to `bbqben` on every
+PR the moment it opened -- including the ones still churning through review rounds
+-- and a matching pattern is the only thing that creates that request (GitHub has
+no setting that keeps the map and drops the notification). It is now pattern-free,
+which is deliberate: nothing is requested automatically when a PR opens, and the
+owner set whose judgement stands in for the project's is recorded in that file's
+comment instead.
 
-**PRs are opened non-draft, and no reviewer is added unless the operator asks
-for reviewers on that PR.** The draft flag existed here only to suppress the old
-auto-request; it now only delays the merge, since a draft PR cannot be merged at
-all. A human review is a deliberate act when one is wanted -- `gh pr edit <n>
---add-reviewer bbqben` (no leading `@`: gh <= 2.100 only strips it for `@me` and
-`@copilot`) -- the handles with write access are `bbqben`, `jcobhams` and
-`damianvtran` (verify with
-`gh api repos/damianvtran/local-operator-ui/collaborators`); tagging a person in
-a *comment* is what says the PR is waiting on them.
+**The `Main Protection` ruleset is attached, and the forge now enforces an approval
+where it used to enforce nothing.** It is this repository's ruleset id `23841604`,
+created 2026-09-22, configured for the default branch and mirroring the backend
+repository's (`local-operator`, ruleset 3622629): a
+`non_fast_forward` rule, plus a `pull_request` rule with
+`required_approving_review_count: 1`, `require_code_owner_review: false`,
+`required_review_thread_resolution: false`, `dismiss_stale_reviews_on_push:
+false`, `require_last_push_approval: false`,
+`require_extra_approval_for_unattributed_changes: true` (GitHub's *Require an
+additional approval for unattributed Copilot pull requests* — scoped to a pull
+request that **Copilot** opened under its own app identity, so an unattributed
+Copilot PR needs two approvals and nothing here does) and
+`allowed_merge_methods: [merge, squash, rebase]`. It carries exactly one bypass
+actor, `RepositoryRole` id 5 with `bypass_mode: always` — and on a repository
+owned by a personal account **that role is the owner's alone**: such a repository
+has only two permission levels, owner and collaborator, and GitHub refuses `admin`
+and `maintain` on one (`422 Cannot assign <user> permission of admin`), so the
+bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
+for a personal account repository*; the same page names the escape hatch —
+transferring the repository to an organization is what would create those roles,
+and what would permit team-scoped bypass actors). Confirm what is actually
+enforced, rather than trusting this paragraph, with
+`gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
+the state, and it returns the ruleset above today; this paragraph is the record,
+the API is the truth — and never with the legacy `branches/main/protection`
+endpoint: that one answers `404 Branch not protected` even for a branch a modern
+ruleset *is* enforcing, so it is the wrong question. Before 2026-09-22 that
+endpoint answered `[]` here — no ruleset existed — and the rules below were a
+discipline with nothing mechanical behind them. The disciplines are unchanged,
+and the settings above encode a deliberate two-tier policy; this section exists so
+nobody "fixes" one half without understanding what the other half is for.
 
-When the agent is **acting for the owner** — the operator, running on their
-machine and under their account, which is the normal case here — the standing
-agent review gate is what authorizes the merge. A clean, fresh, independent
-agent review round plus green CI (with the run's classification summary read —
-a skipped job is a claim, not a pass; see *Change scope*) is sufficient; do not
-wait for a second human to click approve. Nothing here is permission to merge on a *weaker* basis than
-that just because the forge would allow it: with no ruleset in the way, the
-agent review round is the only real control this repository has.
+**Tier 1 — the PR is the owner's.** When the agent is **acting for the owner** —
+the operator, running on their machine and under their account, which is the
+normal case here — the standing agent review gate **is** the approval. A clean,
+fresh, independent agent review round plus green CI is **sufficient to merge**;
+the agent does not need to find a second human to click approve. On an
+owner-authored PR that means the completion is `--admin`, because GitHub refuses
+`422 Review Can not approve your own pull request` — no account here can approve
+the pull request it opened, so the rule the reviewer would satisfy by clicking is
+one they are forbidden from satisfying. #451 sat `BLOCKED`/`REVIEW_REQUIRED` for
+exactly this reason. *How the forge records tier 1* below is the path and the
+disclosure it requires. Green here is the
+*classified* green: read the run's classification summary before treating the
+check list as evidence, because a job this diff skipped appears there as a skip
+rather than as a pass (*Change scope*).
 
-If a code-owner ruleset is ever enabled here, read the backend's
-`AGENTS.md` § "Who may merge" first — it documents a self-approval limitation
-that bites the moment such a rule exists.
+**Tier 2 — the PR is anyone else's.** An outside contributor's PR needs **both**
+an approving review **and** a clean agent review round. The approval is the
+ruleset's `required_approving_review_count: 1` doing its job — it must come from a
+collaborator other than the author, and with no code owners declared it is not
+constrained to the owner set. The agent round is this file's standing gate.
+Neither substitutes for the other, and this tier is why the review count must not
+be lowered: at 0 an outsider could land on `main` with nobody having looked at it.
 
-This is a statement about *authority*, not about rigour. Every requirement
-still holds in full: an **independent** reviewer subagent (never the agent that
-wrote the code), rounds repeated until no blocker or major remains, review
-freshness against the current head, QA evidence from the real running surface,
-and a design/UX round for anything user-visible — which, in this repository, is
-most changes. Merging is authorized by the review being genuinely clean, never
-by the merger being entitled to it.
+**How the forge records tier 1.** GitHub prohibits approving your own pull request
+(`422 Review Can not approve your own pull request`), and every agent here pushes
+as the owner's account, so an agent-authored PR the owner created can never be
+*clicked* approved by the account that opened it. The ruleset anticipates exactly
+this: its one bypass actor is the owner's own, so that bypass is the
+**sanctioned** way the owner's reviewed PR completes, not a hole. Concretely, for
+an agent acting for the owner with a clean
+independent round and classified-green CI: try the normal merge first (a
+collaborator may already have approved); if the ruleset refuses because nobody
+else has approved, complete it with `--admin` **and disclose that on the PR** in
+the terms below. Do not sit on finished, reviewed work waiting for a click that
+may never come — and do not pretend the click happened.
 
-Two things this does not license:
+This is a statement about *authority*, not about rigour. Every requirement still
+holds in full: an **independent** reviewer subagent (never the agent that wrote
+the code), rounds repeated until no blocker or major remains, review freshness
+against the current head, QA evidence from the real running surface, and a
+design/UX round for anything user-visible — which, in this repository, is most
+changes. Merging is authorized by the review being genuinely clean, never by the
+merger being entitled to it.
+
+Three things this does not license:
 
 - **Never approve your own work to satisfy the rule.** The author and the
-  reviewer must be different agents. GitHub cannot tell them apart, because
-  every agent here pushes as the same account — so this separation is a
-  discipline the agents keep, not one the forge enforces.
-- **`--admin` stays a last resort, and stays disclosed.** If a bypass is ever
-  genuinely necessary, say plainly on the PR and in the release notes that the
-  merge bypassed rather than cleared review. A tag that implies a review it
-  never had is the failure this section exists to prevent.
+  reviewer must be different agents. GitHub cannot tell them apart, because every
+  agent here pushes as the same account — so this separation is a discipline the
+  agents keep, not one the forge enforces.
+- **`--admin` stays disclosed, always — and described accurately.** Whenever a
+  merge is completed with `--admin`, say plainly on the PR — and in the release
+  notes if it ships — that no human clicked approve, and that the merge completed
+  on the agent-review path with the review round as its approval. Say **why** the
+  bypass was needed: an account cannot approve its own pull request, so an
+  agent-authored PR the owner opened cannot be clicked approved by whoever opened
+  it. Do **not** describe it as "bypassing a broken control": the control is not
+  broken (its review count is what guards tier 2), and that framing invites
+  someone to remove it. A tag that implies a review it never had is the failure
+  this section exists to prevent.
+- **Never use `--admin` on a tier-2 PR.** An outside contributor's PR that lacks
+  an approving review from a collaborator is not finished, however clean its agent
+  round. The bypass is for completing the owner's own reviewed work, not for
+  waving through someone else's.
 
-An agent that is **not** acting for the owner prepares the PR, records the
-review rounds, and hands it to the owner to merge.
+An agent that is **not** acting for the owner prepares the PR, records the review
+rounds, and hands it to the owner. The owner approves it as a human first — that
+click is the tier-2 requirement and nothing else satisfies it — and only then
+merges, or lets their own agent complete the merge.
+
+**PRs are opened non-draft, and no reviewer is added unless the operator asks for
+reviewers on that PR.** With no patterns in `.github/CODEOWNERS` there is nothing
+to suppress with a draft flag, and a draft PR cannot be merged at all, so on an
+ordinary PR the flag now only delays the merge — the one exception is the
+release-claim lock PR, which opens as a draft for its own reason (*The window, and
+the release owner's procedure*). A human review is a deliberate act when one is
+wanted — `gh pr edit <n> --add-reviewer <handle>` (no leading `@`: gh <= 2.100
+only strips it for `@me` and `@copilot`), preferring the owner set recorded in
+`.github/CODEOWNERS`; verify a handle with
+`gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle without
+write access is silently ignored by an approval rule. Tagging a person in a
+*comment* is what says the PR is waiting on them, so neither is done casually.
