@@ -3745,14 +3745,30 @@ async function sceneRowSpace(cdp) {
 	);
 	check(
 		"U6: the hit target at the mark's resting centre is the mark itself, not the archive",
-		hitAtMarkCentre.startsWith("button[data-session-pin]") ||
-			hitAtMarkCentre === "null",
+		/*
+		 * THE CHAIN IS INNERMOST-FIRST, and that is why the first version of this clause was
+		 * false: it required the string to START with the button, but `elementFromPoint` returns
+		 * the DEEPEST node, so the chain reads `path < svg < button[data-session-pin] < ...`. The
+		 * assertion is that the button is IN the chain and that no archive control is above it.
+		 */
+		hitAtMarkCentre.includes("button[data-session-pin]") &&
+			!hitAtMarkCentre.includes("data-session-archive]")
 		hitAtMarkCentre,
 	);
+	/*
+	 * UNPIN IS NOT ARCHIVE, AND THE FIRST VERSION OF THIS CLAUSE COULD NOT TELL THEM APART. An
+	 * unpin moves the row out of the pinned section, this scene's filter drops it from the list,
+	 * and `archivedFactOf()` came back `row-absent` - which the equality read as an archive. Assert
+	 * by ACTION IDENTITY, the way the walk does: no archive happened, and a row that has left the
+	 * list is legitimate only if the pin actually flipped, so the departure has a cause that is
+	 * not a write.
+	 */
+	const archived = archivedAfter === "true";
+	const leftBecauseUnpinned = archivedAfter === "row-absent" && pinAfter !== null;
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",
-		archivedAfter === archivedBefore,
-		JSON.stringify({ archivedBefore, archivedAfter, pinAfter }),
+		!archived && (archivedAfter === archivedBefore || leftBecauseUnpinned),
+		JSON.stringify({ archivedBefore, archivedAfter, pinAfter, leftBecauseUnpinned }),
 	);
 
 	const WIDTHS = [240, 280, 320];
