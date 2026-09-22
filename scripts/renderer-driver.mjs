@@ -2593,14 +2593,22 @@ async function sceneSessionArchive(cdp) {
 	);
 	const supersedingOffer = "[aria-label='Archive “Release notes for 0.29”']";
 	/*
-	 * THE ROW IS HOVERED FIRST, THEN THE CONTROL, WHICH IS THE WALK'S OWN IDIOM AND NOT A STYLE
-	 * CHOICE: the acts are `display`-switched, so the control is 0x0 until the pointer is on the row
-	 * - and a `hoverOver` aimed at a 0x0 box moves the pointer nowhere useful, so the reveal never
-	 * happens and the press that follows lands on nothing. Measured this pass, in both palettes: the
-	 * first version of this step hovered the control alone, and its press wrote NOTHING (`"undo":
-	 * null` with the old refusal still in the store) - the same class of scene-setup error the walk
-	 * already carries a comment about three steps above.
+	 * THE ROW COMES INTO VIEW, THEN THE ROW IS HOVERED, THEN THE CONTROL - and the first of the
+	 * three is something the band made necessary rather than tidy (design round 4, D14).
+	 *
+	 * The acts are `display`-switched, so a control is 0x0 until the pointer is on its row, and a
+	 * `hoverOver` aimed at a 0x0 box moves the pointer nowhere useful; more importantly the band
+	 * takes the card's own height out of the list, so with a 90px refusal standing the row this step
+	 * aims at is at the list's newly-hidden bottom. Measured this pass, in both palettes: the press
+	 * wrote NOTHING (`"undo": null` with the old refusal still in the store), while the same
+	 * selector archived successfully ten steps later, once no message stood - which is what makes the
+	 * clipping the cause rather than the label. A reader in that state scrolls the list; the scene
+	 * does the same, and it is the SCENE's gesture: the app still never writes `scrollTop` itself.
 	 */
+	await cdp.evaluate(
+		`(() => { const node = document.querySelector('[data-session-row]:has(${supersedingOffer})'); if (node) node.scrollIntoView({ block: "center" }); })()`,
+	);
+	await wait(200);
 	await hoverOver(cdp, `[data-session-row]:has(${supersedingOffer})`);
 	await wait(300);
 	await hoverOver(cdp, supersedingOffer);
@@ -2960,14 +2968,15 @@ async function sceneSessionArchive(cdp) {
 		null,
 	);
 	/*
-	 * SCOPED, AND THE SCOPE IS THE FINDING: `[data-session-row] [data-chat-row]:focus` does not
-	 * MATCH AT ALL here (measured this pass, in both palettes: ten seconds of waiting, then the run
-	 * threw) - i.e. what the keyboard lands on after a row is clicked is NOT inside a session row,
-	 * so the check below has always been reading "a chat-row-shaped element holds focus", not "a
-	 * ROW does", and it would pass with focus on a section heading (`[data-chat-row]` names those
-	 * too: the catalogue's own reading prints `button "Agents"`). The scoped form is the assertion
-	 * this check WANTS and cannot have until the app's focus landing is understood; it is recorded
-	 * here rather than landed as a red walk, and the reading below prints what actually answered.
+	 * UNSCOPED, AND THE SCOPE IT LACKS IS A FINDING (nit, round 2): `[data-session-row]
+	 * [data-chat-row]:focus` does not MATCH AT ALL here (measured this pass, in both palettes: ten
+	 * seconds of waiting, then the run threw) - i.e. what the keyboard lands on after a row is
+	 * clicked is NOT inside a session row, so the check below has always been reading "a
+	 * chat-row-shaped element holds focus", not "a ROW does", and it would pass with focus on a
+	 * section heading (`[data-chat-row]` names those too: the catalogue's own reading prints
+	 * `button "Agents"`). The scoped form is the assertion this check WANTS and cannot have until
+	 * the app's focus landing is understood; it is recorded here rather than landed as a red walk,
+	 * and the reading below prints what actually answered.
 	 */
 	check(
 		"the keyboard lands on a row rather than back on the document",
@@ -3123,6 +3132,7 @@ async function sceneSessionArchive(cdp) {
 	const mark = await cdp.evaluate(`(() => {
 		const marked = document.querySelector('[data-session-row="b3f1a09c7d52"]');
 		const glyph = marked?.querySelector(".text-success") ?? null;
+		const r = glyph?.getBoundingClientRect() ?? null;
 		/*
 	 * DRAWN MEANS PAINTED, NOT MERELY SIZED (nit, round 2). A box with pixels in it needs three
 	 * answers rather than one: a glyph inside a display:none wrapper is 0x0, but one that is
