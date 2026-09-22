@@ -16,9 +16,9 @@ import { cn } from "@shared/lib/utils";
 import { type ReactNode, useRef } from "react";
 
 /**
- * The panel measure, per step SHAPE.
+ * The panel measure, per step SHAPE, each clamped against the viewport.
  *
- * Two shapes, because the flow has two. Every step but one is a form: it asks
+ * TWO SHAPES, because the flow has two. Every step but one is a form: it asks
  * for a name, a URL, a choice, and 560px is the measure the whole flow was
  * composed at — wide enough for a sentence of explanation, narrow enough that
  * one decision fills the frame. A two-field form in a 940px box reads as a web
@@ -26,19 +26,30 @@ import { type ReactNode, useRef } from "react";
  * all run first run at roughly that measure), which is why that number is kept
  * rather than moved for the one step that wants more.
  *
- * The provider step is not a form. It is a grid of the registry's rows, and the
- * measure it needs is the one that fits a third column of cards: 960px less the
- * body's own 24px padding is 912px of grid, which is 3 x 280px cards and two
- * 12px gaps (864px) with 48px to spare — and 897px even after a CLASSIC
- * scrollbar takes 15px off the body, which is the case that decides it. At the
- * 928px that also looks plausible the same arithmetic leaves 1px of slack, so a
- * platform with space-taking scrollbars would silently drop the grid back to two
- * columns. The dialog is `w-full`, so below 960px the panel is simply the window
- * and the grid's own container rule degrades it to two columns and then one.
+ * The provider step is not a form. It is a grid of the registry's rows, and it
+ * wants the measure that fits a third column of cards. That arithmetic, taken
+ * from the frames' own captions rather than from these class names: the panel's
+ * 1px border and the body's 24px inset each side come to 50px of a 960px panel,
+ * so the grid is 910px; three 280px cards and two 12px gaps are 864px; and a
+ * CLASSIC (space-taking) scrollbar then takes 15px off the body, leaving 895px.
+ * That 31px of margin is the whole reason the number is 960 rather than the 928
+ * that also looks plausible — at 928 the same sum leaves 863px, one pixel short
+ * of three columns, and the grid would silently drop to two on any platform that
+ * reserves scrollbar space.
+ *
+ * WHY BOTH MEASURES ARE `min()`ed AGAINST `100vw - 4rem`. `DialogContent` is
+ * `w-full` (shared/components/ui/dialog.tsx) and this frame used to clamp only
+ * its HEIGHT, so raising the provider step's cap from 560 to 960 made the
+ * panel's own border land on column 0 of an 800px window: a zero side gutter
+ * under a panel that kept 32px above and below, standing closer to the window's
+ * edge than its own content stands to the panel's (24px). Mirroring the height
+ * clamp costs nothing the width was buying — at 800px the panel is 736px, the
+ * grid 686px, and the layout falls to two 337px cards rather than losing its
+ * frame (design round 1, D1).
  */
 export const ONBOARDING_PANEL_WIDTHS = {
-	form: "max-w-140",
-	grid: "max-w-240",
+	form: "max-w-[min(35rem,calc(100vw-4rem))]",
+	grid: "max-w-[min(60rem,calc(100vw-4rem))]",
 } as const;
 
 /** Which of those measures a step asks for. */

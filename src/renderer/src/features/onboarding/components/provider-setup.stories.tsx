@@ -578,6 +578,25 @@ const CENSUS: DesktopProvider[] = [
 	},
 ];
 
+/**
+ * The same census with the recommended provider holding a credential.
+ *
+ * One row differs, and it is the row the promotion is about: the flags are the
+ * ones `providers.list` reports for a machine that has signed in (the store row
+ * exists, so `configured` is `is_usable()`'s true), not a state invented here.
+ * Everything else stays a first-run machine's.
+ */
+const SIGNED_IN_CENSUS: DesktopProvider[] = CENSUS.map((provider) =>
+	provider.id === "radient"
+		? {
+				...provider,
+				configured: true,
+				has_credential: true,
+				stored_credentials: 1,
+			}
+		: provider,
+);
+
 /* --------------------------------------------------------------- readout */
 
 /** One measured thing: what to call it, and what to ask the DOM for. */
@@ -819,12 +838,67 @@ export const ShortRegistry: Story = {
 };
 
 /**
- * Step 1 in the flow's own dialog, on a default-size window (captured at
- * 1280x900) and on the narrowest window the app runs at (800x600).
+ * A query that narrows to the promoted row: the cue travels with the provider.
  *
- * The dialog is `w-full`, so at 800 the grid's container is 752px and the layout
- * has to give up its third column -- the state this change must degrade into
- * rather than overflow.
+ * `rad` matches one row, which is the state UX round 1's U2 measured: the cue
+ * used to be gated on the pin, so the one row the promotion is about lost its
+ * cue exactly while the reader was hunting for it. The ORDER here is registry
+ * order (a query is the reader's own instruction) and the cue is present,
+ * because being the app's suggestion is a fact about the provider.
+ */
+export const SearchRecommended: Story = {
+	render: ({ width }) => (
+		<Census>
+			<Column width={width}>
+				<ProviderGrid />
+			</Column>
+			<Readout probes={GRID_PROBES} />
+		</Census>
+	),
+	play: async () => {
+		const field = await screen.findByLabelText(SEARCH_LABEL);
+		await userEvent.type(field, "rad");
+		await screen.findByText("Radient");
+	},
+};
+
+/**
+ * The same census with the recommended provider ALREADY signed in.
+ *
+ * This is the state UX round 1 (U3) inferred and the code round (R1-6) could not
+ * find a frame for: the promotion is first-run advice, so it stops at the
+ * credential -- no pin, no cue, and no "nothing to paste" over a sign-in the
+ * reader has already done. The row sits where the registry puts it (15th of 18).
+ * Rendered in the Settings column, which is the surface this state is reachable
+ * on.
+ */
+export const SignedIn: Story = {
+	render: ({ width }) => (
+		<Census providers={SIGNED_IN_CENSUS}>
+			<Column width={width}>
+				<SettingsSection
+					title="Providers"
+					icon={Plug}
+					description="Model providers, how you sign in to each, and which are connected."
+				>
+					<ProviderGrid />
+				</SettingsSection>
+			</Column>
+			<Readout probes={GRID_PROBES} />
+		</Census>
+	),
+};
+
+/**
+ * Step 1 in the flow's own dialog: on a default-size window (captured at
+ * 1280x900), on the app's declared minimum window (800x600), and scrolled to the
+ * end of its own list.
+ *
+ * The dialog is `w-full` and its measure is clamped against the viewport, so at
+ * 800 the grid's container is 686px and the layout gives up its third column
+ * rather than its frame -- the state design round 1's D1 found the panel losing
+ * its gutter to, and D4 found unphotographed at the height floor and in any
+ * scrolled state.
  */
 export const InDialog: Story = {
 	render: () => (

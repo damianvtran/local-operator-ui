@@ -73,11 +73,16 @@ const SKIPPABLE = new Set([
  * at a render: the provider step renders a grid of registry rows and asks for
  * the measure that fits a third column of cards; every other step asks for the
  * form measure by default. See `ONBOARDING_PANEL_WIDTHS` for the arithmetic.
+ *
+ * EXPORTED because it is a rule CI has to be able to check: `scripts/provider-grid-pin.test.mjs`
+ * asserts the mapping, so that a step added later cannot silently inherit the
+ * grid's measure (or the grid step lose it) without a red test.
  */
-const STEP_PANEL_WIDTH: Partial<Record<OnboardingStep, OnboardingPanelWidth>> =
-	{
-		[OnboardingStep.CONNECT_PROVIDER]: "grid",
-	};
+export const STEP_PANEL_WIDTH: Partial<
+	Record<OnboardingStep, OnboardingPanelWidth>
+> = {
+	[OnboardingStep.CONNECT_PROVIDER]: "grid",
+};
 
 /**
  * Props for the OnboardingModal component

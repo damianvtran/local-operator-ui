@@ -3472,12 +3472,31 @@ export const STORIES = [
 	 * in a class would photograph the story.
 	 */
 	["onboarding-providersetup--settings-column", 1000, 1100],
+	["onboarding-providersetup--signed-in", 1000, 1100],
 	["onboarding-providersetup--short-registry", 1000, 700],
 	["onboarding-providersetup--search-active", 1000, 900],
+	["onboarding-providersetup--search-recommended", 1000, 900],
 	["onboarding-providersetup--search-no-results", 1000, 760],
 	["onboarding-providersetup--narrow-column", 600, 1100],
+	/*
+	 * Three WINDOWS for one story, because the panel's measure is clamped against
+	 * the viewport: 1280 is the app's default, 800x600 is its declared floor
+	 * (`WINDOW_MIN_WIDTH` / `WINDOW_MIN_HEIGHT`) where the clamp and the height cap
+	 * both bite, and the fourth entry is the same 1280x900 window with the body
+	 * parked at the end of the list -- a state no frame covered, and the one where
+	 * "the field scrolls away with the content" can be seen rather than argued.
+	 */
 	["onboarding-providersetup--in-dialog", 1280, 900],
-	["onboarding-providersetup--in-dialog", 800, 900],
+	["onboarding-providersetup--in-dialog", 800, 600],
+	[
+		"onboarding-providersetup--in-dialog",
+		1280,
+		900,
+		{
+			dir: "in-dialog-scrolled",
+			scrollToEnd: "[role=dialog] > div:nth-of-type(2)",
+		},
+	],
 	[
 		"onboarding-providersetup--settings-column",
 		1000,
