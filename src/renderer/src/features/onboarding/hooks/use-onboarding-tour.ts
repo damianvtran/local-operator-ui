@@ -1240,31 +1240,6 @@ A good description helps you and others understand what the agent does and any s
 		],
 	},
 	{
-		id: "api-credentials-settings",
-		attachTo: {
-			element: '[data-tour-tag="settings-api-credentials-section"]',
-			on: "right",
-		},
-		title: "Manage API keys",
-		text: "Configure API keys for various services and AI models here. This allows your agents to access external tools and capabilities.",
-		buttons: [
-			{
-				text: "Back",
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: "Next",
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
 		id: "application-updates-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-app-updates-section"]',
