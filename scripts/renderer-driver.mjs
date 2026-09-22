@@ -3724,6 +3724,43 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
 	const undoCleared = await waitForGone(cdp, SIDEBAR_TOAST, 8_000);
 	const restoredLabel = await labelOf(`${undoRow} [data-session-archive]`);
+	/*
+	 * THE STORE AND THE CARD AT THIS CHECK'S EDGE (the contradiction this fixes, stated exactly):
+	 * the lane cleared at 8118ms - an OFFER's eight-second ceiling - while the step immediately
+	 * before this one passed asserting that the lane held the REFUSAL for the pressed row with a
+	 * hit-testable Retry. Both cannot describe the same drawn message, and the split is (a) an
+	 * offer drawn where the walk believes a refusal is, (b) a refusal drawn whose VALUE was cleared
+	 * early so the card outlived it until the clock dismissed it, or (c) something else. A sonner
+	 * entry persists until it is dismissed, so the value and the card can disagree - which is why
+	 * this reads BOTH rather than the store alone: what the store holds names the side, and what
+	 * the card says says whether the reader was looking at a message the store no longer had.
+	 */
+	const laneAtEdge = await verb(cdp, "state").catch(() => null);
+	const cardAtEdge = await cdp.evaluate(`(() => {
+		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		if (!toast) return null;
+		const action = toast.querySelector("[data-button]");
+		return {
+			type: toast.getAttribute("data-type"),
+			text: toast.textContent,
+			action: action ? action.textContent : null,
+			box: (() => { const r = toast.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })(),
+		};
+	})()`);
+	note(
+		"the lane at the finishing check's edge: what the store holds, and what the card says",
+		JSON.stringify({
+			store: {
+				failure: laneAtEdge?.archiveFailure?.sessionId ?? null,
+				failureArchived: laneAtEdge?.archiveFailure?.archived ?? null,
+				undo:
+					laneAtEdge?.archiveUndo !== null &&
+					laneAtEdge?.archiveUndo !== undefined,
+				attempts: laneAtEdge?.archiveAttempts ?? null,
+			},
+			card: cardAtEdge,
+		}),
+	);
 	check(
 		"and the walk leaves the list as the fixture describes it: the refusal's own Retry lands the unarchive, so no row is left archived by this sequence",
 		undoCleared.timedOut === false &&
