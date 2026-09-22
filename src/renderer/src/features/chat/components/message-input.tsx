@@ -118,6 +118,7 @@ import {
 	type Capture,
 	type CredentialFate,
 	type CredentialPayload,
+	HELD_TAKEN_BY,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	type UnredactedDisclosure,
@@ -1405,6 +1406,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
 		 */
 		const heldSample = useRef<readonly string[] | null>(null);
+		/*
+		 * The last held-press sentence RAISED, AND THE RECORD IT WAS RAISED FOR, so a
+		 * repeated Enter on an unchanged held box does not append the same transcript
+		 * line again (remediation round 1, U4). A ref rather than state: this decides
+		 * whether to say something, never what the frame draws, and a change that
+		 * re-rendered the composer here would be the re-render for its own sake.
+		 *
+		 * KEYED TO THE RECORD, NOT TO THE SENTENCE (agent review round 2, R6). The
+		 * dedupe used to hold the bare string and be reset imperatively when the
+		 * record was pruned — and that prune lives in `applyCapture`, which the
+		 * notice's OWN remedy never runs: clearing the box with the keyboard goes
+		 * through the textarea `onChange` → `applyDomEdit` route, which clears
+		 * `cancelledToken.current` (its effect is keyed on the buffer) but never this
+		 * ref. So the operator followed the app's named way out, re-armed the
+		 * identical shape, and the second hold was SILENT — the box kept, nothing
+		 * dispatched, no sentence. Folding the record into the key removes the
+		 * imperative reset altogether: a fresh cancel writes a NEW `CancelledToken`
+		 * object, so identity alone says this is a new hold that owes its own words,
+		 * on every route that can retire the old one — the keystroke path included.
+		 */
+		const lastHeldNotice = useRef<{
+			token: CancelledToken;
+			notice: string;
+		} | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
@@ -3040,38 +3065,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[recordWord],
 		);
 		/**
-		 * The plan this draft's COMMAND-LOCKED word would run, or `null`.
-		 *
-		 * ONE QUESTION, ASKED OF THE PLANNER, for the three places that need it — the
-		 * exception below, the notice that says what the next Enter does, and the receipt
-		 * and undo a locked run owes — because the three must never disagree and a second
-		 * reading of "is this locked" is exactly how they would.
-		 *
-		 * WHAT SELECTS IT IS THE RECORD'S OWN COUNT — not the disclosure, and not "every
-		 * locked draft" (review round 4: this docblock stated the superseded form of the
-		 * rule). The disclosure was round 2's correction, and it closed the door QA round 2
-		 * measured: `unredactedOverBuffer` is a whole-buffer equality that ANY keystroke
-		 * clears, while `holdsCancelledToken` (which selects the exception) matches the
-		 * cancelled token's TEXT at its old offset and the record's text is the WORD plus its
-		 * space, never the secret — so one keystroke after the Escape the exception was handed
-		 * a box it sent, measured on the real app and byte-identical on `main`. Requiring the
-		 * planner for every locked draft then closed that door and cost the operator's own
-		 * sentence on the shape where a cancelled token was written after (§5 makes those
-		 * words theirs — round 3, MINOR 1). The callers now ask this only where the cancel
-		 * RECORDED that it put characters back (`cancelledToken.current.restored > 0`, at the
-		 * exception below): the record carries the distinction the disclosure could not, and
-		 * a span that restored nothing has no secret to keep. Its answer is still taken only
-		 * when that answer IS a locked run.
-		 */
-		const lockedRunOf = useCallback(
-			(draft: string, at: number) => {
-				const planned = planFor(draft, at);
-				if (planned.kind !== "whole" && planned.kind !== "splice") return null;
-				return planned.locked === true ? planned : null;
-			},
-			[planFor],
-		);
-		/**
 		 * Whether THIS DRAFT still holds the characters the cancel put back.
 		 *
 		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
@@ -3110,17 +3103,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			const pasted = pastedRun.current;
 			return pasted !== null && standsAsToken(draft, pasted.run);
 		}, []);
+		/**
+		 * Whether THIS draft is one whose press is HELD — nothing runs, nothing
+		 * sends, the box is kept, one notice names the way out.
+		 *
+		 * ONE PREDICATE, TWO READERS (agent review round 2, R5). `planForDraft`
+		 * answers `{kind:"held"}` on exactly this shape, and the composer line must
+		 * not claim the hold on any other: the line said so on `unredactedChars !=
+		 * null`, and that disclosure OUTLIVES the record. On the reload /
+		 * conversation-switch shape the disclosure and the buffer persist while
+		 * `cancelledToken.current` (a ref) dies, so the old test passed where the
+		 * press runs no hold at all — Enter DISPATCHED `/credential <secret>` and ate
+		 * the trailing words as its argument, the very defect this change closes,
+		 * under a sentence promising the opposite. Both readers ask this now, so the
+		 * claim and the press cannot drift.
+		 *
+		 * The two facts are the press's own: `holdsCancelledToken` is the exact span
+		 * `gestureFor` reads (the draft still carries the box's cancelled token where
+		 * it was put back), and `restored > 0` is the branch's own condition — an
+		 * empty span restores nothing, so its words are prose and its press sends.
+		 * CARET-INDEPENDENT by construction, which is what lets the render path read
+		 * it: `gestureFor` takes the draft alone, and no part of the held answer
+		 * depends on where the cursor sits. A `useCallback` with NO dependency, like
+		 * `gestureFor` its sibling: it reads refs only, so its identity is stable and
+		 * `planForDraft` can list it without re-creating on every render.
+		 */
+		const holdsHeldPress = useCallback((draft: string): boolean => {
+			const token = cancelledToken.current;
+			return (
+				token !== null &&
+				token.restored > 0 &&
+				holdsCancelledToken(draft, token)
+			);
+		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
-				if (gesture === "send") {
+				if (gesture === "send" && holdsHeldPress(draft)) {
 					/*
 					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
 					 *
 					 * `send` here means "what you see is what gets sent" — the box cancelled this
 					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
 					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
-					 * tail, whose tail is a secret: measured on a live conversation, type
+					 * tail, whose tail is a secret: [redacted] on a live conversation, type
 					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
 					 * offers in its own notice — and the press put `/credential <the secret>` into
 					 * the conversation, on the remediation's first head and on `main` alike (UX
@@ -3141,22 +3167,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * known. An EMPTY span puts nothing back, so the words written after it are the
 					 * operator's own (§5) and the composer sends them as prose — and where the draft
 					 * OPENS with the token, the leading-slash policy refuses that send outright and
-					 * the words stay in the box with nothing sent (UX round 4, U16 measured both, and
+					 * the words stay in the box with nothing sent (UX round 4, U16 [redacted] both, and
 					 * corrected this: the earlier claim here that the shape re-sends the sentence was
 					 * wrong — it is refused, and the gain over the previous head is that the words are
 					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
-					 * no later keystroke can make that untrue. Yielding is
-					 * still the planner's answer (`lockedRunOf`), not a second question asked here, and
-					 * every other draft keeps the exception's `send` to the letter — the bare-token
-					 * cancel included: a bare `/credential` carries no tail, so the planner answers
-					 * `send` too and nothing here changes.
+					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
+					 * here; the press is HELD, which is what `holdsHeldPress` asks and the composer
+					 * line now reads too (agent review round 2, R5 — the two used to ask different
+					 * questions, and the line's was the survivor-less disclosure).
 					 */
-					if ((cancelledToken.current?.restored ?? 0) > 0) {
-						const locked = lockedRunOf(draft, at);
-						if (locked !== null) return locked;
-					}
-					return { kind: "send" };
+					/*
+					 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
+					 *
+					 * The dispatch route below used to run here and it answered Q-1 — the restored
+					 * secret was never SENT to the model — but at the operator's own cost: the words
+					 * they typed after the cancelled token became the command's ARGUMENT, the run
+					 * consumed them, and the receipt said so. The operator's requirement outranks
+					 * that route. Both of the plan's old answers are wrong at this state:
+					 * dispatching consumes their words, and `send` puts the restored secret into a
+					 * message record. So the press is HELD: nothing runs, nothing sends, the box is
+					 * kept, and one notice names the way out. The Q-1 security invariant is met by
+					 * the hold rather than by the dispatch.
+					 */
+					return {
+						kind: "held",
+						notice:
+							"These characters are still the credentials you cancelled — clear the box to release your words and send your sentence.",
+					};
 				}
+				if (gesture === "send") return { kind: "send" };
 				const plan =
 					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
 				if (gesture !== "pick" || plan.kind !== "send") return plan;
@@ -3186,7 +3225,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (index < 0) return plan;
 				return planFor(draft, index + word.length, "pick");
 			},
-			[gestureFor, lockedRunOf, planFor, recordWord],
+			/*
+			 * No dependency on a locked-run helper: the held press replaced the dispatch
+			 * route that read one, and the helper itself is gone with it (remediation
+			 * round 1, R4 — this comment used to claim it was "still used elsewhere",
+			 * which stopped being true when the call site at the composer line moved to
+			 * the held sentinel).
+			 */
+			[gestureFor, holdsHeldPress, planFor, recordWord],
 		);
 		/*
 		 * The composer's syntax highlight, and the ONE gate that decides whether the
@@ -3294,6 +3340,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
+				if (plan.kind === "held") {
+					/*
+					 * A HELD PRESS (operator requirement). This plan is asked of the composer
+					 * when the box still carries an Esc-cancelled credential token whose
+					 * characters were restored: the operator's own words after the token must not
+					 * become the command's argument, and the restored secret must not go to the
+					 * model. So the plan's answer is "do nothing, keep the box, and say the way
+					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
+					 * the hold is a property of the composer's own state, not of whether a
+					 * dispatcher is wired, so a harness that mounts the composer alone still gets
+					 * the one sentence rather than a silently dead Enter.
+					 *
+					 * AND THE SENTENCE IS RAISED ONCE PER HOLD (remediation round 1, U4). The box
+					 * is byte-identical after the press, so nothing else about the frame changes:
+					 * four presses on a held box would otherwise append four identical transcript
+					 * lines, and the hold is one standing state rather than one event per press.
+					 * The guard lives HERE and not in the host's `note` for exactly that reason -
+					 * every other note is a fresh outcome with something new to say, and only this
+					 * branch repeats a sentence that is already the whole answer. A ref, not state:
+					 * re-raising the line must not itself re-render the composer, and any state
+					 * change (a keystroke, a clear) re-plans the draft and starts a new hold.
+					 */
+					const held = cancelledToken.current;
+					if (
+						held !== null &&
+						(lastHeldNotice.current?.token !== held ||
+							lastHeldNotice.current?.notice !== plan.notice)
+					) {
+						lastHeldNotice.current = { token: held, notice: plan.notice };
+						onSlashNote?.(plan.notice);
+					}
+					return;
+				}
 				if (!runSlashCommand) return;
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
@@ -5026,15 +5105,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							? unredactedNotice(
 									unredactedChars,
 									/*
-									 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
-									 * command-locked run the press takes the restored characters as the
-									 * command's argument and sends nothing, so "Enter will expose them" is
-									 * false in the safe direction — the app's most trust-sensitive sentence
-									 * telling the user that the harmless press is the dangerous one (UX round
-									 * 2, U7). The word comes from the SAME planner call the press will use
-									 * (`lockedRunOf`), so the promise and the press cannot disagree.
+									 * WHAT THE NEXT ENTER WILL DO WITH THEM, and the sentinel is passed ONLY where
+									 * the press really is held (agent review round 2, R5). The hold is a fact
+									 * about the RECORD, not about the disclosure: `unredactedChars !== null`
+									 * survives a reload / conversation switch while `cancelledToken` (a ref)
+									 * dies with it, so gating on the disclosure alone painted "Enter is held:
+									 * clear the box to release your words" over a box whose Enter DISPATCHES
+									 * `/credential <secret>` and eats the trailing words as its argument — the
+									 * defect this change exists to close, under a sentence promising the
+									 * opposite. `holdsHeldPress` is the same predicate the press asks, so the
+									 * claim and the press cannot drift; where it is false the plain
+									 * `unredactedNotice(n)` sentence stands, which is what a restored draft with
+									 * no live record actually does — expose the characters.
 									 */
-									lockedRunOf(newMessage, caret)?.command.name,
+									holdsHeldPress(newMessage) ? HELD_TAKEN_BY : undefined,
 								)
 							: null,
 					/*

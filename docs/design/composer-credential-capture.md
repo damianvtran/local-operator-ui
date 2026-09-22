@@ -240,28 +240,32 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   one — measured as `/credential ` + Esc + `hello there` → `/credential ello
   thereh`, in prose as well as at the start (UX round 1, U1; the reference lost
   the same round twice).
-- **After a cancel, the token is inert to SUBMIT as well.** The notice promises
-  "Enter will expose them", and Enter used to do the opposite: it reached the
-  dispatcher, which read the leading `/credential` as the COMMAND, opened the
-  picker and — mid-prose — stripped the restored characters out of the
-  operator's sentence. The composer therefore remembers the token it just
-  cancelled (its exact run and arrival offset) and submits prose while that run
-  is still there; any edit that moves the token ends the exception, and the case
-  the dispatcher exists for is untouched — `/credential <args>` submitted with no
-  capture still strips its arguments, so a secret can never land in command text
-  (QA round 1, Q2).
-  **This holds for the EMPTY-span cancel too, and round 2 is why that had to be
-  said** (UX round 2, U9). The run used to be reported only by a cancel that
-  restored characters — sound about the NOTICE, which is suppressed when nothing
-  was restored, and wrong about the SUBMIT: `/credential ` + Esc + `mysecretname`
-  + Enter dispatched the command, consumed the operator's words as its argument
-  and left the box holding `deploy with`, sending nothing and saying nothing,
-  while the SAME visible sentence with characters in the span sent as prose. One
-  buffer, opposite outcomes, and the losing one silent. What the cancel actually
-  promises is that the GESTURE is over; the token is how the submit is told. The
-  run survives the operator's own typing either way, because a restored
-  character and a typed one both land AFTER it (the mask span starts at the
-  token's end).
+- **After a cancel, the token is inert to SUBMIT, and a restored span is HELD.**
+  The notice promises "Enter will expose them", and Enter used to do the
+  opposite: it reached the dispatcher, which read the leading `/credential` as
+  the COMMAND, opened the picker and — mid-prose — stripped the restored
+  characters out of the operator's sentence. The composer therefore remembers
+  the token it just cancelled (its exact run and arrival offset).
+  **The submit that answers it is now a HOLD, not a dispatch** (operator
+  requirement). When the cancel RESTORED characters, the next Enter does neither
+  of the plan's old answers: dispatching would take the operator's own words
+  typed after the token as the command's ARGUMENT (the operator's complaint —
+  the receipt said `/credential SEKRIT extra` and the words were its argument),
+  and `send` would put the restored SECRET into a message record. So nothing
+  dispatches, nothing sends, the box is left exactly as the operator left it,
+  and ONE notice names the way out (`… still the credentials you cancelled —
+  clear the box …`). The Q-1 invariant — a restored secret never reaches the
+  model — is met by the hold rather than by the dispatch route it used to be met
+  by. A press held this way is not the silent no-op QA round 3 Q3 banned: the
+  notice names the way out, and the box keeps the characters.
+  **The EMPTY-span cancel is unchanged, and round 2 is why that had to be said**
+  (UX round 2, U9). A cancel that restored nothing carries no secret, so the run
+  is not held: `/credential ` + Esc + `mysecretname` + Enter sends the operator's
+  sentence as prose, and `/credential <args>` submitted with no capture still
+  reaches the dispatcher and strips its arguments, so a secret can never land in
+  command text (QA round 1, Q2). Any edit that moves the token ends the
+  exception, because a restored character and a typed one both land AFTER it (the
+  mask span starts at the token's end).
 - **armed, no space yet** → Esc does **not** disarm. With the popup open it
   closes the popup; otherwise it keeps its existing meaning. The arm survives.
 - The Escape restore must not re-arm: the TUI nests the restore in
@@ -282,8 +286,10 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   loss — the characters survive in the box, no key is invented, and no secret
   reaches the transcript.
   **THE DEFERRAL CARRIES THE CONSEQUENCE QA NAMED IN ROUND 4** (QA round 4, Q1;
-  its own recommendation, one sentence rather than a second deferred defect): in
-  the branch of this gesture where the buffer SURVIVES the Enter, the same
+  its own recommendation, one sentence rather than a second deferred defect). The
+  hold above REPLACES the silent no-op this deferral recorded: the branch where
+  the buffer survives the Enter now raises the one notice instead of being
+  silent. What remains true of the deferral is the notice's own lifetime: the
   submit also takes the notice DOWN and persists `unredactedChars: 0`, so a reload
   brings the plaintext back with no warning at all — the characters are still the
   buffer the disclosure was defined over (`disclosureOver`), and the restore the

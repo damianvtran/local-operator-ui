@@ -257,7 +257,20 @@ export type SlashSubmissionPlan =
 	/** A name-list command with no name typed yet: the roster list owns the key. */
 	| { kind: "list-open"; command: SlashCommandInvocation }
 	/** Slash-shaped, but names no command: report it and KEEP the draft. */
-	| { kind: "unrecognised"; command: SlashCommandInvocation };
+	| { kind: "unrecognised"; command: SlashCommandInvocation }
+	/**
+	 * A press the composer REFUSES to act on: an Esc-cancelled credential token
+	 * whose restored characters are still in the box.
+	 *
+	 * Enter is held here rather than run, because at this state BOTH of the plan's
+	 * other answers are wrong: dispatching the command would take the operator's
+	 * own words typed after the token as its argument (the operator's complaint),
+	 * and sending the draft would put a restored SECRET into a message (the Q-1
+	 * leak the old dispatch route was there to prevent). The box is left exactly
+	 * as it is and ONE notice names the way out, so the hold is never the silent
+	 * no-op QA round 3 Q3 banned.
+	 */
+	| { kind: "held"; notice: string };
 
 export type SlashSubmissionArgs = {
 	draft: string;
