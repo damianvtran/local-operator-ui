@@ -44,9 +44,11 @@ import {
 	profileBackedEntitlementKeys,
 } from "./macos-entitlement-policy.mjs";
 import {
+	MACH_O_CPUTYPE,
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	machOCpuType,
 	machOExecutables,
 	machOFiles,
 	seedExecBitFiles,
@@ -74,6 +76,44 @@ const SECURITY = "/usr/bin/security";
  * the bound catches is red, which is the direction a release gate must fail in.
  */
 export const SPAWN_PROBE_TIMEOUT_MS = 60_000;
+
+/**
+ * The same bound for a probe whose child this host must TRANSLATE to run.
+ *
+ * WHY A BOUND OF ITS OWN RATHER THAN A BIGGER ONE FOR EVERYBODY. Rosetta 2 is
+ * the only translator macOS ships, it only runs x86_64 code on an arm64 host,
+ * and the release's macOS job runs on an arm64 runner while checking BOTH
+ * architectures' artifacts. The translation is a one-time, per-launch cost paid
+ * by the first exec, and - this is the part that makes it invisible to the
+ * predicate above - it is paid in WAIT rather than in work: measured on this
+ * machine, the x64 launcher of a shipped bundle in node mode took 24.7 s of wall
+ * clock against 0.5 s of user time on its first exec and 1.2 s on its second,
+ * with the executable byte-identical between them, because the only thing that
+ * changed was Rosetta's cache.
+ *
+ * WHAT IT COST THE RELEASE, and why the tight bound is the wrong instrument for
+ * a translated child. Measured on v0.30.9 (run 35701146672, both of its
+ * attempts): 2 of the gate's 6 `app-spawn` checks went red, both on x64 bundles,
+ * while the arm64 bundles answered the same question in 4-6 s - and the SAME
+ * launcher bytes passed later in the SAME run, twice, so what failed was the
+ * bound rather than the artifact. The 60 s bound is not a performance
+ * expectation (see above); it catches the third refusal shape, a spawn the OS
+ * neither completes nor refuses, and on a translated child it was measuring the
+ * translator instead.
+ *
+ * WHAT IT DOES NOT RELAX. A refusal at exec is decided at exec and is immediate:
+ * it arrives as a signal or a non-zero status, or as a child that never exits at
+ * all, and all three are still red here. The predicate is untouched and the
+ * tight bound still applies to every child this host can run natively - which is
+ * the arm64 artifact on an arm64 runner (the one an Apple-Silicon user installs)
+ * and the x64 artifact on an Intel runner. Only a child this host must translate
+ * is given longer to ANSWER.
+ *
+ * 300 s is not calibrated to a measurement - there is no upper bound to measure
+ * on a loaded runner - it is 5x the value that tripped and 12x this host's cold
+ * cost. Beyond it the shape on the other end is a spawn that is not coming back.
+ */
+export const SPAWN_PROBE_TRANSLATED_TIMEOUT_MS = 300_000;
 
 /**
  * The rendered WebAuthn keychain access group, as it appears in a signed app's
@@ -217,6 +257,28 @@ export function mainExecutablePath(appPath) {
 }
 
 /**
+ * Whether this host has to TRANSLATE the executable a spawn check runs.
+ *
+ * The question is asked of the header of the file that will be exec'd, not of the
+ * bundle, the artifact's name or the architecture of a neighbouring binary:
+ * translation is decided by the kernel when it loads THAT file. `machOCpuType`
+ * answers `null` for a fat launcher and for anything unreadable, and both keep the
+ * tight bound - a fat bundle carries the host's own slice and runs natively, and
+ * "could not tell" must not silently buy patience at a release gate.
+ *
+ * Rosetta is the only translator macOS has, so the pair is an arm64 host against
+ * an x86_64 child. An arm64 child on an x64 host is not translated, it is
+ * refused, and that refusal is exactly the shape the probe exists to observe: it
+ * keeps the tight bound. `hostArch` is a parameter so the rule can be asserted on
+ * a host other than the one running the test.
+ */
+export function hostTranslatesExecutable(executable, hostArch = process.arch) {
+	return (
+		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
+	);
+}
+
+/**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
  *
  * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
@@ -244,10 +306,18 @@ export function readEmbeddedProfileEntitlements(appPath, run) {
  * everything else, and both of those can exit 0 - so the verdict has to read
  * the output, not the status that reports whether spctl itself ran.
  */
-export function artifactChecks({ appPath, dmgPath, profile = null }) {
+export function artifactChecks({
+	appPath,
+	dmgPath,
+	profile = null,
+	hostArch = process.arch,
+}) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
 	const embedded = profile ?? { present: false, entitlements: null };
+	// The launcher the checks exec, resolved once: the spawn probe's bound depends
+	// on the architecture in ITS header, and both are read from one path lookup.
+	const executable = appPath ? mainExecutablePath(appPath) : null;
 	if (appPath) {
 		checks.push(
 			{
@@ -305,13 +375,19 @@ export function artifactChecks({ appPath, dmgPath, profile = null }) {
 			{
 				id: "app-spawn",
 				scope: "app",
-				target: mainExecutablePath(appPath),
+				target: executable,
 				description:
 					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
-				command: mainExecutablePath(appPath),
+				command: executable,
 				args: ["-p", "process.exit(0)"],
 				env: { ELECTRON_RUN_AS_NODE: "1" },
-				timeoutMs: SPAWN_PROBE_TIMEOUT_MS,
+				// Two bounds, not one: a child this host must translate answers in a
+				// translation's time rather than in its own, and `timedOut` would
+				// otherwise report the translator as an OS refusal. See
+				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+				timeoutMs: hostTranslatesExecutable(executable, hostArch)
+					? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
+					: SPAWN_PROBE_TIMEOUT_MS,
 				expect: (result) =>
 					result.status === 0 && !result.signal && !result.timedOut,
 			},

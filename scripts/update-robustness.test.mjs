@@ -231,13 +231,19 @@ const {
 	discoverApp,
 	discoverDmg,
 	discoverArtifacts,
+	hostTranslatesExecutable,
 	mainExecutablePath,
 	profileAuthorizationCheck,
 	profileAuthorizes,
 	runChecks,
+	SPAWN_PROBE_TIMEOUT_MS,
+	SPAWN_PROBE_TRANSLATED_TIMEOUT_MS,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+// The Mach-O cpu types the gate's translation rule compares against, imported
+// rather than spelled out here so the fixture and the rule cannot drift apart.
+const { MACH_O_CPUTYPE } = await import("./prune-python-seed.mjs");
 // The policy module the GATE reads, imported beside the bundle the APP reads from
 // (`install` above): the two implementations of one rule are only allowed to stay
 // separate because a test asserts they agree, and that test needs both in scope.
@@ -4140,6 +4146,23 @@ function writeMachO(path) {
 	chmodSync(path, 0o755);
 }
 
+/** A 16-byte thin Mach-O header carrying a chosen `cputype` - magic, cputype,
+ * cpusubtype, filetype - which is the whole of what the gate's translation rule
+ * reads.
+ *
+ * The 8-byte `writeMachO` above is deliberately left as it is rather than widened:
+ * it answers no architecture at all, and one of the cases below is that a launcher
+ * whose header cannot be read keeps the tight bound instead of buying patience. */
+function writeThinMachO(path, cpuType) {
+	const header = Buffer.alloc(16);
+	header.writeUInt32LE(0xfeedfacf, 0); // cffaedfe: 64-bit, little-endian
+	header.writeUInt32LE(cpuType, 4);
+	header.writeUInt32LE(0, 8); // cpusubtype
+	header.writeUInt32LE(2, 12); // MH_EXECUTE
+	writeFileSync(path, header);
+	chmodSync(path, 0o755);
+}
+
 /**
  * A `run` that answers for a bundle everything except the spawn probe says yes
  * to, with the signature's entitlements supplied per case.
@@ -4353,6 +4376,88 @@ test("the spawn probe owns its env, whatever signature the runner has", () => {
 	);
 	// And it is restored afterwards, so no later check inherits node mode.
 	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+});
+
+test("the spawn bound covers a translation, and only where there IS one", () => {
+	/*
+	 * The bound is the one number in this gate the HOST decides rather than the
+	 * artifact, and the two things it can catch have to stay distinguishable: a
+	 * child this host must translate, which answers in a translation's time
+	 * (measured on an x64 launcher of a shipped bundle on an arm64 host: 24.7 s of
+	 * wall clock against 0.5 s of user time on the first exec, 1.2 s on the
+	 * second), versus a spawn the OS neither completes nor refuses.
+	 *
+	 * v0.30.9 lost both of its publish attempts to the first being read as the
+	 * second: run 35701146672 reported 2 of its 6 `app-spawn` checks red, both on
+	 * x64 bundles, while the arm64 bundles answered the same question in 4-6 s and
+	 * the same launcher bytes passed later in the same run.
+	 */
+	const dir = tempDir("lo-translate-");
+	const x64 = join(dir, "launcher-x64");
+	writeThinMachO(x64, MACH_O_CPUTYPE.X86_64);
+	const arm64 = join(dir, "launcher-arm64");
+	writeThinMachO(arm64, MACH_O_CPUTYPE.ARM64);
+
+	assert.equal(
+		hostTranslatesExecutable(x64, "arm64"),
+		true,
+		"an x86_64 child on an arm64 host is translated",
+	);
+	assert.equal(
+		hostTranslatesExecutable(x64, "x64"),
+		false,
+		"the same child on an Intel host runs natively and keeps the tight bound",
+	);
+	assert.equal(
+		hostTranslatesExecutable(arm64, "arm64"),
+		false,
+		"the artifact an Apple-Silicon user installs is never translated",
+	);
+	// An arm64 child on an x64 host is REFUSED rather than translated, which is
+	// exactly the shape this probe exists to catch: it must not get more patience.
+	assert.equal(hostTranslatesExecutable(arm64, "x64"), false);
+
+	// "Could not tell" keeps the tight bound, in both shapes it arrives in: a
+	// header that carries no architecture, and a path that cannot be opened.
+	const noHeader = join(dir, "unreadable");
+	writeMachO(noHeader);
+	assert.equal(hostTranslatesExecutable(noHeader, "arm64"), false);
+	assert.equal(hostTranslatesExecutable(join(dir, "absent"), "arm64"), false);
+});
+
+test("the artifact gate hands a translated launcher the longer bound", () => {
+	const app = gateFixtureBundle("lo-gate-bound-");
+	const launcher = join(app, "Contents", "MacOS", "Local Operator");
+	const row = (hostArch) =>
+		artifactChecks({ appPath: app, dmgPath: null, hostArch }).find(
+			(check) => check.id === "app-spawn",
+		);
+
+	// The fixture's launcher answers no architecture, so it keeps the bound the
+	// gate shipped with until the header says otherwise.
+	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
+	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
+	assert.equal(row("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
+
+	// And the row is otherwise the probe it was: same id, same command, same one
+	// switch that keeps it out of a real launch, same predicate.
+	assert.equal(row("arm64").command, launcher);
+	assert.equal(row("arm64").target, launcher);
+	assert.deepEqual(row("arm64").args, ["-p", "process.exit(0)"]);
+	assert.deepEqual(row("arm64").env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(
+		row("arm64").expect({ status: null, signal: "SIGKILL", timedOut: false }),
+		false,
+	);
+	assert.equal(
+		row("arm64").expect({ status: 0, signal: null, timedOut: true }),
+		false,
+	);
+	assert.equal(
+		row("arm64").expect({ status: 0, signal: null, timedOut: false }),
+		true,
+	);
 });
 
 test("the gate's own results carry the bundle-walk rows", () => {

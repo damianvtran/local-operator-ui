@@ -517,7 +517,16 @@ terminating signal, or a child that never exits within the bound. That is the
 question the pipeline could not ask and the one the OS actually answers: measured
 against the real 0.29.6 bundle it exits 137 (SIGKILL, no output), against the same
 bundle re-signed without the group it exits 0, and against the 0.29.5 install on
-this machine it exits 0. `app-profile-authorization` names the *cause* rather than
+this machine it exits 0. **The bound is one per kind of child, because the runner checks both
+architectures.** A launcher this host has to translate answers in a translation's
+time rather than in its own: on the arm64 runner, the x64 bundles' probe crossed
+the 60 s bound twice in one release (v0.30.9, run `35701146672`, both of its
+attempts) while the same launcher bytes passed later in that same run and the
+arm64 bundles answered in 4-6 s, so the gate gives a child it must translate
+through Rosetta 2 (`SPAWN_PROBE_TRANSLATED_TIMEOUT_MS`) longer to answer and keeps
+the 60 s bound for every child it runs natively. The refusal this probe exists to
+observe is decided at exec and stays immediate: a signal, a non-zero status or a
+child that never returns is still red under either bound. `app-profile-authorization` names the *cause* rather than
 the symptom — every profile-backed entitlement the signature claims must appear in
 an embedded profile's own `Entitlements` — and `app-webauthn-entitlement` is
 bidirectional: absent is the shipped default, and present is only acceptable when
