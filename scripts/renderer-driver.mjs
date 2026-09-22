@@ -3689,12 +3689,65 @@ async function sceneRowSpace(cdp) {
 			markAtRest.centre.y === markUnderPointer.centre.y,
 		`at rest ${markAtRest.centre.x},${markAtRest.centre.y} ${markAtRest.rect.width}x${markAtRest.rect.height} -> under the pointer ${markUnderPointer.centre.x},${markUnderPointer.centre.y} ${markUnderPointer.rect.width}x${markUnderPointer.rect.height}`,
 	);
+	/*
+	 * WHAT IS THERE, AND WHAT IS DRAWN THERE, ARE DIFFERENT QUESTIONS. Two readings say the mark's
+	 * box does not move and a press at it still archives; only a hit test says which way round it
+	 * is - whether Archive is drawn on the mark's old box, is hit-testable there while invisible,
+	 * or merely ordered above the mark. Read it before touching the layout (manager, pass 8).
+	 */
+	const descend = (el) =>
+		el
+			? (() => {
+					const chain = [];
+					let node = el;
+					while (node && chain.length < 6) {
+						const marks = [
+							node.hasAttribute?.("data-session-pin")
+								? "[data-session-pin]"
+								: "",
+							node.hasAttribute?.("data-session-archive")
+								? "[data-session-archive]"
+								: "",
+							node.hasAttribute?.("data-session-control-pair")
+								? "[data-session-control-pair]"
+								: "",
+						].join("");
+						chain.push(node.tagName.toLowerCase() + marks);
+						node = node.parentElement;
+					}
+					return `${chain.join(" < ")} | pointer-events: ${getComputedStyle(el).pointerEvents}`;
+				})()
+			: "null";
+	const hitAtMarkCentre = await cdp.evaluate(
+		`(${descend.toString()})(document.elementFromPoint(${markUnderPointer.centre.x}, ${markUnderPointer.centre.y}))`,
+	);
+	note(
+		"U6 hit target at the mark's resting centre (pointer on the row)",
+		hitAtMarkCentre,
+	);
+	const restingCost = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-session-row="${PINNED}"]');
+		const pair = document.querySelector('[data-session-row="${PINNED}"] [data-session-control-pair]');
+		return { rowWidth: row ? row.getBoundingClientRect().width : null, pairDisplay: pair ? getComputedStyle(pair).display : null };
+	})()`);
+	note("U6 the pinned row's resting cost", JSON.stringify(restingCost));
+	check(
+		"U6: the pinned row at rest costs the pin alone (the archive is not reserving a slot)",
+		restingCost.pairDisplay === "none",
+		JSON.stringify(restingCost),
+	);
 	/* AIMED AT THE VISIBLE MARK: the resting centre, which is where a reader's pointer already is. */
 	await pressPointerStationary(cdp, markAtRest.centre.x, markAtRest.centre.y);
 	await wait(700);
 	const archivedAfter = await archivedFactOf();
 	const pinAfter = await cdp.evaluate(
 		`(() => { const el = document.querySelector('${markRow}'); return el ? el.getAttribute("aria-pressed") : null; })()`,
+	);
+	check(
+		"U6: the hit target at the mark's resting centre is the mark itself, not the archive",
+		hitAtMarkCentre.startsWith("button[data-session-pin]") ||
+			hitAtMarkCentre === "null",
+		hitAtMarkCentre,
 	);
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",

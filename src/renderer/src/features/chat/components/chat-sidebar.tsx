@@ -2390,29 +2390,28 @@ export function ChatSidebar({
 							 * entrance to spend here.
 							 */
 							/*
-							 * THE SLOT IS KEPT ON A PINNED ROW (UX round 3, U6). The pair costs the title 56px
-							 * under the pointer and, on an UNPINNED row, nothing at rest - there is no mark to
-							 * protect there, because a row with no pin draws no control at rest. A PINNED row is
-							 * the exception, and the reason for this branch: its mark IS drawn at rest, so when
-							 * the archive's slot collapsed the mark sat at the row's right edge at rest and
-							 * shifted 28px left the instant the pointer arrived - measured 460,616 -> 432,616 -
-							 * which put ARCHIVE exactly on the box the reader had aimed at while reaching for
-							 * the visible pin. A press meant for a state toggle archived a conversation.
-							 * `visibility` keeps the box in the layout while staying as inert as `display: none`
-							 * is, so the resting slot still takes no press and the aim lands on the row.
+							 * NO SLOT IS RESERVED, ON ANY ROW (manager, pass 8 - the operator's own
+							 * constraint: "the pinned rows can show up taking up the space only for the
+							 * pin, not adding additional empty space for the archive button"). Reserving
+							 * the archive's slot on a pinned row bought the mark's stationarity and paid
+							 * for it with the space the row exists to save - measured `56/56 at every
+							 * width`, i.e. a pinned row costing exactly what an unpinned one does, which
+							 * is the thing this whole change set out to stop.
+							 *
+							 * THE STATIONARITY COMES FROM THE ORDER INSTEAD. The archive's box is drawn
+							 * FIRST in the pair and the mark LAST, so the mark owns the row's right-hand
+							 * edge in flow: revealing the archive takes its 28px out of the TITLE, to the
+							 * mark's left, and the mark does not move - while at rest the pair is `hidden`
+							 * and the row costs the pin alone. Measured after the change: mark identical
+							 * before and under the pointer, `elementFromPoint` at its centre still the
+							 * mark itself, and the resting pair `display: none`.
 							 */
-							pinned
-								? cn(
-										"flex invisible size-6 shrink-0 items-center justify-center rounded-md",
-										"group-hover:visible group-hover:text-ink-muted",
-										"group-focus-within:visible group-focus-within:text-ink-muted",
-									)
-								: cn(
-										"hidden size-6 shrink-0 items-center justify-center rounded-md",
-										"text-ink-dim",
-										"group-hover:flex group-hover:text-ink-muted",
-										"group-focus-within:flex group-focus-within:text-ink-muted",
-									),
+							cn(
+								"hidden size-6 shrink-0 items-center justify-center rounded-md",
+								"text-ink-dim",
+								"group-hover:flex group-hover:text-ink-muted",
+								"group-focus-within:flex group-focus-within:text-ink-muted",
+							),
 							/*
 							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
 							 * D22). The row box and both controls now declare the same
