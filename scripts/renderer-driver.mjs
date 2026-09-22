@@ -4299,6 +4299,36 @@ async function sceneSessionArchive(cdp) {
 		.then(() => true)
 		.catch(() => false);
 	await wait(600);
+	/*
+	 * THE READER'S OWN SCROLL IS SEEDED FROM THE DOM, AND WHY THAT IS FAITHFUL ENOUGH: this list is
+	 * CONTENT-SIZED, so a shorter window takes the height out of the `flex-1` entity region and the
+	 * list never overflows on its own (measured: `overflowAtRest` false at 700px, entity 354 against
+	 * 475). QA's overflows because its content exceeds the split's cap. The cap is what is set here -
+	 * an inline `maxHeight` on the region - so the list overflows at rest and the reader can hold a
+	 * scroll BEFORE any message exists; everything after that is the app's own: the card is raised by
+	 * the app's control, the band's arrival is the app's commit, and the hold that runs inside it is
+	 * the code under test. React re-applies its own `maxHeight` on that commit, which does not matter:
+	 * the yield has already made the box smaller than the content by then.
+	 *
+	 * THE HOVER IS THE SECOND EDIT THE FIRST READING ASKED FOR: the archive control is laid out with
+	 * the acts (D3), so it is not in the DOM at rest - `clicked` was false - and a real pointer move
+	 * is what the walk's refusal step already uses to reach it.
+	 */
+	const rowCentre = await cdp
+		.evaluate(`(() => {
+			const list = document.querySelector('[data-sidebar-region="chats"]');
+			if (list === null) return null;
+			list.style.maxHeight = "120px";
+			const row = list.querySelector("[data-chat-row]");
+			if (row === null) return null;
+			const box = row.getBoundingClientRect();
+			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + 6) };
+		})()`)
+		.catch(() => null);
+	if (rowCentre !== null) {
+		await movePointer(cdp, rowCentre.x, rowCentre.y);
+		await wait(320);
+	}
 	const scrolledState = await cdp.evaluate(`(() => {
 		const list = document.querySelector('[data-sidebar-region="chats"]');
 		if (list === null) return null;
@@ -4307,17 +4337,15 @@ async function sceneSessionArchive(cdp) {
 		const row = rows[0];
 		const clip = list.getBoundingClientRect();
 		const rowBox = row.getBoundingClientRect();
-		/* The row straddles the clip's own top edge by 4px: partial now, outside once the box gives. */
+		/* The row straddles the clip's own top edge by 4px: inside-or-partial now, outside once the
+		 * box gives back the band's height - which is the gate's own condition for a correction. */
 		list.scrollTop = Math.round(list.scrollTop + (rowBox.top - clip.top) + 4);
 		row.focus();
-		const after = row.getBoundingClientRect();
 		const host = row.closest("[data-session-row]");
 		const control =
 			host === null ? null : host.querySelector("[data-session-archive]");
-		if (control !== null) {
-			control.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-			control.click();
-		}
+		if (control !== null) control.click();
+		const after = row.getBoundingClientRect();
 		return {
 			overflowAtRest: list.scrollHeight > list.clientHeight + 1,
 			scrollTop: Math.round(list.scrollTop),
@@ -4327,7 +4355,7 @@ async function sceneSessionArchive(cdp) {
 			rows: rows.length,
 		};
 	})()`);
-	await wait(700);
+	await wait(900);
 	const scrolledAfter = await cdp.evaluate(`(() => {
 		const list = document.querySelector('[data-sidebar-region="chats"]');
 		const band = document.querySelector("[data-archive-toast-band]");
@@ -4336,58 +4364,50 @@ async function sceneSessionArchive(cdp) {
 			scrollTop: list === null ? null : Math.round(list.scrollTop),
 			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
 			card: card === null ? null : Math.round(card.getBoundingClientRect().height),
-			rows: Array.from(list.querySelectorAll("[data-chat-row]")).map((row) =>
+			rowTops: Array.from(list.querySelectorAll("[data-chat-row]")).map((row) =>
 				Math.round(row.getBoundingClientRect().top),
 			),
 			entities: (() => {
 				const region = document.querySelector('[data-sidebar-region="entities"]');
 				if (region === null) return null;
 				const box = region.getBoundingClientRect();
-				return { top: Math.round(box.top), height: Math.round(box.height), scrollTop: region.scrollTop };
+				return {
+					top: Math.round(box.top),
+					height: Math.round(box.height),
+					scrollTop: region.scrollTop,
+				};
 			})(),
-			writes: window.__scrollWrites || [],
+			writes: (window.__scrollWrites || []).map((w) => ({ value: w.value, from: w.from })),
 		};
 	})()`);
-	const rowShift =
-		scrolledState !== null &&
-		Array.isArray(scrolledAfter.rows) &&
-		scrolledAfter.rows.length > 0
-			? Math.abs(scrolledAfter.rows[0] - scrolledState.scrollTop)
-			: null;
 	note(
-		"the scrolled arrival in QA's own state (QA round 4, Q-9)",
+		"the scrolled arrival in QA's own state (QA round 4, Q-9): a list that overflows at rest, scrolled mid-list, a row focused, a card arriving",
 		JSON.stringify({
 			shortViewport,
+			rowCentre,
 			before: scrolledState,
 			after: scrolledAfter,
-			rowShift,
 		}),
 	);
 	/*
-	 * READ, NOT ASSERTED, AND THE READING SAYS THE SCENARIO IS NOT QA'S STATE YET - which is the
-	 * whole reason this is a note and not a check on this head:
+	 * READ, NOT ASSERTED, AND ONE EDIT FROM THE READING - the second attempt, verbatim:
 	 *
-	 *   {"before":{"overflowAtRest":false,"scrollTop":0,"straddle":9,"focusedIsRow":true,
-	 *   "clicked":false,"rows":6},"after":{"scrollTop":0,"band":0,"card":null,"rows":[...],
-	 *   "writes":[{"value":288,"from":0,...},{"value":13,"from":0,...}]}}
+	 *   {"shortViewport":true,"rowCentre":{"x":356,"y":587},"before":{"overflowAtRest":TRUE,
+	 *   "scrollTop":8,"straddle":1,"focusedIsRow":true,"clicked":FALSE,"rows":6},
+	 *   "after":{"scrollTop":8,"band":0,"card":null,"rowTops":[573,605,653,714,742,774],
+	 *   "entities":{"top":88,"height":476,"scrollTop":0},
+	 *   "writes":[{"value":288,"from":0},{"value":13,"from":0}]}}
 	 *
-	 * THREE THINGS IT ESTABLISHES, and one it does not:
-	 *  1. THE TRAP WORKS: it caught two writes and named them by stack - both of them this probe's own
-	 *     (`list.scrollTop = ...` from the anonymous evaluate), which is what a trap that would catch
-	 *     the app's write has to do first.
-	 *  2. A SHORTER VIEWPORT DOES NOT MAKE THIS LIST OVERFLOW: `overflowAtRest` is false at 700px,
-	 *     because the list is CONTENT-SIZED in this assembly - shortening the panel takes the height
-	 *     out of the `flex-1` entity region (354 here against 475) and the list keeps its content
-	 *     height. QA's list overflows because its content exceeds the split's own cap, so the state
-	 *     needs MORE ROWS (or a ruled shorter cap), not a shorter window.
-	 *  3. THE ARCHIVE CONTROL IS NOT IN THE DOM AT REST: `clicked` is false - `data-session-archive`
-	 *     is laid out with the acts (D3), so the probe has to HOVER the row before it can reach the
-	 *     control, which is the idiom the walk's own refusal step already carries.
-	 *
-	 * AND THE FIX ITSELF IS STILL UNEXERCISED: with the band never raised here (`band: 0`,
-	 * `card: null`), the hold was never given the chance to write. The scenario is two edits from
-	 * being QA's - more rows, and a hover before the click - and until it runs, the Q-9 fix stands on
-	 * its arithmetic rather than on a reading.
+	 * THE STATE IS NOW QA'S: the list OVERFLOWS AT REST (the seeded cap) and the reader holds
+	 * `scrollTop: 8` - their number, 8.5, to the pixel - with a row focused and straddling the clip's
+	 * top edge by 1px, which is the gate's own condition (inside-or-partial now, outside once the box
+	 * gives back the band). WHAT IS STILL MISSING IS THE CARD: `clicked` is false, so no band was
+	 * raised (`band: 0`, `card: null`), the hold was never given the chance to write, and the two
+	 * writes the trap caught are this probe's own (`value 288` / `value 13` from the earlier overflow
+	 * step, both named by stack). The archive control is still not in the DOM after a real pointer
+	 * move at the row's top edge - the third edit is the pointer's landing point (and possibly a
+	 * second move, the idiom `pinRow`/the refusal step use to make the acts lay out), and until that
+	 * lands the Q-9 fix stands on its arithmetic rather than on this reading.
 	 */
 	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
 	await wait(300);
