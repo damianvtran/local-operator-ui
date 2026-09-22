@@ -61,18 +61,25 @@ export interface ConsoleSessionApi {
 	) => void;
 	/** Ask main for a surface the USER owns, with main's own defaults (§6.1).
 	 *
-	 * Returns when the request has been ANSWERED AND THE LISTING IS IN HAND, either
-	 * way. The pane needs both halves of that: an open that creates a surface has to
-	 * hold a state that is not the empty state until the answer lands, or a user
-	 * looking at the pane sees a "No console in this session" and a `+` for the round
-	 * trip it already asked for — and a second press in that window would make a second
-	 * surface. The first cut awaited only the create's own answer, which left the pane
-	 * holding no surface and no `creating` flag for the read that follows it (agent
-	 * review round 1, F-3); the read is inside this promise so that window does not
-	 * exist. The rejection is still swallowed here rather than thrown: a failed create is
-	 * what `createError` is for, and the pane's own create-failed state is what carries
-	 * it. */
-	createSurface: () => Promise<void>;
+	 * Resolves `true` when the answer left this conversation with a surface to show, and
+	 * `false` when it did not (refused, or answered with nothing) — and that boolean is
+	 * what the pane arms its caret request on, because a caret request stood up by a
+	 * request that produced no terminal is a request with nowhere to land that a LATER
+	 * surface would then inherit (agent review round 3, M1). It is not "did main accept
+	 * the call": the listing is read inside this promise, so the answer is the listing
+	 * after the create rather than the create's own reply.
+	 *
+	 * Returns when the request has been ANSWERED AND THE LISTING IS IN HAND, either way.
+	 * The pane needs both halves of that: an open that creates a surface has to hold a
+	 * state that is not the empty state until the answer lands, or a user looking at the
+	 * pane sees a "No console in this session" and a `+` for the round trip it already
+	 * asked for — and a second press in that window would make a second surface. The first
+	 * cut awaited only the create's own answer, which left the pane holding no surface and
+	 * no `creating` flag for the read that follows it (agent review round 1, F-3); the read
+	 * is inside this promise so that window does not exist. The rejection is swallowed here
+	 * rather than thrown: a failed create is what `createError` is for, and the pane's own
+	 * create-failed state is what carries it. */
+	createSurface: () => Promise<boolean>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
 }
@@ -90,7 +97,15 @@ export const useConsoleSession = (
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const alive = useRef(true);
 
-	const read = useCallback(async () => {
+	/*
+	 * The read RETURNS WHAT IT READ, not just whether it succeeded, because the create's
+	 * promise needs the listing to answer with (agent review round 3, M1): "did the answer
+	 * leave a surface to show" is a question about the listing, and the caller that asks it
+	 * is the pane's caret request. An unmounted pane still gets an empty snapshot rather
+	 * than `undefined`, so a caller cannot mistake "the pane is gone" for "there is
+	 * nothing there".
+	 */
+	const read = useCallback(async (): Promise<ConsoleSnapshot> => {
 		const api = window.api?.console;
 		if (!api) {
 			// The bridge is absent only in a renderer that has no preload, which is the
@@ -99,19 +114,22 @@ export const useConsoleSession = (
 			setLoading(false);
 			setSnapshot({ ...EMPTY_SNAPSHOT });
 			setError("This window cannot reach the console.");
-			return;
+			return { ...EMPTY_SNAPSHOT };
 		}
 		try {
 			const state = await api.state(sessionId ?? undefined);
-			if (!alive.current) return;
-			setSnapshot(readConsoleSnapshot(state));
+			if (!alive.current) return { ...EMPTY_SNAPSHOT };
+			const listing = readConsoleSnapshot(state);
+			setSnapshot(listing);
 			setError(null);
+			return listing;
 		} catch (failure) {
-			if (!alive.current) return;
+			if (!alive.current) return { ...EMPTY_SNAPSHOT };
 			setError(
 				failure instanceof Error ? failure.message : String(failure ?? ""),
 			);
 			setSnapshot({ ...EMPTY_SNAPSHOT });
+			return { ...EMPTY_SNAPSHOT };
 		} finally {
 			if (alive.current) setLoading(false);
 		}
@@ -187,9 +205,9 @@ export const useConsoleSession = (
 		[],
 	);
 
-	const createSurface = useCallback((): Promise<void> => {
+	const createSurface = useCallback((): Promise<boolean> => {
 		const api = window.api?.console;
-		if (!api || sessionId === null) return Promise.resolve();
+		if (!api || sessionId === null) return Promise.resolve(false);
 		// Main owns the defaults (the login shell, the session's own cwd, the 100x30
 		// grid, `reveal: "none"`): the pane asks for a surface and does not describe
 		// one, which is what keeps a user's surface and an agent's the same object
@@ -207,13 +225,18 @@ export const useConsoleSession = (
 				// read lands, and the pane is holding `creating` until this promise
 				// resolves. A `void read()` here left one render with no surface, no
 				// `creating` and no loading — the empty state with a live `+`.
-				read(),
+				//
+				// THE ANSWER IS THE LISTING, not the create's reply (round 3, M1): a call
+				// main accepted but that left nothing to show is not an answer with a
+				// terminal in it.
+				read().then((listing) => listing.surfaces.length > 0),
 			)
 			.catch((failure: unknown) => {
 				if (alive.current)
 					setCreateError(
 						failure instanceof Error ? failure.message : String(failure ?? ""),
 					);
+				return false;
 			});
 	}, [sessionId, read]);
 

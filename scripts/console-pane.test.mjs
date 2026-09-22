@@ -27,6 +27,27 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+/*
+ * THE STORAGE SHIM, the same one `console-pane-render.test.mjs` and four sibling jsdom
+ * suites carry. THIS file now WRITES to the persisted preferences store — the late-answer
+ * pin calls `requestConsoleOpen`/`clearConsoleOpenIntent` — and zustand's persist
+ * middleware writes through `localStorage` on every `setState`. Node 26 has the binding
+ * and its value is `undefined` (Node 22 has none at all and the middleware degrades with
+ * its own warning), so every write throws here without it: agent review round 3's M2, in
+ * the second file it reaches.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
 const bundle = await build({
 	stdin: {
 		contents: [
@@ -767,6 +788,34 @@ test("a console that cannot exist here is told so rather than given a shell", ()
 			hasSurface: false,
 		}),
 		"none",
+	);
+});
+
+test("clearing a request answers only the request it answers", () => {
+	/*
+	 * THE LATE-ANSWER HALF OF F-6, pinned rather than assumed (agent review round 2). The pane
+	 * that answers a request is not necessarily the pane that still owns it: a request can be
+	 * raised for one conversation and a second raised for another while the first is still
+	 * being answered, and an UNCONDITIONAL clear would throw the second one away — the user's
+	 * press would be silently dropped with nothing on screen to say it had been. The clear
+	 * therefore names the conversation it answers, and this is the shape one pane over from the
+	 * caret token's `current === applied` acknowledgement: an answer belongs to its request.
+	 */
+	const store = () => useUiPreferencesStore.getState();
+	store().clearConsoleOpenIntent("session-a");
+	store().requestConsoleOpen("session-a");
+	store().requestConsoleOpen("session-b");
+	store().clearConsoleOpenIntent("session-a");
+	assert.equal(
+		store().consoleOpenIntent,
+		"session-b",
+		"clearing A must not throw away a request the user made for B",
+	);
+	store().clearConsoleOpenIntent("session-b");
+	assert.equal(
+		store().consoleOpenIntent,
+		null,
+		"and its own answer does clear it",
 	);
 });
 

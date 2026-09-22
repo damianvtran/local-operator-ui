@@ -195,6 +195,20 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 */
 	const unansweredForThisSession =
 		openIntent !== null && openIntent === sessionId;
+	/**
+	 * A create has answered WITH a surface, and this pane's own listing has not caught up
+	 * yet. It exists because the answer and the listing are two different commits: the
+	 * promise resolves in the microtask that follows the read's `setSnapshot`, so its
+	 * continuation can commit before the listing does, and a mask held by a flag that the
+	 * continuation clears is a mask with a gap in it. Under load that gap painted exactly
+	 * one commit of the greeting this flow exists to remove — caught once by
+	 * `console-pane-render.test.mjs`, which is why this is a STATE the listing settles
+	 * rather than a timer: the effect below clears it on the commit that shows the surface.
+	 */
+	const [awaitingSurface, setAwaitingSurface] = useState(false);
+	useEffect(() => {
+		if (surface !== null) setAwaitingSurface(false);
+	}, [surface]);
 	useEffect(() => {
 		if (!unansweredForThisSession) return;
 		const action = consoleOpenAction({
@@ -206,7 +220,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		if (action === "none") {
 			// `available: false` with the read settled is main's own "no console can
 			// exist here" (§15): the pane renders that state, and the request is done.
-			if (!session.loading) clearOpenIntent();
+			if (!session.loading) clearOpenIntent(sessionId);
 			return;
 		}
 		/*
@@ -231,17 +245,39 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * `creating`, no loading and no request, which is the empty state the operator's
 			 * report is about. `console-pane-render.test.mjs` asserts per COMMIT and caught it;
 			 * a state sampled after the round trip never could.
+			 *
+			 * THE CARET IS ARMED BY THE ANSWER, NOT BY THE PRESS (agent review round 3, M1).
+			 * It used to be armed on the way IN, beside `setCreating(true)`, and the created
+			 * surface's own mirror then spent it on mount — which works for a create that
+			 * succeeds and leaves the request armed for a create that FAILS, with nothing
+			 * that will ever spend it: the next surface to appear in this conversation by ANY
+			 * route other than the press (main's `onStateChanged` is what an agent's
+			 * `console_create` fires) mounted a mirror that inherited the armed token and
+			 * pulled the caret out of the composer, which is the case UX's U1 named. So the
+			 * invariant is now "the caret is armed by the ANSWER, and only when there is a
+			 * surface to put it in": `createSurface` resolves whether the listing after the
+			 * create holds one, and a refused or empty answer arms nothing.
 			 */
-			void session.createSurface().finally(() => {
-				setCreating(false);
-				clearOpenIntent();
-			});
+			void session
+				.createSurface()
+				.then((created) => {
+					if (!created) return;
+					setAwaitingSurface(true);
+					setFocusRequest((value) => value + 1);
+				})
+				.finally(() => {
+					setCreating(false);
+					clearOpenIntent(sessionId);
+				});
 		} else {
-			clearOpenIntent();
+			// The surface the request was for is already in the pane, so its mirror is mounted
+			// (or mounts with the token) and the caret is armed at once.
+			clearOpenIntent(sessionId);
+			setFocusRequest((value) => value + 1);
 		}
-		setFocusRequest((value) => value + 1);
 	}, [
 		unansweredForThisSession,
+		sessionId,
 		session.loading,
 		session.createSurface,
 		available,
@@ -302,7 +338,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * flow exists to remove.
 		 */
 		if (
-			(session.loading || creating || unansweredForThisSession) &&
+			(session.loading ||
+				creating ||
+				unansweredForThisSession ||
+				awaitingSurface) &&
 			surfaces.length === 0
 		)
 			return <ConsoleLoading creating={creating} />;

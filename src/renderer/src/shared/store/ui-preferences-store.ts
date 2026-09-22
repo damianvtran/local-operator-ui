@@ -207,8 +207,16 @@ type UiPreferencesState = {
 	 */
 	requestConsoleOpen: (sessionId: string) => void;
 
-	/** The pane has answered the request. Called by the pane alone. */
-	clearConsoleOpenIntent: () => void;
+	/** The pane has answered the request FOR THIS CONVERSATION, and only that one. Called
+	 * by the pane alone, with the conversation it answered for.
+	 *
+	 * IT TAKES THE CONVERSATION IT ANSWERS, and the guard is the point (agent review round
+	 * 3, the late-answer half of F-6): an unconditional clear would wipe a request the user
+	 * made for a different conversation while the first one was still being answered — the
+	 * pane would have thrown away a request nobody had served. It is the same shape as the
+	 * caret token's `current === applied` acknowledgement one pane over: an answer belongs
+	 * to the request it answers. */
+	clearConsoleOpenIntent: (sessionId: string) => void;
 
 	/**
 	 * Set the console pane open state.
@@ -909,11 +917,14 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ consoleOpenIntent: sessionId });
 			},
 
-			clearConsoleOpenIntent: () => {
+			clearConsoleOpenIntent: (sessionId: string) => {
 				// Guarded so a pane with nothing to answer does not write a new state object
-				// on every pass of its effect.
+				// on every pass of its effect — and so a pane answering ITS conversation
+				// cannot clear a request raised for another one in the meantime.
 				set((state) =>
-					state.consoleOpenIntent !== null ? { consoleOpenIntent: null } : {},
+					state.consoleOpenIntent === sessionId
+						? { consoleOpenIntent: null }
+						: {},
 				);
 			},
 

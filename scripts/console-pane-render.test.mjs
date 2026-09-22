@@ -42,6 +42,30 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
+/*
+ * THE STORAGE SHIM, and it is not optional on this host (agent review round 3, M2). The
+ * suite renders the REAL preferences store, which is persisted, so zustand's middleware
+ * writes through `localStorage` on every `setState`. Node 22 — the version CI and the
+ * repository pin — has no `localStorage` binding at all, and the middleware degrades with
+ * its own "storage is currently unavailable" warning. THIS host's default node (26) has
+ * the BINDING and it is `undefined`, so the storage object closes over undefined and
+ * every write throws `TypeError: Cannot read properties of undefined (reading 'setItem')`
+ * — five red tests on the machine the operator actually runs, green in CI. Four sibling
+ * jsdom suites (`browser-chrome`, `composer-tabs`, …) already carry this shim; this is
+ * theirs, for the same reason and with the same four methods plus `key`/`length`.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
 const dom = new JSDOM(
 	'<!doctype html><html><body><div id="root"></div></body></html>',
 	{
@@ -101,6 +125,9 @@ const bundle = await build({
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { createRoot } from "react-dom/client";',
 			'export { createElement, Profiler } from "react";',
+			// The stub's own handles, exported through the same bundle so a test reads the very
+			// terminals the component constructed rather than a second copy of the module.
+			'export { __terminals } from "./scripts/console-xterm-stub";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "tsx",
@@ -173,7 +200,11 @@ const surfaceRow = (surface, extra = {}) => ({
  */
 const installBridge = ({ create, surfaces = [], readDelayMs = 0 } = {}) => {
 	const calls = { create: 0, state: 0 };
+	const listeners = [];
 	let listing = surfaces;
+	const setListing = (next) => {
+		listing = next;
+	};
 	window.api = {
 		console: {
 			state: async () => {
@@ -188,12 +219,7 @@ const installBridge = ({ create, surfaces = [], readDelayMs = 0 } = {}) => {
 			},
 			createSurface: async () => {
 				calls.create += 1;
-				return create({
-					calls,
-					setListing: (next) => {
-						listing = next;
-					},
-				});
+				return create({ calls, setListing });
 			},
 			subscribe: async () => ({ replay_base64: "", from_byte: 0 }),
 			unsubscribe: async () => {},
@@ -202,17 +228,56 @@ const installBridge = ({ create, surfaces = [], readDelayMs = 0 } = {}) => {
 			onOutput: () => () => {},
 			onExit: () => () => {},
 			onReveal: () => () => {},
-			onStateChanged: () => () => {},
+			onStateChanged: (listener) => {
+				listeners.push(listener);
+				return () => {
+					const at = listeners.indexOf(listener);
+					if (at >= 0) listeners.splice(at, 1);
+				};
+			},
 			setContentRect: async () => ({ available: true, surfaces: listing }),
 			openPane: async () => {},
 			closePane: async () => {},
 		},
 	};
-	return calls;
+	return {
+		calls,
+		setListing,
+		/*
+		 * MAIN'S OWN SIGNAL, which is the route the finding is about: an agent's
+		 * `console_create` reaches the pane as a change main reports, not as a press — so a
+		 * test that wants a surface to appear "by another route" fires this and lets the
+		 * hook's coalesced re-read do the rest.
+		 */
+		fireStateChanged: () => {
+			for (const listener of [...listeners]) listener();
+		},
+	};
 };
 
 const settle = (ms = 0) =>
 	new Promise((resolve) => setTimeout(resolve, ms || 1));
+
+/**
+ * WAIT ON THE EVENT, NEVER ON THE CLOCK — this repository's own rule, and this suite
+ * learned it the hard way (agent review round 3): every wait here used to be a fixed
+ * sleep sized on a quiet machine, so on a host at load 120 a 40 ms timer could take
+ * longer than the 120 ms the test allowed for it and the suite failed on the *setup*
+ * assertion instead of on the claim. A predicate removes the question; the timeouts are
+ * a bound on the harness, not a schedule.
+ *
+ * A bounded settle is still used where the assertion is about something NOT happening
+ * (a surface arriving later must not take the caret, a request must not be answered) —
+ * an absence can only be observed over a window, and saying so is honest.
+ */
+const waitFor = async (predicate, { timeoutMs = 5000, stepMs = 10 } = {}) => {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		if (predicate()) return true;
+		await settle(stepMs);
+	}
+	return false;
+};
 
 /**
  * Everything the pane commits, in order, as the text a reader would see.
@@ -263,8 +328,11 @@ const mountPane = async () => {
 };
 
 /** Each test starts from no pending request, whoever failed before it. */
-const resetIntent = () =>
-	harness.useUiPreferencesStore.getState().clearConsoleOpenIntent();
+const resetIntent = () => {
+	const { consoleOpenIntent, clearConsoleOpenIntent } =
+		harness.useUiPreferencesStore.getState();
+	if (consoleOpenIntent !== null) clearConsoleOpenIntent(consoleOpenIntent);
+};
 
 /** The commits from a point in the record onward, as the states to judge. */
 const since = (mark) => paints.slice(mark);
@@ -290,7 +358,7 @@ test("the pane never paints the empty state between the user's open and the term
 	});
 	const { root, container } = await mountPane();
 	try {
-		await settle(120);
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
 		assert.match(
 			container.textContent,
 			EMPTY_STATE,
@@ -299,18 +367,21 @@ test("the pane never paints the empty state between the user's open and the term
 
 		const mark = paints.length;
 		pressOpenConsole();
-		await settle(400);
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		await settle(60);
 
 		const afterPress = since(mark);
 		assert.ok(
 			afterPress.length > 1,
 			`the press has to produce commits to judge, saw ${JSON.stringify(afterPress)}`,
 		);
-		for (const state of afterPress) {
+		for (const [index, state] of afterPress.entries()) {
 			assert.doesNotMatch(
 				state,
 				EMPTY_STATE,
-				"the greeting and its New console button must not come back once the user has asked for a terminal (D1)",
+				`the greeting and its New console button must not come back once the user has asked for a terminal (D1) — commit ${index} of ${afterPress.length}: ${JSON.stringify(
+					afterPress.map((entry) => entry.slice(0, 44)),
+				)}`,
 			);
 		}
 		assert.ok(
@@ -356,11 +427,12 @@ test("the pending open masks the empty state in the commit before the dispatcher
 	});
 	const { root, container } = await mountPane();
 	try {
-		await settle(60);
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
 
 		const mark = paints.length;
 		pressOpenConsole();
-		await settle(200);
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		await settle(60);
 
 		const afterPress = since(mark);
 		assert.ok(
@@ -388,9 +460,9 @@ test("a create the host refused reports the refusal, with its reason and a retry
 	});
 	const { root, container } = await mountPane();
 	try {
-		await settle(30);
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
 		pressOpenConsole();
-		await settle(120);
+		await waitFor(() => CREATE_FAILED.test(container.textContent ?? ""));
 
 		const text = container.textContent;
 		assert.match(
@@ -424,12 +496,110 @@ test("a create the host refused reports the refusal, with its reason and a retry
 		assert.ok(retry, "the refusal offers a retry");
 		fail = false;
 		retry.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-		await settle(200);
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
 		assert.match(
 			container.textContent,
 			TERMINAL,
 			"the retry runs another create and the pane lands on the terminal",
 		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a refused create arms nothing: a surface arriving later does not take the caret", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3, M1, and the case UX's U1 named. The caret request used to be
+	 * armed on the way INTO a create — before any mirror existed to spend it — and the
+	 * create's own `.finally` cleared only the request, not the token. A create that
+	 * FAILED therefore left the token armed with nothing that would ever spend it, and
+	 * the next surface to appear in that conversation by any route mounted a mirror that
+	 * inherited it and pulled the caret out of the composer. `bridge.fireStateChanged()`
+	 * is that route: main reporting a change is exactly how an agent's `console_create`
+	 * reaches this pane, with no press and no request of the user's.
+	 */
+	resetIntent();
+	const bridge = installBridge({
+		create: async () => {
+			throw new Error(
+				"Error invoking remote method 'console-create-surface': Error: console_unavailable: the pty could not be started (spawn_failed)",
+			);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
+		pressOpenConsole();
+		await waitFor(() => CREATE_FAILED.test(container.textContent ?? ""));
+		assert.match(
+			container.textContent,
+			CREATE_FAILED,
+			"the refusal is the state under test, so the create has to have failed",
+		);
+
+		const before = harness.__terminals.length;
+		bridge.setListing([surfaceRow("con:1:agent-created")]);
+		bridge.fireStateChanged();
+		await waitFor(
+			() => harness.__terminals.slice(before).some((t) => !t.wasDisposed),
+			{ timeoutMs: 6000 },
+		);
+		// The mirror is mounted; this is the window in which an armed token WOULD be spent,
+		// so the absence below is asserted over it.
+		await settle(120);
+
+		const live = harness.__terminals
+			.slice(before)
+			.filter((terminal) => !terminal.wasDisposed);
+		assert.ok(
+			live.length >= 1,
+			"the surface that appeared by another route mounted a mirror",
+		);
+		for (const terminal of live) {
+			assert.equal(
+				terminal.focusCount,
+				0,
+				"a refused create must leave nothing for a later mount to inherit",
+			);
+		}
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a create that answers with a surface still arms the caret for it", async () => {
+	/*
+	 * THE CONTRAST, and the half a fix must not cost: the request is now armed by the
+	 * ANSWER, so the successful path has to keep taking the caret. Same rig, same press,
+	 * one difference — the create answers with a surface.
+	 */
+	resetIntent();
+	installBridge({
+		create: async ({ setListing }) => {
+			setListing([surfaceRow("con:1:render-test")]);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
+		const before = harness.__terminals.length;
+		pressOpenConsole();
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		// The mirror's focus effect runs after the commit that shows the terminal.
+		await settle(80);
+
+		const live = harness.__terminals
+			.slice(before)
+			.filter((terminal) => !terminal.wasDisposed);
+		assert.equal(live.length, 1, "the created surface's mirror mounted once");
+		assert.equal(
+			live[0].focusCount,
+			1,
+			"the user's own open still puts the caret in the terminal it asked for",
+		);
+		assert.match(container.textContent, TERMINAL);
 	} finally {
 		root.unmount();
 		container.remove();
@@ -486,7 +656,7 @@ test("the commit record is not empty, so it cannot pass by observing nothing", a
 	try {
 		const mark = paints.length;
 		pressOpenConsole();
-		await settle(150);
+		await waitFor(() => since(mark).length >= 2);
 		assert.ok(
 			since(mark).length >= 2,
 			`the recorder sees commits, saw ${since(mark).length}`,

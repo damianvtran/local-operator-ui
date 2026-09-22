@@ -144,8 +144,21 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	reportRef.current = onReport ?? null;
 	const exitRef = useRef(onExit);
 	const settledRef = useRef(onSettled);
+	const focusTakenRef = useRef(onFocusTaken);
 	exitRef.current = onExit;
 	settledRef.current = onSettled;
+	/*
+	 * THE ACKNOWLEDGEMENT IS READ THROUGH A REF, like `onExit`/`onSettled`/`onReport` above
+	 * and for the same reason the caret effect is about to depend on: an inline handler
+	 * (`onFocusTaken={(applied) => …}`) is a NEW function on every render of the parent, so
+	 * an effect that listed it in its dependencies would re-run on every one of those
+	 * renders — and while the token is still non-zero between the application and the pane's
+	 * acknowledgement, each of those re-runs is another `terminal.focus()`. Measured: two of
+	 * them on a create that answers in more than one commit, which is what a busy render
+	 * loop under load looks like (agent review round 3, M1's contrast test read
+	 * `focusCount 2`).
+	 */
+	focusTakenRef.current = onFocusTaken;
 
 	/*
 	 * The terminal itself, created once per mount and disposed with it.
@@ -435,8 +448,8 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	useEffect(() => {
 		if (!terminal || !focusRequest) return;
 		terminal.focus();
-		onFocusTaken?.(focusRequest);
-	}, [terminal, focusRequest, onFocusTaken]);
+		focusTakenRef.current?.(focusRequest);
+	}, [terminal, focusRequest]);
 
 	/*
 	 * THE THEME, THE RECT AND THEIR ONE OBSERVER.
