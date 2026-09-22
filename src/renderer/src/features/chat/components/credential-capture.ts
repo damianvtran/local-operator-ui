@@ -2414,7 +2414,8 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
  * `planForDraft` answers `held` for (the composer's `holdsHeldPress`), never on the
  * disclosure's mere presence: the disclosure outliving the record is precisely the
  * shape where this sentence would promise a hold that is not there and Enter
- * dispatches the secret as a command's argument instead./
+ * dispatches the secret as a command's argument instead.
+ */
 /**
  * The `takenBy` value that means "the press is HELD" rather than "command /X owns the tail".
  *
