@@ -132,37 +132,88 @@ export {
 	SEED_TK_DIR,
 };
 
-/** A file's leading bytes, or `null` when they cannot be read. */
+/** A file's leading bytes, or `null` when they cannot be read.
+ *
+ * WHY THE OPEN IS INSIDE THE `try`: it was outside it, so the `null` this
+ * documents held for a file that could not be READ but not for one that could
+ * not be OPENED - a missing path threw `ENOENT` out of a helper whose whole job
+ * is to answer "I cannot tell" (the release gate reads a launcher's header off a
+ * path it resolves from `Info.plist`, which is exactly the case where the file
+ * may not be there). */
 function leadingBytes(path, length) {
-	const fd = openSync(path, "r");
 	try {
-		const bytes = Buffer.alloc(length);
-		const read = readSync(fd, bytes, 0, length, 0);
-		return bytes.subarray(0, read);
+		const fd = openSync(path, "r");
+		try {
+			const bytes = Buffer.alloc(length);
+			const read = readSync(fd, bytes, 0, length, 0);
+			return bytes.subarray(0, read);
+		} finally {
+			closeSync(fd);
+		}
 	} catch {
 		return null;
-	} finally {
-		closeSync(fd);
 	}
 }
 
-/** A file's first four bytes, as hex, or `null` when they cannot be read. */
+/** A file's first four bytes, as hex, or `null` when they cannot be read.
+ *
+ * The open sits inside the `try` for the reason given on `leadingBytes`. */
 function leadingMagic(path) {
-	const fd = openSync(path, "r");
 	try {
-		const magic = Buffer.alloc(4);
-		readSync(fd, magic, 0, 4, 0);
-		return magic.toString("hex");
+		const fd = openSync(path, "r");
+		try {
+			const magic = Buffer.alloc(4);
+			readSync(fd, magic, 0, 4, 0);
+			return magic.toString("hex");
+		} finally {
+			closeSync(fd);
+		}
 	} catch {
 		return null;
-	} finally {
-		closeSync(fd);
 	}
 }
 
 /** Whether a path is a Mach-O (or fat) file, by the app's own magic set. */
 export function isMachO(path) {
 	return MACH_O_MAGICS.has(leadingMagic(path));
+}
+
+/**
+ * The leading words of a thin Mach-O header, or `null` when they cannot be had.
+ *
+ * WHY ONE READER FOR TWO FIELDS: `cputype` and `filetype` are the second and
+ * fourth 32-bit words of the same header, and the header's ENDIANNESS is a
+ * property of the file rather than of the question asked of it - two parsers
+ * would be two chances to decide that differently, and a wrong-endian read does
+ * not crash, it answers a plausible number for the wrong file. `machOFileType`
+ * ("may this keep an execute bit", below) and `machOCpuType` ("does this host
+ * run it natively", in the release gate's own module) read the words; this reads
+ * the header.
+ *
+ * Fat binaries answer `null`, because a fat file's fields live in each slice
+ * rather than here.
+ *
+ * The 64-bit layouts are little-endian on both of this app's architectures
+ * (`cffaedfe`/`feedfacf`), and the 32-bit magics are read with the endianness
+ * their magic spells (`cefaedfe`/`feedface`).
+ */
+function machOHeader(path) {
+	const bytes = leadingBytes(path, 16);
+	if (bytes == null || bytes.length < 16) return null;
+	const magic = bytes.toString("hex", 0, 4);
+	if (!MACH_O_MAGICS.has(magic)) return null;
+	// Fat: 0xcafebabe/0xbebafeca are big-endian fat headers.
+	if (magic === "cafebabe" || magic === "bebafeca") return null;
+	// `feedfacf`/`feedface` are the big-endian spellings, `cffaedfe`/`cefaedfe`
+	// the little-endian ones.
+	return { bytes, bigEndian: magic === "feedfacf" || magic === "feedface" };
+}
+
+/** One 32-bit header word, read in the header's own endianness. */
+function machOWord(header, offset) {
+	return header.bigEndian
+		? header.bytes.readUInt32BE(offset)
+		: header.bytes.readUInt32LE(offset);
 }
 
 /**
@@ -179,29 +230,40 @@ export function isMachO(path) {
  * spawns `MH_EXECUTE` files, and the loader `mmap`s everything else (measured:
  * `ctypes.CDLL` loads a 0644 dylib in this very seed).
  *
- * Fat binaries answer `null`: their filetype lives in each slice, and the
- * conservative reading is "this may be an executable", so `machOExecutables`
- * treats an unreadable one as executable. The seed is per-architecture and thins
- * are what upstream ships, so this is a guard rather than a case.
- *
- * The 64-bit layouts are little-endian on both of this app's architectures
- * (`cffaedfe`/`feedfacf`), and the 32-bit magics are read with the endianness
- * their magic spells (`cefaedfe`/`feedface`), because a wrong-endian read would
- * answer a plausible filetype for the wrong file.
+ * Fat binaries and unreadable headers answer `null`, and the conservative
+ * reading of that is "this may be an executable", so `machOExecutables` treats
+ * an unreadable one as executable. The seed is per-architecture and thins are
+ * what upstream ships, so this is a guard rather than a case.
  */
 export function machOFileType(path) {
-	const bytes = leadingBytes(path, 16);
-	if (bytes == null || bytes.length < 16) return null;
-	const magic = bytes.toString("hex", 0, 4);
-	if (!MACH_O_MAGICS.has(magic)) return null;
-	// Fat: 0xcafebabe/0xbebafeca are big-endian fat headers, and a fat file's type
-	// lives in each slice rather than here, so it is reported as unknown.
-	if (magic === "cafebabe" || magic === "bebafeca") return null;
-	// The filetype is the header's fourth 32-bit word, read in the header's own
-	// endianness: `feedfacf`/`feedface` are the big-endian spellings,
-	// `cffaedfe`/`cefaedfe` the little-endian ones.
-	const bigEndian = magic === "feedfacf" || magic === "feedface";
-	return bigEndian ? bytes.readUInt32BE(12) : bytes.readUInt32LE(12);
+	const header = machOHeader(path);
+	return header == null ? null : machOWord(header, 12);
+}
+
+/** The Mach-O `cputype` values this app's two architectures answer. */
+export const MACH_O_CPUTYPE = {
+	X86_64: 0x01000007,
+	ARM64: 0x0100000c,
+};
+
+/**
+ * A Mach-O file's `cputype`, or `null` when the header does not answer - which
+ * is every fat file and every file this cannot read.
+ *
+ * WHY IT EXISTS: the release gate EXECS a bundle's launcher and then has to say
+ * whether this host runs that file natively or has to translate it, because a
+ * translation is a one-time cost paid in wait rather than in work (measured on
+ * the x64 launcher of a shipped bundle on an arm64 host: 24.7 s wall against
+ * 0.5 s of user time on the first exec, 1.2 s on the second). That is a property
+ * of the file the kernel loads, so it is read off that file's own header rather
+ * than inferred from a filename, a bundle directory or a neighbouring binary.
+ *
+ * The 64-bit ABI flag is part of the value - `0x0100000c` is arm64, not
+ * `0x0000000c` - so a caller compares against the full word.
+ */
+export function machOCpuType(path) {
+	const header = machOHeader(path);
+	return header == null ? null : machOWord(header, 4);
 }
 
 /** The Mach-O `filetype` values this app cares about. */

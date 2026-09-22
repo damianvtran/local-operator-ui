@@ -44,9 +44,11 @@ import {
 	profileBackedEntitlementKeys,
 } from "./macos-entitlement-policy.mjs";
 import {
+	MACH_O_CPUTYPE,
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	machOCpuType,
 	machOExecutables,
 	machOFiles,
 	seedExecBitFiles,
@@ -74,6 +76,44 @@ const SECURITY = "/usr/bin/security";
  * the bound catches is red, which is the direction a release gate must fail in.
  */
 export const SPAWN_PROBE_TIMEOUT_MS = 60_000;
+
+/**
+ * The same bound for a probe whose child this host must TRANSLATE to run.
+ *
+ * WHY A BOUND OF ITS OWN RATHER THAN A BIGGER ONE FOR EVERYBODY. Rosetta 2 is
+ * the only translator macOS ships, it only runs x86_64 code on an arm64 host,
+ * and the release's macOS job runs on an arm64 runner while checking BOTH
+ * architectures' artifacts. The translation is a one-time, per-launch cost paid
+ * by the first exec, and - this is the part that makes it invisible to the
+ * predicate above - it is paid in WAIT rather than in work: measured on this
+ * machine, the x64 launcher of a shipped bundle in node mode took 24.7 s of wall
+ * clock against 0.5 s of user time on its first exec and 1.2 s on its second,
+ * with the executable byte-identical between them, because the only thing that
+ * changed was Rosetta's cache.
+ *
+ * WHAT IT COST THE RELEASE, and why the tight bound is the wrong instrument for
+ * a translated child. Measured on v0.30.9 (run 35701146672, both of its
+ * attempts): 2 of the gate's 6 `app-spawn` checks went red, both on x64 bundles,
+ * while the arm64 bundles answered the same question in 4-6 s - and the SAME
+ * launcher bytes passed later in the SAME run, twice, so what failed was the
+ * bound rather than the artifact. The 60 s bound is not a performance
+ * expectation (see above); it catches the third refusal shape, a spawn the OS
+ * neither completes nor refuses, and on a translated child it was measuring the
+ * translator instead.
+ *
+ * WHAT IT DOES NOT RELAX. A refusal at exec is decided at exec and is immediate:
+ * it arrives as a signal or a non-zero status, or as a child that never exits at
+ * all, and all three are still red here. The predicate is untouched and the
+ * tight bound still applies to every child this host can run natively - which is
+ * the arm64 artifact on an arm64 runner (the one an Apple-Silicon user installs)
+ * and the x64 artifact on an Intel runner. Only a child this host must translate
+ * is given longer to ANSWER.
+ *
+ * 300 s is not calibrated to a measurement - there is no upper bound to measure
+ * on a loaded runner - it is 5x the value that tripped and 12x this host's cold
+ * cost. Beyond it the shape on the other end is a spawn that is not coming back.
+ */
+export const SPAWN_PROBE_TRANSLATED_TIMEOUT_MS = 300_000;
 
 /**
  * The rendered WebAuthn keychain access group, as it appears in a signed app's
@@ -217,6 +257,44 @@ export function mainExecutablePath(appPath) {
 }
 
 /**
+ * Whether this host has to TRANSLATE the executable a spawn check runs.
+ *
+ * The question is asked of the header of the file that will be exec'd, not of the
+ * bundle, the artifact's name or the architecture of a neighbouring binary:
+ * translation is decided by the kernel when it loads THAT file. `machOCpuType`
+ * answers `null` for a fat launcher and for anything unreadable, and both keep the
+ * tight bound: a fat bundle is one this gate REFUSES rather than ships
+ * (`app-one-bundled-python` fails any app that is not a single architecture, and
+ * `mac.target` builds one per architecture), and "could not tell" must not
+ * silently buy patience at a release gate.
+ *
+ * Rosetta is the only translator macOS has, so the pair is an arm64 host against
+ * an x86_64 child. An arm64 child on an x64 host is not translated, it is
+ * refused, and that refusal is exactly the shape the probe exists to observe: it
+ * keeps the tight bound. `hostArch` is a parameter so the rule can be asserted on
+ * a host other than the one running the test.
+ */
+export function hostTranslatesExecutable(executable, hostArch = process.arch) {
+	return (
+		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
+	);
+}
+
+/**
+ * The bound a check that EXECS `executable` gets, decided in one place.
+ *
+ * Two checks in this file run a child out of the bundle under test - the spawn
+ * probe and the seed-version ask - and both are exposed to the same translation,
+ * so the rule is written once rather than twice as a ternary. Every other check
+ * here reads files and needs no bound at all.
+ */
+export function execBound(executable, hostArch = process.arch) {
+	return hostTranslatesExecutable(executable, hostArch)
+		? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
+		: SPAWN_PROBE_TIMEOUT_MS;
+}
+
+/**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
  *
  * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
@@ -244,10 +322,18 @@ export function readEmbeddedProfileEntitlements(appPath, run) {
  * everything else, and both of those can exit 0 - so the verdict has to read
  * the output, not the status that reports whether spctl itself ran.
  */
-export function artifactChecks({ appPath, dmgPath, profile = null }) {
+export function artifactChecks({
+	appPath,
+	dmgPath,
+	profile = null,
+	hostArch = process.arch,
+}) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
 	const embedded = profile ?? { present: false, entitlements: null };
+	// The launcher the checks exec, resolved once: the spawn probe's bound depends
+	// on the architecture in ITS header, and both are read from one path lookup.
+	const executable = appPath ? mainExecutablePath(appPath) : null;
 	if (appPath) {
 		checks.push(
 			{
@@ -305,13 +391,17 @@ export function artifactChecks({ appPath, dmgPath, profile = null }) {
 			{
 				id: "app-spawn",
 				scope: "app",
-				target: mainExecutablePath(appPath),
+				target: executable,
 				description:
 					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
-				command: mainExecutablePath(appPath),
+				command: executable,
 				args: ["-p", "process.exit(0)"],
 				env: { ELECTRON_RUN_AS_NODE: "1" },
-				timeoutMs: SPAWN_PROBE_TIMEOUT_MS,
+				// Two bounds, not one: a child this host must translate answers in a
+				// translation's time rather than in its own, and `timedOut` would
+				// otherwise report the translator as an OS refusal. See
+				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+				timeoutMs: execBound(executable, hostArch),
 				expect: (result) =>
 					result.status === 0 && !result.signal && !result.timedOut,
 			},
@@ -898,7 +988,24 @@ export function seedBootstrapCheck(appPath) {
  * 3.12.14 seed tree: `bin/python3 -I -B --version` printed `Python 3.12.14` and
  * left the tree's file set and every file's sha256 unchanged.
  */
-export function seedVersionCheck(appPath, { run = spawnRunner } = {}) {
+/**
+ * The one check in this group that RUNS the seed, and why it is bounded.
+ *
+ * Every sibling reads files (`seedModeCheck`, `prunedSeedCheck`,
+ * `seedBootstrapCheck`, `bundledBytecodeCheck`, `privatePythonSeedCheck`); this
+ * one asks the interpreter its version, which makes it the same class of
+ * blindness the spawn probe removes one check to the left - a child nobody is
+ * measuring. v0.30.9 is the worked example: that release failed on a child which
+ * had to be TRANSLATED before it could answer (run `35701146672`), and this
+ * interpreter is an x86_64 child inside the x64 bundle that the arm64 runner must
+ * translate on its first exec exactly as the launcher is. It takes the bound
+ * `execBound` picks, so a native ask keeps the tight bound and a translated one
+ * is not mistaken for a hang.
+ */
+export function seedVersionCheck(
+	appPath,
+	{ run = spawnRunner, hostArch = process.arch } = {},
+) {
 	return appCheck(
 		"app-seed-python-version",
 		appPath,
@@ -912,12 +1019,18 @@ export function seedVersionCheck(appPath, { run = spawnRunner } = {}) {
 			const python = join(root, "bin", "python3");
 			if (!existsSync(python))
 				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
-			const result = run(python, ["-I", "-B", "--version"]);
+			const result = run(
+				python,
+				["-I", "-B", "--version"],
+				undefined,
+				undefined,
+				execBound(python, hostArch),
+			);
 			const printed = `${result.stdout}${result.stderr}`.trim();
 			const match = /^Python (\d+\.\d+\.\d+)$/.exec(printed);
 			if (result.status !== 0 || match == null)
 				throw new Error(
-					`The seed's interpreter could not report its version (exit ${result.status}): ${printed || "no output"}`,
+					`The seed's interpreter could not report its version (exit ${result.status ?? "none"}): ${printed || "no output"}`,
 				);
 			if (match[1] !== PYTHON_VERSION)
 				throw new Error(
