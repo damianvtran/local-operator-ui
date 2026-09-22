@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
+import { defaultShell } from "../shell-path";
 import { ByteLog, type ByteLogSlice } from "./byte-log";
 import { hasTerminalContent } from "./capture";
 import {
@@ -1665,16 +1666,14 @@ export function surfaceEnvironment(input: {
 	return env;
 }
 
-/** The shell a surface runs when the caller names no command: the user's own,
- * falling back to zsh (what the spike drove). */
-export function defaultShell(env: NodeJS.ProcessEnv): string {
-	const shell = env.SHELL?.trim();
-	// A shell that is not an absolute path is not a shell this app will exec: the
-	// value comes from the environment, and a relative one would resolve against
-	// whatever directory the app happens to be in.
-	if (shell && isAbsolute(shell)) return shell;
-	return "/bin/zsh";
-}
+/*
+ * `defaultShell` - the shell a surface runs when the caller names no command -
+ * lives in `../shell-path` now, and is re-exported here because it is the same
+ * question the PATH resolution asks: which shell is the user's own. Two answers
+ * to it, one per caller, is the shape that drifts (a relative `$SHELL` is
+ * not-a-shell here and must not be one there either).
+ */
+export { defaultShell };
 
 /** A cwd the caller named, or the user's home. Not the app's own cwd: an app
  * launched from `/` or from a bundle would otherwise open a shell there. */

@@ -74,6 +74,7 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import { createUserShellPath } from "./shell-path";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -864,7 +865,18 @@ function createWindow(
 }
 
 // Initialize backend service manager and installer
-const backendService = new BackendServiceManager();
+//
+// The one resolver for the user's own PATH, built HERE because this is the only
+// file that owns both consumers: the backend manager below, and the browser host
+// that starts the console. Handing the same instance to both is what keeps "what
+// is this user's PATH" a single answer in this process - see `./shell-path` for
+// the measurement (a launchd-started app sees `/usr/bin:/bin:/usr/sbin:/sbin`,
+// so neither a console surface nor `execute_bash` could find Homebrew). Started
+// lazily on the first ask, so a run that needs neither starts no shell.
+const userShellPath = createUserShellPath({
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+const backendService = new BackendServiceManager({ userShellPath });
 const backendInstaller = new BackendInstaller();
 
 /**
@@ -2855,6 +2867,14 @@ app
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
 					preloadPath: join(__dirname, "../preload/index.js"),
+					/*
+					 * The console's surfaces are handed the user's own PATH, from the same
+					 * resolver the backend spawn uses (above). Without it a surface inherits
+					 * this app's launchd environment, in which `brew` - and every other tool
+					 * the user installed - does not exist, so the console cannot run the
+					 * tooling the agent is meant to acquire through it.
+					 */
+					userShellPath,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {

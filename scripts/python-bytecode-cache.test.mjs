@@ -680,10 +680,11 @@ function venvAssignment(trace, path) {
  *
  * The script's default is an executable fact, not a string: running it is what
  * shows which directory a standalone run actually writes bytecode to. Nothing
- * of the operator's machine is touched - `HOME` is a temp directory, the FFmpeg
- * the script would otherwise download is pre-placed so no network is used, and
- * the interpreter is a stub that fails at the venv probe, which the script only
- * reaches after the default has been applied.
+ * of the operator's machine is touched - `HOME` is a temp directory, the install
+ * script fetches nothing of its own any more (the FFmpeg download this rig used
+ * to pre-place a file against is gone), and the interpreter is a stub that fails
+ * at the venv probe, which the script only reaches after the default has been
+ * applied.
  */
 function runMacosInstallScript(scriptText, extraEnv) {
 	const home = mkdtempSync(join(tmpdir(), "lo-install-script-home-"));
@@ -696,11 +697,6 @@ function runMacosInstallScript(scriptText, extraEnv) {
 		"Application Support",
 		"Local Operator",
 	);
-	mkdirSync(join(appDataDir, "bin"), { recursive: true });
-	const ffmpeg = join(appDataDir, "bin", "ffmpeg");
-	writeFileSync(ffmpeg, "#!/bin/bash\nexit 0\n");
-	chmodSync(ffmpeg, 0o755);
-
 	const pythonStub = join(home, "python3-stub");
 	writeFileSync(
 		pythonStub,
@@ -2211,6 +2207,14 @@ const SPAWN_SITES = [
 	// they described. The file is deliberately NOT exempted as a whole: the
 	// scanner still walks it, so a new `spawn(pythonPath)` there fails this test
 	// for being unlisted rather than hiding behind a file-level exemption.
+
+	runsCommand(
+		"src/main/shell-path.ts",
+		"spawn",
+		1,
+		/shell,\s*\[\.\.\.args\]/,
+		"the user's own login shell (`defaultShell(env)`, run as `-l -i -c`) asked to print `$PATH` between sentinels, so a console surface and the backend see the environment the user's terminal has. It runs no interpreter of ours: the command is `command printf` over `$PATH`, the startup files it sources are the user's own, and no guarded environment applies or is wanted here - the child is deliberately handed the launch environment, because the whole point is to read what THAT environment's shell would produce",
+	),
 
 	runsCommand(
 		"src/main/update-install.ts",
