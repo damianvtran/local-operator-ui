@@ -2389,10 +2389,30 @@ export function ChatSidebar({
 							 * `docs/branding.md` § 5 lets animate, and the app's motion vocabulary has no
 							 * entrance to spend here.
 							 */
-							"hidden size-6 shrink-0 items-center justify-center rounded-md",
-							"text-ink-dim",
-							"group-hover:flex group-hover:text-ink-muted",
-							"group-focus-within:flex group-focus-within:text-ink-muted",
+							/*
+							 * THE SLOT IS KEPT ON A PINNED ROW (UX round 3, U6). The pair costs the title 56px
+							 * under the pointer and, on an UNPINNED row, nothing at rest - there is no mark to
+							 * protect there, because a row with no pin draws no control at rest. A PINNED row is
+							 * the exception, and the reason for this branch: its mark IS drawn at rest, so when
+							 * the archive's slot collapsed the mark sat at the row's right edge at rest and
+							 * shifted 28px left the instant the pointer arrived - measured 460,616 -> 432,616 -
+							 * which put ARCHIVE exactly on the box the reader had aimed at while reaching for
+							 * the visible pin. A press meant for a state toggle archived a conversation.
+							 * `visibility` keeps the box in the layout while staying as inert as `display: none`
+							 * is, so the resting slot still takes no press and the aim lands on the row.
+							 */
+							pinned
+								? cn(
+										"flex invisible size-6 shrink-0 items-center justify-center rounded-md",
+										"group-hover:visible group-hover:text-ink-muted",
+										"group-focus-within:visible group-focus-within:text-ink-muted",
+									)
+								: cn(
+										"hidden size-6 shrink-0 items-center justify-center rounded-md",
+										"text-ink-dim",
+										"group-hover:flex group-hover:text-ink-muted",
+										"group-focus-within:flex group-focus-within:text-ink-muted",
+									),
 							/*
 							 * AND THE POINTER'S OWN CONTROL READS AT FULL INK (design round 4,
 							 * D22). The row box and both controls now declare the same
@@ -3449,7 +3469,27 @@ export function ChatSidebar({
 			dismissToast(ARCHIVE_TOAST_ID);
 			return;
 		}
-		if (archiveFailure) {
+		/*
+		 * WHICH MESSAGE WINS IS DECIDED BY CURRENCY, NOT BY KIND (agent review round 3, R3-1 =
+		 * UX round 3, U7). This effect used to take the failure branch unconditionally and reach
+		 * the offer only when the store held NO refusal - and `archiveFailure` is cleared in just
+		 * two places, both scoped to its own conversation (`store` and `archive-undo.ts`), while
+		 * the panel's clock clears the DRAWING and not the value. So after ONE refused archive,
+		 * every later successful archive's offer was never painted: the lane re-printed the old
+		 * conversation's refusal, re-armed it for a fresh 10s, and the new offer expired unread -
+		 * measured 4x in both palettes. Both messages now carry the stamp of the write that
+		 * raised them and the NEWER one is drawn; the lane still holds one message at a time and
+		 * still replaces in place under the one stable id.
+		 */
+		const newest =
+			archiveFailure && archiveUndo
+				? archiveUndo.at >= archiveFailure.at
+					? "offer"
+					: "failure"
+				: archiveFailure
+					? "failure"
+					: "offer";
+		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";
 			showWarningToast(
 				`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,

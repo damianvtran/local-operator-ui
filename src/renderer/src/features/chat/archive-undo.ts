@@ -144,14 +144,23 @@ export function offerArchiveUndo(input: {
 	 * rather-than-dismissal property structural instead of a matter of render order.
 	 *
 	 * The refusal cleared is this conversation's own: a sentence about another row's
-	 * failed write is not superseded by this offer, and the panel's guard keeps the
-	 * two from fighting over the lane (the `laneMessageRef` in `chat-sidebar.tsx`).
+	 * failed write is not superseded by this offer, and `chat-sidebar.tsx`'s lane effect now
+	 * decides which of the two it DRAWS by their write stamps (`at`), not by preferring one
+	 * kind - the `laneMessageRef` beside that effect answers only the empty-lane dismissal,
+	 * so it is not what arbitrates them (agent review round 3, R3-1; the earlier comment here
+	 * claimed otherwise and the claim was wrong).
 	 */
 	useCanonicalSessionsStore.setState((state) => ({
 		archiveUndo: {
 			sessionId: input.sessionId,
 			title: input.title,
 			archived: input.archived,
+			/*
+			 * STAMPED WITH THE WRITE THAT RAISED IT. A successful archive's press has already
+			 * advanced `answerSeq`, so this is strictly newer than the refusal it supersedes -
+			 * which is what lets the lane draw it while the refusal is still in the store.
+			 */
+			at: state.answerSeq,
 		},
 		archiveFailure:
 			state.archiveFailure?.sessionId === input.sessionId

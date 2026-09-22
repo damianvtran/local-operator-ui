@@ -197,6 +197,14 @@ export type ArchiveUndoOffer = {
 	title?: string;
 	/** The state the offer was taken from: what the press would take back. */
 	archived: boolean;
+	/**
+	 * The write stamp this offer was raised under, so the LANE can tell it apart from a
+	 * refusal by CURRENCY rather than by kind (agent review round 3, R3-1 = UX round 3, U7).
+	 * Without it the lane preferred the refusal unconditionally, and because `archiveFailure`
+	 * is only cleared for its own conversation, one refused archive meant every later
+	 * successful archive's offer was never drawn.
+	 */
+	at: number;
 };
 
 /**
@@ -254,6 +262,11 @@ export type ForgottenFact = {
  */
 export type ArchiveFailure = {
 	sessionId: string;
+	/**
+	 * The write stamp the refusal was raised under (see `ArchiveUndoOffer.at`): the lane draws
+	 * whichever of its two messages is NEWER, and this is what says which that is.
+	 */
+	at: number;
 	/** The desired state that was refused, not the state on screen. */
 	archived: boolean;
 	/**
@@ -2708,6 +2721,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 										),
 							archiveFailure: {
 								sessionId,
+								/*
+								 * THE STAMP IS THE CURRENCY THE LANE READS (agent review round 3, R3-1). Taken from
+								 * `answerSeq` at the landing: a later successful archive's offer carries a higher
+								 * one, which is what lets the lane draw the newer message instead of preferring
+								 * the refusal forever.
+								 */
+								at: state.answerSeq,
 								archived,
 								title: rowTitle || "Untitled chat",
 								/*
