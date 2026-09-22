@@ -6,6 +6,31 @@ const SHEBANG = /^#!([^\r\n]+)\r?\n/;
 const PYTHON_NAME = /[/\\]python(?:\d+(?:\.\d+)*)?$/;
 
 /**
+ * pipx's own `-E`, appended to a shebang that already names a space-free python.
+ *
+ * pipx rewrites every launcher it exposes with
+ * `_add_ignore_environment_to_python_shebang` (pipx's `commands/common.py`),
+ * which appends ` -E` to the first line when that line starts with `#!`, names
+ * a python, and holds NEITHER a space nor a tab — and skips Windows entirely.
+ * A space-free `PIPX_HOME` (Linux, or a macOS `PIPX_HOME` outside the default
+ * `Application Support` segment) therefore ships
+ * `#!/…/venvs/local-operator/bin/python -E`, which is neither of the two
+ * launcher spellings this function used to accept, so the app quit at startup
+ * with "Cannot safely own this backend launcher" against the install it had
+ * itself resolved and classified as pipx (QA reproduced it on both base and
+ * head; the same install through pipx's spaced default home took the
+ * SH_EXEC_TRICK arm and passed).
+ *
+ * ONLY this one argument, and only when it is the whole of what follows the
+ * path. The flag is pipx's, not ours and not the backend's: the path is what
+ * this arm returns, and the caller spawns that interpreter directly with its
+ * own `-c` payload, so nothing here propagates `-E` to the process we own.
+ * Tolerating trailing text generally would accept a launcher whose shebang
+ * arguments we cannot see, which is the weakening the negative fixtures pin.
+ */
+const PIPX_IGNORE_ENV = / -E$/;
+
+/**
  * The /bin/sh exec trick distlib writes when the interpreter path cannot be a
  * shebang — and on macOS, pipx's DEFAULT layout guarantees it.
  *
@@ -588,16 +613,22 @@ export async function windowsPathInterpreterCandidates(
 /** Accept the installed Python console entrypoint, not arbitrary shell shims.
  * Keep the existing PATH resolver authoritative; this only proves its identity.
  *
- * Two spellings of the same launcher are accepted, and only those two:
- * a shebang naming the interpreter (distlib's normal form), and distlib's
- * /bin/sh exec trick (its own fallback when the interpreter path cannot BE a
- * shebang — see SH_EXEC_TRICK, which is every default macOS pipx install).
- * Both must still import the CLI entrypoint, and the interpreter must still
- * look like a python. An arbitrary shell wrapper matches neither. */
+ * Three spellings of the same launcher are accepted, and only those three:
+ * a shebang naming the interpreter (distlib's normal form, with or without
+ * pipx's own `-E`), and distlib's /bin/sh exec trick (its own fallback when the
+ * interpreter path cannot BE a shebang — see SH_EXEC_TRICK, which is every
+ * default macOS pipx install). All must still import the CLI entrypoint, and
+ * the interpreter must still look like a python. An arbitrary shell wrapper
+ * matches none of them. */
 export function consoleInterpreter(consolePath: string): string {
 	const script = readFileSync(consolePath, "utf8");
 	const entrypoint = script.includes("from local_operator.cli import main");
-	const shebang = SHEBANG.exec(script)?.[1];
+	// The line, less pipx's flag when pipx put one there (see PIPX_IGNORE_ENV).
+	// Everything else about it is held to the bar it was held to before, so a
+	// shebang that is not a bare interpreter path plus at most that ONE flag -
+	// `/usr/bin/env python` is the pre-existing case of this, not a new one -
+	// still has to pass `isAbsolute` and `PYTHON_NAME` on the whole remainder.
+	const shebang = SHEBANG.exec(script)?.[1]?.replace(PIPX_IGNORE_ENV, "");
 	if (
 		shebang &&
 		isAbsolute(shebang) &&
