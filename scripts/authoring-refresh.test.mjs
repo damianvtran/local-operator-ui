@@ -178,7 +178,7 @@ export class UserFacingError extends Error {}
 export const userFacingMessage = (error) => String(error?.message ?? error);
 export const retryDesktopQuery = () => false;
 export const desktopResult = async () => { throw new Error("the query must not run in this harness"); };`,
-							feed: "export const useDesktopFeed = () => ({ available: true, connected: true, catalogueRevision: null, authoringRevision: globalThis.__revision });",
+							feed: "export const useDesktopFeed = () => ({ available: true, connected: true, catalogueRevision: null, authoringRevision: globalThis.__revision, authoringReconnectRevision: globalThis.__reconnectRevision });",
 							"react-query": `export const useQueryClient = () => globalThis.__queryClient;
 export const useQuery = (options) => {
 	globalThis.__queryKeys.push(options.queryKey);
@@ -229,6 +229,8 @@ globalThis.__queryClient = {
 };
 /** The revision the stubbed feed publishes, as the hook's render reads it. */
 globalThis.__revision = null;
+/** Successful reconnects after the first open; a reconnect is not an event frame. */
+globalThis.__reconnectRevision = 0;
 globalThis.__effects = [];
 
 /**
@@ -264,6 +266,7 @@ function commit(effects) {
 function freshMount() {
 	__resetCells();
 	globalThis.__revision = null;
+	globalThis.__reconnectRevision = 0;
 	return render();
 }
 
@@ -281,6 +284,36 @@ test("no frame means no invalidation at all", () => {
 		[],
 		"a backend that never publishes the frame changes nothing",
 	);
+});
+
+test("the first open does not invalidate, but a reconnect invalidates every authoring cache", () => {
+	globalThis.__invalidations = [];
+	commit(freshMount());
+	// The first successful open establishes a baseline. The page's query mount
+	// already fetched, so opening the feed is not a reason to repeat it.
+	globalThis.__reconnectRevision = 0;
+	commit(render());
+	assert.deepEqual(globalThis.__invalidations, []);
+
+	// The transport drops and later reconnects. Its baseline may carry the same
+	// authoring revision, so recovery uses the connection generation instead.
+	globalThis.__reconnectRevision = 1;
+	commit(render());
+	assert.deepEqual(globalThis.__invalidations, [
+		PROFILES,
+		PROFILE,
+		TEAMS,
+		TEAM,
+	]);
+
+	// A repeated render with the same reconnect generation is not another fetch.
+	commit(render());
+	assert.deepEqual(globalThis.__invalidations, [
+		PROFILES,
+		PROFILE,
+		TEAMS,
+		TEAM,
+	]);
 });
 
 test("one frame invalidates each list and its detail prefix exactly once", () => {

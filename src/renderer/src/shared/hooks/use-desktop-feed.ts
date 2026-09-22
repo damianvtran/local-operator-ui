@@ -46,7 +46,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesktopFeedFrame } from "../../../../shared/desktop-session-contract";
 
 export type DesktopFeedConnection = {
@@ -70,6 +70,11 @@ export type DesktopFeedConnection = {
 	 * than by the sidebar - see the fourth job above.
 	 */
 	authoringRevision: number | null;
+	/**
+	 * Advances only when an already-established feed reconnects. The first open
+	 * is not an invalidation: mount already fetched the current authoring lists.
+	 */
+	authoringReconnectRevision: number;
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -84,21 +89,40 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const [authoringRevision, setAuthoringRevision] = useState<number | null>(
 		null,
 	);
+	const [authoringReconnectRevision, setAuthoringReconnectRevision] =
+		useState(0);
+	// The feed's `open` snapshot is intentionally not enough to detect a missed
+	// authoring change: a no-subscriber baseline can retain the same revision.
+	// Track transport history instead, and only publish recovery after we have
+	// observed a successful connection followed by a later successful connection.
+	const wasConnected = useRef(false);
+	const hasConnected = useRef(false);
 
 	useEffect(() => {
 		if (!available || !native) {
 			// The gate closing must also clear the state it published: a backend
 			// that loses the capability (a downgrade under a running app) must not
 			// leave the sidebar rendering a connection it no longer has.
+			wasConnected.current = false;
 			setConnected(false);
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
 		const applySessionStatus =
 			useCanonicalSessionsStore.getState().applySessionStatus;
-		const offState = native.watchState((state) =>
-			setConnected(state.connected),
-		);
+		const offState = native.watchState(({ connected: nextConnected }) => {
+			if (nextConnected) {
+				if (hasConnected.current && !wasConnected.current) {
+					// A reconnect starts from a backend baseline rather than replaying
+					// changes during the outage. Invalidate once even when its revision
+					// did not advance because there were no feed subscribers.
+					setAuthoringReconnectRevision((revision) => revision + 1);
+				}
+				hasConnected.current = true;
+			}
+			wasConnected.current = nextConnected;
+			setConnected(nextConnected);
+		});
 		const offFrames = native.subscribe((frame: DesktopFeedFrame) => {
 			if (frame.type === "attention") {
 				applyAttention(frame.session_id, frame.payload);
@@ -147,12 +171,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			if (frame.type === "authoring") {
 				setAuthoringRevision(frame.payload.revision);
 			}
-			// `open`, `heartbeat` and `gap` carry transport state and nothing the
-			// renderer renders: the snapshot IS the first catalogue revision, and a
-			// reconnect is main's watchdog's job. Ignored deliberately rather than
-			// routed into a state store nothing reads — and a type this build does not
-			// know (a newer backend's frame) is ignored by the same missing branch,
-			// which is what makes the addition of one a no-op for older renderers.
+			// `open`, `heartbeat` and `gap` carry no renderable authoring data. The
+			// first `open` deliberately causes no invalidation because query mounts
+			// already fetch; recovery after a previously connected transport drops is
+			// published through `watchState` above, where a baseline with an unchanged
+			// revision cannot hide the outage. Unknown frame types remain a no-op for
+			// older renderers.
 		});
 		return () => {
 			offFrames();
@@ -165,5 +189,6 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		connected: available && connected,
 		catalogueRevision,
 		authoringRevision,
+		authoringReconnectRevision,
 	};
 }
