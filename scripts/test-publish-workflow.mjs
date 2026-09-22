@@ -859,3 +859,52 @@ test("actual pnpm forwarding and electron-builder parser enforce signing", async
 		);
 	}
 });
+
+test("each macOS pass builds ONLY its own architecture through the real target resolver", async () => {
+	/*
+	 * THE FINDING THAT GATED ROUND 1 (PR #449 review, F1). The split build's
+	 * `--arm64`/`--x64` flags are advisory to yargs, and electron-builder's
+	 * `computeArchToTargetNamesMap` then walks the CONFIG's `mac.target`
+	 * entries: when a target entry pins its own `arch` array, the config's list
+	 * wins and the CLI arch is ignored. With the previous
+	 * `mac.target[].arch: ["arm64","x64"]`, BOTH passes resolved to both
+	 * architectures — pass 2 rebuilt the arm64 artifacts with x64-compiled
+	 * bytecode under the same filenames (the brick this PR exists to fix,
+	 * moved to the other architecture), and pass 2's feed already named all
+	 * four files, so the merge step found nothing to carry and failed the run.
+	 *
+	 * The fix is config-side: `mac.target` names targets WITHOUT arch arrays,
+	 * so the CLI flag governs. This test drives the REAL resolver — the same
+	 * code path the build uses, not a re-implementation — with each workflow
+	 * pass's parsed argv against the repo's actual `build.mac`, and fails if
+	 * anyone re-pins arch arrays in the config (or drops the flag from a
+	 * workflow step) and quietly recreates the cross-arch build.
+	 */
+	const { computeArchToTargetNamesMap } = appRequire(
+		"app-builder-lib/out/targets/targetFactory",
+	);
+	const { Platform, Arch } = appRequire("app-builder-lib");
+	const expected = new Map([
+		["--arm64", Arch.arm64],
+		["--x64", Arch.x64],
+	]);
+	const macSteps = macBuildSteps();
+	assert.equal(macSteps.length, 2);
+	for (const step of macSteps) {
+		// The one arch flag this pass carries, straight from the workflow text.
+		const flags = [...step.run.matchAll(/--(arm64|x64)\b/g)].map((m) => m[0]);
+		assert.equal(flags.length, 1, `${step.name}: exactly one arch flag`);
+		const arch = expected.get(flags[0]);
+		const resolved = computeArchToTargetNamesMap(
+			new Map([[arch, []]]),
+			{ platformSpecificBuildOptions: pkg.build.mac, platform: Platform.MAC },
+			Platform.MAC,
+		);
+		assert.deepEqual(
+			[...resolved.keys()],
+			[arch],
+			`${step.name}: resolves to exactly its own architecture (config arch pins in build.mac.target would widen this — see the F1 comment above)`,
+		);
+		assert.deepEqual([...resolved.values()], [["dmg", "zip"]]);
+	}
+});
