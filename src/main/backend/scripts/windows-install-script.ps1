@@ -48,46 +48,16 @@ if (-not (Test-Path $AppDataDir)) {
 Start-Transcript -Path $LogFile -Append
 Write-Output "$(Get-Date): Starting Local Operator backend installation..."
 
-$BinDir = "$AppDataDir\\bin"
-$FFmpegBin = "$BinDir\\ffmpeg.exe"
-
-Write-Output "Ensuring bin directory exists: $BinDir"
-if (-not (Test-Path $BinDir)) {
-    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-}
-
-# Check if FFmpeg is already installed
-if (Test-Path $FFmpegBin) {
-    Write-Output "FFmpeg already installed at $FFmpegBin. Skipping download."
-} else {
-    Write-Output "FFmpeg not found. Attempting to download and install FFmpeg..."
-
-    $FFmpegDownloadUrl = ""
-    
-    # Determine architecture and set appropriate download URL
-    if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64" -or $env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
-        $FFmpegDownloadUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-win32-x64"
-    } else {
-        Write-Error "Unsupported CPU architecture for FFmpeg download: $env:PROCESSOR_ARCHITECTURE"
-        exit 1
-    }
-
-    Write-Output "Downloading FFmpeg from: $FFmpegDownloadUrl"
-    try {
-        Invoke-WebRequest -Uri $FFmpegDownloadUrl -OutFile $FFmpegBin -ErrorAction Stop
-        Write-Output "FFmpeg downloaded successfully to $FFmpegBin"
-        
-        # Verify FFmpeg is accessible after download
-        if (-not (Test-Path $FFmpegBin)) {
-            Write-Error "FFmpeg binary not found at $FFmpegBin after download."
-            exit 1
-        }
-    } catch {
-        Write-Error "Failed to download FFmpeg: $($_.Exception.Message)"
-        exit 1
-    }
-}
-Write-Output "FFmpeg installation complete. FFmpeg binary is at: $FFmpegBin"
+# Nothing is fetched here but the package itself and Python's own toolchain.
+#
+# This script used to download a third-party FFmpeg binary from a GitHub release
+# into `$AppDataDir\bin`. Nothing in the app or in `local-operator` ever executed
+# it. Tooling a task actually needs is acquired later, on demand, through the
+# app's Console with the user's approval; this script's job is the environment
+# below and nothing else. (pyenv-win's source archive below is the one remaining
+# third-party fetch, and it is a source archive the Windows install cannot do
+# without - see `scripts/install-scripts-network.test.mjs`, which keeps that list
+# down to the fetches each platform genuinely needs.)
 
 # Function to check if a command exists
 function Test-CommandExists {
@@ -116,8 +86,44 @@ if (-not (Test-Path $PyenvDir)) {
     
     # Download and extract pyenv-win
     $PyenvZip = "$TempDir\\pyenv-win.zip"
-    Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip
-    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir
+    # Bounded, and the bound FAILS LOUDLY. An unbounded request here holds a
+    # first-run install open behind the progress bar forever on a black-hole
+    # network; and without -ErrorAction Stop a fired -TimeoutSec is a
+    # NON-TERMINATING error, so the script would walk straight into
+    # Expand-Archive with an absent or partial zip and report an archive error
+    # instead of "the download timed out". The partial file is removed in the
+    # failure branch so a later run cannot expand what this one failed to fetch
+    # (the next run clears $TempDir before it downloads at all, which is the
+    # `if (Test-Path $TempDir) { Remove-Item ... }` above - named rather than
+    # cited by line, because a line number in a script that keeps changing is
+    # what a stale citation is made of).
+    # 120 seconds is a payload bound rather than the 30-second stall bound the PyPI
+    # probes use: this downloads a source archive instead of answering an API
+    # call, so it only has to stop an indefinite hang.
+    #
+    # WHICH BOUND `-TimeoutSec` ACTUALLY IS DEPENDS ON THE POWERSHELL, and that is
+    # a trap worth naming because the two paths differ here. The app spawns this
+    # script with `powershell.exe` (Windows PowerShell 5.1, see
+    # backend-installer.ts), where -TimeoutSec is the REQUEST's timeout - 120
+    # seconds to complete the transfer. On PowerShell 7.4+ it was renamed to
+    # -OperationTimeoutSeconds and -TimeoutSec survives only as an ALIAS of
+    # -ConnectionTimeoutSeconds, i.e. a connect bound, so on a 7.x host (the CI
+    # runner is one) a mirror that accepts and then stalls is not ended by this.
+    # Do not "fix" that by adding the 7.x spelling: 5.1 does not know
+    # -OperationTimeoutSeconds, and an unknown parameter is a binding error which
+    # the catch below turns into `exit 1` on every install. The version-agnostic
+    # answer is a bound on the transfer itself (a BITS job or a size/rate check),
+    # which is a larger change than this one and is recorded rather than made.
+    try {
+        Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120 -ErrorAction Stop
+    } catch {
+        Remove-Item -Path $PyenvZip -Force -ErrorAction SilentlyContinue
+        Write-Error "Failed to download pyenv-win from https://github.com/pyenv-win/pyenv-win/archive/master.zip within 120 seconds: $($_.Exception.Message)"
+        exit 1
+    }
+    # -ErrorAction Stop for the same reason as the download: a truncated archive
+    # must fail here rather than half-copy into $PyenvDir.
+    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir -ErrorAction Stop
     
     # Create .pyenv directory
     New-Item -ItemType Directory -Path $PyenvDir -Force | Out-Null
