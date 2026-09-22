@@ -182,7 +182,9 @@ const Panel = ({
 					filterByCredentials={true}
 					allowCustom={true}
 					allowDefault={false}
-					emptyHelperText="No hosting providers available. Sign in to a provider, or add a key by telling the agent, for example: /credential <your key>."
+					/* The picker's own DEFAULT, verbatim, so the census frames photograph the
+				   sentence the product ships rather than a rig-local copy of it. */
+					emptyHelperText="No hosting providers available. Sign in to a provider, or add a provider's API key in Settings, under Providers."
 				/>
 			</div>
 			<div className="rounded-md border border-hairline bg-sunken p-3">

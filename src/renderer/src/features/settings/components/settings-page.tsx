@@ -1132,11 +1132,11 @@ export const SettingsPage: FC = () => {
 										filterByCredentials={true}
 										allowCustom={true}
 										allowDefault={false}
-										/* This IS Settings, so it names the page's own sign-in door
-										   (sign in, or tell the agent) rather than leaning on the
-										   picker's default; kept explicit so this surface's copy can
-										   diverge from that default without touching it. */
-										emptyHelperText="No hosting providers available. Sign in to a provider or add a key by telling the agent, for example: /credential <your key>."
+										/* This IS Settings, so the default ("…in Settings, under Providers")
+										   would send the reader to the page they are already on. Settings'
+										   own model section says "below" instead: same door, same words,
+										   no second sentence. */
+										emptyHelperText="No hosting providers available. Sign in to a provider, or add a provider's API key below, under Providers."
 									/>
 									<ModelSelect
 										value={config.values.model_name}
@@ -1152,8 +1152,8 @@ export const SettingsPage: FC = () => {
 									>
 										You need a Radient account or your own API keys to reach
 										cloud providers. If you don't see more hosting providers and
-										models here, sign in to Radient, or add a key by telling the
-										agent with the /credential gesture.
+										models here, sign in to Radient, or add a provider's API key
+										below, under Providers.
 									</Alert>
 								</div>
 							</SettingsSection>

@@ -421,6 +421,36 @@ test("aliases are how the app's vocabulary meets the user's", () => {
 	);
 });
 
+test("the api-key vocabulary survives the credentials section's removal", () => {
+	/*
+	 * The plain-text credentials section was this app's only owner of the words
+	 * "api key", "keys" and "tokens", and deleting the SECTION deleted its alias
+	 * row with it — so a user typing "api key" got zero matches for the app's own
+	 * API-key surface (design/UX round 1, U3). The vocabulary moved onto the
+	 * Providers row, which is the surface those words now name (its rows read
+	 * "Sign in or API key" and carry an API-key tab). This test is the guard
+	 * that the move happened: it searches the words a user would type and
+	 * requires the Providers section to answer.
+	 *
+	 * The row is built by the SHIPPED builder with the real section list this
+	 * change ships (`providers` in the rail), so the aliases are read from the
+	 * product's own meta table rather than restated here.
+	 */
+	const sections = [
+		{ id: "general", label: "General settings" },
+		{ id: "providers", label: "Providers" },
+	];
+	const provItems = buildSettingsSectionItems(sections);
+	for (const query of ["api key", "api keys", "keys", "tokens"]) {
+		assert.ok(
+			names(searchPalette({ items: provItems, raw: query })).includes(
+				"Providers",
+			),
+			`the palette's "${query}" finds no Providers row, so the api-key vocabulary lost its home with the credentials section`,
+		);
+	}
+});
+
 test("the registry's own spelling of a key finds its row", () => {
 	const outcome = searchPalette({ items, raw: "web_search" });
 	assert.deepEqual(names(outcome), ["Web search"]);

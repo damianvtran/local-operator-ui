@@ -343,7 +343,18 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 * It pointed at `?section=credentials` until this branch deleted that
 	 * section from `sectionRefs`; `settings-page`'s deep-link effect returns
 	 * early on an unknown key, so `/accounts` stranded the user on `general`.
-	 * The route must name a section key that exists in `sectionRefs`.
+	 * The route must name a section key that exists in `sectionRefs`
+	 *. `scripts/settings-section-routes.test.mjs` pins that for every
+	 * `?section=` route in the tree, so a later deletion cannot re-open it.
+	 *
+	 * U4 (design/UX round 1): the landing is a sign-in grid rather than a plain
+	 * credential LIST, so "List stored credentials" — the command's own label,
+	 * published by the backend's slash catalogue and not owned here — sets an
+	 * expectation the destination only partly meets. The route STAYS: the keys
+	 * and the session-store secrets are what that grid's rows and API-key tabs
+	 * are about, and no other section lists them. Re-wording the label is a
+	 * backend change (`local-operator` `slash_commands.py`), deferred rather
+	 * than faked here with a second name for one command.
 	 */
 	accounts: { kind: "navigate", route: () => "/settings?section=providers" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
