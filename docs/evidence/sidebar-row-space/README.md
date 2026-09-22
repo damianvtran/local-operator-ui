@@ -13,6 +13,18 @@ number in it is a subtraction over the boxes in `measurements/`.
 | **before** | the twelve label directories at this level | `origin/main` = `b7f3e6126` (v0.30.5) with only the `row-space` scene added - the state the operator reported, kept where the spec's § 1 and this file's own references name it |
 | **after** | `after/<label>/` | this change, at the commit whose `src`/`scripts` trees the manifest's stamps carry |
 
+**THE AFTER HALF WAS LAST RE-CAPTURED ON 2026-09-22, AND FOR A VISIBLE-TEXT FIX - the design round
+should re-read the panel's bottom rather than judge the corrected frames as if they had always looked
+this way.** Two changes had moved what those frames show: the D14 band (the card is the band's now,
+with `refusal-band-280` added and `offer-toast-320` re-taken for D16), and then the fix that stopped
+`chat-sidebar.tsx` drawing its own D14 explanation as UI - a bare block comment among JSX children is a
+TEXT NODE, so about five lines of comment prose had been rendered in the panel's own bottom and
+photographed as if it were layout. The pair is 5% of the sidebar's height at the 280 width: the
+rendered text occupied it, and every `after/` frame here plus `session-archive/refusal-band-280/` was
+captured with it in place. `crop` the panel's bottom in any two frames to see it; the manifest's
+`rowSpaceCommentFixNote` carries the reading and the two reasons the archive set's other frames were
+deliberately left alone.
+
 The labels are the same in both halves, so the two sets compare frame for frame;
 `register-280` is the before half of the state that is now `offer-toast-280`,
 because the register is deleted by the change rather than moved. Three of the
