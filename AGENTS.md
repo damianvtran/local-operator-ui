@@ -1092,12 +1092,13 @@ though it no longer creates them, because a bundle being **replaced** may still 
 the old layout and its stale bytecode has to stay healable. Why it matters: those
 aliases are exactly what let an incumbent venv resolve into the new signed seed.
 
-The single definition of all of this is `src/shared/bundled-python-layout.json`
-(`seedNamespace`, `architectures`, `legacyResourceNames`). The app, the packer and
-the release gate read that one file so their lists cannot diverge — they did once,
-and a bundle built by the branch that had moved the interpreter reported every
-bytecode violation as unhealable, which is the reinstall refusal on exactly the
-install the heal exists to repair.
+The single definition of all of this is `src/shared/bundled-runtime-layout.json`
+(`seedNamespace`, `architectures`, `legacyResourceNames`, and the `version` /
+`buildDate` / `tkVersion` the prune list's `{pyver}` / `{pyminor}` / `{tkver}`
+tokens expand). The app, the packer and the release gate read that one file so
+their lists cannot diverge — they did once, and a bundle built by the branch that
+had moved the interpreter reported every bytecode violation as unhealable, which
+is the reinstall refusal on exactly the install the heal exists to repair.
 
 ### The start-up repair
 

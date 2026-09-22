@@ -367,22 +367,32 @@ test("the builder config stages both runtime trees the architecture resolves", (
 		"the mac build copies each checkout tree into the resource directory its architecture resolves",
 	);
 	/*
-	 * And the two other platforms, which never RUN `pnpm setup-python`: their
-	 * entries are what ships if the trees are ever staged for them, and a uv
-	 * entry missing here is the failure that looks like a working build -
-	 * `extraResources` from a directory that does not exist is silently skipped,
-	 * so the artifact simply arrives without uv and every install falls back to
-	 * pip.
+	 * And the two other platforms, which never run `pnpm setup-python`: their
+	 * entries are what ships if the trees are ever staged for them. The uv half is
+	 * asserted ABSENT, deliberately (review R1-3): the copy lists are not
+	 * architecture-aware, nothing stages a Windows or Linux uv, and an entry there
+	 * would ship ~74 MB of macOS Mach-O from any checkout that HAD staged them -
+	 * whose only effect on those platforms is an `exec format error` inside the
+	 * script's probe and a pip fallback. The interpreter entries stay, because
+	 * those trees are what the platform's own setup installs.
 	 */
 	for (const scope of ["win", "linux"]) {
 		const entries = (config[scope]?.extraResources ?? []).map(
 			(entry) => entry.to,
 		);
-		for (const arch of ["x64", "arm64"])
-			assert.ok(
-				entries.includes(uvResourceDir(arch)),
-				`build.${scope}.extraResources must map a tree to ${uvResourceDir(arch)}; got ${entries.join(", ")}`,
-			);
+		// Those two platforms keep the interpreter names they have always used
+		// (`python` / `python_aarch64`, the LEGACY names macOS may not carry), so
+		// what is asserted here is the uv half rather than the spelling of trees
+		// this change does not touch.
+		assert.ok(
+			entries.includes("python") && entries.includes("python_aarch64"),
+			`build.${scope}.extraResources must still carry both interpreter trees; got ${entries.join(", ")}`,
+		);
+		assert.deepEqual(
+			entries.filter((to) => String(to).startsWith("uv")),
+			[],
+			`build.${scope}.extraResources must name no uv: nothing stages one for ${scope}, and a macOS Mach-O in that artifact is dead weight with a misleading name`,
+		);
 	}
 });
 

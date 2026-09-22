@@ -120,7 +120,8 @@ the build actually produced, and any failure fails the release before upload:
 | Private seed ships | Asserts exactly one `python-runtime-seed/<arch>` and no `python`/`python_aarch64` name beside it - including a dangling symlink |
 | One seed ships | Asserts the seed present is the one `lipo -archs` says this bundle's architecture resolves |
 | The seed is the declared Python | Runs the seed's own `bin/python3 -I -B --version` and requires the patch release `src/shared/bundled-runtime-layout.json` declares - the only reading that sees a patch level, since the tree's own markers carry the major.minor |
-| One uv ships, and it runs | Asserts exactly one `uv/<arch>`, that its `uv` is a plain file with the execute bit, and that `lipo -archs` on it matches the directory (and the artifact's own `-<arch>`) |
+| One uv ships, and it runs | Asserts exactly one `uv/<arch>`, that its `uv` is a plain file with the execute bit, and that `lipo -archs` on it matches the directory (and the artifact's own `-<arch>`). macOS-only: no other platform's artifact carries one |
+| The seed's executables are executable | Asserts no non-Mach-O file carries an execute bit, every `MH_EXECUTE` Mach-O carries one, and `bin/python3` is one of them. Libraries are not required to carry a bit (`dlopen` mmaps them; upstream ships some at 0644) |
 | The seed matches the filename | Asserts the artifact's `-<arch>` names the same architecture as the app inside it and the seed that app carries |
 | The delivered containers are asserted | `hdiutil attach` the `.dmg` and `ditto` the app out, or `unzip -Z1` then `ditto -x -k` the `.zip`, then run the app checks above on the copy |
 | Metadata describes delivered bytes | Every `latest*.yml` entry's `sha512`/`size` is recomputed from the final, stapled container |

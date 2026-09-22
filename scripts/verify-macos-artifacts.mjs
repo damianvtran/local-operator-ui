@@ -26,10 +26,11 @@ import {
 	openSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	statSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
@@ -43,8 +44,10 @@ import {
 	profileBackedEntitlementKeys,
 } from "./macos-entitlement-policy.mjs";
 import {
+	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	machOExecutables,
 	machOFiles,
 	seedExecBitFiles,
 	seedModeViolations,
@@ -713,28 +716,65 @@ export function prunedSeedCheck(appPath) {
 				throw new Error(
 					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
-			const back = PRUNED_SEED_PATHS.filter(
+			const back = [...PRUNED_SEED_PATHS, ...PRUNED_SEED_OPTIONAL_PATHS].filter(
 				(relative) => lstatOrNull(join(root, relative)) !== null,
 			);
 			if (back.length > 0)
 				throw new Error(
 					`${back.length} pruned path(s) are back under the seed: ${back.join(", ")}. scripts/setup-python-resource.sh runs scripts/prune-python-seed.mjs; a build that skips it ships them again.`,
 				);
-			return `${PRUNED_SEED_PATHS.length} pruned path(s) absent`;
+			return `${PRUNED_SEED_PATHS.length + PRUNED_SEED_OPTIONAL_PATHS.length} pruned path(s) absent`;
 		},
 	);
 }
 
-/** Execute bits under the seed, which only a Mach-O file may carry.
+/** Execute bits under the seed: which files may carry one, and which must.
  *
- * The count is asserted beside the predicate because the predicate alone is
- * satisfied by a seed with no execute bit anywhere - including the interpreter
- * itself, which the app executes through its managed copy. */
+ * TWO DIRECTIONS, and the split is the correction of a false positive this gate
+ * produced for the `20260901` seed:
+ *
+ *  - NOTHING that is not a Mach-O may carry a bit. This is the direction the
+ *    prune is written for (`clearIncidentalExecBits`): the upstream tree ships
+ *    `0o755` on dozens of Python SOURCE files, and a bundle that carries those
+ *    says "run me" about data. Unchanged.
+ *  - Every Mach-O whose filetype is MH_EXECUTE MUST carry one, and the
+ *    interpreter the app spawns must be one of them. The kernel execs exactly
+ *    that filetype; `bin/python3` (a link to `bin/python3.12`) is what a managed
+ *    runtime's venv runs, so this is the functional requirement, asserted by
+ *    name rather than inferred from a count.
+ *
+ * WHY THE COUNT EQUALITY IS GONE, and why its removal is a strengthening rather
+ * than a loosening. This check used to require the number of files carrying an
+ * execute bit to EQUAL the number of Mach-O files. That is satisfied only while
+ * every Mach-O in the tree is something the app executes, and it was a proxy for
+ * "the interpreter kept its bit". The `20260901` build breaks the premise: it
+ * ships Tcl/Tk 9.0 as loadable libraries (`MH_DYLIB`, and the four under
+ * `lib/itcl4.3.8/` and `lib/thread3.0.6/` at mode 0644) where the `20250529`
+ * build shipped those pieces as `.a` archives. Under the count rule a perfectly
+ * correct seed fails (7 bits against 11 Mach-O) and the only ways out are
+ * chmod'ing libraries that nothing execs or deleting the assertion. Under this
+ * rule the same tree passes, an executable that LOST its bit fails (which the
+ * count could mask: a library that gained a bit while the interpreter lost one
+ * keeps the totals equal), and the interpreter is asserted directly.
+ *
+ * The modes are upstream's, not ours: measured in the raw
+ * `cpython-3.12.14+20260901-aarch64-apple-darwin-install_only.tar.gz`, before any
+ * prune, `lib/itcl4.3.8/libitcl4.3.8.dylib` is `0644` while
+ * `lib/libpython3.12.dylib` is `0755` - so no packaging step of ours dropped it,
+ * and the seed is not normalised in this direction (a `chmod +x` here would make
+ * the gate pass by changing the artifact it is supposed to be checking, and the
+ * loss this gate exists to catch happens AFTER the prune, in the copy, the seal
+ * and the ZIP, where no build step can reach).
+ *
+ * The library half is not a claim that a 0644 library is fine in the abstract -
+ * it is a reading: `dlopen` mmaps, it does not exec, and `ctypes.CDLL` loads
+ * this seed's own 0644 `libitcl4.3.8.dylib` in this seed's own interpreter.
+ */
 export function seedModeCheck(appPath) {
 	return appCheck(
 		"app-seed-exec-bits",
 		appPath,
-		"every execute bit under the seed belongs to a Mach-O file",
+		"every execute bit belongs to a Mach-O file, and every Mach-O the app execs carries one",
 		() => {
 			const root = seedRoot(appPath);
 			if (root == null)
@@ -746,17 +786,42 @@ export function seedModeCheck(appPath) {
 				throw new Error(
 					`${violations.length} seed file(s) carry an execute bit without a Mach-O header: ${violations.slice(0, 4).join(", ")}${violations.length > 4 ? ` (and ${violations.length - 4} more)` : ""}`,
 				);
-			const execBits = seedExecBitFiles(root).length;
-			const machO = machOFiles(root).length;
-			if (machO === 0)
+			const machO = machOFiles(root);
+			if (machO.length === 0)
 				throw new Error(
 					"No Mach-O file under the seed at all: the interpreter and its library are gone",
 				);
-			if (execBits !== machO)
+			const bits = new Set(seedExecBitFiles(root));
+			const executables = machOExecutables(root);
+			if (executables.length === 0)
 				throw new Error(
-					`${execBits} seed file(s) carry an execute bit but ${machO} are Mach-O; the two counts must agree`,
+					"No executable Mach-O under the seed at all: nothing here is a filetype the kernel will run, so the interpreter is gone or replaced by a library",
 				);
-			return `${machO} Mach-O file(s), each carrying the execute bit and nothing else`;
+			const bitless = executables.filter((relative) => !bits.has(relative));
+			if (bitless.length > 0)
+				throw new Error(
+					`${bitless.length} executable seed file(s) do not carry the execute bit: ${bitless.slice(0, 4).join(", ")}${bitless.length > 4 ? ` (and ${bitless.length - 4} more)` : ""}. A managed runtime runs the copy it made of bin/python3; a packaging step that dropped the mode (a ZIP does) leaves an interpreter the OS refuses to spawn, which is the failure this check exists for.`,
+				);
+			// The interpreter BY NAME: the assertion above covers every executable,
+			// and this one says which file the app actually runs, so a seed that
+			// replaced it cannot pass on some other executable's bit. Both sides go
+			// through `realpathSync`, because on macOS a temporary root is reached as
+			// `/var/...` while its real path is `/private/var/...` and a one-sided
+			// call would make the relative path escape the tree it belongs to.
+			const fromRoot = realpathSync(root);
+			const interpreter = lstatOrNull(join(root, "bin/python3"))
+				? relative(fromRoot, realpathSync(join(root, "bin/python3")))
+				: null;
+			if (interpreter == null)
+				throw new Error(
+					"The seed has no bin/python3, so there is no interpreter for the app to run",
+				);
+			if (!executables.includes(interpreter) || !bits.has(interpreter))
+				throw new Error(
+					`The seed's bin/python3 resolves to ${interpreter}, which is not an executable Mach-O carrying the execute bit`,
+				);
+			const libraries = machO.length - executables.length;
+			return `${machO.length} Mach-O file(s): ${executables.length} executable(s) carrying the execute bit (bin/python3 among them), ${libraries} loadable librar${libraries === 1 ? "y" : "ies"} the loader mmaps, and no other seed file carrying one`;
 		},
 	);
 }

@@ -67,19 +67,30 @@ export const PYTHON_ABI = pythonAbi();
  * and `idle3.12` is the file this caught. */
 export const PYTHON_MINOR = PYTHON_VERSION.split(".")[1];
 
+/** The Tcl/Tk version this build ships (`9.0`).
+ *
+ * It is a token of its OWN rather than the Python version, because the two move
+ * independently: the `20260901` build moved Tcl/Tk from 8.6 to 9.0 while the
+ * Python line stayed 3.12, and the prune list's `lib/tk8.6/demos` entry then
+ * pruned NOTHING - a silent no-op of the class `{pyver}` was introduced to stop,
+ * and one the prune now refuses (`pruneSeed` throws for a named path that is not
+ * there, and a path whose version token is stale is exactly what that catches). */
+export const TK_VERSION = LAYOUT.python.tkVersion;
+
 /**
  * Expand the version tokens in a path from the layout.
  *
- * `{pyver}` and `{pyminor}` are the ONLY spellings of the ABI in the definition
- * file, so a version refresh cannot leave a stale `python3.12` segment behind in
- * a prune list - the failure mode that makes a prune silently do nothing after a
- * bump, which is the one direction this whole area fails in (the tree still runs;
- * it is just larger).
+ * `{pyver}`, `{pyminor}` and `{tkver}` are the ONLY spellings of those versions
+ * in the definition file, so a version refresh cannot leave a stale
+ * `python3.12` or `tk8.6` segment behind in a prune list - the failure mode that
+ * makes a prune silently do nothing after a bump, which is the one direction this
+ * whole area fails in (the tree still runs; it is just larger).
  */
 export function expandVersionToken(relative, version = PYTHON_VERSION) {
 	return relative
 		.replaceAll("{pyver}", pythonAbi(version))
-		.replaceAll("{pyminor}", version.split(".")[1] ?? "");
+		.replaceAll("{pyminor}", version.split(".")[1] ?? "")
+		.replaceAll("{tkver}", TK_VERSION);
 }
 
 /** The seed directory this architecture ships under, relative to `Resources`. */
@@ -109,10 +120,24 @@ export const SEED_STDLIB_MARKER = expandVersionToken(
 	LAYOUT.python.seedStdlibMarker,
 );
 
-/** The seed content no import can reach, expanded. */
+/** The seed content no import can reach, expanded.
+ *
+ * TWO LISTS, and the split is load-bearing: a path in `prunedSeedPaths` MUST
+ * exist in the tree `20260901` builds, and `pruneSeed` throws when one does not
+ * (`lib/tk8.6/demos` was spelled for the previous build, pruned nothing, and was
+ * invisible in every log line and gate). A path in `prunedSeedPathsOptional` is
+ * pruned when it is there and reported as absent when it is not, because the
+ * Tcl/Tk demos are data no import needs but a build that ships them may put them
+ * under a versioned directory.
+ */
 export const PRUNED_SEED_PATHS = LAYOUT.python.prunedSeedPaths.map((relative) =>
 	expandVersionToken(relative),
 );
+
+/** The seed content that is pruned when present and is not required to be. */
+export const PRUNED_SEED_OPTIONAL_PATHS = (
+	LAYOUT.python.prunedSeedPathsOptional ?? []
+).map((relative) => expandVersionToken(relative));
 
 /** The `<major>.<minor>` segment's home in the seed, e.g. `lib/python3.12`. */
 export const SEED_STDLIB_DIR = SEED_STDLIB_MARKER.split("/")
@@ -123,6 +148,16 @@ export const SEED_STDLIB_DIR = SEED_STDLIB_MARKER.split("/")
 export const UV_VERSION = LAYOUT.uv.version;
 
 /** `uv`'s own resource namespace under `Resources` (`package.json`'s
+ * `extraResources` maps into it for the platforms that ship one).
+ *
+ * WHICH PLATFORMS SHIP ONE, stated because the packaging lists and the staging
+ * step have to agree or a build ships binaries its own machine cannot run (review
+ * R1-3): `scripts/setup-python-resource.sh` stages the two `*-apple-darwin`
+ * triples, `publish.yml` runs that step in `build-macos` only, and `package.json`
+ * therefore names uv in `build.mac` alone. Windows and Linux keep the pip path
+ * they had. `uvBinaryName` still answers for every platform, because that map is
+ * the FILENAME convention rather than a claim that one is staged - a platform
+ * that later stages a uv names it through this one definition.
  * `extraResources` maps into it for every platform). */
 export const UV_NAMESPACE = LAYOUT.uv.namespace;
 

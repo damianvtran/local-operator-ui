@@ -301,7 +301,10 @@ if (Test-UvUsable) {
         $UvInstalled = $true
         Write-Output "local-operator installation with uv successful"
     } else {
-        Write-Output "WARNING: the uv install failed; retrying with pip, which is what this script used before uv was bundled."
+        # The exit code is printed for the same reason as on macOS and Linux: the
+        # fallback is deliberately forgiving, so this line is the only evidence
+        # that a bundled uv is present and failing for every user (QA Q2).
+        Write-Output "WARNING: the bundled uv is present but its install failed (exit $LASTEXITCODE); retrying with pip, which is what this script used before uv was bundled."
     }
 } else {
     if ($UvBin) {

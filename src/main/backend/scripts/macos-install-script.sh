@@ -224,6 +224,12 @@ done
 # shared `~/.cache/uv`, so the install neither reads nor pollutes a cache that
 # another tool (or another version of uv) is maintaining. Written here, after the
 # sweep, and handed to uv per invocation rather than exported.
+#
+# IT PERSISTS, and that is worth knowing on a user's disk: a full install leaves
+# ~118 MB there (measured; pip's own cache for the same dependency set is ~40 MB
+# and it also persists). Nothing else reads it today - the app's backend-update
+# path installs with pip - so it is there for the next provisioning or repair,
+# and it is what makes a retry converge in ~1.5 s instead of ~20 s.
 UV_CACHE_DIR="$APP_DATA_DIR/uv-cache"
 
 # Is the handed-down uv something we can actually run?
@@ -291,7 +297,13 @@ if uv_is_usable; then
     UV_INSTALLED=true
     echo "local-operator installation with uv successful"
   else
-    echo "WARNING: the uv install failed; retrying with pip, which is what this script used before uv was bundled."
+    # WHY THE EXIT CODE IS PRINTED (review round 1, QA Q2): this fallback has to
+    # be forgiving - an install must not fail because uv did - but "a bundled uv
+    # is present and fails" is a defect rather than a degraded path, and this line
+    # is the only place it shows up: the exit code is 0 and the UI is unchanged.
+    # `uv_is_usable` passing and a uv install SUCCEEDING are two different facts.
+    UV_STATUS=$?
+    echo "WARNING: the bundled uv is present but its install failed (exit ${UV_STATUS}); retrying with pip, which is what this script used before uv was bundled."
   fi
 else
   echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."

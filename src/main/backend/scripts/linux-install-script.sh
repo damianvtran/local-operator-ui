@@ -407,6 +407,9 @@ done
 
 # The cache lives under the app's own support directory rather than the user's
 # shared `~/.cache/uv`, and is handed to uv per invocation rather than exported.
+# It persists (~118 MB for a full install, measured on macOS) and nothing else
+# reads it today; it is what makes a retry converge in seconds rather than tens
+# of seconds.
 UV_CACHE_DIR="${APP_DATA_DIR}/uv-cache"
 
 # Is the handed-down uv something we can actually run?
@@ -483,7 +486,11 @@ if uv_is_usable; then
     UV_INSTALLED=true
     echo "local-operator installation with uv successful"
   else
-    echo "WARNING: the uv install failed; retrying with pip, which is what this script used before uv was bundled."
+    # The exit code matters here for the same reason it does on macOS: the
+    # fallback is deliberately forgiving, so this line is the only evidence that
+    # a bundled uv is present and failing for every user (QA Q2).
+    UV_STATUS=$?
+    echo "WARNING: the bundled uv is present but its install failed (exit ${UV_STATUS}); retrying with pip, which is what this script used before uv was bundled."
   fi
 else
   echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."

@@ -243,3 +243,49 @@ jobs:
             exit 1
           fi
           echo "macOS installation script check passed!"
+
+      # THE UV ARM, and why it belongs HERE rather than only on Linux (review
+      # R1-4 / QA Q7): macOS is the platform that ships a uv, and this script is
+      # not a copy of the Linux one - it refuses a standalone run without
+      # `LOCAL_OPERATOR_VENV_PATH`, defaults `PYTHONPYCACHEPREFIX`, and treats a
+      # failed `pip install --upgrade pip` as FATAL where Linux warns. A regression
+      # in the path macOS users actually take would otherwise ship green.
+      #
+      # The version is read from the layout definition rather than written here,
+      # for the same reason the app reads it from there: two spellings of a pinned
+      # version are two versions.
+      - name: Stage the pinned uv release for the uv arm
+        run: |
+          uv_version="$(python3 -c "import json;print(json.load(open('src/shared/bundled-runtime-layout.json'))['uv']['version'])")"
+          echo "Pinned uv version from the layout definition: ${uv_version}"
+          mkdir -p "$RUNNER_TEMP/uv"
+          curl --fail --location --silent --show-error --max-time 600 \
+            "https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-aarch64-apple-darwin.tar.gz" \
+            -o "$RUNNER_TEMP/uv/uv.tar.gz"
+          tar -xzf "$RUNNER_TEMP/uv/uv.tar.gz" -C "$RUNNER_TEMP/uv"
+          UV_BIN="$RUNNER_TEMP/uv/uv-aarch64-apple-darwin/uv"
+          "$UV_BIN" --version
+          echo "LOCAL_OPERATOR_UV_BIN=${UV_BIN}" >> "$GITHUB_ENV"
+
+      - name: Run the macOS installation script on its uv path
+        run: |
+          # The two names the script will not guess, exactly as the fallback step
+          # above supplies them: PYTHON_BIN must be the tree the app would ship for
+          # this runner's architecture (the script refuses a path inside an `.app`),
+          # and LOCAL_OPERATOR_VENV_PATH must be an instance it may write to - a
+          # DIFFERENT one from the fallback arm's, so the two arms cannot pass by
+          # reusing each other's environment.
+          if [ "$(uname -m)" = "arm64" ]; then PYTHON_DIR="python_aarch64"; else PYTHON_DIR="python"; fi
+          export PYTHON_BIN="${GITHUB_WORKSPACE}/resources/${PYTHON_DIR}/bin/python3"
+          export LOCAL_OPERATOR_VENV_PATH="$HOME/Library/Application Support/Local Operator/local-operator-venv-uv"
+          chmod +x src/main/backend/scripts/macos-install-script.sh
+          bash src/main/backend/scripts/macos-install-script.sh
+
+          if [ ! -x "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" ]; then
+            echo "Error: the uv install produced a venv with no pip; the app's backend-update path installs with pip in this very environment."
+            ls -la "${LOCAL_OPERATOR_VENV_PATH}/bin" || true
+            exit 1
+          fi
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" --version
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/local-operator" --version
+          echo "macOS uv installation path check passed!"

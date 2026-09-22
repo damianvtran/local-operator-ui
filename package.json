@@ -340,20 +340,6 @@
           "filter": [
             "**/*"
           ]
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv_aarch64",
-          "to": "uv/arm64",
-          "filter": [
-            "**/*"
-          ]
         }
       ],
       "target": [
@@ -387,20 +373,6 @@
         {
           "from": "resources/python_aarch64",
           "to": "python_aarch64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv_aarch64",
-          "to": "uv/arm64",
           "filter": [
             "**/*"
           ]

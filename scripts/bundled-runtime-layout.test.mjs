@@ -5,6 +5,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -306,12 +307,18 @@ test("the app resolves the directory the packaging lists copy into", () => {
 			macTargets.includes(uvResourceDir(arch)),
 			`build.mac.extraResources has no entry writing ${uvResourceDir(arch)}`,
 		);
+		// macOS ONLY, and that is the R1-3 correction: `setup-python-resource.sh`
+		// stages the two `*-apple-darwin` triples and `publish.yml` runs it in
+		// `build-macos` alone, so a win/linux entry naming these trees would ship
+		// ~74 MB of macOS Mach-O into an artifact whose only use for it is an `exec
+		// format error` and a pip fallback - when a dev's checkout had staged them.
 		for (const scope of ["win", "linux"])
-			assert.ok(
-				(config[scope].extraResources ?? [])
-					.map((entry) => entry.to)
-					.includes(uvResourceDir(arch)),
-				`build.${scope}.extraResources has no entry writing ${uvResourceDir(arch)}`,
+			assert.deepEqual(
+				(config[scope].extraResources ?? []).filter((entry) =>
+					String(entry.to).startsWith(UV_NAMESPACE),
+				),
+				[],
+				`build.${scope}.extraResources must name no uv: nothing stages a ${scope} uv, and the copy lists are not architecture-aware`,
 			);
 
 		// Dev: the staged checkout directory, by the name the staging script reads
@@ -353,6 +360,57 @@ test("the app resolves the directory the packaging lists copy into", () => {
 		}),
 		null,
 	);
+});
+
+test("a bundled uv that lost its execute bit is repaired at runtime", () => {
+	// Review R1-1. The build sets the mode and the release gate asserts it, and
+	// NEITHER covers the bundle that arrives by update: a ZIP drops modes, and
+	// codesign's seal does not cover them, so a 0644 uv passes every signature
+	// check. The install script's `[ -x ]` probe then fails, prints one WARNING and
+	// installs with pip - the feature silently off for every update-installed user.
+	// The console's own spawn-helper is repaired for exactly this reason; this is
+	// the second file the app execs out of its own bundle.
+	const resources = tempDir("lo-uv-mode-");
+	const name = uvBinaryName("darwin");
+	const binary = join(resources, uvResourceDir("arm64"), name);
+	mkdirSync(join(resources, uvResourceDir("arm64")), { recursive: true });
+	writeFileSync(binary, "#!/bin/sh\nexit 0\n");
+	const options = {
+		resources,
+		packaged: true,
+		arch: "arm64",
+		platform: "darwin",
+	};
+
+	// The ordinary case: the mode survived, and nothing is touched.
+	chmodSync(binary, 0o755);
+	const intact = appResolvers.ensureUvToolExecutable(options);
+	assert.equal(intact.healed, false);
+	assert.equal(intact.mode, 0o755);
+	assert.equal(intact.path, binary);
+
+	// The bundle that arrived by update.
+	chmodSync(binary, 0o644);
+	const healed = appResolvers.ensureUvToolExecutable(options);
+	assert.equal(healed.healed, true);
+	assert.equal(healed.path, binary);
+	assert.equal(
+		statSync(binary).mode & 0o777,
+		0o755,
+		"the repair has to be on disk, not a claim in the return value",
+	);
+	// A second call is a no-op, because the mode is now there.
+	assert.equal(appResolvers.ensureUvToolExecutable(options).healed, false);
+
+	// No uv staged at all: no path, and the reason names which absence it is
+	// rather than reporting a repair it did not make.
+	const absent = appResolvers.ensureUvToolExecutable({
+		...options,
+		resources: join(resources, "nothing-here"),
+	});
+	assert.equal(absent.path, null);
+	assert.equal(absent.healed, false);
+	assert.match(absent.reason, /no bundled uv is staged/);
 });
 
 test("the pinned uv release is named once, in the definition", () => {

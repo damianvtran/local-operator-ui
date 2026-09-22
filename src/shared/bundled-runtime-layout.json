@@ -2,6 +2,7 @@
 	"python": {
 		"version": "3.12.14",
 		"buildDate": "20260901",
+		"tkVersion": "9.0",
 		"seedNamespace": "python-runtime-seed",
 		"checkoutSeedNames": {
 			"arm64": "python_aarch64",
@@ -18,9 +19,9 @@
 			"lib/python{pyver}/idlelib",
 			"lib/python{pyver}/turtledemo",
 			"lib/python{pyver}/lib2to3",
-			"lib/python{pyver}/pydoc_data",
-			"lib/tk8.6/demos"
-		]
+			"lib/python{pyver}/pydoc_data"
+		],
+		"prunedSeedPathsOptional": ["lib/tk{tkver}/demos"]
 	},
 	"uv": {
 		"version": "0.12.17",

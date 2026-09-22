@@ -31,7 +31,7 @@ import {
 	windowsInstallScript,
 } from "./scripts";
 import { setupFailureCause } from "./setup-failure-causes";
-import { UV_TOOL_ENV, uvToolPath } from "./uv-tool";
+import { UV_TOOL_ENV, ensureUvToolExecutable } from "./uv-tool";
 import { VENV_PATH_ENV, managedVenvPath } from "./venv-paths";
 /**
  * The failure dialog's detail line: what happened, then what was recorded.
@@ -596,16 +596,18 @@ export class BackendInstaller {
 					 * by a build that lacks it - the CI install-script jobs are one such
 					 * build, and they run the fallback on every pull request.
 					 */
-					const uvPath = uvToolPath(this.managedOptions());
-					if (uvPath) {
-						env[UV_TOOL_ENV] = uvPath;
+					const uv = ensureUvToolExecutable(this.managedOptions());
+					if (uv.path !== null) {
+						env[UV_TOOL_ENV] = uv.path;
 						logger.info(
-							`Setting ${UV_TOOL_ENV} to ${uvPath}`,
+							uv.healed
+								? `Restored the execute bit on the bundled uv (${uv.path}) before handing it to the installer; the mode a bundle arrives with is not covered by codesign's seal`
+								: `Setting ${UV_TOOL_ENV} to ${uv.path}`,
 							LogFileType.INSTALLER,
 						);
 					} else {
 						logger.info(
-							`No bundled uv for ${process.arch}; the install script will install with pip`,
+							`No bundled uv for ${process.arch}: ${uv.reason}`,
 							LogFileType.INSTALLER,
 						);
 					}

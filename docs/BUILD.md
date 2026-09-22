@@ -178,18 +178,47 @@ architecture needs, or carries a legacy alias beside it.
 
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
-first run (measured: 128.9 s with pip against 14.8 s with uv, cold cache, the
-same interpreter and the same dependency set, on this host at ~25 concurrent
-sessions; both caches warm the same comparison is 178.3 s against 4.5 s). The `uv` binary ships as a sealed resource, pinned to an exact
-release and staged by `pnpm setup-python` from its publisher's signed and
-notarized build; the app hands its path down as `LOCAL_OPERATOR_UV_BIN`
-(`src/main/backend/uv-tool.ts`) and the scripts fall back to the pip path
-exactly as they ran before when it is absent or unrunnable. It is executed from
+first run. Measured on this host (three cold runs each, same interpreter and
+dependency set): pip's package phase is 33.0-40.7 s plus a 2.3-2.9 s
+`pip install --upgrade pip` the uv path does not pay, against uv's 12.8-16.1 s;
+end to end through the shipped script, 37.5-79.0 s against 31-34.5 s across four
+independent operators, and 20.4 s against 1.6 s with both caches warm. Read the
+ratio as link- and load-dependent (the phase win is 1.5-2.8x) and the seconds as
+this box's.
+
+The `uv` binary ships as a sealed resource, pinned to an exact release and staged
+by `pnpm setup-python` from its publisher's signed and notarized build; the app
+hands its path down as `LOCAL_OPERATOR_UV_BIN` (`src/main/backend/uv-tool.ts`)
+and the scripts fall back to the pip path exactly as they ran before when it is
+absent or unrunnable. **macOS only**, because that is where it is staged and
+tested: `build.win` and `build.linux` name no uv at all, since a macOS Mach-O in
+one of those artifacts is dead weight with a misleading name.
+
+**The mode is repaired at runtime, not only at build time.** A ZIP drops modes and
+`codesign`'s seal does not cover them, so a uv that arrived by update can be
+present, correctly signed and unrunnable - and the install script's `[ -x ]`
+probe would then take the pip path with one WARNING, silently turning the feature
+off. `ensureUvToolExecutable` (`src/main/backend/uv-tool.ts`) reads the mode and
+`chmod`s it back before handing the path down, the same shape the console's own
+bundled executable is repaired with (`ensureSpawnHelperExecutable`). It is executed from
 the bundle rather than copied out, unlike the interpreter: the interpreter's
 copy-out exists because a venv built on an in-bundle interpreter *records* that
 path and then resolves its stdlib inside the code-sealed `.app`, and uv has no
 such coupling - it is stateless, invoked with argv, and exits before the app is
 usable.
+
+**Execute bits under the seed: the executables must carry one, libraries need
+not.** Upstream ships loadable libraries at 0644 (`lib/itcl4.3.8/*`,
+`lib/thread3.0.6/*`, Tcl/Tk 9.0 in the `20260901` build) and at 0755
+(`lib/libpython3.12.dylib`), and it ships Python SOURCE files at 0755 as well. The
+gate asserts both directions it can assert functionally: no file that is not a
+Mach-O may carry an execute bit (the prune clears those), every Mach-O whose
+`filetype` is `MH_EXECUTE` must carry one, and `bin/python3` - the file a managed
+runtime's venv runs - must be one of them. It does NOT require the count of bits
+to equal the count of Mach-O files, which is what it did until the interpreter
+refresh moved Tcl/Tk to 9.0: `dlopen` mmaps a library rather than exec'ing it, so
+a 0644 dylib is correct, and a count rule that demanded otherwise would have been
+satisfied only by chmod'ing files the app never runs.
 
 **One definition of that layout.** The names above are spelled nowhere else.
 `src/shared/bundled-runtime-layout.json` holds the seed namespace, both

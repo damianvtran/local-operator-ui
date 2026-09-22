@@ -39,7 +39,13 @@
  * interpreters and the `*-apple-darwin` uv release, and neither `publish.yml`
  * nor `setup-python` stages them for a Windows or Linux build. Leaving
  * `--win`/`--linux` output byte-identical to what those platforms produce today
- * is the point.
+ * is the point, and that is why `build.win`/`build.linux` name no uv at all
+ * (review R1-3): the copy lists are not architecture-aware, so a checkout that
+ * had staged the mac uv would have shipped ~74 MB of Mach-O into a Linux or
+ * Windows artifact, whose only effect there is an `exec format error` inside the
+ * script's probe and a pip fallback. The interpreter names those lists DO carry
+ * are the same conditional - a dev's locally staged trees - and that is
+ * unchanged here.
  *
  * Usage: configured as `build.afterPack`; not meant to be run by hand. The
  * exported function is what the unit test drives.
@@ -123,6 +129,12 @@ export function packagedResourcesDir({
  * build is refused for the same reason it was deleted from `mac.target` - it
  * runs as either architecture on different machines, so it needs both trees and
  * cannot be pruned at all.
+ *
+ * Returns `{ pruned, kept, resourcesDir }`: the paths removed, the paths left in
+ * place (one per group - review N1: this was `kept: string | null` while the
+ * module pruned a single tree, and the per-group form is what a caller asking
+ * "what survived" wants), and the resources directory, or `resourcesDir: null`
+ * when the platform is not macOS.
  */
 export function pruneUnshippedBundledResources({
 	appOutDir,
