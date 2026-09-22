@@ -413,6 +413,7 @@ test("a row shows ONE trailing statement, in priority order", () => {
 		unstarted: false,
 		nested: false,
 		binding: "coder",
+		agentOpened: false,
 	};
 
 	assert.equal(show(base), "binding");
@@ -433,20 +434,58 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	);
 	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
 
+	/*
+	 * The agent-opened fact, which is the newest claim in the rule and the one
+	 * with a surprise in it: it OUTRANKS the binding while the two claims above
+	 * it are untouched. The pairing is the interesting half - both answer "who",
+	 * and an agent-opened session is bound to the agent that opened it, so the
+	 * binding is the half a reader can infer and the provenance is the half only
+	 * the row can say (the 2026-09-18 incident).
+	 */
+	assert.equal(show({ ...base, agentOpened: true }), "agent_opened");
+	assert.equal(
+		show({ ...base, agentOpened: true, binding: "" }),
+		"agent_opened",
+		"the claim is the wire's presence flag, not the binding beside it",
+	);
+	// Provenance is the row's OWN, unlike identity: a nested row still states it.
+	assert.equal(
+		show({ ...base, agentOpened: true, nested: true }),
+		"agent_opened",
+	);
+	// And the two claims above it keep their precedence over it.
+	assert.equal(
+		show({ ...base, agentOpened: true, unstarted: true }),
+		"not_sent",
+	);
+	assert.equal(
+		show({ ...base, agentOpened: true, marked: true }),
+		"conversation",
+	);
+
 	// The property that matters: whatever the input, the answer is exactly one of
-	// the four literals — never undefined, never a list. The return type is what
+	// the five literals — never undefined, never a list. The return type is what
 	// enforces "at most one" today, so this loop is here to catch a future
 	// refactor that widens it (returning an array of statements would pass every
 	// assertion above and fail here), not to re-assert the type.
-	const allowed = ["conversation", "not_sent", "binding", "none"];
+	const allowed = [
+		"conversation",
+		"not_sent",
+		"agent_opened",
+		"binding",
+		"none",
+	];
 	for (const marked of [false, true])
 		for (const unstarted of [false, true])
 			for (const nested of [false, true])
 				for (const binding of ["", "coder"])
-					assert.ok(
-						allowed.includes(show({ marked, unstarted, nested, binding })),
-						`${JSON.stringify({ marked, unstarted, nested, binding })} produced something outside the four literals`,
-					);
+					for (const agentOpened of [false, true])
+						assert.ok(
+							allowed.includes(
+								show({ marked, unstarted, nested, binding, agentOpened }),
+							),
+							`${JSON.stringify({ marked, unstarted, nested, binding, agentOpened })} produced something outside the five literals`,
+						);
 });
 
 /*

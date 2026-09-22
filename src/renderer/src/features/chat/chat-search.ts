@@ -342,12 +342,30 @@ export function searchChats(
  * So the number of claims is capped here, in the priority order a reader would
  * pick, and every slot is `shrink-0`: the search mark (why the row is onscreen at
  * all), else the row's own state (`· Not sent yet` — a chat that never carried a
- * message), else the binding. Whatever is not drawn stays reachable through the
- * row's `title`, the nested list, and the chat itself.
+ * message), else WHO OPENED IT (`· opened by …` — a workstream an agent opened),
+ * else the binding. Whatever is not drawn stays reachable through the row's
+ * `title`, the nested list, and the chat itself.
+ *
+ * WHY THE AGENT-OPENED FACT OUTRANKS THE BINDING, and why it sits below
+ * `not_sent` rather than beside it. Both statements answer "who", so the more
+ * surprising of the two wins: the binding says which profile a conversation YOU
+ * opened is answering, while the agent-opened marker says the row is not one of
+ * your own conversations at all — the 2026-09-18 incident, where a session an
+ * agent had opened sat in the sidebar looking exactly like one the operator had
+ * opened himself. Only one of the two can be drawn on that row, and the binding
+ * is the half a reader can infer from the marker (an agent's parallel workstream
+ * is bound to that agent), so the binding is what yields; it stays reachable
+ * through the row's `title`.
+ *
+ * The two claims ABOVE it keep their precedence unchanged, and deliberately: a
+ * row that is on screen because the search matched its CONVERSATION, or one that
+ * has never carried a message, was measured into place first, and nothing here
+ * moves either.
  */
 export type RowTrailingStatement =
 	| "conversation"
 	| "not_sent"
+	| "agent_opened"
 	| "binding"
 	| "none";
 
@@ -356,9 +374,26 @@ export function rowTrailingStatement(input: {
 	unstarted: boolean;
 	nested: boolean;
 	binding: string;
+	/**
+	 * Whether an agent opened this conversation — the presence of the wire row's
+	 * `opened_by` (`SessionOpenedBy` in `desktop-session-contract.ts`), which is
+	 * the fact even when every member inside it is null.
+	 *
+	 * A boolean rather than the object: what this rule decides is whether the row
+	 * makes the claim at all. Which agent it names, and how, is the row
+	 * component's business and does not change the precedence.
+	 */
+	agentOpened: boolean;
 }): RowTrailingStatement {
 	if (input.marked) return "conversation";
 	if (input.unstarted) return "not_sent";
+	/*
+	 * Provenance is the ROW'S OWN, so unlike the binding below it is stated on
+	 * nested rows too: a nested row inherits its IDENTITY from the parent it is
+	 * filed under, and it does not inherit who opened it — a conversation the
+	 * operator never opened is no less surprising for being listed under an agent.
+	 */
+	if (input.agentOpened) return "agent_opened";
 	// A nested row inherits the identity from its parent, so it has nothing to
 	// say here even when it is bound.
 	if (!input.nested && input.binding) return "binding";

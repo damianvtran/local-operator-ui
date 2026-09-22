@@ -1697,6 +1697,43 @@ export function ChatSidebar({
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
 	/*
+	 * Who opened a conversation, when an AGENT did rather than the operator.
+	 *
+	 * Read from the PRESENCE of `opened_by`, never from the members inside it: the
+	 * wire documents that a requesting side may be entirely unknown while the fact
+	 * that an agent opened the row is certain (`SessionOpenedBy` in
+	 * `desktop-session-contract.ts`), and the marker exists for exactly that fact —
+	 * on 2026-09-18 an agent-opened session sat in this list indistinguishable from
+	 * a chat the operator had opened himself.
+	 *
+	 * Two spellings of one fact, and the split is deliberate: `openedByAttribution`
+	 * is what the row DRAWS, so it must stay short enough to survive the slot's own
+	 * cap at the panel's narrow widths, while `openedByNote` is the tooltip's
+	 * clause, where a conversation name costs nothing and the whole attribution
+	 * belongs. The label is deliberately not drawn: it is a conversation NAME
+	 * ("Harden lop secret against agent credential leaks"), it is arbitrarily long,
+	 * and the trailing slot is the one place on this row where a long string costs
+	 * the title its width.
+	 *
+	 * `.trim()`, because an empty agent name is a name the backend could not
+	 * resolve rather than an identity: `opened by ` with nothing after it would be
+	 * the claim with its answer missing. The wire's `session` is not rendered — an
+	 * opaque id names nothing a reader of this row can act on — and stays typed for
+	 * whichever surface can use it.
+	 */
+	const openedByAttribution = (row: CanonicalSessionRow) => {
+		if (!row.opened_by) return null;
+		const agent = row.opened_by.agent?.trim();
+		return agent ? `opened by ${agent}` : "opened by an agent";
+	};
+	const openedByNote = (row: CanonicalSessionRow) => {
+		const opened = row.opened_by;
+		if (!opened) return "";
+		const agent = opened.agent?.trim();
+		const label = opened.label?.trim();
+		return `, opened by ${agent || "an agent"}${label ? ` in “${label}”` : ""}`;
+	};
+	/*
 	 * The two states the box can be in while it has no answer, and why they are
 	 * states rather than silence.
 	 *
@@ -1847,6 +1884,7 @@ export function ChatSidebar({
 			unstarted: unstarted.has(row.session_id),
 			nested,
 			binding: bindingName(row),
+			agentOpened: openedByAttribution(row) !== null,
 		});
 		const pinned = row.pinned === true;
 		/** The row's own name, used by the archive control's accessible name and tooltip
@@ -1937,6 +1975,10 @@ export function ChatSidebar({
 		 * the full title on its own line (untruncated and free to wrap inside the
 		 * primitive's `max-w-64`), the binding, then the row's status label and its tail
 		 * flags - `, not sent yet`, `, unread`, `, archived` - and the silent remedy.
+		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+		 * in "…"`) to the status line; on a row whose trailing slot could not draw the
+		 * marker (the search mark, `· Not sent yet`) this is the only pointer channel
+		 * that states it, which keeps the flyout at least as wide as the row.
 		 * The `sr-only` sentence the row already renders stays where it is: that is the
 		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
 		 * it does not move into a tooltip.
@@ -1958,6 +2000,7 @@ export function ChatSidebar({
 							? "found by search, beyond the chats listed here"
 							: "Recent")}
 					{silent ? ` · ${SILENT_REMEDY}` : ""}
+					{openedByNote(row)}
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
 					{unreadMarkKind(row) !== null ? ", unread" : ""}
 					{archived ? ", archived" : ""}
@@ -2119,11 +2162,12 @@ export function ChatSidebar({
 			    Read that docstring before changing anything here.
 			    What matters at this call site: the number of statements is capped
 			    rather than negotiated by the flex algorithm, no floor is needed
-			    because at most one statement can ever be drawn, and TWO elements
-			    truncate — the title, and the binding slot inside its own 45% cap,
-			    which is that cap doing the work a floor used to. The two literal
-			    statements below cannot truncate anything: they are fixed strings
-			    with no width to run out of. */}
+			    because at most one statement can ever be drawn, and THREE elements
+			    truncate — the title, and whichever of the two TEXT slots is drawn
+			    (the binding, and the agent-opened attribution) inside its own 45%
+			    cap, which is that cap doing the work a floor used to. The two
+			    literal statements below cannot truncate anything: they are fixed
+			    strings with no width to run out of. */}
 				{/*
 				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
 				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
@@ -2141,6 +2185,25 @@ export function ChatSidebar({
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's flyout carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
+				{trailing === "agent_opened" && (
+					/* WHO OPENED IT, drawn on the row an agent opened: the fact that the row is
+					   not one of the operator's own chats, which is the whole of the
+					   2026-09-18 incident (a parallel workstream sat here looking like a chat
+					   he had opened himself). It outranks the binding beside it — both answer
+					   "who", and this one is the more surprising; see `rowTrailingStatement`
+					   for why that ordering is the one a reader would pick.
+
+					   Bounded and truncating like the binding slot, and for the same measured
+					   reason: the agent name this can carry accepts 64 characters (`bindingName`'s
+					   own note, review round 4 R21), so an unbounded `shrink-0` slot would let
+					   the title absorb all of it and overflow the row. The cap is a share of
+					   the row rather than a fixed width so it scales with the panel, and what
+					   the cap clips is the AGENT NAME, never the claim: the tooltip and the
+					   accessible name carry the whole attribution. */
+					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						· {openedByAttribution(row)}
+					</span>
+				)}
 				{trailing === "binding" && (
 					/* Bounded, unlike the two literals below. `bindingName` is a
 					   user-authored agent or team name and the agent-name field
