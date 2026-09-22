@@ -2606,7 +2606,7 @@ async function sceneSessionArchive(cdp) {
 	 * does the same, and it is the SCENE's gesture: the app still never writes `scrollTop` itself.
 	 */
 	await cdp.evaluate(
-		`(() => { const node = document.querySelector('[data-session-row]:has(${supersedingOffer})'); if (node) node.scrollIntoView({ block: "center" }); })()`,
+		`(() => { const node = document.querySelector(${JSON.stringify(`[data-session-row]:has(${supersedingOffer})`)}); if (node) node.scrollIntoView({ block: "center" }); })()`,
 	);
 	await wait(200);
 	await hoverOver(cdp, `[data-session-row]:has(${supersedingOffer})`);
