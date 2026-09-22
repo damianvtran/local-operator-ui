@@ -226,6 +226,14 @@ function argValue(name, fallback = null) {
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
 /**
+ * THE STUB'S OWN REQUEST LOG, when one is given. The U6 press clause asserts against what the
+ * DAEMON SAW rather than against the DOM, because in this fixture the DOM cannot answer the
+ * question: an unpin moves the row into a section the scene does not render, so "gone from the
+ * list" is not evidence of an archive, and re-pressing the same coordinates lands on whatever now
+ * occupies that position. The write is the sound source - it is what settled U6 in pass 15.
+ */
+const STUB_LOG = argValue("--stub-log", null);
+/**
  * A live, ISOLATED backend this run owns, if it was given one.
  *
  * Absent is the default and the harness's historical shape: the app is pointed
@@ -3678,6 +3686,38 @@ async function sceneRowSpace(cdp) {
 		cdp.evaluate(
 			`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); return row ? row.getAttribute("data-session-archived") : "row-absent"; })()`,
 		);
+	/*
+	 * THE DAEMON'S OWN LOG, ASKED ONE WAY. Two clauses want it - the U6 press below, and the
+	 * scene's closing read that turns "no archive for this conversation anywhere in the run"
+	 * from a claim into a reading - and a second spelling of the same question would be a second
+	 * instrument. The source is the STUB's stdout, which is where the app's writes are visible;
+	 * this fixture's DOM cannot stand in for it, because an unpin moves the row into a section
+	 * that is not mounted and `row-absent` is not evidence of an archive.
+	 */
+	const stubWrites = async (id) => {
+		const nano = await import("node:fs");
+		const lines =
+			STUB_LOG && nano.existsSync(STUB_LOG)
+				? nano.readFileSync(STUB_LOG, "utf8").split("\n")
+				: [];
+		return {
+			pins: lines.filter((line) => line.includes(`/sessions/${id}/pin`)).length,
+			archives: lines.filter((line) => line.includes(`/sessions/${id}/archive`))
+				.length,
+		};
+	};
+	/*
+	 * THE RESTING READ COMES BEFORE THE HOVER, AND THAT ORDERING IS THE CHECK. Pass 16's clause
+	 * read the archive control's own box - the right element - but did it AFTER this block hovered
+	 * the row, so what it called "at rest" was measured with the pointer already on it (it saw
+	 * `archiveDisplay: "flex", archiveWidth: 24`). Read here, before any pointer movement, and the
+	 * comparison against the unpinned row below is what gives the number meaning.
+	 */
+	const restingCost = {
+		pinned: await readArchive(PINNED),
+		unpinned: await readArchive(UNPINNED),
+	};
+	note("U6 the pinned row's resting cost", JSON.stringify(restingCost));
 	const markAtRest = await verb(cdp, "measure", markRow);
 	const archivedBefore = await archivedFactOf();
 	await hoverOver(cdp, `[data-session-row="${PINNED}"]`);
@@ -3726,14 +3766,15 @@ async function sceneRowSpace(cdp) {
 		hitAtMarkCentre,
 	);
 	/*
-	 * READ THE ARCHIVE CONTROL'S OWN BOX, ON A PINNED ROW AND AN UNPINNED ONE. The pair WRAPPER is
-	 * always `flex` on a pinned row, so the first version of this check - which read the wrapper -
-	 * proved nothing about whether a slot was reserved. The requirement is about the archive
-	 * itself: at rest on a pinned row it must reserve NOTHING, which is why the two rows are read
-	 * together here - a number only means something next to the one it is compared with.
+	 * A DECLARATION RATHER THAN A `const` ARROW, and that is what makes the ordering above legal:
+	 * the resting read sits BEFORE any pointer movement, which is what the check is about, while
+	 * the block that moves the pointer sits here with it. A hoisted declaration lets the read keep
+	 * that position without dragging the pointer steps up with it - and it MUST return: an arrow
+	 * body returned the `evaluate` promise implicitly, a braced body does not, and a body that
+	 * merely calls `evaluate` hands every caller `undefined`.
 	 */
-	const readArchive = async (id) =>
-		cdp.evaluate(`(() => {
+	async function readArchive(id) {
+		return cdp.evaluate(`(() => {
 			const row = document.querySelector('[data-session-row="' + ${JSON.stringify(id)} + '"]');
 			const archive = row ? row.querySelector("[data-session-archive]") : null;
 			const box = archive ? archive.getBoundingClientRect() : null;
@@ -3744,11 +3785,7 @@ async function sceneRowSpace(cdp) {
 				archiveWidth: box ? box.width : 0,
 			};
 		})()`);
-	const restingCost = {
-		pinned: await readArchive(PINNED),
-		unpinned: await readArchive(UNPINNED),
-	};
-	note("U6 the pinned row's resting cost", JSON.stringify(restingCost));
+	}
 	check(
 		"U6: the pinned row at rest costs the pin alone (the archive is not reserving a slot)",
 		restingCost.pinned.archiveWidth === 0 &&
@@ -3787,30 +3824,29 @@ async function sceneRowSpace(cdp) {
 	 * `pinAfter !== null`, and once the row is gone there is no pin left to read.
 	 */
 	/*
-	 * A TOGGLE PAIR IS THE ASSERTION, because a DOM inference cannot carry it here: an unpin moves
-	 * the row into a section this scene does not render, so pass 15's `row-absent` reading was NOT
-	 * sound evidence of an archive - and the daemon's own log showed the press resolving as
-	 * `POST /v1/desktop/sessions/c4e17b90a2f6/pin -> 200`, with no archive request for that row at
-	 * all. A destructive action cannot be undone by pressing the same spot again; a toggle can. So
-	 * press, then press once more, and require the row to be back where it started.
+	 * ASSERT WHAT THE DAEMON SAW. A DOM-presence form cannot carry this fixture: an unpin moves the
+	 * row into a section this scene does not render, so `row-absent` is not evidence of an archive,
+	 * and pressing the same coordinates a second time lands on whatever now holds that position -
+	 * measured in pass 16, where both presses read `row-absent` and the second was as likely to hit
+	 * a neighbour as the mark. An instrument that can press a neighbouring row is worse than no
+	 * assertion at all. So the source is the request log: pressing the mark's centre must issue a
+	 * `pin` request for THIS session id and NO archive request for it anywhere in the run.
 	 */
 	const archived = archivedAfter === "true";
-	await pressPointerStationary(cdp, markAtRest.centre.x, markAtRest.centre.y);
-	await wait(700);
-	const afterSecondPress = await archivedFactOf();
-	const pinAfterSecond = await cdp.evaluate(
-		`(() => { const el = document.querySelector('${markRow}'); return el ? el.getAttribute("aria-pressed") : null; })()`,
-	);
+	const { pins: pinWrites, archives: archiveWrites } = await stubWrites(PINNED);
 	check(
 		"U6: a press at the visible mark's centre does NOT archive the conversation",
-		!archived && afterSecondPress === archivedBefore,
+		!archived && pinWrites >= 1 && archiveWrites === 0,
 		JSON.stringify({
 			archivedBefore,
-			archivedAfter,
-			pinAfter,
-			afterSecondPress,
-			pinAfterSecond,
 			archived,
+			pinAfter,
+			pinWrites,
+			archiveWrites,
+			stubLog: STUB_LOG,
+			reason: STUB_LOG
+				? null
+				: "no --stub-log given, so the write could not be read",
 		}),
 	);
 
@@ -3909,6 +3945,109 @@ async function sceneRowSpace(cdp) {
 		"no row carries the retired shared control's anchor any more",
 		panelRows.every((row) => row.actions !== true),
 		JSON.stringify(panelRows.map((row) => row.actions)),
+	);
+
+	/*
+	 * PUT THE FIXTURE'S PIN BACK, BECAUSE THE U6 PRESS EARLIER TOOK IT - and this is the first
+	 * place in the scene where that is possible at all.
+	 *
+	 * WHAT WENT WRONG WITHOUT THIS, measured on this head and recorded so nobody has to find it
+	 * twice: the U6 press above is aimed at the pinned row's mark, and the pin FLIPS - "the pin
+	 * may flip, that is a legitimate answer". From that press onward this run's fixture was an
+	 * UNPINNED conversation wearing a pinned row's name: the rest frames read `"pinned":false,
+	 * "pinWidth":0, "titleWidth":188` for the row the set calls PINNED, the acts' budget read
+	 * 56/56 because both of its frames were of that same unpinned row, and the keyboard walk's Tab
+	 * landed on a control labelled `Pin "..."` with `aria-pressed "false"` - four checks failing
+	 * against a state the instrument had moved, none of them about the layout or about the app.
+	 *
+	 * WHY THE RESTORE IS HERE RATHER THAN AT THE PRESS: an unpinned row leaves the `Pinned chats`
+	 * section for `Previous chats`, and that section is COLLAPSED by default - so immediately
+	 * after the press the row is not in the document at all (the press clause's own reading says
+	 * it: `"archivedAfter":"row-absent"`) and there is nothing to press. The expansion above is
+	 * what brings the row back, and the scene cannot avoid the press itself: U6's whole claim is a
+	 * press at the mark's resting centre. So the state the press moved is put back, the way the
+	 * offer step puts its own row back through the offer's Undo rather than leaving the list
+	 * emptied.
+	 *
+	 * THE PRESS IS AIMED THE WAY U6 INSISTS ON. The pointer goes on the row first (an unpinned
+	 * row's acts exist only once revealed), then the mark's own box is read twice with a settle
+	 * between - a pre-reveal read returns 0x0 and sends a press to (0,0), the instrument failure
+	 * this set has already paid for twice - and the hit test at its centre is asked to BE the mark
+	 * before a stationary press lands there. Both halves are asserted: the aiming here, and the
+	 * state it reached below. A press that missed the mark would surface as an archive request
+	 * against this conversation in the scene's closing read.
+	 */
+	await hoverOver(cdp, `[data-session-row="${PINNED}"]`);
+	await wait(300);
+	await hoverOver(cdp, `[data-session-row="${PINNED}"] [data-session-pin]`);
+	await wait(200);
+	const restoreMark = await verb(
+		cdp,
+		"measure",
+		`[data-session-row="${PINNED}"] [data-session-pin]`,
+	);
+	await wait(200);
+	const restoreMarkAgain = await verb(
+		cdp,
+		"measure",
+		`[data-session-row="${PINNED}"] [data-session-pin]`,
+	);
+	check(
+		"the fixture's pin can be put back: the mark is drawn at a non-zero, stable box and the hit test at its centre is the mark itself",
+		restoreMark.rect.width > 0 &&
+			restoreMark.rect.height > 0 &&
+			restoreMark.centre.x === restoreMarkAgain.centre.x &&
+			restoreMark.centre.y === restoreMarkAgain.centre.y &&
+			restoreMark.hitTest === true,
+		JSON.stringify({
+			before: restoreMark.rect,
+			after: restoreMarkAgain.rect,
+			hitTest: restoreMark.hitTest,
+		}),
+	);
+	await pressPointerStationary(
+		cdp,
+		restoreMarkAgain.centre.x,
+		restoreMarkAgain.centre.y,
+	);
+	await wait(700);
+	const repinState = await cdp.evaluate(
+		`(() => {
+			const row = document.querySelector('[data-session-row="${PINNED}"]');
+			const pin = row ? row.querySelector("[data-session-pin]") : null;
+			return {
+				present: row !== null,
+				pressed: pin ? pin.getAttribute("aria-pressed") : null,
+			};
+		})()`,
+	);
+	const restoredWrites = await stubWrites(PINNED);
+	check(
+		"and the fixture IS pinned again: the row the frames call PINNED reads `aria-pressed true`, and the restore wrote a pin and no archive",
+		repinState.present === true &&
+			repinState.pressed === "true" &&
+			restoredWrites.pins >= 2 &&
+			restoredWrites.archives === 0,
+		JSON.stringify({ ...repinState, ...restoredWrites }),
+	);
+	/*
+	 * AND THE FOCUS THE PRESS LEFT IS CLEARED, which is the frames' fidelity rather than
+	 * tidiness: the panel reveals a row's acts on `group-focus-within`, so a row holding the
+	 * caret can paint controls in a frame labelled "at rest" - the instrument's own mark, on the
+	 * very state the rest frames exist to measure. Clearing it also makes the re-capture
+	 * deterministic across runs and palettes.
+	 */
+	await cdp.evaluate(
+		"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); })()",
+	);
+	await parkPointer(cdp);
+	const focusAfterRestore = await cdp.evaluate(
+		"(() => (document.activeElement ? document.activeElement.tagName : null))()",
+	);
+	check(
+		"the restore leaves no caret behind, so no frame carries focus the fixture does not have",
+		focusAfterRestore === "BODY",
+		String(focusAfterRestore),
 	);
 
 	for (const width of WIDTHS) {
@@ -4143,6 +4282,22 @@ async function sceneRowSpace(cdp) {
 			})),
 		),
 	);
+	/*
+	 * THE STATE THIS CHECK READS, AND WHY IT READS IT NOW THE FIXTURE IS RESTORED. A pinned row
+	 * costs the pin alone at rest (design: the slide-away reveal) and the mark keeps the row's
+	 * right edge by ORDER - the archive is ordered ahead of it and exists only under the pointer -
+	 * so the number below is `restTitle - 28 - gutter`: the mark's own 24px and the row's 4px gap,
+	 * nothing for the archive. THAT IS THE DELIBERATE TRADE: the shipped build reserved 56px on
+	 * EVERY row and, at the 240 clamp minimum, drew no pin at all; this trades 28px of title on
+	 * pinned rows only (and nothing on unpinned ones) for a state that reads without hovering,
+	 * which is the rule this panel states about itself.
+	 *
+	 * THE TRIAGE THAT MATTERED: this check was RED for the last passes reading `rowWidth 216,
+	 * rowLeft 228, titleWidth 188` - an UNPINNED row's rest reading, because the U6 press earlier
+	 * in the scene had flipped the fixture's pin. The expectation was never stale and the layout
+	 * never moved it: the scene's own state was wrong, and the restore above the width loop is
+	 * what makes this check read the row it names.
+	 */
 	check(
 		"at rest on a PINNED row the mark is drawn at every width - including the 240 clamp minimum, where the shipped build drew nothing at all",
 		WIDTHS.every((width) => {
@@ -4192,6 +4347,20 @@ async function sceneRowSpace(cdp) {
 			})),
 		),
 	);
+	/*
+	 * WHAT MOVES, AND WHAT THE POINTER COSTS. On an unpinned row the pointer reveals both acts
+	 * (24 + 4 + 24 + 4 = 56); on a pinned row the mark is already there, so only the archive
+	 * arrives (24 + 4 = 28) - which is the whole of the change: the pin's budget is permanent on a
+	 * pinned row, the archive's is not. The trade is that a pinned row's title is 28px shorter
+	 * than an unpinned one's at the same width, and that an unpinned row's title shortens only
+	 * while the pointer is on it.
+	 *
+	 * THE TRIAGE THIS CHECK NEEDED - wrong frame, or wrong state? WRONG STATE, BOTH FRAMES. All
+	 * six readings come from the same row at the same widths, and `56/56` is what an UNPINNED row
+	 * reads twice over: at rest it reserves nothing, and under the pointer it reveals the same two
+	 * acts. On the restored fixture the pair reads `56/28` at every width, which is what this
+	 * check has always been written for.
+	 */
 	check(
 		"and the acts are what takes it: 56px on an unpinned row, 28 on a pinned one",
 		WIDTHS.every((width) => {
@@ -4472,6 +4641,15 @@ async function sceneRowSpace(cdp) {
 	const onThePin = await cdp.evaluate(
 		`(() => { const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null }; })()`,
 	);
+	/*
+	 * THE WALK STARTS FROM A PINNED ROW, AND THAT IS A PRECONDITION RATHER THAN DECORATION. The
+	 * reading that made this look wrong was `{"label":"Pin ...","pressed":"false"}` - the
+	 * fixture's own row, unpinned, because the U6 press had flipped it earlier in the run. The
+	 * instrument reached the pin (the label names THIS row) and the pin reported itself honestly;
+	 * only the starting state was wrong, and the restore above the width loop is what fixes it. A
+	 * run that fails here now is a run whose restore or whose row-move correction is at fault, and
+	 * those are different files.
+	 */
 	check(
 		"one Tab from the row's button lands on its pin, drawn for focus alone",
 		typeof onThePin.label === "string" &&
@@ -4557,6 +4735,14 @@ async function sceneRowSpace(cdp) {
 					: afterUnpin.pressed === "false"
 						? "app: activation delivered, the state moved"
 						: "app: activation delivered, the state did not move";
+	/*
+	 * THE SAME PRECONDITION, SEEN FROM THE OTHER SIDE. The verdict string below separates the
+	 * three ways this step fails - the chord never arriving, arriving without activation, and the
+	 * app not moving - and the reading it produced while the fixture was unpinned was a fourth,
+	 * unnamed one: the app moving the state the RIGHT way from the WRONG state (`pressed` "true"
+	 * where the walk expected "false"), i.e. the activation PINNED a row the check believed was
+	 * pinned already. With the fixture restored, `false` here means the unpin happened.
+	 */
 	check(
 		"unpinning from the keyboard flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
 		delivered !== null &&
@@ -4566,6 +4752,21 @@ async function sceneRowSpace(cdp) {
 			afterUnpin.pairDisplay === "flex" &&
 			afterUnpin.focusInsideRow === true,
 		JSON.stringify({ ...afterUnpin, delivered, verdict }),
+	);
+
+	/*
+	 * THE CLOSING READ THAT MAKES "NO archive FOR THIS CONVERSATION ANYWHERE IN THE RUN" TRUE
+	 * RATHER THAN TRUE-SO-FAR. The U6 press clause reads the daemon's log at its own moment, and
+	 * two interactions with this row follow it - the restore's press and the keyboard walk's
+	 * Enter - either of which could, if it missed the mark, land on the archive control instead.
+	 * That is exactly the hazard U6 exists for, so the question is asked again once every press
+	 * is spent, from the same source and by the same code.
+	 */
+	const closingWrites = await stubWrites(PINNED);
+	check(
+		"no press in this run wrote an archive for the conversation the U6 press was aimed at",
+		closingWrites.pins >= 1 && closingWrites.archives === 0,
+		JSON.stringify({ ...closingWrites, stubLog: STUB_LOG }),
 	);
 
 	const geometryPath = join(
