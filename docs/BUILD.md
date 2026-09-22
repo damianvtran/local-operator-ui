@@ -179,7 +179,7 @@ architecture needs, or carries a legacy alias beside it.
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
 first run. Measured on this host (three cold runs each, same interpreter and
-dependency set): pip's package phase is 33.0-40.7 s plus a 2.3-2.9 s
+dependency set): pip's package phase is 33.0-40.7 s plus a 2.3-2.8 s
 `pip install --upgrade pip` the uv path does not pay, against uv's 12.8-16.1 s -
 **2.5-2.8x on those pairs** (2.7-3.0x counting the skipped upgrade), saving
 20-25 s. QA's independent pair on a quieter box was 22.8 s against 33.9 s, so the

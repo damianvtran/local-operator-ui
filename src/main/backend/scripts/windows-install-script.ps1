@@ -237,7 +237,7 @@ if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
 # Same shape as the macOS and Linux scripts, and for the same reasons: uv resolves
 # and fetches in parallel - measured on macOS, cold cache, three runs each, same
 # interpreter: uv's package install is 12.8-16.1 s against pip's 33.0-40.7 s,
-# plus the 2.4-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
+# plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
 # operators rather than the "14.8 s against 128.9 s" quoted here before that
 # reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
 # unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in the venv

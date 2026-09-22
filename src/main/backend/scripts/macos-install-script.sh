@@ -173,7 +173,7 @@ echo "Virtual environment structure verified"
 # run, and pip spends it resolving and fetching serially. Measured on this
 # machine, cold cache, three runs each, the same interpreter and dependency set:
 # pip's package install is 33.0-40.7 s against uv's 12.8-16.1 s, plus the
-# 2.4-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
+# 2.3-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
 # on a quieter box was 33.9 s against 22.8 s, so read the ratio as 1.5-2.8x
 # ACROSS those two operators, and the seconds as this box's. Warm, a retry or a
 # repair: 15.9-33.8 s against 0.65-1.57 s.
