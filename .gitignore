@@ -48,6 +48,11 @@ coverage/
 
 resources/python
 resources/python_aarch64
+# The staged runtime trees `pnpm setup-python` writes: the interpreter and the
+# uv release, one directory per architecture, all of them build inputs the
+# packaging step copies into `Resources` (see src/shared/bundled-runtime-layout.json).
+resources/uv
+resources/uv_aarch64
 
 *storybook.log
 node_modules

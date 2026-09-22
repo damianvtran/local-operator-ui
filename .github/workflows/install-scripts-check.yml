@@ -72,6 +72,80 @@ jobs:
           fi
           echo "Linux installation script check passed!"
 
+      # THE UV ARM, and why the check above is not enough on its own.
+      #
+      # The step above runs with no `LOCAL_OPERATOR_UV_BIN` - which is what every
+      # artifact built before uv was bundled looks like - so it exercises the
+      # FALLBACK. The script's other path was otherwise only exercised on the
+      # machine that wrote it, and a path nobody runs is a claim rather than a
+      # feature: the failure it would hide is the silent one, an install that
+      # keeps falling back to pip for every user.
+      #
+      # The VERSION IS READ FROM THE LAYOUT DEFINITION rather than written here,
+      # for the same reason the app reads it from there: two spellings of a pinned
+      # version are two versions, and a job that staged a different one would be
+      # testing something nobody ships.
+      #
+      # WHAT THIS ASSERTS THAT MATTERS: `pip` is still in the venv uv built into
+      # (the app's backend-update path runs `pip install --upgrade
+      # local-operator` in that environment, which is why the scripts keep
+      # creating it with `python -m venv`), the installed console script still
+      # answers `--version`, AND THE UV PATH IS THE ONE THAT RAN - see the marker
+      # check below, which is the assertion the first version of this arm lacked
+      # (review R2-1: every other line here is satisfied by the pip fallback).
+      - name: Stage the pinned uv release for the uv arm
+        run: |
+          uv_version="$(python3 -c "import json;print(json.load(open('src/shared/bundled-runtime-layout.json'))['uv']['version'])")"
+          echo "Pinned uv version from the layout definition: ${uv_version}"
+          mkdir -p "$RUNNER_TEMP/uv"
+          asset_url="https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-x86_64-unknown-linux-gnu.tar.gz"
+          curl --fail --location --silent --show-error --max-time 600 "$asset_url" -o "$RUNNER_TEMP/uv/uv.tar.gz"
+          # The published digest, verified before anything is unpacked - the same
+          # step `scripts/setup-python-resource.sh` performs for the same asset
+          # (review N2): an arm that runs UNVERIFIED bytes is not running what the
+          # app ships, and the asymmetry is what a future author copies.
+          curl --fail --location --silent --show-error --max-time 600 "${asset_url}.sha256" -o "$RUNNER_TEMP/uv/uv.tar.gz.sha256"
+          echo "$(awk '{print $1}' "$RUNNER_TEMP/uv/uv.tar.gz.sha256")  $RUNNER_TEMP/uv/uv.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/uv/uv.tar.gz" -C "$RUNNER_TEMP/uv"
+          UV_BIN="$RUNNER_TEMP/uv/uv-x86_64-unknown-linux-gnu/uv"
+          "$UV_BIN" --version
+          echo "LOCAL_OPERATOR_UV_BIN=${UV_BIN}" >> "$GITHUB_ENV"
+
+      - name: Run the Linux installation script on its uv path
+        run: |
+          export LOCAL_OPERATOR_VENV_PATH="$HOME/.config/local-operator/local-operator-venv-uv"
+          LOG="$RUNNER_TEMP/linux-uv-arm.log"
+          # The script's OWN status, not a pipeline's: no `| tee`, because `-e`
+          # sees the last command of a pipeline.
+          if ! bash src/main/backend/scripts/linux-install-script.sh > "$LOG" 2>&1; then
+            echo "Error: the installation script failed on its uv path:"; cat "$LOG"; exit 1
+          fi
+          cat "$LOG"
+
+          # THE ASSERTION THIS ARM WAS MISSING (review R2-1). A venv with pip in it
+          # and a `local-operator --version` that answers are both true of the PIP
+          # path as well, so without this the arm stayed green on exactly the
+          # regression it exists to catch: a `uv_is_usable` that went false, or a
+          # uv branch left dead, prints one WARNING and installs with pip, and the
+          # user's install is slower with nothing anywhere saying so.
+          if grep -qE "Bundled uv not available|install failed \(exit" "$LOG"; then
+            echo "Error: the uv arm fell back to pip, so this arm proves nothing about the uv path."
+            exit 1
+          fi
+          if ! grep -q "installation with uv successful" "$LOG"; then
+            echo "Error: the script never reported installing with uv."
+            exit 1
+          fi
+
+          if [ ! -x "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" ]; then
+            echo "Error: the uv install produced a venv with no pip; the app's backend-update path installs with pip in this very environment."
+            ls -la "${LOCAL_OPERATOR_VENV_PATH}/bin" || true
+            exit 1
+          fi
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" --version
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/local-operator" --version
+          echo "Linux uv installation path check passed!"
+
   windows-install-check:
     name: Windows Installation Script Check
     runs-on: windows-latest
@@ -197,3 +271,76 @@ jobs:
             exit 1
           fi
           echo "macOS installation script check passed!"
+
+      # THE UV ARM, and why it belongs HERE rather than only on Linux (review
+      # R1-4 / QA Q7): macOS is the platform that ships a uv, and this script is
+      # not a copy of the Linux one - it refuses a standalone run without
+      # `LOCAL_OPERATOR_VENV_PATH`, defaults `PYTHONPYCACHEPREFIX`, and treats a
+      # failed `pip install --upgrade pip` as FATAL where Linux warns. A regression
+      # in the path macOS users actually take would otherwise ship green.
+      #
+      # The version is read from the layout definition rather than written here,
+      # for the same reason the app reads it from there: two spellings of a pinned
+      # version are two versions.
+      - name: Stage the pinned uv release for the uv arm
+        run: |
+          uv_version="$(python3 -c "import json;print(json.load(open('src/shared/bundled-runtime-layout.json'))['uv']['version'])")"
+          echo "Pinned uv version from the layout definition: ${uv_version}"
+          mkdir -p "$RUNNER_TEMP/uv"
+          asset_url="https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-aarch64-apple-darwin.tar.gz"
+          curl --fail --location --silent --show-error --max-time 600 "$asset_url" -o "$RUNNER_TEMP/uv/uv.tar.gz"
+          # The published digest, verified before anything is unpacked - the same
+          # step `scripts/setup-python-resource.sh` performs for the same asset
+          # (review N2): an arm that runs UNVERIFIED bytes is not running what the
+          # app ships, and the asymmetry is what a future author copies.
+          curl --fail --location --silent --show-error --max-time 600 "${asset_url}.sha256" -o "$RUNNER_TEMP/uv/uv.tar.gz.sha256"
+          echo "$(awk '{print $1}' "$RUNNER_TEMP/uv/uv.tar.gz.sha256")  $RUNNER_TEMP/uv/uv.tar.gz" | shasum -a 256 -c -
+          tar -xzf "$RUNNER_TEMP/uv/uv.tar.gz" -C "$RUNNER_TEMP/uv"
+          UV_BIN="$RUNNER_TEMP/uv/uv-aarch64-apple-darwin/uv"
+          "$UV_BIN" --version
+          echo "LOCAL_OPERATOR_UV_BIN=${UV_BIN}" >> "$GITHUB_ENV"
+
+      - name: Run the macOS installation script on its uv path
+        run: |
+          # The two names the script will not guess, exactly as the fallback step
+          # above supplies them: PYTHON_BIN must be the tree the app would ship for
+          # this runner's architecture (the script refuses a path inside an `.app`),
+          # and LOCAL_OPERATOR_VENV_PATH must be an instance it may write to - a
+          # DIFFERENT one from the fallback arm's, so the two arms cannot pass by
+          # reusing each other's environment.
+          if [ "$(uname -m)" = "arm64" ]; then PYTHON_DIR="python_aarch64"; else PYTHON_DIR="python"; fi
+          export PYTHON_BIN="${GITHUB_WORKSPACE}/resources/${PYTHON_DIR}/bin/python3"
+          export LOCAL_OPERATOR_VENV_PATH="$HOME/Library/Application Support/Local Operator/local-operator-venv-uv"
+          chmod +x src/main/backend/scripts/macos-install-script.sh
+          LOG="$RUNNER_TEMP/macos-uv-arm.log"
+          # The script's OWN status, not a pipeline's: no `| tee`, because `-e`
+          # sees the last command of a pipeline.
+          if ! bash src/main/backend/scripts/macos-install-script.sh > "$LOG" 2>&1; then
+            echo "Error: the installation script failed on its uv path:"; cat "$LOG"; exit 1
+          fi
+          cat "$LOG"
+
+          # THE ASSERTION THIS ARM WAS MISSING (review R2-1). A venv with pip in it
+          # and a `local-operator --version` that answers are both true of the PIP
+          # path as well - the job's own first arm demonstrates that - so without
+          # this the arm stayed green on exactly the regression it exists to catch:
+          # a `uv_is_usable` that went false, or a uv branch left dead, prints one
+          # WARNING and installs with pip, and the user's install is slower with
+          # nothing anywhere saying so.
+          if grep -qE "Bundled uv not available|install failed \(exit" "$LOG"; then
+            echo "Error: the uv arm fell back to pip, so this arm proves nothing about the uv path."
+            exit 1
+          fi
+          if ! grep -q "installation with uv successful" "$LOG"; then
+            echo "Error: the script never reported installing with uv."
+            exit 1
+          fi
+
+          if [ ! -x "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" ]; then
+            echo "Error: the uv install produced a venv with no pip; the app's backend-update path installs with pip in this very environment."
+            ls -la "${LOCAL_OPERATOR_VENV_PATH}/bin" || true
+            exit 1
+          fi
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/pip" --version
+          "${LOCAL_OPERATOR_VENV_PATH}/bin/local-operator" --version
+          echo "macOS uv installation path check passed!"

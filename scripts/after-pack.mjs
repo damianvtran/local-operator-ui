@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * The `afterPack` hook: keep only the interpreter tree this build can run, and
- * refuse to ship a legacy resource alias beside the private seed.
+ * The `afterPack` hook: keep only the runtime resource trees this build can run
+ * (the interpreter seed and the bundled `uv`), and refuse to ship a legacy
+ * resource alias beside the private seed.
  *
  * Why the alias refusal is a build failure rather than a nicety: the seed is
  * inert data that nothing executes from the `.app`, but an incumbent install's
@@ -23,9 +24,9 @@
  */
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
-import { LEGACY_RESOURCE_NAMES } from "./bundled-python-layout.mjs";
+import { LEGACY_RESOURCE_NAMES } from "./bundled-runtime-layout.mjs";
 import { prepareConsoleNative } from "./console-pack.mjs";
-import pruneAfterPack from "./prune-python-resource.mjs";
+import pruneAfterPack from "./prune-bundled-resources.mjs";
 
 /**
  * The legacy resource names a bundle must never carry again.
@@ -42,7 +43,7 @@ export default async function afterPack(context) {
 	const productFilename = context.packager?.appInfo?.productFilename;
 	if (productFilename == null) {
 		throw new Error(
-			"Cannot prepare the bundled Python: afterPack context has no packager.appInfo.productFilename",
+			"Cannot prepare the bundled runtime resources: afterPack context has no packager.appInfo.productFilename",
 		);
 	}
 	/*
@@ -55,7 +56,7 @@ export default async function afterPack(context) {
 	 * exactly the update path that motivated it (a ZIP drops modes and `codesign`'s
 	 * seal does not cover them).
 	 *
-	 * It does not depend on the Python prune below, and the Python prune returns
+	 * It does not depend on the bundled-resource prune below, and that prune returns
 	 * early when the resources directory cannot be resolved — so the console step
 	 * must run before that decision rather than inside it.
 	 */
