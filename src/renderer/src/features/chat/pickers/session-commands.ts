@@ -54,6 +54,27 @@ export const LOOP_COMMAND = "loop";
 /** The value `goal` takes to unset the standing goal (`/goal clear`). */
 export const GOAL_CLEAR_ARGS = "clear";
 
+/**
+ * The values `goal` takes to MARK IT DONE (`/goal --done`) and to dismiss a done
+ * chip (`/goal --dismiss`).
+ *
+ * BARE VERBS, like `clear` above and for the reason its own docblock records: the
+ * desktop's controls are BUTTONS, not a typed command line, and a UI may only send
+ * what every installed backend understands. `--done`/`--dismiss` are the flags the
+ * backend also accepts; `done`/`dismiss` are the whole-argument aliases, and the
+ * backend treats a bare word that is not an alias as goal TEXT (so `/goal done the
+ * report` stays a goal body). Sending the alias is what lets one control work on
+ * both spellings.
+ *
+ * THESE ARGUMENTS SHIP WITH THE WIRE FIELDS, which is why every caller must gate on
+ * `goalCapability` first: an older backend does not know the word, reads it as a
+ * goal body, and stores the literal `done` as the user's standing goal.
+ */
+export const GOAL_DONE_ARGS = "done";
+
+/** The value `goal` takes to dismiss the settled chip (`/goal dismiss`). */
+export const GOAL_DISMISS_ARGS = "dismiss";
+
 /** The value `loop` takes to cancel the running loop (`/loop stop`). */
 export const LOOP_STOP_ARGS = "stop";
 
