@@ -2382,12 +2382,24 @@ async function sceneSessionArchive(cdp) {
 		null,
 	);
 	/*
-	 * BOTH BOXES ARE RE-READ AFTER THE CARD SETTLES, which is what this check needed and did not
-	 * have: sonner animates the card's own height (`transition: ... height .4s`), so a band read
-	 * immediately after the message arrives describes a card that is still growing - measured in
-	 * this head's first full dark walk: `band 34, card 34`, a card mid-transition, while the
-	 * refusal settles at 142 and the band at 150. The PAIRING is the whole assertion (D14: the band
-	 * is the card's height plus the gap), so the two numbers have to describe the same moment.
+	 * BOTH BOXES ARE RE-READ AFTER THE CARD SETTLES, and this head's measurements say what that
+	 * settle can and cannot buy. Sonner animates the card's own height (`transition: ... height
+	 * .4s`), so a band read immediately after the message arrives describes a card that is still
+	 * growing - the first full dark walk of this head read `band 34, card 34` there against a
+	 * refusal that settles at 142 and a band at 150. WHAT THE `wait(700)` BELOW IS NOT is a wait
+	 * for that settle: measured 2026-09-22, the SAME pair was still `34 / 34` after the wait, in a
+	 * run whose very next dark run (and both light runs) read `150 / 142` - so the two reads
+	 * agreeing 700ms apart is not evidence that the card stopped moving, only that this read
+	 * waited on a clock. The band's height is not computed from the card's natural height: it is
+	 * a chain of ResizeObserver -> `setBandHeight` -> `max-height` steps, and a ResizeObserver
+	 * callback is delivered in a rendering update, which a `--window-mode=headless` window does
+	 * not produce on its own. Reported to the round as a flaky reading with both numbers; the fix
+	 * is to wait on the invariant (poll the pair, driving a frame per attempt) rather than on the
+	 * clock, which is NOT landed here because it changes what this check measures on a head whose
+	 * app code is closed to this pass.
+	 *
+	 * The PAIRING is the whole assertion (D14: the band is the card's height plus the gap), so the
+	 * two numbers have to describe the same moment.
 	 */
 	await wait(700);
 	const settledBand = await verb(
@@ -2398,6 +2410,12 @@ async function sceneSessionArchive(cdp) {
 	const settledCard = await verb(cdp, "measure", SIDEBAR_TOAST).catch(
 		() => null,
 	);
+	/*
+	 * THE PANEL THE CARD IS MEASURED IN, read once here because D15's question is a box in a box:
+	 * a card height without the panel it was measured at is the figure the document already had.
+	 */
+	const refusalPanel = (await verb(cdp, "measure", 'nav[aria-label="Chats"]'))
+		.rect;
 	check(
 		"the band's height is the card's plus the gap, so the list gives up exactly what the message spends (design round 4, D14)",
 		settledBand !== null &&
@@ -2408,10 +2426,40 @@ async function sceneSessionArchive(cdp) {
 			band: settledBand?.rect ?? null,
 			card: settledCard?.rect ?? null,
 		}),
+		/*
+		 * AND THE SAME TWO BOXES ON THE PASS SIDE, WITH THE PANEL THEY SIT IN (design round 4,
+		 * D15): the design round's ruling sizes the band by the card's MEASURED height, and until
+		 * this reading existed its only figures for the tallest card - the refusal - were the
+		 * document's `216x170` and `216x206`, both stale in x once D10's `min(248px, 100%)` widened
+		 * the refusal from 216 to 248 at this panel. So the refusal's box is a reading a green run
+		 * prints, beside the panel it is drawn in, and not only a failure's explanation.
+		 */
+		JSON.stringify({
+			band: settledBand?.rect ?? null,
+			card: settledCard?.rect ?? null,
+			gap: 8,
+			panel: refusalPanel,
+		}),
 	);
+	/*
+	 * THE BAND'S LARGEST CASE, MEASURED RATHER THAN QUOTED (design round 4, D15). The band's
+	 * height is the card's own plus the gap, and the tallest card this lane can draw is the
+	 * refusal - so this pair IS the number the ruling needs. The EARLY box is kept beside it
+	 * because the two are different readings rather than one: what is measured before the settle
+	 * is a card mid-transition (this head's first dark walk read `band 34, card 34` there), and
+	 * quoting that as the refusal's height is the mistake the settle exists to prevent.
+	 */
 	note(
-		"the band while the refusal stands",
-		JSON.stringify(bandBox?.rect ?? null),
+		"the refusal in the panel's lane: the early box, and the pair once both settled (design round 4, D15)",
+		JSON.stringify({
+			early: bandBox?.rect ?? null,
+			settled: {
+				band: settledBand?.rect ?? null,
+				card: settledCard?.rect ?? null,
+				gap: 8,
+				panel: refusalPanel,
+			},
+		}),
 	);
 	note(
 		"what a press at each covered row's archive control reaches",
@@ -3072,31 +3120,44 @@ async function sceneSessionArchive(cdp) {
 		null,
 	);
 	/*
-	 * UNSCOPED, AND THE SCOPE IT LACKS IS A FINDING (nit, round 2): `[data-session-row]
-	 * [data-chat-row]:focus` does not MATCH AT ALL here (measured this pass, in both palettes: ten
-	 * seconds of waiting, then the run threw) - i.e. what the keyboard lands on after a row is
-	 * clicked is NOT inside a session row, so the check below has always been reading "a
-	 * chat-row-shaped element holds focus", not "a ROW does", and it would pass with focus on a
-	 * section heading (`[data-chat-row]` names those too: the catalogue's own reading prints
-	 * `button "Agents"`). The scoped form is the assertion this check WANTS and cannot have until
-	 * the app's focus landing is understood; it is recorded here rather than landed as a red walk,
-	 * and the reading below prints what actually answered.
+	 * THE SCOPE THIS SELECTOR LACKS IS THE FINDING, AND IT IS NOW ASSERTED RATHER THAN RECORDED
+	 * (nit, round 2; re-baselined this pass from the reading below).
+	 *
+	 * `[data-chat-row]` names the catalogue's SECTION HEADINGS as well as its rows, so
+	 * `[data-chat-row]:focus` answers "a chat-row-shaped element holds the keyboard" - a question
+	 * a heading satisfies. The reading this pass produced, in both palettes, is verbatim
+	 * `{"selector":"[data-chat-row]:focus","target":"button \"Agents\"","focused":true}`: what the
+	 * keyboard lands on after a row is clicked is the `Agents` HEADING, not a row. The row-scoped
+	 * form, `[data-session-row] [data-chat-row]:focus`, is the assertion this check WANTS and
+	 * cannot have - it matches NOTHING here (measured, both palettes: ten seconds of waiting and
+	 * then the run threw), i.e. the focused element is not inside a session row.
+	 *
+	 * So the check states what actually lands: a catalogue element that is NOT the row which was
+	 * clicked and NOT the document, with the row-scoped miss read beside it. Landing the scoped
+	 * form as the assertion would be a red walk over a fact about the app's focus rules rather
+	 * than about this change; writing the unscoped form as if it were about a row is what this
+	 * re-baseline removes.
 	 */
+	const successorScoped = await verb(cdp, "measure", {
+		selector: "[data-session-row] [data-chat-row]:focus",
+		timeoutMs: 400,
+	}).catch(() => null);
 	check(
-		"the keyboard lands on a row rather than back on the document",
+		"the keyboard lands on a catalogue element rather than back on the document, and NOT inside a session row: the row-scoped form of the selector matches nothing (nit, round 2)",
 		successor !== null &&
 			successor.focused === true &&
+			successorScoped === null &&
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
-		JSON.stringify(successor),
+		JSON.stringify({ successor, successorScoped }),
 	);
 	/*
-	 * WHAT IT LANDED ON, PRINTED FOR THE RE-BASELINE: the row-scoped form of this selector does not
-	 * match at all (see above), so the assertion cannot be written from a guess - this reading is
-	 * its input, and it is evidence rather than decoration.
+	 * WHAT IT LANDED ON, RECORDED BESIDE THE ASSERTION: the check above can only say "not a row
+	 * and not the document", and which element answered is the difference between a heading and
+	 * some other chat-row-shaped surface - so both readings are printed rather than summarised.
 	 */
 	note(
 		"what holds the keyboard after a row is clicked",
-		JSON.stringify(successor),
+		JSON.stringify({ unscoped: successor, rowScoped: successorScoped }),
 	);
 	/*
 	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT OUT OF THE CORNER (design round 2,
@@ -3721,7 +3782,57 @@ async function sceneSessionArchive(cdp) {
 			undoRefused?.rowStillListed === false,
 		`${Date.now() - undoAt}ms after the undo: ${JSON.stringify(undoRefused)}`,
 	);
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	/*
+	 * AND THE PRESS AIMS AT THE CARD THE STEP ABOVE PROVED IS DRAWN, from a box read again at
+	 * the press rather than from whatever the selector resolves to at that instant.
+	 *
+	 * WHY NOT `clickAt`, WHICH EVERY OTHER LANE PRESS IN THIS FILE USES. Measured across fifteen
+	 * runs in both palettes: this press issued NO REQUEST AT ALL - the stub log's last
+	 * archive-family line stayed the `409` that raised the refusal, the store's write counter did
+	 * not move across the press, and the row stayed archived - while the step immediately above
+	 * passed, over the same drawn card, asserting a hit-testable Retry for this row. The card is
+	 * REPLACED IN PLACE by the answer (one sonner id carries both messages), and sonner animates
+	 * the replacement's own height (`transition: ... height .4s` - the very transition the band's
+	 * pairing check above re-reads both boxes after). So a box read at the instant the new card
+	 * mounts is a box the card is still moving out of, and a press aimed at it lands where the
+	 * button no longer is. This scene already carries the rule for that case: the walk's own
+	 * archive control, above, is measured twice with a settle between and the press goes to the
+	 * box the CHECK proved rather than to a fresh guess.
+	 *
+	 * SO THE BOX IS READ UNTIL TWO READS AGREE, and the press is STATIONARY - the spelling this
+	 * file documents beside the pin, where a press that dispatches `mouseMoved` first re-arms a
+	 * parked-pointer disarm. NOTHING ABOUT THE CHECK BELOW MOVES: its clauses still want the
+	 * refusal's own Retry landing the unarchive and the row back in the list, a press that
+	 * reaches nothing still fails it, and its reading now names the box it aimed at and what the
+	 * store's counter did across the press.
+	 */
+	const retryBox = async () => {
+		let previous = null;
+		for (let attempt = 0; attempt < 12; attempt += 1) {
+			const box = await verb(cdp, "measure", {
+				selector: `${SIDEBAR_TOAST} [data-button]`,
+				timeoutMs: 2_000,
+			});
+			if (
+				previous !== null &&
+				previous.centre.x === box.centre.x &&
+				previous.centre.y === box.centre.y &&
+				box.rect.width > 0 &&
+				box.rect.height > 0
+			)
+				return { box, settledMs: attempt * 150 };
+			previous = box;
+			await wait(150);
+		}
+		return { box: previous, settledMs: 12 * 150 };
+	};
+	const retryAt = await retryBox();
+	const attemptsBeforeRetry =
+		(await verb(cdp, "state"))?.archiveAttempts ?? null;
+	await pressPointerStationary(cdp, retryAt.box.centre.x, retryAt.box.centre.y);
+	await wait(400);
+	const attemptsAfterRetry =
+		(await verb(cdp, "state"))?.archiveAttempts ?? null;
 	const undoCleared = await waitForGone(cdp, SIDEBAR_TOAST, 8_000);
 	const restoredLabel = await labelOf(`${undoRow} [data-session-archive]`);
 	/*
@@ -3767,6 +3878,14 @@ async function sceneSessionArchive(cdp) {
 			typeof restoredLabel === "string" &&
 			restoredLabel.startsWith("Archive"),
 		`lane cleared in ${undoCleared.waitedMs}ms, label now ${JSON.stringify(restoredLabel)}`,
+		/*
+		 * THE PASS-SIDE READING, so a green run still says WHERE the press went and WHAT the store
+		 * did across it (`observed` is the half a passing check prints; `detail` is the failure's).
+		 * The box is the settled one the press used - the two reads the press waited for agreed on
+		 * it - and the counter is the app's own write stamp, which a press that reached nothing
+		 * leaves where it was.
+		 */
+		`the Retry was pressed at ${JSON.stringify(retryAt.box.centre)} (two reads ${retryAt.settledMs}ms apart agreed on that box) and the store's write counter went ${attemptsBeforeRetry} -> ${attemptsAfterRetry}; lane cleared in ${undoCleared.waitedMs}ms, label now ${JSON.stringify(restoredLabel)}`,
 	);
 
 	check(
@@ -4727,6 +4846,51 @@ async function sceneRowSpace(cdp) {
 		/archived/.test(offer240Reading.text ?? ""),
 		JSON.stringify(offer240Reading),
 	);
+	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await wait(700);
+	await parkPointer(cdp);
+	await waitForNoToasts(cdp, 5_000);
+	await verb(cdp, "setSidebarWidth", { width: 280 });
+	await wait(300);
+
+	/*
+	 * AND THE THIRD WIDTH, WHICH IS D10'S LAST UNPHOTOGRAPHED CORNER (design round 4, D16). At
+	 * 320 the lane is 264 and the card's cap is 248, so this is the FIRST width where the card is
+	 * narrower than the lane it is drawn in - the measured 240 and 280 cards fill theirs exactly,
+	 * so which edge the spare 16px falls on is not settled by either frame. Nothing in the band's
+	 * ruling depends on it (the band is a height, not an x), which is why this step adds NO CHECK:
+	 * a check would move the tally this round's QA is comparing, and the reading is what the round
+	 * asked for. The numbers are the note below - the card's own left/right against the panel's
+	 * inner edges say which side the slack sits on - and they are also in the geometry JSON that
+	 * ships beside the frame.
+	 */
+	await verb(cdp, "setSidebarWidth", { width: 320 });
+	await wait(400);
+	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
+	await wait(400);
+	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
+	await wait(700);
+	await parkPointer(cdp);
+	const offer320 = await captureToastPair(cdp, "offer-toast-320");
+	geometry["offer-toast-320"] = await rowSpaceGeometry(cdp, IDS);
+	offerFrames.push({
+		label: "offer-toast-320",
+		stable: offer320.stable,
+		toastOnScreen: offer320.toastText !== null,
+	});
+	note(
+		"the 320 card's x, and the lane and panel it sits in (design round 4, D16)",
+		JSON.stringify({
+			panel: geometry["offer-toast-320"].panel,
+			lane: geometry["offer-toast-320"].offer.lane,
+			card: geometry["offer-toast-320"].offer.toast,
+			text: geometry["offer-toast-320"].offer.text,
+		}),
+	);
+	/*
+	 * AND THE ROW IS PUT BACK, so the fixture this step found is the fixture it hands on - the
+	 * same sequence the 280 and 240 steps above end with.
+	 */
 	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
