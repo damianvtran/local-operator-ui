@@ -91,9 +91,10 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 										// the transcript spend one glyph on one fact.
 										//
 										// The COUNT is not drawn here and needs no arm of its own: the
-										// backend puts it inside `status.label` ("2 subagents running,
-										// 1 queued"), which this component already renders into `title`
-										// and `sr-only` below. That is deliberate rather than lazy - the
+										// backend puts it inside `status.label` ("2 subagents running ·
+										// 1 queued"), which this component renders into its `sr-only`
+										// name below and the row's own button reads for the tooltip
+										// over this mark. That is deliberate rather than lazy - the
 										// count changes on the same clock as the code, so a count riding
 										// a separate field would be read from a slower projection and
 										// could contradict the glyph beside it.
