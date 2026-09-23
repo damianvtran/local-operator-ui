@@ -60,6 +60,16 @@ export type DesktopModelCatalogue = {
 		model_id: string;
 		selector: string;
 		label: string;
+		/**
+		 * The source listing's own human name (`SpaceXAI: Grok 4.7`), carried
+		 * past `label`'s honesty rule for a consumer that disambiguates the
+		 * route some other way. It is a MATCH INPUT for the desktop picker's
+		 * search box (`pickerMatchKey`), not a displayed string: the operator
+		 * types the human name, so a filter that never reads it is the defect
+		 * where `grok 4.7` matched nothing. Optional because a catalogue served
+		 * by an older backend simply omits it.
+		 */
+		listing_name?: string;
 		connected: boolean;
 		context_window: number;
 		input_price: number;
