@@ -2,7 +2,14 @@
 /**
  * Seed a real backend session with enough durable history to need real paging.
  *
- *     node scripts/seed-paging-session.mjs <config-dir> [rows]
+ *     node scripts/seed-paging-session.mjs <config-dir> [rows] [title]
+ *
+ * `title` exists because the scrolled-switch evidence needs TWO conversations a
+ * reader can tell apart from the FRAMES alone (design round 2's D2): the sidebar
+ * clips both rows to the same width, so two sessions seeded under the default
+ * title paint identical chrome and the switch is only legible from the JSON. A
+ * caller seeding the switch arm passes a distinct title per conversation so the
+ * rendered row names which conversation is on screen.
  *
  * Why a seeder rather than a real conversation. The behaviour under test needs
  * at least two durable pages (the transport asks for 100 rows at a time), which
@@ -39,9 +46,12 @@ import { join, resolve } from "node:path";
 
 const CONFIG = process.argv[2];
 const ROWS = Number(process.argv[3] ?? 260);
+// Optional, and defaulted rather than required, so every existing caller keeps
+// the byte-identical fixture it had. See the header note for why it exists.
+const TITLE = process.argv[4]?.trim() || "Scroll paging fixture";
 
 if (!CONFIG) {
-	console.error("usage: seed-paging-session.mjs <config-dir> [rows]");
+	console.error("usage: seed-paging-session.mjs <config-dir> [rows] [title]");
 	process.exit(1);
 }
 const root = resolve(CONFIG);
@@ -110,14 +120,24 @@ writeFileSync(
 	join(dir, "desktop.json"),
 	JSON.stringify({ cwd: process.env.HOME ?? homedir() }),
 );
+// The title sidecar, in the shape `resume._read_title_sidecar` reads: `text`
+// (whitespace-normalised), `user_set` and `names`. Writing a bare `title` key
+// here did nothing - the reader looks for `text` - so both seeded
+// conversations fell back to their (identical, deterministic) opening message
+// and painted the same sidebar label, which is the non-distinctness D2 is
+// about. This is the shape the backend's own `write_session_title` produces.
 writeFileSync(
 	join(dir, "title.json"),
-	JSON.stringify({ title: "Scroll paging fixture" }),
+	JSON.stringify({
+		text: TITLE,
+		user_set: false,
+		names: [TITLE],
+	}),
 );
 
 console.log(
 	JSON.stringify(
-		{ sessionId, rows: ROWS, pages: Math.ceil(ROWS / 100), dir },
+		{ sessionId, rows: ROWS, pages: Math.ceil(ROWS / 100), title: TITLE, dir },
 		null,
 		2,
 	),

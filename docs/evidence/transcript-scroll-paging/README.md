@@ -354,6 +354,27 @@ backend pages and needs at least two of them to reach the start. The script
 fails loudly if the onboarding modal is up, if the transcript does not mount, or
 if the aim point falls outside the scroller.
 
+The `review` and `switch` capture modes need extra setup:
+
+```bash
+# review mode: one conversation, two arms (later-input / layout-only).
+node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id> \
+  docs/evidence/transcript-scroll-paging review
+
+# switch mode: TWO conversations, each seeded with its OWN title so the frames
+# are self-identifying (D2), and the target passed in SCROLL_PAGING_SWITCH_TARGET.
+node scripts/seed-paging-session.mjs /tmp/lop-paging 260 "Scroll paging fixture A"
+node scripts/seed-paging-session.mjs /tmp/lop-paging 260 "Scroll paging fixture B"
+SCROLL_PAGING_SWITCH_TARGET=<session-id-B> \
+  node scripts/scroll-paging-evidence.mjs http://localhost:5173 <session-id-A> \
+  docs/evidence/transcript-scroll-paging switch
+```
+
+The switch run reads each conversation's whole durable row set back over
+`sessions.history` before classifying any frame (U2), so it needs the same live
+backend the frames are taken against; it refuses if the two sets are not
+disjoint or if either conversation returns no rows.
+
 For the short-content case (clause L), seed ~130 rows and drive a window taller
 than the resulting content — the transcript must have no overflow at all for the
 chain to be the only route.
@@ -772,16 +793,29 @@ input lands while the page is held:
    ~6.5KB on both arms) and the held row's viewport offset is sampled every frame.
 
 ```
-later-input arm   rows 100 -> 160   extent +6545px   max post-input frame delta 0.00px   0 programmatic writes
-layout-only arm   rows 100 -> 160   extent +6612px   max post-input frame delta 0.00px   0 programmatic writes
+later-input arm   rows 100 -> 160   extent +6724px   max post-input frame delta 0.00px   0 programmatic writes
+layout-only arm   rows 100 -> 160   extent +6724px   max post-input frame delta 0.00px   0 programmatic writes
 ```
 
 **What the frames show, and what the numbers do not.** `review-later-input-01-hold-armed`
-and `review-later-input-03-after-real-page-landing` are the same row (`0225`) at
-the same place across the landing; the reader's input at `-172.5` steps the row up
-ONE time and it then holds for the whole reveal. The `maximumPostInputFrameDeltaPx`
-of `0.00` is the same fact in numbers: across the frames after the input stamp,
-the held row does not move a sub-pixel.
+and `review-later-input-03-after-real-page-landing` are the same row at the same
+place across the landing; the reader's input steps the held row by `-180.0`
+(`review-measurements.json` gives `anchorAtHold.offset = 7.6875` and
+`anchorAfter.offset = -172.31`, a step of `-180.0`) and it then holds for the
+whole reveal. The `maximumPostInputFrameDeltaPx` of `0.00` is the same fact in
+numbers: across the frames after the input stamp, the held row does not move a
+sub-pixel.
+
+**What `maximumPostInputFrameDeltaPx` measures, and what it excludes.** The
+value is the largest absolute change in the held row's viewport offset between
+CONSECUTIVE frames of `afterInputFrames`, which is the frames at or after the
+input stamp — and it is computed over `afterInputFrames.slice(1)`, so the
+reader's own first post-input frame is EXCLUDED. That first frame is the step
+itself (here `-180.0`px); the metric is the movement AFTER the step, so `0.00`
+means "the row did not move again after the reader's input landed", not "the row
+never moved". A reader who takes `0.00` as the total displacement would be
+reading the exclusion backwards, which is why the definition is stated here
+rather than left implicit in the JSON.
 
 **The honest limit, stated rather than implied.** On this scroller a durable
 page's rows mount BELOW the held row and the browser's own `overflow-anchor`
@@ -795,29 +829,82 @@ count. A future run on a path where the hook DOES correct (a height-changing row
 above the anchor) would turn the write count into the discriminating signal; this
 surface does not, and the README says so rather than reading a zero as proof.
 
+**The layout-only arm is not a discriminating control on this surface (QA round
+2, Q-4).** The two arms record the SAME `0` programmatic writes and the same
+`0.00` post-input delta, so the write count cannot separate them, and neither can
+this surface's null. Constructing a control that does would need a row shape
+where `overflow-anchor` does not absorb the landing (a row whose height changes
+ABOVE the anchor), which is a new capture rather than a re-read — and the
+justification is recorded in `review-measurements.json`'s
+`summary.discrimination` block rather than only here. **The arm that DOES
+discriminate is `scripts/transcript-paging-hook.test.mjs`:** it mounts the
+production `useScrollPaging` hook against a JSDOM scroller whose geometry is
+controlled, and asserts that a layout-only growth IS corrected while an
+after-input commit is NOT — the same two arms, separated by the correction the
+browser arms cannot reach. That test, not the browser null, is the proof of the
+correction path.
+
 ### `switch` mode — the scrolled conversation switch
 
-Two conversations are seeded (they differ only in title, so the reader can tell
-them apart in the sidebar), the reader is scrolled deep into A, then B is clicked
-and A is clicked back. The DOM, the store's own `activeSessionId`, and the row
-ids are sampled every frame across each switch.
+Two conversations are seeded, each with its OWN visible title so a reader of the
+frames alone can tell them apart; the reader is scrolled deep into A, then B is
+clicked and A is clicked back. The DOM, the store's own `activeSessionId`, and the
+row ids are sampled every frame across each switch.
 
 ```
-scrolled in A   rows 100  scrollTop -6480  activeSessionId b236a0c3aba0  firstRow [row 0170]
-settled in B    rows  60  scrollTop     0  activeSessionId c32765676410  firstRow [row 0210]
-back in A       rows  60  scrollTop     0  activeSessionId b236a0c3aba0  firstRow [row 0215]
+scrolled in A   rows 100  scrollTop -6480  activeSessionId b708b843a001  firstRow [row 0160]
+settled in B    rows  60  scrollTop     0  activeSessionId 5db6ec2ab5f3  firstRow [row 0200]
+back in A       rows  60  scrollTop     0  activeSessionId b708b843a001  firstRow [row 0200]
 ```
 
 - **Offset is not carried across the switch:** `settledBScrollTop` is `0` against
   A's `-6480`. The scrolled state belongs to A and is not imposed on B.
-- **No stale-content frame:** across 198 consecutive frames the store's
-  `activeSessionId` took exactly the two expected values, and NO frame carried B's
-  identity over A's rows (the frame whose id is the target begins from `rows=0`,
-  the empty pane between conversations, and the first painted row is B's).
+- **No stale-content frame, read against the conversations' OWN rows (UX round
+  2, U2).** Each frame is classified by whether its first painted row id belongs
+  to A's known row set or B's, and both sets are read from the two conversations'
+  own `sessions.history` pages — NOT from the frames under test. The scrolled A
+  top row that round 2 could not see is now in the set the B-labelled frames are
+  judged against, so "B's identity over A's scrolled rows" is a classification
+  the reading can actually produce. `switch-measurements.json`'s
+  `frames.classifier` reports the two set sizes, the scrolled top row id and
+  whether it is in A's set (`scrolledTopRowIsInA: true`), so the reading is
+  auditable; the run refuses if the sets are not disjoint, because then a frame's
+  first row could identify nothing. The classifier is SYMMETRIC — a frame is
+  stale when its identity and its painted rows disagree in EITHER direction, not
+  only the round-2 direction.
+- **The sampling covers every content change (UX round 2, U1).** Round 2's
+  timeline had two multi-frame gaps (~60ms and ~73ms) sitting exactly on the
+  content transitions, so a one- or two-frame stale flash could fall inside a gap
+  and the count would still read `0`. The round-3 sampler is driven by a
+  `requestAnimationFrame` tick, a 4ms interval, **and a `MutationObserver` over
+  the whole document** — a stale frame IS a DOM change, and a DOM change records
+  a sample before the next paint, so no DOM state can exist between two samples.
+  The run ASSERTS the observer was actually driving the recorder
+  (`verdict.mutationsObserved` > 0) rather than asserting a wall-clock gap bound:
+  a time bound would fail on the host's own main-thread stalls, which is exactly
+  what the observer makes irrelevant. `frames.maxInterFrameGapMs` and
+  `frames.transitionGaps` are still recorded as the description of where the
+  thread stalled, but they are a record, not a gate. (The observer is what
+  makes the instrument discriminating rather than the clock: on the first run
+  with it, the pre-paint samples from a `localStorage` write were themselves two
+  "stale" readings that the wall-clock sampler never saw — the round-2 zero was
+  an artefact of the gap, not of the switch.)
 - **The frames** `switch-01-scrolled-in-a`, `switch-02-settled-in-b`,
-  `switch-03-back-in-a` are the three settled states; the first shows A scrolled
-  into `[row 0199]`, the second B at its own arrival state (`[row 0259]`), the
-  third A back at its arrival state.
+  `switch-03-back-in-a` are the three settled states, and each names the
+  conversation it shows in BOTH the header and the highlighted sidebar row (the
+  two seeded titles differ — `Scroll paging fixture A` and `Scroll paging fixture
+  B`), so a reader of the frames alone can tell which session is on screen. The
+  first shows A scrolled mid-history (`[row 0195]`–`[row 0200]`), the second B at
+  its own arrival state (`[row 0255]`–`[row 0259]`), the third A back at its own
+  arrival state.
+
+**What a frame still cannot prove about the round trip.** `switch-03-back-in-a`
+shows A's own content on return, but NOT A's pre-switch SCROLL POSITION
+surviving the round trip: the settled state is A's arrival state, not the deep
+position `switch-01` was taken in. This harness measures whether stale content
+paints during the switch and whether the offset is carried INTO B; it does not
+measure whether A's scroll offset is restored when the reader comes back, and it
+claims nothing about that.
 
 ### The two frames this round's design finding asked for (D1)
 
