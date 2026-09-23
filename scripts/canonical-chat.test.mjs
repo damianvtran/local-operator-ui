@@ -1728,6 +1728,11 @@ test("Restore hands back both halves of the held payload, so the guard admits it
 	// The press, in the composer's own terms: the row is cleared and the held paths
 	// are written back. (The chip objects are the composer's; only the paths are the
 	// payload, which is why the store records paths.)
+	//
+	// The clear is not this test setting up a state the app does not reach: an echo
+	// takes the chip row on its way out (`clearStagedPayload`), so a send of a
+	// message WITH a file arrives at this press with an empty row even on the
+	// still-mounted composer, not only on the remounted one.
 	useConversationInputStore.getState().clearAttachments(session);
 	for (const path of held.submittedAttachments)
 		useConversationInputStore
@@ -4228,5 +4233,50 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	assert.ok(
 		!/SLASH_SUBMISSION/.test(page),
 		"chat-page.tsx has a whole-draft text-shape guard again; that is the second decision QA round 2's Q4 came from",
+	);
+});
+
+/*
+ * R1, ON THE COMPOSER'S OWN SIDE: one payload, one trigger, and no second
+ * clearer left behind.
+ *
+ * `echo-delivery.test.mjs` drives the shipped hook over the shipped store and
+ * pins WHEN the payload leaves and what a refusal owes back. This is the other
+ * half of that claim and it is a different failure: the composer used to clear
+ * the chip row and the staged replies AFTER the send's promise settled, while the
+ * text left at the echo - so the two halves of one payload travelled on two
+ * clocks and the interval between them showed the user's message with its
+ * attachment in the transcript beside the composer's chip for that file.
+ *
+ * Behaviour cannot pin the ABSENCE of a second trigger: a composer that cleared
+ * the row at the echo AND again on settle would pass every case in that file,
+ * because the second clear is a no-op. What it would leave is the handle - the
+ * next edit that moves one of the two calls back, or adds a third, with nothing
+ * on screen to say so. So the submit's own body is read, with comments stripped
+ * first so a sentence explaining the rule cannot satisfy it.
+ *
+ * THE RESTORE PRESS IS DELIBERATELY OUTSIDE THIS WINDOW and is not an exception
+ * to it: it is walked in `echo-delivery`'s R3 case and pinned above in Q-2, it
+ * runs on a press rather than on a settle, and it REPLACES the row it writes -
+ * which is the opposite job from clearing the payload a send is carrying out of
+ * the composer.
+ */
+test("the composer clears no payload half of its own, so the echo is the only trigger", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const start = rendered.indexOf("const onSubmit = useMemo(");
+	assert.ok(start > 0, "the composer's submit is not where this test reads it");
+	const end = rendered.indexOf("\n\t\t);", start);
+	assert.ok(end > start, "the composer's submit has no end for this window");
+	const submit = rendered.slice(start, end);
+	assert.ok(
+		submit.includes("storeCitedCredentials"),
+		"the window this test reads is not the submit's own body, so it proves nothing about the submit",
+	);
+	assert.ok(
+		!/clearAttachments\(|clearReplies\(/.test(submit),
+		"the composer clears a payload half of its own again: the chip row and the staged replies must leave with the TEXT, at the echo (`clearStagedPayload`), or the transcript shows the file while the composer still shows its chip",
 	);
 });

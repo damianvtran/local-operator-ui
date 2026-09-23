@@ -450,3 +450,93 @@ matches the marker run's box exactly at both rungs (157.33 × 17 at 1024,
 147.67 × 16 at 440), four deltas `0` at every rung, `0,0,0,0` at `scrollTop` 113
 and 225 in the scrolled story, and `0` after the composer's own box is narrowed
 866 → 584 and 374 → 194.
+
+---
+
+## The pending send: `pending-send`, `pending-send-payload`, `pending-send-chip-row`
+
+Three states of ONE press, added with the fix for the operator's report of
+2026-09-23: on pressing Send there is a window - the image encode plus the
+create hop - in which the transcript already shows the user's message with its
+attachment while the composer has cleared its text and still shows the chip for
+that attachment, under the IDLE placeholder. It reads as one file sent twice,
+and as a send that half-happened.
+
+The cause was two triggers for one payload: the words left at the echo
+(`onEchoPainted`) and the chip row and the staged replies left when the send
+SETTLED. Both now leave in one call (`use-message-input`'s `clearOnce`, which
+calls `clearStagedPayload`), and the composer says so itself while a send it
+made is unacknowledged - `sendInFlight`, a state of this composer's own press
+rather than a reader of the transcript's - which is the new placeholder
+`Sending your message`.
+
+The frames were produced by the repository's own rig:
+
+```
+pnpm storybook --port 6094 --no-open
+node scripts/capture-evidence.mjs http://127.0.0.1:6094 \
+  --only=chat-message-input--pending-send --allow-backend \
+  --theme-settle-ms=120000
+```
+
+`--theme-settle-ms` is not optional on this box: at the load the pass ran under
+(~117), the first cold `iframe.html` load did not finish the module graph inside
+the shipped ten-second window, so the run died on its first frame with
+`document carries theme "" after 10s`. The raised budget is a ceiling, not a
+cost - once the graph is warm every later frame settles in well under a second -
+and the whole pass (36 frames, three stories x twelve themes) took ~4 minutes.
+
+| State | What the frame is |
+| --- | --- |
+| `pending-send-chip-row` | a file staged and nothing typed: the chip row's own geometry, which this surface had no frame for at all |
+| `pending-send-payload` | pressed, echo NOT yet painted: every register of the payload is still the composer's - the words in the field and the file in the row above them |
+| `pending-send` | the echo has landed: the field and the chip row are empty TOGETHER, under `Sending your message` |
+
+### Before and after, honestly
+
+`pending-send` is the frame the defect was, and its "before" cannot be taken
+from this tree: the two halves leave through one call now, so the pre-fix
+appearance (the chip still in the row under `Ask me for help`) is not reachable
+from this code. The pre-fix placeholder half is already committed beside it -
+`idle/localOperator*.webp`, unchanged by this change - and a reviewer who wants
+the pre-fix chip half has to photograph the base commit, which is a QA pass
+rather than a capture this branch can honestly make. The pair that IS here is
+`pending-send-payload` against `pending-send`: the same payload, one moment
+before the echo and one moment after, and the claim is that the chip leaves with
+the words in between.
+
+The three plays assert rather than pose:
+
+- `pending-send-chip-row` measures the TILE's box (not the name span's, which
+  sits inside the ground the row draws) against the field's, and against every
+  ancestor that could clip it, and throws rather than releasing the shutter if
+  either fails. Both pass on all twelve themes.
+- `pending-send-payload` throws if the words or the chip have left before the
+  echo.
+- `pending-send` throws if the placeholder is not the composer's own sentence,
+  if the field still holds the message, or if the chip row still renders a
+  remove control for the file the transcript is carrying.
+
+### The reported geometry, measured
+
+The report also carried "the chip row rendering clipped/overlapping the text
+region". It is not a geometry defect, and the `pending-send-chip-row` frame plus
+its play are the measurement: the tile is `size-25` (100x100) at `y=86..185` in
+the `localOperatorDark` frame, the field's first ink row is `y=216`, and the
+composer's one scroll container (`max-h-[240px]`) does not cut the row - so the
+rows are a band in the composer's own column with ~31px between the tile's
+bottom edge and the field's text, exactly as that container's own comment says.
+
+What the screenshot shows is the STATE, not the box: a chip sitting directly
+above an empty field has nothing between it and the text region to separate the
+two bands, which is why it reads as one area - and it is a state a send can no
+longer be in, because the chip now leaves with the words.
+
+One adjacent defect was found while measuring this and is NOT fixed here:
+`AttachmentsPreview`'s dwell preview (`LARGE_PREVIEW`) is a `size-75` box at
+`-top-80` inside that `max-h-[240px] overflow-y-auto` scroller, so a hover
+preview 300px tall starting 320px above the tile is outside its own scroll port
+and cannot be seen at all. Computed from the two shipped class values rather
+than measured in a browser; it is a pre-existing, hover-only affordance of a
+heavily reviewed component, so it is recorded for its own change rather than
+folded into this one.
