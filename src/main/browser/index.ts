@@ -26,10 +26,7 @@ import { consentClickHandler } from "./consent-click";
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
-import {
-	BrowserHost,
-	isReportableLoadFailure,
-} from "./host";
+import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
