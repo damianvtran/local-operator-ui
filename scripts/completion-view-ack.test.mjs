@@ -243,11 +243,23 @@ const storeBusy = (retryAfterMs) =>
 		retryAfterMs,
 	);
 
+/** A `409 superseded_completion_token` refusal, as the transport raises it. */
+const superseded = () =>
+	new DesktopControlError(
+		409,
+		"This completion is no longer the conversation's current one.",
+		undefined,
+		"superseded_completion_token",
+	);
+
 /**
  * Drive one hook instance: build the DOM, run the effect, and return a `tick`
  * that runs what the interval would have run.
  */
-function mount(transport, { covered = null } = {}) {
+function mount(
+	transport,
+	{ covered = null, innerHeight = 800, anchor = true } = {},
+) {
 	const element = {
 		getBoundingClientRect: () => ({
 			left: 0,
@@ -258,7 +270,20 @@ function mount(transport, { covered = null } = {}) {
 		}),
 		contains: (node) => node === element,
 	};
-	const checks = [];
+	/*
+	 * THE INTERVAL TABLE IS THE REAL ONE, and that is a fix in its own right
+	 * (agent review round 1, M2): `clearInterval` used to be installed as a no-op
+	 * here and `tick` stepped only the NEWEST callback, so an interval this hook
+	 * leaked - a dropped `stop()`, a missing effect cleanup - was invisible to
+	 * every case in the file, while "loop lifetime" is one of the things this PR
+	 * claims. The fixture keeps the ids it hands out and deletes the ones the hook
+	 * clears, so `live()` answers how many intervals the loop actually holds; the
+	 * teardown cases at the bottom of this file are what read it.
+	 */
+	const intervals = new Map();
+	let nextTimerId = 0;
+	/** Every selector this mount's DOM probe has asked for. */
+	const queries = [];
 	globalThis.__effects = [];
 	// One array per MOUNT, cleared cursor per render: this is one component
 	// instance, and a ref is per instance rather than per render.
@@ -273,6 +298,7 @@ function mount(transport, { covered = null } = {}) {
 		activeSessionId: SESSION,
 		activeDraftKey: null,
 		readAckRearm: null,
+		readAckNotice: null,
 	});
 	globalThis.__transport = transport;
 	globalThis.document = {
@@ -290,40 +316,91 @@ function mount(transport, { covered = null } = {}) {
 	};
 	globalThis.CSS = { escape: (value) => String(value) };
 	globalThis.innerWidth = 1000;
-	globalThis.innerHeight = 800;
+	globalThis.innerHeight = innerHeight;
 	globalThis.requestAnimationFrame = () => 0;
 	globalThis.cancelAnimationFrame = () => {};
+	/*
+	 * BOTH SPELLINGS REACH THE SAME TABLE, and this is the half that made a leak
+	 * invisible rather than merely unasserted: the hook creates its interval with
+	 * `window.setInterval` and clears it with the BARE `clearInterval`, so a fixture
+	 * that installed only the `window` one left the clear landing on Node's own
+	 * timer table - the loop kept ticking after `stop()` and nothing could see it
+	 * (agent review round 1, M2).
+	 */
+	globalThis.clearInterval = (id) => {
+		intervals.delete(id);
+	};
 	globalThis.window = {
 		setInterval: (check) => {
-			checks.push(check);
-			return checks.length;
+			nextTimerId += 1;
+			intervals.set(nextTimerId, check);
+			return nextTimerId;
 		},
-		clearInterval: () => {},
+		clearInterval: (id) => {
+			intervals.delete(id);
+		},
 	};
-	const root = { current: { querySelector: () => element } };
+	const root = {
+		current: {
+			// Recorded, not just answered: the SELECTOR is what says which completion
+			// an attempt hit-tested, and "the anchor hit test is the definition of
+			// shown" is only a claim about the token actually sent if the row it asked
+			// for is the one that token names.
+			querySelector: (selector) => {
+				queries.push(selector);
+				return anchor ? element : null;
+			},
+		},
+	};
 
 	/** One render of the component that calls the hook. */
 	const render = (state = frontend(), ready = true) => {
 		globalThis.__refCursor = 0;
 		return useCompletionView(state, ready, root);
 	};
+	/**
+	 * The cleanup of the effect run in flight, as React holds it.
+	 *
+	 * Held per MOUNT rather than per case, because that is what React does: the
+	 * next run of the effect calls the previous run's cleanup before its body, and
+	 * an unmount calls it and nothing else.
+	 */
+	let effectCleanup = null;
 
 	return {
 		render,
 		/**
-		 * A render that MOUNTS the loop: run the effect body once, as React does
-		 * when the hook's own deps change.
+		 * A render that (RE)RUNS the loop's effect: the previous run's cleanup, then
+		 * the body, which is React's own order for a dependency change.
 		 */
 		start: (state = frontend(), ready = true) => {
-			const effect = render(state, ready);
-			globalThis.__effects.pop()();
-			return effect;
+			effectCleanup?.();
+			render(state, ready);
+			effectCleanup = globalThis.__effects.pop()() ?? null;
+			return effectCleanup;
 		},
+		/**
+		 * The cleanup alone, as an unmount performs it - the selection leaving.
+		 */
+		unmount: () => {
+			effectCleanup?.();
+			effectCleanup = null;
+		},
+		/**
+		 * The ids of every interval this loop created and has not cleared.
+		 *
+		 * The instrument the teardown cases read, and the reason the fixture keeps a
+		 * real interval table: a leaked interval used to leave no trace at all.
+		 */
+		live: () => [...intervals.keys()],
+		/** Every anchor selector this mount's hit test has asked for. */
+		queries: () => [...queries],
 		/** One interval tick, then let the answer's microtasks run. */
 		tick: async () => {
-			const check = checks.at(-1);
-			// A tree that created no interval has nothing to step, which is itself the
-			// thing several cases below are about.
+			// THE LIVE interval, not the newest callback ever registered: a stopped loop
+			// has nothing to step, which is itself the thing several cases below are
+			// about.
+			const check = [...intervals.values()].at(-1);
 			if (check) await check();
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		},
@@ -542,66 +619,118 @@ test("a store that stays busy is retried a bounded number of times, then takes t
 	);
 });
 
-test("a superseded refusal is retried flat, then bounded and logged", async () => {
-	// 409 `superseded_completion_token` is expected: the backend has moved past
-	// the token this attempt rendered, and the state that arrives next names the
-	// current one -- so the first attempts stay FLAT rather than backing off
-	// behind a 60 s ceiling while the re-arm is imminent. What must not stand is
-	// the unbounded version of that: a projection that never advances (a cold or
-	// stalled stream) would be re-attempted twice a second for as long as the
-	// conversation is open, with nothing recorded (agent review round 1, N3).
+test("a superseded refusal ends the loop instead of spending the ladder", async () => {
+	// TERMINAL, NOT A TURN ON THE LADDER (agent review round 1, M1). The refusal
+	// says the completion this attempt named is no longer the conversation's
+	// current one, and the state that supersedes it arrives BY THE FEED - so
+	// another attempt with the same token cannot settle, however many it gets. The
+	// shipped behaviour (three flat attempts, then the shared ladder's ceiling) is
+	// what let a stale stream pin a receipt to a token the backend had abandoned,
+	// with the mark still on the row and nothing but a `console.warn` to show for
+	// it. What replaces it: this loop stops, and the loop that forms around the
+	// state that supersedes the token is the one that acknowledges it.
 	const calls = [];
 	const warnings = [];
 	const harness = mount(async (request) => {
 		calls.push(request);
-		throw Object.assign(new Error("completion token superseded"), {
-			status: 409,
-			code: "superseded_completion_token",
-		});
+		throw superseded();
 	});
+	harness.seed([row(attention())]);
 	const warn = console.warn;
 	console.warn = (...args) => warnings.push(args.map(String).join(" "));
 	try {
 		harness.start();
-		for (let attempt = 0; attempt < 3; attempt += 1) await harness.tick();
-		assert.equal(calls.length, 3, "the flat window before the bound changed");
-		for (let attempt = 0; attempt < 2; attempt += 1) await harness.tick();
-		assert.equal(
-			calls.length,
-			3,
-			"a superseded refusal was retried past its bound",
+		assert.equal(harness.live().length, 1, "the loop did not start");
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		// Twenty more ticks is ten minutes of the poll cadence: nothing further may go
+		// out, because this loop has nothing left to say.
+		for (let tick = 0; tick < 20; tick += 1) await harness.tick();
+		assert.equal(calls.length, 1, "a superseded refusal was retried");
+		assert.deepEqual(
+			[],
+			harness.live(),
+			"the loop outlived the refusal that ended it",
 		);
 	} finally {
 		console.warn = warn;
 	}
+	assert.deepEqual(
+		[],
+		warnings,
+		"a superseded refusal was reported as an unresolved receipt",
+	);
 	assert.equal(
-		warnings.filter((line) => line.includes("receipt unresolved")).length,
-		1,
-		"the bound was not recorded, or was recorded more than once",
+		store.getState().readAckNotice,
+		null,
+		"a superseded refusal left a state on the row",
 	);
 });
 
-test("a superseded refusal that the answer then settles is not delayed", async () => {
-	// The bound must not cost the healthy path anything: while the projection is
-	// catching up -- which is the ordinary case -- the retry stays flat, and the
-	// attempt that is finally answered settles on the first try it gets.
+test("only the backend's own superseded refusal is terminal", async () => {
+	// The CLASS gate, the same one `isStoreBusy` applies and for the same reason:
+	// `DesktopControlError.code` is a vetted wire category while `Error.code` on a
+	// Node failure is `ENOENT` and friends - so a transport error that happens to
+	// carry the string is an ordinary failure and keeps its ladder, rather than
+	// ending a loop the backend never refused.
 	const calls = [];
 	const harness = mount(async (request) => {
 		calls.push(request);
-		if (calls.length < 3) {
-			throw Object.assign(new Error("completion token superseded"), {
-				status: 409,
-				code: "superseded_completion_token",
-			});
-		}
-		return attention({ unseen: false, revision: [1, 1] });
+		throw Object.assign(new Error("not the backend's statement"), {
+			status: 409,
+			code: "superseded_completion_token",
+		});
 	});
 	harness.start();
-	for (let attempt = 0; attempt < 4; attempt += 1) await harness.tick();
+	for (let attempt = 0; attempt < 5; attempt += 1) await harness.tick();
 	assert.equal(
 		calls.length,
 		3,
-		"the settled answer did not arrive on the third attempt",
+		"a transport error carrying the code skipped the ladder",
+	);
+});
+
+test("the feed's newer completion is the token an attempt carries", async () => {
+	// THE RE-READ, and the half of M1 the terminal arm depends on. The two channels
+	// are independent by construction (the backend's durable store and its feed
+	// versus the session stream's own copy), and the contract names the FEED as the
+	// arrival path for the state that supersedes a stale token. With the feed ahead,
+	// the loop's subject is the newer of the two, so the attempt acknowledges the
+	// completion the app now names rather than the one the stream still holds - and
+	// the anchor it hit-tests is that completion's own row, which is what keeps the
+	// re-read from acknowledging anything blindly.
+	const calls = [];
+	const harness = mount(async (request) => {
+		calls.push(request);
+		return attention({
+			completion_token: "fresh",
+			unseen: false,
+			revision: [2, 1],
+		});
+	});
+	// The ROW (the feed's copy) already names the newer completion; the stream does not.
+	const newer = attention({
+		completion_token: "fresh",
+		anchor_id: "result-2",
+		revision: [2, 0],
+	});
+	harness.seed([row(newer)]);
+	harness.start(frontend());
+	await harness.tick();
+	assert.equal(calls.length, 1, "the attempt was not made");
+	assert.equal(
+		calls[0].completionToken,
+		"fresh",
+		"the attempt re-sent the token the stream still named",
+	);
+	assert.ok(
+		(harness.queries().at(-1) ?? "").includes("result-2"),
+		"the attempt hit-tested an anchor that is not the completion it sent",
+	);
+	assert.equal(
+		rowAttention()?.unseen,
+		false,
+		"the answer did not clear the row",
 	);
 });
 
@@ -995,3 +1124,357 @@ for (const outcome of ["unread", "wrong-token", "alternating"]) {
 		}
 	});
 }
+
+/* ------------------------------------------------ the receipt's visible state */
+
+/*
+ * WHAT THE ROW CAN DRAW (UX round 1, U1), and the arms that make the three
+ * states distinguishable rather than three names for one screen. `useCompletionView`
+ * publishes `readAckNotice` while it has a loop for a conversation, and the
+ * sidebar's row renders the clause; the sentence for the give-up arm is fired
+ * into the panel's toast lane by the same panel (one home for the words:
+ * `features/chat/read-ack-notice.ts`). What is asserted here is the STATE, which
+ * is the half that lives in this tree's shipped hook - the row's rendering and
+ * the toast are the sidebar's, and `scripts/mark-all-read-control.test.mjs`
+ * drives that panel.
+ */
+
+test("a store that keeps refusing publishes the in-flight cue, then the give-up state", async () => {
+	// THE DEFECT U1 IS ABOUT: after the contention budget and the shared ladder the
+	// only trace of an unacknowledged receipt was a `console.warn`, so "the app is
+	// still trying" and "the app gave up" were the same screen, pixel for pixel,
+	// with the mark on the row in both. `pending` is the first and `unsettled` the
+	// second; the transition between them is the moment the ladder reaches its
+	// ceiling, and the refusal rides along so the panel can say what the store said.
+	const calls = [];
+	const warnings = [];
+	let now = 1_000_000;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = (...args) => warnings.push(args.map(String).join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw storeBusy();
+		});
+		harness.start();
+		assert.equal(
+			store.getState().readAckNotice,
+			null,
+			"a state was published before anything was attempted",
+		);
+		now += 500;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		const first = store.getState().readAckNotice;
+		assert.equal(first?.kind, "pending", "the in-flight cue was not published");
+		assert.equal(first?.sessionId, SESSION, "the cue did not name the row");
+		// Through the contention budget and into the ladder's flat window the state
+		// stays "trying" - which is the point of having two of them - and the
+		// ceiling is what changes it.
+		for (let tick = 0; tick < 40; tick += 1) {
+			now += 500;
+			await harness.tick();
+		}
+		const givenUp = store.getState().readAckNotice;
+		assert.equal(
+			givenUp?.kind,
+			"unsettled",
+			"the give-up state was never published",
+		);
+		assert.equal(givenUp?.sessionId, SESSION);
+		assert.ok(
+			givenUp?.reason instanceof DesktopControlError,
+			"the refusal was not carried for the panel's own sentence",
+		);
+		assert.ok(
+			givenUp.revision > first.revision,
+			"the give-up state was published as the same statement",
+		);
+		assert.equal(
+			warnings.filter((line) => line.includes("receipt unresolved")).length,
+			1,
+			"the ladder's own record changed with it",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("the receipt's state goes when the answer lands", async () => {
+	// The other end of the lifetime rule: the statement is "the app is trying for
+	// this completion", so the answer that clears the mark retires it. A clause
+	// left behind would be a second, stale sentence about a receipt that succeeded.
+	const calls = [];
+	let now = 2_000_000;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = () => {};
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			if (calls.length === 1) throw storeBusy(10);
+			return attention({ unseen: false, revision: [1, 1] });
+		});
+		harness.seed([row(attention())]);
+		harness.start();
+		now += 500;
+		await harness.tick();
+		assert.equal(
+			store.getState().readAckNotice?.kind,
+			"pending",
+			"the retry published nothing",
+		);
+		now += 10;
+		await harness.tick();
+		assert.equal(calls.length, 2, "the released attempt did not go out");
+		assert.equal(
+			rowAttention()?.unseen,
+			false,
+			"the answer did not clear the row",
+		);
+		assert.equal(
+			store.getState().readAckNotice,
+			null,
+			"the row kept a state for a receipt that landed",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("a result below the fold says so, and heals when the reader scrolls to it", async () => {
+	// U2: THE ONE PRESS THAT CAN NEVER SUCCEED. The anchor hit test is the
+	// definition of "shown", so a completion whose result is off screen is never
+	// receipted - and the operator's own remedy (press the row again) cannot
+	// satisfy a precondition they cannot see, while the store is healthy and the
+	// loop is alive. Nothing is weakened for it: the state names itself and names
+	// the move that works, and performing that move is what releases the receipt.
+	const calls = [];
+	const harness = mount(
+		async (request) => {
+			calls.push(request);
+			return attention({ unseen: false, revision: [1, 1] });
+		},
+		// The fixture's anchor row ends at y 298; a 200px viewport puts it below the
+		// fold, which is the state the reader is in when they have scrolled up.
+		{ innerHeight: 200 },
+	);
+	harness.seed([row(attention())]);
+	harness.start();
+	await harness.tick();
+	assert.equal(calls.length, 0, "a result below the fold was receipted");
+	assert.equal(
+		store.getState().readAckNotice?.kind,
+		"offscreen",
+		"the refusal was silent",
+	);
+	globalThis.innerHeight = 800;
+	await harness.tick();
+	assert.equal(
+		calls.length,
+		1,
+		"the receipt did not go out once the result was shown",
+	);
+	assert.equal(
+		store.getState().readAckNotice,
+		null,
+		"the clause outlived the state it named",
+	);
+});
+
+test("a completion whose anchor row is not rendered says so too", async () => {
+	// The other shape of "not on screen": the result is not in the DOM at all,
+	// because the transcript pages its window and this anchor is outside it. The
+	// press cannot repair it either, and the same clause names the same move -
+	// scrolling toward the result is what both shows it and releases the receipt.
+	const calls = [];
+	const harness = mount(
+		async (request) => {
+			calls.push(request);
+			return attention({ unseen: false, revision: [1, 1] });
+		},
+		{ anchor: false },
+	);
+	harness.seed([row(attention())]);
+	harness.start();
+	await harness.tick();
+	assert.equal(calls.length, 0, "an unrendered result was receipted");
+	assert.equal(
+		store.getState().readAckNotice?.kind,
+		"offscreen",
+		"the refusal was silent",
+	);
+});
+
+test("a non-finite retry_after_ms does not disarm the wait gate", async () => {
+	// N1: `Math.max(0, NaN)` is `NaN`, and `Date.now() < NaN` is false - so a
+	// non-finite field would make the gate that defers the retry stop gating and
+	// the prompt budget be spent at the poll cadence. The transport only sets the
+	// field behind `Number.isFinite`, so this is about a future writer of it.
+	const calls = [];
+	let now = 3_000_000;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = () => {};
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw storeBusy(Number.NaN);
+		});
+		harness.start();
+		now += 500;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		now += 999;
+		await harness.tick();
+		assert.equal(calls.length, 1, "a non-finite wait made the retry immediate");
+		now += 1;
+		await harness.tick();
+		assert.equal(calls.length, 2, "the default wait did not hold");
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("the ladder's warning is once per budget, and a press earns a new budget", async () => {
+	// N4: the warning fired on the `attempts === 3` crossing alone, which is once
+	// per window only while nothing resets the counter inside one - and a press
+	// resets everything. So a reader whose press bought a second budget earned a
+	// second bound for the same refusal, and the cases asserting one warning held
+	// only because none of them pressed mid-window. The rule is once per BUDGET,
+	// and a budget is what a press creates.
+	const calls = [];
+	const warnings = [];
+	let now = 4_000_000;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = (...args) => warnings.push(args.map(String).join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw Object.assign(new Error("backend unreachable"), { status: null });
+		});
+		harness.start();
+		for (let tick = 0; tick < 8; tick += 1) {
+			now += 500;
+			await harness.tick();
+		}
+		assert.equal(
+			warnings.length,
+			1,
+			"the first budget's bound was not recorded once",
+		);
+		harness.press();
+		await harness.tick();
+		assert.equal(
+			warnings.length,
+			1,
+			"the press's own attempt warned before its ladder was spent",
+		);
+		for (let tick = 0; tick < 8; tick += 1) {
+			now += 500;
+			await harness.tick();
+		}
+		assert.equal(
+			warnings.length,
+			2,
+			"the second budget's bound was not recorded once",
+		);
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("an attempt whose render is gone lands nothing", async () => {
+	// N3, answered by construction rather than by comment: the token is a
+	// dependency, so a state that moves on while an attempt is out tears the loop
+	// down and creates another - which means two `/seen` calls can be in flight for
+	// one conversation, about two different tokens. The OLDER one is about a
+	// subject nothing is watching any more, so its answer is dropped: it neither
+	// writes the row nor publishes a state for a receipt the app has stopped
+	// making, and the newer loop is the authority from the moment it exists.
+	const pending = [];
+	const harness = mount(
+		(request) =>
+			new Promise((resolve) => {
+				pending.push({ request, resolve });
+			}),
+	);
+	harness.seed([row(attention())]);
+	harness.start();
+	await harness.tick();
+	assert.equal(pending.length, 1, "the first attempt did not go out");
+	assert.equal(pending[0].request.completionToken, TOKEN);
+	const newer = attention({ completion_token: "fresh", revision: [2, 0] });
+	harness.seed([row(newer)]);
+	harness.start();
+	await harness.tick();
+	assert.deepEqual(
+		pending.map((entry) => entry.request.completionToken),
+		[TOKEN, "fresh"],
+		"the re-created loop did not attempt the state that superseded the token",
+	);
+	pending[1].resolve(
+		attention({ completion_token: "fresh", unseen: false, revision: [2, 1] }),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(
+		rowAttention()?.unseen,
+		false,
+		"the newer answer did not clear the row",
+	);
+	pending[0].resolve(attention({ unseen: true }));
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(
+		rowAttention()?.unseen,
+		false,
+		"an attempt whose render was gone undid the newer read",
+	);
+	assert.equal(
+		store.getState().readAckNotice,
+		null,
+		"an attempt whose render was gone announced a receipt nothing is making",
+	);
+});
+
+test("the loop's interval is torn down with its selection", async () => {
+	// M2, which closed a hole in this FILE rather than in the hook: the fixture
+	// installed `clearInterval` as a no-op and stepped only the newest callback, so
+	// a dropped `stop()` (or a missing effect cleanup) leaked one 500 ms interval
+	// per dependency change and passed every case above. The interval table is real
+	// now, and this is the case that fails when the loop outlives its selection.
+	const harness = mount(async () => attention());
+	harness.start();
+	assert.equal(
+		harness.live().length,
+		1,
+		"the loop did not create its interval",
+	);
+	const first = harness.live();
+	// A dependency change - the state moving on to a newer completion - is React
+	// calling this cleanup and then the body again. The old interval must go.
+	harness.start(
+		frontend({ attention: attention({ completion_token: "fresh" }) }),
+	);
+	assert.equal(
+		harness.live().length,
+		1,
+		"a dependency change left the old loop's interval live",
+	);
+	assert.notDeepEqual(
+		first,
+		harness.live(),
+		"the interval that survived is the one the old loop created",
+	);
+	harness.unmount();
+	assert.deepEqual(harness.live(), [], "the interval outlived the selection");
+});

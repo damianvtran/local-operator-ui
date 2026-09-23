@@ -217,14 +217,16 @@ export type CompletionAttentionAckReceipt = {
  * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
  * names the backend's value.
  *
- * Nothing in the renderer FORKS on this code, and that is deliberate rather than
- * an omission: `use-completion-view.ts` sends every rejection -- this 409
- * included -- to the one shared retry ladder, so a superseded token costs its
- * attempt like any other failure and the re-arm comes from the projection naming
- * a NEW token, not from a special case here. It is kept because it is part of
- * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
- * a client that does need to tell the refusal apart must not have to spell the
- * string itself.
+ * THE RENDERER FORKS ON THIS CODE, and the fork is what makes a stale token
+ * resolvable at all (agent review round 1, M1). `use-completion-view.ts` treats
+ * this refusal as TERMINAL for the loop it interrupted, instead of spending the
+ * shared ladder on it: the ladder exists to ride out a failure, while this is the
+ * backend stating that the completion this attempt named is no longer the current
+ * one - so a retry of the same token cannot succeed however many turns it gets,
+ * and the state that supersedes it is the FEED's to deliver, not this call's. The
+ * loop's next life takes its token from the merge of both channels (the stream and
+ * the row the feed writes), which is the re-read; the anchor hit test is still the
+ * definition of "shown", so a token is never acknowledged blind.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
 
