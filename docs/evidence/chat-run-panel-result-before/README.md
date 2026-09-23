@@ -22,10 +22,15 @@ These are the other half of the pair, and the pair is the claim:
 
 | comparison | measurement (of 1,152,000 px) |
 | --- | --- |
-| `reader-result-inline` before vs after | **321,597** px dark / **309,163** light. Before, the `Result` block has taken the pane: the conversation above it is squeezed to the brief and a date, and the block runs off the bottom edge. After, the result IS the conversation's last row, bottom-pinned, and the foot carries only the read-only line. |
-| `reader-result-preview` before vs after | **321,991** / **306,536**. Before, the block is unbounded and unlabelled — `Result` — over a body with nothing left to push back with. After, a `Result preview` inside `max-h-40 overflow-auto`, under one quiet line saying the full copy is in a conversation this page does not have. |
-| `reader-settled` before vs after | **184,496** / **160,702**. The smallest of the three, and correctly so: the same block, over a shorter fixture result. |
-| `reader-live` before vs after | **0 px in dark — byte-identical** — and **9,134 px (0.79%) in light**, which is this rig's own capture-to-capture noise (the sibling README measures ~0.65% of the column between two consecutive captures of ONE head). The CONTROL: a running child has neither a result nor an error on the wire, so no outcome block exists to remove, and its pair agreeing is what says the three pairs above moved because of the foot rather than because of the run. |
+| `reader-result-inline` before vs after | **322,520** px dark / **310,535** light. Before, the `Result` block has taken the pane: the conversation above it is squeezed to the brief and a date, and the block runs off the bottom edge. After, the result IS the conversation's last row, bottom-pinned, and the foot carries only the read-only line. |
+| `reader-result-preview` before vs after | **321,921** / **305,110**. Before, the block is unbounded and unlabelled — `Result` — over a body with nothing left to push back with. After, a `Result preview` inside `max-h-40 overflow-auto`, under one quiet line saying the conversation the fuller copy is in is not on this page. |
+| `reader-settled` before vs after | **185,402** / **165,074**. The smallest of the three, and correctly so: the same block, over a shorter fixture result. |
+| `reader-live` before vs after | **11,246 px dark (0.98%) / 10,132 light (0.88%)** — the CONTROL, and it now moves a little instead of agreeing exactly. The reason is the same reason the other three moved: this round re-took the after half, and the running child's foot carries the **read-only line**, whose copy changed ("this is the subagent's conversation" -> "...page") in every reader state. What the control still measures is the MAGNITUDE: a foot whose only change is one sentence moves ~11k px, and the three pairs above move ~185k-322k, which is the outcome block rather than the run. Read the old byte-identical pairing in the paragraph below as the FIRST pass's reading, taken before the copy changed. |
+
+These four numbers were re-measured after the round that re-took the after halves
+(the reader group was re-shot on the folded tree; see the sibling README's own
+note). Only the right-hand side moved — every frame in this set is still the
+one photographed at `b7bed8d96`, and this set is still not re-taken by anything.
 
 ## How it was taken
 
@@ -70,9 +75,17 @@ swept count excludes them.
 
 The committed frames this set replaces were taken before main's 2026-09-18/19
 theme commits, so they carry the older ground (`localOperatorDark`'s canvas was
-`#17130E`; on this head it is `#22201C`). That is why **no** re-captured frame in
-`../chat-run-panel/` is byte-identical to its committed predecessor, and why a
-before/after pair taken across that change would measure the palette rather than
-the foot. This set is the same-head pair that avoids it: both halves are
-photographed on `b7bed8d96`, and the only difference between them is the file
-named above.
+`#17130E`; on this head it is `#22201C`). That is why **the after halves in
+`../chat-run-panel/` are not read from a diff against their committed
+predecessors**, and why a before/after pair taken across that change would
+measure the palette rather than the foot. This set is the same-head pair that
+avoids it: BOTH halves are photographed on `b7bed8d96`, and the only difference
+between them is the file named above.
+
+That is also why this set is still the instrument after the round that re-took
+the reader group on the folded tree (see the sibling README): the after halves
+now differ from their committed predecessors by the COMPONENT rather than by the
+ground (all 40 of them, AE 2,481-29,166 px), and this pair holds the ground
+constant and the component as its only variable. So the table above is the
+measurement that separates the foot from the run, and the AE against a committed
+predecessor is not.
