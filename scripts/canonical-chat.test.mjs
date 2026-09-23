@@ -141,7 +141,6 @@ function reset() {
 		drafts: {},
 		sessionByAgent: {},
 		validatingSessionId: null,
-		navigationError: null,
 		error: null,
 	});
 }
@@ -2838,39 +2837,27 @@ test("the same 422 without a leading slash keeps the transport's own sentence", 
 	assert.equal(withholdsRetryHint(draft.errorCode), false);
 });
 
-test("latest candidate open wins and a failed open retains outgoing session", async () => {
+test("latest candidate open wins, and an open spends no request of its own", async () => {
 	reset();
-	const resolutions = new Map();
 	globalThis.__canonicalRequest = (request) => {
 		calls.push(request);
-		return new Promise((resolve, reject) =>
-			resolutions.set(request.sessionId, { resolve, reject }),
-		);
+		return Promise.resolve({});
 	};
+	/*
+	 * The view follows the LATEST INTENT, immediately. The guard read (`sessions.get`)
+	 * that each open used to issue is gone from the click path: it was a second facade
+	 * acquire racing the stream for the same bridge locks, and the stream's own
+	 * snapshot or 404 is the validation now (`confirmSessionLive` /
+	 * `confirmSessionMissing`, pinned in `session-switch.test.mjs`).
+	 */
 	const first = store.getState().openSession("222222222222");
 	const last = store.getState().openSession("333333333333");
-	/*
-	 * The view follows the LATEST INTENT, immediately — it does not wait for a
-	 * read to bless it.
-	 *
-	 * This assertion used to be `111111111111`: while two opens were in flight
-	 * the outgoing session stayed on screen, and the panel only mounted once the
-	 * second read answered. That serialisation was the switch's own cost (see
-	 * `scripts/session-switch-latency.mjs`), so the contract is now the other
-	 * way round — and the half that still matters is unchanged: a read that
-	 * FAILS puts the view back, which is what the tail of this test asserts.
-	 */
 	assert.equal(store.getState().activeSessionId, "333333333333");
-	resolutions.get("333333333333").resolve({});
+	assert.equal(store.getState().validatingSessionId, "333333333333");
+	assert.equal(await first, true);
 	assert.equal(await last, true);
-	resolutions.get("222222222222").resolve({});
-	assert.equal(await first, false);
 	assert.equal(store.getState().activeSessionId, "333333333333");
-	const failed = store.getState().openSession("444444444444");
-	resolutions.get("444444444444").reject(new Error("unavailable"));
-	assert.equal(await failed, false);
-	assert.equal(store.getState().activeSessionId, "333333333333");
-	assert.ok(calls.every((request) => request.op === "sessions.get"));
+	assert.deepEqual(calls, []);
 });
 
 test("canonical catalogue requires negotiated version two and paired authorization", () => {

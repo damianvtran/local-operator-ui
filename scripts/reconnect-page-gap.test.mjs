@@ -315,7 +315,7 @@ const openFrame = (seq, gap) => ({
  */
 const snapshotFrame = (
 	seq,
-	{ cursor, entries, liveEvents = [], streaming = true },
+	{ cursor, entries, liveEvents = [], streaming = true, coldReason },
 ) => ({
 	session_id: SESSION_A,
 	epoch: "bridge-epoch",
@@ -363,6 +363,11 @@ const snapshotFrame = (
 		},
 		history: { entries, has_more: true, cursor_missing: false },
 		cold: false,
+		/*
+		 * Absent unless a case names it: an older backend sends no token, and the
+		 * cases above are about exactly that owner (a page cut at the cursor).
+		 */
+		...(coldReason === undefined ? {} : { cold_reason: coldReason }),
 	},
 });
 
@@ -1097,6 +1102,62 @@ test("a page that stops at the cursor still reads, and the read still closes the
 		transcript.rows.map(recordIdOf),
 		"and the read is what puts the rows written while away on screen",
 	);
+});
+
+/*
+ * B-F9: THE DUPLICATE PAGE. A backend that stamps `cold_reason` on its snapshot
+ * (local-operator 93542f91 and later, which descends from the b25ee8b4 fix that
+ * reads the page from the journal's tail) serves a page that IS the tail by
+ * contract, so the `/history` read every open used to follow it with was the
+ * same 100 rows a second time, serially, before first paint. The first case is
+ * the saving; the second is its edge - an EMPTY page still reads, whatever the
+ * token says, because empty is the contract's "reconcile through /history".
+ */
+test("a journal-tail snapshot is painted from its own page, with no /history read", async () => {
+	const rows = [
+		userRow("r1", 100, "Start the turn."),
+		assistantRow("r2", 101, "Working on it."),
+		assistantRow("r3", 102, "One more paragraph."),
+	];
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+
+	// A cold open with NOTHING painted yet, the case that always read before:
+	// the cursor even agrees with the newest row, the shape the cut-at-cursor
+	// guard refuses on an older backend.
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r3",
+			entries: rows,
+			liveEvents: [],
+			coldReason: "no-runtime",
+		}),
+	);
+	await pump();
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+	assert.equal(historyReads(), 0, "the snapshot's own page is the tail");
+});
+
+test("an empty journal-tail snapshot still reads its one page", async () => {
+	const rows = [
+		userRow("r1", 100, "Start the turn."),
+		assistantRow("r2", 101, "Working on it."),
+	];
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: null,
+			entries: [],
+			liveEvents: [],
+			coldReason: "no-runtime",
+		}),
+	);
+	await pump();
+	assert.equal(historyReads(), 1, "empty means reconcile through /history");
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
 });
 
 test("replayed events paint even when the snapshot lands in a later batch", async () => {

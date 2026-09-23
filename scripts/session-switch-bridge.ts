@@ -301,7 +301,12 @@ export function historyPage(
  * affordances (dialogs, file pickers, platform report), not the data path the
  * switch pays for.
  */
-function installPreloadStubs() {
+/*
+ * Exported for `session-open-live.tsx`, which mounts the same page against a REAL
+ * backend: it needs the window's own affordances stubbed exactly as they are
+ * here, and none of the scripted owner below.
+ */
+export function installPreloadStubs() {
 	const electron = {
 		ipcRenderer: {
 			invoke: async (channel: string) =>

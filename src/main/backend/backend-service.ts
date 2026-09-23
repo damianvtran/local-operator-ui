@@ -131,10 +131,45 @@ const SHUTDOWN_TIMEOUT_DEFAULTS = {
 export const OWNED_STOP_WORST_MS =
 	SHUTDOWN_TIMEOUT_DEFAULTS.normal + SHUTDOWN_TIMEOUT_DEFAULTS.force;
 
-/** How long the readiness loop waits between attempts. Exported for the same
+/** The LONGEST the readiness loop waits between attempts. Exported for the same
  * reason as the bounds above: the quit path's failsafe adds it up rather than
- * naming a number. */
+ * naming a number, and every rung of `readinessPollDelayMs` is at most this. */
 export const READINESS_POLL_INTERVAL_MS = 1_000;
+
+/** How long an owned serve gets to answer `/health` before the start fails,
+ * counted as the sum of the waits BETWEEN attempts - exactly what the old
+ * `30 attempts x 1 s` loop counted (it never added the probes' own time
+ * either), so the bound is the one it always was. It is a sum of scheduled
+ * waits rather than a wall clock so the loop stays a pure function of its
+ * schedule: `owned-serve-lifecycle.test.mjs` shortens those waits to drive a
+ * start that never becomes ready, and a wall-clock bound would make that test
+ * sit out the whole 30 s. */
+export const READINESS_BUDGET_MS = 30_000;
+
+/**
+ * The wait before the next readiness attempt, by how long the start has
+ * waited so far.
+ *
+ * WHY NOT A FLAT SECOND. Measured on this repo's rig (`health_ready.py`: a real
+ * `local-operator serve` under an isolated root, `/health` sampled every 25 ms,
+ * six boots at load 105-118): the daemon answers 1.53-2.23 s after spawn, and a
+ * 1 s poll reported it at 2.0-3.0 s - 310-772 ms after it was ready, a median of
+ * ~420 ms of launch spent waiting on this timer rather than on the daemon.
+ * Readiness lands inside the first few seconds, so that is where the poll is
+ * fast: 100 ms rungs report the same boots 4-72 ms late.
+ *
+ * WHY IT STILL BACKS OFF. A daemon that is not up by 5 s is on a slow path
+ * (first-run install, a cold disk, a loaded machine), and each attempt against
+ * it is a fetch plus a log line. So the rung widens to 250 ms, and past 10 s
+ * returns to the flat 1 s it always was. A refused socket - the common answer
+ * while the child is still importing - costs a sub-millisecond failed connect,
+ * so the fast rungs are not load on the machine they are waiting for.
+ */
+export function readinessPollDelayMs(elapsedMs: number): number {
+	if (elapsedMs < 5_000) return 100;
+	if (elapsedMs < 10_000) return 250;
+	return READINESS_POLL_INTERVAL_MS;
+}
 
 /**
  * Where the app keeps the bearer for the daemon it spawns, inside its userData
@@ -2137,11 +2172,12 @@ export class BackendServiceManager {
 				});
 			}
 
-			// Wait for backend to be healthy
-			let attempts = 0;
-			const maxAttempts = 30; // 30 seconds timeout
+			// Wait for backend to be healthy, polling fast while readiness is
+			// likely and backing off after (see `readinessPollDelayMs`), inside the
+			// same 30 s bound the flat 30 x 1 s loop gave.
+			let readinessWaitedMs = 0;
 
-			while (attempts < maxAttempts) {
+			while (readinessWaitedMs < READINESS_BUDGET_MS) {
 				const healthy = await this.checkHealth();
 				if (epoch !== this.startEpoch || generation.exited || generation.stop)
 					break;
@@ -2156,11 +2192,9 @@ export class BackendServiceManager {
 					return true;
 				}
 
-				// Wait 1 second before next attempt
-				await new Promise((resolve) =>
-					setTimeout(resolve, READINESS_POLL_INTERVAL_MS),
-				);
-				attempts++;
+				const delay = readinessPollDelayMs(readinessWaitedMs);
+				readinessWaitedMs += delay;
+				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 
 			await this.stopGeneration(generation, false);
