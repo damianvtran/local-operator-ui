@@ -58,6 +58,8 @@
  */
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type { ArchiveFact } from "@shared/store/canonical-sessions-store";
+import { useEffect } from "react";
 import { undoOfferStands } from "./chat-archived";
 
 /**
@@ -68,15 +70,37 @@ import { undoOfferStands } from "./chat-archived";
  */
 export const ARCHIVE_UNDO_CEILING_MS = 15_000;
 
-/** The one sentence an archive offer makes, so the toast and a test agree. */
-export function archiveOfferedText(title: string | undefined): string {
-	/*
-	 * Two spellings because a conversation this client does not list has no name to
-	 * quote: the hit that produced its row carried one, but the row may not be in
-	 * the page and an empty pair of curly quotes would read as a bug. "Conversation
-	 * archived." is the honest version of the same statement.
-	 */
-	return title ? `“${title}” archived.` : "Conversation archived.";
+/**
+ * The quoted NAME an archive offer prints, with the verb left outside it.
+ *
+ * TWO PARTS RATHER THAN ONE SENTENCE, because the card is one line and only one of the
+ * two may be cut: the name flexes and ellipsises (`truncate` in the panel's own JSX),
+ * while the verb is a fixed tail that always fits. The version that shipped put both in
+ * one string and ellipsised that string, so the operator's own 55-character title
+ * rendered as `“Quarterly retention sweep and the transc…` - the closing quote and the
+ * word `archived.` gone, i.e. a card that no longer said what had happened (agent review
+ * round 2, R2-3). The name is also the half a reader can recover in full: it is the row
+ * they just pressed, and the row's own flyout carries it untruncated.
+ *
+ * The no-name spelling is the same statement: a conversation this client does not list
+ * has no title to quote, so the name is the generic noun and the verb still follows.
+ */
+export function archiveOfferedName(title: string | undefined): string {
+	return title ? `“${title}”` : "Conversation";
+}
+
+/** The verb an archive offer prints after the name. One home for the offer's copy. */
+export const ARCHIVE_OFFERED_VERB = "archived.";
+
+/**
+ * The archive fact this window holds for a conversation, if it holds one.
+ *
+ * Separate from `knownArchived` below because the two questions are different: this one
+ * is about THIS CLIENT'S OWN WRITE (whether it has been answered), and that one is about
+ * what the client knows of the state.
+ */
+function archiveFactFor(sessionId: string): ArchiveFact | undefined {
+	return useCanonicalSessionsStore.getState().archiveFacts[sessionId];
 }
 
 /**
@@ -95,44 +119,69 @@ function knownArchived(sessionId: string): boolean | undefined {
 }
 
 /**
- * Offer the undo for a conversation this window has just archived.
+ * Retire the standing offer when the state it was taken from stops being true.
  *
- * Mirrors the goal confirmation's shape (`showInfoToast` with an `action`, the id
- * held so it can be taken back) rather than inventing a second offer vocabulary.
+ * WHY THIS IS A HOOK RATHER THAN PART OF THE RAISE (design round 8, D27's second clause).
+ * The offer itself is now written by the STORE, in the update that settles the archive
+ * write, because the accepted departure and the band that answers it have to land in one
+ * commit - and the store cannot call into this module (this module imports the store). What
+ * cannot move to the store is this subscription, and it should not: deciding WHEN the offer
+ * stops being true is this module's rule, the same way `undoOfferStands` and the sentence
+ * beside it are. So the panel calls this once, and the watch keys on the offer's identity -
+ * a second archive in a row re-arms it rather than stacking two.
+ *
+ * The offer's own claim, kept from the version that installed this at the raise: a press
+ * that has NOT been answered decides nothing (`fact.answered`), so an optimistic fact cannot
+ * retire an offer before the daemon has spoken - the mechanism UX round 1's U3 was about,
+ * where the panel dismissed the lane and the refusal that replaced the offer was created
+ * into the id's own unmount window.
+ *
+ * The ceiling bounds it as well, because the catalogue is not obliged to answer at all: a
+ * backend that is down leaves the fact standing, and a subscription per archive press is a
+ * listener that would outlive the press that made it.
  */
-export function offerArchiveUndo(input: {
-	sessionId: string;
-	title?: string;
-	/** The state the offer is about: what pressing Undo would take back. */
-	archived: boolean;
-}): void {
-	const store = () => useCanonicalSessionsStore.getState();
-	store().setArchiveUndo({
-		sessionId: input.sessionId,
-		title: input.title,
-		archived: input.archived,
-	});
-	let closed = false;
-	const stop = () => {
-		if (closed) return;
-		closed = true;
-		unsubscribe();
-		clearTimeout(ceiling);
+export function useArchiveUndoRetirement(): void {
+	const offer = useCanonicalSessionsStore((state) => state.archiveUndo);
+	useEffect(() => {
+		if (offer === null) return;
+		let closed = false;
+		/** Tear the watch down, leaving the store's value alone (an unmount is not a statement about the offer). */
+		const teardown = () => {
+			if (closed) return;
+			closed = true;
+			unsubscribe();
+			clearTimeout(ceiling);
+		};
 		/*
-		 * CLEARED ONLY IF IT IS STILL THIS OFFER'S. Two archives in a row (the second
-		 * while the first's ceiling is running) leave two subscriptions, and the first
-		 * one's expiry must not take the SECOND offer off the screen - it would clear
-		 * an offer that is still true, which is the same lie the retirement rule
-		 * exists to avoid, one press later.
+		 * Retire the offer, but only if THIS offer is still the one the store holds.
+		 *
+		 * GUARDED BY THE OFFER'S OWN IDENTITY, NOT BY ITS SESSION ID (agent review round 5, R5-5).
+		 * Two offers for the SAME conversation can follow one another - archive, undo it, archive it
+		 * again inside the first watch's ceiling - and a guard on the id alone lets the first watch's
+		 * expiry take the SECOND offer off the screen: the same lie the retirement rule exists to
+		 * avoid, one press later. The stamp tells them apart, because every raise carries the write's
+		 * own `at`.
 		 */
-		const current = store().archiveUndo;
-		if (current?.sessionId === input.sessionId) store().setArchiveUndo(null);
-	};
-	const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
-		// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
-		// comment and the behaviour cannot drift apart.
-		if (undoOfferStands(input.archived, knownArchived(input.sessionId))) return;
-		stop();
-	});
-	const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
+		const stop = () => {
+			teardown();
+			const current = useCanonicalSessionsStore.getState().archiveUndo;
+			if (
+				current !== null &&
+				current.sessionId === offer.sessionId &&
+				current.at === offer.at
+			)
+				useCanonicalSessionsStore.getState().setArchiveUndo(null);
+		};
+		const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
+			const fact = archiveFactFor(offer.sessionId);
+			if (fact !== undefined && !fact.answered) return;
+			// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
+			// comment and the behaviour cannot drift apart.
+			if (undoOfferStands(offer.archived, knownArchived(offer.sessionId)))
+				return;
+			stop();
+		});
+		const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
+		return teardown;
+	}, [offer]);
 }

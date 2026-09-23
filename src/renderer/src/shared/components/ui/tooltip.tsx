@@ -52,12 +52,23 @@ import {
 
 const TooltipProviderPresence = createContext(false);
 
+/**
+ * How long the pointer must rest on a trigger before the panel opens.
+ *
+ * Named and exported because it is the app's ONE answer to "the pointer has
+ * decided to stay": the conversation row's title pan
+ * (`chat-row-title.tsx`) waits out the same interval before it starts moving, so
+ * that a sweep across the list starts neither a flyout nor a pan. The two must
+ * move together, which is what importing this instead of restating `400` buys.
+ */
+export const TOOLTIP_DELAY_MS = 400;
+
 export type TooltipProviderProps = ComponentPropsWithoutRef<
 	typeof TooltipPrimitive.Provider
 >;
 
 export const TooltipProvider = ({
-	delayDuration = 400,
+	delayDuration = TOOLTIP_DELAY_MS,
 	skipDelayDuration = 300,
 	children,
 	...props
@@ -104,10 +115,13 @@ export const TooltipContent = forwardRef<
 			 * NEVER a pointer target.
 			 *
 			 * A tooltip describes the thing under the pointer; it is not itself
-			 * something to point at, and Radix already closes it on any pointer
-			 * move that leaves the trigger. Without this the panel is a live hit
-			 * target floating over whatever it covers, and `elementFromPoint`
-			 * returns the TOOLTIP for a control the user can plainly see: the
+			 * something to point at. Radix's default closes the panel when the pointer
+			 * ENTERS the content (which is how a hoverable panel stays reachable), and
+			 * a panel that cannot take the pointer has no such moment - a call site that
+			 * wants the panel gone when the pointer leaves its trigger passes
+			 * `disableHoverableContent` (see the prop's note in `TooltipProps`).
+			 * Without this the panel is a live hit
+			 * target floating over whatever it covers, and `elementFromPoint`			 * returns the TOOLTIP for a control the user can plainly see: the
 			 * working-directory chip's panel sat over the composer's readings and
 			 * swallowed clicks on the model reading at every width below the wrap
 			 * threshold (UX round 2, U6), and over the message field's first line,
@@ -144,6 +158,34 @@ export type TooltipProps = {
 	side?: TooltipContentProps["side"];
 	align?: TooltipContentProps["align"];
 	sideOffset?: TooltipContentProps["sideOffset"];
+	/**
+	 * How far the panel is kept from the window's edges, in px.
+	 *
+	 * Radix's own clamp shifts a panel that would fall outside the viewport, and with
+	 * no padding a panel can sit flush with the edge - measured on the conversation
+	 * row's flyout at the list's last row: 806..868.2 against an 868px viewport
+	 * (design round 1, D4). 8px is one hairline-and-a-bit, which is what reads as
+	 * "inside" rather than "against".
+	 */
+	collisionPadding?: TooltipContentProps["collisionPadding"];
+	/**
+	 * Close the panel when the pointer leaves the trigger, rather than keeping it open
+	 * for a pointer travelling towards the content.
+	 *
+	 * WHAT THE DEFAULT ACTUALLY DOES, because the comment this replaces assumed the
+	 * opposite: with `disableHoverableContent` false, Radix's trigger only CLEARS the
+	 * open timer on `pointerleave` (`onTriggerLeave`) - it closes on the pointer
+	 * entering the content, which is what makes a hoverable panel reachable. Every
+	 * panel in this app is `pointer-events: none` (below), so that state is
+	 * unreachable here and the default leaves a panel painted after the pointer has
+	 * gone: measured on the row's flyout, still drawn 2.5s after the pointer left the
+	 * row, describing a row it was no longer over (design round 1, D2).
+	 *
+	 * It is per-call rather than a default because it is a claim about the CALL SITE's
+	 * panel: the row's flyout must leave when its row does, while a tooltip over a
+	 * control nobody has asked to close on leave is not this change's to relitigate.
+	 */
+	disableHoverableContent?: boolean;
 	delayDuration?: number;
 	/** Render the child bare, with no tooltip at all. */
 	disabled?: boolean;
@@ -163,6 +205,8 @@ export const Tooltip = ({
 	align = "center",
 	sideOffset,
 	delayDuration,
+	disableHoverableContent = false,
+	collisionPadding,
 	disabled = false,
 	className,
 }: TooltipProps) => {
@@ -173,13 +217,17 @@ export const Tooltip = ({
 	}
 
 	const tooltip = (
-		<TooltipRoot delayDuration={delayDuration}>
+		<TooltipRoot
+			delayDuration={delayDuration}
+			disableHoverableContent={disableHoverableContent}
+		>
 			<TooltipTrigger asChild>{children}</TooltipTrigger>
 			<TooltipPortal>
 				<TooltipContent
 					side={side}
 					align={align}
 					sideOffset={sideOffset}
+					collisionPadding={collisionPadding}
 					className={className}
 				>
 					{content}

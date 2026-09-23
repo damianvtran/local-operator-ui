@@ -59,6 +59,7 @@ const {
 	deleteConversationMessage,
 	undoOfferStands,
 	visibleRows,
+	answeredArchiveRows,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -85,6 +86,69 @@ test("the at-rest lists drop the archived rows, and drop nothing when the capabi
 		visibleRows([{ session_id: "cccccccccccc", archived: true }], false),
 		[{ session_id: "cccccccccccc", archived: true }],
 	);
+});
+
+test("a press may change the intent and not the list: an unanswered fact removes no row", () => {
+	const rows = [row("aaaaaaaaaaaa", false), row("bbbbbbbbbbbb", false)];
+	/*
+	 * THE CLAIM DESIGN ROUND 8's D27 RESTS ON, and the reason it is arithmetic rather than
+	 * taste: a row's departure shortens the list's content by its own height while the box is
+	 * still the band-0 one, so `scrollHeight − clientHeight` goes negative, the browser clamps
+	 * the reader's `scrollTop` to the new extent, and nothing gives it back when the row
+	 * returns (QA round 4 measured `8.5 -> 0`). A fact that has not been ANSWERED is the
+	 * press's intent - the row is going somewhere - and the list may not act on it.
+	 *
+	 * AND THE ASSERTIONS ARE THE MERGE'S OWN, NOT AN ID LIST (agent review round 5, R5-3): this
+	 * function maps rows one-to-one and never changes an id, so comparing ids cannot fail and the
+	 * claim rode on nothing. What it does is change a row's VALUE and whether the array is the
+	 * same OBJECT - so the unanswered case asserts identity, and the membership claim is read
+	 * through the filter every list actually uses, where a dropped row shows up as a shorter list.
+	 */
+	const intent = { aaaaaaaaaaaa: { archived: true, answered: false } };
+	assert.equal(
+		answeredArchiveRows(rows, intent),
+		rows,
+		"an unanswered fact merges nothing: the very array comes back",
+	);
+	assert.deepEqual(
+		visibleRows(answeredArchiveRows(rows, intent), true).map(
+			(entry) => entry.session_id,
+		),
+		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+		"an unanswered fact must not remove a row from the list",
+	);
+	/*
+	 * The same fact, ANSWERED, is what the list acts on - and it is the ANSWERED value that is
+	 * read, not the row's own: a row the wire still calls archived while an answered fact says
+	 * otherwise comes back into the list, which is what an accepted unarchive is.
+	 */
+	const answered = answeredArchiveRows(rows, {
+		aaaaaaaaaaaa: { archived: true, answered: true },
+	});
+	assert.notEqual(answered, rows, "an answered fact rebuilds the row it names");
+	assert.equal(
+		answered[0].archived,
+		true,
+		"with the fact's value, not the wire's",
+	);
+	assert.deepEqual(
+		visibleRows(answered, true).map((entry) => entry.session_id),
+		["bbbbbbbbbbbb"],
+		"and the list the reader sees loses exactly that row",
+	);
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows([row("aaaaaaaaaaaa", true)], {
+				aaaaaaaaaaaa: { archived: false, answered: true },
+			}),
+			true,
+		).map((entry) => entry.session_id),
+		["aaaaaaaaaaaa"],
+		"while an answered UNarchive brings a row back",
+	);
+	// Identity when no answered fact applies, the house rule every merge in this repo
+	// states: an unchanged merge must not re-render a 500-row list.
+	assert.equal(answeredArchiveRows(rows, {}), rows);
 });
 
 test("the archived set is reported only where a control could act on it", () => {

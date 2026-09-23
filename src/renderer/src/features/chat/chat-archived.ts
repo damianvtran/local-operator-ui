@@ -53,6 +53,46 @@ export function visibleRows<T extends { archived?: boolean }>(
 }
 
 /**
+ * The rows as their ANSWERED archive facts leave them: a row's `archived` value is
+ * replaced by its conversation's fact, and only once that fact has been answered.
+ *
+ * WHY MEMBERSHIP READS THIS RATHER THAN THE ROWS THEMSELVES (design round 8, D27). A press
+ * writes an OPTIMISTIC fact - `answered: false` until the daemon's sentence arrives - and
+ * the departure it intends may not change what a list HOLDS. The reason is arithmetic and
+ * it is measured at QA's own state: a row's departure shortens the list's content by its
+ * own height while its box is still the band-0 one, so `scrollHeight − clientHeight` goes
+ * NEGATIVE, and the browser then clamps the reader's `scrollTop` to the new extent with
+ * nothing to give it back when the row returns (`8.5 -> 0`). That is a property of the
+ * extent, so no write can hold the position across it; what removes it is not removing the
+ * row yet. THE ROW CARRIES THE ANSWERED STATE, THE FACT CARRIES THE INTENDED ONE.
+ *
+ * The row's drawn value takes the same view (`chat-sidebar.tsx`'s `archiveFactValues`), so
+ * the two row-facing readers cannot disagree about a conversation for the length of the
+ * flight - which is what the walk would otherwise see as a conversation drawn in one list
+ * and hidden in another.
+ *
+ * The array identity is kept when no answered fact applies, the house rule every merge in
+ * this repo states: an unchanged merge must not re-render a 500-row list for a message that
+ * carried nothing new.
+ */
+export function answeredArchiveRows<
+	T extends { session_id: string; archived?: boolean },
+>(
+	rows: T[],
+	facts: Record<string, { archived: boolean; answered: boolean }>,
+): T[] {
+	let changed = false;
+	const next = rows.map((row) => {
+		const fact = facts[row.session_id];
+		if (fact === undefined || !fact.answered || row.archived === fact.archived)
+			return row;
+		changed = true;
+		return { ...row, archived: fact.archived };
+	});
+	return changed ? next : rows;
+}
+
+/**
  * The archived rows among `rows`, for a surface that has to count them.
  *
  * The same gate and the same fail-closed claim as `visibleRows`: with the

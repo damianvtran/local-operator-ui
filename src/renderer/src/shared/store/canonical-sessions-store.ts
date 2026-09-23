@@ -174,6 +174,28 @@ export type ArchiveFact = {
 	archived: boolean;
 	/** The request sequence this write took, which orders it against every read. */
 	at: number;
+	/**
+	 * Whether the write this fact was written by has been ANSWERED. False between the
+	 * press and the daemon's sentence, and that window is what the offer's retirement
+	 * rule has to respect.
+	 *
+	 * WHY A FIELD RATHER THAN A SECOND RECORD: it is the same lifecycle. The press writes
+	 * the fact (optimistic, unanswered), the answer settles it (accepted) or deletes it
+	 * (refused), and a read newer than both keeps the fact exactly as it stands - so the
+	 * flag travels with the value it belongs to and cannot drift from it. A reader that
+	 * needs to know whether the client is still WAITING asks this, and the one that does is
+	 * `archive-undo.ts`'s retirement subscription.
+	 *
+	 * WHAT IT IS FOR, measured on the control beside the one U3 was about (agent review
+	 * round 2, R2-1): the retirement rule reads this fact first, so an OPTIMISTIC fact makes
+	 * the rule say "the conversation no longer holds the state the offer was taken from"
+	 * before anything has been refused. The offer is therefore retired at the press, the
+	 * lane is dismissed - and a refusal arriving in its place is raised on the id that was
+	 * just dismissed, which sonner destroys inside its own unmount window. Undo, the
+	 * header's own restore control and `/unarchive` all write this route, so the gate belongs
+	 * to the fact rather than to any one caller.
+	 */
+	answered: boolean;
 };
 /**
  * The undo offer a successful archive stands, and what pressing Undo would take
@@ -191,6 +213,14 @@ export type ArchiveUndoOffer = {
 	title?: string;
 	/** The state the offer was taken from: what the press would take back. */
 	archived: boolean;
+	/**
+	 * The write stamp this offer was raised under, so the LANE can tell it apart from a
+	 * refusal by CURRENCY rather than by kind (agent review round 3, R3-1 = UX round 3, U7).
+	 * Without it the lane preferred the refusal unconditionally, and because `archiveFailure`
+	 * is only cleared for its own conversation, one refused archive meant every later
+	 * successful archive's offer was never drawn.
+	 */
+	at: number;
 };
 
 /**
@@ -248,6 +278,11 @@ export type ForgottenFact = {
  */
 export type ArchiveFailure = {
 	sessionId: string;
+	/**
+	 * The write stamp the refusal was raised under (see `ArchiveUndoOffer.at`): the lane draws
+	 * whichever of its two messages is NEWER, and this is what says which that is.
+	 */
+	at: number;
 	/** The desired state that was refused, not the state on screen. */
 	archived: boolean;
 	/**
@@ -1659,6 +1694,18 @@ type CanonicalSessionsState = {
 	 */
 	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
 	/**
+	 * Clear the refusal once its message's turn in the panel's lane is over.
+	 *
+	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
+	 * panel owns the drawing decision (which message is the newest word, and so when an older
+	 * one has been superseded), and U10 is what happens when the VALUE outlives its message -
+	 * the refusal was re-printed every time a newer message retired, because the clock cleared
+	 * the drawing and not the value. Nothing else reads this field: what reverts the row is the
+	 * fact `setSessionArchived` already recorded, and what announces it is the control's own
+	 * flip, so clearing the sentence takes no affordance with it.
+	 */
+	clearArchiveFailure: () => void;
+	/**
 	 * The conversation a danger dialog is asking about, or null.
 	 *
 	 * In the STORE rather than in the component that draws the dialog, because two
@@ -2137,32 +2184,6 @@ function factsNewerThan<T extends { at: number }>(
 }
 
 /**
- * The facts' own values written back over an answer that predates them.
- *
- * `replaceSessionRows` rebuilds each row's values from the page, so a page whose
- * request started before a press would regress the very row the user just
- * archived - and the panel would resurrect it under the pointer. Only the rows a
- * surviving fact names are touched; nothing is added, so a page cannot be made to
- * carry a conversation it does not hold, and the array identity is kept when no
- * fact applies (`applyAttention`'s rule: an unchanged merge must not re-render a
- * 500-row list for an answer that carried nothing new).
- */
-function applyArchiveFacts(
-	rows: CanonicalSessionRow[],
-	facts: Record<string, ArchiveFact>,
-): CanonicalSessionRow[] {
-	if (Object.keys(facts).length === 0) return rows;
-	let changed = false;
-	const next = rows.map((row) => {
-		const fact = facts[row.session_id];
-		if (!fact || row.archived === fact.archived) return row;
-		changed = true;
-		return { ...row, archived: fact.archived };
-	});
-	return changed ? next : rows;
-}
-
-/**
  * The state a delete leaves behind: the row is gone, anything this client
  * remembered about it is gone, and a TOMBSTONE is left in its place.
  *
@@ -2571,10 +2592,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * the archived rows (`include_archived: true`), so the page speaks about
 						 * the archived set as a whole and absence means "unarchived or gone"
 						 * rather than "not mentioned" (`factsNewerThan`).
+						 *
+						 * THE PAGE NO LONGER WRITES THE FACT'S VALUE ONTO THE ROWS (design round 8,
+						 * D27). It used to, to stop a page asked for before a press regressing the
+						 * row the reader just archived - and with the two row-facing readers taking
+						 * the ANSWERED view (`chat-archived.ts`'s `answeredArchiveRows` for membership,
+						 * the sidebar's `archiveFactValues` for the row's drawn value), that
+						 * protection is structural: a surviving fact outranks the page in both readers
+						 * whatever the rows carry. What stays here is the CURRENCY, which is what
+						 * settles a fact older than the request it answers.
 						 */
 						const archiveFactSet = factsNewerThan(state.archiveFacts, answerAt);
 						return {
-							sessions: applyArchiveFacts(next, archiveFactSet),
+							sessions: next,
 							pinFacts: facts,
 							archiveFacts: archiveFactSet,
 							forgotten: tombstones,
@@ -2612,12 +2642,35 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });
 			},
+			clearArchiveFailure: () => {
+				set({ archiveFailure: null });
+			},
 			setSessionArchived: async (sessionId, archived, title) => {
 				/*
-				 * OPTIMISTIC, AND STAMPED, which is one decision rather than two: the row
-				 * has to leave the list the moment the user presses (an archive that waits
-				 * for a round trip reads as a control that does nothing), and the answer
-				 * that follows is one this client cannot trust to be newer than the press.
+				 * STAMPED, AND A PRESS CHANGES THE INTENT RATHER THAN THE LIST (design round 8, D27).
+				 * The fact is still written optimistically - it is what tells every reader where this
+				 * conversation is GOING - but the press no longer patches `sessions`, and that patch was
+				 * what removed the row. THE ROW CARRIES THE ANSWERED STATE, THE FACT CARRIES THE
+				 * INTENDED ONE: the two row-facing readers take only answered facts (the list's one
+				 * filter and the row's own drawn value, both through `chat-archived.ts`'s answered
+				 * view), so a press may change what a conversation is about to be without changing
+				 * what the list holds.
+				 *
+				 * WHY THAT IS THE FIX RATHER THAN A TIDIER SHAPE, at QA round 4's own numbers: the row's
+				 * departure shortens the list's content by its own height while the box is still the
+				 * band-0 one, so `scrollHeight - clientHeight` goes NEGATIVE, the browser clamps the
+				 * reader's `scrollTop` to the new extent, and nothing gives it back when the row
+				 * returns - the `8.5 -> 0` QA measured. The same dip exists on the SUCCESS path
+				 * (`224.5` of content against a `248` box) whenever the departure and the band that
+				 * answers it land in different commits, which is why the offer below is raised in the
+				 * same update as the fact's settlement. Taking the departure out of the press takes the
+				 * dip out of the state, which is arithmetic rather than a race a write could lose.
+				 *
+				 * THE PRESS'S ACKNOWLEDGEMENT IS WHAT THIS COSTS, stated rather than implied: the row the
+				 * reader pressed stays drawn for the round trip - 2-4 ms on this app's own daemon, and
+				 * the whole in-flight window on a stalled one, where the press reads as inert until the
+				 * card lands. Design D28 records the register that should pay it (the row's own control,
+				 * which the reader is already on); it is not invented here.
 				 *
 				 * THE ASSUMPTION THE STAMP RESTS ON IS OWED TO QA, and this is where it is
 				 * written down rather than assumed silently. A press takes the sequence the
@@ -2629,12 +2682,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * is the route's business, not this client's: if it does not hold, an answer
 				 * can say `archived: false`, the fact is settled, and the row reappears
 				 * until the next page. QA settles what the sibling route guarantees; the
-				 * client's half (stamp, revert, refusal register) is what is exercised here.
+				 * client's half (stamp, membership, refusal register) is what is exercised here.
 				 */
 				const at = get().answerSeq + 1;
-				const previous = get().sessions.find(
-					(row) => row.session_id === sessionId,
-				)?.archived;
+				/*
+				 * THE FACT THIS PRESS REPLACES, kept so a refusal can put it back (see the catch arm). With
+				 * membership and the row's drawn value both read from the fact, the fact IS the client's
+				 * knowledge - so deleting the press's own write without restoring what it stood for would
+				 * leave a conversation the daemon holds archived reading as live (`row.archived` is the wire's
+				 * value, and the wire's last word was the page BEFORE the accepted archive). Measured on this
+				 * walk's refused-undo step: the row came back into a list that excludes archived rows.
+				 */
+				const previousFact = get().archiveFacts[sessionId] ?? null;
 				const rowTitle =
 					title ??
 					get().sessions.find((row) => row.session_id === sessionId)?.title;
@@ -2642,27 +2701,102 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					answerSeq: at,
 					archiveFacts: {
 						...state.archiveFacts,
-						[sessionId]: { archived, at },
+						/* UNANSWERED until the write's own sentence arrives (`ArchiveFact.answered`). */
+						[sessionId]: { archived, at, answered: false },
 					},
-					/*
-					 * A new press retires the refusal about the previous one: the sentence
-					 * in the register describes the last thing the user tried, and leaving a
-					 * stale one under a press that then succeeded is a failure notice for a
-					 * failure that is no longer the state of anything.
-					 */
-					archiveFailure:
-						state.archiveFailure?.sessionId === sessionId
-							? null
-							: state.archiveFailure,
-					sessions: state.sessions.map((row) =>
-						row.session_id === sessionId ? { ...row, archived } : row,
-					),
 				}));
+				/*
+				 * A PRESS DOES NOT RETIRE THE REFUSAL ABOUT ITS OWN CONVERSATION, and this is a
+				 * correction rather than a detail: the version that shipped cleared it here, and
+				 * the clear is what took the RETRY's own answer off the screen.
+				 *
+				 * The lane has ONE stable id for both of its messages (`ARCHIVE_TOAST_ID` in
+				 * `chat-sidebar.tsx`), so a refusal that follows a dismissal of that id within
+				 * sonner's own unmount window is merged into the entry that is being removed and
+				 * destroyed with it - measured against the installed sonner 2.0.3 in jsdom
+				 * (2026-09-21): created on the dismissed id, the toast is painted at +50ms and
+				 * gone by +600ms, while the same create 600ms later mounts normally. A fast
+				 * daemon answers the retry in 2-4ms, which is squarely inside that window, so the
+				 * clearing above left "Retry" doing nothing at all: the message was dismissed and
+				 * the refusal that replaced it never mounted (UX report round 1, U3).
+				 *
+				 * WHAT RETIRES IT INSTEAD, in this order: a refusal that lands replaces the one on
+				 * screen through the SAME id (sonner updates the mounted toast in place, which is
+				 * what one-message-at-a-time means here); an accepted archive supersedes it with
+				 * the offer (`offerArchiveUndo` in `archive-undo.ts`); an accepted unarchive has no
+				 * successor and clears it below; and any other press leaves it alone, because the
+				 * sentence describes the last answer to a press on that conversation rather than a
+				 * state the newer press has already settled.
+				 */
 				try {
 					await desktopResult<{ session_id: string; archived: boolean }>({
 						op: "sessions.archive",
 						sessionId,
 						archived,
+					});
+					/*
+					 * AND THE WRITE IS ANSWERED: the fact is settled, which is what retires the offer
+					 * that press raised (`ArchiveFact.answered`), and the refusal it was written over is
+					 * cleared in the same update - the two halves cannot be separated without leaving a
+					 * window in which the offer is retired and the refusal it replaced is still the
+					 * store's newest word about that conversation.
+					 *
+					 * AND THE OFFER IS RAISED HERE TOO, IN THIS SAME UPDATE (design round 8, D27's second
+					 * clause). It used to be raised a microtask later by whichever caller pressed - the
+					 * row's `.then`, the header's, `/archive`'s - i.e. in a SECOND React commit, and the
+					 * commit between them is the one that measures `224.5` of content against a `248` box:
+					 * the departure on the success path took the extent negative, the browser clamped the
+					 * reader, and the band arrived too late to give the position back. Raised with the
+					 * settlement, the departure and its band are one commit, and their arithmetic runs the
+					 * other way (`band - rowHeight = 58 - 32 = +26px` of headroom), so the reader's place
+					 * is reachable on every accepted press. The guard is `archived === true`, which is
+					 * also what keeps the unarchive path offerless: the row comes back into the list,
+					 * which is its own visible trace (UX round 1, U2).
+					 *
+					 * AND THE REFUSAL THIS CONVERSATION'S OWN LAST PRESS LEFT IS RETIRED IN THE SAME
+					 * UPDATE, for an archive as well as for an unarchive: the lane holds one message under
+					 * one id, so raising the offer is what takes the refusal off the screen, and clearing it
+					 * in a second update would leave a window in which the store holds neither message and
+					 * the panel dismisses the lane - the create-then-destroy mechanism UX round 1, U3 is
+					 * about. `archive-undo.ts` raised the offer and cleared the refusal together for exactly
+					 * this reason; both are here now, and the offer's own retirement watch stays with its
+					 * module (`useArchiveUndoRetirement`).
+					 *
+					 * Currency, like the refusal arm below: only the newest press for this conversation
+					 * may settle it. An older press's acceptance is an answer about a state the newer
+					 * press has already replaced.
+					 */
+					set((state) => {
+						const fact = state.archiveFacts[sessionId];
+						const superseded = fact?.at !== at;
+						return {
+							archiveFacts: superseded
+								? state.archiveFacts
+								: {
+										...state.archiveFacts,
+										[sessionId]: { archived, at, answered: true },
+									},
+							/*
+							 * AN ACCEPTED ARCHIVE STANDS THE OFFER, an accepted unarchive clears it (it has no
+							 * successor action) - and a SUPERSEDED settlement touches the lane not at all,
+							 * because the newer press owns both the fact and the message about it.
+							 */
+							archiveUndo: superseded
+								? state.archiveUndo
+								: archived
+									? {
+											sessionId,
+											/* `rowTitle` is the row's own title, which the wire may answer as null. */
+											title: rowTitle ?? undefined,
+											archived: true,
+											at,
+										}
+									: null,
+							archiveFailure:
+								state.archiveFailure?.sessionId === sessionId
+									? null
+									: state.archiveFailure,
+						};
 					});
 					return true;
 				} catch (error) {
@@ -2673,30 +2807,85 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * owns the row now, and reverting on the older one's failure would undo
 						 * the newer press - the failure of a request the user has already moved
 						 * on from is not a statement about what is on screen.
+						 *
+						 * THE REVERT IS THE FACT, AND RESTORING IT IS THE WHOLE OF IT (design round 8, D27): the
+						 * press patched neither `sessions` nor any other row state, so a refused write puts back
+						 * the fact it REPLACED - or, when there was none, leaves none. Both row-facing readers
+						 * then read what they read before the press, which is the same observable claim the version
+						 * that patched the row made. Deleting the fact instead would be a revert to the WIRE's
+						 * value, and the wire's last word about this conversation predates the accepted write the
+						 * fact was standing for: measured on the walk's refused-undo step, the row came back into
+						 * a list that excludes archived rows because the client forgot it had archived it.
+						 *
+						 * What used to be guarded, and still is, is the REPORT: this guard returned the state
+						 * untouched once, which dropped the refusal with it - so a write that really was refused
+						 * was answered on screen only when no catalogue answer had settled the fact first. Measured
+						 * against the real store (the fixture shape `scripts/session-archive-delete.test.mjs` uses,
+						 * 2026-09-21): press, then a page whose request STARTS after the press answers before the
+						 * write's rejection, and `archiveFailure` stays `null` - the press silently does nothing,
+						 * the one outcome the refusal exists to prevent. The panel's list read is a 5s poll and
+						 * every catalogue frame, so that ordering is ordinary rather than exotic.
+						 *
+						 * The message is a fact about the press (the write was refused) while the fact's own
+						 * restoration is a fact about the intent, and the two have different owners: the sentence
+						 * belongs to the last press that was actually answered, and a superseded press owns
+						 * neither.
 						 */
-						if (state.archiveFacts[sessionId]?.at !== at) return state;
+						const superseded = state.archiveFacts[sessionId]?.at !== at;
 						const facts = { ...state.archiveFacts };
-						delete facts[sessionId];
-						return {
-							archiveFacts: facts,
+						if (!superseded) {
 							/*
-							 * The value the row carried BEFORE the press, not `!archived`: a press
-							 * is a desired state rather than a toggle, so the value to restore is
-							 * the one the press replaced. A conversation this client does not list
-							 * has no row to restore, and dropping the fact is the whole revert
-							 * there - the row is rebuilt from the wire hit, which is what it read
-							 * before the press.
+							 * AND WHAT GOES BACK IS AN ANSWERED FACT OR NOTHING (agent review round 5, R5-2).
+							 *
+							 * Restoring `previousFact` verbatim put back an UNANSWERED intent whenever the press
+							 * being refused had displaced one that was still in flight - and the two row-facing
+							 * readers skip unanswered facts, so the restore wrote a fact that could not be read at
+							 * all. Reproduced on this suite's own fixture with two presses before either answer:
+							 * press 1 (archive) is displaced by press 2 (unarchive), press 1's acceptance arrives
+							 * first and bails as superseded, and press 2's refusal then restored
+							 * `{archived:true, at:2, answered:false}`, leaving the client with no readable
+							 * knowledge of an archive the daemon had just ACCEPTED.
+							 *
+							 * THE RULE: a refusal puts back the fact it replaced only when that fact had been
+							 * ANSWERED. An unanswered fact is a press's INTENT, and this client cannot vouch for an
+							 * intent whose own answer may already have been discarded by the currency rule beside
+							 * this one - so it removes its own write instead.
 							 */
-							sessions:
-								previous === undefined
-									? state.sessions
-									: state.sessions.map((row) =>
-											row.session_id === sessionId
-												? { ...row, archived: previous }
-												: row,
-										),
+							if (previousFact?.answered === true) {
+								facts[sessionId] = previousFact;
+							} else {
+								delete facts[sessionId];
+								/*
+								 * AND THE CLIENT ASKS RATHER THAN KEEPING NEITHER: with that intent gone this window
+								 * knows nothing about the conversation's archive state while the daemon does, so the
+								 * page is read again. Without it the row reads the wire's stale value until the 5s
+								 * poll - the whole of the window in which a reader would act on it. A press with no
+								 * fact behind it has nothing to re-learn, so only a displaced intent asks.
+								 */
+								if (previousFact !== null) void get().fetchSessions();
+							}
+						}
+						return {
+							archiveFacts: superseded ? state.archiveFacts : facts,
+							/*
+							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both lane messages
+							 * used to be stamped from the SAME counter (the refusal took `state.answerSeq` as it
+							 * stood), so a refusal landing in the answer that re-raised an offer TIED with it -
+							 * and a tie is exactly the state the lane's rule now resolves in the refusal's favour
+							 * (see the drawn-message rule and its comment in `chat-sidebar.tsx`). Advancing the
+							 * counter here makes a refusal that lands LAST strictly newer, which is what its own
+							 * sentence says it is: the last press the daemon actually answered.
+							 */
+							answerSeq: state.answerSeq + 1,
 							archiveFailure: {
 								sessionId,
+								/*
+								 * THE STAMP IS THE CURRENCY THE LANE READS (agent review round 3, R3-1). Taken from
+								 * `answerSeq` at the landing: a later successful archive's offer carries a higher
+								 * one, which is what lets the lane draw the newer message instead of preferring
+								 * the refusal forever.
+								 */
+								at: state.answerSeq + 1,
 								archived,
 								title: rowTitle || "Untitled chat",
 								/*

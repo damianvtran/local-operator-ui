@@ -53,7 +53,6 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
-import { offerArchiveUndo } from "../archive-undo";
 import {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
@@ -708,7 +707,11 @@ export function useSlashDispatch({
 					 * transcript would put the same sentence on two surfaces about one press.
 					 */
 					if (!accepted) return "consumed";
-					offerArchiveUndo({ sessionId, title, archived });
+					/*
+					 * THE OFFER IS THE STORE'S OWN (design round 8, D27): it is raised in the update
+					 * that settles the write, so the accepted departure and the band that answers it
+					 * land in one commit rather than two.
+					 */
 					return "consumed";
 				}
 				/*

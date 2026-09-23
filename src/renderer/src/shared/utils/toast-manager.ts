@@ -6,6 +6,7 @@
  * Toasts are styled using sonner and themed according to the application.
  */
 
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import type { ExternalToast } from "sonner"; // Using ExternalToast for options type
 import {
@@ -222,8 +223,19 @@ export const resetToastDedup = () => {
  * @param options - Sonner toast options (ExternalToast)
  * @returns The toast ID
  */
+/**
+ * A toast whose body is a STRUCTURE the caller builds, not a formatted string.
+ *
+ * Sonner renders whatever it is handed inside the toast's `[data-title]` element, so a
+ * `ReactNode` message is the channel's own shape rather than a widening for one call
+ * site: the archive offer needs the part that may be truncated (a name) and the part
+ * that may not (its verb) to be two elements, and a string cannot carry that distinction
+ * - a single string that overflows loses its TAIL, which for `“<title>” archived.` is the
+ * sentence's own verb (agent review round 2, R2-3). Everything else in the app keeps
+ * passing strings; a string is a `ReactNode`.
+ */
 export const showInfoToast = (
-	message: string,
+	message: ReactNode,
 	options?: ExternalToast,
 ): string | number => {
 	return toast.info(message, options);

@@ -162,6 +162,14 @@ const conversations = [
 			supported: true,
 		},
 		binding: { agent: null, team: null },
+		/*
+		 * THE UNDO REFUSAL'S OWN ROW (agent review round 2, R2-1): its archive is accepted
+		 * and its first unarchive is refused, which is what lets the session-archive scene
+		 * walk the lane's Undo into a refusal. Assigned to this row because it is the one no
+		 * other step unarchives, and `refuse_unarchive_once` hands the second attempt back to
+		 * the ordinary path so the walk restores the list itself.
+		 */
+		refuse_unarchive_once: true,
 	},
 	{
 		id: "a91f4c7e2b60",
@@ -351,6 +359,28 @@ const route = (method, pathname, query, body) => {
 		 * Retry) rather than a sentence this file authored.
 		 */
 		if (row.live_claim) {
+			return {
+				status: 409,
+				body: {
+					detail:
+						"That conversation is open in a running session. Stop it before archiving it.",
+				},
+			};
+		}
+		/*
+		 * AND ONE ROW WHOSE UNARCHIVE IS REFUSED ONCE, which is the only shape that reaches the
+		 * lane's UNDO path with a refusal on it: the offer an archive raises is the control the
+		 * refusal has to replace, and a conversation that became live between the two presses
+		 * is exactly that backend. It is quoted from the same guard as the sentence above -
+		 * the app renders whatever the route says, so the stub does not author its own copy.
+		 *
+		 * ONE-SHOT ON PURPOSE: the scene presses the refusal's Retry after it has asserted the
+		 * refusal, and that second unarchive lands, so a run leaves the list the fixture
+		 * describes rather than leaving an extra archived row for the next palette to
+		 * photograph (the reason the session-archive scene puts the offer's row back at all).
+		 */
+		if (row.refuse_unarchive_once && body?.archived === false) {
+			row.refuse_unarchive_once = false;
 			return {
 				status: 409,
 				body: {

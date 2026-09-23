@@ -93,6 +93,23 @@ globalThis.ResizeObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
+/*
+ * `useMediaQuery` is a `useSyncExternalStore` over `window.matchMedia`, and jsdom
+ * implements none. The row's title now reads `prefers-reduced-motion` at mount
+ * (the pan it gates is javascript rather than a stylesheet, so it has to ask),
+ * which puts a media query on every row this fixture renders. Nothing matches -
+ * the honest answer for a DOM with no such API, and this machine's own default
+ * for that query - and the pan itself is never exercised here, because jsdom
+ * dispatches no pointer. The stub is set on the jsdom window rather than on
+ * `globalThis` for the reason the hooks read it there.
+ */
+DOM.window.matchMedia = (query) => ({
+	media: query,
+	matches: false,
+	addEventListener: () => {},
+	removeEventListener: () => {},
+	dispatchEvent: () => false,
+});
 
 /** The store's persistence needs this, and the transport is the only fake. */
 const values = new Map();
@@ -341,6 +358,27 @@ const {
 	QueryClientProvider,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
+
+/**
+ * The row's FLYOUT, read from the mounted row - the pointer channel, since the
+ * row-space change deleted the native `title` attribute it used to be (design D7).
+ *
+ * The facts are the app's own `Tooltip` content now, and Radix mounts that in a
+ * portal only while it is OPEN, so the read opens it the way a keyboard user does:
+ * focus the row, let the primitive commit, then read the two lines it draws - the
+ * title (with its binding) and the status line whose tail these cases are about.
+ * Read as LINES rather than as one string because the flyout draws two `block`
+ * spans: their textContent concatenates with no separator between them, and a
+ * single-string read would compare `ledgerUnseen` against `ledger Unseen`.
+ */
+async function flyoutLines(button) {
+	if (!button) return null;
+	button.dispatchEvent(new DOM.window.FocusEvent("focusin", { bubbles: true }));
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	const tip = document.querySelector('[role="tooltip"]');
+	if (!tip) return null;
+	return [...tip.children].map((line) => line.textContent?.trim() ?? "");
+}
 
 /** Mount the shipped sidebar and return the handles a case drives it with. */
 const mount = async (rows) => {
@@ -671,12 +709,15 @@ test("a foreground refusal reads as a refusal, not as an unreachable backend", a
 
 test("the row tooltip's `, unread` tail follows the mark the row draws, not `unseen`", async () => {
 	/*
-	 * THE THIRD VISIBLE SURFACE, and the one no frame photographs: the row's `title`.
-	 * `chat-sidebar.tsx` composes its tail from `unreadMarkKind`, so a row that is
-	 * busy or parked on a gate — carrying `unseen` and a token, with nothing drawn —
-	 * must no longer claim ", unread". That is a REMOVAL of copy from the channel the
-	 * operator's own report reaches by hovering, which is exactly the kind of edit a
-	 * reviewer should be able to run rather than take on trust (design D2).
+	 * THE THIRD VISIBLE SURFACE: the row's own flyout. It was a native `title`
+	 * attribute when this test was written and the row-space change deleted that
+	 * attribute (design D7), so the read now opens the app's tooltip - see
+	 * `flyoutLines` - and the tail it composes is unchanged: `chat-sidebar.tsx`
+	 * derives it from `unreadMarkKind`, so a row that is busy or parked on a gate —
+	 * carrying `unseen` and a token, with nothing drawn — must not claim ", unread".
+	 * That is a REMOVAL of copy from the channel the operator's own report reaches by
+	 * hovering, which is exactly the kind of edit a reviewer should be able to run
+	 * rather than take on trust (design D2).
 	 *
 	 * One roster, three rows, the same attention state, differing only in the derived
 	 * pair the backend published: the pair is what decides, so the mark row and the
@@ -723,24 +764,25 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 			: Promise.resolve({ read: [], superseded: [], unknown: [] });
 	const harness = await mount(rows);
 	try {
-		const titleOf = (name) =>
-			harness
-				.ring()
-				.find((row) => row.textContent?.includes(name))
-				?.getAttribute("title");
+		const titleOf = async (name) =>
+			(
+				await flyoutLines(
+					harness.ring().find((row) => row.textContent?.includes(name)),
+				)
+			)?.join(" | ") ?? null;
 		// The mark: the level is named, because the row is drawing it.
 		assert.equal(
-			titleOf("Reconcile the supplier ledger"),
-			"Reconcile the supplier ledger: Unseen completion, unread",
+			await titleOf("Reconcile the supplier ledger"),
+			"Reconcile the supplier ledger | Unseen completion, unread",
 		);
 		// The spinner and the gate: `unseen` is true on both, and neither says it.
 		assert.equal(
-			titleOf("Quarterly revenue model"),
-			"Quarterly revenue model: Working",
+			await titleOf("Quarterly revenue model"),
+			"Quarterly revenue model | Working",
 		);
 		assert.equal(
-			titleOf("Migrate the deploy script"),
-			"Migrate the deploy script: Approval needed",
+			await titleOf("Migrate the deploy script"),
+			"Migrate the deploy script | Approval needed",
 		);
 	} finally {
 		await harness.unmount();
@@ -837,10 +879,10 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 		const failed = row("Failed turn");
 		assert.ok(silent, "the not-answering row did not render");
 		assert.ok(failed, "the failed row did not render");
-		// The pointer channel: the composed tooltip ends with the clause, so the
-		// row itself still carries it where a pointer lands.
+		// The pointer channel: the composed flyout ends with the clause, so the row
+		// itself still carries it where a pointer lands.
 		assert.match(
-			silent.getAttribute("title") ?? "",
+			(await flyoutLines(silent))?.at(-1) ?? "",
 			/· \/stop if it stays silent$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what
