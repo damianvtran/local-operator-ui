@@ -753,9 +753,10 @@ deliberately is also obeyed — `withTelemetryOff` is a default rather than an
 override, and an export of `on` in the shell a rig runs from travels into that
 rig's child by that rule.
 
-A `.env` IN A CHECKOUT IS NOT AN OFF SWITCH, and `pnpm dev` is the one path where
-a file gets a hearing at all — so it is worth stating how far that goes. `dev`
-loads the working directory's `.env` through `dotenv-cli`, whose default is NOT
+A `.env` IN A CHECKOUT CANNOT RE-ARM TELEMETRY, and `pnpm dev` is the one path
+where a file gets a hearing at all — so it is worth stating how far that goes,
+and the one place where it reaches further. `dev` loads the working directory's
+`.env` through `dotenv-cli`, whose default is NOT
 to overwrite a variable already in the environment: the LAUNCH's value wins for
 every key, and the file supplies the keys the launch did not set. That is
 deliberate and load-bearing rather than incidental, because `dev:headless` is
@@ -765,7 +766,23 @@ file inside its own shell after that prefix, which let a `.env` line reading
 `LOCAL_OPERATOR_UI_TELEMETRY=` (empty — the app folds it back to "unset", so
 telemetry stayed ON with no off-line printed) or `=on` re-arm the run;
 `scripts/telemetry-spawn-sites.test.mjs` now runs that body against a scratch
-`.env` in all three shapes and fails if the precedence moves back.
+`.env` in all three shapes and fails if the precedence moves back. The trade that
+buys one rule for every key, in one sentence: a `pnpm dev` started from a terminal
+that injects `VITE_*` variables — the Cursor/vscode case the re-export was
+written for — now has the terminal's value beat the checkout's `.env` for every
+key, rather than the other way round.
+
+The KEY runs the other way, and the paragraph above is deliberately narrow about
+it: a file can make a `dev` run quieter than its launcher asked, but never
+louder. `src/main/backend/config.ts` folds a checkout `.env` over `process.env`
+with dotenv `override: true`, and `src/main/telemetry-launch.ts` resolves main's
+switch from `backendConfig.VITE_PUBLIC_POSTHOG_KEY` — correct and deliberate,
+because a build's key IS product configuration and that fold is exactly where it
+is supposed to come from. So a blank `VITE_PUBLIC_POSTHOG_KEY=` line in a
+checkout resolves a `pnpm dev` run to off (`offReason: "this build carries no
+PostHog project key"`), because the schema's `.default()` fills only an ABSENT
+value. Fail-closed, and not a leak: the switch half above is the half the
+guarantee is about, and it is the half a file cannot move.
 
 ### A `headless` run takes no Dock tile, and leaves when its launcher does
 
