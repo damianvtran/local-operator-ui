@@ -82,6 +82,15 @@ export type PickerHostProps = {
 	/** One sentence on what choosing does, and its scope. */
 	description?: string;
 	options?: PickerOption[];
+	/**
+	 * This picker's own search rule, when the default one is wrong for it.
+	 *
+	 * Defaults to `filterPickerOptions`, which is every picker's behaviour up to
+	 * and including the model picker's until it needed a wider rule of its own
+	 * (`matchModelPickerOptions`). A destination that passes one owns the rule
+	 * for its own rows and for nobody else's — see `PickerOptionMatcher`.
+	 */
+	matcher?: PickerOptionMatcher;
 	/** Options are loading from the backend. */
 	loading?: boolean;
 	/** Options failed to load; shown in place of the list. */
@@ -287,76 +296,45 @@ export function pickerListReducer(
 	}
 }
 
-/*
- * The matcher, for every picker that filters on the search box.
- *
- * WHY this exists rather than a bare `.toLowerCase().includes(...)`. A model's
- * human name is published by the listing with spaces and a colon
- * (`SpaceXAI: Grok 4.7`) while its id glues the same words with hyphens and a
- * slash (`x-ai/grok-4.7`), and the query the operator types carries neither
- * spelling literally: `grok 4.7` has a space where the id has a hyphen and the
- * name has a colon-adjacent space. A plain substring test therefore matched
- * NEITHER and the picker answered `Nothing matches.` for a model sitting in the
- * catalogue (the operator's report).
- *
- * The rule is ONE normalisation applied to BOTH sides, never a special case per
- * spelling: lowercase, then every run of non-alphanumerics collapses to a single
- * space. So `x-ai/grok-4.7` and `grok 4.7` both read `x ai grok 4 7` /
- * `grok 4 7` and the substring test succeeds on the shared words.
- *
- * This mirrors `local_operator/model/ranking.py`'s `_match_key` byte for byte
- * (same `[^0-9a-z]+` class, same collapse-to-one-space, same trim) so the TUI,
- * the phone sheet and this desktop picker all rank one catalogue the same way.
- * The backend is the single source of the rule; this is its renderer-side
- * reader, and a divergence here is the two surfaces disagreeing about what a
- * query means. Do NOT add the backend's version-shaped numeric ordering here:
- * the desktop picker keeps its own grouping and never re-sorts, and a second
- * numeric rule is how the two orderings drift apart.
- *
- * The pattern is `[^0-9a-z]` (not `\W`) on purpose: `\W` keeps the underscore
- * a word character, and the backend's class does not, so `gpt_5` normalises
- * differently under the two. Keep them identical.
+/**
+ * A picker's own matcher, for a surface whose search rule differs from the
+ * default one below. `PickerHost` calls it with the same `(options, query)` the
+ * default takes, so the two are interchangeable and a destination opts in by
+ * passing one in — which is the whole point: the rule is only as wide as the
+ * surface that asked for it (see `model-picker-match.ts`).
  */
-const MATCH_SEPARATOR = /[^0-9a-z]+/g;
-
-/** A string's spelling as the matcher sees it: lowercase, space-separated words. */
-export function pickerMatchKey(text: string): string {
-	return text.toLowerCase().replace(MATCH_SEPARATOR, " ").trim();
-}
+export type PickerOptionMatcher = (
+	options: PickerOption[],
+	query: string,
+) => PickerOption[];
 
 /**
- * The rows a query matches, in the order they came in.
+ * The rows a query matches, in the order they came in — THE DEFAULT RULE.
  *
- * Membership only, never ordering. The picker already has tiers — the row
- * builder's grouping and the catalogue's own order — and this filter must not
- * disturb them: adding the human name as a match target can only KEEP a row, so
- * an aggregator whose name happens to score better never gets promoted over a
- * direct provider's row, and a row that matched before still matches now. That
- * is the backend's "the pool is never shrunk by adding a match target" rule
- * stated for the client: this is a filter, not a ranker.
+ * This is the plain contiguous substring test every picker has always used, and
+ * it is deliberately unchanged: a model picker's search box has a wider rule of
+ * its own (`matchModelPickerOptions`, passed in through `PickerHostProps.matcher`),
+ * but the commands, providers, MCP and session pickers do not, and giving them
+ * one silently is how typing `/` into **Search commands** went from listing
+ * every command to `Nothing matches.` — their labels start with the slash, so a
+ * query that CARRIES no word is a legitimate query for them and the model half's
+ * punctuation rule is exactly wrong here.
  *
- * TWO EMPTY-ISH CASES, and they are not the same — the backend draws the same
- * line. A query the user has not typed into at all (blank, or whitespace) lists
- * everything; a query that is non-empty but NORMALISES to empty (`.`, `!`,
- * `...`, `-`) carries no words and must return NOTHING rather than falling into
- * the list-everything branch. Folding the two together replaces the list with
- * the whole catalogue on one punctuation keystroke — the backend measured `'.'`
- * taking 257 to 574 rows — which reads as the search box doing the opposite of
- * what was asked.
+ * So the seam is the matcher, not the rule: keep this as the widest-compatible
+ * behaviour, and put a surface-specific rule beside that surface.
  */
 export function filterPickerOptions(
 	options: PickerOption[],
 	query: string,
 ): PickerOption[] {
-	if (!query.trim()) return options;
-	const needle = pickerMatchKey(query);
-	if (!needle) return [];
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
 	return options.filter((option) =>
-		pickerMatchKey(
-			[option.label, option.value, option.description ?? "", option.meta ?? ""]
-				.concat(option.keywords ?? [])
-				.join(" "),
-		).includes(needle),
+		[option.label, option.value, option.description ?? "", option.meta ?? ""]
+			.concat(option.keywords ?? [])
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
 	);
 }
 
@@ -603,6 +581,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	title,
 	description,
 	options,
+	matcher = filterPickerOptions,
 	loading = false,
 	loadError = null,
 	notice = null,
@@ -768,11 +747,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 	/*
 	 * The filter is a pure exported function so its rule is executable from a
 	 * test (`filterPickerOptions`) rather than only reachable through a mounted
-	 * dialog — the discipline `pickerBodyKind` and the reducer follow here.
+	 * dialog — the discipline `pickerBodyKind` and the reducer follow here. A
+	 * surface with a rule of its own passes it in (`matcher`) rather than the
+	 * default being widened for everyone.
 	 */
 	const filtered = useMemo(
-		() => (options ? filterPickerOptions(options, query) : []),
-		[options, query],
+		() => (options ? matcher(options, query) : []),
+		[options, query, matcher],
 	);
 
 	/**

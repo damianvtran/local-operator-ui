@@ -72,6 +72,7 @@ import {
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import { catalogueListing } from "./model-catalogue-listing";
+import { matchModelPickerOptions } from "./model-picker-match";
 import {
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
@@ -214,10 +215,16 @@ function pricePair(row: CatalogueRow): string {
  * test rather than only reachable through a mounted dialog. The haystack is
  * where the operator's report lived: it carried `[provider, model_id]` and never
  * the provider's own HUMAN name, so a query in the words the listing publishes
- * (`grok 4.7`) matched nothing while the row sat in the catalogue. `listing_name`
- * is a match input now (see `pickerMatchKey`, which normalises both sides of the
- * test) and the holes are dropped, because an `undefined` term would join with
- * the empty string and make every query match.
+ * (`SpaceXAI: Grok 4.7` -> `spacexai`) matched nothing while the row sat in the
+ * catalogue. `listing_name` is a match input now, and the rule that reads it is
+ * `matchModelPickerOptions` (see `model-picker-match.ts`), which normalises both
+ * sides of the test.
+ *
+ * Which half does the work, measured rather than assumed: the NORMALISATION is
+ * what resolves `grok 4.7` and `gpt 6 luna` (their words are already in the id,
+ * glued with hyphens and a slash), and the name is what resolves a query holding
+ * a word that appears in no id at all (`spacexai`). Both are needed; neither
+ * alone answers the report.
  *
  * Pure and `shownSelector`-parameterised: `current` is the only field that reads
  * a value outside the rows, and passing it in is what lets a test build the same
@@ -252,22 +259,29 @@ export function modelPickerOptions(
 				: "Needs sign-in",
 		keywords: [
 			/*
-			 * The provider's own HUMAN name (`SpaceXAI: Grok 4.7`), which is what
-			 * a user actually types: the row id glues the same words with hyphens
-			 * and a slash, so a query carrying a space or a dot matches the name
-			 * and nothing else. Dropping it here is the whole of the operator's
-			 * `grok 4.7` -> `Nothing matches.` report on the desktop half; the
-			 * filter normalises both sides (see `pickerMatchKey`).
+			 * The provider's own HUMAN name (`Grok 4.7` for
+			 * `openrouter/x-ai/grok-4.7`), which is what a user actually types: the
+			 * row id glues the same words with hyphens and a slash, so a query in the
+			 * listing's words reaches the matcher through this term. The filter
+			 * normalises both sides (see `model-picker-match.ts`).
 			 */
 			row.listing_name,
 			row.provider,
 			row.model_id,
 		] /*
-		 * `listing_name` is optional on the wire (an older backend omits it),
-		 * and an `undefined` entry would join with the empty string and match
-		 * every query -- so the holes are dropped rather than filtered later.
+		 * A blank term is dropped. Not because an `undefined` would match every
+		 * query — it cannot: the backend ships `listing_name: ""` for a nameless
+		 * row (`CatalogueEntry.listing_name` is `kw_only` with `default=""`), and
+		 * either way the matcher normalises the joined haystack before reading it,
+		 * so an empty term is invisible. The reason is that a term that says
+		 * nothing is not a search term: keeping it puts a value in the haystack
+		 * that is true of every row and useful to none, and the next person to
+		 * change this list should not have to work out whether it is load-bearing.
 		 */
-			.filter((term): term is string => typeof term === "string"),
+			.filter(
+				(term): term is string =>
+					typeof term === "string" && term.trim() !== "",
+			),
 	}));
 }
 
@@ -946,6 +960,13 @@ export const ModelPicker: FC<PickerContext> = ({
 						: "Choose the model for this session."
 			}
 			options={options}
+			/*
+			 * The model picker's own search rule: the catalogue's ids are not strings
+			 * the user wrote, so the shared contiguous test is too narrow for them and
+			 * widening it for everyone is what broke **Search commands** (R1-3). The
+			 * rule and its reasoning live in `model-picker-match.ts`.
+			 */
+			matcher={matchModelPickerOptions}
 			loading={catalogue.isLoading}
 			loadError={listing.loadError}
 			notice={listing.notice}

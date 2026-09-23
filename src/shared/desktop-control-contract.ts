@@ -61,13 +61,13 @@ export type DesktopModelCatalogue = {
 		selector: string;
 		label: string;
 		/**
-		 * The source listing's own human name (`SpaceXAI: Grok 4.7`), carried
-		 * past `label`'s honesty rule for a consumer that disambiguates the
-		 * route some other way. It is a MATCH INPUT for the desktop picker's
-		 * search box (`pickerMatchKey`), not a displayed string: the operator
-		 * types the human name, so a filter that never reads it is the defect
-		 * where `grok 4.7` matched nothing. Optional because a catalogue served
-		 * by an older backend simply omits it.
+		 * The source listing's own human name (`Grok 4.7` for
+		 * `openrouter/x-ai/grok-4.7`), carried past `label`'s honesty rule for a
+		 * consumer that disambiguates the route some other way. It is a MATCH INPUT
+		 * for the desktop picker's search box (`model-picker-match.ts`), not a
+		 * displayed string: the operator types the human name, so a filter that
+		 * never reads it is the defect where `grok 4.7` matched nothing. Optional
+		 * because a catalogue served by an older backend simply omits it.
 		 */
 		listing_name?: string;
 		connected: boolean;
