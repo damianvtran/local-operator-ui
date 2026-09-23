@@ -28,6 +28,17 @@
  * decision, both processes; a `.env` in a checkout can neither silence a real
  * user nor speak for a rig.
  *
+ * THE ONE PLACE A FILE COULD HAVE OUTRANKED A LAUNCH is the `dev` script, whose
+ * `.env` is loaded inside the very shell the app is started from. It holds
+ * because `dotenv-cli` does NOT overwrite a variable already in the environment
+ * (`--override` is the opt-in, and this repo does not pass it): the launch's
+ * value wins for every key and the file supplies the rest, so the prefix on
+ * `dev:headless` reaches the app. That is pinned by
+ * `scripts/telemetry-spawn-sites.test.mjs`, which runs the real `dev` body
+ * against a scratch `.env` in the empty, the `on` and the absent shape - the
+ * spellings that used to re-arm a headless run when `dev` re-exported the file
+ * after the caller's prefix.
+ *
  * WHAT DELIBERATELY DOES NOT COME THROUGH HERE.
  *
  *  - `pnpm start`, `pnpm dev` and the published `npx local-operator-ui` launcher
@@ -101,10 +112,15 @@ export const TELEMETRY_OFF_VALUE = "off";
  * `true` there is deliberately asking to report and is on the record; the way to
  * take the default back is to UNSET the key.
  *
- * Only an ABSENT or EMPTY value takes the default. Empty is deliberate: a stale
- * shell export or a `.env` line in the empty shape arrives reading as "nobody
- * chose anything", and the app reads it the same way (an empty value is not a
- * considered choice there either).
+ * Only an ABSENT or BLANK value takes the default: `""` and a whitespace-only
+ * value alike. Blank is deliberate - a stale shell export or a `.env` line in
+ * the empty shape arrives reading as "nobody chose anything" - and the
+ * whitespace half is not tidiness: the app TRIMS before it decides
+ * (`src/main/telemetry-launch.ts`), so a value it folds back to "nothing" must
+ * not be left in this child reading as a considered choice HERE. Measured
+ * before this matched: `"   "` and `"\t"` passed through untouched, arrived as
+ * "unset" and left the app reporting, with no off-line to show it - a whitespace
+ * from a shell mishap read as a deliberate `on`.
  *
  * The consequence of the pass-through is stated rather than hidden: an export of
  * `on` in the shell a rig is run from travels into that rig's child by this rule,
@@ -115,7 +131,10 @@ export const TELEMETRY_OFF_VALUE = "off";
  */
 export function withTelemetryOff(env) {
 	const current = env[TELEMETRY_ENV];
-	if (current === undefined || current === "")
+	// `.trim()`, to read a blank the way the app does: see the docblock above and
+	// `resolveTelemetryLaunch`, which folds whitespace back to "nothing" before it
+	// treats anything as a choice.
+	if (current === undefined || current.trim() === "")
 		env[TELEMETRY_ENV] = TELEMETRY_OFF_VALUE;
 	return env;
 }

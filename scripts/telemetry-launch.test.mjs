@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { TELEMETRY_ENV as SCRIPT_TELEMETRY_ENV } from "./telemetry-off.mjs";
@@ -18,10 +19,17 @@ import { TELEMETRY_ENV as SCRIPT_TELEMETRY_ENV } from "./telemetry-off.mjs";
  * `window-mode.test.mjs` and `dev-driver-gate.test.mjs` do, so these stay tests
  * of the code that ships. The renderer's half
  * (`shared/config/telemetry.ts`) is bundled the same way, because the rule that
- * matters there — anything but an explicit `true` is off — is the one place a
- * forgotten `additionalArguments` entry could re-open the leak.
+ * matters there — anything but an explicit `true` is off, and a build with no
+ * key is off too — is the one place a forgotten `additionalArguments` entry
+ * could re-open the leak.
+ *
+ * `import.meta.env` is DEFINED rather than left to the runtime: the renderer's
+ * half imports the config singleton (`./app-config` → `load-config`), which
+ * reads that object, and a bare node bundle has no such thing — the two calls
+ * below read the same module with a different key inlined, which is the shape a
+ * build-time variable actually has.
  */
-async function bundleDataUrl(entry) {
+async function bundleDataUrl(entry, env = {}) {
 	const bundle = await build({
 		stdin: {
 			contents: `export * from "${entry}";`,
@@ -31,6 +39,7 @@ async function bundleDataUrl(entry) {
 		format: "esm",
 		platform: "node",
 		write: false,
+		define: { "import.meta.env": JSON.stringify(env) },
 	});
 	return `data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -46,12 +55,26 @@ const {
 	telemetryArgument,
 } = await import(await bundleDataUrl("./src/main/telemetry-launch"));
 
-const { resolveTelemetryEnabled, telemetryEnabled } = await import(
-	await bundleDataUrl("./src/renderer/src/shared/config/telemetry")
-);
-
 /** The key every launch in this file carries unless a case says otherwise. */
 const KEY = "phc_test_project_key";
+
+const { resolveTelemetryEnabled, telemetryEnabled } = await import(
+	await bundleDataUrl("./src/renderer/src/shared/config/telemetry", {
+		VITE_PUBLIC_POSTHOG_KEY: KEY,
+	})
+);
+
+/*
+ * The same module as a build that carries NO key, which is the case that used to
+ * diverge: the renderer's key is inlined at build time while main decides from
+ * the key its launch carries, so this is the shape in which the two processes
+ * could answer differently about one build.
+ */
+const keylessRenderer = await import(
+	await bundleDataUrl("./src/renderer/src/shared/config/telemetry", {
+		VITE_PUBLIC_POSTHOG_KEY: "",
+	})
+);
 
 /** The launch a person makes: nothing in the environment about telemetry. */
 const normalLaunch = { env: {}, projectKey: KEY };
@@ -192,17 +215,56 @@ test("the renderer's reader and main's writer spell one vocabulary", () => {
 });
 
 test("the renderer reports nothing unless it was told, explicitly, on", () => {
-	assert.equal(resolveTelemetryEnabled(true), true);
+	assert.equal(
+		resolveTelemetryEnabled({ fromBridge: true, projectKey: KEY }),
+		true,
+	);
 	// The fail-closed half, and the reason `src/main/index.ts` writes the entry on
 	// EVERY window: a bridge that is missing, an entry the preload could not
 	// parse, and a window created by a path that forgot to compose it are all the
 	// same answer here.
 	for (const value of [undefined, false]) {
-		assert.equal(resolveTelemetryEnabled(value), false);
+		assert.equal(
+			resolveTelemetryEnabled({ fromBridge: value, projectKey: KEY }),
+			false,
+		);
 	}
 	// Imported outside a renderer (this test), the module resolves to off rather
 	// than throwing on a `window` that does not exist.
 	assert.equal(telemetryEnabled, false);
+});
+
+test("a build with no key mounts no client in the renderer either", () => {
+	// The renderer's own key is `config.VITE_PUBLIC_POSTHOG_KEY`, inlined at
+	// BUILD time, while main decides from the key its LAUNCH carries. A build made
+	// with a blank key inlines "" (the schema's default only fills an ABSENT
+	// value), so without this half a bridge saying `true` would mount the provider
+	// over an empty key - `posthog.init("")`, neither the "no telemetry" answer
+	// main gives for the same blank key nor a working client.
+	for (const projectKey of ["", "   "]) {
+		assert.equal(
+			resolveTelemetryEnabled({ fromBridge: true, projectKey }),
+			false,
+			JSON.stringify(projectKey),
+		);
+	}
+	// The same fact at the module level, from the bundle that really inlines a
+	// blank key: the export both call sites read resolves to off.
+	assert.equal(keylessRenderer.telemetryEnabled, false);
+	// And the build that carries one is unaffected.
+	assert.equal(
+		resolveTelemetryEnabled({ fromBridge: true, projectKey: KEY }),
+		true,
+	);
+	/*
+	 * The two call sites read THAT export rather than working the key out again:
+	 * the provider mounts on `telemetryEnabled`, and the apiKey it hands over is
+	 * the same build key this rule just checked. A mount that reached for the key
+	 * directly would re-open exactly the divergence this closes.
+	 */
+	const mainSource = readFileSync("src/renderer/src/main.tsx", "utf8");
+	assert.match(mainSource, /\{telemetryEnabled \? \(/);
+	assert.match(mainSource, /apiKey=\{config\.VITE_PUBLIC_POSTHOG_KEY\}/);
 });
 
 test("the app's name for the switch and the tooling's are the same string", () => {

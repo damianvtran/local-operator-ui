@@ -718,7 +718,17 @@ nothing have to be told apart from outside the app.
 `scripts/telemetry-off.mjs` applies it to a child environment
 (`withTelemetryOff`), and `scripts/telemetry-spawn-sites.test.mjs` enumerates the
 sites that boot the app or the suite, failing on a new one that is not in its
-table. **It is a sibling of the notification scan rather than another column in
+table. Two halves, and the split is worth knowing before trusting the word
+"every": the scan sees the sites whose COMMAND is the runtime binary, and a
+second list in the same file names the app-booting paths a text scan cannot see —
+the suite's runner, the CI smoke test, the signed-update verifier, and four rigs
+that boot the app through a variable or a wrapper
+(`scripts/attach-frame-evidence.mjs` and
+`scripts/panels-without-session-evidence.mjs` spawn their helper's `command`
+argument; `scripts/hold-lifetime-rig.mjs` spawns a packaged `.app`'s
+`CFBundleExecutable`; `scripts/run-panel-reveal-proof.mjs` spawns
+`npx electron`). Each of those rows asserts the switch's call is present, so a
+rig that loses it fails the scan by name. **It is a sibling of the notification scan rather than another column in
 it, because the two disagree on real rows**: `scripts/npx-smoke-test.mjs` (the
 `npx-sanity-check` job, which LAUNCHES the packed app on macOS) and
 `scripts/verify-signed-update.mjs` (which boots the real packaged app three times
@@ -742,6 +752,20 @@ installed package this repository does not pin. A caller who sets `on`
 deliberately is also obeyed — `withTelemetryOff` is a default rather than an
 override, and an export of `on` in the shell a rig runs from travels into that
 rig's child by that rule.
+
+A `.env` IN A CHECKOUT IS NOT AN OFF SWITCH, and `pnpm dev` is the one path where
+a file gets a hearing at all — so it is worth stating how far that goes. `dev`
+loads the working directory's `.env` through `dotenv-cli`, whose default is NOT
+to overwrite a variable already in the environment: the LAUNCH's value wins for
+every key, and the file supplies the keys the launch did not set. That is
+deliberate and load-bearing rather than incidental, because `dev:headless` is
+`pnpm dev` with the switch as a prefix: the prefix has to outrank the file for
+the agent-driven dev launch to hold. An earlier spelling of `dev` re-exported the
+file inside its own shell after that prefix, which let a `.env` line reading
+`LOCAL_OPERATOR_UI_TELEMETRY=` (empty — the app folds it back to "unset", so
+telemetry stayed ON with no off-line printed) or `=on` re-arm the run;
+`scripts/telemetry-spawn-sites.test.mjs` now runs that body against a scratch
+`.env` in all three shapes and fails if the precedence moves back.
 
 ### A `headless` run takes no Dock tile, and leaves when its launcher does
 
@@ -1347,7 +1371,11 @@ any `VITE_PUBLIC_POSTHOG_KEY` INCLUDING a blank one, which is now a supported
 `new PostHog(...)` at module load, before `app.whenReady()`, and surfaced as a
 main-process error dialog rather than a log line; `src/main/telemetry-launch.ts`
 constructs no client for it and `LOCAL_OPERATOR_UI_TELEMETRY=off` is the switch a
-run uses) — the marker proves the closure came through:
+run uses; and the RENDERER is held to the same blank key —
+`src/renderer/src/shared/config/telemetry.ts` resolves it against the key that
+build inlined, so a blank-key build mounts no provider there either, which is the
+half that used to answer differently from main) — the marker proves the closure
+came through:
 
 ```bash
 LOCAL_OPERATOR_UI_SMOKE_TEST=true "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
