@@ -453,84 +453,155 @@ and 225 in the scrolled story, and `0` after the composer's own box is narrowed
 
 ---
 
-## The pending send: `pending-send`, `pending-send-payload`, `pending-send-chip-row`
+## The pending send: six states, three at the full width and three at the compact rung
 
-Three states of ONE press, added with the fix for the operator's report of
-2026-09-23: on pressing Send there is a window - the image encode plus the
-create hop - in which the transcript already shows the user's message with its
+Three states of ONE press - `pending-send`, `pending-send-payload`,
+`pending-send-chip-row` - each also captured at this set's compact rung
+(`-small-view`, a 440px column), added with the fix for the operator's report of
+2026-09-23: on pressing Send there is a window - the image encode plus the create
+hop - in which the transcript already shows the user's message with its
 attachment while the composer has cleared its text and still shows the chip for
 that attachment, under the IDLE placeholder. It reads as one file sent twice,
 and as a send that half-happened.
 
 The cause was two triggers for one payload: the words left at the echo
 (`onEchoPainted`) and the chip row and the staged replies left when the send
-SETTLED. Both now leave in one call (`use-message-input`'s `clearOnce`, which
-calls `clearStagedPayload`), and the composer says so itself while a send it
-made is unacknowledged - `sendInFlight`, a state of this composer's own press
-rather than a reader of the transcript's - which is the new placeholder
+SETTLED. Both now leave in ONE call (`use-message-input`'s `clearOnce`, which
+calls `clearStagedPayload`), each entry removed by IDENTITY so a file attached
+during that window survives it, and the composer says the message is still going
+out while the send has not settled (`sendingUnsettled` - the pane's own window,
+OR'd with this composer's `sendInFlight`) as the new placeholder
 `Sending your message`.
+
+### Round 1's remediation: what the reviews changed in these frames
+
+Round 1 ran four review streams and two of their findings landed on the frames
+themselves, so both are corrected here rather than argued with:
+
+- **The sentence was unreachable in the window it was written for, and the first
+  frame made it look reachable** (`### Agent review — round 1`, MAJOR-1; QA's
+  `### QA report — round 1`, Q-1, which executed both revisions). `Sending your
+  message` sat BELOW `awaitingReply` in the placeholder chain, and on a real send
+  `awaitingReply` is already true when the echo empties the box - the store
+  writes `admissionAttempted` before the echo and the pane's rung latches on it -
+  so the live box said `Waiting for the agent`. The first revision of
+  `PendingSend` omitted that prop, which is exactly why the still could show a
+  state the app is not in. The term now sits ABOVE `awaitingReply`, in
+  `composerPlaceholder` (a rule rather than a chain, so the order cannot be
+  edited back into an unreachable state), and **this frame is captured with
+  `awaitingReply={true}`** - the value `chat-content.tsx` passes in this window.
+- **The two in-flight frames rendered an enabled Send** (design round 1, D2): the
+  live pane passes `isLoading = admitting || starting`, which draws the control
+  closed for the whole window, so those frames were one beat early - payload at
+  the press, chrome from before it. The harness now passes the live props for
+  every state: `isLoading` on the two in-flight ones, `awaitingReply` on
+  `pending-send`, `sendingUnsettled` on both.
+- **The compact rung had no frame** (design round 1, D3), though this set carries
+  one for its neighbours (`credential-masked-small-view`, the pill pair) - and
+  round 1's R6 discussion was exactly the case where a frame, not arithmetic,
+  settled a clipping question. Hence the three `-small-view` states.
+- **The "before" half was from a previous palette generation** (design round 1,
+  D1): the `idle` frames standing beside these were captured before the palette
+  lift of `9a26e2d6f`, so `idle` next to `pending-send` showed a different page
+  ground and read as a regression of this change. `idle` and `awaiting-reply` are
+  re-taken on this tree in the same pass, so every frame in this section is one
+  generation.
+
+THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
+composer with a stable `conversationId`, which is the only arm a story can hold
+still. The New-chat identity flip REPLACES the panel mid-wait (`panelIdentityFor`
+moves the mount key from `draft:<uuid>` to the session id), so no story can
+photograph the composer that inherits the send; what covers that arm is where the
+sentence comes FROM - the pane's own unsettled window rather than the sending
+composer's `useState` - and `canonical-chat.test.mjs` pins that wiring.
 
 The frames were produced by the repository's own rig:
 
 ```
-pnpm storybook --port 6094 --no-open
-node scripts/capture-evidence.mjs http://127.0.0.1:6094 \
-  --only=chat-message-input--pending-send --allow-backend \
-  --theme-settle-ms=120000
+pnpm storybook --port 6123 --no-open
+node scripts/capture-evidence.mjs http://127.0.0.1:6123 \
+  --dirs=idle,awaiting-reply,pending-send,pending-send-payload,pending-send-chip-row,pending-send-small-view,pending-send-payload-small-view,pending-send-chip-row-small-view \
+  --allow-backend --theme-settle-ms=120000
 ```
 
-`--theme-settle-ms` is not optional on this box: at the load the pass ran under
-(~117), the first cold `iframe.html` load did not finish the module graph inside
-the shipped ten-second window, so the run died on its first frame with
-`document carries theme "" after 10s`. The raised budget is a ceiling, not a
-cost - once the graph is warm every later frame settles in well under a second -
-and the whole pass (36 frames, three stories x twelve themes) took ~4 minutes.
+`--theme-settle-ms` is not optional on this box: at the load these passes ran
+under (110-140), the first cold `iframe.html` load does not finish the module
+graph inside the shipped ten-second window, so a run dies on its first frame with
+`document carries theme "" after 10s`. The raised budget is a ceiling rather than
+a cost - once the graph is warm every later frame settles in well under a second.
+
+AND THE FIRST CAPTURE AFTER A STORYBOOK BOOT IS THE ONE THAT DIES: QA hit the
+same thing independently (`Storybook never finished preparing the story (60s) …
+counted:0 … loading:true`, its Q-3) and a warm retry always succeeds, so a
+narrowed re-capture that fails on its FIRST frame is a cold module graph rather
+than a broken story.
 
 | State | What the frame is |
 | --- | --- |
 | `pending-send-chip-row` | a file staged and nothing typed: the chip row's own geometry, which this surface had no frame for at all |
-| `pending-send-payload` | pressed, echo NOT yet painted: every register of the payload is still the composer's - the words in the field and the file in the row above them |
-| `pending-send` | the echo has landed: the field and the chip row are empty TOGETHER, under `Sending your message` |
+| `pending-send-payload` | pressed, echo NOT yet painted: every register of the payload is still the composer's - the words in the field and the file in the row above them - with Send closed because the pane is still issuing it |
+| `pending-send` | the echo has landed, with `awaitingReply` TRUE as the live pane has it: the field and the chip row are empty TOGETHER, under `Sending your message` |
+| `pending-send-chip-row-small-view` | the same row at the compact rung, measured there |
+| `pending-send-payload-small-view` | the same press at the compact rung |
+| `pending-send-small-view` | the state the operator photographed, at the compact rung |
 
 ### Before and after, honestly
 
-`pending-send` is the frame the defect was, and its "before" cannot be taken
-from this tree: the two halves leave through one call now, so the pre-fix
-appearance (the chip still in the row under `Ask me for help`) is not reachable
-from this code. The pre-fix placeholder half is already committed beside it -
-`idle/localOperator*.webp`, unchanged by this change - and a reviewer who wants
-the pre-fix chip half has to photograph the base commit, which is a QA pass
-rather than a capture this branch can honestly make. The pair that IS here is
-`pending-send-payload` against `pending-send`: the same payload, one moment
-before the echo and one moment after, and the claim is that the chip leaves with
-the words in between.
+`pending-send` is the frame the defect was, and its "before" cannot be taken from
+this tree: the two halves leave through one call now, so the pre-fix appearance
+(the chip still in the row under `Ask me for help`) is not reachable from this
+code - a reviewer who wants that still has to photograph the base commit, which
+is a QA pass rather than a capture this branch can honestly make. The pre-fix
+placeholder half IS here, and it is now the same generation as the frames beside
+it: `idle` and `awaiting-reply` were re-taken on this tree in this pass (design
+round 1, D1), so `idle/localOperatorDark.webp` beside
+`pending-send/localOperatorDark.webp` differs in one word rather than in its page
+ground. The pair that carries this change's own claim is `pending-send-payload`
+against `pending-send`: the same payload, one moment before the echo and one
+moment after, with the chip leaving together with the words in between.
 
-The three plays assert rather than pose:
+WHAT MOVES WHEN THE ECHO LANDS, measured at 1024 wide, stated because the first
+revision of this section overstated it (design round 1, D4): the composer band is
+**253px** in `pending-send-payload` and **125px** in `pending-send`. The
+difference is exactly the chip row - a 100px tile, the row's own 8+8px padding,
+and the composer's 12px gap - so a send carrying an attachment DOES move the band
+by that height in the frame the echo paints. The band is bottom-anchored, so the
+movement lands on its top edge and on the transcript's newest row above it, while
+the field and the control row hold their position. What does not move, and what
+the first revision was reaching for, is the STATE: `pending-send` is `idle` with
+one word changed, so the new state adds no layout of its own, and the 128px is
+the payload leaving rather than an indicator arriving.
 
-- `pending-send-chip-row` measures the TILE's box (not the name span's, which
-  sits inside the ground the row draws) against the field's, and against every
-  ancestor that could clip it, and throws rather than releasing the shutter if
-  either fails. Both pass on all twelve themes.
-- `pending-send-payload` throws if the words or the chip have left before the
-  echo.
-- `pending-send` throws if the placeholder is not the composer's own sentence,
-  if the field still holds the message, or if the chip row still renders a
-  remove control for the file the transcript is carrying.
+The plays assert rather than pose, at both rungs:
+
+- `pending-send-chip-row` and its compact twin measure the TILE's box (not the
+  name span's, which sits inside the ground the row draws) against the field's,
+  and against every ancestor that could clip it, and throw rather than releasing
+  the shutter if either fails. Both pass on all twelve themes.
+- `pending-send-payload` and its compact twin throw if the words or the chip have
+  left before the echo.
+- `pending-send` and its compact twin throw if the placeholder is not the
+  composer's own sentence (which is what fails if the term is ever put back below
+  `awaitingReply`), if the field still holds the message, or if the chip row still
+  renders a remove control for the file the transcript is carrying.
 
 ### The reported geometry, measured
 
 The report also carried "the chip row rendering clipped/overlapping the text
 region". It is not a geometry defect, and the `pending-send-chip-row` frame plus
-its play are the measurement: the tile is `size-25` (100x100) at `y=86..185` in
-the `localOperatorDark` frame, the field's first ink row is `y=216`, and the
-composer's one scroll container (`max-h-[240px]`) does not cut the row - so the
-rows are a band in the composer's own column with ~31px between the tile's
-bottom edge and the field's text, exactly as that container's own comment says.
+its play are the measurement - at the full width AND at the compact rung, which
+is the rung where the arithmetic was least convincing: the tile is `size-25`
+(100x100) at `y=86..185` in the `localOperatorDark` frame, the field's first ink
+row is `y=216`, and the composer's one scroll container (`max-h-[240px]`) does
+not cut the row - so the rows are a band in the composer's own column with ~31px
+between the tile's bottom edge and the field's text, exactly as that container's
+own comment says. In the 440px frame the tile and the field's ink keep the same
+separation.
 
-What the screenshot shows is the STATE, not the box: a chip sitting directly
-above an empty field has nothing between it and the text region to separate the
-two bands, which is why it reads as one area - and it is a state a send can no
-longer be in, because the chip now leaves with the words.
+What the operator's screenshot shows is the STATE, not the box: a chip sitting
+directly above an empty field has nothing between it and the text region to
+separate the two bands, which is why it reads as one area - and it is a state a
+send can no longer be in, because the chip now leaves with the words.
 
 One adjacent defect was found while measuring this and is NOT fixed here:
 `AttachmentsPreview`'s dwell preview (`LARGE_PREVIEW`) is a `size-75` box at
@@ -539,4 +610,5 @@ preview 300px tall starting 320px above the tile is outside its own scroll port
 and cannot be seen at all. Computed from the two shipped class values rather
 than measured in a browser; it is a pre-existing, hover-only affordance of a
 heavily reviewed component, so it is recorded for its own change rather than
-folded into this one.
+folded into this one (design round 1 confirmed the two class values and recorded
+the same).

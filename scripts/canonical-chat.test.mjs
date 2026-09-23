@@ -4280,3 +4280,69 @@ test("the composer clears no payload half of its own, so the echo is the only tr
 		"the composer clears a payload half of its own again: the chip row and the staged replies must leave with the TEXT, at the echo (`clearStagedPayload`), or the transcript shows the file while the composer still shows its chip",
 	);
 });
+
+/*
+ * MAJOR-1's OTHER HALF: which state earns the sentence, and why it has to be the
+ * pane's rather than this composer's.
+ *
+ * The rule that decides the string is pinned in `echo-delivery.test.mjs`, asked
+ * with the app's own prop values. What cannot be reached from there is the WIRING
+ * - and the wiring is the finding: the operator's own screenshot is the New-chat
+ * path, where `panelIdentityFor` moves the mount key from `draft:<uuid>` to the
+ * session id and REPLACES the panel mid-send. `sendInFlight` is a `useState` in
+ * `useMessageInput`, so it dies with the composer that set it; a sentence fed
+ * only by it would be silent on exactly the arm the operator photographed.
+ *
+ * So the flag is the PAGE's (`chat-page`'s `admitting`), passed down to the
+ * composer and OR'd with the composer's own press. The three facts this test
+ * holds are the ones that make that safe:
+ *
+ *  - the window it names is the SEND's, not the request's: `setAdmitting(true)`
+ *    before the try and `setAdmitting(false)` in that send's `finally`, which is
+ *    why it can mean "unsettled" where `starting`/`awaitingReply` (up from the
+ *    moment the request is issued) cannot distinguish the two halves;
+ *  - it reaches the composer as its own prop, read from `canonical.admitting`
+ *    rather than folded into `isLoading` (which is `admitting || starting`);
+ *  - and the composer spends it through the rule, beside its own `sendInFlight`,
+ *    so the two scopes of one fact are OR'd in one place.
+ *
+ * The boundary is structural rather than asserted here: `admitting` lives on the
+ * ChatPage, and a ChatPage is one conversation's pane, so a send in another
+ * conversation is another page's flag.
+ */
+test("the unsettled-send sentence is fed by the pane, so the panel that inherits a send can say it", () => {
+	const code = (file) =>
+		readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const content = code(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	assert.match(
+		content,
+		/sendingUnsettled=\{Boolean\(canonical\?\.admitting\)\}/,
+		"the composer must be handed the pane's own in-flight window; folded into `isLoading` it cannot be told from `starting`, which is up before the request has gone out",
+	);
+	const page = code("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		page,
+		/setAdmitting\(true\)/,
+		"the pane opens the window when the send starts",
+	);
+	assert.match(
+		page,
+		/finally\s*\{[\s\S]{0,300}?setAdmitting\(false\)/,
+		"and closes it in the send's `finally`: a flag cleared anywhere earlier would be 'issued', not 'unsettled', and would shadow the sentence with the agent's",
+	);
+	const composer = code(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+	);
+	assert.match(
+		composer,
+		/sendingUnsettled: sendingUnsettled \|\| sendInFlight/,
+		"the pane's flag and this composer's own press are the two scopes of one fact and must meet in the placeholder call",
+	);
+	assert.match(
+		composer,
+		/composerPlaceholder\(\{/,
+		"the sentence must come from the rule: an inline chain is how the term ended up below the one that shadows it",
+	);
+});

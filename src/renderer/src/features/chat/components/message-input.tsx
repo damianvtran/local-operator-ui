@@ -16,6 +16,7 @@ import {
 	SEND_HELD,
 	type SendOutcome,
 	adoptRefusedPayload,
+	composerPlaceholder,
 	heldClaimCopy,
 	refusedSplitNotice,
 	useMessageInput,
@@ -450,6 +451,37 @@ type MessageInputProps = {
 	 * the disabled Send control, and this prop adds no second gate).
 	 */
 	awaitingReply?: boolean;
+	/**
+	 * A send THIS PANE issued has not settled yet: the request is still going out.
+	 *
+	 * The window between the press and the send's own return, which is the one the
+	 * operator reported as having nothing to say - the box has been emptied by the
+	 * echo, the transcript shows the message, and the field's slot showed the
+	 * invitation to start something else while this one was still on its way.
+	 *
+	 * ITS OWN PROP, AND NOT `isLoading`, because the two windows are not the same
+	 * length and the composer has to tell them apart: `isLoading` is
+	 * `admitting || starting` (`chat-content`), and `starting` - `awaitingReply` -
+	 * is up from the moment the request is ISSUED until the owner paints, so it is
+	 * already true in the window this sentence is for. Reading `isLoading` would
+	 * therefore say "the agent is answering" for a send that has not gone out yet
+	 * (agent review round 1, MAJOR-1).
+	 *
+	 * THE CALLER'S SOURCE IS THE PANE's OWN SEND (`chat-page`'s `admitting`),
+	 * passed down, rather than this composer's own `sendInFlight`. The two are
+	 * OR'd below, and the reason is the New-chat identity flip: it REPLACES the
+	 * panel mid-wait, and `sendInFlight` is a `useState` in `useMessageInput`, so
+	 * the replacement would render an empty box under the idle invitation for a
+	 * send it cannot see. The pane's flag outlives the flip and belongs to the
+	 * conversation the pane is showing, which is also the boundary that keeps a
+	 * DIFFERENT conversation's send from making this composer say it.
+	 *
+	 * Changes the PLACEHOLDER only, and it outranks `awaitingReply`: while the
+	 * press has not settled the honest sentence is that the message is on its way
+	 * out, and the agent's own sentence takes over once it has settled. No send is
+	 * gated by it.
+	 */
+	sendingUnsettled?: boolean;
 	/**
 	 * A question is pending and the composer is where it is answered.
 	 *
@@ -1185,6 +1217,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isLoading,
 			awaitingReply = false,
 			awaitingAnswer = false,
+			sendingUnsettled = false,
 			heldCopyOnScreen,
 			conversationId,
 			messages,
@@ -6367,56 +6400,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										placeholder={
 											/*
-											 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-											 * that order is the whole point: `isInputDisabled` is true for a
-											 * missing conversation too, so a reader of a conversation this
-											 * machine does not have would be told "Agent is busy" about a turn
-											 * nobody is running (design round 2, D3). The remaining terms are
-											 * the U8 pair, unchanged.
+											 * THE ONE SENTENCE THE BOX CARRIES, and the ORDER is the rule rather than
+											 * the strings: `composerPlaceholder` holds it (with the reason each term
+											 * sits where it does), so the chain cannot be reordered into a state the
+											 * app cannot be in and then photographed as one.
 											 *
-											 * "Sending your message" is the state the operator reported as
-											 * MISSING, and it is deliberately the last term before the idle
-											 * invitation. The box is emptied at the echo, so from the echo
-											 * until the send settles this composer used to have nothing to
-											 * say: it showed the idle invitation over a send that was still
-											 * going out, with the attachment chip still in the row below it.
-											 * `sendInFlight` is this composer's own press, so the sentence
-											 * cannot be inherited by a panel that mounted later.
+											 * The two facts this call is built from, both read from the live pane:
+											 * `sendInFlight` is this composer's own unsettled press, and
+											 * `sendingUnsettled` is the pane's (`chat-page`'s `admitting`), which is
+											 * what survives the New-chat identity flip. They are OR'd because they
+											 * are the two halves of one fact at two scopes, and the sentence is
+											 * earned by the SCENARIO rather than by the box: while a send from this
+											 * conversation is going out, the empty box says so, and `Waiting for the
+											 * agent` takes over once it has settled. See `composerPlaceholder` for
+											 * why that outranks `awaitingReply` and what it must never claim.
 											 *
-											 * IT SITS BELOW `awaitingReply` ON PURPOSE. The two describe
-											 * consecutive halves of one send - still going out, then out and
-											 * being answered - and where both could be true, the one that has
-											 * moved further along is the truthful one (`awaitingReply` is the
-											 * owner's own state, so it is set only once admission answered).
-											 * What this term must never do is claim the agent is answering,
-											 * which is the whole distinction the operator asked for.
-											 *
-											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner,
-											 * in the composer's existing idiom - every state this box has ever
-											 * had is one of these strings and nothing else (design rounds 2 and
-											 * 3). The transcript already carries the turn's single liveness
-											 * element while this is true (branding section 7's working line,
-											 * fed by the page's `admitting`), so a second visible indicator
-											 * here would be a second liveness statement about one turn - and
-											 * anything that grew the band mid-send would move the box under
-											 * the reader's cursor. "Sending your message" names the half of
-											 * the flow this box is responsible for without claiming the half
-											 * it is not.
+											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
+											 * composer's existing idiom - every state this box has ever had is one
+											 * of these strings and nothing else (design rounds 2 and 3). The
+											 * transcript already carries the turn's single liveness element while
+											 * this is true (branding section 7's working line, fed by the page's
+											 * `admitting`), so a second visible indicator here would be a second
+											 * liveness statement about one turn - and the new state ADDS no
+											 * layout: `pending-send` is geometrically `idle` with one word
+											 * changed, measured in the committed pair. What does move, in a send
+											 * carrying an attachment, is the band losing the chip row when the
+											 * echo paints (253px -> 125px at 1024 in the same pair): that is the
+											 * payload leaving, not an indicator arriving, and the field and the
+											 * control row hold their position through it (design round 1, D4).
 											 */
-											unavailable
-												? "This conversation is gone"
-												: isInputDisabled
-													? "Agent is busy"
-													: awaitingAnswer
-														? // Names the thing the box is now for, without restating
-															// the question card or the waiting line (§ 7 keeps one
-															// liveness statement per turn, and the card owns it).
-															"Answer the question above"
-														: awaitingReply
-															? "Waiting for the agent"
-															: sendInFlight
-																? "Sending your message"
-																: "Ask me for help"
+											composerPlaceholder({
+												unavailable,
+												inputDisabled: isInputDisabled,
+												awaitingAnswer,
+												sendingUnsettled: sendingUnsettled || sendInFlight,
+												awaitingReply,
+											})
 										}
 										value={newMessage}
 										/*
