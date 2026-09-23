@@ -33,7 +33,7 @@
  *   container pays only for ink that would land in a neighbour's box).
  *
  * THE CLUSTER IS THE ONLY THING PHOTOGRAPHED. The header is the production
- * component in its production 56px band; the ground under it is deliberately
+ * component in its production 40px band; the ground under it is deliberately
  * empty, because a gap is a fact about three boxes and a populated transcript
  * would only be something else for the eye to go to instead of the three controls.
  */

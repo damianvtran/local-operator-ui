@@ -1785,10 +1785,19 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the bubble is drawn on the canvas-coloured working surface and keeps its own surface fill; the agent side has no bubble, so this border is the edge that distinguishes the speakers",
 	},
 	{
-		what: "chat header bottom rule",
-		file: "src/renderer/src/features/chat/components/chat-header.tsx",
-		must: "border-control border-b",
-		why: "in a packaged build this rule is the only thing separating the header from the transcript",
+		/*
+		 * THE CHAT HEADER'S BOTTOM RULE IS GONE (top-bar redesign, 2026-09-23), so
+		 * the pin follows the mark that replaced it rather than the rule. The
+		 * separation is now the transcript's own top edge dissolving under the bar,
+		 * which means `chat-header.tsx` has no boundary left to pin and the mask in
+		 * `styles/index.css` is the half no palette assertion can see: drop the
+		 * fallback branch and an engine without scroll timelines renders the hard cut
+		 * the rule was removed for, with every colour row still green.
+		 */
+		what: "transcript top-edge mask fallback",
+		file: "src/renderer/src/styles/index.css",
+		must: "@supports not (animation-timeline: scroll())",
+		why: "the header no longer draws a rule, so this mask is the only thing separating the bar from the rows, and the fallback branch is the half that keeps that true on an engine with no scroll timeline",
 	},
 	{
 		/*

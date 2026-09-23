@@ -306,72 +306,83 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	return (
 		<div
 			/*
-			 * 56px and `shrink-0`, matching the bar band its peers occupy: 52px
-			 * command palette, 48px nav rail header, 40px canvas header. The old
-			 * `h-21` declared 84px - 1.6x the largest peer - and, without `shrink-0`,
-			 * never drew it: the column's flex deficit came out of this box, so it
-			 * rendered 46.5px at one window size and 61.4px at another. A height that
-			 * moves with composer content cannot be designed against, which is why
-			 * the geometry is pinned before anything here is styled.
+			 * 40px and `shrink-0`, matching the canvas header - the peer bar this one
+			 * sits beside, and the smallest step on the 4px ramp that holds ONE line:
+			 * a 16px `text-heading` name against a 28px avatar.
 			 *
-			 * 56 rather than 52: this bar carries two lines (16px name over 13px
-			 * description, about 41px of text), where the command palette carries
-			 * one. It is the smallest step on the 4px ramp that holds both without
-			 * crowding them.
+			 * THE 16px THIS GIVES BACK IS THE POINT. The bar was 56px because it
+			 * carried two lines - a `flex-col` with the 16px name over the 13px
+			 * description - which is exactly the stack the report reads as dated: the
+			 * identity of the thing being read, told in two registers stacked above the
+			 * transcript. One line with the description as minor text to its right is
+			 * how the reference board's Group B all read an entity header (Linear's
+			 * issue bar, Raycast's result rows, Slack's channel header), and it costs
+			 * 16px, which the transcript below now has.
 			 *
-			 * `border-control`, not `hairline`, for the bottom rule. This line is
-			 * what says the title block is chrome and the transcript below it is
-			 * content - branding.md's own test for a structural boundary is
-			 * whether removing it loses information, and here it does. As
-			 * `hairline` it measured 1.32:1 against the sidebar's own header rule
-			 * 8px away at 4.18:1: two rules at the top of one window drawn 3.2x
-			 * apart, with the chat one the faint one. It matters more in a
-			 * packaged build than these frames suggest, because the Chat/Raw tab
-			 * row beneath it is `isDevelopmentMode()`-gated - in production this
-			 * rule sits directly against the transcript's first row and is the
-			 * only thing separating them.
+			 * NO BOTTOM RULE, and this is a replacement rather than a deletion.
+			 * `border-control border-b` was here because in a packaged build the rule
+			 * was the only thing separating the header from the transcript's first row.
+			 * That reasoning is superseded: the transcript now DISSOLVES as it
+			 * approaches this bar - a top-edge mask on its own scroll container, in
+			 * `styles/index.css` - so the boundary is a gradient the reader crosses
+			 * rather than a line drawn across the window. Keeping the rule would also
+			 * draw a hard edge exactly where the fade is meant to be soft, which is the
+			 * "unneeded lines and decoration" the redesign is removing.
 			 */
-			className={cn(
-				"flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
-			)}
+			className={cn("flex h-10 shrink-0 items-center gap-2 px-4")}
 			data-titlebar-drag=""
 			data-tour-tag="chat-header"
 		>
-			{/* No `size-*` override: the Avatar primitive's own 32px is the app's
-			 * control size, and the 40px override made the same agent wear two
-			 * different faces on one screen against the transcript's 28px marker.
-			 * The glyph is sized by class rather than lucide's numeric `size` prop
-			 * so a `size-*` sweep can see it; 16px is the ramp's default step and
-			 * what a 32px circle carries. */}
-			<Avatar data-titlebar-no-drag="">
+			{/* `size-7` (28px) is the transcript's own agent marker size, so one agent
+			 * wears one face on one screen. The primitive's 32px default is the app's
+			 * CONTROL size, and a 32px circle read a step large beside a 16px name in a
+			 * 40px bar. The glyph stays `size-4`, sized by class rather than lucide's
+			 * numeric `size` prop so a `size-*` sweep can see it. */}
+			<Avatar data-titlebar-no-drag="" className={cn("size-7")}>
 				<AvatarFallback>
 					<Bot className={cn("size-4")} aria-hidden={true} />
 				</AvatarFallback>
 			</Avatar>
-			{/* `flex-1` as well as `min-w-0`: the block was min-w-0 inside a row
-			 * whose only other content is an `ml-auto` action, so it yielded before
-			 * the empty space did - the description clipped mid-sentence at 760px
-			 * while 220px of bar sat unused to its right. Growing first means the
-			 * text truncates only once there is genuinely no room left. */}
+			{/* ONE LINE: name, separator, description, at one `items-center`. The
+			 * wrapper keeps `min-w-0 flex-1` for the reason it always had it - the
+			 * block grows before the empty space to its right does, so the text
+			 * truncates only once there is genuinely no room - and inside it the
+			 * PRIORITY between the two runs is expressed in flex terms rather than in
+			 * prose: the description is `flex-1`, so its base size is zero and the name
+			 * takes the width it needs first. A name longer than the whole row still
+			 * shrinks (`min-w-0 truncate`) rather than pushing the action cluster off
+			 * the bar. */}
 			<div
 				data-titlebar-no-drag=""
-				className={cn("flex min-w-0 flex-1 flex-col")}
+				className={cn("flex min-w-0 flex-1 items-center gap-2")}
 			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
-				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
-				<h2 className={cn("truncate text-heading text-ink")}>{agentName}</h2>
+				 * hero. */}
+				<h2 className={cn("min-w-0 truncate text-heading text-ink")}>
+					{agentName}
+				</h2>
+				{/* The separator is decoration and carries nothing a screen reader needs,
+				 * so it is `aria-hidden` - and it is rendered only when there IS a second
+				 * run to separate it from: with no description, the name sits alone. */}
+				{(descriptionPending || Boolean(description)) && (
+					<span className={cn("shrink-0 text-ink-dim")} aria-hidden="true">
+						·
+					</span>
+				)}
 				{descriptionPending ? (
 					/* `bg-elevated` for the same measured reason the transcript
 					 * placeholder takes it: the header's ground is `canvas`, where the
 					 * Skeleton default `sunken` is the system's weakest adjacent pair
 					 * (deltaE00 1.89 in the dark brand palette, 1.25 in obsidian). The
-					 * height matches the `text-body-sm` line it stands in, so holding
-					 * the slot holds the row's height too. */
-					<Skeleton className={cn("h-3 w-24 bg-elevated")} />
+					 * height matches the `text-body-sm` line it stands in and `shrink-0`
+					 * holds its width, so holding the slot holds the row's height. */
+					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
 				) : (
 					<span
-						className={cn("truncate text-ink-muted text-body-sm")}
+						className={cn(
+							"min-w-0 flex-1 truncate text-ink-muted text-body-sm",
+						)}
 						title={description}
 					>
 						{description}
