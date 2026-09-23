@@ -790,7 +790,14 @@ const STAMP_BINDING_NOTES = [
 	 * note itself, because leaving it here would have held a fold's values to this
 	 * file as if they were its own — the defect the list exists for.
 	 */
-	"usageInFlightRemediationNote",
+	/*
+	 * `usageInFlightRemediationNote` left this list when the convergence round
+	 * below re-derived both stamps on top of it: its pair is now history, written
+	 * as bare SHAs in the note itself, because leaving it here would have held a
+	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
+	 * carries the binding the round it records re-derived.
+	 */
+	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 ];
 
