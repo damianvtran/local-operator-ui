@@ -31,6 +31,24 @@
  * - `status` is a static `"live"`, `error` is `null`. The reader's own state is
  *   the absence lines below, not the stream's connection status.
  *
+ * **The working line is the one live fact this reader DOES paint.** It is the
+ * single exception to the paragraph above, and it is worth the exception because
+ * it answers the only question a reader has while looking at a child's page that
+ * is still moving: what is it doing? Without it the bottom of a live child's
+ * conversation is indistinguishable from a finished one — the child's last block
+ * is often settled prose, the model pausing between tool calls — which is the
+ * same failure the TUI's tail row exists for (`subagent_view.py`, `_tail_entry`).
+ *
+ * It is handed to `CanonicalTranscript` as its `workingLine` prop rather than
+ * DERIVED by it, because a child's activity is not recoverable from the page the
+ * reader fetches: the durable tool rows all reduce to `phase: "done"`
+ * (`transcript-reducer.ts`), so the parent's own derivation could only ever say
+ * `thinking`. The fact is on the wire, though — `SubagentRow.activity` is the
+ * child relay's `report_progress` string — so the reader derives the line from
+ * the row it already holds (`deriveChildWorkingLine`, `run-detail-model.ts`) and
+ * the parent component paints it. See that function for the vocabulary, the
+ * phase classification and the queued gate.
+ *
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
  */
@@ -50,6 +68,7 @@ import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
+	deriveChildWorkingLine,
 	foldBrief,
 	reconcileLaunchTurns,
 } from "./run-detail-model";
@@ -352,6 +371,23 @@ export const RunChildReader = ({
 	}, [row.launchPrompts, transcript]);
 
 	/*
+	 * The foot of the page: what this child is doing, as the wire last said it.
+	 * Derived rather than read raw so the one rule — which children get a line, and
+	 * which phase the clock runs in — stays in the model beside the row it reads
+	 * (`deriveChildWorkingLine`, whose docstring carries the vocabulary and the one
+	 * deliberate departure from the TUI's queued child).
+	 *
+	 * Derived on every render rather than memoised, and that is deliberate: it is a
+	 * ternary over two fields of a row the pane re-derives at 1 Hz anyway, and the
+	 * component it feeds is inert to a fresh object — `WorkingLine` keys its clock
+	 * off the PHASE STRING (`working-line.tsx`) and holds its spinner frame in
+	 * state, so the same phase with the same activity paints the same frame
+	 * whatever the object's identity. A memo here would buy a re-render of one row
+	 * and cost an exhaustive-deps exemption.
+	 */
+	const workingLine = deriveChildWorkingLine(row);
+
+	/*
 	 * The header's clock (`§ 5.1`, `§ 5.3`; round 1, Q3).
 	 *
 	 * `frontend.update` is published only when the runtime has a field delta to
@@ -587,6 +623,14 @@ export const RunChildReader = ({
 						 * send, and a child reader can never be that pane.
 						 */
 						starting={false}
+						/*
+						 * The foot: what the child is doing, from the roster row rather than from
+						 * `painted.records`. Passing it is the whole change - omitted, the parent
+						 * derives from the records it was given, and a child's durable rows reduce
+						 * to `phase: "done"`, so the derivation could only ever say `thinking`.
+						 * `null` - a settled child, or a queued one - paints nothing.
+						 */
+						workingLine={workingLine}
 						loadingOlder={loadingOlder}
 						onLoadOlder={loadOlder}
 						containerRef={containerRef}

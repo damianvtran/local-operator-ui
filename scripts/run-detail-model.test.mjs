@@ -49,6 +49,7 @@ const {
 	busiestClause,
 	childClause,
 	childStateLabel,
+	deriveChildWorkingLine,
 	deriveMcpServers,
 	deriveRunDetails,
 	foldBrief,
@@ -926,6 +927,152 @@ test("a truncated launch row is still the brief", () => {
 		),
 		false,
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The child reader's working line                                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * What the reader paints at the foot of a running child's page
+ * (`deriveChildWorkingLine`). The line is deliberately NOT derived from the
+ * child's records: `transcript-reducer.ts` reduces every durable tool row to
+ * `phase: "done"`, so the parent's own derivation over them could only ever say
+ * `thinking`. It is the child relay's progress string, which reaches the reader
+ * as `SubagentRow.activity`.
+ *
+ * Both rules are asserted here rather than eyeballed in `reader-live`, because
+ * both are rules about WHEN a claim may be made. A misclassified phase restarts
+ * the clock under the reader (`working-line.tsx`'s contract, points 2 and 3),
+ * and a line painted over a child that has not started is a claim the wire never
+ * made.
+ */
+
+/** One child row, through the same derivation the roster runs. */
+const childRow = (over) => derive([job(over)]).subagents[0];
+
+test("a running child's stated intent is the line, in the running phase", () => {
+	// The relay passes the model's own words through and names the tool only when
+	// it has none (`tool_activity`, `intent.py:310-327`), so this is the shape a
+	// tool call with an intent produces.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "auditing merged MRs" } }),
+		),
+		{ activity: "auditing merged MRs", phase: "running" },
+	);
+});
+
+test("a batch states a count, and the count is the label", () => {
+	// `batch_activity`'s several-calls case, verbatim from `intent.py:298-340`.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "running 3 tools" } }),
+		),
+		{ activity: "running 3 tools", phase: "running" },
+	);
+});
+
+test("a running child with nothing to report says the relay's own default", () => {
+	// `thinking` is the wire's word for a model call in flight with nothing
+	// streamed (`ACTIVITY_THINKING`), and it is also `batch_activity`'s empty case
+	// — the relay's fallback, not one this renderer invented.
+	const row = childRow({});
+	assert.equal(row.status, "running");
+	assert.equal(row.activity, null);
+	assert.deepEqual(deriveChildWorkingLine(row), {
+		activity: "thinking",
+		phase: "thinking",
+	});
+});
+
+test("prose actually streaming is the responding phase", () => {
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "responding" } }),
+		),
+		{ activity: "responding", phase: "responding" },
+	);
+});
+
+test("a label change inside a batch keeps the phase the clock runs in", () => {
+	// The clock is keyed to the PHASE and a batch sheds its calls one at a time.
+	// Every label below is a different phrase, and every one of them is emitted
+	// with a tool call still running (`subagent.py:1288-1345`, the only two arms
+	// that emit the named constants being the ones that do NOT call
+	// `tool_activity`/`batch_activity`) — so none of them may move the clock.
+	// That classification, not the label, is what makes this safe.
+	const labels = [
+		"running 3 tools",
+		"running 2 tools",
+		"running bash",
+		"auditing merged MRs",
+	];
+	const rows = labels.map((label) =>
+		childRow({ latest_details: { progress: label } }),
+	);
+	assert.deepEqual(
+		rows.map((row) => deriveChildWorkingLine(row).phase),
+		labels.map(() => "running"),
+	);
+	// And the labels really are distinct, so the assertion above is not one value
+	// repeated out of an empty list.
+	assert.equal(new Set(labels).size, labels.length);
+});
+
+test("an intent that IS a ladder word misfiles the clock, never the label", () => {
+	// The one tolerated ambiguity, pinned so it stays the documented one: the
+	// relay passes the intent through unread, so an intent that happens to be
+	// exactly `thinking` or `responding` is indistinguishable from the relay's own
+	// word here. The label survives either way; only the clock's restart is
+	// misdated, and never in the direction of a wrong activity.
+	assert.deepEqual(
+		deriveChildWorkingLine(
+			childRow({ latest_details: { progress: "thinking" } }),
+		),
+		{ activity: "thinking", phase: "thinking" },
+	);
+});
+
+test("only a running child gets a line", () => {
+	/*
+	 * The QUEUED gate is the deliberate departure from the TUI's tail row
+	 * (`subagent_view.py:2864-2868` paints `thinking` for a queued child). The
+	 * relay emits nothing before the child's first event, so a line over a child
+	 * that has not started is a claim the wire never made, and the reader's header
+	 * already carries that child's honest word (`stateWord`).
+	 *
+	 * The row still CARRIES the string — the roster's second line prints it — which
+	 * is exactly why the gate tests the status and not the field.
+	 */
+	const queued = childRow({
+		queued: true,
+		latest_details: { progress: "thinking" },
+	});
+	assert.equal(queued.status, "queued");
+	assert.equal(queued.activity, "thinking");
+	assert.equal(deriveChildWorkingLine(queued), null);
+
+	// A restored pause, in the durable graph's own word: `JobState` has no
+	// `paused` field at all, which is why the fixture drives the word.
+	assert.equal(deriveChildWorkingLine(childRow({ status: "paused" })), null);
+
+	// And every settled state, including the two whose outcome is an error: the
+	// line must not outlive the work, since a settled child's foot is the outcome
+	// block's (`§5.1`).
+	for (const status of [
+		"completed",
+		"failed",
+		"cancelled",
+		"interrupted",
+		"gone",
+	]) {
+		assert.equal(
+			deriveChildWorkingLine(childRow({ status })),
+			null,
+			`a ${status} child must not claim work`,
+		);
+	}
 });
 
 /* ------------------------------------------------------------------ */
@@ -2152,6 +2299,36 @@ test("every child state the design asks for is in the fixture set", () => {
 	]) {
 		assert.ok(states.has(state), `no fixture renders a ${state} child`);
 	}
+});
+
+test("the reader's fixture set covers the three states of the foot", () => {
+	/*
+	 * The reader paints one working line or none (`§ 5.8`), and the three frames
+	 * are the three answers: `reader-live` carries the relay's own string,
+	 * `reader-no-activity` the fallback the relay itself would have sent, and
+	 * `reader-settled` has no line at all. Asserted on the FIXTURES rather than on
+	 * the stories, so a fixture edited to drop the progress string cannot quietly
+	 * turn the first frame into a picture of the second.
+	 */
+	const open = (over) => derive([fixtures.readerChild(over)]).subagents[0];
+	assert.deepEqual(deriveChildWorkingLine(open({})), {
+		activity: "Running pytest tests/unit/server -q",
+		phase: "running",
+	});
+	assert.deepEqual(deriveChildWorkingLine(open({ progress: undefined })), {
+		activity: "thinking",
+		phase: "thinking",
+	});
+	assert.equal(
+		deriveChildWorkingLine(
+			open({
+				status: "completed",
+				progress: undefined,
+				result: "Three rows were pending and are now reconciled.",
+			}),
+		),
+		null,
+	);
 });
 
 test("the fixtures cover the omission, suppression and truncation cases", () => {
