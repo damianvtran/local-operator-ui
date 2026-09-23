@@ -111,7 +111,13 @@ import {
 	showInfoToast,
 } from "@shared/utils/toast-manager";
 import { AlarmClock, Check, Info, Repeat, X } from "lucide-react";
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { DesktopLoopState } from "../../../../../shared/desktop-control-contract";
 import {
 	type CanonicalFrontendState,
@@ -123,9 +129,9 @@ import {
 	GOAL_COMMAND,
 	GOAL_DISMISS_ARGS,
 	GOAL_DONE_ARGS,
-	goalStateWord,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
+	goalStateWord,
 	loopIsRunning,
 } from "../pickers/session-commands";
 import { useSessionCommand } from "../pickers/use-picker-backend";
@@ -341,9 +347,10 @@ const goalWordClip = (goal: string): string => {
 	}
 	const budget = flat.slice(0, GOAL_CLEARED_PREVIEW_CHARS);
 	const lastSpace = budget.lastIndexOf(" ");
-	return (
+	const leading = (
 		lastSpace > 0 ? budget.slice(0, lastSpace) : budget
-	).trimEnd() + "…";
+	).trimEnd();
+	return `${leading}…`;
 };
 
 /**
@@ -607,7 +614,6 @@ export const goalDisclosureLabel = (
 	`${expanded ? "Collapse" : "Expand"} ${GOAL_NAME}${LABEL_SEAM}${
 		stateWord ? `${stateWord}, ` : ""
 	}${goal}`;
-
 
 /**
  * The plan chip's tooltip and accessible name.
@@ -1809,7 +1815,10 @@ export const ComposerStatusRow = ({
 										label={goalDismissName}
 										word={GOAL_DISMISS_TEXT}
 										icon={
-											<X aria-hidden={true} className={cn("size-3.5 shrink-0")} />
+											<X
+												aria-hidden={true}
+												className={cn("size-3.5 shrink-0")}
+											/>
 										}
 										busy={goalDismissCommand.busy}
 										onPress={() =>
@@ -1828,7 +1837,10 @@ export const ComposerStatusRow = ({
 										label={goalClear}
 										word={GOAL_CLEAR_TEXT}
 										icon={
-											<X aria-hidden={true} className={cn("size-3.5 shrink-0")} />
+											<X
+												aria-hidden={true}
+												className={cn("size-3.5 shrink-0")}
+											/>
 										}
 										busy={goalCommand.busy}
 										onPress={() =>

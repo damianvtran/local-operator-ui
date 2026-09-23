@@ -1494,6 +1494,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								scan={filesScan}
+								/*
+								 * The pane's goals come off the SAME canonical frontend the composer
+								 * row reads, so the chip and the pane cannot describe one session's
+								 * history differently. An older backend publishes neither field, and
+								 * the defaults (`[]` / false) are then the honest reading: a build
+								 * without the lifecycle has no settled goals to show.
+								 */
+								goalHistory={canonical?.view.frontend?.goal_history}
+								goalHistoryTruncated={
+									canonical?.view.frontend?.goal_history_truncated === true
+								}
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}

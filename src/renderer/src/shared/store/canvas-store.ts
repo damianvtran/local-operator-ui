@@ -12,9 +12,16 @@ export type CanvasTab = {
 import type { CanvasDocument } from "@features/chat/types/canvas";
 
 /**
- * Canvas view mode type
+ * Type for the canvas view mode: which record the pane is showing.
+ *
+ * `goals` is additive and LAST (documents → files → variables → goals: from "what
+ * you made" to "what you intended"). It is a session-scoped RECORD rather than an
+ * artifact, which is the characterisation `variables` already broke — session state
+ * extracted during the session, not a file — so the union extends without changing
+ * what the switcher means. A conversation persisted at `variables` or `documents`
+ * keeps its stored value: nothing here renumbers, so no migration is owed.
  */
-export type CanvasViewMode = "documents" | "files" | "variables";
+export type CanvasViewMode = "documents" | "files" | "variables" | "goals";
 
 /**
  * State for a single conversation's canvas
