@@ -90,9 +90,13 @@ export function useWarmSession(
 			// A warm failure teaches the user nothing they can act on, and this
 			// fires from TYPING — surfacing it would make a speculative
 			// optimisation produce an error banner mid-word. The backend answers
-			// 200 even when the engage itself fails, so anything reaching here is
-			// transport-level or an older backend that slipped the gate. Mirrors
-			// the TUI's silent speculative engage.
+			// 200 even when the engage itself fails; what reaches here is
+			// transport-level, an older backend that slipped the gate, or the fast
+			// `runtime_busy` 503 for a live owner that is not answering. None of
+			// them gates the composer - the send engages through its own path and
+			// owns the busy resend (`admitChatDraft`) - and the latch above keeps a
+			// busy owner from being re-warmed on every keystroke. Mirrors the TUI's
+			// silent speculative engage.
 		});
 	}, [enabled, sessionId]);
 }
