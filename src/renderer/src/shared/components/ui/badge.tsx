@@ -20,12 +20,19 @@ import { type HTMLAttributes, forwardRef } from "react";
  * `border-control`, clears 3:1 on `canvas` (3.13 worst) and `surface` (3.26 worst)
  * but NOT on the row grounds the rail draws the badge on - 2.77:1 on `row-selected`
  * and 2.92:1 on `row-hover`, with twelve of the fifty-nine palettes under the
- * 3:1 non-text floor and the fill at 1.00-1.19:1 contributing nothing. A badge
- * whose fill merges with its ground has its edge as its whole boundary, so the
- * boundary role has to clear the floor wherever the badge can sit. `ink` clears
- * 7.10:1 worst, `accent` 4.24, `ink-muted` 5.53, `border-control` 2.77 - so
- * `ink-muted` is the quietest role that does, and the quietest is the right one for
- * a boundary that is not trying to be read as a message.
+ * 3:1 non-text floor and the fill contributing nothing to the boundary (1.00-1.75:1
+ * over the fifty-nine, worst on `canvas` in oneDark; the 1.19 this paragraph used to
+ * quote is the two brand palettes' own worst, on `row-selected`, not the sweep's). A
+ * badge whose fill merges with its ground has its edge as its whole boundary, so the
+ * boundary role has to clear the floor wherever the badge can sit - and the four
+ * grounds named in `contrast-contract.mjs`'s row for this mark (`canvas`, `surface`,
+ * `row-selected`, `row-hover`) are what "wherever" means. Over those four, read with
+ * that file's own ratio from `scripts/palette-source.mjs`: `ink` 7.16:1 at worst,
+ * `ink-muted` 5.63, `accent` 4.24, `border-control` 2.77. (The 7.10 and 5.53 this
+ * paragraph used to quote are the `sunken` worsts - a ground the badge is never
+ * drawn on, which the same row states.) So `ink-muted` is the quietest role that
+ * clears the floor, and the quietest is the right one for a boundary that is not
+ * trying to be read as a message.
  *
  * `size="count"` is the numbered-badge geometry, ON THE PRIMITIVE rather than
  * copy-pasted at each call site: three hosts had the same

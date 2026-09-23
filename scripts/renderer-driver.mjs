@@ -10625,7 +10625,9 @@ async function sceneApprovalBadges(cdp) {
 			 * added the fourth control to it: the title block is `flex-1 min-w-0`, so before
 			 * the floor it yielded every pixel and the conversation's name left the bar
 			 * entirely - a width of 0, which is what the before-frames show as absent ink.
-			 * `headerTitle.width >= 96` is `min-w-24`; the text is read as well so "it is
+			 * `headerTitle.width >= 40` is `min-w-10` in the header (the figure this
+			 * comment quoted as 96/`min-w-24` until agent review round 2's F10 - the
+			 * assertion and the code were 40 all along); the text is read as well so "it is
 			 * still there" is a statement about the element and not about the number.
 			 */
 			reading(
@@ -10639,15 +10641,42 @@ async function sceneApprovalBadges(cdp) {
 					truncated: withPane.headerTitleTruncated,
 				}),
 			);
+			/*
+			 * EVERY CONTROL, NOT THE CLUSTER (QA round 2, Q-1). The cluster's right edge was
+			 * the wrong instrument: at 900px the row is 220 wide and its last control ended
+			 * at 724 while the row ended at 720, and the row's own overflow is VISIBLE, so
+			 * the pane PAINTED OVER the console's trigger rather than clipping it - a control
+			 * the operator cannot see or press, reported by nothing. The width at which this
+			 * runs is whatever the launch asked for, so the same three readings answer for
+			 * the 1380 case, the 900 case and the 800 floor.
+			 */
 			reading(
-				"and the row's controls still fit inside it, so the floor is not paid for by pushing a control out",
+				"and every control still paints inside the row, so no trigger is pushed under the pane",
 				withPane.headerBox !== null &&
-					withPane.headerClusterRight !== null &&
-					withPane.headerClusterRight <= withPane.headerBox.right,
+					withPane.headerControls.length > 0 &&
+					withPane.headerControls.every(
+						(control) =>
+							control.box.right <= withPane.headerBox.right + 0.5 &&
+							control.box.x >= withPane.headerBox.x - 0.5,
+					),
 				JSON.stringify({
 					header: withPane.headerBox,
-					clusterRight: withPane.headerClusterRight,
-					canvasButtonShown: withPane.canvasButtonShown,
+					overflowX: withPane.headerOverflowX,
+					outside: withPane.headerControls
+						.filter(
+							(control) =>
+								control.box.right > withPane.headerBox.right + 0.5 ||
+								control.box.x < withPane.headerBox.x - 0.5,
+						)
+						.map((control) => ({
+							tag: control.tag,
+							label: control.label,
+							box: control.box,
+						})),
+					controls: withPane.headerControls.map((control) => ({
+						tag: control.tag,
+						right: control.box.right,
+					})),
 				}),
 			);
 			/*
@@ -10993,6 +11022,30 @@ function readApprovalBadges(cdp) {
 			headerBadgeText: headerBadge ? headerBadge.textContent.trim() : null,
 			headerTriggerName: trigger ? trigger.getAttribute('aria-label') : null,
 			headerClusterRight: box(cluster) ? box(cluster).right : null,
+			/*
+			 * EVERY CONTROL IN THE ROW, with the box it paints, so a narrow window can say
+			 * WHICH one left the header rather than only that the cluster did (QA round 2,
+			 * Q-1). The row's computed overflow-x is read too: VISIBLE is what lets a
+			 * control paint under the pane instead of being clipped.
+			 */
+			headerOverflowX: header ? getComputedStyle(header).overflowX : null,
+			headerControls: header
+				? [...header.querySelectorAll(":scope > *")]
+						.flatMap((child) => [child, ...child.querySelectorAll("button")])
+						.map((el) => ({
+							tag: el.getAttribute("data-tour-tag"),
+							label: el.getAttribute("aria-label"),
+							box: box(el),
+						}))
+						/*
+						 * A CONTROL THAT IS NOT DRAWN HAS NO BOX (0x0 at the origin, which
+						 * is outside the row by construction), and this reading is about the
+						 * controls the row DOES draw: the shed cascade's whole job is to
+						 * leave nothing visible outside the header, so the hidden half is
+						 * filtered rather than compared.
+						 */
+						.filter((entry) => entry.box !== null && entry.box.width > 0)
+				: [],
 			headerTitle: box(title),
 			headerTitleText: title ? title.textContent.trim() : null,
 			headerTitleTruncated: title ? title.scrollWidth > title.clientWidth : null,

@@ -3003,7 +3003,18 @@ app
 					 */
 					reopenConsent: (payload: ConsentAttentionPayload) => {
 						parkConsentAttention(payload);
-						if (BrowserWindow.getAllWindows().length === 0) {
+						/*
+						 * THE APP'S OWN QUESTION ABOUT ITS WINDOW, not a census of every
+						 * window this process has (agent review round 2, U8): the console's
+						 * offscreen capture view is a `BrowserWindow` too, so
+						 * `getAllWindows().length === 0` was false while none of them could
+						 * show a conversation - a banner click then parked its request with
+						 * no window created, which is the no-op this path exists to remove.
+						 * `mainWindow` is what every other decision in this file asks about,
+						 * and `isDestroyed()` is the "still usable" half of the same test
+						 * (line 780's form).
+						 */
+						if (!mainWindow || mainWindow.isDestroyed()) {
 							setupMainWindowWithUpdateService(null, false, {
 								show: OPERATOR_SHOW,
 								trigger: "banner-click",

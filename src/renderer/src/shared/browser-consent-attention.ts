@@ -142,21 +142,32 @@ export function shouldForgetConsentAttention(
 	pending: ReadonlyArray<{ entryId: string }> | undefined,
 ): boolean {
 	if (attention === null) return false;
-	return !isConsentAttentionPending(attention, pending);
+	if (pending === undefined) return false;
+	return !pending.some((entry) => entry.entryId === attention);
 }
 
 /**
- * Whether the request a click named is still waiting, as far as this reading knows.
+ * Whether the request a click named is still LIVE, as far as this reading knows.
  *
- * `true` when nothing has been read yet (`pending === undefined`) and when there is
- * no attention to ask about: the callers use this to decide whether to KEEP
- * something, and "not known" must never be spent as "gone" — that is the bug the
- * pair of functions exists to keep apart.
+ * TWO STATES ARE NOT THE SAME, and the difference is why this asks about the clock
+ * rather than about the list. A request that ran out its ten minutes is still IN
+ * `pendingConsent` — nothing in main fires at expiry, which is the whole reason the
+ * surfaces derive liveness from `expiresAt` instead of reading the length (`approval-
+ * queue-model.ts` says so at length) — so a membership test answers "still here" for
+ * an entry no surface will draw. UX round 2's U9 is exactly that: a click naming an
+ * expired-but-listed request landed on a surface with nothing in it and said nothing.
+ *
+ * `true` when nothing has been read yet (`pending === undefined`) and when there is no
+ * attention to ask about: the callers use this to decide whether to KEEP something or
+ * to SPEAK, and "not known" must never be spent as "gone".
  */
-export function isConsentAttentionPending(
+export function isConsentAttentionLive(
 	attention: string | null,
-	pending: ReadonlyArray<{ entryId: string }> | undefined,
+	pending: ReadonlyArray<{ entryId: string; expiresAt: number }> | undefined,
+	now: number,
 ): boolean {
 	if (attention === null || pending === undefined) return true;
-	return pending.some((entry) => entry.entryId === attention);
+	return pending.some(
+		(entry) => entry.entryId === attention && entry.expiresAt > now,
+	);
 }
