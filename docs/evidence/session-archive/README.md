@@ -169,7 +169,7 @@ line, the lane, the Retry) is what those frames are of.
 | --- | --- | --- | --- |
 | `at-rest/{dark,light}` | the panel with the capability present, nothing archived on screen | **nothing is DRAWN at rest**: no marker, no search-block chrome — while the 24px slot is still RESERVED (see the numbers below) | `--theme <palette>`, no scene step beyond `navigate("/chat")` |
 | `row-hover/{dark,light}` | the pointer parked on the archive control of a live row | the affordance appears on the pointer's row and nowhere else, without the row moving (`group-hover`, opacity only) — and the control under the pointer is the one that reads at full ink: brightest glyph pixels `#F1EEE7` (241) in the archive slot against `#C1BCB1` (193) in the pin slot beside it, both sampled inside their own 24px boxes (design round 4, D22, measured here rather than described) | the scene moves the **real** pointer (`Input.dispatchMouseEvent` at the control's box, from the `measure` verb) before the shutter |
-| `row-hover-body/{dark,light}` | the same row, pointer on its TITLE | the pair with `row-hover` settles design round 1 D5: the row's own highlight is a property of the ROW, not of the control's 24px box | the same, with the pointer 60px right of the row's left edge |
+| `row-hover-body/{dark,light}` | the list's FIRST session row, pointer on its TITLE | the pair with `row-hover` settles design round 1 D5: the row's own highlight is a property of the ROW, not of the control's 24px box - and the two frames hover DIFFERENT rows (`row-hover` the unread-marked `b3f1a09c7d52` at y 1656..1719, this frame the list's first at y 1376..1439), which is why its own row is named whenever the frame is used as a control | the same, with the pointer 60px right of the row's left edge |
 | `pair-wide/{dark,light}` | the panel at its **280px default**, pointer on the row that carries an unread mark | the pair - a pin slot and an archive slot - reveals on that row and nowhere else, at a title width this set's own run reports as **228px** at rest (`pin 0x0, archive 0x0`: nothing is reserved on an unpinned row) and **172px** with the pair drawn. The `row-controls-shared` state this row used to describe is DELETED from the app (D9), so there is no shared control left for the row to call absent | the scene writes the panel width the divider writes (`setSidebarWidth`, 280), asserts the pair is drawn at this width, then moves the real pointer onto the row |
 | `pair-pin/{dark,light}` | the 280px pair with the pointer parked on the **PIN** control | the pin's own step, which is the D22 change that lands on a RELEASED surface: main's pin declared no `hover:` colour at all, so this frame measures it rather than asserting it by construction — with the pointer on the pin the slots read `#F1EEE7` (241) / `#211E19` (33) in the pin's box against `#C1BCB1` (193) / `#4D4941` (77) in the archive's, dark and light (agent review round 4, R4-4) | the same run as `pair-wide`, with the pointer then moved onto `[data-session-pin]` and a second capture |
 | `pair-rest/{dark,light}` | the same 280px panel, pointer PARKED off the list | the other half of the pair's rule, and this head states it as a measurement rather than a reservation: with the pointer off the list and the row unpinned, NOTHING is reserved — the driver's own report on this set's run is `pin 0x0, archive 0x0`, two zero boxes — which is D9's rule that the layout no longer holds a slot open for a control that is not drawn | the same run, with the pointer parked before the shutter |
@@ -317,8 +317,13 @@ same shadow reads `srgb(40,37,33)` at 970 falling to `srgb(40,37,32)` at 979 - s
 number for "the dimmed run" is a channel off depending on where it is sampled (QA round 7,
 Q-14; the light palette's ground reads `srgb(236,235,231)` with the same ramp). The
 corroboration is the
-frame's own sibling: on `row-hover-body`, which draws no flyout, the same row's ground reads
-UNDIMMED to 967, the panel ground runs 968..999 and there is nothing at 980. **The D18/D23
+frame's own sibling: on `row-hover-body`, which draws no flyout, the ground reads UNDIMMED and
+flat - `srgb(48,45,42)` across x 951..967 at that frame's centre line - the panel ground runs
+968..999 and there is nothing at 980. **It is that frame's OWN hovered row, not this one**:
+`row-hover-body` hovers the list's FIRST session row (`2d5ad5da0025`, "Invoice reconciliation")
+at device y 1376..1439, while `row-hover` and `pair-wide` hover `b3f1a09c7d52` at y 1656..1719,
+so sampling the earlier row's line on the body frame returns the panel ground and reads as if
+this control had failed (design round 11, D37). **The D18/D23
 property therefore still holds** — the ground reaches the box's right edge on this set too;
 an earlier revision of this paragraph claimed otherwise by reading the shadow's early end
 and the flyout's fill as other grounds, and that claim is withdrawn rather than softened.
@@ -335,7 +340,9 @@ class that never matches cannot pass again.)
 #   x 968..979  srgb(40,37,32)   the panel ground under the same shadow
 #   x 980..981  srgb(63,59,46)   the flyout's border = row edge 484 + sideOffset 6
 #   x 982..999  srgb(49,45,35)   the flyout's fill (bg-elevated)
-# and on row-hover-body (no flyout), the same row: ground to 967, panel 968..999, nothing at 980
+# and on row-hover-body (no flyout), ITS OWN hovered row - the list's first, device
+# y 1376..1439, not the row the other two frames hover:
+#   ground flat srgb(48,45,42) through 967, panel srgb(42,39,34) at 968..999, nothing at 980
 ```
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
