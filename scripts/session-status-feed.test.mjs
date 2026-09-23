@@ -599,6 +599,78 @@ test("the hook hands the store the pair, not the frame payload", () => {
 	assert.deepEqual(row().status, { code: "complete", label: "Complete" });
 	assert.equal(row().status_revision, 3);
 	assert.equal(row().status_epoch, EPOCH);
+	/*
+	 * And the same frame for the state the sidebar's newest arm draws, because
+	 * `delegating`'s label is a SENTENCE carrying counts ("2 subagents running ·
+	 * 1 queued") where every other code's is a token - which is exactly the shape
+	 * that tempts a payload with a count field of its own. The assertion above is
+	 * what forbids that: the pair stays a pair at any label, so the count has
+	 * nowhere to live except INSIDE the label, and therefore moves on the code's
+	 * own clock instead of on a slower projection that could contradict the glyph
+	 * beside it.
+	 */
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 8,
+		type: "session_status",
+		session_id: SESSION,
+		payload: {
+			code: "delegating",
+			label: "2 subagents running · 1 queued",
+			revision: 4,
+		},
+	});
+	assert.deepEqual(Object.keys(row().status), ["code", "label"]);
+	assert.deepEqual(row().status, {
+		code: "delegating",
+		label: "2 subagents running · 1 queued",
+	});
+	assert.equal(row().status_revision, 4);
+});
+
+/*
+ * The two keys the `delegating` state reports on, at the store's own boundary.
+ *
+ * `desktop-session-contract.ts` declares them on the wire row, and this is the
+ * half a declaration cannot establish: that the client's list path actually
+ * CARRIES them. The store's row is what every reader downstream sees - a count
+ * dropped here is invisible in this repo and silently renders as "this build
+ * does not report" in the mobile daemon, which reads the record rather than the
+ * label.
+ *
+ * `null` is the reading under test as much as `2` is. A queued count of `null`
+ * means the runtime did not answer, and it must not arrive as `0`: the sidebar
+ * and the phone would both then state "no subagents" about a session nobody
+ * could ask.
+ */
+test("the subagent counts ride the list response and keep a null as null", async () => {
+	seeded();
+	const rows = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running · 1 queued" },
+			status_revision: 6,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: 1,
+		}),
+	]);
+	const reported = rows.find((item) => item.session_id === SESSION);
+	assert.equal(reported.status.code, "delegating");
+	assert.equal(reported.subagents_running, 2);
+	assert.equal(reported.subagents_queued, 1);
+
+	const silent = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running" },
+			status_revision: 7,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: null,
+		}),
+	]);
+	const unknown = silent.find((item) => item.session_id === SESSION);
+	assert.equal(unknown.subagents_queued, null);
+	assert.notEqual(unknown.subagents_queued, 0);
 });
 
 /*

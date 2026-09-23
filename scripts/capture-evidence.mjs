@@ -1937,6 +1937,24 @@ export const STORIES = [
 	["chat-sidebar-status-feed--mark-all-read-narrow-default", 720, 600],
 	["chat-sidebar-status-feed--mark-all-read-narrow-minimum", 680, 600],
 	/*
+	 * The one surface the `chat-session-status--neighbours` matrix above cannot
+	 * draw, and the reason these two rows exist beside it: that story is a column
+	 * of glyph-and-label pairs, so it answers "which mark" and nothing about a ROW
+	 * - a truncated title, the trailing statement's slot, or the mark column's
+	 * fixed position. The delegating arm is a row state, so design round 1's D4
+	 * asked for the row itself, at the same two panel widths the narrow pair above
+	 * uses and for the same reason: 280 is the default panel and 240 is the floor
+	 * `ui-preferences-store.ts` clamps to, and the floor is where a long title is
+	 * truncated hardest - the state a reader could mistake for the mark moving.
+	 *
+	 * Both draw ONE roster (the story file builds it once, so the pair differs by
+	 * the viewport and nothing else), and it places `busy`, an unread completion
+	 * and an `attached` row around the delegating rows on purpose: those are the
+	 * neighbours a reader has to tell this mark apart from in the same slot.
+	 */
+	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
+	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
+	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
 	 * same pixels and the defect design D2 found (the control 632px above the

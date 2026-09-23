@@ -75,6 +75,22 @@ export type CanonicalSessionRow = {
 	 */
 	status_revision?: number;
 	status_epoch?: string;
+	/**
+	 * How many subagents this session owns that are RUNNING, and how many are
+	 * waiting for capacity, as the catalogue row carried them.
+	 *
+	 * Declared here as well as on the wire row (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts`, whose comment carries the `null` semantics)
+	 * for the reason `pinned`/`archived`/`status_revision` above are: this row type
+	 * has an index signature, so without a declaration here every read of these two
+	 * keys is `unknown` and the next reader casts - and `row.subagents_queued === 0`
+	 * over `unknown` is exactly where a `null` {"does not report"} becomes a `0`
+	 * {"none"}. The renderer draws no count of its own: the numbers reach the user
+	 * inside `status.label` (see `chat-session-status.tsx`), and this declaration
+	 * exists so the keys are typed wherever someone does read them.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 	binding?: SessionBinding;
 	[key: string]: unknown;
 };
