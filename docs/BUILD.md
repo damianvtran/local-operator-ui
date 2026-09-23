@@ -176,6 +176,28 @@ violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
 the release if a delivered bundle does not carry exactly the runtime its
 architecture needs, or carries a legacy alias beside it.
 
+**Every Mach-O the bundle contains must carry that bundle's own architecture.**
+macOS 26 Tahoe was the last macOS for Intel-based Macs, macOS 27 is
+Apple-silicon-only, and from macOS 28 Apple removes Rosetta for apps entirely
+(<https://support.apple.com/en-us/102527>) - so a component that carries ONLY a
+foreign architecture is not merely extra download weight, it is a component that
+cannot open there. macOS 27 already says so on launch: "This version of \"Local
+Operator\" includes a component that will not open in macOS 28". The pre-#138
+builds are the historical case: universal artifacts copied BOTH bundled
+interpreters in, so half of every 94 MB interpreter tree was unrunnable on either
+machine. `app-native-components` (`nativeComponentsCheck` in
+`scripts/verify-macos-artifacts.mjs`) is the check that holds the whole bundle to
+that rule: it reads the bundle's own architecture from the Electron Framework,
+requires it to be exactly one, and then requires EVERY Mach-O under the bundle -
+dylibs and `.node` bundles as much as executables, since the notice names
+components rather than executables - to carry that architecture among its slices.
+A universal component (arm64 + x86_64) passes, a foreign-only one fails, and a
+component whose header cannot be read fails too, because "we could not ask" is
+not "it is native". The per-tree checks above (`bundledPythonCheck`,
+`privatePythonSeedCheck`, `bundledUvToolCheck`) each hold one NAMED thing to an
+architecture; this is the sweep that catches the component under a name nobody
+enumerated.
+
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
 first run. Measured on this host (three cold runs each, same interpreter and

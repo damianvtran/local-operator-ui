@@ -109,6 +109,27 @@ import { isEntryPoint } from "./entry-point.mjs";
 export const MACH_O_MAGICS = new Set(LAYOUT.machOMagics);
 
 /**
+ * The two FAT magics, named apart from the set above because the two shapes are
+ * read differently.
+ *
+ * `MACH_O_MAGICS` answers "is this a Mach-O" and holds both spellings, which is
+ * what it should hold: a universal binary is a Mach-O and counts as one
+ * everywhere here. What it does not say is which of the two HEADER SHAPES a file
+ * carries, and that is not a detail a reader can skip - a thin file's fields are
+ * the header's own second and fourth words, while a fat file's live in
+ * `fat_arch` entries behind an `nfat_arch` count, so the same offsets read a
+ * plausible number for the wrong file. `machOHeader` below refuses a fat file
+ * for exactly that reason, and `machOArchitectures` reads the entries.
+ *
+ * 64-bit fat magics (`cafebabf`/`bfbafeca`) are deliberately absent: the magic
+ * set in `src/shared/bundled-runtime-layout.json` is the one definition of "a
+ * Mach-O" for every caller in this repository - the app's `verifyMachO` reads it
+ * too, for signature verification - so a shape this module cannot be handed is
+ * not a shape it should pretend to read.
+ */
+const MACH_O_FAT_MAGICS = new Set(["cafebabe", "bebafeca"]);
+
+/**
  * The seed content nothing can reach, relative to the seed root, and the marker
  * that says a tree is the Python those paths were written for.
  *
@@ -202,8 +223,8 @@ function machOHeader(path) {
 	if (bytes == null || bytes.length < 16) return null;
 	const magic = bytes.toString("hex", 0, 4);
 	if (!MACH_O_MAGICS.has(magic)) return null;
-	// Fat: 0xcafebabe/0xbebafeca are big-endian fat headers.
-	if (magic === "cafebabe" || magic === "bebafeca") return null;
+	// Fat files carry their fields in `fat_arch` entries, not here.
+	if (MACH_O_FAT_MAGICS.has(magic)) return null;
 	// `feedfacf`/`feedface` are the big-endian spellings, `cffaedfe`/`cefaedfe`
 	// the little-endian ones.
 	return { bytes, bigEndian: magic === "feedfacf" || magic === "feedface" };
@@ -264,6 +285,53 @@ export const MACH_O_CPUTYPE = {
 export function machOCpuType(path) {
 	const header = machOHeader(path);
 	return header == null ? null : machOWord(header, 4);
+}
+
+/**
+ * EVERY architecture a Mach-O file carries, or `null` when its header cannot be
+ * read.
+ *
+ * WHY A SET BESIDE `machOCpuType` RATHER THAN INSTEAD OF IT: the two answer
+ * different questions and both are asked. `machOCpuType` answers for a THIN file
+ * and returns `null` for a fat one, which is right for its caller - the release
+ * gate's spawn bound asks whether THIS HOST has to translate the one file it is
+ * about to exec, a per-file question about one architecture. The gate's
+ * native-component check asks a different thing: whether a component's slices
+ * INCLUDE the bundle's own architecture, so a universal component
+ * (arm64 + x86_64) passes while an x86_64-only one fails. Making the thin reader
+ * answer that would mean changing what `machOCpuType` means for its existing
+ * caller; two parsers would mean two decisions about the magic set, the
+ * endianness and the field offsets, and a wrong-endian read does not crash - it
+ * answers a plausible number for the wrong file. So the fat case is added here,
+ * in the one reader, and the thin case reuses the same header reader.
+ *
+ * A count of zero expresses no architecture at all and an implausible count is a
+ * header this cannot be trusted to have read, so both answer `null` - "could not
+ * ask", which every caller here treats as a failure rather than as a pass.
+ */
+export function machOArchitectures(path) {
+	const magic = leadingMagic(path);
+	if (magic == null || !MACH_O_MAGICS.has(magic)) return null;
+	if (MACH_O_FAT_MAGICS.has(magic)) {
+		// FAT_MAGIC (`cafebabe`) is written big-endian; FAT_CIGAM (`bebafeca`) is
+		// the same header with little-endian fields.
+		const bigEndian = magic === "cafebabe";
+		const words = leadingBytes(path, 8);
+		if (words == null || words.length < 8) return null;
+		const count = bigEndian ? words.readUInt32BE(4) : words.readUInt32LE(4);
+		if (count === 0 || count > 64) return null;
+		// One `fat_arch` is five 32-bit words, `cputype` first.
+		const bytes = leadingBytes(path, 8 + count * 20);
+		if (bytes == null || bytes.length < 8 + count * 20) return null;
+		const slices = [];
+		for (let index = 0; index < count; index += 1) {
+			const at = 8 + index * 20;
+			slices.push(bigEndian ? bytes.readUInt32BE(at) : bytes.readUInt32LE(at));
+		}
+		return slices;
+	}
+	const header = machOHeader(path);
+	return header == null ? null : [machOWord(header, 4)];
 }
 
 /** The Mach-O `filetype` values this app cares about. */

@@ -35,6 +35,7 @@ import { fileURLToPath } from "node:url";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
+	LIPO_ARCH,
 	PYTHON_VERSION,
 	UV_VERSION,
 	seedResourceDir,
@@ -49,6 +50,7 @@ import {
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	machOArchitectures,
 	machOCpuType,
 	machOExecutables,
 	machOFiles,
@@ -1135,6 +1137,117 @@ export function bundleExecutables(appPath) {
 }
 
 /**
+ * The Mach-O `cputype` each architecture lipo names, from the two declarations
+ * that already exist rather than from a third map.
+ *
+ * `LIPO_ARCH` (`scripts/bundled-runtime-layout.mjs`) says which lipo spelling
+ * each architecture DIRECTORY carries - `x64` the directory, `x86_64` the answer
+ * `lipo -archs` gives - and `MACH_O_CPUTYPE` is the one spelling of the header
+ * words. Reverse-mapped below for the log line; a cputype this does not name is
+ * printed as its hex value rather than rounded to a neighbouring architecture.
+ */
+const CPU_TYPE_BY_LIPO_ARCH = {
+	[LIPO_ARCH.arm64]: MACH_O_CPUTYPE.ARM64,
+	[LIPO_ARCH.x64]: MACH_O_CPUTYPE.X86_64,
+};
+const LIPO_ARCH_BY_CPU_TYPE = new Map(
+	Object.entries(CPU_TYPE_BY_LIPO_ARCH).map(([name, type]) => [type, name]),
+);
+
+/** The name lipo would give a slice's `cputype`, or its hex value if unknown. */
+function lipoArchName(cpuType) {
+	return (
+		LIPO_ARCH_BY_CPU_TYPE.get(cpuType) ??
+		`cputype 0x${cpuType.toString(16).padStart(8, "0")}`
+	);
+}
+
+/** A path list capped to what one log line can carry, with the rest counted. */
+function cappedList(entries, limit = 10) {
+	return `${entries.slice(0, limit).join(", ")}${entries.length > limit ? ` (and ${entries.length - limit} more)` : ""}`;
+}
+
+/**
+ * THE CHECK macOS 27'S OWN NOTICE ASKED FOR.
+ *
+ * macOS 27 is Apple-silicon-only (macOS 26 Tahoe was the last macOS for
+ * Intel-based Macs), and from macOS 28 Rosetta is gone for apps entirely - so a
+ * component inside the bundle that carries ONLY a foreign architecture cannot
+ * open there at all, and macOS 27 already says so at every launch: "This version
+ * of \"Local Operator\" includes a component that will not open in macOS 28, the
+ * next major release." (Apple, support.apple.com/en-us/102527, 2026-09-21.) This
+ * product has shipped that shape before: before #138 a universal build carried
+ * BOTH bundled interpreters, half of it unrunnable on either machine.
+ *
+ * WHY NOTHING ELSE HERE COVERS IT: the neighbouring checks each read one named
+ * thing - the Electron Framework's architecture (`bundleArchitectures`), the
+ * interpreter seed's directory name (`privatePythonSeedCheck`), the bundled
+ * `uv`'s `lipo -archs` (`bundledUvToolCheck`). A foreign-only component in any
+ * other shape - an x64 `.node`, a helper, a second interpreter tree under a name
+ * nobody enumerated, a future resource group - passes all of them, and the only
+ * symptom is the notice on a user's machine.
+ *
+ * WHAT IS ASSERTED, and why each half is load-bearing:
+ *
+ *  - The bundle's own architecture comes from `bundleArchitectures(appPath)` and
+ *    must be EXACTLY ONE. This project ships one artifact per architecture, so a
+ *    fat bundle has no single architecture to hold its components to; rounding to
+ *    a nearby answer is how a bundle nobody can install passes a gate.
+ *  - EVERY Mach-O in the bundle - not only the executables - must carry that
+ *    architecture AMONG its slices. A dylib and a `.node` are loadable
+ *    components and the notice names components, so a universal one PASSES (it
+ *    opens natively) and a foreign-only one FAILS.
+ *  - A component whose slices cannot be read FAILS. "We could not ask" is not
+ *    "it is native"; the failure message says which of the two happened.
+ */
+export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
+	return appCheck(
+		"app-native-components",
+		appPath,
+		"every Mach-O component carries the bundle's own architecture (macOS 28 removes Rosetta for apps, so a foreign-only component cannot open there)",
+		() => {
+			const { archs, error } = bundleArchitectures(appPath, { run });
+			if (error != null)
+				throw new Error(
+					`The bundle's own architecture could not be read, and it is what every component is measured against: ${error}`,
+				);
+			if (archs.length !== 1)
+				throw new Error(
+					`The bundle's Electron Framework reports ${archs.length === 0 ? "no architecture" : `${archs.length} architectures (${archs.join(", ")})`}; this project ships one artifact per architecture, so there is no single architecture to hold its components to`,
+				);
+			const expected = CPU_TYPE_BY_LIPO_ARCH[archs[0]];
+			if (expected == null)
+				throw new Error(
+					`The bundle is ${archs[0]}, an architecture this gate has no Mach-O cputype for (it knows ${Object.keys(CPU_TYPE_BY_LIPO_ARCH).join(", ")})`,
+				);
+			const components = machOFiles(appPath);
+			if (components.length === 0)
+				throw new Error(
+					"No Mach-O component at all under the bundle: its own binaries are gone, so there is nothing to hold to an architecture",
+				);
+			const unreadable = [];
+			const foreign = [];
+			for (const relative of components) {
+				const slices = machOArchitectures(join(appPath, relative));
+				if (slices == null) unreadable.push(relative);
+				else if (!slices.includes(expected)) foreign.push({ relative, slices });
+			}
+			const problems = [];
+			if (unreadable.length > 0)
+				problems.push(
+					`${unreadable.length} Mach-O component(s) whose architecture could not be read, which is not the same as native: ${cappedList(unreadable)}`,
+				);
+			if (foreign.length > 0)
+				problems.push(
+					`${foreign.length} of ${components.length} Mach-O component(s) do not carry ${archs[0]}: ${cappedList(foreign.map(({ relative, slices }) => `${relative} [${slices.map(lipoArchName).join(" + ")}]`))}`,
+				);
+			if (problems.length > 0) throw new Error(problems.join("; "));
+			return `${components.length} Mach-O components, all ${archs[0]}`;
+		},
+	);
+}
+
+/**
  * Every restricted entitlement ANY executable in the bundle claims, judged
  * against the profile the bundle embeds.
  *
@@ -1522,6 +1635,10 @@ export function verifyArtifacts({
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
 			bundledUvToolCheck(path, { expectArch: arch, run }),
+			// The bundle-wide sweep: the three checks above hold one NAMED thing to an
+			// architecture each, so this is the one that would catch a foreign-only
+			// component under a name nobody enumerated.
+			nativeComponentsCheck(path, { run }),
 			// The four halves of the bundled runtime's weight, each asserted where
 			// the build assembled it: the content nothing imports, the execute bits
 			// that mean nothing in a bundle, the venv bootstrap the pruning must not
@@ -1547,13 +1664,14 @@ export function verifyArtifacts({
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
 		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
-		// Neither of the next eight is a `codesign` question: all are about what
+		// Neither of the next nine is a `codesign` question: all are about what
 		// the build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
 		results.push(bundledUvToolCheck(appPath, { run }));
+		results.push(nativeComponentsCheck(appPath, { run }));
 		results.push(prunedSeedCheck(appPath));
 		results.push(seedModeCheck(appPath));
 		results.push(seedBootstrapCheck(appPath));
