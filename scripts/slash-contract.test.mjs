@@ -26,8 +26,6 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
-			/* The matcher and the row shaper, because the no-match state below is
-			   DERIVED the way the component derives it rather than asserted. */
 			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
 			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
@@ -2336,16 +2334,7 @@ test("a flag token ACTS only when the backend's own parser would act on it", () 
 
 test("a flag token DRAWS on a prefix, so the row is found but a title is not", () => {
 	// Every spelling the operator reported must still SUGGEST the row.
-	for (const typed of [
-		"-",
-		"--",
-		"r",
-		"re",
-		"ref",
-		"refr",
-		"refresh",
-		"refresh",
-	])
+	for (const typed of ["-", "--", "r", "re", "ref", "refr", "refresh"])
 		assert.equal(
 			flagTokenDraws("title-refresh", typed),
 			true,
