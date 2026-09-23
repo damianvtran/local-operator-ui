@@ -77,6 +77,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const OUT = process.argv[2] ?? "/tmp/lo-interrupt-proof";
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
@@ -234,6 +235,12 @@ const port = Number(process.env.LO_PROOF_CDP_PORT) || (await freePort());
  * how it is guarded, because a rig is the site most likely to hand the app an
  * environment that banners the operator - this rig forces the switch for the same
  * reason `run-desktop-tests.mjs` does it for every child it spawns.
+ *
+ * `withTelemetryOff` wraps the same object for the same reason one project over:
+ * this rig drives the REAL built app, whose two processes both carry the live
+ * PostHog project key, and the renderer's copy is inlined at build time — so a
+ * run that reaches PostHog shows up as a user and a session replay in the
+ * product's own analytics. See `telemetry-off.mjs`.
  */
 const spawnEnv = withNotificationsOff({
 	...childEnv,
@@ -252,6 +259,7 @@ const spawnEnv = withNotificationsOff({
 	VITE_LOCAL_OPERATOR_API_URL: BACKEND,
 	LOCAL_OPERATOR_DESKTOP_TOKEN: TOKEN,
 });
+withTelemetryOff(spawnEnv);
 
 const app = spawn(
 	"./node_modules/.bin/electron",

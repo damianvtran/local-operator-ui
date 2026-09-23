@@ -79,6 +79,7 @@ import {
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 const REPO_FROM_SCRIPT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -167,6 +168,14 @@ for (const key of Object.keys(env)) {
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 }
 withNotificationsOff(env);
+/*
+ * `withTelemetryOff` here as well, though this rig measures a different hop:
+ * it boots the real app headless, and the build carries the live PostHog project
+ * key in BOTH processes — main's `posthog-node` client and the renderer's, whose
+ * configuration is inlined at build time and cannot be reached from the scratch
+ * tree. See `telemetry-off.mjs`.
+ */
+withTelemetryOff(env);
 Object.assign(env, {
 	HOME: HOME_DIR,
 	LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
