@@ -56,6 +56,7 @@ import { join } from "node:path";
 // shell -> node -> Electron chain, so a pid held from it is the shim's.
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 const KEEP = process.argv.includes("--keep");
@@ -185,6 +186,13 @@ async function launch(siteOrigin) {
 	 * reaches macOS through `osascript` when a session parks on a gate — a banner
 	 * in the operator's real Notification Center, from a harness run. See
 	 * `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` for the same class of reason, one project over: this rig
+	 * boots the real app, the build carries the live PostHog project key, and
+	 * nothing else in this tree could stop the run registering as a user and a
+	 * session replay — the renderer's own configuration is inlined at build time,
+	 * so the switch has to be in the environment this child is handed. See
+	 * `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -199,6 +207,7 @@ async function launch(siteOrigin) {
 		// with cookie persistence.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
