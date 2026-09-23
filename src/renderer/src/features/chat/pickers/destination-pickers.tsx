@@ -72,11 +72,11 @@ import {
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import { catalogueListing } from "./model-catalogue-listing";
-import { matchModelPickerOptions } from "./model-picker-match";
 import {
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
 } from "./model-default-settings";
+import { matchModelPickerOptions } from "./model-picker-match";
 import {
 	PickerCheck,
 	PickerField,
