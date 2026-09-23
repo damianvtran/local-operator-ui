@@ -63,6 +63,7 @@ const bundle = await build({
 				goalDoneLabel,
 				goalDismissLabel,
 				goalDoneToastText,
+				goalStalledNote,
 				goalClearedText,
 				loopActionLabel,
 				loopAffordance,
@@ -99,7 +100,7 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
 			export { GoalPicker };
 			export { toasts };
-			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -164,6 +165,7 @@ const {
 	goalDoneLabel,
 	goalDismissLabel,
 	goalDoneToastText,
+	goalStalledNote,
 	goalClearedText,
 	goalStateWord,
 	goalCapability,
@@ -3790,10 +3792,12 @@ test("the lifecycle's derived strings, one per state", () => {
 	assert.equal(goalStateWord("active", "waiting"), "");
 	assert.equal(goalStateWord("active", "quiescing"), "");
 	assert.equal(goalStateWord(undefined, undefined), "");
-	// The confirmations: the mark-done names the value and offers nothing back.
+	// The confirmations: the mark-done names the value AND says where it went and how to
+	// put it back — the recovery path the design's § 2.3 promises in the absence of an
+	// undo (UX round 1, U2).
 	assert.equal(
 		goalDoneToastText("Ship the release"),
-		"Goal done · Ship the release",
+		"Goal done · Ship the release — it stays in the goal history; /goal <text> sets it again",
 	);
 	assert.equal(
 		goalClearedText("Ship the release"),
@@ -3802,6 +3806,42 @@ test("the lifecycle's derived strings, one per state", () => {
 	// The verbs the controls send are the whole-argument aliases the backend takes.
 	assert.equal(GOAL_DONE_ARGS, "done");
 	assert.equal(GOAL_DISMISS_ARGS, "dismiss");
+	/*
+	 * ONE STALL SENTENCE PER CAUSE, keyed by the reason the wire carries (UX round 1,
+	 * U1), and the two reasons here are the backend's own constants verbatim. The cap's
+	 * is matched by SHAPE: it is an f-string over the budget, so a literal would go
+	 * silently stale the day that number moves.
+	 */
+	assert.equal(
+		goalStalledNote("judge could not decide"),
+		"goal stalled: judge could not decide — send a message to continue",
+	);
+	assert.equal(
+		goalStalledNote("stopped after 12 continuations"),
+		"goal stalled: reached the continuation limit — send a message to continue",
+	);
+	assert.equal(
+		goalStalledNote("stopped after 40 continuations"),
+		"goal stalled: reached the continuation limit — send a message to continue",
+		"the cap's sentence follows the bound, not the number it was written against",
+	);
+	/*
+	 * ANY OTHER REASON IS ANNOUNCED AND NOT ATTRIBUTED — including the empty one, which is
+	 * what a stalled frame with no reason at all reads as. The alternative (falling back to
+	 * the breaker) is the confusion U1 is about, and the other alternative (saying
+	 * nothing) is the bug D2 closed.
+	 */
+	for (const unnamed of [undefined, "", "  ", "a bound added after this build"]) {
+		assert.equal(
+			goalStalledNote(unnamed),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	}
+	// A reason that merely mentions continuations is not the cap: both halves are required.
+	assert.equal(
+		goalStalledNote("the judge kept asking for continuations"),
+		"goal stalled: auto-continuation stopped — send a message to continue",
+	);
 });
 
 /* ---------------------------------------------------------------- */
@@ -4010,13 +4050,24 @@ test("the judge stalling is said ONCE, through the composer's note channel", asy
 	const { window: dom, root, cleanup } = await domHarness();
 	try {
 		const notes = [];
-		const element = (judgeState) =>
+		/*
+		 * THE REASON RIDES THE FIXTURE, because it is what chooses the sentence (UX round
+		 * 1, U1): a judgement that could not decide and a goal that ran out of
+		 * auto-continuations are two different next moves, so the row has to report the
+		 * cause the wire published rather than rounding both to whichever sentence was
+		 * written first. The reasons below are the backend's own constants
+		 * (`STALLED_BREAKER_REASON` / `STALLED_CAP_REASON` in `session/goal_judge.py`).
+		 */
+		const element = (judgeState, reason) =>
 			createElement(ComposerStatusRow, {
 				frontend: {
 					goal: "Ship it",
 					session_id: "s-1",
 					goal_status: "active",
-					goal_judge: { state: judgeState },
+					goal_judge:
+						reason === undefined
+							? { state: judgeState }
+							: { state: judgeState, reason },
 				},
 				runDetails: null,
 				onNote: (text) => notes.push(text),
@@ -4027,21 +4078,48 @@ test("the judge stalling is said ONCE, through the composer's note channel", asy
 			[],
 			"a judge still working says nothing: nothing has happened to the user yet",
 		);
-		await act(async () => root.render(element("stalled")));
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
 		assert.deepEqual(notes, [
 			"goal stalled: judge could not decide — send a message to continue",
 		]);
 		// One per ENTRY, not one per render: the state is still stalled on this frame.
-		await act(async () => root.render(element("stalled")));
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
 		assert.equal(
 			notes.length,
 			1,
 			"the stall is not re-announced on every frame",
 		);
-		// Leaving the state re-arms it, so a second stall is its own fact.
+		/*
+		 * THE SECOND CAUSE GETS ITS OWN SENTENCE, and this is the assertion the finding is
+		 * about: leaving the state re-arms the note, so a second stall is its own fact — and
+		 * the cap's stall must NOT be announced in the breaker's words, because a user told
+		 * the judge could not decide goes looking for a provider problem that does not exist.
+		 */
 		await act(async () => root.render(element("judging")));
-		await act(async () => root.render(element("stalled")));
-		assert.equal(notes.length, 2, "a new stall is a new announcement");
+		await act(async () =>
+			root.render(element("stalled", "stopped after 12 continuations")),
+		);
+		assert.deepEqual(
+			notes.slice(1),
+			["goal stalled: reached the continuation limit — send a message to continue"],
+			"the continuation cap is not reported as a failed judgement",
+		);
+		/*
+		 * A CAUSE THIS BUILD CANNOT NAME IS STILL ANNOUNCED, in a sentence that names no
+		 * bound: silence is the state D2 closed, and naming the breaker for it would be U1
+		 * over again in the other direction.
+		 */
+		await act(async () => root.render(element("judging")));
+		await act(async () =>
+			root.render(element("stalled", "a bound added after this build")),
+		);
+		assert.deepEqual(notes.slice(2), [
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		]);
 		/*
 		 * And the row the note is written for is still the row that shipped: the note is
 		 * an ADDITION, not a replacement for the ink step the design keeps beside it.
