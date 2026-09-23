@@ -95,6 +95,7 @@ import {
 import {
 	errorText,
 	isNativeAction,
+	toResult,
 	useOperation,
 	useSessionCommand,
 } from "./use-picker-backend";
@@ -556,7 +557,8 @@ export const ModelPicker: FC<PickerContext> = ({
 	});
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
-	const selected = canonical.frontend?.selected_model;
+	const selected =
+		canonical.frontend?.effective_model ?? canonical.frontend?.selected_model;
 	/*
 	 * Both halves must be non-empty to name a model, and the guard is the shared
 	 * selector rather than a local expression: a session frame can carry a spec
@@ -1056,7 +1058,10 @@ export const EffortPicker: FC<PickerContext> = ({
 	const draftModel = draft
 		? bandReadings(draftPreview.data?.snapshot, null).effort
 		: null;
-	const model = draft ? draftModel : canonical.frontend?.selected_model;
+	const model = draft
+		? draftModel
+		: (canonical.frontend?.effective_model ??
+			canonical.frontend?.selected_model);
 	const rungs = draft
 		? effortLadder(draftModel)
 		: (entities.data?.entities ?? []).map((row) => row.value);
@@ -1149,7 +1154,7 @@ export const EffortPicker: FC<PickerContext> = ({
 							: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
 					: draft
 						? `Effort levels ${label} supports. This sets the level this conversation starts on and keeps running on; your default is unchanged.`
-						: `Effort levels ${label} supports. Applies to this session.`
+						: `Effort levels ${label} supports. Applies to this session unless you also make it the default for new sessions.`
 			}
 			options={options}
 			loading={loading}
@@ -1172,11 +1177,21 @@ export const EffortPicker: FC<PickerContext> = ({
 									}),
 								() => ({
 									tone: "success",
-									text: `Default effort for new sessions: ${effortDisplay(value)}.`,
+									text: [
+										command.result?.text,
+										`Default effort for new sessions: ${effortDisplay(value)}.`,
+									]
+										.filter(Boolean)
+										.join("\n"),
 								}),
-								"The default effort was not saved",
+								"The effort default was not saved",
 							);
 							if (saved) await entities.refetch();
+						} else if (saveAsDefault && outcome?.kind === "notice") {
+							defaultSetting.setResult({
+								...toResult(outcome),
+								text: `${toResult(outcome).text}. The effort default was not saved.`,
+							});
 						}
 					});
 					return;
@@ -1201,7 +1216,11 @@ export const EffortPicker: FC<PickerContext> = ({
 			}}
 			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
 			result={
-				draft ? draftPick.result : (defaultSetting.result ?? command.result)
+				draft
+					? draftPick.result
+					: defaultSetting.result
+						? defaultSetting.result
+						: command.result
 			}
 			/*
 			 * The wait names its work (design D23). A draft's effort pick resolves
@@ -1211,8 +1230,8 @@ export const EffortPicker: FC<PickerContext> = ({
 			 * without saying what, for a wait the sibling adapter already names.
 			 * A session's effort pick is a command and keeps the default.
 			 */
-			busyText={draft ? "Resolving the effort…" : undefined}
-			busyLabel={draft ? "Resolving the effort" : undefined}
+			busyText={draft ? "Resolving the effort…" : "Switching the effort…"}
+			busyLabel={draft ? "Resolving the effort" : "Switching the effort"}
 		/>
 	);
 };

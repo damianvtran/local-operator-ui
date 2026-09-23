@@ -355,7 +355,10 @@ export function pickerPrimaryLabel(state: {
 	result: PickerResult | null;
 }): string {
 	if (state.busy) return "Close";
-	return state.result && state.result.tone !== "error" ? "Done" : "Close";
+	return state.result &&
+		(state.result.tone === "success" || state.result.tone === "info")
+		? "Done"
+		: "Close";
 }
 
 /**
@@ -1273,8 +1276,9 @@ export const PickerCheck: FC<{
 }> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
 	const id = useId();
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-start gap-2">
 			<Checkbox
+				className="mt-0.5"
 				id={id}
 				checked={checked}
 				onCheckedChange={(next) => onCheckedChange(next === true)}

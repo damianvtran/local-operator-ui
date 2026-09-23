@@ -199,7 +199,10 @@ import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { useAtResolution } from "../hooks/use-at-resolution";
-import { writeModelDefaultSettings } from "../pickers/model-default-settings";
+import {
+	activeModelForDefault,
+	writeModelDefaultSettings,
+} from "../pickers/model-default-settings";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -224,6 +227,7 @@ import { RadientSessionIssueCallout } from "./radient-session-issue";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import { shouldRunArgumentAction } from "./slash-argument-rows";
 import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
@@ -2074,7 +2078,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
 			},
-			activeModel: sessionStatus?.frontend?.selected_model,
+			activeModel: activeModelForDefault(
+				sessionStatus?.frontend?.effective_model ??
+					sessionStatus?.frontend?.selected_model,
+			),
 		});
 
 		/*
@@ -3583,11 +3590,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const handleSlashAction = useCallback(
 			async (row: Extract<CompletionRow, { kind: "action" }>["row"]) => {
+				const model = activeModelForDefault(row.model);
 				if (
 					isInputDisabled ||
-					row.disabled ||
+					!shouldRunArgumentAction(row, true) ||
 					row.id !== "model-default" ||
-					!row.model
+					!model
 				)
 					return;
 				/*
@@ -3597,12 +3605,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				slash.close();
 				try {
-					await writeModelDefaultSettings(row.model, (key, value) =>
+					await writeModelDefaultSettings(model, (key, value) =>
 						desktopResult({ op: "settings.edit", key, value }),
 					);
 					setNewMessage("");
 					onSlashNote?.(
-						`Default for new sessions: ${row.model.provider}/${row.model.model_id}`,
+						`Default for new sessions: ${model.provider}/${model.model_id}`,
 					);
 				} catch (error) {
 					onSlashNote?.(

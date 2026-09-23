@@ -1163,7 +1163,9 @@ export type ClickFooterInput = {
 	 * destination table this module deliberately does not import.
 	 */
 	runs: boolean;
-	/** The active row's value, and whether there is an active row at all. */
+	/** Direct actions have their own truthful click sentence rather than a command claim. */
+	actionClickText?: string;
+	/** The active row's value when the default command grammar describes it. */
 	value: string;
 	matched: boolean;
 	/**
@@ -1217,10 +1219,12 @@ export function clickFooter(input: ClickFooterInput): string | null {
 			: `Click completes /${input.label}.`;
 	}
 	if (input.nameThenMessage) return "Click chooses this name.";
+	if (input.actionClickText) return input.actionClickText;
 	if (!input.runs) return "Click completes this value.";
 	const command = input.command ? `/${input.command}` : "";
+	if (!command) return "Click runs the command.";
 	const value = input.value ? ` ${input.value}` : "";
-	// An empty argument is a real command state, not a blank slot to print.
+	// Build from non-empty parts so an empty value never leaves a blank slot.
 	return `Click runs ${command}${value}.`;
 }
 

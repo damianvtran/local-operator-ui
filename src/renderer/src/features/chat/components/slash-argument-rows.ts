@@ -16,6 +16,7 @@
  * what this thing IS versus where it stands right now.
  */
 
+import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
 
@@ -58,6 +59,8 @@ export type ArgumentActionRow = {
 	description: string;
 	/** The current session model the action will persist, absent when unavailable. */
 	model: { provider: string; model_id: string } | null;
+	/** Pointer feedback differs from the descriptive detail because it names the gesture. */
+	clickText: string;
 	disabled: boolean;
 };
 
@@ -76,17 +79,27 @@ export function modelDefaultActionRow(
 	paneHasSession: boolean,
 ): ArgumentActionRow | null {
 	if (query !== "default" || !wholeCommand || !paneHasSession) return null;
-	const provider = asText(activeModel?.provider);
-	const modelId = asText(activeModel?.model_id);
-	const model = provider && modelId ? { provider, model_id: modelId } : null;
+	const model = activeModelForDefault(
+		activeModel
+			? {
+					provider: asText(activeModel.provider),
+					model_id: asText(activeModel.model_id),
+				}
+			: null,
+	);
+	const provider = model?.provider ?? "";
+	const modelId = model?.model_id ?? "";
 	return {
 		kind: "action",
 		id: "model-default",
 		name: "Set current model as default",
 		description: model
-			? `Save ${provider}/${modelId} as the default for new sessions.`
+			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
 			: "No active session model is available to save.",
 		model,
+		clickText: model
+			? "Click sets the current model as the default for new sessions."
+			: "A session model is required before this action can save a default.",
 		disabled: model === null,
 	};
 }

@@ -71,6 +71,7 @@ import {
 	flagTokenSelects,
 	isRendererLocalSource,
 	modelDefaultActionRow,
+	shouldRunArgumentAction,
 	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
@@ -1165,6 +1166,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		takesDraft:
 			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
 		hoists: state.hoists,
+		actionClickText: activeAction?.clickText,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 	});
@@ -1263,7 +1265,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
 									if (row.kind === "action") {
-										if (!row.row.disabled) {
+										if (shouldRunArgumentAction(row.row, true)) {
 											if (onActionPick) onActionPick(row.row);
 											else onPick(row, { run: true });
 										}
