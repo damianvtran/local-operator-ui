@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+
+const SETTINGS_REFUSED = /settings refused/;
 import { build } from "esbuild";
 
 /*
@@ -20,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -28,7 +30,17 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { formatWindow, formatPricePair, trimPrice, argumentRows } = await import(
+const {
+	formatWindow,
+	formatPricePair,
+	trimPrice,
+	argumentRows,
+	modelDefaultActionRow,
+	shouldRunArgumentAction,
+	activeModelForDefault,
+	effortCommandSucceeded,
+	writeModelDefaultSettings,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -101,6 +113,93 @@ const modelRow = (over = {}) => ({
 	aggregated: false,
 	routed: false,
 	...over,
+});
+
+test("default is a separate, exact model action and never a catalogue row", () => {
+	const action = modelDefaultActionRow(
+		"default",
+		{ provider: "anthropic", model_id: "claude-opus-5" },
+		true,
+		true,
+	);
+	assert.equal(action.kind, "action");
+	assert.equal(action.id, "model-default");
+	assert.equal(action.clickText, "Click does the same.");
+	assert.deepEqual(action.model, {
+		provider: "anthropic",
+		model_id: "claude-opus-5",
+	});
+	assert.equal(shouldRunArgumentAction(action, true), true);
+	assert.equal(shouldRunArgumentAction(action, false), false);
+	assert.equal(
+		modelDefaultActionRow(
+			"default",
+			{ provider: "anthropic", model_id: "claude-opus-5" },
+			false,
+			true,
+		),
+		null,
+	);
+	const unavailable = modelDefaultActionRow("default", null, true, true);
+	assert.equal(unavailable.disabled, true);
+	assert.equal(shouldRunArgumentAction(unavailable, true), false);
+});
+
+test("active model default requires both provider and model id", () => {
+	assert.deepEqual(
+		activeModelForDefault({ provider: "openrouter", model_id: "openai/gpt-5" }),
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+	);
+	assert.equal(activeModelForDefault(null), null);
+	assert.equal(
+		activeModelForDefault({ provider: "openrouter", model_id: "" }),
+		null,
+	);
+	assert.deepEqual(
+		activeModelForDefault({
+			provider: "openrouter",
+			model_id: "openai/gpt-5",
+			extra: true,
+		}),
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+	);
+});
+
+test("model default writes hosting then model name and stops on refusal", async () => {
+	const writes = [];
+	await writeModelDefaultSettings(
+		{ provider: "anthropic", model_id: "claude-opus-5" },
+		async (key, value) => writes.push([key, value]),
+	);
+	assert.deepEqual(writes, [
+		["hosting", "anthropic"],
+		["model_name", "claude-opus-5"],
+	]);
+	const failed = [];
+	await assert.rejects(
+		writeModelDefaultSettings(
+			{ provider: "openai", model_id: "gpt-5" },
+			async (key, value) => {
+				failed.push([key, value]);
+				if (key === "hosting") throw new Error("settings refused");
+			},
+		),
+		SETTINGS_REFUSED,
+	);
+	assert.deepEqual(failed, [["hosting", "openai"]]);
+});
+
+test("only an informational effort notice permits saving a machine default", () => {
+	assert.equal(effortCommandSucceeded({ kind: "notice", style: "info" }), true);
+	assert.equal(
+		effortCommandSucceeded({ kind: "notice", style: "warning" }),
+		false,
+	);
+	assert.equal(
+		effortCommandSucceeded({ kind: "error", style: "error" }),
+		false,
+	);
+	assert.equal(effortCommandSucceeded(null), false);
 });
 
 test("a model row carries the provider, the window and the price pair", () => {

@@ -384,6 +384,13 @@ test("closing while busy is called Close, not Cancel", () => {
 		pickerPrimaryLabel({ busy: false, result: { tone: "error", text: "no" } }),
 		"Close",
 	);
+	assert.equal(
+		pickerPrimaryLabel({
+			busy: false,
+			result: { tone: "warning", text: "refused" },
+		}),
+		"Close",
+	);
 });
 
 /* ----------------------------------------------------------- the body */

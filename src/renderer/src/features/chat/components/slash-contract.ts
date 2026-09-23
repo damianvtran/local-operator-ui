@@ -32,7 +32,8 @@ import { slashContext } from "./slash-token";
  */
 export type RoutableRow =
 	| { kind: "command"; label: string }
-	| { kind: "argument"; row: { value: string; alert?: boolean } };
+	| { kind: "argument"; row: { value: string; alert?: boolean } }
+	| { kind: "action"; row: { id: string; disabled: boolean } };
 
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type SlashKeyIntent =
@@ -569,6 +570,17 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
+			if (row.kind === "action") {
+				/*
+				 * Direct action rows are never completed into composer text. Enter acts
+				 * once; Tab remains the safe, non-mutating completion key.
+				 */
+				return {
+					kind: "apply",
+					index: input.active,
+					run: input.key === "Enter" && !row.row.disabled,
+				};
+			}
 			if (row.kind === "command") {
 				/*
 				 * Tab is the completion key in BOTH phases: it takes the highlighted
@@ -688,9 +700,9 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
  * literal `"command"` while the shipped component keyed on the label.
  */
 export function rowId(row: RoutableRow): string {
-	return row.kind === "command"
-		? `cmd-${row.label}`
-		: `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
+	if (row.kind === "command") return `cmd-${row.label}`;
+	if (row.kind === "action") return `act-${row.row.id}`;
+	return `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
 }
 
 /**
@@ -1151,7 +1163,9 @@ export type ClickFooterInput = {
 	 * destination table this module deliberately does not import.
 	 */
 	runs: boolean;
-	/** The active row's value, and whether there is an active row at all. */
+	/** Direct actions have their own truthful click sentence rather than a command claim. */
+	actionClickText?: string;
+	/** The active row's value when the default command grammar describes it. */
 	value: string;
 	matched: boolean;
 	/**
@@ -1205,9 +1219,13 @@ export function clickFooter(input: ClickFooterInput): string | null {
 			: `Click completes /${input.label}.`;
 	}
 	if (input.nameThenMessage) return "Click chooses this name.";
+	if (input.actionClickText) return input.actionClickText;
 	if (!input.runs) return "Click completes this value.";
-	const command = input.command ? `/${input.command} ` : "";
-	return `Click runs ${command}${input.value}.`.trim();
+	const command = input.command ? `/${input.command}` : "";
+	if (!command) return "Click runs the command.";
+	const value = input.value ? ` ${input.value}` : "";
+	// Build from non-empty parts so an empty value never leaves a blank slot.
+	return `Click runs ${command}${value}.`;
 }
 
 /**

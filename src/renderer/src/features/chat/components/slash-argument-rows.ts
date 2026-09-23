@@ -16,6 +16,7 @@
  * what this thing IS versus where it stands right now.
  */
 
+import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
 
@@ -49,6 +50,67 @@ export type ArgumentRow = {
 	alert?: boolean;
 	current?: boolean;
 };
+
+/** A direct operation in an argument list, never a catalogue value to complete. */
+export type ArgumentActionRow = {
+	kind: "action";
+	id: "model-default";
+	name: string;
+	description: string;
+	/** The current session model the action will persist, absent when unavailable. */
+	model: { provider: string; model_id: string } | null;
+	/** Pointer feedback differs from the descriptive detail because it names the gesture. */
+	clickText: string;
+	disabled: boolean;
+};
+
+/**
+ * Show the machine-default action only for its exact command argument.
+ *
+ * It is deliberately not sent through the model catalogue matcher: `default` is
+ * an operation, not a model identity, and must never become composer text that
+ * needs a second Enter. A missing current model remains visible as an explanation
+ * instead of promising a write the session cannot perform.
+ */
+export function modelDefaultActionRow(
+	query: string,
+	activeModel: { provider?: unknown; model_id?: unknown } | null | undefined,
+	wholeCommand: boolean,
+	paneHasSession: boolean,
+): ArgumentActionRow | null {
+	if (query !== "default" || !wholeCommand || !paneHasSession) return null;
+	const model = activeModelForDefault(
+		activeModel
+			? {
+					provider: asText(activeModel.provider),
+					model_id: asText(activeModel.model_id),
+				}
+			: null,
+	);
+	const provider = model?.provider ?? "";
+	const modelId = model?.model_id ?? "";
+	return {
+		kind: "action",
+		id: "model-default",
+		name: "Set current model as default",
+		description: model
+			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
+			: "No active session model is available to save.",
+		model,
+		clickText: model
+			? "Click does the same."
+			: "A session model is required before this action can save a default.",
+		disabled: model === null,
+	};
+}
+
+/** A direct action runs only on an acting gesture and only when it can act. */
+export function shouldRunArgumentAction(
+	row: ArgumentActionRow,
+	run: boolean,
+): boolean {
+	return run && !row.disabled;
+}
 
 /**
  * Where an argument list's rows come from.
