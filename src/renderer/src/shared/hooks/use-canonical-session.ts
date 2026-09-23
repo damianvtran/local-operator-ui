@@ -66,6 +66,7 @@ import type {
 	DesktopSnapshot,
 } from "../../../../shared/desktop-session-contract";
 import {
+	DESKTOP_STREAM_DETAIL,
 	HISTORY_UNREADABLE,
 	type SessionFailureNotice,
 	streamFailureNotice,
@@ -342,6 +343,33 @@ const PENDING_MODEL_TIMEOUT_MS = 15_000;
  */
 const STREAM_RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 8000, 8000];
 const STREAM_MAX_ATTEMPTS = STREAM_RETRY_DELAYS_MS.length;
+
+/**
+ * How long one connection may go without its first `snapshot` before the pane
+ * stops waiting for it.
+ *
+ * WHY THE PANE NEEDS ITS OWN BOUND. The click used to spend a `sessions.get`
+ * guard read, and that read's 20 s deadline was - by accident - the only thing
+ * that ended an open against an owner that accepts the connection and then says
+ * nothing (the `SIGSTOP` case: the desktop plane acquires the session bridge
+ * BEFORE it answers the stream's headers, so the subscription neither errors nor
+ * opens). With the read gone the stream is the open's only signal, and a stream
+ * that never speaks raised no `error`, no `end` and no frame: the pane sat on
+ * "Loading conversation..." indefinitely, measured at +20 s, +40 s and +75 s by
+ * design round 1 (D1). Main's relay does end a silent socket at 45 s, but the
+ * browser transport has no such watchdog and the renderer must not depend on
+ * which transport it runs over, nor on the backend bounding its own reads.
+ *
+ * 20 s is the bound that read held, so the worst case a frozen owner costs is
+ * unchanged from before this path lost the read, while every healthy open no
+ * longer pays for it. It is per CONNECTION, not per open: the retry schedule
+ * above handles connections that fail fast (a restarting backend), and each
+ * retry re-arms this bound, so a flapping backend is still owned by that budget
+ * rather than cut short here. Firing it lands on the same `unavailable` state
+ * and the same lost-connection sentence and Reconnect control the exhausted
+ * retry budget does - no new copy, one way out.
+ */
+export const STREAM_SNAPSHOT_DEADLINE_MS = 20_000;
 
 /**
  * Delay before retry number `attempt` (1-based). Past the end of the schedule
@@ -771,7 +799,15 @@ function paintSeed(sessionId: string): {
  */
 function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 	return (
-		typeof snapshot.cold_reason === "string" &&
+		/*
+		 * PRESENCE, not string-ness (agent review round 1, F2). The backend merges
+		 * `_cold_fields()` into every snapshot, and for a LIVE owner that is
+		 * `cold_reason: null` - which is exactly the case whose page is non-empty
+		 * and therefore the only one that paid the duplicate. Testing
+		 * `typeof === "string"` rejected it. An older backend sends no key at all,
+		 * so the key's presence still discriminates versions.
+		 */
+		"cold_reason" in snapshot &&
 		!snapshot.history.cursor_missing &&
 		snapshot.history.entries.length > 0
 	);
@@ -922,6 +958,13 @@ export function useCanonicalSessionStream(
 		let attempt = 0;
 		let retryTimer = 0;
 		let reconcileTimer = 0;
+		/** Armed per connection until its first snapshot; see `STREAM_SNAPSHOT_DEADLINE_MS`. */
+		let snapshotTimer = 0;
+		const clearSnapshotTimer = () => {
+			if (!snapshotTimer) return;
+			window.clearTimeout(snapshotTimer);
+			snapshotTimer = 0;
+		};
 
 		/**
 		 * Read the durable tail back and merge it, walking further back until the
@@ -1577,6 +1620,22 @@ export function useCanonicalSessionStream(
 		};
 
 		const connect = () => {
+			clearSnapshotTimer();
+			snapshotTimer = window.setTimeout(() => {
+				snapshotTimer = 0;
+				if (generationRef.current !== generation) return;
+				// Terminal, not a retry: a connection that accepted and then said
+				// nothing for the whole bound is the frozen-owner case, and asking it
+				// again six more times would turn one 20 s wait into minutes. The
+				// user's Reconnect (`reopen`) re-arms everything.
+				closeStream();
+				setView((current) => ({
+					...current,
+					subscriptionId: null,
+					status: "unavailable",
+					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+				}));
+			}, STREAM_SNAPSHOT_DEADLINE_MS);
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
@@ -1597,6 +1656,9 @@ export function useCanonicalSessionStream(
 						// Our own teardown's `end`, not a dead stream: nothing to recover
 						// from and nothing to report.
 						if (closingIntentionally) return;
+						// The failure paths below own the outcome now, including the retry
+						// that re-arms the bound for its own connection.
+						clearSnapshotTimer();
 						closeStream();
 						/*
 						 * 404 is about the SESSION, not the transport: the desktop plane
@@ -1687,7 +1749,10 @@ export function useCanonicalSessionStream(
 						// Reaching a snapshot is the only proof the stream really works: an
 						// authenticated `open` can still be followed by an immediate close,
 						// and resetting the budget there would let that pair retry forever.
-						if (frame.type === "snapshot") attempt = 0;
+						if (frame.type === "snapshot") {
+							attempt = 0;
+							clearSnapshotTimer();
+						}
 						pending.current.push(frame);
 						// One flush per animation frame while the window paints. A
 						// hidden or backgrounded window stops delivering animation
@@ -1812,6 +1877,7 @@ export function useCanonicalSessionStream(
 			if (fallback) clearTimeout(fallback);
 			if (retryTimer) clearTimeout(retryTimer);
 			if (reconcileTimer) clearTimeout(reconcileTimer);
+			clearSnapshotTimer();
 			pending.current = [];
 		};
 	}, [sessionId, enabled]);

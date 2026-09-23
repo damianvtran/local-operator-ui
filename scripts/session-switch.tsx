@@ -31,6 +31,7 @@ import "./session-switch.css";
  * than of the product. */
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -192,7 +193,8 @@ type Probe = {
 	snapshot: () => unknown;
 	view: () => {
 		activeSessionId: string | null;
-		errorState: string | null;
+		validating: string | null;
+		incomingListed: boolean;
 		selectedRow: string | null;
 		errorShown: boolean;
 		transcriptHasContent: boolean;
@@ -391,7 +393,7 @@ type RecordStats = {
 		shown: boolean;
 		surfaces: number;
 		error: string | null;
-		navigation: string | null;
+		validating: string | null;
 	}>;
 };
 type RecordHandle = {
@@ -458,14 +460,40 @@ const composerAlert = () => {
  * chat LIST - a remedy that cannot re-open a chat - beside the panel's own copy
  * of the same words.
  */
+/*
+ * The failure a switch to a gone conversation produces now: the stream's 404
+ * lands the pane on the missing-session notice (`MISSING_SESSION_NOTICE_ID`, the
+ * same id the composer's `aria-describedby` names). It used to be the guard
+ * read's "Unknown session" rollback banner, which no longer exists - a sampler
+ * still looking for that text would read "never shown" on every frame and call
+ * it a finding.
+ */
+const goneShown = () =>
+	document.getElementById(MISSING_SESSION_NOTICE_ID) !== null;
 const errorSurfaces = () =>
-	Array.from(document.querySelectorAll('[role="alert"]')).filter((surface) =>
-		(surface.textContent ?? "").includes("Unknown session"),
-	).length;
+	document.querySelectorAll(`#${MISSING_SESSION_NOTICE_ID}`).length;
+/*
+ * Found by the row's VISIBLE NAME, which is what a user clicks.
+ *
+ * This matched `[data-chat-row][title^=<name>]`, and #430 (the row that pans its
+ * title) took the `title` attribute off the row, so on that main every lookup
+ * returned null and every arm died at "no sidebar row" before measuring
+ * anything. `data-session-row` is not a substitute here: the sidebar sets it
+ * only on the branch that renders per-row pin/archive controls, and this rig's
+ * scripted owner advertises neither. The row button's own text starts with the
+ * relative time ("Recent") and then the name, so the match is on the name's
+ * presence in the button - unique across the rig's fixtures, whose names are
+ * numbered.
+ */
 const rowFor = (id: string) => {
-	const title = sessions.find((row) => row.id === id)?.name ?? "";
-	return document.querySelector<HTMLButtonElement>(
-		`[data-chat-row][title^=${JSON.stringify(title)}]`,
+	const title = sessions.find((row) => row.id === id)?.name;
+	if (!title) return null;
+	return (
+		Array.from(
+			document.querySelectorAll<HTMLButtonElement>("[data-chat-row]"),
+		).find((row) =>
+			(row.textContent ?? "").replace(/\s+/g, " ").endsWith(title),
+		) ?? null
 	);
 };
 
@@ -1141,24 +1169,28 @@ const api: Probe = {
 	view: () => ({
 		activeSessionId: useCanonicalSessionsStore.getState().activeSessionId,
 		/*
-		 * The NAVIGATION failure, which is the one a switch can produce. It was
-		 * the shared `error` field until the split, and reading the shared one
-		 * here would report a switch failure that the catalogue's own poll had
-		 * already erased - the exact confusion this harness was rewritten to
-		 * stop making.
+		 * Whether the store still holds the session's validation window open.
+		 *
+		 * This field used to be `navigationError`, which the guard read's rollback
+		 * wrote and which no longer exists: reading it returned `undefined`, and
+		 * `undefined !== null` made the "recorded in the store" verdict a constant
+		 * true (agent review round 1, F4). The window is the fact the stream's 404
+		 * now settles, so it is what the arm reads.
 		 */
-		errorState: useCanonicalSessionsStore.getState().navigationError,
+		validating: useCanonicalSessionsStore.getState().validatingSessionId,
+		/** Whether the timed target is still in the catalogue (`forgetSession` removes it). */
+		incomingListed: useCanonicalSessionsStore
+			.getState()
+			.sessions.some((row) => row.session_id === INCOMING),
 		selectedRow:
 			document
 				.querySelector('[data-chat-row][aria-current="page"]')
 				?.textContent?.trim() ?? null,
 		/*
-		 * Read from the SCREEN, not the store: `errorState` can be cleared by the
-		 * sidebar's five-second catalogue poll, which sets `error: null` when it
-		 * starts, so a state read alone cannot say whether the sentence was ever
-		 * shown.
+		 * Read from the SCREEN, not the store: the store's tombstone proves the
+		 * state, not that the notice reached a frame.
 		 */
-		errorShown: document.body.innerText.includes("Unknown session"),
+		errorShown: goneShown(),
 		transcriptHasContent: transcriptHasContent(),
 		/** The pre-change state: the outgoing view, held, with its affordance. */
 		outgoing: OUTGOING,
@@ -1402,7 +1434,7 @@ const api: Probe = {
 		const tick = () => {
 			const state = useCanonicalSessionsStore.getState();
 			const t = Math.round(performance.now() * 10) / 10;
-			const shown = document.body.innerText.includes("Unknown session");
+			const shown = goneShown();
 			const surfaces = errorSurfaces();
 			stats.frames += 1;
 			if (shown) {
@@ -1412,7 +1444,13 @@ const api: Probe = {
 			}
 			stats.shownAtEnd = shown;
 			stats.maxSurfaces = Math.max(stats.maxSurfaces, surfaces);
-			if (state.navigationError !== null) stats.recorded = true;
+			// The store's half: the window closed AND the id was tombstoned, the
+			// two writes `confirmSessionMissing` makes, observed per frame.
+			if (
+				state.validatingSessionId === null &&
+				!state.sessions.some((row) => row.session_id === INCOMING)
+			)
+				stats.recorded = true;
 			if (
 				shown !== previous.shown ||
 				state.activeSessionId !== previous.active
@@ -1423,7 +1461,7 @@ const api: Probe = {
 					shown,
 					surfaces,
 					error: state.error,
-					navigation: state.navigationError,
+					validating: state.validatingSessionId,
 				});
 				previous = { active: state.activeSessionId, shown };
 			}

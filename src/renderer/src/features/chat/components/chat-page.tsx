@@ -20,6 +20,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	SESSION_UNVALIDATED_MESSAGE,
 	UNCONFIRMED_SEND_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
@@ -204,6 +205,12 @@ async function encodeImageAttachments(attachments: string[], text: string) {
 
 /** Each displayed identity owns its stream and composer. A candidate open is
  * prepared by the store first; changing rows never stops the outgoing runtime. */
+/** The header's second line when nothing true can fill it; see the live arm. */
+const HELD_DESCRIPTION_LINE = "\u00a0";
+
+/** How a send held for the validation window ends; see `send`. */
+type WindowOutcome = "ready" | "failed" | "gone" | "abandoned";
+
 function SessionPanel({
 	identity,
 	draftKey,
@@ -238,6 +245,15 @@ function SessionPanel({
 	const sendLockRef = useRef<SendLock | null>(null);
 	sendLockRef.current ??= createSendLock();
 	const sendLock = sendLockRef.current;
+	/*
+	 * The stream's latest answer, readable from inside an awaiting `send`, whose
+	 * closure is the render it started in. Written during render on purpose: the
+	 * value is only ever READ by async continuations, never by render.
+	 */
+	const streamRef = useRef(canonical);
+	streamRef.current = canonical;
+	/** Sends held until the validation window answers; see `send`. */
+	const windowWaiters = useRef<Array<(outcome: WindowOutcome) => void>>([]);
 	/* Set when an answer was pressed from the keyboard, so focus can be returned
 	 * once the gate moves. See the effect below `answerWithOption`. */
 	const restoreFocus = useRef(false);
@@ -1095,6 +1111,52 @@ function SessionPanel({
 				setSendError(refusal);
 				return false;
 			}
+			/*
+			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then
+			 * goes out (UX round 1, U1).
+			 *
+			 * The composer is usable from the click by design, so on a 2-3 s attach
+			 * the normal path is "type, press Enter, the pane is not live yet". That
+			 * used to be refused with a sentence that then retired silently, leaving
+			 * the user to notice the chat had become ready and press send a second
+			 * time. The press is the user's instruction, so it is held here - the
+			 * text stays in the box and the composer shows its existing in-flight
+			 * state (`admitting`) - until the stream decides:
+			 *
+			 *   - `ready`: the first snapshot closed the window; admit as normal.
+			 *   - `failed`: the stream reached `unavailable` (retry budget or the
+			 *     snapshot deadline). The refusal then states the STREAM's own
+			 *     sentence - the same one the transcript shows with its Reconnect -
+			 *     rather than "sending works once it is ready", which told the user
+			 *     to wait on a panel that had already said the connection is lost
+			 *     (design round 1, D3).
+			 *   - `gone`: the stream's 404 tombstoned the conversation; the composer
+			 *     is already read-only under its own notice, so the text just stays.
+			 *
+			 * It cannot hang: the hook bounds every connection by
+			 * `STREAM_SNAPSHOT_DEADLINE_MS`, and an unmount (the user moved on)
+			 * settles the wait as abandoned. The store's own refusal in
+			 * `admitChatDraft` stays as the rule for every other caller.
+			 */
+			if (
+				sessionId &&
+				isSessionUnvalidated(
+					useCanonicalSessionsStore.getState().validatingSessionId,
+					sessionId,
+				)
+			) {
+				const outcome = await awaitWindow();
+				if (outcome !== "ready") {
+					if (outcome === "failed") {
+						setSendError(
+							streamRef.current.failure?.statement ??
+								SESSION_UNVALIDATED_MESSAGE,
+						);
+						setSendErrorCode(SESSION_UNVALIDATED_CODE);
+					}
+					return false;
+				}
+			}
 			const id = await admitChatDraft(
 				key,
 				{
@@ -1580,6 +1642,50 @@ function SessionPanel({
 		if (canonical.status === "live") store.confirmSessionLive(sessionId);
 		else if (canonical.missing) store.confirmSessionMissing(sessionId);
 	}, [sessionId, windowOpen, canonical.status, canonical.missing]);
+	/*
+	 * The held sends' side of the window (see `send`): each waiter is settled by
+	 * the first observable answer - the window closing (`ready`, or `gone` when
+	 * it was the 404 that closed it) or the stream giving up while it is still
+	 * open (`failed`). Settled from an effect because that is where the stream's
+	 * status becomes observable here; `awaitWindow` checks the same conditions
+	 * synchronously first, so a waiter added after the answer cannot miss it.
+	 */
+	const settleWindowWaiters = (outcome: WindowOutcome) => {
+		const waiters = windowWaiters.current.splice(0);
+		for (const settle of waiters) settle(outcome);
+	};
+	const windowOutcome = (): WindowOutcome | null => {
+		if (streamRef.current.missing) return "gone";
+		if (
+			!isSessionUnvalidated(
+				useCanonicalSessionsStore.getState().validatingSessionId,
+				sessionId,
+			)
+		)
+			return "ready";
+		return streamRef.current.status === "unavailable" ? "failed" : null;
+	};
+	const awaitWindow = () => {
+		const now = windowOutcome();
+		if (now) return Promise.resolve(now);
+		return new Promise<WindowOutcome>((resolve) => {
+			windowWaiters.current.push(resolve);
+		});
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: settles on the stream's answer, read through the ref
+	useEffect(() => {
+		if (windowWaiters.current.length === 0) return;
+		const outcome = windowOutcome();
+		if (outcome) settleWindowWaiters(outcome);
+	}, [windowOpen, canonical.status, canonical.missing]);
+	// A held send whose pane unmounts (the user opened another conversation) is
+	// abandoned rather than delivered into a conversation nobody is looking at.
+	useEffect(() => {
+		const waiters = windowWaiters.current;
+		return () => {
+			for (const settle of waiters.splice(0)) settle("abandoned");
+		};
+	}, []);
 	useEffect(() => {
 		if (windowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
 		setSendError(null);
@@ -1914,8 +2020,18 @@ function SessionPanel({
 								 * whole restart - the header on the old directory while the receipt in the
 								 * transcript said the session had moved (UX review U3). `live.cwd` is
 								 * `pending ?? stream`, so the two surfaces cannot disagree by construction.
+								 *
+								 * With no directory known the line is HELD BLANK rather than filled
+								 * with "Canonical chat" (design round 1, D2). That fallback is an
+								 * internal token, and it surfaced exactly where the header matters
+								 * most: a stream that failed before its first snapshot, where
+								 * `identityPending` lets go of the skeleton (a pulse over a failed
+								 * pane would claim a load in progress) and the transcript below is
+								 * already stating the connection loss with its Reconnect. A
+								 * no-break space keeps the `text-body-sm` line box, so the title does
+								 * not jump the 3.8 px the skeleton-to-text swap measured.
 								 */
-								live.cwd || "Canonical chat")
+								live.cwd || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}

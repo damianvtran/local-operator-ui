@@ -193,12 +193,40 @@ window.fetch = async (input, init) => {
 	}
 };
 
-const transcriptHasContent = () => {
-	const content = document.querySelector("[data-lo-transcript-content]");
-	if (!(content instanceof HTMLElement)) return false;
-	const copy = content.cloneNode(true) as HTMLElement;
-	copy.querySelector('[aria-label="Loading conversation"]')?.remove();
-	return (copy.textContent ?? "").trim().length > 0;
+/*
+ * "Painted" means a transcript ROW is on screen, not that the pane has text.
+ *
+ * This read any text in the transcript container, so with the backend down the
+ * pane's "Reconnecting" line - and the lost-connection notice - counted as a
+ * painted conversation, and a rig pointed at a dead backend reported a paint
+ * that was a failure notice (QA round 1, Q-7). `data-record-id` is the shipped
+ * row's own marker (`canonical-transcript.tsx`), so only a message counts.
+ */
+const transcriptHasContent = () =>
+	document.querySelector("[data-lo-transcript-content] [data-record-id]") !==
+	null;
+
+/*
+ * Type into the real composer and press Enter, as a user does - through the
+ * textarea's own value setter so React sees the change. Used by the driver to
+ * send INSIDE the open window, the normal path on a slow attach (UX round 1,
+ * U1): the rig then reads whether that single press reached the owner.
+ */
+const typeAndSend = (text: string) => {
+	const box = document.querySelector<HTMLTextAreaElement>(
+		'textarea[aria-label="Message"]',
+	);
+	if (!box) return false;
+	const setter = Object.getOwnPropertyDescriptor(
+		HTMLTextAreaElement.prototype,
+		"value",
+	)?.set;
+	setter?.call(box, text);
+	box.dispatchEvent(new Event("input", { bubbles: true }));
+	box.dispatchEvent(
+		new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+	);
+	return true;
 };
 
 type Run = {
@@ -275,6 +303,16 @@ const open = (target: string, deadlineMs = 30_000) =>
 (window as unknown as { __lopOpen: unknown }).__lopOpen = {
 	ready: false,
 	open,
+	typeAndSend,
+	/** Every `sessions.message` this page has issued, with its settle time. */
+	messages: () =>
+		ops
+			.filter((entry) => entry.op === "sessions.message")
+			.map((entry) => ({
+				start: Math.round(entry.startedAt * 10) / 10,
+				settle:
+					entry.settledAt > 0 ? Math.round(entry.settledAt * 10) / 10 : null,
+			})),
 	/** Rows the sidebar has painted, by session id. */
 	rows: () =>
 		[...document.querySelectorAll("[data-session-row]")].map((row) =>
@@ -300,6 +338,21 @@ const open = (target: string, deadlineMs = 30_000) =>
 			active: state.activeSessionId,
 			validating: state.validatingSessionId,
 			painted: transcriptHasContent(),
+			/*
+			 * What the pane and the header SAY, for the stuck-open repro (design
+			 * round 1, D1/D2): the transcript container's text with rows excluded,
+			 * and the header's second line (empty while it is a skeleton).
+			 */
+			paneText: (() => {
+				const content = document.querySelector("[data-lo-transcript-content]");
+				if (!(content instanceof HTMLElement)) return null;
+				const copy = content.cloneNode(true) as HTMLElement;
+				for (const row of copy.querySelectorAll("[data-record-id]"))
+					row.remove();
+				return (copy.textContent ?? "").trim().slice(0, 200);
+			})(),
+			headerLine:
+				document.querySelector("h2")?.nextElementSibling?.textContent ?? null,
 			composerAlert:
 				document
 					.querySelector("textarea")

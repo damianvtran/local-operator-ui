@@ -56,6 +56,14 @@ const HEIGHT = Number(flag("height", "900"));
 const BUDGET_MS = 300;
 /* How long one open may take before it is reported as timed out. */
 const DEADLINE_MS = Number(flag("deadline", "30000"));
+/*
+ * `--send-early=<ms>`: type into the real composer and press Enter that long
+ * after the click - inside the open window on any attach slower than it. The row
+ * then reports how many `sessions.message` requests that ONE press produced and
+ * what the composer said, which is the U1 question (UX round 1): does a send
+ * pressed before the pane is live go out, once, without a second press.
+ */
+const SEND_EARLY = flag("send-early", null);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 if (SESSIONS.length === 0) {
@@ -254,7 +262,26 @@ const main = async () => {
 					await sleep(5);
 				}
 			}
+			let early = null;
+			if (SEND_EARLY !== null) {
+				await sleep(Number(SEND_EARLY));
+				const before = (await cdp.eval("window.__lopOpen.messages()")).length;
+				const typed = await cdp.eval(
+					`window.__lopOpen.typeAndSend(${JSON.stringify(`early send ${round}`)})`,
+				);
+				const pressedState = await cdp.eval("window.__lopOpen.state()");
+				early = { typed, before, pressedState };
+			}
 			const run = await pending;
+			const endState = await cdp.eval("window.__lopOpen.state()");
+			if (early) {
+				// Long enough for a held send to be released by the snapshot and for
+				// the transport to answer; the count is what is asserted, not a time.
+				await sleep(3000);
+				const messages = await cdp.eval("window.__lopOpen.messages()");
+				early.messages = messages.length - early.before;
+				early.after = await cdp.eval("window.__lopOpen.state()");
+			}
 			if (firstOpen) {
 				await sleep(1200);
 				frames.push(await shoot(join(FRAMES, `${id}-settled.webp`)));
@@ -273,6 +300,8 @@ const main = async () => {
 						: Math.round((run.sendableAt - run.clickAt) * 10) / 10,
 				timedOut: run.timedOut,
 				ops: run.ops,
+				...(early ? { early } : {}),
+				endState,
 			});
 		}
 	}
