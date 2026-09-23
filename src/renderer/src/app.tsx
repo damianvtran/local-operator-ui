@@ -328,10 +328,13 @@ const App: FC = () => {
 	// would, and a conversation that turns out not to exist lands on the transcript's
 	// named state.
 	//
-	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
+	// THE RAISE IS NOT THIS EFFECT'S. Navigating a route is renderer work; no window is
 	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
-	// module that decides whether a window comes forward (design 11.4). The raise for
-	// this click happens in main, where the click actually arrives.
+	// module that decides whether a window comes forward (design 11.4). The raise THIS
+	// click makes happens in main, where the click actually arrives (`consent-click.ts`,
+	// trigger `banner-click`), so this half is only ever "remember which request was
+	// named, and land on it" — the change that made the click come forward at all did
+	// not put a window call in the renderer.
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
 			// Read through `getState()` rather than a selector: this listener must not be
