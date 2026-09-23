@@ -50,7 +50,14 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent, screen, userEvent, waitFor } from "@storybook/test";
+import {
+	expect,
+	fireEvent,
+	screen,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 
 const DEFAULT_MODEL_LABEL = /Set current model as default/;
 const SAVE_DEFAULT_FAILED = /The default was not saved/;
@@ -604,9 +611,18 @@ export const Busy: Story = {
 				screen.getByText("Switching the model…", { exact: true }),
 			).toBeTruthy(),
 		);
-		// The control closes the dialog; it does not cancel the switch.
+		// Find the row attached to the visible busy hint rather than the whole
+		// dialog: DialogContent's icon-only dismiss button intentionally shares
+		// the accessible name, but it is not the footer action this play tests.
+		const busyHint = screen.getByText("Switching the model…", { exact: true });
+		const footer = busyHint.closest<HTMLElement>(
+			".flex.items-center.justify-between",
+		);
+		if (!footer) throw new Error("Picker footer was not rendered");
 		await waitFor(() =>
-			expect(screen.getByRole("button", { name: "Close" })).toBeTruthy(),
+			expect(
+				within(footer).getByRole("button", { name: "Close" }),
+			).toBeTruthy(),
 		);
 		// U1's ordering: the paint is already on the band's side of the wire
 		// while the command that will confirm it is still in flight.
