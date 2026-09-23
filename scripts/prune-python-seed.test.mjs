@@ -15,12 +15,15 @@ import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { LAYOUT } from "./bundled-runtime-layout.mjs";
 import {
+	MACH_O_CPUTYPE,
 	MACH_O_FILETYPE,
 	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
 	SEED_TK_DIR,
 	clearIncidentalExecBits,
+	machOArchitectures,
+	machOCpuType,
 	machOExecutables,
 	machOFileType,
 	machOFiles,
@@ -91,14 +94,44 @@ after(() => {
  */
 function writeMachO(
 	path,
-	{ fileType = MACH_O_FILETYPE.MH_EXECUTE, mode = 0o755 } = {},
+	{
+		fileType = MACH_O_FILETYPE.MH_EXECUTE,
+		mode = 0o755,
+		cpuType = MACH_O_CPUTYPE.ARM64,
+	} = {},
 ) {
 	mkdirSync(dirname(path), { recursive: true });
 	const header = Buffer.alloc(64);
 	Buffer.from("cffaedfe", "hex").copy(header, 0);
+	header.writeUInt32LE(cpuType, 4);
 	header.writeUInt32LE(fileType, 12);
 	writeFileSync(path, header);
 	chmodSync(path, mode);
+}
+
+/**
+ * A fat (universal) Mach-O: `nfat_arch` then one five-word `fat_arch` per slice,
+ * `cputype` first in each.
+ *
+ * `cafebabe` is `FAT_MAGIC` (big-endian fields); `bebafeca` is `FAT_CIGAM`, the
+ * same header byte-swapped. Both are written in the cases below because a reader
+ * that assumes one endianness does not fail on the other - it answers a plausible
+ * number for the wrong file.
+ */
+function writeFatMachO(path, cpuTypes, { magic = "cafebabe", count } = {}) {
+	mkdirSync(dirname(path), { recursive: true });
+	const written = count ?? cpuTypes.length;
+	const bigEndian = magic === "cafebabe";
+	const header = Buffer.alloc(8 + Math.max(written, 0) * 20);
+	Buffer.from(magic, "hex").copy(header, 0);
+	if (bigEndian) header.writeUInt32BE(written, 4);
+	else header.writeUInt32LE(written, 4);
+	cpuTypes.forEach((cpuType, index) => {
+		const at = 8 + index * 20;
+		if (bigEndian) header.writeUInt32BE(cpuType, at);
+		else header.writeUInt32LE(cpuType, at);
+	});
+	writeFileSync(path, header);
 }
 
 /** A plain file, optionally carrying the execute bit the upstream tarball ships. */
@@ -605,4 +638,62 @@ test("the app and this step read one Mach-O magic set", () => {
 			new RegExp(magic),
 			`${magic} is written inline in managed-python.ts again; it belongs in src/shared/bundled-runtime-layout.json`,
 		);
+});
+
+test("the Mach-O reader answers a slice SET, for fat files as well as thin", () => {
+	// The release gate's native-component check asks whether a component's slices
+	// INCLUDE the bundle's own architecture, which no thin-only reader can answer:
+	// `machOCpuType` reads one `cputype` word and a fat file's live in `fat_arch`
+	// entries, so it returns null there. Both shapes are read here, in the one
+	// parser, because two readers would be two decisions about the magic set, the
+	// endianness and the field offsets - and a wrong-endian read does not crash, it
+	// answers a plausible number for the wrong file.
+	const dir = tempDir("lo-macho-");
+	const thin = join(dir, "thin");
+	writeMachO(thin, { cpuType: MACH_O_CPUTYPE.ARM64 });
+	assert.deepEqual(machOArchitectures(thin), [MACH_O_CPUTYPE.ARM64]);
+
+	// FAT_MAGIC: big-endian fields, one `fat_arch` per slice, `cputype` first.
+	const fat = join(dir, "fat");
+	writeFatMachO(fat, [MACH_O_CPUTYPE.ARM64, MACH_O_CPUTYPE.X86_64]);
+	assert.deepEqual(machOArchitectures(fat), [
+		MACH_O_CPUTYPE.ARM64,
+		MACH_O_CPUTYPE.X86_64,
+	]);
+	// The split that justifies a second entry point rather than a widened first
+	// one: the universal file is a Mach-O (the walk finds it) and has no single
+	// cputype (the spawn bound's per-file question has no answer for it).
+	assert.equal(machOCpuType(fat), null);
+
+	// FAT_CIGAM: the same header with little-endian fields.
+	const swapped = join(dir, "fat-cigam");
+	writeFatMachO(swapped, [MACH_O_CPUTYPE.X86_64, MACH_O_CPUTYPE.ARM64], {
+		magic: "bebafeca",
+	});
+	assert.deepEqual(machOArchitectures(swapped), [
+		MACH_O_CPUTYPE.X86_64,
+		MACH_O_CPUTYPE.ARM64,
+	]);
+
+	// A header that stops mid-way, a count of zero, and a count no header could
+	// have: all "could not ask", which the gate treats as a failure rather than as
+	// a pass, so the reader must not answer a slice list for any of them.
+	const cut = join(dir, "cut");
+	writeFileSync(cut, Buffer.from("cffaedfe", "hex"));
+	assert.equal(machOArchitectures(cut), null);
+	const empty = join(dir, "fat-empty");
+	writeFatMachO(empty, [], { count: 0 });
+	assert.equal(machOArchitectures(empty), null);
+	const absurd = join(dir, "fat-absurd");
+	writeFatMachO(absurd, [MACH_O_CPUTYPE.ARM64], { count: 4096 });
+	assert.equal(machOArchitectures(absurd), null);
+	const truncatedFat = join(dir, "fat-truncated");
+	writeFatMachO(truncatedFat, [MACH_O_CPUTYPE.ARM64, MACH_O_CPUTYPE.X86_64]);
+	writeFileSync(truncatedFat, readFileSync(truncatedFat).subarray(0, 20));
+	assert.equal(machOArchitectures(truncatedFat), null);
+
+	// Not a Mach-O at all: no magic, no answer.
+	const plain = join(dir, "plain");
+	writeFileSync(plain, "# read, never run\n");
+	assert.equal(machOArchitectures(plain), null);
 });
