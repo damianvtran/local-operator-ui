@@ -595,6 +595,14 @@ jobs:
 
       # macOS only: see the note on this job for why the Linux launch is still
       # excluded after #91 rather than forced green with --no-sandbox.
+      #
+      # Telemetry off: this step LAUNCHES the packed app, which carries the live
+      # PostHog project key in both of its processes, so without the switch every
+      # run of this job is a user in the product's own analytics and a session
+      # replay beside it. The switch is applied inside the script
+      # (`withTelemetryOff`, see scripts/telemetry-off.mjs) rather than in the
+      # step's environment, so it cannot be dropped by editing this YAML, and
+      # scripts/telemetry-spawn-sites.test.mjs pins that call.
       - name: Install and run with npx
         if: runner.os == 'macOS'
         run: |
