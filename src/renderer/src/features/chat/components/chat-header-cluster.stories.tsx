@@ -97,7 +97,7 @@ const Cluster = ({
 				agentName="Core"
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
-				onOpenBrowser={() => undefined}
+				onToggleBrowser={() => undefined}
 				onOpenConsole={() => undefined}
 				browserAttentionCount={count}
 				consoleUnseenCount={consoleUnseenCount}
