@@ -1177,20 +1177,16 @@ export const EffortPicker: FC<PickerContext> = ({
 									}),
 								() => ({
 									tone: "success",
-									text: [
-										command.result?.text,
-										`Default effort for new sessions: ${effortDisplay(value)}.`,
-									]
-										.filter(Boolean)
-										.join("\n"),
+									text: `Default effort for new sessions: ${effortDisplay(value)}.`,
 								}),
 								"The effort default was not saved",
 							);
 							if (saved) await entities.refetch();
 						} else if (saveAsDefault && outcome?.kind === "notice") {
+							const refusal = toResult(outcome);
 							defaultSetting.setResult({
-								...toResult(outcome),
-								text: `${toResult(outcome).text}. The effort default was not saved.`,
+								tone: refusal.tone,
+								text: "The effort default was not saved.",
 							});
 						}
 					});
@@ -1214,12 +1210,19 @@ export const EffortPicker: FC<PickerContext> = ({
 					},
 				);
 			}}
+			/* Keep both receipts visible: the effort command and machine-default write
+			 * are separate outcomes, as they are for the model picker. */
 			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
 			result={
 				draft
 					? draftPick.result
 					: defaultSetting.result
-						? defaultSetting.result
+						? {
+								...defaultSetting.result,
+								text: [command.result?.text, defaultSetting.result.text]
+									.filter(Boolean)
+									.join("\n"),
+							}
 						: command.result
 			}
 			/*

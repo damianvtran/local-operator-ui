@@ -654,6 +654,14 @@ export const EffortSetAsDefault: Story = {
 	render: () => (
 		<Frame
 			picker="effort"
+			commandResponse={ok({
+				result: {
+					kind: "notice",
+					text: "Effort set",
+					style: "info",
+					data: {},
+				},
+			})}
 			bridge={(request) => {
 				if (request.op === "commands.entities")
 					return Promise.resolve(
@@ -671,7 +679,7 @@ export const EffortSetAsDefault: Story = {
 						ok({ key: request.key, value: request.value }),
 					);
 				if (request.op === "sessions.command")
-					return Promise.resolve(undefined);
+					return sleep(100).then(() => undefined);
 				return Promise.resolve(ok({}));
 			}}
 		/>
@@ -684,7 +692,11 @@ export const EffortSetAsDefault: Story = {
 		await userEvent.click(
 			await screen.findByRole("checkbox", { name: EFFORT_DEFAULT_LABEL }),
 		);
-		await userEvent.click(await screen.findByRole("option", { name: "High" }));
+		const pendingCommand = await screen.findByRole("option", { name: "High" });
+		await userEvent.click(pendingCommand);
+		await waitFor(() =>
+			expect(screen.getByText("Switching the effort…")).toBeTruthy(),
+		);
 		await waitFor(() =>
 			expect(page.__pickerSettingsWrites).toEqual([
 				{ key: "model_effort", value: "high" },
@@ -693,6 +705,7 @@ export const EffortSetAsDefault: Story = {
 		await waitFor(() =>
 			expect(screen.getByText(EFFORT_DEFAULT_SUCCESS)).toBeTruthy(),
 		);
+		await waitFor(() => expect(screen.getByText("Effort set")).toBeTruthy());
 	},
 };
 
