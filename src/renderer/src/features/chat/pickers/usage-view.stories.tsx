@@ -315,18 +315,37 @@ export const RemainingBalance: Story = {
 };
 
 /**
- * The first paint, before the cached report has come back.
+ * The first paint of an open, before either read has answered.
  *
- * `fetching` is TRUE here, and that is not a detail. On a first load react-query
- * reports `isLoading` and `isFetching` together, so the shipped container always
- * passes both — an earlier version of this story left `fetching` at its `false`
- * default and photographed `Ask providers now`, ENABLED, which is a toolbar
- * state the container cannot produce at first paint. An unreachable frame is
- * worse than no frame, because loading is precisely the state a reviewer cannot
- * check any other way.
+ * THIS IS THE STATE EVERY OPEN PAINTS FIRST, and that is what the frame is for.
+ * The container ENTERS on the automatic check (`mode` starts at `auto`), so its
+ * first paint is `fetching` with no payload and no ask — the skeleton body under
+ * the check's own label, with the action ENABLED. Two earlier versions of this
+ * story were pictures of states the container cannot produce: one left
+ * `fetching` at its `false` default and photographed `Ask providers now`, and
+ * the next let it carry a third in-flight label (`Reading cached usage`) from a
+ * branch no wiring could reach. That label and the flag that fed it are gone
+ * now — the in-flight label has two arms, ask and check — so this row is the
+ * reachable first paint by construction rather than by an argument, and the
+ * committed frame is taken from it rather than from a state beside it.
  */
 export const Loading: Story = {
 	args: { ...base, payload: null, loading: true, fetching: true },
+};
+
+/**
+ * The automatic cache-aware check after the cached snapshot painted.
+ *
+ * It is live, but not a forced provider ask: this is the state a newly stored
+ * account reaches when `/usage` opens, and the label must not imply the user
+ * pressed the explicit refresh action.
+ */
+export const Checking: Story = {
+	args: {
+		...base,
+		payload: payload([anthropic, openrouter]),
+		fetching: true,
+	},
 };
 
 /** No provider publishes quota, or none is signed in. */
