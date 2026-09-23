@@ -1526,7 +1526,7 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		'import { AlarmClock, Check, Info, Repeat, X } from',
+		"import { AlarmClock, Check, Info, Repeat, X } from",
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
@@ -3520,8 +3520,7 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
  * goal (`docs/composer-status-tabs.md` §12.4) — and `done` is the same class of
  * word with a second loss channel, because setting a goal also supersedes.
  */
-const goalFrontend = (fields) =>
-	frontendWith({ goal: "Ship it", ...fields });
+const goalFrontend = (fields) => frontendWith({ goal: "Ship it", ...fields });
 
 test("a backend without the lifecycle fields renders no new control at all", () => {
 	const markup = renderRow({
@@ -3554,7 +3553,11 @@ test("an active goal on a capable backend carries both controls, inboard first",
 	});
 	const done = markup.indexOf("data-status-goal-done");
 	const clear = markup.indexOf("data-status-goal-dismiss");
-	assert.notEqual(done, -1, "the mark-done control exists on a capable backend");
+	assert.notEqual(
+		done,
+		-1,
+		"the mark-done control exists on a capable backend",
+	);
 	assert.notEqual(clear, -1, "the shipped clear is still there");
 	assert.ok(
 		done < clear,
@@ -3589,12 +3592,27 @@ test("a done goal swaps to one Dismiss and paints the strike and the tag", () =>
 		1,
 		"the value is struck, and exactly one element is",
 	);
-	assert.match(markup, /<span class="[^"]*\bline-through\b[^"]*"[^>]*>Ship it<\/span>/);
-	assert.match(markup, /<span class="[^"]*\bshrink-0\b[^"]*"[^>]*>— done<\/span>/);
-	assert.doesNotMatch(markup, /<span class="[^"]*line-through[^"]*"[^>]*>— done/);
-	assert.doesNotMatch(markup, /<span class="[^"]*line-through[^"]*"[^>]*>Goal:</);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bline-through\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bshrink-0\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>Goal:</,
+	);
 	// The settled ink is the app's role for settled work.
-	assert.match(markup, /<span class="[^"]*\btext-ink-dim\b[^"]*"[^>]*>Ship it<\/span>/);
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-ink-dim\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
 });
 
 test("the judge's live states cost no pixels and ride the names, stalled aside", () => {
@@ -3638,7 +3656,10 @@ test("the judge's live states cost no pixels and ride the names, stalled aside",
 		}),
 		runDetails: null,
 	});
-	assert.match(judging, /aria-label="Expand the session goal — working, Ship it"/);
+	assert.match(
+		judging,
+		/aria-label="Expand the session goal — working, Ship it"/,
+	);
 	/*
 	 * `stalled` is the one state that moves, and it costs 0px in WIDTH: the label's
 	 * ink steps to the loudest on the row and the word goes in the name. Nothing
@@ -3651,9 +3672,18 @@ test("the judge's live states cost no pixels and ride the names, stalled aside",
 		}),
 		runDetails: null,
 	});
-	assert.match(stalled, /aria-label="Expand the session goal — stalled, Ship it"/);
-	assert.match(stalled, /<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/);
-	assert.doesNotMatch(active, /<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/);
+	assert.match(
+		stalled,
+		/aria-label="Expand the session goal — stalled, Ship it"/,
+	);
+	assert.match(
+		stalled,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
+	assert.doesNotMatch(
+		active,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
 	assert.ok(
 		stalled.length - active.length < 120,
 		"the stalled paint is an ink step on an existing span, not new markup",
@@ -3684,15 +3714,25 @@ test("both new control words drop at the column floor while their names survive"
 	 */
 	for (const [markup, label] of [
 		[active, "Mark the goal done — Ship it"],
-		[done, "Dismiss the finished goal — it stays in the goal history — Ship it"],
+		[
+			done,
+			"Dismiss the finished goal — it stays in the goal history — Ship it",
+		],
 	]) {
 		assert.match(
 			markup,
-			new RegExp(`<span class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">`),
+			new RegExp(
+				`<span class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">`,
+			),
 		);
 		assert.match(markup, new RegExp(`aria-label="${label}"`));
 	}
-	assert.match(active, new RegExp(`class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">Clear goal<`));
+	assert.match(
+		active,
+		new RegExp(
+			`class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">Clear goal<`,
+		),
+	);
 });
 
 test("the lifecycle's derived strings, one per state", () => {
@@ -3726,7 +3766,10 @@ test("the lifecycle's derived strings, one per state", () => {
 	assert.equal(goalStateWord("active", "quiescing"), "");
 	assert.equal(goalStateWord(undefined, undefined), "");
 	// The confirmations: the mark-done names the value and offers nothing back.
-	assert.equal(goalDoneToastText("Ship the release"), "Goal done · Ship the release");
+	assert.equal(
+		goalDoneToastText("Ship the release"),
+		"Goal done · Ship the release",
+	);
 	assert.equal(
 		goalClearedText("Ship the release"),
 		"Goal cleared · Ship the release",

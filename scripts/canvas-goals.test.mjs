@@ -128,9 +128,15 @@ test("the row tag is the wire's word plus the app's own short stamp", () => {
 	 */
 	const now = new Date("2026-09-22T20:00:00Z");
 	const tag = goalHistoryTag(entry({}), now);
-	assert.ok(tag.startsWith("done · "), `tag leads with the wire's word: ${tag}`);
+	assert.ok(
+		tag.startsWith("done · "),
+		`tag leads with the wire's word: ${tag}`,
+	);
 	assert.match(tag, /\d/);
-	assert.equal(goalHistoryTag({ id: "x", text: "t", status: "done" }, now), "done");
+	assert.equal(
+		goalHistoryTag({ id: "x", text: "t", status: "done" }, now),
+		"done",
+	);
 	/*
 	 * THE TAG CARRIES NO INSTANT, and the row is closed by default (the app's
 	 * disclosure rule), so the exact ISO time is behind the trigger and the reason
@@ -176,7 +182,10 @@ test("a truncated history that carried no entries at all is not 'no completed go
 });
 
 test("an untruncated history says nothing about a cap", () => {
-	const markup = renderGoals({ entries: [entry({ id: "a" })], truncated: false });
+	const markup = renderGoals({
+		entries: [entry({ id: "a" })],
+		truncated: false,
+	});
 	assert.doesNotMatch(markup, /capped/);
 });
 
@@ -233,7 +242,10 @@ test("the switcher carries the Goals segment LAST, with the count in its name", 
 	 * The default is a stable identity, not a fresh `[]` per render: `Canvas` is
 	 * memoised, and a literal default would defeat the memo on every frame.
 	 */
-	assert.match(source, /const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry\[\] = \[\];/);
+	assert.match(
+		source,
+		/const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry\[\] = \[\];/,
+	);
 	assert.match(source, /goalHistory = EMPTY_GOAL_HISTORY/);
 });
 

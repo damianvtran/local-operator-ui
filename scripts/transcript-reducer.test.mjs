@@ -3916,7 +3916,10 @@ const durablePage = (entry) => ({
 test("a harness-minted row is not painted as the user's words, on the live path", () => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
-		{ type: "message_start", message: injected("u9", "Continue toward: ship it") },
+		{
+			type: "message_start",
+			message: injected("u9", "Continue toward: ship it"),
+		},
 		1,
 	);
 	assert.deepEqual(
