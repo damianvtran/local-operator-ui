@@ -351,21 +351,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 
 	/*
-	 * The collapse control lives in the header, revealed when the rail is
-	 * pointed at or contains focus.
+	 * Expanded, the control follows the wordmark in the titlebar-safe header.
+	 * macOS keeps native traffic lights in that corner even with Electron's
+	 * titlebar hidden, so the collapsed rail hides its brand there and gives the
+	 * expand control a dedicated 32px row before the destinations. Keeping that
+	 * row separate means it can never intercept a route button such as Chat.
 	 *
-	 * It used to have a full-width row of its own at the foot of the rail, above
-	 * a hairline drawn only so the chevron would not read as a sixth nav item —
-	 * about 40px of permanent chrome and one border, to hold a control that is
-	 * used a few times a week. Linear, Notion and Slack all put it in the header
-	 * and all reveal it on hover; collapsed, it takes the logo's place, because
-	 * a 48px rail has room for exactly one thing.
-	 *
-	 * `pointer-events-none` gates the mouse only. Focus is unaffected by it, so
-	 * the button keeps its place in the tab order and reveals itself with
-	 * `group-focus-within` when a keyboard reaches it — the same idiom the agent
-	 * rows and the editable fields use.
+	 * `pointer-events-none` gates the mouse only. Focus remains in the tab order,
+	 * and `group-focus-within` reveals the button before its visible focus outline
+	 * is painted for keyboard users.
 	 */
+
 	const collapseToggle = (
 		<div
 			className={cn(
@@ -394,6 +390,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	return (
 		<nav
+			data-titlebar-sidebar=""
+			data-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
 			className={cn(
 				/* `border-r border-hairline` carries the boundary the `sunken` step used
 				   to: the rail and the list panel beside it are both `surface` now, and the
@@ -411,31 +409,61 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * same line or the rail reads as two columns that nearly agree.
 			 */}
 			<div
+				data-titlebar-rail-header=""
+				data-titlebar-drag=""
 				className={cn(
 					"flex h-12 shrink-0 items-center",
 					expanded ? "justify-between pr-2 pl-5" : "justify-center",
 				)}
 			>
-				{/* Collapsed, the mark and the expand control occupy one slot and
-				    cross-fade; stacking them keeps the header from resizing. */}
+				{/*
+				 * macOS keeps the system traffic lights in this hidden-titlebar corner,
+				 * so its collapsed mark stays hidden and expansion moves to a
+				 * route-independent row below. Windows and Linux retain the existing
+				 * mark/control cross-fade.
+				 */}
 				{expanded ? (
 					<>
-						<CollapsibleAppLogo expanded />
-						{collapseToggle}
+						<div data-titlebar-brand="" data-titlebar-no-drag="">
+							<CollapsibleAppLogo expanded />
+						</div>
+						<div data-titlebar-rail-toggle="" data-titlebar-no-drag="">
+							{collapseToggle}
+						</div>
 					</>
 				) : (
 					<div className="relative flex size-8 items-center justify-center">
-						<div className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0">
+						<div
+							data-titlebar-brand=""
+							data-titlebar-no-drag=""
+							className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0"
+						>
 							<CollapsibleAppLogo expanded={false} />
 						</div>
-						<div className="absolute inset-0 flex items-center justify-center">
-							{collapseToggle}
-						</div>
+						{!isMac && (
+							<div
+								data-titlebar-rail-toggle=""
+								data-titlebar-no-drag=""
+								className="absolute inset-0 flex items-center justify-center"
+							>
+								{collapseToggle}
+							</div>
+						)}
 					</div>
 				)}
 			</div>
 
-			<ul className="flex flex-col gap-1 p-2">{navItems.map(renderNavItem)}</ul>
+			<ul className="flex flex-col gap-1 p-2">
+				{isMac && !expanded && (
+					<li
+						data-titlebar-collapsed-toggle-row=""
+						className="flex h-8 w-full items-center justify-center"
+					>
+						{collapseToggle}
+					</li>
+				)}
+				{navItems.map(renderNavItem)}
+			</ul>
 
 			{/* `mt-auto` rather than `justify-between` on the nav: the account row is
 			    the only thing at the foot now, and space is what separates it from the

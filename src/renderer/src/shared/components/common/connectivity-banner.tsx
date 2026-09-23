@@ -268,6 +268,7 @@ export const ConnectivityBanner = ({
 		 */
 		<div className="w-full">
 			<Alert
+				data-titlebar-banner=""
 				variant={bannerVariant}
 				// The banner appears in response to connectivity dropping while the
 				// user is working, so it interrupts rather than waits to be found.

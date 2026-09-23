@@ -4093,6 +4093,7 @@ export function ChatSidebar({
 		<nav
 			ref={navRef}
 			aria-label="Chats"
+			data-titlebar-chat-sidebar=""
 			/* The container the per-row controls shed against (`ROW_CONTROLS_PAIR_SHED`),
 			   named so the query cannot be answered by an ancestor's width. */
 			className="@container/chatsidebar flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
@@ -4103,7 +4104,7 @@ export function ChatSidebar({
 		    two sizes in one panel reads as an accident, and the small one was the
 		    reported defect — it was the only entry point and users did not find
 		    it. The named row replaces it rather than joining it. */}
-			<div className="flex h-8 items-center px-1">
+			<div data-titlebar-chat-heading="" className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
 			</div>
 			{/* The field carries its own clear control rather than relying on

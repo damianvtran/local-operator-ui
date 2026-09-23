@@ -334,6 +334,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			className={cn(
 				"flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
 			)}
+			data-titlebar-drag=""
 			data-tour-tag="chat-header"
 		>
 			{/* No `size-*` override: the Avatar primitive's own 32px is the app's
@@ -342,7 +343,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * The glyph is sized by class rather than lucide's numeric `size` prop
 			 * so a `size-*` sweep can see it; 16px is the ramp's default step and
 			 * what a 32px circle carries. */}
-			<Avatar>
+			<Avatar data-titlebar-no-drag="">
 				<AvatarFallback>
 					<Bot className={cn("size-4")} aria-hidden={true} />
 				</AvatarFallback>
@@ -352,7 +353,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
-			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+			<div
+				data-titlebar-no-drag=""
+				className={cn("flex min-w-0 flex-1 flex-col")}
+			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
@@ -392,6 +396,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * ground and that is exactly what makes the swap reversible.
 			 */}
 			<div
+				data-titlebar-no-drag=""
 				className={cn(
 					"ml-auto flex items-center",
 					/*
