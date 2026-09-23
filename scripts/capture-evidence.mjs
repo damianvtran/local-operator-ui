@@ -2680,6 +2680,12 @@ export const STORIES = [
 	["chat-model-picker--empty", 900, 560],
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
+	/* The explicit current-model machine-default action and its refused write. */
+	["chat-model-picker--set-current-as-default", 900, 820],
+	["chat-model-picker--set-current-as-default-refused", 900, 820],
+	/* Accepted and refused effort picks with the opt-in new-session default. */
+	["chat-model-picker--effort-set-as-default", 900, 620],
+	["chat-model-picker--effort-refused-does-not-save-default", 900, 620],
 
 	/*
 	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
@@ -3834,6 +3840,8 @@ export const STORIES = [
 	/* The price/window column: `free`, `usage-based`, a three-significant-
 	   figure pair, and a row nobody quoted (blank, never `free`). */
 	["chat-slash-completion--argument-phase-models", 908, 320],
+	/* `/model default` holds the direct machine-default action row. */
+	["chat-slash-completion--argument-phase-model-default-action", 768, 220],
 	/* The cold-owner empty list — "not reported yet", which is a different
 	   fact from "this model has none". */
 	["chat-slash-completion--argument-phase-empty", 768, 300],

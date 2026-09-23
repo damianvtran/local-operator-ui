@@ -82,6 +82,15 @@ export type PickerHostProps = {
 	/** One sentence on what choosing does, and its scope. */
 	description?: string;
 	options?: PickerOption[];
+	/**
+	 * This picker's own search rule, when the default one is wrong for it.
+	 *
+	 * Defaults to `filterPickerOptions`, which is every picker's behaviour up to
+	 * and including the model picker's until it needed a wider rule of its own
+	 * (`matchModelPickerOptions`). A destination that passes one owns the rule
+	 * for its own rows and for nobody else's — see `PickerOptionMatcher`.
+	 */
+	matcher?: PickerOptionMatcher;
 	/** Options are loading from the backend. */
 	loading?: boolean;
 	/** Options failed to load; shown in place of the list. */
@@ -288,6 +297,48 @@ export function pickerListReducer(
 }
 
 /**
+ * A picker's own matcher, for a surface whose search rule differs from the
+ * default one below. `PickerHost` calls it with the same `(options, query)` the
+ * default takes, so the two are interchangeable and a destination opts in by
+ * passing one in — which is the whole point: the rule is only as wide as the
+ * surface that asked for it (see `model-picker-match.ts`).
+ */
+export type PickerOptionMatcher = (
+	options: PickerOption[],
+	query: string,
+) => PickerOption[];
+
+/**
+ * The rows a query matches, in the order they came in — THE DEFAULT RULE.
+ *
+ * This is the plain contiguous substring test every picker has always used, and
+ * it is deliberately unchanged: a model picker's search box has a wider rule of
+ * its own (`matchModelPickerOptions`, passed in through `PickerHostProps.matcher`),
+ * but the commands, providers, MCP and session pickers do not, and giving them
+ * one silently is how typing `/` into **Search commands** went from listing
+ * every command to `Nothing matches.` — their labels start with the slash, so a
+ * query that CARRIES no word is a legitimate query for them and the model half's
+ * punctuation rule is exactly wrong here.
+ *
+ * So the seam is the matcher, not the rule: keep this as the widest-compatible
+ * behaviour, and put a surface-specific rule beside that surface.
+ */
+export function filterPickerOptions(
+	options: PickerOption[],
+	query: string,
+): PickerOption[] {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
+	return options.filter((option) =>
+		[option.label, option.value, option.description ?? "", option.meta ?? ""]
+			.concat(option.keywords ?? [])
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+}
+
+/**
  * What the body shows, given the load state and how many rows survived it.
  *
  * A separate `notice` never reaches this decision: the note is drawn ABOVE the
@@ -355,7 +406,10 @@ export function pickerPrimaryLabel(state: {
 	result: PickerResult | null;
 }): string {
 	if (state.busy) return "Close";
-	return state.result && state.result.tone !== "error" ? "Done" : "Close";
+	return state.result &&
+		(state.result.tone === "success" || state.result.tone === "info")
+		? "Done"
+		: "Close";
 }
 
 /**
@@ -527,6 +581,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	title,
 	description,
 	options,
+	matcher = filterPickerOptions,
 	loading = false,
 	loadError = null,
 	notice = null,
@@ -689,18 +744,17 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	const hasList = options !== undefined;
-	const filtered = useMemo(() => {
-		if (!options) return [];
-		const needle = query.trim().toLowerCase();
-		if (!needle) return options;
-		return options.filter((option) =>
-			[option.label, option.value, option.description ?? "", option.meta ?? ""]
-				.concat(option.keywords ?? [])
-				.join(" ")
-				.toLowerCase()
-				.includes(needle),
-		);
-	}, [options, query]);
+	/*
+	 * The filter is a pure exported function so its rule is executable from a
+	 * test (`filterPickerOptions`) rather than only reachable through a mounted
+	 * dialog — the discipline `pickerBodyKind` and the reducer follow here. A
+	 * surface with a rule of its own passes it in (`matcher`) rather than the
+	 * default being widened for everyone.
+	 */
+	const filtered = useMemo(
+		() => (options ? matcher(options, query) : []),
+		[options, query, matcher],
+	);
 
 	/**
 	 * The row Enter would pick, by name.
@@ -1160,7 +1214,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
-				<div className="flex items-center justify-between gap-3 px-5 py-4">
+				<div
+					className="flex items-center justify-between gap-3 px-5 py-4"
+					data-picker-footer
+				>
 					{/*
 					 * The hint names the row Enter would pick (UX U1) and truncates rather
 					 * than wrapping, because a long model name here is the only text in the
@@ -1273,8 +1330,9 @@ export const PickerCheck: FC<{
 }> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
 	const id = useId();
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-start gap-2">
 			<Checkbox
+				className="mt-0.5"
 				id={id}
 				checked={checked}
 				onCheckedChange={(next) => onCheckedChange(next === true)}
