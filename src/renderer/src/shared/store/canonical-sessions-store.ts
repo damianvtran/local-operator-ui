@@ -712,7 +712,11 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * is the weaker of two instructions about one act. Withholding it costs nothing
  * the operator needs: the text itself is back in the box (a provably-unadmitted
  * refusal does not latch — see `isRefusedBeforeAdmission`), and the sentence that
- * replaced the hint says when to press. The sibling `runtime_busy` is NOT on this
+ * replaced the hint says when to press. INERT TODAY, like the term it reads:
+ * that refusal arrives as a plain string `detail` with no `code`, so nothing
+ * reaches this predicate until the backend half lands (`RUNTIME_RETIRING_CODE`
+ * carries the capture), and today's frame for that arm is the held state.
+ * The sibling `runtime_busy` is NOT on this
  * list, and the difference is the same order of reasoning: its own sentence names
  * no such condition, the app has already spent its internal repeats by the time
  * the composer sees it, and a press then is exactly the remedy the owner asked
@@ -934,8 +938,12 @@ export function panelIdentityOfView(
  *    spent, and the answer the owner gave is still "I did not take it".
  * 4. A `runtime_retiring` 409 - the owner is leaving (a build handover, a
  *    signalled stop, a `/move`) and refuses the turn as it latches. The
- *    sentence the far side composes for it says "The message was not admitted"
- *    (see `RUNTIME_RETIRING_CODE`).
+ *    sentence the far side composes for it says "The message was not admitted".
+ *    INERT TODAY: that refusal arrives as a plain string `detail` with no
+ *    `code`, so this term cannot fire until the backend half lands (see
+ *    `RUNTIME_RETIRING_CODE` for the capture). It is kept because the answer is
+ *    already right for the day the code arrives, and because dropping it would
+ *    make that day a silent regression.
  *
  * WHAT MUST STAY ON THE OTHER SIDE, because the defect this class fixes has a
  * mirror image that is worse: treated as unknowable, a provably-unadmitted
@@ -962,9 +970,11 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		/*
 		 * The two codes the OWNER answers with, per the note above. Read as codes and
 		 * not as a status or a flag: the same status carries refusals whose admission
-		 * is genuinely unknown (a conflicting receipt's 409), and `retryable` means
-		 * "a retry may help" elsewhere in the daemon's ladder rather than "nothing was
-		 * admitted" (`RUNTIME_RETIRING_CODE` has the measured example).
+		 * is genuinely unknown (a conflicting receipt's 409), and `retryable` is not a
+		 * statement about admission in EITHER direction - the `runtime_busy` body the
+		 * app does act on carries `retryable: true` while establishing that nothing was
+		 * admitted, so it is neither a safe positive nor a safe negative
+		 * (`RUNTIME_RETIRING_CODE` carries the captured bodies).
 		 */
 		return (
 			error.code === RUNTIME_BUSY_CODE || error.code === RUNTIME_RETIRING_CODE
@@ -1455,9 +1465,10 @@ export async function admitChatDraft(
 		 * question. 413 and 422 are raised before the prompt reaches the session
 		 * (the reasoning is spelled out on the un-latch below), so the message
 		 * provably does not exist on the owner and the echo must go. So are the
-		 * owner's own two refusals - 503 `runtime_busy`, 409 `runtime_retiring` -
-		 * which is why the incident's held draft was an echo kept over a message
-		 * the backend had already said it never took.
+		 * owner's own refusals - 503 `runtime_busy` on today's wire, and 409
+		 * `runtime_retiring` once the backend relays its code - which is why the
+		 * incident's held draft was an echo kept over a message the backend had already
+		 * said it never took.
 		 *
 		 * Every OTHER failure keeps the echo painted, which looks wrong and is
 		 * not: the outcome is unknowable, the owner may have admitted the command
@@ -1545,7 +1556,13 @@ export async function admitChatDraft(
 			// (above) had already been spent by the time they saw it. Read as CODES
 			// and never as those statuses or a `retryable` flag: a bare 409 is also
 			// the receipt-conflict refusal, whose first attempt may have been admitted,
-			// and the daemon sets `retryable` on refusals that admitted something.
+			// and `retryable` is not a statement about admission either way - the
+			// `runtime_busy` body itself carries `retryable: true` while establishing
+			// that nothing was admitted (the capture is on `RUNTIME_RETIRING_CODE`).
+			// Of the two codes this change adds, `runtime_busy` is live on today's
+			// wire and `runtime_retiring` is not: that refusal arrives as a plain
+			// string detail with no code, so its term here is inert until the backend
+			// half lands - see `RUNTIME_RETIRING_CODE`.
 			// `isRefusedBeforeAdmission` carries the full boundary.
 			//
 			// THE LATCH IS WHAT MAKES THE DIFFERENCE VISIBLE, which is why this is
