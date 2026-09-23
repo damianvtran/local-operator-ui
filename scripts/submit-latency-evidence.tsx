@@ -39,6 +39,16 @@ import { MemoryRouter } from "react-router-dom";
 import "./submit-latency-evidence.css";
 
 /*
+ * Scroll-paging evidence can name its first conversation before this module
+ * evaluates; the wrapper seeds the store's browser storage before importing us.
+ * Keep the default `/chat` for the existing submit-latency captures.
+ */
+const initialSession = new URLSearchParams(window.location.search).get(
+	"session",
+);
+const initialRoute = initialSession ? `/chat/${initialSession}` : "/chat";
+
+/*
  * Surface a mount failure where a driver can read it, instead of leaving an
  * empty body whose only diagnosis is "did not render".
  */
@@ -133,7 +143,10 @@ const HARNESS_HOME = "/Users/damian";
  * before the first render also keeps the composer's chip stable across the
  * before/after pair, so the two frames differ only in the behaviour under test.
  */
-useCanonicalSessionsStore.setState({ cwd: HARNESS_HOME });
+useCanonicalSessionsStore.setState({
+	cwd: HARNESS_HOME,
+	...(initialSession ? { activeSessionId: initialSession } : {}),
+});
 
 createRoot(document.getElementById("root") as HTMLElement).render(
 	<StrictMode>
@@ -149,7 +162,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 			 * survive a reload into the next capture.
 			 */}
 			<ThemeProvider>
-				<MemoryRouter initialEntries={["/chat"]}>
+				<MemoryRouter initialEntries={[initialRoute]}>
 					<ChatPage />
 				</MemoryRouter>
 			</ThemeProvider>

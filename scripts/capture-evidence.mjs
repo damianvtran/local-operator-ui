@@ -1741,6 +1741,10 @@ export const STORIES = [
 	   reading ("a rendering defect, not more content below") the scroll edge
 	   treatment exists to prevent, reproduced in the frame meant to show it. */
 	["chat-usage--loading", 900, 470],
+	/* The same open, one read later: the automatic check is out and the cached
+	   rows are already up. Sized like `fetching`, its sibling in the toolbar —
+	   same payload density and the same tall title-plus-tally block above it. */
+	["chat-usage--checking", 1000, 560],
 	["chat-usage--empty", 900, 380],
 	["chat-usage--query-error", 900, 400],
 	["chat-usage--fetching", 1000, 560],

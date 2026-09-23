@@ -65,6 +65,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 /** The `--key=value` prefix, hoisted so parsing argv builds no regex per entry. */
 const ARG_PREFIX = /^--/;
@@ -512,6 +513,14 @@ const app = await (async () => {
 					if (key.startsWith("CMUX_") || key.startsWith("LOP_"))
 						delete env[key];
 				}
+				/*
+				 * `withTelemetryOff`: this rig boots the REAL app through `npx electron`,
+				 * an app-booting path a scan for an `electron` COMMAND cannot see, and the
+				 * build it boots carries the live PostHog project key in both of its
+				 * processes with the renderer's copy inlined at build time - so a run is
+				 * otherwise a product user and a session replay. See `telemetry-off.mjs`.
+				 */
+				withTelemetryOff(env);
 				return env;
 			})(),
 			stdio: ["ignore", "pipe", "pipe"],
