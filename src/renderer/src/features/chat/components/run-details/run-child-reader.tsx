@@ -52,10 +52,22 @@
  *
  * The clipped copy is NOT gone everywhere, because there is one case where it is
  * the only copy left: a page this reader cannot open at all — a child with no
- * `session_id`, `pending`, `gone`, or `ready` with nothing painted. Those states
- * keep a BOUNDED preview that says what it is (`ResultPreview`), and the failure
- * block stays unconditionally, because `error_text` is `str(exc)` from the
- * parent's runner and is in no child transcript at all.
+ * `session_id`, `pending`, `gone`, or `ready` with nothing painted (a FAILED
+ * read lands on that last branch too, `use-child-transcript.ts`'s `error` and
+ * an empty `ready` being the same absence here). Those states keep a BOUNDED
+ * preview (`ResultPreview`), and the failure block stays unconditionally,
+ * because `error_text` is `str(exc)` from the parent's runner and is in no child
+ * transcript at all.
+ *
+ * **Both foot blocks say what the wire did to the value, and neither says more
+ * than that.** The wire clips a job's free text and MARKS the cut
+ * (`WIRE_CLIP_MARKER`), so the preview claims to be shortened only when the
+ * value carries that marker — the label drops to a plain `Result` when the value
+ * is the whole one — and the failure block states the bound when its own value
+ * was cut. Before this, the shortening line was printed for every state the
+ * predicate admits, including one where `result_text` is a 25-character STATE
+ * stamp rather than an outcome: see `CANCELLED_BEFORE_START`, which the model
+ * spends as the row's state word instead of as a result.
  *
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
@@ -171,14 +183,38 @@ export type RunChildReaderProps = {
 };
 
 /**
+ * The marker the runtime's wire clip leaves on a value it shortened.
+ *
+ * `frontend_state._bound_job_text_in_place` clips `result_text`, `prompt` and
+ * `error_text` to the tighter of the field's own bound (`JOB_RESULT_WIRE_CHARS`
+ * and `JOB_ERROR_WIRE_CHARS` are both 2_000) and this row's share of the frame's
+ * text budget, and it MARKS the cut: `value[:limit] + "…"`. A value that ends in
+ * the ellipsis was shortened; one that does not is the whole value the runtime
+ * recorded.
+ *
+ * Read off the VALUE rather than off its length, and that is the point: the
+ * share bound can be well under 2_000, so a short marked value is still a
+ * clipped one — `length >= 2_000` would call it whole. The marker is the wire's
+ * own disclosure, so the pane repeats the wire instead of guessing at it. The
+ * residual the marker cannot close is a value that genuinely ends in an
+ * ellipsis and was never clipped, which no renderer can tell from a clipped one
+ * without a companion flag on the wire.
+ */
+const WIRE_CLIP_MARKER = "…";
+/** Whether the WIRE shortened this value — see `WIRE_CLIP_MARKER`. */
+const clippedByWire = (text: string): boolean =>
+	text.endsWith(WIRE_CLIP_MARKER);
+
+/**
  * A failure's own words — the one outcome the child's conversation does NOT
  * carry, and the reason this block outlived the result block beside it.
  *
  * `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
- * holds it (`frontend_state.py`: `JOB_ERROR_WIRE_CHARS` is deliberately generous
- * for exactly this reason, while `result_text` is clipped because the transcript
- * does have it). It is therefore UNGATED on the transcript state: a page this
- * reader could not open at all is the case where the exception is most needed.
+ * holds it (`frontend_state.py` keeps it at the same 2_000-character wire bound
+ * `result_text` gets, and for the opposite reason: the result has a second copy
+ * on the child's page, so clipping it is safe, while the exception has none). It
+ * is therefore UNGATED on the transcript state: a page this reader could not
+ * open at all is the case where the exception is most needed.
  *
  * MACHINE VOICE, verbatim, and never paraphrased: an exception's own words are
  * the only version of it a reader can act on, and a summarised exception is a
@@ -187,28 +223,46 @@ export type RunChildReaderProps = {
  * is a sibling of the conversation rather than its content, and an unbounded
  * sibling displaces the only `flex-1` child of this `overflow-hidden` column —
  * the shape the result block was removed for.
+ *
+ * VERBATIM AS THE WIRE CARRIES IT, which is what the one line under the block
+ * states: the field is clipped at the wire like every other free-text field, so
+ * a value carrying `WIRE_CLIP_MARKER` says where the bound is rather than
+ * letting a cut exception read as the whole of one. The line is worth its space
+ * here and not on the preview, because this is the only copy of why a child
+ * failed — there is nothing a reader can go and read instead.
  */
 const FailureText = ({ text }: { text: string }) => (
-	<pre
-		className={cn(
-			"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+	<>
+		<pre
+			className={cn(
+				"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+			)}
+		>
+			{text}
+		</pre>
+		{clippedByWire(text) && (
+			<p className={cn("mt-1 text-meta text-ink-muted")}>
+				Shortened at the wire. The runtime records at most the first 2,000
+				characters of an error.
+			</p>
 		)}
-	>
-		{text}
-	</pre>
+	</>
 );
 
 /**
  * The clipped result, for the states that have no conversation to read instead.
  *
  * This is the ONE survivor of the block the header docstring removes, and it is
- * honest about being a fragment: the wire's `result_text` is truncated at
- * `JOB_RESULT_WIRE_CHARS` (`frontend_state.py:143-164`, cut mid-word — the roster
- * sidecar on this machine held 500-character values), so a block that announced
- * itself as "Result" would be claiming the child's whole answer from a prefix of
- * it. Hence the label (`Result preview`, in the reader's own foot) and the line
- * under it, which is the rest of the honesty: the conversation the full text is
- * in is not on this page, which is exactly why the preview is here at all.
+ * honest about what the wire did to the value it paints. `result_text` is
+ * truncated at the wire (`JOB_RESULT_WIRE_CHARS`, `frontend_state.py:143-164`,
+ * cut mid-word) and the cut is marked, so this block announces itself as a
+ * `Result preview` exactly when the value carries that marker and as a plain
+ * `Result` when it is the whole value. A block that called every one of them a
+ * "preview" would claim shortening over values the wire left whole — which is
+ * what it did, in one state, over a 25-character state stamp — and one that
+ * called them all "Result" would claim a child's whole answer from a prefix of
+ * it. Under the value sits the other half of the honesty: the conversation the
+ * full text is in is not on this page, which is why the block is here at all.
  *
  * BOUNDED like the failure block, and that is a requirement rather than a
  * preference: every state that renders this one renders it INSTEAD of a
@@ -216,6 +270,13 @@ const FailureText = ({ text }: { text: string }) => (
  * removed, in the states with the least to look at. `max-h-40 overflow-auto`
  * makes it scroll rather than push, and `text-body-sm` keeps it prose rather than
  * machine voice — the clipping is the app's, not something the child said.
+ *
+ * The label and the line under it are both decided by `clippedByWire`, so a
+ * whole value is announced as the result rather than as a shortened copy of
+ * one: the wire's marker is the only evidence either claim has, and a state that
+ * reaches this block without it gets neither. The reason the block is here at
+ * all — the conversation it belongs to is not on this page — is stated either
+ * way, because that is a fact about the PANE and no clip can change it.
  */
 const ResultPreview = ({ text }: { text: string }) => (
 	<div className={cn("mt-1 flex flex-col gap-1")}>
@@ -227,8 +288,9 @@ const ResultPreview = ({ text }: { text: string }) => (
 			{text}
 		</p>
 		<p className={cn("text-meta text-ink-muted")}>
-			This is a shortened copy. This subagent's conversation is not available
-			here.
+			{clippedByWire(text)
+				? "This is a shortened copy. This subagent's conversation is not available here."
+				: "This subagent's conversation is not available here."}
 		</p>
 	</div>
 );
@@ -315,11 +377,20 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
  * Quiet by construction — `text-meta`, `ink-muted`, no ground — because it is
  * not an alert and not a status; a `danger` or accented footer would put a
  * statement about the SURFACE above the agent's own output in § 7's hierarchy.
+ *
+ * It names the PAGE rather than the conversation, and that is the one word this
+ * sentence has ever needed care over: the foot is painted in every state,
+ * including the ones whose body says the conversation is gone, was never
+ * addressable, or has nothing painted yet (`previewsClippedResult`). Calling
+ * those "the subagent's conversation" told a reader twice that there was nothing
+ * to read and then named the missing thing as the thing on screen. "Page" is
+ * true in all of them — this pane — and it keeps § 5.6's job, which is about
+ * what the surface does NOT do rather than about what it holds.
  */
 const ReadOnlyFooter = () => (
 	<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 		<p className={cn("text-meta text-ink-muted")}>
-			Read-only — this is the subagent's conversation, not a way to steer it.
+			Read-only — this is the subagent's page, not a way to steer it.
 		</p>
 	</div>
 );
@@ -447,14 +518,24 @@ export const RunChildReader = ({
 	 * Whether the foot may paint the clipped preview at all: i.e. whether the
 	 * BODY above has no conversation to paint instead.
 	 *
-	 * The four states are the ones that render a `QuietLine` rather than the
-	 * transcript, one line apart in the markup below, so the two cannot disagree
-	 * about which states those are. `loading` is deliberately NOT one of them,
-	 * although `hasTranscript` is false there: a page in flight is a conversation
-	 * that is expected momentarily, and a preview that appeared and then vanished
-	 * under itself would be a flicker around the foot of a pane that is already
-	 * about to fill in. `pending` and `loading` are the pair the distinction is
-	 * for, and they are one predicate apart.
+	 * The states that render a `QuietLine` rather than the transcript are named by
+	 * this expression, one line apart from the markup below, so the two cannot
+	 * disagree about which states those are. The FIFTH member of
+	 * `ChildTranscriptState` — `error` — is one of them and is not spelled out
+	 * here, because it reaches the same line by the other route: a FAILED read and
+	 * a `ready` page with no records both fall through to
+	 * `painted.records.length === 0` and paint "This subagent has no conversation
+	 * on record yet", so a failed read has no conversation to prefer either and
+	 * the wire's copy is the only text left. Recorded here because a reader
+	 * checking this predicate against `ChildTranscriptState`'s five members would
+	 * otherwise have to find that branch to see where `error` lands.
+	 *
+	 * `loading` is deliberately NOT one of them, although `hasTranscript` is false
+	 * there: a page in flight is a conversation that is expected momentarily, and a
+	 * preview that appeared and then vanished under itself would be a flicker
+	 * around the foot of a pane that is already about to fill in. `pending` and
+	 * `loading` are the pair the distinction is for, and they are one predicate
+	 * apart.
 	 */
 	const previewsClippedResult =
 		!row.childSessionId || (!hasTranscript && state !== "loading");
@@ -723,7 +804,7 @@ export const RunChildReader = ({
 				{!row.errorText && previewsClippedResult && row.resultText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 						<span className={cn("text-meta text-ink-muted")}>
-							Result preview
+							{clippedByWire(row.resultText) ? "Result preview" : "Result"}
 						</span>
 						<ResultPreview text={row.resultText} />
 					</div>

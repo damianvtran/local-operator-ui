@@ -524,9 +524,12 @@ child's transcript directory name, `harness/comms.py:752-768`), `parentJobId`
 (from `parent_job_id`), and `childCount` (derived in the renderer by grouping the
 session's `task` rows on `parent_job_id` — over the LINEAGE, so a parent's control
 counts the descendants the roster does not list). `errorText` becomes a full
-string rather than `errorLine` alone, because the reader prints the exception
-verbatim; `resultText` is the wire's CLIPPED copy of the result, read only in the
-states where no conversation can be painted at all (§ 5.1) — the roster's own
+string rather than `errorLine` alone, because the reader prints the exception as
+far as the wire carries it — and now states the wire's bound when it can see the
+cut; `resultText` is the wire's CLIPPED copy of the result, read only in the
+states where no conversation can be painted at all (§ 5.1) and `null` for the one
+`result_text` that is not an outcome (a parked cancel's state stamp, spent as the
+row's `stateWord` instead) — the roster's own
 `errorLine` rule (first line only, `run-detail-model.ts:679-681`) is unchanged.
 
 ---
@@ -591,22 +594,42 @@ is drawn:
   painted one either: its child page keeps the settled `result_text` for exactly
   one fact, a job cancelled while parked (`subagent_view.py:1808-1812`), and the
   result reaches a reader there as the child's own last transcript row.
+  **That one fact is a STATE WORD, not a result, and the pane says it as one:**
+  `harness/jobs.py`'s `cancel()` stamps `CANCELLED_BEFORE_START` on a job whose
+  runner was never entered (`:204`, `:1166-1167`), and the reader spends it in
+  the header — the slot the TUI spends it in (`subagent_view.py:3371-3391`) —
+  with the model recognising the constant rather than sniffing the text. Read as
+  a result it produced the pane's worst four lines: the body's absence line, a
+  `Result preview` label over a 25-character state stamp, and a claim that it had
+  been shortened. No foot block is painted for that state at all (round 1,
+  C2/D1).
   `branding.md` § 7's hierarchy points the same way: the answer is prose at
   reading weight, and a second card under the conversation that just made it is
   the second rail the port exists to avoid.
 - **The failure is the one exception, and a clipped PREVIEW is the other.**
   `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
-  holds it (`frontend_state.py` is explicit: `JOB_ERROR_WIRE_CHARS` is generous,
-  `result_text` is clipped BECAUSE the transcript has it). That block therefore
-  stays at the foot, ungated on the transcript state, in machine voice and at
-  `max-h-40 overflow-auto` — unchanged, including for a page that would not open
-  at all, which is where the exception is most needed. Where the conversation
-  cannot be read AT ALL — no `session_id`, `pending`, `gone`, or `ready` with
-  nothing painted — the clipped `result_text` is likewise the only copy left, so
-  it stays as a **bounded, honestly-labelled preview**: `Result preview`,
-  `max-h-40 overflow-auto`, prose rather than machine voice, and one quiet line
-  saying that the full copy is in a conversation this page does not have ("This
-  is a shortened copy. This subagent's conversation is not available here.").
+  holds it — which is the runtime's own reason for treating it differently:
+  `JOB_ERROR_WIRE_CHARS` exists precisely because `result_text` is clipped
+  BECAUSE the transcript has a second copy. It is **not a larger allowance**,
+  though: the two bounds are both 2_000 characters, so the block prints the
+  exception as far as the wire carries it and states where the wire stopped when
+  the value carries the clip marker. It stays at the foot, ungated on the
+  transcript state, in machine voice and at `max-h-40 overflow-auto` — unchanged,
+  including for a page that would not open at all, which is where the exception
+  is most needed. Where the conversation cannot be read AT ALL — no `session_id`,
+  `pending`, `gone`, or `ready` with nothing painted (a FAILED read lands on that
+  last branch too: `error` is the fifth `ChildTranscriptState` and it paints the
+  same quiet line as an empty `ready`) — the wire's `result_text` is likewise the
+  only copy left, so it stays as a **bounded preview**: `max-h-40 overflow-auto`,
+  prose rather than machine voice (the clipping is the app's, not something the
+  child said), and one quiet line stating that the conversation the fuller copy
+  is in is not on this page. **Its label and that line are both gated on the
+  wire's own clip marker** (`frontend_state.py` appends `…` where it cut): a
+  value that arrived whole is announced as `Result` with the absence sentence
+  alone, and only a marked one is called `Result preview` — "This is a shortened
+  copy. This subagent's conversation is not available here." A block that called
+  every one of them a preview claimed shortening over values the wire never
+  touched (round 1, C2).
   `loading` is deliberately NOT one of those states, although there is nothing
   painted then either: the page is in flight, and a preview that appeared and
   then vanished under itself would be a flicker at the foot of a pane that is
@@ -899,14 +922,25 @@ surface is read-only for the child (the TUI's `READ_ONLY_NOTE` precedent,
 `subagent_view.py:1619-1623`) so the absence of controls is a stated fact rather
 than a puzzle.
 
+**It names the PAGE, not the conversation, and that is what makes it true in
+every state it is painted in:** "Read-only — this is the subagent's page, not a
+way to steer it." The foot is unconditional (`run-child-reader.tsx`), so in the
+states whose body says the conversation is gone or was never addressable, the
+older sentence — "this is the subagent's conversation" — told a reader twice that
+there was nothing to read and then named the missing thing as the thing on
+screen (UX round 1, U1). "Page" is true in all of them, and the sentence keeps
+§ 5.6's job, which is about what this surface does NOT do rather than about what
+it holds.
+
 ### 5.7 What happens when the child changes underneath the reader
 
 | event | rendering |
 |---|---|
 | child emits a progress beat | nothing structural; the pulse triggers a tail refetch |
 | child settles (success) | one final refetch, the result is the page's own last row and the foot stays quiet (§ 5.1), the header's status icon and elapsed settle, the elapsed timer stops |
-| child fails | final refetch, the foot prints the verbatim `error_text` in machine voice — the one outcome no transcript holds — header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
-| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; where the conversation cannot be read at all, the foot states the wire's clipped result as a preview (§ 5.1) |
+| child fails | final refetch, the foot prints the exception as far as the wire carries it (`JOB_ERROR_WIRE_CHARS`, 2_000 characters — the one string with no second copy anywhere), in machine voice, and states that bound when the value carries the wire's clip marker; header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
+| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; where the conversation cannot be read at all, the foot states the wire's clipped result as a preview, labelled from the wire's own clip marker (§ 5.1) |
+| child was cancelled while PARKED, before its runner was entered | no preview and no result, whatever the wire carries: `result_text` is `harness/jobs.py`'s own state stamp (`CANCELLED_BEFORE_START`, written when `started_at is None`), so it is spent as the header's STATE WORD — the slot the TUI uses for it (`subagent_view.py:3371-3391`) — and the foot is empty but for the read-only line (§ 5.1) |
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
@@ -1849,9 +1883,11 @@ per `branding.md` § 9's checklist.
 | `swap-run-open` | the mirror: the flow a click makes, both directions |
 | `reader-live` | a child's reader open on a **running** child (see below) |
 | `reader-settled` | the same child settled: settled clock, no pulse, and a quiet foot — the result is the conversation's own last row (§ 5.1) |
-| `reader-failed` | the verbatim exception at the foot — no transcript holds it — with `danger` on the header icon only |
+| `reader-failed` | the exception as far as the wire carries it at the foot — no transcript holds it — with the wire's bound stated when the value was clipped, and `danger` on the header icon only |
 | `reader-result-inline` | a settled child with a LONG result: the result is the conversation's last message and the foot says nothing. The pair's other half is `reader-result-preview`, and the state this frame retires is the unbounded `Result` block that displaced the page. |
-| `reader-result-preview` | the same long result with the conversation **gone**: the bounded, honestly-labelled preview and its copy, in the state that has nothing left to push back with |
+| `reader-result-preview` | the same long result with the conversation **gone**: the bounded preview, labelled from the wire's own clip marker, and its copy line, in the state that has nothing left to push back with |
+| `reader-cancelled-before-start` | a child cancelled while PARKED, whose `result_text` is the runtime's state stamp and not an outcome: the stamp is the header's state word (the TUI's slot for it), the body states the missing conversation, and the foot paints **nothing** — a frame is the only evidence for an absence. The state the preview must never claim (round 1, C2/D1). |
+| `reader-result-preview-floor` | `reader-result-preview` at the pane's **320px floor** (design round 1, D4): the only content in its state, its box still 160px, the honesty line wrapped to three lines — the width the pane promises and the two new surfaces had no frame at |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
 | `reader-child-controls` | a member's page whose child count is ONE: the descend control's singular label and its accessible name, in the only state that can show either, beside the peer stepper for the same child |

@@ -1364,6 +1364,17 @@ export const STORIES = [
 	   the same long result once WITH something to push against and once without. */
 	["chat-run-panel--reader-result-inline", 1280, 900],
 	["chat-run-panel--reader-result-preview", 1280, 900],
+	/* The two states round 1's reviews could not photograph, both of them about
+	   what the foot must NOT paint. `reader-cancelled-before-start` is the parked
+	   cancel whose `result_text` is the runtime's own state stamp — the state the
+	   preview used to claim as a shortened result, now carried as the row's state
+	   word with an empty foot, and a frame is the only evidence for an absence.
+	   `reader-result-preview-floor` is the preview at the pane's declared 320px
+	   floor, where the honesty line wraps and the box shows about two lines; 800x700
+	   for the same reason the three floor frames above use it (design round 1, D3
+	   and D4). */
+	["chat-run-panel--reader-cancelled-before-start", 1280, 900],
+	["chat-run-panel--reader-result-preview-floor", 800, 700],
 	/* The two EXITS from a reader, which are the one kind of state this set can
 	   photograph and a keyboard walk could not: the press moves the TREE.
 	   `back-to-roster` is where the defect was and is the after half of the pair
