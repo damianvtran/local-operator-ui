@@ -948,6 +948,21 @@ export type AnchorSample = {
 };
 
 /**
+ * Do not apply a reveal's sample after newer reader input has taken ownership
+ * of the viewport. Layout-only growth stays eligible while that sample remains
+ * current; the DOM caller expires it when a new input revision arrives.
+ */
+export const anchorDriftForCurrentInput = (
+	before: AnchorSample | null,
+	after: AnchorSample | null,
+	heldInputRevision: number,
+	currentInputRevision: number,
+): number | null =>
+	heldInputRevision === currentInputRevision
+		? anchorDrift(before, after)
+		: null;
+
+/**
  * How far the anchor row moved because content was revealed above it.
  *
  * Zero unless the content actually grew. That guard is the whole correctness
@@ -960,11 +975,11 @@ export type AnchorSample = {
  * changes after mount, and a browser that re-clamps the offset when the
  * scrollable extent crosses the viewport for the first time.
  *
- * Returns the signed displacement in scroller pixels. Apply it as
- * `scrollTop -= drift`: a larger `scrollTop` moves content up in both a normal
- * and a `column-reverse` scroller (in the reverse case `scrollTop` runs from 0
- * at the bottom to a negative bound at the top, but its sign convention against
- * the viewport is unchanged), so one expression serves both.
+ * Returns the signed displacement in scroller pixels. The DOM caller applies it
+ * as `scrollTop += drift`: this transcript uses `column-reverse`, so `scrollTop`
+ * is negative and making it less negative moves the held row up by the measured
+ * displacement. Keep the sign at the call site paired with the real-DOM geometry
+ * check; the normal-scroller intuition would choose the wrong direction here.
  */
 export const anchorDrift = (
 	before: AnchorSample | null,
