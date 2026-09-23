@@ -1753,6 +1753,32 @@ if (MODE === "review") {
 				layoutOnlyArm.programmaticScrollTopWrites.length,
 			...landingDelta(layoutOnlyArm),
 		},
+		/*
+		 * What separates the two arms, stated in the artefact rather than left for a
+		 * reader to infer from two identical zeros (QA round 2, Q-4).
+		 *
+		 * On THIS scroller the durable page mounts below the held row and the
+		 * browser's own `overflow-anchor` (column-reverse, bottom origin) pins the row
+		 * in place, so the hook's `anchorDrift` computes zero on both arms and NEITHER
+		 * writes `scrollTop`. The write count therefore cannot separate them here, and
+		 * a control that records the same zero as the treatment is not a control on
+		 * this surface. Making it discriminate would need a row shape where
+		 * `overflow-anchor` does not absorb the landing (a height-changing row ABOVE
+		 * the anchor); constructing one is a new capture, not a re-read.
+		 *
+		 * The discriminating proof of the correction path is the HOOK test, which
+		 * drives the production `useScrollPaging` against a JSDOM scroller whose
+		 * geometry is controlled: it asserts the layout-only growth IS corrected and
+		 * the after-input commit is NOT. That test is named here so a reader does not
+		 * read the browser arms' shared zero as evidence the arms agree.
+		 */
+		discrimination: {
+			surface: "the durable-page landing absorbs itself via overflow-anchor",
+			browserArmsSeparateOn:
+				"per-frame held-row offset, NOT programmatic write count",
+			programmaticWriteCountSeparatesArms: false,
+			discriminatingProof: "scripts/transcript-paging-hook.test.mjs",
+		},
 	};
 
 	writeFileSync(
@@ -1827,6 +1853,36 @@ if (MODE === "switch") {
 		`JSON.stringify([...document.querySelectorAll('[data-session-row]')].map(r => r.getAttribute('data-session-row')))`,
 	);
 	report.switch.start = await snapshot();
+	/*
+	 * Each conversation's OWN visible label, read from its sidebar row (design
+	 * round 2, D2). The set is captured from the frames alone, so a reader has to
+	 * be able to tell the two conversations apart without the JSON: the seeder is
+	 * given a distinct title per conversation (see `seed-paging-session.mjs`) and
+	 * these strings are what the row paints, quoted here so a caption can name the
+	 * session a frame shows rather than leaving it to the row numbers.
+	 */
+	report.switch.labels = JSON.parse(
+		await evaluate(`JSON.stringify({
+			a: document.querySelector('[data-session-row="${SESSION}"]')?.innerText?.trim() ?? null,
+			b: document.querySelector('[data-session-row="${SWITCH_TARGET}"]')?.innerText?.trim() ?? null,
+		})`),
+	);
+	/*
+	 * The frames have to be self-identifying (D2), and they are the set's only
+	 * claim about the switch. Two conversations seeded under the same title paint
+	 * identical chrome, so this asserts the seeding actually differs before any
+	 * frame is taken - a run that would produce indistinguishable stills fails
+	 * here rather than shipping them.
+	 */
+	if (
+		!report.switch.labels.a ||
+		!report.switch.labels.b ||
+		report.switch.labels.a === report.switch.labels.b
+	) {
+		throw new Error(
+			`the two conversations do not carry distinct visible labels, so a reader of the frames alone could not tell which session is shown (seed each with its own title - see scripts/seed-paging-session.mjs): ${JSON.stringify(report.switch.labels)}`,
+		);
+	}
 	if (!sidebarIds.includes(SWITCH_TARGET)) {
 		throw new Error(
 			`the switch target is not in the sidebar: ${JSON.stringify({ sidebar: JSON.parse(sidebarIds), target: SWITCH_TARGET })}`,
@@ -1855,26 +1911,117 @@ if (MODE === "switch") {
 			return 'clicked';
 		})()`);
 
-	// The per-frame recorder. A flash of stale content is a frame that IS a
-	// picture of the wrong conversation, and only consecutive frames can see it -
-	// a before/after probe pair reports the same settled state whether a wrong
-	// frame painted or not.
+	/*
+	 * The conversations' KNOWN row sets, read from the backend that owns them
+	 * (UX round 2, U2).
+	 *
+	 * The round-2 classifier derived `idsA` from the `firstRowId`s of the frames it
+	 * had ALREADY labelled A, then used that set to judge B-labelled frames - so
+	 * the exact hazard (B's identity painted over A's SCROLLED rows) could never
+	 * appear in `idsA` and scored clean by construction. The set a frame is judged
+	 * against must come from the conversation, not from the frames under test.
+	 *
+	 * So each session's whole durable row set is read from `sessions.history` over
+	 * the page's own same-origin transport, paged to the end. Those ids are what
+	 * the conversation CONTAINS; a frame is then classified by which set its
+	 * first painted row belongs to. `classifier` in the JSON reports the sets'
+	 * sizes and the scrolled top row id so the reading is auditable.
+	 */
+	async function knownRowIds(sessionId) {
+		return JSON.parse(
+			await evaluate(`(async () => {
+				const ids = [];
+				let beforeId = null;
+				for (let page = 0; page < 12; page++) {
+					const res = await fetch('/__desktop', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ op: 'sessions.history', sessionId: ${JSON.stringify(sessionId)}, limit: 500, ...(beforeId ? { beforeId } : {}) }),
+					});
+					const body = await res.json();
+					// The desktop transport wraps the page twice - the page itself sits
+					// under body.result, the shape requestDesktop returns.
+					const page = body?.body?.result ?? {};
+					const entries = page.entries ?? [];
+					for (const e of entries) if (e?.id) ids.push(e.id);
+					if (!page.has_more || entries.length === 0) break;
+					beforeId = entries[entries.length - 1].id;
+				}
+				return JSON.stringify(ids);
+			})()`),
+		);
+	}
+	const idsA = new Set(await knownRowIds(SESSION));
+	const idsB = new Set(await knownRowIds(SWITCH_TARGET));
+	if (idsA.size === 0 || idsB.size === 0) {
+		throw new Error(
+			`a seeded conversation returned no durable rows, so the stale-content classifier would have nothing to judge against: ${JSON.stringify({ session: SESSION, rowsA: idsA.size, target: SWITCH_TARGET, rowsB: idsB.size })}`,
+		);
+	}
+	const overlap = [...idsA].filter((id) => idsB.has(id));
+	if (overlap.length > 0) {
+		throw new Error(
+			`the two conversations' row sets are not disjoint, so a frame's first row cannot identify it: ${JSON.stringify({ overlap: overlap.slice(0, 4) })}`,
+		);
+	}
+
+	/*
+	 * The per-frame recorder. A flash of stale content is a frame that IS a
+	 * picture of the wrong conversation, and only consecutive frames can see it -
+	 * a before/after probe pair reports the same settled state whether a wrong
+	 * frame painted or not.
+	 *
+	 * CONTINUOUS, not rAF-only (UX round 2, U1). The round-2 timeline had two
+	 * multi-frame gaps (~60ms and ~73ms) that landed exactly on the content
+	 * transitions, so a one- or two-frame stale flash would fall inside a gap and
+	 * the count would still read 0.
+	 *
+	 * The sampler is driven by THREE sources, and the third is the one that closes
+	 * the hole:
+	 *
+	 * - `requestAnimationFrame`, aligned to vsync;
+	 * - a 4ms `setInterval`, which fires in the idle gaps between frames;
+	 * - a `MutationObserver` over the whole document (childList, subtree,
+	 *   attributes, characterData) plus a wrap on `localStorage.setItem` - the
+	 *   store's own `activeSessionId` write.
+	 *
+	 * The observer is what makes the series COMPLETE for the hazard under test. A
+	 * stale frame (B's identity over A's rows) is a change to the painted DOM, and
+	 * a change to the painted DOM is a mutation - so a sample is recorded AT the
+	 * mutation, before the next paint. No DOM state can exist between two samples
+	 * without one of them being a sample of it, which is the property rAF and the
+	 * interval alone could not promise on a busy main thread (the round-2 gaps
+	 * were exactly the main thread not running them). The interval and rAF stay
+	 * because they also sample STABLE states, which the settle comparison wants.
+	 */
 	await evaluate(`(() => {
 		window.__loSwitchFrames = [];
-		const tick = () => {
+		let last = 0;
+		const record = (source) => {
+			const now = performance.now();
+			// A sub-frame source can fire more than once in a microtask turn; a
+			// duplicate stamp is one sample, not a gap, so it is dropped rather than
+			// recorded.
+			if (now - last < 0.5) return;
+			last = now;
 			const el = document.querySelector('[data-lo-canonical-transcript]');
 			let active = null;
 			try { active = JSON.parse(localStorage.getItem('canonical-sessions-storage') || '{}').state?.activeSessionId ?? null; } catch {}
 			const first = el?.querySelector('[data-record-id]');
 			window.__loSwitchFrames.push({
-				at: performance.now(),
+				at: now,
+				source,
 				activeSessionId: active,
 				rows: el ? el.querySelectorAll('[data-record-id]').length : 0,
 				scrollTop: el ? Math.round(el.scrollTop) : null,
 				firstRowId: first?.dataset.recordId ?? null,
 			});
-			requestAnimationFrame(tick);
 		};
+		window.__loSwitchMutations = 0;
+		const tick = () => { record('raf'); requestAnimationFrame(tick); };
+		window.__loSwitchInterval = setInterval(() => record('interval'), 4);
+		window.__loSwitchObserver = new MutationObserver(() => { window.__loSwitchMutations++; record('observer'); });
+		window.__loSwitchObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
 		requestAnimationFrame(tick);
 		return true;
 	})()`);
@@ -1893,39 +2040,124 @@ if (MODE === "switch") {
 	report.switch.settledA = settledA;
 	await shot("switch-03-back-in-a");
 
+	// Stop the interval and the observer now the run is over, so a leaked timer or
+	// observer cannot keep running after the JSON is read.
+	await evaluate(
+		"(() => { clearInterval(window.__loSwitchInterval); window.__loSwitchObserver?.disconnect(); return true; })()",
+	);
+
 	const frames = JSON.parse(
 		(await evaluate("JSON.stringify(window.__loSwitchFrames)")) ?? "[]",
 	);
+
 	/*
-	 * Classify each frame by WHOSE rows it is painting, independently of the id
-	 * the store believes is active. The two conversations are seeded separately,
-	 * so their row-id sets are disjoint; a frame whose active id is B but whose
-	 * first row id belongs to A's set is stale content on screen under B's
-	 * identity, which is the flash the finding asks about.
+	 * Classify each frame by WHOSE rows it is painting, against the two
+	 * conversations' KNOWN row sets (U2) rather than against the frames
+	 * themselves. A frame is STALE when the identity it carries and the rows it
+	 * paints DISAGREE in EITHER direction:
+	 *
+	 *   - active B over A's rows (the round-2 direction), and
+	 *   - active A over B's rows (the mirror, found by the round-3 sampler: the
+	 *     return switch paints B's rows under A's identity for one frame).
+	 *
+	 * Both are "stale content", and checking only one direction is the asymmetry
+	 * that let the second one through.
 	 */
-	const idsA = new Set(
-		frames
-			.filter((f) => f.activeSessionId === SESSION)
-			.map((f) => f.firstRowId),
+	const classify = (frame) => {
+		if (frame.firstRowId === null) return "empty";
+		if (idsA.has(frame.firstRowId)) return "A";
+		if (idsB.has(frame.firstRowId)) return "B";
+		return "unknown";
+	};
+	const identityOf = (frame) =>
+		frame.activeSessionId === SESSION
+			? "A"
+			: frame.activeSessionId === SWITCH_TARGET
+				? "B"
+				: "other";
+	const staleFrames = frames.filter((f) => {
+		const painted = classify(f);
+		const identity = identityOf(f);
+		// Only A and B rows can contradict an identity; empty and unknown cannot.
+		return (
+			(painted === "A" || painted === "B") &&
+			(identity === "A" || identity === "B") &&
+			painted !== identity
+		);
+	});
+
+	/*
+	 * The gap analysis (U1). Each consecutive pair is one step. The ROUND-2 answer
+	 * to U1 was to demand a wall-clock gap bound, but on this host the main thread
+	 * stalls for tens of ms at exactly the transitions, so a time bound is a
+	 * measurement of the machine, not of the sampler's coverage. The round-3 fix is
+	 * structural: the `MutationObserver` records a sample AT every DOM change, so a
+	 * frame of stale content - which IS a DOM change - cannot exist between two
+	 * samples. What this section therefore reports is (a) how many mutations the
+	 * observer saw, proving the recorder was driven by the DOM and not only by the
+	 * clock, and (b) the wall-clock gaps, recorded rather than asserted, so a
+	 * reader can see where the main thread stalled AND that the observer covered
+	 * it. Both facts are in the JSON beside the frames' own story.
+	 *
+	 * The stale count below is the DISCRIMINATING reading, and it is read against
+	 * the conversations' known rows: a stale frame is one whose identity and whose
+	 * painted rows disagree. The round-2 zero could not rise because `idsA` was
+	 * built from the frames themselves; this count can.
+	 */
+	const MAX_FRAME_GAP_MS = 34;
+	const steps = [];
+	for (let i = 1; i < frames.length; i++) {
+		const prev = frames[i - 1];
+		const next = frames[i];
+		const changed =
+			prev.activeSessionId !== next.activeSessionId ||
+			prev.rows !== next.rows ||
+			prev.firstRowId !== next.firstRowId;
+		steps.push({
+			fromIndex: i - 1,
+			toIndex: i,
+			gapMs: Number((next.at - prev.at).toFixed(1)),
+			contentChanged: changed,
+			from: {
+				activeSessionId: prev.activeSessionId,
+				rows: prev.rows,
+				firstRowId: prev.firstRowId,
+			},
+			to: {
+				activeSessionId: next.activeSessionId,
+				rows: next.rows,
+				firstRowId: next.firstRowId,
+			},
+		});
+	}
+	const gaps = steps.map((s) => s.gapMs);
+	const maxGapMs = gaps.length > 0 ? Math.max(...gaps) : null;
+	const transitionGaps = steps.filter(
+		(s) => s.contentChanged && s.gapMs > MAX_FRAME_GAP_MS,
 	);
-	const idsB = new Set(
-		frames
-			.filter((f) => f.activeSessionId === SWITCH_TARGET)
-			.map((f) => f.firstRowId),
-	);
-	const staleFrames = frames.filter(
-		(f) =>
-			f.firstRowId !== null &&
-			f.activeSessionId === SWITCH_TARGET &&
-			idsA.has(f.firstRowId) &&
-			!idsB.has(f.firstRowId),
+	const mutationsObserved = Number(
+		(await evaluate("window.__loSwitchMutations")) ?? 0,
 	);
 	report.switch.frames = {
 		total: frames.length,
 		distinctActiveIds: [...new Set(frames.map((f) => f.activeSessionId))],
 		staleContentFrames: staleFrames.length,
 		staleContentFirstFrame: staleFrames[0]?.at ?? null,
+		classifier: {
+			sessionA: SESSION,
+			sessionB: SWITCH_TARGET,
+			rowsA: idsA.size,
+			rowsB: idsB.size,
+			scrolledTopRowId: scrolledA.firstRowId,
+			scrolledTopRowIsInA: scrolledA.firstRowId
+				? idsA.has(scrolledA.firstRowId)
+				: null,
+		},
+		maxInterFrameGapMs: maxGapMs,
+		transitionGapMs: transitionGaps.map((s) => s.gapMs),
+		transitionGaps,
 		timeline: frames,
+		steps,
 	};
 
 	const ok =
@@ -1936,12 +2168,30 @@ if (MODE === "switch") {
 			`the switch did not move the active conversation as expected: ${JSON.stringify({ settledB: settledB.activeSessionId, settledA: settledA.activeSessionId, target: SWITCH_TARGET, session: SESSION })}`,
 		);
 	}
+	/*
+	 * The sampling assertion, in the round-3 shape. U1's hazard is a stale frame
+	 * hiding in a sampling gap, and the fix is that there IS no gap any more: the
+	 * `MutationObserver` records a sample at every DOM change, so a stale frame -
+	 * which is a DOM change - is always between two samples. The assertion is
+	 * therefore that the observer was actually driving the recorder
+	 * (mutationsObserved > 0 when the switch painted), not a wall-clock bound: a
+	 * time bound would fail on the host's own main-thread stalls, which the
+	 * observer exists precisely to make irrelevant. The wall-clock gaps remain in
+	 * the JSON as a record of where the thread stalled, not as a gate.
+	 */
+	if (mutationsObserved === 0) {
+		throw new Error(
+			"the MutationObserver recorded no mutations across a switch that repainted the document, so the sampler was not driven by the DOM and a stale frame could have gone unobserved",
+		);
+	}
 	report.switch.verdict = {
 		offsetCarriedFromA:
 			settledB.scrollTop !== 0 && Math.abs(settledB.scrollTop) > 1,
 		settledBScrollTop: settledB.scrollTop,
 		settledAScrollTop: settledA.scrollTop,
 		staleContentFrames: staleFrames.length,
+		mutationsObserved,
+		maxInterFrameGapMs: maxGapMs,
 	};
 	writeFileSync(
 		join(OUT, "switch-measurements.json"),
