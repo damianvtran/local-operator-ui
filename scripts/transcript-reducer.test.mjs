@@ -3885,3 +3885,110 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 		"a settled row is whole, and the gap marks nothing on it",
 	);
 });
+
+/* ---------------------------------------------------------------- */
+/* Harness chrome on a user row                                      */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The marker the harness stamps on a row it minted itself, read on BOTH desktop
+ * paths. `provider_payload.harness_injected` is `RENDERED_INJECTION_KEY` on the
+ * Python side (`local_operator/compaction/cutpoint.py`) and its docblock states the
+ * contract: a row carrying it was never typed by a person, so no human-facing
+ * surface may paint it as their words. The desktop was the surface that did.
+ *
+ * Both branches are asserted because they are separate code paths over separate
+ * payload shapes, and a session reopened from history reads its turns through the
+ * durable one: suppressing only the live path would leave the harness's prompt in
+ * the transcript of every reloaded conversation.
+ */
+const injected = (id, text) => ({
+	...user(id, text),
+	provider_payload: { harness_injected: true },
+});
+
+const durablePage = (entry) => ({
+	entries: [entry],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("a harness-minted row is not painted as the user's words, on the live path", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: injected("u9", "Continue toward: ship it") },
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"a row the harness minted is chrome, and chrome is not the person's own message",
+	);
+});
+
+test("...and on the durable path, where a reloaded session reads it back", () => {
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		durablePage({
+			id: "u9",
+			ts: 10,
+			type: "message",
+			payload: {
+				kind: "message",
+				...injected("u9", "Continue toward: ship it"),
+			},
+		}),
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("a row a person typed is untouched, marker or no marker", () => {
+	const typed = user("u1", "hi");
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: typed },
+		1,
+	);
+	assert.equal(live.records.length, 1);
+	assert.equal(live.records[0].text, "hi");
+	/*
+	 * AND THE MARKER'S OTHER VALUES ARE READ AS ABSENT. The producer writes a JSON
+	 * boolean, so `false`, a string and a missing field all mean "someone typed
+	 * this": the test fails safe in that direction on purpose, because hiding a row
+	 * a person really typed is a worse failure than showing one they did not.
+	 */
+	for (const marker of [false, "true", 0, null, undefined]) {
+		const each = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: {
+					...user("u2", "typed"),
+					provider_payload: { harness_injected: marker },
+				},
+			},
+			1,
+		);
+		assert.equal(
+			each.records.length,
+			1,
+			`harness_injected: ${String(marker)} must be read as not-injected`,
+		);
+	}
+	/*
+	 * A payload with the marker on SOMEBODY ELSE'S key is not a match either: this
+	 * is a field read, not a search of the row for the word.
+	 */
+	const elsewhere = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: {
+				...user("u3", "typed"),
+				provider_payload: { injected_by: "harness" },
+			},
+		},
+		1,
+	);
+	assert.equal(elsewhere.records.length, 1);
+});
