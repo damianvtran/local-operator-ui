@@ -173,6 +173,8 @@ const {
 	INTERPRETER_RESOLUTION_WORST_MS,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
+	READINESS_BUDGET_MS,
+	readinessPollDelayMs,
 } = bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
 const managers = [];
@@ -350,16 +352,44 @@ test("startup timeout and early exit clean actual children without claiming runn
 	assert.equal(early.process, null);
 	const m = await manager("unready");
 	// Keep real requests and children, but accelerate only the readiness polling
-	// sleep in this module; signal grace is separately exercised above.
+	// sleeps in this module (every rung `readinessPollDelayMs` can return);
+	// signal grace is separately exercised above.
+	const rungs = new Set([100, 250, 1000]);
 	const original = globalThis.setTimeout;
 	globalThis.setTimeout = (fn, ms, ...args) =>
-		original(fn, ms === 1000 ? 5 : ms, ...args);
+		original(fn, rungs.has(ms) ? 1 : ms, ...args);
 	try {
 		assert.equal(await m.start(), false);
 		assert.equal(m.process, null);
 	} finally {
 		globalThis.setTimeout = original;
 	}
+});
+
+test("readiness polls fast while a start is young, then backs off to the flat second", () => {
+	/*
+	 * Measured (see `readinessPollDelayMs`): an owned serve answers 1.5-2.2 s after
+	 * spawn, and a flat 1 s poll reported it 310-772 ms late. The rungs are pinned
+	 * here, and so is the invariant the quit failsafe depends on: no wait exceeds
+	 * `READINESS_POLL_INTERVAL_MS`, the term it adds up.
+	 */
+	assert.equal(readinessPollDelayMs(0), 100);
+	assert.equal(readinessPollDelayMs(4_999), 100);
+	assert.equal(readinessPollDelayMs(5_000), 250);
+	assert.equal(readinessPollDelayMs(9_999), 250);
+	assert.equal(readinessPollDelayMs(10_000), READINESS_POLL_INTERVAL_MS);
+	let waited = 0;
+	let attempts = 1;
+	while (waited < READINESS_BUDGET_MS) {
+		const delay = readinessPollDelayMs(waited);
+		assert.ok(delay <= READINESS_POLL_INTERVAL_MS);
+		waited += delay;
+		attempts += 1;
+	}
+	/* Same 30 s envelope as the old 30 x 1 s loop; more attempts inside it. */
+	assert.equal(READINESS_BUDGET_MS, 30_000);
+	assert.equal(waited, 30_000);
+	assert.equal(attempts, 91);
 });
 
 test("concurrent restarts share cleanup and replacement; final quit wins", async () => {
