@@ -72,3 +72,71 @@ export function useConsentAttention(): string | null {
 		consentAttentionSnapshot,
 	);
 }
+
+/** One conversation, as much of it as a landing decision needs. */
+export interface NamedConversation {
+	session_id: string;
+}
+
+/**
+ * Where a banner click should land, from the requester it carried.
+ *
+ * WHY THE ASKING CONVERSATION WINS WHEN IT IS KNOWN (operator ask, 2026-09-23,
+ * reversing the decision recorded at design 7.3): the click's promise is "show me
+ * the request you told me about", and the conversation-scoped pane is the surface
+ * that shows it beside the work it belongs to. The earlier ruling rejected that
+ * because a click must work "from anywhere without knowing which conversation is
+ * open" — and it does: nothing here reads the currently open conversation, so the
+ * target is the same on every route. What the ruling was right about is the
+ * FALLBACK, which is exactly what an unattributed request gets: the browser route,
+ * the one surface that shows a request no conversation owns.
+ *
+ * MEMBERSHIP, NOT A TITLE LOOKUP: the question is whether the app can SHOW that
+ * conversation, and a conversation whose title has not landed yet is still one the
+ * sidebar lists. The list handed in is the same one the sidebar and the consent
+ * card read, so a click cannot land on a conversation the card would have called
+ * unattributed — and a subagent's own session, which is a valid requester but is
+ * not a conversation in that list, falls back rather than opening a conversation
+ * that does not exist.
+ *
+ * PURE AND OUT OF THE SHELL so the rule can be asserted without a window: the
+ * shell's job is the navigation, not the arithmetic (the same split
+ * `browser-view-policy` and `new-chat-shortcut` already use).
+ */
+export function consentClickTarget(
+	requesterSessionId: string | null,
+	sessions: ReadonlyArray<NamedConversation>,
+): { kind: "conversation"; sessionId: string } | { kind: "browser" } {
+	if (requesterSessionId === null) return { kind: "browser" };
+	const known = sessions.some((row) => row.session_id === requesterSessionId);
+	return known
+		? { kind: "conversation", sessionId: requesterSessionId }
+		: { kind: "browser" };
+}
+
+/**
+ * Whether a surface may FORGET which request a banner click named.
+ *
+ * The memory exists so a click can land on the request it names, and it has to be
+ * dropped once that request is genuinely gone — otherwise a later arrival inherits
+ * an answer given to an earlier one (review round 1, R8). What it must NOT do is
+ * treat "I have not read the queue yet" as "that request is gone", which is what
+ * the first version did: the click arrives on a route where the surface is not
+ * mounted, the shell navigates, the surface mounts with `state === null`, its
+ * pending list is empty, and the effect dropped the attention before the read that
+ * would have shown it landed. `landed` is that distinction, and it is passed in
+ * rather than inferred because only the caller knows whether it holds a projection.
+ *
+ * `named` is the entry the surface found in the list it is showing, in scope: an
+ * attention whose entry is out of scope here is one this surface cannot show, so
+ * clearing it is the honest answer — the surface that CAN show it is a navigation
+ * away.
+ */
+export function shouldForgetConsentAttention(
+	attention: string | null,
+	named: unknown,
+	landed: boolean,
+): boolean {
+	if (attention === null || !landed) return false;
+	return named === undefined || named === null;
+}

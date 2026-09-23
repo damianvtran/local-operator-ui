@@ -2859,6 +2859,10 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// A consent banner's click comes forward through the app's own raise policy,
+					// and this is where its one line goes — the same logger every other raise
+					// reports to, so `trigger=banner-click` is greppable beside them.
+					reportRaise,
 					// The console's completion banner is raised through this app's ONE
 					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
 					// the window state, the raise policy and the click path). It is still the

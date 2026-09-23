@@ -16,7 +16,10 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { noteConsentAttention } from "@shared/browser-consent-attention";
+import {
+	consentClickTarget,
+	noteConsentAttention,
+} from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
@@ -212,6 +215,12 @@ const App: FC = () => {
 	const setConsolePaneOpen = useUiPreferencesStore(
 		(state) => state.setConsolePaneOpen,
 	);
+	/* The browser pane's slot claim, the same shape as the console's above and for the
+	 * same reason: a consent banner's click lands the conversation that asked AND the
+	 * pane whose tray shows the request. */
+	const setBrowserPaneOpen = useUiPreferencesStore(
+		(state) => state.setBrowserPaneOpen,
+	);
 	const setConsoleActiveSurface = useUiPreferencesStore(
 		(state) => state.setConsoleActiveSurface,
 	);
@@ -303,19 +312,45 @@ const App: FC = () => {
 	// click has to reach them wherever they are — and the browser surface's own
 	// subscriber is unmounted on every other route, which is precisely the case the
 	// banner exists for (review round 1, R8). The shell therefore owns the two halves
-	// that only the shell can do: remember which request was named, and bring the
-	// browser route forward.
+	// that only the shell can do: remember which request was named, and land the user
+	// on it.
+	//
+	// WHERE IT LANDS is `consentClickTarget`'s rule and not this effect's (see that
+	// function: the asking conversation when it is one the app can show, the browser
+	// route otherwise), so the shell does the two things only it can — remember which
+	// request was named, and navigate.
+	//
+	// The pane and not just the conversation: the named request has to be VISIBLE
+	// when the window comes up, and the pane's tray is the surface that shows it
+	// (`browser-surface.tsx` selects the named entry). `setActiveSession` is the same
+	// one call the notification path makes, for the same reason: the store's own paint
+	// cache and the stream's snapshot answer the questions a validating round trip
+	// would, and a conversation that turns out not to exist lands on the transcript's
+	// named state.
 	//
 	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
 	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
-	// module that decides whether a window comes forward (design 11.4).
+	// module that decides whether a window comes forward (design 11.4). The raise for
+	// this click happens in main, where the click actually arrives.
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
+			// Read through `getState()` rather than a selector: this listener must not be
+			// re-registered every time the session list changes.
+			const target = consentClickTarget(
+				payload.requesterSessionId,
+				useCanonicalSessionsStore.getState().sessions,
+			);
 			noteConsentAttention(payload.entryId);
-			navigate("/browser");
+			if (target.kind === "browser") {
+				navigate("/browser");
+				return;
+			}
+			setActiveSession(target.sessionId);
+			setBrowserPaneOpen(true);
+			navigate("/chat");
 		});
 		return () => unsubscribe?.();
-	}, [navigate]);
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other

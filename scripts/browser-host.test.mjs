@@ -53,6 +53,10 @@ const bundle = await build({
 			// cap moves, and reads green while it does.
 			'export * from "./src/main/browser/vendor/driver/access-queue";',
 			'export * from "./src/main/browser/consent-notifier";',
+			// What a banner click DOES, on the wiring's own side of it: the payload it
+			// sends and the raise it makes, in order. Its own module because no automated
+			// run can produce a native click (`consent-click.ts` says why).
+			'export * from "./src/main/browser/consent-click";',
 			// The banner class itself, reached through the alias below, so the tests can
 			// see what the DEFAULT factory raised without constructing one of their own.
 			'export { Notification as ElectronNotification } from "electron";',
@@ -124,6 +128,7 @@ const {
 	ACCESS_REQUEST_TTL_MS,
 	ConsentNotifier,
 	consentBody,
+	consentClickHandler,
 	ElectronNotification,
 	ipcMain,
 	registerBrowserIpc,
@@ -1327,6 +1332,10 @@ test("one banner per count change, not one per pending request", () => {
 		Array.from({ length: count }, (_, index) => ({
 			entryId: `entry-${index}`,
 			origin: `https://origin-${index}.example`,
+			// The asker's identity string, which every real entry carries
+			// (`approvals.pendingEntries()` is passed straight in by the host) and which
+			// the click forwards so the renderer can land on the right conversation.
+			requester: `session:talker-${index}`,
 		}));
 	notifier.announce(pending(0));
 	assert.equal(raised.length, 0, "nothing pending, nothing to say");
@@ -1354,12 +1363,17 @@ test("one banner per count change, not one per pending request", () => {
 	assert.equal(raised.length, 3);
 });
 
-test("the click on a banner names the OLDEST live request", () => {
+test("the click on a banner names the OLDEST live request, and who asked for it", () => {
+	// BOTH HALVES MATTER (operator ask, 2026-09-23). The entry id is which request the
+	// click means; the requester is which conversation it belongs to, and it is what
+	// lets the landing be the asking conversation rather than the queue. It must be the
+	// OLDEST entry's requester - the same entry the tray selects - and not simply the
+	// first one the loop touched.
 	const attended = [];
 	let click = null;
 	const notifier = new ConsentNotifier({
 		show: "focus",
-		onAttention: (entryId) => attended.push(entryId),
+		onAttention: (entryId, requester) => attended.push([entryId, requester]),
 		createNotification: () => ({
 			on: (event, listener) => {
 				if (event === "click") click = listener;
@@ -1368,11 +1382,125 @@ test("the click on a banner names the OLDEST live request", () => {
 		}),
 	});
 	notifier.announce([
-		{ entryId: "oldest", origin: "https://one.example" },
-		{ entryId: "newer", origin: "https://two.example" },
+		{
+			entryId: "oldest",
+			origin: "https://one.example",
+			requester: "session:oldest-talker",
+		},
+		{
+			entryId: "newer",
+			origin: "https://two.example",
+			requester: "session:newer-talker",
+		},
 	]);
 	click?.();
-	assert.deepEqual(attended, ["oldest"]);
+	assert.deepEqual(attended, [["oldest", "session:oldest-talker"]]);
+});
+
+/**
+ * A window as far as a raise and a channel-send are concerned: it records BOTH in
+ * ONE log, because the ORDER is half of what the handler promises and two separate
+ * arrays could not show it.
+ */
+function recordingWindow({ minimized = false } = {}) {
+	const calls = [];
+	return {
+		calls,
+		webContents: {
+			send: (channel, payload) => calls.push(["send", channel, payload]),
+		},
+		show: () => calls.push(["show"]),
+		showInactive: () => calls.push(["showInactive"]),
+		focus: () => calls.push(["focus"]),
+		isMinimized: () => minimized,
+		restore: () => calls.push(["restore"]),
+	};
+}
+
+test("a consent click names the request, then comes forward through the raise policy", () => {
+	// THE OPERATOR'S REPORT (2026-09-23): "the click does nothing and they must click
+	// the tab by hand". The click only ever told the renderer to navigate, behind
+	// whatever the operator was looking at - which is the state the banner exists for.
+	// The window must come forward, and through `window-raise.ts` (this handler calls
+	// no show/showInactive/focus itself; `scripts/window-mode.test.mjs` is what scans
+	// for that), so the ONE line that answers "who took my focus" names this act.
+	for (const [show, expected] of [
+		["focus", ["show", "focus"]],
+		["inactive", ["showInactive"]],
+		["never", []],
+	]) {
+		const window = recordingWindow();
+		const reported = [];
+		consentClickHandler({
+			window,
+			show,
+			report: (line) => reported.push(line),
+		})("entry-1", "session:2d5ad5da0025");
+
+		const kinds = window.calls.map(([kind]) => kind);
+		assert.deepEqual(
+			window.calls[0],
+			[
+				"send",
+				"browser-consent-attention",
+				{ entryId: "entry-1", requesterSessionId: "2d5ad5da0025" },
+			],
+			`the payload is sent FIRST and carries the asking conversation (plan ${show})`,
+		);
+		assert.deepEqual(
+			kinds.slice(1),
+			expected,
+			`a ${show} plan comes forward this far and no further`,
+		);
+		// A `never` run raises nothing AND reports nothing, which is the promise that
+		// keeps a headless run's log silent.
+		assert.equal(
+			reported.length,
+			show === "never" ? 0 : 1,
+			`a ${show} plan reports ${show === "never" ? "nothing" : "one line"}`,
+		);
+		if (show !== "never") {
+			assert.match(
+				reported[0],
+				/^trigger=banner-click mode=.* requested=/,
+				"the line names the act, so the next caret loss with a banner in the log is attributable",
+			);
+		}
+	}
+});
+
+test("a requester that names no conversation arrives as null, so the click falls back", () => {
+	// The landing side is the renderer's (`consentClickTarget`), and it can only make
+	// that decision from what it is handed: a `call:`/request-id requester is not a
+	// conversation and must reach the renderer as `null` rather than as a bare id the
+	// app would then look up as a session (host.ts's `sessionRequesterOf`).
+	const window = recordingWindow();
+	consentClickHandler({ window, show: "focus" })("entry-1", "call:abc123");
+	assert.deepEqual(window.calls[0], [
+		"send",
+		"browser-consent-attention",
+		{ entryId: "entry-1", requesterSessionId: null },
+	]);
+});
+
+test("an inactive plan orders the window forward without un-minimising it", () => {
+	// The same rule `raiseWindow` states for every request: an `inactive` ask must not
+	// pull a window the operator put away back onto the screen. It is asserted here
+	// because this handler is a NEW caller of that policy and a new caller is where a
+	// policy gets re-decided by accident.
+	const window = recordingWindow({ minimized: true });
+	consentClickHandler({ window, show: "inactive" })("entry-1", "session:x");
+	assert.deepEqual(
+		window.calls,
+		[
+			[
+				"send",
+				"browser-consent-attention",
+				{ entryId: "entry-1", requesterSessionId: "x" },
+			],
+		],
+		"the send happens, and the minimised window is not restored or shown",
+	);
 });
 
 test("the default banner is Electron's own, with the shape the copy expects", () => {
@@ -1385,7 +1513,13 @@ test("the default banner is Electron's own, with the shape the copy expects", ()
 		show: "focus",
 		onAttention: (entryId) => attended.push(entryId),
 	});
-	notifier.announce([{ entryId: "oldest", origin: "https://one.example" }]);
+	notifier.announce([
+		{
+			entryId: "oldest",
+			origin: "https://one.example",
+			requester: "session:one",
+		},
+	]);
 	assert.deepEqual(ElectronNotification.raised, [
 		{
 			title: "Site approval needed",
@@ -1397,8 +1531,8 @@ test("the default banner is Electron's own, with the shape the copy expects", ()
 	// chrome is the primary channel.
 	ElectronNotification.supported = false;
 	notifier.announce([
-		{ entryId: "oldest", origin: "https://one.example" },
-		{ entryId: "newer", origin: "https://two.example" },
+		{ entryId: "oldest", origin: "https://one.example", requester: "a" },
+		{ entryId: "newer", origin: "https://two.example", requester: "b" },
 	]);
 	assert.equal(ElectronNotification.raised.length, 1);
 });
@@ -1413,7 +1547,9 @@ test("no banner is raised when the launch plan would not have focused the window
 			show: () => raised.push(options),
 		}),
 	});
-	notifier.announce([{ entryId: "a", origin: "https://one.example" }]);
+	notifier.announce([
+		{ entryId: "a", origin: "https://one.example", requester: "session:a" },
+	]);
 	assert.equal(
 		raised.length,
 		0,

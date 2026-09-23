@@ -71,7 +71,7 @@ const PROBE = `
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
@@ -106,6 +106,7 @@ const PROBE = `
 		paneApprovalHeaderLabel,
 		approvalRows,
 		approvalScopeLabel,
+		liveApprovalCount,
 		liveRequests,
 		originOfUrl,
 		reconcileResolved,
@@ -213,6 +214,7 @@ const {
 	paneApprovalHeaderLabel,
 	approvalRows,
 	approvalScopeLabel,
+	liveApprovalCount,
 	liveRequests,
 	originOfUrl,
 	reconcileResolved,
@@ -242,6 +244,8 @@ const {
 	useUiPreferencesStore,
 	noteConsentAttention,
 	clearConsentAttention,
+	consentClickTarget,
+	shouldForgetConsentAttention,
 	consentAttentionSnapshot,
 	subscribeConsentAttention,
 	MAX_RESTORED_TABS,
@@ -3222,5 +3226,117 @@ test("each host stamps its own dock tag, so a run can say which dock it drove", 
 		paneTags[0],
 		routeTags[0],
 		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
+	);
+});
+
+test("the app-wide count includes the requests no conversation owns, and drops the expired", () => {
+	// R1'S ARITHMETIC (operator ask, 2026-09-23), and the two ways a count derived from
+	// `pendingConsent.length` would be wrong:
+	//
+	//   - it would count an entry that ran out its ten minutes, because nothing in main
+	//     fires at expiry (`approval-queue-model.ts` says so at length);
+	//   - and it would MISS nothing, which is the point: an unattributed request is one
+	//     no conversation's badge can carry (`summariseConversations` drops
+	//     `requesterSessionId === null` by design), so if this count dropped it too the
+	//     rail would say the app is quiet while an agent sits blocked on a prompt.
+	const now = 2_000;
+	const requests = [
+		// Expired at `now`.
+		{ entryId: "expired", requesterSessionId: "alice", expiresAt: 1_000 },
+		// This conversation's, and a foreign conversation's: indistinguishable here, on
+		// purpose. The rail's question is "is anything waiting on me".
+		{ entryId: "mine", requesterSessionId: "alice", expiresAt: 9_000 },
+		{ entryId: "theirs", requesterSessionId: "bob", expiresAt: 9_000 },
+		// No attribution at all: a `call:`/request-id requester, or a subagent's own
+		// session, which is not a conversation the sidebar lists.
+		{ entryId: "unattributed", requesterSessionId: null, expiresAt: 9_000 },
+	];
+	assert.equal(
+		liveApprovalCount(requests, now),
+		3,
+		"every live request counts, and only the live ones do",
+	);
+	assert.equal(
+		liveApprovalCount(requests, 10_000),
+		0,
+		"past every TTL the rail draws no badge, off the renderer's own clock",
+	);
+	assert.equal(
+		liveApprovalCount([], now),
+		0,
+		"an empty projection is zero and not a badge",
+	);
+	// And the per-conversation map really cannot answer this question, which is why the
+	// count above is not derived from it: `alice` is one of the three, not the three.
+	assert.equal(
+		summariseConversations([], requests, now).get("alice")?.pendingApprovals,
+		1,
+		"the conversation's own count stays its own",
+	);
+});
+
+test("a banner click lands on the asking conversation, or on the browser route", () => {
+	// R3'S LANDING RULE (operator ask, 2026-09-23). The conversation is preferred
+	// because the pane's tray is the surface that shows the named request beside the
+	// work it belongs to; the browser route is the fallback for a request no
+	// conversation owns, and it is the SAME fallback as before this change.
+	const sessions = [
+		{ session_id: "2d5ad5da0025" },
+		{ session_id: "e059761608ae" },
+	];
+	assert.deepEqual(
+		consentClickTarget("2d5ad5da0025", sessions),
+		{ kind: "conversation", sessionId: "2d5ad5da0025" },
+		"a requester the app can show is opened, with the pane that shows its tray",
+	);
+	assert.deepEqual(
+		consentClickTarget(null, sessions),
+		{ kind: "browser" },
+		"an unattributed request owns no conversation, so it falls back",
+	);
+	assert.deepEqual(
+		consentClickTarget("c1d2e3f4a5b6", sessions),
+		{ kind: "browser" },
+		// A SUBAGENT's own session id is a valid requester and not a conversation: the
+		// backend gives a child its own id (`harness/subagent.py` builds `ToolContext`
+		// with `session_id=transcript.directory.name`), so this is the reachable case
+		// behind "the badge is sometimes missing" — nothing in the chrome can attribute
+		// that request to the conversation the operator is on, and the rail's count is
+		// where it is answered. Opening a conversation that does not exist would land on
+		// the transcript's missing-session notice, which is the worse fallback.
+		"a session the app does not list is not a conversation to open",
+	);
+	assert.deepEqual(
+		consentClickTarget("2d5ad5da0025", []),
+		{ kind: "browser" },
+		"a catalogue that has not loaded yet falls back rather than opening nothing",
+	);
+});
+
+test("an attention is dropped only once the surface has a projection to read", () => {
+	// THE HALF OF R8 THE ROUTE FIX DID NOT REACH. A banner click arrives on a route
+	// where the browser surface is not mounted; the shell navigates; the surface MOUNTS
+	// with no projection yet, so its pending list is empty and the first version of the
+	// effect read that as "the request is gone" and forgot it before the read landed.
+	// The click then selected the oldest row instead of the one it named.
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", undefined, false),
+		false,
+		"not knowing yet is not a reason to forget",
+	);
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", undefined, true),
+		true,
+		"once a projection has landed, an entry that is absent from the scope is gone",
+	);
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", { entryId: "entry-1" }, true),
+		false,
+		"and the entry it names is never dropped while it is still there",
+	);
+	assert.equal(
+		shouldForgetConsentAttention(null, undefined, true),
+		false,
+		"nothing to forget is not a reason to publish",
 	);
 });
