@@ -2432,6 +2432,15 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row", 1024, 400],
 	["chat-message-input--pending-send-payload", 1024, 400],
 	["chat-message-input--pending-send", 1024, 300],
+	/* AND THE SAME THREE AT THE COMPACT RUNG (design round 1, D3): this set carries
+	   a 440px column for its neighbours (`credential-masked-small-view`, the pill
+	   pair), and round 1's R6 argument was exactly the case where the arithmetic
+	   said the row was safe and only a frame settled it. Same heights as their
+	   full-width twins, so each pair can be laid on one another: 400 for the two
+	   that carry the tile, 300 for `pending-send`, which carries none. */
+	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
+	["chat-message-input--pending-send-payload-small-view", 440, 400],
+	["chat-message-input--pending-send-small-view", 440, 300],
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence

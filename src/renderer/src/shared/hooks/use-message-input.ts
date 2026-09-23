@@ -184,6 +184,12 @@ export type StagedPayload = {
  * Read at submit rather than subscribed to, because the question is "what did
  * THIS send carry" and the answer has to be frozen at the press: a chip the user
  * attaches while the request is in flight is their next payload, not this one.
+ *
+ * AND THE SNAPSHOT IS WHAT THE CLEAR USES, which is the other half of that
+ * sentence: `clearStagedPayload` removes exactly the ENTRIES in here - by id,
+ * through the store's own removers - so the chips a press froze are the blast
+ * radius of the clear and a file attached during the flight is outside it. The
+ * two halves cannot disagree, because one answer serves both questions.
  */
 export const stagedPayloadOf = (conversationId: string): StagedPayload => {
 	const row =
@@ -207,6 +213,24 @@ export const stagedPayloadOf = (conversationId: string): StagedPayload => {
  * one call that takes both, so no later edit can put the halves back on
  * different clocks.
  *
+ * CARRIES, ENTRY BY ENTRY, is the third thing this function is: the removal goes
+ * through the store's own `removeReply`/`removeAttachment` for the ids the press
+ * captured, NOT through `clearReplies`/`clearAttachments`.
+ *
+ * WHY THE ROW IS CLEARED BY IDENTITY WHILE THE TEXT IS CLEARED BY EQUALITY. The
+ * press->echo window is a LIVE window - the box stays typeable on purpose - so
+ * anything the user adds during it belongs to their next message. A whole-row
+ * clear took that too, silently: press with a file staged, attach a second one
+ * while the send is going out, and the echo wiped both (QA round 1, Q-2; UX
+ * round 1, U2 - "my words stayed, my file vanished"). The text half is guarded
+ * the other way (`clearSubmittedText` compares the whole box) because a box has
+ * ONE slot and there is no honest way to delete a prefix from it - the user's
+ * own typed words are not itemised. A row IS itemised, so the exact items are
+ * the honest unit here, and the two rules agree on the thing that matters: a
+ * clear never takes more than the send it belongs to. A chip the user REMOVED
+ * during the flight is simply absent from the row, and removing an absent id is
+ * a no-op.
+ *
  * CLEARING THE ROW EARLY IS SAFE FOR THE WIRE, and that is not obvious enough to
  * leave unsaid: the words and the reply prefix are assembled before the request
  * (`buildSendPayload`), and the images are encoded from the paths the caller
@@ -217,10 +241,15 @@ export const stagedPayloadOf = (conversationId: string): StagedPayload => {
  * echo's paint callback, and reads what reached the wire; `submit-latency.test.mjs`
  * carries the structural row for the same claim.
  */
-export const clearStagedPayload = (conversationId: string): void => {
+export const clearStagedPayload = (
+	conversationId: string,
+	staged: StagedPayload,
+): void => {
 	const store = useConversationInputStore.getState();
-	store.clearReplies(conversationId);
-	store.clearAttachments(conversationId);
+	for (const reply of staged.replies)
+		store.removeReply(conversationId, reply.id);
+	for (const attachment of staged.attachments)
+		store.removeAttachment(conversationId, attachment.id);
 };
 
 /**
@@ -256,6 +285,78 @@ export const restoreStagedPayload = (
 		staged.replies,
 	))
 		store.addReply(conversationId, reply);
+};
+
+/**
+ * THE COMPOSER'S FIVE SENTENCES, and which window each one is true in.
+ *
+ * Extracted from the band's JSX because their ORDER is the rule, not the
+ * strings: the chain was inline, so a term added at the wrong end of it looked
+ * exactly like a term added anywhere else. It was: `Sending your message` was
+ * written to say "this send is still going out" and put BELOW `Waiting for the
+ * agent`, and on the path the operator reported the two are true at once - the
+ * store's rung is up once the message request has been ISSUED
+ * (`admissionAttempted`, written before the echo and before the wire), so on a
+ * real send the box said the agent was answering while the request was still
+ * going out (agent review round 1, MAJOR-1; QA Q-1, which executed it and read
+ * `Waiting for the agent`).
+ *
+ * `sendingUnsettled` therefore sits ABOVE `awaitingReply`, and the two are not
+ * "consecutive halves" of one window but of ONE SEND at different moments: while
+ * the press has not settled, the honest sentence is that the message is on its
+ * way out; once it has settled and the agent is answering, that one takes over.
+ * "Further along wins" was the right principle - the earlier term was on the
+ * wrong side of it.
+ *
+ * WHAT FEEDS `sendingUnsettled` is deliberately NOT this composer's own state
+ * alone. `sendInFlight` is a `useState` in `useMessageInput`, so the New-chat
+ * identity flip - which REPLACES the panel mid-wait, as the operator's own
+ * screenshot shows - unmounts it with the composer that held it, and the
+ * replacement renders the idle invitation over a send it cannot see (MAJOR-1's
+ * second half). The pane knows instead: `chat-page`'s `admitting` is set for the
+ * whole of one send and cleared in that send's `finally`, it outlives the flip,
+ * and it belongs to the CONVERSATION the pane is showing rather than to whatever
+ * is mounted inside it - so another conversation's send cannot make this
+ * composer say this. The two are OR'd: the page's window is the one that spans
+ * the flip, and the hook's is the sub-tick before the page has entered `send`.
+ */
+export const COMPOSER_PLACEHOLDER = {
+	unavailable: "This conversation is gone",
+	busy: "Agent is busy",
+	answer: "Answer the question above",
+	sending: "Sending your message",
+	waiting: "Waiting for the agent",
+	idle: "Ask me for help",
+} as const;
+
+/**
+ * The one sentence the box's placeholder slot carries, first match wins.
+ *
+ * The READ of the order: a conversation this machine does not have outranks every
+ * other reading (`isInputDisabled` is true for one, so the gone-state sentence has
+ * to be asked first or a reader of a missing conversation is told `Agent is busy`
+ * about a turn nobody is running - design round 2, D3); then the box's own
+ * refusal; then a gate that is waiting to be answered; then THIS pane's send; then
+ * the agent; then the invitation.
+ */
+export const composerPlaceholder = (state: {
+	/** The conversation is not on this machine. */
+	unavailable: boolean;
+	/** `isLoading && currentJobId` - the box is refused, with its own sentence. */
+	inputDisabled: boolean;
+	/** A pending `ask` gate is waiting for an answer in this pane. */
+	awaitingAnswer: boolean;
+	/** A send this pane issued has not settled. */
+	sendingUnsettled: boolean;
+	/** A send has been issued and the agent has not painted anything yet. */
+	awaitingReply: boolean;
+}): string => {
+	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
+	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
+	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
+	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
+	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
+	return COMPOSER_PLACEHOLDER.idle;
 };
 
 /** The half of a refused payload a composer's own content kept out of the box. */
@@ -829,7 +930,7 @@ export const useMessageInput = ({
 			cleared = true;
 			if (initializedRef.current !== conversationId) return;
 			setInputValue((current) => clearSubmittedText(current, submitted));
-			if (conversationId) clearStagedPayload(conversationId);
+			if (conversationId && staged) clearStagedPayload(conversationId, staged);
 		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
