@@ -1059,9 +1059,27 @@ const shoot = async (cdp, path, state, theme) => {
  * that exist, and the click's own frame is `click → committed`.
  */
 const PHASES = [
+	/*
+	 * `null` - no sample - when no target read settled before paint, which is
+	 * every run on a head whose click spends no `sessions.get`, and a run on the
+	 * older head whose read was still in flight when the transcript painted (the
+	 * page counts those in `getInFlightAtPaint`, printed under the table). It
+	 * used to read the in-flight marker `0` as a settle time and print negative
+	 * medians.
+	 */
 	[
 		"click → sessions.get settled",
 		(r) => (r.getSettledAt === null ? null : r.getSettledAt - r.clickAt),
+	],
+	/*
+	 * When a send would be ADMITTED: the store's validation window for the target
+	 * closed. With the guard read on the click path this was the read's answer
+	 * (or the stream's live frame, whichever came first); without it, the
+	 * stream's snapshot - the frame that paints the messages.
+	 */
+	[
+		"click → composer sends",
+		(r) => (r.sendableAt === null ? null : r.sendableAt - r.clickAt),
 	],
 	[
 		"click → committed",
@@ -1599,6 +1617,8 @@ const main = async () => {
 			? round(numbers(cold, PHASES.at(-1)[1])[0] ?? null)
 			: null,
 		sessionsGetPerSwitch: steady.map((run) => run.targetRequests),
+		sessionsGetInFlightAtPaint: steady.filter((run) => run.getInFlightAtPaint)
+			.length,
 		requestSequence: steady.at(-1)?.requests ?? [],
 		transcripts: runs.map((run) => ({
 			label: run.label,
@@ -1612,9 +1632,7 @@ const main = async () => {
 		console.log(JSON.stringify({ summary, runs }, null, 2));
 	} else {
 		console.log(`switch latency — ${url}`);
-		console.log(
-			`configured owner latencies (ms): ${JSON.stringify(latency)}  ·  step function (sessions.get) included in every switch`,
-		);
+		console.log(`configured owner latencies (ms): ${JSON.stringify(latency)}`);
 		console.log(
 			`load average ${loads.join(" ")} on ${summary.cores} cores  ·  ${summary.samples} timed switches (median), first switch after boot ${summary.firstSwitch} ms`,
 		);
@@ -1629,6 +1647,9 @@ const main = async () => {
 		console.log("");
 		console.log(
 			`sessions.get for the target, per switch: ${summary.sessionsGetPerSwitch.join(", ")}`,
+		);
+		console.log(
+			`sessions.get still in flight when the transcript painted: ${summary.sessionsGetInFlightAtPaint} of ${summary.samples}`,
 		);
 		console.log(
 			`requests issued by the last switch: ${summary.requestSequence.join(", ")}`,

@@ -922,44 +922,38 @@ test("a page that CARRIES the id back IS the resurrection that settles the tombs
 	);
 });
 
-test("a guard read that answers not-found lands the pane on the notice instead of rolling back (QA round 1, Q1)", async () => {
+test("a stream that answers not-found lands the pane on the notice instead of rolling back (QA round 1, Q1)", async () => {
 	const DEAD = "a1b2c3d4e5f6";
 	await seed([{ session_id: OTHER, title: "Kept", archived: false }]);
 	/*
-	 * A DEEP LINK TO A DELETED CONVERSATION, cold — the reload leg QA measured. The
-	 * guard read is the only thing that speaks, and it answers 404: the conversation
-	 * is GONE rather than unreadable, so the rollback has no honest target (on a cold
-	 * start there is no previous session at all, which is how the route ended up
-	 * rendering the "Start a chat" landing on a URL naming a conversation).
+	 * A DEEP LINK TO A DELETED CONVERSATION, cold - the reload leg QA measured. The
+	 * click no longer spends a `sessions.get` guard read (it was a second facade
+	 * acquire racing the stream for the same locks); the conversation's own stream
+	 * is what speaks, and its 404 reaches the store through `confirmSessionMissing`
+	 * (`chat-page`). The conversation is GONE rather than unreadable, so the view
+	 * stays on the target and the id is a tombstone - which is what the pane reads
+	 * to reach the notice, on a cold start and across a reload.
 	 */
-	serve((request) =>
-		request.op === "sessions.get"
-			? { __failure: { status: 404, message: "no such session" } }
-			: page([{ session_id: OTHER, title: "Kept", archived: false }]),
-	);
+	serve(page([{ session_id: OTHER, title: "Kept", archived: false }]));
 	const landed = await store.getState().openSession(DEAD);
 	assert.equal(landed, true, "the switch stands: the view is on the target");
+	store.getState().confirmSessionMissing(DEAD);
 	assert.notEqual(
 		store.getState().forgotten[DEAD],
 		undefined,
-		"a 404 from the guard read is a tombstone, which is what the pane reads to reach the notice",
+		"a 404 from the stream is a tombstone, which is what the pane reads to reach the notice",
 	);
 	assert.equal(store.getState().activeSessionId, DEAD);
-	assert.equal(store.getState().navigationError, null);
+	assert.equal(store.getState().validatingSessionId, null);
 	/*
-	 * AND A TRANSIENT FAILURE STILL ROLLS BACK. "Could not be read" is a state the
-	 * conversation the user came from survives; only "is gone" keeps the target.
+	 * AND NOTHING ELSE TOMBSTONES. A transient stream failure is the pane's own
+	 * `reconnecting`/`unavailable` state, never a claim that the conversation is
+	 * gone: with no 404 reported the id is not forgotten and the view stays put.
 	 */
 	store.setState({ activeSessionId: OTHER, forgotten: {} });
-	serve((request) =>
-		request.op === "sessions.get"
-			? { __failure: { status: 503, message: "the backend is not answering" } }
-			: page([{ session_id: OTHER, title: "Kept", archived: false }]),
-	);
 	await store.getState().openSession(DEAD);
-	assert.equal(store.getState().activeSessionId, OTHER);
+	assert.equal(store.getState().activeSessionId, DEAD);
 	assert.equal(store.getState().forgotten[DEAD], undefined);
-	assert.notEqual(store.getState().navigationError, null);
 });
 
 test("a search answer does not settle a tombstone", async () => {

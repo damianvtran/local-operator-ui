@@ -1549,39 +1549,42 @@ function SessionPanel({
 			});
 	}, [attachmentResolved, draftIdentity]);
 	/*
-	 * The read window, and the notice that explains it.
+	 * The validation window, and the notice that explains it.
 	 *
-	 * `validatingSessionId` is the one round trip after a switch during which the
+	 * `validatingSessionId` is the stretch after a switch during which the
 	 * target's existence is unconfirmed. The STORE owns the window and refuses a
-	 * send inside it; these two effects are the stream's half of that contract,
-	 * because the store cannot see the stream.
+	 * send inside it; these effects are the stream's half of that contract,
+	 * because the store cannot see the stream - and since the click no longer
+	 * issues a `sessions.get` guard read (see `openSession`), they are the ONLY
+	 * bounds it has.
 	 *
-	 * - `confirmSessionLive` closes the window on a live frame from the session's
-	 *   own stream. That is the EARLIER bound: it opens the gate on the first
-	 *   proof rather than at the read's own end. The read is bounded too -
-	 *   `desktopResult` runs every desktop control under `withDeadline` at the
-	 *   op's own derived deadline (`desktopRequestTimeoutMs` - 25 s for a
-	 *   control, 95 s for a ledger read), so a read that never answers ends in
-	 *   the rollback rather than in a panel that refuses sends forever - but a
-	 *   whole budget of a panel that refuses every send is not a bound a user
-	 *   can use, so the live term is kept for what it adds, not because the
-	 *   alternative is unbounded.
+	 * - `confirmSessionLive` closes it on the stream's first snapshot, which is
+	 *   the frame that paints the messages: the transcript and a composer that
+	 *   sends arrive together, from one frame.
+	 * - `confirmSessionMissing` closes it on the stream's 404, tombstoning the id
+	 *   so the pane lands on the missing-session notice.
+	 * - `windowOpen` is in the deps so a window opened over a stream that is
+	 *   ALREADY live (the active row clicked while a draft is staged: the panel is
+	 *   keyed on the session, so `canonical.status` does not change) is closed in
+	 *   the same commit rather than left open with nothing to close it.
 	 * - the refused send's notice retires on that same observable condition, the
 	 *   way `attachmentResolved` retires its own: a sentence explaining a refusal
 	 *   must not outlive the cause it names.
 	 */
-	useEffect(() => {
-		if (!sessionId || canonical.status !== "live") return;
-		useCanonicalSessionsStore.getState().confirmSessionLive(sessionId);
-	}, [sessionId, canonical.status]);
-	const readWindowOpen = useCanonicalSessionsStore((state) =>
+	const windowOpen = useCanonicalSessionsStore((state) =>
 		isSessionUnvalidated(state.validatingSessionId, sessionId),
 	);
 	useEffect(() => {
-		if (readWindowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
+		if (!sessionId || !windowOpen) return;
+		const store = useCanonicalSessionsStore.getState();
+		if (canonical.status === "live") store.confirmSessionLive(sessionId);
+		else if (canonical.missing) store.confirmSessionMissing(sessionId);
+	}, [sessionId, windowOpen, canonical.status, canonical.missing]);
+	useEffect(() => {
+		if (windowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
 		setSendError(null);
 		setSendErrorCode(undefined);
-	}, [readWindowOpen, sendErrorCode]);
+	}, [windowOpen, sendErrorCode]);
 	/*
 	 * The claim, and whether the user can currently see what it holds.
 	 *
@@ -2172,17 +2175,6 @@ export function ChatPage() {
 		draftKey ? state.drafts[draftKey] : undefined,
 	);
 	const error = useCanonicalSessionsStore((state) => state.error);
-	/*
-	 * The navigation failure is read here and not from `error`, which is the
-	 * CATALOGUE's health: the catalogue refreshes on its own timer, and
-	 * `fetchSessions` clears that field when it starts, so the rollback's own
-	 * refetch used to erase the switch's failure sentence 4.5-8.1 ms after the
-	 * rollback wrote it. The user's own navigation failing is not the list's
-	 * health, and it is the sentence that must survive long enough to read.
-	 */
-	const navigationError = useCanonicalSessionsStore(
-		(state) => state.navigationError,
-	);
 	const [routeError, setRouteError] = useState<string | null>(null);
 	useEffect(() => {
 		if (!enabled || !routeIdentity) return;
@@ -2268,21 +2260,17 @@ export function ChatPage() {
 			content={
 				<div className={cn("flex h-full min-h-0 flex-col")}>
 					{/*
-					 * ONE sentence, and it is the user's navigation that owns it. The
-					 * catalogue's own failure is rendered where the remedy is (the
-					 * sidebar's `Retry refresh`, which refreshes the LIST); a switch
-					 * that failed has no list to refresh, so it is stated here, above the
-					 * panel it failed to open, and holds until the user navigates again.
-					 * It is deliberately NOT also painted in the sidebar: the same
-					 * sentence in two places under a remedy that fixes neither is what
-					 * made a deep link to a deleted chat read as two different failures.
+					 * ONE sentence above the panel: a legacy route that names no
+					 * conversation, or a store failure the composer does not own. A
+					 * switch no longer has a failure of its own to state here - the
+					 * target pane speaks for its own stream (see `openSession`).
 					 */}
-					{(routeError || navigationError || error) && (
+					{(routeError || error) && (
 						<p
 							role="alert"
 							className={cn("px-4 py-2 text-body-sm text-danger")}
 						>
-							{routeError || navigationError || error}
+							{routeError || error}
 						</p>
 					)}
 					{!enabled ? (

@@ -150,8 +150,21 @@ type Run = {
 	target: string;
 	/** Click dispatched. */
 	clickAt: number;
-	/** The `sessions.get` for the target settled. */
+	/**
+	 * The `sessions.get` for the target settled, or `null` when none settled
+	 * before the run ended - either none was issued (the click path spends none
+	 * since the stream became the validation) or it was still IN FLIGHT at paint,
+	 * which `getInFlightAtPaint` says.
+	 */
 	getSettledAt: number | null;
+	/** A target `sessions.get` was still unanswered when the run ended. */
+	getInFlightAtPaint: boolean;
+	/**
+	 * The composer would ADMIT a send to the target: the view is on it and the
+	 * store's validation window for it is closed (`validatingSessionId`), which is
+	 * the gate `admitChatDraft` refuses on.
+	 */
+	sendableAt: number | null;
 	/** The stream subscription for the target opened, and snapshotted. */
 	streamSubscribedAt: number | null;
 	streamOpenedAt: number | null;
@@ -972,6 +985,8 @@ const api: Probe = {
 				target: id,
 				clickAt: performance.now(),
 				getSettledAt: null,
+				getInFlightAtPaint: false,
+				sendableAt: null,
 				streamSubscribedAt: null,
 				streamOpenedAt: null,
 				streamSnapshotAt: null,
@@ -992,6 +1007,13 @@ const api: Probe = {
 					previous.activeSessionId !== id
 				)
 					run.committedAt = performance.now();
+				if (
+					run.committedAt !== null &&
+					run.sendableAt === null &&
+					state.activeSessionId === id &&
+					state.validatingSessionId !== id
+				)
+					run.sendableAt = performance.now();
 			});
 			// The transcript's own commit mark, from the shipped component
 			// (`useLayoutEffect` in canonical-transcript.tsx) rather than a
@@ -1032,7 +1054,9 @@ const api: Probe = {
 					if (transcriptHasContent()) run.transcriptPaintedAt = time;
 				}
 				const done =
-					run.committedAt !== null && run.transcriptPaintedAt !== null;
+					run.committedAt !== null &&
+					run.transcriptPaintedAt !== null &&
+					run.sendableAt !== null;
 				if (done || time > deadline) {
 					finish(!done);
 					return;
@@ -1049,7 +1073,16 @@ const api: Probe = {
 					run.requests.push(request.op);
 					if (request.op === "sessions.get" && request.sessionId === id) {
 						run.targetRequests += 1;
-						run.getSettledAt ??= request.settledAt;
+						/*
+						 * `settledAt` is 0 while a request is IN FLIGHT (the log records it
+						 * at the start; see `BridgeLog`), and this run ends at paint - so a
+						 * read still unanswered then used to be taken as settled at t=0 and
+						 * reported as `0 - clickAt`, the negative "click -> sessions.get
+						 * settled" medians (-1432 ms at 200 steps) in the desktop load
+						 * diagnosis. An unsettled read is reported as what it is instead.
+						 */
+						if (request.settledAt > 0) run.getSettledAt ??= request.settledAt;
+						else run.getInFlightAtPaint = true;
 					}
 				}
 				const subscription = bridge.log.streams

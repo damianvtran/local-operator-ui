@@ -63,6 +63,7 @@ import type {
 	CanonicalModel,
 	DesktopHistoryPage,
 	DesktopSessionFrame,
+	DesktopSnapshot,
 } from "../../../../shared/desktop-session-contract";
 import {
 	HISTORY_UNREADABLE,
@@ -740,6 +741,42 @@ function paintSeed(sessionId: string): {
 	};
 }
 
+/**
+ * Whether a snapshot's page is, BY CONTRACT, the journal's durable tail - so a
+ * `/history` read on the same open would fetch the same rows a second time.
+ *
+ * THE DUPLICATE (backend load diagnosis, B-F9). Every open paid two copies of one
+ * 100-row page: the snapshot's own (~237 KB) and the `/history` reconcile that
+ * `needsReconcile` fired right after it (~229 KB), serially, on the path to the
+ * first paint. The reconcile exists for pages that can stop short of the tail,
+ * and before `local-operator` b25ee8b4 (v0.54.39) that was every page: the
+ * snapshot was cut at the owner's frontend `history_cursor`, a refresh
+ * watermark that lags durable rows (the steer-drain case), so only a read the
+ * renderer issued itself could find what the cut dropped. That is what
+ * `pageIsPaintedTail`'s cursor test below still guards against.
+ *
+ * Since that change the page is read from the journal's tail, "the same
+ * unbounded read `/history` serves" (`docs/DESKTOP_API.md`, the snapshot
+ * section), and it can no longer be short of the tail. The renderer cannot ask
+ * the backend's version, so it asks the FRAME: `cold_reason` arrived in
+ * 93542f91 (v0.56.6), which descends from b25ee8b4, so a snapshot that carries
+ * the token was necessarily built by a backend whose page is the tail. A frame
+ * without it keeps today's read-back, which is the conservative direction: an
+ * older backend costs the duplicate, never a missing row.
+ *
+ * NOT covered, deliberately, and each still reads: an EMPTY page (the contract's
+ * "reconcile through `/history`" signal - today every cold facade, whose state
+ * has no `history_cursor`), `cursor_missing`, and the label-gap retry, which is
+ * decided separately (`missingLabels`) and does not go through this test.
+ */
+function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
+	return (
+		typeof snapshot.cold_reason === "string" &&
+		!snapshot.history.cursor_missing &&
+		snapshot.history.entries.length > 0
+	);
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -1092,6 +1129,7 @@ export function useCanonicalSessionStream(
 				const entries = frame.payload.history.entries;
 				const newest = entries.at(-1);
 				if (!newest) return false;
+				if (pageIsJournalTail(frame.payload)) return true;
 				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
 					return false;
 				return paintedIds.current.has(newest.id);
