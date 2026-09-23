@@ -1,0 +1,1481 @@
+{
+  "mode": "switch",
+  "session": "b236a0c3aba0",
+  "steps": [
+    {
+      "step": "opened",
+      "ok": true,
+      "anchor": {
+        "id": "14f5607ab4ad1dda9dee29404a2b942f",
+        "offset": -64.25
+      },
+      "scrollTop": 0,
+      "scrollHeight": 5782,
+      "clientHeight": 489,
+      "distanceFromTop": 5293,
+      "rows": 60,
+      "slotText": "Scroll up for earlier40 earlier messages above — scroll up t",
+      "hintText": "Scroll up for earlier40 earlier messages above — scroll up to load",
+      "topText": "[row 0210] where while every holds durab",
+      "hiddenRows": 40,
+      "aim": {
+        "x": 830,
+        "y": 349,
+        "top": 104,
+        "bottom": 593,
+        "right": 1374
+      }
+    }
+  ],
+  "mount": {
+    "waitedMs": 0,
+    "attempts": 1
+  },
+  "switch": {
+    "page": {
+      "origin": "http://localhost:5202",
+      "href": "http://localhost:5202/submit-latency-evidence.html?session=b236a0c3aba0",
+      "rows": 60
+    },
+    "entry": "http://localhost:5202/submit-latency-evidence.html?session=b236a0c3aba0",
+    "start": {
+      "activeSessionId": "b236a0c3aba0",
+      "rows": 60,
+      "scrollTop": 0,
+      "scrollHeight": 5782,
+      "clientHeight": 489,
+      "firstRowId": "f1197ec0b3097a2c0c92408669748901",
+      "firstRowText": "[row 0210] where while e"
+    },
+    "scrolledA": {
+      "activeSessionId": "b236a0c3aba0",
+      "rows": 100,
+      "scrollTop": -6480,
+      "scrollHeight": 10038,
+      "clientHeight": 489,
+      "firstRowId": "cd94416750df5d87293a1c4c98b9d94f",
+      "firstRowText": "[row 0170] while the row"
+    },
+    "settledB": {
+      "activeSessionId": "c32765676410",
+      "rows": 60,
+      "scrollTop": 0,
+      "scrollHeight": 5782,
+      "clientHeight": 489,
+      "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799",
+      "firstRowText": "[row 0210] where while e"
+    },
+    "settledA": {
+      "activeSessionId": "b236a0c3aba0",
+      "rows": 60,
+      "scrollTop": 0,
+      "scrollHeight": 5451,
+      "clientHeight": 489,
+      "firstRowId": "508052455fe73f582703295d35a836b6",
+      "firstRowText": "[row 0215] through it at"
+    },
+    "frames": {
+      "total": 198,
+      "distinctActiveIds": [
+        "c32765676410",
+        "b236a0c3aba0"
+      ],
+      "staleContentFrames": 0,
+      "staleContentFirstFrame": null,
+      "timeline": [
+        {
+          "at": 9795.199999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 0,
+          "scrollTop": 0,
+          "firstRowId": null
+        },
+        {
+          "at": 9801.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 0,
+          "scrollTop": 0,
+          "firstRowId": null
+        },
+        {
+          "at": 9819.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 0,
+          "scrollTop": 0,
+          "firstRowId": null
+        },
+        {
+          "at": 9836.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 0,
+          "scrollTop": 0,
+          "firstRowId": null
+        },
+        {
+          "at": 9896.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9902.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9903.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9921.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9940.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9951.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9968.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 9985,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10001.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10018.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10035.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10051.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10067.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10084.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10100.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10117.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10134.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10151.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10168.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10184.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10201.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10218.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10234.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10251.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10267.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10284.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10301.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10317.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10334.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10351.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10367.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10385,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10401.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10418.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10435,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10451.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10468,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10485.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10501.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10518.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10534.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10550.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10567.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10584.199999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10600.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10617.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10635.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10651.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10667.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10685.199999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10701.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10717.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10734.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10751.199999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10767.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10784.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10801.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10818.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10834.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10851,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10868.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10888.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10901.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10918.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10934.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10951.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10968.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 10985.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11000.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11018.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11034.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11051.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11068,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11085.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11101.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11117.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11135.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11151.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11168,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11184.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11200.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11218,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11234.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11250.799999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11268,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11285,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11301.299999982119,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11318.5,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11334.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11351.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11368,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11384.59999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11400.899999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11418.399999976158,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11435.09999999404,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11451.699999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11468.199999988079,
+          "activeSessionId": "c32765676410",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "fdb9317cc5e0c4c9a07ee804811fe799"
+        },
+        {
+          "at": 11541.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "f1197ec0b3097a2c0c92408669748901"
+        },
+        {
+          "at": 11550.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "f1197ec0b3097a2c0c92408669748901"
+        },
+        {
+          "at": 11551.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "f1197ec0b3097a2c0c92408669748901"
+        },
+        {
+          "at": 11568.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "f1197ec0b3097a2c0c92408669748901"
+        },
+        {
+          "at": 11592.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11605.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11622.199999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11635.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11651.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11667.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11684.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11700.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11718.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11735,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11751.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11767.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11784.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11801.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11818,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11834.899999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11851.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11868.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11885.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11901.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11918.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11934.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11950.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11968.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 11985.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12000.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12018.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12034.199999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12050.899999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12068,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12085,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12101.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12118.199999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12134.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12151.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12168.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12184.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12201.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12217.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12234.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12251.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12268.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12284.899999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12301.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12317.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12334.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12351,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12368.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12384.899999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12401.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12418.199999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12434.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12451.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12467.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12484.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12501.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12518.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12539.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12550.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12568.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12584.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12601.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12617.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12634.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12651.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12667.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12685.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12701.799999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12717.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12734.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12751.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12768.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12784.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12801.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12818.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12835.09999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12851.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12867.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12885,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12901.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12918,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12934.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12951,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12967.5,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 12984.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13000.699999988079,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13018.299999982119,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13035,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13051.59999999404,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13067.899999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13085,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13101.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        },
+        {
+          "at": 13118.399999976158,
+          "activeSessionId": "b236a0c3aba0",
+          "rows": 60,
+          "scrollTop": 0,
+          "firstRowId": "508052455fe73f582703295d35a836b6"
+        }
+      ]
+    },
+    "verdict": {
+      "offsetCarriedFromA": false,
+      "settledBScrollTop": 0,
+      "settledAScrollTop": 0,
+      "staleContentFrames": 0
+    }
+  }
+}
