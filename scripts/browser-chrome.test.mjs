@@ -221,15 +221,10 @@ const {
 	render,
 	el,
 	BrowserConsentBar,
-	BrowserConsentRequest,
-	BrowserApprovalsTray,
-	BrowserApprovalsDock,
-	BrowserTabStrip,
 	stateChips,
 	tabFloor,
 	BrowserPage,
 	BrowserPane,
-	PANE_SURFACE_ID,
 	requesterLabel,
 	defaultApprovalHeaderLabel,
 	paneApprovalHeaderLabel,
@@ -261,7 +256,6 @@ const {
 	subscribeBrowserProjection,
 	BrowserLoadFailure,
 	loadFailureSentence,
-	useCanonicalSessionsStore,
 	useUiPreferencesStore,
 	SidebarNavigation,
 	MemoryRouter,
@@ -2575,7 +2569,10 @@ test("a conversation is named by its title, or by its id when it has none", () =
 		"while a requester the catalogue does not hold stays described rather than printed as an id",
 	);
 	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
-	assert.equal(requesterLabel("bob", sessions, { short: true }), "Untitled chat");
+	assert.equal(
+		requesterLabel("bob", sessions, { short: true }),
+		"Untitled chat",
+	);
 	assert.equal(requesterLabel(null, sessions), "An agent");
 });
 
