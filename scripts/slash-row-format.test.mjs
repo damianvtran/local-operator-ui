@@ -124,10 +124,7 @@ test("default is a separate, exact model action and never a catalogue row", () =
 	);
 	assert.equal(action.kind, "action");
 	assert.equal(action.id, "model-default");
-	assert.equal(
-		action.clickText,
-		"Click sets the current model as the default for new sessions.",
-	);
+	assert.equal(action.clickText, "Click does the same.");
 	assert.deepEqual(action.model, {
 		provider: "anthropic",
 		model_id: "claude-opus-5",

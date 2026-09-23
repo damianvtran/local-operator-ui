@@ -600,7 +600,9 @@ export const Busy: Story = {
 		// The footer names the change, in the user's terms: "the backend" is the
 		// implementation's noun for the session the pick changes (D14).
 		await waitFor(() =>
-			expect(screen.getByText(/Switching the model/)).toBeTruthy(),
+			expect(
+				screen.getByText("Switching the model…", { exact: true }),
+			).toBeTruthy(),
 		);
 		// The control closes the dialog; it does not cancel the switch.
 		await waitFor(() =>
@@ -705,7 +707,16 @@ export const EffortSetAsDefault: Story = {
 		await waitFor(() =>
 			expect(screen.getByText(EFFORT_DEFAULT_SUCCESS)).toBeTruthy(),
 		);
-		await waitFor(() => expect(screen.getByText("Effort set")).toBeTruthy());
+		await waitFor(() =>
+			expect(
+				screen.getByText(
+					(_, element) =>
+						element?.tagName === "P" &&
+						element.textContent?.replace(/\s+/g, " ").trim() ===
+							"Effort set Default effort for new sessions: High.",
+				),
+			).toBeTruthy(),
+		);
 	},
 };
 

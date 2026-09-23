@@ -1037,10 +1037,9 @@ test("the click footer says what a click will do, in each state", () => {
 	assert.equal(
 		clickFooter({
 			...base,
-			actionClickText:
-				"Click sets the current model as the default for new sessions.",
+			actionClickText: "Click does the same.",
 		}),
-		"Click sets the current model as the default for new sessions.",
+		"Click does the same.",
 	);
 	assert.equal(
 		clickFooter({

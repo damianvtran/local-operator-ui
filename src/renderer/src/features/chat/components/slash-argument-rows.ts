@@ -98,7 +98,7 @@ export function modelDefaultActionRow(
 			: "No active session model is available to save.",
 		model,
 		clickText: model
-			? "Click sets the current model as the default for new sessions."
+			? "Click does the same."
 			: "A session model is required before this action can save a default.",
 		disabled: model === null,
 	};
