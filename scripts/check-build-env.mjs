@@ -438,8 +438,17 @@ function peelWrappers(tokens) {
  * the one that gets deleted. `test` and `start` are deliberately NOT here: both
  * are `run <script>` aliases, so a missing `test` script is a step that cannot
  * complete and this check should say so.
+ *
+ * Exported because a second reader needs the same rule: `scripts/mac-build-arch.test.mjs`
+ * expands `pnpm <script>` into the command it runs, and it has to leave `npm pack`
+ * a packager subcommand (a tarball) rather than this repository's `pack` script
+ * (installers, which DO package macOS). A copy of this list in that file would
+ * drift from this one, which is the direction that stays silent. `pack` is a
+ * member for that reader alone: `npm pack`/`pnpm pack` are already classified as
+ * builds by the `sub === "pack"` branch above the point this set is consulted,
+ * so adding it here changes none of this file's own verdicts.
  */
-const PACKAGER_COMMANDS = new Set([
+export const PACKAGER_COMMANDS = new Set([
 	"access",
 	"add",
 	"approve-builds",
@@ -473,6 +482,7 @@ const PACKAGER_COMMANDS = new Set([
 	"ls",
 	"outdated",
 	"owner",
+	"pack",
 	"patch",
 	"patch-commit",
 	"patch-remove",

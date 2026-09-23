@@ -775,8 +775,15 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * beginning "It moves BOTH trees this file binds" the note named main's trees as
  * this file's - wrong in both directions, and green everywhere because this test
  * named a single note. Two notes claim this file's binding; both are asked.
+ * `candidateMacArchRestampNote` is the third: it states the transition it made
+ * AND quotes both stamps as this file's own values, so it is held to them rather
+ * than being read as history - the distinction the paragraph above draws.
  */
-const STAMP_BINDING_NOTES = ["shellPathRestampNote", "settingsGateRestampNote"];
+const STAMP_BINDING_NOTES = [
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
 	const manifest = JSON.parse(
