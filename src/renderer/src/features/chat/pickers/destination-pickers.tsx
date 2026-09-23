@@ -2146,7 +2146,18 @@ export const GoalPicker: FC<PickerContext> = ({
 			 */
 			description={
 				done
-					? "This goal is settled. It stays in the goal history — dismiss it to clear the chip."
+					? /*
+						 * THE SETTLED SENTENCE, AND IT NOW POINTS AT THE RECORD (UX round 1, U5). The
+						 * sentence names the history and this dialog is the one surface that names it
+						 * in words — but it named it without offering a way there, and the two routes
+						 * that exist are a 24px icon-only segment and a typed `/goal --history`. The
+						 * clause added here names the segment's own word (`Goals view`, its accessible
+						 * name) so the pointer is followable: a user told to look for a `Goals view`
+						 * can find the one control that answers to it. ONE route and not two: the
+						 * canvas view is the discoverable one, and the typed command keeps its place
+						 * in the `/goal` receipt rather than being repeated in a description.
+						 */
+						"This goal is settled. It stays in the goal history — dismiss it to clear the chip, or find it in the canvas's Goals view."
 					: current
 						? "The standing goal is prepended to every turn. Clear it to remove it."
 						: "A standing goal the agent keeps in view on every turn."
