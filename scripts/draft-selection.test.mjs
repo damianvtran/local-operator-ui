@@ -752,6 +752,17 @@ const pickerDependencies = {
 	errorText,
 	PickerHost: () => null,
 	useEntities: () => ({}),
+	useOperation: () => ({
+		busy: false,
+		result: null,
+		perform: async (work, describe) => {
+			try {
+				return describe(await work());
+			} catch {
+				return null;
+			}
+		},
+	}),
 	useSessionCommand: () => ({
 		run: () => assert.fail("a draft must not issue a session command"),
 	}),

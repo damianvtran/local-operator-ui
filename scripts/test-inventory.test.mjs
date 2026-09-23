@@ -38,6 +38,8 @@ const EXEMPT = {
 	"scripts/entry-point.test.mjs": "same release-gate step as release-baseline.",
 	"scripts/require-report.test.mjs":
 		"same release-gate step as release-baseline.",
+	"scripts/mac-build-arch.test.mjs":
+		"the release-contracts step in ci.yml, its own node --test invocation: it is a contract over .github/workflows rather than over the app, and it reads them with electron-builder's js-yaml the way test-publish-workflow.mjs does.",
 	"scripts/session-cookie-electron.test.mjs":
 		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
 };
