@@ -1668,3 +1668,97 @@ export const GoalActionsFloor: Story = {
 		);
 	},
 };
+
+/**
+ * THE DONE BAND AT THE TWO REAL FLOORS (design review round 1, D1): the frame that
+ * finding asked for and no story carried.
+ *
+ * WHY IT IS ITS OWN STORY RATHER THAN A THIRD WIDTH ON `GoalActionsFloor`. That
+ * story measures the ACTIVE pair at 240 and 172, and neither `GoalDone` nor
+ * `GoalDoneDismissFocus` sets a width - so whether the unstruck `— done` tag eats
+ * the value exactly where the column is narrowest was, on this head, arithmetic the
+ * round could not settle: at the 172px floor the row is stacked, the chip's line is
+ * the 156px content box, the tag adds ~48px of text plus a 4px gap, and the value is
+ * the `min-w-0 truncate` that yields. The finding's own two remedies are "add the
+ * done band at 240 and 172" or "cut the tag there (`NARROW_HIDDEN`)", and both are
+ * decisions a frame has to license - so the frame is the deliverable and this is the
+ * story that draws it.
+ *
+ * The goal is the 300-character one in BOTH bands, `GoalActionsFloor`'s own rule: a
+ * narrow column with a short goal would not exercise the yield order. `RowFacts`
+ * prints the item's box against the value's `clientWidth`/`scrollWidth`, which is
+ * D1's question as a number rather than as an ellipsis a reader has to interpret -
+ * and the tag's cost is legible in the pair, because the 240 band and the 172 band
+ * differ only in the step the `@max-[240px]` rule fires on.
+ *
+ * The `Dismiss` is left at REST here: at the floor the control is the `CircleCheck`
+ * alone, and the reveal is `group-hover`/`group-focus-within`, which no story can
+ * set (the focused half is `GoalDoneDismissFocus`).
+ */
+export const GoalDoneFloor: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240 (the copy rule's own step): the settled value struck beside the unstruck tag, the `Dismiss` at rest. Whether the tag has eaten the value is what the numbers beneath say"
+					frontend={lifecycle(LONG_GOAL, "done", { state: "done" })}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's floor): the same settled chip in the stacked band, where the column is narrowest and the value is the thing that yields - zero horizontal overflow"
+					frontend={lifecycle(LONG_GOAL, "done", { state: "done" })}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * THE CAPABILITY GATE, PHOTOGRAPHED AS A PAIR (design review round 1's spec table,
+ * `capability-off`): a frontend that carries NONE of the lifecycle fields beside one
+ * that carries them.
+ *
+ * WHY THE PAIR AND NOT THE LEGACY BAND ALONE. The gate's whole claim is an ABSENCE -
+ * on a backend that predates `goal_status`/`goal_judge`, the row renders no new
+ * control at all - and an absence is only evidence beside the state that has the
+ * thing: the legacy band's chip carries the shipped `Clear goal` and nothing else,
+ * while the capable band's chip carries the `Done` control the change adds (focused
+ * here, so the pair is painted rather than held invisibly, which is the only way a
+ * still distinguishes a held box from an absent one). `RowFacts` prints each band's
+ * dismiss boxes and their widths, so the frame carries the held-box measurement its
+ * own pixels cannot show.
+ *
+ * The bottom band's fixture is the legacy one deliberately: `frontend()` carries only
+ * `goal` and `loop`, which was the row's whole input until the judge existed, and
+ * `goalCapability` is `typeof goal_status === "string"` - so this band IS the
+ * pre-change composer's chip rather than a snapshot built to look like it. Both bands
+ * carry the same goal text and the same plan, so the control is the only variable.
+ */
+export const GoalCapabilityOff: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-done]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="A backend without the lifecycle fields: the chip the app shipped before the judge, one `Clear goal` and no `Done` beside it"
+						frontend={frontend(SHORT_GOAL)}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+				<RowFacts>
+					<Band
+						label="The same goal on a capable frontend: the pair is painted, `Done` inboard and `Clear goal` trailing, because one focus reveals both"
+						frontend={lifecycle(SHORT_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
