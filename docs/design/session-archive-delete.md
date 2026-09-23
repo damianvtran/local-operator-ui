@@ -100,6 +100,18 @@ byte-identical.
 
 ## The per-row controls, and the rule for the pair (delivered)
 
+> **SUPERSEDED (2026-09-20) by `docs/design/sidebar-row-space.md`.** The rule below
+> is delivered history: the shed, its two constants, the shared control and the
+> rest reservation it guarded are all deleted by that document's D9, because the
+> cost this rule answers ("28px off EVERY title, on every row, at rest") is now
+> zero - the acts are absent from the layout until the pointer or the keyboard is
+> in the row. The frames that photographed the band stay committed
+> (`docs/evidence/session-archive/row-controls-shared*`); the state that replaced
+> it is photographed and asserted in `docs/evidence/sidebar-row-space/after/`.
+> What SURVIVES from this section is the part the spec keeps: the pair is two
+> sibling slots, the pin's reveal is the pointer's or the focus's, and the pin's
+> state reads without hovering.
+
 The row's pin and archive controls are TWO SIBLING RESERVED SLOTS above the
 panel's default width and ONE SHARED CONTROL below it. That is delivered, not
 planned: `main` carries the pin control (its own feature, merged), this branch
@@ -137,6 +149,9 @@ this record, the README and two source comments all called that slot the row's
 trailing one, and four lanes then quoted it as the reason a row carrying an unread
 mark has a narrower title. It does not, and the edges are not interchangeable —
 the mark is drawn inside that leading slot.
+
+> Deleted with the shed (row-space D9): the band below no longer exists, and the
+> pair is drawn at every width. Kept here as the record of what the band was.
 
 **The shed is a BAND, not a width (round 2, D15).** The container query is
 `@max-[263px]` on the panel's CONTENT box, and the panel carries `p-2`, so it
