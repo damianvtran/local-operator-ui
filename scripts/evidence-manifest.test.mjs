@@ -784,7 +784,13 @@ const STAMP_BINDING_NOTES = [
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
-	"usageAutoCheckRestampNote",
+	/*
+	 * `usageAutoCheckRestampNote` left this list when the remediation below
+	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
+	 * note itself, because leaving it here would have held a fold's values to this
+	 * file as if they were its own — the defect the list exists for.
+	 */
+	"usageInFlightRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1058,6 +1064,14 @@ const BRANCH_RECORDS = [
 	 * the token-binding test holds would then read as a claim about main's trees.
 	 */
 	"usageAutoCheckRestampNote",
+	/*
+	 * Grown by the `/usage` in-flight remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps and moved four frames. It is
+	 * listed for the reason the list exists: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of which four frames
+	 * moved, why two of them were re-taken, and what the two trees are now.
+	 */
+	"usageInFlightRemediationNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

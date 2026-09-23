@@ -18,7 +18,8 @@ has to actually run out. `real-data/` answers the question fixtures cannot.
 | `multi-provider` | The main case: 4 providers, 8 windows, every status. The amount and countdown columns form ONE right edge across all four blocks (SPEC rule 9), tier rows are indented and dimmer (rule 8), and Anthropic's binding window is the account-wide 7-day at 88% even though its Opus tier row is at 100% — the binding rule (rule 7) working. |
 | `percent-only` | A provider whose report carries no currency anywhere. The binding window is the account-wide `Weekly 37%`, not the 91% reasoning tier. |
 | `remaining-balance` | A remaining-only balance (what both balance fetchers report). It prints `519.86 USD left` and draws a DOTTED rule, not a bar at zero (rule 4). Tally reads `1 window`, singular. |
-| `loading` | First paint, before the cached report returns. Skeleton rows shaped like the blocks that replace them, so the state reads as deliberate rather than as a bare word in an empty body. The action reads `Asking providers` and is DISABLED, because react-query reports `isLoading` and `isFetching` together on a first load — this frame previously showed it enabled, which the shipped container cannot produce (see "What these frames are not"). |
+| `loading` | First paint, before the cached report returns. Skeleton rows shaped like the blocks that replace them, so the state reads as deliberate rather than as a bare word in an empty body. The action reads `Reading cached usage` and is ENABLED: a read the user did not start no longer disables the control that shortens the wait, so the action is disabled only while the user's own ask is in flight. |
+| `checking` | The same open, one read on: the automatic cache-aware check is out and the cached numbers are already on screen, under `Checking provider usage`. No spinner — there is nothing to watch. This is the state every open reaches, and the one a newly stored login appears in. |
 | `empty` | No provider publishes quota, or none is signed in. |
 | `query-error` | The backend refused. The message shown is the backend's own, never synthesised. |
 | `fetching` | Live numbers asked for, request still out: the action reads `Asking providers` and is disabled, with the cached numbers still on screen. No spinner — there is nothing to watch. The retained numbers are real behaviour rather than a story prop: `live` is part of the query key, and `placeholderData: keepPreviousData` is what keeps the previous payload rendering while the new key loads. |
@@ -36,19 +37,63 @@ A frame is only evidence if the app can actually reach the state in it, and two
 of these could not. Both were caught in review and both are fixed rather than
 re-labelled:
 
-- `loading` showed `Ask providers now` **enabled**. react-query sets
-  `isLoading` and `isFetching` together on a first load, so the shipped
-  container always passes both and the action is always disabled at first
-  paint. The story had left `fetching` at its default.
+- `loading` showed `Ask providers now` **enabled**, at a time when the action
+  was disabled for the whole of any in-flight read. react-query sets `isLoading`
+  and `isFetching` together on a first load, so the container always passed both
+  and the story had left `fetching` at its default. The rule itself has since
+  changed and the frame with it: the action is disabled only for the user's OWN
+  ask, so a background read no longer takes the control that shortens the wait
+  out of the tab order — and this frame now shows the action ENABLED, which is
+  what the container paints.
 - `fetching` showed cached numbers retained during a live ask, which the
   container could not do: `live` is part of the query key, so the ask started a
   query with no data and the body replaced the table with the word `Loading`.
 
 The states are now reachable, and the agreement is pinned by a test rather than
-by this paragraph: `scripts/usage-container.test.mjs` renders the real container
-through the live-ask lifecycle and asserts the stories' own args against the
-props the container hands over at that moment. A story that drifts back into
-depicting an unreachable toolbar fails there.
+by this paragraph: `scripts/usage-container.test.mjs` MOUNTS the real container
+with its effects running and asserts the stories' own args against what the
+container hands over, and the bridge requests it issues. A story that drifts
+back into depicting an unreachable toolbar fails there.
+
+### The in-flight vocabulary, and the one label the container cannot paint
+
+Three labels cover three reads: `Reading cached usage` (the backend's cached
+snapshot, a local read), `Checking provider usage` (the automatic cache-aware
+check every open runs), and `Asking providers` (the user's own forced ask). The
+last two are the ones the shipped container can put on screen — it ENTERS on the
+automatic check, so its own first paint carries `Checking provider usage`.
+
+`loading` is therefore kept for the BODY it documents, not for its label: the
+skeleton, with no tally and no rows, is what an open paints until the snapshot
+lands, and its label is the cached read's own wording. That reachable first
+paint is asserted from a real mount in `usage-container.test.mjs`; `checking` is
+the frame that depicts the label a user actually sees while it happens.
+
+### The four frames this round moved
+
+`checking` is new and `loading` was re-taken, in both brand themes, by the
+registered sweep (`--themes=localOperatorDark,localOperatorLight`, the two
+palettes the brand owns).
+
+`loading` had to be re-taken because this round changes the rule the frame
+depicts: the action is no longer disabled by a read the user did not start, so
+the committed pair's DISABLED action stopped being what the story renders. The
+re-taken pair differs from the frames it replaces in the action's ink and, in
+the same frame, in the footer control (`Close` rather than `Cancel`).
+
+That footer difference is not this round's: the committed `chat-usage` set is
+one picker-chrome copy change stale against the tree it ships in, which UX round
+1 measured, and it is why the new `checking` pair also reads `Close` beside
+neighbours that read `Cancel`. The rest of the set is stale in the same way and
+by more than copy — the dialog ground of these four frames is `srgb(14,12,11)`
+where the committed set's is `srgb(10,8,6)` — so these four are pictures of the
+current tree and their neighbours are pictures of an older one. Re-taking the
+whole set is a separate pass, not something this round quietly did.
+
+Both stories render `UsageDialog` with fixture args and call no backend, which
+is what `--allow-backend` states for the run: a Local Operator backend was
+answering on `localhost:1111` (the operator's own app), and no surface captured
+here talks to it.
 
 ## Re-capturing the story frames
 
