@@ -1171,13 +1171,22 @@ function cappedList(entries, limit = 10) {
  * THE CHECK macOS 27'S OWN NOTICE ASKED FOR.
  *
  * macOS 27 is Apple-silicon-only (macOS 26 Tahoe was the last macOS for
- * Intel-based Macs), and from macOS 28 Rosetta is gone for apps entirely - so a
+ * Intel-based Macs), and from macOS 28 Rosetta is gone for apps entirely. What
+ * Apple's own page for the transition says is that the user "might be notified
+ * that support is ending for Intel-based apps, and that the app or a component
+ * used by the app will not work with a future release of macOS (macOS 28)", and
+ * that "Starting with macOS 28, the next major macOS release, Rosetta
+ * functionality will be available only for certain older, unmaintained games
+ * that rely on Intel-based frameworks" (support.apple.com/en-us/102527, published
+ * 2026-09-21). The dialog an operator reported on a macOS 27 host words the same
+ * thing as "This version of \"Local Operator\" includes a component that will not
+ * open in macOS 28, the next major release" — quoted here as the reported dialog
+ * rather than as the page's text, because the page carries no such sentence.
+ * Either way the consequence is the same and it is what this check asserts: a
  * component inside the bundle that carries ONLY a foreign architecture cannot
- * open there at all, and macOS 27 already says so at every launch: "This version
- * of \"Local Operator\" includes a component that will not open in macOS 28, the
- * next major release." (Apple, support.apple.com/en-us/102527, 2026-09-21.) This
- * product has shipped that shape before: before #138 a universal build carried
- * BOTH bundled interpreters, half of it unrunnable on either machine.
+ * open there at all. This product has shipped that shape before: before #138 a
+ * universal build carried BOTH bundled interpreters, half of it unrunnable on
+ * either machine.
  *
  * WHY NOTHING ELSE HERE COVERS IT: the neighbouring checks each read one named
  * thing - the Electron Framework's architecture (`bundleArchitectures`), the
@@ -1242,7 +1251,7 @@ export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
 					`${foreign.length} of ${components.length} Mach-O component(s) do not carry ${archs[0]}: ${cappedList(foreign.map(({ relative, slices }) => `${relative} [${slices.map(lipoArchName).join(" + ")}]`))}`,
 				);
 			if (problems.length > 0) throw new Error(problems.join("; "));
-			return `${components.length} Mach-O components, all ${archs[0]}`;
+			return `${components.length} Mach-O components, all carrying ${archs[0]}`;
 		},
 	);
 }
