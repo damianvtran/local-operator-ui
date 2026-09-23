@@ -2214,6 +2214,49 @@ export const STORIES = [
 	   owes them: they are the same two stories' resting states. */
 	["chat-composer-status-row--goal-clear", 1000, 760],
 	["chat-composer-status-row--loop-chip", 1000, 1000],
+	/* THE GOAL'S LIFECYCLE (this change): the settled state, the control it grows,
+	   and the two judge states that paint nothing.
+
+	   WHY THEY ARE HERE AT ALL. The row's input gained four fields in one backend
+	   change (`goal_status`, `goal_judge`, `goal_history`, `goal_history_truncated`,
+	   typed in `src/shared/desktop-session-contract.ts`), and the state a reviewer
+	   has to judge is the SETTLED chip - the struck value, the unstruck `— done`
+	   tag and the `Dismiss` that replaces nothing. A story nobody captures is a
+	   state the sweep never renders, so the design round that signs this change off
+	   would be reading source rather than pixels; these six rows are what makes
+	   `--only=chat-composer-status-row--goal` an answer rather than an empty run.
+
+	   THE PAIRS ARE THE MEASUREMENT, which is why four of the six carry TWO bands:
+	   the active chip is the control the done one is read against (the value is the
+	   same text in both bands on purpose), `GoalWorking`'s second band is the same
+	   pixels with the word `working` only in the accessible name, and
+	   `GoalActionsRevealed`'s is the goal that fits against the 300-character one
+	   the pair's held width is what the snippet yields to. `GoalStalled`'s two bands
+	   differ by the label's ink STEP (`text-ink-muted` -> `text-ink`), which is the
+	   whole of what that state paints. A single band would be one reading with
+	   nothing to compare it to.
+
+	   THE REVEAL IS FOCUSED, NOT HOVERED, and that is this surface's own limit
+	   rather than a choice: there is no hover verb here (the deleted `goal-clear-*
+	   hovered/focused` tuples above say why), and both the gone control and the
+	   new pair reveal on `group-focus-within` as well as `group-hover`, so a
+	   programmatic focus paints the same held boxes a pointer would. What a still
+	   of it cannot carry is the distance from each control to the words it acts on
+	   (`RowFacts` prints it into the band) and the accessible name `Dismiss the
+	   finished goal — it stays in the goal history`, which no frame shows.
+
+	   THE FLOOR STORY IS 300 WIDE, not 240: `Composer`'s outer box is its band
+	   width plus the 48px of `p-6`, so the 240 band is 288px of content, and a
+	   viewport narrower than that would clip the very step the story exists for.
+	   Its two bands are the `@max-[240px]` step and the app's real 172px floor -
+	   the widths the record's § 2.4 was corrected to (design review round 1, D3) -
+	   and `overflowX === 0` is the assertion the frames carry. */
+	["chat-composer-status-row--goal-done", 1000, 460],
+	["chat-composer-status-row--goal-done-dismiss-focus", 1000, 300],
+	["chat-composer-status-row--goal-stalled", 1000, 460],
+	["chat-composer-status-row--goal-working", 1000, 460],
+	["chat-composer-status-row--goal-actions-revealed", 1000, 460],
+	["chat-composer-status-row--goal-actions-floor", 300, 620],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
@@ -2993,6 +3036,22 @@ export const STORIES = [
 	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
+	/* The canvas pane's fourth view (this change): the settled goals, as the pane
+	   draws them at the dock's default width and at its own 400px floor.
+
+	   WHY THESE TWO AND NOT ONE. The view's EMPTY state and its CAPPED state are
+	   different sentences - `No goals completed yet` names the next action, while a
+	   capped list has to say that older settled goals are not carried here - and
+	   `GoalHistoryEmptyAndCapped` is the only story that renders both, because a
+	   frame showing only the empty one would be evidence for the state that is not
+	   the risk: a truncated list must not read as a complete one. `GoalHistory` is
+	   the populated band pair (the default dock width beside the 400px floor, where
+	   the pane's own behaviour is decided rather than argued), and the three fixture
+	   entries it seeds are the view's own grammar - a judge-settled `done` with a
+	   long reason, a `superseded` goal with an empty one, and a goal at the entry
+	   clip's own limit so the row's truncation is the browser's. */
+	["canvas-workspace--goal-history", 1280, 900],
+	["canvas-workspace--goal-history-empty-and-capped", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
 	/*
