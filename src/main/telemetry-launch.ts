@@ -7,11 +7,14 @@
  * module load and the renderer mounts `posthog-js`'s provider, so every one of
  * those runs registered as a user and as a session replay in the "Local Operator
  * Usage" project and inflated its MAU. Nothing in the app could turn that off,
- * and an empty `VITE_PUBLIC_POSTHOG_KEY` is not an off switch either: the
- * schema's default is the real key, so omitting the variable still ships it, and
- * an explicitly empty one threw inside `new PostHog("")` ("You must pass your
- * PostHog project's api key.") at module load, before `app.whenReady()`, which
- * surfaced as a main-process error dialog rather than a quiet run.
+ * and before this switch existed an empty `VITE_PUBLIC_POSTHOG_KEY` was not an
+ * off switch either: the schema's default is the real key, so omitting the
+ * variable still shipped it, and an explicitly empty one threw inside
+ * `new PostHog("")` ("You must pass your PostHog project's api key.") at module
+ * load, before `app.whenReady()`, which surfaced as a main-process error dialog
+ * rather than a quiet run. Read the past tense as deliberate: since this switch
+ * landed, a build carrying no key IS an off switch (the rule below), and the
+ * paragraph describes the state that made one necessary.
  *
  * So there is one switch, it is a LAUNCH FACT, and it is read exactly the way
  * `window-mode.ts` and `dev-driver.ts` read theirs: from the environment the
