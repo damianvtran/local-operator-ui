@@ -267,6 +267,70 @@ test("the switcher carries the Goals segment LAST, with the count in its name", 
 	assert.match(source, /goalHistory = EMPTY_GOAL_HISTORY/);
 });
 
+/*
+ * THE FOURTH VIEW IS GATED ON THE SAME CAPABILITY READING AS THE CHIP (UX round 1, U4).
+ *
+ * The chip's `Done`/`Dismiss` controls have been gated on the wire's fields since they
+ * were written; the pane was not, so an older backend got a segment over a view that
+ * could never fill, whose empty state promises `Finished goals are kept here` about a
+ * backend that keeps nothing. This is a SOURCE pin for the reason this file records at
+ * its head: `canvas/index.tsx` cannot be rendered in isolation (it reads the canvas
+ * store, a live session and the window bridge), so the instrument that can see the
+ * wiring is the source - and the wiring is what the finding is about.
+ */
+test("the Goals view is gated on the chip's own capability reading, once", () => {
+	const pane = readFileSync(
+		"src/renderer/src/features/chat/components/canvas/index.tsx",
+		"utf8",
+	);
+	const source = pane
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/^\s*\/\/.*$/gm, "");
+	/*
+	 * ONE DERIVATION: the capability arrives as a boolean, the segment list is built from
+	 * it, and the ACTIVE view is resolved against that same list - so a view that is not
+	 * offered cannot be the current one either, which is what stops a PERSISTED `goals`
+	 * choice from stranding the pane on a backend that predates the lifecycle.
+	 */
+	assert.match(source, /goalCapable = false/);
+	assert.match(
+		source,
+		/const canvasViews = \(goalCapable: boolean\): typeof VIEWS =>/,
+	);
+	assert.match(source, /canvasViews\(goalCapable\)/);
+	assert.match(source, /views\.some\(\(view\) => view\.value === storedView\)/);
+	/*
+	 * AND BOTH READERS SPEND THAT ONE LIST: the switcher renders it, and the pane's own
+	 * condition is the resolved view rather than a second `goalCapable` check. A second
+	 * check is the shape that lets the two disagree, which is exactly the defect here.
+	 */
+	assert.match(source, /views=\{views\}/);
+	assert.match(source, /\{views\.map\(/);
+	assert.doesNotMatch(
+		source,
+		/"goals" && goalCapable|goalCapable && currentView/,
+		"the pane is gated by the resolved view, not by a second capability check",
+	);
+	/*
+	 * AND IT IS THE CHIP'S OWN PREDICATE, called once by the pane's owner on the snapshot
+	 * the chip reads - not a re-reading of `goal_history` here, which is the second
+	 * presence check U4 asks not to have.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/goalCapable=\{goalCapability\(canonical\?\.view\.frontend\)\}/,
+	);
+	assert.doesNotMatch(
+		source,
+		/goal_history/,
+		"the pane reads the entries it is handed, not the wire field beside them",
+	);
+});
+
 test("the Goals segment's name admits the cap when the history is truncated", () => {
 	/*
 	 * Design review round 1's F5, as a truth table rather than as a substring: the

@@ -133,10 +133,15 @@ type CanvasProps = {
 	 *
 	 * Passed in rather than fetched, deliberately (the history ruling): the pane is a
 	 * browsing surface, and a fetch would give it a loading state, an error state and
-	 * a second cache that could disagree with the chip about the same session. An
-	 * older backend publishes no such field, and the empty array is then the honest
-	 * answer — a session with an old backend has no history to show, which is exactly
-	 * what an empty list means.
+	 * a second cache that could disagree with the chip about the same session.
+	 *
+	 * AN OLDER BACKEND'S EMPTY LIST IS NOT AN EMPTY VIEW (UX round 1, U4). It used to be
+	 * read that way — "no history to show" — but the pane is reached by a SEGMENT, and a
+	 * segment over a pane that can never fill reads as a feature with nothing in it
+	 * rather than as a backend without the feature, while the pane's own empty state
+	 * promises *"Finished goals are kept here"*. A backend that predates the lifecycle
+	 * keeps nothing, so `goalCapable` is what decides whether this view exists at all;
+	 * these entries are then what it holds.
 	 */
 	goalHistory?: CanonicalGoalHistoryEntry[];
 
@@ -149,6 +154,32 @@ type CanvasProps = {
 	 * flag exists to prevent.
 	 */
 	goalHistoryTruncated?: boolean;
+
+	/**
+	 * Whether this backend publishes the goal lifecycle at all — `goal_status`,
+	 * `goal_judge`, `goal_history` and its truncation flag, which ship together.
+	 *
+	 * THE SAME PRESENCE CHECK THE CHIP USES, NOT A SECOND ONE (UX round 1, U4). It is
+	 * `goalCapability(frontend)` (`shared/desktop-session-contract.ts`) computed ONCE by
+	 * this pane's owner (`chat-content.tsx`) off the same canonical snapshot the
+	 * composer's goal chip reads, and handed down as one boolean — so the chip's
+	 * controls and this pane's fourth segment cannot disagree about whether the backend
+	 * has a lifecycle. Deriving it here from `goal_history` (or from the entries being
+	 * non-empty) would be a second reading of one wire fact, and a second reading is a
+	 * second answer.
+	 *
+	 * WHY THIS VIEW IS GATED WHEN THE PANE WOULD MERELY BE EMPTY. The chip's controls
+	 * are gated because sending `done` to an old backend stores the literal word as the
+	 * user's goal (§ 7 of the design record). This is the same gate for the other half
+	 * of the same fact: an old backend has no settled goals to keep, and the empty state
+	 * says *"Finished goals are kept here"* — a promise it cannot honour. Absent is the
+	 * honest answer, and it is absent by the same measurement.
+	 *
+	 * Defaults to `false`, and that direction is deliberate: a caller that has not said
+	 * the backend is capable gets the three shipped segments. Nothing new may be offered
+	 * on the strength of a snapshot nobody has read.
+	 */
+	goalCapable?: boolean;
 };
 
 /**
@@ -210,9 +241,37 @@ const VIEWS: {
 	},
 ];
 
+/**
+ * The switcher's segments FOR THIS BACKEND — and the one list the pane's current view
+ * is resolved against.
+ *
+ * ONE DERIVATION, TWO READERS (UX round 1, U4). The chip's controls are gated on
+ * `goalCapability`; the pane was not, so an older backend got a fourth segment over a
+ * pane that could never fill. The fix is not a second copy of that presence check in
+ * this file: the capability arrives as one boolean from the pane's owner
+ * (`chat-content.tsx`, computed off the canonical snapshot), and this function is the
+ * only place it is spent — the switcher renders what it returns, and `currentView` is
+ * resolved against it, so a view that is not offered cannot be the active one either.
+ *
+ * THE ORDER IS `VIEWS`'s OWN, unfiltered: filtering can only ever remove the LAST
+ * segment, so a backend without the lifecycle gets exactly the three it shipped with,
+ * in the order it shipped them.
+ */
+const canvasViews = (goalCapable: boolean): typeof VIEWS =>
+	goalCapable ? VIEWS : VIEWS.filter((view) => view.value !== "goals");
+
 const ViewSwitcher: FC<{
 	current: CanvasViewMode;
 	onChange: (view: CanvasViewMode) => void;
+	/**
+	 * The segments this backend may offer, ALREADY FILTERED by capability.
+	 *
+	 * Taken as a list rather than as the capability boolean because the same list is
+	 * what resolves which view is current (see `views` in the pane): a segment that is
+	 * not offered cannot be the active one, so the switcher and the pane read one
+	 * derivation rather than each deciding for itself (UX round 1, U4).
+	 */
+	views: typeof VIEWS;
 	fileCount: number;
 	/** The settled goals the Goals segment's name counts; see the count note below. */
 	goalCount: number;
@@ -222,7 +281,7 @@ const ViewSwitcher: FC<{
 	 * rule, and the reason it is a prop: only the caller holding the frame knows.
 	 */
 	goalTruncated: boolean;
-}> = ({ current, onChange, fileCount, goalCount, goalTruncated }) => (
+}> = ({ current, onChange, views, fileCount, goalCount, goalTruncated }) => (
 	// A `fieldset` rather than a div with `role="group"`: the element already
 	// means "these controls belong together", and it is the only way the group
 	// gets an accessible name without inventing ARIA for it. Its UA border and
@@ -235,7 +294,7 @@ const ViewSwitcher: FC<{
 		className={cn("inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0")}
 	>
 		<legend className={cn("sr-only")}>Canvas view</legend>
-		{VIEWS.map(({ value, label, tourTag, Icon }) => {
+		{views.map(({ value, label, tourTag, Icon }) => {
 			const isActive = current === value;
 			/*
 			 * The count rides the Files and Goals segments' names, not a badge. This is
@@ -323,6 +382,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	scan = null,
 	goalHistory = EMPTY_GOAL_HISTORY,
 	goalHistoryTruncated = false,
+	goalCapable = false,
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -451,7 +511,23 @@ const CanvasComponent: FC<CanvasProps> = ({
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
-	const currentView = canvasState?.viewMode ?? "documents";
+	/*
+	 * THE VIEWS THIS BACKEND OFFERS, and the active view resolved against them.
+	 *
+	 * A VIEW THAT IS NOT OFFERED CANNOT BE CURRENT (UX round 1, U4). `viewMode` is
+	 * PERSISTED, so a session whose backend predates the lifecycle — or a user who had
+	 * the `Goals` view open and then attached an older runtime — would otherwise be left
+	 * on a view this build does not draw: a pane with no segment, no rows and nothing
+	 * to say. The store is not written back: the choice is the user's, it is still
+	 * theirs to resume if the runtime is upgraded, and a render that mutates the store
+	 * would make this fallback a second writer of the user's preference.
+	 */
+	const views = canvasViews(goalCapable);
+	const storedView = canvasState?.viewMode;
+	const currentView: CanvasViewMode =
+		storedView && views.some((view) => view.value === storedView)
+			? storedView
+			: "documents";
 	/*
 	 * The count the empty state's Files action carries, and the weight it earns.
 	 * `fileCount` is optional because the panel is also rendered without a store
@@ -574,6 +650,14 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<ViewSwitcher
 					current={currentView}
 					onChange={setCurrentView}
+					/*
+					 * THE SAME LIST THE ACTIVE VIEW WAS RESOLVED AGAINST, so the segment a user can
+					 * press and the view the pane may draw are one set (UX round 1, U4): on a backend
+					 * without the lifecycle there is no fourth segment AND no fourth pane, and the
+					 * two facts come from this one call rather than from two checks that could
+					 * drift apart.
+					 */
+					views={views}
 					fileCount={fileCount}
 					goalCount={goalHistory.length}
 					/*
@@ -771,6 +855,14 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * That is the whole reason it is a view of the pane rather than a panel that
 			 * fetches — and the reason it renders on a draft pane too, where the honest
 			 * answer is the empty state (a draft has no settled goals yet).
+			 *
+			 * THE PANE IS GATED BY THE SAME DERIVATION AS ITS SEGMENT (UX round 1, U4), and
+			 * that is `currentView` above rather than a condition written here: the active
+			 * view is resolved against `views`, so on a backend without the lifecycle
+			 * `currentView` cannot be `"goals"` at all — no segment, no pane, and no empty
+			 * state promising *"Finished goals are kept here"* about a backend that keeps
+			 * nothing. A second `goalCapable &&` here would be a second gate, which is the
+			 * shape that lets the two disagree.
 			 */}
 			{currentView === "goals" && (
 				<CanvasGoalsViewer
