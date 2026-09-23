@@ -109,25 +109,64 @@ import { isEntryPoint } from "./entry-point.mjs";
 export const MACH_O_MAGICS = new Set(LAYOUT.machOMagics);
 
 /**
- * The two FAT magics, named apart from the set above because the two shapes are
+ * The four FAT magics, named apart from the set above because the two SHAPES are
  * read differently.
  *
- * `MACH_O_MAGICS` answers "is this a Mach-O" and holds both spellings, which is
+ * `MACH_O_MAGICS` answers "is this a Mach-O" and holds every spelling, which is
  * what it should hold: a universal binary is a Mach-O and counts as one
- * everywhere here. What it does not say is which of the two HEADER SHAPES a file
- * carries, and that is not a detail a reader can skip - a thin file's fields are
- * the header's own second and fourth words, while a fat file's live in
+ * everywhere here. What it does not say is which of the three HEADER SHAPES a
+ * file carries, and that is not a detail a reader can skip - a thin file's fields
+ * are the header's own second and fourth words, while a fat file's live in
  * `fat_arch` entries behind an `nfat_arch` count, so the same offsets read a
- * plausible number for the wrong file. `machOHeader` below refuses a fat file
- * for exactly that reason, and `machOArchitectures` reads the entries.
+ * plausible number for the wrong file. `machOHeader` below refuses a fat file for
+ * exactly that reason, and `machOArchitectures` reads the entries.
  *
- * 64-bit fat magics (`cafebabf`/`bfbafeca`) are deliberately absent: the magic
- * set in `src/shared/bundled-runtime-layout.json` is the one definition of "a
- * Mach-O" for every caller in this repository - the app's `verifyMachO` reads it
- * too, for signature verification - so a shape this module cannot be handed is
- * not a shape it should pretend to read.
+ * BOTH the 32-bit and the 64-bit spellings are here, and that is a corrected
+ * decision rather than a widened one. `cafebabf`/`bfbafeca` (`FAT_MAGIC_64`) were
+ * absent from the shared magic set for a review round, on the argument that
+ * nothing here produces the shape - which left a component carrying it OUTSIDE
+ * every Mach-O question this repository asks, so the release gate's sweep neither
+ * counted it nor failed it, and the doc that describes the sweep said the
+ * opposite. A 64-bit fat header is a Mach-O, so it belongs in the one definition
+ * like its 32-bit sibling; the difference is only the `fat_arch` STRIDE (see
+ * `FAT_ARCH_STRIDE`), and a shape the walk can see is a shape the reader can be
+ * asked about rather than one it silently skips.
+ *
+ * What that costs on the app's side, which reads the same list for
+ * `verifyMachO`: a file whose first four bytes are one of these is now held to
+ * `codesign --verify --strict` in the seed, exactly as a 32-bit fat binary always
+ * was. That is the correct direction - the previous behaviour was to leave such a
+ * file unverified - and it is the argument for the one-definition fix rather than
+ * a second list in the sweep.
  */
-const MACH_O_FAT_MAGICS = new Set(["cafebabe", "bebafeca"]);
+
+/**
+ * One `fat_arch` entry's size per fat magic, and whether its fields are
+ * big-endian.
+ *
+ * WHY THE STRIDE IS PER MAGIC AND NOT A CONSTANT: `fat_arch` is five 32-bit
+ * words (20 bytes) and `fat_arch_64` is the same `cputype`/`cpusubtype` pair
+ * followed by 64-bit `offset`/`size`, so it is 32 bytes; reading a 64-bit header
+ * with the 32-bit stride walks into the middle of the next entry and answers a
+ * cputype that is really an offset or an align field. `cputype` is the first word
+ * of both, so the choice of stride is the whole of the difference a slice SET
+ * needs. `MAGIC` (the first of each pair) is written big-endian and `CIGAM` its
+ * byte-swapped twin, which is why the endianness belongs here beside the stride
+ * rather than in a third place.
+ *
+ * This table is the one spelling of the four fat magics; `MACH_O_FAT_MAGICS`
+ * below is derived from it, so the two cannot disagree about which spellings are
+ * fat.
+ */
+const FAT_ARCH_STRIDE = new Map([
+	["cafebabe", { bytes: 20, bigEndian: true }],
+	["cafebabf", { bytes: 32, bigEndian: true }],
+	["bebafeca", { bytes: 20, bigEndian: false }],
+	["bfbafeca", { bytes: 32, bigEndian: false }],
+]);
+
+/** The fat magics, read off the stride table so the two sets cannot drift. */
+const MACH_O_FAT_MAGICS = new Set(FAT_ARCH_STRIDE.keys());
 
 /**
  * The seed content nothing can reach, relative to the seed root, and the marker
@@ -305,6 +344,14 @@ export function machOCpuType(path) {
  * answers a plausible number for the wrong file. So the fat case is added here,
  * in the one reader, and the thin case reuses the same header reader.
  *
+ * THE FAT CASE READS BOTH STRIDES. A `fat_arch` is 20 bytes and a `fat_arch_64`
+ * is 32 - the same `cputype`/`cpusubtype` pair followed by 64-bit `offset` and
+ * `size` - so the stride and the endianness both come from `FAT_ARCH_STRIDE`
+ * rather than from a constant here. `cputype` is the first word of either stride,
+ * which is the whole of what a slice SET needs from the difference; reading a
+ * 64-bit header at the 32-bit stride would answer an offset or an align word as if
+ * it were an architecture.
+ *
  * A count of zero expresses no architecture at all and an implausible count is a
  * header this cannot be trusted to have read, so both answer `null` - "could not
  * ask", which every caller here treats as a failure rather than as a pass.
@@ -312,21 +359,20 @@ export function machOCpuType(path) {
 export function machOArchitectures(path) {
 	const magic = leadingMagic(path);
 	if (magic == null || !MACH_O_MAGICS.has(magic)) return null;
-	if (MACH_O_FAT_MAGICS.has(magic)) {
-		// FAT_MAGIC (`cafebabe`) is written big-endian; FAT_CIGAM (`bebafeca`) is
-		// the same header with little-endian fields.
-		const bigEndian = magic === "cafebabe";
+	const fat = FAT_ARCH_STRIDE.get(magic);
+	if (fat) {
 		const words = leadingBytes(path, 8);
 		if (words == null || words.length < 8) return null;
-		const count = bigEndian ? words.readUInt32BE(4) : words.readUInt32LE(4);
+		const count = fat.bigEndian ? words.readUInt32BE(4) : words.readUInt32LE(4);
 		if (count === 0 || count > 64) return null;
-		// One `fat_arch` is five 32-bit words, `cputype` first.
-		const bytes = leadingBytes(path, 8 + count * 20);
-		if (bytes == null || bytes.length < 8 + count * 20) return null;
+		const bytes = leadingBytes(path, 8 + count * fat.bytes);
+		if (bytes == null || bytes.length < 8 + count * fat.bytes) return null;
 		const slices = [];
 		for (let index = 0; index < count; index += 1) {
-			const at = 8 + index * 20;
-			slices.push(bigEndian ? bytes.readUInt32BE(at) : bytes.readUInt32LE(at));
+			const at = 8 + index * fat.bytes;
+			slices.push(
+				fat.bigEndian ? bytes.readUInt32BE(at) : bytes.readUInt32LE(at),
+			);
 		}
 		return slices;
 	}

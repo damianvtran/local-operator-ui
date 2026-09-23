@@ -72,22 +72,26 @@ function writeThin(path, cpuType) {
 }
 
 /**
- * A fat (universal) Mach-O: `nfat_arch` and one five-word `fat_arch` per slice.
+ * A fat (universal) Mach-O: `nfat_arch` and one `fat_arch` entry per slice.
  *
  * `cafebabe` is `FAT_MAGIC`, whose fields are big-endian; `bebafeca` is
- * `FAT_CIGAM`, the same header with little-endian fields. Both are exercised,
- * because a reader that assumes one endianness answers a plausible number for
- * the other file rather than failing.
+ * `FAT_CIGAM`, the same header with little-endian fields; `bits: 64` writes the
+ * `fat_arch_64` stride (`cafebabf`/`bfbafeca`), whose 64-bit `offset`/`size` are
+ * what make it 32 bytes rather than 20. All four spellings are exercised, because
+ * a reader that assumes one shape answers a plausible number for the others and
+ * the walk only sees a file whose magic the shared list carries.
  */
-function writeFat(path, cpuTypes, { magic = "cafebabe" } = {}) {
+function writeFat(path, cpuTypes, { magic, bits = 32 } = {}) {
 	mkdirSync(dirname(path), { recursive: true });
-	const bigEndian = magic === "cafebabe";
-	const header = Buffer.alloc(8 + cpuTypes.length * 20);
-	Buffer.from(magic, "hex").copy(header, 0);
+	const stride = bits === 64 ? 32 : 20;
+	const resolved = magic ?? (bits === 64 ? "cafebabf" : "cafebabe");
+	const bigEndian = resolved === "cafebabe" || resolved === "cafebabf";
+	const header = Buffer.alloc(8 + cpuTypes.length * stride);
+	Buffer.from(resolved, "hex").copy(header, 0);
 	if (bigEndian) header.writeUInt32BE(cpuTypes.length, 4);
 	else header.writeUInt32LE(cpuTypes.length, 4);
 	cpuTypes.forEach((cpuType, index) => {
-		const at = 8 + index * 20;
+		const at = 8 + index * stride;
 		if (bigEndian) header.writeUInt32BE(cpuType, at);
 		else header.writeUInt32LE(cpuType, at);
 	});
@@ -130,7 +134,11 @@ function makeApp(dir, { components = [] } = {}) {
 	writeThin(join(app, FRAMEWORK), MACH_O_CPUTYPE.ARM64);
 	for (const component of components) {
 		const path = join(app, component.relative);
-		if (component.kind === "fat") writeFat(path, component.cpuTypes);
+		if (component.kind === "fat")
+			writeFat(path, component.cpuTypes, {
+				bits: component.bits,
+				magic: component.magic,
+			});
 		else if (component.kind === "truncated") writeTruncated(path);
 		else writeThin(path, component.cpuType);
 	}
@@ -164,7 +172,7 @@ test("a bundle whose components all carry its own architecture passes", () => {
 	assert.equal(pass.id, "app-native-components");
 	assert.equal(pass.scope, "app");
 	assert.equal(pass.passed, true, pass.output);
-	assert.match(pass.output, /^4 Mach-O components, all arm64$/);
+	assert.match(pass.output, /^4 Mach-O components, all carrying arm64$/);
 });
 
 test("a universal component passes, because the bundle's architecture is in it", () => {
@@ -183,7 +191,7 @@ test("a universal component passes, because the bundle's architecture is in it",
 	});
 	const pass = nativeComponentsCheck(app, { run: lipo("arm64") });
 	assert.equal(pass.passed, true, pass.output);
-	assert.match(pass.output, /2 Mach-O components, all arm64/);
+	assert.match(pass.output, /2 Mach-O components, all carrying arm64/);
 });
 
 test("a foreign-only component fails, and the failure names it and its slices", () => {
@@ -281,6 +289,53 @@ test("a long list of offenders is capped, with the remainder counted", () => {
 	assert.match(fail.output, /foreign-7\.node \[x86_64\]/);
 	assert.doesNotMatch(fail.output, /foreign-9\.node/);
 	assert.match(fail.output, /\(and 2 more\)/);
+});
+
+test("a 64-bit fat component is judged, not skipped", () => {
+	// QA Q1 / review m2, and the case that has to fail the suite if the shared
+	// magic set loses `cafebabf`/`bfbafeca` again. Before this, such a component was
+	// outside every Mach-O question the repository asks: `machOFiles` never returned
+	// it, so the sweep neither counted it nor failed it, and the only symptom was the
+	// macOS notice - an unconditional claim in `docs/BUILD.md` describing a sweep
+	// that could not see it. Membership in the population is asserted through the
+	// count, not just through the verdict, because "not walked" and "walked and
+	// foreign" are the same verdict and different defects.
+	const foreign = makeApp(tempDir("lo-native-"), {
+		components: [
+			{
+				relative: "Contents/Resources/foreign-fat64.node",
+				kind: "fat",
+				bits: 64,
+				cpuTypes: [MACH_O_CPUTYPE.X86_64, MACH_O_CPUTYPE.X86_64],
+			},
+		],
+	});
+	const fail = nativeComponentsCheck(foreign.app, { run: lipo("arm64") });
+	assert.equal(fail.passed, false);
+	assert.match(fail.output, /1 of 2 Mach-O component\(s\) do not carry arm64/);
+	assert.match(
+		fail.output,
+		/foreign-fat64\.node \[x86_64 \+ x86_64\]/,
+		"the offender line names the slices the fat reader got out of the 64-bit header",
+	);
+
+	// And the other direction, with the byte-swapped 64-bit spelling: a universal
+	// component carrying the bundle's own architecture is a component macOS opens
+	// natively, so it passes - and the count proves it was read rather than ignored.
+	const universal = makeApp(tempDir("lo-native-"), {
+		components: [
+			{
+				relative: "Contents/Resources/universal-fat64.node",
+				kind: "fat",
+				bits: 64,
+				magic: "bfbafeca",
+				cpuTypes: [MACH_O_CPUTYPE.X86_64, MACH_O_CPUTYPE.ARM64],
+			},
+		],
+	});
+	const pass = nativeComponentsCheck(universal.app, { run: lipo("arm64") });
+	assert.equal(pass.passed, true, pass.output);
+	assert.match(pass.output, /2 Mach-O components, all carrying arm64/);
 });
 
 test("a bundle with no readable component at all fails rather than passing vacuously", () => {

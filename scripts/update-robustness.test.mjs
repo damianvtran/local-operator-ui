@@ -4614,6 +4614,15 @@ test("the gate's own results carry the bundle-walk rows", () => {
 	 * quietly stopped asking the question this change exists for. `require-report.sh`
 	 * cannot see that either: it reads that a report was produced, not which
 	 * questions it asked (review round 2, finding 1).
+	 *
+	 * `app-native-components` is registered here for the same reason and by the same
+	 * rule (round 1, m1): its own suite drives `nativeComponentsCheck` directly, so
+	 * commenting out either `results.push(nativeComponentsCheck(...))` or the entry in
+	 * `checkApp` left that suite green while the gate stopped asking about the
+	 * component the macOS 27 notice names. Asserted BY PRESENCE rather than by
+	 * passing, because this fixture's stubbed runner answers `accepted` - which is not
+	 * a `lipo -archs` reading, so the check reports a failure here and only membership
+	 * of the id set holds.
 	 */
 	const dist = tempDir("lo-dist-walk-");
 	const app = join(dist, "mac-arm64", "Local Operator.app");
@@ -4633,7 +4642,11 @@ test("the gate's own results carry the bundle-walk rows", () => {
 	const ids = new Set(result.results.map((row) => row.id));
 	// Both halves by id: the authorization row is what makes a candidate FAIL this
 	// job, and the read row is what makes an unsigned one BLOCKED instead.
-	for (const id of ["app-profile-authorization", "app-entitlements-readable"]) {
+	for (const id of [
+		"app-profile-authorization",
+		"app-entitlements-readable",
+		"app-native-components",
+	]) {
 		assert.ok(
 			ids.has(id),
 			`${id} is declared but never reached: the gate ran ${JSON.stringify([...ids])}`,

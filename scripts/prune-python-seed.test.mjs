@@ -22,6 +22,7 @@ import {
 	SEED_STDLIB_MARKER,
 	SEED_TK_DIR,
 	clearIncidentalExecBits,
+	isMachO,
 	machOArchitectures,
 	machOCpuType,
 	machOExecutables,
@@ -110,24 +111,28 @@ function writeMachO(
 }
 
 /**
- * A fat (universal) Mach-O: `nfat_arch` then one five-word `fat_arch` per slice,
+ * A fat (universal) Mach-O: `nfat_arch` then one `fat_arch` entry per slice,
  * `cputype` first in each.
  *
- * `cafebabe` is `FAT_MAGIC` (big-endian fields); `bebafeca` is `FAT_CIGAM`, the
- * same header byte-swapped. Both are written in the cases below because a reader
- * that assumes one endianness does not fail on the other - it answers a plausible
- * number for the wrong file.
+ * `bits` picks the entry STRIDE - 20 bytes for `fat_arch`, 32 for `fat_arch_64`,
+ * whose `offset`/`size` are 64-bit - and the magic follows from it unless one is
+ * named: `cafebabe` / `cafebabf` big-endian, `bebafeca` / `bfbafeca` the
+ * byte-swapped twins. Both strides and both endiannesses are written in the cases
+ * below, because a reader that assumes one does not fail on the other - it answers
+ * a plausible number for the wrong file.
  */
-function writeFatMachO(path, cpuTypes, { magic = "cafebabe", count } = {}) {
+function writeFatMachO(path, cpuTypes, { magic, bits = 32, count } = {}) {
 	mkdirSync(dirname(path), { recursive: true });
+	const stride = bits === 64 ? 32 : 20;
+	const resolved = magic ?? (bits === 64 ? "cafebabf" : "cafebabe");
+	const bigEndian = resolved === "cafebabe" || resolved === "cafebabf";
 	const written = count ?? cpuTypes.length;
-	const bigEndian = magic === "cafebabe";
-	const header = Buffer.alloc(8 + Math.max(written, 0) * 20);
-	Buffer.from(magic, "hex").copy(header, 0);
+	const header = Buffer.alloc(8 + Math.max(written, 0) * stride);
+	Buffer.from(resolved, "hex").copy(header, 0);
 	if (bigEndian) header.writeUInt32BE(written, 4);
 	else header.writeUInt32LE(written, 4);
 	cpuTypes.forEach((cpuType, index) => {
-		const at = 8 + index * 20;
+		const at = 8 + index * stride;
 		if (bigEndian) header.writeUInt32BE(cpuType, at);
 		else header.writeUInt32LE(cpuType, at);
 	});
@@ -696,4 +701,60 @@ test("the Mach-O reader answers a slice SET, for fat files as well as thin", () 
 	const plain = join(dir, "plain");
 	writeFileSync(plain, "# read, never run\n");
 	assert.equal(machOArchitectures(plain), null);
+});
+
+test("a 64-bit fat component is recognised and read, not skipped", () => {
+	// QA Q1 / review m2, and the reason this is a reverted decision rather than a
+	// widened one: `cafebabf`/`bfbafeca` were left out of the shared magic set, so a
+	// component carrying one was not merely unread - it was outside every Mach-O
+	// question this repository asks. `machOFiles` did not return it, so the release
+	// gate's sweep neither counted it nor failed it while `docs/BUILD.md` stated the
+	// invariant unconditionally. The 64-bit header's ONLY difference is the entry
+	// stride (`fat_arch_64` carries 64-bit `offset`/`size`), and `cputype` is still
+	// the entry's first word - so the fix is recognition plus the stride, and both
+	// directions are asserted here.
+	const dir = tempDir("lo-macho64-");
+	const fat64 = join(dir, "fat64");
+	writeFatMachO(fat64, [MACH_O_CPUTYPE.ARM64, MACH_O_CPUTYPE.X86_64], {
+		bits: 64,
+	});
+	// The walk sees it: this is the half that was missing, and `isMachO` is the
+	// predicate `machOFiles` filters on.
+	assert.equal(isMachO(fat64), true);
+	assert.deepEqual(machOFiles(dir), ["fat64"]);
+	assert.deepEqual(machOArchitectures(fat64), [
+		MACH_O_CPUTYPE.ARM64,
+		MACH_O_CPUTYPE.X86_64,
+	]);
+	// The byte-swapped 64-bit twin, whose fields are little-endian.
+	const swapped = join(dir, "fat64-cigam");
+	writeFatMachO(swapped, [MACH_O_CPUTYPE.X86_64, MACH_O_CPUTYPE.ARM64], {
+		bits: 64,
+		magic: "bfbafeca",
+	});
+	assert.deepEqual(machOArchitectures(swapped), [
+		MACH_O_CPUTYPE.X86_64,
+		MACH_O_CPUTYPE.ARM64,
+	]);
+
+	// THE STRIDE IS THE ASSERTION'S POINT: read at the 32-bit stride, the second
+	// entry's `cputype` is one of its 64-bit offsets, and the file answers an
+	// architecture nobody wrote. So a header truncated before its LAST entry's
+	// cputype cannot answer at all, which pins the stride from the other side.
+	const cutLastEntry = join(dir, "fat64-cut");
+	writeFatMachO(cutLastEntry, [MACH_O_CPUTYPE.ARM64, MACH_O_CPUTYPE.X86_64], {
+		bits: 64,
+	});
+	// 8 + 32 = 40 bytes is the first entry entire and the second not started; at
+	// the 32-bit stride that same prefix would look like a complete 2-entry table.
+	writeFileSync(cutLastEntry, readFileSync(cutLastEntry).subarray(0, 40));
+	assert.equal(machOArchitectures(cutLastEntry), null);
+
+	// The shared magic set carries all four fat spellings, which is what makes the
+	// walk's recognition and the reader's stride agree about what this file is.
+	for (const magic of ["cafebabe", "cafebabf", "bebafeca", "bfbafeca"])
+		assert.ok(
+			LAYOUT.machOMagics.includes(magic),
+			`${magic} belongs in the shared magic set: a fat Mach-O the walk cannot see is one no reader is ever asked about`,
+		);
 });
