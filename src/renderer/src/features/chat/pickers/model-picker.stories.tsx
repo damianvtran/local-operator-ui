@@ -615,9 +615,7 @@ export const Busy: Story = {
 		// dialog: DialogContent's icon-only dismiss button intentionally shares
 		// the accessible name, but it is not the footer action this play tests.
 		const busyHint = screen.getByText("Switching the model…", { exact: true });
-		const footer = busyHint.closest<HTMLElement>(
-			".flex.items-center.justify-between",
-		);
+		const footer = busyHint.closest<HTMLElement>("[data-picker-footer]");
 		if (!footer) throw new Error("Picker footer was not rendered");
 		await waitFor(() =>
 			expect(
@@ -626,7 +624,7 @@ export const Busy: Story = {
 		);
 		// U1's ordering: the paint is already on the band's side of the wire
 		// while the command that will confirm it is still in flight.
-		expect(painted).toEqual(["anthropic/claude-haiku-4-5"]);
+		expect(painted).toEqual(["openrouter/anthropic/claude-haiku-4-5"]);
 		expect(cleared).toEqual([]);
 	},
 };

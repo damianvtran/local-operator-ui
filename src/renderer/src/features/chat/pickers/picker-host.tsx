@@ -1163,7 +1163,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
-				<div className="flex items-center justify-between gap-3 px-5 py-4">
+				<div
+					className="flex items-center justify-between gap-3 px-5 py-4"
+					data-picker-footer
+				>
 					{/*
 					 * The hint names the row Enter would pick (UX U1) and truncates rather
 					 * than wrapping, because a long model name here is the only text in the
