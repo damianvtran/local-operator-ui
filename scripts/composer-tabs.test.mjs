@@ -3534,6 +3534,114 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	}
 });
 
+test("the record's receipt names where the goal went, on screen, and offers nothing back", async () => {
+	/*
+	 * UX round 1's U2, driven through the app's own toast host rather than asserted on
+	 * the builder: the finding is about what a person READS after the press, and the
+	 * sentence is only evidence if it survives the press, the command, and sonner's own
+	 * render. The `Undo` half is asserted too, as an absence — the design refuses an
+	 * undo on this control (§ 2.3(a): an undo would have to retract the `done` row the
+	 * press just wrote, which no slash spelling can do), so what the receipt owes the
+	 * user is the recovery path in words, and a second affordance here would be the row
+	 * promising something it cannot deliver (UX round 1, U8's proportion).
+	 */
+	const { window: dom, root, cleanup, frame } = await domHarness();
+	const requests = [];
+	dom.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				return {
+					status: 200,
+					body: {
+						result: {
+							command: request.command,
+							result: {
+								kind: "notice",
+								text: "ran.",
+								style: "success",
+								data: {},
+							},
+						},
+					},
+				};
+			},
+		},
+	};
+	try {
+		const h = createElement;
+		const element = (goal) =>
+			h(
+				Fragment,
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontendWith({ goal, goal_status: "active" }),
+					runDetails: null,
+				}),
+				h(ThemedToastContainer, { duration: Number.POSITIVE_INFINITY }),
+			);
+		const liveToasts = () =>
+			[...dom.document.querySelectorAll("[data-sonner-toast]")].filter(
+				(node) => node.getAttribute("data-removed") !== "true",
+			);
+		const settle = async () => {
+			for (let round = 0; round < 3; round += 1) {
+				await act(async () => {});
+				await act(async () => frame());
+			}
+		};
+		const waitForLive = async (needle) => {
+			for (let round = 0; round < 12; round += 1) {
+				if (
+					liveToasts().some((node) =>
+						(node.textContent ?? "").includes(needle),
+					)
+				) {
+					return;
+				}
+				await settle();
+			}
+			assert.fail(
+				`no confirmation carrying ${needle}: ${JSON.stringify(
+					liveToasts().map((node) => node.textContent),
+				)}`,
+			);
+		};
+
+		await act(
+			async () => void root.render(element("Reconcile the March invoices")),
+		);
+		await act(async () =>
+			void dom.document.querySelector("[data-status-goal-done]").click(),
+		);
+		/*
+		 * The whole sentence, on the rendered toast: the value the press settled, that the
+		 * record is KEPT, and the one command that puts the goal back. Nothing in it is
+		 * new vocabulary — `it stays in the goal history` is this row's own dismiss
+		 * clause and `/goal <text>` is the app's spelling for the set form.
+		 */
+		await waitForLive(
+			"Goal done · Reconcile the March invoices — it stays in the goal history; /goal <text> sets it again",
+		);
+		assert.equal(requests.length, 1);
+		assert.equal(requests[0].args, "done");
+		assert.equal(
+			liveToasts().length,
+			1,
+			"the record's confirmation is the only one on screen",
+		);
+		const words = liveToasts()
+			.flatMap((node) => [...node.querySelectorAll("button")])
+			.map((node) => node.textContent);
+		assert.ok(
+			!words.includes("Undo"),
+			"this control has no undo to offer, so its receipt offers none",
+		);
+	} finally {
+		cleanup();
+	}
+});
+
 /* ---------------------------------------------------------------- */
 /* The goal's lifecycle: the done paint, the two controls, the gate  */
 /* ---------------------------------------------------------------- */
@@ -3977,6 +4085,15 @@ test("the picker gates Mark done on the lifecycle fields, in both directions", a
 	 */
 	assert.match(done, /This goal is settled\. It stays in the goal history/);
 	assert.doesNotMatch(done, /The judge called this done/);
+	/*
+	 * AND IT NOW POINTS AT THE RECORD (UX round 1, U5): the sentence named the history
+	 * without offering a way there, while the only two routes - an icon-only canvas
+	 * segment and a typed `/goal --history` - are not discoverable from any surface the
+	 * question "which goals did I finish?" is asked from. Asserted on the RENDER, not on
+	 * the source, because the clause is only a pointer if it survives into the dialog a
+	 * user reads; it names the segment's own word (`Goals view`, its accessible name).
+	 */
+	assert.match(done, /or find it in the canvas's Goals view\./);
 });
 
 test("the picker prints no judge for a goal that does not exist", async () => {
