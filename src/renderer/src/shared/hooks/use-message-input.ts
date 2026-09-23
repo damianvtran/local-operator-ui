@@ -93,18 +93,68 @@ export const SEND_HELD = "held";
  * race with no visible rule, and one that would silently lose the half of it the
  * user cared about.
  *
- * WHAT IT DOES DO is retire the box: the text leaves at the PRESS, not at the
+ * WHAT IT DOES DO is retire the BOX: the text leaves at the PRESS, not at the
  * answer, which is what keeps the follow-up that replaced it out of the question
  * already asked.
+ *
+ * AND IT CARRIES THE ASK'S OWN ANSWER, which is the one thing a string could not
+ * say. The box retiring at the press is the whole point (review round 1, F1), so
+ * this outcome is composed before the POST has answered and cannot know whether
+ * the ask will be answered or refused — while the composer's PAYLOAD (the staged
+ * reply chips and the credential map) must be retired on success and KEPT on
+ * failure, exactly as a refused send keeps it (review round 2, F6). The ask's
+ * own promise is therefore handed over inside this outcome, and the composer
+ * settles the payload on it rather than on the press.
+ *
+ * NESTED RATHER THAN RETURNED, deliberately: `useMessageInput` AWAITS what
+ * `onSubmit` returns, so returning the ask's promise would hold the box's clear
+ * and the composer's `admitting` state for the whole POST — the defect F1 names.
+ * A plain object settles the await in the press's own microtask, and the promise
+ * inside it is read afterwards, when it has something to say.
  */
-export const SEND_OFF_RECORD = "off-record";
+export type OffRecordAsk = {
+	/** The ask itself: resolved when it is answered, rejected when it is refused. */
+	offRecord: Promise<unknown>;
+};
 
 /** What a submit reported back to the composer. See `SEND_HELD`. */
-export type SendOutcome =
-	| undefined
-	| boolean
-	| typeof SEND_HELD
-	| typeof SEND_OFF_RECORD;
+export type SendOutcome = undefined | boolean | typeof SEND_HELD | OffRecordAsk;
+
+/**
+ * Whether an accepted submit went off the record, and which ask it was.
+ *
+ * A guard rather than a comparison, because the outcome is an object now: the
+ * four failures this tree has already been bitten by are all comparisons against
+ * a value that changed shape (`recordsSubmittedMessage` treating an object as
+ * "an ordinary accepted send" would write an off-record question to the
+ * persisted log — the F2 defect, back through a different door).
+ */
+export const isOffRecordAsk = (outcome: SendOutcome): outcome is OffRecordAsk =>
+	typeof outcome === "object" && outcome !== null;
+
+/**
+ * Settle the composer's payload on an off-record ask's own answer.
+ *
+ * AN ASK THAT IS ANSWERED CONSUMED WHAT IT CARRIED, and a REFUSED one did not
+ * (review round 2, F6). The staged reply chips and the credential map are retired
+ * by an accepted send because the text went out with them; an aside ask that the
+ * owner refused put nothing anywhere — the panel keeps the question and states
+ * the refusal under it — so the refusal rule applies instead and the payload
+ * stays, exactly as it does after a `false` outcome. `retire` is the composer's
+ * own retirement (`message-input.tsx`), so this module owns the decision and the
+ * composer owns what the decision does.
+ *
+ * Exported and pure so the rule is assertable, which is the whole reason it is a
+ * function at all: the call site is a React component a node test cannot mount,
+ * and the failure arm is the one that has to be pinned (the success arm is what
+ * the press did before this change, so only a test can tell the two apart).
+ */
+export function settleOffRecordPayload(
+	outcome: OffRecordAsk,
+	retire: () => void,
+): void {
+	void outcome.offRecord.then(retire, () => {});
+}
 
 /**
  * Whether an accepted submit is written to the per-conversation history log.
@@ -119,7 +169,7 @@ export type SendOutcome =
  * that was never sent, and `SEND_HELD` leaves the retry on the store's claim.
  */
 export const recordsSubmittedMessage = (outcome: SendOutcome): boolean =>
-	outcome !== false && outcome !== SEND_HELD && outcome !== SEND_OFF_RECORD;
+	outcome !== false && outcome !== SEND_HELD && !isOffRecordAsk(outcome);
 
 /**
  * Which text a composer transition may write over what the user has typed.
@@ -761,7 +811,7 @@ export const useMessageInput = ({
 		/*
 		 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
 		 * ask retires the box exactly like any other accepted send, but leaves no
-		 * entry for Up-arrow to recall and nothing on disk. See `SEND_OFF_RECORD`.
+		 * entry for Up-arrow to recall and nothing on disk. See `OffRecordAsk`.
 		 */
 		if (recordsSubmittedMessage(outcome))
 			addSubmittedMessage(conversationId, submitted);

@@ -121,8 +121,18 @@ function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
  * EXISTS OUTSIDE THE UPDATER, taking the batch as an argument, because the two
  * rules it would otherwise restate (a frame's type, and whether a chunk belongs
  * to the view) live one function above and must not be spelled a second time.
+ *
+ * EXPORTED so the classification itself is assertable, not merely its spelling
+ * (review round 2, F8): the bail-out that depends on it is one line inside an
+ * effect no node test can mount, so a source-text assertion would pass with the
+ * condition flipped, with an `||` for the `&&`, or with a third inert type added
+ * — each of which is a transcript that stops updating while the suite stays
+ * green. `scripts/btw-aside.test.mjs` drives it by value instead, including the
+ * fail-safe: `some()` defaults to "moves the view" for every type that is not
+ * one of the two inert ones, so a frame type this function has never heard of
+ * repaints rather than going silent.
  */
-function batchMovesView(frames: DesktopSessionFrame[]): boolean {
+export function batchMovesView(frames: DesktopSessionFrame[]): boolean {
 	return frames.some(
 		(frame) => frame.type !== "aside_delta" && frame.type !== "heartbeat",
 	);

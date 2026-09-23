@@ -13,15 +13,15 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
-import {
-	SEND_HELD,
-	SEND_OFF_RECORD,
-	type SendOutcome,
-} from "@shared/hooks/use-message-input";
+import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
-import { useAsideStore } from "@shared/store/aside-store";
+import {
+	asideTurnIsCarried,
+	previousAsideId,
+	useAsideStore,
+} from "@shared/store/aside-store";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
@@ -51,7 +51,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
-import { askAside } from "../aside";
+import { asideAskFailure, askAside } from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
@@ -1172,15 +1172,20 @@ function SessionPanel({
 			 * clear a no-op — the next Enter then asked "q1q2" as a NEW turn. The
 			 * `/btw` dispatcher's own branch states the same rule for its own door.
 			 *
-			 * A FAILED ASK DOES NOT PUT THE TEXT BACK, deliberately, and that is why
-			 * the outcome is `SEND_OFF_RECORD` rather than `false`. The failure is
+			 * A FAILED ASK DOES NOT PUT THE TEXT BACK, deliberately. The failure is
 			 * unknowable in the way `SEND_HELD` describes — the ask was REGISTERED, so
 			 * "nothing reached the owner" is false and the retry is not the box's to
 			 * offer — and the only text a restore could write into is a box the user
 			 * has since left alone, so whether it came back would depend on a race they
-			 * cannot see. Nothing is lost on screen: the panel keeps the question
-			 * painted and states the refusal under it, in the surface that owns the
-			 * exchange.
+			 * cannot see.
+			 *
+			 * NOT AWAITING THE POST IS NOT THE SAME AS NOT HEARING IT, and the two
+			 * things that depend on the ask's own answer ride its promise back to the
+			 * composer rather than waiting here: the composer's PAYLOAD is retired only
+			 * if the ask is answered and kept if it is refused (review round 2, F6,
+			 * where a refusal must keep the staged reply and the credential map exactly
+			 * as a refused send does), and a refusal the panel can no longer state is
+			 * stated on the composer instead (F7, below).
 			 */
 			const aside = sessionId
 				? useAsideStore.getState().attached[sessionId]
@@ -1209,16 +1214,61 @@ function SessionPanel({
 				 * `open` frame's own (`use-canonical-session` keeps it on the view, which
 				 * is also what the watch lease above leases it with), and it is absent
 				 * only before the stream's first `open`.
+				 *
+				 * A WELL-FORMED ID THIS OWNER DOES NOT HOLD IS A DOCUMENTED LIMITATION, not
+				 * a case with an answer here: the owner streams nothing for it and reports
+				 * nothing back, so the panel paints its thinking state and then the settled
+				 * answer in one piece, which reads as a slow model (QA round 1, Q3). The
+				 * whole statement, and why no client-side change closes it, is on
+				 * `askAside`'s own `subscriptionId` parameter — this branch is one of the
+				 * two places the id is chosen, and it chooses the only value there is.
 				 */
-				void askAside(
+				const ask = askAside(
 					sessionId,
 					content,
 					canonical.subscriptionId ?? undefined,
-				).catch(() => {
-					// The refusal is already on the panel (`askAside` records it on the
-					// turn), and this call site has nothing to add to it.
+				);
+				/*
+				 * The turn this ask registered under, read the way `adoptAside` reads its
+				 * continuation prefix: `beginAsk` runs synchronously inside `askAside`,
+				 * before its POST, so the exchange's last turn is this ask by the time the
+				 * call returns.
+				 */
+				const askingTurn = previousAsideId(useAsideStore.getState(), sessionId);
+				void ask.catch((error) => {
+					/*
+					 * WHICH SURFACE STATES THE REFUSAL. The panel owns the exchange and states
+					 * the refusal on the turn it is holding (`askAside` writes it there), so
+					 * while that turn exists this call site has nothing to add.
+					 *
+					 * A PANEL THE USER CLOSED HAS NO TURN LEFT TO STATE IT ON: the panel's own
+					 * Escape and close call `closeAside`, whose `detachAside` deletes each turn
+					 * AND its stream entry, so `failAside` refuses an id it no longer holds and
+					 * the refusal lands nowhere - while the question, which was painted on the
+					 * panel, left the screen with it (review round 2, F7: the state where
+					 * "nothing is lost on screen" was false). The text is deliberately not
+					 * restored either (above), so the composer is the only surface that still
+					 * knows the ask happened and it is the one that says what became of it.
+					 *
+					 * Read from the STORE rather than from the click that closed the panel: the
+					 * question is whether the refusal has a surface NOW, and a reopened panel
+					 * (a bare `/btw`, a new empty attachment) holds none of this ask's turns
+					 * either - which the stream entry's own absence answers and the attachment's
+					 * presence does not.
+					 */
+					if (
+						askingTurn &&
+						asideTurnIsCarried(useAsideStore.getState(), askingTurn)
+					)
+						return;
+					setSendError(asideAskFailure(error));
 				});
-				return SEND_OFF_RECORD;
+				/*
+				 * NOT AWAITED, so the box is handed back in the press's own commit (F1);
+				 * the promise is nested rather than returned for the same reason (see
+				 * `OffRecordAsk`).
+				 */
+				return { offRecord: ask };
 			}
 			/*
 			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then

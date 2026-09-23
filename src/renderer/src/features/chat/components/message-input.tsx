@@ -17,7 +17,9 @@ import {
 	type SendOutcome,
 	adoptRefusedPayload,
 	heldClaimCopy,
+	isOffRecordAsk,
 	refusedSplitNotice,
+	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
@@ -1887,6 +1889,48 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[credentialSessionId, queryClient],
 		);
 
+		/*
+		 * WHAT AN ACCEPTED SEND RETIRES, in ONE place because TWO paths now ask for
+		 * it: the submit's own tail, and an off-record ask's answer — which retires
+		 * the payload only once the ask has been ANSWERED (see `OffRecordAsk`, and
+		 * the off-record arm of the tail below). Written twice, the two would drift
+		 * and the failure path would go on quietly retiring what a refusal keeps.
+		 *
+		 * The disclosure is retired by the same submit that sends the text it warns
+		 * about (design round 2, D2's re-raise has this as its other half), which is
+		 * why `setDisclosure` is a dependency of THIS callback rather than of the
+		 * memo that calls it.
+		 */
+		const retireAcceptedPayload = useCallback(() => {
+			/*
+			 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
+			 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
+			 * real window: clearing the map first left the raw
+			 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
+			 * and an Enter inside that window sent a citation no map entry backed any
+			 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
+			 * effect below performs it in the commit that empties the box, so the two
+			 * cannot be seen apart. A REFUSED send keeps the map, because the
+			 * operator's unsent draft must not lose the value behind a pill they can
+			 * still see. `SEND_HELD` is the same case — the message may be on the owner
+			 * and its own retry lives on the store's claim, so the value has to stay
+			 * until that resolves.
+			 */
+			retirePayloads.current = true;
+			setDisclosure(null);
+			/*
+			 * And the locked run's record goes with the buffer it was made from: the box a
+			 * SENT message left behind is not the box that ran the command, and an undo
+			 * pressed after the send used to put the consumed line back on screen (code
+			 * review round 2, MINOR 1).
+			 */
+			lockedRun.current = null;
+			if (conversationId) {
+				clearReplies(conversationId);
+				clearAttachments(conversationId);
+			}
+		}, [clearAttachments, clearReplies, conversationId, setDisclosure]);
+
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
 				// Assembled by the same function the composer compares against, so the
@@ -1991,55 +2035,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 				if (accepted === false) return accepted;
 				/*
-				 * THE MAP IS CLEARED ONCE THE STORE HOLDS THE VALUES (§9.5), and only
-				 * then: a REFUSED send keeps it, because the operator's unsent draft must
-				 * not lose the value behind a pill they can still see. `SEND_HELD` is the
-				 * same case — the message may be on the owner and its own retry lives on
-				 * the store's claim, so the value has to stay until that resolves.
+				 * AN OFF-RECORD ASK'S PAYLOAD IS THE ASK'S TO SETTLE (review round 2, F6).
+				 * The question left at the press, so nothing here can know yet whether it
+				 * will be answered — and the two outcomes retire different things: an
+				 * ANSWERED ask consumed the staged reply and the credential it carried, so
+				 * both go as an accepted send's do; a REFUSED one keeps them, which is the
+				 * pre-F1 behaviour of that branch and the rule the block above states for a
+				 * refusal ("the operator's unsent draft must not lose the value behind a
+				 * pill they can still see"). Retiring on the press retired them either
+				 * way, and said nothing about it.
+				 *
+				 * The refusal itself is NOT repeated here: it belongs to the surface that
+				 * owns the exchange — the panel, or the composer's own error line when the
+				 * panel is gone (`chat-page.tsx`) — and a second copy of another surface's
+				 * sentence is a second place for the two to drift apart.
 				 */
-				/*
-				 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
-				 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
-				 * real window: clearing the map first left the raw
-				 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
-				 * and an Enter inside that window sent a citation no map entry backed any
-				 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
-				 * effect below performs it in the commit that empties the box, so the two
-				 * cannot be seen apart. A REFUSED send keeps the map, because the
-				 * operator's unsent draft must not lose the value behind a pill they can
-				 * still see. `SEND_HELD` is the same case — the message may be on the owner
-				 * and its own retry lives on the store's claim, so the value has to stay
-				 * until that resolves.
-				 */
-				retirePayloads.current = true;
-				setDisclosure(null);
-				/*
-				 * And the locked run's record goes with the buffer it was made from: the box a
-				 * SENT message left behind is not the box that ran the command, and an undo
-				 * pressed after the send used to put the consumed line back on screen (code
-				 * review round 2, MINOR 1).
-				 */
-				lockedRun.current = null;
-				if (conversationId) {
-					clearReplies(conversationId);
-					clearAttachments(conversationId);
+				if (isOffRecordAsk(accepted)) {
+					settleOffRecordPayload(accepted, retireAcceptedPayload);
+					return accepted;
 				}
+				retireAcceptedPayload();
 				return accepted;
 			},
 			[
 				onSendMessage,
 				attachments,
 				replies,
-				conversationId,
-				clearReplies,
-				clearAttachments,
+				/*
+				 * The retirement is reached through `retireAcceptedPayload` and no longer
+				 * through this closure's own body, so the values it needs are ITS
+				 * dependencies rather than this memo's - listing them here too is the
+				 * stale-closure hazard in reverse (this memo would be rebuilt for a value
+				 * nothing in it reads).
+				 */
+				retireAcceptedPayload,
 				storeCitedCredentials,
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
 				credentialSessionId,
-				// The disclosure is retired by the same submit that sends the text it
-				// warns about (design round 2, D2's re-raise has this as its other half).
-				setDisclosure,
 			],
 		);
 

@@ -898,7 +898,10 @@ export function useSlashDispatch({
 					 * branch exists for) the one that never receives a chunk, painting the
 					 * settled answer with no thinking state and no streaming. The id is the
 					 * `open` frame's `payload.subscription_id`, which the canonical handle
-					 * keeps; it is absent only before the stream's first `open`.
+					 * keeps; it is absent only before the stream's first `open`. See
+					 * `askAside`'s `subscriptionId` parameter for the whole statement of what
+					 * an id no live subscription owns costs (QA round 1, Q3: no frames, no
+					 * error, the settled answer in one piece).
 					 */
 					void askAside(
 						sessionId,

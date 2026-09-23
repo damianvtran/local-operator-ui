@@ -63,6 +63,7 @@ const bundle = await build({
 			export {
 				useAsideStore,
 				applyAsideDelta,
+				asideTurnIsCarried,
 				beginAsideStream,
 				settledAsideStream,
 				failedAsideStream,
@@ -73,11 +74,24 @@ const bundle = await build({
 				adoptAside,
 				closeAside,
 				openAsidePanel,
+				asideAskFailure,
 				asideAdoptChord,
 				asideAdoptCap,
 				asideAdoptReady,
 				asideAdoptBlockedReason,
 			} from "./src/renderer/src/features/chat/aside";
+			/*
+			   The canonical hook rides this bundle because adoptAside re-reads the
+			   session after the op (round 2, Q2): the resync registry the fix is
+			   driven through, and the view-batch rule F8 moved from a source-text
+			   assertion to a value assertion. Both are the REAL registries - a
+			   recorder standing in for either would pass on a fix that never fires.
+			*/
+			export {
+				__registerCanonicalResync,
+				resyncCanonicalSession,
+				batchMovesView,
+			} from "./src/renderer/src/shared/hooks/use-canonical-session";
 			/* The stub's OWN error class, so the instanceof check in the stub's
 			   userFacingMessage below is the shipped rule and not a second spelling. */
 			export { DesktopControlError } from
@@ -105,15 +119,32 @@ const bundle = await build({
 					() => ({
 						// Only the network is faked. `userFacingMessage` keeps the real
 						// judgement in spirit: a `DesktopControlError` is copy (the backend's
-						// own sentence), anything else is not.
+						// own sentence), anything else is not. The class carries the two
+						// fields the REAL one carries (`desktop-api.ts`), because the
+						// subscription-id compatibility retry keys on the response's own
+						// status and sentence rather than on the message alone.
 						contents: `
-						export class DesktopControlError extends Error {}
+						export class DesktopControlError extends Error {
+							constructor(status, message, cause, code) {
+								super(message);
+								this.name = "DesktopControlError";
+								this.status = status;
+								this.cause = cause;
+								this.code = code;
+							}
+						}
 						export class UserFacingError extends Error {}
 						export const userFacingMessage = (error, fallback) =>
 							error instanceof DesktopControlError || error instanceof UserFacingError
 								? String(error.message || fallback)
 								: fallback;
-						export const desktopResult = (request) => globalThis.__asideRequest(request);`,
+						export const desktopResult = (request) => globalThis.__asideRequest(request);
+						/*
+						 * The canonical hook's own transport seam, which this bundle now pulls in.
+						 * Nothing calls it here: the hook is never MOUNTED in a node test, and the
+						 * one thing the tests drive — the resync registry — is a plain map.
+						 */
+						export const subscribeDesktopStream = () => () => {};`,
 						loader: "js",
 						resolveDir: process.cwd(),
 					}),
@@ -128,12 +159,11 @@ const bundle = await build({
  *
  * `use-message-input` reaches the canonical-session hook, so it cannot share the
  * aside bundle above: that one replaces the whole desktop-api module with the
- * transport fixture, and the canonical graph imports more from it than the
- * fixture declares. Built instead with the api itself and `import.meta.env`
- * defined, which is all the module needs to load in node - and nothing in it is
- * CALLED, so the real transport is never reached. The rules under test are
- * exported precisely so they can be asserted without mounting the composer
- * (`clearSubmittedText`'s own note).
+ * transport fixture, while the composer's own graph takes the api itself. Built
+ * with the real module and `import.meta.env` defined, which is all it needs to
+ * load in node - and nothing in it is CALLED, so the real transport is never
+ * reached. The rules under test are exported precisely so they can be asserted
+ * without mounting the composer (`clearSubmittedText`'s own note).
  */
 const composerBundle = await build({
 	stdin: {
@@ -141,8 +171,9 @@ const composerBundle = await build({
 			export {
 				clearSubmittedText,
 				recordsSubmittedMessage,
+				isOffRecordAsk,
+				settleOffRecordPayload,
 				SEND_HELD,
-				SEND_OFF_RECORD,
 			} from "./src/renderer/src/shared/hooks/use-message-input";`,
 		resolveDir: process.cwd(),
 	},
@@ -160,6 +191,7 @@ const composerBundle = await build({
 const {
 	useAsideStore,
 	applyAsideDelta,
+	asideTurnIsCarried,
 	beginAsideStream,
 	settledAsideStream,
 	failedAsideStream,
@@ -168,10 +200,14 @@ const {
 	adoptAside,
 	closeAside,
 	openAsidePanel,
+	asideAskFailure,
 	asideAdoptChord,
 	asideAdoptCap,
 	asideAdoptReady,
 	asideAdoptBlockedReason,
+	__registerCanonicalResync,
+	resyncCanonicalSession,
+	batchMovesView,
 	DesktopControlError,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -180,8 +216,9 @@ const {
 const {
 	clearSubmittedText,
 	recordsSubmittedMessage,
+	isOffRecordAsk,
+	settleOffRecordPayload,
 	SEND_HELD,
-	SEND_OFF_RECORD,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -216,13 +253,13 @@ const RE_ASIDE_DELTA = /aside_delta/;
 const RE_ROUTE_DELTA = /applyAsideDelta\(frame\.payload\.aside_id/;
 const RE_ROUTE_DELTAS = /applyAsideDeltas\(frames\)/;
 /*
- * The view-batch rule (round 1, F5): the two frame types that move no view field,
- * and the bail-out that keeps an aside answer from repainting the pane per chunk.
- * The bail-out is source-level for the same reason the routing assertions below
- * are - this hook cannot be bundled in a node test (see the file's header).
+ * The view-batch rule (round 1, F5): the one line that turns "this batch paints
+ * nothing" into a non-render. The CLASSIFICATION it rests on used to be asserted
+ * here as source text, which passed with the condition flipped, with an `||` for
+ * the `&&`, or with a third inert type added - so `batchMovesView` is exported
+ * and driven by value instead (see the classification test); this regex pins the
+ * bail-out itself, which is one line inside an effect no node test can mount.
  */
-const RE_VIEW_BATCH_PREDICATE =
-	/frame\.type !== "aside_delta" && frame\.type !== "heartbeat"/;
 const RE_VIEW_BATCH_BAILOUT =
 	/if \(!batchMovesView\(frames\)\) return current;/;
 /*
@@ -238,10 +275,14 @@ const RE_ASIDE_BODY_SUBSCRIPTION = /subscription_id: request\.subscriptionId,/;
  * it held the box's clear and the composer's `admitting` state for the whole POST,
  * so a question visibly being answered above sat in the box and a follow-up typed
  * meanwhile was concatenated onto it by the next Enter.
+ *
+ * What it RETURNS is the off-record outcome, which carries the ask's own promise
+ * (round 2, F6) - not awaited, and not the promise itself, which the submit would
+ * await have held the same way.
  */
-const RE_ASIDE_FIRE_AND_FORGET = /void askAside\(/;
+const RE_ASIDE_FIRE_AND_FORGET = /const ask = askAside\(/;
 const RE_ASIDE_AWAITED = /await askAside\(/;
-const RE_ASIDE_OUTCOME = /return SEND_OFF_RECORD;/;
+const RE_ASIDE_OUTCOME = /return \{ offRecord: ask \};/;
 /*
  * What a `open` frame hands the renderer is what the ask must name, so the id's
  * origin is asserted rather than assumed: the routing fix is only correct if the
@@ -445,7 +486,10 @@ test("asking registers the turn BEFORE the request leaves, and settles on the re
 test("a refused ask is recorded on its own turn and re-thrown", async () => {
 	reset();
 	handler = async () => {
-		throw new DesktopControlError("Close an aside or wait for it to expire");
+		throw new DesktopControlError(
+			null,
+			"Close an aside or wait for it to expire",
+		);
 	};
 	await assert.rejects(() => askAside(SESSION, "q"));
 	const stream =
@@ -488,7 +532,9 @@ test("a refused adopt states itself on the panel and leaves it open", async () =
 	reset();
 	handler = async (request) =>
 		request.op === "sessions.adopt"
-			? Promise.reject(new DesktopControlError("This aside cannot be adopted"))
+			? Promise.reject(
+					new DesktopControlError(null, "This aside cannot be adopted"),
+				)
 			: {
 					data: { aside_id: request.requestId, text: "one", off_record: true },
 				};
@@ -507,7 +553,9 @@ test("closing releases the exchange and detaches even when the release is refuse
 	reset();
 	handler = async (request) =>
 		request.op === "sessions.aside.close"
-			? Promise.reject(new DesktopControlError("Wait for the aside to finish"))
+			? Promise.reject(
+					new DesktopControlError(null, "Wait for the aside to finish"),
+				)
 			: {
 					data: { aside_id: request.requestId, text: "one", off_record: true },
 				};
@@ -619,7 +667,15 @@ test("the adopt gate needs a settled answer and an idle session", () => {
  * the user came through cannot decide whether the question outlives the app.
  */
 test("an off-record ask is not written into the persisted composer history", () => {
-	assert.equal(recordsSubmittedMessage(SEND_OFF_RECORD), false);
+	/*
+	 * The outcome is an OBJECT now, carrying the ask's own answer (round 2, F6),
+	 * which is exactly the shape a careless guard would classify as "an ordinary
+	 * accepted send" and persist. The rule is asserted for the off-record ask
+	 * itself, not for a string that stands in for it.
+	 */
+	const ask = { offRecord: Promise.resolve() };
+	assert.equal(isOffRecordAsk(ask), true);
+	assert.equal(recordsSubmittedMessage(ask), false);
 	// The conversation's own send is, and the two failure answers are not: `false`
 	// put the text back in the box, and `SEND_HELD` keeps the retry on the store's
 	// claim rather than in a log it would have to be recalled from.
@@ -627,6 +683,46 @@ test("an off-record ask is not written into the persisted composer history", () 
 	assert.equal(recordsSubmittedMessage(undefined), true);
 	assert.equal(recordsSubmittedMessage(false), false);
 	assert.equal(recordsSubmittedMessage(SEND_HELD), false);
+	/*
+	 * AND NOTHING ELSE IS MISTAKEN FOR IT. The guard reads the shape, so the three
+	 * answers that are NOT off-record asks must not be read as one - a widened
+	 * check here would send every ordinary send down the ask's payload path.
+	 */
+	assert.equal(isOffRecordAsk(false), false);
+	assert.equal(isOffRecordAsk(true), false);
+	assert.equal(isOffRecordAsk(SEND_HELD), false);
+	assert.equal(isOffRecordAsk(undefined), false);
+});
+
+/*
+ * A REFUSED ASK RETIRES NOTHING, AN ANSWERED ONE RETIRES WHAT IT SENT (round 2,
+ * F6). The question leaves at the press, so the payload's fate cannot be decided
+ * there: the staged reply chips and the credential map belong to the next real
+ * send when the ask is refused (the same rule a `false` outcome follows), and are
+ * consumed when it is answered.
+ */
+test("an off-record ask's payload is retired on the answer and kept on a refusal", async () => {
+	let retired = 0;
+	const answered = { offRecord: Promise.resolve("the answer") };
+	settleOffRecordPayload(answered, () => {
+		retired += 1;
+	});
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.equal(retired, 1, "an answered ask consumed what it carried");
+
+	const refused = {
+		offRecord: Promise.reject(new Error("the aside was refused")),
+	};
+	settleOffRecordPayload(refused, () => {
+		retired += 1;
+	});
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(
+		retired,
+		1,
+		"a refused ask puts nothing anywhere, so it keeps them",
+	);
 });
 
 /*
@@ -721,10 +817,9 @@ test("the frame is live-only and never reaches the transcript reducer", () => {
  */
 test("a batch of off-record chunks does not repaint the view", () => {
 	const hook = read("src/renderer/src/shared/hooks/use-canonical-session.ts");
-	// The two types that move no view field, spelled once for the batch rule.
-	assert.match(hook, RE_VIEW_BATCH_PREDICATE);
 	// `current`, not a fresh object: handing React the same reference is what
-	// makes the bail-out a non-render rather than a cheap one.
+	// makes the bail-out a non-render rather than a cheap one. WHICH batches it
+	// catches is asserted by value below, not by this file's characters.
 	assert.match(hook, RE_VIEW_BATCH_BAILOUT);
 });
 
@@ -834,4 +929,303 @@ test("the destination routes to the panel rather than to a picker", () => {
 	// while a bare `/btw` only attaches the panel.
 	assert.match(dispatch, RE_DISPATCH_ASK);
 	assert.match(dispatch, RE_DISPATCH_OPEN);
+});
+
+/* ------------------------------------- the adopt's receipt, and its re-read */
+
+/*
+ * AN ADOPT MAKES THE PANE READ AGAIN (round 2, Q2).
+ *
+ * The owner appends the exchange to its journal and to its live context and
+ * publishes NOTHING: no `event` frame carries the two messages and the frontend
+ * refresh watermark is not advanced, so a mounted pane that never re-reads keeps
+ * painting the conversation without them. Measured by the QA round on the running
+ * stack: the rows were in the owner's journal at 0/3/10 s and the transcript
+ * painted none of them in 20 s, nor on re-entering the pane.
+ *
+ * Driven through the REAL resync registry (`__registerCanonicalResync`) rather
+ * than a recorder standing in for it: the fix is a call into that registry, so a
+ * test that replaced it could pass on a fix that never fires.
+ */
+
+test("an adopt asks the pane to re-read the session, after the rows are durable", async () => {
+	reset();
+	const reads = [];
+	const unregister = __registerCanonicalResync(SESSION, () =>
+		reads.push(calls.length),
+	);
+	try {
+		handler = async (request) =>
+			request.op === "sessions.adopt"
+				? { data: { aside_id: request.asideId, status: "adopted" } }
+				: {
+						data: {
+							aside_id: request.requestId,
+							text: "the answer",
+							off_record: true,
+						},
+					};
+		await askAside(SESSION, "a question");
+		await adoptAside(SESSION);
+		// Exactly one re-read: the pane's own snapshot read is what carries the
+		// adopted rows, and the resync is the seam that produces it.
+		assert.equal(reads.length, 1);
+		// ASKED AFTER THE POST ANSWERED. `Session.adopt_aside` persists before it
+		// adopts, so a read issued before the receipt would find the conversation
+		// exactly as it was and the receipt would be a sentence about nothing.
+		assert.equal(reads[0], calls.length);
+		assert.equal(calls.at(-1).op, "sessions.adopt");
+		// The panel still goes: the rows are the receipt, and they are now painted.
+		assert.equal(useAsideStore.getState().attached[SESSION], undefined);
+		// A session no pane is displaying is not a failure: there is nothing to
+		// re-read, and the next mount reads the new state anyway.
+		assert.equal(resyncCanonicalSession(OTHER_SESSION), false);
+	} finally {
+		unregister();
+	}
+});
+
+test("a refused adopt asks for no re-read and leaves the panel up", async () => {
+	reset();
+	const reads = [];
+	const unregister = __registerCanonicalResync(SESSION, () => reads.push(1));
+	try {
+		handler = async (request) =>
+			request.op === "sessions.adopt"
+				? Promise.reject(
+						new DesktopControlError(null, "This aside cannot be adopted"),
+					)
+				: {
+						data: {
+							aside_id: request.requestId,
+							text: "the answer",
+							off_record: true,
+						},
+					};
+		await askAside(SESSION, "a question");
+		await assert.rejects(() => adoptAside(SESSION));
+		// NOTHING JOINED THE CONVERSATION, so there is nothing new to read - and a
+		// re-read here would be a repaint claimed as a receipt for an op that failed.
+		assert.equal(reads.length, 0);
+		assert.equal(useAsideStore.getState().attached[SESSION].turns.length, 1);
+	} finally {
+		unregister();
+	}
+});
+
+/* ----------------------------------------- an owner older than the field */
+
+/*
+ * RELEASE SKEW, CLIENT SIDE (round 2, PAIRING COMPATIBILITY).
+ *
+ * `subscription_id` is accepted only by an owner built from the change that
+ * added it, and the body model forbids unknown keys repo-wide, so an older owner
+ * answers 422 to EVERY ask that carries it. The owner cannot be fixed from here,
+ * so this window asks with the field, drops it once, and remembers - the field's
+ * absence behaves exactly as it did before the field existed (the aside runs, the
+ * POST's text settles the answer, and no live frames are published).
+ *
+ * Each test owns its session id: the memory is per window and per session, so one
+ * test's remembered owner must not make another's first ask fieldless.
+ */
+const SESSION_SKEW_FIRST = "session-aside-skew-1";
+const SESSION_SKEW_MEMORY = "session-aside-skew-2";
+const SESSION_SKEW_OTHER = "session-aside-skew-3";
+const SUBSCRIPTION = "a".repeat(32);
+/* The desktop plane's own refusal of a body whose fields it will not take. */
+const UNKNOWN_FIELDS_SENTENCE = "The request has invalid fields.";
+
+/** An owner that forbids the field, and answers every fieldless ask. */
+const forbidsTheField = async (request) => {
+	if (request.subscriptionId !== undefined)
+		throw new DesktopControlError(422, UNKNOWN_FIELDS_SENTENCE);
+	return {
+		data: {
+			aside_id: request.requestId,
+			text: "the whole answer",
+			off_record: true,
+		},
+	};
+};
+
+test("an owner that forbids subscription_id is asked once more without it", async () => {
+	reset();
+	handler = forbidsTheField;
+	const asideId = await askAside(SESSION_SKEW_FIRST, "why?", SUBSCRIPTION);
+	assert.equal(calls.length, 2, "one refused request, one accepted one");
+	assert.equal(calls[0].subscriptionId, SUBSCRIPTION);
+	assert.equal(calls[1].subscriptionId, undefined);
+	/*
+	 * ONE ASK, NOT TWO. The retry re-uses the request id, so the panel's turn, its
+	 * stream entry and the owner's own receipt are the same exchange: a retry that
+	 * minted a new id would put a second question on the panel and strand the first
+	 * entry, and the settle below would land on neither.
+	 */
+	assert.equal(calls[0].requestId, calls[1].requestId);
+	assert.equal(
+		useAsideStore.getState().attached[SESSION_SKEW_FIRST].turns.length,
+		1,
+	);
+	assert.deepEqual(Object.keys(useAsideStore.getState().streams), [asideId]);
+	// The answer still arrives whole: the fieldless body is answered exactly as it
+	// was before the field existed.
+	assert.equal(useAsideStore.getState().streams[asideId].settled, true);
+	assert.equal(
+		useAsideStore.getState().streams[asideId].text,
+		"the whole answer",
+	);
+});
+
+test("the next ask for that session skips the field instead of paying the refusal again", async () => {
+	reset();
+	handler = forbidsTheField;
+	const first = await askAside(SESSION_SKEW_MEMORY, "q1", SUBSCRIPTION);
+	assert.equal(calls.length, 2);
+	calls.length = 0;
+	const second = await askAside(SESSION_SKEW_MEMORY, "q2", SUBSCRIPTION);
+	assert.equal(calls.length, 1, "the refusal is remembered, and paid once");
+	assert.equal(calls[0].subscriptionId, undefined);
+	// The continuation still continues, and it is the same owner's second ask.
+	assert.deepEqual(
+		useAsideStore
+			.getState()
+			.attached[SESSION_SKEW_MEMORY].turns.map((turn) => turn.asideId),
+		[first, second],
+	);
+	/*
+	 * AND IT IS NOT TARRED WITH IT. A second conversation on the same (older)
+	 * owner is asked WITH the field first, exactly as the first was: the memory is
+	 * a fact about the session that met the refusal, not about the daemon.
+	 */
+	calls.length = 0;
+	await askAside(SESSION_SKEW_OTHER, "hello", SUBSCRIPTION);
+	assert.equal(calls.length, 2);
+	assert.equal(calls[0].subscriptionId, SUBSCRIPTION);
+	assert.equal(calls[1].subscriptionId, undefined);
+});
+
+test("a 422 that is not the field refusal is not retried", async () => {
+	reset();
+	const session = "session-aside-422-other";
+	const asideId = "aside-422";
+	handler = async () =>
+		Promise.reject(
+			new DesktopControlError(
+				422,
+				"Confirm adding this aside to the conversation",
+			),
+		);
+	await assert.rejects(() => askAside(session, "q", SUBSCRIPTION));
+	// THE STATUS ALONE EARNS NOTHING. A route's own 422 - the same status, a
+	// different sentence - is an ordinary failure whose retry budget is its own, and
+	// retrying it would ask a refused question twice.
+	assert.equal(calls.length, 1);
+	assert.equal(
+		calls[0].asideId,
+		asideId === "aside-422" ? calls[0].asideId : undefined,
+	);
+	// The refusal is on the turn, stated with the backend's own sentence, as every
+	// other failure is.
+	const turn = previousAsideId(useAsideStore.getState(), session);
+	assert.equal(
+		useAsideStore.getState().streams[turn].error,
+		"Confirm adding this aside to the conversation",
+	);
+
+	/*
+	 * AND AN ASK THAT NAMED NO SUBSCRIPTION HAS NOTHING TO DROP: a 422 against it
+	 * cannot be the field, so it is not retried either.
+	 */
+	reset();
+	handler = async () =>
+		Promise.reject(new DesktopControlError(422, UNKNOWN_FIELDS_SENTENCE));
+	await assert.rejects(() => askAside(session, "q"));
+	assert.equal(calls.length, 1);
+});
+
+/* -------------------------------------------------- the view-batch rule */
+
+/*
+ * WHAT COUNTS AS \"THIS BATCH PAINTS NOTHING\" (round 2, F8).
+ *
+ * Asserted BY VALUE, not by the file's characters: the bail-out that depends on
+ * this classification is one line inside an effect no node test can mount, and a
+ * source-text assertion would pass with the condition flipped, with an `||` for
+ * the `&&`, or with a third type added to the inert list - each of which is a
+ * transcript that stops updating while the suite stays green.
+ */
+test("only the two inert frame types leave the view alone, and an unknown one repaints", () => {
+	const frame = (type) => ({ type });
+	/* The two the fold treats as invisible: a heartbeat touches nothing, and an
+	   aside chunk is routed to its own store before the reducer sees it. */
+	assert.equal(batchMovesView([frame("aside_delta")]), false);
+	assert.equal(batchMovesView([frame("heartbeat")]), false);
+	assert.equal(
+		batchMovesView([frame("aside_delta"), frame("heartbeat")]),
+		false,
+	);
+	assert.equal(batchMovesView([]), false);
+	/* Everything else writes something the pane paints. */
+	for (const type of [
+		"open",
+		"snapshot",
+		"event",
+		"attention",
+		"frontend.update",
+		"frontend.replace",
+	]) {
+		assert.equal(batchMovesView([frame(type)]), true, type);
+	}
+	/*
+	 * FAIL-SAFE, WHICH IS THE HALF A LIST-OF-INERT-TYPES WOULD GET WRONG: a frame
+	 * type this rule has never heard of must repaint rather than go silent, because
+	 * silence here is a transcript that stops updating for the rest of the session.
+	 */
+	assert.equal(batchMovesView([frame("something_new")]), true);
+	assert.equal(
+		batchMovesView([frame("aside_delta"), frame("something_new")]),
+		true,
+	);
+});
+
+/* ------------------------------- a refusal with no panel left to state it */
+
+/*
+ * WHICH SURFACE CAN STATE A REFUSAL (round 2, F7).
+ *
+ * The panel states it on the turn it is holding; `detachAside` deletes a turn AND
+ * its stream entry, so a user who closes the panel while an answer is in flight
+ * leaves `failAside` with nothing to write on - and the question left the screen
+ * with the panel, so the composer is the only surface that still knows the ask
+ * happened. `asideTurnIsCarried` is that rule as a value, and the composer's own
+ * catch is the caller that asks it.
+ */
+test("a refusal has a surface while the panel holds the turn, and none once it does not", async () => {
+	reset();
+	handler = async (request) => ({
+		data: { aside_id: request.requestId, text: "the answer", off_record: true },
+	});
+	const asideId = await askAside(SESSION, "a question");
+	const state = () => useAsideStore.getState();
+	assert.equal(asideTurnIsCarried(state(), asideId), true);
+	closeAside(SESSION);
+	assert.equal(asideTurnIsCarried(state(), asideId), false);
+	// An id no surface ever held is the same answer: the store refuses to open an
+	// entry for a frame whose panel has gone (see `applyAsideDelta`).
+	assert.equal(asideTurnIsCarried(state(), "never-asked"), false);
+
+	/*
+	 * AND THE SENTENCE IS COMPOSED IN ONE PLACE, so the composer states the same
+	 * words the panel does rather than a paraphrase of them.
+	 */
+	assert.equal(
+		asideAskFailure(
+			new DesktopControlError(null, "The aside was not answered."),
+		),
+		"The aside was not answered.",
+	);
+	assert.equal(
+		asideAskFailure(new Error("TypeError: fetch failed")),
+		"The aside was not answered.",
+	);
 });

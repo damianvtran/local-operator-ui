@@ -135,6 +135,27 @@ export function applyAsideDelta(
 	return { ...stream, text: stream.text + delta, streaming: true };
 }
 
+/**
+ * Whether a refusal recorded for this ask would have a surface to land on.
+ *
+ * The turn's stream entry IS that surface: `failAside` writes the sentence on it
+ * and the panel paints the turn it belongs to. `detachAside` deletes both
+ * together (see its own note), so an entry's absence is precisely "no surface is
+ * holding this ask" — which is the state a user reaches by closing the panel
+ * while an answer is still in flight, and the one the composer has to answer for.
+ *
+ * A pure function, exported for the same reason `applyAsideDelta` is: the rule is
+ * a fact about the store that two callers now ask (the store's own write, and the
+ * composer deciding whether it must state the refusal itself), and a rule stated
+ * twice is a rule that will disagree with itself.
+ */
+export function asideTurnIsCarried(
+	state: Pick<AsideStore, "streams">,
+	asideId: string,
+): boolean {
+	return Boolean(state.streams[asideId]);
+}
+
 /** The state an ask opens in: in flight, nothing yet, no error. */
 export function beginAsideStream(): AsideStream {
 	return { text: "", streaming: true, settled: false, error: null };
@@ -211,7 +232,7 @@ export const useAsideStore = create<AsideStore>((set) => ({
 
 	failAside: (asideId, error) =>
 		set((state) => {
-			if (!state.streams[asideId]) return state;
+			if (!asideTurnIsCarried(state, asideId)) return state;
 			return {
 				streams: {
 					...state.streams,

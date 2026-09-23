@@ -23,9 +23,11 @@
  * cannot silently bypass a check that exists elsewhere.
  */
 import {
+	DesktopControlError,
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import {
 	type AsideStream,
 	previousAsideId,
@@ -37,6 +39,91 @@ import { v4 as uuidv4 } from "uuid";
 type AsideAnswer = {
 	data: { aside_id: string; text: string; off_record: boolean };
 };
+
+/**
+ * The sentence a refused ask is stated with, wherever it is stated.
+ *
+ * ONE COMPOSITION FOR TWO SURFACES. The panel states a refusal on the turn
+ * (`failAside`) and the composer states the same one when the panel is gone
+ * (see the aside branch in `chat-page.tsx`); two spellings of the same fact
+ * would read as two different facts, which is why the composition lives here
+ * rather than at either call site.
+ */
+export function asideAskFailure(error: unknown): string {
+	return userFacingMessage(error, "The aside was not answered.");
+}
+
+/**
+ * The desktop plane's own refusal of a body whose FIELDS it will not take.
+ *
+ * It is one sentence for every rejected field, and it is the WHOLE evidence an
+ * older owner leaves: `server/app.py`'s `RequestValidationError` arm answers a
+ * `/v1/desktop/` path with this string instead of pydantic's default body, so a
+ * daemon that does not know `subscription_id` answers 422 with no `loc`, no
+ * field name and no code to read. Quoted here because it is the only thing that
+ * separates "this owner forbids the field" from every other 422 — see
+ * `refusedTheSubscriptionField`. The producer is
+ * `local_operator/server/app.py` (`invalid fields`), and a reworded owner would
+ * make the retry below stop firing, which costs one failed request and never
+ * the answer.
+ */
+const UNKNOWN_FIELDS_REFUSAL = "The request has invalid fields.";
+
+/**
+ * Whether a failed ask is an owner refusing the field THIS app sent.
+ *
+ * Keyed on the response's own evidence and never on the status alone: a 422
+ * that carries anything else (a route's own refusal - `/asides` answers one for
+ * a malformed exchange, `Adopt` for an unconfirmed one) is an ordinary failure
+ * that keeps its retry budget, and it is the sentence above, not the number,
+ * that says which of the two this is. `weSentTheField` is the other half of the
+ * proof, and it is this app's own record of the request rather than an
+ * inference: an ask that named no subscription has nothing to drop, so a 422
+ * against it cannot be this.
+ */
+function refusedTheSubscriptionField(
+	error: unknown,
+	weSentTheField: boolean,
+): boolean {
+	return (
+		weSentTheField &&
+		error instanceof DesktopControlError &&
+		error.status === 422 &&
+		error.message === UNKNOWN_FIELDS_REFUSAL
+	);
+}
+
+/**
+ * Sessions whose owner has already refused `subscription_id`.
+ *
+ * RELEASE SKEW, AND WHY THE CLIENT IS THE ONE THAT YIELDS. The field is
+ * accepted only by a daemon built from the change that added it, and the body
+ * model forbids unknown keys repo-wide, so an older owner answers 422 to every
+ * body that carries it. The owner cannot be fixed from here, so this window
+ * asks with the field, drops it once (below) and then REMEMBERS, rather than
+ * paying a refused request on every ask for the rest of the session. The field's
+ * absence behaves exactly as it did before the field existed: the aside still
+ * runs, the POST's text still settles the answer, and no live frames are
+ * published (the panel then shows the settled answer with no streaming, which is
+ * the honest cost of the older owner).
+ *
+ * Bounded like this tree's other registries (`echoTargets`): a window talks to
+ * ONE owner, so the set is as large as the sessions a user asked an aside in,
+ * and the oldest goes first. Per-window and per-session by construction: an
+ * owner that is updated underneath a live window keeps the cheaper ask until the
+ * window reloads, which again costs the live half and never the answer.
+ */
+const fieldlessOwners = new Set<string>();
+const MAX_FIELDLESS_OWNERS = 64;
+
+function rememberFieldlessOwner(sessionId: string): void {
+	fieldlessOwners.add(sessionId);
+	while (fieldlessOwners.size > MAX_FIELDLESS_OWNERS) {
+		const oldest = fieldlessOwners.values().next().value;
+		if (oldest === undefined) return;
+		fieldlessOwners.delete(oldest);
+	}
+}
 
 /**
  * Attach an EMPTY aside panel to this session's composer (a bare `/btw`).
@@ -73,6 +160,22 @@ export function openAsidePanel(sessionId: string): void {
  * it is the `open` frame's `payload.subscription_id`, kept on the canonical
  * view and passed in by the call site that holds it. Undefined when the stream
  * has not opened yet, which costs the live half and not the answer.
+ *
+ * A WELL-FORMED ID THIS OWNER DOES NOT HOLD IS A DOCUMENTED LIMITATION, and it
+ * is stated here because this parameter is where the id is chosen. The owner
+ * publishes no frames for an id no live subscription owns and reports nothing
+ * back about it (the POST answers with the whole answer as usual), so the panel
+ * paints its thinking state for the length of the model call and then the settled
+ * text in one piece — indistinguishable, on screen, from a slow model (QA round
+ * 1, Q3). It is a fault this app cannot produce: the id comes from the stream's
+ * OWN `open` frame and every stream-failure path sets it back to `null`
+ * (`use-canonical-session`), so a wrong id means the owner and the viewer
+ * disagree about a subscription that both believe is live. The compatibility
+ * retry below does NOT cover this case either: it fires on an owner that REFUSES
+ * the field, never on one that accepts it and has nothing routed to it. Closing
+ * it properly means the owner reporting the delivery back (or the viewer
+ * discarding an id whose subscription has been replaced), neither of which is
+ * this app's to infer; the panel's degrade is the documented one.
  */
 export async function askAside(
 	sessionId: string,
@@ -87,15 +190,39 @@ export async function askAside(
 	 */
 	const continuation = previousAsideId(store, sessionId);
 	store.beginAsk(sessionId, asideId, question);
-	try {
-		const value = await desktopResult<AsideAnswer>({
+	/*
+	 * The ask is ONE operation with ONE registration, whatever the wire takes: the
+	 * turn above is the panel's, the settle/fail below is the panel's, and the
+	 * request below may be sent twice only to find out which body this owner
+	 * accepts. Nothing is registered, settled or failed twice, so the retry cannot
+	 * double-charge the panel — and it cannot double-run the aside either, because
+	 * an owner that refuses the field refuses the BODY (validation precedes the
+	 * route), so the refused request never reached the model.
+	 */
+	const ask = (withField: boolean) =>
+		desktopResult<AsideAnswer>({
 			op: "sessions.aside",
 			sessionId,
 			requestId: asideId,
 			text: question,
 			asideId: continuation,
-			subscriptionId,
+			subscriptionId: withField ? subscriptionId : undefined,
 		});
+	const withField = Boolean(subscriptionId) && !fieldlessOwners.has(sessionId);
+	try {
+		let value: AsideAnswer;
+		try {
+			value = await ask(withField);
+		} catch (error) {
+			if (!refusedTheSubscriptionField(error, withField)) throw error;
+			/*
+			 * The owner is older than the field. Remembered BEFORE the retry, so a
+			 * second ask cannot pay the refused request again even if the retry itself
+			 * fails, and then asked exactly once without it.
+			 */
+			rememberFieldlessOwner(sessionId);
+			value = await ask(false);
+		}
 		/*
 		 * The RESPONSE's text is authoritative and REPLACES what the deltas
 		 * accumulated: a chunk lost to a slow subscription or delivered twice
@@ -110,12 +237,16 @@ export async function askAside(
 		useAsideStore.getState().settleAside(asideId, value.data.text);
 		return asideId;
 	} catch (error) {
-		useAsideStore
-			.getState()
-			.failAside(
-				asideId,
-				userFacingMessage(error, "The aside was not answered."),
-			);
+		/*
+		 * The panel states this on the turn it is holding — but only while it still
+		 * holds one, and that is not a detail: `detachAside` deletes a panel's turns
+		 * AND their stream entries, so a user who closed the panel before the answer
+		 * arrived leaves `failAside` with nothing to write on and the refusal with no
+		 * surface at all. The caller reads that off the SAME store entry this write
+		 * consults (`asideTurnIsCarried`), and states the refusal on the composer when
+		 * there is nothing left to carry it — see the aside branch in `chat-page.tsx`.
+		 */
+		useAsideStore.getState().failAside(asideId, asideAskFailure(error));
 		throw error;
 	}
 }
@@ -132,6 +263,28 @@ export async function askAside(
  * is now in the transcript: the rows themselves are the receipt, so a sentence
  * saying so would be the app telling the user what they can already read (§ 7's
  * completed action — one quiet line, and here not even that).
+ *
+ * THE RECEIPT HAS TO BE MADE TO EXIST, WHICH IS WHY THIS RE-READS THE SESSION.
+ * The owner appends the exchange to its journal and to its live context and
+ * ANNOUNCES NOTHING: no `event` frame carries the two messages and the frontend
+ * refresh watermark is not advanced, so no viewer of this session is told and a
+ * pane that never re-reads keeps showing the conversation without them (QA round
+ * 1, Q2 — measured: the rows are in the owner's journal at 0/3/10 s and the
+ * transcript painted none of them in 20 s, nor on re-entering the pane). A pane
+ * that has not re-read cannot paint rows it was never handed, so the surface
+ * that pressed the control asks its own pane to read again — the same seam the
+ * Schedules page uses for its own out-of-band writes (`resyncCanonicalSession`,
+ * which re-opens this session's subscription without a cursor so the answer is a
+ * fresh snapshot). The rows that land are the OWNER's durable ones, not a local
+ * splice of the text this window happens to hold, so they carry the ids a later
+ * page read coalesces on and no row can be painted twice.
+ *
+ * A SECOND VIEWER IS THE OTHER HALF, AND IT IS NOT THIS APP'S TO CLOSE. Another
+ * window attached to the same session receives nothing either, because there is
+ * nothing on the wire to receive; only the owner can tell it, and the companion
+ * backend change is where that belongs (see the PR review's Q2). What this call
+ * fixes is the one viewer that has a reason to look: the one whose user pressed
+ * Adopt.
  */
 export async function adoptAside(sessionId: string): Promise<void> {
 	const store = useAsideStore.getState();
@@ -152,6 +305,13 @@ export async function adoptAside(sessionId: string): Promise<void> {
 		);
 		throw error;
 	}
+	/*
+	 * Asked AFTER the POST, because the rows are durable only once it has answered
+	 * (`Session.adopt_aside` persists before it adopts, and the route's receipt
+	 * settles after that): a re-read issued before the write would find the
+	 * conversation exactly as it was and the exchange would still be missing.
+	 */
+	resyncCanonicalSession(sessionId);
 	useAsideStore.getState().detachAside(sessionId);
 }
 
