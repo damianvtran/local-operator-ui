@@ -38,6 +38,7 @@ import {
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 /**
  * Node's test runner exports this into every test-file process. An inherited
@@ -129,10 +130,19 @@ nodeArgs.push(...args);
  * sandbox and a suite must not be able to write there; see
  * `notifications-off.mjs` for the whole path and for the two deliberate
  * exceptions.
+ *
+ * `withTelemetryOff` beside it: the suite's files boot the app, and the build
+ * they boot carries the live PostHog project key in both processes, so a suite
+ * run is otherwise counted as a product user and recorded as a session replay.
+ * Applying it to the child environment here is what covers every file the suite
+ * runs, present and future, rather than the ones somebody remembered. See
+ * `telemetry-off.mjs`.
  */
-const childEnv = withNotificationsOff(
-	Object.fromEntries(
-		Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+const childEnv = withTelemetryOff(
+	withNotificationsOff(
+		Object.fromEntries(
+			Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+		),
 	),
 );
 const child = spawn(process.execPath, nodeArgs, {
