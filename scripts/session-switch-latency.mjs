@@ -225,6 +225,28 @@ const EXPECT_OUTGOING = ARGS.includes("--expect-outgoing");
  * conversation still on screen.
  */
 const FAIL_GET = ARGS.includes("--fail-get");
+/*
+ * `--held-leave`: a send pressed inside the open window, then the conversation
+ * left before its stream answers, with the press and the switch in ONE task -
+ * the ordering a send that awaits an image decode also produces (agent review
+ * round 2, R2-F1). The claim is about the WIRE: no `sessions.message` for the
+ * conversation the user left. Pair it with `--stream=2500` so the window is
+ * really open when the press lands; the arm refuses to run without it.
+ */
+const HELD_LEAVE = ARGS.includes("--held-leave");
+/*
+ * `--leave-after=<ms>`: how long the press is HELD before the switch (default 0,
+ * the one-task ordering). A positive value is the other half of R2-F1: a press
+ * genuinely waiting on the window, then the view moving to another conversation,
+ * which the pane must settle as abandoned rather than read as the window closing.
+ */
+const LEAVE_AFTER = Number(flag("leave-after", "0"));
+/*
+ * `--held-stay`: the CONTROL for `--held-leave`, the same press with no switch.
+ * The held send must go out exactly once, into the target, when its stream
+ * answers - so a fix that stops the leak by dropping every held press fails here.
+ */
+const HELD_STAY = ARGS.includes("--held-stay");
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 
@@ -489,6 +511,49 @@ const PALETTE_RUN = `(async () => {
 		openCalls: probe.openCalls().map(
 			(call) => "@" + call.t + " " + call.id + " from " + call.from,
 		),
+	};
+})()`;
+
+const HELD_LEAVE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	const box = () => document.querySelector('textarea[aria-label="Message"]');
+	await probe.switchTo(meta.outgoing, "held-leave-prep");
+	await sleep(300);
+	const since = probe.bridge.log.requests.length;
+	void probe.switchTo(meta.incoming, "held-leave-open");
+	// Wait for the TARGET pane's composer: the commit sets the window at once,
+	// but the panel is keyed on the session and remounts a render later, so the
+	// textarea on screen right after the click is still the outgoing pane's.
+	const before = box();
+	for (let i = 0; i < 200 && !(box() && box() !== before && probe.view().validating === meta.incoming); i++) await sleep(10);
+	await sleep(100);
+	const validatingAtPress = probe.view().validating;
+	const b = box();
+	Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(b, "held then left");
+	b.dispatchEvent(new Event("input", { bubbles: true }));
+	await sleep(50);
+	// The press and the switch in one task: nothing can run between them.
+	box().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+	if (${LEAVE_AFTER} > 0) await sleep(${LEAVE_AFTER});
+	if (!${HELD_STAY}) void probe.switchTo(meta.outgoing, "held-leave-away");
+	const boxAtLeave = box() ? box().value : null;
+	// Past the target's stream latency, AND until this pane's window has closed
+	// (the snapshot was applied) plus a settle, so a held send has every chance to
+	// go out. Waiting on the window rather than a fixed tail is what keeps the
+	// control from reading a send that is still on its way as one that never went.
+	await sleep(meta.latency.stream);
+	for (let i = 0; i < 300 && probe.view().validating === meta.incoming; i++) await sleep(20);
+	await sleep(1500);
+	const messages = probe.bridge.log.requests.slice(since).filter((r) => r.op === "sessions.message");
+	return {
+		meta: { incoming: meta.incoming, outgoing: meta.outgoing, stream: meta.latency.stream },
+		validatingAtPress,
+		viewAfter: probe.view().activeSessionId,
+		messages: messages.map((r) => r.sessionId),
+		boxAtLeave,
+		ops: probe.bridge.log.requests.slice(since).map((r) => r.op + ":" + (r.sessionId ?? "")),
 	};
 })()`;
 
@@ -1275,18 +1340,24 @@ const main = async () => {
 			),
 		]);
 
+	if ((HELD_LEAVE || HELD_STAY) && !(Number(SCENARIO.stream) >= 1000))
+		throw new Error(
+			"--held-leave needs --stream=<ms, at least 1000>: without it the window closes before the press, and the arm would pass without testing anything",
+		);
 	const { result } = await runWithDeadline(
-		RACE_STAGE
-			? STAGE_RUN
-			: RACE_PALETTE
-				? PALETTE_RUN
-				: RACE_FUZZ
-					? FUZZ_RUN
-					: RACE
-						? RACE_RUN(RACE_WRITE)
-						: FAIL_GET
-							? FAIL_RUN
-							: RUN(SWITCHES),
+		HELD_LEAVE || HELD_STAY
+			? HELD_LEAVE_RUN
+			: RACE_STAGE
+				? STAGE_RUN
+				: RACE_PALETTE
+					? PALETTE_RUN
+					: RACE_FUZZ
+						? FUZZ_RUN
+						: RACE
+							? RACE_RUN(RACE_WRITE)
+							: FAIL_GET
+								? FAIL_RUN
+								: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1294,6 +1365,52 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (HELD_LEAVE || HELD_STAY) {
+		const { meta, validatingAtPress, viewAfter, messages, boxAtLeave, ops } =
+			result.value;
+		const verdict = HELD_STAY
+			? {
+					"the press landed inside the target's open window":
+						validatingAtPress === meta.incoming,
+					"the view stayed on the target": viewAfter === meta.incoming,
+					"the held send went out exactly once, into the target":
+						messages.length === 1 && messages[0] === meta.incoming,
+				}
+			: {
+					"the press landed inside the target's open window":
+						validatingAtPress === meta.incoming,
+					"the view left the target": viewAfter === meta.outgoing,
+					"nothing was sent to the conversation the user left":
+						!messages.includes(meta.incoming),
+					"nothing was sent anywhere else either": messages.length === 0,
+				};
+		const passed = Object.values(verdict).every(Boolean);
+		if (AS_JSON)
+			console.log(
+				JSON.stringify(
+					{
+						meta,
+						validatingAtPress,
+						viewAfter,
+						messages,
+						boxAtLeave,
+						ops,
+						verdict,
+					},
+					null,
+					2,
+				),
+			);
+		else {
+			console.log(
+				`${HELD_STAY ? "held-stay" : "held-leave"} (stream ${meta.stream} ms): sessions.message -> [${messages.join(", ")}]`,
+			);
+			for (const [claim, ok] of Object.entries(verdict))
+				console.log(`  ${ok ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	if (RACE_STAGE) {
 		const { meta, cases, latency, getRequests, openCalls } = result.value;
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);

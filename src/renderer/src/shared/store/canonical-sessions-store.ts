@@ -445,11 +445,16 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * sent), what it means (this chat is not ready for messages yet), and what to
  * do. The "what to do" half is the sentence itself rather than the composer's
  * generic "Your message is still in the composer. Send it again.", which is
- * suppressed for this code (see above): a retry is refused by the read window
- * for as long as the window lasts, and this sentence cannot outlive it, so
- * instructing a retry would name the one action that cannot succeed yet. What is
- * true is that the send works once the wait ends - the read's own answer, the
- * session's live frame, or the read's own deadline.
+ * suppressed for this code (see above).
+ *
+ * WHO STILL READS IT, since the click stopped issuing a guard read (agent review
+ * round 2, R2-3). The chat pane no longer refuses a press inside the window: it
+ * HOLDS it until the conversation's stream answers (`chat-page`'s `send`). So
+ * this sentence is reached from two places only: `admitChatDraft`'s own refusal,
+ * for any caller that does not hold (the store keeps the rule for every door),
+ * and the pane's fallback when its stream gave up but carried no statement of
+ * its own - the stream's own lost-connection sentence is preferred there, so
+ * the composer and the transcript cannot disagree (design round 1, D3).
  */
 export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";

@@ -372,6 +372,26 @@ const STREAM_MAX_ATTEMPTS = STREAM_RETRY_DELAYS_MS.length;
 export const STREAM_SNAPSHOT_DEADLINE_MS = 20_000;
 
 /**
+ * How long after the snapshot bound fires the pane asks ONCE more by itself.
+ *
+ * The bound is terminal so that a frozen owner costs one 20 s wait and not
+ * minutes of retries. But an owner that was only stalled (a long synchronous
+ * tool step, then the loop answers again) left the pane on "Lost the connection"
+ * until the user pressed Reconnect, although the conversation was answering
+ * again: design round 2, D5, measured 19 s of a live runtime with nothing
+ * re-checking, where the tree before the bound self-healed. One silent re-check
+ * is the smallest thing that restores that: the same `reopen` the Reconnect
+ * control runs, fired once. While it runs the pane shows the ordinary
+ * "Loading conversation..." state rather than the notice - it IS connecting
+ * again, and saying so is honest - and a snapshot paints the rows (measured on
+ * the built app, owner resumed at +23 s: notice at +21.5 s, loading at +30 s,
+ * rows at +33 s, no press). If that connection also stays silent, its own bound
+ * lands on the same notice and nothing asks again - the budget is exactly one
+ * extra connection per stall, re-earned only by a snapshot.
+ */
+export const STREAM_SNAPSHOT_RECHECK_MS = 10_000;
+
+/**
  * Delay before retry number `attempt` (1-based). Past the end of the schedule
  * the last delay repeats, so a caller that counts wrong cannot wait forever.
  */
@@ -960,6 +980,9 @@ export function useCanonicalSessionStream(
 		let reconcileTimer = 0;
 		/** Armed per connection until its first snapshot; see `STREAM_SNAPSHOT_DEADLINE_MS`. */
 		let snapshotTimer = 0;
+		/** The one silent re-check after a fired bound; see `STREAM_SNAPSHOT_RECHECK_MS`. */
+		let recheckTimer = 0;
+		let rechecked = false;
 		const clearSnapshotTimer = () => {
 			if (!snapshotTimer) return;
 			window.clearTimeout(snapshotTimer);
@@ -1635,6 +1658,13 @@ export function useCanonicalSessionStream(
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
 				}));
+				if (rechecked) return;
+				rechecked = true;
+				recheckTimer = window.setTimeout(() => {
+					recheckTimer = 0;
+					if (generationRef.current !== generation) return;
+					reopen();
+				}, STREAM_SNAPSHOT_RECHECK_MS);
 			}, STREAM_SNAPSHOT_DEADLINE_MS);
 			dispose = subscribeDesktopStream(
 				{
@@ -1752,6 +1782,8 @@ export function useCanonicalSessionStream(
 						if (frame.type === "snapshot") {
 							attempt = 0;
 							clearSnapshotTimer();
+							// A later stall is a new one and earns its own re-check.
+							rechecked = false;
 						}
 						pending.current.push(frame);
 						// One flush per animation frame while the window paints. A
@@ -1817,6 +1849,12 @@ export function useCanonicalSessionStream(
 		 */
 		const reopen = () => {
 			attempt = 0;
+			// A user's Reconnect makes the pending silent re-check redundant, and a
+			// re-check that already ran must not be armed again by its own bound.
+			if (recheckTimer) {
+				window.clearTimeout(recheckTimer);
+				recheckTimer = 0;
+			}
 			/*
 			 * Cancel the pending retries BEFORE re-arming both halves.
 			 *
@@ -1877,6 +1915,7 @@ export function useCanonicalSessionStream(
 			if (fallback) clearTimeout(fallback);
 			if (retryTimer) clearTimeout(retryTimer);
 			if (reconcileTimer) clearTimeout(reconcileTimer);
+			if (recheckTimer) window.clearTimeout(recheckTimer);
 			clearSnapshotTimer();
 			pending.current = [];
 		};
