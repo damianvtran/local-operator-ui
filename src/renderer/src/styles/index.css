@@ -70,6 +70,123 @@
 }
 
 /*
+ * The transcript dissolves as it approaches the chat header (top-bar redesign,
+ * 2026-09-23).
+ *
+ * WHY A MASK RATHER THAN AN OVERLAY. The header's bottom rule is gone, so
+ * nothing draws a line between the bar and the rows: the separation is now the
+ * transcript's own top edge fading out. A gradient overlay element would paint
+ * OVER the content - a row scrolled to the top would sit beneath it, dimmed but
+ * present, which is a scrim rather than a dissolve, and one more thing that has
+ * to be kept above the right stacking context. `mask-image` fades the content
+ * itself. The same idiom is already in the tree (`canvas-tabs.tsx`,
+ * `picker-host.tsx`).
+ *
+ * SCROLL-DRIVEN, WITH A STATIC FALLBACK. The fade should exist only while there
+ * is content scrolled under the bar, and clear completely when the oldest row
+ * is at rest against the top edge - a permanent top fade would dim the first row
+ * of every short conversation for no reason. A scroll timeline gives exactly
+ * that, and Chromium is what Electron ships, so the guarded half is the real one
+ * and it is the UNSUPPORTED path that needs naming.
+ *
+ * WHY THE LENGTH IS A REGISTERED PROPERTY AND NOT TWO GRADIENTS. Measured in the
+ * app's own engine (a private headless Chrome, at Electron 44's Blink version,
+ * 2026-09-23): a keyframe pair interpolating the gradient's first stop from
+ * `black` to `transparent` does NOT interpolate - it flips discretely at 50% of
+ * the range, so the fade would POP in at 12px of scroll instead of ramping.
+ * Animating the middle stop's position between two gradients is discrete for the
+ * same reason (that is `mask-image` to `mask-image`, which the engine does not
+ * blend). Animating a registered `<length>` that the gradient reads measures
+ * linear at every pixel of the range, which is what makes the fade track the
+ * scroll at all, so the length is the animated thing and the gradient is static.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO. The bottom edge is untouched: the composer
+ * band is a separate element, and the transcript's own bottom anchor is
+ * load-bearing for autoscroll. The element keeps `role="log"`, its
+ * `scrollbar-gutter` and its `flex-col-reverse`, and a mask changes neither the
+ * box's size nor its layout, so the reserved gutter stays reserved and the
+ * centring that gutter exists to fix is unaffected. The mask does apply to the
+ * element's whole painted output, scrollbar included - at full fade the top 24px
+ * of the scrollbar's own track softens with the content, which is the same
+ * treatment `canvas-tabs.tsx` gives its edge and is not a clipped or shortened
+ * scrollbar.
+ *
+ * REDUCED MOTION: checked, and deliberately unchanged. This is a scroll-LINKED
+ * paint, not a timed animation - the mask's value IS the scroll position - so
+ * `styles/index.css`'s duration cap has nothing to cap, and suppressing it would
+ * freeze the fade at whatever offset the reader happened to be at. It never
+ * plays on its own and never leaves an element on a `from` keyframe, which is
+ * the failure the cap exists to prevent. A masked header that clears on scroll
+ * can read as motion to some readers, which is why the ramp is 24px of a scroll
+ * the reader is already driving rather than anything of its own.
+ */
+@property --lo-transcript-top-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-lo-canonical-transcript] {
+	--lo-transcript-top-fade: 0px;
+	/*
+	 * Two stops at one position is a hard edge at 0px, i.e. no fade at all: that
+	 * is the value the scroll timeline opens on, and the value the element keeps
+	 * if the animation never runs.
+	 */
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--lo-transcript-top-fade),
+		black 100%
+	);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		/*
+		 * `self`: the mask is on the scroll container itself, so the timeline has
+		 * to come from that element's own scrollport. `animation-range` is in
+		 * scroll distance, and the container is `flex-col-reverse` - its scroll
+		 * origin is the tail, so 0 is the newest row at rest and the fade is
+		 * complete 24px up from there. `linear` because the fade should be a
+		 * function of scroll distance and nothing else.
+		 */
+		animation-timeline: scroll(self);
+		animation-range: 0 24px;
+	}
+
+	@keyframes transcript-top-fade {
+		from {
+			--lo-transcript-top-fade: 0px;
+		}
+		to {
+			--lo-transcript-top-fade: 24px;
+		}
+	}
+}
+
+/*
+ * The path for an engine with no scroll timeline: the same 24px fade, always on.
+ * It is a separate branch rather than a second unconditional rule so the choice
+ * is made by what the engine supports rather than by source order, and it is the
+ * safe direction - a fade that is always there rather than a hard cut that is
+ * never softened.
+ */
+@supports not (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			black 24px,
+			black 100%
+		);
+	}
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
