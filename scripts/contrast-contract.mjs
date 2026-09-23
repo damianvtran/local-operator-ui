@@ -1827,7 +1827,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the bar and the rows share one ground with nothing between them, with
 		 * every colour row still green.
 		 *
-		 * TWO PINS, because the mask has two branches and only the first is the one
+		 * THREE PINS, because the mask has two branches and only the first is the one
 		 * Electron ships. The SHIPPED branch's `animation-range` is the half that
 		 * decides whether the fade exists at all and which end of the scroll it is
 		 * anchored to - this container is `flex-col-reverse`, so a range measured off
@@ -1836,11 +1836,31 @@ const STRUCTURAL_CALL_SITES = [
 		 * The fallback is pinned on its own DECLARATION rather than on its `@supports`
 		 * condition, because a condition survives the block being emptied and an
 		 * emptied fallback branch IS a hard cut on an engine with no scroll timeline.
+		 * And the KEYFRAME PAIR is pinned on its own rows (design round 2, R2-1): the
+		 * range decides WHERE the ramp runs, the pair decides WHICH WAY it runs, and
+		 * mutation showed the range pin alone left the round-1 defect reachable -
+		 * `from 0px` / `to 24px` against the shipped range keeps this gate green while
+		 * restoring exactly the operator's symptom (0px at rest, full where nothing is
+		 * scrolled under the bar). The pinned string is the two declarations and the
+		 * braces between them, tabs included, so a reformat fails closed.
 		 */
 		what: "transcript top-edge mask (the shipped scroll-timeline branch)",
 		file: "src/renderer/src/styles/index.css",
 		must: "animation-range: calc(100% - 24px) 100%",
 		why: "the header draws no rule, so this mask is the only separation between the bar and the rows; the range decides whether the fade is full at rest or absent there, which no colour assertion can see",
+	},
+	{
+		what: "transcript top-edge mask keyframe pair (the direction of the shipped ramp)",
+		file: "src/renderer/src/styles/index.css",
+		/*
+		 * The tabs are the stylesheet's own indentation: this is a contiguous slice of
+		 * the file, not a paraphrase of it, so an emptied or reordered keyframe block
+		 * cannot satisfy it. Both endpoints are in the one string because the pair is
+		 * the fact - pinning only `from` would leave the fade's value at the oldest end
+		 * free to drift.
+		 */
+		must: "from {\n\t\t\t--lo-transcript-top-fade: 24px;\n\t\t}\n\t\tto {\n\t\t\t--lo-transcript-top-fade: 0px;",
+		why: "the direction of the ramp is what makes the fade full at rest and gone at the oldest end; with the range pinned and the pair free, round 1's hard-cut-at-rest defect returns with this gate green",
 	},
 	{
 		what: "transcript top-edge mask fallback declaration",

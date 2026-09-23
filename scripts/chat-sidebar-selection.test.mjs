@@ -846,8 +846,15 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// panel's own pointer rung" and the top-bar redesign's round-1 review
 				// measured what that does to a well - `rowHover` sits ABOVE `surface`
 				// in the dark brand palette, so the field rose above the panel it is
-				// recessed into. It takes `canvas` now, a rung inside the recess, and
-				// no row in this table declares it.
+				// recessed into. The pointer moves NO fill here at all: the well is
+				// `sunken` at rest AND under the pointer, and the step is the INK's
+				// (`ink-dim` -> `ink-muted`, on the leading glyph and the placeholder),
+				// so no row in this table declares it. The other two places this control
+				// is described - `chat-sidebar.tsx`'s WHAT THE POINTER MOVES block and
+				// `contrast-contract.mjs`'s CONTROLS entry - both say that; this file
+				// was the one that named a fill the field never takes, which is the
+				// direction that sends a reader looking for a declaration that is not
+				// there.
 				"hover:bg-row-hover": 9,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,

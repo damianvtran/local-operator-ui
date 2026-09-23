@@ -416,16 +416,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			<div
 				data-titlebar-no-drag=""
 				className={cn(
-					"ml-auto flex items-center",
 					/*
 					 * THE RULE THIS APPLIES. The container pays only for ink that would
 					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
-					 * outside itself. The badge earns 12px because without it its ring is
-					 * painted inside the canvas button's hover target (design round 1, D5);
-					 * the run trigger's own attention dot overhangs its box by 2px and earns
-					 * nothing, because 6px of the ordinary 8px gap still separates it from the
-					 * next box. So 12px is owed only while BOTH the badge and the box it has to
-					 * clear are on screen; this is 8px in every other arrangement.
+					 * outside itself. The run trigger's own attention dot overhangs its box by
+					 * 2px and earns nothing, because the ordinary 8px step still separates it
+					 * from the next box. The badge earns room for that reason and only while
+					 * BOTH the badge and the box it has to clear are on screen; in every other
+					 * arrangement the cluster is at its 8px step.
 					 *
 					 * 8px is the within-a-component step of branding.md's 4px ramp, and it is
 					 * the state the operator photographed: a `mr-1` on the browser button paid
@@ -433,25 +431,34 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 * cluster read 8px against 12px. The room is the CONTAINER's now
 					 * (branding.md section 5), so neither state is a margin on a component.
 					 *
-					 * WHAT A BADGE COSTS, in the two comparisons that are easy to conflate:
+					 * THE ROOM IS A BOX AND NOT A WIDER `gap` (design round 2, D6). The room is
+					 * owed to ONE pair - the badge's control and the control whose box the badge
+					 * reaches into - while `gap` is the whole row's property: widening it to the
+					 * pill's widest form also opens `trigger -> browser`, where nothing overhangs
+					 * and there is nothing to clear. Measured on the rendered header, a 24px gap
+					 * there puts 40px of air between the two glyphs against 24px in the
+					 * badge-free state, which is the asymmetry the operator reported in the
+					 * first place. The box below is that room and nothing else.
 					 *
-					 *  - THE BADGE APPEARING, this tree against itself. `gap` resolves from 8
-					 *    to 12, and both of the cluster's gaps ARE that one property, so each
-					 *    widens by 4px: cluster width 112 -> 120 (+8px), the run trigger's left
-					 *    edge 432 -> 424 (-8px), the browser button 472 -> 468 (-4px), and the
-					 *    canvas button pinned at 512 by the `ml-auto` right edge (0px). The
-					 *    browser's -4px is the MECHANISM that keeps D5 rather than a detail:
-					 *    its right edge moves 504 -> 500, so the badge's painted ring ends
-					 *    exactly on the canvas box's left edge, at 0px clearance. "The browser
-					 *    and canvas buttons do not move" is NOT what happens here.
-					 *  - THIS BRANCH AGAINST `main`, in a FIXED state. Badge drawn: the run
-					 *    trigger moves -4px and the browser and canvas buttons do not move at
-					 *    all. Badge-free: the run trigger and the browser button both move
-					 *    +4px, and the canvas does not move. The 4px figures this change is
-					 *    otherwise tempted to quote belong to THIS comparison, not the one
-					 *    above.
+					 * WHAT SIZES IT, measured: the pill's outward ink. That used to be the fixed
+					 * 10px overhang plus the 2px ring, because a right-anchored pill grew
+					 * LEFTWARDS over the globe; moving the anchor to the GLYPH's corner (see the
+					 * badge's own comment) makes the outward ink the pill's own width, and `9+`
+					 * is the widest the app can reach: 25.45px placed 2px off the glyph's box,
+					 * i.e. 21.45px between the two control boxes. The container's ordinary 8px
+					 * step on either side of an 8px box is 24px, which covers that with 2.55px
+					 * to spare.
+					 *
+					 * WHAT A BADGE COSTS, this tree against itself (measured on the rendered
+					 * header, 560px frame, both brand palettes): the browser button and the run
+					 * trigger move 16px LEFT TOGETHER - their own 8px step is unchanged, which is
+					 * the point of putting the room in a box - and the console and canvas buttons
+					 * do not move at all. Cluster 152 -> 168 (+16px), run trigger 392 -> 376,
+					 * browser 432 -> 416, console 472 and canvas 512 unmoved. The pill's ring
+					 * ends 2.55px inside the room at `9+` and 10.27px inside it at `one-approval`,
+					 * clear of the console's box in both.
 					 */
-					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
+					"ml-auto flex items-center gap-2",
 				)}
 			>
 				{/*
@@ -656,35 +663,44 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * inside the bar. It is measured rather than derived because the badge is an
 								 * inline box inside a line box, so its top sits 3.7px below the wrapper's own -
 								 * which is the reason the wrapper's offset and the pill's edge are not the same
-								 * number. The HORIZONTAL offset is deliberately untouched: it is what keeps the
-								 * ring clear of the Globe's arc, and a vertical move does not move it sideways.
+								 * number. THE HORIZONTAL OFFSET IS NO LONGER A SECOND SPACING STEP: it was
+								 * `-right-2.5` and it is now `left-6.5`, which the paragraph below derives
+								 * from design round 2's D6.
 								 *
-								 * WHAT THE 4.3px OF DROP COSTS AT `9+`, measured rather than reasoned: the badge
-								 * is right-anchored, so a wider glyph run grows LEFTWARDS - at `9+` it is 25.45px
-								 * and its left edge is 7.45px inside the Globe's 16px box (unchanged by this
-								 * fix; `one-approval` is 0.27px clear of it). Above the bar's top edge that
-								 * overlap only crossed the glyph's topmost arc, and the two rendered frames
-								 * show the difference: dropping the pill into the bar brings it across the
-								 * upper-right of the stroke. Two ways out exist and neither is this fix's to
-								 * take: a larger outward offset moves the ring into the neighbour's box (the
-								 * reservation below exists to stop exactly that), and a reserve INSIDE the
-								 * control - the Approvals idiom, `pr-5` on a labelled button - would move the
-								 * glyph and so the cluster's own arithmetic. Flagged for design round 2 with
-								 * both states' frames.
+								 * THE ANCHOR IS THE GLYPH'S CORNER, NOT THE BUTTON'S (design round 2, D6,
+								 * measured at 9d6afce20 and at this head). A right-anchored pill grows
+								 * LEFTWARDS, so the width of the glyph run decided its clearance from the
+								 * Globe: at `9+` its box ran 440.55..466 while the glyph's box is 432..448, so
+								 * its fill and its 2px ring crossed the upper-right arc and cut the stroke the
+								 * badge is supposed to sit beside - the pill and the glyph merged into one
+								 * run (432.5..465.5) where `one-approval` still had 1.5px of daylight. Above
+								 * the bar's top edge the same overlap had been harmless because the pill was
+								 * clipped there, which is exactly the trade D2 made when it dropped the pill
+								 * into the bar. Anchoring the LEFT edge instead - `left-6.5` is the 16px
+								 * glyph's box right (8px inset + 16px) plus the 2px ring - makes the
+								 * clearance a property of the anchor rather than of the count, and the pill
+								 * grows RIGHTWARDS into room the container reserves for it (the cluster's own
+								 * comment carries that arithmetic). Measured at this head, `9+`: the glyph's
+								 * box is 424..440, the pill's 442..467.45 and its ring 440..469.45 - 2px of
+								 * clearance at every count, against 0.27px at `one-approval` and a 7.45px
+								 * intrusion at `9+` before the change. A reserve INSIDE the control (the
+								 * Approvals idiom, `pr-5` on a labelled button) was the other way out and was
+								 * refused on measurement: a 32px `icon` button holds a 16px glyph with 8px of
+								 * slack on either side, so the glyph can move at most 8px inside it, and 9.45px
+								 * is what `9+` needs - that reserve would have had to overflow the control.
 								 *
-								 * THE VISUAL IS CAPPED, THE LABEL IS NOT. `min-w-4 px-1` grows with every digit
-								 * and the badge is right-anchored, so three digits reach ~23px against the 12px
-								 * of room the offset above leaves - it would have walked back over the glyph the
-								 * moment a tenth request arrived, which is a state the operator asked for a
-								 * QUEUE and will therefore reach. `9+` is the badge's own grammar; the exact
-								 * ordinal stays in the tooltip and the `aria-label`, which are read rather than
-								 * glanced at (spec 5.1).
+								 * THE VISUAL IS CAPPED, THE LABEL IS NOT, and the cap is what lets the room be a
+								 * static number rather than a measurement taken at render time. `min-w-4 px-1`
+								 * grows with every digit, so a badge that could reach three digits would walk
+								 * past the 24px the container reserves the moment a tenth request arrived -
+								 * which is a state the operator asked for a QUEUE and will therefore reach.
+								 * `9+` is the badge's own grammar and 25.45px is its widest painted form; the
+								 * exact ordinal stays in the tooltip and the `aria-label`, which are read
+								 * rather than glanced at (spec 5.1).
 							 */}
 							{browserBadgeDrawn && (
 								<span
-									className={cn(
-										"pointer-events-none absolute -top-1 -right-2.5",
-									)}
+									className={cn("pointer-events-none absolute -top-1 left-6.5")}
 								>
 									<Badge
 										variant="attention"
@@ -700,6 +716,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							)}
 						</Button>
 					</Tooltip>
+				)}
+				{/*
+				 * The badge's room, as the CONTAINER's box rather than a wider `gap` on the
+				 * cluster (the cluster's own comment carries the rule and the arithmetic).
+				 * It is owed between the badge's control and its neighbour only, so it is
+				 * rendered only while there is a box on the right for the badge to reach
+				 * into - the console, or the canvas when the console is unmounted. An empty
+				 * box rather than a `mr-1` on the button for the reason branding.md § 5
+				 * gives: the room belongs to the container, and the operator's report was
+				 * precisely that a component's own margin paid it in every state.
+				 */}
+				{browserBadgeDrawn && (consoleButtonShown || canvasButtonShown) && (
+					<span aria-hidden={true} className="w-2 shrink-0" />
 				)}
 				{/*
 				 * The conversation's console, the fourth pane in the cluster (design

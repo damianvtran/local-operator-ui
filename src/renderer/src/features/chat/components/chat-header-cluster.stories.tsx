@@ -15,22 +15,28 @@
  *
  * - `no-approval` is the state the operator photographed, and the one the fix is
  *   about: no badge is drawn, so no control is paying for one.
- * - `one-approval` and `at-cap` are the badge DRAWN, because the 12px the badge
- *   needs before its neighbour's box is the constraint the whole reservation
- *   exists for. `at-cap` is the widest the badge can ever be: `9+` is its own
- *   grammar, so a three-digit badge is unreachable by construction and a frame of
- *   one would photograph a state the app cannot enter (`chat-header.tsx`'s
- *   `badgeText` says why the glyph is capped).
+ * - `one-approval` and `at-cap` are the badge DRAWN, because the room the badge
+ *   needs before its neighbour's box - 21.45px at `9+`, against the container's
+ *   ordinary 8px step - is the constraint the whole reservation exists for, and
+ *   `at-cap` is the count at which that room is fully spent. It is also the widest
+ *   the badge can ever be: `9+` is its own grammar, so a three-digit badge is
+ *   unreachable by construction and a frame of one would photograph a state the
+ *   app cannot enter (`chat-header.tsx`'s `badgeText` says why the glyph is
+ *   capped).
  * - `trigger-dot` is the OTHER control that paints outside its own box: the run
  *   trigger's own 8px attention dot is anchored 2px past its right edge. A frame
  *   is owed for it because the fix moves the cluster's spacing, and "the dot does
  *   not do what the badge does" is a claim about pixels as much as about geometry.
- * - `canvas-open-badge` is the badge drawn with the CANVAS BUTTON unmounted, which
- *   is the arrangement that separates the reservation's two facts: the badge is
- *   still seeking 12px of room, but the box it exists to clear is not rendered, so
- *   the cluster must stay at 8px. A frame is owed because the spacing here is a
- *   pixel a reader can check against `one-approval` (design round 1's D2 rule: the
- *   container pays only for ink that would land in a neighbour's box).
+ * - `canvas-open-badge` is the badge drawn with the CANVAS BUTTON unmounted. It
+ *   separated the reservation's two facts when the cluster had three controls: the
+ *   badge is still seeking room, but the box it exists to clear is not rendered, so
+ *   the cluster stays at its 8px step. The console button sits between the browser
+ *   and the canvas on `main` now, so in THIS state the room is still owed - the
+ *   console is the neighbour whose box the pill reaches into - and the frame shows
+ *   the room paid rather than a state the rule refuses. A frame is owed either way
+ *   because the spacing here is a pixel a reader can check against `one-approval`
+ *   (design round 1's D2 rule: the container pays only for ink that would land in
+ *   a neighbour's box).
  *
  * THE CLUSTER IS THE ONLY THING PHOTOGRAPHED. The header is the production
  * component in its production 40px band; the ground under it is deliberately
@@ -137,10 +143,10 @@ export const TriggerDot: Story = {
 };
 
 /**
- * The badge drawn with the canvas open, so the canvas button - the box the badge's
- * room exists to clear - is unmounted. The cluster must stay at its 8px step here:
- * the same rule that earns the badge its 12px is the one that refuses it a
- * neighbour that is not rendered.
+ * The badge drawn with the canvas open, so the canvas button is unmounted. The room
+ * is still owed here, because the console button between the browser and the canvas
+ * is the neighbour whose box the pill reaches into; the same rule is what refuses
+ * the room when no such box is rendered at all.
  */
 export const CanvasOpenBadge: Story = {
 	render: () => (
