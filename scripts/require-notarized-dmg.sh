@@ -8,12 +8,16 @@
 # do": each logs one line and exits 0. `scripts/require-report.sh` refuses a
 # SILENT success, not a SKIPPED one - its check is emptiness, and a skip prints a
 # line - so a step wrapped in it reads a skip as a pass. What refuses the
-# unnotarised image is then the artifact verification one step LATER, and by then
-# a whole two-pass macOS build has been spent: audit run 35846109424 printed
-# `Skipping disk image notarization: NOTARIZE not set to true`, and the same run
-# went on to answer `FAIL dmg-spctl` and `FAIL dmg-stapler` for both images, `4 of
-# 101 artifact checks failed`, while every app-level check passed. This makes that
-# failure land at the step that failed to do its job.
+# unnotarised image is then the artifact verification, and by the time it does a
+# whole two-pass macOS build has been spent: audit run 35846109424 printed
+# `Skipping disk image notarization: NOTARIZE not set to true` at 10:14:21 and then
+# answered `FAIL dmg-spctl` and `FAIL dmg-stapler` for both images at 10:18:09 -
+# `4 of 101 artifact checks failed`, while every app-level check passed. Both of
+# those were commands of ONE step there, because the notarisation was still the
+# first lines of the verification step's own `run:` block: nothing at the
+# notarisation itself could tell the skip from a pass, which is why this gate exists
+# now that the notarisation is a step of its own. It makes the failure land at the
+# step that failed to do its job instead.
 #
 # WHY A FILE AND NOT A PIPE. The report has to be readable AFTER the wrapper has
 # decided its own exit status, and the calling steps already `tee` it so a slow
@@ -42,7 +46,7 @@ fi
 # The three short-circuits the script can take, each a single line and exit 0: the
 # flag, the credentials, and a `dist` with no image in it.
 if skipped="$(grep -m1 -E '^(Skipping|No disk images)' "$report")"; then
-	echo "::error title=Notarization skipped::${skipped} - the notarisation did not run. Check the NOTARIZE/APPLE_* bindings on the calling step: the artifact verification one step later refuses these images, after the whole build has been spent."
+	echo "::error title=Notarization skipped::${skipped} - the notarisation did not run. Check the NOTARIZE/APPLE_* bindings on the calling step: the artifact verification refuses these images, and by then the whole build has been spent."
 	exit 1
 fi
 

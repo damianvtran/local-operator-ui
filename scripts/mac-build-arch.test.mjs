@@ -47,15 +47,16 @@
  *  5. every step that notarises CAN notarise, because both halves of it skip
  *     QUIETLY when `NOTARIZE`/`APPLE_*` are absent: one log line and exit 0, which
  *     is a pass as far as `scripts/require-report.sh` can tell (its check is
- *     emptiness, not meaning). The artifact verification DOES refuse an unnotarised
- *     image, one step later - both `dmg-spctl` rows answered `rejected |
- *     source=Unnotarized Developer ID` in run 35846109424, `4 of 101 artifact checks
- *     failed`, on disk images that were otherwise perfectly signed - so the realised
+ *     emptiness, not meaning). What refuses an unnotarised image is the artifact
+ *     verification, and in run 35846109424 that was the SAME step as the skip - the
+ *     notarisation was still the first line of the verification step's `run:` block
+ *     then, and the four FAILs followed 3m48s later in that step, `4 of 101 artifact
+ *     checks failed` on images that were otherwise perfectly signed - so the realised
  *     cost of the step split was a red candidate verification and a whole wasted
- *     two-pass macOS build, NOT a shipped image. The disk-image step refuses a skip
- *     itself (`scripts/require-notarized-dmg.sh`), so that failure lands where it
- *     belongs, and the assertions below keep the flag and the credentials on the
- *     steps that need them.
+ *     two-pass macOS build, NOT a shipped image. The notarisation is a step of its
+ *     own now and refuses a skip itself (`scripts/require-notarized-dmg.sh`), so that
+ *     failure lands where it belongs, and the assertions below keep the flag and the
+ *     credentials on the steps that need them.
  *
  * HOW A PASS IS READ, and why it is read this way. A `pnpm <script>` step is not
  * the command it runs: `pnpm dist:all` is `pnpm run build && electron-builder
@@ -192,6 +193,22 @@ const NOTARIZE_ARTIFACTS = /notarize-artifacts\.mjs/;
 const NOTARIZE_SKIP_GATE = /NOTARIZE !== "true"/;
 /** The credentials notarisation needs, all three, or it skips. */
 const APPLE_CREDENTIALS = ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"];
+/**
+ * Steps that legitimately bind a notarisation credential WITHOUT notarising, and why.
+ *
+ * The rule these stand beside is that a credential goes only to a step that can use
+ * it. The exception that earns its place is the preflight: `publish.yml`'s `Check
+ * required secrets` binds all three to assert they are PRESENT and non-empty (it
+ * reads them only for emptiness, and prints the variable's NAME, never a value),
+ * which is the one thing that catches a rotated or unset secret before the packaging
+ * job spends 30-50 minutes rather than after it. Keyed `workflow:job:step`, and held
+ * to its own truth: an entry whose step no longer binds one reds, so an exemption
+ * cannot outlive the reason for it.
+ */
+const NOTARIZATION_CREDENTIAL_CHECKERS = {
+	"publish.yml:preflight-macos:Check required secrets":
+		"asserts the three credentials exist before the 30-50 minute packaging job; it reads them for emptiness and never prints a value.",
+};
 /** The gate that refuses a notarisation which skipped instead of running. */
 const NOTARIZED_GATE = /require-notarized-dmg\.sh/;
 /**
@@ -409,6 +426,19 @@ function stepsRunning(name, pattern) {
 }
 
 /**
+ * Whether a step would actually RUN a gate, read from its executed segments rather
+ * than from the step's text.
+ *
+ * The distinction earned its place: a match on the raw `run:` block is satisfied by
+ * a COMMENT that merely names the gate, so replacing an executing line with a
+ * comment about it left this file green (review round 1 on #469).
+ */
+const stepRuns = (entry, pattern) =>
+	executedSegments(String(entry.step.run)).some(({ words }) =>
+		pattern.test(words.join(" ")),
+	);
+
+/**
  * A step's EFFECTIVE environment, in GitHub's own precedence: workflow, then job,
  * then step, each overriding the last.
  *
@@ -524,11 +554,13 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 		// app bundle, `scripts/notarize-artifacts.mjs` for each disk image - gate on
 		// `NOTARIZE === "true"` AND all three `APPLE_*` values, and both SKIP QUIETLY
 		// without them: one log line, exit 0. A skip therefore satisfies
-		// `scripts/require-report.sh`, whose check is emptiness rather than meaning,
-		// and the refusal only lands one step later at the artifact verification -
-		// measured on audit run 35846109424, where the two `dmg-spctl` rows answered
-		// `rejected | source=Unnotarized Developer ID` after a whole two-pass build had
-		// been spent, while every app-level row passed.
+		// `scripts/require-report.sh`, whose check is emptiness rather than meaning, and
+		// what refuses the unnotarised image is the artifact verification. In run
+		// 35846109424 that was the SAME step as the skip - the notarisation was the first
+		// line of the verification step's `run:` block then, so the two were one command
+		// apart rather than one step - and the run still ended `4 of 101 artifact checks
+		// failed`, with two `dmg-spctl` rows refused after a whole two-pass build had been
+		// spent and every app-level row passing.
 		const notarising = stepsInvoking(workflow, NOTARIZE_SCRIPT);
 		assert.ok(
 			notarising.length > 0,
@@ -549,12 +581,12 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 			const label = `${workflow}:${entry.job}:${entry.name}`;
 			assert.ok(
 				String(env.NOTARIZE).toLowerCase() === "true",
-				`${label} has no NOTARIZE=true in its effective environment (step over job over workflow). Both notarisation paths skip quietly without it - one log line, exit 0 - so the step's own gate reads a skip as a pass and the refusal lands one step later at verification: audit run 35846109424 printed 'Skipping disk image notarization: NOTARIZE not set to true', then answered FAIL dmg-spctl and FAIL dmg-stapler for BOTH images - 4 of 101 artifact checks - after a two-pass macOS build had already been spent.`,
+				`${label} has no NOTARIZE=true in its effective environment (step over job over workflow). Both notarisation paths skip quietly without it - one log line, exit 0 - so the step's own gate reads a skip as a pass and only the artifact verification refuses the image. In run 35846109424 those two were the same step (the notarisation was inside the verification step's own \`run:\` block then) and it ended '4 of 101 artifact checks failed' 3m48s after the skip; the notarisation is a step of its own now, which is exactly why the skip-refusing gate runs on it.`,
 			);
 			for (const credential of APPLE_CREDENTIALS) {
 				assert.ok(
 					typeof env[credential] === "string" && env[credential].length > 0,
-					`${label} has no ${credential} in its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image is left unnotarised and the verification one step later refuses it - the Gatekeeper refusal a user would meet, reached after the build that was supposed to prevent it.`,
+					`$labelhas no $credentialin its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image is left unnotarised: the notarisation step's own gate refuses that there, and Gatekeeper would refuse the image on a user's machine - the friction the build was supposed to prevent, caught after it instead of by it.`,
 				);
 			}
 		}
@@ -580,11 +612,15 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 		// mis-scoped secret takes). A skip is one line and exit 0, so
 		// `require-report.sh` reads it as a pass; `scripts/require-notarized-dmg.sh` is
 		// the half that refuses it, at the step that failed to do the job.
+		//
+		// Asserted against the EXECUTED segments, never the `run:` text: a match on the
+		// raw block is satisfied by a COMMENT that merely names the gate, and the review
+		// proved exactly that - the executing line replaced by a comment naming it left
+		// this file green.
 		for (const entry of stepsInvoking(workflow, NOTARIZE_SCRIPT)) {
-			assert.match(
-				String(entry.step.run),
-				NOTARIZED_GATE,
-				`${workflow}:${entry.job}:${entry.name} runs the disk-image notarisation without \`scripts/require-notarized-dmg.sh\`, so a skip there reads as a pass until the artifact verification refuses the images one step later - after the whole build it was meant to protect has been spent (run 35846109424).`,
+			assert.ok(
+				stepRuns(entry, NOTARIZED_GATE),
+				`${workflow}:${entry.job}:${entry.name} runs the disk-image notarisation without INVOKING \`scripts/require-notarized-dmg.sh\` on its report (a comment naming the script is not an invocation), so a skip there reads as a pass until the artifact verification refuses the images - after the whole build it was meant to protect has been spent (run 35846109424).`,
 			);
 		}
 	});
@@ -609,6 +645,28 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 				assert.ok(
 					!(credential in (env ?? {})),
 					`${label} binds ${credential}, so every step beneath it can read a notarisation credential it has no use for. Bind it on the steps that notarise instead - the two macOS passes and the disk-image step - which is where it is read, and which is what publish.yml does.`,
+				);
+			}
+		}
+		// The other direction, because without it the rule above is satisfied by a
+		// workflow that binds the credentials on a step which has no use for them: every
+		// step that BINDS one has to be a step that notarises. Same defect class as the
+		// job-scope binding this test exists for, one level down.
+		const notarisingSteps = new Set(
+			[...stepsInvoking(workflow, NOTARIZE_SCRIPT), ...passes].map(
+				(entry) => `${workflow}:${entry.job}:${entry.name}`,
+			),
+		);
+		for (const [job, definition] of Object.entries(document.jobs ?? {})) {
+			for (const step of definition.steps ?? []) {
+				const bound = APPLE_CREDENTIALS.filter(
+					(credential) => credential in (step.env ?? {}),
+				);
+				if (bound.length === 0) continue;
+				const key = `${workflow}:${job}:${step.name}`;
+				assert.ok(
+					notarisingSteps.has(key) || key in NOTARIZATION_CREDENTIAL_CHECKERS,
+					`${key} binds ${bound.join(", ")} but notarises nothing, so a secret is handed to a step that cannot use it. Either take the binding off, add the step to the notarising set above if it really does notarise, or - if it is a presence check - register it in NOTARIZATION_CREDENTIAL_CHECKERS with its reason.`,
 				);
 			}
 		}
@@ -653,6 +711,29 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 		);
 	});
 }
+
+test("the notarisation-credential exemptions still describe steps that bind one", () => {
+	// An exemption is a claim about a step, so it has to keep being true: a table
+	// entry for a step that no longer binds any of the three is a claim about a state
+	// that is gone, and leaving it there is how an allowlist quietly stops meaning
+	// anything.
+	for (const [key, reason] of Object.entries(
+		NOTARIZATION_CREDENTIAL_CHECKERS,
+	)) {
+		const [file, job, ...name] = key.split(":");
+		const step = (WORKFLOWS.get(file)?.jobs?.[job]?.steps ?? []).find(
+			(entry) => entry.name === name.join(":"),
+		);
+		assert.ok(
+			step,
+			`${key} is registered as a credential-checking step that no longer exists in ${file}; remove the exemption.`,
+		);
+		assert.ok(
+			APPLE_CREDENTIALS.some((credential) => credential in (step.env ?? {})),
+			`${key} is registered with the reason "${reason}" but binds none of ${APPLE_CREDENTIALS.join(", ")}; remove the exemption.`,
+		);
+	}
+});
 
 test("signed-update-candidate.yml verifies the candidate with the same artifact gate a release runs", () => {
 	// The audit exists to check the bytes a release ships. A verification that
@@ -820,31 +901,37 @@ test("scripts/require-notarized-dmg.sh: what it refuses, and what it accepts", (
 	);
 });
 
-test("signed-update-candidate.yml: the notarisation step fails on a skip and passes on a real report", () => {
-	const [entry] = stepsInvoking("signed-update-candidate.yml", NOTARIZE_SCRIPT);
-	assert.ok(
-		entry,
-		"signed-update-candidate.yml no longer has a disk-image notarisation step to exercise.",
-	);
-	const skipped = runStep(
-		notarizationSandbox([
-			"Skipping disk image notarization: NOTARIZE not set to true",
-		]),
-		entry.step.run,
-	);
-	assert.notEqual(
-		skipped.status,
-		0,
-		`a skip has to fail at the notarisation step itself; it exited 0 with: ${skipped.stdout}${skipped.stderr}`,
-	);
-	assert.match(`${skipped.stdout}${skipped.stderr}`, /Notarization skipped/);
-	const notarised = runStep(
-		notarizationSandbox(REAL_NOTARIZATION_REPORT),
-		entry.step.run,
-	);
-	assert.equal(
-		notarised.status,
-		0,
-		`a real notarisation report has to pass the step, or the release path dies on the guard: ${notarised.stdout}${notarised.stderr}`,
-	);
-});
+// Both workflows, not just the one the defect was found in: `publish.yml`'s step
+// runs the same pair and its release path is the one whose failure costs most, so
+// the executed behaviour is asserted there too rather than assumed from the
+// shared shape.
+for (const workflow of SHIPPING_WORKFLOWS) {
+	test(`${workflow}: the notarisation step fails on a skip and passes on a real report`, () => {
+		const [entry] = stepsInvoking(workflow, NOTARIZE_SCRIPT);
+		assert.ok(
+			entry,
+			`${workflow} no longer has a disk-image notarisation step to exercise.`,
+		);
+		const skipped = runStep(
+			notarizationSandbox([
+				"Skipping disk image notarization: NOTARIZE not set to true",
+			]),
+			entry.step.run,
+		);
+		assert.notEqual(
+			skipped.status,
+			0,
+			`a skip has to fail at the notarisation step itself; it exited 0 with: ${skipped.stdout}${skipped.stderr}`,
+		);
+		assert.match(`${skipped.stdout}${skipped.stderr}`, /Notarization skipped/);
+		const notarised = runStep(
+			notarizationSandbox(REAL_NOTARIZATION_REPORT),
+			entry.step.run,
+		);
+		assert.equal(
+			notarised.status,
+			0,
+			`a real notarisation report has to pass the step, or the release path dies on the guard: ${notarised.stdout}${notarised.stderr}`,
+		);
+	});
+}

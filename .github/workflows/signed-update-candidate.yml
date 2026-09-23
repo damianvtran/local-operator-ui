@@ -294,13 +294,18 @@ jobs:
     # exit 0 - 'Skipping notarization: NOTARIZE not set to true' - and
     # `scripts/require-report.sh` cannot tell that from a pass, since its check is
     # emptiness rather than meaning. What refuses an unnotarised image is the
-    # verification one step later, and that is how the split showed up: run
-    # 35846109424 printed `Skipping disk image notarization: NOTARIZE not set to
-    # true`, then answered `FAIL dmg-spctl` and `FAIL dmg-stapler` for BOTH images
-    # - `4 of 101 artifact checks failed`, the run red, every app-level check
-    # passing. The realised cost was a red candidate verification and a wasted
-    # two-pass mac build, NOT a shipped image; the disk-image step below now refuses
-    # a skip itself, so that failure lands at the step that failed to do its job.
+    # artifact verification, and in run 35846109424 that was the SAME step as the
+    # skip: the notarisation was still the first lines of the verification step's own
+    # `run:` block then (its API step list carries no notarisation step), so the step
+    # printed `Skipping disk image notarization: NOTARIZE not set to true` at
+    # 10:14:21 and then answered `FAIL dmg-spctl` and `FAIL dmg-stapler` for BOTH
+    # images at 10:18:09 - 3m48s later, one `Process completed with exit code 1` -
+    # `4 of 101 artifact checks failed`, the run red, every app-level check passing
+    # and `upload-artifact` skipped on `total_count: 0`. The realised cost was a red
+    # candidate verification and a wasted two-pass mac build, NOT a shipped image.
+    # The notarisation is a step of its own now, so a skip would land at verification
+    # one step later - and the step below refuses it outright, at the step that
+    # failed to do the job.
     env:
       NOTARIZE: 'true'
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
@@ -526,13 +531,13 @@ jobs:
       # release: it walks every app bundle and every image BOTH passes produced,
       # and `app-bytecode-loadable` is the one check that asks a bundle's own
       # Electron to load the bytecode inside it.
-      # `notarize-dmg` is the step that has to prove it runs, and it is the step
-      # that did not: it printed `Skipping disk image notarization: NOTARIZE not set
-      # to true` in run 35846109424 and both `dmg-spctl` checks then refused the
-      # images. Two things keep that from coming back: `scripts/mac-build-arch.test.mjs`
-      # asserts this step's EFFECTIVE env carries the flag and all three credentials,
-      # and the step refuses a skip itself rather than leaving it to the
-      # verification one step later.
+      # `notarize-dmg` is the step that has to prove it runs, and the notarisation it
+      # wraps is what did not: in run 35846109424 the skip was the first line of the
+      # verification step's `run:` block and both `dmg-spctl` checks then refused the
+      # images - in that same step, 3m48s later, exit code 1. Two things keep that from
+      # coming back: `scripts/mac-build-arch.test.mjs` asserts this step's EFFECTIVE
+      # env carries the flag and all three credentials, and the step refuses a skip
+      # itself rather than leaving it to the verification one step later.
       - name: Notarize and staple the disk images
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -542,9 +547,11 @@ jobs:
           # Two gates, two questions: `require-report.sh` refuses a SILENT success,
           # and `require-notarized-dmg.sh` refuses a SKIP - which the wrapper cannot
           # see, because a skip prints a line and exits 0. The skip is what happened
-          # in run 35846109424; with this pair it fails HERE, at the step that failed
-          # to do its job, rather than one step later at verification behind a whole
-          # wasted two-pass mac build.
+          # in run 35846109424, where it was the first line of the verification step's
+          # own `run:` block and the four FAILs followed 3m48s later in that same step;
+          # with the notarisation a step of its own and this pair on it, the failure
+          # lands HERE, at the step that failed to do its job, rather than at the
+          # verification one step later behind a whole wasted two-pass build.
           #
           # `pipefail` is load-bearing: GitHub's default shell is `bash -e`, which
           # reads the LAST status of a pipeline, so without it a failing
