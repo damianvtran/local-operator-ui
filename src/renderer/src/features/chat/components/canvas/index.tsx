@@ -13,7 +13,7 @@ import {
 	Target,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import {
@@ -24,6 +24,7 @@ import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
+import { EmptyState } from "./canvas-empty-state";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasGoalsViewer } from "./canvas-goals-viewer";
 import {
@@ -32,6 +33,7 @@ import {
 	CanvasTabs,
 } from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
+import { viewSegmentName } from "./canvas-view-name";
 import { CreateFileDialog } from "./create-file-dialog";
 import { DocumentFreshnessBar } from "./document-freshness-bar";
 import { tabFollowingClose } from "./tab-selection";
@@ -214,7 +216,13 @@ const ViewSwitcher: FC<{
 	fileCount: number;
 	/** The settled goals the Goals segment's name counts; see the count note below. */
 	goalCount: number;
-}> = ({ current, onChange, fileCount, goalCount }) => (
+	/**
+	 * The wire dropped goals from the list this segment counts, so its number is a
+	 * carried count rather than a total (design review round 1, F5). The segment's own
+	 * rule, and the reason it is a prop: only the caller holding the frame knows.
+	 */
+	goalTruncated: boolean;
+}> = ({ current, onChange, fileCount, goalCount, goalTruncated }) => (
 	// A `fieldset` rather than a div with `role="group"`: the element already
 	// means "these controls belong together", and it is the only way the group
 	// gets an accessible name without inventing ARIA for it. Its UA border and
@@ -244,10 +252,18 @@ const ViewSwitcher: FC<{
 			const counted =
 				value === "files" ? fileCount : value === "goals" ? goalCount : 0;
 			const noun = value === "files" ? "file" : "goal";
-			const name =
-				counted > 0
-					? `${label} view, ${counted} ${counted === 1 ? noun : `${noun}s`}`
-					: `${label} view`;
+			/*
+			 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
+			 * list and the Goals segment's list can be capped. `goalTruncated` is read only
+			 * for that segment: the documents count is the open tabs the strip below already
+			 * prints, so it has no cap to admit.
+			 */
+			const name = viewSegmentName(
+				label,
+				noun,
+				counted,
+				value === "goals" && goalTruncated,
+			);
 			return (
 				<Tooltip key={value} content={name}>
 					<button
@@ -271,57 +287,6 @@ const ViewSwitcher: FC<{
 			);
 		})}
 	</fieldset>
-);
-
-/**
- * Empty state panel for the canvas.
- *
- * An empty state that only reports emptiness is a dead end, so this one takes
- * the actions that would resolve it. The copy names what the user does next
- * rather than what is absent.
- *
- * The description's measure is `max-w-80` (320px) rather than `max-w-72`. It was
- * 288px, which broke the documents view's two-line sentence into three with an
- * orphaned word at the dock's default width, and the difference is safe for the
- * other two states this component renders: 320px of text plus this box's `p-6` is
- * 368px, inside the 400px minimum dock, so no canvas empty state can overflow the
- * panel it sits in.
- */
-const EmptyState: FC<{
-	title: string;
-	description: string;
-	children?: ReactNode;
-}> = ({ title, description, children }) => (
-	<div
-		className={cn(
-			"flex h-full flex-col items-center justify-center gap-2 bg-canvas p-6 text-center",
-		)}
-	>
-		<h3 className={cn("text-heading text-ink")}>{title}</h3>
-		<p className={cn("max-w-80 text-body-sm text-ink-muted")}>{description}</p>
-		{children ? (
-			/*
-			 * `w-full flex-wrap justify-center`: the actions WRAP rather than paint into
-			 * this box's own `p-6`.
-			 *
-			 * At the dock's 400px floor the canvas empty states' three buttons measure
-			 * 374px in a 351px content box, so the row was 13px and 12px from the pane's
-			 * edges where the padding asks for 24 and 24 - the labels sitting on the
-			 * padding, inside a `nowrap` row in an `overflow: hidden` pane, with 9px a
-			 * side left at `Browse files (341)` and 4px at `Browse files (1,204)`. Full
-			 * width and wrapping means the row gives something up (a second line) before
-			 * the padding does, which is what every other panel in this dock does (UX
-			 * round 1, U3).
-			 */
-			<div
-				className={cn(
-					"mt-2 flex w-full flex-wrap items-center justify-center gap-2",
-				)}
-			>
-				{children}
-			</div>
-		) : null}
-	</div>
 );
 
 /**
@@ -611,6 +576,13 @@ const CanvasComponent: FC<CanvasProps> = ({
 					onChange={setCurrentView}
 					fileCount={fileCount}
 					goalCount={goalHistory.length}
+					/*
+					 * The Goals segment's number is what the list CARRIES, so the segment is told
+					 * when that is not the same as what the session settled (design review round
+					 * 1, F5): the name then admits the cap, which is what the pane beside it
+					 * already does and the one claim the flag exists to keep honest.
+					 */
+					goalTruncated={goalHistoryTruncated}
 				/>
 				<div className={cn("flex shrink-0 items-center gap-0.5")}>
 					<Tooltip content={`New file (${modifierKey} + N)`}>

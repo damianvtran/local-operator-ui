@@ -32,9 +32,10 @@ const bundle = await build({
 				CanvasGoalsViewer,
 				goalHistoryTag,
 			} from "./src/renderer/src/features/chat/components/canvas/canvas-goals-viewer";
+			import { viewSegmentName } from "./src/renderer/src/features/chat/components/canvas/canvas-view-name";
 			export const renderGoals = (props) =>
 				renderToStaticMarkup(createElement(CanvasGoalsViewer, props));
-			export { CanvasGoalsViewer, goalHistoryTag };
+			export { CanvasGoalsViewer, goalHistoryTag, viewSegmentName };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -63,7 +64,9 @@ const bundle = await build({
 });
 const bundlePath = new URL("./_canvas-goals.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { renderGoals, goalHistoryTag } = await import(bundlePath.href);
+const { renderGoals, goalHistoryTag, viewSegmentName } = await import(
+	bundlePath.href
+);
 await unlink(bundlePath);
 
 const entry = (fields) => ({
@@ -160,9 +163,15 @@ test("a truncated history says so, in words, beside the rows it truncated", () =
 	});
 	assert.match(
 		markup,
-		/older settled goals are not carried here — this list is capped\./,
+		/Older settled goals are not carried here — this list is capped\./,
 		"the pane states what is missing instead of silently under-reporting",
 	);
+	/*
+	 * AND IT IS MEASURED (design review round 1, D10): the pane's own notices carry a
+	 * measure, so its truncation notice does too, rather than running the pane's full
+	 * width at the 400px dock floor.
+	 */
+	assert.match(markup, /<p class="[^"]*max-w-80[^"]*">Older settled goals/);
 	// It is a NOTE beside the list, not the empty state: the row is still there.
 	assert.match(markup, /Reconcile the March ledger/);
 	assert.doesNotMatch(markup, /No goals completed yet/);
@@ -196,9 +205,13 @@ test("an untruncated history says nothing about a cap", () => {
 test("the empty state names the next action rather than the absence", () => {
 	const markup = renderGoals({ entries: [], truncated: false });
 	assert.match(markup, /No goals completed yet/);
+	/*
+	 * THE APP'S OWN SPELLING OF THIS INVITATION (design review round 1, D9): the same
+	 * words the TUI's goal panel uses, so two surfaces invite one act one way.
+	 */
 	assert.match(
 		markup,
-		/Set one with \/goal &lt;text&gt;\. Finished goals are kept here\./,
+		/No goal set — \/goal &lt;text&gt; to set one\. Finished goals are kept here\./,
 	);
 	// No action button: the next action is typing, not a click.
 	assert.doesNotMatch(markup, /<button/);
@@ -231,10 +244,15 @@ test("the switcher carries the Goals segment LAST, with the count in its name", 
 	 * segment's own recorded rule, applied to the second segment that can say a
 	 * number.
 	 */
-	assert.match(
-		source,
-		/counted > 0\s*\?\s*`\$\{label\} view, \$\{counted\} \$\{counted === 1 \? noun : `\$\{noun\}s`\}`/,
-	);
+	/*
+	 * AND THE COUNT IS THE LIST THAT IS CARRIED, NOT A TOTAL (design review round 1,
+	 * F5). The name is derived by `viewSegmentName`, which takes the cap; the pin here
+	 * is that the pane passes it, and the truth table beside this test is what says the
+	 * derived name admits it.
+	 */
+	assert.match(source, /viewSegmentName\(/);
+	assert.match(source, /value === "goals" && goalTruncated/);
+	assert.match(source, /goalTruncated=\{goalHistoryTruncated\}/);
 	assert.match(source, /goalCount=\{goalHistory\.length\}/);
 	assert.match(source, /entries=\{goalHistory\}/);
 	assert.match(source, /truncated=\{goalHistoryTruncated\}/);
@@ -247,6 +265,43 @@ test("the switcher carries the Goals segment LAST, with the count in its name", 
 		/const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry\[\] = \[\];/,
 	);
 	assert.match(source, /goalHistory = EMPTY_GOAL_HISTORY/);
+});
+
+test("the Goals segment's name admits the cap when the history is truncated", () => {
+	/*
+	 * Design review round 1's F5, as a truth table rather than as a substring: the
+	 * segment's number is a claim about a list, and the segment outside the pane was the
+	 * one surface still speaking `goalHistory.length` as a total while the pane beside
+	 * it said "this list is capped". A screen-reader user heard "Goals view, 3 goals" and
+	 * only learned otherwise after opening the pane.
+	 */
+	assert.equal(
+		viewSegmentName("Goals", "goal", 3, true),
+		"Goals view, 3 goals shown — this list is capped",
+		"a capped list says so in the name it is counted by",
+	);
+	assert.equal(
+		viewSegmentName("Goals", "goal", 3),
+		"Goals view, 3 goals",
+		"an uncapped list is unchanged: the caveat is the cap's, not the count's",
+	);
+	assert.equal(
+		viewSegmentName("Goals", "goal", 1, true),
+		"Goals view, 1 goal shown — this list is capped",
+		"the singular agrees with the same noun rule the count already used",
+	);
+	/*
+	 * CAPPED AND EMPTY IS A REAL STATE — the wire can drop every entry it had — and it
+	 * is the one where dropping the count would say the LEAST: there is nothing carried
+	 * and something settled, which the clause is what states.
+	 */
+	assert.equal(
+		viewSegmentName("Goals", "goal", 0, true),
+		"Goals view, 0 goals shown — this list is capped",
+	);
+	// A segment with nothing to count and no cap keeps the shipped shape.
+	assert.equal(viewSegmentName("Files", "file", 0), "Files view");
+	assert.equal(viewSegmentName("Files", "file", 2), "Files view, 2 files");
 });
 
 test("the row's disclosed body carries the reason and the exact instant", () => {
