@@ -31,6 +31,7 @@ import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { resetToastDedup } from "@shared/utils/toast-manager";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
+import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
@@ -788,8 +789,10 @@ const CanvasFrame = ({
 	documents = DOCUMENTS,
 	variables,
 	sessionId = STORY_SESSION_ID,
+	goalHistory = [],
+	goalHistoryTruncated = false,
 }: {
-	view: "documents" | "files" | "variables";
+	view: "documents" | "files" | "variables" | "goals";
 	/**
 	 * The document the panel has open, or `null` for the documents view with
 	 * nothing open - which is the state the empty canvas is.
@@ -813,6 +816,21 @@ const CanvasFrame = ({
 	 * and no session, and the panel must not confuse the two.
 	 */
 	sessionId?: string | null;
+	/**
+	 * The session's settled goals, as the frame carries them.
+	 *
+	 * A FRAME PROP RATHER THAN A FETCH is the design's own decision: the pane reads
+	 * `frontend.goal_history` off the snapshot, so a story that seeded a backend
+	 * answer would be photographing a path the product does not have.
+	 */
+	goalHistory?: CanonicalGoalHistoryEntry[];
+	/**
+	 * Whether the wire dropped entries to stay inside its bound. Separate from
+	 * `goalHistory` because the LIST cannot express it, and a story that could only
+	 * seed one of the two could not photograph the state the flag exists for: a
+	 * capped list that must not read as a complete one.
+	 */
+	goalHistoryTruncated?: boolean;
 	/**
 	 * The completeness state of the Files scan, for the stories that exist to show
 	 * what the panel head says while it is paging, when it stops short, and when it
@@ -873,6 +891,8 @@ const CanvasFrame = ({
 					sessionId={sessionId ?? undefined}
 					fileCount={mentionedFiles.length}
 					scan={scan}
+					goalHistory={goalHistory}
+					goalHistoryTruncated={goalHistoryTruncated}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -2309,5 +2329,88 @@ export const NothingOpenEmpty: Story = {
 export const NothingOpenNarrow: Story = {
 	render: () => (
 		<CanvasFrame view="documents" activeId={null} documents={[]} width={400} />
+	),
+};
+
+/* ---------------------------------------------------------------- */
+/* The Goals view (design §8.3, story 7)                             */
+/* ---------------------------------------------------------------- */
+
+/** Two settled goals: one the judge called done, one the user replaced. */
+const GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [
+	{
+		id: "g1",
+		text: "Reconcile the March ledger against the bank feed",
+		status: "done",
+		created_at: "2026-09-20T09:00:00Z",
+		settled_at: "2026-09-22T14:03:00Z",
+		reason:
+			"Every invoice on the March statement was matched against a ledger entry, and the three unmatched lines were reconciled by hand.",
+	},
+	{
+		id: "g2",
+		text: "Draft the migration RFC",
+		status: "superseded",
+		created_at: "2026-09-19T11:20:00Z",
+		settled_at: "2026-09-20T09:41:00Z",
+		reason: "",
+	},
+	{
+		id: "g3",
+		/* A goal at the entry clip's own limit, so the row's truncation is the
+		 * browser's and the frame shows it rather than claiming it. */
+		text: "Ship the release with green gates, the migration applied to prod-2, the notes on both hosts and every follow-up recorded as a ticket rather than a sentence in a summary that nobody will read again",
+		status: "done",
+		created_at: "2026-09-18T08:00:00Z",
+		settled_at: "2026-09-18T16:20:00Z",
+		reason: "The tag, the migrations and the notes all landed.",
+	},
+];
+
+/**
+ * The Goals view as the pane draws it, at the dock's default width and at its
+ * 400px floor.
+ *
+ * The two bands are the view's own contract: the rows are the same settled-row
+ * grammar as a to-do (a mark, the text, a `state · time` tag that is NOT struck),
+ * and the section header's count is the ROWS' — the only number the pane can see.
+ * The floor band is where the pane's own behaviour is decided, so it is shot
+ * rather than argued.
+ */
+export const GoalHistory: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame view="goals" activeId={null} goalHistory={GOAL_HISTORY} />
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				width={400}
+				goalHistory={GOAL_HISTORY}
+			/>
+		</div>
+	),
+};
+
+/**
+ * An empty history, and — separately — a CAPPED one.
+ *
+ * THE TWO MUST NOT BE PHOTOGRAPHED AS ONE. Empty says `No goals completed yet` and
+ * names the next action; capped says that older settled goals are not carried here.
+ * A frame that showed only the first would be evidence for the state that is not
+ * the risk: a capped list that renders as a complete one is the silent
+ * under-reporting the truncation flag exists to prevent, and it is the state a
+ * reviewer has to be able to see.
+ */
+export const GoalHistoryEmptyAndCapped: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame view="goals" activeId={null} goalHistory={[]} />
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={GOAL_HISTORY.slice(0, 2)}
+				goalHistoryTruncated={true}
+			/>
+		</div>
 	),
 };

@@ -1434,3 +1434,237 @@ export const LoopChipFacts: Story = {
 		</div>
 	),
 };
+
+/* ---------------------------------------------------------------- */
+/* The goal's lifecycle: done, stalled, working and the two controls */
+/* ---------------------------------------------------------------- */
+
+/**
+ * A frontend snapshot carrying the goal's LIFECYCLE fields.
+ *
+ * `frontend()` above carries only `goal` and `loop`, which was the whole of the
+ * row's input until the judge existed. These fields arrive together — one backend
+ * change — and their PRESENCE is the capability gate the row reads, so a fixture
+ * that carried `goal_status` without them would be describing a backend that
+ * cannot exist.
+ *
+ * Cast through `unknown` rather than straight to the state, because the lifecycle
+ * fields make this object's shape overlap the target too little for a single
+ * assertion: the fixture is a PARTIAL snapshot on purpose, and the row reads only
+ * these fields off it.
+ */
+const lifecycle = (
+	goal: string,
+	status: string,
+	judge: {
+		state: string;
+		run?: number;
+		verdict?: string;
+		reason?: string;
+	} | null = null,
+): CanonicalFrontendState =>
+	({
+		goal,
+		goal_status: status,
+		goal_judge: judge,
+		goal_history: [],
+		goal_history_truncated: false,
+	}) as unknown as CanonicalFrontendState;
+
+/**
+ * THE PAIR IS THE MEASUREMENT (design §8.3, story 1): the active chip and the done
+ * one in one frame, so "what changed" is a comparison at one height rather than a
+ * claim about a still.
+ *
+ * The done band's `Dismiss` is revealed by focusing it — the reveal is
+ * `group-hover`/`group-focus-within`, and this instrument has no hover verb
+ * (`useFocusLastDismiss` records that cost). Both bands keep the goal text
+ * identical on purpose: the only difference the frame should show is the settled
+ * state.
+ */
+export const GoalDone: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-dismiss]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="Active: unchanged from the shipped chip — the control pair is not painted until the line is hovered or focused"
+						frontend={lifecycle(SHORT_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+				<RowFacts>
+					<Band
+						label="Done: the value struck in the settled ink, the unstruck `— done` tag after it, and the single `Dismiss` (focused, so it is painted) in the trailing slot"
+						frontend={lifecycle(SHORT_GOAL, "done", { state: "done" })}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * Keyboard focus on the done chip's one control, so the REVEAL and the focus ring
+ * are photographed together (design §8.3, story 2 — the pattern
+ * `LongGoalDismissFocus` already set for the active chip's clear).
+ *
+ * The visible word is `Dismiss` and the accessible name says where the goal goes:
+ * `Dismiss the finished goal — it stays in the goal history`. That name is what
+ * makes the press safe without a confirmation, and it is not in the picture — a
+ * programmatic focus paints the reveal, not a tooltip — so this label states what
+ * the frame cannot.
+ */
+export const GoalDoneDismissFocus: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-dismiss]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="A done goal, its `Dismiss` focused: the held box and the word beside it, on the row's one line"
+						frontend={lifecycle(SHORT_GOAL, "done", { state: "done" })}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * `stalled` next to `active`, in one frame (design §8.3, story 3), because the
+ * difference IS the finding: the whole mark is an ink step on the `Goal:` label —
+ * `text-ink-muted` to `text-ink` — plus the word `stalled` in the accessible name,
+ * which a still cannot show. The two bands carry the same goal text so the ink is
+ * the only variable.
+ */
+export const GoalStalled: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="Active: the label at `ink-muted`, the resting ink"
+					frontend={lifecycle(SHORT_GOAL, "active", { state: "waiting" })}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="Stalled: the same label at `ink` (the loudest ink on the row, which the to-do panel reserves for the row asking for something) and 0px of anything else — the word `stalled` rides the accessible name"
+					frontend={lifecycle(SHORT_GOAL, "active", {
+						state: "stalled",
+						verdict: "unknown",
+					})}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * A story whose whole point is that NOTHING MOVES (design §8.3, story 4): a
+ * `judging` chip beside an active one, printed as pixels rather than argued.
+ *
+ * React reuses the DOM across these two bands because they differ only in a field
+ * the row does not paint, so the frame is the claim — and the two bands' `RowFacts`
+ * are what make it checkable rather than eyeballed: the item's box is the same
+ * number in both.
+ */
+export const GoalWorking: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="Active (`goal_judge.state`: waiting): the chip at rest"
+					frontend={lifecycle(SHORT_GOAL, "active", { state: "waiting" })}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="Judging: the SAME chip, because what is happening is a turn streaming above it — the word `working` is in the accessible name and nowhere in the paint"
+					frontend={lifecycle(SHORT_GOAL, "active", {
+						state: "judging",
+						run: 2,
+						verdict: "continue",
+					})}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * Both controls revealed, at 900px, for a goal that FITS and the 300-character one
+ * (design §8.3, story 5). The 66px the second control costs is a number this story
+ * exists to print: `RowFacts` reads the item's width, the snippet's
+ * `clientWidth`/`scrollWidth`, each control's own width and the row's `overflowX`.
+ *
+ * The `Done` control is focused, which reveals the PAIR: the reveal is
+ * `group-focus-within` as well as `group-hover`, so a keyboard user reaches both
+ * and one focus paints both.
+ */
+export const GoalActionsRevealed: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-done]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="900, a goal that fits: `Done` inboard and `Clear goal` trailing, both revealed by one focus. Nothing is truncated"
+						frontend={lifecycle(SHORT_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+				<RowFacts>
+					<Band
+						label="900, the 300-character goal: the snippet is what yields to the pair, and the pair is what the goal yields to"
+						frontend={lifecycle(LONG_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * The same pair at the two real floors (design §8.3, story 6): 240px, where the
+ * `@max-[240px]` step fires, and the app's 172px floor. Both words are dropped
+ * there — `NARROW_HIDDEN` — while each control's accessible name never is, and the
+ * assertion the frame carries is `overflowX === 0`: the row gives up a word rather
+ * than paint past its column.
+ *
+ * The goal is the 300-character one in both bands, because a narrow column with a
+ * short goal would not exercise the yield order the floors are about.
+ */
+export const GoalActionsFloor: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-done]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						width={240}
+						label="240 (the copy rule's own step): both words dropped, the icons carrying the accessible names"
+						frontend={lifecycle(LONG_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+				<RowFacts>
+					<Band
+						width={FLOOR_COLUMN_PX}
+						label="172 (the app's floor): the same pair, the same dropped words, zero horizontal overflow"
+						frontend={lifecycle(LONG_GOAL, "active")}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
