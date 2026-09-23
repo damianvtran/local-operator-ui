@@ -74,6 +74,7 @@ const bundleInto = async (name, contents) => {
 		// The renderer's own aliases, from `electron.vite.config.js`.
 		alias: {
 			"@shared": resolve("src/renderer/src/shared"),
+			"@features": resolve("src/renderer/src/features"),
 			"@renderer": resolve("src/renderer/src"),
 		},
 		write: false,
@@ -91,6 +92,7 @@ const {
 	pickerBodyKind,
 	pickerFooterHint,
 	pickerPrimaryLabel,
+	filterPickerOptions,
 } = await bundleInto(
 	"picker-host",
 	`
@@ -101,7 +103,23 @@ const {
 		pickerBodyKind,
 		pickerFooterHint,
 		pickerPrimaryLabel,
+		filterPickerOptions,
 	} from "./src/renderer/src/features/chat/pickers/picker-host";
+`,
+);
+
+/*
+ * The MODEL picker's own rule, bundled separately because it is a separate
+ * module — the model picker is the only surface that opts into it, and the
+ * default filter above is asserted in the same file to still be the default.
+ */
+const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
+	"model-picker-match",
+	`
+	export {
+		modelPickerMatchKey,
+		matchModelPickerOptions,
+	} from "./src/renderer/src/features/chat/pickers/model-picker-match";
 `,
 );
 
@@ -596,11 +614,30 @@ test("one binding answers which model the session is on", () => {
 		/modelSelector\(bandReadings\(draftFrontend, null\)\.identity\)/,
 		"and a draft's answer is read through the SAME binding the strip prints, rather than a second precedence over the same two fields (review round 1, R4)",
 	);
-	const options = picker.slice(picker.indexOf("const options = useMemo"));
+	/*
+	 * The in-force row mark now lives in the extracted `modelPickerOptions`, which
+	 * takes the binding as an argument rather than reading a field of its own — so
+	 * the pin follows the code: the mark reads the parameter, and the memo passes
+	 * the SAME `shownSelector` binding the strip prints. Both halves are asserted,
+	 * because a function that took the argument while the memo passed a different
+	 * field would satisfy either one alone.
+	 */
+	const options = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
 	assert.match(
 		options,
-		/current:\s*shownSelector === \(row\.selector \?\? row\.value\)/,
+		/current:\s*options\.shownSelector === \(row\.selector \?\? row\.value\)/,
 		"the in-force row mark reads that binding rather than a field of its own",
+	);
+	const memo = picker.slice(
+		picker.indexOf("const options = useMemo"),
+		picker.indexOf("const listing = catalogueListing"),
+	);
+	assert.match(
+		memo,
+		/modelPickerOptions\(rows,\s*\{[\s\S]*?shownSelector,/,
+		"the memo hands the row builder the one binding, not a second reading",
 	);
 	assert.match(
 		picker,
@@ -788,4 +825,590 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 		/picker option row selection ground/,
 		"the call site is pinned in the theme gate too, where a palette edit cannot hide it",
 	);
+});
+
+/* ------------------------------------------------- the search matcher */
+
+/*
+ * The operator typed `grok 4.7` into the desktop model picker and got
+ * `Nothing matches.` while `openrouter/x-ai/grok-4.7` and
+ * `openrouter/openai/gpt-6-luna` sat in the catalogue. These tests pin the rule
+ * that answers it, and its BOUNDARY — the round-1 review found the first
+ * revision of it both too narrow (a query the TUI resolves still answered
+ * `Nothing matches.`: R1-1 / UX U1) and too wide (it changed every OTHER
+ * picker's filter, so `/` stopped listing commands: R1-3).
+ *
+ * What the rule is now, and the three things a test has to hold apart:
+ *
+ *   1. `filterPickerOptions` is the DEFAULT filter and is UNCHANGED — the
+ *      contiguous lowercase substring test every picker has always used. The
+ *      commands, providers, MCP and session pickers still read it, and the test
+ *      below pins `/` against a command row so it cannot regress again (R1-3).
+ *   2. `matchModelPickerOptions` is the model picker's own rule, opted into
+ *      through `PickerHost`'s `matcher` prop by `ModelPicker` alone. Two pools,
+ *      the second only when the first is empty: a normalised contiguous/term
+ *      pass, then a character SUBSEQUENCE pass for the compact and elided
+ *      spellings `rank_rows` resolves (R1-1 / UX U1).
+ *   3. The ADAPTER has to feed it the name as well — a green rule with an unfed
+ *      haystack is the defect intact.
+ *
+ * The normaliser is the backend's (`model/ranking.py:_match_key`) so the two
+ * surfaces agree about what a query means; the ROWS the tests resolve with are
+ * the operator's own listing strings (`Grok 4.7`, `GPT-6 Luna`, `Claude Opus
+ * 5.5`, `Nano Banana` — read out of
+ * `~/.local-operator/cache/models-dev.listing.json`), because a fixture whose
+ * names no listing publishes proves the mechanism while being unable to answer
+ * the query the report is about (design D2).
+ */
+
+/**
+ * A row shaped the way the catalogue serves one.
+ *
+ * The `openrouter` rows carry the honest RESELLER label: the backend's naming
+ * rule degrades an aggregator's label to its own selector, so `label` here is
+ * NOT the pretty human name — it is `x-ai/grok-4.7` against a selector of
+ * `openrouter/x-ai/grok-4.7`. The listing's words therefore reach the filter
+ * only through `listing_name`, and the direct provider's pretty label (`Claude
+ * Opus 5`) is the control that already worked through the label.
+ */
+/**
+ * The rows, as SPECS, so both haystacks can be derived from one description:
+ * the shipped one (with the listing name) and the pre-PR one (without it). The
+ * price pair and the context window are part of both — they are the row's own
+ * data, and the D2 cases below are about a query reaching them by accident.
+ */
+const SPECS = [
+	{
+		provider: "anthropic",
+		model_id: "claude-opus-5",
+		label: "Claude Opus 5",
+		listing_name: "Claude Opus 5",
+		price: "$15/75",
+		meta: "200k",
+	},
+	{
+		provider: "anthropic",
+		model_id: "claude-opus-5-5",
+		label: "Claude Opus 5.5",
+		listing_name: "Claude Opus 5.5",
+		price: "$15/75",
+		meta: "200k",
+	},
+	{
+		provider: "openai",
+		model_id: "gpt-5.4",
+		label: "GPT-5.4",
+		price: "$1.25/10",
+		meta: "400k",
+	},
+	{
+		provider: "anthropic",
+		model_id: "claude-sonnet-5",
+		label: "Claude Sonnet 5",
+		price: "$3/15",
+		meta: "200k",
+	},
+	{
+		provider: "openrouter",
+		model_id: "x-ai/grok-4.7",
+		listing_name: "Grok 4.7",
+		price: "$3/15",
+		meta: "256k",
+		aggregated: true,
+	},
+	{
+		provider: "openrouter",
+		model_id: "openai/gpt-6-luna",
+		listing_name: "GPT-6 Luna",
+		price: "$3/15",
+		meta: "400k",
+		aggregated: true,
+	},
+	/* The name-only row: `Nano Banana` appears in no id it carries. */
+	{
+		provider: "openrouter",
+		model_id: "google/gemini-2.5-flash-image",
+		listing_name: "Nano Banana",
+		price: "$3/15",
+		meta: "33k",
+		aggregated: true,
+	},
+];
+
+/**
+ * One spec as the picker's option, the way `modelPickerOptions` builds one.
+ *
+ * `listingName: false` reproduces the PRE-PR haystack: the same row without
+ * `listing_name` in its keywords, which is the comparison the no-drop test and
+ * the adapter's own load-bearing half are measured against.
+ */
+const optionOf = (spec, { listingName = true } = {}) => ({
+	value: `${spec.provider}/${spec.model_id}`,
+	label: spec.label ?? spec.model_id,
+	description: `${spec.provider}${spec.aggregated ? ", aggregated" : ""}${
+		spec.price ? ` · ${spec.price}` : ""
+	}`,
+	meta: spec.meta,
+	keywords: [
+		listingName ? spec.listing_name : undefined,
+		spec.provider,
+		spec.model_id,
+	].filter((term) => typeof term === "string" && term.trim() !== ""),
+});
+
+const [OPUS, OPUS55, GPT54, SONNET, GROK, LUNA, NANO] = SPECS.map((spec) =>
+	optionOf(spec),
+);
+const CATALOGUE_OPTIONS = [OPUS, OPUS55, GPT54, SONNET, GROK, LUNA, NANO];
+
+/** The same rows as the PRE-PR haystack: no `listing_name`, everything else alike. */
+const PRE_PR_OPTIONS = SPECS.map((spec) =>
+	optionOf(spec, { listingName: false }),
+);
+
+const valuesOf = (options) => options.map((option) => option.value);
+
+/*
+ * The PRE-PR rule, frozen verbatim in the test that must not outlive it: the
+ * joined lowercase substring test over the PRE-PR haystack (`[provider,
+ * model_id]`). It is here so "nothing that matched before is dropped" can be
+ * executed instead of argued (R1-4).
+ */
+const prePrFilter = (options, query) => {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
+	return options.filter((option) =>
+		[option.label, option.value, option.description ?? "", option.meta ?? ""]
+			.concat(option.keywords ?? [])
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+};
+const prePrHaystack = () => PRE_PR_OPTIONS;
+
+test("the match key mirrors the backend's normalisation, both sides alike", () => {
+	/*
+	 * The exact rule, stated once. Every run of non-alphanumerics becomes ONE
+	 * space, so the id's hyphens and slash and the name's colon and spaces all
+	 * read as the same separators. `[^0-9a-z]` and not `\W`: `\W` keeps the
+	 * underscore a word character and the backend's class does not.
+	 */
+	assert.equal(modelPickerMatchKey("x-ai/grok-4.7"), "x ai grok 4 7");
+	assert.equal(modelPickerMatchKey("Grok 4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("Claude Opus 5.5"), "claude opus 5 5");
+	assert.equal(modelPickerMatchKey("grok 4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("grok-4.7"), "grok 4 7");
+	assert.equal(modelPickerMatchKey("grok_4.7"), "grok 4 7");
+	assert.equal(
+		modelPickerMatchKey("a__b"),
+		"a b",
+		"underscores are separators, as in the backend",
+	);
+	assert.equal(
+		modelPickerMatchKey("  padded  "),
+		"padded",
+		"the trim matches the backend's `.strip()`",
+	);
+});
+
+test("the operator's spellings all resolve the models, and only those", () => {
+	for (const query of [
+		"grok 4.7",
+		"grok-4.7",
+		"Grok 4.7",
+		"GROK 4.7",
+		"x-ai/grok-4.7",
+	]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/x-ai/grok-4.7"],
+			`"${query}" must resolve exactly the Grok row`,
+		);
+	}
+	for (const query of ["gpt 6 luna", "gpt-6-luna", "GPT 6 Luna"]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/openai/gpt-6-luna"],
+			`"${query}" must resolve exactly the Luna row`,
+		);
+	}
+	/*
+	 * `openai gpt` is the multi-term case, and it resolves BOTH OpenAI rows —
+	 * `gpt-5.4`'s own selector is `openai/gpt-5.4`, so this is the term pass
+	 * answering the words the user typed, not a widened haystack: the fixture has
+	 * held two `openai` rows since the 5.4 case below was added.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "openai gpt")),
+		[GPT54.value, "openrouter/openai/gpt-6-luna"],
+	);
+	/*
+	 * The name-only case, and it has to be a REAL one: `Nano Banana` is the name
+	 * `openrouter/google/gemini-2.5-flash-image` publishes, and no id the row
+	 * carries holds either word — so a haystack without `listing_name` answers
+	 * nothing at all, however good the normalisation is (design D2).
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "nano banana")),
+		["openrouter/google/gemini-2.5-flash-image"],
+		"a listing name is a match target, in the words the listing publishes",
+	);
+	/*
+	 * The report's second spelling, against a catalogue that holds the minor. The
+	 * 5.5 query answers the 5.5 row and NOT its major sibling: `opus 5 5` is not a
+	 * substring of `claude opus 5`, and the ranker scores the same way, so
+	 * answering both would be the desktop inventing a match the backend does not
+	 * have. A minor version is a different model, not a looser spelling of the
+	 * one below it.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opus 5.5")),
+		[OPUS55.value],
+	);
+});
+
+/*
+ * R1-1 / UX U1, the round-1 MAJOR. Two independent streams measured that the
+ * desktop answered `Nothing matches.` for queries the backend's `rank_rows`
+ * resolves (local-operator v0.62.11), so the PR's "one rule, two readers" claim
+ * was not true of MEMBERSHIP. Each query here is one of theirs, and the reason
+ * it used to fail is named beside it.
+ */
+test("the compact and provider-first spellings the backend resolves also resolve here", () => {
+	// Provider, then name: adjacent AND in haystack order was the old test, and
+	// the row's own text orders the words the other way round (`openrouter`,
+	// then `x-ai/grok-4.7`), so the terms must not have to be adjacent.
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "openrouter grok")),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	// Elisions: no substring carries these, and `rank_rows` resolves all three.
+	for (const query of ["grok47", "grok 47"]) {
+		assert.deepEqual(
+			valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)),
+			["openrouter/x-ai/grok-4.7"],
+			`"${query}" is the backend's measured resolution`,
+		);
+	}
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "gpt6luna")),
+		["openrouter/openai/gpt-6-luna"],
+	);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opus5")),
+		[OPUS.value, OPUS55.value],
+		"`opus5` resolves the family, as it does on the backend",
+	);
+	/*
+	 * …and the fallback stays a FALLBACK. `opu` is a subsequence of
+	 * `openrouter`, so membership by subsequence alone listed every row in the
+	 * catalogue three characters into a search for `opus` — a new defect in the
+	 * flow this file exists for. The backend answers it the same way: the
+	 * substring pool, when non-empty, REPLACES the fuzzy one.
+	 */
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "opu")),
+		[OPUS.value, OPUS55.value],
+		"a query with contiguous hits is not widened by the fuzzy pool",
+	);
+});
+
+test("a query that matches nothing returns nothing, and the tiers survive", () => {
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "zzz"),
+		[],
+		"no match is an empty list, not the whole catalogue",
+	);
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "opus 6"),
+		[],
+		"a version the family does not hold is not answered by its sibling",
+	);
+
+	/*
+	 * TWO EMPTY-ISH CASES. Blank lists everything; punctuation-only carries no
+	 * words and must return NOTHING. Folding them together replaces the list with
+	 * the whole catalogue on one `.` keystroke — the old rule matched rows whose
+	 * text contains the character (5 of this fixture's 12 rows for a lone `.`),
+	 * and the backend measured `'.'` taking 257 to 574 rows — which reads as the
+	 * box doing the opposite of the ask.
+	 */
+	assert.deepEqual(
+		matchModelPickerOptions(CATALOGUE_OPTIONS, "   "),
+		CATALOGUE_OPTIONS,
+		"whitespace is 'typed nothing', so the catalogue lists in its own order",
+	);
+	for (const punctuation of [".", "!", "...", "-", "///", "/"]) {
+		assert.deepEqual(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, punctuation),
+			[],
+			`"${punctuation}" carries no words and matches nothing`,
+		);
+	}
+
+	/*
+	 * A term may not land in an unrelated FIELD. The haystack is a row's label,
+	 * selector, provider line, context window and names joined, and matching a
+	 * multi-term query across that join is how `opus 6` answers a Claude Opus row
+	 * whose context window reads `256k`. Per-string is what stops it, and on the
+	 * backend each string is scored on its own for the same reason.
+	 */
+	const wideGround = {
+		value: "anthropic/claude-opus-4-5",
+		label: "Claude Opus 4.5",
+		description: "anthropic",
+		meta: "256k",
+		keywords: ["Claude Opus 4.5", "anthropic", "claude-opus-4-5"],
+	};
+	assert.deepEqual(
+		matchModelPickerOptions([wideGround], "opus 6"),
+		[],
+		"the `6` in a 256k context window is not part of the model's name",
+	);
+
+	/*
+	 * MEMBERSHIP ONLY, NEVER ORDERING. The picker already has tiers — the row
+	 * builder's grouping and the catalogue's own order — and adding the name as a
+	 * match target must not disturb them: an aggregator whose NAME scored better
+	 * must not be promoted over a direct provider's row.
+	 */
+	assert.deepEqual(valuesOf(matchModelPickerOptions([LUNA, GROK], "luna")), [
+		"openrouter/openai/gpt-6-luna",
+	]);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "o")),
+		valuesOf(CATALOGUE_OPTIONS),
+		"every row matched, in the order they came in",
+	);
+	const ordered = [GROK, OPUS, LUNA];
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(ordered, "opus")),
+		[OPUS.value],
+		"the surviving row keeps the order the catalogue gave it",
+	);
+});
+
+/*
+ * R1-4, executed rather than argued. The review's point was that the PR body's
+ * "nothing that matched before is dropped" was contradicted by its own capture —
+ * so the property is asserted here over the PRE-PR rule and the PRE-PR haystack,
+ * with the punctuation-only queries excluded because THAT narrowing is the
+ * deliberate half (`'.'` goes from 'rows whose text contains a dot' to none).
+ */
+test("nothing that matched the pre-PR rule is dropped by the model rule", () => {
+	const before = prePrHaystack();
+	const queries = [
+		"grok 4.7",
+		"grok",
+		"gpt 6 luna",
+		"luna",
+		"opus 5",
+		"opus 5.5",
+		"claude",
+		"anthropic",
+		"openrouter",
+		"openai/gpt-6-luna",
+		"x-ai/grok-4.7",
+		"o",
+		"5",
+		"$3/15",
+		"free",
+		"zzz",
+	];
+	for (const query of queries) {
+		for (const option of prePrFilter(before, query)) {
+			assert.ok(
+				valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, query)).includes(
+					option.value,
+				),
+				`"${query}" matched ${option.value} before this change and must still`,
+			);
+		}
+	}
+});
+
+/*
+ * D2, the round-1 second pass's MAJOR, and the half of it that is about the
+ * NORMALISER rather than the pools. A join before normalisation fuses adjacent
+ * fields: the Luna row's `… · $3/15` and its `400k` concatenate into
+ * `3 15 400k`, in which `5 4` — the query `5.4` — is a substring of `1[5 4]00k`.
+ * So `5.4` re-admitted `openai/gpt-6-luna`, a row whose text holds no `5.4` at
+ * all, against base's 1 row and the merged ranker's 1 row.
+ *
+ * The other half is what the widened pools are allowed to read. `3 15` and
+ * `1.25 10` were base-0 and ranker-0 queries that matched here, and per-field
+ * normalisation alone does NOT fix them: `$3/15` normalises to exactly `3 15`
+ * INSIDE its own field, so a `.some()` over every field still answers four
+ * rows. The row's own DATA (price pair, provider line, context window) therefore
+ * stays on the pre-PR contiguous test, and the normalised pools read the strings
+ * that NAME the model. Per-field matching is what removes the fusion; the
+ * naming/data split is what stops a normalised term reaching a price.
+ */
+test("no field is joined to another, and a query cannot reach a row's data", () => {
+	// Base and the merged ranker both answer `5.4` with the GPT-5.4 row alone.
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "5.4")),
+		[GPT54.value],
+	);
+	assert.ok(
+		!valuesOf(matchModelPickerOptions(CATALOGUE_OPTIONS, "5.4")).includes(
+			LUNA.value,
+		),
+		"the `5 4` inside `1[5 4]00k` is a boundary artefact, not a spelling",
+	);
+	// Ranker 0, base 0 — and 0 here.
+	for (const query of ["3 15", "1.25 10", "15 75", "15 200k", "400k 3"]) {
+		assert.deepEqual(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, query),
+			[],
+			`"${query}" is a price line or a boundary fuse, and matches nothing`,
+		);
+	}
+	// The row's data is still searchable EXACTLY as it was before this change:
+	// the pre-PR test runs per field, so a price typed with its own punctuation
+	// and a context window still resolve their rows.
+	for (const query of ["$3/15", "256k", "aggregated", "openai · $1.25/10"]) {
+		assert.ok(
+			matchModelPickerOptions(CATALOGUE_OPTIONS, query).length > 0,
+			`"${query}" is a real, visible string of at least one row`,
+		);
+	}
+});
+
+/*
+ * R1-3, the round-1 MINOR that was the widest defect in the first revision: the
+ * new rule was `PickerHost`'s filter, so EVERY panel inherited it and typing `/`
+ * into **Search commands** — whose rows label themselves `/model  (/m)` — went
+ * from listing every command to `Nothing matches.`. The fix is scoping, not a
+ * tweak: the default filter is unchanged and a surface with a different rule
+ * opts in. Both halves are pinned here, the default by EXECUTION and the wiring
+ * by source text (the discipline this file already follows for the adapters).
+ */
+test("the default filter is untouched, so the commands picker still lists on `/`", () => {
+	const commands = ["/model  (/m)", "/help  (/h)", "/clear", "/new"].map(
+		(label) => ({
+			value: label.split(" ")[0],
+			label,
+			description: "Command",
+		}),
+	);
+	assert.deepEqual(
+		valuesOf(filterPickerOptions(commands, "/")),
+		["/model", "/help", "/clear", "/new"],
+		"a wordless query is a REAL query for a surface whose rows start with it",
+	);
+	assert.deepEqual(valuesOf(filterPickerOptions(commands, "clear")), [
+		"/clear",
+	]);
+	assert.deepEqual(
+		valuesOf(filterPickerOptions(commands, "   ")),
+		valuesOf(commands),
+	);
+	// The model rule is the other side of the same seam, and it must NOT leak.
+	assert.deepEqual(matchModelPickerOptions(CATALOGUE_OPTIONS, "/"), []);
+
+	const host = source("features/chat/pickers/picker-host.tsx");
+	assert.match(
+		host,
+		/matcher = filterPickerOptions/,
+		"the default matcher is the unchanged generic filter",
+	);
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(
+		picker,
+		/matcher=\{matchModelPickerOptions\}/,
+		"the model picker is the one surface that opts into its own rule",
+	);
+});
+
+test("the adapter feeds the human name into the haystack", () => {
+	/*
+	 * The pure rule above is necessary but not sufficient: the operator's symptom
+	 * needs the ADAPTER to hand the rule the name. That half is pinned as source
+	 * text, the discipline this file already follows for `destination-pickers`
+	 * (its WIRING is read as text; its DECISIONS are exported and executed),
+	 * because bundling that module pulls MUI onto the harness's runtime import
+	 * graph, which the other entry points here deliberately avoid.
+	 *
+	 * Three things, each the failure it prevents:
+	 *   - `listing_name` is IN the option's `keywords` (the haystack the operator
+	 *     needed);
+	 *   - the row builder is a pure exported function the component calls, so a
+	 *     test could exercise it — and the memo passes the one binding, not a
+	 *     second reading;
+	 *   - a term that says nothing is dropped, because a blank haystack entry is
+	 *     true of every row and useful to none. NOT because an omitted name would
+	 *     otherwise match everything: it cannot — the backend ships
+	 *     `listing_name: ""` rather than omitting the field, and the empty string
+	 *     normalises away either way (R1-2, corrected).
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	const builder = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
+	assert.match(
+		builder,
+		/keywords:\s*\[[\s\S]*?row\.listing_name[\s\S]*?row\.provider[\s\S]*?row\.model_id/,
+		"the listing's own words lead the haystack, beside the id",
+	);
+	assert.match(
+		builder,
+		/\.filter\(\s*\(term\): term is string =>[\s\S]*?typeof term === "string" && term\.trim\(\) !== ""/,
+		"a term that says nothing is dropped rather than carried as an empty string",
+	);
+	assert.match(
+		builder,
+		/label:\s*row\.label \|\| row\.model_id/,
+		"the displayed label rule is unchanged by this fix",
+	);
+});
+
+test("the omitted-name case cannot match every query, over the real rule", () => {
+	/*
+	 * The behavioural half of the pin above, over the SHIPPED rule: a haystack
+	 * built the way the adapter builds one — name present or absent — must never
+	 * match a query it should not. The backend DOES ship the field rather than
+	 * omit it (`CatalogueEntry.listing_name` is keyword-only with `default=""`, and
+	 * the route serialises `dataclasses.asdict(row)`), so the absent case is the
+	 * older backend; both are built here, and neither may match everything by
+	 * virtue of an empty term.
+	 */
+	const withName = {
+		value: "openrouter/x-ai/grok-4.7",
+		label: "x-ai/grok-4.7",
+		description: "openrouter",
+		keywords: ["Grok 4.7", "openrouter", "x-ai/grok-4.7"],
+	};
+	const withoutName = {
+		value: "anthropic/claude-opus-5",
+		label: "Claude Opus 5",
+		description: "anthropic",
+		keywords: ["anthropic", "claude-opus-5"],
+	};
+	const emptyName = {
+		...withoutName,
+		keywords: ["", "anthropic", "claude-opus-5"],
+	};
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([withName, withoutName], "grok 4.7")),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([withName, withoutName], "nano banana")),
+		[],
+		"a name query resolves nothing when no row carries that name",
+	);
+	// The row with NO name must not match a name query, and must not match
+	// everything by virtue of an empty term.
+	assert.deepEqual(matchModelPickerOptions([withoutName], "luna"), []);
+	assert.deepEqual(valuesOf(matchModelPickerOptions([withoutName], "claude")), [
+		"anthropic/claude-opus-5",
+	]);
+	assert.deepEqual(
+		valuesOf(matchModelPickerOptions([emptyName], "claude")),
+		["anthropic/claude-opus-5"],
+		"a blank listing name is not a wildcard",
+	);
+	assert.deepEqual(matchModelPickerOptions([emptyName], "nano banana"), []);
 });

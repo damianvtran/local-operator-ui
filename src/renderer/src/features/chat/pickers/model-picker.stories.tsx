@@ -316,6 +316,67 @@ const CATALOGUE: Row[] = [
 		input_price: 0.6,
 		output_price: 2.2,
 	}),
+	/*
+	 * The rows the operator's report was about, carrying the words their OWN
+	 * listing publishes — `Grok 4.7` and `GPT-6 Luna`, read out of the
+	 * operator's cache (`~/.local-operator/cache/models-dev.listing.json`) — and
+	 * not an invented `Vendor: Model` string. Both are AGGREGATOR rows, so the
+	 * backend's naming rule degrades their `label` to the selector (a reseller's
+	 * name describes the model, not the route, so it is never used for
+	 * display — `model/naming.py`), and the listing's own words therefore reach
+	 * the filter only through `listing_name`. The `HumanNameSearch` story types
+	 * the operator's exact spelling against these.
+	 */
+	row({
+		provider: "openrouter",
+		model_id: "x-ai/grok-4.7",
+		listing_name: "Grok 4.7",
+		aggregated: true,
+		context_window: 256_000,
+	}),
+	row({
+		provider: "openrouter",
+		model_id: "openai/gpt-6-luna",
+		listing_name: "GPT-6 Luna",
+		aggregated: true,
+		context_window: 400_000,
+	}),
+	/*
+	 * The 5.5 pair, for the spelling the report names second: `opus 5.5` needs a
+	 * row the catalogue actually holds under that version. Real ids and real
+	 * listing names again (`anthropic/claude-opus-5-5` and its openrouter route,
+	 * both named `Claude Opus 5.5`), so the frame answers a query a user can type
+	 * rather than the story's spelling of one. `claude-opus-5` above is the
+	 * control: a minor bump must not be answered by its own major.
+	 */
+	row({
+		provider: "anthropic",
+		model_id: "claude-opus-5-5",
+		label: "Claude Opus 5.5",
+		listing_name: "Claude Opus 5.5",
+		input_price: 15,
+		output_price: 75,
+	}),
+	row({
+		provider: "openrouter",
+		model_id: "anthropic/claude-opus-5.5",
+		listing_name: "Claude Opus 5.5",
+		aggregated: true,
+	}),
+	/*
+	 * The name-only row: an aggregator whose listing publishes `Nano Banana` for
+	 * `google/gemini-2.5-flash-image` (the operator's cache again), so no word of
+	 * the query appears in any id the row carries. This is the one case the
+	 * normalisation alone cannot answer, and the reason `listing_name` is a match
+	 * input at all.
+	 */
+	row({
+		provider: "openrouter",
+		model_id: "google/gemini-2.5-flash-image",
+		listing_name: "Nano Banana",
+		aggregated: true,
+		context_window: 32_768,
+	}),
 ];
 
 /** The model the session is on when the picker opens. */
@@ -868,6 +929,12 @@ export const PersistChecked: Story = {
 	},
 };
 
+/** The Grok row's accessible name: its displayed label is the degraded selector. */
+const GROK_OPTION_NAME = /x-ai\/grok-4\.7/;
+
+/** The name-only row's accessible name, for the same reason. */
+const NANO_OPTION_NAME = /gemini-2\.5-flash-image/;
+
 /** A query that matches nothing: the list is replaced by one dim line. */
 export const Empty: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
@@ -876,6 +943,88 @@ export const Empty: Story = {
 		await waitFor(() =>
 			expect(screen.getByText("Nothing matches.")).toBeTruthy(),
 		);
+	},
+};
+
+/**
+ * The operator's exact spelling resolves a row whose HUMAN name is the match.
+ *
+ * This is the frame the fix exists for: `grok 4.7` used to answer
+ * `Nothing matches.` because the reseller row's `label` degrades to its selector
+ * and the picker never read `listing_name`. Both halves of the fix are visible
+ * here -- the name is in the haystack AND the query's space is normalised -- so
+ * the same query also resolves with a hyphen, a dot, or a capital. That an
+ * AGGREGATOR row is the one that resolves, while a direct provider's row sits
+ * above it in the resting list, is the ordering half: adding the name as a match
+ * target keeps the tiers, it does not promote the aggregator.
+ */
+export const HumanNameSearch: Story = {
+	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+	play: async () => {
+		await typeQuery("grok 4.7");
+		/*
+		 * The row's ACCESSIBLE NAME is its displayed label, and for a reseller row
+		 * that label degrades to the selector (`openrouter/x-ai/grok-4.7`) -- the
+		 * human name is a match INPUT, never painted. So the assertion is on the
+		 * selector: the query that used to answer `Nothing matches.` now resolves
+		 * the row, which is the whole fix.
+		 */
+		await waitFor(() =>
+			expect(
+				screen.getByRole("option", { name: GROK_OPTION_NAME }),
+			).toBeTruthy(),
+		);
+		expect(screen.queryByText("Nothing matches.")).toBeNull();
+	},
+};
+
+/**
+ * The report's second spelling: `opus 5.5`, against a catalogue that holds it.
+ *
+ * The first spelling (`grok 4.7`) is answered by normalising the query against
+ * the ID's own words; this one is answered by the same rule against a listing's
+ * `Claude Opus 5.5`. Both resolve the ROW the words name and neither promotes
+ * it: `claude-opus-5` sits above the 5.5 rows in the resting list, because this
+ * is a filter and never a ranker. A minor version also does not answer with its
+ * own major — `opus 5.5` does not count `Claude Opus 5` as a hit of the same
+ * spelling, it simply matches it as the shorter word sequence it contains.
+ */
+export const OpusMinorSearch: Story = {
+	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+	play: async () => {
+		await typeQuery("opus 5.5");
+		await waitFor(() =>
+			expect(
+				screen.getAllByRole("option").map((row) => row.textContent),
+			).toEqual(
+				expect.arrayContaining([expect.stringContaining("Claude Opus 5.5")]),
+			),
+		);
+		expect(screen.queryByText("Nothing matches.")).toBeNull();
+	},
+};
+
+/**
+ * The name-only query: `nano banana`, which appears in no id at all.
+ *
+ * The aggregator row for `google/gemini-2.5-flash-image` publishes that name in
+ * its listing, and its `label` is the degraded selector — so before the name
+ * joined the haystack this query could not answer the row it names, whatever
+ * the normalisation did. It is the half of the fix the `grok 4.7` frame cannot
+ * show, and the reason the name is a match input rather than a nicety.
+ */
+export const ListingNameOnlySearch: Story = {
+	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+	play: async () => {
+		await typeQuery("nano banana");
+		await waitFor(() =>
+			expect(
+				screen.getByRole("option", {
+					name: NANO_OPTION_NAME,
+				}),
+			).toBeTruthy(),
+		);
+		expect(screen.queryByText("Nothing matches.")).toBeNull();
 	},
 };
 
