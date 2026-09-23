@@ -494,7 +494,9 @@ export type UsageDialogProps = {
 	error?: string | null;
 	/** A live fetch is in flight: the action says so instead of spinning. */
 	fetching?: boolean;
-	/** Whether live numbers have been asked for at least once. */
+	/** Whether the automatic cache-aware live check is in flight. */
+	checking?: boolean;
+	/** Whether the user has explicitly asked for live numbers. */
 	asked?: boolean;
 	onFetchLive: () => void;
 	/**
@@ -526,6 +528,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	loading = false,
 	error = null,
 	fetching = false,
+	checking = false,
 	asked = false,
 	onFetchLive,
 	outcome = null,
@@ -606,10 +609,18 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 
 					    The in-flight label distinguishes the two fetches this view
 					    makes, because only one of them is an ask. Opening the dialog
-					    reads the backend's CACHE, and labelling that `Asking providers`
-					    claimed a live provider probe the user never requested — harmless
-					    when the read is fast, misleading for exactly as long as it is
-					    slow, which is when the label is actually read (UX U9). */}
+					    checks the backend's cache-aware usage path; it is not the user's
+					    explicit forced ask. Keep that in-flight state distinct so the
+					    receipt and repeat-ask promise only describe an actual click. */}
+					{/*
+					 * A disabled button cannot keep focus, and the focus catcher moves to
+					 * the report list while its label changes. Keep an empty polite region
+					 * mounted between asks so assistive tech hears only the explicit
+					 * in-flight request; distinct wording avoids echoing the button label.
+					 */}
+					<output aria-live="polite" className={cn("sr-only")}>
+						{fetching && asked ? "Getting fresh usage from providers." : ""}
+					</output>
 					<Button
 						ref={actionRef}
 						className={cn("ml-auto")}
@@ -622,7 +633,9 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 						{fetching
 							? asked
 								? "Asking providers"
-								: "Reading cached usage"
+								: checking
+									? "Checking provider usage"
+									: "Reading cached usage"
 							: asked
 								? "Ask providers again"
 								: "Ask providers now"}
@@ -714,23 +727,46 @@ const CLOCK_TICK_MS = 30_000;
  * (a key switch blanking the table, an ask that never re-asked), which a test
  * can only attack by driving these real options through react-query.
  *
- * `live` is part of the key so the cached and live answers never overwrite each
- * other in the store, and `refresh: live` is what forces the backend past its
- * own cache.
+ * The query has three modes: a cache snapshot, a non-forced live check on open,
+ * and a forced live ask initiated by the user. Mode is part of the key so each
+ * answer remains distinct; only the explicit ask bypasses the backend cache.
  */
+export type UsageQueryMode = "cached" | "auto" | "ask";
+
+/*
+ * Ask identities must outlive a picker mount. Closing `/usage` unmounts it, so
+ * a component-local counter would reuse a still-cached forced query next time.
+ */
+let usageAskSequence = 0;
+export const nextUsageAskId = () => ++usageAskSequence;
+
 export const usageQueryOptions = (
 	provider: string | undefined,
-	live: boolean,
+	mode: UsageQueryMode,
+	requestId = 0,
 ) =>
 	({
-		queryKey: ["desktop", "usage", provider ?? "", live] as const,
+		queryKey: [
+			"desktop",
+			"usage",
+			provider ?? "",
+			mode,
+			mode === "ask" ? requestId : 0,
+		] as const,
 		queryFn: () =>
 			desktopResult<UsagePayload>({
 				op: "usage.get",
 				provider,
-				live,
-				refresh: live,
+				live: mode !== "cached",
+				refresh: mode === "ask",
 			}),
+		/*
+		 * Opening `/usage` must re-check even if an earlier open left a recent
+		 * `auto` result in React Query's cache: a newly stored login is invisible
+		 * until the backend is asked again. This is a cache-aware backend read, not
+		 * a forced provider probe, so it avoids spending rate-limited quota calls.
+		 */
+		...(mode === "auto" ? { refetchOnMount: "always" as const } : {}),
 		/*
 		 * Keep the cached table on screen while the live key loads.
 		 *
@@ -776,28 +812,33 @@ export const usageQueryOptions = (
 /**
  * `/usage` as the registry mounts it.
  *
- * The cached report is what opens — no network round trip to read numbers the
- * backend already holds — and asking for live numbers flips both `live` and
- * `refresh`, which is what forces the backend past its own cache. `live` is
- * part of the cache key so the two answers never overwrite each other in
- * react-query's store, and the provider scope comes from the slash line's
- * argument.
+ * The cached report paints first, then a distinct cache-aware live check runs
+ * on open. Only the explicit button action uses `refresh: true`; this matters
+ * because a newly stored account has no cache row yet, while forcing every
+ * provider on open would spend rate-limited requests. Provider scope comes from
+ * the slash line's argument.
  */
 export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
-	const [live, setLive] = useState(false);
+	const [mode, setMode] = useState<UsageQueryMode>("cached");
+	const [askId, setAskId] = useState(0);
 	const provider = action.args.trim() || undefined;
-	const usage = useQuery(usageQueryOptions(provider, live));
+	const usage = useQuery(usageQueryOptions(provider, mode, askId));
+
+	useEffect(() => {
+		// Let the cached snapshot paint before the cache-aware request starts.
+		// It discovers newly stored accounts without forcing every provider on
+		// each open, which would spend rate-limited quota probes unnecessarily.
+		setMode("auto");
+	}, []);
 
 	/*
 	 * Ask again, and mean it.
 	 *
-	 * `setLive(true)` alone was inert once `live` was already `true`: React bails
-	 * out on an identical state value, the query key does not change, and a
-	 * still-fresh query does not refetch — so the only recovery from a failed
-	 * ask was Esc and reopen. `refetch()` is the explicit form and re-probes,
-	 * because the query already carries `refresh: live`.
+	 * Each click advances `askCount`, producing a new query identity with
+	 * `refresh: true`. Reusing the automatic key would serve its cache-aware
+	 * result, and repeating the same key would let react-query reuse a fresh
+	 * forced answer rather than honor the user's next explicit request.
 	 */
-	const { refetch } = usage;
 	/*
 	 * The receipt for the ask, so a repeat that returns identical numbers is
 	 * still visibly an ask that happened rather than a dead click.
@@ -808,14 +849,12 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	} | null>(null);
 	const askLive = useCallback(() => {
 		setOutcome(null);
-		if (!live) {
-			// The key change is itself the fetch; its outcome is reported by the
-			// effect below, which sees every settle including this first one.
-			setLive(true);
-			return;
-		}
-		void refetch();
-	}, [live, refetch]);
+		// Give every user action a new query identity so repeat clicks always
+		// cross the bridge, even when the last forced result is still fresh. The
+		// module sequence also prevents a close/reopen from reusing that key.
+		setAskId(nextUsageAskId());
+		setMode("ask");
+	}, []);
 
 	/*
 	 * Report each settled ask once. Keyed on `dataUpdatedAt`/`errorUpdatedAt`,
@@ -841,9 +880,9 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	} = usage;
 	const settledAt = Math.max(dataUpdatedAt, errorUpdatedAt);
 	const askedRef = useRef(false);
-	if (live) askedRef.current = true;
+	if (mode === "ask") askedRef.current = true;
 	useEffect(() => {
-		if (!askedRef.current) return;
+		if (!askedRef.current || mode !== "ask") return;
 		if (isError) {
 			setOutcome({ tone: "error", text: errorText(error) });
 			return;
@@ -865,7 +904,7 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		}
 		if (!settledAt) return;
 		setOutcome({ tone: "info", text: "Providers answered." });
-	}, [settledAt, isError, error, failureCount, failureReason]);
+	}, [mode, settledAt, isError, error, failureCount, failureReason]);
 
 	/*
 	 * The last payload that actually arrived, kept so a failed ask cannot blank
@@ -911,7 +950,8 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			error={bodyError}
 			// react-query dedupes a second click, but the label has to say so too.
 			fetching={usage.isFetching}
-			asked={live}
+			checking={mode === "auto"}
+			asked={mode === "ask"}
 			onFetchLive={askLive}
 			// A previous round's receipt is suppressed while a fetch is out: the
 			// button already says "Asking providers", and the old receipt beside it
@@ -926,6 +966,7 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			// no payload to keep on screen the error is the body, and a receipt
 			// beneath it printed the provider's sentence twice in a row.
 			outcome={
+				mode !== "ask" ||
 				(usage.isFetching && usage.failureCount === 0) ||
 				(bodyError !== null && outcome?.tone === "error")
 					? null
