@@ -1316,6 +1316,12 @@ export const STORIES = [
 	   pair is what shows the line renders a WIRE string when there is one and the
 	   harness's fallback when there is not. */
 	["chat-run-panel--reader-no-activity", 1280, 900],
+	/* The foot at the pane's floor with the longest label the row can be handed —
+	   the relay's named-tool fallback, 32 characters against the ~41 the floor
+	   leaves — so truncation inside the row is photographed rather than assumed
+	   (design round 1, D3), and `§ 5.8`'s recorded divergence from the parent's
+	   own foot is pictured rather than only described. */
+	["chat-run-panel--reader-live-floor", 800, 700],
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],

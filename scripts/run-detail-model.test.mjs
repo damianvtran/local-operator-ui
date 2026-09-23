@@ -937,15 +937,21 @@ test("a truncated launch row is still the brief", () => {
  * What the reader paints at the foot of a running child's page
  * (`deriveChildWorkingLine`). The line is deliberately NOT derived from the
  * child's records: `transcript-reducer.ts` reduces every durable tool row to
- * `phase: "done"`, so the parent's own derivation over them could only ever say
- * `thinking`. It is the child relay's progress string, which reaches the reader
- * as `SubagentRow.activity`.
+ * `phase: "done"` (`:1867`), so over a child's page the parent's own derivation
+ * paints NOTHING for the props the reader passes, and the one change that would
+ * make it speak - claiming a `waiting` pane - could only ever say `thinking`.
+ * It is the child relay's progress string, which reaches the reader as
+ * `SubagentRow.activity`.
  *
  * Both rules are asserted here rather than eyeballed in `reader-live`, because
- * both are rules about WHEN a claim may be made. A misclassified phase restarts
- * the clock under the reader (`working-line.tsx`'s contract, points 2 and 3),
- * and a line painted over a child that has not started is a claim the wire never
- * made.
+ * both are rules about WHEN a claim may be made. A misclassified phase moves the
+ * phase the line is in (`working-line.tsx`'s contract, points 2 and 3), and a
+ * line painted over a child that has not started is a claim the wire never made.
+ *
+ * The CLOCK is asserted here too, and it is the third rule: this line carries no
+ * number, because the wire has no anchor for a child's phase - so a mount-seeded
+ * one would report when the READER arrived (review round 1, R1 / design round 1,
+ * D1). See `deriveChildWorkingLine`'s docstring for the TUI precedent.
  */
 
 /** One child row, through the same derivation the roster runs. */
@@ -959,7 +965,7 @@ test("a running child's stated intent is the line, in the running phase", () => 
 		deriveChildWorkingLine(
 			childRow({ latest_details: { progress: "auditing merged MRs" } }),
 		),
-		{ activity: "auditing merged MRs", phase: "running" },
+		{ activity: "auditing merged MRs", phase: "running", clock: false },
 	);
 });
 
@@ -969,20 +975,22 @@ test("a batch states a count, and the count is the label", () => {
 		deriveChildWorkingLine(
 			childRow({ latest_details: { progress: "running 3 tools" } }),
 		),
-		{ activity: "running 3 tools", phase: "running" },
+		{ activity: "running 3 tools", phase: "running", clock: false },
 	);
 });
 
 test("a running child with nothing to report says the relay's own default", () => {
 	// `thinking` is the wire's word for a model call in flight with nothing
-	// streamed (`ACTIVITY_THINKING`), and it is also `batch_activity`'s empty case
-	// — the relay's fallback, not one this renderer invented.
+	// streamed (`ACTIVITY_THINKING`), and the relay's own arms mint it when a
+	// batch empties (`subagent.py:1295`) - `batch_activity` has no word of its own
+	// for that and names this constant as the caller's answer (`intent.py:337-340`).
 	const row = childRow({});
 	assert.equal(row.status, "running");
 	assert.equal(row.activity, null);
 	assert.deepEqual(deriveChildWorkingLine(row), {
 		activity: "thinking",
 		phase: "thinking",
+		clock: false,
 	});
 });
 
@@ -991,16 +999,16 @@ test("prose actually streaming is the responding phase", () => {
 		deriveChildWorkingLine(
 			childRow({ latest_details: { progress: "responding" } }),
 		),
-		{ activity: "responding", phase: "responding" },
+		{ activity: "responding", phase: "responding", clock: false },
 	);
 });
 
-test("a label change inside a batch keeps the phase the clock runs in", () => {
-	// The clock is keyed to the PHASE and a batch sheds its calls one at a time.
+test("a label change inside a batch keeps the phase the line is in", () => {
+	// The phase is keyed to the PHASE and a batch sheds its calls one at a time.
 	// Every label below is a different phrase, and every one of them is emitted
-	// with a tool call still running (`subagent.py:1288-1345`, the only two arms
-	// that emit the named constants being the ones that do NOT call
-	// `tool_activity`/`batch_activity`) — so none of them may move the clock.
+	// with a tool call still running (`subagent.py:1288-1345`, the only arms that
+	// emit the named constants being the ones that do NOT call
+	// `tool_activity`/`batch_activity`) - so none of them may move the phase.
 	// That classification, not the label, is what makes this safe.
 	const labels = [
 		"running 3 tools",
@@ -1020,18 +1028,50 @@ test("a label change inside a batch keeps the phase the clock runs in", () => {
 	assert.equal(new Set(labels).size, labels.length);
 });
 
-test("an intent that IS a ladder word misfiles the clock, never the label", () => {
+test("an intent that IS a ladder word misfiles the phase, never the label", () => {
 	// The one tolerated ambiguity, pinned so it stays the documented one: the
 	// relay passes the intent through unread, so an intent that happens to be
 	// exactly `thinking` or `responding` is indistinguishable from the relay's own
-	// word here. The label survives either way; only the clock's restart is
-	// misdated, and never in the direction of a wrong activity.
+	// word here. The label survives either way; only the phase is misfiled, and
+	// never in the direction of a wrong activity.
 	assert.deepEqual(
 		deriveChildWorkingLine(
 			childRow({ latest_details: { progress: "thinking" } }),
 		),
-		{ activity: "thinking", phase: "thinking" },
+		{ activity: "thinking", phase: "thinking", clock: false },
 	);
+});
+
+test("the child's line carries no clock, because the wire has no anchor", () => {
+	/*
+	 * Withheld, not understated: `clock: false` makes `WorkingLine` paint no
+	 * number and run no interval, while the slot stays reserved so nothing on the
+	 * row moves (`working-line.tsx`). `SubagentRow.startSeconds` is the child's
+	 * LAUNCH clock rather than the phase's, so a number seeded from this
+	 * component's mount would report the age of the READER - the shipped
+	 * `reader-live` frame printed `0s` beside a header reading `1m36s` for the
+	 * same child (review R1 / design D1). The TUI resolved the identical shape the
+	 * same way and calls the alternative the defect (`tui/app.py:40746-40760`).
+	 *
+	 * Asserted over EVERY running shape rather than one, because the failure this
+	 * guards against is a single arm regaining a number.
+	 */
+	for (const progress of [
+		"auditing merged MRs",
+		"running 3 tools",
+		"thinking",
+		"responding",
+		undefined,
+	]) {
+		const line = deriveChildWorkingLine(
+			childRow(progress === undefined ? {} : { latest_details: { progress } }),
+		);
+		assert.equal(
+			line.clock,
+			false,
+			`a running child's line must carry no clock (progress: ${progress})`,
+		);
+	}
 });
 
 test("only a running child gets a line", () => {
@@ -1073,6 +1113,50 @@ test("only a running child gets a line", () => {
 			`a ${status} child must not claim work`,
 		);
 	}
+});
+
+test("a running child with an EMPTY page still paints no line, and that is pinned", () => {
+	/*
+	 * The gap this pins rather than fixes (review round 1, R3 / QA Q-1): a
+	 * RUNNING child whose page is still empty - `pending`, `gone`, `loading`, or
+	 * `ready` with no rows - is answered by a `QuietLine`, so `CanonicalTranscript`
+	 * is never mounted and the foot line never reaches the DOM, while the row is
+	 * running and the relay has already sent its progress string. The TUI reaches
+	 * a tail notice before its own empty-page arms (`subagent_view.py:2849-2857`).
+	 *
+	 * Deferred rather than fixed here because it is a COMPOSITION decision - a
+	 * second line above an absence sentence whose copy `§ 10.1` owns - and not a
+	 * detail of this row; the reason is recorded in `docs/run-sidebar.md` `§ 5.8`
+	 * and on the PR.
+	 *
+	 * A source pin rather than a rendered one: the branch ORDER is what decides
+	 * this, and the only DOM harness for the pane lives in
+	 * `run-panel-navigation.test.mjs`, whose docstring is scoped to `§ 5.5`.
+	 * WHEN THE FOLLOW-UP LANDS, THIS ASSERTION IS THE THING TO CHANGE - which is
+	 * the whole point of writing it down.
+	 */
+	const reader = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+		),
+		"utf8",
+	);
+	// Each absence arm still owes its own copy (`§ 10.1`), which is what the foot
+	// line would be composed ABOVE rather than replacing.
+	for (const copy of [
+		"This subagent's row carries no session id",
+		"This subagent has no transcript on disk yet.",
+		"This subagent's session directory is no longer on disk.",
+		"This subagent has no conversation on record yet.",
+	]) {
+		assert.ok(reader.includes(copy), `the absence arm for "${copy}" is gone`);
+	}
+	// Every absence arm answers with a `QuietLine`...
+	assert.equal((reader.match(/<QuietLine>/g) ?? []).length, 5);
+	// ...and the working line reaches exactly one element, the transcript that
+	// none of those arms mounts.
+	assert.equal((reader.match(/workingLine=\{workingLine\}/g) ?? []).length, 1);
 });
 
 /* ------------------------------------------------------------------ */
@@ -2312,12 +2396,14 @@ test("the reader's fixture set covers the three states of the foot", () => {
 	 */
 	const open = (over) => derive([fixtures.readerChild(over)]).subagents[0];
 	assert.deepEqual(deriveChildWorkingLine(open({})), {
-		activity: "Running pytest tests/unit/server -q",
+		activity: "Auditing the pending ledger rows",
 		phase: "running",
+		clock: false,
 	});
 	assert.deepEqual(deriveChildWorkingLine(open({ progress: undefined })), {
 		activity: "thinking",
 		phase: "thinking",
+		clock: false,
 	});
 	assert.equal(
 		deriveChildWorkingLine(

@@ -1014,7 +1014,16 @@ export const readerChild = (
 		role: "reviewer",
 		status: "running",
 		startedSecondsAgo: 96,
-		progress: "Running pytest tests/unit/server -q",
+		/*
+		 * A STATED INTENT, which is the shape `tool_activity(display, intent)` returns
+		 * when the model said something (`intent.py:327` — the intent wins and the
+		 * tool name is dropped), emitted by the relay's `ToolExecutionStartEvent` arm
+		 * (`subagent.py:1288`). Capitalised on purpose: an intent is model-authored
+		 * prose, and this fixture must not read like a command line — the fallback
+		 * shape is lowercase (`f"running {display}"`) and is what
+		 * `reader-live-floor` carries, so the pair shows both arms.
+		 */
+		progress: "Auditing the pending ledger rows",
 		tokens: 23_100,
 		window: 200_000,
 		cost: 0.08,

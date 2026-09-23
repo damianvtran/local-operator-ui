@@ -191,19 +191,21 @@ export type CanonicalTranscriptProps = {
 	 * WHY THE CHILD READER NEEDS IT (`working-line-model.ts` cannot answer for a
 	 * child). A child's activity IS on the wire, but not in the reader's records:
 	 * the reader renders the child's DURABLE page, and `transcript-reducer.ts`
-	 * reduces every durable tool row to `phase: "done"` (`:1152-1160`), so
-	 * `deriveWorkingLine` over those records could only ever say `thinking` and
-	 * could never carry the child's real activity. The relay's progress string is
-	 * the only place that fact exists, so the reader hands the line in from the
-	 * roster row it already holds (`deriveChildWorkingLine`, `run-detail-model.ts`).
+	 * reduces every durable tool row to `phase: "done"` — the tool arm of
+	 * `durableRecord` (`:1867`, declared `:1661`) — so for the props this reader
+	 * passes (neither `waiting` nor `starting`) `deriveWorkingLine` over those
+	 * records paints NOTHING and returns `null` (`working-line-model.ts:520`). The
+	 * relay's progress string is the only place the child's own fact exists, so the
+	 * reader hands the line in from the roster row it already holds
+	 * (`deriveChildWorkingLine`, `run-detail-model.ts`).
 	 *
 	 * WHY `waiting`/`starting` WERE THE WRONG CHANNEL. `waiting` makes the
 	 * derivation read THIS pane's records — for the reader those are the child's
-	 * durable rows, which carry no running tool, so it would answer `thinking` no
-	 * matter what the child was doing and would turn a wrong label into a wrong
-	 * clock. `starting` names a send THIS app admitted, and the admitted-send rung
-	 * belongs to the pane that issued the send: a child reader can never be that
-	 * pane (see its own comment). Neither prop can carry a fact that arrived on
+	 * durable rows, which carry no running tool, so the one thing it could then say
+	 * is `thinking` (the batch arm has nothing to count) while claiming a phase it
+	 * cannot know. `starting` names a send THIS app admitted, and the admitted-send
+	 * rung belongs to the pane that issued the send: a child reader can never be
+	 * that pane (see its own comment). Neither prop can carry a fact that arrived on
 	 * the wire about somebody else's conversation, which is why this is a third
 	 * input rather than a re-reading of the two that are already here.
 	 */

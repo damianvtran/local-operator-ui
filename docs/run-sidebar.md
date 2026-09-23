@@ -895,8 +895,11 @@ the bottom of a LIVE page is indistinguishable from a finished one.
 than a derivation.** `SubagentRow.activity` is `latest_details.progress`, fed by
 the child relay's `report_progress` (`harness/jobs.py:1291-1299`). It cannot be
 recovered from the child's records: the reader reduces a DURABLE page, and every
-durable tool row lands on `phase: "done"` (`transcript-reducer.ts:1152-1160`), so
-`deriveWorkingLine` over those records could only ever answer `thinking`. So the
+durable tool row lands on `phase: "done"` (the tool arm of `durableRecord`,
+`transcript-reducer.ts:1867`). Over those records the parent's own derivation
+paints NOTHING for the props this reader passes — it answers `null`
+(`working-line-model.ts:520`) — and the one change that would make it speak,
+reading them as a claimed `waiting` pane, could only ever say `thinking`. So the
 reader derives the line from the row it already holds
 (`deriveChildWorkingLine`, `run-detail-model.ts`) and hands it to
 `CanonicalTranscript` as its `workingLine` prop — the one live-session concept the
@@ -905,9 +908,10 @@ reader supplies rather than switches off.
 **`waiting`/`starting` were the wrong channel for it**, which is worth stating
 because they look like the obvious fit: `waiting` makes the derivation read THIS
 pane's records (for the reader, the child's durable rows, which carry no running
-tool, so it would answer `thinking` over any activity the child reported), and
-`starting` names a send this app admitted — the admitted-send rung belongs to the
-pane that issued the send, and a child reader can never be that pane.
+tool, so the only thing it could then say is `thinking` while claiming a phase it
+cannot know), and `starting` names a send this app admitted — the admitted-send
+rung belongs to the pane that issued the send, and a child reader can never be
+that pane.
 
 **The vocabulary is the parent line's, by the relay's own design**
 (`harness/subagent.py`'s `_make_relay` docstring, `:1207-1246`): the model's
@@ -918,18 +922,49 @@ to learn two vocabularies for one state". An empty activity is therefore
 `thinking`, which is the relay's own word for it (`intent.py:298-340`), not a
 fallback the renderer invented.
 
-**The phase is a classification, and the clock rests on it.** A batch sheds its
-calls one at a time and re-derives its label each time; `working-line.tsx`
-restarts the clock when the PHASE changes and never when the label alone does.
-The relay calls `tool_activity`/`batch_activity` from exactly three places — the
-`ToolExecutionStartEvent` and `ToolExecutionEndEvent` arms and the empty-batch
-fallback (`subagent.py:1288-1345`) — and the arms that emit the two named
-constants are the ones that do NOT call them, so every progress string that is
-neither of those words was emitted with a tool call still running. `thinking` ->
-`thinking`, `responding` -> `responding`, anything else -> `running`: closed over
-the vocabulary the relay can produce. One ambiguity is tolerated and recorded
-rather than hidden — a model-authored INTENT that is exactly one of the two
-reserved words misfiles the clock's restart, never the label.
+**The phase is a classification, and it is what keeps a moved label off the
+phase.** A batch sheds its calls one at a time and re-derives its label each
+time; `working-line.tsx` treats a PHASE change as the phase edge and a label
+change alone as nothing. The relay calls `tool_activity`/`batch_activity` from
+exactly three places — the `ToolExecutionStartEvent` and `ToolExecutionEndEvent`
+arms and the empty-batch fallback (`subagent.py:1288-1345`) — and the arms that
+emit the two named constants are the ones that do NOT call them, so every
+progress string that is neither of those words was emitted with a tool call still
+running. `thinking` -> `thinking`, `responding` -> `responding`, anything else ->
+`running`: closed over the vocabulary the relay can produce. One ambiguity is
+tolerated and recorded rather than hidden — a model-authored INTENT that is
+exactly one of the two reserved words misfiles the PHASE, never the label.
+
+**The line carries NO clock, and that is the one field that is neither the
+wire's nor the classification's.** The wire has no anchor for a child's phase:
+`latest_details` is a bare string (`harness/jobs.py:1291-1299`), and
+`startSeconds` is the child's LAUNCH clock, not the phase's. A number seeded from
+the component's mount would therefore report the age of the READER — the first
+capture printed `0s` beside a header reading `1m36s` for the same child, and
+closing and reopening the pane re-based it again (review round 1, R1; design
+round 1, D1). So the derivation returns `clock: false`, which makes
+`WorkingLine` withhold the number and run no interval while keeping the slot
+RESERVED, so nothing on the row moves:
+
+- **the TUI, the row this ports, resolved the identical shape and records the
+alternative as the defect** — `set_activity(clock=False)` for a `running` phase
+any of whose cards was adopted mid-execution: "the phase changes when the viewer
+arrives, not when the tool started, so the number would count from the switch
+while naming a tool that may be half an hour old" (`tui/app.py:40746-40760`),
+and "a clock started from the wrong zero is worse than no clock"
+(`tui/widgets/transcript.py:3275-3295`, which also names every child row inside
+`subagent_view` in the population whose timestamp does not exist "at any
+price").
+- **recording an anchor instead is not available**, which is why withholding is
+the answer rather than the reviewer's other option: there is nothing on the wire
+to record.
+- **the pane is not left dead**: the reader's HEADER keeps the child's own
+elapsed label ticking at 1 Hz from the child's launch clock (§ 5.3's
+`useChildRowClock`) — the honest duration for that surface, which no
+reader-arrival zero can fake.
+- **under `prefers-reduced-motion`** the spinner holds its frame as always, so
+the row becomes a static statement (the activity word alone). Accepted: that word
+is the fact the row exists to carry.
 
 **Only a `running` child gets a line, and that is a deliberate departure from
 the TUI.** `_tail_entry` paints its row for a queued child too; here the gate is
@@ -943,13 +978,33 @@ than repaired: the relay has no display layer, so it hands `tool_activity` the
 tool name as called (`intent.py:310-327`) and a child's label reads `running
 mcp__linear_create_issue` where the parent's reads `running create_issue`. The
 roster row above the reader prints the identical wire string
-(`run-detail-subagents.tsx`), so the child's own surfaces keep saying one thing;
-a second spelling here would be the app answering the same question twice.
+(`run-detail-row-parts.tsx:140-146`, the row body `run-detail-subagents.tsx`
+renders), so the child's own surfaces keep saying one thing; a second spelling
+here would be the app answering the same question twice. Both arms of that
+vocabulary are pictured: `reader-live` carries a STATED INTENT (model-authored
+prose, which the relay passes through verbatim when it has one) and
+`reader-live-floor` carries the named-tool fallback, at the pane's 320px floor
+where the label has to truncate inside the row — roughly 41 characters of room
+against the 32 the fallback spends (design round 1, D3).
 
-The frames are the three answers, in `docs/evidence/chat-run-panel/`:
-`reader-live` (a wire activity), `reader-no-activity` (`thinking`), and
-`reader-settled` / `reader-failed` (no line — the settle withdraws it and the
-outcome block owns the foot).
+**A RUNNING child whose page is still empty paints no line, and that gap is
+recorded here rather than closed in this change.** The body's absence arms
+(`pending`, `gone`, `loading`, and `ready` with no rows) answer with a
+`QuietLine` and never mount `CanonicalTranscript`, so the foot line cannot reach
+them — while the row is running and the relay has already sent its string. The
+TUI reaches a tail notice before its own empty-page arms
+(`subagent_view.py:2849-2857`). It is deferred because it is a COMPOSITION
+decision — a second line above an absence sentence whose copy § 10.1 owns — and
+not a detail of this row; `scripts/run-detail-model.test.mjs` pins the current
+behaviour so it cannot change unnoticed, and the follow-up is the change that
+alters that pin.
+
+The frames are the four answers, in `docs/evidence/chat-run-panel/`:
+`reader-live` (a stated intent), `reader-no-activity` (`thinking`),
+`reader-live-floor` (the named-tool fallback at the pane's floor, truncating),
+and `reader-settled` / `reader-failed` (no line — the settle withdraws it and
+the outcome block owns the foot). All four carry no clock, which is the rule
+above made visible.
 
 ---
 
