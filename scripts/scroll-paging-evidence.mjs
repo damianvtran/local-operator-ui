@@ -1925,7 +1925,11 @@ if (MODE === "switch") {
 	 * the page's own same-origin transport, paged to the end. Those ids are what
 	 * the conversation CONTAINS; a frame is then classified by which set its
 	 * first painted row belongs to. `classifier` in the JSON reports the sets'
-	 * sizes and the scrolled top row id so the reading is auditable.
+	 * sizes, their disjointness and the scrolled top row id with its membership in
+	 * A's set; the full id sets are not published, so a reader can check those
+	 * three facts and the per-frame timeline, but cannot re-derive the
+	 * classification from the artifact alone. The README states exactly that much
+	 * rather than calling the reading auditable.
 	 */
 	async function knownRowIds(sessionId) {
 		return JSON.parse(
@@ -1964,6 +1968,22 @@ if (MODE === "switch") {
 			`the two conversations' row sets are not disjoint, so a frame's first row cannot identify it: ${JSON.stringify({ overlap: overlap.slice(0, 4) })}`,
 		);
 	}
+	/*
+	 * The DISCRIMINATING PROPERTY, asserted rather than published (UX round 3,
+	 * U5). The reading is only worth anything if the scrolled A top row whose
+	 * identity could be painted over B's rows is a row A actually owns: that is
+	 * what lets a B-labelled frame over it classify as stale at all (UX round 2,
+	 * U2). `scrolledTopRowIsInA` was reported but never gated, so a re-capture
+	 * where the deep scroll landed on a row outside A's durable set would keep
+	 * its zero and silently lose the property the reading rests on. Refuse here,
+	 * before any switch is performed, so the failure is the run's and not a
+	 * reader's to notice.
+	 */
+	if (!scrolledA.firstRowId || !idsA.has(scrolledA.firstRowId)) {
+		throw new Error(
+			`the scrolled A top row is not in A's known row set, so the classifier could not tell a B-labelled frame over A's scrolled rows from A's own: ${JSON.stringify({ scrolledTopRowId: scrolledA.firstRowId, scrolledRows: scrolledA.rows, rowsA: idsA.size })}`,
+		);
+	}
 
 	/*
 	 * The per-frame recorder. A flash of stale content is a frame that IS a
@@ -1982,8 +2002,7 @@ if (MODE === "switch") {
 	 * - `requestAnimationFrame`, aligned to vsync;
 	 * - a 4ms `setInterval`, which fires in the idle gaps between frames;
 	 * - a `MutationObserver` over the whole document (childList, subtree,
-	 *   attributes, characterData) plus a wrap on `localStorage.setItem` - the
-	 *   store's own `activeSessionId` write.
+	 *   attributes, characterData).
 	 *
 	 * The observer is what makes the series COMPLETE for the hazard under test. A
 	 * stale frame (B's identity over A's rows) is a change to the painted DOM, and
@@ -2057,8 +2076,12 @@ if (MODE === "switch") {
 	 * paints DISAGREE in EITHER direction:
 	 *
 	 *   - active B over A's rows (the round-2 direction), and
-	 *   - active A over B's rows (the mirror, found by the round-3 sampler: the
-	 *     return switch paints B's rows under A's identity for one frame).
+	 *   - active A over B's rows (the mirror). The round-3 sampler was checked for
+	 *     the mirror because the symmetric test is the one that closes the round-2
+	 *     asymmetry, NOT because a run observed it: the committed capture reports
+	 *     0 stale and its return-switch frame carries A's identity over A's rows,
+	 *     and an intermediate claim that it had been seen once was not
+	 *     reproducible, so it is not asserted anywhere.
 	 *
 	 * Both are "stale content", and checking only one direction is the asymmetry
 	 * that let the second one through.
