@@ -152,66 +152,72 @@ let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 /** Install the transport a story needs. Called from `render`, before mount. */
 const installBridge = (
 	next: (request: BridgeRequest) => Promise<DesktopResponse>,
+	commandResponse: DesktopResponse | undefined,
 ) => {
 	bridge = next;
-};
-
-if (typeof window !== "undefined") {
-	// The page's `window` is not the preload-shaped one here, so the two fields
-	// this file adds are declared rather than poked at through `any`.
-	const page = window as unknown as {
-		api?: {
-			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+	if (typeof window !== "undefined") {
+		// The page's `window` is not the preload-shaped one here, so the two fields
+		// this file adds are declared rather than poked at through `any`.
+		const page = window as unknown as {
+			api?: {
+				desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+			};
+			__pickerCatalogueCalls?: { total: number };
+			__pickerSettingsWrites?: { key: string; value: unknown }[];
 		};
-		__pickerCatalogueCalls?: { total: number };
-		__pickerSettingsWrites?: { key: string; value: unknown }[];
-	};
-	const api = page.api ?? {};
-	page.api = api;
-	api.desktop = {
-		request: (request: BridgeRequest) => {
-			// Counted so a frame can state HOW MANY times the catalogue was asked
-			// for: react-query refetches on window focus by default, and a
-			// refetch re-derives the option list — which is worth knowing when a
-			// captured row position does not survive the wait.
-			const seen = page.__pickerCatalogueCalls ?? { total: 0 };
-			page.__pickerCatalogueCalls = seen;
-			if (request.op === "models.catalogue") seen.total += 1;
-			if (request.op === "settings.edit") {
-				const writes = page.__pickerSettingsWrites ?? [];
-				page.__pickerSettingsWrites = writes;
-				writes.push({ key: request.key ?? "", value: request.value });
-				return Promise.resolve(ok({ key: request.key, value: request.value }));
-			}
-			if (request.op === "commands.entities" && request.command === "effort") {
-				return Promise.resolve(
-					ok({
-						entities: [
-							{ value: "low", name: "low" },
-							{ value: "medium", name: "medium" },
-							{ value: "high", name: "high" },
-						],
-						current: "medium",
-					}),
-				);
-			}
-			if (request.op === "sessions.command")
-				return Promise.resolve(
-					ok({
-						result: {
-							kind: "notice",
-							text: "Effort set",
-							style: "info",
-							data: {},
-						},
-					}),
-				);
-			return bridge
-				? bridge(request)
-				: Promise.reject(new Error("no bridge installed for this story"));
-		},
-	};
-}
+		const api = page.api ?? {};
+		page.api = api;
+		api.desktop = {
+			request: (request: BridgeRequest) => {
+				// Counted so a frame can state HOW MANY times the catalogue was asked
+				// for: react-query refetches on window focus by default, and a
+				// refetch re-derives the option list — which is worth knowing when a
+				// captured row position does not survive the wait.
+				const seen = page.__pickerCatalogueCalls ?? { total: 0 };
+				page.__pickerCatalogueCalls = seen;
+				if (request.op === "models.catalogue") seen.total += 1;
+				if (request.op === "settings.edit") {
+					const writes = page.__pickerSettingsWrites ?? [];
+					page.__pickerSettingsWrites = writes;
+					writes.push({ key: request.key ?? "", value: request.value });
+					return bridge
+						? bridge(request)
+						: Promise.reject(new Error("no bridge installed for this story"));
+				}
+				if (
+					request.op === "commands.entities" &&
+					request.command === "effort"
+				) {
+					return Promise.resolve(
+						ok({
+							entities: [
+								{ value: "low", name: "low" },
+								{ value: "medium", name: "medium" },
+								{ value: "high", name: "high" },
+							],
+							current: "medium",
+						}),
+					);
+				}
+				if (request.op === "sessions.command")
+					return Promise.resolve(
+						commandResponse ??
+							ok({
+								result: {
+									kind: "notice",
+									text: "Effort set",
+									style: "info",
+									data: {},
+								},
+							}),
+					);
+				return bridge
+					? bridge(request)
+					: Promise.reject(new Error("no bridge installed for this story"));
+			},
+		};
+	}
+};
 
 /* --------------------------------------------------------------- fixtures */
 
@@ -341,6 +347,8 @@ const receipt = (from: string, to: string) => ({
 type FrameProps = {
 	/** What the stub answers, and how long it takes to answer it. */
 	bridge: (request: BridgeRequest) => Promise<DesktopResponse>;
+	/** Per-frame command result; keeps sequential Storybook renders isolated. */
+	commandResponse?: DesktopResponse;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
 	picker?: "model" | "effort";
@@ -355,10 +363,11 @@ type FrameProps = {
  */
 const Frame: FC<FrameProps> = ({
 	bridge: storyBridge,
+	commandResponse,
 	selected = CURRENT,
 	picker = "model",
 }) => {
-	installBridge(storyBridge);
+	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
 	const ctx: PickerContext = {
 		action: isEffort ? EFFORT_ACTION : MODEL_ACTION,
@@ -633,7 +642,7 @@ export const SetCurrentAsDefault: Story = {
 	},
 };
 
-/** A refused first setting write shows an error and never writes half a model. */
+/** Accepted session effort may be saved as the machine default by explicit opt-in. */
 export const EffortSetAsDefault: Story = {
 	render: () => (
 		<Frame
@@ -650,30 +659,9 @@ export const EffortSetAsDefault: Story = {
 							current: "medium",
 						}),
 					);
-				if (request.op === "settings.edit") {
-					const page = window as unknown as {
-						__pickerSettingsWrites?: { key: string; value: unknown }[];
-					};
-					const writes = page.__pickerSettingsWrites ?? [];
-					page.__pickerSettingsWrites = writes;
-					writes.push({
-						key: request.key ?? "",
-						value: request.value,
-					});
+				if (request.op === "settings.edit")
 					return Promise.resolve(
 						ok({ key: request.key, value: request.value }),
-					);
-				}
-				if (request.op === "sessions.command")
-					return Promise.resolve(
-						ok({
-							result: {
-								kind: "notice",
-								text: "Effort set",
-								style: "info",
-								data: {},
-							},
-						}),
 					);
 				return Promise.resolve(ok({}));
 			}}
@@ -703,27 +691,24 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 	render: () => (
 		<Frame
 			picker="effort"
-			bridge={(request) => {
-				if (request.op === "commands.entities")
-					return Promise.resolve(
-						ok({
-							entities: [{ value: "low" }, { value: "high" }],
-							current: "low",
-						}),
-					);
-				if (request.op === "sessions.command")
-					return Promise.resolve(
-						ok({
-							result: {
-								kind: "notice",
-								text: "Refused",
-								style: "warning",
-								data: {},
-							},
-						}),
-					);
-				return Promise.resolve(ok({}));
-			}}
+			commandResponse={ok({
+				result: {
+					kind: "notice",
+					text: "Refused",
+					style: "warning",
+					data: {},
+				},
+			})}
+			bridge={(request) =>
+				request.op === "commands.entities"
+					? Promise.resolve(
+							ok({
+								entities: [{ value: "low" }, { value: "high" }],
+								current: "low",
+							}),
+						)
+					: Promise.resolve(ok({}))
+			}
 		/>
 	),
 	play: async () => {
