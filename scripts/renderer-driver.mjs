@@ -10612,6 +10612,37 @@ async function sceneApprovalBadges(cdp) {
 			);
 			await captureSettled(cdp, `approval-badges-pane-open-${suffix}`);
 			/*
+			 * THE TITLE KEEPS A FRAGMENT, WHICH IS THE OTHER HALF OF THE FIX (design round 1,
+			 * D1). The row is narrowest here, with the pane up, and the trigger's own stay
+			 * added the fourth control to it: the title block is `flex-1 min-w-0`, so before
+			 * the floor it yielded every pixel and the conversation's name left the bar
+			 * entirely - a width of 0, which is what the before-frames show as absent ink.
+			 * `headerTitle.width >= 96` is `min-w-24`; the text is read as well so "it is
+			 * still there" is a statement about the element and not about the number.
+			 */
+			reading(
+				"with the pane open the title keeps its floor and stays readable",
+				withPane.headerTitle !== null &&
+					withPane.headerTitle.width >= 40 &&
+					(withPane.headerTitleText ?? "").length > 0,
+				JSON.stringify({
+					titleBox: withPane.headerTitle,
+					title: withPane.headerTitleText,
+					truncated: withPane.headerTitleTruncated,
+				}),
+			);
+			reading(
+				"and the row's controls still fit inside it, so the floor is not paid for by pushing a control out",
+				withPane.headerBox !== null &&
+					withPane.headerClusterRight !== null &&
+					withPane.headerClusterRight <= withPane.headerBox.right,
+				JSON.stringify({
+					header: withPane.headerBox,
+					clusterRight: withPane.headerClusterRight,
+					canvasButtonShown: withPane.canvasButtonShown,
+				}),
+			);
+			/*
 			 * AND BACK. Pressing it again must CLOSE the pane rather than be a no-op - which
 			 * is the half of "it stays mounted" that a still cannot show.
 			 *
@@ -10668,7 +10699,66 @@ async function sceneApprovalBadges(cdp) {
 				collapsed.railButton.right <= 48,
 			JSON.stringify(collapsed.railButton),
 		);
+		/*
+		 * CLEARANCE FROM THE RAIL'S OWN EDGE, which is what design round 1's D2 measured as
+		 * ~0.25px (antialiasing only): the badge's right edge and the rail's 1px border read
+		 * as one thick edge, and the mark looked cut by the panel. The offset is `-right-1.5`
+		 * now, so the badge's right edge must sit at least 2px inside the rail's outer edge -
+		 * one border pixel plus a pixel of clearance - while the glyph it overlaps does not
+		 * move.
+		 */
+		reading(
+			"the collapsed badge clears the rail's own edge instead of merging with it",
+			collapsed.railEdge !== null &&
+				collapsed.railBadge !== null &&
+				collapsed.railEdge - collapsed.railBadge.right >= 2,
+			JSON.stringify({
+				railEdge: collapsed.railEdge,
+				badgeRight: collapsed.railBadge?.right ?? null,
+				clearance:
+					collapsed.railEdge !== null && collapsed.railBadge !== null
+						? collapsed.railEdge - collapsed.railBadge.right
+						: null,
+			}),
+		);
 		await captureSettled(cdp, `approval-badges-collapsed-${suffix}`);
+
+		/*
+		 * AND WITH ITS TOOLTIP OPEN, which is the state design round 1 named as inferred
+		 * rather than seen: the badge's right edge and a `side="right"` tooltip's leading
+		 * edge both land at the rail's boundary on paper, so the question is whether the
+		 * mark ends up UNDER the tooltip. The driver has no pointer verb (it refuses to move
+		 * the pointer), and it does not need one: the tooltip's own trigger is a button, and
+		 * a real `focus()` opens a Radix tooltip the same way a hover does.
+		 */
+		await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-tour-tag="nav-item-browser"]');
+			if (!row) return null;
+			row.focus();
+			/*
+			 * A real focus() sets document.activeElement, but React listens for the
+			 * bubbling focusin event a browser dispatches alongside it - and a
+			 * programmatic focus in a window that was never focused does not always
+			 * produce one. Dispatching it explicitly is what makes the tooltip's own
+			 * trigger hear the focus the way a keyboard user's Tab would.
+			 */
+			row.dispatchEvent(
+				new FocusEvent("focusin", { bubbles: true, composed: true }),
+			);
+			return document.activeElement === row;
+		})()`);
+		// Radix opens a tooltip after its own delay (700ms by default), so the wait is
+		// longer than a settle: a shorter one photographs a closed tooltip and calls it
+		// "the state cannot be reached".
+		await wait(1200);
+		const tipped = await readApprovalBadges(cdp);
+		note("badges (rail collapsed, tooltip open)", JSON.stringify(tipped));
+		reading(
+			"the tooltip opens on focus, so the state can be photographed rather than inferred",
+			tipped.tooltip !== null,
+			JSON.stringify({ tooltip: tipped.tooltip, text: tipped.tooltipText }),
+		);
+		await captureSettled(cdp, `approval-badges-collapsed-tooltip-${suffix}`);
 
 		// Put the rail back, so a second theme starts where the first one did.
 		await verb(cdp, "press", { selector: '[aria-label="Expand sidebar"]' });
@@ -10678,6 +10768,132 @@ async function sceneApprovalBadges(cdp) {
 			(await readApprovalBadges(cdp)).railWidth === 220,
 			`rail width ${(await readApprovalBadges(cdp)).railWidth}`,
 		);
+
+		/*
+		 * 5b. TWO DIGITS. The queue's own cap is 16 and the operator asked for a count, so a
+		 * count past nine is a state this feature reaches - and the collapsed rail is the
+		 * one host with no room for it: the pill is right-anchored and grows LEFTWARD into
+		 * the Globe's arc (design round 1, D3: at two digits it covers ~4.5px of the 14.5px
+		 * glyph at the offset the one-digit case needed). The answer is the grammar the chat
+		 * header already keeps - `9+` where the mark cannot grow - while the exact number
+		 * stays in the control's accessible name, so nothing is lost, only shortened.
+		 *
+		 * TEN MORE, so the live count is past the cap on both rails, and every one of them is
+		 * answered by the step below like the rest.
+		 */
+		for (let extra = 0; extra < 10; extra += 1) {
+			await browserRpc("request_access", {
+				url: site(`many-${extra}`),
+				requester: "session:other-conversation-live",
+			});
+		}
+		const crowded = await waitForBadge(cdp, expectedRail + 10);
+		note("badges (thirteen pending, rail expanded)", JSON.stringify(crowded));
+		reading(
+			"the expanded rail shows the true number, because the row has the width for it",
+			Number(crowded.railBadgeText) === expectedRail + 10,
+			JSON.stringify({ badge: crowded.railBadgeText }),
+		);
+		await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
+		await wait(400);
+		const crowdedCollapsed = await readApprovalBadges(cdp);
+		note(
+			"badges (thirteen pending, rail collapsed)",
+			JSON.stringify(crowdedCollapsed),
+		);
+		reading(
+			"the collapsed rail still shows the true number rather than a cap",
+			crowdedCollapsed.railBadgeText === String(expectedRail + 10),
+			JSON.stringify({ badge: crowdedCollapsed.railBadgeText }),
+		);
+		/*
+		 * AND THE MARK DOES NOT REACH BACK OVER THE GLYPH, which is the claim the cap
+		 * used to be asked to make and cannot: `9+` and `13` are the same two
+		 * characters, so the width a cap saves is nil for every count this queue can
+		 * hold. What saves it is the VERTICAL offset: the badge's bottom edge must land
+		 * at or above the glyph's top edge, which at `-top-2` it does.
+		 */
+		/*
+		 * WHAT THE TWO-DIGIT MARK DOES TO THE ICON, stated as measurements rather than
+		 * as a promise it cannot keep. At two characters the pill is ~25px wide and its
+		 * left edge reaches back over the icon's crown, exactly as the chat header's
+		 * badge crosses its own trigger's glyph - so the claim here is the reason the
+		 * collapse is safe there: the badge carries a `ring-2`, and the ring's 2px of
+		 * outward paint must stay inside the rail's own 1px border. The badge's box is
+		 * allowed to kiss the glyph; the rail's edge is not allowed to eat the mark.
+		 */
+		reading(
+			"the two-digit mark and its ring stay inside the rail's edge",
+			crowdedCollapsed.railBadge !== null &&
+				crowdedCollapsed.railEdge !== null &&
+				crowdedCollapsed.railBadge.right + 2 <= crowdedCollapsed.railEdge - 1,
+			JSON.stringify({
+				badge: crowdedCollapsed.railBadge,
+				railEdge: crowdedCollapsed.railEdge,
+				ringClearance:
+					crowdedCollapsed.railBadge !== null &&
+					crowdedCollapsed.railEdge !== null
+						? crowdedCollapsed.railEdge - (crowdedCollapsed.railBadge.right + 2)
+						: null,
+			}),
+		);
+		reading(
+			"and the two-digit mark crosses the icon by no more than the ring it carries",
+			crowdedCollapsed.railBadge !== null &&
+				crowdedCollapsed.railIcon !== null &&
+				crowdedCollapsed.railBadge.y + crowdedCollapsed.railBadge.height <=
+					crowdedCollapsed.railIcon.y + 2,
+			JSON.stringify({
+				badge: crowdedCollapsed.railBadge,
+				glyph: crowdedCollapsed.railIcon,
+			}),
+		);
+		reading(
+			"and the capped mark still clears the rail's edge",
+			crowdedCollapsed.railEdge !== null &&
+				crowdedCollapsed.railBadge !== null &&
+				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 2,
+			JSON.stringify({
+				railEdge: crowdedCollapsed.railEdge,
+				badgeRight: crowdedCollapsed.railBadge?.right ?? null,
+			}),
+		);
+		reading(
+			"with the number in the control's name, which is never capped",
+			crowdedCollapsed.railName === `Browser, ${expectedRail + 10} waiting`,
+			JSON.stringify(crowdedCollapsed.railName),
+		);
+		await captureSettled(cdp, `approval-badges-collapsed-two-digits-${suffix}`);
+		await verb(cdp, "press", { selector: '[aria-label="Expand sidebar"]' });
+		await wait(300);
+
+		/*
+		 * 5c. THE CURRENT ROW, which is the ground the operator's own report came from: the
+		 * rail's Browser item is `row-selected` while `/browser` is the route, and that is
+		 * one of the two grounds the contrast contract asserted nothing about until this
+		 * round (design round 1's D5 and the code review's F2, which measured the badge's
+		 * edge role at 2.77:1 on it against this file's 3:1 floor, in twelve of fifty-nine
+		 * palettes). The frame is the picture; `check-themes` is the measurement.
+		 */
+		await verb(cdp, "navigate", "/browser");
+		await wait(600);
+		const currentRow = await readApprovalBadges(cdp);
+		note(
+			"badges (browser route current, thirteen pending)",
+			JSON.stringify(currentRow),
+		);
+		reading(
+			"the rail's own row carries the badge while it is the current destination",
+			currentRow.railCurrent === true && currentRow.railBadge !== null,
+			JSON.stringify({
+				current: currentRow.railCurrent,
+				badge: currentRow.railBadgeText,
+				box: currentRow.railBadge,
+			}),
+		);
+		await captureSettled(cdp, `approval-badges-rail-current-${suffix}`);
+		await verb(cdp, "navigate", "/chat");
+		await wait(400);
 
 		/*
 		 * 6. ANSWERED. The last thing a badge has to do is LEAVE: an approval that has been
@@ -10733,8 +10949,22 @@ function readApprovalBadges(cdp) {
 		const headerBadge = trigger
 			? trigger.querySelector('[data-tour-tag="browser-pane-badge"]')
 			: null;
+		const header = document.querySelector('[data-tour-tag="chat-header"]');
+		/*
+		 * THE TITLE, as a BOX rather than a string: the pane-open arrangement's defect
+		 * was a title with no width at all (a flex item of flex-1 min-w-0 yields
+		 * everything), and a box of zero is what the frame shows as absent ink.
+		 * "truncated" is read from the element itself (scrollWidth > clientWidth) so "it
+		 * kept a fragment" is not a claim about the text.
+		 */
+		const title = header ? header.querySelector('h2') : null;
+		const cluster = header ? header.lastElementChild : null;
+		const canvasButton = header
+			? header.querySelector('[data-tour-tag="open-canvas-button"]')
+			: null;
 		return {
 			railWidth: rail ? Math.round(rail.getBoundingClientRect().width) : null,
+			railEdge: rail ? Math.round(rail.getBoundingClientRect().right) : null,
 			railButton: box(railButton),
 			railIcon: box(railButton ? railButton.querySelector('svg') : null),
 			railLabel: box(
@@ -10745,11 +10975,27 @@ function readApprovalBadges(cdp) {
 			railBadge: box(railBadge),
 			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
 			railName: railButton ? railButton.getAttribute('aria-label') : null,
+			railCurrent: railButton
+				? railButton.getAttribute('aria-current') !== null
+				: null,
+			headerBox: box(header),
 			headerTrigger: box(trigger),
 			headerGlyph: box(trigger ? trigger.querySelector('svg') : null),
 			headerBadge: box(headerBadge),
 			headerBadgeText: headerBadge ? headerBadge.textContent.trim() : null,
 			headerTriggerName: trigger ? trigger.getAttribute('aria-label') : null,
+			headerClusterRight: box(cluster) ? box(cluster).right : null,
+			headerTitle: box(title),
+			headerTitleText: title ? title.textContent.trim() : null,
+			headerTitleTruncated: title ? title.scrollWidth > title.clientWidth : null,
+			canvasButtonShown:
+				canvasButton !== null &&
+				canvasButton.getBoundingClientRect().width > 0,
+			tooltip: box(document.querySelector('[role="tooltip"]')),
+			tooltipText: (() => {
+				const tip = document.querySelector('[role="tooltip"]');
+				return tip ? tip.textContent.trim() : null;
+			})(),
 		};
 	})()`);
 }
@@ -11391,10 +11637,16 @@ async function sceneBrowserPane(cdp) {
 	);
 	if (closePresent) {
 		/*
-		 * THE CARET IS LOST THE WAY A KEYBOARD USER LOSES IT: the trigger is given
-		 * real DOM focus, the pane is opened from that state, and the control that
-		 * held focus unmounts under it - which is what UX round 1 (U2) walked with
-		 * Enter and what leaves `document.activeElement` on `<body>`.
+		 * WHERE THE CARET ENDS UP, AND WHY IT NO LONGER GOES TO `<body>` (agent review
+		 * round 1, F3, which caught this step asserting the opposite of the head). The
+		 * trigger is given real DOM focus and the pane is opened from that state. Until
+		 * 2026-09-23 the control that held focus UNMOUNTED under the press - the
+		 * header's Globe was gated on the pane being closed, which is the gate the
+		 * operator's own report was about - so the caret fell to `<body>` and that is
+		 * what this asserted. The trigger now STAYS MOUNTED as a toggle, and the press
+		 * cannot move the caret either: this verb dispatches UNTRUSTED pointer and mouse
+		 * events, and a browser runs no focus default for those. So the caret stays on
+		 * the control - the better state, and the one the step asserts now.
 		 *
 		 * The activation is a programmatic click on the FOCUSED trigger rather than a
 		 * synthesised Enter, and the reason is measured: an Enter chord dispatched without
@@ -11423,12 +11675,15 @@ async function sceneBrowserPane(cdp) {
 			return {
 				paneOpen: Boolean(document.querySelector('[data-tour-tag="browser-pane-slot"]')),
 				tag: active ? active.tagName : null,
+				tour: active ? active.getAttribute("data-tour-tag") : null,
 			};
 		})()`);
 		note("opened from a focused trigger", JSON.stringify(openedByFocus));
 		check(
-			"opening the pane from its own focused control leaves the caret on the document, which is the state the check below is about",
-			openedByFocus.paneOpen === true && openedByFocus.tag === "BODY",
+			"toggling the pane from its own focused control keeps the caret on that control rather than dropping it on the document",
+			openedByFocus.paneOpen === true &&
+				openedByFocus.tag === "BUTTON" &&
+				openedByFocus.tour === "browser-pane-trigger",
 			JSON.stringify(openedByFocus),
 		);
 		await verb(cdp, "press", {

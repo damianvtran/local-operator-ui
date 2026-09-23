@@ -115,28 +115,48 @@ export function consentClickTarget(
 }
 
 /**
- * Whether a surface may FORGET which request a banner click named.
+ * Whether the ATTENTION may be forgotten: the named request is no longer live.
  *
  * The memory exists so a click can land on the request it names, and it has to be
- * dropped once that request is genuinely gone — otherwise a later arrival inherits
- * an answer given to an earlier one (review round 1, R8). What it must NOT do is
- * treat "I have not read the queue yet" as "that request is gone", which is what
- * the first version did: the click arrives on a route where the surface is not
- * mounted, the shell navigates, the surface mounts with `state === null`, its
- * pending list is empty, and the effect dropped the attention before the read that
- * would have shown it landed. `landed` is that distinction, and it is passed in
- * rather than inferred because only the caller knows whether it holds a projection.
+ * dropped once that request is genuinely gone — otherwise a later arrival inherits an
+ * answer given to an earlier one (review round 1, R8).
  *
- * `named` is the entry the surface found in the list it is showing, in scope: an
- * attention whose entry is out of scope here is one this surface cannot show, so
- * clearing it is the honest answer — the surface that CAN show it is a navigation
- * away.
+ * WHO ASKS THIS CHANGED, and that is the fix for UX round 1's U1. It used to be each
+ * SURFACE's question, asked against the list that surface was showing — and a surface
+ * can only see its own scope, so a pane showing conversation A answered "not here" for
+ * a request that belongs to no conversation and cleared the memory on its way OUT,
+ * before the router had mounted the surface the click was actually for. The click then
+ * landed on the oldest row instead of the one the banner named. The question is now
+ * the SHELL's, which is mounted on every route and owns the navigation: it reads the
+ * whole projection, so "not in the queue" means the request is gone rather than "not
+ * in my corner of it", and it holds the memory for exactly as long as the request is
+ * live.
+ *
+ * `pending` is the projection's own list, and `undefined` is "this app has not read
+ * the queue yet" — which is NOT a reason to forget. That distinction is what the
+ * original bug turned on: a surface that had just mounted had no projection, and the
+ * empty list it did have read as "gone".
  */
 export function shouldForgetConsentAttention(
 	attention: string | null,
-	named: unknown,
-	landed: boolean,
+	pending: ReadonlyArray<{ entryId: string }> | undefined,
 ): boolean {
-	if (attention === null || !landed) return false;
-	return named === undefined || named === null;
+	if (attention === null) return false;
+	return !isConsentAttentionPending(attention, pending);
+}
+
+/**
+ * Whether the request a click named is still waiting, as far as this reading knows.
+ *
+ * `true` when nothing has been read yet (`pending === undefined`) and when there is
+ * no attention to ask about: the callers use this to decide whether to KEEP
+ * something, and "not known" must never be spent as "gone" — that is the bug the
+ * pair of functions exists to keep apart.
+ */
+export function isConsentAttentionPending(
+	attention: string | null,
+	pending: ReadonlyArray<{ entryId: string }> | undefined,
+): boolean {
+	if (attention === null || pending === undefined) return true;
+	return pending.some((entry) => entry.entryId === attention);
 }

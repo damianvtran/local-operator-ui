@@ -854,46 +854,48 @@ const CONTROLS = [
 	{
 		/*
 		 * The numbered badge on the Approvals control (spec §5.1). `warningWash` is
-		 * already this feature's one meaning - "an agent is blocked on you" - and
-		 * `border-control` is the contract's own answer for its edge: `warningBorder`
-		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
-		 * above records the measurement).
+		 * already this feature's one meaning - "an agent is blocked on you".
 		 *
-		 * TWO GROUNDS, and the second one is back on a measurement rather than on an
-		 * argument. Design round 1's D8 found the row asserting `surface` for a host
-		 * that did not exist ("the chat pane header's ground when PR 2 puts the control
-		 * there") and removed it: both badges really are drawn on `canvas` (the URL bar
-		 * is `bg-canvas`, the chat header is the same), and the row was measuring the
-		 * component against a ground it is never on.
+		 * FOUR GROUNDS, and the list grew by MEASUREMENT rather than by argument - twice.
+		 * Design round 1's D8 removed `surface` for being fictional ("the chat pane
+		 * header's ground when PR 2 puts the control there" - the header is `canvas` in
+		 * the shipped tree). The rail put the badge on a real `surface` host (operator
+		 * ask, 2026-09-23), and design round 1's D5 plus this round's code review found
+		 * the other half of the same mistake: the rail's badge sits in the Browser ROW,
+		 * and that row is not always `surface`. It paints `row-selected` when the browser
+		 * route is the current destination - which is the state the operator reported
+		 * from - and `row-hover` under the pointer. A row that names two of a component's
+		 * four grounds is D8's finding read the other way round, so all four are here.
 		 *
-		 * `surface` IS REAL NOW, and it is the APP RAIL (operator ask, 2026-09-23): the
-		 * rail's Browser item carries this same badge, and the rail is `surface` - the
-		 * row-state refinement moved it back from `sunken`, because the rows in that
-		 * list paint `rowCurrent` and `row-hover`, and those roles are authored as
-		 * steps of the panel (`sidebar-navigation.tsx`'s own note carries the
-		 * measurement). So the entry D8 removed for being fictional belongs here for
-		 * being real, and leaving it out again would leave the rail's badge - the one
-		 * badge on a ground that is not `canvas` - unmeasured by this file. (Design
-		 * 5.3 asked for `["canvas", "surface"]` on the argument that the CHAT PANE'S
-		 * HEADER is `surface`; it is `canvas` in the shipped tree, so that half of the
-		 * argument was wrong and D8 was right to delete it then. The rail is the host
-		 * that makes it true now.) The `sunken` form D8 mentions is still not a host:
-		 * nothing draws this badge on the pane's own strip.
+		 * THE EDGE ROLE MOVED BECAUSE OF THOSE TWO ROWS. `borderControl` - the role this
+		 * row asserted until this round - clears 3:1 on `canvas` (3.13 worst) and
+		 * `surface` (3.26) but NOT on the row grounds: 2.77:1 on `row-selected` and
+		 * 2.92:1 on `row-hover`, with twelve of the fifty-nine palettes under the 3:1
+		 * non-text floor. The badge's FILL cannot carry that boundary either (it measures
+		 * 1.00-1.19:1 against any of these grounds), so the edge is the whole boundary and
+		 * it has to clear the floor on every ground the mark can sit on. `ink-muted` is
+		 * the quietest role that does: 6.23 `canvas`, 6.56 `surface`, 5.63 `row-selected`,
+		 * 5.91 `row-hover` at worst across all palettes (`ink` would clear it at 7.16
+		 * worst, and `accent` at 4.24 - the role is `ink-muted` because a boundary that is
+		 * not trying to be read as a message should be the quiet one that passes).
+		 * `badge.tsx`'s `attention` variant carries the same role, so the header and the
+		 * URL bar move with it - one spelling of this mark, which is the rule that
+		 * variant's own docstring states.
 		 *
-		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash` 7.88:1
-		 * at worst (rosePineDawn) on either ground; `borderControl` 3.13:1 on `canvas`
-		 * (rosePineDawn) and 3.26:1 on `surface` (catppuccinMocha) at worst. The pair is
-		 * re-measured rather than carried forward because the fleet moves - the figures
-		 * this row used to state (8.39:1, 3.34:1) no longer reproduce against the same
-		 * palettes, and a stale number in a comment about a MEASUREMENT is the thing this
-		 * file exists to refuse. The two grounds are one lightness step apart, so the
-		 * `surface` figures landing beside the `canvas` ones is the expected result rather
-		 * than a copy-paste.
+		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash`
+		 * 5.73:1 at worst (oneDark - ink against a fill does not depend on the ground,
+		 * which is why this number has no ground beside it); `ink-muted` 5.63:1 at worst
+		 * (nightfox, on `row-selected`, the lowest of the four). Both figures were read
+		 * from `scripts/palette-source.mjs` with this file's own ratio, and the earlier
+		 * statement of them (8.39:1 and 7.88:1) was neither the worst of its pair nor
+		 * reproducible - which is exactly the failure this file exists to refuse. The
+		 * `sunken` form D8 mentions is still not a host: nothing draws this badge on the
+		 * pane's own strip.
 		 */
 		name: "browser approvals badge",
-		on: ["canvas", "surface"],
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
 		fill: "warningWash",
-		border: "borderControl",
+		border: "inkMuted",
 		ink: "ink",
 	},
 	{

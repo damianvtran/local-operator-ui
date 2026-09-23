@@ -277,10 +277,12 @@ const withPane =
 
 /**
  * THE CONVERSATION'S OWN TITLE, so the tray's sentence is the one the app renders
- * (design round 1, N4). `requesterLabel` falls back to the raw session id when the
- * session store holds no title for it - and the fixture held none, so `with-approval`
- * photographed the pane's most prominent sentence as "The agent in conversation
- * session-1f4c", a form the app shows only for a conversation it cannot name. The
+ * (design round 1, N4). `requesterLabel` falls back when the session store holds no
+ * title for it - and the fixture held none, so `with-approval` photographed the pane's
+ * most prominent sentence as a fallback form rather than a name. (That fallback used to
+ * interpolate the session id itself; since 2026-09-23 it reads "An agent from another
+ * session", which is the copy the card carries whenever the app cannot name the
+ * asking session - UX round 1, U5.) The
  * seeding is the same call `browser-consent-bar.stories.tsx` makes for the same
  * reason.
  */

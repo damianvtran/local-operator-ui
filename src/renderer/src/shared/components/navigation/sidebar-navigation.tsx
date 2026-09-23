@@ -293,29 +293,75 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * truncates about two characters earlier than it did. At 220px and a
 					 * 13px label nothing in the rail's own vocabulary comes close.
 					 *
-					 * COLLAPSED it is absolute, and the offset is bounded by the rail rather
-					 * than chosen (`-top-1.5 -right-2`): the button is a 32px square centred
-					 * in a 48px rail with an 8px list inset, so its right edge sits 8px from
-					 * the rail's own edge and a 16px badge can only clear the 16px glyph's
-					 * arc by spending those 8px — which puts its right edge exactly on the
-					 * rail's edge. That is why there is NO `ring-2 ring-surface` here, where
-					 * the header's badge has one: the ring paints 2px outward and the rail
-					 * clips at `overflow-x-hidden`, so the ring would be a notch rather than
-					 * an edge. The badge's own `border-control` is its boundary either way.
+					 * COLLAPSED it is absolute, and BOTH numbers of the offset are bounded by
+					 * the rail rather than chosen (`-top-2 -right-1`, measured in `--scene
+					 * approval-badges`):
 					 *
-					 * NO `9+` CAP HERE, where the header has one: that cap exists because a
-					 * 16px badge on a 32px icon button has 12px of room before it walks back
-					 * over the glyph. This row has the space, the queue's own cap is 16, and
-					 * the true number is what the operator asked to see.
+					 *  - RIGHT. The button is a 32px square in a 48px rail with an 8px list
+					 *    inset, so its right edge sits 8px from the rail's own edge. At
+					 *    `-right-2` a 16px badge's right edge landed ON the rail's 1px border -
+					 *    design round 1's D2 measured 0.25px of clearance, which is
+					 *    antialiasing, and the mark read as cut by the panel edge. `-right-1.5`
+					 *    holds it 3px inside, with the border's own pixel still its own.
+					 *  - TOP. `-top-2` clears the 16px glyph ENTIRELY, and that is what makes a
+					 *    TWO-DIGIT count safe here. At `-top-1.5` the badge's box ended 4px
+					 *    above the glyph's top (measured: badge y196-212 against the glyph's
+					 *    y208-224), so a one-digit pill sat clear of it and a two-digit one
+					 *    reached back over the glyph's top-right arc - and a cap does NOT buy
+					 *    that width, because `9+` and `13` are the same two characters. One
+					 *    step up puts the badge in the inter-row gap instead: its bottom edge
+					 *    lands on the glyph's top edge, and the row above has no ink there.
+					 *
+					 * THE RING (see the badge's own comment below) is the header's answer to a
+					 * mark that overlaps its icon, and the collapsed rail needs the same thing
+					 * once a second digit arrives. It is affordable here only because the offset
+					 * moved IN: 2px of outward paint at the old `-right-2` would have been
+					 * clipped by the rail's `overflow-x-hidden`, which is what the first cut of
+					 * this note refused - correctly, at that offset. The badge's own edge role
+					 * (`ink-muted` - design D5, code review F2) is still what has to clear the
+					 * 3:1 floor on every ground.
+					 *
+					 * NO `9+` CAP HERE, where the header has one. That cap is a GEOMETRY rule
+					 * rather than a grammar: the header's badge is anchored to a 32px icon
+					 * button with 12px of room, and three digits would walk back over its glyph
+					 * - so it caps the visible digits and keeps the number in the tooltip and
+					 * the `aria-label` (spec 5.1). This row protects the same thing with the
+					 * offset above, so the operator sees the number they asked for. The value is
+					 * one queue's worth either way: the approvals cap is 16, so two digits are
+					 * always the whole answer.
 					 */
 					<span
 						aria-hidden="true"
-						className={cn(expanded ? "ml-auto" : "absolute -top-1.5 -right-2")}
+						className={cn(expanded ? "ml-auto" : "absolute -top-2 -right-1")}
 					>
 						<Badge
 							variant="attention"
 							shape="pill"
-							className={cn("h-4 min-w-4 justify-center px-1 tabular-nums")}
+							size="count"
+							/*
+							 * THE RING IS THE HEADER'S DISCIPLINE, APPLIED HERE (design round 1,
+							 * D3). The chat header's badge sits on a 32px icon button and
+							 * OVERLAPS its glyph deliberately - that is what `-top-2.5` and a
+							 * `ring-2 ring-canvas` together mean: the mark may cross the icon, but
+							 * the ring is the gap that keeps the two from merging into one thick
+							 * blob. The rail's collapsed row is the same 32px button in a 48px
+							 * rail, and at a SECOND digit its pill is ~25px wide with its left edge
+							 * at x20 - seven pixels back over the icon's crown - where a one-digit
+							 * pill (18px) still cleared it. A cap does not buy that width (`9+` and
+							 * `13` are the same two characters, measured), so the collapsed form
+							 * takes the ring as well, and with it the ring's 2px of outward paint
+							 * counted against the rail's edge: `-right-1` holds the mark's ring 3px
+							 * inside the rail's 1px border, where the earlier `-right-2` put the
+							 * unringed edge ON it (D2's measured 0.25px).
+							 *
+							 * `ring-surface` rather than the header's `ring-canvas`, because the
+							 * ground here is the rail's own panel - the role the row sits on at
+							 * rest. On the two state grounds (`row-selected`, `row-hover`) the halo
+							 * is one step off rather than absent, which is the cost of a mark whose
+							 * ground changes; a ring that matched every state does not exist as one
+							 * role.
+							 */
+							className={expanded ? undefined : "ring-2 ring-surface"}
 							data-tour-tag="nav-browser-badge"
 						>
 							{attention}

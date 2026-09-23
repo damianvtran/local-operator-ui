@@ -22,7 +22,10 @@ import {
 import type { RaiseReport } from "../window-raise";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
-import { consentClickHandler } from "./consent-click";
+import {
+	type ConsentAttentionPayload,
+	consentClickHandler,
+} from "./consent-click";
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
@@ -121,6 +124,18 @@ export interface StartBrowserHostOptions {
 	 * the OPERATOR asked — which is what the `banner-click` trigger records.
 	 */
 	reportRaise?: RaiseReport;
+	/**
+	 * Where a consent click goes when the window it was raised for is GONE.
+	 *
+	 * A banner outlives its window (macOS keeps it in Notification Center) and the
+	 * click then arrives with nothing to deliver to — the operator's own reported
+	 * state, since the app stays alive in the Dock. Window creation is the app's
+	 * business, so this module does not make one: it hands the request up, exactly as
+	 * `window-raise.ts` owns the raise and `desktop-notifier.ts` owns the completion
+	 * banner's recreate path. Absent, the click reports the no-window line and
+	 * returns — the behaviour the app had before the guard, minus the throw.
+	 */
+	reopenConsent?: (payload: ConsentAttentionPayload) => void;
 	/**
 	 * The app's notifier, forwarded verbatim to the console host so a console
 	 * surface's completion can be raised as a banner (design 12.3). The console rides
@@ -461,9 +476,17 @@ export async function startBrowserHost(
 		 * window comes forward (design 11.4), it hands the plan to `window-raise.ts`.
 		 */
 		onAttention: consentClickHandler({
-			window: options.window,
+			/*
+			 * THE WINDOW IS ASKED FOR, NOT CAPTURED, and the difference is the U2 fix:
+			 * this host is stopped the moment its window closes (`src/main/index.ts`'s
+			 * `closed` hook), but a banner already raised is still in Notification
+			 * Center and its click still lands here. A captured window would be a
+			 * destroyed one by then, and reading it throws.
+			 */
+			window: () => options.window,
 			show: options.windowShow,
 			report: options.reportRaise,
+			reopen: options.reopenConsent,
 		}),
 		log,
 	});

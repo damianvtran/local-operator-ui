@@ -1,17 +1,14 @@
 import { useBrowserProjection } from "../hooks/use-browser-chrome";
 import {
 	type ApprovalRequestInput,
-	type ApprovalTabInput,
 	liveApprovalCount,
-	useApprovalQueue,
+	useApprovalClockValue,
 } from "../model/approval-queue-model";
 
-/** No requests, as a stable value: a fresh `[]` per render would re-key the queue
- * model's effect on every tick (the same constant `useConversationBrowserSummaries`
- * keeps, for the same reason) — and no tabs, because this hook wants the clock and
- * not a queue: a rail badge reads no row, so there is nothing to resolve or number. */
+/** No requests, as a stable value: a fresh `[]` per render would re-key the clock
+ * hook's effect on every tick (the same constant `useConversationBrowserSummaries`
+ * keeps, for the same reason). */
 const NO_REQUESTS: readonly ApprovalRequestInput[] = [];
-const NO_TABS: readonly ApprovalTabInput[] = [];
 
 /**
  * How many approvals the WHOLE APP is waiting on, for the rail's Browser badge.
@@ -32,15 +29,19 @@ const NO_TABS: readonly ApprovalTabInput[] = [];
  * `liveApprovalCount` for the arithmetic and `summariseConversations` for why the
  * per-conversation map cannot answer this one.
  *
- * ONE PROJECTION, ONE CLOCK, the same pair the header's badge reads: `useBrowserProjection`
- * is the window's single snapshot (`browser-projection-store.ts` — a second subscription is
- * a second thing to go stale), and `useApprovalQueue` is here for its `now`, on the same
- * shared interval the tray and the chips tick from, because liveness is derived rather than
- * published (nothing in main fires at expiry).
+ * ONE PROJECTION AND THE CLOCK, WITH NO QUEUE MODEL (agent review round 1, F6):
+ * `useBrowserProjection` is the window's single snapshot (`browser-projection-store.ts` —
+ * a second subscription is a second thing to go stale) and `useApprovalClockValue` is the
+ * shared interval the tray and the chips tick from, because liveness is derived rather
+ * than published (nothing in main fires at expiry). This used to call `useApprovalQueue`
+ * and take its `now`, which built `rows`/`waiting` and ran `reconcileResolved` on every
+ * tick for state a rail badge never reads — on a component mounted on every route. The
+ * clock is now a hook of its own and both consumers share it, which is what keeps this
+ * from being a second clock.
  */
 export function useAppWideApprovals(): number {
 	const { state } = useBrowserProjection();
 	const requests = state?.pendingConsent ?? NO_REQUESTS;
-	const { now } = useApprovalQueue(requests, NO_TABS);
+	const now = useApprovalClockValue((at) => liveApprovalCount(requests, at));
 	return liveApprovalCount(requests, now);
 }

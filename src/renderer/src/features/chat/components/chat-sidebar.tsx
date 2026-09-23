@@ -1725,25 +1725,26 @@ export function ChatSidebar({
 	 *    the header's badge carries approvals only;
 	 *  - it was the only surface reporting ANOTHER conversation's pending browser approvals
 	 *    without opening the browser: the header's badge counts this conversation only, so
-	 *    it is null for a foreign request and nothing in the sidebar reports one now (QA
-	 *    round 1 rendered exactly that against a foreign `request_access`);
+	 *    it is null for a foreign request. That capability came back on 2026-09-23, on the
+	 *    APP RAIL rather than per row (`sidebar-navigation.tsx`'s Browser item counts every
+	 *    live request in the projection, unattributed ones included) - so what went with
+	 *    the mark is the per-row statement, not the app-wide one;
 	 *  - it was the only thing that NORMALISED the pane's lens on the way in. The pane's
 	 *    scope is one sticky preference (`ui-preferences-store.ts:452`, read at
-	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation, and
-	 *    the header's Globe is unmounted while the pane is open (`chat-header.tsx:161`) so
-	 *    it cannot be pressed to re-scope: with the pane last left on `All tabs`, that is
-	 *    where the header's Globe reopens it and the in-pane switch is the only way back.
-	 *    The toggle and its `aria-expanded` cue went the same way.
+	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation. With
+	 *    the pane last left on `All tabs`, that is where it stays: the in-pane switch is
+	 *    the way back. (The header's Globe USED to be unmounted while the pane was open,
+	 *    which made that switch the only way back at all; since 2026-09-23 the trigger
+	 *    stays mounted as a toggle with its `aria-expanded` cue, so the pane can be closed
+	 *    from the bar again - but nothing normalises the LENS, and that half is still
+	 *    open.)
 	 *
-	 * One surface outside this component still reports another conversation's approvals:
-	 * `src/main/browser/consent-notifier.ts` raises a native "Site approval needed" banner
-	 * naming the count and the oldest origin, focus-gated and naming no conversation. It is
-	 * unobservable in this repo's headless rigs (native banners are suppressed there), so
-	 * that is a record of what the code does rather than a measurement. A one-line fix
-	 * exists if the lens is wanted back - keep the header's Globe mounted so it toggles and
-	 * normalises the scope - and it is deliberately NOT taken here: the control's
-	 * focus-return and spacing rules are pinned by tests and are not this change's to
-	 * alter.
+	 * One surface outside this component still reports another conversation's approvals
+	 * without the rail: `src/main/browser/consent-notifier.ts` raises a native "Site
+	 * approval needed" banner naming the count and the oldest origin, focus-gated and
+	 * naming no conversation. It is unobservable in this repo's headless rigs (native
+	 * banners are suppressed there), so that is a record of what the code does rather than
+	 * a measurement.
 	 */
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
