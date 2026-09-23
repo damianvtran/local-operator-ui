@@ -54,6 +54,7 @@ import { expect, fireEvent, screen, userEvent, waitFor } from "@storybook/test";
 
 const DEFAULT_MODEL_LABEL = /Set current model as default/;
 const SAVE_DEFAULT_FAILED = /The default was not saved/;
+const EFFORT_DEFAULT_FAILED = /The effort default was not saved/;
 const EFFORT_DEFAULT_LABEL = /default effort for new sessions/i;
 const EFFORT_DEFAULT_SUCCESS = /Default effort for new sessions: High/;
 import type { FC } from "react";
@@ -146,29 +147,28 @@ const refuse = (status: number, detail: string): DesktopResponse => ({
 	body: { detail },
 });
 
-let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
-	null;
-
 /** Install the transport a story needs. Called from `render`, before mount. */
 const installBridge = (
-	next: (request: BridgeRequest) => Promise<DesktopResponse>,
-	commandResponse: DesktopResponse | undefined,
+	next: (request: BridgeRequest) => Promise<DesktopResponse | undefined>,
+	commandResponse?: DesktopResponse,
 ) => {
-	bridge = next;
 	if (typeof window !== "undefined") {
 		// The page's `window` is not the preload-shaped one here, so the two fields
 		// this file adds are declared rather than poked at through `any`.
 		const page = window as unknown as {
 			api?: {
-				desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+				desktop?: {
+					request: (r: BridgeRequest) => Promise<DesktopResponse | undefined>;
+				};
 			};
 			__pickerCatalogueCalls?: { total: number };
 			__pickerSettingsWrites?: { key: string; value: unknown }[];
 		};
 		const api = page.api ?? {};
 		page.api = api;
+		const frameBridge = next;
 		api.desktop = {
-			request: (request: BridgeRequest) => {
+			request: async (request: BridgeRequest) => {
 				// Counted so a frame can state HOW MANY times the catalogue was asked
 				// for: react-query refetches on window focus by default, and a
 				// refetch re-derives the option list — which is worth knowing when a
@@ -180,40 +180,46 @@ const installBridge = (
 					const writes = page.__pickerSettingsWrites ?? [];
 					page.__pickerSettingsWrites = writes;
 					writes.push({ key: request.key ?? "", value: request.value });
-					return bridge
-						? bridge(request)
-						: Promise.reject(new Error("no bridge installed for this story"));
+					return frameBridge(request);
+				}
+				if (
+					request.op === "commands.entities" &&
+					request.command === "effort" &&
+					request.live
+				) {
+					const response = await frameBridge(request);
+					if (response !== undefined) return response;
 				}
 				if (
 					request.op === "commands.entities" &&
 					request.command === "effort"
 				) {
-					return Promise.resolve(
+					return ok({
+						entities: [
+							{ value: "low", name: "low" },
+							{ value: "medium", name: "medium" },
+							{ value: "high", name: "high" },
+						],
+						current: "medium",
+					});
+				}
+				if (request.op === "sessions.command") {
+					// A story-specific receipt or pending promise is authoritative. Only an
+					// explicit undefined opts into the frame-local ordinary receipt.
+					return (
+						(await frameBridge(request)) ??
+						commandResponse ??
 						ok({
-							entities: [
-								{ value: "low", name: "low" },
-								{ value: "medium", name: "medium" },
-								{ value: "high", name: "high" },
-							],
-							current: "medium",
-						}),
+							result: {
+								kind: "notice",
+								text: "Effort set",
+								style: "info",
+								data: {},
+							},
+						})
 					);
 				}
-				if (request.op === "sessions.command")
-					return Promise.resolve(
-						commandResponse ??
-							ok({
-								result: {
-									kind: "notice",
-									text: "Effort set",
-									style: "info",
-									data: {},
-								},
-							}),
-					);
-				return bridge
-					? bridge(request)
-					: Promise.reject(new Error("no bridge installed for this story"));
+				return frameBridge(request);
 			},
 		};
 	}
@@ -346,8 +352,8 @@ const receipt = (from: string, to: string) => ({
 
 type FrameProps = {
 	/** What the stub answers, and how long it takes to answer it. */
-	bridge: (request: BridgeRequest) => Promise<DesktopResponse>;
-	/** Per-frame command result; keeps sequential Storybook renders isolated. */
+	bridge: (request: BridgeRequest) => Promise<DesktopResponse | undefined>;
+	/** Optional frame-local receipt for a command the story leaves unanswered. */
 	commandResponse?: DesktopResponse;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
@@ -396,7 +402,8 @@ const Frame: FC<FrameProps> = ({
 /** A bridge that answers the catalogue and refuses everything else. */
 const catalogueOnly =
 	(data: DesktopModelCatalogue, onLive?: () => Promise<DesktopResponse>) =>
-	(request: BridgeRequest): Promise<DesktopResponse> => {
+	(request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+		if (request.op === "sessions.command") return Promise.resolve(undefined);
 		if (request.op !== "models.catalogue") {
 			return Promise.resolve(refuse(400, `unexpected ${request.op}`));
 		}
@@ -663,6 +670,8 @@ export const EffortSetAsDefault: Story = {
 					return Promise.resolve(
 						ok({ key: request.key, value: request.value }),
 					);
+				if (request.op === "sessions.command")
+					return Promise.resolve(undefined);
 				return Promise.resolve(ok({}));
 			}}
 		/>
@@ -707,7 +716,7 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 								current: "low",
 							}),
 						)
-					: Promise.resolve(ok({}))
+					: Promise.resolve(undefined)
 			}
 		/>
 	),
@@ -722,6 +731,9 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 		await userEvent.click(await screen.findByRole("option", { name: "High" }));
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		await waitFor(() => expect(page.__pickerSettingsWrites).toEqual([]));
+		await waitFor(() =>
+			expect(screen.getByText(EFFORT_DEFAULT_FAILED)).toBeTruthy(),
+		);
 	},
 };
 

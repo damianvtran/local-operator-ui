@@ -26,7 +26,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
-			'export { argumentRows, modelDefaultActionRow } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export { argumentRows, modelDefaultActionRow, shouldRunArgumentAction } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
 			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
 			   `slashRunAllowed`/`slashKeyIntent` come off the contract export above. */
@@ -53,6 +53,7 @@ const bundle = await build({
 const {
 	activeRowRuns,
 	modelDefaultActionRow,
+	shouldRunArgumentAction,
 	argumentEmptyCopy,
 	argumentRows,
 	armedOnlyVocabulary,
@@ -579,7 +580,7 @@ test("Escape closes and latches the phase", () => {
 	assert.deepEqual(route({ key: "Escape" }), { kind: "close" });
 });
 
-test("model default is one direct Enter/click action, never model completion", () => {
+test("model default is one direct Enter/click action, never model completion", async () => {
 	const action = modelDefaultActionRow(
 		"default",
 		{ provider: "openrouter", model_id: "openai/gpt-5" },
@@ -587,6 +588,38 @@ test("model default is one direct Enter/click action, never model completion", (
 		true,
 	);
 	const row = { kind: "action", row: action };
+	assert.equal(shouldRunArgumentAction(action, true), true);
+	assert.equal(shouldRunArgumentAction(action, false), false);
+	const writes = [];
+	const applyAction = async (row, run) => {
+		if (!shouldRunArgumentAction(row, run)) return;
+		writes.push(["hosting", row.model.provider]);
+		writes.push(["model_name", row.model.model_id]);
+	};
+	await applyAction(action, true);
+	await applyAction(action, false);
+	await applyAction({ ...action, disabled: true }, true);
+	assert.deepEqual(writes, [
+		["hosting", "openrouter"],
+		["model_name", "openai/gpt-5"],
+	]);
+	assert.equal(
+		clickFooter({
+			phase: "argument",
+			command: "model",
+			label: "",
+			nameThenMessage: false,
+			runs: true,
+			value: "",
+			arms: false,
+			takesDraft: false,
+			hoists: false,
+			paneHasSession: true,
+			actionClickText: action.clickText,
+			matched: true,
+		}),
+		action.clickText,
+	);
 	const state = {
 		open: true,
 		composing: false,
@@ -1001,6 +1034,27 @@ test("the click footer says what a click will do, in each state", () => {
 	);
 	assert.equal(clickFooter(base), "Click runs /model openai/gpt-5.");
 	assert.equal(clickFooter({ ...base, value: "" }), "Click runs /model.");
+	assert.equal(
+		clickFooter({
+			...base,
+			actionClickText:
+				"Click sets the current model as the default for new sessions.",
+		}),
+		"Click sets the current model as the default for new sessions.",
+	);
+	assert.equal(
+		clickFooter({
+			...base,
+			command: null,
+			value: "",
+			actionClickText: undefined,
+		}),
+		"Click runs the command.",
+	);
+	assert.equal(
+		clickFooter({ ...base, value: "--refresh", command: "rename" }),
+		"Click runs /rename --refresh.",
+	);
 	assert.equal(
 		clickFooter({ ...base, runs: false }),
 		"Click completes this value.",

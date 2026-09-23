@@ -22,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";',
+			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -37,6 +37,7 @@ const {
 	argumentRows,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
+	activeModelForDefault,
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
 } = await import(
@@ -123,6 +124,10 @@ test("default is a separate, exact model action and never a catalogue row", () =
 	);
 	assert.equal(action.kind, "action");
 	assert.equal(action.id, "model-default");
+	assert.equal(
+		action.clickText,
+		"Click sets the current model as the default for new sessions.",
+	);
 	assert.deepEqual(action.model, {
 		provider: "anthropic",
 		model_id: "claude-opus-5",
@@ -141,6 +146,26 @@ test("default is a separate, exact model action and never a catalogue row", () =
 	const unavailable = modelDefaultActionRow("default", null, true, true);
 	assert.equal(unavailable.disabled, true);
 	assert.equal(shouldRunArgumentAction(unavailable, true), false);
+});
+
+test("active model default requires both provider and model id", () => {
+	assert.deepEqual(
+		activeModelForDefault({ provider: "openrouter", model_id: "openai/gpt-5" }),
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+	);
+	assert.equal(activeModelForDefault(null), null);
+	assert.equal(
+		activeModelForDefault({ provider: "openrouter", model_id: "" }),
+		null,
+	);
+	assert.deepEqual(
+		activeModelForDefault({
+			provider: "openrouter",
+			model_id: "openai/gpt-5",
+			extra: true,
+		}),
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+	);
 });
 
 test("model default writes hosting then model name and stops on refusal", async () => {

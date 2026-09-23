@@ -546,6 +546,8 @@ export const ArgumentPhaseModelDefaultAction: Story = {
 									name: "Set current model as default",
 									description: "No active session model is available to save.",
 									model: null,
+									clickText:
+										"A session model is required before this action can save a default.",
 									disabled: true,
 								},
 							},
