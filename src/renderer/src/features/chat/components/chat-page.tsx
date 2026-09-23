@@ -1261,9 +1261,17 @@ function SessionPanel({
 			/*
 			 * TWO failures, and the composer acts differently on each.
 			 *
-			 * Refused before admission - 413/422, and every pre-transport refusal
-			 * above: nothing reached the owner, so the text belongs back in the box
-			 * (`false`).
+			 * Refused before admission - 413/422, the read window, and the owner's
+			 * own `runtime_busy`/`runtime_retiring` refusals, plus every
+			 * pre-transport refusal above: nothing reached the owner, so the text
+			 * belongs back in the box (`false`). The owner's two are the ones the
+			 * incident turned into a held draft: a 503 carrying `runtime_busy` and a
+			 * 409 carrying `runtime_retiring` were both read as UNKNOWABLE, so the
+			 * composer claimed it could not tell whether the message landed, over a
+			 * message the backend had already said it never accepted. It is keyed on
+			 * the CODES and not on those statuses because a bare 409 is also the
+			 * receipt-conflict refusal, whose replay may have been admitted the first
+			 * time - the same predicate's note carries the boundary.
 			 *
 			 * Anything else is UNKNOWABLE: the owner may have admitted the command
 			 * before the response was lost, which is why the echo is deliberately
