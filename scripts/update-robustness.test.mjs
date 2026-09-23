@@ -4619,10 +4619,15 @@ test("the gate's own results carry the bundle-walk rows", () => {
 	 * rule (round 1, m1): its own suite drives `nativeComponentsCheck` directly, so
 	 * commenting out either `results.push(nativeComponentsCheck(...))` or the entry in
 	 * `checkApp` left that suite green while the gate stopped asking about the
-	 * component the macOS 27 notice names. Asserted BY PRESENCE rather than by
-	 * passing, because this fixture's stubbed runner answers `accepted` - which is not
+	 * component the macOS 27 notice names. THIS CASE PINS THE APP LOOP, by id and by
+	 * presence, because this fixture's stubbed runner answers `accepted` - which is not
 	 * a `lipo -archs` reading, so the check reports a failure here and only membership
-	 * of the id set holds.
+	 * of the id set holds. THE `checkApp` HALF IS PINNED BY THE CASE BELOW, which reads
+	 * the rows a container produced: this case's own fixture cannot reach that closure
+	 * at all (its one-byte dmg never attaches, so `finalContainerChecks` reports the
+	 * failure as a single `final-container-app` row), and asserting the id here would
+	 * pass on the unpacked app's row alone - which is what round 2 measured before the
+	 * second case existed.
 	 */
 	const dist = tempDir("lo-dist-walk-");
 	const app = join(dist, "mac-arm64", "Local Operator.app");
@@ -4659,6 +4664,90 @@ test("the gate's own results carry the bundle-walk rows", () => {
 		walkRows.filter((row) => row.passed).length,
 		walkRows.length,
 		`a fixture bundle claiming no restricted entitlement must pass both rows: ${JSON.stringify(walkRows)}`,
+	);
+});
+
+/**
+ * THE SECOND CALL SITE, and the one a shipped artifact actually goes through.
+ *
+ * WHY THIS IS SEPARATE FROM THE ROW ABOVE. `verifyArtifacts` reaches
+ * `nativeComponentsCheck` twice: in the app loop, for an unpacked `dist` app, and
+ * inside `checkApp` - the closure `finalContainerChecks` runs over the app it
+ * extracts from every DMG and ZIP. The row above asserts the id is somewhere in
+ * the result set, and the unpacked app supplies it on its own, so commenting the
+ * `checkApp` entry out left the whole suite exactly as green as it was (round 2,
+ * m1: `tests 294 / pass 293 / fail 1`, identical to pristine, because that
+ * fixture's one-byte dmg never attaches and the closure is never entered). The
+ * container is the path a released download takes, so the guard belongs here:
+ * these are the rows the CONTAINER produced, scoped by their `target` - the only
+ * rows that entry shows up in.
+ *
+ * WHAT IS REAL: the shipped module, the real `checkApp` closure, a real
+ * filesystem. WHAT IS SUBSTITUTED: the container tools. `unzip`'s listing is a
+ * stub and `ditto`'s extraction is a stub that performs the copy the tool would,
+ * because `pnpm test:desktop` runs in CI's Linux job where neither binary exists
+ * - and a case skipped on the platform that runs the suite is a case that pins
+ * nothing. The extraction is therefore driven, not asserted about.
+ */
+test("the app inside a container is swept for foreign components too", () => {
+	const dist = tempDir("lo-dist-container-");
+	// The gate refuses to run without one of each kind to discover, so the fixture
+	// carries all three. Only the ZIP is driven: its `checkApp` closure is the one
+	// under test, the unpacked app supplies the id on its own (which is exactly why
+	// this case is separate), and the image is never attached because the stub below
+	// refuses `hdiutil` - a failure that lands in the gate's own container row and
+	// never arms the volume backstop.
+	const app = join(dist, "mac-arm64", "Local Operator.app");
+	mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+	);
+	writeMachO(join(app, "Contents", "MacOS", "Local Operator"));
+	writeFileSync(join(dist, "local-operator-ui-0.0.0-arm64.dmg"), "x");
+	const zip = join(dist, "local-operator-ui-0.0.0-arm64.zip");
+	// The archive's bytes are never read: the two calls that would read them are the
+	// stubs below, and what is under test is the closure they feed.
+	writeFileSync(zip, "PK\u0003\u0004");
+
+	const run = (command, args) => {
+		if (command === "/usr/bin/hdiutil")
+			return { status: 1, stdout: "", stderr: "no image here" };
+		if (command === "/usr/bin/unzip")
+			return { status: 0, stdout: "Local Operator.app/\n", stderr: "" };
+		if (command === "/usr/bin/ditto") {
+			// `-x -k <archive> <destination>`: the half the tool does, done here, so the
+			// closure runs over a real extracted tree rather than over a stub's claim
+			// that one exists.
+			// `ditto -x -k <archive> <destination>`: the destination is the LAST argument,
+			// which is where the four-argument form puts it and where an argument count
+			// guess would instead re-extract over the archive itself.
+			if (args[0] === "-x") {
+				const extracted = join(args[args.length - 1], "Local Operator.app");
+				mkdirSync(join(extracted, "Contents", "MacOS"), { recursive: true });
+				writeFileSync(
+					join(extracted, "Contents", "Info.plist"),
+					"<key>CFBundleIdentifier</key><string>com.local-operator</string><key>CFBundleExecutable</key><string>Local Operator</string>",
+				);
+				writeMachO(join(extracted, "Contents", "MacOS", "Local Operator"));
+			}
+			return { status: 0, stdout: "", stderr: "" };
+		}
+		return { status: 0, stdout: "accepted", stderr: "" };
+	};
+
+	const result = verifyArtifacts({ dist, run, log: () => {} });
+	const containerRows = result.results.filter((row) =>
+		String(row.target ?? "").startsWith(`${zip} :: `),
+	);
+	assert.ok(
+		containerRows.length > 0,
+		`the container branch must produce rows, or this case asserts nothing: the gate ran ${JSON.stringify(result.results.map((row) => row.id))}`,
+	);
+	const ids = new Set(containerRows.map((row) => row.id));
+	assert.ok(
+		ids.has("app-native-components"),
+		`the app extracted from ${zip.split("/").pop()} is not swept for foreign components: the container rows were ${JSON.stringify([...ids])}`,
 	);
 });
 
