@@ -3593,9 +3593,7 @@ test("the record's receipt names where the goal went, on screen, and offers noth
 		const waitForLive = async (needle) => {
 			for (let round = 0; round < 12; round += 1) {
 				if (
-					liveToasts().some((node) =>
-						(node.textContent ?? "").includes(needle),
-					)
+					liveToasts().some((node) => (node.textContent ?? "").includes(needle))
 				) {
 					return;
 				}
@@ -3611,8 +3609,9 @@ test("the record's receipt names where the goal went, on screen, and offers noth
 		await act(
 			async () => void root.render(element("Reconcile the March invoices")),
 		);
-		await act(async () =>
-			void dom.document.querySelector("[data-status-goal-done]").click(),
+		await act(
+			async () =>
+				void dom.document.querySelector("[data-status-goal-done]").click(),
 		);
 		/*
 		 * The whole sentence, on the rendered toast: the value the press settled, that the
@@ -3939,7 +3938,12 @@ test("the lifecycle's derived strings, one per state", () => {
 	 * the breaker) is the confusion U1 is about, and the other alternative (saying
 	 * nothing) is the bug D2 closed.
 	 */
-	for (const unnamed of [undefined, "", "  ", "a bound added after this build"]) {
+	for (const unnamed of [
+		undefined,
+		"",
+		"  ",
+		"a bound added after this build",
+	]) {
 		assert.equal(
 			goalStalledNote(unnamed),
 			"goal stalled: auto-continuation stopped — send a message to continue",
@@ -4222,7 +4226,9 @@ test("the judge stalling is said ONCE, through the composer's note channel", asy
 		);
 		assert.deepEqual(
 			notes.slice(1),
-			["goal stalled: reached the continuation limit — send a message to continue"],
+			[
+				"goal stalled: reached the continuation limit — send a message to continue",
+			],
 			"the continuation cap is not reported as a failed judgement",
 		);
 		/*
