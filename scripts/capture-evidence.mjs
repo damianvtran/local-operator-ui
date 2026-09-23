@@ -2254,13 +2254,35 @@ export const STORIES = [
 	   viewport narrower than that would clip the very step the story exists for.
 	   Its two bands are the `@max-[240px]` step and the app's real 172px floor -
 	   the widths the record's § 2.4 was corrected to (design review round 1, D3) -
-	   and `overflowX === 0` is the assertion the frames carry. */
+	   and `overflowX === 0` is the assertion the frames carry.
+
+	   THE FRAME PASS ADDED TWO ROWS, FOR THE TWO STATES THE ROUND COULD NOT SETTLE
+	   WITHOUT ONE. `--goal-done-floor` IS design review round 1's D1 as a story: the
+	   finding could name its two remedies - the done band at 240/172, or
+	   `NARROW_HIDDEN` on the tag - but could not choose between them, because neither
+	   `goal-done` nor `goal-done-dismiss-focus` sets a width and `GoalActionsFloor`
+	   measures the ACTIVE pair only. The one state whose whole job is to say WHICH
+	   goal was settled was therefore the one state with no frame at the width where
+	   the value is cheapest to lose. Its two bands are that story's own two widths
+	   and the goal is the 300-character one in both, so the value's `clientWidth`
+	   against its `scrollWidth` is the number the finding asked for.
+	   `--goal-capability-off` is the spec table's `capability-off` row: a frontend
+	   carrying none of the four lifecycle fields renders the shipped chip and NO new
+	   control, and an ABSENCE is only evidence beside the band that has the control
+	   painted - which is why the row is a pair and why the capable band's `Done` is
+	   focused rather than left at rest.
+
+	   BOTH NEW ROWS ARE 300 WIDE WHERE THE FLOOR IS THE CLAIM, for the reason the
+	   paragraph above gives: the band is the width plus the box's 48px of `p-6`, so a
+	   viewport sized to the width itself would clip the step the story exists for. */
 	["chat-composer-status-row--goal-done", 1000, 460],
 	["chat-composer-status-row--goal-done-dismiss-focus", 1000, 300],
 	["chat-composer-status-row--goal-stalled", 1000, 460],
 	["chat-composer-status-row--goal-working", 1000, 460],
 	["chat-composer-status-row--goal-actions-revealed", 1000, 460],
 	["chat-composer-status-row--goal-actions-floor", 300, 620],
+	["chat-composer-status-row--goal-done-floor", 300, 620],
+	["chat-composer-status-row--goal-capability-off", 1000, 520],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
