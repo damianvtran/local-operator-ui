@@ -2078,7 +2078,10 @@ async function awaitCardSettled(cdp, { attempts = 6, gapMs = 120 } = {}) {
  * WHAT IT DOES NOT DO: decide whether the app is right. It returns the readings; `arrivalReading`
  * and the scene's checks read the clauses the designer's ruling states for them.
  */
-async function scrolledArrival(cdp, { label, cap, scroll, press }) {
+async function scrolledArrival(
+	cdp,
+	{ label, cap, scroll, press, cursor = null },
+) {
 	/*
 	 * ONE READING, TAKEN TWICE. The before and the after are the same script, so a comparison
 	 * between them cannot be a comparison of two instruments - and the reading carries the
@@ -2276,6 +2279,17 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 			return { top, bottom: top + list.clientHeight };
 		};
 		const pickFocus = () => {
+			/*
+			 * THE CURSOR THE CALLER NAMED, when it named one (agent review round 5): the departure's own
+			 * reading wants the cursor on a row that STAYS, so the hold's own correction is out of the
+			 * picture and the clause measures the READER'S POSITION rather than the correction. Unnamed,
+			 * the cursor goes on the last row that starts inside the clip - the row a correction is
+			 * possible for at all.
+			 */
+			const named = ${JSON.stringify(cursor)};
+			if (named !== null) {
+				return list.querySelector('[data-session-row="' + named + '"]');
+			}
 			const clip = clipOf();
 			const inside = Array.from(list.querySelectorAll("[data-session-row]")).filter((row) => {
 				const button = row.querySelector("[data-chat-row]");
@@ -2429,7 +2443,13 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
 			})(),
 		};
-		if (control === null) return { clicked: false, reading, selector };
+		if (control === null) return { clicked: false, reading, selector, rowId: null };
+		/*
+		 * THE ROW THE CONTROL BELONGS TO, recorded because the departure's own clause has to say WHICH row it
+		 * expected to leave (agent review round 5): the selector names a control, and only the DOM knows which
+		 * row that control sits in.
+		 */
+		const rowId = control.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null;
 		/*
 		 * A DOM CLICK, DELIBERATELY, AND IT IS THE HALF THAT MAKES THE READING POSSIBLE: a REAL
 		 * pointer press focuses the control it presses, and the focus-hold's gate then reads
@@ -2439,7 +2459,7 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 		 * stays on the row the reader put it on.
 		 */
 		control.click();
-		return { clicked: true, reading, selector };
+		return { clicked: true, reading, selector, rowId };
 	})()`);
 	const settled = await awaitCardSettled(cdp);
 	await wait(500);
@@ -2465,7 +2485,7 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
  * have a band up: the second arrival starts with the first one's message standing, so its box is
  * already short of the base by that band. The yield the ruling states is the base less the band.
  */
-function arrivalReading(arrival, base) {
+function arrivalReading(arrival, base, expect = "none") {
 	const before = arrival.before ?? {};
 	const atPress = arrival.atPress ?? {};
 	const after = arrival.after ?? {};
@@ -2479,16 +2499,61 @@ function arrivalReading(arrival, base) {
 	const focusedBefore = before.focused ?? {};
 	const focusedAfter = after.focused ?? {};
 	/*
-	 * A ROW MAY NOT MOVE AT ALL ACROSS A PRESS (design round 8, D27). This used to allow one delta when the press
-	 * itself took a row out - the shape the pre-D27 code had, where the press removed the row and the list's extent
-	 * dipped with it. With membership on the ANSWERED value a press takes nothing out, so the clause is the strict
-	 * one: no row leaves and every row keeps its top. A `scrollTop` write translates the content uniformly, which
-	 * is what this catches.
+	 * A ROW MAY NOT MOVE AT ALL ACROSS A PRESS WHOSE ROW IS REFUSED (design round 8, D27), and a press the
+	 * daemon ACCEPTS moves exactly the one the reader pressed (design round 9, D30) - the same clause seen
+	 * from the two arrivals the scene drives. `expect` names which, because a reading that asserted the
+	 * refusal's shape about the accepted press would be asserting that nothing departs, which is the state
+	 * this fix exists to keep reachable rather than a property of the walk.
 	 */
-	const rowsHeld = gone.length === 0 && deltas.every((delta) => delta === 0);
-	const samples = after.instrument?.samples ?? [];
+	const rowsHeld =
+		expect === "none"
+			? gone.length === 0 && deltas.every((delta) => delta === 0)
+			: false;
+	const rowsHeldLeaving =
+		expect === "the pressed row" &&
+		gone.length === 1 &&
+		atPress.rowId !== null &&
+		atPress.rowId !== undefined &&
+		gone[0].id === atPress.rowId &&
+		deltas.every((delta) => delta === 0);
+	/*
+	 * THE TWO DEPARTURE CLAUSES (design round 9, D30), read from the samples the probe took every frame:
+	 *
+	 * `extentPairedWithBox` - THE EXTENT MAY SHRINK ONLY IN A SAMPLE THAT ALSO SHRINKS THE BOX. A list whose
+	 * content loses a row while its box is unchanged is a list whose maximum scroll just fell under the
+	 * reader: `scrollHeight - clientHeight` is what a clamp acts on, and nothing gives the position back
+	 * afterwards. This is the clause that has to hold on the ACCEPTED press, where the pressed row's own
+	 * height leaves the list.
+	 *
+	 * `rangeHeld` - AND THE READER'S POSITION IS REACHABLE IN EVERY SAMPLE, which is the same claim stated
+	 * arithmetically: `scrollTop <= scrollHeight - clientHeight` throughout. A sample that violated it is a
+	 * sample in which the browser had already clamped, so this reads the mechanism where `framesHeld` reads
+	 * the symptom.
+	 */
 	const scrollTopAtPress = atPress.reading?.scrollTop ?? null;
 	const extentAtPress = atPress.reading?.scrollHeight ?? null;
+	const samples = after.instrument?.samples ?? [];
+	const shrunkExtent = [];
+	const unreachable = [];
+	for (let i = 0; i < samples.length; i += 1) {
+		const sample = samples[i];
+		const previous = i === 0 ? null : samples[i - 1];
+		if (
+			previous !== null &&
+			sample.scrollHeight < previous.scrollHeight &&
+			sample.box >= previous.box
+		)
+			shrunkExtent.push({ previous, sample });
+		if (
+			scrollTopAtPress !== null &&
+			typeof sample.scrollHeight === "number" &&
+			typeof sample.box === "number" &&
+			sample.scrollHeight - sample.box < scrollTopAtPress
+		)
+			unreachable.push(sample);
+	}
+	const extentPairedWithBox = shrunkExtent.length === 0;
+	const rangeHeld = unreachable.length === 0;
 	/*
 	 * THE POSITION IS HELD IN EVERY FRAME, not only at the two ends the walk reads (design D27's item 3): the
 	 * clamp this clause is about is instantaneous, so a pair that agreed could still have hidden a frame in which
@@ -2504,11 +2569,22 @@ function arrivalReading(arrival, base) {
 	 * and the box moving together: with the departure off the press there is nothing to take the extent below the
 	 * box, so `scrollHeight - clientHeight` never goes negative and no clamp is available to the browser.
 	 */
+	/*
+	 * AND THE EXTENT IS BYTE-EQUAL ONLY WHERE NOTHING MAY DEPART (agent review round 5, D30's instrument
+	 * half): a press the daemon ACCEPTS shortens the content by the row's own height, and the band that
+	 * answers it can only be measured a commit later - so demanding a byte-equal extent of a departure
+	 * asks for something the app is not supposed to do. Where a row departs, the clause is the PAIRING
+	 * (`extentPairedWithBox`: the extent shrinks only in a sample that also shrinks the box) plus the
+	 * RANGE (`rangeHeld`: the reader's position is reachable in every sample), and both are computed
+	 * above from the very samples this branches on.
+	 */
 	const extentHeld =
-		extentAtPress !== null &&
-		before.box?.scrollHeight === extentAtPress &&
-		after.box?.scrollHeight === extentAtPress &&
-		samples.every((sample) => sample.scrollHeight === extentAtPress);
+		expect === "none"
+			? extentAtPress !== null &&
+				before.box?.scrollHeight === extentAtPress &&
+				after.box?.scrollHeight === extentAtPress &&
+				samples.every((sample) => sample.scrollHeight === extentAtPress)
+			: true;
 	return {
 		label: arrival.label,
 		stateOk:
@@ -2563,6 +2639,10 @@ function arrivalReading(arrival, base) {
 			after.scrollTop === atPress.reading?.scrollTop &&
 			framesHeld &&
 			extentHeld,
+		extentPairedWithBox,
+		rangeHeld,
+		shrunkExtent: shrunkExtent.slice(0, 6),
+		unreachable: unreachable.slice(0, 6),
 		scroll: {
 			before: atPress.reading?.scrollTop,
 			after: after.scrollTop,
@@ -2596,6 +2676,8 @@ function arrivalReading(arrival, base) {
 				.slice(0, 6),
 		},
 		rowsHeld,
+		rowsHeldLeaving,
+		expect,
 		rows: { kept: kept.length, gone, deltas },
 		yieldExact: base !== null && after.box?.height === base - after.band,
 		entitiesHeld:
@@ -4757,12 +4839,18 @@ async function sceneSessionArchive(cdp) {
 		undoRefused.refusalNames = undoState?.archiveFailure?.sessionId ?? null;
 		undoRefused.rowLabel = await labelOf(`${undoRow} [data-session-archive]`);
 		/*
-		 * AND WHETHER THE ROW IS IN THE LIST AT ALL. After a REFUSED unarchive the store reverts
-		 * the row to ARCHIVED, and this scene runs with `Include archived` off - so the row leaves
-		 * the list and its control is gone with it, which is why `rowLabel` reads `null` here and
-		 * why that `null` is the CORRECT reading rather than a missing one (manager, pass 6). The
-		 * clause below therefore asserts the state the app actually reaches instead of the label
-		 * it would carry if the refusal had not reverted.
+		 * AND WHETHER THE ROW IS IN THE LIST AT ALL. After a REFUSED unarchive the store puts back the
+		 * fact the press replaced - the FACT is the client's knowledge now (design round 8, D27), so
+		 * the refusal restores it and the row reads ARCHIVED again - and this scene runs with
+		 * `Include archived` off, so the row leaves the list and its control is gone with it. That is
+		 * why `rowLabel` reads `null` here and why that `null` is the CORRECT reading rather than a
+		 * missing one (manager, pass 6). The clause below therefore asserts the state the app actually
+		 * reaches instead of the label it would carry if the refusal had not restored.
+		 *
+		 * THIS PARAGRAPH SAID "the store reverts the row to ARCHIVED", which was the pre-D27 shape and
+		 * is now false: the press patches no row at all, the revert is the fact's own restoration, and
+		 * a reader who took the old sentence at face value would be licensed to delete that restore as
+		 * redundant (design round 9, D31).
 		 */
 		undoRefused.rowStillListed = await cdp.evaluate(
 			`document.querySelector(${JSON.stringify(undoRow)}) !== null`,
@@ -5005,6 +5093,93 @@ async function sceneSessionArchive(cdp) {
 		 */
 		`the Retry was pressed at ${JSON.stringify(retryAt.box.centre)} (two reads ${retryAt.settledMs}ms apart agreed on that box) and the store's write counter went ${attemptsBeforeRetry} -> ${attemptsAfterRetry}; lane cleared in ${undoCleared.waitedMs}ms, label now ${JSON.stringify(restoredLabel)}`,
 	);
+
+	/*
+	 * AND THE ACCEPTED PRESS, WHICH IS THE ARRIVAL THE CLAUSE IS WRITTEN FOR (design round 9, D30).
+	 *
+	 * The reading above this one is the REFUSAL's, and the round is right that it cannot answer the clause:
+	 * nothing leaves the list there, so its extent reads 241 in every sample and the departure's own question -
+	 * what happens to the reader while a row's height leaves - is never asked. The row this press addresses is
+	 * the one whose archive the committed stub ACCEPTS (`b3f1a09c7d52`, "Quarterly retention sweep": the stub's
+	 * `refuse_unarchive_once` row, archive accepted, first unarchive refused - the row the refusal step presses
+	 * is the `live_claim` one, which refuses every write).
+	 *
+	 * WHAT THE CLAUSE ASKS, in the round's own words: the extent may shrink only in the sample that also shrinks
+	 * the box. The band's HEIGHT is panel state written by an observer that runs after sonner mounts the card,
+	 * so at the settlement commit the row's own height is gone from the extent while the box is still the
+	 * band-0 one - and whether that leaves a range under the reader's position is exactly what this reading
+	 * decides, rather than a note that claims it.
+	 */
+	const acceptedRow = "[aria-label='Archive “Quarterly retention sweep”']";
+	const acceptedArrivalReading = await scrolledArrival(cdp, {
+		label: "the accepted press departs from a list the reader is standing in",
+		cap: "200px",
+		scroll: 20,
+		/*
+		 * THE CURSOR STANDS ON A ROW THAT STAYS (`REFUSED_ID`, the earlier of the two rows the end of this
+		 * walk has left), so the departure happens under the reader's own position and the hold has no
+		 * correction to make - the clause is about the reader's position, and a correction is a different
+		 * reading (the unit cell in `scripts/sidebar-focus-hold.test.mjs` carries the slot-change case).
+		 *
+		 * WHY NOT THE DOCSTRING'S EXACT SHAPE - "a live row ABOVE the cursor's": the committed fixture
+		 * cannot produce it at this head, and that is a fact about its rows rather than about the clause.
+		 * The list holds two session rows here: `REFUSED_ID` (the `live_claim` row, whose every write the
+		 * stub REFUSES on purpose) and `REFUSED_UNDO_ID` (whose archive is accepted). The accepting row is
+		 * therefore LAST, and the only row above the cursor's is the one that refuses - so the departure is
+		 * driven with the cursor on the row that stays and the pressed row immediately below it, which is
+		 * the same departure read from the other side of it.
+		 */
+		cursor: REFUSED_ID,
+		press: { selector: acceptedRow },
+	});
+	note(
+		"the accepted press on a scrolled list, with the writer trapped (design round 9, D30)",
+		JSON.stringify(acceptedArrivalReading),
+	);
+	const acceptedNow = arrivalReading(
+		acceptedArrivalReading,
+		acceptedArrivalReading.before?.box?.height ?? null,
+		"the pressed row",
+	);
+	check(
+		"the accepted press is set up in the same state: the list overflows at rest, the reader's scroll is off the top, the pressed row is on screen and it is the row the daemon takes",
+		acceptedNow.stateOk,
+		JSON.stringify({ state: acceptedNow.state, rows: acceptedNow.rows }),
+	);
+	check(
+		"and the accepted departure does not take the reader with it: scrollTop is byte-equal in every sampled frame (design round 9, D30's reading)",
+		acceptedNow.scrollHeld,
+		JSON.stringify(acceptedNow.scroll),
+	);
+	check(
+		"and the extent shrinks only in a sample that also shrinks the box, so the list's own maximum scroll never falls under the reader: the clause exactly as the round states it",
+		acceptedNow.extentPairedWithBox && acceptedNow.rangeHeld,
+		JSON.stringify({
+			extent: acceptedNow.extent,
+			shrunk: acceptedNow.shrunkExtent,
+			unreachable: acceptedNow.unreachable,
+			frames: acceptedNow.frames,
+		}),
+	);
+	check(
+		"and the one row that departs is the row the reader pressed, with every surviving row keeping its top and nothing writing the container",
+		acceptedNow.stateOk &&
+			acceptedNow.rowsHeldLeaving &&
+			acceptedNow.trapped &&
+			acceptedNow.writes.length === 0,
+		JSON.stringify({
+			rows: acceptedNow.rows,
+			writes: acceptedNow.writes,
+			mutations: acceptedNow.scroll.mutations,
+		}),
+	);
+	check(
+		"and the yield is exact after an accepted press too: the list's box is its band-0 box less the band the card settled at",
+		acceptedNow.yieldExact && acceptedNow.entitiesHeld,
+		JSON.stringify(acceptedNow.yield),
+	);
+	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
+	await wait(300);
 
 	check(
 		"every capture is a frame the app held still for, with no toast on it",

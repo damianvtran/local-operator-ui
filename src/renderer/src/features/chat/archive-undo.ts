@@ -152,11 +152,24 @@ export function useArchiveUndoRetirement(): void {
 			unsubscribe();
 			clearTimeout(ceiling);
 		};
-		/** Retire the offer, but only if it is still THIS offer's. */
+		/*
+		 * Retire the offer, but only if THIS offer is still the one the store holds.
+		 *
+		 * GUARDED BY THE OFFER'S OWN IDENTITY, NOT BY ITS SESSION ID (agent review round 5, R5-5).
+		 * Two offers for the SAME conversation can follow one another - archive, undo it, archive it
+		 * again inside the first watch's ceiling - and a guard on the id alone lets the first watch's
+		 * expiry take the SECOND offer off the screen: the same lie the retirement rule exists to
+		 * avoid, one press later. The stamp tells them apart, because every raise carries the write's
+		 * own `at`.
+		 */
 		const stop = () => {
 			teardown();
 			const current = useCanonicalSessionsStore.getState().archiveUndo;
-			if (current?.sessionId === offer.sessionId)
+			if (
+				current !== null &&
+				current.sessionId === offer.sessionId &&
+				current.at === offer.at
+			)
 				useCanonicalSessionsStore.getState().setArchiveUndo(null);
 		};
 		const unsubscribe = useCanonicalSessionsStore.subscribe(() => {

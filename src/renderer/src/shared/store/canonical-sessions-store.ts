@@ -2834,8 +2834,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const superseded = state.archiveFacts[sessionId]?.at !== at;
 						const facts = { ...state.archiveFacts };
 						if (!superseded) {
-							if (previousFact === null) delete facts[sessionId];
-							else facts[sessionId] = previousFact;
+							/*
+							 * AND WHAT GOES BACK IS AN ANSWERED FACT OR NOTHING (agent review round 5, R5-2).
+							 *
+							 * Restoring `previousFact` verbatim put back an UNANSWERED intent whenever the press
+							 * being refused had displaced one that was still in flight - and the two row-facing
+							 * readers skip unanswered facts, so the restore wrote a fact that could not be read at
+							 * all. Reproduced on this suite's own fixture with two presses before either answer:
+							 * press 1 (archive) is displaced by press 2 (unarchive), press 1's acceptance arrives
+							 * first and bails as superseded, and press 2's refusal then restored
+							 * `{archived:true, at:2, answered:false}`, leaving the client with no readable
+							 * knowledge of an archive the daemon had just ACCEPTED.
+							 *
+							 * THE RULE: a refusal puts back the fact it replaced only when that fact had been
+							 * ANSWERED. An unanswered fact is a press's INTENT, and this client cannot vouch for an
+							 * intent whose own answer may already have been discarded by the currency rule beside
+							 * this one - so it removes its own write instead.
+							 */
+							if (previousFact?.answered === true) {
+								facts[sessionId] = previousFact;
+							} else {
+								delete facts[sessionId];
+								/*
+								 * AND THE CLIENT ASKS RATHER THAN KEEPING NEITHER: with that intent gone this window
+								 * knows nothing about the conversation's archive state while the daemon does, so the
+								 * page is read again. Without it the row reads the wire's stale value until the 5s
+								 * poll - the whole of the window in which a reader would act on it. A press with no
+								 * fact behind it has nothing to re-learn, so only a displaced intent asks.
+								 */
+								if (previousFact !== null) void get().fetchSessions();
+							}
 						}
 						return {
 							archiveFacts: superseded ? state.archiveFacts : facts,

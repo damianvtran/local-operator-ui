@@ -97,35 +97,58 @@ test("a press may change the intent and not the list: an unanswered fact removes
 	 * the reader's `scrollTop` to the new extent, and nothing gives it back when the row
 	 * returns (QA round 4 measured `8.5 -> 0`). A fact that has not been ANSWERED is the
 	 * press's intent - the row is going somewhere - and the list may not act on it.
+	 *
+	 * AND THE ASSERTIONS ARE THE MERGE'S OWN, NOT AN ID LIST (agent review round 5, R5-3): this
+	 * function maps rows one-to-one and never changes an id, so comparing ids cannot fail and the
+	 * claim rode on nothing. What it does is change a row's VALUE and whether the array is the
+	 * same OBJECT - so the unanswered case asserts identity, and the membership claim is read
+	 * through the filter every list actually uses, where a dropped row shows up as a shorter list.
 	 */
+	const intent = { aaaaaaaaaaaa: { archived: true, answered: false } };
+	assert.equal(
+		answeredArchiveRows(rows, intent),
+		rows,
+		"an unanswered fact merges nothing: the very array comes back",
+	);
 	assert.deepEqual(
-		answeredArchiveRows(rows, {
-			aaaaaaaaaaaa: { archived: true, answered: false },
-		}).map((entry) => entry.session_id),
+		visibleRows(answeredArchiveRows(rows, intent), true).map(
+			(entry) => entry.session_id,
+		),
 		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
 		"an unanswered fact must not remove a row from the list",
 	);
 	/*
-	 * The same fact, answered, is what the list acts on - and it is the ANSWERED value that
-	 * is read, not the row's own: a row the wire still calls archived while an answered fact
-	 * says otherwise comes back into the list, which is what an accepted unarchive is.
+	 * The same fact, ANSWERED, is what the list acts on - and it is the ANSWERED value that is
+	 * read, not the row's own: a row the wire still calls archived while an answered fact says
+	 * otherwise comes back into the list, which is what an accepted unarchive is.
 	 */
+	const answered = answeredArchiveRows(rows, {
+		aaaaaaaaaaaa: { archived: true, answered: true },
+	});
+	assert.notEqual(answered, rows, "an answered fact rebuilds the row it names");
+	assert.equal(
+		answered[0].archived,
+		true,
+		"with the fact's value, not the wire's",
+	);
 	assert.deepEqual(
-		answeredArchiveRows(
-			[row("aaaaaaaaaaaa", false), row("bbbbbbbbbbbb", true)],
-			{ bbbbbbbbbbbb: { archived: false, answered: true } },
+		visibleRows(answered, true).map((entry) => entry.session_id),
+		["bbbbbbbbbbbb"],
+		"and the list the reader sees loses exactly that row",
+	);
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows([row("aaaaaaaaaaaa", true)], {
+				aaaaaaaaaaaa: { archived: false, answered: true },
+			}),
+			true,
 		).map((entry) => entry.session_id),
-		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+		["aaaaaaaaaaaa"],
+		"while an answered UNarchive brings a row back",
 	);
 	// Identity when no answered fact applies, the house rule every merge in this repo
 	// states: an unchanged merge must not re-render a 500-row list.
 	assert.equal(answeredArchiveRows(rows, {}), rows);
-	assert.equal(
-		answeredArchiveRows(rows, {
-			aaaaaaaaaaaa: { archived: true, answered: false },
-		}),
-		rows,
-	);
 });
 
 test("the archived set is reported only where a control could act on it", () => {

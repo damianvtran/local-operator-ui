@@ -475,6 +475,81 @@ test("a refused press drops the intent it wrote, and says so once", async () => 
 	assert.equal(state.archiveFailure.archived, true);
 });
 
+test("a refusal never reinstates an unanswered intent, and asks the daemon instead", async () => {
+	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
+	/*
+	 * R5-2's REPRO, at this suite's own fixture (agent review round 5). Press 1 (archive) is displaced
+	 * by press 2 (unarchive) while both are in flight; press 1's acceptance arrives FIRST and bails as
+	 * superseded (the currency rule), and press 2 is then refused. The version this pins put press 1's
+	 * fact back VERBATIM - an UNANSWERED intent, which both row-facing readers skip - so the client
+	 * kept no readable knowledge of an archive the daemon had just ACCEPTED: measured
+	 * `{"fact":{"archived":true,"at":2,"answered":false},"listed":["2d5ad5da0025"]}`.
+	 *
+	 * THE RULE NOW: a refusal puts back only a fact that had been ANSWERED; when the fact it replaced
+	 * was an intent, the refused write is removed and the PAGE is read again. The client then learns
+	 * the truth instead of holding a fact no reader can use or a value it has no reason to trust.
+	 */
+	const inFlightAnswers = [];
+	serve((request) => {
+		if (request.op !== "sessions.archive")
+			return page([{ session_id: SESSION, title: "Kept", archived: true }]);
+		return new Promise((resolve) => inFlightAnswers.push(resolve));
+	});
+	const pagesBefore = () =>
+		requests.filter((request) => request.op !== "sessions.archive").length;
+	const before = pagesBefore();
+	const first = store.getState().setSessionArchived(SESSION, true, "Kept");
+	const second = store.getState().setSessionArchived(SESSION, false, "Kept");
+	assert.equal(
+		inFlightAnswers.length,
+		2,
+		"both presses reached the wire, and neither has been answered",
+	);
+	const displaced = store.getState().archiveFacts[SESSION];
+	assert.equal(
+		displaced.answered,
+		false,
+		"the newer press owns the fact while both are in flight",
+	);
+	/* Press 1's acceptance lands first, with press 2's intent owning the fact. */
+	inFlightAnswers[0]({ session_id: SESSION, archived: true });
+	await first;
+	assert.deepEqual(
+		store.getState().archiveFacts[SESSION],
+		displaced,
+		"a superseded acceptance settles nothing",
+	);
+	/* And then press 2 is refused. */
+	inFlightAnswers[1](
+		refuse(409, "This conversation is in use by a running turn."),
+	);
+	await second;
+	const state = store.getState();
+	assert.equal(
+		state.archiveFacts[SESSION],
+		undefined,
+		"the refusal puts back no unanswered intent",
+	);
+	assert.equal(
+		pagesBefore(),
+		before + 1,
+		"and it asks the catalogue again rather than keeping what it cannot read",
+	);
+	/* The answer to that read is what keeps the reader's list honest. */
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows(
+				store.getState().sessions,
+				store.getState().archiveFacts,
+			),
+			true,
+		).map((row) => row.session_id),
+		[],
+		"so a conversation the daemon holds archived is not drawn in a list that excludes archived rows",
+	);
+});
+
 test("a refused press puts back the fact it replaced, so an archived conversation stays archived", async () => {
 	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
 	serve({ session_id: SESSION, archived: true });

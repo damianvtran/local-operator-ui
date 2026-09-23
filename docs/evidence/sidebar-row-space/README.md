@@ -298,7 +298,8 @@ y 789..842.5, i.e. exactly over it.
 - **`captureSettled` is what makes a frame evidence at all**: each capture is
   retried until two consecutive frames are byte-identical with no toast on screen,
   so a frame that was never held still is reported as such rather than committed.
-  Both runs of this set passed every check (25 of them) with no failure.
+  Both runs of this set - the pair that produced the committed frames - passed
+  every check (the 56 above, per palette, in both themes) with no failure.
 - **The scene asserts the width it labelled each frame with** (`setSidebarWidth`
   reports the clamped value it applied), because every number in the spec is
   quoted as a width's and a silent clamp would make three labels one panel.

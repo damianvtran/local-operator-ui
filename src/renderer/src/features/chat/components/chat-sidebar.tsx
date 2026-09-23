@@ -259,6 +259,25 @@ const ARCHIVE_TOAST_CLASS = "lo-archive-toast";
  * slack that keeps a card flush against nothing.
  */
 const ARCHIVE_TOAST_BAND_GAP = 8;
+/**
+ * THE OFFER'S BAND, DECLARED (design round 9, D30's second clause) - and it is declared because it
+ * has to be KNOWN in the commit that raises the offer.
+ *
+ * The band's measured height is panel state written by the observer below, and the observer can only
+ * see the card once sonner has mounted it - a render of its own, after the commit that raises the
+ * offer. So on an ACCEPTED archive the commit that takes the pressed row's height out of the list is
+ * also the commit in which the measured band is still 0: the extent falls by the row while the box is
+ * still the band-0 one, `scrollHeight - clientHeight` falls under the reader's position, and the
+ * browser's clamp takes it. MEASURED at 1380x900 on a list capped to 200px with a reader on 20: the
+ * extent `241 -> 209` against a `199` box, and `scrollTop` `20 -> 10.5` in the first frame the sampler
+ * saw - with the write trap EMPTY, so it is the clamp and not the focus-hold.
+ *
+ * The offer is ONE LINE AT EVERY WIDTH (its name truncates), which is what makes a constant honest
+ * here - and it is not a second source of truth: the measurement replaces it the moment the card lands
+ * (`58` again, the card's 50 plus the gap). The REFUSAL is deliberately NOT covered, because its
+ * height is the daemon's own sentence and only the card knows it.
+ */
+const ARCHIVE_OFFER_BAND_HEIGHT = 58;
 
 /**
  * THE BAND'S OWN BOX (design round 4, D14) - the lane is no longer an overlay.
@@ -935,7 +954,12 @@ export function ChatSidebar({
 			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
 		};
 	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: this runs after every render and clears itself; the guard IS the state it waits on
+	/*
+	 * This runs after every render and clears itself; the guard IS the state it waits on. (The
+	 * `useExhaustiveDependencies` suppression that stood here became unused once the band's own height
+	 * was derived for the yield - `bandHeightNow` - and Biome reports an unused suppression as an error,
+	 * so the reason stays and the directive goes.)
+	 */
 	useEffect(() => {
 		const moved = movedRef.current;
 		const list = listPanelRef.current;
@@ -3827,6 +3851,20 @@ export function ChatSidebar({
 	 * React, so the two can run on the same commit without a loop.
 	 */
 	const [bandHeight, setBandHeight] = useState(0);
+	/*
+	 * THE HEIGHT THE LAYOUT RESERVES FOR THE LANE, which is the MEASURED band when a card has landed
+	 * and the offer's declared band in the commit that raises it - the one commit in which the pressed
+	 * row's height is already gone while no card has been measured yet (`ARCHIVE_OFFER_BAND_HEIGHT` has
+	 * the measurement and the arithmetic). Everything the band's height is asked for - the list's own
+	 * yield, the base-read guard and the tent itself - reads this rather than the raw state, so the box
+	 * and the row cannot move in different commits.
+	 */
+	const bandHeightNow =
+		bandHeight > 0
+			? bandHeight
+			: archiveUndo !== null
+				? ARCHIVE_OFFER_BAND_HEIGHT
+				: 0;
 	const laneBandRef = useRef<HTMLDivElement | null>(null);
 	useEffect(() => {
 		const band = laneBandRef.current;
@@ -3936,15 +3974,15 @@ export function ChatSidebar({
 	 * the `flex-1` bottom region there and yields by itself, so the list is left exactly as it was.
 	 */
 	useLayoutEffect(() => {
-		if (bandHeight > 0) return;
+		if (bandHeightNow > 0) return;
 		const list = listPanelRef.current;
 		if (list === null) return;
 		const measured = Math.round(list.getBoundingClientRect().height);
 		setListBase((previous) => (previous === measured ? previous : measured));
 	});
 	const listYield: number | undefined =
-		listIsBottomRegion && bandHeight > 0 && listBase !== null
-			? Math.max(0, listBase - bandHeight)
+		listIsBottomRegion && bandHeightNow > 0 && listBase !== null
+			? Math.max(0, listBase - bandHeightNow)
 			: undefined;
 
 	const pinFailureLine = pinFailure ? (
@@ -5075,7 +5113,7 @@ export function ChatSidebar({
 			<div
 				ref={laneBandRef}
 				data-archive-toast-band
-				style={{ ...ARCHIVE_TOAST_BAND_STYLE, height: bandHeight }}
+				style={{ ...ARCHIVE_TOAST_BAND_STYLE, height: bandHeightNow }}
 				/*
 				 * A WHEEL AT THE PANEL'S BOTTOM IS A GESTURE ABOUT THE LIST (QA round 3, Q-5). The band put
 				 * the card BESIDE the list instead of over it (D14), so the gesture has nowhere to land on
