@@ -3,7 +3,15 @@
 // docs/desktop-controls.md before implementing replay or notifications.
 export type CanonicalSessionId = string;
 /** Returned by session_catalogue version 2. The backend owns status precedence,
- * active/previous partition and order; clients must not infer them from read state. */
+ * active/previous partition and order; clients must not infer them from read state.
+ *
+ * `code` stays a plain `string` rather than a union of the codes this build knows,
+ * and that is the contract rather than a shortcut: the vocabulary belongs to the
+ * backend, which reaches a client as soon as the runtime is upgraded and without
+ * any change here, so a union would turn every runtime that learns a new state
+ * (`delegating` is the newest) into a compile error in a renderer that was never
+ * asked to care. A client's job with a code it does not recognise is to show it as
+ * unknown rather than to normalise it into a state it does understand. */
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
 export type SessionCatalogueRow = {
@@ -69,6 +77,25 @@ export type SessionCatalogueRow = {
 	 */
 	status_revision?: number;
 	status_epoch?: string;
+	/**
+	 * How many subagents this session owns that are RUNNING, and how many are
+	 * waiting for capacity, as the record behind the row reports them.
+	 *
+	 * Declared here rather than only reached through the store's index signature
+	 * so the two readings are typed where they are the same fact the row's
+	 * `status` already carries: the backend folds them into `status.label` and
+	 * the app draws no second copy of them, so this is honest typing of a wire
+	 * key, not new plumbing.
+	 *
+	 * `null` means "this build does not report" - a runtime older than the
+	 * fields, or one that cannot see them - and is deliberately NOT `0`: a
+	 * session this client could not ask about must never be shown as one with
+	 * no subagents, so every reader fails toward "unknown". Optional as well as
+	 * nullable because the fields are absent on a backend that has never sent
+	 * them, and absent and `null` are the same answer to the same question.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
