@@ -130,8 +130,12 @@ Off means the process is indistinguishable from the app as it was:
 
 - main registers no `dev-driver-*` channel at all, so a call is refused by
   Electron itself (`No handler registered for 'dev-driver-capture'`);
-- the window carries no `additionalArguments` entry, so the preload exposes no
-  `window.__loDevDriver` — not a disabled object, nothing;
+- the window carries no dev-driver `additionalArguments` entry, so the preload
+exposes no `window.__loDevDriver` — not a disabled object, nothing. (The window
+DOES carry the telemetry decision, which is written on every window, armed or
+not — a different entry, in the same argv `slot`; `rendererArgumentFlags` in
+`src/main/index.ts` is what unions them, and `AGENTS.md`'s "An agent-driven run
+sends no telemetry either" is where that switch is documented);
 - the renderer's install module returns immediately.
 
 `node scripts/renderer-driver.mjs --gate-check` measures that on four real boots
@@ -352,13 +356,18 @@ rule:
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
   verified dead, and the run asserts the app holds no connection to the URL the
-  renderer was built with — but the app's own telemetry still leaves the machine:
-  `us.i.posthog.com` and `us-assets.i.posthog.com` hold ESTABLISHED connections
-  during a driver run, and `capture_exceptions` is enabled in both processes.
-  There is no telemetry-disable switch in the app today, so this is a stated
-  limit rather than a redirected path: a run through this harness is not
-  "offline", and adding a first-class switch is a product decision rather than
-  something this script can do from outside.
+  renderer was built with — and since the telemetry switch landed it sends no
+  product telemetry either: `renderer-driver.mjs` hands its child
+  `LOCAL_OPERATOR_UI_TELEMETRY=off` (`scripts/telemetry-off.mjs`), and an off
+  launch constructs no PostHog client in either process, so no
+  `us.i.posthog.com` / `us-assets.i.posthog.com` connection is made for its pids
+  and `capture_exceptions` captures nothing. Measured both ways on one machine:
+  the same boot with the switch in place holds no connection to either host,
+  and without it holds ESTABLISHED connections to both (commands and output on
+  the pull request that added the switch). What that does NOT make this run is
+  "offline": the isolation is the operator's state — profile, config dir, log
+  directory, backend URL — and the app is free to reach whatever else it
+  reaches.
 
 ## What it can prove
 

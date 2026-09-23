@@ -57,6 +57,7 @@ import { join } from "node:path";
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 const SCRATCH = join(tmpdir(), `lo-browser-proof-${process.pid}`);
@@ -274,6 +275,11 @@ async function launchApp() {
 	 * real app, and a backend it spawns reaches macOS through `osascript` for a
 	 * parked gate — a banner in the operator's real Notification Center from a
 	 * harness run. See `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` for the same reason one project over: this rig boots the
+	 * real app, whose build carries the live PostHog project key, and neither the
+	 * scratch HOME nor the scratch profile can switch off a client the renderer
+	 * configures from a value inlined at build time. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -289,6 +295,7 @@ async function launchApp() {
 		// app-proof harness uses.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	// Every inherited cmux/lop variable is removed rather than overwritten: this
 	// process is driven by a session that has them set, and an inherited workspace
 	// id has already renamed the operator's real workspaces in this project.
