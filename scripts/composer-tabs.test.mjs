@@ -3798,7 +3798,9 @@ test("the lifecycle's derived strings, one per state", () => {
  * is what §4.2 assumed and could not verify.
  */
 test("the /goal --history receipt renders through the existing block path", () => {
-	const dispatch = code("src/renderer/src/features/chat/components/slash-dispatch.ts");
+	const dispatch = code(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
 	/*
 	 * The gate is on `result.text` FIRST: a block whose result also carries prose
 	 * prints the prose, which is the shipped precedence and not something this
@@ -3806,7 +3808,10 @@ test("the /goal --history receipt renders through the existing block path", () =
 	 */
 	assert.match(dispatch, /else if \(result\.kind === "block"\)/);
 	assert.match(dispatch, /items\?: \[string, string\]\[\]/);
-	assert.match(dispatch, /data\.items\.map\(\(\[k, v\]\) => `\$\{k\}: \$\{v\}`\)/);
+	assert.match(
+		dispatch,
+		/data\.items\.map\(\(\[k, v\]\) => `\$\{k\}: \$\{v\}`\)/,
+	);
 	assert.match(dispatch, /\.join\("\\n"\)/);
 	const transcript = code(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
