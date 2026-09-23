@@ -744,6 +744,104 @@ only frames here whose provenance is not this round's two runs.
   leak recorded under "Still open" below as the sustained-paging degradation, and
   it is not on this diff.
 
+## Round-1 remediation — the stale-anchor hold and the scrolled switch
+
+The round-1 findings asked for two measurements this set did not carry: whether a
+later reader input invalidates an active anchor hold without a stale `scrollTop`
+write during REAL layout growth (QA Q1), and what a scrolled conversation switch
+puts on screen (QA Q2, UX round 1). Both are now measured by the same rig, in two
+new modes, and the frames are in this directory.
+
+### `review` mode — the hold, both arms
+
+The arm runs the SAME procedure twice, differing only in whether a real wheel
+input lands while the page is held:
+
+1. Bring the reader to the slot's `Load earlier messages` affordance with the
+   probe-driven cadence below (rows 100, no rows held back, pages still left), and
+   install a `scrollTop` setter probe whose liveness is proven by a scoped write
+   of our own.
+2. Click the real affordance. The wrapper in `openHoldCode` delays the next
+   `sessions.history` request at the browser boundary, so control returns with the
+   request in flight and the anchor armed. No request or response is faked: the
+   real backend still answers, and a real `sessions.history` 200 was observed on
+   both arms.
+3. In the **later-input arm**, send one real wheel notch and stamp the moment.
+   In the **layout-only arm**, send nothing.
+4. Release the held page. A durable page lands (rows 100 → 160, extent grown by
+   ~6.5KB on both arms) and the held row's viewport offset is sampled every frame.
+
+```
+later-input arm   rows 100 -> 160   extent +6545px   max post-input frame delta 0.00px   0 programmatic writes
+layout-only arm   rows 100 -> 160   extent +6612px   max post-input frame delta 0.00px   0 programmatic writes
+```
+
+**What the frames show, and what the numbers do not.** `review-later-input-01-hold-armed`
+and `review-later-input-03-after-real-page-landing` are the same row (`0225`) at
+the same place across the landing; the reader's input at `-172.5` steps the row up
+ONE time and it then holds for the whole reveal. The `maximumPostInputFrameDeltaPx`
+of `0.00` is the same fact in numbers: across the frames after the input stamp,
+the held row does not move a sub-pixel.
+
+**The honest limit, stated rather than implied.** On this scroller a durable
+page's rows mount BELOW the held row and the browser's own `overflow-anchor`
+(`column-reverse`, bottom origin) anchors the row in place, so the hook's
+`anchorDrift` computes zero and it does not write `scrollTop` AT ALL on this path
+— which is why BOTH arms record zero writes during the hold, not only the
+later-input arm. The write probe is therefore proven live by an explicit scoped
+write (`probeLiveness.sawsTwo`), not by expecting the hook to write; and the
+claim that separates the arms is the per-frame held-row offset, not the write
+count. A future run on a path where the hook DOES correct (a height-changing row
+above the anchor) would turn the write count into the discriminating signal; this
+surface does not, and the README says so rather than reading a zero as proof.
+
+### `switch` mode — the scrolled conversation switch
+
+Two conversations are seeded (they differ only in title, so the reader can tell
+them apart in the sidebar), the reader is scrolled deep into A, then B is clicked
+and A is clicked back. The DOM, the store's own `activeSessionId`, and the row
+ids are sampled every frame across each switch.
+
+```
+scrolled in A   rows 100  scrollTop -6480  activeSessionId b236a0c3aba0  firstRow [row 0170]
+settled in B    rows  60  scrollTop     0  activeSessionId c32765676410  firstRow [row 0210]
+back in A       rows  60  scrollTop     0  activeSessionId b236a0c3aba0  firstRow [row 0215]
+```
+
+- **Offset is not carried across the switch:** `settledBScrollTop` is `0` against
+  A's `-6480`. The scrolled state belongs to A and is not imposed on B.
+- **No stale-content frame:** across 198 consecutive frames the store's
+  `activeSessionId` took exactly the two expected values, and NO frame carried B's
+  identity over A's rows (the frame whose id is the target begins from `rows=0`,
+  the empty pane between conversations, and the first painted row is B's).
+- **The frames** `switch-01-scrolled-in-a`, `switch-02-settled-in-b`,
+  `switch-03-back-in-a` are the three settled states; the first shows A scrolled
+  into `[row 0199]`, the second B at its own arrival state (`[row 0259]`), the
+  third A back at its arrival state.
+
+### The two frames this round's design finding asked for (D1)
+
+`review-later-input-02-after-reader-input-before-growth` is the mandated
+fresh consecutive frame: the same interaction as `-01` but taken AFTER the real
+reader input and BEFORE the page lands — the reader's one notch is visible and no
+content has been inserted yet. Paired with `-03` (the page landed, the same row
+at the same offset), the two stills are a same-interaction before/after of the
+exact sequence D1 asked for, and `review-measurements.json`'s `frameTimeline`
+is the geometry behind them (every frame's `offset`, `scrollTop`, `extent` and
+`rows`).
+
+### What this round still does NOT prove
+
+- **Native trackpad momentum.** The momentum tail in round 2's main arm is shaped
+  like a trackpad's (time-bounded decay at frame cadence) but is still synthesized
+  by CDP `Input.dispatchMouseEvent`. `GESTURE_GAP_MS = 400` remains justified by
+  argument, not measured against hardware.
+- **The hook's correction PATH.** As above: on the durable-page path the browser
+  anchors the row, so this run cannot separate "the hook stood down" from "the
+  browser never needed it". The correction path is exercised by
+  `scripts/transcript-paging-hook.test.mjs`, which mounts the production hook and
+  drives the real listener and layout effect with controlled geometry.
+
 ## Still open
 
 - **`GESTURE_GAP_MS = 400` is unmeasured against real hardware.** It is reasoned
