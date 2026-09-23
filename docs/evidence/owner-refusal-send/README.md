@@ -30,9 +30,21 @@ how the previous revision of this evidence was caught asserting a wire shape tha
 does not exist. Consequence: **the `retiring` arm's frames are the held state in
 BOTH halves** — the app cannot classify a refusal nobody labelled — and the
 `runtime_retiring` term in `isRefusedBeforeAdmission` is forward-compatible code
-waiting on the backend half (design of record section 6 B2), not a live fix. The
-answer to the CODED body is pinned where an assertion belongs,
-`scripts/canonical-chat.test.mjs`, because no backend sends it yet.
+waiting on the backend half, not a live fix. The answer to the CODED body is
+pinned where an assertion belongs, `scripts/canonical-chat.test.mjs`, because no
+backend sends it yet.
+
+**The dependency, named.** Backend PR #1494 (`fix(desktop): answer a retiring
+refusal as a coded 409`, head `f7b1890b4`) is the half that puts the code on the
+wire: it adds `RuntimeRetiring` to the ladder's coded arm WITHOUT moving the
+sentence. Captured from that head with the same script, the retiring refusal
+becomes
+`409 {"detail": {"code": "runtime_retiring", "message": "This session is switching to a newer build; the one it loaded is gone from disk. The message was not admitted — send it again once the new build is up."}}`
+(and `409 {"detail": {"code": "runtime_retiring", "message": "This session is leaving; it will not start a new turn. …"}}`
+for a plain departure), with no `retryable` and no `retry_after_ms`. Until that
+lands, this PR's retiring arm is inert: the frames ship the uncoded body above,
+because that is what a real owner answers with today, and the coded body's answer
+lives in the unit test rather than in a frame.
 
 ## What each frame shows
 
@@ -127,3 +139,14 @@ PYTHONPATH=<backend checkout> <backend checkout>/.venv/bin/python \
 One command per half; it prints each arm's reading and writes the frames,
 `readings.json` and `wire.log` into the directory given. `--only=<arm>` narrows
 it to one arm while a rig is being changed.
+
+## State at this revision
+
+These frames were taken at `ca752b26e` and the branch was then folded onto
+`origin/main` = `1020b48a9` (a 0.30.20 release merge). They are RE-STAMPED, NOT
+RE-TAKEN: the only chat-area change main brought across is the `/usage` picker
+(`usage-view.tsx`), which is not a surface any frame here photographs — nothing
+in the alert, the composer or the transcript moved. The stamps live in
+`docs/evidence/manifest.json` and are re-derived at the folded tip; the frames,
+their readings and the wire logs carry the pre-fold bytes deliberately, and this
+paragraph is what says so.
