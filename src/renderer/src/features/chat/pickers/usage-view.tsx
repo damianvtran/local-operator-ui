@@ -29,7 +29,7 @@ import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { cn } from "@shared/lib/utils";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { type Query, useQuery } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
@@ -485,6 +485,24 @@ const UsageSkeleton: FC = () => (
 	</div>
 );
 
+/**
+ * What the polite region says while a read is out, one sentence per mode.
+ *
+ * Two sentences rather than the action's label repeated, because the region
+ * exists for the user who cannot see the button relabel — and the check's
+ * sentence used to be byte-identical to the label beside it, which is the echo
+ * that made the region redundant to anyone who could see it (design D2).
+ *
+ * They are module constants rather than inline literals so the region's text is
+ * a function of the STATE alone: React bails out of an identical string, so a
+ * re-render of the same in-flight state mutates nothing and the announcement
+ * cannot repeat. The wording is deliberately not the ask's either — a
+ * cache-aware check must not read as the forced, every-provider ask the user
+ * has to have pressed.
+ */
+const CHECK_ANNOUNCEMENT = "Checking for an updated usage report.";
+const ASK_ANNOUNCEMENT = "Getting fresh usage from providers.";
+
 export type UsageDialogProps = {
 	onClose: () => void;
 	/** The payload, or null while it is loading or has failed. */
@@ -494,12 +512,6 @@ export type UsageDialogProps = {
 	error?: string | null;
 	/** A live fetch is in flight: the action says so instead of spinning. */
 	fetching?: boolean;
-	/**
-	 * Whether the in-flight read is the automatic cache-aware check rather than
-	 * the user's own ask. It picks the announcement wording; the action is
-	 * disabled for the ask alone.
-	 */
-	checking?: boolean;
 	/** Whether the user has explicitly asked for live numbers. */
 	asked?: boolean;
 	onFetchLive: () => void;
@@ -532,7 +544,6 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	loading = false,
 	error = null,
 	fetching = false,
-	checking = false,
 	asked = false,
 	onFetchLive,
 	outcome = null,
@@ -573,6 +584,23 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 			return;
 		bodyRef.current?.focus();
 	}, [fetching]);
+
+	/*
+	 * The polite region's sentence, held in state so the region can be MOUNTED
+	 * EMPTY and filled afterwards — the difference between an announcement and
+	 * silence, as the region's own comment explains (design D2, code R9).
+	 *
+	 * The dependencies are the in-flight STATE, not the render: writing the same
+	 * string back is a no-op in React and mutates nothing, so a plain re-render
+	 * of an open dialog cannot repeat the sentence. Clearing it when nothing is in
+	 * flight is what keeps the region silent at rest and after a settle.
+	 */
+	const [announcement, setAnnouncement] = useState("");
+	useEffect(() => {
+		setAnnouncement(
+			fetching ? (asked ? ASK_ANNOUNCEMENT : CHECK_ANNOUNCEMENT) : "",
+		);
+	}, [fetching, asked]);
 
 	return (
 		<PickerHost
@@ -617,26 +645,27 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					    explicit forced ask. Keep that in-flight state distinct so the
 					    receipt and repeat-ask promise only describe an actual click. */}
 					{/*
-					 * The polite region names whatever is in flight, including the automatic
-					 * check this view runs on every open.
+					 * The polite region names whichever read is in flight, including the
+					 * automatic check this view runs on every open.
+					 *
+					 * IT IS MOUNTED EMPTY AND FILLED FROM AN EFFECT, and that is the finding
+					 * rather than a style choice (design D2, code R9). A live region announces
+					 * a CHANGE to a region already in the document; text that arrives WITH the
+					 * node is its initial content. This region used to be rendered with its
+					 * sentence inside it, and that was measured as one insertion with no
+					 * `characterData` record — so the automatic check, the announcement it was
+					 * added for, announced nothing at all. `announcement` is written by the
+					 * effect below, after the region exists.
 					 *
 					 * It used to stay silent for that check, on the argument that the button's
 					 * relabel is enough — but that relabel happens on a control the user is not
 					 * on (`activeElement` is BODY while the check runs), so a screen-reader
-					 * user got no in-flight state and no completion signal for the flow this
-					 * view exists to fix (UX U3). Distinct wording per mode keeps it from
-					 * echoing the button and from letting a cache-aware check masquerade as the
-					 * manual ask, and the node stays mounted and EMPTY at rest and after
-					 * settle, so it announces only on a real transition.
+					 * user got no in-flight state for the flow this view exists to fix (UX
+					 * U3). Its sentence is its own rather than the button's: see
+					 * `CHECK_ANNOUNCEMENT`.
 					 */}
 					<output aria-live="polite" className={cn("sr-only")}>
-						{fetching
-							? asked
-								? "Getting fresh usage from providers."
-								: checking
-									? "Checking provider usage"
-									: ""
-							: ""}
+						{announcement}
 					</output>
 					{/*
 					 * The action is disabled for the user's OWN ask, never for a background
@@ -660,9 +689,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 						{fetching
 							? asked
 								? "Asking providers"
-								: checking
-									? "Checking provider usage"
-									: "Reading cached usage"
+								: "Checking provider usage"
 							: asked
 								? "Ask providers again"
 								: "Ask providers now"}
@@ -760,12 +787,52 @@ const CLOCK_TICK_MS = 30_000;
  */
 export type UsageQueryMode = "cached" | "auto" | "ask";
 
+/**
+ * A payload the view keeps rendering after the read that produced it settled.
+ *
+ * `provider` is the `/usage <provider>` scope it belongs to, and `live` records
+ * whether a live read produced it — the two facts the store's precedence rule
+ * needs (review R8, QA Q1/R9). Both are here rather than in two refs because a
+ * payload's scope and its provenance are only meaningful together.
+ */
+type HeldUsage = {
+	provider: string | undefined;
+	payload: UsagePayload;
+	live: boolean;
+};
+
+/**
+ * What may be painted from the last-known store for `provider`, or null.
+ *
+ * The ref outlives the provider argument, so the store can hold a payload that
+ * belongs to another scope; rendering it under this one would misattribute one
+ * provider's numbers to another. The same provider check the writers make, in
+ * one place so a third writer cannot skip it.
+ */
+const adoptedPayload = (
+	held: HeldUsage | null,
+	provider: string | undefined,
+): UsagePayload | null =>
+	// `held && ...` rather than optional chaining: an absent entry and an absent
+	// provider argument would both read as `undefined`, and `undefined === undefined`
+	// would then serve a null store's payload.
+	held && held.provider === provider ? held.payload : null;
+
 /*
  * Ask identities must outlive a picker mount. Closing `/usage` unmounts it, so
  * a component-local counter would reuse a still-cached forced query next time.
  */
 let usageAskSequence = 0;
 export const nextUsageAskId = () => ++usageAskSequence;
+
+/**
+ * Which slot of the query key carries the `/usage <provider>` scope.
+ *
+ * The key is built once, in `usageQueryOptions` below, and the placeholder rule
+ * inside it has to ask the same question of an OLDER key — so the slot is named
+ * here rather than written as a bare index in two places that could drift.
+ */
+export const USAGE_PROVIDER_KEY_SLOT = 2;
 
 export const usageQueryOptions = (
 	provider: string | undefined,
@@ -810,7 +877,8 @@ export const usageQueryOptions = (
 			? { refetchOnMount: "always" as const, staleTime: 0 }
 			: {}),
 		/*
-		 * Keep the cached table on screen while the live key loads.
+		 * Keep the cached table on screen while the live key loads — FOR THIS
+		 * PROVIDER ONLY, which the mode change is not.
 		 *
 		 * Because `live` is in the key, asking for live numbers starts a query
 		 * with no cached entry: `data` was `undefined` and `isLoading` true for
@@ -819,8 +887,31 @@ export const usageQueryOptions = (
 		 * reports while the fetch runs behind them (`UsagePanel.show_cached`), and
 		 * the dialog already renders that state from `payload` + `fetching` — this
 		 * is the wiring that lets the container produce it.
+		 *
+		 * `keepPreviousData` is unqualified, and that is the same defect one layer
+		 * down from the last-known store (QA R9): the picker re-renders this
+		 * container when the slash line changes, so changing `/usage <provider>`
+		 * would carry the PREVIOUS provider's payload into the new scope — under the
+		 * new scope's heading, with the age line reading as if those numbers were
+		 * that provider's. A mode change must keep the table up; a SCOPE change must
+		 * not, and the scope is the third slot of the key this same function builds.
+		 * The previous query is handed to this callback, so the rule is readable
+		 * from the key rather than restated as a flag.
 		 */
-		placeholderData: keepPreviousData,
+		placeholderData: (
+			/*
+			 * Annotated rather than inferred: this object is built by a plain function
+			 * and handed to `useQuery`, so there is no contextual type here to infer
+			 * the callback's parameters from.
+			 */
+			previousData: UsagePayload | undefined,
+			previousQuery:
+				| Query<UsagePayload, Error, UsagePayload, readonly unknown[]>
+				| undefined,
+		) =>
+			previousQuery?.queryKey[USAGE_PROVIDER_KEY_SLOT] === (provider ?? "")
+				? previousData
+				: undefined,
 		/*
 		 * The failure contract, owned here rather than inherited.
 		 *
@@ -982,19 +1073,34 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	 * already knows how to render honestly — so the numbers stay and the
 	 * failure is reported in the action's receipt instead.
 	 *
-	 * ANY answer this view receives is last-known, whichever read produced it.
-	 * Two writers, and both are load-bearing: the cached snapshot is what a COLD
-	 * open paints while the live read is still out (review Q2/D1/U1), and the
-	 * live answer supersedes it. Order is the precedence, so the live payload is
-	 * written second and wins in a render that received both. Without the first
-	 * writer the snapshot was never adopted, so an automatic read that failed
-	 * seconds after a good cached answer left the error as the body with the
-	 * numbers gone (review Q3).
+	 * ANY answer this view receives is last-known, whichever read produced it,
+	 * but THE TWO WRITERS ARE NOT EQUAL (review R8 / QA Q1). This whole block
+	 * re-runs on EVERY render, and a snapshot that re-asserted itself after a live
+	 * answer had arrived rewound the table: a forced ask that settles as an ERROR
+	 * leaves `usage.data` undefined, so the surviving last-known was the older
+	 * cached payload — and the rows the live read had just discovered (the newly
+	 * stored login this view exists to surface) dropped off the screen while the
+	 * age line flipped back from `Live report` to `Cached report`.
+	 *
+	 * So the rule is precedence, not order of assignment: the cached snapshot may
+	 * only be adopted while nothing LIVE is held. It is what a cold open paints
+	 * before the live read lands (Q2/D1/U1) and what a failed AUTOMATIC read falls
+	 * back to (Q3); it is never newer than a live answer about the same provider.
+	 *
+	 * It is also held PER PROVIDER. A ref outlives the provider argument, so a
+	 * reopen under a different `/usage <provider>` scope would otherwise paint the
+	 * previous scope's rows until its own first answer landed — a leaked scope is
+	 * worse than a skeleton, because nothing on screen says the rows are another
+	 * provider's.
 	 */
-	const lastGood = useRef<UsagePayload | null>(null);
-	if (snapshot.data) lastGood.current = snapshot.data;
-	if (usage.data) lastGood.current = usage.data;
-	const payload = usage.data ?? lastGood.current;
+	const lastGood = useRef<HeldUsage | null>(null);
+	const held =
+		lastGood.current?.provider === provider ? lastGood.current : null;
+	if (usage.data)
+		lastGood.current = { provider, payload: usage.data, live: true };
+	else if (snapshot.data && !held?.live)
+		lastGood.current = { provider, payload: snapshot.data, live: false };
+	const payload = usage.data ?? adoptedPayload(lastGood.current, provider);
 
 	/* The failure that has nothing to hide behind, so it becomes the body. */
 	const bodyError = usage.isError && !payload ? errorText(usage.error) : null;
@@ -1026,7 +1132,6 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			error={bodyError}
 			// react-query dedupes a second click, but the label has to say so too.
 			fetching={usage.isFetching}
-			checking={mode === "auto"}
 			asked={mode === "ask"}
 			onFetchLive={askLive}
 			// A previous round's receipt is suppressed while a fetch is out: the
