@@ -512,7 +512,17 @@ jobs:
         # behalf of a script that printed nothing — measured against an empty module
         # in the script's place: a bare `pnpm notarize-dmg` passed, `pnpm --silent`
         # and a direct `node` invocation both refused it.
-        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+        #
+        # The second gate is the candidate workflow's too, for the same reason: both
+        # wrappers refuse a silent success, and NEITHER can see a SKIP, because a
+        # skip is a single line and exit 0 (`scripts/notarize-artifacts.mjs` skips on
+        # a missing flag, a missing credential or an empty `dist`). `pipefail` keeps
+        # the wrapper's own status alive through the `tee` that feeds it.
+        run: |
+          set -o pipefail
+          report="$RUNNER_TEMP/notarize-dmg.log"
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
+          bash scripts/require-notarized-dmg.sh "$report"
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}

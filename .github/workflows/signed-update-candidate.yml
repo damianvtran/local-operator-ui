@@ -274,32 +274,40 @@ jobs:
     # 30-50 min, and the bound exists because a codesign hang once sat for ~5h50m
     # (run 33948569170) instead of failing. A wedged step must fail bounded.
     timeout-minutes: 75
-    # THE NOTARISATION ENVELOPE IS ONE BLOCK, HELD AT THE JOB.
+    # NOTARIZE IS BOUND AT THE JOB; THE CREDENTIALS ON THE STEPS THAT NOTARISE.
     #
-    # Both halves of this job's notarisation gate on `NOTARIZE === "true"` AND all
-    # three `APPLE_*` values, and BOTH SKIP QUIETLY when any is absent: each logs
-    # one line ('Skipping notarization: NOTARIZE not set to true') and returns
-    # success - `scripts/notarize.js` for each app bundle (`afterSign`), and
-    # `scripts/notarize-artifacts.mjs` for each disk image. A skip therefore
-    # satisfies `scripts/require-report.sh`, whose emptiness check is the only
-    # thing standing over that exit status.
+    # `NOTARIZE` decides whether the two notarisation gates run at all, and it is
+    # the one that was lost: the single build step used to carry it and to run both
+    # gates INSIDE itself, so splitting the gates into a step of their own dropped
+    # it. It is bound here, above the steps, where a step added later cannot lose it
+    # by omission - at the job rather than at the workflow as `publish.yml` has it,
+    # because this workflow's `exact-update` job exists to run on a fresh VM with no
+    # Apple credentials at all.
     #
-    # That is exactly how the two-pass split lost the disk images: the single build
-    # step used to carry this env and to run the notarisation gates INSIDE itself,
-    # so splitting the gates into their own step dropped the flag with them. The
-    # run printed `Skipping disk image notarization: NOTARIZE not set to true`, every
-    # artifact check passed on the apps, and `dmg-spctl` then refused both images
-    # with `rejected | source=Unnotarized Developer ID` (audit run 35846109424).
+    # The three `APPLE_*` credentials are NOT here. They are secrets, and at job
+    # scope they would sit in the environment of all fourteen steps below - `pnpm
+    # install --frozen-lockfile` postinstall scripts and marketplace actions
+    # included - where they buy nothing. At step scope they reach exactly the three
+    # steps that notarise a bundle or an image, which is `publish.yml`'s shape.
     #
-    # Job-level rather than step-level so a step added here cannot lose it by
-    # omission, and deliberately NOT workflow-level like `publish.yml`'s: this
-    # workflow's `exact-update` job exists to run on a fresh VM with no Apple
-    # credentials at all, and a workflow-wide value would hand it the flag.
+    # BOTH GATES SKIP QUIETLY when the flag or a credential is absent: one log line,
+    # exit 0 - 'Skipping notarization: NOTARIZE not set to true' - and
+    # `scripts/require-report.sh` cannot tell that from a pass, since its check is
+    # emptiness rather than meaning. What refuses an unnotarised image is the
+    # artifact verification, and in run 35846109424 that was the SAME step as the
+    # skip: the notarisation was still the first lines of the verification step's own
+    # `run:` block then (its API step list carries no notarisation step), so the step
+    # printed `Skipping disk image notarization: NOTARIZE not set to true` at
+    # 10:14:21 and then answered `FAIL dmg-spctl` and `FAIL dmg-stapler` for BOTH
+    # images at 10:18:09 - 3m48s later, one `Process completed with exit code 1` -
+    # `4 of 101 artifact checks failed`, the run red, every app-level check passing
+    # and `upload-artifact` skipped on `total_count: 0`. The realised cost was a red
+    # candidate verification and a wasted two-pass mac build, NOT a shipped image.
+    # The notarisation is a step of its own now, so a skip would land at verification
+    # one step later - and the step below refuses it outright, at the step that
+    # failed to do the job.
     env:
       NOTARIZE: 'true'
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
     # operator asked for releases that need no human input, and a required reviewer
     # is exactly that input. What remains is the environment's **branch policy**
@@ -417,6 +425,13 @@ jobs:
       - name: Build signed candidate (arm64)
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # The app bundle this pass builds is notarised by `scripts/notarize.js`
+          # from `afterSign`, so these three are the credential half of what the
+          # job's `NOTARIZE` arms. Bound here rather than at the job so they reach
+          # no other step - see the note above the job's `env`.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # The four variables the vite plugin requires, taken from the same
           # repository secrets every release build uses. They are not decoration:
           # `scripts/vite-plugins/replace-backend-config.ts` throws
@@ -472,6 +487,10 @@ jobs:
       - name: Build signed candidate (x64)
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Same credential binding as the arm64 pass above, for the same reason.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # Same four bindings as the arm64 pass above, and the same names: a
           # step that builds without them dies in `loadConfig` before compiling
           # anything, and `scripts/check-build-env.mjs` fails the release
@@ -512,15 +531,35 @@ jobs:
       # release: it walks every app bundle and every image BOTH passes produced,
       # and `app-bytecode-loadable` is the one check that asks a bundle's own
       # Electron to load the bytecode inside it.
-      # `notarize-dmg` is FIRST here and it is the step that has to prove it runs:
-      # the flag it gates on now comes from this job's own `env` block, which is
-      # the fix for the run where this step printed `Skipping disk image
-      # notarization: NOTARIZE not set to true` and both `dmg-spctl` checks then
-      # refused the images. `scripts/mac-build-arch.test.mjs` asserts this step's
-      # EFFECTIVE env carries the flag and all three credentials, so the quiet
-      # skip cannot come back one step at a time.
+      # `notarize-dmg` is the step that has to prove it runs, and the notarisation it
+      # wraps is what did not: in run 35846109424 the skip was the first line of the
+      # verification step's `run:` block and both `dmg-spctl` checks then refused the
+      # images - in that same step, 3m48s later, exit code 1. Two things keep that from
+      # coming back: `scripts/mac-build-arch.test.mjs` asserts this step's EFFECTIVE
+      # env carries the flag and all three credentials, and the step refuses a skip
+      # itself rather than leaving it to the verification one step later.
       - name: Notarize and staple the disk images
-        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Two gates, two questions: `require-report.sh` refuses a SILENT success,
+          # and `require-notarized-dmg.sh` refuses a SKIP - which the wrapper cannot
+          # see, because a skip prints a line and exits 0. The skip is what happened
+          # in run 35846109424, where it was the first line of the verification step's
+          # own `run:` block and the four FAILs followed 3m48s later in that same step;
+          # with the notarisation a step of its own and this pair on it, the failure
+          # lands HERE, at the step that failed to do its job, rather than at the
+          # verification one step later behind a whole wasted two-pass build.
+          #
+          # `pipefail` is load-bearing: GitHub's default shell is `bash -e`, which
+          # reads the LAST status of a pipeline, so without it a failing
+          # `require-report.sh` would be masked by the `tee` beside it.
+          set -o pipefail
+          report="$RUNNER_TEMP/notarize-dmg.log"
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
+          bash scripts/require-notarized-dmg.sh "$report"
 
       # `verify-macos-artifacts` is the gate this workflow failed on for every
       # release before the per-architecture split: it walks every app bundle and
